@@ -5,9 +5,14 @@ import { toExcel, excelDownloadHeaders } from "../../lib/export";
 
 async function reload(buf: Uint8Array) {
   const wb = new ExcelJS.Workbook();
-  // ExcelJS.xlsx.load expects Buffer; cast through unknown to bridge the
-  // Uint8Array <-> Buffer<ArrayBufferLike> type skew. Runtime is identical.
-  await wb.xlsx.load(buf as unknown as Buffer);
+  // ExcelJS's xlsx.load() parameter resolves to Buffer<ArrayBuffer> via its
+  // bundled types. @types/node 22+ defaults the global Buffer to
+  // Buffer<ArrayBufferLike>, which lacks `maxByteLength` / `resizable` etc.
+  // Runtime is unaffected -- ExcelJS streams the bytes through jszip which
+  // accepts any Uint8Array-like. If the type defaults ever realign, the
+  // ts-expect-error will self-flag as unused so we can drop it.
+  // @ts-expect-error -- Buffer<ArrayBufferLike> vs Buffer<ArrayBuffer> skew
+  await wb.xlsx.load(buf);
   return wb;
 }
 
