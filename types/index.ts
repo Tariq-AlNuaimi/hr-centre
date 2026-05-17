@@ -1,6 +1,6 @@
 import type { Role } from "../generated/prisma/client";
 
-// Extend next-auth session types
+// Extend next-auth session + user + JWT types so callbacks don't need `as any` casts.
 declare module "next-auth" {
   interface Session {
     user: {
@@ -10,6 +10,10 @@ declare module "next-auth" {
       image?: string | null;
       role: Role;
     };
+  }
+
+  interface User {
+    role: Role;
   }
 }
 
