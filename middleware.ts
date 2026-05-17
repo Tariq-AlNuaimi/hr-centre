@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 
 const intlMiddleware = createMiddleware(routing);
 
-const publicPaths = ["/login", "/api/auth", "/api/health"];
+const publicPaths = ["/login", "/api/auth", "/api/health", "/api/internal"];
 
 function isPublicPath(pathname: string): boolean {
   // Strip locale prefix for matching
@@ -20,10 +20,12 @@ function isPublicPath(pathname: string): boolean {
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Let API routes and static files pass through
+  // Let API routes and static files pass through.
+  // /api/internal is gated by withInternalAuth (shared-secret header), not session.
   if (
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
+    pathname.startsWith("/api/internal") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

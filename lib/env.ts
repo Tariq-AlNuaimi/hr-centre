@@ -26,6 +26,12 @@ const envSchema = z.object({
 
   // Recycling bin
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+
+  // Audit retention
+  // AUDIT_PURGE_TOKEN gates /api/internal/audit-purge. Optional: when unset,
+  // the endpoint returns 503 and the scheduled workflow skips with a warning.
+  AUDIT_PURGE_TOKEN: z.string().min(32).optional(),
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
 });
 
 export const env = envSchema.parse(process.env);
