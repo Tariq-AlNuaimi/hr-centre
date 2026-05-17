@@ -1,0 +1,75 @@
+name: Security finding
+description: Track a security issue per SECURITY.md §11 format.
+labels: ["security"]
+body:
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      description: Short, neutral title. Avoid attack details in the title itself.
+      placeholder: "Audit log retention not enforced on staging"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+      default: 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What the finding is, where in the code / infra, and the realistic blast radius.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction or evidence
+      description: |
+        Steps to reproduce, scanner output (Semgrep / gitleaks / Trivy / npm audit / etc.), or a code path trace.
+        DO NOT paste working exploit payloads in a public issue.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Proposed mitigation
+      description: What the fix looks like at a high level. If "don't know yet", say so.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: data-class
+    attributes:
+      label: Data classes affected
+      options:
+        - Public
+        - Internal
+        - Confidential
+        - Restricted
+        - Multiple (note in description)
+      default: 1
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Pre-submit checklist
+      options:
+        - label: This finding is not already tracked in SECURITY.md §11 (T-01..T-09)
+          required: true
+        - label: If this is a Critical / High finding, I have flagged the owner directly (do not rely on Github notification alone)
+          required: true
