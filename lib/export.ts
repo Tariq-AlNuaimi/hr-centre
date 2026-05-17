@@ -55,38 +55,39 @@ export async function toExcel<T extends Record<string, unknown>>(
   const sheetName = (options.sheetName ?? "Data").slice(0, 31);
   const sheet = workbook.addWorksheet(sheetName);
 
-  let headerRowIdx = 1;
-  if (options.title) {
-    sheet.mergeCells(1, 1, 1, Math.max(1, columns.length));
-    const titleCell = sheet.getCell(1, 1);
-    titleCell.value = options.title;
-    titleCell.font = { bold: true, size: 14 };
-    sheet.addRow([]);
-    headerRowIdx = 3;
+  // Set column widths up front. We deliberately do NOT assign sheet.columns
+  // because that API implicitly writes the headers into row 1, which collides
+  // with a title row when options.title is set.
+  for (let i = 0; i < columns.length; i++) {
+    sheet.getColumn(i + 1).width = columns[i].width ?? 20;
   }
 
-  sheet.columns = columns.map((c) => ({
-    header: c.header,
-    key: c.key,
-    width: c.width ?? 20,
-  }));
+  // Optional title row (merged across all columns).
+  if (options.title) {
+    const titleRow = sheet.addRow([options.title]);
+    titleRow.font = { bold: true, size: 14 };
+    sheet.mergeCells(1, 1, 1, Math.max(1, columns.length));
+    sheet.addRow([]); // spacer row between title and headers
+  }
 
-  const headerRow = sheet.getRow(headerRowIdx);
+  // Header row -- always written explicitly so it can be styled and so it
+  // lands at the right row index whether or not a title is present.
+  const headerRow = sheet.addRow(columns.map((c) => c.header));
   headerRow.font = { bold: true };
   headerRow.fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: "FFE6E6E6" },
   };
-  headerRow.commit();
 
+  // Data rows. Iterate columns in order so the cells line up under the headers
+  // even if the row object has properties in a different order.
   for (const row of data) {
-    const out: Record<string, unknown> = {};
-    for (const col of columns) {
+    const rowData = columns.map((col) => {
       const raw = row[col.key] as T[keyof T & string];
-      out[col.key] = col.format ? col.format(raw, row) : (raw ?? "");
-    }
-    sheet.addRow(out);
+      return col.format ? col.format(raw, row) : (raw ?? "");
+    });
+    sheet.addRow(rowData);
   }
 
   // exceljs.xlsx.writeBuffer's typed return drifts between releases and across
