@@ -16,6 +16,7 @@
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
     "scaffold": "node scripts/scaffold-entity.mjs",
+    "rebrand": "node scripts/rebrand.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
