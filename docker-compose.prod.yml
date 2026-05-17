@@ -1,5 +1,11 @@
 # Staging/Production compose - for Portainer deployment via Git
-# Image pulled from GHCR, webhook triggers redeploy on push to main
+# Image pulled from GHCR, webhook triggers redeploy on push to main.
+#
+# IMAGE_TAG: defaults to `latest` for first-deploy convenience. To pin to a specific
+# build (rollback or replay-attack-resistant prod), set IMAGE_TAG=sha-<short> in the
+# Portainer stack environment variables. The build workflow passes the SHA on the
+# webhook query string, so Portainer stack webhooks pick it up automatically.
+# See SECURITY.md finding T-04.
 
 services:
   db:
@@ -50,7 +56,7 @@ services:
 
   app:
     container_name: next-template-app
-    image: ghcr.io/rihal-om/fullstack-next-template:latest
+    image: ghcr.io/rihal-om/fullstack-next-template:${IMAGE_TAG:-latest}
     restart: unless-stopped
     depends_on:
       db:

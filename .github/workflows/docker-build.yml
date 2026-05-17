@@ -49,8 +49,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # IMAGE_TAG is passed on the webhook query string. Portainer STACK webhooks
+      # treat query-string params as environment-variable overrides for the stack,
+      # so docker-compose.prod.yml's `${IMAGE_TAG:-latest}` resolves to the SHA tag
+      # on this deploy. SERVICE webhooks ignore the query string -- they redeploy
+      # whatever :latest currently points to, which is also fine (just no SHA pin).
+      # See SECURITY.md finding T-04.
       - name: Trigger Portainer stack update
         if: success()
+        env:
+          SHA: ${{ github.sha }}
         run: |
-          curl -s -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
-          echo "Portainer webhook triggered"
+          SHORT_SHA="${SHA:0:7}"
+          curl -s -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}?IMAGE_TAG=sha-${SHORT_SHA}"
+          echo "Portainer webhook triggered with IMAGE_TAG=sha-${SHORT_SHA}"
