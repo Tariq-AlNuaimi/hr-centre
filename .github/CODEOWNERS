@@ -1,0 +1,25 @@
+# CODEOWNERS
+#
+# Lines later in the file take precedence. Forks should replace @Tariq-AlNuaimi
+# with the project's own owner during /first-fork step 10 (branch protection).
+
+# Default owner for everything not covered by a more specific rule.
+* @Tariq-AlNuaimi
+
+# Security-critical surfaces -- changes here require owner review even if you
+# would normally self-merge.
+/SECURITY.md                          @Tariq-AlNuaimi
+/CLAUDE.md                            @Tariq-AlNuaimi
+/lib/auth.ts                          @Tariq-AlNuaimi
+/lib/rate-limit.ts                    @Tariq-AlNuaimi
+/lib/api-helpers.ts                   @Tariq-AlNuaimi
+/middleware.ts                        @Tariq-AlNuaimi
+/lib/prisma/audit-extension.ts        @Tariq-AlNuaimi
+/lib/prisma/soft-delete-extension.ts  @Tariq-AlNuaimi
+/prisma/migrations/                   @Tariq-AlNuaimi
+/.github/workflows/                   @Tariq-AlNuaimi
+/.github/CODEOWNERS                   @Tariq-AlNuaimi
+/docs/decisions/                      @Tariq-AlNuaimi
+/deploy/                              @Tariq-AlNuaimi
+/docker-compose.prod.yml              @Tariq-AlNuaimi
+/Dockerfile                           @Tariq-AlNuaimi

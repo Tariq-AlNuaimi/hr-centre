@@ -42,8 +42,6 @@ const OWNER = values.owner;
 const OWNER_NAME = values['owner-name'] ?? OWNER;
 const DRY = values['dry-run'];
 
-// Replacements applied to specific files. Order matters within a file -- earlier
-// rules run first. Each rule has a `from` (string or regex) and `to`.
 const FILES = [
   {
     path: 'package.json',
@@ -81,9 +79,6 @@ const FILES = [
   {
     path: 'CLAUDE.md',
     rules: [
-      // First paragraph: "Reusable starter for Rihal internal tools..."
-      // Replace with project-specific intro. We only rewrite the very first line
-      // after the H1, to keep the rest of the doc intact.
       {
         from: /^# CLAUDE\.md — Fullstack Next\.js Template\n\nReusable starter for Rihal internal tools\. Next\.js 16 \+ Prisma 7 \(Postgres\) \+ Auth\.js v5 \+ MinIO \+ Ant Design \+ next-intl\. Deploys as a single Docker image to a Portainer-managed host via GHCR webhook\. Owner: Tariq Al-Naaimi\./m,
         to: `# CLAUDE.md — ${NAME}\n\n${NAME}. Forked from the fullstack-vibe-template (Next.js 16 + Prisma 7 + Auth.js v5 + MinIO + Ant Design + next-intl). Deploys as a single Docker image via GHCR + Portainer webhook. Owner: ${OWNER_NAME}.`,
@@ -104,7 +99,7 @@ for (const file of FILES) {
   try {
     src = await readFile(path, 'utf8');
   } catch (e) {
-    console.warn(`SKIP ${file.path}: ${(e as Error).message}`);
+    console.warn(`SKIP ${file.path}: ${e && e.message ? e.message : String(e)}`);
     continue;
   }
 
@@ -143,5 +138,5 @@ for (const d of diffs) {
 
 console.log('');
 console.log('Rebrand complete. Next:');
-console.log('  git add -A && git commit -m "chore: rebrand to ' + SLUG + '"');
+console.log(`  git add -A && git commit -m "chore: rebrand to ${SLUG}"`);
 console.log('  /first-fork    # finish the bootstrap (secrets, Portainer, branch protection)');
