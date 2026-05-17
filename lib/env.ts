@@ -32,6 +32,13 @@ const envSchema = z.object({
   // the endpoint returns 503 and the scheduled workflow skips with a warning.
   AUDIT_PURGE_TOKEN: z.string().min(32).optional(),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
+
+  // SMTP (optional; email is gated on SMTP_HOST presence -- see lib/email.ts)
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().email().optional(),
 });
 
 export const env = envSchema.parse(process.env);
