@@ -1,0 +1,86 @@
+{
+  "common": {
+    "appName": "My App",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search...",
+    "actions": "Actions",
+    "confirm": "Confirm",
+    "back": "Back",
+    "loading": "Loading...",
+    "noData": "No data found",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "nav": {
+    "home": "Home",
+    "users": "Users",
+    "auditLog": "Audit Log",
+    "settings": "Settings",
+    "profile": "Profile",
+    "recyclingBin": "Recycling Bin",
+    "logout": "Logout"
+  },
+  "auth": {
+    "login": "Login",
+    "email": "Email",
+    "password": "Password",
+    "signIn": "Sign In",
+    "invalidCredentials": "Invalid email or password"
+  },
+  "users": {
+    "title": "Users",
+    "createUser": "Create User",
+    "editUser": "Edit User",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "createdAt": "Created",
+    "lastLogin": "Last Login",
+    "deleteConfirm": "Are you sure you want to delete this user?"
+  },
+  "recyclingBin": {
+    "title": "Recycling Bin",
+    "restore": "Restore",
+    "permanentDelete": "Permanently Delete",
+    "deletedBy": "Deleted By",
+    "deletedAt": "Deleted At",
+    "entityType": "Type",
+    "permanentDeleteConfirm": "This action cannot be undone. Permanently delete?",
+    "restoreConfirm": "Restore this item?",
+    "empty": "Recycling bin is empty"
+  },
+  "settings": {
+    "title": "Settings",
+    "profile": "Profile",
+    "general": "General",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "changePassword": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "passwordChanged": "Password changed successfully",
+    "passwordMismatch": "Passwords do not match"
+  },
+  "auditLog": {
+    "title": "Audit Log",
+    "timestamp": "Timestamp",
+    "action": "Action",
+    "entity": "Entity",
+    "entityId": "Entity ID",
+    "user": "User",
+    "changes": "Changes",
+    "filterEntity": "Filter by entity",
+    "filterAction": "Filter by action"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  }
+}

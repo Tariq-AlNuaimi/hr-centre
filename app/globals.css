@@ -1,0 +1,46 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#__next {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Ant Design layout overrides */
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-content {
+  padding: 24px;
+}
+
+/* Scrollbar styling for dark mode */
+@media (prefers-color-scheme: dark) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #141414;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #434343;
+    border-radius: 4px;
+  }
+}

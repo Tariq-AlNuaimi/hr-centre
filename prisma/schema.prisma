@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -- Enums --
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+// -- Auth.js Models --
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  name          String?
+  passwordHash  String?
+  image         String?
+  role          Role      @default(VIEWER)
+  lastLoginAt   DateTime?
+
+  // Soft deletion
+  deletedAt     DateTime?
+  deletedBy     String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// -- Audit --
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String   // CREATE, UPDATE, DELETE, RESTORE
+  before     Json?
+  after      Json?
+  changes    Json?
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ipAddress  String?
+  userAgent  String?
+  timestamp  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}

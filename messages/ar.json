@@ -1,0 +1,86 @@
+{
+  "common": {
+    "appName": "تطبيقي",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "create": "إنشاء",
+    "search": "بحث...",
+    "actions": "إجراءات",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات",
+    "yes": "نعم",
+    "no": "لا"
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "users": "المستخدمون",
+    "auditLog": "سجل التدقيق",
+    "settings": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "recyclingBin": "سلة المحذوفات",
+    "logout": "تسجيل الخروج"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "signIn": "دخول",
+    "invalidCredentials": "بريد إلكتروني أو كلمة مرور غير صحيحة"
+  },
+  "users": {
+    "title": "المستخدمون",
+    "createUser": "إنشاء مستخدم",
+    "editUser": "تعديل مستخدم",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "role": "الدور",
+    "createdAt": "تاريخ الإنشاء",
+    "lastLogin": "آخر دخول",
+    "deleteConfirm": "هل أنت متأكد من حذف هذا المستخدم؟"
+  },
+  "recyclingBin": {
+    "title": "سلة المحذوفات",
+    "restore": "استعادة",
+    "permanentDelete": "حذف نهائي",
+    "deletedBy": "حذف بواسطة",
+    "deletedAt": "تاريخ الحذف",
+    "entityType": "النوع",
+    "permanentDeleteConfirm": "لا يمكن التراجع عن هذا. حذف نهائي؟",
+    "restoreConfirm": "استعادة هذا العنصر؟",
+    "empty": "سلة المحذوفات فارغة"
+  },
+  "settings": {
+    "title": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "general": "عام",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "role": "الدور",
+    "changePassword": "تغيير كلمة المرور",
+    "currentPassword": "كلمة المرور الحالية",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "passwordChanged": "تم تغيير كلمة المرور بنجاح",
+    "passwordMismatch": "كلمات المرور غير متطابقة"
+  },
+  "auditLog": {
+    "title": "سجل التدقيق",
+    "timestamp": "التوقيت",
+    "action": "الإجراء",
+    "entity": "الكيان",
+    "entityId": "معرف الكيان",
+    "user": "المستخدم",
+    "changes": "التغييرات",
+    "filterEntity": "تصفية حسب الكيان",
+    "filterAction": "تصفية حسب الإجراء"
+  },
+  "theme": {
+    "light": "فاتح",
+    "dark": "داكن",
+    "system": "النظام"
+  }
+}

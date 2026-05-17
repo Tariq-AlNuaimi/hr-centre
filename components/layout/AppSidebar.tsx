@@ -1,0 +1,109 @@
+"use client";
+
+import { Layout, Menu } from "antd";
+import {
+  HomeOutlined,
+  UserOutlined,
+  SettingOutlined,
+  DeleteOutlined,
+  AuditOutlined,
+} from "@ant-design/icons";
+import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { useState } from "react";
+
+const { Sider } = Layout;
+
+export function AppSidebar() {
+  const t = useTranslations("nav");
+  const router = useRouter();
+  const pathname = usePathname();
+  const { data: session } = useSession();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const locale = pathname.startsWith("/ar") ? "ar" : "en";
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
+
+  // Strip locale prefix for active key matching
+  const activeKey =
+    pathname
+      .replace(/^\/(en|ar)/, "")
+      .split("/")
+      .filter(Boolean)[0] ?? "home";
+
+  const menuItems = [
+    {
+      key: "home",
+      icon: <HomeOutlined />,
+      label: t("home"),
+      onClick: () => router.push(`/${locale}`),
+    },
+    ...(isAdmin
+      ? [
+          {
+            key: "users",
+            icon: <UserOutlined />,
+            label: t("users"),
+            onClick: () => router.push(`/${locale}/users`),
+          },
+          {
+            key: "audit-log",
+            icon: <AuditOutlined />,
+            label: t("auditLog"),
+            onClick: () => router.push(`/${locale}/audit-log`),
+          },
+        ]
+      : []),
+    {
+      key: "recycling-bin",
+      icon: <DeleteOutlined />,
+      label: t("recyclingBin"),
+      onClick: () => router.push(`/${locale}/recycling-bin`),
+    },
+    {
+      key: "settings",
+      icon: <SettingOutlined />,
+      label: t("settings"),
+      onClick: () => router.push(`/${locale}/settings`),
+    },
+  ];
+
+  const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME
+    ? new Date(process.env.NEXT_PUBLIC_BUILD_TIME)
+        .toISOString()
+        .replace(/:\d{2}\.\d{3}Z$/, "")
+    : null;
+
+  return (
+    <Sider
+      collapsible
+      collapsed={collapsed}
+      onCollapse={setCollapsed}
+      breakpoint="lg"
+      style={{ borderInlineEnd: "1px solid" }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+        <Menu
+          mode="inline"
+          selectedKeys={[activeKey]}
+          items={menuItems}
+          style={{ flex: 1, borderRight: 0 }}
+        />
+        {buildTime && !collapsed && (
+          <div
+            style={{
+              padding: "8px 16px",
+              fontSize: 11,
+              opacity: 0.45,
+              textAlign: "center",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {buildTime}
+          </div>
+        )}
+      </div>
+    </Sider>
+  );
+}
