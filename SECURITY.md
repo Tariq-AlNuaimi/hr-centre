@@ -19,12 +19,12 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 **Operational rules per class:**
 
-- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports, never in `audit_logs.before` / `after` (the audit extension snapshots full rows — if you add a Restricted column to a model, scrub it in the extension or move it to a side table). MinIO presigned URLs are short-lived (1h default) and must never appear in audit metadata or server logs.
+- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5). MinIO presigned URLs are short-lived (1h default) and must never appear in audit metadata or server logs.
 - **Confidential:** auth + role gate at the API boundary. Logged on sensitive read where the project defines one (the template doesn't ship read-side audit — write-side only).
 - **Internal:** auth + role gate.
 - **Public:** can appear unauthenticated.
 
-**Downstream projects:** add a row per Restricted field you introduce and reconcile the audit-extension snapshot behavior on the same commit.
+**Downstream projects:** when introducing a new Restricted field, (1) add a row above and (2) extend `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` in the same commit.
 
 ---
 
@@ -33,12 +33,12 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 🟢 **Auth.js v5 (next-auth beta) with Credentials provider, JWT session strategy.** Configuration lives in `lib/auth.ts`. Sign-in page: `/login` (per-locale). Middleware (`middleware.ts`) gates every non-public path and returns `401` on unauthenticated API calls.
 
 - **Password hashing:** `bcryptjs.compare` against `users.passwordHash`. Seed hashes use the bcryptjs default cost factor; any project-introduced reset endpoint must use the same library. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2.
-- **Session payload:** JWT only. Carries `{id, role}` on the `token` and exposes them on `session.user`. The `sessions` table exists because the Prisma adapter is wired (needed for OAuth account linking), but JWT sessions are not written there — don't query `sessions` to enumerate active users.
+- **Session payload:** JWT only. Carries `{id, role}` on the `token` and exposes them on `session.user` (typed via `types/index.ts`). The `sessions` table exists because the Prisma adapter is wired (needed for OAuth account linking), but JWT sessions are not written there — don't query `sessions` to enumerate active users.
 - **OAuth:** Google provider is wired but commented out in `lib/auth.ts`. Uncomment + set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` to enable. Any provider added must be reflected here.
 - **Public paths** (no auth required) are listed in `middleware.ts`: `/login`, `/api/auth/*`, `/api/health`. Adding a public path requires a SECURITY.md entry and an ADR.
 - **`prismaUnfiltered` in the authorize callback** is intentional — it sees soft-deleted users so the callback can distinguish "no such email" from "deactivated user" without leaking which. The `where` clause still filters `deletedAt: null` so deleted users cannot log in.
 
-**Brute-force defense:** ⚠️ **Not shipped in the template.** Credentials login has no rate limiter. Downstream projects MUST add one (e.g. `@upstash/ratelimit` or middleware in front) before any production deploy. Tracked as **T-01** in §11.
+**Brute-force defense:** 🟢 **In-memory token bucket in `lib/rate-limit.ts`, applied to POST on `/api/auth/*` at 10/min/IP.** Returns 429 with `Retry-After` when exceeded. Horizontally-scaled forks MUST swap to a shared-state limiter (e.g. `@upstash/ratelimit` backed by Redis or Upstash) — per-instance buckets are bypassed by round-robin load balancing.
 
 **Account lifecycle:** seeding creates one admin from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`. Downstream projects MUST rotate `SEED_ADMIN_PASSWORD` on first login or remove the seed call from the entrypoint after initial deploy.
 
@@ -51,7 +51,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 - **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) from `lib/api-helpers.ts`. UI gating is defense-in-depth, **not** the boundary.
 - **EDITOR vs VIEWER split is not enforced by the template** — only Admin-vs-not. Downstream projects that need EDITOR > VIEWER must add a `withEditorAuth` (or a permission-string `can()` helper) and document it here.
 - **Row-level scoping** (e.g. "users only see their own records") is project-specific. Add an explicit `WHERE` clause in every list / get query. Don't rely on UI filtering. Postgres RLS is not enabled by default.
-- **`session.user.role` is typed as `any`** today (no Auth.js module augmentation). Treat it as a string; guard before use. Tracked as **T-08** in §11.
+- **`session.user.role`** is typed as `Role` via the augmentation in `types/index.ts`; callbacks in `lib/auth.ts` are cast-free.
 
 ---
 
@@ -62,13 +62,33 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | TLS in transit | ⚠️ **Not in the template.** The Next.js container speaks HTTP on `:3000`. Put a TLS-terminating reverse proxy (Caddy / nginx / Cloudflare) in front in any environment past local dev. HSTS header is emitted by `next.config.ts` regardless. |
 | Disk encryption | Inherits from host. Document per project. |
 | Column encryption of Restricted fields | ⚠️ **None.** `passwordHash` is bcrypt-hashed (not encrypted — irreversible by design). If a downstream project introduces Restricted columns (e.g. salary, API tokens), add pgcrypto or app-layer AES-256-GCM and a row here. |
-| Backup encryption | ⚠️ **Not in the template.** Postgres data lives in the `pgdata` Docker volume; MinIO objects in `miniodata`. No backup pipeline ships. Downstream projects MUST add encrypted backups + a tested restore drill before storing real Confidential data. Tracked as **T-07** in §11. |
-| Secrets in code | ✅ None. All in `.env` (mode 600 on the host) or repo secrets. `.env.example` is in git; `.env` is in `.gitignore`. |
+| Backup encryption | ⚠️ **Not in the template.** Postgres data lives in the `pgdata` Docker volume; MinIO objects in `miniodata`. No backup pipeline ships. Downstream projects MUST add encrypted backups + a tested restore drill before storing real Confidential data. Tracked as **T-07** in §11; bucket 2.5. |
+| Secrets in code | ✅ None. All in `.env` (mode 600 on the host) or repo secrets. `.env.example` is in git; `.env` is in `.gitignore`. Enforced by `secrets-scan.yml` (gitleaks) on every push — see §14. |
 | Password hashing | ✅ bcryptjs only (`lib/auth.ts`). Default cost factor. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2. |
 | Auth.js JWT signing | ✅ `AUTH_SECRET` (Restricted). Rotation invalidates every session. |
 | MinIO at rest | Inherits from MinIO config + disk encryption. Default install is unencrypted at rest. Document per project. |
 
-**Default security headers** (emitted by `next.config.ts` on every response): `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`. **CSP is not set** — tracked as **T-05** in §11.
+**Default security headers** (emitted by `next.config.ts` on every response): `Content-Security-Policy` (see below), `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`.
+
+**CSP policy** (in `next.config.ts`):
+
+```
+default-src 'self';
+script-src 'self' 'unsafe-inline' ['unsafe-eval' in dev only];
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob: http://localhost:9000 http://minio:9000;
+font-src 'self' data:;
+connect-src 'self';
+frame-ancestors 'none';
+base-uri 'self';
+form-action 'self';
+```
+
+Caveats:
+- `'unsafe-inline'` on `script-src` is needed for Next.js bootstrap inline scripts. Tightening to nonce-based requires Ant Design SSR nonce support which is not stable yet.
+- `'unsafe-inline'` on `style-src` is needed for Ant Design's runtime CSS-in-JS.
+- `'unsafe-eval'` is added only in dev (HMR / React Refresh); prod drops it.
+- `img-src` includes `http://localhost:9000` and `http://minio:9000` for dev MinIO. **Tighten to your prod MinIO hostname per project** (and remove `http://` once TLS is in front).
 
 ---
 
@@ -76,11 +96,11 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 🟢 **Schema + writer ship with the template** (`prisma/schema.prisma` `AuditLog` + `lib/prisma/audit-extension.ts`). The Prisma extension auto-records every `create` / `update` / `delete` on every model **outside the EXCLUDE set** (`AuditLog`, `Account`, `Session`, `VerificationToken`).
 
-- **Captured per row:** `timestamp`, `entityType`, `entityId`, `action` (`CREATE` / `UPDATE` / `DELETE` / `RESTORE`), `before` (JSON snapshot pre-write), `after` (JSON snapshot post-write), `changes` (diff with `updatedAt` excluded), `userId` (from `AuditContext`), `ipAddress`, `userAgent`.
+- **Captured per row:** `timestamp`, `entityType`, `entityId`, `action` (`CREATE` / `UPDATE` / `DELETE` / `RESTORE`), `before` (JSON snapshot pre-write, scrubbed), `after` (JSON snapshot post-write, scrubbed), `changes` (diff with `updatedAt` excluded; scrubbed fields show as `[redacted] -> [redacted]`), `userId` (from `AuditContext`), `ipAddress`, `userAgent`.
 - **Soft-delete detection:** an `update` that sets `deletedAt` from null is rewritten as `action: "DELETE"`; an update that clears `deletedAt` is `action: "RESTORE"`.
 - **Attribution comes from `AuditContext`** seeded by `withAuth` / `withAdminAuth`. **Calls outside the wrappers (cron jobs, seed scripts, repair scripts) attribute to `null` user.** Document any such caller per project.
-- **`before` / `after` are full row snapshots.** If you add a Restricted column to a model, you MUST either scrub it from the snapshot inside the extension or move it to a side table that lives in the EXCLUDE set — otherwise the secret leaks into `audit_logs`. The template ships `users.passwordHash`, which gets snapshotted on user updates today; downstream projects with credential-rotation flows must scrub it. Tracked as **T-03** in §11.
-- **Retention:** undefined in the template. Audit rows accumulate forever. Add a retention policy + cron job per project. Tracked as **T-06** in §11.
+- **Restricted-field scrubbing:** `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` replaces values for `passwordHash`, `password`, `refresh_token`, `access_token`, `id_token`, `session_state`, `sessionToken`, `token`, `secret`, `apiKey`, `api_key` with the literal `"[redacted]"` before write. The audit row still records the field *changed* — just not its value. **Downstream projects with new Restricted columns extend `SCRUB_FIELDS` in the same commit that adds the column.**
+- **Retention:** undefined in the template. Audit rows accumulate forever. Add a retention policy + cron job per project. Tracked as **T-06** in §11; bucket 2.5.
 - **Append-only:** enforced at the application layer (the extension never issues UPDATE / DELETE on `AuditLog`). No DB-level `REVOKE` is set.
 
 ---
@@ -96,7 +116,8 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | `SEED_ADMIN_PASSWORD` | `.env` (Restricted) | One-shot bootstrap. Rotate on first login or remove the seed call from the entrypoint after initial deploy. |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | `.env` (Restricted — only if OAuth enabled) | Provider creds. Rotate from Google Cloud Console. |
 | `DATABASE_URL` | `.env` (Confidential — embeds the password) | Reconstruct from `POSTGRES_*` rather than logging the URL. |
-| `PORTAINER_WEBHOOK_URL` | GitHub repo secret (Restricted) | Anyone with this URL can trigger a redeploy of the current `:latest` image tag. Rotate via Portainer if leaked. |
+| `IMAGE_TAG` | Portainer stack env (Internal) | Optional. Set to `sha-<short>` to pin prod to a specific build. Defaults to `latest` if unset. |
+| `PORTAINER_WEBHOOK_URL` | GitHub repo secret (Restricted) | Anyone with this URL can trigger a redeploy. The CI workflow passes `?IMAGE_TAG=sha-<short>` so stack webhooks pin to the SHA. Rotate via Portainer if leaked. |
 | GHCR push token | `GITHUB_TOKEN` (Restricted — managed by Actions) | Inherits the workflow token; no manual rotation needed. |
 
 **Rotation log:** (downstream projects record every rotation event here)
@@ -107,7 +128,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 Rotate any secret after any chat-history-with-secret event. Rotating must never require a code change. ✅
 
-`.env.example` lives in git. `.env` never does. ✅
+`.env.example` lives in git. `.env` never does. ✅ (enforced by gitleaks in `secrets-scan.yml`)
 
 ---
 
@@ -119,13 +140,13 @@ Template-level baseline. Re-run per project on: scope expansion, new external in
 - **Who:** anyone with access to a user's mailbox or password manager
 - **Vector:** phishing; password reuse from another breach; insider sharing
 - **Blast:** full session at the user's role. ADMIN can mint users + change roles.
-- **Control:** bcryptjs hashes ✅; JWT signed with `AUTH_SECRET` ✅; audit log of every write ✅; soft-delete-aware login (deleted user cannot log in) ✅. ⚠️ **No rate limit** on `/api/auth/*` in the template — see **T-01**. **No MFA** — see **T-02**. Mitigation cap: rotate the user's password + force re-login by rotating `AUTH_SECRET`.
+- **Control:** bcryptjs hashes ✅; JWT signed with `AUTH_SECRET` ✅; audit log of every write (with passwordHash scrubbed) ✅; soft-delete-aware login (deleted user cannot log in) ✅; **10/min/IP rate limit on `/api/auth/*` ✅**. **No MFA** — see **T-02** (deferred). Mitigation cap: rotate the user's password + force re-login by rotating `AUTH_SECRET`.
 
 ### T2 — Audit-log snapshot leak
 - **Who:** anyone with read access to `audit_logs`
-- **Vector:** the audit extension snapshots full row state into `before` / `after`. If a model holds a Restricted field, that field is now duplicated into the audit table.
-- **Blast:** Restricted fields exfiltrate at audit-table granularity. The template ships `users.passwordHash` getting snapshotted on user updates today.
-- **Control:** scrub Restricted fields in the audit extension before writing the snapshot, or move them to a side table in the EXCLUDE set. Tracked as **T-03** in §11.
+- **Vector:** the audit extension snapshots full row state into `before` / `after`. Without scrubbing, Restricted fields would be duplicated into the audit table.
+- **Blast:** would have been Restricted fields exfiltrating at audit-table granularity. **Mitigated** by `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts`.
+- **Control:** `SCRUB_FIELDS` scrubs known Restricted column names before write ✅. Downstream projects extend the set when adding new Restricted columns (CLAUDE.md hard rule).
 
 ### T3 — MinIO presigned URL leak
 - **Who:** anyone the URL is shared with within the expiry window
@@ -136,8 +157,8 @@ Template-level baseline. Re-run per project on: scope expansion, new external in
 ### T4 — Compromised Portainer webhook
 - **Who:** attacker who obtains `PORTAINER_WEBHOOK_URL`
 - **Vector:** webhook URL in chat history; CI log leak; compromised maintainer machine
-- **Blast:** can force a redeploy of the current GHCR image tag — does NOT let them push code, but can replay an old `:latest` snapshot to roll back security fixes.
-- **Control:** stored as a GitHub repo secret ✅; rotate in Portainer if leaked; pin image to git SHA (not `latest`) in `docker-compose.prod.yml` for stronger guarantees ⚠️ — tracked as **T-04**.
+- **Blast:** can force a redeploy. With SHA pinning enabled (set `IMAGE_TAG=sha-<short>` in Portainer stack env), they can only replay an arbitrary GHCR-published SHA, not roll forward to malicious code; without pinning they get whatever `:latest` currently points to.
+- **Control:** stored as a GitHub repo secret ✅; webhook now carries `?IMAGE_TAG=sha-<short>` so stack-webhook deployments pin to the build SHA ✅; rotate in Portainer if leaked.
 
 ### T5 — Host compromise
 - **Who:** opportunistic attacker / botnet
@@ -172,16 +193,16 @@ Project-specific. The template is unclassified. When the fork stores data covere
 |---|---|
 | A01 Broken Access Control | `withAuth` / `withAdminAuth` boundary wrappers ✅; UI gating is defense-in-depth, not the boundary; middleware enforces auth on every non-public path ✅; row-level scoping is project-specific. |
 | A02 Cryptographic Failures | TLS terminated by a reverse proxy in front (out of template scope) ⚠️; HSTS header emitted ✅; bcryptjs for passwords ✅; no column encryption shipped ⚠️. |
-| A03 Injection | Prisma parameterizes everything ✅; zod validates inputs at the API boundary ✅; no `$executeRawUnsafe` in the template ✅. |
-| A04 Insecure Design | Audit + soft-delete are framework-enforced ✅; no rate limiting ⚠️ (T-01); no MFA ⚠️ (T-02). |
-| A05 Security Misconfiguration | Security headers in `next.config.ts` ✅; CSP not set ⚠️ (T-05); Dockerfile runs as non-root `nextjs` user ✅; image is multi-stage standalone ✅. |
-| A06 Vulnerable Components | `npm audit` + Dependabot are project-level concerns; not wired in the template ⚠️. |
-| A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; no rate limit ⚠️ (T-01); no MFA ⚠️ (T-02); no account lockout ⚠️. |
-| A08 Software & Data Integrity | GHCR image tagged `:latest` in `docker-compose.prod.yml` ⚠️ (T-04 — pin to SHA); webhook redeploys are project-trust-only; gitleaks / SAST not wired in the template ⚠️. |
-| A09 Logging & Monitoring | Auto-audit on Prisma writes ✅; no Sentry / Prometheus wired ⚠️; no retention policy ⚠️ (T-06). |
+| A03 Injection | Prisma parameterizes everything ✅; zod validates inputs at the API boundary ✅; no `$executeRawUnsafe` in the template ✅; Semgrep `p/owasp-top-ten` + `p/javascript` gate every push ✅. |
+| A04 Insecure Design | Audit + soft-delete are framework-enforced ✅; Restricted-field scrubbing in audit ✅; rate-limit on auth ✅; no MFA ⚠️ (T-02). |
+| A05 Security Misconfiguration | Security headers + CSP in `next.config.ts` ✅; Dockerfile runs as non-root `nextjs` user ✅; image is multi-stage standalone ✅. |
+| A06 Vulnerable Components | `npm audit --audit-level=high --omit=dev` in `verify.yml` on every PR ✅; Dependabot is a project-level concern ⚠️. |
+| A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; 10/min/IP rate limit ✅; no MFA ⚠️ (T-02); no account lockout ⚠️. |
+| A08 Software & Data Integrity | GHCR image tag pinned via `${IMAGE_TAG:-latest}` (opt-in SHA pin via Portainer stack env) ✅; gitleaks blocking on every push ✅; Semgrep blocking on every push ✅. |
+| A09 Logging & Monitoring | Auto-audit on Prisma writes with scrubbing ✅; no Sentry / Prometheus wired ⚠️; no retention policy ⚠️ (T-06). |
 | A10 SSRF | No outbound HTTP from the app by default. If OAuth or external API calls are added, document here. |
 
-ASVS Level 2 is a reasonable target once the open findings below are closed.
+ASVS Level 2 is a reasonable target once the remaining open findings are closed.
 
 ---
 
@@ -196,17 +217,17 @@ ASVS Level 2 is a reasonable target once the open findings below are closed.
 
 **Open findings shipped with the template** (downstream projects MUST triage before production):
 
-| ID | Severity | Title | Notes |
-|---|---|---|---|
-| T-01 | High | No rate limit on `/api/auth/*` | Credentials login is unprotected against brute force. Add `@upstash/ratelimit` or equivalent. |
-| T-02 | High | No MFA | Credentials provider is single-factor. Wire WebAuthn or TOTP, or front with an SSO provider. |
-| T-03 | High | `passwordHash` snapshotted into `audit_logs` on user update | Scrub the field in `lib/prisma/audit-extension.ts` before writing `before` / `after`. |
-| T-04 | Medium | GHCR image tag pinned to `:latest` in `docker-compose.prod.yml` | Switch to git-SHA tags so a rollback / replay attack can't silently revert security fixes. |
-| T-05 | Medium | No CSP header | Add a CSP in `next.config.ts` once the project's asset hosts are known. |
-| T-06 | Medium | No audit-log retention policy | Rows accumulate forever. Define retention + a cron job per project. |
-| T-07 | Medium | No encrypted backup pipeline | Postgres + MinIO volumes are unprotected. Add encrypted backup + tested restore before storing real Confidential data. |
-| T-08 | Low | `session.user.role` typed as `any` | Set up Auth.js v5 module augmentation. |
-| T-09 | Low | MinIO uses root credentials in the app | Mint a scoped access key with bucket-only permissions; rotate the root key out of `.env`. |
+| ID | Severity | Status | Title | Notes |
+|---|---|---|---|---|
+| T-01 | High | ✅ Closed (commit `e16a8c6`) | No rate limit on `/api/auth/*` | In-memory bucket in `lib/rate-limit.ts`, 10/min/IP. Horizontally-scaled forks swap to `@upstash/ratelimit`. |
+| T-02 | High | Open | No MFA | Deferred — product decision (WebAuthn / TOTP / front with SSO). |
+| T-03 | High | ✅ Closed (commit `bb4918a`) | `passwordHash` snapshotted into `audit_logs` on user update | `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` redacts values before write. |
+| T-04 | Medium | ✅ Closed (commit `104bc45`) | GHCR image tag pinned to `:latest` in `docker-compose.prod.yml` | Now resolves through `${IMAGE_TAG:-latest}`; CI passes `?IMAGE_TAG=sha-<short>` on the webhook. Opt-in to SHA pinning by using a Portainer stack webhook (not service webhook). |
+| T-05 | Medium | ✅ Closed (commit `de555fb`) | No CSP header | Conservative policy in `next.config.ts`, dev-only `'unsafe-eval'`. Caveats in §4. |
+| T-06 | Medium | Open | No audit-log retention policy | Bucket 2.5 — internal `/api/internal/audit-purge` + scheduled GHA. |
+| T-07 | Medium | Open | No encrypted backup pipeline | Bucket 2.5 — sidecar `pg_dump | age | rclone` + quarterly restore drill. |
+| T-08 | Low | ✅ Closed (commit `bf5b542`) | `session.user.role` typed as `any` | `next-auth` `User` augmented in `types/index.ts`; `lib/auth.ts` cast-free. |
+| T-09 | Low | Open | MinIO uses root credentials in the app | Per-project provisioning — mint a scoped key. |
 
 **No-Critical/High gate before production.** An open finding blocks release unless a time-bound risk acceptance is documented here by the project owner.
 
@@ -214,7 +235,7 @@ ASVS Level 2 is a reasonable target once the open findings below are closed.
 
 ## 12. Suppression log
 
-Every SAST / SCA / secret-scan suppression appears here with rule ID, location, justification, reviewer, and date. **Never** bare `// nosem` or path-based gitleaks allowlists. The template ships no scanners — populate when you wire them.
+Every SAST / SCA / secret-scan suppression appears here with rule ID, location, justification, reviewer, and date. **Never** bare `// nosem` or path-based gitleaks allowlists.
 
 | Date | Tool | Rule | Location | Justification | Reviewer |
 |---|---|---|---|---|---|
@@ -227,3 +248,19 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 | Date | Package | Bump | CVE | Outcome |
 |---|---|---|---|---|
 | — | — | — | — | — |
+
+---
+
+## 14. CI security gates
+
+Every push to a non-main branch and every pull request runs three workflows that gate merge. Failures block. None of these require any local action by the developer.
+
+| Workflow | Triggers on | What it gates | Block on |
+|---|---|---|---|
+| `.github/workflows/verify.yml` | PR + push (non-main) | `tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit --audit-level=high --omit=dev` | High+ CVE in a production dep, typecheck error, lint error, build failure |
+| `.github/workflows/secrets-scan.yml` | PR + push (any branch) | gitleaks across full git history | Any detected secret pattern |
+| `.github/workflows/sast.yml` | PR + push (any branch) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets` | Any finding at the rule's default severity |
+
+Pushes to `main` go through `docker-build.yml` instead — if the build fails (which includes the same compile path verify covers), the Portainer webhook is not called and production does not redeploy.
+
+**Enable branch protection** on `main` to require these checks before merge once you fork — the template ships the workflows but cannot configure rulesets on your fork.
