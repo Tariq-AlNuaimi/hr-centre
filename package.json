@@ -33,6 +33,7 @@
     "@prisma/client": "^7.7.0",
     "antd": "^6.3.5",
     "bcryptjs": "^3.0.3",
+    "exceljs": "^4.4.0",
     "next": "16.2.3",
     "next-auth": "^5.0.0-beta.30",
     "next-intl": "^4.9.0",
