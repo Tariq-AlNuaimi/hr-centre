@@ -49,13 +49,12 @@ jobs:
       - name: npm audit (high+, prod deps only)
         run: npm audit --audit-level=high --omit=dev
 
-      # Smoke-test the entity codegen: generate a TestEntity, typecheck the
-      # output, then discard the result so the working tree stays clean.
-      - name: Scaffold smoke test
+      # Smoke 1: scalar-only entity
+      - name: Scaffold smoke (scalars only)
         run: |
           npm run scaffold -- --name TestEntity --fields 'title:string,note:string?'
+          npx prisma generate
           npx tsc --noEmit
-          # Cleanup: revert all the touches the scaffold made.
           git checkout -- prisma/schema.prisma \
             lib/prisma/soft-delete-extension.ts \
             app/api/recycling-bin/route.ts \
@@ -64,3 +63,21 @@ jobs:
             app/api/test-entity \
             components/test-entity \
             'app/[locale]/(dashboard)/test-entity'
+
+      # Smoke 2: entity with enums + a relation (exercises the new codegen paths)
+      - name: Scaffold smoke (enums + relations)
+        run: |
+          npm run scaffold -- --name TestRel \
+            --fields 'title:string' \
+            --enums 'state:OPEN|CLOSED' \
+            --relations 'owner:User?'
+          npx prisma generate
+          npx tsc --noEmit
+          git checkout -- prisma/schema.prisma \
+            lib/prisma/soft-delete-extension.ts \
+            app/api/recycling-bin/route.ts \
+            components/layout/AppSidebar.tsx
+          rm -rf lib/validations/test-rel.ts \
+            app/api/test-rel \
+            components/test-rel \
+            'app/[locale]/(dashboard)/test-rel'

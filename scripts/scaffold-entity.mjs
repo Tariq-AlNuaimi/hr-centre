@@ -2,32 +2,35 @@
 // scripts/scaffold-entity.mjs
 //
 // Codegen for a new CRUD entity. Mirrors the User reference implementation
-// across nine new files and patches three existing ones:
+// across nine new files and patches four existing ones.
 //
-//   New files:
-//     prisma/schema.prisma                                  (appended)
-//     lib/validations/<kebab>.ts
-//     app/api/<kebab>/route.ts                              (GET list + POST)
-//     app/api/<kebab>/[id]/route.ts                         (GET / PUT / DELETE)
-//     components/<kebab>/<Pascal>Columns.tsx
-//     components/<kebab>/<Pascal>Form.tsx
-//     app/[locale]/(dashboard)/<kebab>/page.tsx             (list)
-//     app/[locale]/(dashboard)/<kebab>/new/page.tsx         (create)
-//     app/[locale]/(dashboard)/<kebab>/[id]/page.tsx        (edit)
+// Args:
+//   --name <Pascal>                       Entity name in PascalCase (required)
+//   --fields <spec>                       Scalar fields (comma-separated)
+//                                         spec: name:type[?][!]
+//                                         types: string|text|int|float|boolean|date|datetime|json
+//                                         ? = optional, ! = indexed
+//   --enums <spec>                        Enum fields (comma-separated)
+//                                         spec: name:VAL1|VAL2|VAL3[?]
+//                                         First value becomes the default unless ? is set
+//   --relations <spec>                    Foreign-key relations (comma-separated)
+//                                         spec: fieldName:TargetModel[?]
+//                                         The target model must already exist in schema
+//   --soft-delete <true|false>            Default true
+//   --admin-writes <true|false>           Default false
+//   --display-field <field>               For recycling bin display; default "name"
+//   --dry-run
 //
-//   Patches:
-//     lib/prisma/soft-delete-extension.ts   (add to SOFT_DELETE_MODELS)
-//     app/api/recycling-bin/route.ts        (add to ENTITY_TYPES)
-//     components/layout/AppSidebar.tsx      (add nav item)
+// Examples:
+//   npm run scaffold -- --name Project --fields 'name:string,description:text?'
+//   npm run scaffold -- --name Task --fields 'title:string,dueAt:date?' \
+//     --enums 'status:TODO|IN_PROGRESS|DONE,priority:LOW|MEDIUM|HIGH?' \
+//     --relations 'project:Project,assignee:User?'
 //
-// Stops before running the Prisma migration -- the operator reviews the
-// schema diff first, then runs:
+// Stops before running the Prisma migration. Operator runs:
 //   npm run prisma:migrate -- --name add_<snake>
 //
-// Usage:
-//   npm run scaffold -- --name Project --fields "name:string,description:string?,status:string!"
-//
-// See .claude/skills/scaffold-entity/SKILL.md for the full recipe.
+// See .claude/skills/scaffold-entity/SKILL.md.
 
 import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -41,9 +44,10 @@ const { values } = parseArgs({
   options: {
     name: { type: 'string', short: 'n' },
     fields: { type: 'string', short: 'f' },
+    enums: { type: 'string' },
+    relations: { type: 'string' },
     'soft-delete': { type: 'string', default: 'true' },
     'admin-writes': { type: 'string', default: 'false' },
-    'admin-nav': { type: 'string', default: 'false' },
     'display-field': { type: 'string', default: 'name' },
     'dry-run': { type: 'boolean', default: false },
   },
@@ -52,25 +56,25 @@ const { values } = parseArgs({
 
 if (!values.name) {
   console.error('ERROR: missing --name <PascalCase>');
-  console.error('Usage: npm run scaffold -- --name Project --fields "name:string,description:string?,status:string!"');
+  console.error('See `head -40 scripts/scaffold-entity.mjs` for usage.');
   process.exit(1);
 }
 
 const Entity = values.name;
 if (!/^[A-Z][A-Za-z0-9]*$/.test(Entity)) {
-  console.error(`ERROR: invalid name "${Entity}" -- must be PascalCase (e.g. Project, TimeEntry).`);
+  console.error(`ERROR: invalid name "${Entity}" -- must be PascalCase.`);
   process.exit(1);
 }
 
 const softDelete = values['soft-delete'] !== 'false';
 const adminWrites = values['admin-writes'] === 'true';
-const adminNav = values['admin-nav'] === 'true';
 const displayField = values['display-field'];
 const dryRun = values['dry-run'];
 
 // ---------- Name helpers ----------
 
 const camel = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+const pascalFromCamel = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const kebab = (s) => s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 const snake = (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
 
@@ -100,87 +104,185 @@ function parseField(spec) {
   if (!FIELD_TYPES[type]) {
     throw new Error(`Unknown field type "${type}" in "${spec}". Known: ${Object.keys(FIELD_TYPES).join(', ')}.`);
   }
-  return { name, type, optional: opt === '?', indexed: idx === '!' };
+  return { kind: 'scalar', name, type, optional: opt === '?', indexed: idx === '!' };
+}
+
+function parseEnum(spec) {
+  const m = spec.match(/^([a-z]\w*):([A-Z0-9_|]+)(\??)$/);
+  if (!m) throw new Error(`Invalid enum "${spec}" -- expected "name:VAL1|VAL2|...[?]".`);
+  const [, name, valuesRaw, opt] = m;
+  const enumValues = valuesRaw.split('|').filter(Boolean);
+  if (enumValues.length < 2) throw new Error(`Enum "${spec}" needs at least 2 values.`);
+  return {
+    kind: 'enum',
+    name,
+    enumName: Pascal + pascalFromCamel(name),
+    values: enumValues,
+    optional: opt === '?',
+  };
+}
+
+function parseRelation(spec) {
+  const m = spec.match(/^(\w+):([A-Z]\w*)(\??)$/);
+  if (!m) throw new Error(`Invalid relation "${spec}" -- expected "fieldName:TargetModel[?]".`);
+  const [, name, target, opt] = m;
+  return { kind: 'relation', name, target, optional: opt === '?' };
 }
 
 const fields = (values.fields ?? '').split(',').map((s) => s.trim()).filter(Boolean).map(parseField);
-if (fields.length === 0) {
-  console.error('ERROR: at least one field is required via --fields.');
+const enums = (values.enums ?? '').split(',').map((s) => s.trim()).filter(Boolean).map(parseEnum);
+const relations = (values.relations ?? '').split(',').map((s) => s.trim()).filter(Boolean).map(parseRelation);
+
+if (fields.length + enums.length + relations.length === 0) {
+  console.error('ERROR: at least one of --fields / --enums / --relations is required.');
   process.exit(1);
+}
+
+// ---------- Schema parsing (for target-model lookups) ----------
+
+const schemaSrc = await readFile(join(ROOT, 'prisma/schema.prisma'), 'utf8');
+
+function findModelBlock(src, modelName) {
+  const re = new RegExp(`(model ${modelName}\\s*\\{)([\\s\\S]*?)(\\n\\})`, 'm');
+  const m = src.match(re);
+  if (!m) return null;
+  return { header: m[1], body: m[2], footer: m[3], full: m[0], index: m.index };
+}
+
+function detectDisplayField(modelName) {
+  const block = findModelBlock(schemaSrc, modelName);
+  if (!block) return 'id';
+  const candidates = ['name', 'title', 'label', 'email'];
+  for (const cand of candidates) {
+    if (new RegExp(`\\b${cand}\\s+String`, 'm').test(block.body)) return cand;
+  }
+  return 'id';
+}
+
+// Validate every relation target exists
+for (const rel of relations) {
+  if (!findModelBlock(schemaSrc, rel.target)) {
+    console.error(`ERROR: relation target "${rel.target}" not found in prisma/schema.prisma.`);
+    process.exit(1);
+  }
+  rel.displayField = detectDisplayField(rel.target);
+  rel.targetKebab = kebab(rel.target);
 }
 
 // ---------- Idempotency check ----------
 
-async function exists(p) {
+async function pathExists(p) {
   try { await stat(p); return true; } catch { return false; }
 }
 
-const guardPaths = [
+for (const p of [
   `app/api/${entityKebab}/route.ts`,
   `lib/validations/${entityKebab}.ts`,
   `components/${entityKebab}`,
-];
-for (const p of guardPaths) {
-  if (await exists(join(ROOT, p))) {
+]) {
+  if (await pathExists(join(ROOT, p))) {
     console.error(`ERROR: ${p} already exists. Refusing to overwrite.`);
-    console.error('If you intend to regenerate, delete the existing files first.');
     process.exit(1);
   }
 }
 
-// ---------- Template builders ----------
+if (new RegExp(`^model ${Pascal}\\b`, 'm').test(schemaSrc)) {
+  console.error(`ERROR: model ${Pascal} already exists in prisma/schema.prisma.`);
+  process.exit(1);
+}
+
+// ---------- Schema generation ----------
+
+function enumBlocks() {
+  return enums.map((e) =>
+    `\nenum ${e.enumName} {\n${e.values.map((v) => `  ${v}`).join('\n')}\n}\n`
+  ).join('');
+}
 
 function schemaModelBlock() {
-  const lines = [
-    '',
-    `model ${Pascal} {`,
-    '  id        String   @id @default(cuid())',
-  ];
+  const lines = ['', `model ${Pascal} {`, '  id        String   @id @default(cuid())'];
+
   for (const f of fields) {
     const type = FIELD_TYPES[f.type].prisma + (f.optional ? '?' : '');
-    const annotations = [];
-    if (f.indexed && !f.optional) annotations.push('@@index');
-    lines.push(`  ${f.name.padEnd(9)} ${type}`);
+    lines.push(`  ${f.name.padEnd(11)} ${type}`);
   }
+  for (const e of enums) {
+    const def = !e.optional ? ` @default(${e.values[0]})` : '';
+    const type = e.enumName + (e.optional ? '?' : '');
+    lines.push(`  ${e.name.padEnd(11)} ${type}${def}`);
+  }
+  for (const r of relations) {
+    const fkType = 'String' + (r.optional ? '?' : '');
+    lines.push(`  ${(r.name + 'Id').padEnd(11)} ${fkType}`);
+    const relType = r.target + (r.optional ? '?' : '');
+    lines.push(`  ${r.name.padEnd(11)} ${relType} @relation(fields: [${r.name}Id], references: [id])`);
+  }
+
   lines.push('  createdAt DateTime @default(now())');
   lines.push('  updatedAt DateTime @updatedAt');
   if (softDelete) {
     lines.push('  deletedAt DateTime?');
     lines.push('  deletedBy String?');
   }
-  // Indexes for fields marked with !
-  for (const f of fields.filter((x) => x.indexed)) {
-    lines.push(`  @@index([${f.name}])`);
-  }
+
+  for (const f of fields.filter((x) => x.indexed)) lines.push(`  @@index([${f.name}])`);
+  for (const r of relations) lines.push(`  @@index([${r.name}Id])`);
+
   lines.push(`  @@map("${entitySnakePlural}")`);
   lines.push('}');
   lines.push('');
   return lines.join('\n');
 }
 
-function validationFile() {
-  const createFields = fields.map((f) => {
-    let z = FIELD_TYPES[f.type].zod;
-    if (f.type === 'string') z += '.max(255)';
-    if (f.optional) z += '.optional()';
-    return `  ${f.name}: ${z},`;
-  }).join('\n');
+function patchedTargetModels(src) {
+  // For each relation, add a back-ref to the target model if missing.
+  // Back-ref shape: `<sourceEntityCamel>s <SourceEntity>[]`.
+  let out = src;
+  for (const r of relations) {
+    const backRefField = entityCamel + 's';
+    const block = findModelBlock(out, r.target);
+    if (!block) continue; // already validated; defensive
+    if (new RegExp(`\\b${backRefField}\\s+${Pascal}\\[\\]`, 'm').test(block.body)) continue;
+    const newBody = block.body.replace(/(\n\s*@@\w|\s*$)/, (match) =>
+      `\n  ${backRefField.padEnd(11)} ${Pascal}[]${match}`
+    );
+    out = out.replace(block.full, block.header + newBody + block.footer);
+  }
+  return out;
+}
 
-  const updateFields = fields.map((f) => {
+// ---------- File templates ----------
+
+function validationFile() {
+  const enumImports = enums.length === 0
+    ? ''
+    : `import { ${enums.map((e) => e.enumName).join(', ')} } from "../../generated/prisma/client";\n\n`;
+
+  function zodFor(f) {
     let z = FIELD_TYPES[f.type].zod;
     if (f.type === 'string') z += '.max(255)';
-    z += '.optional()';
-    return `  ${f.name}: ${z},`;
-  }).join('\n');
+    return z;
+  }
+
+  const createLines = [
+    ...fields.map((f) => `  ${f.name}: ${zodFor(f)}${f.optional ? '.optional()' : ''},`),
+    ...enums.map((e) => `  ${e.name}: z.nativeEnum(${e.enumName})${e.optional ? '.optional()' : ''},`),
+    ...relations.map((r) => `  ${r.name}Id: z.string().min(1)${r.optional ? '.optional()' : ''},`),
+  ].join('\n');
+
+  const updateLines = [
+    ...fields.map((f) => `  ${f.name}: ${zodFor(f)}.optional(),`),
+    ...enums.map((e) => `  ${e.name}: z.nativeEnum(${e.enumName}).optional(),`),
+    ...relations.map((r) => `  ${r.name}Id: z.string().min(1).optional(),`),
+  ].join('\n');
 
   return `import { z } from "zod";
-
-export const create${Pascal}Schema = z.object({
-${createFields}
+${enumImports}export const create${Pascal}Schema = z.object({
+${createLines}
 });
 
 export const update${Pascal}Schema = z.object({
-${updateFields}
+${updateLines}
 });
 
 export type Create${Pascal}Input = z.infer<typeof create${Pascal}Schema>;
@@ -190,9 +292,7 @@ export type Update${Pascal}Input = z.infer<typeof update${Pascal}Schema>;
 
 function apiListRouteFile() {
   const writeWrap = adminWrites ? 'withAdminAuth' : 'withAuth';
-  const wrapImports = adminWrites
-    ? 'withAuth, withAdminAuth'
-    : 'withAuth';
+  const wrapImports = adminWrites ? 'withAuth, withAdminAuth' : 'withAuth';
   const searchField = fields.find((f) => f.type === 'string' && !f.optional);
   const searchClause = searchField
     ? `
@@ -204,6 +304,13 @@ function apiListRouteFile() {
     : `
   const where = {};
 `;
+
+  const includeClause = relations.length === 0
+    ? ''
+    : `
+      include: {
+${relations.map((r) => `        ${r.name}: { select: { id: true, ${r.displayField}: true } },`).join('\n')}
+      },`;
 
   return `import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -221,7 +328,7 @@ ${searchClause}
       where,
       skip: pagination.skip,
       take: pagination.take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" },${includeClause}
     }),
     prisma.${entityCamel}.count({ where }),
   ]);
@@ -247,6 +354,12 @@ function apiItemRouteFile() {
   const writeWrap = adminWrites ? 'withAdminAuth' : 'withAuth';
   const wrapImports = adminWrites ? 'withAuth, withAdminAuth' : 'withAuth';
 
+  const includeClause = relations.length === 0
+    ? ''
+    : ` include: {
+${relations.map((r) => `      ${r.name}: { select: { id: true, ${r.displayField}: true } },`).join('\n')}
+    },`;
+
   return `import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ${wrapImports} } from "@/lib/api-helpers";
@@ -255,7 +368,7 @@ import { update${Pascal}Schema } from "@/lib/validations/${entityKebab}";
 
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
   const { id } = await ctx.params;
-  const record = await prisma.${entityCamel}.findUnique({ where: { id } });
+  const record = await prisma.${entityCamel}.findUnique({ where: { id },${includeClause} });
   if (!record) return notFound("${Pascal}");
   return ok(record);
 });
@@ -280,26 +393,62 @@ export const DELETE = ${writeWrap}(async (_request: NextRequest, ctx) => {
   const { id } = await ctx.params;
   const existing = await prisma.${entityCamel}.findUnique({ where: { id } });
   if (!existing) return notFound("${Pascal}");
-  // Soft-delete if registered in SOFT_DELETE_MODELS, else hard delete.
   await prisma.${entityCamel}.delete({ where: { id } });
   return ok({ id });
 });
 `;
 }
 
-function columnsFile() {
-  const recordType = `{ id: string; ${fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}${f.optional ? ' | null' : ''}`).join('; ')}; createdAt: string; }`;
+function recordTypeFields() {
+  return [
+    ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}${f.optional ? ' | null' : ''}`),
+    ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}${e.optional ? ' | null' : ''}`),
+    ...relations.flatMap((r) => [
+      `${r.name}Id${r.optional ? '?' : ''}: string${r.optional ? ' | null' : ''}`,
+      `${r.name}${r.optional ? '?' : ''}: { id: string; ${r.displayField}: string${r.displayField === 'id' ? '' : ' | null'} }${r.optional ? ' | null' : ''}`,
+    ]),
+  ];
+}
 
-  const fieldColumns = fields.map((f) => `    {
+function columnsFile() {
+  const recordType = `{ id: string; ${recordTypeFields().join('; ')}; createdAt: string; }`;
+  const TAG_COLORS = ['blue', 'green', 'orange', 'red', 'purple', 'cyan', 'magenta', 'gold'];
+
+  const scalarCols = fields.map((f) => `    {
       title: "${f.name}",
       dataIndex: "${f.name}",
       key: "${f.name}",
       sorter: true,
-    },`).join('\n');
+    },`);
+
+  const enumCols = enums.map((e) => {
+    const colorMap = e.values.map((v, i) => `"${v}": "${TAG_COLORS[i % TAG_COLORS.length]}"`).join(', ');
+    return `    {
+      title: "${e.name}",
+      dataIndex: "${e.name}",
+      key: "${e.name}",
+      render: (val: string | null) => {
+        if (!val) return "-";
+        const colors: Record<string, string> = { ${colorMap} };
+        return <Tag color={colors[val] ?? "default"}>{val}</Tag>;
+      },
+      filters: [${e.values.map((v) => `{ text: "${v}", value: "${v}" }`).join(', ')}],
+    },`;
+  });
+
+  const relationCols = relations.map((r) => `    {
+      title: "${r.name}",
+      key: "${r.name}",
+      render: (_: unknown, record: ${Pascal}Record) => record.${r.name}?.${r.displayField} ?? "-",
+    },`);
+
+  const usesTag = enums.length > 0;
+  const antdImports = ['Button', 'Space'];
+  if (usesTag) antdImports.push('Tag');
 
   return `"use client";
 
-import { Button, Space } from "antd";
+import { ${antdImports.join(', ')} } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ConfirmAction } from "@/components/shared/ConfirmAction";
@@ -314,7 +463,7 @@ export function get${Pascal}Columns({
   onDelete: (id: string) => void;
 }): ColumnsType<${Pascal}Record> {
   return [
-${fieldColumns}
+${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
     {
       title: "Created",
       dataIndex: "createdAt",
@@ -341,7 +490,7 @@ ${fieldColumns}
 }
 
 function formFile() {
-  const formItems = fields.map((f) => {
+  const scalarItems = fields.map((f) => {
     const widget =
       f.type === 'boolean' ? '<Switch />'
       : f.type === 'int' || f.type === 'float' ? '<InputNumber style={{ width: "100%" }} />'
@@ -351,20 +500,59 @@ function formFile() {
     return `      <Form.Item name="${f.name}" label="${f.name}" rules={[{ required: ${!f.optional} }]}>
         ${widget}
       </Form.Item>`;
-  }).join('\n');
+  });
 
-  const valueType = `{ ${fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}`).join('; ')} }`;
-  const hasNumber = fields.some((f) => ['int', 'float'].includes(f.type));
-  const hasSwitch = fields.some((f) => f.type === 'boolean');
-  const hasDate = fields.some((f) => ['date', 'datetime'].includes(f.type));
-  const imports = ['Form', 'Input', 'Button', 'Space'];
-  if (hasNumber) imports.push('InputNumber');
-  if (hasSwitch) imports.push('Switch');
-  if (hasDate) imports.push('DatePicker');
+  const enumItems = enums.map((e) => `      <Form.Item name="${e.name}" label="${e.name}" rules={[{ required: ${!e.optional} }]}>
+        <Select options={[${e.values.map((v) => `{ value: "${v}", label: "${v}" }`).join(', ')}]} />
+      </Form.Item>`);
+
+  const relationItems = relations.map((r) => `      <Form.Item name="${r.name}Id" label="${r.name}" rules={[{ required: ${!r.optional} }]}>
+        <RelationSelect path="/api/${r.targetKebab}" displayField="${r.displayField}" />
+      </Form.Item>`);
+
+  const valueTypeParts = [
+    ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}`),
+    ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}`),
+    ...relations.map((r) => `${r.name}Id${r.optional ? '?' : ''}: string`),
+  ];
+  const valueType = `{ ${valueTypeParts.join('; ')} }`;
+
+  const antdImports = ['Form', 'Input', 'Button', 'Space'];
+  if (fields.some((f) => ['int', 'float'].includes(f.type))) antdImports.push('InputNumber');
+  if (fields.some((f) => f.type === 'boolean')) antdImports.push('Switch');
+  if (fields.some((f) => ['date', 'datetime'].includes(f.type))) antdImports.push('DatePicker');
+  if (enums.length > 0 || relations.length > 0) antdImports.push('Select');
+
+  const relationSelectComponent = relations.length === 0 ? '' : `
+function RelationSelect({ path, displayField, value, onChange }: {
+  path: string;
+  displayField: string;
+  value?: string;
+  onChange?: (v: string) => void;
+}) {
+  const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    fetch(path + "?pageSize=100")
+      .then((r) => r.json())
+      .then((j) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setOptions((j.data?.data ?? []).map((r: any) => ({
+          value: r.id,
+          label: r[displayField] ?? r.id,
+        })));
+      })
+      .finally(() => setLoading(false));
+  }, [path, displayField]);
+  return <Select loading={loading} options={options} value={value} onChange={onChange} showSearch optionFilterProp="label" />;
+}
+`;
+
+  const reactImports = relations.length === 0 ? '' : 'import { useEffect, useState } from "react";\n';
 
   return `"use client";
 
-import { ${imports.join(', ')} } from "antd";
+${reactImports}import { ${antdImports.join(', ')} } from "antd";
 
 interface ${Pascal}FormProps {
   initialValues?: Partial<${valueType}>;
@@ -372,11 +560,11 @@ interface ${Pascal}FormProps {
   onCancel: () => void;
   loading?: boolean;
 }
-
+${relationSelectComponent}
 export function ${Pascal}Form({ initialValues, onSubmit, onCancel, loading = false }: ${Pascal}FormProps) {
   return (
     <Form layout="vertical" initialValues={initialValues} onFinish={onSubmit} style={{ maxWidth: 500 }}>
-${formItems}
+${[...scalarItems, ...enumItems, ...relationItems].join('\n')}
       <Form.Item>
         <Space>
           <Button type="primary" htmlType="submit" loading={loading}>Save</Button>
@@ -571,7 +759,7 @@ export default function Edit${Pascal}Page() {
 `;
 }
 
-// ---------- Patch functions ----------
+// ---------- Existing-file patches ----------
 
 async function patchSoftDeleteRegistry() {
   if (!softDelete) return null;
@@ -579,12 +767,11 @@ async function patchSoftDeleteRegistry() {
   const src = await readFile(path, 'utf8');
   const re = /const SOFT_DELETE_MODELS = new Set\(\[([^\]]*)\]\);/;
   const m = src.match(re);
-  if (!m) throw new Error('Could not locate SOFT_DELETE_MODELS in soft-delete-extension.ts');
+  if (!m) throw new Error('Could not locate SOFT_DELETE_MODELS.');
   const existing = m[1].split(',').map((s) => s.trim()).filter(Boolean);
-  if (existing.includes(`"${Pascal}"`)) return null; // already registered
+  if (existing.includes(`"${Pascal}"`)) return null;
   const updated = [...existing, `"${Pascal}"`].join(', ');
-  const out = src.replace(re, `const SOFT_DELETE_MODELS = new Set([${updated}]);`);
-  return { path, content: out };
+  return { path, content: src.replace(re, `const SOFT_DELETE_MODELS = new Set([${updated}]);`) };
 }
 
 async function patchRecyclingBin() {
@@ -592,21 +779,18 @@ async function patchRecyclingBin() {
   const path = join(ROOT, 'app/api/recycling-bin/route.ts');
   const src = await readFile(path, 'utf8');
   if (src.includes(`${Pascal}: { displayField`)) return null;
-  // Insert before the "// Add more entity types here" marker.
   const marker = '  // Add more entity types here as you create them:';
-  if (!src.includes(marker)) throw new Error('Could not locate ENTITY_TYPES marker in recycling-bin/route.ts');
+  if (!src.includes(marker)) throw new Error('Could not locate ENTITY_TYPES marker.');
   const insertion = `  ${Pascal}: { displayField: "${displayField}" },\n`;
-  const out = src.replace(marker, insertion + marker);
-  return { path, content: out };
+  return { path, content: src.replace(marker, insertion + marker) };
 }
 
 async function patchSidebar() {
   const path = join(ROOT, 'components/layout/AppSidebar.tsx');
   const src = await readFile(path, 'utf8');
   if (src.includes(`key: "${entityKebab}"`)) return null;
-  // Insert above the "recycling-bin" entry.
   const marker = '    {\n      key: "recycling-bin",';
-  if (!src.includes(marker)) throw new Error('Could not locate "recycling-bin" nav entry in AppSidebar.tsx');
+  if (!src.includes(marker)) throw new Error('Could not locate recycling-bin nav entry.');
   const insertion = `    {
       key: "${entityKebab}",
       icon: <AppstoreOutlined />,
@@ -614,37 +798,14 @@ async function patchSidebar() {
       onClick: () => router.push(\`/\${locale}/${entityKebab}\`),
     },
 `;
-  // Inject inside admin block if --admin-nav, else outside.
-  // For simplicity we always inject above recycling-bin (visible to all signed-in users).
-  // Admin-only nav is documented as a manual edit in SKILL.md.
   let out = src.replace(marker, insertion + marker);
-  // Ensure AppstoreOutlined is imported.
   if (!/AppstoreOutlined/.test(out)) {
     out = out.replace(
-      /from "@ant-design\/icons";/,
-      ', AppstoreOutlined } from "@ant-design/icons";'
-    ).replace(
-      /\{\s*([^}]*?)\s*, AppstoreOutlined \}/,
-      '{ $1, AppstoreOutlined }'
+      /(\}\s*from "@ant-design\/icons";)/,
+      '  AppstoreOutlined,\n$1'
     );
-    // Fallback if the regex above didn't match because of the icons block being multiline.
-    if (!/AppstoreOutlined/.test(out)) {
-      out = out.replace(
-        /from "@ant-design\/icons";/,
-        'AppstoreOutlined,\n} from "@ant-design/icons";'
-      );
-    }
   }
   return { path, content: out };
-}
-
-async function appendSchema() {
-  const path = join(ROOT, 'prisma/schema.prisma');
-  const src = await readFile(path, 'utf8');
-  if (new RegExp(`^model ${Pascal}\\b`, 'm').test(src)) {
-    throw new Error(`model ${Pascal} already exists in prisma/schema.prisma`);
-  }
-  return { path, content: src + schemaModelBlock() };
 }
 
 // ---------- Execute ----------
@@ -661,8 +822,12 @@ write(`app/[locale]/(dashboard)/${entityKebab}/page.tsx`, listPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/new/page.tsx`, newPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/[id]/page.tsx`, editPageFile());
 
+// Schema patch: enums + model + target back-refs.
+const schemaPatched = patchedTargetModels(schemaSrc) + enumBlocks() + schemaModelBlock();
+const schemaWrite = { path: join(ROOT, 'prisma/schema.prisma'), content: schemaPatched };
+
 const patches = [
-  await appendSchema(),
+  schemaWrite,
   await patchSoftDeleteRegistry(),
   await patchRecyclingBin(),
   await patchSidebar(),
@@ -687,7 +852,14 @@ for (const p of patches) {
 
 console.log('');
 console.log(`Scaffolded ${Pascal}. Next steps:`);
-console.log(`  1. Review prisma/schema.prisma (new model block at the end).`);
+if (relations.length > 0) {
+  console.log(`  > Relations declared: ${relations.map((r) => `${r.name} -> ${r.target}`).join(', ')}`);
+  console.log('    Back-refs added to target models.');
+}
+if (enums.length > 0) {
+  console.log(`  > Enums declared: ${enums.map((e) => `${e.enumName} (${e.values.join('|')})`).join(', ')}`);
+}
+console.log(`  1. Review prisma/schema.prisma (new model + enums + back-refs).`);
 console.log(`  2. Run: npm run prisma:migrate -- --name add_${entitySnake}`);
 console.log(`  3. Run: npm run prisma:generate`);
-console.log(`  4. Commit the result; CI will verify build + lint + typecheck.`);
+console.log(`  4. Commit; CI verifies build + lint + typecheck.`);
