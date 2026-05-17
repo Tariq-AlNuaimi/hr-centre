@@ -3,7 +3,28 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
+const isDev = process.env.NODE_ENV !== "production";
+
+// Conservative starting policy. Caveats documented in SECURITY.md finding T-05:
+//   - 'unsafe-inline' on script-src is needed for Next.js bootstrap inline scripts;
+//     removing it requires a nonce-based setup that Ant Design's SSR doesn't support out of the box.
+//   - 'unsafe-inline' on style-src is needed for Ant Design's runtime CSS-in-JS.
+//   - 'unsafe-eval' on script-src is needed in dev for React Refresh / HMR; production drops it.
+//   - img-src allows local MinIO endpoints used in dev; tighten to your prod MinIO host per project.
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: http://localhost:9000 http://minio:9000",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 const securityHeaders = [
+  { key: "Content-Security-Policy", value: csp },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
