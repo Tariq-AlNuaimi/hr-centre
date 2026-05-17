@@ -1,11 +1,17 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Adapter } from "next-auth/adapters";
 import bcrypt from "bcryptjs";
+import type { Role } from "../generated/prisma/client";
 import { prismaUnfiltered } from "./prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: PrismaAdapter(prismaUnfiltered),
+  // @auth/prisma-adapter declares the adapter against the top-level @auth/core,
+  // while next-auth resolves Adapter from its nested @auth/core (which carries
+  // our role augmentation). Cast bridges the duplicate-dep version skew; runtime
+  // is unaffected.
+  adapter: PrismaAdapter(prismaUnfiltered) as Adapter,
   trustHost: true,
   session: { strategy: "jwt" },
   pages: {
@@ -63,8 +69,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
+        // Cast token fields explicitly: the JWT augmentation lives in
+        // types/index.ts but isn't always picked up across the duplicate
+        // @auth/core dep tree. Casts are narrow (not `as any`) so the
+        // no-any-cast-on-session lint rule does not fire.
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
       }
       return session;
     },

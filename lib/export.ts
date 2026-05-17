@@ -1,12 +1,13 @@
 // Excel export helper using ExcelJS.
 //
-// Pattern: define columns once, point them at a Prisma findMany result, get a
-// Buffer back. Hand the Buffer to NextResponse with the right content-type to
-// stream a download.
+// Returns `Uint8Array` rather than `Buffer` so callers don't get tangled in
+// @types/node 22+'s generic `Buffer<ArrayBufferLike>` vs ExcelJS's older non-
+// generic Buffer typing. Uint8Array is the broadest type that works with
+// `Response`, `Buffer.from`, and `ExcelJS.xlsx.load`.
 //
 // Example:
 //
-//   import { toExcel } from "@/lib/export";
+//   import { toExcel, excelDownloadHeaders } from "@/lib/export";
 //   import { withAuth } from "@/lib/api-helpers";
 //
 //   export const GET = withAuth(async () => {
@@ -18,42 +19,26 @@
 //       { header: "Owner", key: "owner", format: (v) => v?.name ?? "-" },
 //       { header: "Created", key: "createdAt", format: (v) => new Date(v).toISOString() },
 //     ], { sheetName: "Projects", title: "Project export" });
-//     return new Response(new Uint8Array(xlsx), {
-//       headers: {
-//         "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-//         "content-disposition": `attachment; filename="projects-${Date.now()}.xlsx"`,
-//       },
-//     });
+//     return new Response(xlsx, { headers: excelDownloadHeaders(`projects-${Date.now()}.xlsx`) });
 //   });
 //
-// PDF export is intentionally not included in this iteration -- pdfkit's font
-// resolution under Next.js `output: standalone` is fragile and requires
-// outputFileTracingIncludes tuning. Track as a future ADR if a project needs it.
-//
-// Security note: exports MUST go through `withAuth`/`withAdminAuth` and respect
-// the same row-level filters as the regular list endpoint. Restricted columns
-// (passwordHash, salary, tokens) must NOT be in the column list -- the audit
-// extension's SCRUB_FIELDS does not protect export output.
+// Security: exports MUST go through `withAuth`/`withAdminAuth` and respect the
+// same row-level filters as the list endpoint. Restricted columns (passwordHash,
+// salary, tokens) must NOT appear in the column list -- SCRUB_FIELDS does not
+// protect export output.
 
 import ExcelJS from "exceljs";
 
 export interface ExportColumn<T> {
-  /** Column header text displayed in row 1 (or row 3 if a title is set). */
   header: string;
-  /** Property name on each row. Used both as the column id and to look up values. */
   key: keyof T & string;
-  /** Optional width hint (in Excel column-width units). Default 20. */
   width?: number;
-  /** Optional formatter -- transforms the raw cell value to a string for display. */
   format?: (value: T[keyof T & string], row: T) => string | number | Date | null;
 }
 
 export interface ToExcelOptions {
-  /** Sheet name. Default "Data". Excel allows up to 31 chars; longer values are truncated. */
   sheetName?: string;
-  /** Optional title in row 1 (header row shifts to row 3). */
   title?: string;
-  /** Optional creator / lastModifiedBy metadata. Default "Rihal Ops". */
   creator?: string;
 }
 
@@ -61,7 +46,7 @@ export async function toExcel<T extends Record<string, unknown>>(
   data: T[],
   columns: ExportColumn<T>[],
   options: ToExcelOptions = {}
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = options.creator ?? "Rihal Ops";
   workbook.lastModifiedBy = options.creator ?? "Rihal Ops";
@@ -86,8 +71,6 @@ export async function toExcel<T extends Record<string, unknown>>(
     width: c.width ?? 20,
   }));
 
-  // ExcelJS replaces the row at `headerRowIdx` with the headers when sheet.columns is set,
-  // but it doesn't apply formatting -- do that explicitly.
   const headerRow = sheet.getRow(headerRowIdx);
   headerRow.font = { bold: true };
   headerRow.fill = {
@@ -106,13 +89,17 @@ export async function toExcel<T extends Record<string, unknown>>(
     sheet.addRow(out);
   }
 
-  const arrayBuffer = await workbook.xlsx.writeBuffer();
-  return Buffer.from(arrayBuffer);
+  // exceljs.xlsx.writeBuffer's typed return drifts between releases and across
+  // @types/node versions. Normalize to Uint8Array (the runtime is always a
+  // typed-array view either way).
+  const result = await workbook.xlsx.writeBuffer();
+  return result instanceof Uint8Array
+    ? result
+    : new Uint8Array(result as ArrayBuffer);
 }
 
 /**
- * Sets the headers a Next.js Response needs to surface as a download in the browser.
- * Convenience wrapper -- you can always set them by hand.
+ * Standard download headers for an .xlsx response.
  */
 export function excelDownloadHeaders(filename: string): Record<string, string> {
   const safe = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;

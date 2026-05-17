@@ -3,13 +3,15 @@ import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
 import { toExcel, excelDownloadHeaders } from "../../lib/export";
 
-async function reload(buf: Buffer) {
+async function reload(buf: Uint8Array) {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buf);
+  // ExcelJS.xlsx.load expects Buffer; cast through unknown to bridge the
+  // Uint8Array <-> Buffer<ArrayBufferLike> type skew. Runtime is identical.
+  await wb.xlsx.load(buf as unknown as Buffer);
   return wb;
 }
 
-test("toExcel produces a non-empty xlsx buffer", async () => {
+test("toExcel produces a non-empty xlsx Uint8Array", async () => {
   const buf = await toExcel(
     [{ name: "Alice", n: 1 }, { name: "Bob", n: 2 }],
     [
@@ -17,7 +19,7 @@ test("toExcel produces a non-empty xlsx buffer", async () => {
       { header: "N", key: "n" },
     ]
   );
-  assert.ok(Buffer.isBuffer(buf));
+  assert.ok(buf instanceof Uint8Array, "expected Uint8Array");
   assert.ok(buf.length > 100, `expected meaningful xlsx, got ${buf.length} bytes`);
 });
 
@@ -62,9 +64,7 @@ test("toExcel inserts title row and shifts headers when title is set", async () 
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
   assert.equal(sheet.getCell("A1").value, "My Report");
-  // Header lands on row 3 when a title is present
   assert.equal(sheet.getCell("A3").value, "A");
-  // First data row lands on row 4
   assert.equal(sheet.getCell("A4").value, 1);
 });
 
@@ -75,8 +75,6 @@ test("toExcel handles nullish values via the default (empty-string) coercion", a
   );
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
-  // ExcelJS represents an empty-string cell value as either "" or undefined depending
-  // on the cell type. We just assert the workbook loaded and the rows exist.
   assert.ok(sheet.rowCount >= 3, `expected >=3 rows, got ${sheet.rowCount}`);
 });
 
