@@ -81,6 +81,37 @@ services:
       AUDIT_RETENTION_DAYS: ${AUDIT_RETENTION_DAYS:-365}
       NODE_ENV: production
 
+  # Encrypted off-host backup sidecar. Idles if BACKUP_ENABLED is not 'true'
+  # so a freshly-forked stack does not error-loop nightly before rclone + age
+  # are configured. The first-fork bootstrap skill flips this on.
+  backup:
+    container_name: next-template-backup
+    image: alpine:3.20
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      BACKUP_ENABLED: ${BACKUP_ENABLED:-false}
+      POSTGRES_HOST: next-template-db
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      RCLONE_REMOTE: ${RCLONE_REMOTE:-}
+      BACKUP_BUCKET: ${BACKUP_BUCKET:-}
+    volumes:
+      # Backup scripts -- ship via the repo so updates land with `git pull` on the host.
+      - ./deploy:/scripts:ro
+      # Age public key (single-line AGE1... recipient). NEVER mount the private identity here.
+      - /opt/backup/recipient:/etc/backup/recipient:ro
+      # rclone config -- contains target credentials. Mode 600 on the host.
+      - /opt/backup/rclone.conf:/root/.config/rclone/rclone.conf:ro
+      # On-host backup staging (30d retention).
+      - /var/backups:/var/backups
+      # MinIO data (read-only) for the secondary archive.
+      - miniodata:/var/lib/miniodata:ro
+    entrypoint: ["/bin/sh", "/scripts/backup-entrypoint.sh"]
+
 volumes:
   pgdata:
   miniodata:

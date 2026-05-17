@@ -1,0 +1,99 @@
+name: Restore test
+
+on:
+  schedule:
+    # Quarterly at 03:00 UTC on the 1st of Jan / Apr / Jul / Oct
+    - cron: '0 3 1 1,4,7,10 *'
+  workflow_dispatch:
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: restore
+          POSTGRES_PASSWORD: restore
+          POSTGRES_DB: restore_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U restore -d restore_db"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - name: Preflight -- check that backup secrets are configured
+        id: preflight
+        env:
+          IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+          RCLONE_CONF: ${{ secrets.RCLONE_CONFIG }}
+          REMOTE: ${{ secrets.RCLONE_REMOTE }}
+          BUCKET: ${{ secrets.BACKUP_BUCKET }}
+        run: |
+          if [ -z "$IDENTITY" ] || [ -z "$RCLONE_CONF" ] || [ -z "$REMOTE" ] || [ -z "$BUCKET" ]; then
+            echo "::warning::Backup secrets not configured -- skipping restore test"
+            echo "Required: BACKUP_AGE_IDENTITY, RCLONE_CONFIG, RCLONE_REMOTE, BACKUP_BUCKET"
+            echo "configured=false" >> $GITHUB_OUTPUT
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install age + rclone + postgresql-client
+        if: steps.preflight.outputs.configured == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends age rclone postgresql-client
+
+      - name: Configure rclone
+        if: steps.preflight.outputs.configured == 'true'
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONFIG }}
+        run: |
+          mkdir -p ~/.config/rclone
+          printf '%s\n' "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Fetch latest db backup from remote
+        if: steps.preflight.outputs.configured == 'true'
+        env:
+          REMOTE: ${{ secrets.RCLONE_REMOTE }}
+          BUCKET: ${{ secrets.BACKUP_BUCKET }}
+        run: |
+          LATEST=$(rclone lsf "${REMOTE}:${BUCKET}/" --include '*.db.dump.age' | sort | tail -n1)
+          if [ -z "$LATEST" ]; then
+            echo "::error::No backups found at ${REMOTE}:${BUCKET}/"
+            exit 1
+          fi
+          echo "Fetching $LATEST"
+          rclone copy "${REMOTE}:${BUCKET}/${LATEST}" ./
+          mv "$LATEST" latest.db.dump.age
+
+      - name: Decrypt
+        if: steps.preflight.outputs.configured == 'true'
+        env:
+          IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+        run: |
+          printf '%s\n' "$IDENTITY" > identity.txt
+          chmod 600 identity.txt
+          age -d -i identity.txt -o latest.db.dump latest.db.dump.age
+
+      - name: Restore into ephemeral postgres + smoke-assert users table
+        if: steps.preflight.outputs.configured == 'true'
+        env:
+          PGPASSWORD: restore
+        run: |
+          pg_restore -h localhost -U restore -d restore_db --clean --if-exists latest.db.dump
+          COUNT=$(psql -h localhost -U restore -d restore_db -At -c 'SELECT count(*) FROM users;')
+          echo "users count after restore: $COUNT"
+          if [ "${COUNT:-0}" -lt 1 ]; then
+            echo "::error::users table empty after restore -- backup chain is broken"
+            exit 1
+          fi
+
+      - name: Cleanup secrets on runner
+        if: always() && steps.preflight.outputs.configured == 'true'
+        run: rm -f identity.txt latest.db.dump latest.db.dump.age
