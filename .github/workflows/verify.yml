@@ -1,0 +1,49 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+env:
+  # Dummy URL so prisma generate works without a real DB. Matches the trick used
+  # in the Dockerfile builder stage.
+  DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+  # Build-time env vars that lib/env.ts requires for module load. Real values
+  # are injected at deploy time -- these are placeholders that satisfy zod parsing.
+  AUTH_SECRET: build-time-dummy-secret-do-not-use-in-prod-build-only
+  MINIO_ENDPOINT: http://localhost:9000
+  MINIO_ACCESS_KEY: dummy
+  MINIO_SECRET_KEY: dummy
+  MINIO_BUCKET: uploads
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: npm audit (high+)
+        # --omit=dev: only flag prod deps that ship to the runtime image.
+        # Dev-dep CVEs are tracked separately (Dependabot, manual review).
+        run: npm audit --audit-level=high --omit=dev
