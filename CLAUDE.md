@@ -14,118 +14,185 @@ Reusable starter for Rihal internal tools. Next.js 16 + Prisma 7 (Postgres) + Au
 ## Vibe-coding harness (`.claude/`)
 This template is tuned for Claude Code sessions. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build.
 
-- **Permission allowlist** (`.claude/settings.json`) pre-approves the common loop — npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, and branch deletes still prompt.
-- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on session boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing. The hook does NOT start Docker containers — run `make db-up` once when you actually need the DB.
-- **Skills** in `.claude/skills/`:
-  - `/scaffold-entity <Name> --fields ... [--enums ...] [--relations ...]` — codegen for a new CRUD entity. Backed by `scripts/scaffold-entity.mjs`. Supports scalars, enums (rendered as Tag with filter), and FK relations (with auto-detected display field + back-ref patched into target).
-  - `/ship` — local pre-commit verification (typecheck → lint → test → build). CI runs the same checks on every push.
-  - `/adr <title>` — create a new Architecture Decision Record under `docs/decisions/` with the next zero-padded number.
-  - `/first-fork` — one-time bootstrap checklist after forking the template (secrets, age keypair, rclone, Portainer stack with stack-webhook for SHA pinning, branch protection, first project ADR, SMTP if email is in scope).
-  - `/rebrand <slug> <name> <owner>` — sweep the template's hardcoded defaults. Backed by `scripts/rebrand.mjs`.
+- **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
+- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
+- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`.
 
 All harness files are project-name-agnostic and survive forks unchanged.
 
 ## CI gates (no local action required)
-Every push to a non-main branch and every PR triggers five workflows. Failures block merge once branch protection is on.
+Five workflows gate the repo. Failures block merge once branch protection is on.
 
 | Workflow | When | What |
 |---|---|---|
-| `verify.yml` | PR + push (non-main) | tsc + ESLint + `node:test` contract suite + Next build + npm audit high+ + scaffold smokes (scalars-only + enums+relations) |
+| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit high+ + scaffold smokes (scalars-only + enums+relations) |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full history |
 | `sast.yml` | PR + push (any) | Semgrep with p/javascript, p/typescript, p/nextjs, p/react, p/owasp-top-ten, p/secrets |
-| `audit-retention.yml` | Monthly cron + dispatch | POST to `/api/internal/audit-purge` with `AUDIT_PURGE_TOKEN` |
-| `restore-test.yml` | Quarterly cron + dispatch | Decrypts newest backup, restores into ephemeral Postgres, asserts `users` non-empty |
+| `audit-retention.yml` | Monthly cron + dispatch | POST to `/api/internal/audit-purge` |
+| `restore-test.yml` | Quarterly cron + dispatch | Decrypts newest backup, restores into ephemeral Postgres, asserts users non-empty |
 
-Pushes to `main` go through `docker-build.yml` instead — it tags `:latest` + `:sha-<short>`, then calls the Portainer webhook with `?IMAGE_TAG=sha-<short>` for stack-webhook SHA pinning. See `SECURITY.md` §14.
+Pushes to `main` go through `docker-build.yml` instead. See `SECURITY.md` §14.
 
 ## Stack
 - **Framework:** Next.js 16 (App Router, `output: "standalone"`) · React 19 · TypeScript 5
 - **UI:** Ant Design 6 + `@ant-design/nextjs-registry` · dark-mode toggle · RTL for `ar` locale
-- **i18n:** `next-intl` 4 · locales `en`, `ar` · routing under `app/[locale]/`
+- **Charts:** `recharts` 2.x via `components/shared/Chart.tsx` (line / bar / area / pie)
+- **Kanban / drag-drop:** `@dnd-kit/core` + `@dnd-kit/sortable` via `components/shared/KanbanBoard.tsx`
+- **i18n:** `next-intl` 4 · locales `en`, `ar`
 - **ORM:** Prisma 7 + `@prisma/adapter-pg` · Postgres 17 · generated client at `generated/prisma`
-- **Auth:** Auth.js v5 (`next-auth@beta`) · Credentials + bcryptjs · JWT session strategy · Google OAuth wired but commented out · 10/min/IP rate limit on `/api/auth/*` via `lib/rate-limit.ts`
-- **Storage:** MinIO (S3-compatible) via `@aws-sdk/client-s3` + presigned URLs (`lib/storage.ts`)
-- **Email:** nodemailer wrapper at `lib/email.ts` (`sendEmail`, `buildMailOptions`, `isEmailEnabled`). Gated by `SMTP_HOST`: when unset, `sendEmail` returns `{ sent: false }` and logs a warning — the app still runs. Configure during `/first-fork` step 9.
-- **Validation:** `zod` (env parsing in `lib/env.ts`, per-route schemas in `lib/validations/`)
-- **Edge:** none — Next.js serves directly on `:3000`. Put a TLS-terminating reverse proxy in front in production.
-- **Backup:** encrypted off-host sidecar (`deploy/backup.sh` + `backup` service in `docker-compose.prod.yml`) using age + rclone. Gated by `BACKUP_ENABLED` (defaults off; flipped on by `/first-fork`).
-- **Host (default):** Portainer-managed Docker host. CI pushes images to `ghcr.io/<owner>/<slug>`; Portainer stack webhook redeploys on push to `main`.
+- **Auth:** Auth.js v5 (`next-auth@beta`) · Credentials + bcryptjs · JWT session · Google OAuth wired but commented out · 10/min/IP rate limit on `/api/auth/*`
+- **Storage:** MinIO via `@aws-sdk/client-s3` + presigned URLs (`lib/storage.ts`)
+- **Email:** nodemailer wrapper at `lib/email.ts`. Gated by `SMTP_HOST`.
+- **Export:** `lib/export.ts` -- Excel via ExcelJS. `toExcel(data, columns)` returns Buffer; `excelDownloadHeaders(name)` builds the response headers. PDF deferred (pdfkit font tracing under standalone is a future ADR).
+- **Validation:** `zod`
+- **Backup:** encrypted off-host sidecar (`deploy/backup.sh`) using age + rclone. Gated by `BACKUP_ENABLED`.
+- **Host:** Portainer-managed Docker host · GHCR · stack-webhook for SHA pinning.
+
+## Local ESLint plugin
+`eslint-rules/` is a project-local plugin enforcing four CLAUDE.md hard rules. It runs on every push via `verify.yml` (the `npm run lint` step). All four rules are configured at `error`.
+
+| Rule | What it catches |
+|---|---|
+| `rihal-template/no-prisma-in-client` | `"use client"` file imports from `@/lib/prisma` |
+| `rihal-template/no-any-cast-on-session` | `something as any` where the expression mentions `session` (regression guard for T-08) |
+| `rihal-template/no-secret-env-in-console` | `console.*(process.env.<PASSWORD\|SECRET\|TOKEN\|KEY\|HASH\|IDENTITY\|WEBHOOK\|RECIPIENT>)` |
+| `rihal-template/no-bare-internal-route` | `app/api/internal/**/route.ts` exports a handler not wrapped with `withInternalAuth` |
+
+To silence a rule on a justified line:
+```ts
+// eslint-disable-next-line rihal-template/<rule>
+```
+If the suppression touches security, log it in `SECURITY.md` §12 with rule, location, justification, reviewer, date.
 
 ## Hard rules
-- **Never commit `.env`.** `.env.example` is in git; real secrets are environment variables on the host or repo secrets. Auth, DB, MinIO, audit-purge, backup, and SMTP credentials are all Restricted — see `SECURITY.md` §1. gitleaks gates every push.
-- **Never log** `AUTH_SECRET`, `POSTGRES_PASSWORD`, `MINIO_SECRET_KEY` / `MINIO_ROOT_PASSWORD`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `BACKUP_AGE_IDENTITY`, `SMTP_PASSWORD`, any `passwordHash`, any presigned URL, or any session token / JWT. Full list in `SECURITY.md` §1.
-- **Email bodies may carry Restricted content** (OTPs, password-reset tokens, presigned URLs, salary statements). `lib/email.ts` deliberately logs only metadata (messageId + to-summary + subject). **Never** add a separate `console.log(opts.text)` for debugging — if you need to verify a send, query the SMTP provider's audit log instead.
-- **Adding a Restricted column?** Extend `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` AND its membership assertion in `tests/contracts/audit-scrub.test.ts` in the same commit. See `SECURITY.md` §5 + finding T-03.
+- **Never commit `.env`.** Auth, DB, MinIO, audit-purge, backup, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push.
+- **Never log** any Restricted env var (full list in `SECURITY.md` §1). The `no-secret-env-in-console` ESLint rule catches the obvious form (`console.log(process.env.SMTP_PASSWORD)`); the rule does NOT catch interpolation into other variables — humans still apply judgement.
+- **Email bodies may carry Restricted content** (OTPs, presigned URLs, salary statements). `lib/email.ts` logs only metadata. Never separately log `opts.text` / `opts.html`.
+- **Adding a Restricted column?** Extend `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` AND its membership assertion in `tests/contracts/audit-scrub.test.ts` in the same commit.
+- **Excel exports must not include Restricted columns.** `SCRUB_FIELDS` does NOT protect export output — it's a separate gate. Audit your column list per route.
 - **Go through Prisma.** No raw SQL except via `prisma.$queryRaw` with parameter placeholders. Never `prisma.$executeRawUnsafe` on user input.
-- **UI → API route → service → Prisma.** Server components and API routes are the only places that touch `prisma`. Client components call `/api/*`, never `prisma`.
-- **Use the auth wrappers.** Every API route handler wraps with `withAuth`, `withAdminAuth`, or `withInternalAuth` from `lib/api-helpers.ts`. Bare handlers must justify it in the PR description.
-- **Internal endpoints** (`/api/internal/*`) use `withInternalAuth(tokenEnv, ...)` and are gated by an `x-internal-token` header. They bypass session auth on purpose; only scheduled GHA workflows holding the matching secret should call them.
-- **Audit is automatic but fragile.** `auditExtension` runs on every Prisma `create` / `update` / `delete` outside the EXCLUDE set (`AuditLog`, `Account`, `Session`, `VerificationToken`). Don't add new models to that EXCLUDE set without an ADR. Don't write to `audit_logs` directly.
-- **Soft-delete is opt-in.** A model only participates if it has `deletedAt` / `deletedBy` columns AND is in `SOFT_DELETE_MODELS` (`lib/prisma/soft-delete-extension.ts`). `/scaffold-entity` does both in lockstep.
-- **`prismaUnfiltered` exists for a reason.** Auth callbacks use it so they can see soft-deleted users for accurate "user not found vs deactivated" handling. Outside auth + the recycling bin, use the default `prisma` export.
+- **UI → API route → service → Prisma.** Server components and API routes are the only places that touch `prisma`. The `no-prisma-in-client` ESLint rule blocks the most common slip.
+- **Use the auth wrappers.** Every API route handler wraps with `withAuth`, `withAdminAuth`, or `withInternalAuth`. Internal routes are doubly protected (middleware passes them through; `no-bare-internal-route` ESLint rule fires if the wrap is missing).
+- **Audit is automatic but fragile.** `auditExtension` runs on every Prisma `create` / `update` / `delete` outside the EXCLUDE set. Don't add models to that set without an ADR.
+- **Soft-delete is opt-in.** `/scaffold-entity` does it in lockstep; manual additions must too.
+- **`prismaUnfiltered` ≠ `prisma`.** Auth + recycling-bin only.
 - **Parameterized SQL only.** No `SELECT *` in raw queries. No raw `UPDATE` / `DELETE` without a `WHERE`.
-- **Validate at the API boundary with zod.** Schemas live in `lib/validations/`. Don't trust `req.json()` without parsing.
-- **Naming:** snake_case tables (via `@@map`); camelCase Prisma fields and TS; PascalCase React components and Prisma models.
+- **Validate at the API boundary with zod.** Schemas live in `lib/validations/`.
+- **Never cast `session` to `any`.** The augmentation in `types/index.ts` already types `session.user.role: Role`. The `no-any-cast-on-session` ESLint rule guards against regression.
+- **Naming:** snake_case tables (via `@@map`); camelCase Prisma fields and TS; PascalCase React + Prisma models + enum types.
 
 ## Ask before
-- Installing a runtime dependency that ships to the client bundle (anything > 50 KB minified needs an ADR)
-- Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `middleware.ts`, `lib/prisma/audit-extension.ts`, `lib/prisma/soft-delete-extension.ts`, or anything in `prisma/migrations/`
+- Installing a runtime dep > 50 KB minified -- needs ADR
+- Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/api-helpers.ts`, `middleware.ts`, anything under `lib/prisma/`, `eslint-rules/`, or `prisma/migrations/`
 - Adding a model to the audit `EXCLUDE` set
-- Adding a new public path to `publicPaths` in `middleware.ts` or a new `/api/internal/*` route
-- Bypassing `withAuth` / `withAdminAuth` / `withInternalAuth` on an API route
+- Adding a new public path or `/api/internal/*` route
+- Bypassing `withAuth` / `withAdminAuth` / `withInternalAuth`
+- Disabling any `rihal-template/*` ESLint rule beyond a single-line `eslint-disable-next-line`
 - Changing the `Role` enum or how roles are checked
-- Pushing to `main` directly — always branch + PR; `main` triggers the prod webhook
-- Suppressing a Semgrep / gitleaks / npm-audit finding (record it in `SECURITY.md` §12)
-- Changing the locked stack from ADR-001 — write a new ADR superseding the relevant section first
+- Pushing to `main` directly — always branch + PR
+- Suppressing a Semgrep / gitleaks / npm-audit finding (log in `SECURITY.md` §12)
+- Changing the locked stack from ADR-001 — write a new superseding ADR first
 
 ## Commands
-- `npm run dev` — Next.js dev server at `http://localhost:3000`
-- `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...']` — generate a new CRUD entity. See `.claude/skills/scaffold-entity/SKILL.md`.
-- `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>` — swap template defaults for fork identity.
-- `npm test` — contract suite (rate limit, audit scrub, email) via `node:test`. CI runs this on every push.
-- `npm run prisma:migrate` — create + apply a new migration in dev
-- `npm run prisma:generate` — regenerate client after a schema change
-- `npm run prisma:seed` — re-run `prisma/seed.ts`
-- `npm run prisma:studio` — open Prisma Studio at `http://localhost:5555`
-- `npm run lint` — ESLint
-- `make db-up` / `make db-down` — start / stop just the dependency containers
-- `make setup` — first-time on a human-coder workstation
-- `git push origin main` — triggers `docker-build.yml` → builds, tags `:latest` + `:sha-<short>`, hits the Portainer webhook
+- `npm run dev` — Next.js dev server
+- `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...']`
+- `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
+- `npm test` — contract suite (rate limit, audit scrub, email, export) via `node:test`
+- `npm run prisma:migrate` / `:generate` / `:seed` / `:studio`
+- `npm run lint` — ESLint (incl. local plugin)
+- `make db-up` / `make db-down`
+- `git push origin main` — triggers `docker-build.yml`
 
 ## Sending email
 ```ts
-import { sendEmail, isEmailEnabled } from "@/lib/email";
-
+import { sendEmail } from "@/lib/email";
 const result = await sendEmail({
   to: user.email,
   subject: "Your password reset link",
-  text: `Open ${url} to reset your password. Expires in 1 hour.`,
-  html: `<p>Open <a href="${url}">this link</a> to reset your password. Expires in 1 hour.</p>`,
+  text: `Open ${url} to reset. Expires in 1 hour.`,
+  html: `<p>Open <a href="${url}">this link</a> to reset. Expires in 1 hour.</p>`,
 });
+if (!result.sent) { /* SMTP_HOST unset; decide per call site whether fatal */ }
+```
 
-if (!result.sent) {
-  // SMTP_HOST unset -- decide per call site whether that's a fatal error.
-  // For password reset: probably surface to admin ("email is not configured").
-  // For best-effort notification: silently continue.
-}
+## Exporting to Excel
+```ts
+import { toExcel, excelDownloadHeaders } from "@/lib/export";
+import { withAuth } from "@/lib/api-helpers";
+
+export const GET = withAuth(async () => {
+  const rows = await prisma.project.findMany({
+    include: { owner: { select: { name: true } } },
+  });
+  const xlsx = await toExcel(rows, [
+    { header: "Name", key: "name" },
+    { header: "Owner", key: "owner", format: (v) => (v as { name: string } | null)?.name ?? "-" },
+    { header: "Created", key: "createdAt", format: (v) => new Date(v as string).toISOString().slice(0, 10) },
+  ], { sheetName: "Projects", title: "Project export" });
+  return new Response(new Uint8Array(xlsx), {
+    headers: excelDownloadHeaders(`projects-${Date.now()}.xlsx`),
+  });
+});
+```
+
+## Kanban board
+```tsx
+import { KanbanBoard } from "@/components/shared/KanbanBoard";
+
+const columns = [
+  { id: "TODO", title: "To do" },
+  { id: "IN_PROGRESS", title: "In progress", color: "#1677ff" },
+  { id: "DONE", title: "Done", color: "#52c41a" },
+];
+
+<KanbanBoard
+  columns={columns}
+  items={tasks.map((t) => ({ ...t, columnId: t.status }))}
+  renderCard={(t) => <><b>{t.title}</b><div>{t.assignee?.name}</div></>}
+  onMove={async (task, _from, to) => {
+    await fetch(`/api/tasks/${task.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: to }),
+    });
+    refetch();
+  }}
+/>
+```
+
+## Charts
+```tsx
+import { Chart } from "@/components/shared/Chart";
+
+const data = [
+  { month: "Jan", revenue: 4200 },
+  { month: "Feb", revenue: 5100 },
+  { month: "Mar", revenue: 4800 },
+];
+<Chart type="line" data={data} xKey="month" yKey="revenue" height={280} />
+<Chart type="bar"  data={data} xKey="month" yKey="revenue" />
+<Chart type="pie"  data={[{ name: "TODO", value: 12 }, { name: "DONE", value: 30 }]} nameKey="name" valueKey="value" />
 ```
 
 ## Known traps (don't "fix")
-- **Generated Prisma client lives in `generated/prisma`, not `node_modules/.prisma/client`.** Schema sets `output = "../generated/prisma"`.
-- **Auth.js uses JWT session strategy despite the Prisma adapter being wired.** The `sessions` table is for OAuth account linking only.
-- **`middleware.ts` runs on the Node.js runtime** (`export const runtime = "nodejs"`).
-- **`prismaUnfiltered` ≠ `prisma`.** Soft-delete is on `prisma`, off on `prismaUnfiltered`.
-- **`next-intl` locale matching strips the locale prefix.** Adding a locale means updating the regex in `middleware.ts`.
-- **MinIO presigned URLs default to 1 hour.** Don't ship long-lived URLs in emails, logs, or audit metadata.
-- **Rate limiter is in-memory and per-instance.** Fine for single-container Portainer; horizontally-scaled forks swap to `@upstash/ratelimit`.
-- **`sendEmail` returns `{ sent: false }` when SMTP_HOST is unset.** It does NOT throw. Callers that require email to succeed must check `result.sent` and decide per-flow whether that's fatal.
-- **CSP allows `'unsafe-inline'`** for script + style (Ant Design SSR + Next bootstrap). Future ADR.
-- **`output: "standalone"` is required** for the small Docker image.
-- **The Docker entrypoint runs `prisma migrate deploy`** before starting the app.
-- **`docker-compose.prod.yml` resolves through `${IMAGE_TAG:-latest}`.** Use a Portainer **stack** webhook to honor the `?IMAGE_TAG=` query string and pin to SHA.
-- **`BACKUP_ENABLED` defaults to `false`.** Flipped on by `/first-fork` step 6.
-- **`AUDIT_PURGE_TOKEN` is optional.** Endpoint returns 503 if unset.
-- **`/scaffold-entity` does not handle multiple relations from one source to the same target.** Prisma requires explicit `@relation("<Name>", ...)` for that case — hand-edit before running the migration.
-- **`/scaffold-entity` includes do not filter target soft-deletes.** A known Prisma-extension limitation. Hand-edit the route to add a `where: { deletedAt: null }` on the include if needed.
+- Generated Prisma client lives in `generated/prisma`. Imports go through that path.
+- Auth.js uses JWT session strategy; `sessions` table is for OAuth account linking only.
+- `middleware.ts` runs on the Node runtime.
+- `prismaUnfiltered` ≠ `prisma` (soft-delete on the former is off).
+- `next-intl` locale matching strips the locale prefix; adding a locale means updating the regex in `middleware.ts`.
+- MinIO presigned URLs default to 1 hour.
+- Rate limiter is in-memory and per-instance.
+- `sendEmail` returns `{ sent: false }` when `SMTP_HOST` is unset; it does NOT throw.
+- CSP allows `'unsafe-inline'` for script + style (Ant Design SSR + Next bootstrap).
+- `output: "standalone"` is required for the small Docker image.
+- Docker entrypoint runs `prisma migrate deploy` before starting the app.
+- `docker-compose.prod.yml` resolves through `${IMAGE_TAG:-latest}`; use a Portainer stack webhook for SHA pinning.
+- `BACKUP_ENABLED` defaults to `false`; flipped on by `/first-fork` step 6.
+- `AUDIT_PURGE_TOKEN` is optional; endpoint returns 503 if unset.
+- `/scaffold-entity` does not handle multiple relations from one source to the same target -- hand-edit Prisma `@relation("Name", ...)` for that case.
+- `/scaffold-entity` includes do not filter the target's soft-delete (Prisma extension limitation).
+- `Chart` uses recharts -- visually minimal, not exact Ant Design palette. Pass `colors={...}` to override.
+- `KanbanBoard` requires a 4px pointer movement before drag starts so click-throughs on cards still work.
+- PDF export is intentionally not in `lib/export.ts` -- pdfkit's font tracing under `output: standalone` is fragile. Future ADR.
 
 When in doubt, stop and ask.
