@@ -4,6 +4,36 @@ import { getAuditContext } from "../audit-context";
 // Models excluded from audit logging
 const EXCLUDE = new Set(["AuditLog", "Account", "Session", "VerificationToken"]);
 
+// Field names whose values must never land in `audit_logs.before` / `after` / `changes`.
+// Replaced with the literal string "[redacted]" so the row keeps the fact that the field
+// changed (auditable) without leaking the value. See SECURITY.md §5 + finding T-03.
+const SCRUB_FIELDS = new Set([
+  "passwordHash",
+  "password",
+  "refresh_token",
+  "access_token",
+  "id_token",
+  "session_state",
+  "sessionToken",
+  "token",
+  "secret",
+  "apiKey",
+  "api_key",
+]);
+
+function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
+  if (!obj) return obj;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (SCRUB_FIELDS.has(k)) {
+      out[k] = v == null ? v : "[redacted]";
+    } else {
+      out[k] = v;
+    }
+  }
+  return out as T;
+}
+
 type AnyClient = {
   [key: string]: {
     findUnique: (args: { where: { id: string } }) => Promise<unknown>;
@@ -27,7 +57,11 @@ function computeChanges(
     const bVal = JSON.stringify(before[key]);
     const aVal = JSON.stringify(after[key]);
     if (bVal !== aVal) {
-      changes[key] = { from: before[key], to: after[key] };
+      if (SCRUB_FIELDS.has(key)) {
+        changes[key] = { from: "[redacted]", to: "[redacted]" };
+      } else {
+        changes[key] = { from: before[key], to: after[key] };
+      }
     }
   }
 
@@ -50,7 +84,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
               entityType: model,
               entityId: String(record.id),
               action: "CREATE",
-              after: record,
+              after: scrub(record),
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,
@@ -102,8 +136,8 @@ export const auditExtension = Prisma.defineExtension((client) => {
               entityType: model,
               entityId: String(after.id),
               action,
-              before: before ?? undefined,
-              after,
+              before: scrub(before ?? undefined),
+              after: scrub(after),
               changes,
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
@@ -137,7 +171,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
               entityType: model,
               entityId: String((before as any)?.id ?? "unknown"),
               action: "DELETE",
-              before: before ?? undefined,
+              before: scrub(before ?? undefined),
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,
