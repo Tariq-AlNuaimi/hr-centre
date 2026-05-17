@@ -5,10 +5,21 @@ Reusable starter for Rihal internal tools. Next.js 16 + Prisma 7 (Postgres) + Au
 **This is the template.** When you fork it into a project, replace this section with the project-specific intro, owners, environments, and ADR references. Sections below describe what the template ships out of the box — treat them as defaults to keep, tighten, or replace.
 
 ## Read before non-trivial work
-- `@README.md` — stack overview, project structure, "Adding a New Entity" recipe
-- `SECURITY.md` — data classes, secrets, threat model (read before touching auth / data / secrets / a finding)
+- `@README.md` — stack overview, project structure, deployment recipe
+- `SECURITY.md` — data classes, secrets, threat model, open findings T-01..T-09 (read before touching auth / data / secrets / a finding)
 - `prisma/schema.prisma` — the source of truth for the data model
 - `lib/prisma/audit-extension.ts` + `lib/prisma/soft-delete-extension.ts` — invariants the rest of the codebase relies on
+
+## Vibe-coding harness (`.claude/`)
+This template is tuned for Claude Code sessions. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build.
+
+- **Permission allowlist** (`.claude/settings.json`) pre-approves the common loop — npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, and branch deletes still prompt.
+- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on session boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing. The hook does NOT start Docker containers — run `make db-up` once when you actually need the DB. The first prompt won't be accepted until the hook returns.
+- **Skills** in `.claude/skills/`:
+  - `/scaffold-entity <Name>` — generates the seven moving parts for a new CRUD entity (model, soft-delete registration, recycling-bin registration, zod validation, list + item API routes, dashboard page). Stops at file generation so you review the schema diff before `prisma migrate`.
+  - `/ship` — pre-commit verification: typecheck → lint → build. Stops at the first failure with file:line.
+
+All harness files are project-name-agnostic and survive forks unchanged.
 
 ## Stack
 - **Framework:** Next.js 16 (App Router, `output: "standalone"`) · React 19 · TypeScript 5
@@ -28,7 +39,7 @@ Reusable starter for Rihal internal tools. Next.js 16 + Prisma 7 (Postgres) + Au
 - **UI → API route → service → Prisma.** Server components and API routes are the only places that touch `prisma`. Client components call `/api/*`, never `prisma`.
 - **Use the auth wrappers.** Every API route handler wraps with `withAuth` or `withAdminAuth` from `lib/api-helpers.ts`. Bare handlers must justify it in the PR description. The wrappers also seed the audit context — bypassing them breaks audit attribution.
 - **Audit is automatic but fragile.** `auditExtension` runs on every Prisma `create` / `update` / `delete` outside the EXCLUDE set (`AuditLog`, `Account`, `Session`, `VerificationToken`). Don't add new models to that EXCLUDE set without an ADR. Don't write to `audit_logs` directly — let the extension do it.
-- **Soft-delete is opt-in.** A model only participates if it has `deletedAt` / `deletedBy` columns AND is in `SOFT_DELETE_MODELS` (`lib/prisma/soft-delete-extension.ts`). When you add either, add the other in the same commit, or queries silently return deleted rows.
+- **Soft-delete is opt-in.** A model only participates if it has `deletedAt` / `deletedBy` columns AND is in `SOFT_DELETE_MODELS` (`lib/prisma/soft-delete-extension.ts`). When you add either, add the other in the same commit, or queries silently return deleted rows. `/scaffold-entity` does both in lockstep.
 - **`prismaUnfiltered` exists for a reason.** Auth callbacks use it so they can see soft-deleted users for accurate "user not found vs deactivated" handling. Outside auth, use the default `prisma` export.
 - **Parameterized SQL only.** No `SELECT *` in raw queries. No raw `UPDATE` / `DELETE` without a `WHERE`.
 - **Validate at the API boundary with zod.** Schemas live in `lib/validations/`. Don't trust `req.json()` without parsing.
@@ -46,7 +57,7 @@ Reusable starter for Rihal internal tools. Next.js 16 + Prisma 7 (Postgres) + Au
 
 ## Commands
 - `npm run dev` — Next.js dev server at `http://localhost:3000`
-- `make setup` — first-time: install deps, start `db` + `minio` + `minio-init` in Docker, generate Prisma client, migrate, seed
+- `make setup` — first-time on a human-coder workstation: install deps, start `db` + `minio` + `minio-init` in Docker, generate Prisma client, migrate, seed. **Claude sessions:** the SessionStart hook handles deps + prisma generate; run `make db-up` only when you need the DB.
 - `make db-up` / `make db-down` — start / stop just the dependency containers
 - `npm run prisma:migrate` — create + apply a new migration in dev
 - `npm run prisma:generate` — regenerate client after a schema change (run after every `git pull` that touches `schema.prisma`)
