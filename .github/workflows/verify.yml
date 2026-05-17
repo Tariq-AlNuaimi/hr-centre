@@ -29,7 +29,7 @@ jobs:
           cache: 'npm'
 
       - name: Install deps
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
 
       - name: Generate Prisma client
         run: npx prisma generate
@@ -40,10 +40,27 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test (contract suite)
+        run: npm test
+
       - name: Build
         run: npm run build
 
-      - name: npm audit (high+)
-        # --omit=dev: only flag prod deps that ship to the runtime image.
-        # Dev-dep CVEs are tracked separately (Dependabot, manual review).
+      - name: npm audit (high+, prod deps only)
         run: npm audit --audit-level=high --omit=dev
+
+      # Smoke-test the entity codegen: generate a TestEntity, typecheck the
+      # output, then discard the result so the working tree stays clean.
+      - name: Scaffold smoke test
+        run: |
+          npm run scaffold -- --name TestEntity --fields 'title:string,note:string?'
+          npx tsc --noEmit
+          # Cleanup: revert all the touches the scaffold made.
+          git checkout -- prisma/schema.prisma \
+            lib/prisma/soft-delete-extension.ts \
+            app/api/recycling-bin/route.ts \
+            components/layout/AppSidebar.tsx
+          rm -rf lib/validations/test-entity.ts \
+            app/api/test-entity \
+            components/test-entity \
+            'app/[locale]/(dashboard)/test-entity'
