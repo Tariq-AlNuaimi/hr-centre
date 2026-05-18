@@ -34,7 +34,7 @@ export async function readState(env) {
   try {
     const raw = await readFile(statePath(env), 'utf8');
     return JSON.parse(raw);
-  } catch {
+  } catch (e) {
     if (e && e.code === 'ENOENT') return emptyState(env);
     throw e;
   }
@@ -109,7 +109,7 @@ export async function tagResource(do_client, token, type, id, slug, env) {
         method: 'POST',
         body: JSON.stringify({ name }),
       });
-    } catch {
+    } catch (e) {
       // 409 / "already exists" is fine.
       if (!/409|already/i.test(String(e.message))) {
         // Surface but don't bail -- tagging is best-effort backup.

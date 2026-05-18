@@ -64,7 +64,7 @@ export async function waitForRepoReady(token, owner, name, timeoutMs = 30_000) {
     try {
       const r = await call(token, `/repos/${owner}/${name}`);
       if (r && r.default_branch) return r;
-    } catch {
+    } catch (e) {
       if (!String(e.message).includes('404')) throw e;
     }
     await new Promise(res => setTimeout(res, 2000));
