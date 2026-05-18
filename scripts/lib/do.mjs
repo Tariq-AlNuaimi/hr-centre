@@ -48,15 +48,25 @@ export async function validateToken(token) {
 
 // SSH keys -------------------------------------------------------------------
 
+// ssh-ed25519 <base64-body> <optional comment>  → returns <base64-body>.
+// The base64 body is the part DO computes the fingerprint from. Comparing
+// it directly is invariant to comment normalization (DO may strip / trim /
+// re-encode the `azuread\user@host` comment when storing).
+function keyBody(pubkey) {
+  const parts = (pubkey || '').trim().split(/\s+/);
+  return parts.length >= 2 ? parts[1] : (pubkey || '').trim();
+}
+
 export async function ensureSshKey(token, name, pubkey) {
-  // DO indexes uploaded keys by fingerprint; the same pubkey uploaded twice
-  // (even under different names) returns 422 "already in use". Match on the
-  // public_key content first (handles cross-project reuse), then by name
-  // (handles partial re-runs of the same project).
-  const trimmed = pubkey.trim();
+  // DO rejects POST /account/keys with 422 if the same fingerprint already
+  // exists, regardless of the requested name. Match on the base64 key body
+  // first (handles cross-project reuse where every fork shares one id_ed25519
+  // and DO has normalized the stored comment), then by name (handles partial
+  // re-runs of the same project), only then POST.
+  const body = keyBody(pubkey);
   const list = await call(token, '/account/keys?per_page=200');
-  const byContent = list.ssh_keys.find(k => (k.public_key || '').trim() === trimmed);
-  if (byContent) return byContent;
+  const byBody = list.ssh_keys.find(k => keyBody(k.public_key || '') === body);
+  if (byBody) return byBody;
   const byName = list.ssh_keys.find(k => k.name === name);
   if (byName) return byName;
   const created = await call(token, '/account/keys', {
