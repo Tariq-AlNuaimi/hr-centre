@@ -42,3 +42,4 @@ npm run promote -- --sha abc1234 --gh-token ghp_... --yes
 - The SHA promoted
 - The prod URL + health status
 - A "rollback hint": `npm run rollback -- --env prod --to sha-<prev-short>`
+- **Recommended follow-up:** run `/release` (or `npm run release -- --tag <prod-...>`) to draft the CHANGELOG entry + GitHub release for this promotion. Composable, not automatic — see ADR-003.
