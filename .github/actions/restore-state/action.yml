@@ -15,11 +15,13 @@ runs:
   steps:
     - name: Fetch deployment-state branch (if any)
       shell: bash
+      env:
+        INPUT_ENV: ${{ inputs.env }}
       run: |
         set -euo pipefail
         # Branch may not yet exist on the very first run; ignore failure.
         git fetch origin deployment-state:deployment-state 2>/dev/null || true
-        STATE_FILE=".deploy-state.${{ inputs.env }}.json"
+        STATE_FILE=".deploy-state.${INPUT_ENV}.json"
         if git rev-parse --verify deployment-state >/dev/null 2>&1; then
           if git show "deployment-state:${STATE_FILE}" >/dev/null 2>&1; then
             git show "deployment-state:${STATE_FILE}" > "${STATE_FILE}"

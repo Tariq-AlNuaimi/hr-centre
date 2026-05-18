@@ -74,13 +74,17 @@ jobs:
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
           SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}
+          INPUT_ENV: ${{ inputs.env }}
+          INPUT_DOMAIN: ${{ inputs.domain }}
+          INPUT_SLUG: ${{ inputs.slug }}
+          INPUT_ACTION: ${{ inputs.action }}
         run: |
           set -euo pipefail
-          ARGS=(--env "${{ inputs.env }}" --domain "${{ inputs.domain }}" --yes)
-          if [ -n "${{ inputs.slug }}" ]; then
-            ARGS+=(--slug "${{ inputs.slug }}")
+          ARGS=(--env "$INPUT_ENV" --domain "$INPUT_DOMAIN" --yes)
+          if [ -n "$INPUT_SLUG" ]; then
+            ARGS+=(--slug "$INPUT_SLUG")
           fi
-          case "${{ inputs.action }}" in
+          case "$INPUT_ACTION" in
             provision-and-deploy) ;;
             redeploy)             ARGS+=(--skip-provision) ;;
             destroy)              ARGS+=(--destroy) ;;

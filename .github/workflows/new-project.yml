@@ -29,14 +29,16 @@ jobs:
           fetch-depth: 0
 
       - name: Validate plan exists
+        env:
+          INPUT_PLAN_PATH: ${{ inputs.plan_path }}
         run: |
           set -euo pipefail
-          if [ ! -f "${{ inputs.plan_path }}" ]; then
-            echo "ERROR: plan file not found: ${{ inputs.plan_path }}" >&2
+          if [ ! -f "$INPUT_PLAN_PATH" ]; then
+            echo "ERROR: plan file not found: $INPUT_PLAN_PATH" >&2
             exit 1
           fi
           # Sanity-check it parses.
-          node -e "JSON.parse(require('fs').readFileSync('${{ inputs.plan_path }}','utf8'))"
+          node -e "JSON.parse(require('fs').readFileSync(process.env.INPUT_PLAN_PATH,'utf8'))"
 
       - uses: ./.github/actions/restore-state
         with:
@@ -72,8 +74,9 @@ jobs:
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
           SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}
+          INPUT_PLAN_PATH: ${{ inputs.plan_path }}
         run: |
-          node scripts/new-project.mjs --plan "${{ inputs.plan_path }}" --yes
+          node scripts/new-project.mjs --plan "$INPUT_PLAN_PATH" --yes
 
       - name: Persist staging state
         if: always()

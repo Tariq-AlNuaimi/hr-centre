@@ -58,6 +58,7 @@ jobs:
         env:
           RCLONE_CONFIG_CONTENTS: ${{ secrets.RCLONE_CONFIG }}
           AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+          INPUT_ENV: ${{ inputs.env }}
         run: |
           set -euo pipefail
           mkdir -p ~/.config/rclone /opt/backup/keys
@@ -66,19 +67,22 @@ jobs:
             chmod 600 ~/.config/rclone/rclone.conf
           fi
           if [ -n "${AGE_IDENTITY}" ]; then
-            printf '%s\n' "${AGE_IDENTITY}" | sudo tee /opt/backup/keys/${{ inputs.env }}.identity >/dev/null
-            sudo chmod 600 /opt/backup/keys/${{ inputs.env }}.identity
+            printf '%s\n' "${AGE_IDENTITY}" | sudo tee "/opt/backup/keys/${INPUT_ENV}.identity" >/dev/null
+            sudo chmod 600 "/opt/backup/keys/${INPUT_ENV}.identity"
           fi
 
       - name: Run restore script
         env:
           CI: 'true'
           NON_INTERACTIVE: 'true'
+          INPUT_ENV: ${{ inputs.env }}
+          INPUT_DUMP_NAME: ${{ inputs.dump_name }}
+          INPUT_SLUG: ${{ inputs.slug }}
         run: |
           set -euo pipefail
-          ARGS=(--env "${{ inputs.env }}" --pick "${{ inputs.dump_name }}")
-          if [ -n "${{ inputs.slug }}" ]; then
-            ARGS+=(--slug "${{ inputs.slug }}")
+          ARGS=(--env "$INPUT_ENV" --pick "$INPUT_DUMP_NAME")
+          if [ -n "$INPUT_SLUG" ]; then
+            ARGS+=(--slug "$INPUT_SLUG")
           fi
           node scripts/restore.mjs "${ARGS[@]}" | tee /tmp/restore.log
           # Mask any literal "restore:restore" passwords if they appear in logs.

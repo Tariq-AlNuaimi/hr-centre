@@ -49,13 +49,15 @@ jobs:
           CI: 'true'
           NON_INTERACTIVE: 'true'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "push" ]; then
+          if [ "$EVENT_NAME" = "push" ]; then
             TAG="${GITHUB_REF##refs/tags/}"
             node scripts/release.mjs --tag "${TAG}"
-          elif [ -n "${{ inputs.tag }}" ]; then
-            node scripts/release.mjs --tag "${{ inputs.tag }}"
+          elif [ -n "$INPUT_TAG" ]; then
+            node scripts/release.mjs --tag "$INPUT_TAG"
           else
             node scripts/release.mjs --auto
           fi

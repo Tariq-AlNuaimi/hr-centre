@@ -52,10 +52,13 @@ jobs:
           NON_INTERACTIVE: 'true'
           GITHUB_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
           GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_ENV: ${{ inputs.env }}
+          INPUT_TO_SHA: ${{ inputs.to_sha }}
+          INPUT_SLUG: ${{ inputs.slug }}
         run: |
           set -euo pipefail
-          ARGS=(--env "${{ inputs.env }}" --to "${{ inputs.to_sha }}" --yes)
-          if [ -n "${{ inputs.slug }}" ]; then
-            ARGS+=(--slug "${{ inputs.slug }}")
+          ARGS=(--env "$INPUT_ENV" --to "$INPUT_TO_SHA" --yes)
+          if [ -n "$INPUT_SLUG" ]; then
+            ARGS+=(--slug "$INPUT_SLUG")
           fi
           node scripts/rollback.mjs "${ARGS[@]}"
