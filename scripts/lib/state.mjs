@@ -47,6 +47,7 @@ export function emptyState(env) {
     portainer: null,      // { url, adminPassword, stackId, webhookId, webhookUrl }
     github: null,         // { repo, secretsSet: [...], envSet: [...] }
     deployedSha: null,
+    betterUptimeMonitorId: null,  // ADR-002: per-env uptime monitor id (null if BETTER_UPTIME_API_KEY unset)
   };
 }
 

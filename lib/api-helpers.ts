@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { auth } from "./auth";
 import { withAuditContext } from "./audit-context";
 import { err, forbidden } from "./api-response";
+import { setUserContext } from "./sentry";
 
 type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -26,6 +27,10 @@ export function withAuth(handler: AuthedHandler) {
   return async (req: NextRequest, ctx: RouteContext) => {
     const session = await auth();
     if (!session) return err("Unauthorized", 401);
+
+    // Tag the Sentry scope with the user id (no PII -- see lib/sentry.ts).
+    // No-op if Sentry isn't configured.
+    setUserContext(session.user.id);
 
     return withAuditContext({ userId: session.user.id }, () =>
       handler(req, { ...ctx, session })

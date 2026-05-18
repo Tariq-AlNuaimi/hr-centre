@@ -27,6 +27,7 @@ import * as DO from './lib/do.mjs';
 import * as CF from './lib/cloudflare.mjs';
 import * as GH from './lib/github.mjs';
 import * as P from './lib/portainer.mjs';
+import * as BU from './lib/better-uptime.mjs';
 
 const ROOT = process.cwd();
 
@@ -50,6 +51,8 @@ const { values } = parseArgs({
     'backup-bucket': { type: 'string' },
     'skip-secrets': { type: 'boolean', default: false },
     'skip-stack': { type: 'boolean', default: false },
+    'sentry-dsn': { type: 'string' },
+    'better-uptime-key': { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
     resume: { type: 'boolean', default: false },
     destroy: { type: 'boolean', default: false },
@@ -86,6 +89,14 @@ if (values.destroy) {
   if (!values.yes) bail('deploy', `--destroy requires --yes to confirm.`);
   if (DRY) { info('deploy', `${DRYP}would destroy: ${JSON.stringify(state, null, 2)}`); process.exit(0); }
   step('deploy', `tearing down ${SLUG}-${ENV}`);
+  // Better Uptime monitor teardown (best-effort; key from flag or env).
+  const buKey = values['better-uptime-key'] || process.env.BETTER_UPTIME_API_KEY;
+  if (state.betterUptimeMonitorId && buKey) {
+    try { await BU.deleteMonitor({ apiKey: buKey, id: state.betterUptimeMonitorId }); ok('deploy', `uptime monitor ${state.betterUptimeMonitorId} deleted`); }
+    catch (e) { warn('deploy', `uptime monitor delete failed: ${e.message}`); }
+  } else if (state.betterUptimeMonitorId && !buKey) {
+    warn('deploy', `state has betterUptimeMonitorId=${state.betterUptimeMonitorId} but BETTER_UPTIME_API_KEY unset; monitor NOT deleted. Delete manually or rerun --destroy with --better-uptime-key.`);
+  }
   if (state.cloudflare && state.cloudflare.recordId) {
     try { await CF.deleteRecord(values['cf-token'], state.cloudflare.zoneId, state.cloudflare.recordId); ok('deploy', `CF record deleted`); } catch (e) { warn('deploy', `CF delete failed: ${e.message}`); }
   }
@@ -251,6 +262,7 @@ if (!values['skip-secrets']) {
       slug: SLUG,
       backupBucket: BACKUP_BUCKET,
       rcloneRemote: values['rclone-remote'],
+      sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
     });
     const names = await GH.setManyRepoSecrets(values['gh-token'], GH_OWNER, GH_REPO, secrets);
     await GH.ensureEnvironment(values['gh-token'], GH_OWNER, GH_REPO, ENV);
@@ -277,7 +289,13 @@ if (!values['skip-stack'] && state.portainer && (!state.portainer.stackId || !st
       const jwt = await P.getPortainerJwt(state.portainer.url, 'ops-admin', state.portainer.adminPassword);
       const endpointId = await P.getLocalEndpointId(state.portainer.url, jwt);
       const compose = await readFile(join(ROOT, 'docker-compose.prod.yml'), 'utf8');
-      const envVars = stackEnvVars(state, { domain: DOMAIN, slug: SLUG, backupBucket: BACKUP_BUCKET });
+      const envVars = stackEnvVars(state, {
+        domain: DOMAIN,
+        slug: SLUG,
+        backupBucket: BACKUP_BUCKET,
+        env: ENV,
+        sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
+      });
       let stackId = state.portainer.stackId;
       let webhookUrl = state.portainer.webhookUrl;
       if (!stackId) {
@@ -319,6 +337,32 @@ if (!DRY && state.portainer && state.portainer.webhookUrl) {
   const healthy = await pollHealth(`https://${DOMAIN}/api/health`, 180_000);
   if (healthy) ok('deploy', `healthy: https://${DOMAIN}/api/health`);
   else warn('deploy', `health check did not return 200 within 3 min. The app may still be coming up; check Portainer logs.`);
+
+  // -- 7. Register Better Uptime monitor (per ADR-002) ----------------------
+  if (healthy) {
+    const buKey = values['better-uptime-key'] || process.env.BETTER_UPTIME_API_KEY;
+    if (!buKey) {
+      warn('deploy', `uptime monitor not registered; set BETTER_UPTIME_API_KEY (or pass --better-uptime-key) to enable.`);
+    } else {
+      const monitorUrl = `https://${DOMAIN}/api/health`;
+      try {
+        let id = state.betterUptimeMonitorId || await BU.getMonitorByUrl({ apiKey: buKey, url: monitorUrl });
+        if (!id) {
+          const created = await BU.createMonitor({ apiKey: buKey, url: monitorUrl, name: `${SLUG}-${ENV}` });
+          id = created.id;
+          ok('deploy', `better-uptime monitor ${id} created for ${monitorUrl}`);
+        } else {
+          ok('deploy', `better-uptime monitor ${id} already exists for ${monitorUrl}`);
+        }
+        if (id) {
+          state = mark(state, 'betterUptimeMonitorId', id);
+          await writeState(ENV, state);
+        }
+      } catch (e) {
+        warn('deploy', `better-uptime registration failed: ${e.message}`);
+      }
+    }
+  }
 }
 
 // -- Done -------------------------------------------------------------------
@@ -345,9 +389,9 @@ async function renderCloudInit({ ssh_pubkey, caddy_email, domain }) {
     .replaceAll('{{domain}}', domain);
 }
 
-function buildSecretMap(state, { domain, slug, backupBucket, rcloneRemote }) {
+function buildSecretMap(state, { domain, slug, backupBucket, rcloneRemote, sentryDsn }) {
   // Everything CI + the workflows + restore-test need.
-  return {
+  const m = {
     AUTH_SECRET: authSecret(),
     AUDIT_PURGE_TOKEN: auditToken(),
     PROD_BASE_URL: `https://${domain}`,
@@ -364,13 +408,20 @@ function buildSecretMap(state, { domain, slug, backupBucket, rcloneRemote }) {
     // The following land via the explicit Portainer-webhook step:
     // PORTAINER_WEBHOOK_URL
     // The following are operator-supplied (skill prompts at end):
-    // BACKUP_AGE_IDENTITY, RCLONE_CONFIG
+    // BACKUP_AGE_IDENTITY, RCLONE_CONFIG, SENTRY_AUTH_TOKEN, BETTER_UPTIME_API_KEY
   };
+  // Sentry DSN is public-by-design (see ADR-002 + SECURITY.md §6) but we
+  // still set it as a repo secret so the same value is used everywhere.
+  if (sentryDsn) {
+    m.SENTRY_DSN = sentryDsn;
+    m.NEXT_PUBLIC_SENTRY_DSN = sentryDsn;
+  }
+  return m;
 }
 
-function stackEnvVars(state, { domain, slug, backupBucket }) {
+function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn }) {
   // What docker-compose.prod.yml interpolates -- mirrors .env.example.
-  return {
+  const vars = {
     NEXT_PUBLIC_APP_NAME: slug,
     AUTH_SECRET: authSecret(),                  // re-mint per stack (Portainer-side copy)
     POSTGRES_PASSWORD: dbPassword(),
@@ -386,7 +437,13 @@ function stackEnvVars(state, { domain, slug, backupBucket }) {
     PROD_BASE_URL: `https://${domain}`,
     SEED_ADMIN_EMAIL: 'admin@example.com',
     SEED_ADMIN_PASSWORD: seedPassword(),
+    SENTRY_ENVIRONMENT: env === 'prod' ? 'production' : env,
   };
+  if (sentryDsn) {
+    vars.SENTRY_DSN = sentryDsn;
+    vars.NEXT_PUBLIC_SENTRY_DSN = sentryDsn;
+  }
+  return vars;
 }
 
 async function pollHealth(url, timeoutMs) {

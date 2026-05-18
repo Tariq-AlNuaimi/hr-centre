@@ -39,6 +39,22 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   SMTP_FROM: z.string().email().optional(),
+
+  // Sentry (optional; observability is opt-in per project -- see ADR-002).
+  // SENTRY_DSN: server-side DSN. Public-by-design per Sentry's own docs, so
+  //   not classified as Restricted in SECURITY.md §6. Operator captures it
+  //   from sentry.io when creating the project.
+  SENTRY_DSN: z.string().url().optional(),
+  // SENTRY_AUTH_TOKEN: CI-only. Required by docker-build.yml to upload
+  //   source-maps. Restricted (see SECURITY.md §6). Local + first-fork
+  //   deploys without it still work -- source-map upload is skipped.
+  SENTRY_AUTH_TOKEN: z.string().optional(),
+  // SENTRY_ENVIRONMENT: free-form tag (development | staging | production).
+  //   docker-compose.prod.yml sets this to the deploy env.
+  SENTRY_ENVIRONMENT: z.string().default("development"),
+  // NEXT_PUBLIC_SENTRY_DSN: client-side DSN. Typically the same value as
+  //   SENTRY_DSN. Public-by-design (ships in the JS bundle).
+  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

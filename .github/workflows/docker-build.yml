@@ -49,6 +49,31 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Sentry source-map upload (ADR-002). Runs only when SENTRY_AUTH_TOKEN
+      # is set as a repo secret AND SENTRY_ORG / SENTRY_PROJECT are set as repo
+      # vars. Otherwise the step skips silently -- early forks deploy without
+      # Sentry configured. Source-maps are uploaded directly from the runner
+      # via @sentry/cli; we don't try to extract them from the Docker image.
+      - name: Upload source-maps to Sentry
+        if: ${{ success() && env.HAS_SENTRY == 'true' }}
+        env:
+          HAS_SENTRY: ${{ secrets.SENTRY_AUTH_TOKEN != '' && vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT != '' }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SHA: ${{ github.sha }}
+        run: |
+          # Build locally just to emit source-maps (Docker image is already
+          # pushed at this point; this runs in parallel-friendly fashion).
+          npm ci --omit=optional --no-audit --no-fund
+          npx next build || (echo "next build for sourcemaps failed; skipping upload" && exit 0)
+          npx @sentry/cli releases new "${SHA}" || true
+          npx @sentry/cli releases set-commits "${SHA}" --auto || true
+          npx @sentry/cli sourcemaps inject .next || true
+          npx @sentry/cli sourcemaps upload --release="${SHA}" .next || true
+          npx @sentry/cli releases finalize "${SHA}" || true
+        continue-on-error: true
+
       # IMAGE_TAG is passed on the webhook query string. Portainer STACK webhooks
       # treat query-string params as environment-variable overrides for the stack,
       # so docker-compose.prod.yml's `${IMAGE_TAG:-latest}` resolves to the SHA tag

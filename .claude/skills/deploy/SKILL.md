@@ -30,6 +30,8 @@ Slug comes from `package.json` name (set by `/rebrand`). Pass `--slug` to overri
 5. **GitHub:** sets ~12 repo secrets + creates env-scoped secrets for `<env>` + applies main branch ruleset
 6. **Stack:** creates Portainer stack from `docker-compose.prod.yml` + registers stack webhook (T-04 SHA pinning) + writes `PORTAINER_WEBHOOK_URL` back to GH secrets
 7. **First deploy:** triggers the webhook with the latest main SHA + polls `/api/health` for 3 minutes
+8. **Uptime monitor** (optional): if `BETTER_UPTIME_API_KEY` is set (env var or `--better-uptime-key`), registers a status monitor against `https://<domain>/api/health` via the Better Uptime API and persists the monitor id to `.deploy-state.<env>.json`. `--destroy` removes it. Skips with a warning if the key is unset (early forks deploy without uptime).
+9. **Sentry env passthrough** (optional): if `--sentry-dsn` (or `SENTRY_DSN` env) is provided, sets `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` on the Portainer stack env and as GH repo secrets. Sentry DSNs are public-by-design (see ADR-002).
 
 ## Idempotency
 
@@ -74,6 +76,8 @@ npm run deploy -- \
 - DigitalOcean Spaces bucket creation: the v2 `/v2/spaces/keys` endpoint is gated on some accounts. Script prints a hint to create the bucket once in the DO console, then re-runs the spaces-key step.
 - Setting `BACKUP_AGE_IDENTITY` / `RCLONE_CONFIG`: requires `age-keygen` on the host. The script can generate the keypair if `age-keygen` is on PATH, but the operator chooses where to store the private identity. Default flow: skill walks through `/first-fork` steps 5-6 for these.
 - SMTP credentials: per-fork choice (provider, account). Set `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD` in Portainer stack env after deploy.
+- **Sentry account + project + auth token** (per ADR-002): the operator creates one Sentry project per env on sentry.io, captures the DSN (pass to `/deploy` via `--sentry-dsn`), and adds `SENTRY_AUTH_TOKEN` repo secret + `SENTRY_ORG` / `SENTRY_PROJECT` repo vars for CI source-map upload. `/first-fork` walks through this once.
+- **Better Uptime account + key** (per ADR-002): operator creates one Better Stack account per project, generates a Telemetry/Uptime API key, exposes it to `/deploy` via `BETTER_UPTIME_API_KEY` env or `--better-uptime-key`. Walks through in `/first-fork`.
 - Branch protection ruleset: applied automatically, but requires the PAT to have admin scope. Falls back to a warning if not allowed (then operator applies via UI).
 
 ## Honest failure modes

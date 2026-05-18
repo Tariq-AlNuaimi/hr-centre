@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -63,4 +64,35 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+// Sentry webpack/turbopack plugin wrapping. Source-map upload is gated on
+// SENTRY_AUTH_TOKEN being present so local builds (and forks that haven't
+// configured Sentry yet) work without the token. CI provides the token via
+// the SENTRY_AUTH_TOKEN repo secret -- see docker-build.yml and ADR-002.
+const hasSentryAuth = Boolean(process.env.SENTRY_AUTH_TOKEN);
+const isCI = process.env.CI === "true" || process.env.CI === "1";
+
+const baseConfig = withNextIntl(nextConfig);
+
+export default withSentryConfig(baseConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // Silence Sentry CLI output unless the operator opts in (verbose=1) or we're
+  // in a local build without the auth token (so the operator sees the skip).
+  silent: isCI,
+  // Don't run the SDK at all if the auth token is missing -- avoids the
+  // webpack plugin trying to upload sourcemaps and failing local builds.
+  widenClientFileUpload: true,
+  // When `disable: true`, the plugin skips any source-map upload entirely.
+  // We toggle on auth token so local + first-fork builds work without it.
+  // (hideSourceMaps was removed in @sentry/nextjs 9.x; map visibility is now
+  // handled by the build's static export defaults + `sourcemaps.disable`.)
+  sourcemaps: {
+    disable: !hasSentryAuth,
+  },
+  // Webpack-only options (Next 16 uses Turbopack by default; these no-op there).
+  webpack: {
+    treeshake: { removeDebugLogging: true },
+    automaticVercelMonitors: false,
+  },
+});

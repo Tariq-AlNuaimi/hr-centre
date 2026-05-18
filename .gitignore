@@ -50,3 +50,7 @@ next-env.d.ts
 
 # migration scratch
 .migrate-state.json
+
+# Sentry CLI artifacts (auth token cache + bundler debug files)
+.sentryclirc
+.sentry-build-plugin/
