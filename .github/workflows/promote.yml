@@ -1,0 +1,69 @@
+name: Promote
+
+# Promote a staging commit to production. See ADR-004 + scripts/promote.mjs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Project slug (kebab-case). Defaults to package.json name.'
+        required: false
+      sha:
+        description: 'Commit SHA to promote (7+ chars). Defaults to HEAD on main.'
+        required: false
+        default: 'HEAD'
+
+concurrency:
+  group: promote-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    environment: prod
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Restore staging state
+        uses: ./.github/actions/restore-state
+        with:
+          env: staging
+
+      - name: Restore prod state
+        uses: ./.github/actions/restore-state
+        with:
+          env: prod
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run promote script
+        env:
+          CI: 'true'
+          NON_INTERACTIVE: 'true'
+          GITHUB_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ARGS=(--sha "${{ inputs.sha }}" --yes)
+          if [ -n "${{ inputs.slug }}" ]; then
+            ARGS+=(--slug "${{ inputs.slug }}")
+          fi
+          node scripts/promote.mjs "${ARGS[@]}"
+
+      - name: Persist prod state
+        if: always()
+        uses: ./.github/actions/persist-state
+        with:
+          env: prod
+          message: 'after promote (run #${{ github.run_number }})'

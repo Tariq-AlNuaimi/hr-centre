@@ -1,0 +1,93 @@
+name: Restore
+
+# Pull a backup dump from the off-host rclone remote, decrypt with
+# BACKUP_AGE_IDENTITY, restore into a NEW Postgres container. Never the live
+# one. See ADR-004 + scripts/restore.mjs + SECURITY.md §4.
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment whose backup to restore (staging | prod)'
+        type: choice
+        options: [staging, prod]
+        required: true
+      slug:
+        description: 'Project slug (kebab-case). Defaults to package.json name.'
+        required: false
+      dump_name:
+        description: 'Filename on the rclone remote, or "latest"'
+        required: true
+        default: 'latest'
+
+concurrency:
+  group: restore-${{ inputs.env }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/restore-state
+        with:
+          env: ${{ inputs.env }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install rclone + age
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rclone age postgresql-client
+
+      - name: Materialize rclone config + age identity
+        env:
+          RCLONE_CONFIG_CONTENTS: ${{ secrets.RCLONE_CONFIG }}
+          AGE_IDENTITY: ${{ secrets.BACKUP_AGE_IDENTITY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.config/rclone /opt/backup/keys
+          if [ -n "${RCLONE_CONFIG_CONTENTS}" ]; then
+            printf '%s\n' "${RCLONE_CONFIG_CONTENTS}" > ~/.config/rclone/rclone.conf
+            chmod 600 ~/.config/rclone/rclone.conf
+          fi
+          if [ -n "${AGE_IDENTITY}" ]; then
+            printf '%s\n' "${AGE_IDENTITY}" | sudo tee /opt/backup/keys/${{ inputs.env }}.identity >/dev/null
+            sudo chmod 600 /opt/backup/keys/${{ inputs.env }}.identity
+          fi
+
+      - name: Run restore script
+        env:
+          CI: 'true'
+          NON_INTERACTIVE: 'true'
+        run: |
+          set -euo pipefail
+          ARGS=(--env "${{ inputs.env }}" --pick "${{ inputs.dump_name }}")
+          if [ -n "${{ inputs.slug }}" ]; then
+            ARGS+=(--slug "${{ inputs.slug }}")
+          fi
+          node scripts/restore.mjs "${ARGS[@]}" | tee /tmp/restore.log
+          # Mask any literal "restore:restore" passwords if they appear in logs.
+          # The connection string the script prints is intentional but we add a
+          # workflow-level mask so it stops appearing in subsequent step logs.
+          if grep -E 'postgresql://[^@]+@' /tmp/restore.log >/dev/null 2>&1; then
+            CONN=$(grep -Eo 'postgresql://[^ ]+' /tmp/restore.log | head -1 || true)
+            if [ -n "${CONN}" ]; then
+              echo "::add-mask::${CONN}"
+              echo "Restored DB connection string masked in subsequent log output."
+            fi
+          fi

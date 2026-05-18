@@ -1,0 +1,83 @@
+name: New Project
+
+# Take a Claude-authored plan JSON committed at plans/<timestamp>-<slug>.json
+# and run the new-project orchestrator (repo create -> rebrand -> scaffold ->
+# deploy-staging). See ADR-004 + .claude/skills/new-project/SKILL.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan_path:
+        description: 'Path to the plan JSON (e.g. plans/20260518-1700-task-tracker.json)'
+        required: true
+
+concurrency:
+  group: new-project
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  new-project:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Validate plan exists
+        run: |
+          set -euo pipefail
+          if [ ! -f "${{ inputs.plan_path }}" ]; then
+            echo "ERROR: plan file not found: ${{ inputs.plan_path }}" >&2
+            exit 1
+          fi
+          # Sanity-check it parses.
+          node -e "JSON.parse(require('fs').readFileSync('${{ inputs.plan_path }}','utf8'))"
+
+      - uses: ./.github/actions/restore-state
+        with:
+          env: staging
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          if [ -n "${SSH_PRIVATE_KEY}" ]; then
+            printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+          fi
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Run new-project orchestrator
+        env:
+          CI: 'true'
+          NON_INTERACTIVE: 'true'
+          DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GITHUB_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BETTER_UPTIME_API_KEY: ${{ secrets.BETTER_UPTIME_API_KEY }}
+          SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
+          SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}
+        run: |
+          node scripts/new-project.mjs --plan "${{ inputs.plan_path }}" --yes
+
+      - name: Persist staging state
+        if: always()
+        uses: ./.github/actions/persist-state
+        with:
+          env: staging
+          message: 'after new-project (run #${{ github.run_number }})'

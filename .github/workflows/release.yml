@@ -1,0 +1,61 @@
+name: Release
+
+# Two triggers:
+#   - workflow_dispatch with an explicit tag (manual re-draft)
+#   - push of a prod-* tag (auto-trigger by /promote)
+#
+# Drafts CHANGELOG.md + creates a GH release for the tag. See ADR-003 + ADR-004
+# + scripts/release.mjs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'prod-YYYYMMDD-HHmm tag (omit + leave auto=true to grab newest)'
+        required: false
+      auto:
+        description: 'Use newest prod-* tag if "tag" is empty'
+        type: boolean
+        default: true
+  push:
+    tags:
+      - 'prod-*'
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run release script
+        env:
+          CI: 'true'
+          NON_INTERACTIVE: 'true'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_REF##refs/tags/}"
+            node scripts/release.mjs --tag "${TAG}"
+          elif [ -n "${{ inputs.tag }}" ]; then
+            node scripts/release.mjs --tag "${{ inputs.tag }}"
+          else
+            node scripts/release.mjs --auto
+          fi

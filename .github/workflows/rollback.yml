@@ -1,0 +1,61 @@
+name: Rollback
+
+# Flip a Portainer stack's IMAGE_TAG to a known-good SHA. Pure image swap;
+# does not touch the DB. See ADR-004 + scripts/rollback.mjs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment to roll back (staging | prod)'
+        type: choice
+        options: [staging, prod]
+        required: true
+      slug:
+        description: 'Project slug (kebab-case). Defaults to package.json name.'
+        required: false
+      to_sha:
+        description: 'Target SHA (7+ chars) or "sha-<short>" or "latest"'
+        required: true
+
+concurrency:
+  group: rollback-${{ inputs.env }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/restore-state
+        with:
+          env: ${{ inputs.env }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run rollback script
+        env:
+          CI: 'true'
+          NON_INTERACTIVE: 'true'
+          GITHUB_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ARGS=(--env "${{ inputs.env }}" --to "${{ inputs.to_sha }}" --yes)
+          if [ -n "${{ inputs.slug }}" ]; then
+            ARGS+=(--slug "${{ inputs.slug }}")
+          fi
+          node scripts/rollback.mjs "${ARGS[@]}"
