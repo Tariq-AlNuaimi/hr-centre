@@ -69,7 +69,33 @@ jobs:
           if [ -n "${SSH_PUBKEY}" ]; then
             derived="$(ssh-keygen -y -f ~/.ssh/id_ed25519 2>/dev/null || true)"
             if [ -z "${derived}" ]; then
-              echo "::error::Could not parse SSH_PRIVATE_KEY (ssh-keygen -y failed). Likely CRLF line endings or missing BEGIN/END markers. Re-paste from a Linux shell or use 'gh secret set SSH_PRIVATE_KEY < ~/.ssh/id_ed25519'." >&2
+              # Structural diagnostics. None of these leak the key body --
+              # BEGIN/END markers and byte counts are not sensitive.
+              echo "::error::Could not parse SSH_PRIVATE_KEY (ssh-keygen -y failed)." >&2
+              echo "::error::Diagnostics on the written file:" >&2
+              bytes=$(wc -c < ~/.ssh/id_ed25519 | tr -d ' ')
+              lines=$(wc -l < ~/.ssh/id_ed25519 | tr -d ' ')
+              echo "::error::  bytes=${bytes}  lines=${lines}" >&2
+              if head -1 ~/.ssh/id_ed25519 | grep -q '^-----BEGIN'; then
+                first="$(head -1 ~/.ssh/id_ed25519)"
+                echo "::error::  first line: ${first}" >&2
+              else
+                echo "::error::  first line is NOT a BEGIN marker -- secret is truncated or wrong format" >&2
+              fi
+              if tail -1 ~/.ssh/id_ed25519 | grep -q -- '-----END'; then
+                last="$(tail -1 ~/.ssh/id_ed25519)"
+                echo "::error::  last line:  ${last}" >&2
+              else
+                echo "::error::  last line is NOT an END marker -- secret is truncated or had trailing whitespace stripped" >&2
+              fi
+              if grep -q $'\r' ~/.ssh/id_ed25519; then
+                echo "::error::  contains CRLF line endings -- re-export from a Linux/macOS shell, not Notepad" >&2
+              fi
+              if [ "${lines}" -lt 4 ]; then
+                echo "::error::  fewer than 4 lines -- the multi-line key probably got collapsed to one line on paste" >&2
+              fi
+              echo "::error::Remedy: from PowerShell where ~/.ssh/id_ed25519 lives, run:" >&2
+              echo "::error::  gh secret set SSH_PRIVATE_KEY --repo Tariq-AlNuaimi/fullstack-vibe-template --body-file \$HOME\\.ssh\\id_ed25519" >&2
               exit 1
             fi
             derived_body="$(printf '%s' "${derived}"  | awk '{print $2}')"
