@@ -54,6 +54,14 @@ export async function waitForSsh(host, user, sshKeyPath, timeoutMs = 300_000) {
   throw new Error(`ssh to ${host} did not succeed in ${timeoutMs}ms; last error: ${lastErr}`);
 }
 
+// Block until cloud-init has finished its runcmd (Docker + Caddy install).
+// `cloud-init status --wait` exits 0 on done, 2 on error. Without this the
+// Portainer install will run before /usr/bin/docker exists.
+export async function waitForCloudInit(host, sshKeyPath, timeoutMs = 600_000) {
+  step('portainer', `waiting for cloud-init on ${host}`);
+  await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs });
+}
+
 // Portainer install via docker run. cloud-init already installs Docker.
 export async function installPortainer(host, sshKeyPath) {
   step('portainer', `installing CE on ${host}`);

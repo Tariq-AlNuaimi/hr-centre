@@ -282,6 +282,11 @@ if ((!state.portainer || !state.portainer.adminPassword) && !values['skip-stack'
     // from the operator's browser, after propagation has settled.
     const sshHost = state.droplet.ip || state.droplet.reservedIp;
     await P.waitForSsh(sshHost, 'root', values['ssh-key-path']);
+    // Block until cloud-init's runcmd has finished installing Docker + Caddy.
+    // sshd accepts root login as soon as DO injects the key (within seconds),
+    // but cloud-init's apt-get docker install takes ~3-5 min. Without this,
+    // installPortainer's `docker run` hits 'command not found'.
+    await P.waitForCloudInit(sshHost, values['ssh-key-path']);
     await P.installPortainer(sshHost, values['ssh-key-path']);
     // Use the primary IP for in-script Portainer API calls (admin claim,
     // stack create, webhook). Reserved-IP routing can take 5-15 min to
