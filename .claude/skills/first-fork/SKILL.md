@@ -5,6 +5,9 @@ description: Walk the operator through one-time setup after forking the template
 
 # /first-fork — New project bootstrap
 
+> **Most operators should use `/new-project` or `/deploy` instead.**
+> Those skills automate the GitHub create + secret-setting + Portainer install + DNS that the rest of this doc walks through manually. Use `/first-fork` only if you can't grant DO/CF/GH API tokens to the automation, or if you're attaching to a pre-existing Portainer/host.
+
 One-time checklist to run on a fresh fork of the template. Each step is a deliberate decision -- ask the operator before doing it if there is any ambiguity. None of these touch the operator's local machine; everything is GitHub MCP / SSH / browser actions.
 
 ## Preconditions

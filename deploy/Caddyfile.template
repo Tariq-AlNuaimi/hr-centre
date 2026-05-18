@@ -1,0 +1,22 @@
+{
+  email {{caddy_email}}
+}
+
+# Standalone copy of the reverse-proxy block written into the Droplet by
+# cloud-init. Kept here so operators editing the template can diff against
+# what was deployed, and so /deploy --update-caddyfile can push changes to
+# existing Droplets.
+{{domain}} {
+  reverse_proxy 127.0.0.1:3000
+  encode gzip zstd
+  header {
+    Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+    X-Content-Type-Options nosniff
+    Referrer-Policy strict-origin-when-cross-origin
+    # CSP is set by the Next app (lib/security-headers.ts); don't duplicate.
+  }
+  # Optional: rate-limit /api/auth/* at the edge to complement the in-app
+  # token bucket. Caddy module is opt-in -- documented in deploy SKILL.md.
+  # @auth path /api/auth/*
+  # rate_limit @auth 10r/m
+}

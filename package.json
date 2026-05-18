@@ -17,6 +17,12 @@
     "prisma:studio": "prisma studio",
     "scaffold": "node scripts/scaffold-entity.mjs",
     "rebrand": "node scripts/rebrand.mjs",
+    "deploy": "node scripts/deploy.mjs",
+    "promote": "node scripts/promote.mjs",
+    "new-project": "node scripts/new-project.mjs",
+    "migrate-from": "node scripts/migrate-from.mjs",
+    "rollback": "node scripts/rollback.mjs",
+    "restore": "node scripts/restore.mjs",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },
@@ -56,6 +62,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "libsodium-wrappers": "^0.7.15",
     "tsx": "^4.21.0",
     "typescript": "^5"
   },

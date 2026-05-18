@@ -76,6 +76,31 @@ jobs:
             components/test-entity \
             'app/[locale]/(dashboard)/test-entity'
 
+      # Smoke 0: parse + dry-run check for the deploy/promote/new-project/migrate-from/rollback/restore scripts.
+      # Catches regressions in the JS without needing real DO/CF/GH tokens.
+      - name: Deploy pipeline scripts (parse + dry-run)
+        run: |
+          node --check scripts/lib/log.mjs
+          node --check scripts/lib/state.mjs
+          node --check scripts/lib/secrets.mjs
+          node --check scripts/lib/do.mjs
+          node --check scripts/lib/cloudflare.mjs
+          node --check scripts/lib/github.mjs
+          node --check scripts/lib/portainer.mjs
+          node --check scripts/deploy.mjs
+          node --check scripts/promote.mjs
+          node --check scripts/new-project.mjs
+          node --check scripts/migrate-from.mjs
+          node --check scripts/rollback.mjs
+          node --check scripts/restore.mjs
+          # deploy --dry-run exercises the orchestrator's full happy-path branching
+          node scripts/deploy.mjs --env staging --slug verify-smoke --domain verify.example.com --caddy-email ci@example.com --dry-run --yes
+          # new-project --dry-run with a minimal plan
+          cat > /tmp/np.json <<'JSON'
+          {"templateOwner":"tariq-alnuaimi","templateRepo":"fullstack-vibe-template","owner":"tariq-alnuaimi","slug":"verify-smoke","displayName":"Verify Smoke","domain":"verify.example.com","entities":[{"name":"Project","fields":"name:string","enums":null,"relations":null}]}
+          JSON
+          node scripts/new-project.mjs --plan /tmp/np.json --dry-run
+
       # Smoke 2: entity with enums + a relation (exercises the new codegen paths)
       - name: Scaffold smoke (enums + relations)
         run: |

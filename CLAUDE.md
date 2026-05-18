@@ -16,7 +16,7 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
 
 - **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
 - **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
-- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`.
+- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`, `/deploy`, `/promote`, `/new-project`, `/migrate-from`, `/rollback`, `/restore`.
 
 All harness files are project-name-agnostic and survive forks unchanged.
 
@@ -97,6 +97,12 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - `npm run dev` — Next.js dev server
 - `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...']`
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
+- `npm run deploy -- --env staging --domain ... --do-token ... --cf-token ... --gh-token ... --ssh-pubkey ... --caddy-email ...` — full provisioning + first deploy (see `/deploy` skill)
+- `npm run promote -- --sha HEAD --gh-token ... --yes` — staging → prod
+- `npm run new-project -- --plan /tmp/new-project.json ...` — idea → live staging URL in one run (see `/new-project` skill)
+- `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith
+- `npm run rollback -- --env prod --to sha-abc1234 --yes` — flip image tag, redeploy
+- `npm run restore -- --env prod --pick latest` — pull + decrypt + restore a backup into ephemeral Postgres
 - `npm test` — contract suite (rate limit, audit scrub, email, export) via `node:test`
 - `npm run prisma:migrate` / `:generate` / `:seed` / `:studio`
 - `npm run lint` — ESLint (incl. local plugin)

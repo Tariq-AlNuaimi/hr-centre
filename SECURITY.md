@@ -114,6 +114,8 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | `PORTAINER_WEBHOOK_URL` | GitHub repo secret (Restricted) | Anyone with this URL can trigger a redeploy. **Use a stack webhook** so the SHA query string is honored. |
 | `PROD_BASE_URL` | GitHub repo secret (Confidential) | Used by `audit-retention.yml` to know where to POST. |
 | GHCR push token | `GITHUB_TOKEN` (Restricted — managed by Actions) | Inherits the workflow token. |
+| `DO_API_TOKEN` | operator's shell / CI secret store (Restricted) | DigitalOcean PAT — full-account scope (DO has no fine-grained PATs). Used by `/deploy` to provision Droplets, reserved IPs, Spaces. **Use a dedicated automation DO account isolated from billing-owner.** Never committed to repo secrets unless a CI workflow legitimately needs to call DO; `/deploy` is operator-side. |
+| `CLOUDFLARE_API_TOKEN` | operator's shell (Restricted) | Cloudflare API token scoped to `Zone.DNS:Edit` on one zone. Used by `/deploy` to upsert A records. Never committed to repo secrets. |
 
 **Rotation log:** (downstream projects record every rotation event here)
 
