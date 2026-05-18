@@ -49,9 +49,16 @@ export async function validateToken(token) {
 // SSH keys -------------------------------------------------------------------
 
 export async function ensureSshKey(token, name, pubkey) {
+  // DO indexes uploaded keys by fingerprint; the same pubkey uploaded twice
+  // (even under different names) returns 422 "already in use". Match on the
+  // public_key content first (handles cross-project reuse), then by name
+  // (handles partial re-runs of the same project).
+  const trimmed = pubkey.trim();
   const list = await call(token, '/account/keys?per_page=200');
-  const existing = list.ssh_keys.find(k => k.name === name);
-  if (existing) return existing;
+  const byContent = list.ssh_keys.find(k => (k.public_key || '').trim() === trimmed);
+  if (byContent) return byContent;
+  const byName = list.ssh_keys.find(k => k.name === name);
+  if (byName) return byName;
   const created = await call(token, '/account/keys', {
     method: 'POST',
     body: JSON.stringify({ name, public_key: pubkey }),
