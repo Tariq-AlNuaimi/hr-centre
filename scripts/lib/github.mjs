@@ -39,7 +39,23 @@ async function call(token, path, init = {}) {
 }
 
 export async function validateToken(token) {
-  return call(token, '/user');
+  // PATs hit /user successfully. The runner's auto-generated GITHUB_TOKEN
+  // (installation token) returns 403 -- it's not a user identity, and it
+  // lacks the admin:write / secrets:write permissions deploy.mjs needs
+  // downstream anyway. Fail fast with the exact remediation.
+  try {
+    return await call(token, '/user');
+  } catch (e) {
+    if (String(e.message).includes('403')) {
+      throw new Error(
+        'GH token is the runner\'s default GITHUB_TOKEN (installation token, ' +
+        'no /user access, no admin write). Set the GH_AUTOMATION_TOKEN repo ' +
+        'secret to a fine-grained PAT with: contents r/w, administration r/w, ' +
+        'secrets r/w, actions r/w, workflows. See .claude/skills/first-fork.'
+      );
+    }
+    throw e;
+  }
 }
 
 // Repo create from template -------------------------------------------------
