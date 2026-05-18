@@ -11,7 +11,7 @@
 // the operator may use Actions secrets instead; the deploy skill calls this
 // out.
 
-import { step, warn } from './log.mjs';
+import { step } from './log.mjs';
 
 const API = 'https://api.github.com';
 
@@ -64,7 +64,7 @@ export async function waitForRepoReady(token, owner, name, timeoutMs = 30_000) {
     try {
       const r = await call(token, `/repos/${owner}/${name}`);
       if (r && r.default_branch) return r;
-    } catch (e) {
+    } catch {
       if (!String(e.message).includes('404')) throw e;
     }
     await new Promise(res => setTimeout(res, 2000));
@@ -82,7 +82,7 @@ async function sodium() {
     await mod.default.ready;
     _sodium = mod.default;
     return _sodium;
-  } catch (e) {
+  } catch {
     throw new Error(
       'libsodium-wrappers not installed. Run `npm install` (it is a devDep) or pass --skip-secrets to use the GitHub UI manually.'
     );

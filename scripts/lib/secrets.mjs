@@ -4,7 +4,7 @@
 // existing /first-fork checklist asks for, so a deploy run produces the same
 // shape of value the operator would have pasted by hand.
 
-import { randomBytes, generateKeyPairSync } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 
 export function randB64(bytes) {
   return randomBytes(bytes).toString('base64');

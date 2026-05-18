@@ -8,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 
-const { Title, Paragraph } = Typography;
+const { Title } = Typography;
 
 export default function DashboardPage() {
   const t = useTranslations("nav");

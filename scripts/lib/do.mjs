@@ -12,7 +12,7 @@
 // Token scope: full account (DO doesn't have fine-grained PATs). The operator
 // is told to use a dedicated automation account in the skill doc.
 
-import { ok, step, warn } from './log.mjs';
+import { step, warn } from './log.mjs';
 
 const API = 'https://api.digitalocean.com/v2';
 

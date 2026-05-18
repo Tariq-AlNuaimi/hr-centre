@@ -9,7 +9,7 @@
 // the script lightweight; operators already have ssh on PATH.
 
 import { spawn } from 'node:child_process';
-import { step, ok, warn } from './log.mjs';
+import { step } from './log.mjs';
 
 export function sshExec(host, user, command, { sshKeyPath, timeoutMs = 180_000 } = {}) {
   return new Promise((resolve, reject) => {

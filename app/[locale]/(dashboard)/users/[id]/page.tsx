@@ -16,6 +16,7 @@ interface UserRecord {
   email: string;
   name: string | null;
   role: string;
+  password?: string;
 }
 
 export default function EditUserPage() {
@@ -24,7 +25,7 @@ export default function EditUserPage() {
   const pathname = usePathname();
   const params = useParams();
   const { success, error: showError } = useNotify();
-  const { getById, update } = useCrud<UserRecord & { id: string }>({
+  const { getById, update } = useCrud<UserRecord>({
     basePath: "/api/users",
   });
 
@@ -55,7 +56,7 @@ export default function EditUserPage() {
       // Remove empty password
       const data = { ...values };
       if (!data.password) delete data.password;
-      await update(id, data as any);
+      await update(id, data);
       success("User updated");
       router.push(`/${locale}/users`);
     } catch (err) {

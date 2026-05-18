@@ -36,14 +36,20 @@ export function ThemeProvider({
   const [mode, setMode] = useState<ThemeMode>("system");
   const [isDark, setIsDark] = useState(false);
 
+  // localStorage + matchMedia → setState inside useEffect is the documented
+  // Next.js pattern for theme persistence under SSR. Reading these synchronously
+  // during render would cause hydration mismatch. The set-state-in-effect rule's
+  // own docs allow "external platform sync"; we suppress per-line here.
   useEffect(() => {
     const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setMode(saved);
   }, []);
 
   useEffect(() => {
     localStorage.setItem("theme-mode", mode);
     if (mode === "system") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDark(getSystemDark());
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
       const handler = (e: MediaQueryListEvent) => setIsDark(e.matches);

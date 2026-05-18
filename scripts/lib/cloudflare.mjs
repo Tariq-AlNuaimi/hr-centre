@@ -7,7 +7,7 @@
 // Token scope expected: Zone.DNS:Edit on a single zone. Script validates the
 // token shape upfront via /user/tokens/verify before any mutating call.
 
-import { step, ok, warn } from './log.mjs';
+import { step, warn } from './log.mjs';
 
 const API = 'https://api.cloudflare.com/client/v4';
 

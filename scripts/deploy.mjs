@@ -307,7 +307,6 @@ if (!values['skip-secrets']) {
   if (!DRY) {
     const secrets = buildSecretMap(state, {
       domain: DOMAIN,
-      slug: SLUG,
       backupBucket: BACKUP_BUCKET,
       rcloneRemote: values['rclone-remote'],
       sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
@@ -437,7 +436,7 @@ async function renderCloudInit({ ssh_pubkey, caddy_email, domain }) {
     .replaceAll('{{domain}}', domain);
 }
 
-function buildSecretMap(state, { domain, slug, backupBucket, rcloneRemote, sentryDsn }) {
+function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }) {
   // Everything CI + the workflows + restore-test need.
   const m = {
     AUTH_SECRET: authSecret(),

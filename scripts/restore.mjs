@@ -16,10 +16,10 @@
 
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { step, ok, warn, bail, info, err, dryPrefix } from './lib/log.mjs';
+import { step, ok, warn, bail, err, dryPrefix } from './lib/log.mjs';
 import { readState } from './lib/state.mjs';
 
-const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+const _CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
 
 process.on('unhandledRejection', (e) => { err('restore', `unhandled rejection: ${e && e.stack || e}`); process.exit(1); });
 process.on('uncaughtException',  (e) => { err('restore', `uncaught exception: ${e && e.stack || e}`); process.exit(1); });

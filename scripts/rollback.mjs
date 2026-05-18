@@ -11,7 +11,7 @@
 //   npm run rollback -- --env prod --to sha-abc1234 --dry-run
 
 import { parseArgs } from 'node:util';
-import { step, ok, warn, bail, info, err, dryPrefix } from './lib/log.mjs';
+import { step, ok, bail, err, dryPrefix } from './lib/log.mjs';
 import { readState } from './lib/state.mjs';
 import * as P from './lib/portainer.mjs';
 import * as GH from './lib/github.mjs';

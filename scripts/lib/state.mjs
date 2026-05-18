@@ -34,7 +34,7 @@ export async function readState(env) {
   try {
     const raw = await readFile(statePath(env), 'utf8');
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     if (e && e.code === 'ENOENT') return emptyState(env);
     throw e;
   }
@@ -109,7 +109,7 @@ export async function tagResource(do_client, token, type, id, slug, env) {
         method: 'POST',
         body: JSON.stringify({ name }),
       });
-    } catch (e) {
+    } catch {
       // 409 / "already exists" is fine.
       if (!/409|already/i.test(String(e.message))) {
         // Surface but don't bail -- tagging is best-effort backup.
@@ -127,7 +127,7 @@ export async function tagResource(do_client, token, type, id, slug, env) {
           resources: [{ resource_id: String(id), resource_type: resourceType }],
         }),
       });
-    } catch (e) {
+    } catch {
       // Some resource types may not accept tags via this endpoint on all
       // accounts. Best-effort.
       // TODO: validate POST /v2/tags/{name}/resources for reserved_ip + spaces_bucket
