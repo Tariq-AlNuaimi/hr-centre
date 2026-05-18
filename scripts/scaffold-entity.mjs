@@ -510,10 +510,13 @@ function formFile() {
         <RelationSelect path="/api/${r.targetKebab}" displayField="${r.displayField}" />
       </Form.Item>`);
 
+  // Form value type aligns with the Record type from columnsFile: optional
+  // scalars include `| null` so `<Form initialValues={record}>` accepts the
+  // Prisma row shape (where optional fields can be null) directly.
   const valueTypeParts = [
-    ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}`),
-    ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}`),
-    ...relations.map((r) => `${r.name}Id${r.optional ? '?' : ''}: string`),
+    ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}${f.optional ? ' | null' : ''}`),
+    ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}${e.optional ? ' | null' : ''}`),
+    ...relations.map((r) => `${r.name}Id${r.optional ? '?' : ''}: string${r.optional ? ' | null' : ''}`),
   ];
   const valueType = `{ ${valueTypeParts.join('; ')} }`;
 
@@ -789,6 +792,14 @@ async function patchSidebar() {
   const path = join(ROOT, 'components/layout/AppSidebar.tsx');
   const src = await readFile(path, 'utf8');
   if (src.includes(`key: "${entityKebab}"`)) return null;
+
+  // Check whether AppstoreOutlined is already in the @ant-design/icons import
+  // block. We have to do this BEFORE inserting the menu entry, because the
+  // menu entry contains `<AppstoreOutlined />` and would otherwise pollute a
+  // file-wide search for the identifier.
+  const importMatch = src.match(/import\s+\{([^}]*)\}\s+from\s+"@ant-design\/icons";/);
+  const alreadyImported = importMatch && /\bAppstoreOutlined\b/.test(importMatch[1]);
+
   const marker = '    {\n      key: "recycling-bin",';
   if (!src.includes(marker)) throw new Error('Could not locate recycling-bin nav entry.');
   const insertion = `    {
@@ -799,7 +810,8 @@ async function patchSidebar() {
     },
 `;
   let out = src.replace(marker, insertion + marker);
-  if (!/AppstoreOutlined/.test(out)) {
+
+  if (!alreadyImported) {
     out = out.replace(
       /(\}\s*from "@ant-design\/icons";)/,
       '  AppstoreOutlined,\n$1'
