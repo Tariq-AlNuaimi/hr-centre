@@ -273,9 +273,24 @@ if (!state.cloudflare || !state.cloudflare.recordId) {
 if ((!state.portainer || !state.portainer.adminPassword) && !values['skip-stack']) {
   step('deploy', `${DRYP}installing Portainer on droplet`);
   if (!DRY) {
-    await P.waitForSsh(state.droplet.reservedIp, 'root', values['ssh-key-path']);
-    await P.installPortainer(state.droplet.reservedIp, values['ssh-key-path']);
-    const portainerUrl = `https://${state.droplet.reservedIp}:9443`;
+    // SSH to the Droplet's primary public IP, not the reserved IP. DO
+    // reserved-IP routing can take 1-5 min to propagate from GH Actions
+    // runner egress after assignment, so the reserved-IP path can stay
+    // unreachable past our 5-min SSH wait. The primary IP works from boot.
+    // The reserved IP is what end users hit via Cloudflare DNS; Portainer
+    // admin URL still uses it because that access happens minutes later
+    // from the operator's browser, after propagation has settled.
+    const sshHost = state.droplet.ip || state.droplet.reservedIp;
+    await P.waitForSsh(sshHost, 'root', values['ssh-key-path']);
+    await P.installPortainer(sshHost, values['ssh-key-path']);
+    // Use the primary IP for in-script Portainer API calls (admin claim,
+    // stack create, webhook). Reserved-IP routing can take 5-15 min to
+    // propagate from GH Actions egress, longer than this script's runtime.
+    // The primary IP is reachable from boot. publicUrl (below) is what we
+    // report to the operator for browser access -- by then propagation has
+    // settled.
+    const portainerUrl = `https://${sshHost}:9443`;
+    const portainerPublicUrl = `https://${state.droplet.reservedIp}:9443`;
     const adminPw = `Ops!${authSecret().slice(0, 20)}`;
     // Bypass self-signed cert for the install-window calls.
     const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
@@ -288,9 +303,9 @@ if ((!state.portainer || !state.portainer.adminPassword) && !values['skip-stack'
       if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
       else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
     }
-    state = mark(state, 'portainer', { url: portainerUrl, adminPassword: adminPw, stackId: null, webhookUrl: null });
+    state = mark(state, 'portainer', { url: portainerUrl, publicUrl: portainerPublicUrl, adminPassword: adminPw, stackId: null, webhookUrl: null });
     await writeState(ENV, state);
-    ok('deploy', `Portainer claimed at ${portainerUrl} (admin: ops-admin)`);
+    ok('deploy', `Portainer claimed at ${portainerUrl} (operator URL: ${portainerPublicUrl}; admin: ops-admin)`);
   } else {
     dim('deploy', `would install: Portainer CE on droplet :9443 + bootstrap admin`);
   }
