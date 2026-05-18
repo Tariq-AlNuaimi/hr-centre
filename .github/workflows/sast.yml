@@ -10,7 +10,7 @@ jobs:
     container:
       image: semgrep/semgrep
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # Rulesets:
       #   p/javascript       -- generic JS/TS issues (eval, XSS sinks, etc.)
