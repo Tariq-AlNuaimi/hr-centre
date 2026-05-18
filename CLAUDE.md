@@ -16,7 +16,7 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
 
 - **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
 - **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
-- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`, `/deploy`, `/promote`, `/new-project`, `/migrate-from`, `/rollback`, `/restore`.
+- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`, `/deploy`, `/promote`, `/release`, `/new-project`, `/migrate-from`, `/rollback`, `/restore`.
 
 All harness files are project-name-agnostic and survive forks unchanged.
 
@@ -47,6 +47,7 @@ Pushes to `main` go through `docker-build.yml` instead. See `SECURITY.md` §14.
 - **Validation:** `zod`
 - **Backup:** encrypted off-host sidecar (`deploy/backup.sh`) using age + rclone. Gated by `BACKUP_ENABLED`.
 - **Host:** Portainer-managed Docker host · GHCR · stack-webhook for SHA pinning.
+- **Observability:** `@sentry/nextjs` for error tracking + Better Uptime for `/api/health` monitoring. Both are operator-side SaaS configured per project during `/first-fork` step 12 and wired by `/deploy`. Wrapper at `lib/sentry.ts` shares the audit-extension `SCRUB_FIELDS` so contexts are scrubbed before they leave the process. See ADR-002.
 
 ## Local ESLint plugin
 `eslint-rules/` is a project-local plugin enforcing four CLAUDE.md hard rules. It runs on every push via `verify.yml` (the `npm run lint` step). All four rules are configured at `error`.
@@ -99,6 +100,7 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
 - `npm run deploy -- --env staging --domain ... --do-token ... --cf-token ... --gh-token ... --ssh-pubkey ... --caddy-email ...` — full provisioning + first deploy (see `/deploy` skill)
 - `npm run promote -- --sha HEAD --gh-token ... --yes` — staging → prod
+- `npm run release -- --tag prod-YYYYMMDD-HHmm` (or `--auto`) — draft CHANGELOG + GitHub release after `/promote` (see ADR-003)
 - `npm run new-project -- --plan /tmp/new-project.json ...` — idea → live staging URL in one run (see `/new-project` skill)
 - `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith
 - `npm run rollback -- --env prod --to sha-abc1234 --yes` — flip image tag, redeploy

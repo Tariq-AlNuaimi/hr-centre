@@ -97,7 +97,25 @@ The template ships the workflow files, but rulesets cannot be configured by the 
 ### 11. Write the first project ADR
 Run `/adr` with a title that captures the project's *purpose* (not the stack — ADR-001 covers the stack). Example title: "Acme Portal scope and tier classification". This forces a written record of what the fork is for, who owns it, and what data class it targets.
 
-### 12. Smoke deploy
+### 12. Observability (Sentry + Better Uptime)
+Both are operator-side SaaS per ADR-002. The template ships the wiring; you create the accounts once per project.
+
+**Sentry:**
+1. Sign in at https://sentry.io → create a new project (platform: Next.js). Capture the DSN.
+2. (Optional) Create one Sentry project per environment (staging, production) for clean separation. Reuse the same org.
+3. Set GitHub **repo secret** `SENTRY_AUTH_TOKEN` to a Sentry auth token with `project:releases` + `org:read` scope (needed by CI for source-map upload). Without it the upload step skips with a warning -- the app still runs, just without symbolicated stack traces.
+4. Set GitHub **repo vars** (not secrets) `SENTRY_ORG` and `SENTRY_PROJECT` (e.g. `acme`, `acme-portal-prod`).
+5. When you run `/deploy`, pass `--sentry-dsn <DSN>` (or export `SENTRY_DSN`) so the stack env carries it. The same DSN doubles as `NEXT_PUBLIC_SENTRY_DSN` (DSNs are public-by-design — SECURITY.md §6).
+6. If you skip Sentry: leave the secrets unset. Everything still works; errors just aren't reported.
+
+**Better Uptime (Better Stack):**
+1. Sign in at https://betterstack.com/uptime → create a team for the project.
+2. Settings → API tokens → generate a Telemetry/Uptime API key.
+3. Export `BETTER_UPTIME_API_KEY` in the shell when you run `/deploy` (or pass `--better-uptime-key`). `/deploy` will register a status monitor against `https://<domain>/api/health` and persist the monitor id to `.deploy-state.<env>.json`. `--destroy` removes it.
+4. (Optional) Add an on-call rotation + escalation policy in the Better Uptime UI.
+5. If you skip Better Uptime: leave the env unset. `/deploy` prints a warning and continues.
+
+### 13. Smoke deploy
 Push a trivial commit to `main`. Watch:
 - `verify.yml` -> green
 - `secrets-scan.yml` -> green
@@ -107,7 +125,7 @@ Push a trivial commit to `main`. Watch:
 
 Log into the app with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (from the Portainer stack env, not committed). **Rotate the seed password on first login** and update the Portainer env.
 
-### 13. (Optional) Workflow dispatches to verify the chain
+### 14. (Optional) Workflow dispatches to verify the chain
 - Trigger `audit-retention.yml` `workflow_dispatch` -> expect a 200 with a count.
 - Trigger `restore-test.yml` `workflow_dispatch` -> expect a green run after the first nightly backup completes (so there's something on the remote to restore).
 
@@ -130,3 +148,7 @@ List every secret that was set, every Portainer stack env that was set, and the 
 | `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO admin | Portainer stack only |
 | `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | scoped mc user | Portainer stack only |
 | `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | one-shot bootstrap | Portainer stack only; rotate on first login |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Sentry project DSN | GH repo + Portainer stack (public-by-design, not Restricted) |
+| `SENTRY_AUTH_TOKEN` | Sentry org auth token | GH repo secret only (CI source-map upload) |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | Sentry slugs | GH repo **vars** (not secrets) |
+| `BETTER_UPTIME_API_KEY` | Better Uptime API token | Operator shell at `/deploy` time (Restricted) |

@@ -116,6 +116,10 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | GHCR push token | `GITHUB_TOKEN` (Restricted — managed by Actions) | Inherits the workflow token. |
 | `DO_API_TOKEN` | operator's shell / CI secret store (Restricted) | DigitalOcean PAT — full-account scope (DO has no fine-grained PATs). Used by `/deploy` to provision Droplets, reserved IPs, Spaces. **Use a dedicated automation DO account isolated from billing-owner.** Never committed to repo secrets unless a CI workflow legitimately needs to call DO; `/deploy` is operator-side. |
 | `CLOUDFLARE_API_TOKEN` | operator's shell (Restricted) | Cloudflare API token scoped to `Zone.DNS:Edit` on one zone. Used by `/deploy` to upsert A records. Never committed to repo secrets. |
+| `SENTRY_AUTH_TOKEN` | GitHub repo secret (Restricted) | CI-only. Used by `docker-build.yml` to upload source-maps to Sentry on each main-branch build. Scope: `project:releases` + `org:read`. Missing token → upload step skips silently; app still runs. See ADR-002. |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | GH repo + Portainer stack (Public) | Per-project Sentry DSN. **Not classified as Restricted** — Sentry DSNs are designed by Sentry to ship in client bundles. Documented here for clarity / completeness. See ADR-002. |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | GitHub repo **vars** (Public) | Sentry org / project slugs. Repo vars (not secrets) so they're configurable per fork without exposing the token. |
+| `BETTER_UPTIME_API_KEY` | operator's shell at `/deploy` time (Restricted) | Used by `/deploy` to POST a Better Uptime monitor against `https://<domain>/api/health` and to DELETE it on `--destroy`. Holder can read / write / delete every monitor on the account — keep scoped to a project-specific Better Stack team. Not stored as a repo secret because nothing in CI calls Better Uptime. See ADR-002. |
 
 **Rotation log:** (downstream projects record every rotation event here)
 
@@ -178,7 +182,7 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 | A06 Vulnerable Components | `npm audit --audit-level=high --omit=dev` in `verify.yml` ✅. |
 | A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; rate limit ✅; no MFA ⚠️ (T-02); no account lockout ⚠️. |
 | A08 Software & Data Integrity | GHCR image SHA-pinning via stack webhook ✅; gitleaks blocking ✅; Semgrep blocking ✅; tested restore drill quarterly ✅. |
-| A09 Logging & Monitoring | Auto-audit ✅; retention enforced via `/api/internal/audit-purge` ✅; no Sentry / Prometheus wired ⚠️. |
+| A09 Logging & Monitoring | Auto-audit ✅; retention enforced via `/api/internal/audit-purge` ✅; Sentry SaaS (opt-in per project, ADR-002) ✅; Better Uptime SaaS for `/api/health` (opt-in per project, ADR-002) ✅; no Prometheus / metrics yet ⚠️. |
 | A10 SSRF | No outbound HTTP from the app by default. |
 
 ASVS Level 2 is a reasonable target once T-02 (MFA) and T-09 (scoped MinIO key per fork) are closed.
