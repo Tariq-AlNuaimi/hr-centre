@@ -1,37 +1,66 @@
 ---
 name: rollback
-description: Flip a Portainer stack's IMAGE_TAG to a previous SHA and trigger redeploy. Pure image swap; doesn't touch the DB. Use when the user says "rollback", "revert prod", "the latest deploy is broken", "/rollback", or wants to retreat to a known-good commit. Re-uses the T-04 SHA-pinning pattern.
+description: Flip a Portainer stack's IMAGE_TAG to a previous SHA. Pure image swap; doesn't touch the DB. Executes via the `rollback.yml` GitHub Actions workflow (ADR-004). Use when the user says "rollback", "revert prod", "the latest deploy is broken", "/rollback".
 ---
 
-# /rollback — Flip the image tag, redeploy
+# /rollback — CI-driven image-tag flip
 
-~30 seconds end-to-end. The stack webhook honors `IMAGE_TAG=sha-<short>` (T-04 SHA pinning), so rollback is just a webhook call with an older tag.
+~30 seconds end-to-end. The stack webhook honors `IMAGE_TAG=sha-<short>`
+(T-04 SHA pinning), so rollback is one webhook call.
+
+> **Executes via GH Actions workflow.** Claude composes inputs; operator
+> dispatches `rollback.yml`. See ADR-004.
+
+## Claude's job
+
+1. Ask the operator which env and which target SHA.
+2. (Optional) Help find a known-good SHA via:
+   ```sh
+   gh run list --workflow=docker-build.yml --branch=main --limit=10 \
+     --json conclusion,displayTitle,headSha,createdAt
+   ```
+3. Compose the workflow trigger.
+4. Tail and report.
 
 ## Inputs
 
-| Flag | Notes |
+| Input | Notes |
 |---|---|
-| `--env` | `staging` or `prod` (default `prod`) |
-| `--to <sha-tag>` | e.g. `sha-abc1234`. Or `latest` to roll forward. |
-| `--list-recent` | Print the last 10 main builds with their SHAs |
-| `--gh-token` | Needed for `--list-recent` |
+| `env` | `staging` or `prod` |
+| `slug` | optional; defaults to `package.json` name |
+| `to_sha` | target SHA: `abc1234`, `sha-abc1234`, or `latest` to roll forward |
 
-## Steps
+## Trigger command Claude composes
 
-1. (Optional) `npm run rollback -- --list-recent --env prod --gh-token ghp_...` to see the SHA list.
-2. `npm run rollback -- --env prod --to sha-<short> --yes` — fires the webhook.
-3. `curl https://<env>/api/health` after ~30s.
+```sh
+gh workflow run rollback.yml \
+  -f env=prod \
+  -f slug=acme-portal \
+  -f to_sha=sha-abc1234
+```
+
+## What the workflow does
+
+1. Restores `.deploy-state.<env>.json` from the state branch.
+2. Runs `scripts/rollback.mjs --env <env> --to <sha> --yes`.
+3. Script normalizes `--to abc1234` to `sha-abc1234`, fires the Portainer
+   stack webhook with `?IMAGE_TAG=sha-abc1234`.
+4. Operator verifies with `curl https://<env-domain>/api/health`.
 
 ## What this does NOT do
 
-- **Does not roll back database migrations.** If the failing deploy ran a destructive migration, rollback alone won't restore the schema. Use `/restore` for DB-level recovery, then `/rollback`.
-- **Does not change the git default branch.** `main` continues to point at the latest commit. Operators wanting to undo on a code level should `git revert` separately.
+- **Database migrations.** If the failing deploy ran a destructive
+  migration, rollback alone won't restore the schema. Use `/restore` for DB
+  recovery, then `/rollback`.
+- **Change git default branch.** `main` continues to point at the latest
+  commit. Use `git revert` separately for code-level reversion.
 
-## Confirmation gate
+## Concurrency
 
-The script requires `--yes` for prod (refuses otherwise) and prints the current vs. target SHA before firing.
+`concurrency: { group: rollback-<env>, cancel-in-progress: false }`.
 
 ## Read before
+- `.github/workflows/rollback.yml`
 - `scripts/rollback.mjs`
-- `SECURITY.md` T-04 (image-tag pinning)
-- `docker-compose.prod.yml` (the `IMAGE_TAG:-latest` resolution)
+- SECURITY.md T-04 (image-tag pinning)
+- ADR-004

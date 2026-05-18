@@ -1,86 +1,66 @@
 ---
 name: release
-description: Draft a CHANGELOG entry + GitHub release from the commits between the previous prod-* tag and the current one. Use after /promote, when the user says "release", "draft release notes", "changelog", "/release", "after promote". Composable -- never runs automatically inside /promote.
+description: Draft a CHANGELOG entry + GitHub release from the commits between the previous prod-* tag and the current one. Executes via the `release.yml` GitHub Actions workflow (ADR-004), and is auto-triggered by the `prod-*` tag push from `/promote`. Use when the user says "release", "draft release notes", "changelog", "/release", "after promote".
 ---
 
-# /release — Draft CHANGELOG + GitHub release after /promote
+# /release — CI-driven release notes + GH release
 
-Reads the commits between the previous `prod-*` tag and the one `/promote` just created, categorizes them by Conventional Commits prefix, prepends a section to `CHANGELOG.md`, and creates a corresponding GitHub release. See ADR-003.
+`release.yml` has two triggers:
 
-## When to use
+1. **Push of a `prod-*` tag** — `/promote` always tags `prod-YYYYMMDD-HHmm`,
+   which auto-fires this workflow. **Most operators never need to invoke
+   `/release` manually.**
+2. **`workflow_dispatch`** — for re-drafting an old tag, or if the
+   auto-trigger was skipped (e.g. hotfix path).
 
-- Right after `/promote` succeeds — every prod deploy gets a release entry by default.
-- Standalone, if you need to re-draft notes for an old tag (`--tag prod-...`).
-- Skip it on a hotfix where the audit trail would muddy the timeline — that's why it isn't wired into `/promote` (ADR-003).
+See ADR-003 (composable, not auto-inside-/promote) + ADR-004 (CI-driven ops).
 
-## Inputs
+## When to invoke manually
 
-| Flag | Default | Notes |
-|---|---|---|
-| `--tag` | — | Explicit `prod-YYYYMMDD-HHmm` tag. If omitted, use `--auto`. |
-| `--auto` | false | Use the newest `prod-*` tag in the repo. |
-| `--dry-run` | false | Print the entry; don't write / commit / push / call GH. |
-| `--no-commit` | false | Skip the `git commit` (the file is still updated). |
-| `--no-push` | false | Skip the `git push` after the commit. |
-| `--gh-token` | `$GITHUB_TOKEN` | PAT with `repo` scope. |
+- Re-draft notes for a previous `prod-*` tag.
+- The push-trigger was skipped (workflow disabled, GH outage during the
+  promote run).
+- Inspecting categorization in dry-run (run script locally).
 
-## Steps
+## Manual trigger command Claude composes
 
-1. `git fetch --tags` (the operator runs this — not the script).
-2. Walk: show diff preview of the categorized commits.
-3. Ask: "create CHANGELOG entry + GH release for `<tag>`?"
-4. Run: `npm run release -- --tag <tag>` (or `--auto`).
-5. Push the new commit.
-6. Report the GH release URL back to the operator.
+```sh
+gh workflow run release.yml \
+  -f tag=prod-20260518-1530         # explicit
+# or omit tag with auto=true (default) to use newest:
+gh workflow run release.yml
+```
 
-## Conventional Commits buckets
+## What the workflow does
 
-| Prefix | Section in CHANGELOG |
-|---|---|
-| `feat:` | Features |
-| `fix:` | Fixes |
-| `perf:` | Performance |
-| `refactor:` | Refactors |
-| `docs:` | Docs |
-| `test:` | Tests |
-| `build:` | Build |
-| `ci:` | CI |
-| `chore:` | Chores |
-| `style:` | Style |
-| `revert:` | Reverts |
-| anything else | Other |
-
-Scopes (`feat(api): ...`) are preserved in the message text but don't change the bucket.
+1. `actions/checkout@v5` with full history (tags needed).
+2. `npm ci`.
+3. Runs `scripts/release.mjs`:
+   - On push: `--tag <pushed tag>`.
+   - On dispatch with `tag`: `--tag <provided>`.
+   - On dispatch without tag: `--auto` (newest prod-*).
+4. Script:
+   - Lists prod tags, finds previous, diffs commit log.
+   - Categorizes by Conventional Commits prefix.
+   - Prepends a section to `CHANGELOG.md`.
+   - Commits + pushes (`chore(release): <tag>`).
+   - Creates the GitHub release via the REST API using `${{ secrets.GITHUB_TOKEN }}`.
 
 ## Refusal cases
 
-- No `prod-*` tags in the repo → bails with a hint to run `/promote` first.
-- `--tag <X>` not found locally → bails (operator runs `git fetch --tags`).
-- `GITHUB_TOKEN` unset and not `--dry-run` → bails.
-- GH release for the same tag already exists → warns and continues (idempotent).
-
-## Usage
-
-```
-# Right after /promote tagged prod-20260518-1530:
-git fetch --tags
-npm run release -- --tag prod-20260518-1530
-
-# Or just take the latest:
-npm run release -- --auto
-
-# Inspect before writing:
-npm run release -- --auto --dry-run
-```
+- No `prod-*` tags in the repo → bails. Run `/promote` first.
+- Tag not found locally → bails (the push trigger always supplies a real
+  tag; only relevant on manual dispatch).
+- GH release already exists for the tag → warns and continues (idempotent).
 
 ## Report back
 
-- The tag that was released.
-- Number of commits per bucket.
-- The new CHANGELOG.md line count delta.
-- The GitHub release URL.
+- The tag released.
+- Commits per bucket (Features / Fixes / etc.).
+- The GitHub release URL from the workflow output.
 
-## Read before deeper changes
-- `scripts/release.mjs` — the implementation
-- `docs/decisions/ADR-003-release-process.md` — why this is composable not automatic
-- `.claude/skills/promote/SKILL.md` — the upstream trigger
+## Read before
+- `.github/workflows/release.yml`
+- `scripts/release.mjs`
+- ADR-003 (composable release process)
+- ADR-004 (CI-driven ops)

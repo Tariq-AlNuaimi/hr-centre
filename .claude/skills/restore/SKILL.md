@@ -1,66 +1,86 @@
 ---
 name: restore
-description: Pull a backup dump from the off-host rclone remote, decrypt with BACKUP_AGE_IDENTITY, restore into a NEW Postgres container (never live). Use when the user says "restore from backup", "test a backup", "investigate yesterday's data", "/restore", or wants to verify a backup is good. Hot-swap into live is intentionally manual (runbook, not one flag).
+description: Pull a backup dump from the off-host rclone remote, decrypt with BACKUP_AGE_IDENTITY, restore into a NEW Postgres container. Executes via the `restore.yml` GitHub Actions workflow (ADR-004). Never the live one. Use when the user says "restore from backup", "test a backup", "investigate yesterday's data", "/restore".
 ---
 
-# /restore — Backup → ephemeral Postgres
+# /restore — CI-driven restore into ephemeral Postgres
 
-This skill is for **inspection** and **disaster-recovery drills**, not blind in-place restoration. Live-stack swap requires manual edit of the Portainer stack — by design.
+For **inspection** and **disaster-recovery drills**, not blind in-place
+restoration. Live-stack swap is intentionally manual.
 
-## Preconditions
+> **Executes via GH Actions workflow.** Claude composes inputs; operator
+> dispatches `restore.yml`. The workflow installs rclone + age + psql,
+> materializes `RCLONE_CONFIG` and `BACKUP_AGE_IDENTITY` from secrets, runs
+> the restore script inside the runner. See ADR-004.
 
-- `rclone`, `age`, `docker`, `psql` on PATH.
-- `BACKUP_AGE_IDENTITY` (the private key) is at a path the operator knows; default lookup is `/opt/backup/keys/<env>.identity` on the host.
-- The backup pipeline (`deploy/backup.sh` sidecar) has produced at least one dump.
+## Claude's job
+
+1. Ask the operator which env + which dump (default `latest`).
+2. Compose the workflow trigger.
+3. Tail and report.
 
 ## Inputs
 
-| Flag | Default |
-|---|---|
-| `--env` | `prod` |
-| `--pick` | `latest` (most recent on remote) or a specific filename |
-| `--into-port` | `5433` (so it doesn't clash with a local Postgres) |
-| `--age-identity-path` | `/opt/backup/keys/<env>.identity` |
+| Input | Default | Notes |
+|---|---|---|
+| `env` | required | `staging` or `prod` |
+| `slug` | `package.json` name | kebab-case |
+| `dump_name` | `latest` | or a specific filename, e.g. `2026-05-15.dump.age` |
 
-## Steps
+## Trigger command Claude composes
 
-1. `rclone lsf <remote>:<bucket>` to list dumps.
-2. `rclone copyto <remote>:<bucket>/<pick>` → `/tmp/restore-<env>-<ts>.dump.age`.
-3. `age -d -i <identity>` → `.dump` plaintext.
-4. `docker run -d postgres:17-alpine` on port `5433` (or `--into-port`).
-5. `pg_restore --no-owner --no-privileges` into the ephemeral DB.
-6. Validate: `SELECT count(*) FROM users` (sanity check that the dump wasn't empty).
-
-## Usage
-
-```
-npm run restore -- --env prod --pick latest
-# or
-npm run restore -- --env prod --pick 2026-05-15.dump.age
+```sh
+gh workflow run restore.yml \
+  -f env=prod \
+  -f slug=acme-portal \
+  -f dump_name=latest
 ```
 
-## What it prints at the end
+## What the workflow does
 
-- Connection string of the ephemeral DB (`postgresql://restore:restore@127.0.0.1:5433/restore`)
-- Container name (for cleanup: `docker rm -f <name>`)
-- A warning that hot-swap into the live stack is manual (`.env` edit + Portainer redeploy)
+1. Restores `.deploy-state.<env>.json` from the state branch (for slug /
+   bucket lookup).
+2. Installs `rclone`, `age`, and `postgresql-client` in the runner.
+3. Writes `RCLONE_CONFIG` (repo secret) to `~/.config/rclone/rclone.conf`
+   and `BACKUP_AGE_IDENTITY` (repo secret) to
+   `/opt/backup/keys/<env>.identity`.
+4. Runs `scripts/restore.mjs --env <env> --pick <dump_name>`:
+   - `rclone lsf` → find dumps; pick `latest` or the specified filename.
+   - `rclone copyto` → `/tmp/restore-<env>-<ts>.dump.age`.
+   - `age -d -i <identity>` → plaintext.
+   - `docker run -d postgres:17-alpine` on port 5433.
+   - `pg_restore --no-owner --no-privileges`.
+   - `SELECT count(*) FROM users` sanity check.
+5. Masks the resulting `postgresql://...` connection string in any
+   subsequent log output via `::add-mask::`. The connection string is still
+   printed once for the operator (they need it to inspect the DB), but the
+   workflow ensures it doesn't get re-emitted by downstream steps.
 
 ## Refusal cases
 
-- `BACKUP_AGE_IDENTITY` not found → fail with the expected path.
-- No `.dump.age` files on remote → fail with "no backups, check that backup.sh sidecar is running".
+- `BACKUP_AGE_IDENTITY` or `RCLONE_CONFIG` not set as repo secrets → restore
+  step fails. Set them via `/first-fork`.
+- No `.dump.age` files on remote → script bails with "no backups; check
+  backup.sh sidecar".
 
-## Hot-swap procedure (deliberately not automated)
+## Hot-swap into live (deliberately not automated)
 
-If the restored DB looks right and you want to swap it into live:
-1. Inspect schema parity: `\d users` in the restored DB vs. the live one. Migration history must match.
-2. Stop the app container: Portainer → stack → containers → stop `app`.
-3. Edit the stack's `DATABASE_URL` to point at the restored DB (host + port).
+If the restored DB looks right and you want to swap it into live, this is
+a manual runbook:
+1. Inspect schema parity in the restored DB vs. live.
+2. Stop the app container in Portainer.
+3. Edit the stack's `DATABASE_URL`.
 4. Restart the stack.
 
-**Get explicit operator approval before each step.** This is irreversible.
+Get explicit operator approval before each step. This is irreversible.
+
+## Concurrency
+
+`concurrency: { group: restore-<env>, cancel-in-progress: false }`.
 
 ## Read before
+- `.github/workflows/restore.yml`
 - `scripts/restore.mjs`
-- `deploy/backup.sh` (the encryption format that this decrypts)
-- `SECURITY.md` §4 (backups + drills)
+- `deploy/backup.sh` (the encryption format being decrypted)
+- SECURITY.md §4
+- ADR-004

@@ -1,48 +1,129 @@
 ---
 name: first-fork
-description: Walk the operator through one-time setup after forking the template into a new project. Covers repo secrets, age keypair, rclone remote, Portainer stack, branch protection, rebrand, and the first ADR. Use when the user says "set up a new project", "fork bootstrap", "first-fork", "I just cloned the template", "/first-fork".
+description: Walk the operator through one-time setup after forking the template into a new project. Covers repo secrets, GH Environments, branch protection, the first /deploy via GitHub Actions, and the first ADR. Use when the user says "set up a new project", "fork bootstrap", "first-fork", "I just cloned the template", "/first-fork".
 ---
 
-# /first-fork — New project bootstrap
+# /first-fork — New project bootstrap (CI-driven ops model)
 
-> **Most operators should use `/new-project` or `/deploy` instead.**
-> Those skills automate the GitHub create + secret-setting + Portainer install + DNS that the rest of this doc walks through manually. Use `/first-fork` only if you can't grant DO/CF/GH API tokens to the automation, or if you're attaching to a pre-existing Portainer/host.
-
-One-time checklist to run on a fresh fork of the template. Each step is a deliberate decision -- ask the operator before doing it if there is any ambiguity. None of these touch the operator's local machine; everything is GitHub MCP / SSH / browser actions.
+> **The template is now CI-driven (ADR-004).** All ops scripts run via GitHub
+> Actions `workflow_dispatch`. Tokens live as GitHub repo / environment
+> secrets and never traverse Claude chat. This skill walks through the
+> one-time setup that puts those secrets in place; after that, `/deploy`,
+> `/promote`, `/rollback`, `/restore`, `/new-project`, and `/release` all
+> trigger CI workflows.
 
 ## Preconditions
-- The operator has already forked or duplicated `fullstack-vibe-template` into a new repo.
+
+- The operator has the `gh` CLI installed locally and is authenticated
+  (`gh auth status`).
 - The operator has admin permissions on the new repo.
-- A Portainer instance + an off-host backup target (S3-compatible) are available.
+- DigitalOcean, Cloudflare, GitHub PATs are minted; SMTP / Sentry / Better
+  Uptime accounts created where in scope (see §12 below).
+- A Portainer instance + an off-host backup target are available, OR the
+  operator will let `/deploy` provision a fresh Droplet that hosts both.
 
 ## Steps
 
-### 1. Rebrand
-Run `/rebrand` first. It rewrites `package.json` name, Docker image references, container names, and `NEXT_PUBLIC_APP_NAME`. Without this, every fork ships as `fullstack-next-template`.
+### 1. Create the fork
 
-Ask for: project slug (kebab-case, e.g. `acme-portal`), display name (e.g. `Acme Portal`), GHCR owner (defaults to the new repo's owner).
+```sh
+gh repo create <owner>/<slug> \
+  --template Tariq-AlNuaimi/fullstack-vibe-template \
+  --private \
+  --clone
+cd <slug>
+```
 
-### 2. Generate AUTH_SECRET
-```
-openssl rand -base64 32
-```
-Store in GitHub repo secret `AUTH_SECRET`. Rotation invalidates every session, so do not reuse across environments.
+The created repo inherits all six ops workflows
+(`.github/workflows/{deploy,promote,rollback,restore,new-project,release}.yml`)
+plus the gate workflows (verify, sast, secrets-scan, audit-retention,
+restore-test, docker-build).
 
-### 3. Generate AUDIT_PURGE_TOKEN
-```
-openssl rand -base64 48
-```
-Store in GitHub repo secret `AUDIT_PURGE_TOKEN` AND in the Portainer stack env. The monthly `audit-retention.yml` workflow uses the secret to call `/api/internal/audit-purge`.
+### 2. Rebrand
 
-### 4. Generate POSTGRES_PASSWORD
+```sh
+npm install
+npm run rebrand -- --slug <kebab-slug> --name '<Display Name>' --owner <gh-owner>
+git add -A && git commit -m 'chore: rebrand from template' && git push
 ```
-openssl rand -base64 24
-```
-Store in the Portainer stack env (not the GitHub repo secret — the DB password never needs to reach CI).
 
-### 5. Generate age keypair for backups
-On the staging / prod host (NOT the operator's laptop):
+### 3. Set repo-level secrets
+
+These are shared across `staging` and `prod`. Use `gh secret set`:
+
+```sh
+# DigitalOcean PAT, full-account scope (DO has no fine-grained PATs).
+gh secret set DO_API_TOKEN -b 'dop_v1_...'
+
+# Cloudflare API token, scoped to Zone.DNS:Edit on one zone.
+gh secret set CLOUDFLARE_API_TOKEN -b '...'
+
+# GitHub PAT with repo + workflow scopes. Used by /deploy + /new-project to
+# set per-repo secrets on the fork. (Falls back to GITHUB_TOKEN inside a
+# workflow if not set, but that token lacks cross-repo scopes.)
+gh secret set GH_AUTOMATION_TOKEN -b 'ghp_...'
+
+# Better Uptime API key. Optional -- /deploy skips uptime registration if unset.
+gh secret set BETTER_UPTIME_API_KEY -b '...'
+
+# Sentry auth token for CI source-map upload. Scope: project:releases + org:read.
+gh secret set SENTRY_AUTH_TOKEN -b 'sntrys_...'
+
+# SSH private key the workflows use to reach the Droplet during /deploy.
+# Generate fresh per project; never reuse a personal key.
+ssh-keygen -t ed25519 -f /tmp/<slug>-ops -N ''
+gh secret set SSH_PRIVATE_KEY < /tmp/<slug>-ops
+
+# age identity for decrypting off-host backups. Generated during /first-fork §6;
+# pasted as the AGE-SECRET-KEY-1... line.
+gh secret set BACKUP_AGE_IDENTITY -b 'AGE-SECRET-KEY-1...'
+
+# rclone config (full file contents) for off-host backup target.
+gh secret set RCLONE_CONFIG < /opt/backup/rclone.conf
 ```
+
+### 4. Set repo-level variables (non-secret)
+
+Variables are public — anyone with read access to the repo can see them.
+
+```sh
+gh variable set CADDY_EMAIL -b 'you@example.com'
+gh variable set SSH_PUBKEY  -b "$(cat /tmp/<slug>-ops.pub)"
+gh variable set SENTRY_ORG     -b 'your-org'
+gh variable set SENTRY_PROJECT -b 'your-project'
+```
+
+### 5. Create the GitHub Environments
+
+Per-env secrets and protection rules live here.
+
+```sh
+# Create the environments via API (gh CLI doesn't expose them directly).
+gh api -X PUT repos/<owner>/<slug>/environments/staging \
+  -f wait_timer=0 \
+  --raw-field 'reviewers=[]' \
+  --raw-field 'deployment_branch_policy=null'
+
+gh api -X PUT repos/<owner>/<slug>/environments/prod \
+  -f wait_timer=0 \
+  --raw-field 'deployment_branch_policy=null' \
+  -F 'reviewers[][type]=User' \
+  -F "reviewers[][id]=$(gh api user --jq .id)"
+```
+
+Then set the per-env `SENTRY_DSN` variable (one Sentry project per env is
+the recommended pattern — see ADR-002):
+
+```sh
+gh variable set SENTRY_DSN --env staging -b 'https://...staging.ingest.sentry.io/...'
+gh variable set SENTRY_DSN --env prod    -b 'https://...prod.ingest.sentry.io/...'
+```
+
+### 6. Generate age keypair for backups
+
+On the staging / prod host (NOT the operator's laptop, NOT the GitHub runner):
+
+```sh
 ssh ops@<host>
 age-keygen -o /tmp/backup.identity
 awk '/public key:/ {print $4}' /tmp/backup.identity > /opt/backup/recipient
@@ -50,105 +131,128 @@ chmod 644 /opt/backup/recipient
 cat /tmp/backup.identity     # copy the AGE-SECRET-KEY-1... line
 shred -u /tmp/backup.identity
 ```
-Paste the secret line into GitHub repo secret `BACKUP_AGE_IDENTITY`. **The identity (private key) never lives on the host that runs encryption** — a host compromise must not decrypt prior backups.
 
-### 6. Configure rclone for the backup target
+Paste the secret line into the `BACKUP_AGE_IDENTITY` repo secret (set in §3).
+**The identity (private key) never lives on the host that runs encryption.**
+
+### 7. Configure rclone for the backup target
+
 On the host:
+
+```sh
+rclone config         # walk the wizard, save to /opt/backup/rclone.conf mode 600
 ```
-rclone config
-```
-Walk through the wizard to add a remote. Save to `/opt/backup/rclone.conf` (mode 600). Note the remote name and bucket. Set Portainer stack env vars:
-- `RCLONE_REMOTE=<name>` (e.g. `spaces`, `b2`, `r2`)
+
+Set Portainer stack env vars (after first deploy):
+- `RCLONE_REMOTE=<name>`
 - `BACKUP_BUCKET=<bucket-name>`
 - `BACKUP_ENABLED=true`
 
-Also paste the rclone config + remote details into GitHub repo secrets so `restore-test.yml` can decrypt + restore in CI:
-- `RCLONE_CONFIG` (full file contents)
-- `RCLONE_REMOTE`
-- `BACKUP_BUCKET`
+Copy the contents of `/opt/backup/rclone.conf` into the `RCLONE_CONFIG`
+repo secret (set in §3).
 
-### 7. Configure MinIO scoped key (closes T-09)
-Do not use the MinIO root key in the app. Mint a scoped key with bucket-only permissions:
-```
-mc admin user add app/ <access-key> <secret-key>
-mc admin policy attach app/ readwrite --user <access-key>
-```
-Set `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` in the Portainer stack env to the scoped values. Root creds stay isolated to the mc admin shell.
+### 8. Branch protection on main
 
-### 8. Create the Portainer stack
-In Portainer, create a new stack pointing at the new repo's `docker-compose.prod.yml`. **Use a STACK webhook, not a service webhook**, so `?IMAGE_TAG=sha-<short>` is honored (T-04 SHA pinning).
-
-Copy the webhook URL into GitHub repo secret `PORTAINER_WEBHOOK_URL`.
-
-Also set `PROD_BASE_URL` in repo secrets to the deployed app URL (e.g. `https://app.acme-portal.example.com`) — needed by `audit-retention.yml`.
-
-### 9. Configure SMTP if email is in scope
-If the app sends transactional email (Auth.js OAuth invites, password resets in a future iteration), set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL` in the Portainer stack env. The template ships without SMTP; this is a per-fork choice.
-
-### 10. Enable branch protection on `main`
-In the new repo, Settings -> Rules -> Rulesets. Create a ruleset on `main` requiring:
+In `Settings -> Rules -> Rulesets`, create a ruleset on `main` requiring:
 - Pull request before merge (1 approval minimum)
 - Required status checks: `Verify`, `Secrets scan`, `SAST`
 - Block force pushes
 - Restrict deletions
 
-The template ships the workflow files, but rulesets cannot be configured by the workflow itself — the operator does this once.
+The `/deploy` workflow attempts to apply this automatically if the
+`GH_AUTOMATION_TOKEN` has admin scope; otherwise it warns and the operator
+applies via UI.
 
-### 11. Write the first project ADR
-Run `/adr` with a title that captures the project's *purpose* (not the stack — ADR-001 covers the stack). Example title: "Acme Portal scope and tier classification". This forces a written record of what the fork is for, who owns it, and what data class it targets.
+### 9. First deploy
+
+```sh
+gh workflow run deploy.yml \
+  -f env=staging \
+  -f domain=app.staging.example.com \
+  -f slug=<slug> \
+  -f action=provision-and-deploy
+
+# Watch the run:
+gh run watch
+```
+
+The workflow:
+1. Restores `.deploy-state.staging.json` from the orphan `deployment-state`
+   branch (no-op on first run).
+2. Runs `scripts/deploy.mjs --env staging --domain ... --slug ... --yes`.
+3. Persists the updated state back to `deployment-state`.
+
+Expected runtime: 5–10 min.
+
+### 10. First ADR
+
+Run `/adr` with a title that captures the project's *purpose* (not the
+stack — ADR-001 covers the stack). Example: `Acme Portal scope and tier
+classification`. Forces a written record of what the fork is for, who owns
+it, and what data class it targets.
+
+### 11. Smoke check
+
+```sh
+curl -s https://<domain>/api/health         # expect 200
+# Log in with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD from the Portainer stack env.
+# Rotate the seed password on first login and update the Portainer env.
+```
 
 ### 12. Observability (Sentry + Better Uptime)
-Both are operator-side SaaS per ADR-002. The template ships the wiring; you create the accounts once per project.
+
+Both are operator-side SaaS per ADR-002.
 
 **Sentry:**
-1. Sign in at https://sentry.io → create a new project (platform: Next.js). Capture the DSN.
-2. (Optional) Create one Sentry project per environment (staging, production) for clean separation. Reuse the same org.
-3. Set GitHub **repo secret** `SENTRY_AUTH_TOKEN` to a Sentry auth token with `project:releases` + `org:read` scope (needed by CI for source-map upload). Without it the upload step skips with a warning -- the app still runs, just without symbolicated stack traces.
-4. Set GitHub **repo vars** (not secrets) `SENTRY_ORG` and `SENTRY_PROJECT` (e.g. `acme`, `acme-portal-prod`).
-5. When you run `/deploy`, pass `--sentry-dsn <DSN>` (or export `SENTRY_DSN`) so the stack env carries it. The same DSN doubles as `NEXT_PUBLIC_SENTRY_DSN` (DSNs are public-by-design — SECURITY.md §6).
-6. If you skip Sentry: leave the secrets unset. Everything still works; errors just aren't reported.
+1. Sign in at https://sentry.io → create projects (one per env).
+2. Capture each DSN; set `SENTRY_DSN` as a per-env variable (§5).
+3. Create an auth token with `project:releases` + `org:read`; set as repo
+   secret `SENTRY_AUTH_TOKEN` (§3).
+4. Set `SENTRY_ORG` + `SENTRY_PROJECT` as repo variables (§4).
 
-**Better Uptime (Better Stack):**
+**Better Uptime:**
 1. Sign in at https://betterstack.com/uptime → create a team for the project.
-2. Settings → API tokens → generate a Telemetry/Uptime API key.
-3. Export `BETTER_UPTIME_API_KEY` in the shell when you run `/deploy` (or pass `--better-uptime-key`). `/deploy` will register a status monitor against `https://<domain>/api/health` and persist the monitor id to `.deploy-state.<env>.json`. `--destroy` removes it.
-4. (Optional) Add an on-call rotation + escalation policy in the Better Uptime UI.
-5. If you skip Better Uptime: leave the env unset. `/deploy` prints a warning and continues.
+2. Settings → API tokens → generate a Telemetry/Uptime key.
+3. Set as repo secret `BETTER_UPTIME_API_KEY` (§3). `/deploy` registers a
+   monitor automatically; `/deploy --destroy` removes it.
 
-### 13. Smoke deploy
-Push a trivial commit to `main`. Watch:
-- `verify.yml` -> green
-- `secrets-scan.yml` -> green
-- `sast.yml` -> green
-- `docker-build.yml` -> green; pushes to GHCR; calls the Portainer webhook
-- App at `PROD_BASE_URL` answers `/api/health` with 200
+### 13. (Optional) Trigger the maintenance workflows once
 
-Log into the app with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (from the Portainer stack env, not committed). **Rotate the seed password on first login** and update the Portainer env.
+```sh
+gh workflow run audit-retention.yml      # expect 200 from /api/internal/audit-purge
+gh workflow run restore-test.yml         # expect green after first nightly backup
+```
 
-### 14. (Optional) Workflow dispatches to verify the chain
-- Trigger `audit-retention.yml` `workflow_dispatch` -> expect a 200 with a count.
-- Trigger `restore-test.yml` `workflow_dispatch` -> expect a green run after the first nightly backup completes (so there's something on the remote to restore).
+## Repo / env secret + variable summary
+
+| Name | Type | Scope | Source |
+|---|---|---|---|
+| `DO_API_TOKEN` | secret | repo | DigitalOcean PAT |
+| `CLOUDFLARE_API_TOKEN` | secret | repo | Cloudflare token, Zone.DNS:Edit |
+| `GH_AUTOMATION_TOKEN` | secret | repo | GitHub PAT, `repo`+`workflow` |
+| `BETTER_UPTIME_API_KEY` | secret | repo | Better Uptime API key (optional) |
+| `SENTRY_AUTH_TOKEN` | secret | repo | Sentry auth token |
+| `SSH_PRIVATE_KEY` | secret | repo | ed25519 private key for Droplet access |
+| `BACKUP_AGE_IDENTITY` | secret | repo | age private key |
+| `RCLONE_CONFIG` | secret | repo | full rclone.conf contents |
+| `CADDY_EMAIL` | variable | repo | Let's Encrypt email |
+| `SSH_PUBKEY` | variable | repo | matching public key |
+| `SENTRY_ORG` / `SENTRY_PROJECT` | variable | repo | Sentry slugs |
+| `SENTRY_DSN` | variable | env (staging / prod) | per-env Sentry DSN |
+
+## Why no seed-secrets workflow?
+
+A `workflow_dispatch` that took a JSON blob of secrets and called the GitHub
+API to set each one was considered and rejected. The `workflow_dispatch`
+input panel logs (masked) inputs in the run UI; misuse risk outweighed
+convenience. Operators run `gh secret set` from their laptop instead. See
+ADR-004 for the full reasoning.
 
 ## Report back
-List every secret that was set, every Portainer stack env that was set, and the smoke-deploy status. The operator stores nothing locally; everything is in repo secrets + Portainer + the host's `/opt/backup/`.
 
-## Repository secrets summary (paste into the ops doc per fork)
-
-| Secret | Source | Stored in |
-|---|---|---|
-| `AUTH_SECRET` | `openssl rand -base64 32` | GH repo + Portainer stack |
-| `POSTGRES_PASSWORD` | `openssl rand -base64 24` | Portainer stack only |
-| `AUDIT_PURGE_TOKEN` | `openssl rand -base64 48` | GH repo + Portainer stack |
-| `BACKUP_AGE_IDENTITY` | `age-keygen` private key | GH repo only |
-| `RCLONE_CONFIG` | `cat /opt/backup/rclone.conf` | GH repo only |
-| `RCLONE_REMOTE` | rclone remote name | GH repo + Portainer stack |
-| `BACKUP_BUCKET` | rclone bucket / container | GH repo + Portainer stack |
-| `PORTAINER_WEBHOOK_URL` | Portainer stack webhook | GH repo only |
-| `PROD_BASE_URL` | deployed app URL | GH repo only |
-| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | MinIO admin | Portainer stack only |
-| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | scoped mc user | Portainer stack only |
-| `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` | one-shot bootstrap | Portainer stack only; rotate on first login |
-| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Sentry project DSN | GH repo + Portainer stack (public-by-design, not Restricted) |
-| `SENTRY_AUTH_TOKEN` | Sentry org auth token | GH repo secret only (CI source-map upload) |
-| `SENTRY_ORG` / `SENTRY_PROJECT` | Sentry slugs | GH repo **vars** (not secrets) |
-| `BETTER_UPTIME_API_KEY` | Better Uptime API token | Operator shell at `/deploy` time (Restricted) |
+After bootstrap, list:
+- Every secret + variable that was set.
+- The GitHub Environments created.
+- The branch-protection state.
+- The first staging deploy's URL + health check status.
+- The first ADR filename.
