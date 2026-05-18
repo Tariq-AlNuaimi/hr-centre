@@ -4,6 +4,36 @@ import { getAuditContext } from "../audit-context";
 // Models excluded from audit logging
 const EXCLUDE = new Set(["AuditLog", "Account", "Session", "VerificationToken"]);
 
+// Field names whose values must never land in `audit_logs.before` / `after` / `changes`.
+// Replaced with the literal string "[redacted]" so the row keeps the fact that the field
+// changed (auditable) without leaking the value. See SECURITY.md §5 + finding T-03.
+export const SCRUB_FIELDS = new Set([
+  "passwordHash",
+  "password",
+  "refresh_token",
+  "access_token",
+  "id_token",
+  "session_state",
+  "sessionToken",
+  "token",
+  "secret",
+  "apiKey",
+  "api_key",
+]);
+
+export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
+  if (!obj) return obj;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (SCRUB_FIELDS.has(k)) {
+      out[k] = v == null ? v : "[redacted]";
+    } else {
+      out[k] = v;
+    }
+  }
+  return out as T;
+}
+
 type AnyClient = {
   [key: string]: {
     findUnique: (args: { where: { id: string } }) => Promise<unknown>;
@@ -15,7 +45,7 @@ function modelAccessor(client: unknown, model: string) {
   return (client as AnyClient)[key];
 }
 
-function computeChanges(
+export function computeChanges(
   before: Record<string, unknown>,
   after: Record<string, unknown>
 ): Record<string, { from: unknown; to: unknown }> | null {
@@ -27,7 +57,11 @@ function computeChanges(
     const bVal = JSON.stringify(before[key]);
     const aVal = JSON.stringify(after[key]);
     if (bVal !== aVal) {
-      changes[key] = { from: before[key], to: after[key] };
+      if (SCRUB_FIELDS.has(key)) {
+        changes[key] = { from: "[redacted]", to: "[redacted]" };
+      } else {
+        changes[key] = { from: before[key], to: after[key] };
+      }
     }
   }
 
@@ -45,12 +79,13 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const ctx = getAuditContext();
           const record = result as Record<string, unknown>;
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String(record.id),
               action: "CREATE",
-              after: record,
+              after: scrub(record),
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,
@@ -66,7 +101,6 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const ctx = getAuditContext();
           const where = args.where as { id: string };
 
-          // Fetch before snapshot
           let before: Record<string, unknown> | null = null;
           try {
             before = (await modelAccessor(client, model).findUnique({
@@ -79,31 +113,23 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const result = await query(args);
           const after = result as Record<string, unknown>;
 
-          // Determine if this is a soft-delete (deletedAt was set)
-          const isSoftDelete =
-            before &&
-            !before.deletedAt &&
-            after.deletedAt;
-          const isRestore =
-            before &&
-            before.deletedAt &&
-            !after.deletedAt;
+          const isSoftDelete = before && !before.deletedAt && after.deletedAt;
+          const isRestore = before && before.deletedAt && !after.deletedAt;
 
           let action = "UPDATE";
           if (isSoftDelete) action = "DELETE";
           if (isRestore) action = "RESTORE";
 
-          const changes = before
-            ? computeChanges(before, after)
-            : null;
+          const changes = before ? computeChanges(before, after) : null;
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String(after.id),
               action,
-              before: before ?? undefined,
-              after,
+              before: scrub(before ?? undefined),
+              after: scrub(after),
               changes,
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
@@ -120,7 +146,6 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const ctx = getAuditContext();
           const where = args.where as { id: string };
 
-          // Fetch before snapshot
           let before: Record<string, unknown> | null = null;
           try {
             before = (await modelAccessor(client, model).findUnique({
@@ -132,12 +157,13 @@ export const auditExtension = Prisma.defineExtension((client) => {
 
           const result = await query(args);
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (client as any).auditLog.create({
             data: {
               entityType: model,
-              entityId: String((before as any)?.id ?? "unknown"),
+              entityId: String((before as Record<string, unknown> | null)?.id ?? "unknown"),
               action: "DELETE",
-              before: before ?? undefined,
+              before: scrub(before ?? undefined),
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,

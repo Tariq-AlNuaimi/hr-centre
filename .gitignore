@@ -44,3 +44,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# deploy state -- contains droplet IPs, Portainer admin password, webhook URLs
+.deploy-state.*.json
+
+# migration scratch
+.migrate-state.json
+
+# Sentry CLI artifacts (auth token cache + bundler debug files)
+.sentryclirc
+.sentry-build-plugin/

@@ -55,9 +55,15 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
           if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
             return query(args);
           }
-          // Rewrite delete to soft-delete (update deletedAt)
+          // Rewrite delete to soft-delete (update deletedAt). Prisma's per-model
+          // delegates can't be reached generically through its types -- the
+          // narrowest safe shape is a record of update-capable delegates.
           const { where } = args;
-          return (client as any)[model[0].toLowerCase() + model.slice(1)].update({
+          const delegate = (client as unknown as Record<string, {
+            update: (a: { where: unknown; data: { deletedAt: Date } }) => Promise<unknown>;
+            updateMany: (a: { where?: unknown; data: { deletedAt: Date } }) => Promise<unknown>;
+          }>)[model[0].toLowerCase() + model.slice(1)];
+          return delegate.update({
             where,
             data: { deletedAt: new Date() },
           });
@@ -67,7 +73,11 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
             return query(args);
           }
           const { where } = args ?? {};
-          return (client as any)[model[0].toLowerCase() + model.slice(1)].updateMany({
+          const delegate = (client as unknown as Record<string, {
+            update: (a: { where: unknown; data: { deletedAt: Date } }) => Promise<unknown>;
+            updateMany: (a: { where?: unknown; data: { deletedAt: Date } }) => Promise<unknown>;
+          }>)[model[0].toLowerCase() + model.slice(1)];
+          return delegate.updateMany({
             where,
             data: { deletedAt: new Date() },
           });

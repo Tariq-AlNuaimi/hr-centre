@@ -1,0 +1,76 @@
+name: Persist deployment state
+description: |
+  Commit `.deploy-state.<env>.json` from the workspace onto the orphan
+  `deployment-state` branch, then push. Safe to call when the file is missing
+  (no-op).
+
+  See docs/decisions/ADR-004-ci-driven-ops.md.
+
+inputs:
+  env:
+    description: 'Environment name (staging | prod)'
+    required: true
+  message:
+    description: 'Commit message suffix (e.g. "after deploy run #42")'
+    required: false
+    default: 'state update'
+
+runs:
+  using: composite
+  steps:
+    - name: Commit + push state
+      shell: bash
+      env:
+        ENV_NAME: ${{ inputs.env }}
+        MSG: ${{ inputs.message }}
+      run: |
+        set -euo pipefail
+        STATE_FILE=".deploy-state.${ENV_NAME}.json"
+        if [ ! -f "${STATE_FILE}" ]; then
+          echo "No ${STATE_FILE} produced -- nothing to persist."
+          exit 0
+        fi
+        # Stash the file before checking out the orphan branch.
+        TMP="$(mktemp)"
+        cp "${STATE_FILE}" "${TMP}"
+
+        git config user.email 'github-actions[bot]@users.noreply.github.com'
+        git config user.name  'github-actions[bot]'
+
+        # Ensure local branch exists; create as orphan if not.
+        if git fetch origin deployment-state:deployment-state 2>/dev/null; then
+          git checkout deployment-state
+          # Reset working tree to branch tip so previous env states are preserved.
+          git reset --hard deployment-state
+        else
+          git checkout --orphan deployment-state
+          git rm -rf . 2>/dev/null || true
+          # Seed an empty README so the branch has a root commit.
+          echo "Deployment state branch -- machine-managed. See ADR-004." > README.md
+          git add README.md
+          git commit -m "init: deployment-state branch"
+        fi
+
+        cp "${TMP}" "${STATE_FILE}"
+        git add "${STATE_FILE}"
+        # Skip empty commits (nothing changed).
+        if git diff --staged --quiet; then
+          echo "State unchanged -- skipping commit."
+          exit 0
+        fi
+        git commit -m "state(${ENV_NAME}): ${MSG}"
+
+        # Retry push with simple backoff for transient network errors.
+        for i in 1 2 3 4; do
+          if git push origin deployment-state; then
+            echo "Pushed deployment-state."
+            exit 0
+          fi
+          SLEEP=$((2 ** i))
+          echo "push failed, retrying in ${SLEEP}s..."
+          sleep ${SLEEP}
+          # Rebase on any concurrent update.
+          git pull --rebase origin deployment-state || true
+        done
+        echo "ERROR: failed to push deployment-state after retries." >&2
+        exit 1

@@ -1,0 +1,73 @@
+name: Bug report
+description: Something in the template (or a fork that inherited it) is broken.
+labels: ["bug"]
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      description: One-sentence description of the bug.
+      placeholder: "prisma generate fails on first dev session"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact commands or actions, in order. Assume nothing.
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the full error output if there is one.
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA
+      description: "`git rev-parse HEAD` on the branch where the bug reproduces."
+      placeholder: "abc1234"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: rule
+    attributes:
+      label: Related CLAUDE.md hard rule (if any)
+      options:
+        - none
+        - audit-extension (EXCLUDE / SCRUB_FIELDS)
+        - soft-delete (SOFT_DELETE_MODELS)
+        - withAuth / withAdminAuth boundary
+        - rate-limit on /api/auth/*
+        - CSP
+        - SECURITY.md §1 logging restriction
+        - Other (note in repro)
+      default: 0
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Pre-submit checklist
+      options:
+        - label: I ran `/ship` (or CI on a PR) and the failure is reproducible
+          required: true
+        - label: I checked SECURITY.md §11 and this is not an already-tracked finding
+          required: true

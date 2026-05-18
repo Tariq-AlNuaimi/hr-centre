@@ -1,0 +1,32 @@
+name: SAST
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v5
+
+      # Rulesets:
+      #   p/javascript       -- generic JS/TS issues (eval, XSS sinks, etc.)
+      #   p/typescript       -- TS-specific patterns
+      #   p/nextjs           -- Next.js App Router pitfalls (server/client leaks)
+      #   p/react            -- React-specific anti-patterns (dangerouslySetInnerHTML, etc.)
+      #   p/owasp-top-ten    -- OWASP Top 10 coverage
+      #   p/secrets          -- hardcoded creds
+      # `semgrep ci` exits non-zero on any finding at the configured severity gate.
+      - name: Run Semgrep
+        run: semgrep ci
+        env:
+          SEMGREP_RULES: >-
+            p/javascript
+            p/typescript
+            p/nextjs
+            p/react
+            p/owasp-top-ten
+            p/secrets

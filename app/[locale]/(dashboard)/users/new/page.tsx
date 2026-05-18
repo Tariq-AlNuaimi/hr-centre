@@ -10,12 +10,20 @@ import { useState } from "react";
 
 const { Title } = Typography;
 
+type UserPayload = {
+  id: string;
+  email: string;
+  name: string;
+  password?: string;
+  role: string;
+};
+
 export default function NewUserPage() {
   const t = useTranslations("users");
   const router = useRouter();
   const pathname = usePathname();
   const { success, error: showError } = useNotify();
-  const { create } = useCrud({ basePath: "/api/users" });
+  const { create } = useCrud<UserPayload>({ basePath: "/api/users" });
   const [loading, setLoading] = useState(false);
 
   const locale = pathname.startsWith("/ar") ? "ar" : "en";
@@ -28,7 +36,7 @@ export default function NewUserPage() {
   }) => {
     setLoading(true);
     try {
-      await create(values as any);
+      await create(values);
       success("User created");
       router.push(`/${locale}/users`);
     } catch (err) {

@@ -52,7 +52,12 @@ export default function UsersPage() {
     }
   }, [page, pageSize, search, list, showError]);
 
+  // Standard "fetch on mount + when deps change" pattern. fetchUsers is a
+  // useCallback that internally calls setState; the lint rule traces the
+  // chain through the callback. SWR/React Query would replace this, but is
+  // out of scope for the template baseline.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchUsers();
   }, [fetchUsers]);
 

@@ -1,0 +1,99 @@
+name: Deploy
+
+# Operator-triggered provisioning + deploy. Replaces the previous
+# "Claude executes scripts/deploy.mjs locally" flow. See ADR-004.
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Environment (staging | prod)'
+        type: choice
+        options: [staging, prod]
+        required: true
+      domain:
+        description: 'Domain (e.g. app.example.com)'
+        required: true
+      slug:
+        description: 'Project slug (kebab-case). Defaults to package.json name.'
+        required: false
+      action:
+        description: 'Action to perform'
+        type: choice
+        options: [provision-and-deploy, redeploy, destroy]
+        default: provision-and-deploy
+
+concurrency:
+  group: deploy-${{ inputs.env }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.env }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/restore-state
+        with:
+          env: ${{ inputs.env }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Install SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          if [ -n "${SSH_PRIVATE_KEY}" ]; then
+            printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+          fi
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Run deploy script
+        env:
+          CI: 'true'
+          NON_INTERACTIVE: 'true'
+          DO_API_TOKEN: ${{ secrets.DO_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GITHUB_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BETTER_UPTIME_API_KEY: ${{ secrets.BETTER_UPTIME_API_KEY }}
+          SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+          CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
+          SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}
+          INPUT_ENV: ${{ inputs.env }}
+          INPUT_DOMAIN: ${{ inputs.domain }}
+          INPUT_SLUG: ${{ inputs.slug }}
+          INPUT_ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          ARGS=(--env "$INPUT_ENV" --domain "$INPUT_DOMAIN" --yes)
+          if [ -n "$INPUT_SLUG" ]; then
+            ARGS+=(--slug "$INPUT_SLUG")
+          fi
+          case "$INPUT_ACTION" in
+            provision-and-deploy) ;;
+            redeploy)             ARGS+=(--skip-provision) ;;
+            destroy)              ARGS+=(--destroy) ;;
+          esac
+          node scripts/deploy.mjs "${ARGS[@]}"
+
+      - name: Persist deployment state
+        if: always()
+        uses: ./.github/actions/persist-state
+        with:
+          env: ${{ inputs.env }}
+          message: 'after ${{ inputs.action }} (run #${{ github.run_number }})'

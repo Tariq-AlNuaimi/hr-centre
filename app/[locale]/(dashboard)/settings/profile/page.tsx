@@ -56,7 +56,7 @@ export default function ProfilePage() {
             {user?.email ?? "-"}
           </Descriptions.Item>
           <Descriptions.Item label={t("role")}>
-            {(user as any)?.role ?? "-"}
+            {user?.role ?? "-"}
           </Descriptions.Item>
         </Descriptions>
       </Card>

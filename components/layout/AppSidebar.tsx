@@ -23,7 +23,9 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const locale = pathname.startsWith("/ar") ? "ar" : "en";
-  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  // types/index.ts augments next-auth's Session.user with role: Role,
+  // so this access is typed -- no `as any` needed.
+  const isAdmin = session?.user?.role === "ADMIN";
 
   // Strip locale prefix for active key matching
   const activeKey =

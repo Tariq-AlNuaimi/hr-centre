@@ -1,0 +1,98 @@
+#cloud-config
+# deploy/cloud-init.yml
+#
+# First-boot configuration injected into every Droplet by scripts/deploy.mjs.
+# The script does string substitution for {{ssh_pubkey}}, {{caddy_email}},
+# and {{domain}} before passing the rendered content as user-data.
+#
+# What this does:
+#   1. Creates ops user with sudo + the operator's SSH key
+#   2. Installs Docker CE + compose plugin
+#   3. Installs Caddy (apt repo) -- reverse proxies :443 -> :3000 with auto LE
+#   4. Hardens UFW: allows 22, 80, 443, 9443 only
+#   5. Pre-creates /opt/<project>/{backup,minio} bind-mount targets
+
+users:
+  - name: ops
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - "{{ssh_pubkey}}"
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - ufw
+  - debian-keyring
+  - debian-archive-keyring
+  - apt-transport-https
+  - jq
+  - rclone
+  - age
+
+runcmd:
+  # Docker
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update -y
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+  - usermod -aG docker ops
+  # Caddy
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+  - apt-get update -y
+  - apt-get install -y caddy
+  # UFW
+  - ufw default deny incoming
+  - ufw default allow outgoing
+  - ufw allow 22/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw allow 9443/tcp
+  - ufw --force enable
+  # Backup dirs (real keys land here in /first-fork step or /deploy's backup wiring)
+  - install -d -o ops -g ops -m 0755 /opt/backup
+  - install -d -o ops -g ops -m 0700 /opt/backup/keys
+  - install -d -o ops -g ops -m 0755 /var/backups
+
+write_files:
+  - path: /etc/caddy/Caddyfile
+    content: |
+      {
+        email {{caddy_email}}
+      }
+      {{domain}} {
+        reverse_proxy 127.0.0.1:3000
+        encode gzip zstd
+        header {
+          Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+          X-Content-Type-Options nosniff
+          Referrer-Policy strict-origin-when-cross-origin
+        }
+      }
+    permissions: '0644'
+
+  - path: /etc/systemd/system/caddy-reload.service
+    content: |
+      [Unit]
+      Description=Reload Caddy after cloud-init writes the Caddyfile
+      After=caddy.service
+      [Service]
+      Type=oneshot
+      ExecStart=/bin/systemctl reload caddy
+    permissions: '0644'
+
+  - path: /etc/cron.d/portainer-data-snapshot
+    content: |
+      # Nightly Portainer data backup -- captures stack defs + admin metadata
+      0 3 * * * root tar -czf /var/backups/portainer-$(date +\%Y\%m\%d).tar.gz -C /var/lib/docker/volumes/portainer_data/_data . 2>/dev/null
+    permissions: '0644'
+
+final_message: "Cloud-init complete after $UPTIME seconds. Caddy + Docker ready. Portainer install runs next via scripts/bootstrap-portainer.mjs."

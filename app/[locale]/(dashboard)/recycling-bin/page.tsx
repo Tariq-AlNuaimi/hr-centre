@@ -26,7 +26,9 @@ export default function RecyclingBinPage() {
   const tCommon = useTranslations("common");
   const { success, error: showError } = useNotify();
   const { data: session } = useSession();
-  const isAdmin = (session?.user as any)?.role === "ADMIN";
+  // types/index.ts augments next-auth's Session.user with role: Role,
+  // so this access is typed -- no `as any` needed.
+  const isAdmin = session?.user?.role === "ADMIN";
 
   const [items, setItems] = useState<DeletedItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function RecyclingBinPage() {
       render: (val: string) => <Tag>{val}</Tag>,
     },
     {
-      title: tCommon("name" as any) ?? "Name",
+      title: "Name",
       dataIndex: "displayName",
       key: "displayName",
     },

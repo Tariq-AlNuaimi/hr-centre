@@ -1,6 +1,6 @@
 # Fullstack Next.js Template
 
-Production-ready fullstack template with Next.js, PostgreSQL, MinIO, Auth.js, and Ant Design.
+Production-ready fullstack template with Next.js, PostgreSQL, MinIO, Auth.js, and Ant Design. Tuned for Claude Code vibe-coding sessions (see `.claude/`) but works for human coders too.
 
 ## Stack
 
@@ -24,6 +24,15 @@ Production-ready fullstack template with Next.js, PostgreSQL, MinIO, Auth.js, an
 - Reusable DataTable with pagination, search, sort
 - Health check endpoint for Docker healthcheck
 
+## Claude Code
+
+`.claude/` ships with a permission allowlist, a SessionStart hook that boots dependencies, and two skills tuned for this stack:
+
+- **`/scaffold-entity <Name>`** — generate a full CRUD entity (model, validation, API routes, dashboard page) following the template's soft-delete + audit + RBAC invariants.
+- **`/ship`** — typecheck + lint + build before pushing.
+
+The SessionStart hook handles `.env` bootstrap, `npm install`, and `prisma generate` automatically on every session. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build. See [`CLAUDE.md`](./CLAUDE.md) for the rationale and the full hard-rules list.
+
 ## Quick Start
 
 ```bash
@@ -43,6 +52,7 @@ The app runs at http://localhost:3000. Login with the credentials from your `.en
 ## Project Structure
 
 ```
+.claude/                     # Claude Code harness (settings + hook + skills)
 app/
   [locale]/                  # i18n locale segment (en, ar)
     (auth)/login/            # Login page (no sidebar)
@@ -66,6 +76,10 @@ prisma/                      # Schema, migrations, seed
 ```
 
 ## Adding a New Entity
+
+In a Claude session, run **`/scaffold-entity <Name>`** and follow the prompts.
+
+Manual recipe (for human coders or reference):
 
 1. Add the model to `prisma/schema.prisma` (include `deletedAt DateTime?` and `deletedBy String?` for soft deletion)
 2. Run `npx prisma migrate dev --name add_entity`
