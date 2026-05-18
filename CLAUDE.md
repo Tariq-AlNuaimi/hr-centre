@@ -16,9 +16,22 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
 
 - **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
 - **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
-- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`, `/deploy`, `/promote`, `/release`, `/new-project`, `/migrate-from`, `/rollback`, `/restore`.
+- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`, `/deploy`, `/promote`, `/release`, `/new-project`, `/migrate-from`, `/rollback`, `/restore`. The six ops skills (`/deploy`, `/promote`, `/rollback`, `/restore`, `/new-project`, `/release`) execute via GitHub Actions workflows — see "Operations model" below.
 
 All harness files are project-name-agnostic and survive forks unchanged.
+
+## Operations model
+
+The template is **CI-driven** (ADR-004): Claude proposes, GitHub Actions executes.
+
+- Six ops workflows ship under `.github/workflows/{deploy,promote,rollback,restore,new-project,release}.yml`. Each is `workflow_dispatch` (the release workflow also triggers on `prod-*` tag push).
+- Claude's role in each skill: collect inputs, compose the exact `gh workflow run <name>.yml -f ...` command for the operator to paste, then (when MCP tooling allows) tail the run.
+- All credentials live as GitHub repo / environment secrets. Tokens never traverse Claude chat. See `.claude/skills/first-fork/SKILL.md` for the `gh secret set` / `gh variable set` bootstrap.
+- Per-environment GitHub Environments (`staging`, `prod`) scope per-env secrets; concurrency groups (`<action>-<env>`) prevent races; prod has a required-reviewer protection rule.
+- State persists on an orphan `deployment-state` branch as `.deploy-state.<env>.json`. Two composite actions (`.github/actions/restore-state` + `persist-state`) shuttle the file between the branch and the runner workspace. Backup source-of-truth: DigitalOcean resource tags `vibe-managed=<slug>-<env>` + `vibe-resource=<type>`, used by `scripts/lib/state.mjs#discoverFromTags()`.
+- Scripts under `scripts/` detect CI mode via `CI=true` / `NON_INTERACTIVE=true`; in CI they require `--yes` and pull credentials from env vars. They still work locally with `--token` flags for development.
+
+Why not run scripts directly from Claude: the Claude Code sandbox blocks outbound HTTPS to vendor APIs (DO, CF, Better Uptime); loosening it weakens the prompt-injection boundary across the harness. GH Actions has free egress, audit-logged runs, RBAC via Environments, and tokens that never leave the repo.
 
 ## CI gates (no local action required)
 Five workflows gate the repo. Failures block merge once branch protection is on.
@@ -98,13 +111,13 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - `npm run dev` — Next.js dev server
 - `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...']`
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
-- `npm run deploy -- --env staging --domain ... --do-token ... --cf-token ... --gh-token ... --ssh-pubkey ... --caddy-email ...` — full provisioning + first deploy (see `/deploy` skill)
-- `npm run promote -- --sha HEAD --gh-token ... --yes` — staging → prod
-- `npm run release -- --tag prod-YYYYMMDD-HHmm` (or `--auto`) — draft CHANGELOG + GitHub release after `/promote` (see ADR-003)
-- `npm run new-project -- --plan /tmp/new-project.json ...` — idea → live staging URL in one run (see `/new-project` skill)
-- `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith
-- `npm run rollback -- --env prod --to sha-abc1234 --yes` — flip image tag, redeploy
-- `npm run restore -- --env prod --pick latest` — pull + decrypt + restore a backup into ephemeral Postgres
+- `gh workflow run deploy.yml -f env=staging -f domain=... -f slug=... -f action=provision-and-deploy` — full provisioning + first deploy via CI (see `/deploy` skill, ADR-004). Local fallback: `npm run deploy -- --env staging --domain ... --do-token ... --yes`.
+- `gh workflow run promote.yml -f slug=... -f sha=HEAD` — staging → prod via CI (see `/promote` skill). `release.yml` auto-fires on the resulting `prod-*` tag push.
+- `gh workflow run release.yml -f tag=prod-YYYYMMDD-HHmm` — re-draft CHANGELOG + GitHub release for a tag (also auto-triggered by `prod-*` push; see ADR-003 + ADR-004).
+- `gh workflow run new-project.yml -f plan_path=plans/<ts>-<slug>.json` — idea → live staging URL in one run (see `/new-project` skill; Claude commits the plan first).
+- `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith (still local; no CI workflow yet).
+- `gh workflow run rollback.yml -f env=prod -f slug=... -f to_sha=sha-abc1234` — flip image tag, redeploy (see `/rollback` skill).
+- `gh workflow run restore.yml -f env=prod -f slug=... -f dump_name=latest` — pull + decrypt + restore a backup into ephemeral Postgres (see `/restore` skill).
 - `npm test` — contract suite (rate limit, audit scrub, email, export) via `node:test`
 - `npm run prisma:migrate` / `:generate` / `:seed` / `:studio`
 - `npm run lint` — ESLint (incl. local plugin)

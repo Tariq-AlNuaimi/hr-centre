@@ -114,12 +114,29 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | `PORTAINER_WEBHOOK_URL` | GitHub repo secret (Restricted) | Anyone with this URL can trigger a redeploy. **Use a stack webhook** so the SHA query string is honored. |
 | `PROD_BASE_URL` | GitHub repo secret (Confidential) | Used by `audit-retention.yml` to know where to POST. |
 | GHCR push token | `GITHUB_TOKEN` (Restricted — managed by Actions) | Inherits the workflow token. |
-| `DO_API_TOKEN` | operator's shell / CI secret store (Restricted) | DigitalOcean PAT — full-account scope (DO has no fine-grained PATs). Used by `/deploy` to provision Droplets, reserved IPs, Spaces. **Use a dedicated automation DO account isolated from billing-owner.** Never committed to repo secrets unless a CI workflow legitimately needs to call DO; `/deploy` is operator-side. |
-| `CLOUDFLARE_API_TOKEN` | operator's shell (Restricted) | Cloudflare API token scoped to `Zone.DNS:Edit` on one zone. Used by `/deploy` to upsert A records. Never committed to repo secrets. |
+| `DO_API_TOKEN` | GH repo secret (Restricted) | DigitalOcean PAT — full-account scope (DO has no fine-grained PATs). Used by `deploy.yml` / `new-project.yml` to provision Droplets, reserved IPs, Spaces. **Use a dedicated automation DO account isolated from billing-owner.** Per ADR-004: the token now lives only in the repo's GitHub secrets — it never traverses Claude chat or the operator's shell during normal use. |
+| `CLOUDFLARE_API_TOKEN` | GH repo secret (Restricted) | Cloudflare API token scoped to `Zone.DNS:Edit` on one zone. Used by `deploy.yml` / `new-project.yml` to upsert A records. Per ADR-004: GH repo secret, not operator-side. |
+| `GH_AUTOMATION_TOKEN` | GH repo secret (Restricted) | GitHub PAT with `repo` + `workflow`. Used by ops workflows to set secrets on the forked repo, push to `deployment-state`, etc. Falls back to `GITHUB_TOKEN` (in-workflow) if unset, which lacks cross-repo scope. Per ADR-004. |
+| `SSH_PRIVATE_KEY` | GH repo secret (Restricted) | ed25519 private key the deploy / new-project workflows install into the runner's `~/.ssh/id_ed25519` to reach the Droplet for Portainer install. Generated fresh per project; **never** an operator's personal key. Per ADR-004. |
 | `SENTRY_AUTH_TOKEN` | GitHub repo secret (Restricted) | CI-only. Used by `docker-build.yml` to upload source-maps to Sentry on each main-branch build. Scope: `project:releases` + `org:read`. Missing token → upload step skips silently; app still runs. See ADR-002. |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | GH repo + Portainer stack (Public) | Per-project Sentry DSN. **Not classified as Restricted** — Sentry DSNs are designed by Sentry to ship in client bundles. Documented here for clarity / completeness. See ADR-002. |
 | `SENTRY_ORG` / `SENTRY_PROJECT` | GitHub repo **vars** (Public) | Sentry org / project slugs. Repo vars (not secrets) so they're configurable per fork without exposing the token. |
-| `BETTER_UPTIME_API_KEY` | operator's shell at `/deploy` time (Restricted) | Used by `/deploy` to POST a Better Uptime monitor against `https://<domain>/api/health` and to DELETE it on `--destroy`. Holder can read / write / delete every monitor on the account — keep scoped to a project-specific Better Stack team. Not stored as a repo secret because nothing in CI calls Better Uptime. See ADR-002. |
+| `BETTER_UPTIME_API_KEY` | GH repo secret (Restricted) | Used by `deploy.yml` to POST a Better Uptime monitor against `https://<domain>/api/health` and to DELETE it on `action=destroy`. Holder can read / write / delete every monitor on the account — keep scoped to a project-specific Better Stack team. Per ADR-004: now a repo secret (was operator-shell-only before the CI pivot). See ADR-002. |
+
+**The `deployment-state` orphan branch (per ADR-004):** Workflows commit
+`.deploy-state.<env>.json` files to a long-lived orphan branch named
+`deployment-state`. The branch carries **resource IDs** (DO Droplet IDs,
+reserved IP, Spaces bucket name, Cloudflare zone+record ID, Portainer stack
+ID, Better Uptime monitor ID, GitHub repo metadata) plus the Portainer
+**stack webhook URL** and the **Portainer admin password** that
+`deploy.mjs` mints during install (the URL and password are needed for
+subsequent rollback / redeploy runs to authenticate against Portainer).
+Repo collaborators with read access can see this branch. Treat the branch
+as **Confidential** for any repo where Portainer admin equals control of
+the deployed app; restrict repo read access accordingly, or move the
+Portainer admin password to a per-env GH environment secret in a follow-up
+ADR if the threat model demands it. The branch carries **no** DO / CF / GH
+/ Sentry / age / rclone credentials — those stay in repo secrets only.
 
 **Rotation log:** (downstream projects record every rotation event here)
 
@@ -175,7 +192,7 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 | Risk | Coverage |
 |---|---|
 | A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` boundary ✅; middleware enforces auth on every non-public path ✅. |
-| A02 Cryptographic Failures | TLS at reverse proxy (out of template) ⚠️; HSTS ✅; bcryptjs ✅; encrypted backups via age ✅. |
+| A02 Cryptographic Failures | TLS at reverse proxy (out of template) ⚠️; HSTS ✅; bcryptjs ✅; encrypted backups via age ✅. **Strengthened by ADR-004:** all vendor API tokens (DO, CF, GH, Better Uptime, Sentry, age identity, rclone) now live as GH repo secrets and are injected directly into Actions runners. They never traverse Claude chat or the operator's shell during normal ops, eliminating the chat-transcript exfiltration vector. |
 | A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; Semgrep `p/owasp-top-ten` on every push ✅. |
 | A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; no MFA (T-02). |
 | A05 Security Misconfiguration | Security headers + CSP ✅; non-root container ✅; standalone build ✅. |
