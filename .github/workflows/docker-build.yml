@@ -80,11 +80,17 @@ jobs:
       # on this deploy. SERVICE webhooks ignore the query string -- they redeploy
       # whatever :latest currently points to, which is also fine (just no SHA pin).
       # See SECURITY.md finding T-04.
+      #
+      # Skip silently when PORTAINER_WEBHOOK_URL is unset: a fork that has not
+      # yet run /deploy will not have the webhook secret. The image is still
+      # built and pushed to GHCR above; /deploy reads :latest on first run.
       - name: Trigger Portainer stack update
-        if: success()
+        if: ${{ success() && env.HAS_WEBHOOK == 'true' }}
         env:
+          HAS_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
+          WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
           SHA: ${{ github.sha }}
         run: |
           SHORT_SHA="${SHA:0:7}"
-          curl -s -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}?IMAGE_TAG=sha-${SHORT_SHA}"
+          curl -s -X POST "${WEBHOOK_URL}?IMAGE_TAG=sha-${SHORT_SHA}"
           echo "Portainer webhook triggered with IMAGE_TAG=sha-${SHORT_SHA}"
