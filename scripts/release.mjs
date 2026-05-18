@@ -24,7 +24,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { info, step, ok, warn, bail, dryPrefix } from './lib/log.mjs';
+import { info, step, ok, warn, err, bail, dryPrefix } from './lib/log.mjs';
+
+const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+
+process.on('unhandledRejection', (e) => { err('release', `unhandled rejection: ${e && e.stack || e}`); process.exit(1); });
+process.on('uncaughtException',  (e) => { err('release', `uncaught exception: ${e && e.stack || e}`); process.exit(1); });
 
 const ROOT = process.cwd();
 

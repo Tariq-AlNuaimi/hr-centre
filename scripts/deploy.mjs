@@ -21,7 +21,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { info, step, ok, warn, err, bail, dim, dryPrefix } from './lib/log.mjs';
-import { readState, writeState, mark, statePath } from './lib/state.mjs';
+import { readState, writeState, mark, statePath, tagResource } from './lib/state.mjs';
 import { authSecret, dbPassword, auditToken, minioAccessKey, minioSecretKey, seedPassword, validateSshPubkey } from './lib/secrets.mjs';
 import * as DO from './lib/do.mjs';
 import * as CF from './lib/cloudflare.mjs';
@@ -30,6 +30,22 @@ import * as P from './lib/portainer.mjs';
 import * as BU from './lib/better-uptime.mjs';
 
 const ROOT = process.cwd();
+
+// CI mode: workflows pass NON_INTERACTIVE=true (and CI=true). When set, the
+// script must never prompt; all confirmation gates require an explicit --yes
+// flag from the workflow caller, and credentials come from env vars only.
+const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+
+// Make any unhandled error a hard exit-1 with a clear prefix (workflows must
+// never hang on a stray rejection).
+process.on('unhandledRejection', (e) => {
+  err('deploy', `unhandled rejection: ${e && e.stack || e}`);
+  process.exit(1);
+});
+process.on('uncaughtException', (e) => {
+  err('deploy', `uncaught exception: ${e && e.stack || e}`);
+  process.exit(1);
+});
 
 const { values } = parseArgs({
   options: {
@@ -51,6 +67,7 @@ const { values } = parseArgs({
     'backup-bucket': { type: 'string' },
     'skip-secrets': { type: 'boolean', default: false },
     'skip-stack': { type: 'boolean', default: false },
+    'skip-provision': { type: 'boolean', default: false },
     'sentry-dsn': { type: 'string' },
     'better-uptime-key': { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
@@ -61,6 +78,26 @@ const { values } = parseArgs({
   },
   strict: true,
 });
+
+// CI: pull credentials from env vars when not passed as flags. The workflows
+// load these from GitHub Environment / repo secrets, so the operator never
+// pastes a token into Claude chat.
+if (CI) {
+  values['do-token']         ||= process.env.DO_API_TOKEN || '';
+  values['cf-token']         ||= process.env.CLOUDFLARE_API_TOKEN || '';
+  values['gh-token']         ||= process.env.GITHUB_AUTOMATION_TOKEN || process.env.GITHUB_FALLBACK_TOKEN || process.env.GITHUB_TOKEN || '';
+  values['better-uptime-key'] ||= process.env.BETTER_UPTIME_API_KEY || '';
+  values['sentry-dsn']        ||= process.env.SENTRY_DSN || '';
+  values['caddy-email']       ||= process.env.CADDY_EMAIL || '';
+  values['ssh-pubkey']        ||= process.env.SSH_PUBKEY || '';
+}
+
+// --skip-provision == --resume + --skip-stack=false. It's the "redeploy only"
+// path used by the deploy.yml workflow's "redeploy" action: skip resource
+// creation, just refresh the stack + trigger the webhook.
+if (values['skip-provision']) {
+  values.resume = true;
+}
 
 if (values.help) {
   console.log('See `head -25 scripts/deploy.mjs` for usage.');
@@ -148,6 +185,10 @@ const BACKUP_BUCKET = values['backup-bucket'] || `${SLUG}-backups-${ENV}`;
 
 // -- Cost preview + confirmation -------------------------------------------
 
+if (CI && !values.yes && !values.destroy && !DRY) {
+  bail('deploy', `CI mode requires --yes (workflows always pass it).`);
+}
+
 if (!values.resume && !values.yes && !DRY) {
   console.log('');
   console.log(`About to provision ${SLUG} / ${ENV}:`);
@@ -193,6 +234,13 @@ if (!state.droplet || !state.droplet.id) {
     const reserved = await DO.reserveAndAssignIp(values['do-token'], ready.id, REGION);
     state = mark(state, 'droplet', { id: ready.id, ip, reservedIp: reserved.ip, region: REGION, size: SIZE });
     await writeState(ENV, state);
+    // Tag for tag-based discovery (ADR-004 backup source-of-truth). Best-effort.
+    try {
+      await tagResource(DO, values['do-token'], 'droplet', ready.id, SLUG, ENV);
+      await tagResource(DO, values['do-token'], 'reserved_ip', reserved.ip, SLUG, ENV);
+    } catch (e) {
+      warn('deploy', `tagging resources for discovery failed (non-fatal): ${e.message}`);
+    }
     ok('deploy', `droplet ${ready.id} active @ ${reserved.ip}`);
   } else {
     dim('deploy', `would create: droplet ${DROPLET_NAME} + reserved IPv4 + ssh key ${TAG}-ops`);

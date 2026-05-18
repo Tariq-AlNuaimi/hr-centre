@@ -11,15 +11,21 @@
 //   npm run rollback -- --env prod --to sha-abc1234 --dry-run
 
 import { parseArgs } from 'node:util';
-import { step, ok, warn, bail, info, dryPrefix } from './lib/log.mjs';
+import { step, ok, warn, bail, info, err, dryPrefix } from './lib/log.mjs';
 import { readState } from './lib/state.mjs';
 import * as P from './lib/portainer.mjs';
 import * as GH from './lib/github.mjs';
+
+const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+
+process.on('unhandledRejection', (e) => { err('rollback', `unhandled rejection: ${e && e.stack || e}`); process.exit(1); });
+process.on('uncaughtException',  (e) => { err('rollback', `uncaught exception: ${e && e.stack || e}`); process.exit(1); });
 
 const { values } = parseArgs({
   options: {
     env: { type: 'string', default: 'prod' },
     to: { type: 'string' },
+    slug: { type: 'string' },
     'list-recent': { type: 'boolean', default: false },
     'gh-token': { type: 'string' },
     'gh-owner': { type: 'string' },
@@ -29,6 +35,13 @@ const { values } = parseArgs({
   },
   strict: true,
 });
+
+if (CI) {
+  values['gh-token'] ||= process.env.GITHUB_AUTOMATION_TOKEN || process.env.GITHUB_FALLBACK_TOKEN || process.env.GITHUB_TOKEN || '';
+  // CI workflows always provide --to and --yes; bail loudly if not.
+  if (!values.to)  bail('rollback', `CI mode: --to is required (workflows always pass it).`);
+  if (!values.yes) bail('rollback', `CI mode: --yes is required (workflows always pass it).`);
+}
 
 const DRY = values['dry-run'];
 const DRYP = dryPrefix(DRY);

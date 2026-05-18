@@ -16,18 +16,25 @@
 
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { step, ok, warn, bail, info, dryPrefix } from './lib/log.mjs';
+import { step, ok, warn, bail, info, err, dryPrefix } from './lib/log.mjs';
 import { readState } from './lib/state.mjs';
+
+const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+
+process.on('unhandledRejection', (e) => { err('restore', `unhandled rejection: ${e && e.stack || e}`); process.exit(1); });
+process.on('uncaughtException',  (e) => { err('restore', `uncaught exception: ${e && e.stack || e}`); process.exit(1); });
 
 const { values } = parseArgs({
   options: {
     env: { type: 'string', default: 'prod' },
     pick: { type: 'string', default: 'latest' },
+    slug: { type: 'string' },
     'into-port': { type: 'string', default: '5433' },
     'rclone-remote': { type: 'string' },
     'backup-bucket': { type: 'string' },
     'age-identity-path': { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
+    yes: { type: 'boolean', default: false },
   },
   strict: true,
 });

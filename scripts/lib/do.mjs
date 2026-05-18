@@ -23,7 +23,7 @@ function headers(token) {
   };
 }
 
-async function call(token, path, init = {}, attempt = 1) {
+export async function call(token, path, init = {}, attempt = 1) {
   const r = await fetch(`${API}${path}`, {
     ...init,
     headers: { ...headers(token), ...(init.headers || {}) },

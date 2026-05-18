@@ -12,14 +12,20 @@
 //   npm run promote -- --sha HEAD --gh-token ghp_... [--dry-run]
 
 import { parseArgs } from 'node:util';
-import { step, ok, warn, bail, info, dryPrefix } from './lib/log.mjs';
+import { step, ok, warn, bail, info, err, dryPrefix } from './lib/log.mjs';
 import { readState } from './lib/state.mjs';
 import * as GH from './lib/github.mjs';
 import * as P from './lib/portainer.mjs';
 
+const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+
+process.on('unhandledRejection', (e) => { err('promote', `unhandled rejection: ${e && e.stack || e}`); process.exit(1); });
+process.on('uncaughtException',  (e) => { err('promote', `uncaught exception: ${e && e.stack || e}`); process.exit(1); });
+
 const { values } = parseArgs({
   options: {
     sha: { type: 'string' },
+    slug: { type: 'string' },
     'gh-token': { type: 'string' },
     'gh-owner': { type: 'string' },
     'gh-repo': { type: 'string' },
@@ -28,6 +34,11 @@ const { values } = parseArgs({
   },
   strict: true,
 });
+
+if (CI) {
+  values['gh-token'] ||= process.env.GITHUB_AUTOMATION_TOKEN || process.env.GITHUB_FALLBACK_TOKEN || process.env.GITHUB_TOKEN || '';
+  // In CI, missing --sha or sha='HEAD' falls back to the latest commit on main.
+}
 
 const DRY = values['dry-run'];
 const DRYP = dryPrefix(DRY);

@@ -37,8 +37,13 @@ import { parseArgs } from 'node:util';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { existsSync, mkdtempSync } from 'node:fs';
-import { step, ok, warn, bail, info, dryPrefix } from './lib/log.mjs';
+import { step, ok, warn, bail, info, err, dryPrefix } from './lib/log.mjs';
 import * as GH from './lib/github.mjs';
+
+const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
+
+process.on('unhandledRejection', (e) => { err('new-project', `unhandled rejection: ${e && e.stack || e}`); process.exit(1); });
+process.on('uncaughtException',  (e) => { err('new-project', `uncaught exception: ${e && e.stack || e}`); process.exit(1); });
 
 const { values } = parseArgs({
   options: {
@@ -59,8 +64,20 @@ const { values } = parseArgs({
 const DRY = values['dry-run'];
 const DRYP = dryPrefix(DRY);
 
+if (CI) {
+  values['gh-token']    ||= process.env.GITHUB_AUTOMATION_TOKEN || process.env.GITHUB_FALLBACK_TOKEN || process.env.GITHUB_TOKEN || '';
+  values['do-token']    ||= process.env.DO_API_TOKEN || '';
+  values['cf-token']    ||= process.env.CLOUDFLARE_API_TOKEN || '';
+  values['ssh-pubkey']  ||= process.env.SSH_PUBKEY || '';
+  values['caddy-email'] ||= process.env.CADDY_EMAIL || '';
+}
+
 if (!values.plan) bail('new-project', `--plan <path-to-json> is required`);
 const plan = JSON.parse(await readFile(values.plan, 'utf8'));
+
+// The /new-project.yml workflow uses a minimal plan shape: {slug, displayName,
+// ghOwner, domain, env, entities}. Normalize it to the full internal shape.
+if (plan.ghOwner && !plan.owner) plan.owner = plan.ghOwner;
 
 for (const k of ['owner', 'slug', 'displayName', 'domain', 'entities']) {
   if (!plan[k]) bail('new-project', `plan missing required field: ${k}`);
