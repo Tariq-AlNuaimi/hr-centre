@@ -38,13 +38,14 @@ async function call(token, path, init = {}) {
   return body;
 }
 
-export async function validateToken(token) {
+export async function validateToken(token, { owner, repo } = {}) {
   // PATs hit /user successfully. The runner's auto-generated GITHUB_TOKEN
   // (installation token) returns 403 -- it's not a user identity, and it
   // lacks the admin:write / secrets:write permissions deploy.mjs needs
   // downstream anyway. Fail fast with the exact remediation.
+  let user;
   try {
-    return await call(token, '/user');
+    user = await call(token, '/user');
   } catch (e) {
     if (String(e.message).includes('403')) {
       throw new Error(
@@ -56,6 +57,23 @@ export async function validateToken(token) {
     }
     throw e;
   }
+  // Probe secrets:write scope upfront so we fail fast (LOW #8). Skipped if
+  // caller didn't pass owner/repo (e.g. /new-project before the target repo
+  // exists).
+  if (owner && repo) {
+    try {
+      await call(token, `/repos/${owner}/${repo}/actions/secrets/public-key`);
+    } catch (e) {
+      if (String(e.message).includes('403')) {
+        throw new Error(
+          'GH PAT validated as user but lacks `Repository:Secrets:write` scope; ' +
+          'required to set deploy secrets.'
+        );
+      }
+      throw e;
+    }
+  }
+  return user;
 }
 
 // Repo create from template -------------------------------------------------

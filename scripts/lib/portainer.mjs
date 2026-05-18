@@ -96,6 +96,28 @@ async function portainerCall(baseUrl, path, init = {}, token) {
   return body;
 }
 
+// Poll Portainer's /api/system/status until it returns 200. Replaces the
+// fixed 15-sec sleep before initPortainerAdmin -- cold-start can take
+// 20-30 sec; the fixed sleep gambled. Caller is expected to have set
+// NODE_TLS_REJECT_UNAUTHORIZED=0 around this region (self-signed cert
+// during first boot).
+export async function pollPortainerReady(url, timeoutMs = 60_000) {
+  step('portainer', `polling ${url}/api/system/status until ready`);
+  const start = Date.now();
+  let lastErr = '';
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const r = await fetch(`${url}/api/system/status`, { signal: AbortSignal.timeout(5_000) });
+      if (r.status === 200) return;
+      lastErr = `HTTP ${r.status}`;
+    } catch (e) {
+      lastErr = e.message || String(e);
+    }
+    await new Promise(res => setTimeout(res, 2000));
+  }
+  throw new Error(`Portainer at ${url} did not become ready in ${timeoutMs}ms; last error: ${lastErr}`);
+}
+
 export async function initPortainerAdmin(baseUrl, password) {
   step('portainer', `claiming admin window at ${baseUrl}`);
   // The init endpoint disables itself after first call. Use a long username
@@ -120,6 +142,9 @@ export async function getPortainerJwt(baseUrl, username, password) {
 export async function getLocalEndpointId(baseUrl, jwt) {
   const r = await fetch(`${baseUrl}/api/endpoints`, { headers: { Authorization: `Bearer ${jwt}` } });
   const list = await r.json();
+  if (!Array.isArray(list) || list.length === 0) {
+    throw new Error('Portainer has no endpoints');
+  }
   const local = list.find(e => e.Type === 1 || e.Name === 'local' || e.Name === 'primary');
   return local ? local.Id : list[0].Id;
 }

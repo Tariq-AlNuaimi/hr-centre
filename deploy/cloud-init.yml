@@ -49,6 +49,7 @@ runcmd:
   - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
   - apt-get update -y
   - apt-get install -y caddy
+  - systemctl enable --now caddy
   # UFW
   - ufw default deny incoming
   - ufw default allow outgoing
@@ -61,6 +62,12 @@ runcmd:
   - install -d -o ops -g ops -m 0755 /opt/backup
   - install -d -o ops -g ops -m 0700 /opt/backup/keys
   - install -d -o ops -g ops -m 0755 /var/backups
+  # Reload Caddy after the Caddyfile has been written via write_files. This
+  # replaces the earlier caddy-reload.service indirection: write_files runs
+  # before runcmd, so the file is in place by now and a direct reload picks
+  # up the rendered domain config. Fall back to restart if reload fails (e.g.
+  # Caddy hasn't fully started yet).
+  - systemctl reload caddy || systemctl restart caddy
 
 write_files:
   - path: /etc/caddy/Caddyfile
@@ -79,20 +86,8 @@ write_files:
       }
     permissions: '0644'
 
-  - path: /etc/systemd/system/caddy-reload.service
-    content: |
-      [Unit]
-      Description=Reload Caddy after cloud-init writes the Caddyfile
-      After=caddy.service
-      [Service]
-      Type=oneshot
-      ExecStart=/bin/systemctl reload caddy
-    permissions: '0644'
-
   - path: /etc/cron.d/portainer-data-snapshot
     content: |
       # Nightly Portainer data backup -- captures stack defs + admin metadata
       0 3 * * * root tar -czf /var/backups/portainer-$(date +\%Y\%m\%d).tar.gz -C /var/lib/docker/volumes/portainer_data/_data . 2>/dev/null
     permissions: '0644'
-
-final_message: "Cloud-init complete after $UPTIME seconds. Caddy + Docker ready. Portainer install runs next via scripts/bootstrap-portainer.mjs."

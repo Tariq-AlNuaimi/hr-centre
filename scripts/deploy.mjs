@@ -209,7 +209,7 @@ if (!DRY) {
   step('deploy', `validating tokens`);
   await DO.validateToken(values['do-token']).then(a => ok('deploy', `DO ok (${a.email || a.uuid})`));
   await CF.validateToken(values['cf-token']).then(t => ok('deploy', `CF ok (status=${t.status})`));
-  await GH.validateToken(values['gh-token']).then(u => ok('deploy', `GH ok (${u.login})`));
+  await GH.validateToken(values['gh-token'], { owner: GH_OWNER, repo: GH_REPO }).then(u => ok('deploy', `GH ok (${u.login})`));
 }
 
 // -- 1. DO: SSH key + Droplet + reserved IP --------------------------------
@@ -244,6 +244,22 @@ if (!state.droplet || !state.droplet.id) {
     ok('deploy', `droplet ${ready.id} active @ ${reserved.ip}`);
   } else {
     dim('deploy', `would create: droplet ${DROPLET_NAME} + reserved IPv4 + ssh key ${TAG}-ops`);
+  }
+} else if (!state.droplet.reservedIp) {
+  // Partial state: droplet exists but no reserved IP; attach now (MEDIUM #4).
+  step('deploy', `droplet ${state.droplet.id} exists but lacks reserved IP; attaching`);
+  if (!DRY) {
+    const reserved = await DO.reserveAndAssignIp(values['do-token'], state.droplet.id, REGION);
+    state = mark(state, 'droplet', { ...state.droplet, reservedIp: reserved.ip });
+    await writeState(ENV, state);
+    try {
+      await tagResource(DO, values['do-token'], 'reserved_ip', reserved.ip, SLUG, ENV);
+    } catch (e) {
+      warn('deploy', `tagging reserved_ip for discovery failed (non-fatal): ${e.message}`);
+    }
+    ok('deploy', `reserved IP ${reserved.ip} attached`);
+  } else {
+    dim('deploy', `would attach: reserved IPv4 to droplet ${state.droplet.id}`);
   }
 } else {
   ok('deploy', `droplet ${state.droplet.id} already provisioned (${state.droplet.reservedIp})`);
@@ -301,8 +317,9 @@ if ((!state.portainer || !state.portainer.adminPassword) && !values['skip-stack'
     const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     try {
-      // Portainer takes 10-15s to come up.
-      await new Promise(r => setTimeout(r, 15_000));
+      // Poll Portainer's /api/system/status until 200 instead of gambling on
+      // a fixed sleep -- cold-start can take 20-30 sec (HIGH #1).
+      await P.pollPortainerReady(portainerUrl);
       await P.initPortainerAdmin(portainerUrl, adminPw);
     } finally {
       if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
@@ -370,18 +387,19 @@ if (!values['skip-stack'] && state.portainer && (!state.portainer.stackId || !st
         stackId = stack.Id;
       }
       if (!webhookUrl) {
-        const wh = await P.createStackWebhook(state.portainer.url, jwt, stackId).catch(e => { warn('deploy', `webhook create failed: ${e.message}`); return null; });
-        if (wh && wh.WebhookID) webhookUrl = `${state.portainer.url}/api/stacks/webhooks/${wh.WebhookID}`;
+        // Webhook creation is a hard error (MEDIUM #6): without it /promote
+        // and docker-build redeploys are silently broken.
+        const wh = await P.createStackWebhook(state.portainer.url, jwt, stackId);
+        if (!wh || !wh.WebhookID) {
+          throw new Error('Portainer createStackWebhook returned no WebhookID; cannot wire docker-build webhook.');
+        }
+        webhookUrl = `${state.portainer.url}/api/stacks/webhooks/${wh.WebhookID}`;
       }
       state = mark(state, 'portainer', { ...state.portainer, stackId, webhookUrl });
       await writeState(ENV, state);
-      if (webhookUrl) {
-        // Push the webhook URL into GH secrets so docker-build.yml can trigger redeploys.
-        await GH.setRepoSecret(values['gh-token'], GH_OWNER, GH_REPO, 'PORTAINER_WEBHOOK_URL', webhookUrl);
-        ok('deploy', `stack ${stackId} + webhook -> set PORTAINER_WEBHOOK_URL`);
-      } else {
-        warn('deploy', `stack created but webhook URL not captured; copy from Portainer UI manually`);
-      }
+      // Push the webhook URL into GH secrets so docker-build.yml can trigger redeploys.
+      await GH.setRepoSecret(values['gh-token'], GH_OWNER, GH_REPO, 'PORTAINER_WEBHOOK_URL', webhookUrl);
+      ok('deploy', `stack ${stackId} + webhook -> set PORTAINER_WEBHOOK_URL`);
     } finally {
       if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
       else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
@@ -401,9 +419,39 @@ if (!DRY && state.portainer && state.portainer.webhookUrl) {
   state = mark(state, 'deployedSha', sha);
   await writeState(ENV, state);
   ok('deploy', `webhook fired (IMAGE_TAG=${tag}). Polling /api/health...`);
-  const healthy = await pollHealth(`https://${DOMAIN}/api/health`, 180_000);
-  if (healthy) ok('deploy', `healthy: https://${DOMAIN}/api/health`);
-  else warn('deploy', `health check did not return 200 within 3 min. The app may still be coming up; check Portainer logs.`);
+
+  // Phase A: direct-IP poll (90 sec). Self-signed cert is acceptable here
+  // because Caddy may still be obtaining its LE cert; we just want to know
+  // the app + Caddy chain is reachable independent of DNS propagation. If
+  // this fails, that's a real infra failure.
+  const phaseAUrl = `https://${state.droplet.ip}/api/health`;
+  step('deploy', `phase A: direct-IP health poll @ ${phaseAUrl}`);
+  const prevTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  let healthyA;
+  try {
+    healthyA = await pollHealth(phaseAUrl, 90_000);
+  } finally {
+    if (prevTls === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prevTls;
+  }
+  if (!healthyA) {
+    bail('deploy', `phase A health check failed (direct IP ${state.droplet.ip} did not return 200 in 90s). The app or Caddy reverse-proxy is not up; check Portainer logs.`);
+  }
+  ok('deploy', `phase A healthy: ${phaseAUrl}`);
+
+  // Phase B: domain poll (90 sec). DNS may still be propagating from the CF
+  // upsert seconds ago; soft-warn rather than fail the whole deploy.
+  const phaseBUrl = `https://${DOMAIN}/api/health`;
+  step('deploy', `phase B: domain health poll @ ${phaseBUrl}`);
+  const healthyB = await pollHealth(phaseBUrl, 90_000);
+  const healthy = healthyB;
+  if (healthyB) {
+    ok('deploy', `phase B healthy: ${phaseBUrl}`);
+  } else {
+    dim('deploy', `DNS not yet propagated; check: dig +short ${DOMAIN}`);
+    warn('deploy', `phase B health check did not return 200 within 90s; deploy is successful from infra side (phase A green). DNS / LE cert will catch up shortly.`);
+  }
 
   // -- 7. Register Better Uptime monitor (per ADR-002) ----------------------
   if (healthy) {
@@ -500,7 +548,11 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn }) {
     BACKUP_BUCKET: backupBucket,
     RCLONE_REMOTE: 'spaces',
     AUDIT_PURGE_TOKEN: auditToken(),
-    IMAGE_TAG: 'latest',
+    // Pin initial stack image to the commit SHA (LOW #10). The docker-build
+    // workflow on the previous merge to main already pushed sha-<short>; if
+    // we left this `latest`, Portainer would pull whatever `latest` currently
+    // points at (could lag the SHA-tagged image by minutes during fresh push).
+    IMAGE_TAG: `sha-${(process.env.GITHUB_SHA || '').slice(0, 7) || 'latest'}`,
     PROD_BASE_URL: `https://${domain}`,
     SEED_ADMIN_EMAIL: 'admin@example.com',
     SEED_ADMIN_PASSWORD: seedPassword(),

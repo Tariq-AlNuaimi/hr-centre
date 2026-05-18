@@ -65,9 +65,12 @@ export async function ensureSshKey(token, name, pubkey) {
   // re-runs of the same project), only then POST.
   const body = keyBody(pubkey);
   const list = await call(token, '/account/keys?per_page=200');
-  const byBody = list.ssh_keys.find(k => keyBody(k.public_key || '') === body);
+  // Skip any candidate where public_key is missing or empty so an unrelated
+  // key can't false-match against an empty key body. (LOW #9)
+  const candidates = list.ssh_keys.filter(k => k.public_key && k.public_key.trim());
+  const byBody = candidates.find(k => keyBody(k.public_key) === body);
   if (byBody) return byBody;
-  const byName = list.ssh_keys.find(k => k.name === name);
+  const byName = candidates.find(k => k.name === name);
   if (byName) return byName;
   const created = await call(token, '/account/keys', {
     method: 'POST',
