@@ -227,8 +227,6 @@ if (!state.droplet || !state.droplet.id) {
       ssh_pubkey: values['ssh-pubkey'],
       caddy_email: CADDY_EMAIL,
       domain: DOMAIN,
-      gh_owner: GH_OWNER,
-      gh_token: values['gh-token'],
     });
     let droplet = await DO.findDropletByTag(values['do-token'], TAG);
     if (!droplet) {
@@ -500,20 +498,12 @@ console.log('');
 // Helpers
 // =========================================================================
 
-async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, gh_token }) {
+async function renderCloudInit({ ssh_pubkey, caddy_email, domain }) {
   const tmpl = await readFile(join(ROOT, 'deploy/cloud-init.yml'), 'utf8');
-  // Pre-stage Docker auth for GHCR private-image pulls. base64(owner:PAT) is
-  // the standard Docker config.json `auth` form. cloud-init writes this to
-  // /root/.docker/config.json so the daemon (which pulls images on behalf
-  // of Portainer) can authenticate to ghcr.io.
-  const ghcrAuthB64 = gh_owner && gh_token
-    ? Buffer.from(`${gh_owner}:${gh_token}`).toString('base64')
-    : '';
   return tmpl
     .replaceAll('{{ssh_pubkey}}', ssh_pubkey)
     .replaceAll('{{caddy_email}}', caddy_email)
-    .replaceAll('{{domain}}', domain)
-    .replaceAll('{{ghcr_auth_b64}}', ghcrAuthB64);
+    .replaceAll('{{domain}}', domain);
 }
 
 function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }) {
