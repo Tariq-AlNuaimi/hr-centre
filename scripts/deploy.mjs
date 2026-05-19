@@ -368,7 +368,17 @@ if (!values['skip-stack']) {
   if (!DRY) {
     const sshHost = state.droplet.ip || state.droplet.reservedIp;
     const sha = await GH.getLatestCommitSha(values['gh-token'], GH_OWNER, GH_REPO, 'main').catch(() => null);
-    const initialTag = sha ? `sha-${sha.slice(0, 7)}` : 'latest';
+    // First deploy uses :latest. docker-build.yml publishes :latest and
+    // :sha-<short> simultaneously on every main push, so :latest always
+    // points at the most-recently-completed build. SHA-pinning here
+    // introduced a tag-format/visibility dependency on docker/metadata-action's
+    // exact output and on GHCR auth scope -- both of which can 404 silently.
+    // After this first deploy lands, docker-build.yml's own SSH-redeploy
+    // step flips IMAGE_TAG to :sha-<short> on every subsequent push, so
+    // SHA-pinning converges within ~5 min without operator action.
+    // /promote + /rollback always pass explicit SHA tags via redeployStack,
+    // so the prod SHA-pinning story is unchanged.
+    const initialTag = 'latest';
     const compose = await readFile(join(ROOT, 'docker-compose.prod.yml'), 'utf8');
     const envVars = stackEnvVars(state, {
       domain: DOMAIN,
