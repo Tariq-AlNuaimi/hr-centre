@@ -136,7 +136,42 @@ export async function reserveAndAssignIp(token, dropletId, region) {
     method: 'POST',
     body: JSON.stringify({ droplet_id: dropletId, region }),
   });
-  return r.reserved_ip;
+  const ip = r.reserved_ip.ip;
+  // POST returns immediately but the assignment is async. We've observed
+  // in production that DO sometimes returns success and then silently
+  // detaches the IP -- state.droplet.reservedIp pointed at an IP that
+  // routed nowhere from the public internet for 30+ minutes until the
+  // operator manually reassigned via the DO console. Poll until the IP
+  // is actually attached, and retry the assign up to 3x if not.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const ok = await pollIpAssigned(token, ip, dropletId, 60_000);
+    if (ok) {
+      step('do', `reserved IP ${ip} confirmed attached to droplet ${dropletId}`);
+      return r.reserved_ip;
+    }
+    if (attempt < 3) {
+      step('do', `reserved IP ${ip} not attached after 60s; retrying assign (attempt ${attempt + 1}/3)`);
+      await call(token, `/reserved_ips/${ip}/actions`, {
+        method: 'POST',
+        body: JSON.stringify({ type: 'assign', droplet_id: dropletId }),
+      }).catch(e => warn('do', `assign retry failed: ${e.message}`));
+    }
+  }
+  throw new Error(`reserved IP ${ip} failed to attach to droplet ${dropletId} after 3 attempts (~3 min total). Check DO console > Networking > Reserved IPs; you may need to assign manually.`);
+}
+
+async function pollIpAssigned(token, ip, expectedDropletId, timeoutMs) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const r = await call(token, `/reserved_ips/${ip}`);
+      if (r.reserved_ip && r.reserved_ip.droplet && r.reserved_ip.droplet.id === expectedDropletId) {
+        return true;
+      }
+    } catch (_) {}
+    await new Promise(res => setTimeout(res, 3000));
+  }
+  return false;
 }
 
 export async function unassignAndReleaseIp(token, ip) {

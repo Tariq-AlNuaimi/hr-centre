@@ -336,6 +336,38 @@ if (!values['skip-stack']) {
   }
 }
 
+// -- 3b. Generate (or load) shared secrets ---------------------------------
+//
+// Every dynamic secret (AUTH_SECRET, POSTGRES_PASSWORD, MINIO creds,
+// AUDIT_PURGE_TOKEN, SEED_ADMIN_PASSWORD) is consumed by BOTH the GH-secrets
+// set (section 4) AND the host /opt/<slug>/.env file (section 5). The
+// generators in lib/secrets.mjs return fresh randoms on every call -- if we
+// call them in each map builder, the two maps DIVERGE: GH-secret value !=
+// host-.env value. That breaks audit-retention.yml (token mismatch), confuses
+// seed-password retrieval, etc. (Smoke surfaced this when SEED_ADMIN_PASSWORD
+// stored as a GH secret didn't match what the seed script used to create the
+// admin user.)
+//
+// Fix: generate once, persist to state.generatedSecrets, reuse on subsequent
+// /deploy runs (idempotent -- re-run won't rotate the DB password out from
+// under the running container). buildSecretMap + stackEnvVars both consume
+// this same object.
+if (!DRY && !state.generatedSecrets) {
+  step('deploy', `generating shared secrets (AUTH_SECRET, POSTGRES_PASSWORD, MinIO, audit, seed)`);
+  const generated = {
+    AUTH_SECRET: authSecret(),
+    AUDIT_PURGE_TOKEN: auditToken(),
+    POSTGRES_PASSWORD: dbPassword(),
+    MINIO_ROOT_USER: minioAccessKey(),
+    MINIO_ROOT_PASSWORD: minioSecretKey(),
+    SEED_ADMIN_PASSWORD: seedPassword(),
+  };
+  state = mark(state, 'generatedSecrets', generated);
+  await writeState(ENV, state);
+} else if (!DRY && state.generatedSecrets) {
+  dim('deploy', `reusing existing generatedSecrets from state (idempotent re-run)`);
+}
+
 // -- 4. GitHub: secrets + ruleset ------------------------------------------
 
 if (!values['skip-secrets']) {
@@ -438,13 +470,32 @@ if (!DRY && !values['skip-stack']) {
   // 180s covers: DNS A-record propagation from CF egress (5-30s) + LE
   // HTTP-01 challenge round-trip (30-60s on cold start) + Caddy applying
   // the cert + first 200 response. Sub-90s was too tight for first deploy.
-  const healthyB = await pollHealth(phaseBUrl, 180_000);
+  let healthyB = await pollHealth(phaseBUrl, 180_000);
+  if (!healthyB) {
+    // Caddy can get stuck on LE acquisition backoff when initial cert
+    // attempts fail (e.g. reserved IP wasn't routing during boot). Smoke
+    // surfaced this: Phase B timed out, browser showed ERR_SSL_PROTOCOL_ERROR
+    // until a manual `systemctl restart caddy` (+ removing acme/*/locks)
+    // unblocked it. Automate that recovery: stop+restart+clear-locks via
+    // SSH, then re-poll for 120s (LE issues a fresh cert in ~30s once
+    // the routing is healthy).
+    warn('deploy', `phase B did not return 200 in 180s; attempting Caddy auto-recovery`);
+    try {
+      await SSH.sshExec(state.droplet.ip, 'root',
+        'systemctl stop caddy; rm -rf /var/lib/caddy/.local/share/caddy/acme/*/locks 2>/dev/null || true; systemctl start caddy',
+        { sshKeyPath: values['ssh-key-path'], timeoutMs: 30_000 });
+      step('deploy', `caddy restarted; clearing LE backoff and re-polling for 120s`);
+      healthyB = await pollHealth(phaseBUrl, 120_000);
+    } catch (e) {
+      warn('deploy', `caddy auto-recovery failed: ${e.message}`);
+    }
+  }
   const healthy = healthyB;
   if (healthyB) {
     ok('deploy', `phase B healthy: ${phaseBUrl}`);
   } else {
-    dim('deploy', `DNS / LE cert not yet ready; check: dig +short ${DOMAIN} && curl -v https://${DOMAIN}`);
-    warn('deploy', `phase B health check did not return 200 within 180s; deploy is successful from infra side (phase A green). DNS / LE cert will catch up shortly.`);
+    dim('deploy', `DNS / LE cert still not ready after auto-recovery. Dispatch diagnose-host.yml with restart_caddy=true to retry manually, or check: dig +short ${DOMAIN} && curl -v https://${DOMAIN}`);
+    warn('deploy', `phase B health check did not return 200 (deploy is successful from infra side -- phase A green). Most common cause: DO reserved IP routing still propagating.`);
   }
 
   // Persist the domain so downstream ops (`/promote` polls `prod.domain`,
@@ -524,21 +575,26 @@ async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr
 }
 
 function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }) {
-  // Everything CI + the workflows + restore-test need.
+  // Pulls dynamic values from state.generatedSecrets (generated once per env,
+  // persisted to state). Ensures GH-secret values match the host /opt/<slug>/.env
+  // values for the same env. See "section 3b" in main flow above.
+  const gs = state.generatedSecrets || {};
   const m = {
-    AUTH_SECRET: authSecret(),
-    AUDIT_PURGE_TOKEN: auditToken(),
+    AUTH_SECRET: gs.AUTH_SECRET,
+    AUDIT_PURGE_TOKEN: gs.AUDIT_PURGE_TOKEN,
     PROD_BASE_URL: `https://${domain}`,
-    POSTGRES_PASSWORD: dbPassword(),
+    POSTGRES_PASSWORD: gs.POSTGRES_PASSWORD,
     BACKUP_BUCKET: backupBucket,
     RCLONE_REMOTE: rcloneRemote,
-    // Generators below produce sound defaults; operators rotate as needed.
-    MINIO_ROOT_USER: minioAccessKey(),
-    MINIO_ROOT_PASSWORD: minioSecretKey(),
-    MINIO_ACCESS_KEY: minioAccessKey(),
-    MINIO_SECRET_KEY: minioSecretKey(),
+    // MinIO root credentials. compose substitutes ROOT_USER/ROOT_PASSWORD into
+    // the app's MINIO_ACCESS_KEY/MINIO_SECRET_KEY at runtime, so the app and
+    // MinIO server use the same credential pair.
+    MINIO_ROOT_USER: gs.MINIO_ROOT_USER,
+    MINIO_ROOT_PASSWORD: gs.MINIO_ROOT_PASSWORD,
+    MINIO_ACCESS_KEY: gs.MINIO_ROOT_USER,
+    MINIO_SECRET_KEY: gs.MINIO_ROOT_PASSWORD,
     SEED_ADMIN_EMAIL: 'admin@example.com',
-    SEED_ADMIN_PASSWORD: seedPassword(),
+    SEED_ADMIN_PASSWORD: gs.SEED_ADMIN_PASSWORD,
     // Operator-supplied secrets land via /first-fork or bootstrap-secrets.yml:
     // BACKUP_AGE_IDENTITY, RCLONE_CONFIG, SENTRY_AUTH_TOKEN, BETTER_UPTIME_API_KEY
   };
@@ -559,9 +615,12 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
   const ghcrImage = ghOwner && ghRepo
     ? `ghcr.io/${ghOwner.toLowerCase()}/${ghRepo.toLowerCase()}`
     : 'ghcr.io/rihal-om/fullstack-next-template';
+  // Pull dynamic values from state.generatedSecrets so the host .env matches
+  // the GH-secret values for the same env. See "section 3b" in main flow.
+  const gs = state.generatedSecrets || {};
   const vars = {
     NEXT_PUBLIC_APP_NAME: slug,
-    AUTH_SECRET: authSecret(),                  // re-mint per stack (host-side copy)
+    AUTH_SECRET: gs.AUTH_SECRET,
     AUTH_URL: `https://${domain}`,              // production base URL for Auth.js
     NEXT_PUBLIC_APP_URL: `https://${domain}`,
     // Set Postgres user/db explicitly. Compose has `${POSTGRES_USER:-app}`
@@ -570,16 +629,16 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     // user, leaving the app's DATABASE_URL pointing at a non-existent user).
     POSTGRES_USER: 'app',
     POSTGRES_DB: 'app_db',
-    POSTGRES_PASSWORD: dbPassword(),
-    MINIO_ROOT_USER: minioAccessKey(),
-    MINIO_ROOT_PASSWORD: minioSecretKey(),
-    MINIO_ACCESS_KEY: minioAccessKey(),
-    MINIO_SECRET_KEY: minioSecretKey(),
+    POSTGRES_PASSWORD: gs.POSTGRES_PASSWORD,
+    MINIO_ROOT_USER: gs.MINIO_ROOT_USER,
+    MINIO_ROOT_PASSWORD: gs.MINIO_ROOT_PASSWORD,
+    MINIO_ACCESS_KEY: gs.MINIO_ROOT_USER,        // compose substitutes ROOT_USER here
+    MINIO_SECRET_KEY: gs.MINIO_ROOT_PASSWORD,    // compose substitutes ROOT_PASSWORD here
     MINIO_BUCKET: 'uploads',                    // matches compose default; explicit for consistency
     BACKUP_ENABLED: 'true',
     BACKUP_BUCKET: backupBucket,
     RCLONE_REMOTE: 'spaces',
-    AUDIT_PURGE_TOKEN: auditToken(),
+    AUDIT_PURGE_TOKEN: gs.AUDIT_PURGE_TOKEN,
     GHCR_IMAGE: ghcrImage,
     // SHA-pinned. The deploy script resolves the current main SHA before
     // calling stackEnvVars; docker-build.yml redeploys with the new SHA on
@@ -589,7 +648,7 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     IMAGE_TAG: imageTag || 'latest',
     PROD_BASE_URL: `https://${domain}`,
     SEED_ADMIN_EMAIL: 'admin@example.com',
-    SEED_ADMIN_PASSWORD: seedPassword(),
+    SEED_ADMIN_PASSWORD: gs.SEED_ADMIN_PASSWORD,
     SENTRY_ENVIRONMENT: env === 'prod' ? 'production' : env,
   };
   // Sentry DSN must be either a valid URL or absent -- lib/env.ts's zod
