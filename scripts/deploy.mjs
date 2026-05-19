@@ -397,6 +397,18 @@ if (!values['skip-stack'] && state.portainer && (!state.portainer.stackId || !st
     try {
       const jwt = await P.getPortainerJwt(state.portainer.url, 'ops-admin', state.portainer.adminPassword);
       const endpointId = await P.getLocalEndpointId(state.portainer.url, jwt);
+      // Register GHCR in Portainer BEFORE stack create. Portainer's daemon
+      // does not read /root/.docker/config.json on the host; it uses ONLY
+      // registries configured here. Without this the compose up fails with
+      // "error from registry: unauthorized" pulling the private app image.
+      if (values['ghcr-pull-token']) {
+        await P.ensureRegistry(state.portainer.url, jwt, {
+          name: 'ghcr',
+          url: 'ghcr.io',
+          username: GH_OWNER.toLowerCase(),
+          password: values['ghcr-pull-token'],
+        });
+      }
       const compose = await readFile(join(ROOT, 'docker-compose.prod.yml'), 'utf8');
       const envVars = stackEnvVars(state, {
         domain: DOMAIN,

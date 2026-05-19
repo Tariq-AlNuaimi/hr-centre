@@ -226,6 +226,62 @@ export async function createComposeStack(baseUrl, jwt, endpointId, { name, compo
   return body;
 }
 
+// Register a private OCI registry (GHCR, etc.) with Portainer so its daemon
+// can authenticate when pulling images during stack create / webhook redeploy.
+// Portainer's daemon does NOT consult /root/.docker/config.json on the host
+// -- it uses ONLY registries configured here. Idempotent: updates the URL/
+// credentials in place if a registry with this name or URL already exists.
+//
+// Type=3 is "Custom Registry" -- works for any standard OCI registry
+// (ghcr.io, quay.io, etc.) on every Portainer version. The newer dedicated
+// type=8 (GitHub Container Registry) isn't supported on older Portainer CE
+// images, so we stick with the universal type=3.
+export async function ensureRegistry(baseUrl, jwt, { name, url, username, password }) {
+  step('portainer', `ensuring registry ${name} (${url}) for private image pulls`);
+  const listR = await fetch(`${baseUrl}/api/registries`, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  if (!listR.ok) {
+    const eb = await listR.text().catch(() => '');
+    throw new Error(`portainer list registries -> ${listR.status}: ${eb}`);
+  }
+  const list = await listR.json().catch(() => []);
+  const existing = Array.isArray(list)
+    ? list.find(x => (x.URL || '').toLowerCase() === url.toLowerCase() || x.Name === name)
+    : null;
+  const payload = {
+    Name: name,
+    Type: 3,
+    URL: url,
+    Authentication: true,
+    Username: username,
+    Password: password,
+  };
+  if (existing) {
+    const u = await fetch(`${baseUrl}/api/registries/${existing.Id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify(payload),
+    });
+    if (!u.ok) {
+      const eb = await u.text().catch(() => '');
+      throw new Error(`portainer registry update -> ${u.status}: ${eb}`);
+    }
+    return existing.Id;
+  }
+  const c = await fetch(`${baseUrl}/api/registries`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+    body: JSON.stringify(payload),
+  });
+  if (!c.ok) {
+    const eb = await c.text().catch(() => '');
+    throw new Error(`portainer registry create -> ${c.status}: ${eb}`);
+  }
+  const body = await c.json().catch(() => ({}));
+  return body.Id;
+}
+
 export async function createStackWebhook(baseUrl, jwt, stackId) {
   step('portainer', `registering stack webhook for stack ${stackId}`);
   // Stack webhook URL pattern: <baseUrl>/api/stacks/webhooks/<token>
