@@ -554,30 +554,42 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     AUTH_SECRET: authSecret(),                  // re-mint per stack (Portainer-side copy)
     AUTH_URL: `https://${domain}`,              // production base URL for Auth.js
     NEXT_PUBLIC_APP_URL: `https://${domain}`,
+    // Set Postgres user/db explicitly. Compose has `${POSTGRES_USER:-app}`
+    // defaults, but those only fire when the var is UNSET; an empty string
+    // passes through and breaks Postgres (falls back to default `postgres`
+    // user, leaving the app's DATABASE_URL pointing at a non-existent user).
+    POSTGRES_USER: 'app',
+    POSTGRES_DB: 'app_db',
     POSTGRES_PASSWORD: dbPassword(),
     MINIO_ROOT_USER: minioAccessKey(),
     MINIO_ROOT_PASSWORD: minioSecretKey(),
     MINIO_ACCESS_KEY: minioAccessKey(),
     MINIO_SECRET_KEY: minioSecretKey(),
+    MINIO_BUCKET: 'uploads',                    // matches compose default; explicit for consistency
     BACKUP_ENABLED: 'true',
     BACKUP_BUCKET: backupBucket,
     RCLONE_REMOTE: 'spaces',
     AUDIT_PURGE_TOKEN: auditToken(),
     GHCR_IMAGE: ghcrImage,
-    // Pin initial stack image to the commit SHA (LOW #10). The docker-build
-    // workflow on the previous merge to main already pushed sha-<short>; if
-    // we left this `latest`, Portainer would pull whatever `latest` currently
-    // points at (could lag the SHA-tagged image by minutes during fresh push).
-    IMAGE_TAG: `sha-${(process.env.GITHUB_SHA || '').slice(0, 7) || 'latest'}`,
+    // Use `latest` for first deploy. The docker-build workflow pushes both
+    // `latest` and `sha-<short>` simultaneously on push to main, so `latest`
+    // always points at the most recently-completed build. Pinning to a SHA
+    // race-conditions against docker-build (deploy.yml dispatch can outrun
+    // the build for that commit). Operators who want SHA-pinned prod set
+    // IMAGE_TAG via Portainer stack env / a /rollback dispatch.
+    IMAGE_TAG: 'latest',
     PROD_BASE_URL: `https://${domain}`,
     SEED_ADMIN_EMAIL: 'admin@example.com',
     SEED_ADMIN_PASSWORD: seedPassword(),
     SENTRY_ENVIRONMENT: env === 'prod' ? 'production' : env,
+    // Sentry vars always present (empty string when not configured) so
+    // re-deploys without a DSN don't inherit a stale one from prior runs.
+    SENTRY_DSN: sentryDsn || '',
+    NEXT_PUBLIC_SENTRY_DSN: sentryDsn || '',
   };
-  if (sentryDsn) {
-    vars.SENTRY_DSN = sentryDsn;
-    vars.NEXT_PUBLIC_SENTRY_DSN = sentryDsn;
-  }
+  // (Sentry vars are unconditionally set above; the conditional block that
+  // used to live here is gone -- empty string is the documented "disabled"
+  // state for the Sentry SDK.)
   return vars;
 }
 
