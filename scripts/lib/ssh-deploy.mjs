@@ -136,13 +136,27 @@ export function buildEnvFile(envVars) {
 // First deploy: write compose + .env to /opt/<slug>/, then docker compose up -d.
 // Subsequent calls are safe (compose up is idempotent and will recreate
 // only changed services).
-export async function deployStack(host, sshKeyPath, { slug, composeYaml, envVars }) {
+export async function deployStack(host, sshKeyPath, { slug, composeYaml, envVars, aux = {} }) {
   const dir = `/opt/${slug}`;
   step('ssh-deploy', `deploying ${slug} to ${host}:${dir}`);
   // mkdir + chmod 700 (only root reads -- .env has secrets)
   await sshExec(host, 'root', `mkdir -p '${dir}' && chmod 700 '${dir}'`, { sshKeyPath });
   await sshWriteFile(host, 'root', `${dir}/docker-compose.prod.yml`, composeYaml, { sshKeyPath, mode: '0644' });
   await sshWriteFile(host, 'root', `${dir}/.env`, buildEnvFile(envVars), { sshKeyPath, mode: '0600' });
+  // Aux files: anything that compose bind-mounts (e.g. ./deploy/backup.sh,
+  // ./deploy/backup-entrypoint.sh) and that must be on the host filesystem
+  // at compose-up time. Keys are paths relative to ${dir}; values are file
+  // contents. Scripts get +x (mode 0755), everything else stays 0644.
+  for (const [relPath, content] of Object.entries(aux)) {
+    if (content == null) continue;
+    const targetPath = `${dir}/${relPath}`;
+    const parent = targetPath.replace(/\/[^/]+$/, '');
+    if (parent !== dir) {
+      await sshExec(host, 'root', `mkdir -p '${parent}'`, { sshKeyPath });
+    }
+    const isScript = relPath.endsWith('.sh');
+    await sshWriteFile(host, 'root', targetPath, content, { sshKeyPath, mode: isScript ? '0755' : '0644' });
+  }
   // docker compose pull + up -d. Pull first so the image lands before recreate.
   // GHCR auth comes from /root/.docker/config.json written by cloud-init.
   // --remove-orphans cleans up containers from prior compose files.

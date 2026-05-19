@@ -412,6 +412,14 @@ if (!values['skip-stack']) {
     // so the prod SHA-pinning story is unchanged.
     const initialTag = 'latest';
     const compose = await readFile(join(ROOT, 'docker-compose.prod.yml'), 'utf8');
+    // Aux files bind-mounted by compose at runtime. The backup service mounts
+    // ./deploy:/scripts:ro and its entrypoint is /scripts/backup-entrypoint.sh
+    // -- without these on the host the container crash-loops with
+    // "can't open '/scripts/backup-entrypoint.sh': No such file or directory".
+    const [backupSh, backupEntrypoint] = await Promise.all([
+      readFile(join(ROOT, 'deploy/backup.sh'), 'utf8'),
+      readFile(join(ROOT, 'deploy/backup-entrypoint.sh'), 'utf8'),
+    ]);
     const envVars = stackEnvVars(state, {
       domain: DOMAIN,
       slug: SLUG,
@@ -426,6 +434,10 @@ if (!values['skip-stack']) {
       slug: SLUG,
       composeYaml: compose,
       envVars,
+      aux: {
+        'deploy/backup.sh': backupSh,
+        'deploy/backup-entrypoint.sh': backupEntrypoint,
+      },
     });
     state = mark(state, 'deployedSha', sha);
     await writeState(ENV, state);
@@ -459,7 +471,20 @@ if (!DRY && !values['skip-stack']) {
   step('deploy', `phase A: SSH health check on ${state.droplet.ip}`);
   const healthyA = await SSH.pollHealthViaSsh(state.droplet.ip, values['ssh-key-path'], 300_000);
   if (!healthyA) {
-    bail('deploy', `phase A health check failed (app container did not respond 200 to /api/health within 300s). SSH in and check 'cd /opt/${SLUG} && docker compose logs app' on ${state.droplet.ip}.`);
+    // Auto-dump compose state inline so the operator doesn't have to dispatch
+    // diagnose-host.yml separately on every Phase A failure. Wrap in try so a
+    // diagnostic SSH error doesn't shadow the original timeout.
+    warn('deploy', `phase A timed out; dumping compose ps + logs for diagnostics before bailing`);
+    try {
+      const cd = `cd '/opt/${SLUG}' && docker compose -f docker-compose.prod.yml --env-file .env`;
+      const ps = await SSH.sshExec(state.droplet.ip, 'root', `${cd} ps`, { sshKeyPath: values['ssh-key-path'], timeoutMs: 30_000 });
+      console.log('\n===== docker compose ps =====\n' + (ps.stdout || ps.stderr || '(empty)'));
+      const logs = await SSH.sshExec(state.droplet.ip, 'root', `${cd} logs --tail=100 --no-color`, { sshKeyPath: values['ssh-key-path'], timeoutMs: 60_000 });
+      console.log('\n===== docker compose logs --tail=100 =====\n' + (logs.stdout || logs.stderr || '(empty)'));
+    } catch (diagErr) {
+      warn('deploy', `diagnostic dump failed: ${diagErr.message}`);
+    }
+    bail('deploy', `phase A health check failed (app container did not respond 200 to /api/health within 300s). Logs above show the failure mode.`);
   }
   ok('deploy', `phase A healthy: app responding on ${state.droplet.ip}:3000`);
 
