@@ -175,13 +175,36 @@ export async function getPortainerJwt(baseUrl, username, password) {
   return body.jwt;
 }
 
-// Endpoint = the local Docker engine on the Droplet. ID is typically 1 after
-// fresh install but we look it up to be safe.
+// Endpoint = the local Docker engine on the Droplet. Portainer CE 2.19+ does
+// NOT auto-create the local endpoint on admin init -- the "Get Started" /
+// quick-setup flow in the UI does. Since we never touch the UI, we POST one
+// via API on first access if missing.
 export async function getLocalEndpointId(baseUrl, jwt) {
-  const r = await fetch(`${baseUrl}/api/endpoints`, { headers: { Authorization: `Bearer ${jwt}` } });
-  const list = await r.json();
+  let r = await fetch(`${baseUrl}/api/endpoints`, { headers: { Authorization: `Bearer ${jwt}` } });
+  let list = await r.json();
   if (!Array.isArray(list) || list.length === 0) {
-    throw new Error('Portainer has no endpoints');
+    step('portainer', 'no endpoints found; creating local Docker endpoint via mounted socket');
+    // POST /api/endpoints expects multipart/form-data, NOT JSON.
+    // EndpointCreationType=1 = local Docker via socket. The portainer
+    // container was launched with `-v /var/run/docker.sock:/var/run/docker.sock`
+    // (see installPortainer above), so unix:///var/run/docker.sock is reachable.
+    const fd = new FormData();
+    fd.append('Name', 'primary');
+    fd.append('EndpointCreationType', '1');
+    const createR = await fetch(`${baseUrl}/api/endpoints`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwt}` },
+      body: fd,
+    });
+    if (!createR.ok) {
+      const errBody = await createR.text().catch(() => '');
+      throw new Error(`portainer create local endpoint -> ${createR.status}: ${errBody}`);
+    }
+    r = await fetch(`${baseUrl}/api/endpoints`, { headers: { Authorization: `Bearer ${jwt}` } });
+    list = await r.json();
+    if (!Array.isArray(list) || list.length === 0) {
+      throw new Error('Portainer endpoint POST succeeded but list still empty');
+    }
   }
   const local = list.find(e => e.Type === 1 || e.Name === 'local' || e.Name === 'primary');
   return local ? local.Id : list[0].Id;
