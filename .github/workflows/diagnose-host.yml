@@ -56,9 +56,11 @@ jobs:
 
       - name: Read droplet IP from state
         id: state
+        env:
+          INPUT_ENV: ${{ inputs.env }}
         run: |
           set -euo pipefail
-          FILE=".deploy-state.${{ inputs.env }}.json"
+          FILE=".deploy-state.${INPUT_ENV}.json"
           if [ ! -f "$FILE" ]; then
             echo "::error::State file $FILE not found on orphan branch." >&2
             exit 1
