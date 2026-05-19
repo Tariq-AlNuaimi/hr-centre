@@ -175,12 +175,26 @@ async function pollIpAssigned(token, ip, expectedDropletId, timeoutMs) {
 }
 
 export async function unassignAndReleaseIp(token, ip) {
-  // Unassign first (required before delete), then release.
+  // 1) Unassign best-effort -- it's OK if the IP is already detached (the
+  //    POST returns 4xx in that case). What we care about is the delete.
   await call(token, `/reserved_ips/${ip}/actions`, {
     method: 'POST',
     body: JSON.stringify({ type: 'unassign' }),
   }).catch(() => {});
-  await call(token, `/reserved_ips/${ip}`, { method: 'DELETE' }).catch(() => {});
+  // 2) Delete -- this is what actually releases the IP and stops the $4/mo
+  //    billing. Failures here are real cost leaks; let them propagate to the
+  //    caller (deploy.mjs destroy block wraps in try/catch and warns).
+  //    Previously this also had `.catch(() => {})` and we ended up with 3
+  //    orphaned reserved IPs ($12/mo) across multiple smoke runs.
+  await call(token, `/reserved_ips/${ip}`, { method: 'DELETE' });
+}
+
+// List all reserved IPs on the account that are currently unattached
+// ($4/mo each idle). Used by /deploy --destroy to nag the operator about
+// orphaned IPs from prior partial runs.
+export async function listUnattachedReservedIps(token) {
+  const r = await call(token, '/reserved_ips?per_page=200');
+  return (r.reserved_ips || []).filter(x => !x.droplet);
 }
 
 // Spaces (S3-compatible) -----------------------------------------------------

@@ -144,12 +144,34 @@ if (values.destroy) {
     try { await CF.deleteRecord(values['cf-token'], state.cloudflare.zoneId, state.cloudflare.recordId); ok('deploy', `CF record deleted`); } catch (e) { warn('deploy', `CF delete failed: ${e.message}`); }
   }
   if (state.droplet && state.droplet.reservedIp) {
-    try { await DO.unassignAndReleaseIp(values['do-token'], state.droplet.reservedIp); ok('deploy', `reserved IP released`); } catch (e) { warn('deploy', `reserved IP release failed: ${e.message}`); }
+    try {
+      await DO.unassignAndReleaseIp(values['do-token'], state.droplet.reservedIp);
+      ok('deploy', `reserved IP ${state.droplet.reservedIp} released`);
+    } catch (e) {
+      warn('deploy', `RESERVED IP RELEASE FAILED: ${e.message}`);
+      warn('deploy', `MANUAL CLEANUP REQUIRED: visit DO Console → Networking → Reserved IPs, find ${state.droplet.reservedIp}, click ... → Delete.`);
+      warn('deploy', `Idle reserved IPs cost $4/mo each.`);
+    }
   }
   if (state.droplet && state.droplet.id) {
     try { await DO.destroyDroplet(values['do-token'], state.droplet.id); ok('deploy', `droplet destroyed`); } catch (e) { warn('deploy', `droplet destroy failed: ${e.message}`); }
   }
-  warn('deploy', `Spaces bucket "${SLUG}-backups-${ENV}" was NOT deleted (cost mitigation, paranoia). Delete via DO console if you really mean to.`);
+  // Nag the operator about any unattached reserved IPs left from prior
+  // partial runs (failed destroys, manual creates, etc.). DO charges $4/mo
+  // for every idle reserved IP. Best-effort: if listing fails, just skip.
+  try {
+    const orphans = await DO.listUnattachedReservedIps(values['do-token']);
+    if (orphans.length > 0) {
+      warn('deploy', `Found ${orphans.length} unattached reserved IP(s) on this DO account costing $${orphans.length * 4}/mo idle:`);
+      for (const o of orphans) warn('deploy', `  - ${o.ip} (region: ${o.region && o.region.slug || '?'})`);
+      warn('deploy', `Release each via DO Console → Networking → Reserved IPs → ... → Delete.`);
+    } else {
+      ok('deploy', `no orphaned reserved IPs found on this DO account.`);
+    }
+  } catch (e) {
+    warn('deploy', `could not list reserved IPs to check for orphans: ${e.message}`);
+  }
+  warn('deploy', `Spaces bucket "${SLUG}-backups-${ENV}" was NOT deleted (cost mitigation, paranoia). Delete via DO console if you really mean to. ($5/mo idle.)`);
   warn('deploy', `GitHub repo, secrets, and environment were NOT deleted (cost zero, paranoia). Delete via GH UI if needed.`);
   // Reset to fully empty state (preserving slug) so a subsequent /deploy
   // does a clean provision rather than picking up dangling pointers to
