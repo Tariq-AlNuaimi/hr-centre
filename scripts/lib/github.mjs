@@ -116,9 +116,10 @@ async function sodium() {
     await mod.default.ready;
     _sodium = mod.default;
     return _sodium;
-  } catch {
+  } catch (e) {
     throw new Error(
-      'libsodium-wrappers not installed. Run `npm install` (it is a devDep) or pass --skip-secrets to use the GitHub UI manually.'
+      `libsodium-wrappers load failed: ${e && e.message ? e.message : String(e)}. ` +
+      'It is a runtime dep (was moved out of devDependencies). Run `npm install` or rebuild the runner image.'
     );
   }
 }
