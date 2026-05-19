@@ -43,15 +43,18 @@ runcmd:
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
   - chmod a+r /etc/apt/keyrings/docker.asc
   - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu jammy stable" > /etc/apt/sources.list.d/docker.list
-  - apt-get update -y
-  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - DEBIAN_FRONTEND=noninteractive apt-get update -y
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable --now docker
   - usermod -aG docker ops
-  # Caddy
+  # Caddy. --force-confold tells dpkg to keep the existing /etc/caddy/Caddyfile
+  # (the one write_files just wrote with the rendered domain config) instead of
+  # prompting interactively about the maintainer's default. Without this the
+  # apt-get install fails with "end of file on stdin at conffile prompt".
   - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
   - curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
-  - apt-get update -y
-  - apt-get install -y caddy
+  - DEBIAN_FRONTEND=noninteractive apt-get update -y
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold caddy
   - systemctl enable --now caddy
   # UFW
   - ufw default deny incoming
@@ -132,22 +135,20 @@ write_files:
   # age recipient (public key) -- `deploy/backup.sh` encrypts Postgres dumps
   # + MinIO tarballs to this recipient. The matching private identity is
   # stored ONLY in the BACKUP_AGE_IDENTITY GitHub repo secret, so a host
-  # compromise cannot decrypt prior backups. Public key is not strictly
-  # secret, but ownership is locked to ops so the file can be overwritten
-  # on rotation without root.
+  # compromise cannot decrypt prior backups.
+  # NOTE: no `owner:` set here. Cloud-init's cc_write_files module runs
+  # BEFORE cc_users_groups on some Ubuntu builds, so referencing the `ops`
+  # user fails with "Unknown user or group". The runcmd chown below
+  # corrects ownership to ops once the user exists.
   - path: /opt/backup/recipient
     content: |
       {{backup_age_recipient}}
     permissions: '0644'
-    owner: ops:ops
 
   # rclone configuration for the off-host backup target. Contains DO Spaces
-  # access key + secret key (Restricted). Mode 0600 so only ops can read.
-  # Cloud-init's `content: |` block preserves newlines, so the multi-line
-  # INI format is safe. Replaces the previous manual SSH-and-write-conf
-  # step that operators kept forgetting (silent backup failure).
+  # access key + secret key (Restricted). Mode 0600 + chown to ops in runcmd
+  # (see above note on ownership ordering vs cc_users_groups).
   - path: /opt/backup/rclone.conf
     content: |
       {{rclone_config}}
     permissions: '0600'
-    owner: ops:ops
