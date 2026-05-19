@@ -71,6 +71,8 @@ const { values } = parseArgs({
     'sentry-dsn': { type: 'string' },
     'better-uptime-key': { type: 'string' },
     'ghcr-pull-token': { type: 'string' },
+    'backup-age-recipient': { type: 'string' },
+    'rclone-config': { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
     resume: { type: 'boolean', default: false },
     destroy: { type: 'boolean', default: false },
@@ -90,6 +92,8 @@ if (CI) {
   values['better-uptime-key'] ||= process.env.BETTER_UPTIME_API_KEY || '';
   values['sentry-dsn']        ||= process.env.SENTRY_DSN || '';
   values['ghcr-pull-token']   ||= process.env.GHCR_PULL_TOKEN || '';
+  values['backup-age-recipient'] ||= process.env.BACKUP_AGE_RECIPIENT || '';
+  values['rclone-config']     ||= process.env.RCLONE_CONFIG || '';
   values['caddy-email']       ||= process.env.CADDY_EMAIL || '';
   values['ssh-pubkey']        ||= process.env.SSH_PUBKEY || '';
 }
@@ -228,12 +232,21 @@ if (!state.droplet || !state.droplet.id) {
     if (!values['ghcr-pull-token']) {
       bail('deploy', `GHCR_PULL_TOKEN is required so the Droplet can pull the private app image from ghcr.io. Set it as a repo secret (classic PAT with read:packages scope only). See .claude/skills/first-fork/SKILL.md.`);
     }
+    if (!values['backup-age-recipient']) {
+      bail('deploy', `BACKUP_AGE_RECIPIENT is required so cloud-init can seed /opt/backup/recipient (encrypts off-host backups). Generate via 'age-keygen' and set as a repo secret. See .claude/skills/first-fork/SKILL.md §6.`);
+    }
+    if (!values['rclone-config']) {
+      bail('deploy', `RCLONE_CONFIG is required so cloud-init can seed /opt/backup/rclone.conf (off-host backup target). Create a DO Spaces key and set as a repo secret. See .claude/skills/first-fork/SKILL.md §7.`);
+    }
     const userData = await renderCloudInit({
       ssh_pubkey: values['ssh-pubkey'],
       caddy_email: CADDY_EMAIL,
       domain: DOMAIN,
       gh_owner: GH_OWNER,
       ghcr_pull_token: values['ghcr-pull-token'],
+      backup_age_recipient: values['backup-age-recipient'],
+      rclone_config: values['rclone-config'],
+      backup_bucket: BACKUP_BUCKET,
     });
     let droplet = await DO.findDropletByTag(values['do-token'], TAG);
     if (!droplet) {
@@ -505,17 +518,31 @@ console.log('');
 // Helpers
 // =========================================================================
 
-async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr_pull_token }) {
+async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr_pull_token, backup_age_recipient, rclone_config, backup_bucket }) {
   const tmpl = await readFile(join(ROOT, 'deploy/cloud-init.yml'), 'utf8');
   // base64(github-username:pull-token) is the Docker config.json `auth` form.
   // Use the GH owner as the username (Docker doesn't care about exact value;
   // GH treats anything-non-empty-with-matching-token as a successful login).
   const ghcrAuthB64 = Buffer.from(`${gh_owner}:${ghcr_pull_token}`).toString('base64');
+  // Cloud-init's `content: |` block is YAML block scalar -- every line must
+  // be indented by the same amount as the first content line (here, 6
+  // spaces -- 4 under `write_files:` and 2 more under `- path:`). Re-indent
+  // the multi-line rclone INI to match before substituting.
+  const indent = '      ';
+  const indentedRclone = (rclone_config || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line, i) => (i === 0 ? line : indent + line))
+    .join('\n');
+  const trimmedRecipient = (backup_age_recipient || '').trim();
   return tmpl
     .replaceAll('{{ssh_pubkey}}', ssh_pubkey)
     .replaceAll('{{caddy_email}}', caddy_email)
     .replaceAll('{{domain}}', domain)
-    .replaceAll('{{ghcr_auth_b64}}', ghcrAuthB64);
+    .replaceAll('{{ghcr_auth_b64}}', ghcrAuthB64)
+    .replaceAll('{{backup_age_recipient}}', trimmedRecipient)
+    .replaceAll('{{rclone_config}}', indentedRclone)
+    .replaceAll('{{backup_bucket}}', backup_bucket || '');
 }
 
 function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }) {

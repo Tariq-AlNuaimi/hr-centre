@@ -72,6 +72,32 @@ if (CI) {
   values['caddy-email'] ||= process.env.CADDY_EMAIL || '';
 }
 
+// Bootstrap-secrets propagation: the GH REST API cannot READ existing secret
+// values, only set them. So the only way to seed the new fork with the
+// operator's account-wide credentials is to inject them here as env vars
+// (passed by .github/workflows/new-project.yml from `${{ secrets.* }}`) and
+// PUT them onto the fork. The list below is exhaustive -- adding a new
+// secret to /first-fork SKILL.md means adding it here AND in the workflow.
+const BOOTSTRAP_SECRETS = {
+  DO_API_TOKEN:           process.env.DO_API_TOKEN || '',
+  CLOUDFLARE_API_TOKEN:   process.env.CLOUDFLARE_API_TOKEN || '',
+  BETTER_UPTIME_API_KEY:  process.env.BETTER_UPTIME_API_KEY || '',
+  SENTRY_AUTH_TOKEN:      process.env.SENTRY_AUTH_TOKEN || '',
+  SSH_PRIVATE_KEY:        process.env.SSH_PRIVATE_KEY || '',
+  GH_AUTOMATION_TOKEN:    process.env.GH_AUTOMATION_TOKEN || process.env.GITHUB_AUTOMATION_TOKEN || '',
+  GHCR_PULL_TOKEN:        process.env.GHCR_PULL_TOKEN || '',
+  BACKUP_AGE_RECIPIENT:   process.env.BACKUP_AGE_RECIPIENT || '',
+  BACKUP_AGE_IDENTITY:    process.env.BACKUP_AGE_IDENTITY || '',
+  RCLONE_CONFIG:          process.env.RCLONE_CONFIG || '',
+};
+const BOOTSTRAP_VARIABLES = {
+  CADDY_EMAIL:    process.env.CADDY_EMAIL || '',
+  SSH_PUBKEY:     process.env.SSH_PUBKEY || '',
+  SENTRY_ORG:     process.env.SENTRY_ORG || '',
+  SENTRY_PROJECT: process.env.SENTRY_PROJECT || '',
+  CF_ZONE:        process.env.CF_ZONE || '',
+};
+
 if (!values.plan) bail('new-project', `--plan <path-to-json> is required`);
 const plan = JSON.parse(await readFile(values.plan, 'utf8'));
 
@@ -111,6 +137,45 @@ if (!DRY) {
   });
   await GH.waitForRepoReady(values['gh-token'], plan.owner, plan.slug);
   ok('new-project', `repo ready`);
+}
+
+// -- 1b. Bootstrap secrets + variables on the new fork ---------------------
+//
+// Without this step the new fork has zero secrets, so the /deploy workflow
+// (triggered below) would bail on the first env-var lookup. The GH API
+// cannot READ secret values back, so the only way to "copy" the template's
+// secrets is to receive them as env vars (set by new-project.yml's job env
+// block from `${{ secrets.* }}`) and PUT them onto the fork.
+
+step('new-project', `${DRYP}seeding ${plan.owner}/${plan.slug} with operator's account-wide secrets + variables`);
+if (!DRY) {
+  const secretsToSet = Object.fromEntries(
+    Object.entries(BOOTSTRAP_SECRETS).filter(([, v]) => v && v !== ''),
+  );
+  const missingSecrets = Object.entries(BOOTSTRAP_SECRETS).filter(([, v]) => !v).map(([k]) => k);
+  if (missingSecrets.length) {
+    warn('new-project', `bootstrap secrets unset on template (will be missing on fork): ${missingSecrets.join(', ')}`);
+  }
+  const seededSecretNames = await GH.setManyRepoSecrets(values['gh-token'], plan.owner, plan.slug, secretsToSet);
+  ok('new-project', `set ${seededSecretNames.length} repo secrets on fork`);
+
+  const varsToSet = Object.fromEntries(
+    Object.entries(BOOTSTRAP_VARIABLES).filter(([, v]) => v && v !== ''),
+  );
+  const seededVarNames = await GH.setManyRepoVariables(values['gh-token'], plan.owner, plan.slug, varsToSet);
+  ok('new-project', `set ${seededVarNames.length} repo variables on fork`);
+
+  // Provision the staging environment up front so /deploy doesn't have to
+  // (it can, but doing it here lets us also drop env-scoped SENTRY_DSN).
+  await GH.ensureEnvironment(values['gh-token'], plan.owner, plan.slug, 'staging');
+  if (process.env.SENTRY_DSN) {
+    try {
+      await GH.setEnvVariable(values['gh-token'], plan.owner, plan.slug, 'staging', 'SENTRY_DSN', process.env.SENTRY_DSN);
+      ok('new-project', `set SENTRY_DSN on staging environment (operator can override per-project)`);
+    } catch (e) {
+      warn('new-project', `setting SENTRY_DSN on staging env failed (non-fatal): ${e.message}`);
+    }
+  }
 }
 
 // -- 2. Clone -------------------------------------------------------------
@@ -160,25 +225,48 @@ if (!DRY) {
 }
 
 // -- 6. Deploy to staging --------------------------------------------------
+//
+// Now that the new fork has its own secrets + variables (step 1b), the
+// cleanest path is to dispatch /deploy on the FORK itself. The fork's CI
+// will load DO/CF/GH/SSH/GHCR/BACKUP secrets from its repo, run the same
+// .github/workflows/deploy.yml, and persist its own deploy-state branch.
+//
+// The previous local-run path is preserved as a fallback for when
+// --skip-deploy is not set but GH workflow dispatch fails (e.g. webhook
+// quota). We try dispatch first.
 
 if (!values['skip-deploy']) {
-  step('new-project', `${DRYP}deploying ${plan.slug} to staging`);
+  step('new-project', `${DRYP}dispatching staging /deploy on ${plan.owner}/${plan.slug}`);
   if (!DRY) {
-    const args = ['run', 'deploy', '--',
-      '--env', 'staging',
-      '--slug', plan.slug,
-      '--domain', plan.domain,
-      '--do-token', values['do-token'],
-      '--cf-token', values['cf-token'],
-      '--gh-token', values['gh-token'],
-      '--gh-owner', plan.owner,
-      '--gh-repo', plan.slug,
-      '--ssh-pubkey', values['ssh-pubkey'],
-      '--caddy-email', values['caddy-email'],
-      '--yes',
-    ];
-    const r = spawnSync('npm', args, { cwd: repoDir, stdio: 'inherit' });
-    if (r.status !== 0) bail('new-project', `deploy failed`);
+    try {
+      await GH.dispatchWorkflow(values['gh-token'], plan.owner, plan.slug, 'deploy.yml', 'main', {
+        env: 'staging',
+        domain: plan.domain,
+        slug: plan.slug,
+        action: 'provision-and-deploy',
+      });
+      ok('new-project', `dispatched deploy.yml on ${plan.owner}/${plan.slug}@main; tail via 'gh run watch -R ${plan.owner}/${plan.slug}'`);
+    } catch (e) {
+      warn('new-project', `dispatch failed (${e.message}); falling back to local deploy run`);
+      const args = ['run', 'deploy', '--',
+        '--env', 'staging',
+        '--slug', plan.slug,
+        '--domain', plan.domain,
+        '--do-token', values['do-token'],
+        '--cf-token', values['cf-token'],
+        '--gh-token', values['gh-token'],
+        '--gh-owner', plan.owner,
+        '--gh-repo', plan.slug,
+        '--ssh-pubkey', values['ssh-pubkey'],
+        '--caddy-email', values['caddy-email'],
+        '--yes',
+      ];
+      if (process.env.GHCR_PULL_TOKEN) args.push('--ghcr-pull-token', process.env.GHCR_PULL_TOKEN);
+      if (process.env.BACKUP_AGE_RECIPIENT) args.push('--backup-age-recipient', process.env.BACKUP_AGE_RECIPIENT);
+      if (process.env.RCLONE_CONFIG) args.push('--rclone-config', process.env.RCLONE_CONFIG);
+      const r = spawnSync('npm', args, { cwd: repoDir, stdio: 'inherit' });
+      if (r.status !== 0) bail('new-project', `deploy failed`);
+    }
   }
 }
 

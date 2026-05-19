@@ -196,6 +196,63 @@ export async function setManyEnvSecrets(token, owner, repo, envName, map) {
   return names;
 }
 
+// Repo variables (non-secret, plaintext) ------------------------------------
+
+export async function setRepoVariable(token, owner, repo, name, value) {
+  // Variables API returns 404 if the variable does not yet exist; in that
+  // case we POST to create, otherwise PATCH to update. Distinct from secrets
+  // because variables are not encrypted (they're plaintext, e.g. CADDY_EMAIL).
+  const existing = await fetch(`${API}/repos/${owner}/${repo}/actions/variables/${name}`, {
+    headers: headers(token),
+  });
+  if (existing.status === 404) {
+    await call(token, `/repos/${owner}/${repo}/actions/variables`, {
+      method: 'POST',
+      body: JSON.stringify({ name, value: String(value) }),
+    });
+  } else {
+    await call(token, `/repos/${owner}/${repo}/actions/variables/${name}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, value: String(value) }),
+    });
+  }
+}
+
+export async function setManyRepoVariables(token, owner, repo, map) {
+  const names = [];
+  for (const [name, value] of Object.entries(map)) {
+    if (value == null || value === '') continue;
+    await setRepoVariable(token, owner, repo, name, value);
+    names.push(name);
+  }
+  return names;
+}
+
+export async function setEnvVariable(token, owner, repo, envName, name, value) {
+  // Same upsert pattern, scoped to a GitHub Environment. Used by
+  // /new-project to land SENTRY_DSN on the fork's staging env so operators
+  // can override per-project without touching the repo-level value.
+  // The Environments-variables API is keyed by repo_id, not name, hence the
+  // extra GET to resolve the id once.
+  const repoMeta = await call(token, `/repos/${owner}/${repo}`);
+  const repoId = repoMeta.id;
+  const existing = await fetch(
+    `${API}/repositories/${repoId}/environments/${envName}/variables/${name}`,
+    { headers: headers(token) },
+  );
+  if (existing.status === 404) {
+    await call(token, `/repositories/${repoId}/environments/${envName}/variables`, {
+      method: 'POST',
+      body: JSON.stringify({ name, value: String(value) }),
+    });
+  } else {
+    await call(token, `/repositories/${repoId}/environments/${envName}/variables/${name}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name, value: String(value) }),
+    });
+  }
+}
+
 // Branch protection ruleset --------------------------------------------------
 
 export async function ensureMainRuleset(token, owner, repo) {

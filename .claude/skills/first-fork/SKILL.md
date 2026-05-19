@@ -74,13 +74,31 @@ gh secret set SENTRY_AUTH_TOKEN -b 'sntrys_...'
 ssh-keygen -t ed25519 -f /tmp/<slug>-ops -N ''
 gh secret set SSH_PRIVATE_KEY < /tmp/<slug>-ops
 
-# age identity for decrypting off-host backups. Generated during /first-fork §6;
-# pasted as the AGE-SECRET-KEY-1... line.
+# age recipient (public half) -- backups are encrypted to this key. Generated
+# during /first-fork §6 below as the line starting AGE-RECIPIENT-1...
+# Cloud-init writes this to /opt/backup/recipient on the Droplet.
+gh secret set BACKUP_AGE_RECIPIENT -b 'AGE-RECIPIENT-1...'
+
+# age identity (private half) for decrypting off-host backups during restore.
+# Pasted as the AGE-SECRET-KEY-1... line. Lives ONLY in this repo secret --
+# never on the host that performs encryption (host compromise can't decrypt
+# prior backups). Generated during /first-fork §6 below.
 gh secret set BACKUP_AGE_IDENTITY -b 'AGE-SECRET-KEY-1...'
 
-# rclone config (full file contents) for off-host backup target.
+# rclone config (full file contents) for off-host backup target. Cloud-init
+# writes this to /opt/backup/rclone.conf (mode 600) on the Droplet during
+# /deploy. Contains DO Spaces access keys -- Restricted.
 gh secret set RCLONE_CONFIG < /opt/backup/rclone.conf
-```
+
+# GHCR_PULL_TOKEN -- a CLASSIC PAT (NOT fine-grained) with the read:packages
+# scope ONLY. Lets the Droplet's Docker daemon pull the fork's private GHCR
+# image. Mint at https://github.com/settings/tokens (under "write:packages",
+# tick ONLY the read:packages child checkbox). Recommended expiration: 1 year.
+# This is the ONE GH token that is reusable across ALL projects in the
+# operator's account -- the read:packages scope is account-wide, not repo-
+# scoped, so the same token works for every fork. Leak blast radius:
+# attacker can pull the operator's private images, NOT access repo source.
+gh secret set GHCR_PULL_TOKEN -b 'ghp_...'
 
 ### 4. Set repo-level variables (non-secret)
 
@@ -121,35 +139,62 @@ gh variable set SENTRY_DSN --env prod    -b 'https://...prod.ingest.sentry.io/..
 
 ### 6. Generate age keypair for backups
 
-On the staging / prod host (NOT the operator's laptop, NOT the GitHub runner):
+Run this **locally** on the operator's laptop (not the runner, not the host):
 
 ```sh
-ssh ops@<host>
-age-keygen -o /tmp/backup.identity
-awk '/public key:/ {print $4}' /tmp/backup.identity > /opt/backup/recipient
-chmod 644 /opt/backup/recipient
-cat /tmp/backup.identity     # copy the AGE-SECRET-KEY-1... line
-shred -u /tmp/backup.identity
+age-keygen -o /tmp/<slug>.age.key
+# Output looks like:
+#   # created: 2026-05-19T12:00:00Z
+#   # public key: age1abcdef... (the recipient)
+#   AGE-SECRET-KEY-1QQQQQQQQ...  (the identity / private half)
+
+# Recipient (public half) -- the `age1...` line. Cloud-init writes this to
+# /opt/backup/recipient on the Droplet automatically during /deploy.
+awk '/public key:/ {print $4}' /tmp/<slug>.age.key   # copy the AGE-RECIPIENT-1...
+gh secret set BACKUP_AGE_RECIPIENT -b 'age1...'
+
+# Identity (private half) -- the AGE-SECRET-KEY-1... line.
+# Used by restore-test.yml to decrypt during quarterly restore drills.
+grep '^AGE-SECRET-KEY' /tmp/<slug>.age.key | gh secret set BACKUP_AGE_IDENTITY
+
+shred -u /tmp/<slug>.age.key
 ```
 
-Paste the secret line into the `BACKUP_AGE_IDENTITY` repo secret (set in §3).
 **The identity (private key) never lives on the host that runs encryption.**
+A host compromise cannot decrypt prior backups; only the GH repo secret
+unlocks them.
 
 ### 7. Configure rclone for the backup target
 
-On the host:
+Create a DigitalOcean Spaces access key:
+
+1. `cloud.digitalocean.com → API → Spaces Keys → Generate New Key`
+2. Note the access key and secret (the secret is shown ONCE).
+
+Compose the `rclone.conf` locally:
 
 ```sh
-rclone config         # walk the wizard, save to /opt/backup/rclone.conf mode 600
+cat > /tmp/<slug>.rclone.conf <<'EOF'
+[spaces]
+type = s3
+provider = DigitalOcean
+access_key_id = DO00XXXXXXXXXXXXX
+secret_access_key = abcdef...
+endpoint = fra1.digitaloceanspaces.com
+acl = private
+EOF
+
+gh secret set RCLONE_CONFIG < /tmp/<slug>.rclone.conf
+shred -u /tmp/<slug>.rclone.conf
 ```
 
-Set Portainer stack env vars (after first deploy):
-- `RCLONE_REMOTE=<name>`
-- `BACKUP_BUCKET=<bucket-name>`
-- `BACKUP_ENABLED=true`
+**Cloud-init writes this to `/opt/backup/rclone.conf` (mode 0600) on the
+Droplet automatically during `/deploy`.** The Spaces bucket itself is
+auto-created on first boot via `rclone mkdir` in cloud-init's runcmd.
 
-Copy the contents of `/opt/backup/rclone.conf` into the `RCLONE_CONFIG`
-repo secret (set in §3).
+After first deploy, the Portainer stack env carries `RCLONE_REMOTE=spaces`,
+`BACKUP_BUCKET=<slug>-backups-<env>`, and `BACKUP_ENABLED=true` -- all set
+by `/deploy`. No manual SSH step required.
 
 ### 8. Branch protection on main
 
@@ -233,8 +278,10 @@ gh workflow run restore-test.yml         # expect green after first nightly back
 | `BETTER_UPTIME_API_KEY` | secret | repo | Better Uptime API key (optional) |
 | `SENTRY_AUTH_TOKEN` | secret | repo | Sentry auth token |
 | `SSH_PRIVATE_KEY` | secret | repo | ed25519 private key for Droplet access |
-| `BACKUP_AGE_IDENTITY` | secret | repo | age private key |
-| `RCLONE_CONFIG` | secret | repo | full rclone.conf contents |
+| `BACKUP_AGE_RECIPIENT` | secret | repo | age public key (recipient); cloud-init writes to `/opt/backup/recipient` |
+| `BACKUP_AGE_IDENTITY` | secret | repo | age private key; never on host |
+| `RCLONE_CONFIG` | secret | repo | full rclone.conf contents (contains DO Spaces keys); cloud-init writes to `/opt/backup/rclone.conf` mode 0600 |
+| `GHCR_PULL_TOKEN` | secret | repo | classic PAT, `read:packages` only; account-wide so reusable across all forks |
 | `CADDY_EMAIL` | variable | repo | Let's Encrypt email |
 | `SSH_PUBKEY` | variable | repo | matching public key |
 | `SENTRY_ORG` / `SENTRY_PROJECT` | variable | repo | Sentry slugs |

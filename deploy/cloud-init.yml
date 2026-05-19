@@ -2,15 +2,18 @@
 # deploy/cloud-init.yml
 #
 # First-boot configuration injected into every Droplet by scripts/deploy.mjs.
-# The script does string substitution for {{ssh_pubkey}}, {{caddy_email}},
-# {{domain}}, and {{ghcr_auth_b64}} before passing the rendered content as user-data.
+# The script does string substitution for the placeholders below (ssh_pubkey,
+# caddy_email, domain, ghcr_auth_b64, backup_age_recipient, rclone_config,
+# backup_bucket) before passing the rendered content as user-data.
 #
 # What this does:
 #   1. Creates ops user with sudo + the operator's SSH key
 #   2. Installs Docker CE + compose plugin
 #   3. Installs Caddy (apt repo) -- reverse proxies :443 -> :3000 with auto LE
 #   4. Hardens UFW: allows 22, 80, 443, 9443 only
-#   5. Pre-creates /opt/<project>/{backup,minio} bind-mount targets
+#   5. Pre-creates /opt/backup/{recipient,rclone.conf} (writes age recipient
+#      + rclone config from operator secrets, replacing the prior manual SSH
+#      bootstrap step) and runs `rclone mkdir` to create the off-host bucket.
 
 users:
   - name: ops
@@ -58,10 +61,24 @@ runcmd:
   - ufw allow 443/tcp
   - ufw allow 9443/tcp
   - ufw --force enable
-  # Backup dirs (real keys land here in /first-fork step or /deploy's backup wiring)
+  # Backup dirs (recipient + rclone.conf land via write_files below).
   - install -d -o ops -g ops -m 0755 /opt/backup
   - install -d -o ops -g ops -m 0700 /opt/backup/keys
   - install -d -o ops -g ops -m 0755 /var/backups
+  # Tighten ownership on the secrets written by write_files. cloud-init's
+  # `owner:` field in write_files doesn't always survive across distro images
+  # (some apply it after the file is written, racing with this runcmd) so we
+  # reapply explicitly. The recipient is the age PUBLIC key (0644 OK); the
+  # rclone.conf carries DO Spaces secret keys (0600, ops-only).
+  - chown ops:ops /opt/backup/recipient /opt/backup/rclone.conf
+  - chmod 0644 /opt/backup/recipient
+  - chmod 0600 /opt/backup/rclone.conf
+  # Pre-create the off-host backup bucket so the first nightly backup has a
+  # destination. `rclone mkdir` is idempotent (no-op if the bucket already
+  # exists). Failure here is non-fatal: the backup sidecar will retry on its
+  # own schedule, and the operator can re-run manually. {{backup_bucket}} is
+  # substituted by scripts/deploy.mjs#renderCloudInit (default: <slug>-backups-<env>).
+  - sudo -u ops rclone mkdir spaces:{{backup_bucket}} --config /opt/backup/rclone.conf || true
   # Reload Caddy after the Caddyfile has been written via write_files. This
   # replaces the earlier caddy-reload.service indirection: write_files runs
   # before runcmd, so the file is in place by now and a direct reload picks
@@ -111,3 +128,26 @@ write_files:
       }
     permissions: '0600'
     owner: root:root
+
+  # age recipient (public key) -- `deploy/backup.sh` encrypts Postgres dumps
+  # + MinIO tarballs to this recipient. The matching private identity is
+  # stored ONLY in the BACKUP_AGE_IDENTITY GitHub repo secret, so a host
+  # compromise cannot decrypt prior backups. Public key is not strictly
+  # secret, but ownership is locked to ops so the file can be overwritten
+  # on rotation without root.
+  - path: /opt/backup/recipient
+    content: |
+      {{backup_age_recipient}}
+    permissions: '0644'
+    owner: ops:ops
+
+  # rclone configuration for the off-host backup target. Contains DO Spaces
+  # access key + secret key (Restricted). Mode 0600 so only ops can read.
+  # Cloud-init's `content: |` block preserves newlines, so the multi-line
+  # INI format is safe. Replaces the previous manual SSH-and-write-conf
+  # step that operators kept forgetting (silent backup failure).
+  - path: /opt/backup/rclone.conf
+    content: |
+      {{rclone_config}}
+    permissions: '0600'
+    owner: ops:ops

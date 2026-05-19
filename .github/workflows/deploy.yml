@@ -133,6 +133,8 @@ jobs:
           GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BETTER_UPTIME_API_KEY: ${{ secrets.BETTER_UPTIME_API_KEY }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+          RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
           SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}

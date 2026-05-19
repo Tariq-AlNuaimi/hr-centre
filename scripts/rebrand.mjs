@@ -71,6 +71,17 @@ const FILES = [
     ],
   },
   {
+    // Container-name defaults referenced inside backup.sh -- the script picks
+    // POSTGRES_HOST from env, falling back to `next-template-db`. After
+    // rebrand, the fallback should match the renamed `${SLUG}-db` container
+    // so a stack misconfiguration doesn't connect backups to a non-existent
+    // host with the old name.
+    path: 'deploy/backup.sh',
+    rules: [
+      { from: /next-template-/g, to: `${SLUG}-` },
+    ],
+  },
+  {
     path: '.env.example',
     rules: [
       { from: /NEXT_PUBLIC_APP_NAME="My App"/g, to: `NEXT_PUBLIC_APP_NAME="${NAME}"` },
