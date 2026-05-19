@@ -442,14 +442,17 @@ if (!DRY && state.portainer && state.portainer.webhookUrl) {
   // Phase B: domain poll (90 sec). DNS may still be propagating from the CF
   // upsert seconds ago; soft-warn rather than fail the whole deploy.
   const phaseBUrl = `https://${DOMAIN}/api/health`;
-  step('deploy', `phase B: domain health poll @ ${phaseBUrl}`);
-  const healthyB = await pollHealth(phaseBUrl, 90_000);
+  step('deploy', `phase B: domain health poll @ ${phaseBUrl} (180s -- DNS + LE first cert)`);
+  // 180s covers: DNS A-record propagation from CF egress (5-30s) + LE
+  // HTTP-01 challenge round-trip (30-60s on cold start) + Caddy applying
+  // the cert + first 200 response. Sub-90s was too tight for first deploy.
+  const healthyB = await pollHealth(phaseBUrl, 180_000);
   const healthy = healthyB;
   if (healthyB) {
     ok('deploy', `phase B healthy: ${phaseBUrl}`);
   } else {
-    dim('deploy', `DNS not yet propagated; check: dig +short ${DOMAIN}`);
-    warn('deploy', `phase B health check did not return 200 within 90s; deploy is successful from infra side (phase A green). DNS / LE cert will catch up shortly.`);
+    dim('deploy', `DNS / LE cert not yet ready; check: dig +short ${DOMAIN} && curl -v https://${DOMAIN}`);
+    warn('deploy', `phase B health check did not return 200 within 180s; deploy is successful from infra side (phase A green). DNS / LE cert will catch up shortly.`);
   }
 
   // -- 7. Register Better Uptime monitor (per ADR-002) ----------------------
