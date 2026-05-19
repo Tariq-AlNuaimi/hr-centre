@@ -56,8 +56,17 @@ services:
 
   app:
     container_name: next-template-app
-    image: ghcr.io/rihal-om/fullstack-next-template:${IMAGE_TAG:-latest}
+    # GHCR_IMAGE is parameterized so /deploy can target the fork's own image
+    # (e.g. ghcr.io/tariq-alnuaimi/fullstack-vibe-template) without requiring
+    # a prior /rebrand sweep of this file. Default keeps the original template
+    # image for backwards compat with hand-written stacks.
+    image: ${GHCR_IMAGE:-ghcr.io/rihal-om/fullstack-next-template}:${IMAGE_TAG:-latest}
     restart: unless-stopped
+    # Bind only to localhost: Caddy on the host reverse-proxies :443 -> :3000.
+    # Without this mapping, the container's :3000 was unreachable from Caddy
+    # and the app served nothing through the domain.
+    ports:
+      - "127.0.0.1:3000:3000"
     depends_on:
       db:
         condition: service_healthy

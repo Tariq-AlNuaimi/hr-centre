@@ -21,7 +21,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { info, step, ok, warn, err, bail, dim, dryPrefix } from './lib/log.mjs';
-import { readState, writeState, mark, statePath, tagResource } from './lib/state.mjs';
+import { readState, writeState, mark, statePath, tagResource, emptyState } from './lib/state.mjs';
 import { authSecret, dbPassword, auditToken, minioAccessKey, minioSecretKey, seedPassword, validateSshPubkey } from './lib/secrets.mjs';
 import * as DO from './lib/do.mjs';
 import * as CF from './lib/cloudflare.mjs';
@@ -145,8 +145,13 @@ if (values.destroy) {
   }
   warn('deploy', `Spaces bucket "${SLUG}-backups-${ENV}" was NOT deleted (cost mitigation, paranoia). Delete via DO console if you really mean to.`);
   warn('deploy', `GitHub repo, secrets, and environment were NOT deleted (cost zero, paranoia). Delete via GH UI if needed.`);
-  await writeState(ENV, mark(state, 'droplet', null));
-  ok('deploy', `teardown complete for ${SLUG}-${ENV}.`);
+  // Reset to fully empty state (preserving slug). Previously only droplet was
+  // nulled, which left state.portainer.url pointing at the destroyed Droplet
+  // and caused the next provision to "succeed" without actually deploying.
+  const cleared = emptyState(ENV);
+  cleared.slug = SLUG;
+  await writeState(ENV, cleared);
+  ok('deploy', `teardown complete for ${SLUG}-${ENV}; state reset.`);
   process.exit(0);
 }
 
@@ -379,6 +384,8 @@ if (!values['skip-stack'] && state.portainer && (!state.portainer.stackId || !st
         backupBucket: BACKUP_BUCKET,
         env: ENV,
         sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
+        ghOwner: GH_OWNER,
+        ghRepo: GH_REPO,
       });
       let stackId = state.portainer.stackId;
       let webhookUrl = state.portainer.webhookUrl;
@@ -534,11 +541,19 @@ function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }
   return m;
 }
 
-function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn }) {
+function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwner, ghRepo }) {
   // What docker-compose.prod.yml interpolates -- mirrors .env.example.
+  // GHCR_IMAGE / IMAGE_TAG drive the `app` service's image reference. The
+  // compose file uses `${GHCR_IMAGE}:${IMAGE_TAG}` so the fork's own image
+  // gets pulled without requiring a /rebrand sweep of compose.
+  const ghcrImage = ghOwner && ghRepo
+    ? `ghcr.io/${ghOwner.toLowerCase()}/${ghRepo.toLowerCase()}`
+    : 'ghcr.io/rihal-om/fullstack-next-template';
   const vars = {
     NEXT_PUBLIC_APP_NAME: slug,
     AUTH_SECRET: authSecret(),                  // re-mint per stack (Portainer-side copy)
+    AUTH_URL: `https://${domain}`,              // production base URL for Auth.js
+    NEXT_PUBLIC_APP_URL: `https://${domain}`,
     POSTGRES_PASSWORD: dbPassword(),
     MINIO_ROOT_USER: minioAccessKey(),
     MINIO_ROOT_PASSWORD: minioSecretKey(),
@@ -548,6 +563,7 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn }) {
     BACKUP_BUCKET: backupBucket,
     RCLONE_REMOTE: 'spaces',
     AUDIT_PURGE_TOKEN: auditToken(),
+    GHCR_IMAGE: ghcrImage,
     // Pin initial stack image to the commit SHA (LOW #10). The docker-build
     // workflow on the previous merge to main already pushed sha-<short>; if
     // we left this `latest`, Portainer would pull whatever `latest` currently
