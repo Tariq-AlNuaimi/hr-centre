@@ -176,11 +176,15 @@ export async function setManyRepoSecrets(token, owner, repo, map) {
 
 export async function ensureEnvironment(token, owner, repo, envName) {
   step('gh', `ensuring environment ${envName}`);
+  // `reviewers: []` triggers GitHub's "create environment protection rule"
+  // path, which is paid-plan-only on private repos and returns 422
+  // "Failed to create the environment protection rule" on free/private.
+  // Operators who need reviewer gates re-add them in the GH UI on a paid
+  // plan -- the env itself is created here without gates.
   await call(token, `/repos/${owner}/${repo}/environments/${envName}`, {
     method: 'PUT',
     body: JSON.stringify({
       wait_timer: 0,
-      reviewers: [],
       deployment_branch_policy: null,
     }),
   });

@@ -475,6 +475,13 @@ if (!DRY && state.portainer && state.portainer.webhookUrl) {
     warn('deploy', `phase B health check did not return 200 within 180s; deploy is successful from infra side (phase A green). DNS / LE cert will catch up shortly.`);
   }
 
+  // Persist the domain so downstream ops (`/promote` polls `prod.domain`,
+  // `/rollback` reads `state.domain`) have a real URL to hit. Both consumers
+  // currently fall back to `<prod>` / `<env>` placeholders when missing,
+  // silently masking the broken health verification.
+  state = mark(state, 'domain', DOMAIN);
+  await writeState(ENV, state);
+
   // -- 7. Register Better Uptime monitor (per ADR-002) ----------------------
   if (healthy) {
     const buKey = values['better-uptime-key'] || process.env.BETTER_UPTIME_API_KEY;
