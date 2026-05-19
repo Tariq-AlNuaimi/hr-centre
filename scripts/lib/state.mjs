@@ -56,7 +56,6 @@ export function emptyState(env) {
     droplet: null,        // { id, ip, reservedIp, region, size }
     spaces: null,         // { bucket, region, endpoint, accessKey, secretKey }
     cloudflare: null,     // { zoneId, recordId, name }
-    portainer: null,      // { url, adminPassword, stackId, webhookId, webhookUrl }
     github: null,         // { repo, secretsSet: [...], envSet: [...] }
     deployedSha: null,
     betterUptimeMonitorId: null,  // ADR-002: per-env uptime monitor id (null if BETTER_UPTIME_API_KEY unset)

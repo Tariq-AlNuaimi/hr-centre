@@ -10,10 +10,17 @@
 #   1. Creates ops user with sudo + the operator's SSH key
 #   2. Installs Docker CE + compose plugin
 #   3. Installs Caddy (apt repo) -- reverse proxies :443 -> :3000 with auto LE
-#   4. Hardens UFW: allows 22, 80, 443, 9443 only
-#   5. Pre-creates /opt/backup/{recipient,rclone.conf} (writes age recipient
-#      + rclone config from operator secrets, replacing the prior manual SSH
-#      bootstrap step) and runs `rclone mkdir` to create the off-host bucket.
+#   4. Hardens UFW: allows 22, 80, 443 only
+#   5. Writes /root/.docker/config.json (GHCR auth) so `docker compose pull`
+#      can fetch the private app image
+#   6. Pre-creates /opt/backup/{recipient,rclone.conf} (writes age recipient
+#      + rclone config from operator secrets) and runs `rclone mkdir` to
+#      create the off-host backup bucket.
+#
+# Stack deploy (docker compose up) is NOT done here -- scripts/deploy.mjs
+# SSHs in after cloud-init completes and runs the deploy step. This keeps
+# the cloud-init phase fast and lets the deploy script render env vars
+# from GH secrets without baking them into user-data.
 
 users:
   - name: ops
@@ -62,7 +69,6 @@ runcmd:
   - ufw allow 22/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
-  - ufw allow 9443/tcp
   - ufw --force enable
   # Backup dirs (recipient + rclone.conf land via write_files below).
   - install -d -o ops -g ops -m 0755 /opt/backup
@@ -106,20 +112,14 @@ write_files:
       }
     permissions: '0644'
 
-  - path: /etc/cron.d/portainer-data-snapshot
-    content: |
-      # Nightly Portainer data backup -- captures stack defs + admin metadata
-      0 3 * * * root tar -czf /var/backups/portainer-$(date +\%Y\%m\%d).tar.gz -C /var/lib/docker/volumes/portainer_data/_data . 2>/dev/null
-    permissions: '0644'
-
-  # GHCR pull credentials. Used by Portainer's Docker daemon when the compose
-  # stack pulls ghcr.io/<owner>/<repo>:<tag> for the private app image.
-  # The `auth` field is base64(github-username:GHCR_PULL_TOKEN). The token is
-  # a classic PAT with `read:packages` scope only -- minimum scope so leak
-  # blast radius is "pull private images" not full repo admin. Operator
-  # creates this once (per-account) and reuses across every project.
-  # File permissions 0600 + owned by root: only the Docker daemon (root)
-  # reads it.
+  # GHCR pull credentials. Used by the host's `docker compose pull` (run by
+  # /deploy + /promote + /rollback + docker-build.yml over SSH) to fetch the
+  # private app image. The host's docker daemon reads ~/.docker/config.json
+  # of the user running compose (root in our case) when authenticating to
+  # ghcr.io. The `auth` field is base64(github-username:GHCR_PULL_TOKEN).
+  # The token is a classic PAT with `read:packages` scope only -- minimum
+  # scope so leak blast radius is "pull private images" not full repo admin.
+  # File permissions 0600 + owned by root: only the docker daemon (root) reads it.
   - path: /root/.docker/config.json
     content: |
       {

@@ -26,7 +26,7 @@ import { authSecret, dbPassword, auditToken, minioAccessKey, minioSecretKey, see
 import * as DO from './lib/do.mjs';
 import * as CF from './lib/cloudflare.mjs';
 import * as GH from './lib/github.mjs';
-import * as P from './lib/portainer.mjs';
+import * as SSH from './lib/ssh-deploy.mjs';
 import * as BU from './lib/better-uptime.mjs';
 
 const ROOT = process.cwd();
@@ -151,9 +151,9 @@ if (values.destroy) {
   }
   warn('deploy', `Spaces bucket "${SLUG}-backups-${ENV}" was NOT deleted (cost mitigation, paranoia). Delete via DO console if you really mean to.`);
   warn('deploy', `GitHub repo, secrets, and environment were NOT deleted (cost zero, paranoia). Delete via GH UI if needed.`);
-  // Reset to fully empty state (preserving slug). Previously only droplet was
-  // nulled, which left state.portainer.url pointing at the destroyed Droplet
-  // and caused the next provision to "succeed" without actually deploying.
+  // Reset to fully empty state (preserving slug) so a subsequent /deploy
+  // does a clean provision rather than picking up dangling pointers to
+  // destroyed resources.
   const cleared = emptyState(ENV);
   cleared.slug = SLUG;
   await writeState(ENV, cleared);
@@ -309,57 +309,31 @@ if (!state.cloudflare || !state.cloudflare.recordId) {
   ok('deploy', `CF A record already exists (${state.cloudflare.name})`);
 }
 
-// -- 3. Portainer install + admin claim -------------------------------------
+// -- 3. SSH + cloud-init wait -----------------------------------------------
+//
+// Just ensure SSH is up and cloud-init has finished its runcmd (Docker +
+// Caddy install). The actual stack deploy happens in section 5 below;
+// section 3 only blocks until the host is ready to receive a deploy.
 
-if ((!state.portainer || !state.portainer.adminPassword) && !values['skip-stack']) {
-  step('deploy', `${DRYP}installing Portainer on droplet`);
+if (!values['skip-stack']) {
+  step('deploy', `${DRYP}waiting for SSH + cloud-init on droplet`);
   if (!DRY) {
     // SSH to the Droplet's primary public IP, not the reserved IP. DO
     // reserved-IP routing can take 1-5 min to propagate from GH Actions
     // runner egress after assignment, so the reserved-IP path can stay
     // unreachable past our 5-min SSH wait. The primary IP works from boot.
-    // The reserved IP is what end users hit via Cloudflare DNS; Portainer
-    // admin URL still uses it because that access happens minutes later
-    // from the operator's browser, after propagation has settled.
+    // The reserved IP is what end users hit via Cloudflare DNS.
     const sshHost = state.droplet.ip || state.droplet.reservedIp;
-    await P.waitForSsh(sshHost, 'root', values['ssh-key-path']);
+    await SSH.waitForSsh(sshHost, 'root', values['ssh-key-path']);
     // Block until cloud-init's runcmd has finished installing Docker + Caddy.
     // sshd accepts root login as soon as DO injects the key (within seconds),
     // but cloud-init's apt-get docker install takes ~3-5 min. Without this,
-    // installPortainer's `docker run` hits 'command not found'.
-    await P.waitForCloudInit(sshHost, values['ssh-key-path']);
-    await P.installPortainer(sshHost, values['ssh-key-path']);
-    // Use the primary IP for in-script Portainer API calls (admin claim,
-    // stack create, webhook). Reserved-IP routing can take 5-15 min to
-    // propagate from GH Actions egress, longer than this script's runtime.
-    // The primary IP is reachable from boot. publicUrl (below) is what we
-    // report to the operator for browser access -- by then propagation has
-    // settled.
-    const portainerUrl = `https://${sshHost}:9443`;
-    const portainerPublicUrl = `https://${state.droplet.reservedIp}:9443`;
-    const adminPw = `Ops!${authSecret().slice(0, 20)}`;
-    // Bypass self-signed cert for the install-window calls.
-    const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-    try {
-      // Poll Portainer's /api/system/status until 200 instead of gambling on
-      // a fixed sleep -- cold-start can take 20-30 sec (HIGH #1).
-      await P.pollPortainerReady(portainerUrl);
-      await P.initPortainerAdmin(portainerUrl, adminPw);
-    } finally {
-      if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
-    }
-    state = mark(state, 'portainer', { url: portainerUrl, publicUrl: portainerPublicUrl, adminPassword: adminPw, stackId: null, webhookUrl: null });
-    await writeState(ENV, state);
-    ok('deploy', `Portainer claimed at ${portainerUrl} (operator URL: ${portainerPublicUrl}; admin: ops-admin)`);
+    // the deploy step below hits "docker: command not found".
+    await SSH.waitForCloudInit(sshHost, values['ssh-key-path']);
+    ok('deploy', `host ${sshHost} ready for deploy`);
   } else {
-    dim('deploy', `would install: Portainer CE on droplet :9443 + bootstrap admin`);
+    dim('deploy', `would wait: ssh + cloud-init on droplet`);
   }
-} else if (values['skip-stack']) {
-  warn('deploy', `--skip-stack: Portainer step skipped`);
-} else {
-  ok('deploy', `Portainer already installed (${state.portainer.url})`);
 }
 
 // -- 4. GitHub: secrets + ruleset ------------------------------------------
@@ -387,87 +361,63 @@ if (!values['skip-secrets']) {
   warn('deploy', `--skip-secrets: GitHub step skipped`);
 }
 
-// -- 5. Portainer stack: create + webhook ----------------------------------
+// -- 5. SSH deploy: write compose + .env on droplet, docker compose up -d --
 
-if (!values['skip-stack'] && state.portainer && (!state.portainer.stackId || !state.portainer.webhookUrl)) {
-  step('deploy', `${DRYP}creating Portainer stack + webhook`);
+if (!values['skip-stack']) {
+  step('deploy', `${DRYP}deploying docker compose stack via ssh`);
   if (!DRY) {
-    const prev = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-    try {
-      const jwt = await P.getPortainerJwt(state.portainer.url, 'ops-admin', state.portainer.adminPassword);
-      const endpointId = await P.getLocalEndpointId(state.portainer.url, jwt);
-      // Register GHCR in Portainer BEFORE stack create. Portainer's daemon
-      // does not read /root/.docker/config.json on the host; it uses ONLY
-      // registries configured here. Without this the compose up fails with
-      // "error from registry: unauthorized" pulling the private app image.
-      if (values['ghcr-pull-token']) {
-        await P.ensureRegistry(state.portainer.url, jwt, {
-          name: 'ghcr',
-          url: 'ghcr.io',
-          username: GH_OWNER.toLowerCase(),
-          password: values['ghcr-pull-token'],
-        });
+    const sshHost = state.droplet.ip || state.droplet.reservedIp;
+    const sha = await GH.getLatestCommitSha(values['gh-token'], GH_OWNER, GH_REPO, 'main').catch(() => null);
+    const initialTag = sha ? `sha-${sha.slice(0, 7)}` : 'latest';
+    const compose = await readFile(join(ROOT, 'docker-compose.prod.yml'), 'utf8');
+    const envVars = stackEnvVars(state, {
+      domain: DOMAIN,
+      slug: SLUG,
+      backupBucket: BACKUP_BUCKET,
+      env: ENV,
+      sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
+      ghOwner: GH_OWNER,
+      ghRepo: GH_REPO,
+      imageTag: initialTag,
+    });
+    await SSH.deployStack(sshHost, values['ssh-key-path'], {
+      slug: SLUG,
+      composeYaml: compose,
+      envVars,
+    });
+    state = mark(state, 'deployedSha', sha);
+    await writeState(ENV, state);
+    // Persist the host IP as a repo variable so docker-build.yml (on every
+    // main push) can SSH in and redeploy without reading the state branch.
+    // Only the staging host is published this way -- prod redeploys are
+    // gated by /promote which reads state directly.
+    if (ENV === 'staging') {
+      try {
+        await GH.setRepoVariable(values['gh-token'], GH_OWNER, GH_REPO, 'STAGING_HOST', sshHost);
+        await GH.setRepoVariable(values['gh-token'], GH_OWNER, GH_REPO, 'STAGING_SLUG', SLUG);
+        ok('deploy', `set STAGING_HOST=${sshHost}, STAGING_SLUG=${SLUG} (used by docker-build.yml)`);
+      } catch (e) {
+        warn('deploy', `setting STAGING_HOST repo variable failed (auto-redeploy on push will be skipped): ${e.message}`);
       }
-      const compose = await readFile(join(ROOT, 'docker-compose.prod.yml'), 'utf8');
-      const envVars = stackEnvVars(state, {
-        domain: DOMAIN,
-        slug: SLUG,
-        backupBucket: BACKUP_BUCKET,
-        env: ENV,
-        sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
-        ghOwner: GH_OWNER,
-        ghRepo: GH_REPO,
-      });
-      let stackId = state.portainer.stackId;
-      let webhookUrl = state.portainer.webhookUrl;
-      if (!stackId) {
-        const stack = await P.createComposeStack(state.portainer.url, jwt, endpointId, { name: `${SLUG}-${ENV}`, composeYaml: compose, envVars });
-        stackId = stack.Id;
-      }
-      if (!webhookUrl) {
-        // Webhook creation is a hard error (MEDIUM #6): without it /promote
-        // and docker-build redeploys are silently broken.
-        const wh = await P.createStackWebhook(state.portainer.url, jwt, stackId);
-        if (!wh || !wh.WebhookID) {
-          throw new Error('Portainer createStackWebhook returned no WebhookID; cannot wire docker-build webhook.');
-        }
-        webhookUrl = `${state.portainer.url}/api/stacks/webhooks/${wh.WebhookID}`;
-      }
-      state = mark(state, 'portainer', { ...state.portainer, stackId, webhookUrl });
-      await writeState(ENV, state);
-      // Push the webhook URL into GH secrets so docker-build.yml can trigger redeploys.
-      await GH.setRepoSecret(values['gh-token'], GH_OWNER, GH_REPO, 'PORTAINER_WEBHOOK_URL', webhookUrl);
-      ok('deploy', `stack ${stackId} + webhook -> set PORTAINER_WEBHOOK_URL`);
-    } finally {
-      if (prev === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-      else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prev;
     }
+    ok('deploy', `stack deployed on ${sshHost} (IMAGE_TAG=${initialTag})`);
   } else {
-    dim('deploy', `would create: Portainer stack + webhook + PORTAINER_WEBHOOK_URL gh secret`);
+    dim('deploy', `would deploy: docker compose stack via ssh + write STAGING_HOST gh variable`);
   }
 }
 
-// -- 6. Trigger first deploy + poll health ---------------------------------
+// -- 6. Health check (Phase A: SSH, Phase B: domain HTTPS) ------------------
 
-if (!DRY && state.portainer && state.portainer.webhookUrl) {
-  step('deploy', `triggering first deploy via Portainer webhook`);
-  const sha = await GH.getLatestCommitSha(values['gh-token'], GH_OWNER, GH_REPO, 'main').catch(() => null);
-  const tag = sha ? `sha-${sha.slice(0, 7)}` : 'latest';
-  await P.triggerStackWebhook(state.portainer.webhookUrl, tag).catch(e => warn('deploy', `webhook trigger failed: ${e.message}`));
-  state = mark(state, 'deployedSha', sha);
-  await writeState(ENV, state);
-  ok('deploy', `webhook fired (IMAGE_TAG=${tag}). Polling /api/health...`);
-
+if (!DRY && !values['skip-stack']) {
   // Phase A: SSH into the Droplet and curl localhost:3000/api/health. Bypasses
   // Caddy + LE cert entirely so we prove the app container itself is up. The
   // direct-IP-via-HTTPS approach falls through to Caddy's default handler
   // (Caddyfile only matches the configured domain, not the bare IP) so it
   // doesn't actually test the app.
   step('deploy', `phase A: SSH health check on ${state.droplet.ip}`);
-  const healthyA = await P.pollHealthViaSsh(state.droplet.ip, values['ssh-key-path'], 180_000);
+  const healthyA = await SSH.pollHealthViaSsh(state.droplet.ip, values['ssh-key-path'], 300_000);
   if (!healthyA) {
-    bail('deploy', `phase A health check failed (app container did not respond 200 to /api/health within 180s). SSH in and check 'docker logs next-template-app' on ${state.droplet.ip}.`);
+    bail('deploy', `phase A health check failed (app container did not respond 200 to /api/health within 300s). SSH in and check 'cd /opt/${SLUG} && docker compose logs app' on ${state.droplet.ip}.`);
   }
   ok('deploy', `phase A healthy: app responding on ${state.droplet.ip}:3000`);
 
@@ -527,9 +477,8 @@ console.log('');
 ok('deploy', `${DRYP}${SLUG}-${ENV} ready.`);
 console.log(`  URL:           https://${DOMAIN}`);
 console.log(`  Health:        https://${DOMAIN}/api/health`);
-if (state.portainer) {
-  console.log(`  Portainer:     ${state.portainer.url} (user: ops-admin / pw in .deploy-state.${ENV}.json)`);
-}
+console.log(`  Host:          ${state.droplet ? state.droplet.reservedIp : '<unknown>'} (ssh root@${state.droplet ? state.droplet.ip : '<unknown>'})`);
+console.log(`  Stack:         /opt/${SLUG}/ on host (docker compose ps to inspect)`);
 console.log(`  State file:    ${statePath(ENV)}`);
 console.log('');
 
@@ -580,9 +529,7 @@ function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }
     MINIO_SECRET_KEY: minioSecretKey(),
     SEED_ADMIN_EMAIL: 'admin@example.com',
     SEED_ADMIN_PASSWORD: seedPassword(),
-    // The following land via the explicit Portainer-webhook step:
-    // PORTAINER_WEBHOOK_URL
-    // The following are operator-supplied (skill prompts at end):
+    // Operator-supplied secrets land via /first-fork or bootstrap-secrets.yml:
     // BACKUP_AGE_IDENTITY, RCLONE_CONFIG, SENTRY_AUTH_TOKEN, BETTER_UPTIME_API_KEY
   };
   // Sentry DSN is public-by-design (see ADR-002 + SECURITY.md §6) but we
@@ -594,7 +541,7 @@ function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }
   return m;
 }
 
-function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwner, ghRepo }) {
+function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwner, ghRepo, imageTag }) {
   // What docker-compose.prod.yml interpolates -- mirrors .env.example.
   // GHCR_IMAGE / IMAGE_TAG drive the `app` service's image reference. The
   // compose file uses `${GHCR_IMAGE}:${IMAGE_TAG}` so the fork's own image
@@ -604,7 +551,7 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     : 'ghcr.io/rihal-om/fullstack-next-template';
   const vars = {
     NEXT_PUBLIC_APP_NAME: slug,
-    AUTH_SECRET: authSecret(),                  // re-mint per stack (Portainer-side copy)
+    AUTH_SECRET: authSecret(),                  // re-mint per stack (host-side copy)
     AUTH_URL: `https://${domain}`,              // production base URL for Auth.js
     NEXT_PUBLIC_APP_URL: `https://${domain}`,
     // Set Postgres user/db explicitly. Compose has `${POSTGRES_USER:-app}`
@@ -624,13 +571,12 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     RCLONE_REMOTE: 'spaces',
     AUDIT_PURGE_TOKEN: auditToken(),
     GHCR_IMAGE: ghcrImage,
-    // Use `latest` for first deploy. The docker-build workflow pushes both
-    // `latest` and `sha-<short>` simultaneously on push to main, so `latest`
-    // always points at the most recently-completed build. Pinning to a SHA
-    // race-conditions against docker-build (deploy.yml dispatch can outrun
-    // the build for that commit). Operators who want SHA-pinned prod set
-    // IMAGE_TAG via Portainer stack env / a /rollback dispatch.
-    IMAGE_TAG: 'latest',
+    // SHA-pinned. The deploy script resolves the current main SHA before
+    // calling stackEnvVars; docker-build.yml redeploys with the new SHA on
+    // each push, and /promote / /rollback edit IMAGE_TAG in place via SSH.
+    // Falling back to "latest" preserves the original first-deploy behavior
+    // when the SHA lookup fails.
+    IMAGE_TAG: imageTag || 'latest',
     PROD_BASE_URL: `https://${domain}`,
     SEED_ADMIN_EMAIL: 'admin@example.com',
     SEED_ADMIN_PASSWORD: seedPassword(),

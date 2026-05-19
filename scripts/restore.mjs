@@ -124,5 +124,6 @@ console.log(`  Connection: postgresql://restore:restore@127.0.0.1:${port}/restor
 console.log(`  Container:  ${container}`);
 console.log(`  Cleanup:    docker rm -f ${container} && rm ${localDump} ${plainDump}`);
 console.log('');
-console.log(`To hot-swap into the live stack: edit the Portainer stack DATABASE_URL`);
-console.log(`and re-deploy. NEVER do this without first checking the restore DB looks right.`);
+console.log(`To hot-swap into the live stack: SSH to the host, edit /opt/<slug>/.env's`);
+console.log(`DATABASE_URL, then 'docker compose -f /opt/<slug>/docker-compose.prod.yml`);
+console.log(`--env-file .env up -d'. NEVER do this without first checking the restore DB looks right.`);

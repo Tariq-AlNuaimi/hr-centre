@@ -1,7 +1,8 @@
 name: Rollback
 
-# Flip a Portainer stack's IMAGE_TAG to a known-good SHA. Pure image swap;
-# does not touch the DB. See ADR-004 + scripts/rollback.mjs.
+# Flip the live docker compose stack's IMAGE_TAG to a known-good SHA via
+# SSH + `docker compose pull && up -d`. Pure image swap; does not touch
+# the DB. See ADR-004 + scripts/rollback.mjs.
 
 on:
   workflow_dispatch:
@@ -45,6 +46,19 @@ jobs:
           cache: 'npm'
 
       - run: npm ci
+
+      - name: Install SSH key
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          if [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "::error::SSH_PRIVATE_KEY secret is empty. Set it on the repo (see /first-fork)." >&2
+            exit 1
+          fi
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
 
       - name: Run rollback script
         env:

@@ -86,7 +86,7 @@ jobs:
           node --check scripts/lib/do.mjs
           node --check scripts/lib/cloudflare.mjs
           node --check scripts/lib/github.mjs
-          node --check scripts/lib/portainer.mjs
+          node --check scripts/lib/ssh-deploy.mjs
           node --check scripts/deploy.mjs
           node --check scripts/promote.mjs
           node --check scripts/new-project.mjs

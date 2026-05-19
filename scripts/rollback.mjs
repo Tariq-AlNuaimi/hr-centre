@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // scripts/rollback.mjs
 //
-// Flip a Portainer stack's IMAGE_TAG env to a previous git SHA, then trigger
-// the stack webhook. Re-uses the SHA-pinning pattern from T-04. Doesn't touch
-// the DB -- pure image swap, ~30s to roll back.
+// SSH into the target env's Droplet and `docker compose pull && up -d` with
+// IMAGE_TAG=<previous-sha>. Doesn't touch the DB -- pure image swap, ~30s
+// to roll back. Re-uses the SHA-pinning pattern from T-04.
 //
 // Usage:
 //   npm run rollback -- --env prod --to sha-abc1234 --gh-token ghp_...
@@ -13,7 +13,7 @@
 import { parseArgs } from 'node:util';
 import { step, ok, bail, err, dryPrefix } from './lib/log.mjs';
 import { readState } from './lib/state.mjs';
-import * as P from './lib/portainer.mjs';
+import * as SSH from './lib/ssh-deploy.mjs';
 import * as GH from './lib/github.mjs';
 
 const CI = process.env.CI === 'true' || process.env.NON_INTERACTIVE === 'true';
@@ -30,6 +30,7 @@ const { values } = parseArgs({
     'gh-token': { type: 'string' },
     'gh-owner': { type: 'string' },
     'gh-repo': { type: 'string' },
+    'ssh-key-path': { type: 'string', default: process.env.HOME ? `${process.env.HOME}/.ssh/id_ed25519` : '' },
     'dry-run': { type: 'boolean', default: false },
     yes: { type: 'boolean', default: false },
   },
@@ -38,18 +39,20 @@ const { values } = parseArgs({
 
 if (CI) {
   values['gh-token'] ||= process.env.GITHUB_AUTOMATION_TOKEN || process.env.GITHUB_FALLBACK_TOKEN || process.env.GITHUB_TOKEN || '';
-  // CI workflows always provide --to and --yes; bail loudly if not.
-  if (!values.to)  bail('rollback', `CI mode: --to is required (workflows always pass it).`);
-  if (!values.yes) bail('rollback', `CI mode: --yes is required (workflows always pass it).`);
+  if (!values['list-recent']) {
+    if (!values.to)  bail('rollback', `CI mode: --to is required (workflows always pass it).`);
+    if (!values.yes) bail('rollback', `CI mode: --yes is required (workflows always pass it).`);
+  }
 }
 
 const DRY = values['dry-run'];
 const DRYP = dryPrefix(DRY);
 
 const state = await readState(values.env);
-if (!state.portainer || !state.portainer.webhookUrl) {
-  bail('rollback', `no Portainer webhook recorded for env=${values.env}. Run /deploy --env ${values.env} first.`);
+if (!state.droplet || !state.droplet.ip) {
+  bail('rollback', `no droplet IP recorded for env=${values.env}. Run /deploy --env ${values.env} first.`);
 }
+if (!state.slug) bail('rollback', `state file missing slug for env=${values.env}. Re-run /deploy.`);
 
 async function resolveRepo() {
   if (values['gh-owner'] && values['gh-repo']) return { owner: values['gh-owner'], repo: values['gh-repo'] };
@@ -86,10 +89,13 @@ if (!values.yes && !DRY) {
   process.exit(0);
 }
 
-step('rollback', `${DRYP}triggering ${values.env} webhook with IMAGE_TAG=${tag}`);
+step('rollback', `${DRYP}redeploying ${values.env} via ssh (IMAGE_TAG=${tag})`);
 if (!DRY) {
-  await P.triggerStackWebhook(state.portainer.webhookUrl, tag);
-  ok('rollback', `webhook fired. Portainer is pulling the image and restarting the stack.`);
+  await SSH.redeployStack(state.droplet.ip, values['ssh-key-path'], {
+    slug: state.slug,
+    imageTag: tag,
+  });
+  ok('rollback', `stack restarted on ${state.droplet.ip}.`);
 }
 
 console.log(`\nVerify: curl -s https://${state.domain || '<env>'}/api/health`);

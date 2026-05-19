@@ -74,23 +74,49 @@ jobs:
           npx @sentry/cli releases finalize "${SHA}" || true
         continue-on-error: true
 
-      # IMAGE_TAG is passed on the webhook query string. Portainer STACK webhooks
-      # treat query-string params as environment-variable overrides for the stack,
-      # so docker-compose.prod.yml's `${IMAGE_TAG:-latest}` resolves to the SHA tag
-      # on this deploy. SERVICE webhooks ignore the query string -- they redeploy
-      # whatever :latest currently points to, which is also fine (just no SHA pin).
-      # See SECURITY.md finding T-04.
+      # Auto-redeploy staging via SSH. Replaces the prior Portainer webhook
+      # trigger (Portainer's API surface for stack updates was too unstable
+      # across CE versions). The host writes /opt/<slug>/.env on first
+      # /deploy; this step sets IMAGE_TAG=sha-<short> in that .env and runs
+      # `docker compose pull && up -d`. GHCR auth comes from the host's
+      # /root/.docker/config.json (seeded by cloud-init).
       #
-      # Skip silently when PORTAINER_WEBHOOK_URL is unset: a fork that has not
-      # yet run /deploy will not have the webhook secret. The image is still
-      # built and pushed to GHCR above; /deploy reads :latest on first run.
-      - name: Trigger Portainer stack update
-        if: ${{ success() && env.HAS_WEBHOOK == 'true' }}
+      # Skip silently when STAGING_HOST is unset: a fork that has not yet
+      # run /deploy --env staging has no host to redeploy to. The image is
+      # still built and pushed to GHCR above; /deploy reads it on first run.
+      - name: Install SSH key
+        if: ${{ success() && vars.STAGING_HOST != '' && secrets.SSH_PRIVATE_KEY != '' }}
         env:
-          HAS_WEBHOOK: ${{ secrets.PORTAINER_WEBHOOK_URL != '' }}
-          WEBHOOK_URL: ${{ secrets.PORTAINER_WEBHOOK_URL }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Redeploy staging via SSH
+        if: ${{ success() && vars.STAGING_HOST != '' && secrets.SSH_PRIVATE_KEY != '' }}
+        env:
+          STAGING_HOST: ${{ vars.STAGING_HOST }}
+          STAGING_SLUG: ${{ vars.STAGING_SLUG }}
           SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
           SHORT_SHA="${SHA:0:7}"
-          curl -s -X POST "${WEBHOOK_URL}?IMAGE_TAG=sha-${SHORT_SHA}"
-          echo "Portainer webhook triggered with IMAGE_TAG=sha-${SHORT_SHA}"
+          SLUG="${STAGING_SLUG:-app}"
+          DIR="/opt/${SLUG}"
+          echo "Redeploying ${SLUG} on ${STAGING_HOST} with IMAGE_TAG=sha-${SHORT_SHA}"
+          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null \
+              -o LogLevel=ERROR -o ConnectTimeout=10 \
+              -i ~/.ssh/id_ed25519 "root@${STAGING_HOST}" bash <<EOF
+          set -euo pipefail
+          if grep -q '^IMAGE_TAG=' '${DIR}/.env'; then
+            sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=sha-${SHORT_SHA}|" '${DIR}/.env'
+          else
+            echo "IMAGE_TAG=sha-${SHORT_SHA}" >> '${DIR}/.env'
+          fi
+          cd '${DIR}'
+          docker compose -f docker-compose.prod.yml --env-file .env pull
+          docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans
+          EOF
+          echo "Staging redeploy complete."
