@@ -126,15 +126,14 @@ export async function pollPortainerReady(url, timeoutMs = 60_000) {
 export async function pollHealthViaSsh(host, sshKeyPath, timeoutMs = 180_000) {
   step('portainer', `phase A health: ssh curl localhost:3000/api/health on ${host}`);
   const start = Date.now();
-  let lastErr = '';
   while (Date.now() - start < timeoutMs) {
     try {
       await sshExec(host, 'root',
         'curl -sf -o /dev/null -w "%{http_code}\\n" --max-time 5 http://localhost:3000/api/health | grep -q "^200$"',
         { sshKeyPath, timeoutMs: 15_000 });
       return true;
-    } catch (e) {
-      lastErr = e.message || String(e);
+    } catch {
+      // try again
     }
     await new Promise(res => setTimeout(res, 5000));
   }
