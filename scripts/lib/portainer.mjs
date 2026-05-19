@@ -55,11 +55,27 @@ export async function waitForSsh(host, user, sshKeyPath, timeoutMs = 300_000) {
 }
 
 // Block until cloud-init has finished its runcmd (Docker + Caddy install).
-// `cloud-init status --wait` exits 0 on done, 2 on error. Without this the
-// Portainer install will run before /usr/bin/docker exists.
+// `cloud-init status --wait` exits 0 on done, non-zero on error. Without this
+// the Portainer install will run before /usr/bin/docker exists.
+// On failure, dump the tail of /var/log/cloud-init-output.log so the operator
+// can see WHAT runcmd step actually failed -- otherwise the script just
+// surfaces "status: error" with no context.
 export async function waitForCloudInit(host, sshKeyPath, timeoutMs = 600_000) {
   step('portainer', `waiting for cloud-init on ${host}`);
-  await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs });
+  try {
+    await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs });
+  } catch (e) {
+    let tail = '';
+    try {
+      const r = await sshExec(host, 'root',
+        'echo "--- /var/log/cloud-init-output.log (last 60 lines) ---"; tail -60 /var/log/cloud-init-output.log 2>&1; echo; echo "--- cloud-init status --long ---"; cloud-init status --long 2>&1 | tail -40',
+        { sshKeyPath, timeoutMs: 30_000 });
+      tail = r.stdout || r.stderr || '(empty)';
+    } catch (logErr) {
+      tail = `(failed to fetch cloud-init log: ${logErr.message})`;
+    }
+    throw new Error(`cloud-init reported error on ${host}.\n${tail}\n\nOriginal error: ${e.message}`);
+  }
 }
 
 // Portainer install via docker run. cloud-init already installs Docker.
