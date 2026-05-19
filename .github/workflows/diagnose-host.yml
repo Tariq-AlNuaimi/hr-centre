@@ -24,6 +24,10 @@ on:
         description: 'Also dump `docker compose logs` for the app stack'
         type: boolean
         default: false
+      show_seed_credentials:
+        description: 'Print SEED_ADMIN_EMAIL + SEED_ADMIN_PASSWORD from /opt/<slug>/.env. The password used to bootstrap the first admin user is generated at deploy time and lives only on the host -- this is the only way to retrieve it without SSH.'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -111,6 +115,25 @@ jobs:
           echo
           echo "===== docker compose logs --tail 100 (last 100 lines per service) ====="
           docker compose -f docker-compose.prod.yml --env-file .env logs --tail 100 --no-color
+          EOF
+
+      - name: Show seed credentials (if requested)
+        if: ${{ inputs.show_seed_credentials }}
+        env:
+          HOST: ${{ steps.state.outputs.ip }}
+          SLUG: ${{ steps.state.outputs.slug }}
+        run: |
+          set -euo pipefail
+          echo "::warning::This step prints the SEED admin password in the workflow log."
+          echo "::warning::Anyone with repo read access can see it. Rotate via the app's"
+          echo "::warning::change-password UI after first login if that's a concern."
+          ssh -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null \
+              -o LogLevel=ERROR -o ConnectTimeout=10 \
+              -i ~/.ssh/id_ed25519 "root@${HOST}" bash <<EOF
+          set -e
+          echo "===== seed credentials from /opt/${SLUG}/.env ====="
+          grep -E '^(SEED_ADMIN_EMAIL|SEED_ADMIN_PASSWORD)=' "/opt/${SLUG}/.env" || \
+            echo "(SEED_ADMIN_* keys not found in /opt/${SLUG}/.env)"
           EOF
 
       - name: Restart Caddy (if requested)
