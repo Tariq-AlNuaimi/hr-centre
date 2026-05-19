@@ -132,6 +132,7 @@ jobs:
           GITHUB_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
           GITHUB_FALLBACK_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BETTER_UPTIME_API_KEY: ${{ secrets.BETTER_UPTIME_API_KEY }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
           SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}

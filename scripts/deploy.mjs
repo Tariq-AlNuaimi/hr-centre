@@ -70,6 +70,7 @@ const { values } = parseArgs({
     'skip-provision': { type: 'boolean', default: false },
     'sentry-dsn': { type: 'string' },
     'better-uptime-key': { type: 'string' },
+    'ghcr-pull-token': { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
     resume: { type: 'boolean', default: false },
     destroy: { type: 'boolean', default: false },
@@ -88,6 +89,7 @@ if (CI) {
   values['gh-token']         ||= process.env.GITHUB_AUTOMATION_TOKEN || process.env.GITHUB_FALLBACK_TOKEN || process.env.GITHUB_TOKEN || '';
   values['better-uptime-key'] ||= process.env.BETTER_UPTIME_API_KEY || '';
   values['sentry-dsn']        ||= process.env.SENTRY_DSN || '';
+  values['ghcr-pull-token']   ||= process.env.GHCR_PULL_TOKEN || '';
   values['caddy-email']       ||= process.env.CADDY_EMAIL || '';
   values['ssh-pubkey']        ||= process.env.SSH_PUBKEY || '';
 }
@@ -223,10 +225,15 @@ if (!state.droplet || !state.droplet.id) {
   step('deploy', `${DRYP}provisioning droplet`);
   if (!DRY) {
     const sshKey = await DO.ensureSshKey(values['do-token'], `${TAG}-ops`, values['ssh-pubkey']);
+    if (!values['ghcr-pull-token']) {
+      bail('deploy', `GHCR_PULL_TOKEN is required so the Droplet can pull the private app image from ghcr.io. Set it as a repo secret (classic PAT with read:packages scope only). See .claude/skills/first-fork/SKILL.md.`);
+    }
     const userData = await renderCloudInit({
       ssh_pubkey: values['ssh-pubkey'],
       caddy_email: CADDY_EMAIL,
       domain: DOMAIN,
+      gh_owner: GH_OWNER,
+      ghcr_pull_token: values['ghcr-pull-token'],
     });
     let droplet = await DO.findDropletByTag(values['do-token'], TAG);
     if (!droplet) {
@@ -498,12 +505,17 @@ console.log('');
 // Helpers
 // =========================================================================
 
-async function renderCloudInit({ ssh_pubkey, caddy_email, domain }) {
+async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr_pull_token }) {
   const tmpl = await readFile(join(ROOT, 'deploy/cloud-init.yml'), 'utf8');
+  // base64(github-username:pull-token) is the Docker config.json `auth` form.
+  // Use the GH owner as the username (Docker doesn't care about exact value;
+  // GH treats anything-non-empty-with-matching-token as a successful login).
+  const ghcrAuthB64 = Buffer.from(`${gh_owner}:${ghcr_pull_token}`).toString('base64');
   return tmpl
     .replaceAll('{{ssh_pubkey}}', ssh_pubkey)
     .replaceAll('{{caddy_email}}', caddy_email)
-    .replaceAll('{{domain}}', domain);
+    .replaceAll('{{domain}}', domain)
+    .replaceAll('{{ghcr_auth_b64}}', ghcrAuthB64);
 }
 
 function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }) {

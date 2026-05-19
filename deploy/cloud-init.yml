@@ -3,7 +3,7 @@
 #
 # First-boot configuration injected into every Droplet by scripts/deploy.mjs.
 # The script does string substitution for {{ssh_pubkey}}, {{caddy_email}},
-# and {{domain}} before passing the rendered content as user-data.
+# {{domain}}, and {{ghcr_auth_b64}} before passing the rendered content as user-data.
 #
 # What this does:
 #   1. Creates ops user with sudo + the operator's SSH key
@@ -91,3 +91,23 @@ write_files:
       # Nightly Portainer data backup -- captures stack defs + admin metadata
       0 3 * * * root tar -czf /var/backups/portainer-$(date +\%Y\%m\%d).tar.gz -C /var/lib/docker/volumes/portainer_data/_data . 2>/dev/null
     permissions: '0644'
+
+  # GHCR pull credentials. Used by Portainer's Docker daemon when the compose
+  # stack pulls ghcr.io/<owner>/<repo>:<tag> for the private app image.
+  # The `auth` field is base64(github-username:GHCR_PULL_TOKEN). The token is
+  # a classic PAT with `read:packages` scope only -- minimum scope so leak
+  # blast radius is "pull private images" not full repo admin. Operator
+  # creates this once (per-account) and reuses across every project.
+  # File permissions 0600 + owned by root: only the Docker daemon (root)
+  # reads it.
+  - path: /root/.docker/config.json
+    content: |
+      {
+        "auths": {
+          "ghcr.io": {
+            "auth": "{{ghcr_auth_b64}}"
+          }
+        }
+      }
+    permissions: '0600'
+    owner: root:root
