@@ -21,7 +21,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { info, step, ok, warn, err, bail, dim, dryPrefix } from './lib/log.mjs';
-import { readState, writeState, mark, statePath, tagResource, emptyState } from './lib/state.mjs';
+import { readState, writeState, mark, statePath, tagResource, emptyState, discoverFromTags } from './lib/state.mjs';
 import { authSecret, dbPassword, auditToken, minioAccessKey, minioSecretKey, seedPassword, validateSshPubkey } from './lib/secrets.mjs';
 import * as DO from './lib/do.mjs';
 import * as CF from './lib/cloudflare.mjs';
@@ -132,6 +132,28 @@ if (values.destroy) {
   if (!values.yes) bail('deploy', `--destroy requires --yes to confirm.`);
   if (DRY) { info('deploy', `${DRYP}would destroy: ${JSON.stringify(state, null, 2)}`); process.exit(0); }
   step('deploy', `tearing down ${SLUG}-${ENV}`);
+  // Tag-discovery fallback. If the state file is empty (prior destroy reset
+  // it, or a prior smoke crashed before state was persisted), the resource
+  // pointers below are null and we'd skip teardown silently. discoverFromTags
+  // queries DO for any droplet+IP carrying the vibe-managed=<slug>-<env> tag
+  // and merges those into state for this run. Surfaced as a real bug after
+  // multiple smoke runs left a droplet orphaned -- destroy ran "clean" but
+  // the droplet kept running.
+  if (values['do-token']) {
+    try {
+      const discovered = await discoverFromTags(DO, values['do-token'], SLUG, ENV);
+      if (discovered.droplet && (!state.droplet || !state.droplet.id)) {
+        warn('deploy', `state was empty but tag-discovery found droplet ${discovered.droplet.id} @ ${discovered.droplet.ip} -- destroying it`);
+        state.droplet = { ...discovered.droplet, reservedIp: discovered.reservedIp || null };
+      } else if (discovered.droplet && state.droplet && discovered.droplet.id !== state.droplet.id) {
+        warn('deploy', `state points at droplet ${state.droplet.id} but tag-discovery also found ${discovered.droplet.id}. Both will be destroyed.`);
+        // Stash the extra droplet for an additional destroy pass below.
+        state.extraDroplet = discovered.droplet;
+      }
+    } catch (e) {
+      warn('deploy', `tag-discovery failed (non-fatal; falling back to state-only teardown): ${e.message}`);
+    }
+  }
   // Better Uptime monitor teardown (best-effort; key from flag or env).
   const buKey = values['better-uptime-key'] || process.env.BETTER_UPTIME_API_KEY;
   if (state.betterUptimeMonitorId && buKey) {
@@ -154,7 +176,12 @@ if (values.destroy) {
     }
   }
   if (state.droplet && state.droplet.id) {
-    try { await DO.destroyDroplet(values['do-token'], state.droplet.id); ok('deploy', `droplet destroyed`); } catch (e) { warn('deploy', `droplet destroy failed: ${e.message}`); }
+    try { await DO.destroyDroplet(values['do-token'], state.droplet.id); ok('deploy', `droplet ${state.droplet.id} destroyed`); } catch (e) { warn('deploy', `droplet ${state.droplet.id} destroy failed: ${e.message}`); }
+  }
+  // If tag-discovery found an additional droplet that wasn't in state (e.g.
+  // a previous smoke crashed before persisting state), destroy it too.
+  if (state.extraDroplet && state.extraDroplet.id) {
+    try { await DO.destroyDroplet(values['do-token'], state.extraDroplet.id); ok('deploy', `extra (tag-discovered) droplet ${state.extraDroplet.id} destroyed`); } catch (e) { warn('deploy', `extra droplet destroy failed: ${e.message}`); }
   }
   // Nag the operator about any unattached reserved IPs left from prior
   // partial runs (failed destroys, manual creates, etc.). DO charges $4/mo
