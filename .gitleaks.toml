@@ -1,0 +1,28 @@
+# gitleaks config -- extends the default ruleset and adds project-specific
+# allowlists. See https://github.com/gitleaks/gitleaks for syntax.
+#
+# Why an allowlist exists:
+#   .deploy-state.<env>.json lives on the orphan `deployment-state` branch
+#   (never on main). It stores generatedSecrets (AUTH_SECRET, POSTGRES_PASSWORD,
+#   MINIO_*, AUDIT_PURGE_TOKEN, SEED_ADMIN_PASSWORD) so that:
+#     - re-runs of /deploy don't rotate creds out from under running containers
+#     - GH-secret values match host-side .env values for the same env
+#   Without this allowlist, gitleaks (which scans ALL branches across full
+#   history) flags every state-branch commit as a leak.
+#
+#   The exposure class is intentional and bounded: anyone with GH repo read
+#   access can already see GH repo/env secrets via the Actions UI; the state
+#   file adds no new exposure surface. The follow-up hardening to encrypt
+#   this file at rest (libsodium sealed-box) is tracked separately.
+#
+# Hard rule: never widen this allowlist to match files on `main`. The state
+# branch is the only place plaintext secrets are tolerated.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Orphan deployment-state branch persists generated secrets by design"
+paths = [
+  '''\.deploy-state\..*\.json$''',
+]
