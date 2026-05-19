@@ -11,9 +11,17 @@
 // the operator may use Actions secrets instead; the deploy skill calls this
 // out.
 
+import { createRequire } from 'node:module';
 import { step } from './log.mjs';
 
 const API = 'https://api.github.com';
+
+// libsodium-wrappers@0.7.x ships a broken ESM build (its modules-esm/
+// libsodium-wrappers.mjs imports './libsodium.mjs' which doesn't exist in
+// the npm tarball -- only libsodium.js does). Forcing CommonJS load via
+// createRequire is the documented workaround and matches what every other
+// GitHub Actions setup-secret reference implementation does.
+const requireSodium = createRequire(import.meta.url);
 
 function headers(token) {
   return {
@@ -112,14 +120,15 @@ let _sodium;
 async function sodium() {
   if (_sodium) return _sodium;
   try {
-    const mod = await import('libsodium-wrappers');
-    await mod.default.ready;
-    _sodium = mod.default;
+    // CJS load via createRequire -- the ESM entry point in 0.7.x is broken.
+    const mod = requireSodium('libsodium-wrappers');
+    await mod.ready;
+    _sodium = mod;
     return _sodium;
   } catch (e) {
     throw new Error(
       `libsodium-wrappers load failed: ${e && e.message ? e.message : String(e)}. ` +
-      'It is a runtime dep (was moved out of devDependencies). Run `npm install` or rebuild the runner image.'
+      'It is a runtime dep. Run `npm install` or rebuild the runner image.'
     );
   }
 }
