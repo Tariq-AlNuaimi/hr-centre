@@ -427,25 +427,17 @@ if (!DRY && state.portainer && state.portainer.webhookUrl) {
   await writeState(ENV, state);
   ok('deploy', `webhook fired (IMAGE_TAG=${tag}). Polling /api/health...`);
 
-  // Phase A: direct-IP poll (90 sec). Self-signed cert is acceptable here
-  // because Caddy may still be obtaining its LE cert; we just want to know
-  // the app + Caddy chain is reachable independent of DNS propagation. If
-  // this fails, that's a real infra failure.
-  const phaseAUrl = `https://${state.droplet.ip}/api/health`;
-  step('deploy', `phase A: direct-IP health poll @ ${phaseAUrl}`);
-  const prevTls = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-  let healthyA;
-  try {
-    healthyA = await pollHealth(phaseAUrl, 90_000);
-  } finally {
-    if (prevTls === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
-    else process.env.NODE_TLS_REJECT_UNAUTHORIZED = prevTls;
-  }
+  // Phase A: SSH into the Droplet and curl localhost:3000/api/health. Bypasses
+  // Caddy + LE cert entirely so we prove the app container itself is up. The
+  // direct-IP-via-HTTPS approach falls through to Caddy's default handler
+  // (Caddyfile only matches the configured domain, not the bare IP) so it
+  // doesn't actually test the app.
+  step('deploy', `phase A: SSH health check on ${state.droplet.ip}`);
+  const healthyA = await P.pollHealthViaSsh(state.droplet.ip, values['ssh-key-path'], 180_000);
   if (!healthyA) {
-    bail('deploy', `phase A health check failed (direct IP ${state.droplet.ip} did not return 200 in 90s). The app or Caddy reverse-proxy is not up; check Portainer logs.`);
+    bail('deploy', `phase A health check failed (app container did not respond 200 to /api/health within 180s). SSH in and check 'docker logs next-template-app' on ${state.droplet.ip}.`);
   }
-  ok('deploy', `phase A healthy: ${phaseAUrl}`);
+  ok('deploy', `phase A healthy: app responding on ${state.droplet.ip}:3000`);
 
   // Phase B: domain poll (90 sec). DNS may still be propagating from the CF
   // upsert seconds ago; soft-warn rather than fail the whole deploy.
@@ -582,14 +574,14 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     SEED_ADMIN_EMAIL: 'admin@example.com',
     SEED_ADMIN_PASSWORD: seedPassword(),
     SENTRY_ENVIRONMENT: env === 'prod' ? 'production' : env,
-    // Sentry vars always present (empty string when not configured) so
-    // re-deploys without a DSN don't inherit a stale one from prior runs.
-    SENTRY_DSN: sentryDsn || '',
-    NEXT_PUBLIC_SENTRY_DSN: sentryDsn || '',
   };
-  // (Sentry vars are unconditionally set above; the conditional block that
-  // used to live here is gone -- empty string is the documented "disabled"
-  // state for the Sentry SDK.)
+  // Sentry DSN must be either a valid URL or absent -- lib/env.ts's zod
+  // schema rejects empty string under .url().optional(). Only set the vars
+  // when a real DSN is configured; absent = SDK no-ops.
+  if (sentryDsn) {
+    vars.SENTRY_DSN = sentryDsn;
+    vars.NEXT_PUBLIC_SENTRY_DSN = sentryDsn;
+  }
   return vars;
 }
 

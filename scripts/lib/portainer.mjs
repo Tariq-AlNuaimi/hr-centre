@@ -118,6 +118,29 @@ export async function pollPortainerReady(url, timeoutMs = 60_000) {
   throw new Error(`Portainer at ${url} did not become ready in ${timeoutMs}ms; last error: ${lastErr}`);
 }
 
+// Phase A health check: SSH into the Droplet and curl localhost:3000/api/health.
+// Bypasses Caddy entirely so we don't depend on the LE cert being issued or
+// the Caddyfile virtual-host matching (Caddy only matches the configured
+// {{domain}}, so direct-IP requests fall through to its default handler).
+// Proves the app container is up + DB + storage reachable.
+export async function pollHealthViaSsh(host, sshKeyPath, timeoutMs = 180_000) {
+  step('portainer', `phase A health: ssh curl localhost:3000/api/health on ${host}`);
+  const start = Date.now();
+  let lastErr = '';
+  while (Date.now() - start < timeoutMs) {
+    try {
+      await sshExec(host, 'root',
+        'curl -sf -o /dev/null -w "%{http_code}\\n" --max-time 5 http://localhost:3000/api/health | grep -q "^200$"',
+        { sshKeyPath, timeoutMs: 15_000 });
+      return true;
+    } catch (e) {
+      lastErr = e.message || String(e);
+    }
+    await new Promise(res => setTimeout(res, 5000));
+  }
+  return false;
+}
+
 export async function initPortainerAdmin(baseUrl, password) {
   step('portainer', `claiming admin window at ${baseUrl}`);
   // The init endpoint disables itself after first call. Use a long username
