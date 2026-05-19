@@ -85,8 +85,9 @@ jobs:
       # run /deploy --env staging has no host to redeploy to. The image is
       # still built and pushed to GHCR above; /deploy reads it on first run.
       - name: Install SSH key
-        if: ${{ success() && vars.STAGING_HOST != '' && secrets.SSH_PRIVATE_KEY != '' }}
+        if: ${{ success() && vars.STAGING_HOST != '' && env.HAS_SSH == 'true' }}
         env:
+          HAS_SSH: ${{ secrets.SSH_PRIVATE_KEY != '' }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
           set -euo pipefail
@@ -95,8 +96,9 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Redeploy staging via SSH
-        if: ${{ success() && vars.STAGING_HOST != '' && secrets.SSH_PRIVATE_KEY != '' }}
+        if: ${{ success() && vars.STAGING_HOST != '' && env.HAS_SSH == 'true' }}
         env:
+          HAS_SSH: ${{ secrets.SSH_PRIVATE_KEY != '' }}
           STAGING_HOST: ${{ vars.STAGING_HOST }}
           STAGING_SLUG: ${{ vars.STAGING_SLUG }}
           SHA: ${{ github.sha }}
