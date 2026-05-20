@@ -157,19 +157,20 @@ export async function setRepoSecret(token, owner, repo, name, value) {
 }
 
 export async function setManyRepoSecrets(token, owner, repo, map) {
-  // Fetch the public key once, then encrypt + PUT each.
+  // Fetch the public key once, then encrypt + PUT each in parallel.
+  // GH's secrets-write API has no per-repo rate limit at this scale (we ship
+  // ~12 secrets per deploy), and Promise.all over fetch is a few-seconds win
+  // on the deploy critical path.
   const pk = await getRepoPublicKey(token, owner, repo);
-  const names = [];
-  for (const [name, value] of Object.entries(map)) {
-    if (value == null || value === '') continue;
+  const entries = Object.entries(map).filter(([, v]) => v != null && v !== '');
+  await Promise.all(entries.map(async ([name, value]) => {
     const encrypted_value = await encrypt(pk.key, String(value));
     await call(token, `/repos/${owner}/${repo}/actions/secrets/${name}`, {
       method: 'PUT',
       body: JSON.stringify({ encrypted_value, key_id: pk.key_id }),
     });
-    names.push(name);
-  }
-  return names;
+  }));
+  return entries.map(([n]) => n);
 }
 
 // Environment + env secrets --------------------------------------------------
@@ -195,18 +196,17 @@ export async function getEnvPublicKey(token, owner, repo, envName) {
 }
 
 export async function setManyEnvSecrets(token, owner, repo, envName, map) {
+  // Parallel PUTs after one pubkey fetch -- same rationale as setManyRepoSecrets.
   const pk = await getEnvPublicKey(token, owner, repo, envName);
-  const names = [];
-  for (const [name, value] of Object.entries(map)) {
-    if (value == null || value === '') continue;
+  const entries = Object.entries(map).filter(([, v]) => v != null && v !== '');
+  await Promise.all(entries.map(async ([name, value]) => {
     const encrypted_value = await encrypt(pk.key, String(value));
     await call(token, `/repos/${owner}/${repo}/environments/${envName}/secrets/${name}`, {
       method: 'PUT',
       body: JSON.stringify({ encrypted_value, key_id: pk.key_id }),
     });
-    names.push(name);
-  }
-  return names;
+  }));
+  return entries.map(([n]) => n);
 }
 
 // Repo variables (non-secret, plaintext) ------------------------------------

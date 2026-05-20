@@ -61,6 +61,7 @@ jobs:
           RCLONE_CONFIG: ${{ secrets.RCLONE_CONFIG }}
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           BETTER_UPTIME_API_KEY: ${{ secrets.BETTER_UPTIME_API_KEY }}
+          DO_BASE_SNAPSHOT_ID_FRA1: ${{ vars.DO_BASE_SNAPSHOT_ID_FRA1 }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           INPUT_ENV: ${{ inputs.env }}
           INPUT_DOMAIN: ${{ inputs.domain }}

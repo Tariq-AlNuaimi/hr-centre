@@ -30,6 +30,8 @@ gh run watch
 
 Only proceed past this step once preflight exits 0.
 
+**Tip — speed up deploys by ~3–5 min**: if preflight's last row reports `DO_BASE_SNAPSHOT_ID_<REGION> not set`, dispatch `/build-snapshot` once for that region first. One-time ~6–9 min cost, saves time on every subsequent deploy. See `/build-snapshot`.
+
 ## Inputs Claude collects
 
 | Input | Notes |

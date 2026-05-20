@@ -61,6 +61,22 @@ gh workflow run preflight.yml -f env=staging -f domain=app.staging.example.com
 
 This hits each vendor API and prints a pass/fail table in ~60s. Only proceed to `/deploy` once preflight is green — it surfaces missing/mis-scoped secrets in seconds instead of 15 min into a failed deploy.
 
+### Optional but recommended — build a base snapshot
+
+If you want staging deploys to complete in **~3–5 min** instead of ~10–15 min, pre-bake a DO custom image with Docker + Caddy + age + rclone pre-installed:
+
+```sh
+gh workflow run build-snapshot.yml -f region=fra1
+```
+
+- One-time cost: ~6–9 min (apt install + snapshot creation).
+- Storage cost: ~$0.20/mo per region.
+- Savings: ~3–5 min on every subsequent `/deploy` to that region.
+- Snapshots are region-locked. Rebuild for each DO region you deploy to.
+- Refresh every ~3 months for security updates: `gh workflow run build-snapshot.yml -f region=fra1 -f force_rebuild=true`.
+
+If you skip this, `/deploy` falls back to stock Ubuntu + a full cloud-init (~4 min slower) — no functional difference, just slower.
+
 ## Steps
 
 ### 1. Create the fork

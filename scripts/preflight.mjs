@@ -331,7 +331,23 @@ function checkRcloneConfig() {
   row(IS_PROD ? 'required' : 'prod-only', 'RCLONE_CONFIG', 'pass', 'INI format OK');
 }
 
+function checkSnapshot() {
+  // Snapshot variable is per-region. Default region is fra1; we surface that
+  // one. Other regions are informational only -- the deploy will fall back to
+  // stock Ubuntu if the matching variable is unset.
+  const region = 'fra1';
+  const varName = `DO_BASE_SNAPSHOT_ID_${region.toUpperCase()}`;
+  const v = process.env[varName] || '';
+  if (v) {
+    row('optional', `${varName} (variable)`, 'pass', `snapshot ${v} (~3-5 min faster deploys)`);
+  } else {
+    row('optional', `${varName} (variable)`, 'skip',
+        `not set; deploys to ${region} use stock Ubuntu (~3-5 min slower). Run /build-snapshot once for big savings.`);
+  }
+}
+
 function checkOptional() {
+  checkSnapshot();
   if (env.SENTRY_DSN) {
     if (/^https?:\/\/[^@\s]+@[^\s]+/.test(env.SENTRY_DSN)) {
       row('optional', 'SENTRY_DSN (variable)', 'pass', 'looks like a Sentry DSN URL');
