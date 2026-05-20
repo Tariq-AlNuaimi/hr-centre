@@ -273,7 +273,10 @@ function validationFile() {
   const updateLines = [
     ...fields.map((f) => `  ${f.name}: ${zodFor(f)}.optional(),`),
     ...enums.map((e) => `  ${e.name}: z.nativeEnum(${e.enumName}).optional(),`),
-    ...relations.map((r) => `  ${r.name}Id: z.string().min(1).optional(),`),
+    // Relation FKs are intentionally omitted from update schemas: Prisma's
+    // *UpdateInput rejects direct FK assignment for required relations
+    // (must go through { connect: { id } }). Callers that need to reparent
+    // should do so explicitly in the route handler.
   ].join('\n');
 
   return `import { z } from "zod";
