@@ -138,6 +138,17 @@ jobs:
           SENTRY_DSN: ${{ vars.SENTRY_DSN }}
           CADDY_EMAIL: ${{ vars.CADDY_EMAIL }}
           SSH_PUBKEY: ${{ vars.SSH_PUBKEY }}
+          # Region-keyed snapshot IDs from /build-snapshot. deploy.mjs picks
+          # the one matching --do-region (default fra1). Unset = stock Ubuntu.
+          DO_BASE_SNAPSHOT_ID_FRA1: ${{ vars.DO_BASE_SNAPSHOT_ID_FRA1 }}
+          DO_BASE_SNAPSHOT_ID_AMS3: ${{ vars.DO_BASE_SNAPSHOT_ID_AMS3 }}
+          DO_BASE_SNAPSHOT_ID_NYC3: ${{ vars.DO_BASE_SNAPSHOT_ID_NYC3 }}
+          DO_BASE_SNAPSHOT_ID_SFO3: ${{ vars.DO_BASE_SNAPSHOT_ID_SFO3 }}
+          DO_BASE_SNAPSHOT_ID_SGP1: ${{ vars.DO_BASE_SNAPSHOT_ID_SGP1 }}
+          DO_BASE_SNAPSHOT_ID_BLR1: ${{ vars.DO_BASE_SNAPSHOT_ID_BLR1 }}
+          DO_BASE_SNAPSHOT_ID_SYD1: ${{ vars.DO_BASE_SNAPSHOT_ID_SYD1 }}
+          DO_BASE_SNAPSHOT_ID_LON1: ${{ vars.DO_BASE_SNAPSHOT_ID_LON1 }}
+          DO_BASE_SNAPSHOT_ID_TOR1: ${{ vars.DO_BASE_SNAPSHOT_ID_TOR1 }}
           INPUT_ENV: ${{ inputs.env }}
           INPUT_DOMAIN: ${{ inputs.domain }}
           INPUT_SLUG: ${{ inputs.slug }}

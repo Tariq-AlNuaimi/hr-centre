@@ -73,6 +73,7 @@ const { values } = parseArgs({
     'ghcr-pull-token': { type: 'string' },
     'backup-age-recipient': { type: 'string' },
     'rclone-config': { type: 'string' },
+    'do-snapshot-id': { type: 'string' },
     'dry-run': { type: 'boolean', default: false },
     resume: { type: 'boolean', default: false },
     destroy: { type: 'boolean', default: false },
@@ -96,6 +97,12 @@ if (CI) {
   values['rclone-config']     ||= process.env.RCLONE_CONFIG || '';
   values['caddy-email']       ||= process.env.CADDY_EMAIL || '';
   values['ssh-pubkey']        ||= process.env.SSH_PUBKEY || '';
+  // Snapshot ID is keyed by region (snapshots are region-locked on DO). The
+  // workflow forwards every DO_BASE_SNAPSHOT_ID_* variable that exists; we
+  // pick the one matching the target region. Falls back to empty -> stock
+  // Ubuntu cloud-init path. See /build-snapshot.
+  const region = (values['do-region'] || DO.DEFAULTS.region).toUpperCase().replace(/-/g, '_');
+  values['do-snapshot-id'] ||= process.env[`DO_BASE_SNAPSHOT_ID_${region}`] || '';
 }
 
 // --skip-provision == --resume + --skip-stack=false. It's the "redeploy only"
@@ -213,12 +220,32 @@ if (values.destroy) {
 // -- Required inputs --------------------------------------------------------
 
 const required = ['domain', 'caddy-email'];
-if (!DRY) required.push('do-token', 'cf-token', 'gh-token', 'ssh-pubkey');
+if (!DRY) required.push('do-token', 'cf-token', 'gh-token', 'ssh-pubkey', 'ghcr-pull-token');
+// For prod, also require the backup secrets up front. For non-prod envs they
+// remain optional (deploy proceeds with BACKUP_ENABLED=false; see below).
+if (!DRY && ENV === 'prod') required.push('backup-age-recipient', 'rclone-config');
 const missing = required.filter(k => !values[k]);
-if (missing.length) bail('deploy', `missing required args: ${missing.map(m => `--${m}`).join(', ')}`);
+if (missing.length) {
+  const hint = missing.includes('ghcr-pull-token')
+    ? ` Run \`gh workflow run preflight.yml -f env=${ENV}\` first to validate every required secret in ~60s.`
+    : '';
+  bail('deploy', `missing required args: ${missing.map(m => `--${m}`).join(', ')}.${hint}`);
+}
 
 if (values['ssh-pubkey'] && !validateSshPubkey(values['ssh-pubkey'])) {
   bail('deploy', `--ssh-pubkey doesn't look like a valid ssh public key (expected ssh-ed25519/ssh-rsa/ecdsa-sha2-*)`);
+}
+
+// Backups are required for prod (enforced above) and optional for everything
+// else. When optional and absent, we write placeholder content into cloud-init
+// and flip BACKUP_ENABLED=false so the backup sidecar no-ops. Lets staging come
+// up in ~5 min without operators having to generate age keys + DO Spaces keys
+// before they can test anything.
+const BACKUPS_DISABLED = !DRY && ENV !== 'prod' && (!values['backup-age-recipient'] || !values['rclone-config']);
+if (BACKUPS_DISABLED) {
+  warn('deploy', `BACKUP_AGE_RECIPIENT and/or RCLONE_CONFIG not set; staging will deploy with BACKUP_ENABLED=false. Set them before promoting to prod.`);
+  values['backup-age-recipient'] = values['backup-age-recipient'] || '# disabled — staging deploy ran without BACKUP_AGE_RECIPIENT';
+  values['rclone-config']        = values['rclone-config']        || '# disabled — staging deploy ran without RCLONE_CONFIG';
 }
 
 const DOMAIN = values.domain;
@@ -278,14 +305,16 @@ if (!state.droplet || !state.droplet.id) {
   step('deploy', `${DRYP}provisioning droplet`);
   if (!DRY) {
     const sshKey = await DO.ensureSshKey(values['do-token'], `${TAG}-ops`, values['ssh-pubkey']);
-    if (!values['ghcr-pull-token']) {
-      bail('deploy', `GHCR_PULL_TOKEN is required so the Droplet can pull the private app image from ghcr.io. Set it as a repo secret (classic PAT with read:packages scope only). See .claude/skills/first-fork/SKILL.md.`);
-    }
-    if (!values['backup-age-recipient']) {
-      bail('deploy', `BACKUP_AGE_RECIPIENT is required so cloud-init can seed /opt/backup/recipient (encrypts off-host backups). Generate via 'age-keygen' and set as a repo secret. See .claude/skills/first-fork/SKILL.md §6.`);
-    }
-    if (!values['rclone-config']) {
-      bail('deploy', `RCLONE_CONFIG is required so cloud-init can seed /opt/backup/rclone.conf (off-host backup target). Create a DO Spaces key and set as a repo secret. See .claude/skills/first-fork/SKILL.md §7.`);
+    // Required-secret bails were lifted to the early-validation block above so
+    // they fire at second 5, not minute 5 after ensureSshKey has already pushed
+    // a key to DO. For non-prod envs without backup secrets, BACKUPS_DISABLED
+    // routes placeholder content into the template; cloud-init's chown lines
+    // are guarded with `|| true` so the no-op files don't trip runcmd.
+    const SNAPSHOT_ID = values['do-snapshot-id'] || '';
+    if (SNAPSHOT_ID) {
+      ok('deploy', `using pre-baked snapshot ${SNAPSHOT_ID} (skips ~4 min of apt installs); see /build-snapshot`);
+    } else {
+      dim('deploy', `no DO_BASE_SNAPSHOT_ID_${REGION.toUpperCase().replace(/-/g, '_')} set; falling back to stock Ubuntu + full cloud-init (~4 min slower). Run /build-snapshot once per region for ~3-5 min savings on every deploy.`);
     }
     const userData = await renderCloudInit({
       ssh_pubkey: values['ssh-pubkey'],
@@ -296,12 +325,14 @@ if (!state.droplet || !state.droplet.id) {
       backup_age_recipient: values['backup-age-recipient'],
       rclone_config: values['rclone-config'],
       backup_bucket: BACKUP_BUCKET,
+      slim: !!SNAPSHOT_ID,
     });
     let droplet = await DO.findDropletByTag(values['do-token'], TAG);
     if (!droplet) {
       droplet = await DO.createDroplet(values['do-token'], {
         name: DROPLET_NAME, region: REGION, size: SIZE,
         sshKeyId: sshKey.id, tags: [TAG, SLUG, ENV], userData,
+        image: SNAPSHOT_ID || undefined,
       });
     }
     const { droplet: ready, ip } = await DO.waitForDropletActive(values['do-token'], droplet.id);
@@ -428,11 +459,31 @@ if (!values['skip-secrets']) {
       rcloneRemote: values['rclone-remote'],
       sentryDsn: values['sentry-dsn'] || process.env.SENTRY_DSN || '',
     });
-    const names = await GH.setManyRepoSecrets(values['gh-token'], GH_OWNER, GH_REPO, secrets);
-    await GH.ensureEnvironment(values['gh-token'], GH_OWNER, GH_REPO, ENV);
+    // Parallelize the env-ensure with the repo-secrets PUT: the env-create
+    // endpoint is independent of the repo-secrets endpoint, and both complete
+    // in 1-2s normally. Then run the env-secrets after both are done.
+    const [names] = await Promise.all([
+      GH.setManyRepoSecrets(values['gh-token'], GH_OWNER, GH_REPO, secrets),
+      GH.ensureEnvironment(values['gh-token'], GH_OWNER, GH_REPO, ENV),
+    ]);
     await GH.setManyEnvSecrets(values['gh-token'], GH_OWNER, GH_REPO, ENV, secrets);
-    try { await GH.ensureMainRuleset(values['gh-token'], GH_OWNER, GH_REPO); } catch (e) { warn('deploy', `main ruleset apply failed (likely lacks admin scope): ${e.message}`); }
-    state = mark(state, 'github', { repo: `${GH_OWNER}/${GH_REPO}`, secretsSet: names, envSet: [ENV] });
+    // Branch protection ruleset: idempotent server-side but each call costs
+    // ~3-5s. After the first successful apply we skip it on every subsequent
+    // /deploy. Operators who want to re-apply (e.g. after editing the rule
+    // structure in lib/github.mjs) can delete state.github.rulesetApplied or
+    // run /deploy with --force-ruleset (not implemented yet -- TODO if needed).
+    if (!state.github || !state.github.rulesetApplied) {
+      try {
+        await GH.ensureMainRuleset(values['gh-token'], GH_OWNER, GH_REPO);
+        state = mark(state, 'github', { ...(state.github || {}), repo: `${GH_OWNER}/${GH_REPO}`, secretsSet: names, envSet: [ENV], rulesetApplied: true });
+      } catch (e) {
+        warn('deploy', `main ruleset apply failed (likely lacks admin scope): ${e.message}`);
+        state = mark(state, 'github', { ...(state.github || {}), repo: `${GH_OWNER}/${GH_REPO}`, secretsSet: names, envSet: [ENV] });
+      }
+    } else {
+      dim('deploy', `main ruleset already applied on first deploy (state.github.rulesetApplied=true); skipping`);
+      state = mark(state, 'github', { ...state.github, secretsSet: names, envSet: [ENV] });
+    }
     await writeState(ENV, state);
     ok('deploy', `set ${names.length} GH secrets + env "${ENV}"`);
   } else {
@@ -478,6 +529,7 @@ if (!values['skip-stack']) {
       ghOwner: GH_OWNER,
       ghRepo: GH_REPO,
       imageTag: initialTag,
+      backupsDisabled: BACKUPS_DISABLED,
     });
     await SSH.deployStack(sshHost, values['ssh-key-path'], {
       slug: SLUG,
@@ -567,9 +619,13 @@ if (!DRY && !values['skip-stack']) {
   const healthy = healthyB;
   if (healthyB) {
     ok('deploy', `phase B healthy: ${phaseBUrl}`);
-  } else {
-    dim('deploy', `DNS / LE cert still not ready after auto-recovery. Dispatch diagnose-host.yml with restart_caddy=true to retry manually, or check: dig +short ${DOMAIN} && curl -v https://${DOMAIN}`);
-    warn('deploy', `phase B health check did not return 200 (deploy is successful from infra side -- phase A green). Most common cause: DO reserved IP routing still propagating.`);
+  } else if (ENV === 'prod') {
+    // Prod: keep the soft-warn behavior. /promote polls separately; DNS / LE
+    // propagation can legitimately exceed our 5-min budget on first prod
+    // deploys to a new domain, and the prod URL is monitored externally
+    // (Better Uptime) so a delayed first 200 doesn't deserve to fail the run.
+    dim('deploy', `DNS / LE cert still not ready after auto-recovery. Check: dig +short ${DOMAIN} && curl -v https://${DOMAIN}`);
+    warn('deploy', `phase B health check did not return 200 (infra side is up -- phase A green). Most common cause: DO reserved IP routing still propagating. Re-test in 5 min.`);
   }
 
   // Persist the domain so downstream ops (`/promote` polls `prod.domain`,
@@ -578,6 +634,19 @@ if (!DRY && !values['skip-stack']) {
   // silently masking the broken health verification.
   state = mark(state, 'domain', DOMAIN);
   await writeState(ENV, state);
+
+  // For non-prod envs, treat Phase B failure as fatal. The operator is
+  // iterating; a false-positive green deploy wastes the next 30-min loop.
+  // Bailing here still persists state (domain + droplet IDs) so the next
+  // run can use action=redeploy. (Moved after writeState for that reason.)
+  if (!healthyB && ENV !== 'prod') {
+    bail('deploy',
+      `phase B health check failed: https://${DOMAIN}/api/health did not return 200 within 5 min ` +
+      `(initial poll 180s + auto-recovery + re-poll 120s). ` +
+      `Diagnose: \`dig +short ${DOMAIN}\` should return ${state.droplet.reservedIp}; ` +
+      `\`curl -vI https://${DOMAIN}\` will surface cert / proxy issues. ` +
+      `Then dispatch diagnose-host.yml with restart_caddy=true, OR re-run /deploy with action=redeploy.`);
+  }
 
   // -- 7. Register Better Uptime monitor (per ADR-002) ----------------------
   if (healthy) {
@@ -621,8 +690,17 @@ console.log('');
 // Helpers
 // =========================================================================
 
-async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr_pull_token, backup_age_recipient, rclone_config, backup_bucket }) {
-  const tmpl = await readFile(join(ROOT, 'deploy/cloud-init.yml'), 'utf8');
+async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr_pull_token, backup_age_recipient, rclone_config, backup_bucket, slim }) {
+  let tmpl = await readFile(join(ROOT, 'deploy/cloud-init.yml'), 'utf8');
+  if (slim) {
+    // The droplet booted from a pre-baked snapshot (see /build-snapshot) that
+    // already has docker-ce + caddy + GPG keys + apt repos installed. Strip
+    // the apt-install runcmd lines so we don't waste ~4 min re-running them.
+    // We KEEP: ufw rules, backup-dir create, chown/chmod on /opt/backup,
+    // rclone mkdir, systemctl reload caddy. Those are config steps that
+    // depend on the per-project secrets baked into write_files this run.
+    tmpl = stripAptInstallRuncmd(tmpl);
+  }
   // base64(github-username:pull-token) is the Docker config.json `auth` form.
   // Use the GH owner as the username (Docker doesn't care about exact value;
   // GH treats anything-non-empty-with-matching-token as a successful login).
@@ -681,7 +759,7 @@ function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }
   return m;
 }
 
-function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwner, ghRepo, imageTag }) {
+function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwner, ghRepo, imageTag, backupsDisabled }) {
   // What docker-compose.prod.yml interpolates -- mirrors .env.example.
   // GHCR_IMAGE / IMAGE_TAG drive the `app` service's image reference. The
   // compose file uses `${GHCR_IMAGE}:${IMAGE_TAG}` so the fork's own image
@@ -709,7 +787,11 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     MINIO_ACCESS_KEY: gs.MINIO_ROOT_USER,        // compose substitutes ROOT_USER here
     MINIO_SECRET_KEY: gs.MINIO_ROOT_PASSWORD,    // compose substitutes ROOT_PASSWORD here
     MINIO_BUCKET: 'uploads',                    // matches compose default; explicit for consistency
-    BACKUP_ENABLED: 'true',
+    // Flipped to 'false' when staging/dev deploys without BACKUP_AGE_RECIPIENT
+    // or RCLONE_CONFIG. The backup sidecar no-ops when BACKUP_ENABLED=false;
+    // cloud-init still writes placeholder /opt/backup/{recipient,rclone.conf}
+    // so the chown lines have something to chown.
+    BACKUP_ENABLED: backupsDisabled ? 'false' : 'true',
     BACKUP_BUCKET: backupBucket,
     RCLONE_REMOTE: 'spaces',
     AUDIT_PURGE_TOKEN: gs.AUDIT_PURGE_TOKEN,
@@ -733,6 +815,30 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     vars.NEXT_PUBLIC_SENTRY_DSN = sentryDsn;
   }
   return vars;
+}
+
+// Strip the Docker + Caddy apt-install lines from cloud-init.yml's runcmd.
+// Called when the droplet boots from a pre-baked snapshot that already has
+// those packages installed. Keeps the matcher narrow on purpose: only deletes
+// runcmd entries we know are safe to skip, and keeps everything else (UFW
+// rules, /opt/backup setup, rclone mkdir, caddy reload). If the template
+// changes, eyeball the kept-vs-stripped split by running:
+//   node -e "import('./scripts/deploy.mjs').then(...)"  # ad-hoc render
+const SLIM_STRIP_PATTERNS = [
+  /^\s*-\s*install -m 0755 -d \/etc\/apt\/keyrings\s*$/,
+  /^\s*-\s*curl -fsSL https:\/\/download\.docker\.com\/linux\/ubuntu\/gpg/,
+  /^\s*-\s*chmod a\+r \/etc\/apt\/keyrings\/docker\.asc\s*$/,
+  /^\s*-\s*echo "deb \[arch=.* download\.docker\.com/,
+  /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get update -y\s*$/,
+  /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce/,
+  /^\s*-\s*systemctl enable --now docker\s*$/,
+  /^\s*-\s*usermod -aG docker ops\s*$/,
+  /^\s*-\s*curl -1sLf 'https:\/\/dl\.cloudsmith\.io\/public\/caddy/,
+  /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold caddy\s*$/,
+  /^\s*-\s*systemctl enable --now caddy\s*$/,
+];
+function stripAptInstallRuncmd(tmpl) {
+  return tmpl.split('\n').filter(line => !SLIM_STRIP_PATTERNS.some(re => re.test(line))).join('\n');
 }
 
 async function pollHealth(url, timeoutMs) {

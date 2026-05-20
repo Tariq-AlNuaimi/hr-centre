@@ -86,15 +86,20 @@ export async function findDropletByTag(token, tag) {
   return r.droplets[0] || null;
 }
 
-export async function createDroplet(token, { name, region, size, sshKeyId, tags, userData }) {
-  step('do', `creating droplet ${name} (${size}, ${region})`);
+export async function createDroplet(token, { name, region, size, sshKeyId, tags, userData, image }) {
+  // `image` can be:
+  //   - undefined / falsy -> use stock Ubuntu 22.04 (the long-standing default; runs full cloud-init apt install)
+  //   - a snapshot ID (numeric string, e.g. '141234567') -> boot from a pre-baked snapshot (skips ~4 min of apt installs)
+  //   - any other DO image slug -> passthrough (advanced use)
+  const imageRef = image || 'ubuntu-22-04-x64';
+  step('do', `creating droplet ${name} (${size}, ${region}, image=${imageRef})`);
   const r = await call(token, '/droplets', {
     method: 'POST',
     body: JSON.stringify({
       name,
       region,
       size,
-      image: 'ubuntu-22-04-x64',
+      image: imageRef,
       ssh_keys: [sshKeyId],
       backups: false,
       ipv6: true,
@@ -126,6 +131,82 @@ export async function waitForDropletActive(token, id, timeoutMs = 240_000) {
 
 export async function destroyDroplet(token, id) {
   await call(token, `/droplets/${id}`, { method: 'DELETE' });
+}
+
+// Snapshots ------------------------------------------------------------------
+//
+// Used by scripts/build-snapshot.mjs to pre-bake a custom image with Docker +
+// Caddy + age + rclone pre-installed. /deploy then boots droplets from that
+// snapshot, skipping the ~4 min apt install phase of cloud-init.
+
+export async function powerOffDroplet(token, id) {
+  // DO snapshot quality is better when the droplet is powered off. The action
+  // is async; the caller should waitForDropletStatus(token, id, 'off').
+  step('do', `powering off droplet ${id} (for clean snapshot)`);
+  const r = await call(token, `/droplets/${id}/actions`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'power_off' }),
+  });
+  return r.action;
+}
+
+export async function waitForDropletStatus(token, id, status, timeoutMs = 180_000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const d = await getDroplet(token, id);
+    if (d.status === status) return d;
+    await new Promise(res => setTimeout(res, 5000));
+  }
+  throw new Error(`droplet ${id} did not reach status="${status}" in ${timeoutMs}ms`);
+}
+
+export async function createSnapshot(token, dropletId, name) {
+  // Returns the action object. Snapshot creation is slow (3-6 min on a small
+  // droplet) so the caller MUST waitForDropletActionComplete with a generous
+  // timeout (e.g. 10 min). Action status is one of 'in-progress' | 'completed' | 'errored'.
+  step('do', `creating snapshot "${name}" from droplet ${dropletId}`);
+  const r = await call(token, `/droplets/${dropletId}/actions`, {
+    method: 'POST',
+    body: JSON.stringify({ type: 'snapshot', name }),
+  });
+  return r.action;
+}
+
+export async function getDropletAction(token, dropletId, actionId) {
+  const r = await call(token, `/droplets/${dropletId}/actions/${actionId}`);
+  return r.action;
+}
+
+export async function waitForDropletActionComplete(token, dropletId, actionId, timeoutMs = 600_000) {
+  // Snapshots take 3-6 min; 10 min ceiling covers slow days.
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const a = await getDropletAction(token, dropletId, actionId);
+    if (a.status === 'completed') return a;
+    if (a.status === 'errored') throw new Error(`droplet action ${actionId} errored: ${JSON.stringify(a)}`);
+    await new Promise(res => setTimeout(res, 10_000));
+  }
+  throw new Error(`droplet action ${actionId} did not complete in ${timeoutMs}ms`);
+}
+
+export async function findSnapshotByName(token, name) {
+  // GET /snapshots?resource_type=droplet paginates at 200/page; we only have a
+  // handful of snapshots in practice so one page is fine.
+  const r = await call(token, `/snapshots?resource_type=droplet&per_page=200`);
+  return (r.snapshots || []).find(s => s.name === name) || null;
+}
+
+export async function listSnapshots(token, { namePrefix } = {}) {
+  const r = await call(token, `/snapshots?resource_type=droplet&per_page=200`);
+  const all = r.snapshots || [];
+  if (!namePrefix) return all;
+  return all.filter(s => s.name && s.name.startsWith(namePrefix));
+}
+
+export async function destroySnapshot(token, snapshotId) {
+  // Used by build-snapshot when --force-rebuild is set and the previous
+  // snapshot for this region needs to be removed first.
+  await call(token, `/snapshots/${snapshotId}`, { method: 'DELETE' });
 }
 
 // Reserved IP ---------------------------------------------------------------

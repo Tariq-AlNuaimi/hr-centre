@@ -79,9 +79,12 @@ runcmd:
   # (some apply it after the file is written, racing with this runcmd) so we
   # reapply explicitly. The recipient is the age PUBLIC key (0644 OK); the
   # rclone.conf carries DO Spaces secret keys (0600, ops-only).
-  - chown ops:ops /opt/backup/recipient /opt/backup/rclone.conf
-  - chmod 0644 /opt/backup/recipient
-  - chmod 0600 /opt/backup/rclone.conf
+  # `|| true` because staging deploys without BACKUP_AGE_RECIPIENT/RCLONE_CONFIG
+  # render placeholder content; if write_files raced and the placeholder isn't
+  # in place yet, we don't want runcmd to abort the rest of the boot.
+  - chown ops:ops /opt/backup/recipient /opt/backup/rclone.conf || true
+  - chmod 0644 /opt/backup/recipient || true
+  - chmod 0600 /opt/backup/rclone.conf || true
   # Pre-create the off-host backup bucket so the first nightly backup has a
   # destination. `rclone mkdir` is idempotent (no-op if the bucket already
   # exists). Failure here is non-fatal: the backup sidecar will retry on its
