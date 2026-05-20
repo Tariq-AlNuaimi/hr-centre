@@ -94,7 +94,7 @@ const FIELD_TYPES = {
   boolean: { prisma: 'Boolean', zod: 'z.boolean()', ts: 'boolean', input: 'Switch' },
   date: { prisma: 'DateTime', zod: 'z.coerce.date()', ts: 'string', input: 'DatePicker' },
   datetime: { prisma: 'DateTime', zod: 'z.coerce.date()', ts: 'string', input: 'DatePicker' },
-  json: { prisma: 'Json', zod: 'z.unknown()', ts: 'unknown', input: 'TextArea' },
+  json: { prisma: 'Json', zod: 'z.any()', ts: 'unknown', input: 'TextArea' },
 };
 
 function parseField(spec) {
