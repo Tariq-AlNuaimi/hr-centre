@@ -1,0 +1,62 @@
+{
+  "templateOwner": "tariq-alnuaimi",
+  "templateRepo": "fullstack-vibe-template",
+  "owner": "tariq-alnuaimi",
+  "ghOwner": "tariq-alnuaimi",
+  "slug": "interview-hub",
+  "displayName": "Interview Hub",
+  "description": "Rihal Group AI-augmented recruiting workflow: positions, candidates, AI CV scoring, AI question generation, interview sessions with transcripts, panel evaluations with calibration, AI decision synthesis. Carry-over scope in SCOPE.md; UX source of truth in prototype/interview-hub.html.",
+  "domain": "interview-hub.staging.rihal.com",
+  "env": "staging",
+  "entities": [
+    {
+      "name": "OrgSettings",
+      "fields": "scoringWeights:json"
+    },
+    {
+      "name": "OrgSecret",
+      "fields": "anthropicApiKey:string?,openaiApiKey:string?,customLlmEndpoint:string?,customLlmKey:string?,defaultModelClaude:string?,defaultModelOpenai:string?",
+      "enums": "defaultProvider:CLAUDE|OPENAI|CUSTOM",
+      "adminWrites": true
+    },
+    {
+      "name": "Position",
+      "fields": "title:string,department:string?,hiringManager:string?,targetClose:date?,competencies:json,jd:text?",
+      "enums": "entity:RHL|TP|CL,status:OPEN|ON_HOLD|FILLED|CLOSED"
+    },
+    {
+      "name": "PositionCompensation",
+      "fields": "salaryBand:string?,notes:text?",
+      "relations": "position:Position"
+    },
+    {
+      "name": "Candidate",
+      "fields": "name:string,email:string?,phone:string?,cvText:text?,aiScore:int?,aiNotes:text?,generatedQuestions:json,questionsRound:string?",
+      "enums": "stage:SOURCED|SCREENING|SHORTLISTED|INTERVIEW|OFFER|HIRED|REJECTED|WITHDRAWN",
+      "relations": "position:Position"
+    },
+    {
+      "name": "InterviewSession",
+      "fields": "scheduledAt:datetime?,panelists:json,transcript:text?,notes:text?,analysis:json",
+      "enums": "round:SCREENING|TECHNICAL|BEHAVIORAL|FINAL,status:SCHEDULED|COMPLETED|CANCELLED",
+      "relations": "candidate:Candidate"
+    },
+    {
+      "name": "Evaluation",
+      "fields": "panelist:string,competencies:json,strengths:text?,concerns:text?,notes:text?",
+      "enums": "vote:HIRE|LEAN_HIRE|LEAN_NO_HIRE|NO_HIRE",
+      "relations": "session:InterviewSession,candidate:Candidate,panelistUser:User?"
+    },
+    {
+      "name": "Decision",
+      "fields": "rationale:text?,keyStrengths:json,keyRisks:json,onboardingFocus:json,referenceCheckQuestions:json",
+      "enums": "recommendation:HIRE|LEAN_HIRE|LEAN_NO_HIRE|NO_HIRE,confidence:HIGH|MEDIUM|LOW",
+      "relations": "candidate:Candidate"
+    },
+    {
+      "name": "DecisionOfferBrief",
+      "fields": "summary:text?,proposedBand:string?,notes:text?",
+      "relations": "decision:Decision"
+    }
+  ]
+}
