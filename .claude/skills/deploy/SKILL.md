@@ -14,12 +14,21 @@ Goes from "fresh fork on GitHub" to "live HTTPS URL" by dispatching the
 
 ## Claude's job in this skill
 
-1. Collect the four inputs below from the operator.
-2. Confirm that `/first-fork` has already set the repo secrets + GH
-   Environments (`DO_API_TOKEN`, `CLOUDFLARE_API_TOKEN`,
-   `GH_AUTOMATION_TOKEN`, `SSH_PRIVATE_KEY`, `BETTER_UPTIME_API_KEY` if used).
-3. Compose the exact `gh workflow run` command for the operator to paste.
-4. Optionally tail the run (see "Tailing" below).
+1. **Run `/preflight` first.** Before composing the `gh workflow run deploy.yml` command, ALWAYS dispatch `preflight.yml` for the target env and wait for green. Preflight runs in ~60s and catches the same misconfigured secrets that otherwise cost 15+ min into a failed deploy iteration. If preflight fails, surface each `✗` row with its remedy and DO NOT proceed.
+2. Collect the four inputs below from the operator.
+3. Confirm that `/first-fork` has already set the repo secrets + GH
+   Environments. For staging the minimum is 5 secrets + 2 variables (see `/first-fork`); for prod, add the three backup secrets.
+4. Compose the exact `gh workflow run` command for the operator to paste.
+5. Optionally tail the run (see "Tailing" below).
+
+### Step 0 — preflight
+
+```sh
+gh workflow run preflight.yml -f env=staging -f domain=app.staging.example.com
+gh run watch
+```
+
+Only proceed past this step once preflight exits 0.
 
 ## Inputs Claude collects
 

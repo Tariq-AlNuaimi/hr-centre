@@ -22,6 +22,45 @@ description: Walk the operator through one-time setup after forking the template
 - A Portainer instance + an off-host backup target are available, OR the
   operator will let `/deploy` provision a fresh Droplet that hosts both.
 
+## Minimum to get staging up
+
+If you just want a staging URL to test against, you need **5 secrets** + **2 variables**. The other ~7 items in §3 below are only required for prod (or are opt-in observability).
+
+**Required (staging will not work without these):**
+
+1. `DO_API_TOKEN` — DigitalOcean PAT (full account scope; DO has no fine-grained PATs)
+2. `CLOUDFLARE_API_TOKEN` — token with `Zone.DNS:Edit` on the project zone
+3. `GH_AUTOMATION_TOKEN` — GH PAT with `repo` + `workflow` scopes
+4. `SSH_PRIVATE_KEY` — ed25519 private key, **no passphrase** (CI can't prompt)
+5. `GHCR_PULL_TOKEN` — classic PAT with `read:packages` scope ONLY (one token works across all your forks)
+
+**Required variables (not secrets):**
+
+6. `SSH_PUBKEY` — the matching public key
+7. `CADDY_EMAIL` — Let's Encrypt contact email
+
+**Skipped on staging if absent (required for prod):**
+
+- `BACKUP_AGE_RECIPIENT` + `BACKUP_AGE_IDENTITY` — encrypted backups
+- `RCLONE_CONFIG` — off-host backup target
+
+When any of those three are missing on a staging deploy, `scripts/deploy.mjs` writes placeholder files into cloud-init and sets `BACKUP_ENABLED=false` so the backup sidecar no-ops. Set them before promoting to prod (the `prod` env requires them).
+
+**Always optional (warn-only):**
+
+- `SENTRY_DSN` / `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` — error tracking
+- `BETTER_UPTIME_API_KEY` — uptime monitoring
+
+### Validate the seven before /deploy
+
+After setting the staging-required secrets + variables, run:
+
+```sh
+gh workflow run preflight.yml -f env=staging -f domain=app.staging.example.com
+```
+
+This hits each vendor API and prints a pass/fail table in ~60s. Only proceed to `/deploy` once preflight is green — it surfaces missing/mis-scoped secrets in seconds instead of 15 min into a failed deploy.
+
 ## Steps
 
 ### 1. Create the fork
