@@ -32,11 +32,22 @@ function headers(token) {
   };
 }
 
-async function call(token, path, init = {}) {
+async function call(token, path, init = {}, attempt = 1) {
   const r = await fetch(`${API}${path}`, {
     ...init,
     headers: { ...headers(token), ...(init.headers || {}) },
   });
+  // GitHub's secrets / variables / rulesets APIs occasionally return 5xx
+  // during their internal partial-outages (operator hit AUTH_SECRET PUT
+  // returning 503 "Secrets service unavailable" mid-deploy). Retry with
+  // exponential backoff -- secrets PUTs are idempotent so a re-issue is
+  // safe. Also retry on 429 (rate limit) with Retry-After if present.
+  if ((r.status === 429 || r.status >= 500) && attempt <= 4) {
+    const retryAfter = Number(r.headers.get('Retry-After') || 0);
+    const backoffMs = retryAfter > 0 ? retryAfter * 1000 : Math.min(2 ** attempt * 1000, 16_000);
+    await new Promise(res => setTimeout(res, backoffMs));
+    return call(token, path, init, attempt + 1);
+  }
   if (r.status === 204) return null;
   const body = await r.json().catch(() => null);
   if (!r.ok) {
