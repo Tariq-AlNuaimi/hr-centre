@@ -280,8 +280,8 @@ if (values['ssh-pubkey'] && !validateSshPubkey(values['ssh-pubkey'])) {
 const BACKUPS_DISABLED = !DRY && ENV !== 'prod' && (!values['backup-age-recipient'] || !values['rclone-config']);
 if (BACKUPS_DISABLED) {
   warn('deploy', `BACKUP_AGE_RECIPIENT and/or RCLONE_CONFIG not set; staging will deploy with BACKUP_ENABLED=false. Set them before promoting to prod.`);
-  values['backup-age-recipient'] = values['backup-age-recipient'] || '# disabled — staging deploy ran without BACKUP_AGE_RECIPIENT';
-  values['rclone-config']        = values['rclone-config']        || '# disabled — staging deploy ran without RCLONE_CONFIG';
+  values['backup-age-recipient'] = values['backup-age-recipient'] || '# disabled - staging deploy ran without BACKUP_AGE_RECIPIENT';
+  values['rclone-config']        = values['rclone-config']        || '# disabled - staging deploy ran without RCLONE_CONFIG';
 }
 
 const DOMAIN = values.domain;
@@ -765,7 +765,7 @@ async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr
     .map((line, i) => (i === 0 ? line : indent + line))
     .join('\n');
   const trimmedRecipient = (backup_age_recipient || '').trim();
-  return tmpl
+  const rendered = tmpl
     .replaceAll('{{ssh_pubkey}}', ssh_pubkey)
     .replaceAll('{{caddy_email}}', caddy_email)
     .replaceAll('{{domain}}', domain)
@@ -773,6 +773,25 @@ async function renderCloudInit({ ssh_pubkey, caddy_email, domain, gh_owner, ghcr
     .replaceAll('{{backup_age_recipient}}', trimmedRecipient)
     .replaceAll('{{rclone_config}}', indentedRclone)
     .replaceAll('{{backup_bucket}}', backup_bucket || '');
+  // cloud-init's YAML parser silently rejects non-ASCII characters (UTF-8
+  // bytes like 0x80 from em-dashes, smart quotes, etc.) and skips the
+  // entire user-data block. The droplet then boots WITHOUT writing
+  // /etc/resolv.conf, /root/.docker/config.json, Caddyfile, or the
+  // backup secrets -- and downstream sshd RST/GHCR auth failures cascade
+  // for hours of debugging. Fail LOUDLY at render time so the operator
+  // sees the exact byte that's poisoning the YAML.
+  for (let i = 0; i < rendered.length; i++) {
+    const code = rendered.charCodeAt(i);
+    if (code > 127) {
+      const ctx = rendered.slice(Math.max(0, i - 40), Math.min(rendered.length, i + 40));
+      throw new Error(
+        `renderCloudInit: non-ASCII character U+${code.toString(16).padStart(4, '0').toUpperCase()} ` +
+        `at position ${i}. cloud-init's YAML parser silently rejects non-ASCII bytes and the droplet ` +
+        `boots without /etc/resolv.conf (DNS broken -> sshd KEX resets cascade). ` +
+        `Context (60 chars around the offender): "${ctx.replace(/[^\x20-\x7e]/g, '?')}"`);
+    }
+  }
+  return rendered;
 }
 
 function buildSecretMap(state, { domain, backupBucket, rcloneRemote, sentryDsn }) {
