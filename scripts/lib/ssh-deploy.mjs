@@ -94,22 +94,41 @@ export async function waitForSsh(host, user, sshKeyPath, timeoutMs = 300_000) {
 // `cloud-init status --wait` exits 0 on done, non-zero on error. On failure,
 // dump the tail of /var/log/cloud-init-output.log so the operator can see
 // WHAT runcmd step actually failed.
+//
+// Retries SSH-level transport errors (connection reset, kex_exchange) because
+// cloud-init's `ufw --force enable` briefly reloads iptables and can RST an
+// in-flight SSH session. Once cloud-init has completed, sshd is stable and
+// the retry succeeds. Cloud-init's own non-zero exit (which signals a runcmd
+// FAILURE, not transport noise) is NOT retried -- those represent real
+// runcmd errors that need the operator's attention.
 export async function waitForCloudInit(host, sshKeyPath, timeoutMs = 600_000) {
   step('ssh-deploy', `waiting for cloud-init on ${host}`);
-  try {
-    await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs });
-  } catch (e) {
-    let tail = '';
+  const isTransportErr = (msg) => /kex_exchange_identification|Connection reset|Connection refused|Connection timed out|broken pipe/i.test(msg || '');
+  const start = Date.now();
+  let lastErr;
+  while (Date.now() - start < timeoutMs) {
     try {
-      const r = await sshExec(host, 'root',
-        'echo "--- /var/log/cloud-init-output.log (last 60 lines) ---"; tail -60 /var/log/cloud-init-output.log 2>&1; echo; echo "--- cloud-init status --long ---"; cloud-init status --long 2>&1 | tail -40',
-        { sshKeyPath, timeoutMs: 30_000 });
-      tail = r.stdout || r.stderr || '(empty)';
-    } catch (logErr) {
-      tail = `(failed to fetch cloud-init log: ${logErr.message})`;
+      await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs: timeoutMs - (Date.now() - start) });
+      return;
+    } catch (e) {
+      lastErr = e;
+      if (!isTransportErr(e.message)) break;
+      // SSH-level reset: backoff briefly and retry. Cloud-init is still
+      // making progress; the iptables reload finishes in <5s typically.
+      await new Promise(res => setTimeout(res, 5000));
     }
-    throw new Error(`cloud-init reported error on ${host}.\n${tail}\n\nOriginal error: ${e.message}`);
   }
+  // Surface the real failure with cloud-init logs (if we can fetch them).
+  let tail = '';
+  try {
+    const r = await sshExec(host, 'root',
+      'echo "--- /var/log/cloud-init-output.log (last 60 lines) ---"; tail -60 /var/log/cloud-init-output.log 2>&1; echo; echo "--- cloud-init status --long ---"; cloud-init status --long 2>&1 | tail -40',
+      { sshKeyPath, timeoutMs: 30_000 });
+    tail = r.stdout || r.stderr || '(empty)';
+  } catch (logErr) {
+    tail = `(failed to fetch cloud-init log: ${logErr.message})`;
+  }
+  throw new Error(`cloud-init reported error on ${host}.\n${tail}\n\nOriginal error: ${lastErr ? lastErr.message : 'unknown'}`);
 }
 
 // Build a docker-compose .env file from the env-var map. Keys with empty

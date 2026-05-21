@@ -32,6 +32,18 @@ Only proceed past this step once preflight exits 0.
 
 **Tip — speed up deploys by ~3–5 min**: if preflight's last row reports `DO_BASE_SNAPSHOT_ID_<REGION> not set`, dispatch `/build-snapshot` once for that region first. One-time ~6–9 min cost, saves time on every subsequent deploy. See `/build-snapshot`.
 
+## Day-to-day workflow (90% of operators 90% of the time)
+
+After the FIRST successful `provision-and-deploy`, you should rarely run `/deploy` again. The deploy script sets `STAGING_HOST` + `STAGING_SLUG` repo variables; from then on, **every `git push origin main` triggers `docker-build.yml`** which builds the image and SSH-redeploys staging automatically. That's the "build apps, not debug deploys" mode.
+
+You'd only run `/deploy` after the first time when:
+- The droplet died and you need to rebuild → `action=destroy` then `action=provision-and-deploy`
+- You changed cloud-init / Caddyfile / GHCR auth → `action=provision-and-deploy` with `force_reprovision=true`
+- You're rotating secrets and want fresh GH-secret writes → `action=redeploy`
+- You want to refresh the stack without a code change → `action=redeploy`
+
+If you find yourself running `/deploy` more than once a month, something is wrong — open `/diagnose-host`.
+
 ## Inputs Claude collects
 
 | Input | Notes |
@@ -39,12 +51,15 @@ Only proceed past this step once preflight exits 0.
 | `env` | `staging` or `prod` |
 | `domain` | e.g. `app.staging.example.com` |
 | `slug` | kebab-case (optional; defaults to `package.json` name) |
-| `action` | `provision-and-deploy` (default), `redeploy`, or `destroy` |
+| `action` | **`redeploy`** (default — safe, ~60-90s), `provision-and-deploy` (first-time setup only), or `destroy` |
+| `force_reprovision` | Boolean. Only meaningful with `action=provision-and-deploy`. Overrides the "droplet already exists" safety bail. Almost never set this. |
 
 All credentials (DO, CF, GH, SSH, Better Uptime, Sentry) come from repo /
 env secrets — Claude never asks for them.
 
-## Trigger command Claude composes
+## Trigger commands Claude composes
+
+### First-time setup (one-time per env)
 
 ```sh
 gh workflow run deploy.yml \
@@ -54,8 +69,9 @@ gh workflow run deploy.yml \
   -f action=provision-and-deploy
 ```
 
-For a redeploy of an existing env (skips provisioning, just refreshes the
-stack + fires the webhook):
+The script will bail loudly if a droplet already exists for this env. That's by design — every `provision-and-deploy` after the first risks resource leaks.
+
+### Day-to-day refresh (the default)
 
 ```sh
 gh workflow run deploy.yml \
@@ -63,13 +79,30 @@ gh workflow run deploy.yml \
   -f action=redeploy
 ```
 
-For teardown:
+Reuses the existing droplet + reserved IP + CF DNS + GH secrets. Just refreshes the docker compose stack. ~60-90s end-to-end. Safe to run repeatedly.
+
+The script bails loudly if no droplet exists for this env — meaning "run `provision-and-deploy` first."
+
+### Teardown
 
 ```sh
 gh workflow run deploy.yml \
   -f env=staging -f domain=app.staging.example.com -f slug=acme-portal \
   -f action=destroy
 ```
+
+Destroys the droplet, releases the reserved IP, removes the CF DNS record. Leaves GH secrets, Spaces bucket, and the snapshot intact (cheap to keep; expensive to leak).
+
+### Force-reprovision (advanced, rare)
+
+```sh
+gh workflow run deploy.yml \
+  -f env=staging -f domain=app.staging.example.com -f slug=acme-portal \
+  -f action=provision-and-deploy \
+  -f force_reprovision=true
+```
+
+Bypasses the "droplet already exists" guard. Use only when you've deliberately committed to overwriting state for an env (e.g., cloud-init template change that needs fresh boot). Easier alternative: `action=destroy` then a clean `provision-and-deploy`.
 
 ## Tailing the run
 
@@ -124,6 +157,9 @@ queue serially.
 | `LE challenge fails` | CF record set to proxied=true | Script sets proxied=false; re-run after toggle. |
 | `Portainer init -> 409` | Admin window expired | SSH in, `docker rm -f portainer && docker volume rm portainer_data`, re-run with `action=provision-and-deploy`. |
 | State branch missing the env file | First run for this env, OR branch was wiped | First run is normal. If wiped, the discover-from-tags fallback rebuilds the droplet entry; rerun with `action=redeploy`. |
+| `<image>:latest not found on GHCR (404)` | docker-build.yml has not published this tag yet | Dispatch "Build & Push Docker Image" on branch=main, OR push any trivial commit to main. Wait ~3-5 min. Re-run /deploy with action=redeploy. |
+| `<image>:latest exists but this GHCR_PULL_TOKEN cannot pull (401/403)` | Package is private + token lacks access | Make the package public at /pkgs/container/<repo> → Settings → Danger zone (acceptable for staging). Or grant token owner read access. Then /deploy redeploy. |
+| `state file slug "..." != current slug "..."` | A prior deploy used a different slug; new slug creates new resources, prior ones orphan | Tear down the orphans: `gh workflow run deploy.yml -f env=staging -f slug=<OLD_SLUG> -f domain=any -f action=destroy`. |
 
 ## Report back
 

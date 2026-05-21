@@ -18,10 +18,14 @@ on:
         description: 'Project slug (kebab-case). Defaults to package.json name.'
         required: false
       action:
-        description: 'Action to perform'
+        description: 'Action: redeploy=refresh stack (fast, safe, default); provision-and-deploy=create new infra (only first time); destroy=tear everything down'
         type: choice
-        options: [provision-and-deploy, redeploy, destroy]
-        default: provision-and-deploy
+        options: [redeploy, provision-and-deploy, destroy]
+        default: redeploy
+      force_reprovision:
+        description: 'Override the "droplet already exists" safety check when action=provision-and-deploy. Only set this if you know you want to rebuild on top of existing state.'
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-${{ inputs.env }}
@@ -153,6 +157,7 @@ jobs:
           INPUT_DOMAIN: ${{ inputs.domain }}
           INPUT_SLUG: ${{ inputs.slug }}
           INPUT_ACTION: ${{ inputs.action }}
+          INPUT_FORCE_REPROVISION: ${{ inputs.force_reprovision }}
         run: |
           set -euo pipefail
           ARGS=(--env "$INPUT_ENV" --domain "$INPUT_DOMAIN" --yes)
@@ -164,6 +169,9 @@ jobs:
             redeploy)             ARGS+=(--skip-provision) ;;
             destroy)              ARGS+=(--destroy) ;;
           esac
+          if [ "$INPUT_FORCE_REPROVISION" = "true" ]; then
+            ARGS+=(--force-reprovision)
+          fi
           node scripts/deploy.mjs "${ARGS[@]}"
 
       - name: Persist deployment state

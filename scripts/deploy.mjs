@@ -74,6 +74,7 @@ const { values } = parseArgs({
     'backup-age-recipient': { type: 'string' },
     'rclone-config': { type: 'string' },
     'do-snapshot-id': { type: 'string' },
+    'force-reprovision': { type: 'boolean', default: false },
     'dry-run': { type: 'boolean', default: false },
     resume: { type: 'boolean', default: false },
     destroy: { type: 'boolean', default: false },
@@ -132,6 +133,41 @@ if (state.slug && state.slug !== SLUG) {
   warn('deploy', `state file slug "${state.slug}" != current slug "${SLUG}". Continuing with the current slug.`);
 }
 state = mark(state, 'slug', SLUG);
+
+// -- Action safety guards (Phase 5b) ---------------------------------------
+//
+// Bias /deploy toward redeploy. Provisioning is destructive (creates
+// droplets, mutates DNS, resets cloud-init); it should only run as a
+// deliberate first-time setup. Two guards:
+//
+//  1. action=redeploy (--skip-provision) but no droplet in state → bail.
+//     The redeploy path SSHes to state.droplet.ip; without a droplet there's
+//     nothing to redeploy to.
+//
+//  2. action=provision-and-deploy but droplet already exists in state AND
+//     --force-reprovision not set → bail. Operator probably meant redeploy.
+//     Reprovisioning over an existing droplet is a real footgun: a partial
+//     re-run with a different snapshot/region/size leaks resources and can
+//     break LE cert acquisition.
+//
+// Both guards are skipped on --destroy (above) and --dry-run.
+
+if (!DRY && !values.destroy) {
+  if (values['skip-provision'] && (!state.droplet || !state.droplet.id)) {
+    bail('deploy',
+      `action=redeploy requires an existing droplet, but no droplet is in state for env="${ENV}". ` +
+      `First-time setup: dispatch with action=provision-and-deploy. ` +
+      `If you ran provision-and-deploy before and it failed mid-flight, the state branch may be empty; check ` +
+      `https://github.com/${process.env.GITHUB_REPOSITORY || '<owner>/<repo>'}/tree/deployment-state for .deploy-state.${ENV}.json.`);
+  }
+  if (!values['skip-provision'] && !values.resume && state.droplet && state.droplet.id && !values['force-reprovision']) {
+    bail('deploy',
+      `droplet ${state.droplet.id} (@ ${state.droplet.reservedIp || state.droplet.ip || 'unknown IP'}) already exists for env="${ENV}". ` +
+      `For a code/config refresh, use action=redeploy (~60-90s, safe).  ` +
+      `To rebuild from scratch: dispatch with action=destroy first, then action=provision-and-deploy.  ` +
+      `To force-reprovision over the existing droplet (advanced; can leak resources), dispatch with force_reprovision=true.`);
+  }
+}
 
 // -- Destroy path -----------------------------------------------------------
 
@@ -500,6 +536,14 @@ if (!values['skip-stack']) {
   if (!DRY) {
     const sshHost = state.droplet.ip || state.droplet.reservedIp;
     const sha = await GH.getLatestCommitSha(values['gh-token'], GH_OWNER, GH_REPO, 'main').catch(() => null);
+
+    // Pre-flight the GHCR image pull from the runner BEFORE we SSH into the
+    // droplet and let docker compose pull fail with "unauthorized" buried in
+    // 100 lines of multi-image pull output. Same auth path the droplet uses
+    // (Basic auth with GHCR_PULL_TOKEN against ghcr.io/token, then Bearer
+    // against /v2/<repo>/manifests/<tag>). ~300ms.
+    const ghcrImageFq = `ghcr.io/${GH_OWNER.toLowerCase()}/${GH_REPO.toLowerCase()}`;
+    await assertGhcrPullable(ghcrImageFq, 'latest', values['ghcr-pull-token'], GH_OWNER);
     // First deploy uses :latest. docker-build.yml publishes :latest and
     // :sha-<short> simultaneously on every main push, so :latest always
     // points at the most-recently-completed build. SHA-pinning here
@@ -815,6 +859,60 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
     vars.NEXT_PUBLIC_SENTRY_DSN = sentryDsn;
   }
   return vars;
+}
+
+// Probe ghcr.io for pullability of the app image before we waste an SSH +
+// `docker compose pull` round-trip on a droplet for an image that's missing
+// (docker-build.yml never ran on main) or private + token-inaccessible
+// (default GHCR visibility is private). Same auth path the droplet uses
+// (Basic against /token, Bearer against /v2/.../manifests/<tag>).
+async function assertGhcrPullable(image, tag, pullToken, ghOwner) {
+  if (!pullToken) bail('deploy', `--ghcr-pull-token required to probe ${image}:${tag}`);
+  const repoPath = image.replace(/^ghcr\.io\//, '').toLowerCase();
+  const tokUrl = `https://ghcr.io/token?service=ghcr.io&scope=${encodeURIComponent(`repository:${repoPath}:pull`)}`;
+  let tokRes;
+  try {
+    tokRes = await fetch(tokUrl, {
+      headers: { 'Authorization': `Basic ${Buffer.from(`${ghOwner}:${pullToken}`).toString('base64')}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (e) {
+    bail('deploy', `could not reach ghcr.io to verify ${image}:${tag} is pullable: ${e.message}`);
+  }
+  if (!tokRes.ok) {
+    bail('deploy', `ghcr.io rejected the pull-token request (${tokRes.status}). GHCR_PULL_TOKEN is likely expired or missing read:packages. Re-mint at https://github.com/settings/tokens (classic, read:packages only) and re-set the repo secret.`);
+  }
+  const tokBody = await tokRes.json().catch(() => ({}));
+  if (!tokBody.token) bail('deploy', `ghcr.io returned 200 but no pull token for ${image}; token may be malformed.`);
+  const manifestUrl = `https://ghcr.io/v2/${repoPath}/manifests/${tag}`;
+  let m;
+  try {
+    m = await fetch(manifestUrl, {
+      headers: {
+        'Authorization': `Bearer ${tokBody.token}`,
+        'Accept': 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json',
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (e) {
+    bail('deploy', `manifest probe network error for ${image}:${tag}: ${e.message}`);
+  }
+  if (m.ok) {
+    ok('deploy', `GHCR ${image}:${tag} is pullable`);
+    return;
+  }
+  if (m.status === 404) {
+    bail('deploy',
+      `${image}:${tag} not found on GHCR (404). The Build & Push Docker Image workflow has not published this tag yet. ` +
+      `Fix: go to Actions → "Build & Push Docker Image" → Run workflow on branch=main (or push any commit to main), wait ~3-5 min for green, then re-run /deploy with action=redeploy.`);
+  }
+  if (m.status === 401 || m.status === 403) {
+    bail('deploy',
+      `${image}:${tag} exists but this GHCR_PULL_TOKEN cannot pull it (${m.status}). The package is private and the token lacks access. ` +
+      `Easiest fix: make the package public at https://github.com/${ghOwner}/${repoPath.split('/')[1]}/pkgs/container/${repoPath.split('/')[1]} → Package settings → Danger zone → Change visibility → Public. ` +
+      `(Acceptable for staging; the image carries no secrets — those live in env vars, not in layers.)`);
+  }
+  bail('deploy', `manifest probe for ${image}:${tag} returned unexpected status ${m.status}; bailing before SSH compose pull.`);
 }
 
 // Strip the Docker + Caddy apt-install lines from cloud-init.yml's runcmd.
