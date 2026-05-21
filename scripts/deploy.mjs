@@ -824,21 +824,26 @@ function stackEnvVars(state, { domain, slug, backupBucket, env, sentryDsn, ghOwn
 // rules, /opt/backup setup, rclone mkdir, caddy reload). If the template
 // changes, eyeball the kept-vs-stripped split by running:
 //   node -e "import('./scripts/deploy.mjs').then(...)"  # ad-hoc render
-const SLIM_STRIP_PATTERNS = [
-  /^\s*-\s*install -m 0755 -d \/etc\/apt\/keyrings\s*$/,
-  /^\s*-\s*curl -fsSL https:\/\/download\.docker\.com\/linux\/ubuntu\/gpg/,
-  /^\s*-\s*chmod a\+r \/etc\/apt\/keyrings\/docker\.asc\s*$/,
-  /^\s*-\s*echo "deb \[arch=.* download\.docker\.com/,
-  /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get update -y\s*$/,
-  /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce/,
-  /^\s*-\s*systemctl enable --now docker\s*$/,
-  /^\s*-\s*usermod -aG docker ops\s*$/,
-  /^\s*-\s*curl -1sLf 'https:\/\/dl\.cloudsmith\.io\/public\/caddy/,
-  /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold caddy\s*$/,
-  /^\s*-\s*systemctl enable --now caddy\s*$/,
-];
+//
+// Patterns live inside the function so the const isn't evaluated at
+// module-load time (renderCloudInit is called BEFORE the bottom of the
+// module finishes initializing -- moving the patterns out triggered a
+// "Cannot access before initialization" TDZ error in CI).
 function stripAptInstallRuncmd(tmpl) {
-  return tmpl.split('\n').filter(line => !SLIM_STRIP_PATTERNS.some(re => re.test(line))).join('\n');
+  const patterns = [
+    /^\s*-\s*install -m 0755 -d \/etc\/apt\/keyrings\s*$/,
+    /^\s*-\s*curl -fsSL https:\/\/download\.docker\.com\/linux\/ubuntu\/gpg/,
+    /^\s*-\s*chmod a\+r \/etc\/apt\/keyrings\/docker\.asc\s*$/,
+    /^\s*-\s*echo "deb \[arch=.* download\.docker\.com/,
+    /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get update -y\s*$/,
+    /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce/,
+    /^\s*-\s*systemctl enable --now docker\s*$/,
+    /^\s*-\s*usermod -aG docker ops\s*$/,
+    /^\s*-\s*curl -1sLf 'https:\/\/dl\.cloudsmith\.io\/public\/caddy/,
+    /^\s*-\s*DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold caddy\s*$/,
+    /^\s*-\s*systemctl enable --now caddy\s*$/,
+  ];
+  return tmpl.split('\n').filter(line => !patterns.some(re => re.test(line))).join('\n');
 }
 
 async function pollHealth(url, timeoutMs) {
