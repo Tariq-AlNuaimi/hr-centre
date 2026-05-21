@@ -1,69 +1,76 @@
-# CLAUDE.md — Fullstack Next.js Template
+# CLAUDE.md — Fullstack Next.js Template (Prototype Rail)
 
-Reusable starter for Rihal internal tools. Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + MinIO + Ant Design + next-intl. Deploys as a single Docker image to a Portainer-managed host via GHCR webhook. Owner: Tariq Al-Naaimi.
+Reusable starter for Rihal internal-tool prototypes. Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Ant Design + next-intl. Deploys to Vercel + Neon via `git push`. Owner: Tariq Al-Naaimi.
 
-**This is the template.** When you fork it into a project, run `/rebrand` then `/first-fork` to swap defaults and bootstrap secrets / Portainer / branch protection. Sections below describe what the template ships out of the box — treat them as defaults to keep, tighten, or replace.
+**The audience is non-developer stakeholders.** They review prototypes via shared URLs (`<slug>.vercel.app`). They send back screenshots / sketches. The operator (you, working with Claude) iterates until approved. **Then `/handoff` produces a clean package for the IT team to take over** — they own production their way. See ADR-006.
+
+**This is the template.** When you fork it into a project, run `/rebrand` then `/first-fork` to set up Vercel + Neon (~10 min). After that: `/quickstart` per idea, `/scale-up` per growth axis, `/handoff` at the end.
 
 ## Read before non-trivial work
 - `@README.md` — stack overview, project structure
-- `SECURITY.md` — data classes, secrets, threat model, findings T-01..T-09, CI gates §14 (read before touching auth / data / secrets / a finding)
+- `SECURITY.md` — data classes, secrets, threat model, findings T-01..T-09
 - `docs/decisions/ADR-001-template-baseline.md` — the locked stack + invariants every fork inherits
+- `docs/decisions/ADR-006-pivot-to-vercel-neon.md` — why we're on Vercel + Neon (supersedes ADR-005)
 - `prisma/schema.prisma` — the source of truth for the data model
 - `lib/prisma/audit-extension.ts` + `lib/prisma/soft-delete-extension.ts` — invariants the rest of the codebase relies on
 
 ## Vibe-coding harness (`.claude/`)
 This template is tuned for Claude Code sessions. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build.
 
-- **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose, make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
-- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs synchronously on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
-- **Skills** in `.claude/skills/`: `/scaffold-entity` (with `--enums` + `--relations`), `/ship`, `/adr`, `/first-fork`, `/rebrand`, `/deploy`, `/promote`, `/release`, `/new-project`, `/migrate-from`, `/rollback`, `/restore`. The six ops skills (`/deploy`, `/promote`, `/rollback`, `/restore`, `/new-project`, `/release`) execute via GitHub Actions workflows — see "Operations model" below.
+- **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose (for local Postgres), make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
+- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
+- **Skills** in `.claude/skills/`:
+  - `/first-fork` — connect Vercel + Neon, first deploy. Once per project.
+  - `/quickstart` — idea → live URL. The most-used skill.
+  - `/scaffold-entity` — Prisma model + CRUD routes + dashboard page in one shot.
+  - `/scale-up` — add file uploads / cron / background jobs / realtime when the project needs them.
+  - `/ship` — pre-push verification (typecheck + lint + build).
+  - `/handoff` — produce clean handoff package for the IT team.
+  - `/rebrand` — sweep template defaults to the new project's name.
+  - `/migrate-from` — port an entity out of a monolith.
+  - `/adr` — record a decision worth keeping.
 
 All harness files are project-name-agnostic and survive forks unchanged.
 
 ## Operations model
 
-The template is **CI-driven** (ADR-004): Claude proposes, GitHub Actions executes.
+**Vercel does the ops.** Push to `main` → production redeploys in ~90s. Push to any other branch → preview URL appears at `<branch>-<hash>-<team>.vercel.app`. Rollback = revert the commit (or click "Promote to Production" on the prior deployment in the Vercel UI).
 
-- Six ops workflows ship under `.github/workflows/{deploy,promote,rollback,restore,new-project,release}.yml`. Each is `workflow_dispatch` (the release workflow also triggers on `prod-*` tag push).
-- Claude's role in each skill: collect inputs, compose the exact `gh workflow run <name>.yml -f ...` command for the operator to paste, then (when MCP tooling allows) tail the run.
-- All credentials live as GitHub repo / environment secrets. Tokens never traverse Claude chat. See `.claude/skills/first-fork/SKILL.md` for the `gh secret set` / `gh variable set` bootstrap.
-- Per-environment GitHub Environments (`staging`, `prod`) scope per-env secrets; concurrency groups (`<action>-<env>`) prevent races; prod has a required-reviewer protection rule.
-- State persists on an orphan `deployment-state` branch as `.deploy-state.<env>.json`. Two composite actions (`.github/actions/restore-state` + `persist-state`) shuttle the file between the branch and the runner workspace. Backup source-of-truth: DigitalOcean resource tags `vibe-managed=<slug>-<env>` + `vibe-resource=<type>`, used by `scripts/lib/state.mjs#discoverFromTags()`.
-- Scripts under `scripts/` detect CI mode via `CI=true` / `NON_INTERACTIVE=true`; in CI they require `--yes` and pull credentials from env vars. They still work locally with `--token` flags for development.
-
-Why not run scripts directly from Claude: the Claude Code sandbox blocks outbound HTTPS to vendor APIs (DO, CF, Better Uptime); loosening it weakens the prompt-injection boundary across the harness. GH Actions has free egress, audit-logged runs, RBAC via Environments, and tokens that never leave the repo.
+- **Database migrations** apply automatically: `vercel.json` sets `buildCommand` to `prisma generate && prisma migrate deploy && next build`. Every deploy runs pending migrations against Neon before the app starts serving the new bundle.
+- **Backups**: Neon Launch tier (paid) does PITR (point-in-time recovery) up to 7 days. Free tier has none — fine for prototypes.
+- **Domains**: optional. `<slug>.vercel.app` is permanent. Custom domains via Vercel UI when the team is ready to share externally.
+- **Secrets**: env vars in the Vercel project UI. Never traverse Claude chat. There is no GHCR, no Portainer, no SSH, no Caddy, no droplet — those were deleted (see ADR-006 for the rationale).
 
 ## CI gates (no local action required)
-Five workflows gate the repo. Failures block merge once branch protection is on.
+Three workflows gate the repo. Failures block merge once branch protection is on.
 
 | Workflow | When | What |
 |---|---|---|
-| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit high+ + scaffold smokes (scalars-only + enums+relations) |
+| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit critical + scaffold smokes (scalars-only + enums+relations) |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full history |
 | `sast.yml` | PR + push (any) | Semgrep with p/javascript, p/typescript, p/nextjs, p/react, p/owasp-top-ten, p/secrets |
-| `audit-retention.yml` | Monthly cron + dispatch | POST to `/api/internal/audit-purge` |
-| `restore-test.yml` | Quarterly cron + dispatch | Decrypts newest backup, restores into ephemeral Postgres, asserts users non-empty |
 
-Pushes to `main` go through `docker-build.yml` instead. See `SECURITY.md` §14.
+Branch protection is **optional** on this template. The audience (non-dev stakeholders) doesn't review PRs; the operator is the only person pushing. Turn it on once handed off.
 
 ## Stack
-- **Framework:** Next.js 16 (App Router, `output: "standalone"`) · React 19 · TypeScript 5
+- **Framework:** Next.js 16 (App Router) · React 19 · TypeScript 5
 - **UI:** Ant Design 6 + `@ant-design/nextjs-registry` · dark-mode toggle · RTL for `ar` locale
 - **Charts:** `recharts` 2.x via `components/shared/Chart.tsx` (line / bar / area / pie)
 - **Kanban / drag-drop:** `@dnd-kit/core` + `@dnd-kit/sortable` via `components/shared/KanbanBoard.tsx`
 - **i18n:** `next-intl` 4 · locales `en`, `ar`
-- **ORM:** Prisma 7 + `@prisma/adapter-pg` · Postgres 17 · generated client at `generated/prisma`
+- **ORM:** Prisma 7 + `@prisma/adapter-pg` · Postgres 17 (Neon in prod, local Postgres in dev) · generated client at `generated/prisma`
 - **Auth:** Auth.js v5 (`next-auth@beta`) · Credentials + bcryptjs · JWT session · Google OAuth wired but commented out · 10/min/IP rate limit on `/api/auth/*`
-- **Storage:** MinIO via `@aws-sdk/client-s3` + presigned URLs (`lib/storage.ts`)
 - **Email:** nodemailer wrapper at `lib/email.ts`. Gated by `SMTP_HOST`.
-- **Export:** `lib/export.ts` -- Excel via ExcelJS. `toExcel(data, columns)` returns Buffer; `excelDownloadHeaders(name)` builds the response headers. PDF deferred (pdfkit font tracing under standalone is a future ADR).
+- **Export:** `lib/export.ts` — Excel via ExcelJS. `toExcel(data, columns)` returns Buffer; `excelDownloadHeaders(name)` builds the response headers.
 - **Validation:** `zod`
-- **Backup:** encrypted off-host sidecar (`deploy/backup.sh`) using age + rclone. Gated by `BACKUP_ENABLED`.
-- **Host:** Portainer-managed Docker host · GHCR · stack-webhook for SHA pinning.
-- **Observability:** `@sentry/nextjs` for error tracking + Better Uptime for `/api/health` monitoring. Both are operator-side SaaS configured per project during `/first-fork` step 12 and wired by `/deploy`. Wrapper at `lib/sentry.ts` shares the audit-extension `SCRUB_FIELDS` so contexts are scrubbed before they leave the process. See ADR-002.
+- **Hosting:** Vercel (free tier covers most projects) · Neon Postgres (free tier covers staging) · Sentry (optional)
+- **Observability:** `@sentry/nextjs` for error tracking. Better Uptime / cron uptime are optional add-ons via `/scale-up`. Wrapper at `lib/sentry.ts` shares the audit-extension `SCRUB_FIELDS` so contexts are scrubbed before they leave the process. See ADR-002.
+
+## Storage
+**File uploads are not wired by default.** The template used to ship a MinIO sidecar; that was deleted in ADR-006 because most prototypes don't need uploads on day 1. When you do need them, `/scale-up` adds Vercel Blob in ~10 lines of code.
 
 ## Local ESLint plugin
-`eslint-rules/` is a project-local plugin enforcing four CLAUDE.md hard rules. It runs on every push via `verify.yml` (the `npm run lint` step). All four rules are configured at `error`.
+`eslint-rules/` is a project-local plugin enforcing four CLAUDE.md hard rules. It runs on every push via `verify.yml`. All four rules are configured at `error`.
 
 | Rule | What it catches |
 |---|---|
@@ -79,9 +86,9 @@ To silence a rule on a justified line:
 If the suppression touches security, log it in `SECURITY.md` §12 with rule, location, justification, reviewer, date.
 
 ## Hard rules
-- **Never commit `.env`.** Auth, DB, MinIO, audit-purge, backup, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push.
-- **Never log** any Restricted env var (full list in `SECURITY.md` §1). The `no-secret-env-in-console` ESLint rule catches the obvious form (`console.log(process.env.SMTP_PASSWORD)`); the rule does NOT catch interpolation into other variables — humans still apply judgement.
-- **Email bodies may carry Restricted content** (OTPs, presigned URLs, salary statements). `lib/email.ts` logs only metadata. Never separately log `opts.text` / `opts.html`.
+- **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push.
+- **Never log** any Restricted env var. The `no-secret-env-in-console` ESLint rule catches the obvious form; it does NOT catch interpolation into other variables — humans still apply judgement.
+- **Email bodies may carry Restricted content** (OTPs, presigned URLs). `lib/email.ts` logs only metadata. Never separately log `opts.text` / `opts.html`.
 - **Adding a Restricted column?** Extend `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` AND its membership assertion in `tests/contracts/audit-scrub.test.ts` in the same commit.
 - **Excel exports must not include Restricted columns.** `SCRUB_FIELDS` does NOT protect export output — it's a separate gate. Audit your column list per route.
 - **Go through Prisma.** No raw SQL except via `prisma.$queryRaw` with parameter placeholders. Never `prisma.$executeRawUnsafe` on user input.
@@ -96,33 +103,46 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - **Naming:** snake_case tables (via `@@map`); camelCase Prisma fields and TS; PascalCase React + Prisma models + enum types.
 
 ## Ask before
-- Installing a runtime dep > 50 KB minified -- needs ADR
+- Installing a runtime dep > 50 KB minified — needs ADR or `/scale-up` recipe reference
 - Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/api-helpers.ts`, `middleware.ts`, anything under `lib/prisma/`, `eslint-rules/`, or `prisma/migrations/`
 - Adding a model to the audit `EXCLUDE` set
 - Adding a new public path or `/api/internal/*` route
 - Bypassing `withAuth` / `withAdminAuth` / `withInternalAuth`
 - Disabling any `rihal-template/*` ESLint rule beyond a single-line `eslint-disable-next-line`
 - Changing the `Role` enum or how roles are checked
-- Pushing to `main` directly — always branch + PR
+- Pushing to `main` directly when branch protection is on
 - Suppressing a Semgrep / gitleaks / npm-audit finding (log in `SECURITY.md` §12)
 - Changing the locked stack from ADR-001 — write a new superseding ADR first
+
+## Growth path
+
+Projects start with one entity and grow. `/scale-up` covers what to add and when:
+
+| Symptom | What `/scale-up` recommends |
+|---|---|
+| "Team needs to attach files" | Vercel Blob (free 5 GB) |
+| "We need scheduled emails / reports" | Vercel Cron (free on Hobby) |
+| "Background processing without blocking" | Inngest (free 50k steps/mo) |
+| "Live updates without refresh" | Pusher Channels (free 100 conns) |
+| "DB > 500 MB or want PITR" | Neon Launch ($19/mo) |
+| "Custom domain" | Vercel domain (free) |
+| "Feature flags" | Vercel Edge Config (free 8k reads) |
+| "OAuth login" | Auth.js providers (free) |
+| "Errors invisible in prod" | Sentry (already imported; set env vars) |
+| "Rate limiter across instances" | Upstash Redis + `@upstash/ratelimit` |
+
+The rail handles all of these without migration. None require code restructuring.
 
 ## Commands
 - `npm run dev` — Next.js dev server
 - `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...']`
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
-- `gh workflow run deploy.yml -f env=staging -f domain=... -f slug=... -f action=provision-and-deploy` — full provisioning + first deploy via CI (see `/deploy` skill, ADR-004). Local fallback: `npm run deploy -- --env staging --domain ... --do-token ... --yes`.
-- `gh workflow run promote.yml -f slug=... -f sha=HEAD` — staging → prod via CI (see `/promote` skill). `release.yml` auto-fires on the resulting `prod-*` tag push.
-- `gh workflow run release.yml -f tag=prod-YYYYMMDD-HHmm` — re-draft CHANGELOG + GitHub release for a tag (also auto-triggered by `prod-*` push; see ADR-003 + ADR-004).
-- `gh workflow run new-project.yml -f plan_path=plans/<ts>-<slug>.json` — idea → live staging URL in one run (see `/new-project` skill; Claude commits the plan first).
-- `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith (still local; no CI workflow yet).
-- `gh workflow run rollback.yml -f env=prod -f slug=... -f to_sha=sha-abc1234` — flip image tag, redeploy (see `/rollback` skill).
-- `gh workflow run restore.yml -f env=prod -f slug=... -f dump_name=latest` — pull + decrypt + restore a backup into ephemeral Postgres (see `/restore` skill).
-- `npm test` — contract suite (rate limit, audit scrub, email, export) via `node:test`
+- `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith
+- `npm test` — contract suite (rate limit, audit scrub, email, export, sentry scrub) via `node:test`
 - `npm run prisma:migrate` / `:generate` / `:seed` / `:studio`
 - `npm run lint` — ESLint (incl. local plugin)
 - `make db-up` / `make db-down`
-- `git push origin main` — triggers `docker-build.yml`
+- `git push origin <branch>` — Vercel auto-deploys (preview for non-main; production for main)
 
 ## Sending email
 ```ts
@@ -201,19 +221,12 @@ const data = [
 - `middleware.ts` runs on the Node runtime.
 - `prismaUnfiltered` ≠ `prisma` (soft-delete on the former is off).
 - `next-intl` locale matching strips the locale prefix; adding a locale means updating the regex in `middleware.ts`.
-- MinIO presigned URLs default to 1 hour.
-- Rate limiter is in-memory and per-instance.
+- Rate limiter is in-memory and per-instance — fine on Vercel until traffic forces multiple concurrent functions; then use `/scale-up` to swap to Upstash.
 - `sendEmail` returns `{ sent: false }` when `SMTP_HOST` is unset; it does NOT throw.
 - CSP allows `'unsafe-inline'` for script + style (Ant Design SSR + Next bootstrap).
-- `output: "standalone"` is required for the small Docker image.
-- Docker entrypoint runs `prisma migrate deploy` before starting the app.
-- `docker-compose.prod.yml` resolves through `${IMAGE_TAG:-latest}`; use a Portainer stack webhook for SHA pinning.
-- `BACKUP_ENABLED` defaults to `false`; flipped on by `/first-fork` step 6.
-- `AUDIT_PURGE_TOKEN` is optional; endpoint returns 503 if unset.
-- `/scaffold-entity` does not handle multiple relations from one source to the same target -- hand-edit Prisma `@relation("Name", ...)` for that case.
-- `/scaffold-entity` includes do not filter the target's soft-delete (Prisma extension limitation).
-- `Chart` uses recharts -- visually minimal, not exact Ant Design palette. Pass `colors={...}` to override.
-- `KanbanBoard` requires a 4px pointer movement before drag starts so click-throughs on cards still work.
-- PDF export is intentionally not in `lib/export.ts` -- pdfkit's font tracing under `output: standalone` is fragile. Future ADR.
+- Vercel auto-injects `AUTH_URL` from `VERCEL_URL`. Don't set it manually unless using a custom domain *before* it's wired in Vercel.
+- `vercel.json` runs `prisma migrate deploy` on every build — keep migrations small and forward-compatible. Don't drop columns in a migration that the running version still reads.
+- File uploads are not wired in the template — `/scale-up` adds Vercel Blob when you need them.
+- PDF export is intentionally not in `lib/export.ts` — pdfkit's font tracing is fragile in serverless. Future ADR.
 
 When in doubt, stop and ask.

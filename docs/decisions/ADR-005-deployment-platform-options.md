@@ -1,9 +1,11 @@
 # ADR-005 — Deployment platform options: keep the droplet path; document the PaaS alternative
 
-**Status:** Accepted
+**Status:** Superseded by ADR-006
 **Date:** 2026-05-21
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
+
+> **2026-05-21 update:** ADR-006 reverses this decision. The operator's actual workflow (non-developer review audience + handoff to a different IT team for production) doesn't match the assumptions this ADR was reasoning over. See ADR-006 for the full context.
 
 ## Context
 

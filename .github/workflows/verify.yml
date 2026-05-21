@@ -6,16 +6,9 @@ on:
     branches-ignore: [main]
 
 env:
-  # Dummy URL so prisma generate works without a real DB. Matches the trick used
-  # in the Dockerfile builder stage.
+  # Dummy URL so prisma generate works without a real DB.
   DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
-  # Build-time env vars that lib/env.ts requires for module load. Real values
-  # are injected at deploy time -- these are placeholders that satisfy zod parsing.
   AUTH_SECRET: build-time-dummy-secret-do-not-use-in-prod-build-only
-  MINIO_ENDPOINT: http://localhost:9000
-  MINIO_ACCESS_KEY: dummy
-  MINIO_SECRET_KEY: dummy
-  MINIO_BUCKET: uploads
 
 jobs:
   verify:
@@ -50,14 +43,11 @@ jobs:
       #
       # `--audit-level=critical` -- the high-only threshold flagged transitive
       # vulns through next-auth@beta's nested @auth/core -> old nodemailer chain
-      # that a fork consumer can't fully resolve (the nested @auth/core peer
-      # range conflicts with the top-level nodemailer). The `overrides` field
-      # in package.json forces all resolutions to nodemailer ^7, but @auth/core
-      # itself carries advisories until next-auth ships a non-beta release.
+      # that a fork consumer can't fully resolve. The `overrides` field forces
+      # all resolutions to nodemailer ^7, but @auth/core itself carries
+      # advisories until next-auth ships a non-beta release.
       #
-      # Threshold is documented as a deferred-finding in SECURITY.md §11.
-      # Forks should tighten back to `--audit-level=high` once next-auth 5
-      # stabilizes.
+      # Documented as a deferred-finding in SECURITY.md §11.
       - name: npm audit (critical, prod deps only)
         run: npm audit --audit-level=critical --omit=dev
 
@@ -75,31 +65,6 @@ jobs:
             app/api/test-entity \
             components/test-entity \
             'app/[locale]/(dashboard)/test-entity'
-
-      # Smoke 0: parse + dry-run check for the deploy/promote/new-project/migrate-from/rollback/restore scripts.
-      # Catches regressions in the JS without needing real DO/CF/GH tokens.
-      - name: Deploy pipeline scripts (parse + dry-run)
-        run: |
-          node --check scripts/lib/log.mjs
-          node --check scripts/lib/state.mjs
-          node --check scripts/lib/secrets.mjs
-          node --check scripts/lib/do.mjs
-          node --check scripts/lib/cloudflare.mjs
-          node --check scripts/lib/github.mjs
-          node --check scripts/lib/ssh-deploy.mjs
-          node --check scripts/deploy.mjs
-          node --check scripts/promote.mjs
-          node --check scripts/new-project.mjs
-          node --check scripts/migrate-from.mjs
-          node --check scripts/rollback.mjs
-          node --check scripts/restore.mjs
-          # deploy --dry-run exercises the orchestrator's full happy-path branching
-          node scripts/deploy.mjs --env staging --slug verify-smoke --domain verify.example.com --caddy-email ci@example.com --dry-run --yes
-          # new-project --dry-run with a minimal plan
-          cat > /tmp/np.json <<'JSON'
-          {"templateOwner":"tariq-alnuaimi","templateRepo":"fullstack-vibe-template","owner":"tariq-alnuaimi","slug":"verify-smoke","displayName":"Verify Smoke","domain":"verify.example.com","entities":[{"name":"Project","fields":"name:string","enums":null,"relations":null}]}
-          JSON
-          node scripts/new-project.mjs --plan /tmp/np.json --dry-run
 
       # Smoke 2: entity with enums + a relation (exercises the new codegen paths)
       - name: Scaffold smoke (enums + relations)
