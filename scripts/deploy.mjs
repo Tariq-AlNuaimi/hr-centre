@@ -583,6 +583,11 @@ if (!values['skip-stack']) {
         'deploy/backup.sh': backupSh,
         'deploy/backup-entrypoint.sh': backupEntrypoint,
       },
+      // Refresh /root/.docker/config.json on every deploy so a rotated token
+      // or just-now-linked private GHCR package heals automatically. Without
+      // this, the cloud-init-written auth file goes stale and `docker compose
+      // pull` returns "unauthorized" even when the token + package are fine.
+      ghcr: { owner: GH_OWNER, token: values['ghcr-pull-token'] },
     });
     state = mark(state, 'deployedSha', sha);
     await writeState(ENV, state);

@@ -175,11 +175,29 @@ export function buildEnvFile(envVars) {
 // First deploy: write compose + .env to /opt/<slug>/, then docker compose up -d.
 // Subsequent calls are safe (compose up is idempotent and will recreate
 // only changed services).
-export async function deployStack(host, sshKeyPath, { slug, composeYaml, envVars, aux = {} }) {
+//
+// When `ghcr` is supplied, always re-writes /root/.docker/config.json with
+// the current GHCR auth. Cloud-init writes that file ONCE at provision
+// time; if the operator rotates GHCR_PULL_TOKEN or only-then links the
+// package to the repo, the stale file causes "unauthorized" at compose
+// pull. Re-writing every deploy heals that drift automatically.
+export async function deployStack(host, sshKeyPath, { slug, composeYaml, envVars, aux = {}, ghcr = null }) {
   const dir = `/opt/${slug}`;
   step('ssh-deploy', `deploying ${slug} to ${host}:${dir}`);
   // mkdir + chmod 700 (only root reads -- .env has secrets)
   await sshExec(host, 'root', `mkdir -p '${dir}' && chmod 700 '${dir}'`, { sshKeyPath });
+
+  // Refresh GHCR auth so the host's docker daemon uses the current token.
+  // ghcr = { owner, token }. We re-build the Basic-auth header the same
+  // way cloud-init does (cloud-init.yml's write_files step) so cloud-init
+  // and redeploy converge on the same file shape.
+  if (ghcr && ghcr.owner && ghcr.token) {
+    const authB64 = Buffer.from(`${ghcr.owner}:${ghcr.token}`).toString('base64');
+    const dockerCfg = JSON.stringify({ auths: { 'ghcr.io': { auth: authB64 } } }, null, 2);
+    await sshExec(host, 'root', `mkdir -p /root/.docker && chmod 700 /root/.docker`, { sshKeyPath });
+    await sshWriteFile(host, 'root', '/root/.docker/config.json', dockerCfg, { sshKeyPath, mode: '0600' });
+  }
+
   await sshWriteFile(host, 'root', `${dir}/docker-compose.prod.yml`, composeYaml, { sshKeyPath, mode: '0644' });
   await sshWriteFile(host, 'root', `${dir}/.env`, buildEnvFile(envVars), { sshKeyPath, mode: '0600' });
   // Aux files: anything that compose bind-mounts (e.g. ./deploy/backup.sh,
@@ -197,7 +215,7 @@ export async function deployStack(host, sshKeyPath, { slug, composeYaml, envVars
     await sshWriteFile(host, 'root', targetPath, content, { sshKeyPath, mode: isScript ? '0755' : '0644' });
   }
   // docker compose pull + up -d. Pull first so the image lands before recreate.
-  // GHCR auth comes from /root/.docker/config.json written by cloud-init.
+  // GHCR auth comes from /root/.docker/config.json (refreshed above if ghcr passed).
   // --remove-orphans cleans up containers from prior compose files.
   await sshExec(host, 'root',
     `cd '${dir}' && docker compose -f docker-compose.prod.yml --env-file .env pull && docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans`,
