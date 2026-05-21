@@ -74,6 +74,7 @@ const { values } = parseArgs({
     'backup-age-recipient': { type: 'string' },
     'rclone-config': { type: 'string' },
     'do-snapshot-id': { type: 'string' },
+    'force-reprovision': { type: 'boolean', default: false },
     'dry-run': { type: 'boolean', default: false },
     resume: { type: 'boolean', default: false },
     destroy: { type: 'boolean', default: false },
@@ -132,6 +133,41 @@ if (state.slug && state.slug !== SLUG) {
   warn('deploy', `state file slug "${state.slug}" != current slug "${SLUG}". Continuing with the current slug.`);
 }
 state = mark(state, 'slug', SLUG);
+
+// -- Action safety guards (Phase 5b) ---------------------------------------
+//
+// Bias /deploy toward redeploy. Provisioning is destructive (creates
+// droplets, mutates DNS, resets cloud-init); it should only run as a
+// deliberate first-time setup. Two guards:
+//
+//  1. action=redeploy (--skip-provision) but no droplet in state → bail.
+//     The redeploy path SSHes to state.droplet.ip; without a droplet there's
+//     nothing to redeploy to.
+//
+//  2. action=provision-and-deploy but droplet already exists in state AND
+//     --force-reprovision not set → bail. Operator probably meant redeploy.
+//     Reprovisioning over an existing droplet is a real footgun: a partial
+//     re-run with a different snapshot/region/size leaks resources and can
+//     break LE cert acquisition.
+//
+// Both guards are skipped on --destroy (above) and --dry-run.
+
+if (!DRY && !values.destroy) {
+  if (values['skip-provision'] && (!state.droplet || !state.droplet.id)) {
+    bail('deploy',
+      `action=redeploy requires an existing droplet, but no droplet is in state for env="${ENV}". ` +
+      `First-time setup: dispatch with action=provision-and-deploy. ` +
+      `If you ran provision-and-deploy before and it failed mid-flight, the state branch may be empty; check ` +
+      `https://github.com/${process.env.GITHUB_REPOSITORY || '<owner>/<repo>'}/tree/deployment-state for .deploy-state.${ENV}.json.`);
+  }
+  if (!values['skip-provision'] && !values.resume && state.droplet && state.droplet.id && !values['force-reprovision']) {
+    bail('deploy',
+      `droplet ${state.droplet.id} (@ ${state.droplet.reservedIp || state.droplet.ip || 'unknown IP'}) already exists for env="${ENV}". ` +
+      `For a code/config refresh, use action=redeploy (~60-90s, safe).  ` +
+      `To rebuild from scratch: dispatch with action=destroy first, then action=provision-and-deploy.  ` +
+      `To force-reprovision over the existing droplet (advanced; can leak resources), dispatch with force_reprovision=true.`);
+  }
+}
 
 // -- Destroy path -----------------------------------------------------------
 
