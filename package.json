@@ -17,7 +17,8 @@
     "prisma:studio": "prisma studio",
     "scaffold": "node scripts/scaffold-entity.mjs",
     "rebrand": "node scripts/rebrand.mjs",
-    "migrate-from": "node scripts/migrate-from.mjs"
+    "migrate-from": "node scripts/migrate-from.mjs",
+    "new-project": "node scripts/new-project.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

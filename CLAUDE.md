@@ -20,7 +20,8 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
 - **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose (for local Postgres), make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
 - **SessionStart hook** (`.claude/hooks/session-start.sh`) runs on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
 - **Skills** in `.claude/skills/`:
-  - `/first-fork` — connect Vercel + Neon, first deploy. Once per project.
+  - `/new-project` — one-shot: GitHub repo + Neon + Vercel + Cloudflare DNS. Triggered via GitHub Actions; outputs URL + admin creds in the run summary.
+  - `/first-fork` — connect Vercel + Neon manually, first deploy. Once per project. (Alternative to `/new-project` when you're already inside a fresh fork.)
   - `/quickstart` — idea → live URL. The most-used skill.
   - `/scaffold-entity` — Prisma model + CRUD routes + dashboard page in one shot.
   - `/scale-up` — add file uploads / cron / background jobs / realtime when the project needs them.

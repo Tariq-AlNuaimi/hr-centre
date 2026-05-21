@@ -1,0 +1,46 @@
+name: New Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: 'Kebab-case slug (e.g. "staffing"). Becomes <slug>.<apex>.'
+        required: true
+        type: string
+      display_name:
+        description: 'Human-readable name (e.g. "Staffing"). Defaults to slug.'
+        required: false
+        type: string
+      admin_email:
+        description: 'Admin email for the seeded user.'
+        required: true
+        type: string
+
+jobs:
+  new-project:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Provision new project
+        env:
+          GH_AUTOMATION_TOKEN: ${{ secrets.GH_AUTOMATION_TOKEN }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          node scripts/new-project.mjs \
+            --slug "${{ inputs.slug }}" \
+            --display-name "${{ inputs.display_name || inputs.slug }}" \
+            --admin-email "${{ inputs.admin_email }}" \
+            --apex "${{ vars.APEX_DOMAIN || 'ops-rihal.com' }}" \
+            --owner "${{ vars.GH_OWNER || github.repository_owner }}" \
+            --neon-region "${{ vars.NEON_REGION || 'aws-eu-central-1' }}" \
+            >> $GITHUB_STEP_SUMMARY
