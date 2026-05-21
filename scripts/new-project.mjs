@@ -114,6 +114,28 @@ const ghRepo = await api(
 ok(P, `GH repo: ${ghRepo.html_url} (id ${ghRepo.id})`);
 
 // 2. Neon: create project, derive pooled connection string
+let neonOrgId = process.env.NEON_ORG_ID || "";
+if (!neonOrgId) {
+  step(P, "Looking up Neon organization...");
+  const orgs = await api(
+    "Neon orgs list",
+    "https://console.neon.tech/api/v2/users/me/organizations",
+    {
+      headers: { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" },
+    }
+  );
+  const orgList = orgs.organizations || [];
+  if (orgList.length === 0) {
+    bail(P, "Neon API returned no organizations. Set NEON_ORG_ID as a repo variable.");
+  }
+  if (orgList.length > 1) {
+    const names = orgList.map((o) => `${o.name} (${o.id})`).join(", ");
+    bail(P, `Multiple Neon orgs found: ${names}. Set NEON_ORG_ID as a repo variable.`);
+  }
+  neonOrgId = orgList[0].id;
+  ok(P, `Neon org: ${orgList[0].name} (${neonOrgId})`);
+}
+
 step(P, `Creating Neon project (${neonRegion})...`);
 const neon = await api("Neon project create", "https://console.neon.tech/api/v2/projects", {
   method: "POST",
@@ -123,7 +145,7 @@ const neon = await api("Neon project create", "https://console.neon.tech/api/v2/
     "Content-Type": "application/json",
   },
   body: JSON.stringify({
-    project: { name: slug, region_id: neonRegion, pg_version: 17 },
+    project: { name: slug, region_id: neonRegion, pg_version: 17, org_id: neonOrgId },
   }),
 });
 
