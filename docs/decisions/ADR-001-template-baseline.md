@@ -1,9 +1,12 @@
 # ADR-001 — Template baseline stack and invariants
 
-**Status:** Accepted
+**Status:** Accepted (partially superseded by ADR-006)
 **Date:** 2026-05-17
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
+
+> **2026-05-21 update — ADR-006 supersedes the following parts of this ADR:**
+> `output: "standalone"` Docker baseline, GHCR / Portainer CI/CD line, MinIO baseline, and the "Vercel deployment was rejected" alternative. The remaining invariants (Prisma extensions, Auth.js wrappers, audit scrubbing, soft-delete, security headers, rate limiter) are unchanged.
 
 ## Context
 

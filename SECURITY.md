@@ -4,6 +4,8 @@ Template-level security baseline. **When you fork this into a project, this file
 
 **This template is unclassified.** It contains no real data and is not a deployment. Tier and PDPL posture are set per project — see §9.
 
+> **2026-05-21 update (ADR-006).** The template pivoted to Vercel + Neon and removed the self-hosted droplet machinery: Portainer, Docker baseline, GHCR, Caddy, MinIO, the encrypted off-host backup sidecar (age + rclone), and the deploy / promote / rollback / restore / build-snapshot / audit-retention / docker-build / restore-test workflows. Sections below that reference any of those describe machinery that **no longer ships in the template**. The **data classification rules, audit-scrubbing invariants, hard rules, and threat-model categories remain authoritative** — only the deploy plumbing changed. If a fork's data class requires operator-managed encryption keys, encrypted off-host backups, or self-hosted infrastructure, that fork should not use this template; it belongs on the IT team's stack from day zero. See `docs/decisions/ADR-006-pivot-to-vercel-neon.md` for the rationale.
+
 ---
 
 ## 1. Data classification

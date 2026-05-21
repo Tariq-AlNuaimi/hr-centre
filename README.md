@@ -1,18 +1,20 @@
-# Fullstack Next.js Template
+# Fullstack Next.js Template (Prototype Rail)
 
-Production-ready fullstack template with Next.js, PostgreSQL, MinIO, Auth.js, and Ant Design. Tuned for Claude Code vibe-coding sessions (see `.claude/`) but works for human coders too.
+Fast prototype rail for Rihal internal tools. Next.js 16 + Prisma + Postgres + Auth.js + Ant Design, deployed to Vercel + Neon. **`git push` → live URL in 90 seconds.**
+
+The audience is non-developer stakeholders. They review prototypes via shared URLs (`<slug>.vercel.app`). The operator (working with Claude Code) iterates with them until approved. Then `/handoff` produces a clean package for the IT team to take over.
 
 ## Stack
 
 - **Framework**: Next.js 16, React 19, TypeScript
 - **UI**: Ant Design 6 with dark mode and RTL support
-- **Database**: PostgreSQL 17 with Prisma 7 ORM
-- **Storage**: MinIO (S3-compatible)
-- **Auth**: Auth.js v5 (credentials + OAuth)
+- **Database**: PostgreSQL 17 via Prisma 7 (Neon in prod, local Postgres in dev)
+- **Auth**: Auth.js v5 (credentials + optional OAuth)
 - **i18n**: next-intl (English + Arabic)
-- **CI/CD**: GitHub Actions - GHCR - Portainer webhook
+- **Hosting**: Vercel (auto-deploy on git push) + Neon (managed Postgres)
+- **Observability**: Sentry (optional)
 
-## Features
+## Features out of the box
 
 - Full audit trail on all entity changes (create, update, delete, restore)
 - Soft deletion with recycling bin (restore or permanently delete)
@@ -20,34 +22,73 @@ Production-ready fullstack template with Next.js, PostgreSQL, MinIO, Auth.js, an
 - Reusable layout with header, collapsible sidebar, breadcrumbs, footer
 - Dark mode toggle with system preference detection
 - RTL support for Arabic locale
-- File upload component with MinIO presigned URLs
 - Reusable DataTable with pagination, search, sort
-- Health check endpoint for Docker healthcheck
+- Reusable Chart component (line / bar / area / pie via recharts)
+- Reusable KanbanBoard (drag-drop via @dnd-kit)
+- Excel export helper
+- Email sender (nodemailer, optional)
+- Health check endpoint
+- Four local ESLint rules guarding the template's invariants
 
 ## Claude Code
 
-`.claude/` ships with a permission allowlist, a SessionStart hook that boots dependencies, and two skills tuned for this stack:
+`.claude/` ships with a permission allowlist, a SessionStart hook that boots dependencies, and these skills:
 
-- **`/scaffold-entity <Name>`** — generate a full CRUD entity (model, validation, API routes, dashboard page) following the template's soft-delete + audit + RBAC invariants.
-- **`/ship`** — typecheck + lint + build before pushing.
+- **`/first-fork`** — one-time setup: Vercel + Neon + first deploy (~10 min)
+- **`/quickstart`** — turn one paragraph of an idea into a live URL
+- **`/scaffold-entity <Name>`** — generate a full CRUD entity (model, validation, API routes, dashboard page) following the soft-delete + audit + RBAC invariants
+- **`/scale-up`** — add file uploads / cron / background jobs / realtime when the project needs them
+- **`/ship`** — typecheck + lint + build before pushing
+- **`/handoff`** — produce clean handoff package for the IT team
+- **`/rebrand`** — sweep template defaults to the new project's name
+- **`/migrate-from`** — port a feature out of a monolith
+- **`/adr`** — record a decision
 
-The SessionStart hook handles `.env` bootstrap, `npm install`, and `prisma generate` automatically on every session. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build. See [`CLAUDE.md`](./CLAUDE.md) for the rationale and the full hard-rules list.
+Humans coding by hand can ignore `.claude/`; it does not affect the runtime build. See [`CLAUDE.md`](./CLAUDE.md) for the rationale and the full hard-rules list.
 
 ## Quick Start
 
+### Fork it and run /first-fork
+
+In a Claude session on the new fork: type `/first-fork`. The skill walks through Vercel signup, Neon signup, env vars, and the first deploy in ~10 minutes.
+
+### Or set up manually
+
 ```bash
-# 1. Clone and install
-cp .env.example .env
+# 1. Fork the template (gh CLI or via the UI)
+gh repo create <owner>/<slug> --template Tariq-AlNuaimi/fullstack-vibe-template --private --clone
+cd <slug>
+
+# 2. Rebrand
 npm install
+npm run rebrand -- --slug <slug> --name '<Display Name>' --owner <owner>
+git add -A && git commit -m 'chore: rebrand from template' && git push
 
-# 2. Start services and setup database
-make setup
+# 3. Create a Neon project at https://console.neon.tech, copy the pooled connection string.
 
-# 3. Start development
-make dev
+# 4. Create a Vercel project at https://vercel.com/new (import the GitHub repo).
+#    Set env vars: DATABASE_URL (Neon pooled), AUTH_SECRET (openssl rand -base64 32),
+#    NEXT_PUBLIC_APP_NAME, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD.
+
+# 5. Redeploy in Vercel. Done -- your URL is live.
+
+# 6. Seed the admin user (run once, with Neon DIRECT URL):
+DATABASE_URL="<direct neon url>" npx prisma db seed
 ```
 
-The app runs at http://localhost:3000. Login with the credentials from your `.env` file.
+### Local development
+
+```bash
+cp .env.example .env
+# Edit .env: set DATABASE_URL (any local or hosted Postgres), AUTH_SECRET, NEXT_PUBLIC_APP_URL
+npm install
+make db-up               # starts local Postgres in Docker
+npx prisma migrate dev
+npx prisma db seed
+npm run dev              # http://localhost:3000
+```
+
+Log in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from your `.env`.
 
 ## Project Structure
 
@@ -64,52 +105,54 @@ app/
     auth/                    # Auth.js handlers
     users/                   # User CRUD endpoints
     recycling-bin/           # Restore + permanent delete
-    storage/presign/         # MinIO presigned upload URLs
+    audit-log/               # Audit log viewer
     health/                  # Health check
+    internal/                # /api/internal/* -- wrapped with withInternalAuth
 components/
   layout/                    # AppShell, Header, Sidebar, Footer, Breadcrumbs
-  shared/                    # DataTable, FileUpload, ConfirmAction, EmptyState
+  shared/                    # DataTable, Chart, KanbanBoard, ConfirmAction, EmptyState
   users/                     # Example entity components
 hooks/                       # useCrud, useNotify, useBreadcrumb
-lib/                         # Prisma client, auth, storage, validations
+lib/                         # Prisma client, auth, email, export, validations
 prisma/                      # Schema, migrations, seed
+docs/decisions/              # ADRs
+eslint-rules/                # Project-local ESLint plugin (4 hard rules)
+tests/contracts/             # Contract test suite (node:test)
+.github/workflows/           # verify.yml + secrets-scan.yml + sast.yml
 ```
 
 ## Adding a New Entity
 
-In a Claude session, run **`/scaffold-entity <Name>`** and follow the prompts.
+In a Claude session, run **`/scaffold-entity <Name>`**. The skill walks the prompts.
 
-Manual recipe (for human coders or reference):
+Manual recipe:
 
-1. Add the model to `prisma/schema.prisma` (include `deletedAt DateTime?` and `deletedBy String?` for soft deletion)
-2. Run `npx prisma migrate dev --name add_entity`
-3. Register the model in `lib/prisma/soft-delete-extension.ts` (`SOFT_DELETE_MODELS.add("YourModel")`)
-4. Register in `app/api/recycling-bin/route.ts` (`ENTITY_TYPES`)
-5. Create validation schemas in `lib/validations/`
-6. Create API routes in `app/api/`
-7. Create page components in `app/[locale]/(dashboard)/`
-
-## Docker
-
-```bash
-# Development (db + minio only, app runs locally)
-docker compose up -d
-
-# Production (all services from GHCR image)
-docker compose -f docker-compose.prod.yml up -d
-
-# Build production image locally
-make docker-build
+```sh
+npm run scaffold -- --name MyEntity \
+  --fields 'title:string,note:string?,price:int,status:STATUS' \
+  --enums 'status:DRAFT|PUBLISHED' \
+  --relations 'owner:User?'
+npx prisma generate
+npx prisma migrate dev --name add_my_entity
 ```
 
-## CI/CD
+The scaffold creates: Prisma model (with soft-delete fields + audit hooks), zod validation, API routes (`GET`/`POST`/`PUT`/`DELETE` wrapped with `withAuth`), a dashboard page with DataTable + Form, sidebar nav entry, and recycling-bin registration.
 
-Push to `main` triggers the GitHub Actions workflow which:
-1. Builds the Docker image
-2. Pushes to GitHub Container Registry (ghcr.io)
-3. Triggers the Portainer webhook to pull the latest image
+## CI
 
-Set `PORTAINER_WEBHOOK_URL` in GitHub repository secrets.
+Three workflows gate every push to a non-main branch:
+
+- **verify.yml**: typecheck + lint + tests + build + npm audit + two scaffold smoke tests
+- **secrets-scan.yml**: gitleaks across full git history
+- **sast.yml**: Semgrep with OWASP + secrets rulesets
+
+Vercel handles production deploys automatically on push to `main`.
+
+## Documentation
+
+- [`CLAUDE.md`](./CLAUDE.md) — codebase rules + harness reference
+- [`SECURITY.md`](./SECURITY.md) — data classes, secrets, threat model, findings
+- [`docs/decisions/`](./docs/decisions) — ADRs (start with ADR-001 for the locked stack, ADR-006 for why we're on Vercel + Neon)
 
 ## Environment Variables
 
