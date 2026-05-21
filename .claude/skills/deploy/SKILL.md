@@ -124,6 +124,9 @@ queue serially.
 | `LE challenge fails` | CF record set to proxied=true | Script sets proxied=false; re-run after toggle. |
 | `Portainer init -> 409` | Admin window expired | SSH in, `docker rm -f portainer && docker volume rm portainer_data`, re-run with `action=provision-and-deploy`. |
 | State branch missing the env file | First run for this env, OR branch was wiped | First run is normal. If wiped, the discover-from-tags fallback rebuilds the droplet entry; rerun with `action=redeploy`. |
+| `<image>:latest not found on GHCR (404)` | docker-build.yml has not published this tag yet | Dispatch "Build & Push Docker Image" on branch=main, OR push any trivial commit to main. Wait ~3-5 min. Re-run /deploy with action=redeploy. |
+| `<image>:latest exists but this GHCR_PULL_TOKEN cannot pull (401/403)` | Package is private + token lacks access | Make the package public at /pkgs/container/<repo> → Settings → Danger zone (acceptable for staging). Or grant token owner read access. Then /deploy redeploy. |
+| `state file slug "..." != current slug "..."` | A prior deploy used a different slug; new slug creates new resources, prior ones orphan | Tear down the orphans: `gh workflow run deploy.yml -f env=staging -f slug=<OLD_SLUG> -f domain=any -f action=destroy`. |
 
 ## Report back
 

@@ -268,15 +268,53 @@ async function checkGhcrToken() {
       headers: { 'Authorization': `Basic ${Buffer.from(`${GH_OWNER}:${env.GHCR_PULL_TOKEN}`).toString('base64')}` },
       signal: AbortSignal.timeout(10_000),
     });
-    if (r.ok) {
-      const body = await r.json().catch(() => ({}));
-      if (body.token) {
-        row('required', 'GHCR_PULL_TOKEN', 'pass', `pull token granted for ${GH_OWNER}/${GH_REPO}`);
-        return;
-      }
+    if (!r.ok) {
+      row('required', 'GHCR_PULL_TOKEN', 'fail', `ghcr.io returned ${r.status}`,
+          `Token may lack read:packages, or be expired. Re-mint a classic PAT with read:packages.`);
+      return;
     }
-    row('required', 'GHCR_PULL_TOKEN', 'fail', `ghcr.io returned ${r.status}`,
-        `Token may lack read:packages, or be expired. Re-mint a classic PAT with read:packages.`);
+    const body = await r.json().catch(() => ({}));
+    if (!body.token) {
+      row('required', 'GHCR_PULL_TOKEN', 'fail', `ghcr.io returned ok but no pull token`,
+          `Token may lack read:packages, or be expired. Re-mint a classic PAT with read:packages.`);
+      return;
+    }
+    row('required', 'GHCR_PULL_TOKEN', 'pass', `pull token granted for ${GH_OWNER}/${GH_REPO}`);
+
+    // Second probe: does the :latest manifest actually exist + is it pullable
+    // with this token? The token endpoint succeeds even when no images have
+    // been pushed yet -- which is how the operator hit "unauthorized" at
+    // compose pull 90s into a deploy. Probing the manifest catches that
+    // failure mode in 60s in preflight.
+    try {
+      const manifestUrl = `https://ghcr.io/v2/${GH_OWNER.toLowerCase()}/${GH_REPO.toLowerCase()}/manifests/latest`;
+      const m = await fetch(manifestUrl, {
+        headers: {
+          'Authorization': `Bearer ${body.token}`,
+          // Accept both v2 schema and OCI index so we don't 404 on multi-arch
+          // images published by buildx.
+          'Accept': 'application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.index.v1+json, application/vnd.oci.image.manifest.v1+json',
+        },
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (m.ok) {
+        row('required', 'GHCR :latest manifest', 'pass', `image is pullable from the droplet`);
+      } else if (m.status === 404) {
+        row('required', 'GHCR :latest manifest', 'fail',
+            `ghcr.io/${GH_OWNER.toLowerCase()}/${GH_REPO.toLowerCase()}:latest not found (404)`,
+            `Run docker-build.yml on main at least once: Actions → "Build & Push Docker Image" → Run workflow on branch=main. Wait ~3-5 min. Then re-run /preflight.`);
+      } else if (m.status === 401 || m.status === 403) {
+        row('required', 'GHCR :latest manifest', 'fail',
+            `:latest exists but this token cannot pull (${m.status} -- private package + token lacks access)`,
+            `Easy fix: make the package public at https://github.com/${GH_OWNER}/${GH_REPO}/pkgs/container/${GH_REPO.toLowerCase()} → Package settings → Danger zone → Change visibility → Public. (Acceptable for staging; image carries no secrets.) Or grant the token owner read access via the package's "Manage Actions access".`);
+      } else {
+        row('required', 'GHCR :latest manifest', 'fail', `ghcr.io manifest probe returned ${m.status}`,
+            `Unexpected status; check network and ghcr.io status, then re-run.`);
+      }
+    } catch (e) {
+      row('required', 'GHCR :latest manifest', 'fail', `manifest probe failed: ${truncate(e.message)}`,
+          `Network issue. Re-run after confirming connectivity.`);
+    }
   } catch (e) {
     row('required', 'GHCR_PULL_TOKEN', 'fail', `probe failed: ${truncate(e.message)}`,
         `Network or token issue. Re-mint if you're sure connectivity is fine.`);

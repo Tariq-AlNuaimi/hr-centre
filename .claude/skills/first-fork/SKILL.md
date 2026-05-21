@@ -61,6 +61,14 @@ gh workflow run preflight.yml -f env=staging -f domain=app.staging.example.com
 
 This hits each vendor API and prints a pass/fail table in ~60s. Only proceed to `/deploy` once preflight is green — it surfaces missing/mis-scoped secrets in seconds instead of 15 min into a failed deploy.
 
+### One-time — push at least one commit to main so the GHCR image exists
+
+`/deploy` pulls `ghcr.io/<owner>/<repo>:latest` from GHCR. That image is published by `docker-build.yml`, which runs on every push to `main`. **For a fresh fork, push any commit to `main` before the first `/deploy`** so the image exists. After the first push, the build takes ~3–5 min; preflight will tell you when it's pullable.
+
+GHCR packages default to **private**. After the first `docker-build.yml` succeeds, visit `https://github.com/<owner>/<repo>/pkgs/container/<repo>` → **Package settings** → Danger zone → **Change visibility** → **Public**. Acceptable for staging — the image carries no secrets (secrets live in env vars, not in layers). If you prefer to keep it private, grant your `GHCR_PULL_TOKEN`'s owner read access via the package's "Manage Actions access" page.
+
+If the image is missing or unpullable, the new `/preflight` row "GHCR :latest manifest" tells you exactly which fix to apply.
+
 ### Optional but recommended — build a base snapshot
 
 If you want staging deploys to complete in **~3–5 min** instead of ~10–15 min, pre-bake a DO custom image with Docker + Caddy + age + rclone pre-installed:
