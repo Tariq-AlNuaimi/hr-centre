@@ -15,7 +15,7 @@
 // No SSH lib dep -- shells out to `ssh` / `scp` on PATH (runners have it).
 
 import { spawn } from 'node:child_process';
-import { step } from './log.mjs';
+import { step, warn } from './log.mjs';
 
 const SSH_OPTS = [
   '-o', 'StrictHostKeyChecking=accept-new',
@@ -24,7 +24,38 @@ const SSH_OPTS = [
   '-o', 'ConnectTimeout=10',
 ];
 
+// Transport-level retry. SSH connections to freshly-provisioned droplets
+// sometimes get RST during cloud-init's `ufw --force enable`, during sshd
+// host-key regeneration after `cloud-init clean`, or during transient
+// network blips between GH Actions runners and DO. None of these mean the
+// remote command actually ran -- the failure is at the KEX layer, BEFORE
+// the command. Retrying is safe (no double-execution risk) and the typical
+// blip resolves in 5-15s.
+//
+// We only retry on the specific transport error strings. Auth failures,
+// timeouts, and remote command non-zero exits all propagate immediately.
+const TRANSPORT_ERR_RE = /kex_exchange_identification|Connection reset|Connection refused|Connection closed by remote host|broken pipe|Network is unreachable|No route to host/i;
+async function withSshRetry(host, label, fn, { attempts = 5, delayMs = 5000 } = {}) {
+  let lastErr;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const isTransport = TRANSPORT_ERR_RE.test(e.message || '');
+      if (!isTransport || attempt === attempts) throw e;
+      warn('ssh-deploy', `${label} hit transport error (attempt ${attempt}/${attempts}); retrying in ${delayMs / 1000}s: ${e.message.split('\n')[0]}`);
+      await new Promise(res => setTimeout(res, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 export function sshExec(host, user, command, { sshKeyPath, timeoutMs = 180_000 } = {}) {
+  return withSshRetry(host, `exec @ ${host}`, () => _sshExecOnce(host, user, command, { sshKeyPath, timeoutMs }));
+}
+
+function _sshExecOnce(host, user, command, { sshKeyPath, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const args = [...SSH_OPTS];
     if (sshKeyPath) args.push('-i', sshKeyPath);
@@ -52,6 +83,10 @@ export function sshExec(host, user, command, { sshKeyPath, timeoutMs = 180_000 }
 // remote shell writes via cat > path; we set perms in a separate call so
 // secrets (.env) land 0600.
 export function sshWriteFile(host, user, remotePath, content, { sshKeyPath, mode = '0644', timeoutMs = 60_000 } = {}) {
+  return withSshRetry(host, `write ${remotePath} @ ${host}`, () => _sshWriteFileOnce(host, user, remotePath, content, { sshKeyPath, mode, timeoutMs }));
+}
+
+function _sshWriteFileOnce(host, user, remotePath, content, { sshKeyPath, mode, timeoutMs }) {
   return new Promise((resolve, reject) => {
     const args = [...SSH_OPTS];
     if (sshKeyPath) args.push('-i', sshKeyPath);
@@ -95,40 +130,25 @@ export async function waitForSsh(host, user, sshKeyPath, timeoutMs = 300_000) {
 // dump the tail of /var/log/cloud-init-output.log so the operator can see
 // WHAT runcmd step actually failed.
 //
-// Retries SSH-level transport errors (connection reset, kex_exchange) because
-// cloud-init's `ufw --force enable` briefly reloads iptables and can RST an
-// in-flight SSH session. Once cloud-init has completed, sshd is stable and
-// the retry succeeds. Cloud-init's own non-zero exit (which signals a runcmd
-// FAILURE, not transport noise) is NOT retried -- those represent real
-// runcmd errors that need the operator's attention.
+// Transport-level retries (KEX RST during ufw enable, etc.) are handled
+// inside sshExec itself; we only need to handle cloud-init's own non-zero
+// exit here (which indicates a real runcmd failure).
 export async function waitForCloudInit(host, sshKeyPath, timeoutMs = 600_000) {
   step('ssh-deploy', `waiting for cloud-init on ${host}`);
-  const isTransportErr = (msg) => /kex_exchange_identification|Connection reset|Connection refused|Connection timed out|broken pipe/i.test(msg || '');
-  const start = Date.now();
-  let lastErr;
-  while (Date.now() - start < timeoutMs) {
-    try {
-      await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs: timeoutMs - (Date.now() - start) });
-      return;
-    } catch (e) {
-      lastErr = e;
-      if (!isTransportErr(e.message)) break;
-      // SSH-level reset: backoff briefly and retry. Cloud-init is still
-      // making progress; the iptables reload finishes in <5s typically.
-      await new Promise(res => setTimeout(res, 5000));
-    }
-  }
-  // Surface the real failure with cloud-init logs (if we can fetch them).
-  let tail = '';
   try {
-    const r = await sshExec(host, 'root',
-      'echo "--- /var/log/cloud-init-output.log (last 60 lines) ---"; tail -60 /var/log/cloud-init-output.log 2>&1; echo; echo "--- cloud-init status --long ---"; cloud-init status --long 2>&1 | tail -40',
-      { sshKeyPath, timeoutMs: 30_000 });
-    tail = r.stdout || r.stderr || '(empty)';
-  } catch (logErr) {
-    tail = `(failed to fetch cloud-init log: ${logErr.message})`;
+    await sshExec(host, 'root', 'cloud-init status --wait', { sshKeyPath, timeoutMs });
+  } catch (e) {
+    let tail = '';
+    try {
+      const r = await sshExec(host, 'root',
+        'echo "--- /var/log/cloud-init-output.log (last 60 lines) ---"; tail -60 /var/log/cloud-init-output.log 2>&1; echo; echo "--- cloud-init status --long ---"; cloud-init status --long 2>&1 | tail -40',
+        { sshKeyPath, timeoutMs: 30_000 });
+      tail = r.stdout || r.stderr || '(empty)';
+    } catch (logErr) {
+      tail = `(failed to fetch cloud-init log: ${logErr.message})`;
+    }
+    throw new Error(`cloud-init reported error on ${host}.\n${tail}\n\nOriginal error: ${e.message}`);
   }
-  throw new Error(`cloud-init reported error on ${host}.\n${tail}\n\nOriginal error: ${lastErr ? lastErr.message : 'unknown'}`);
 }
 
 // Build a docker-compose .env file from the env-var map. Keys with empty
