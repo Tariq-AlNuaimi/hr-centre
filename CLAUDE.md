@@ -42,16 +42,24 @@ All harness files are project-name-agnostic and survive forks unchanged.
 - **Domains**: optional. `<slug>.vercel.app` is permanent. Custom domains via Vercel UI when the team is ready to share externally.
 - **Secrets**: env vars in the Vercel project UI. Never traverse Claude chat. There is no GHCR, no Portainer, no SSH, no Caddy, no droplet — those were deleted (see ADR-006 for the rationale).
 
-## CI gates (no local action required)
-Three workflows gate the repo. Failures block merge once branch protection is on.
+## CI gates — DORMANT on the free plan; local `/ship` is the active gate
+On the current plan (solo operator, free GitHub plan with Actions billing blocked) the CI
+workflows **do not run**. The active enforcement gate is the local **`/ship`** skill, which
+mirrors their checks and runs on any machine (no `.git/hooks`, nothing machine-specific).
 
-| Workflow | When | What |
+**`/ship` order — stop on first failure:** typecheck → lint → tests → build → gitleaks → npm audit.
+
+The workflow files stay in the repo, dormant and labeled, and **activate at `/handoff`** when
+the IT team's paid plan can run Actions and enforce branch protection:
+
+| Workflow | When (once active) | What |
 |---|---|---|
-| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit critical + scaffold smokes (scalars-only + enums+relations) |
+| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit high + scaffold smokes (scalars-only + enums+relations) |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full history |
 | `sast.yml` | PR + push (any) | Semgrep with p/javascript, p/typescript, p/nextjs, p/react, p/owasp-top-ten, p/secrets |
 
-Branch protection is **optional** on this template. The audience (non-dev stakeholders) doesn't review PRs; the operator is the only person pushing. Turn it on once handed off.
+Branch protection is **optional** on this template and unenforceable on the free plan. Turn it
+on once handed off. See `SECURITY.md` §14 and ADR-007.
 
 ## Stack
 - **Framework:** Next.js 16 (App Router) · React 19 · TypeScript 5
@@ -87,7 +95,8 @@ To silence a rule on a justified line:
 If the suppression touches security, log it in `SECURITY.md` §12 with rule, location, justification, reviewer, date.
 
 ## Hard rules
-- **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push.
+- **Run `/ship` before every push.** This replaces branch protection for a solo operator and works on any machine. It runs typecheck → lint → tests → build → gitleaks → npm audit and stops on the first failure. Do not push on a red `/ship`.
+- **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push (locally via `/ship`).
 - **Never log** any Restricted env var. The `no-secret-env-in-console` ESLint rule catches the obvious form; it does NOT catch interpolation into other variables — humans still apply judgement.
 - **Email bodies may carry Restricted content** (OTPs, presigned URLs). `lib/email.ts` logs only metadata. Never separately log `opts.text` / `opts.html`.
 - **Adding a Restricted column?** Extend `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` AND its membership assertion in `tests/contracts/audit-scrub.test.ts` in the same commit.

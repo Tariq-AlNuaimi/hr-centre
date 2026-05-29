@@ -1,3 +1,6 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
+# The Semgrep scan is mirrored locally by the /audit skill. Activates at /handoff when the
+# IT team's paid plan runs Actions. See SECURITY.md §14 / ADR-007.
 name: SAST
 
 on:
