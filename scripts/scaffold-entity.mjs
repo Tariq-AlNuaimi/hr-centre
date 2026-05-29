@@ -104,7 +104,13 @@ function parseField(spec) {
   if (!FIELD_TYPES[type]) {
     throw new Error(`Unknown field type "${type}" in "${spec}". Known: ${Object.keys(FIELD_TYPES).join(', ')}.`);
   }
-  return { kind: 'scalar', name, type, optional: opt === '?', indexed: idx === '!' };
+  // Json fields: always nullable. zod's z.any() is implicitly optional in
+  // object schemas (zod quirk) -- Prisma's required-Json (InputJsonValue)
+  // won't match the zod-inferred type. Forcing the Prisma side to Json?
+  // aligns both sides. Hand-edit the schema afterward if you need
+  // required-with-default behaviour (e.g. `Json @default("{}")`).
+  const optional = opt === '?' || type === 'json';
+  return { kind: 'scalar', name, type, optional, indexed: idx === '!' };
 }
 
 function parseEnum(spec) {
@@ -312,7 +318,7 @@ function apiListRouteFile() {
     ? ''
     : `
       include: {
-${relations.map((r) => `        ${r.name}: { select: { id: true, ${r.displayField}: true } },`).join('\n')}
+${relations.map((r) => `        ${r.name}: { select: ${r.displayField === 'id' ? '{ id: true }' : `{ id: true, ${r.displayField}: true }`} },`).join('\n')}
       },`;
 
   return `import { NextRequest } from "next/server";
@@ -360,7 +366,7 @@ function apiItemRouteFile() {
   const includeClause = relations.length === 0
     ? ''
     : ` include: {
-${relations.map((r) => `      ${r.name}: { select: { id: true, ${r.displayField}: true } },`).join('\n')}
+${relations.map((r) => `      ${r.name}: { select: ${r.displayField === 'id' ? '{ id: true }' : `{ id: true, ${r.displayField}: true }`} },`).join('\n')}
     },`;
 
   return `import { NextRequest } from "next/server";
@@ -408,7 +414,7 @@ function recordTypeFields() {
     ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}${e.optional ? ' | null' : ''}`),
     ...relations.flatMap((r) => [
       `${r.name}Id${r.optional ? '?' : ''}: string${r.optional ? ' | null' : ''}`,
-      `${r.name}${r.optional ? '?' : ''}: { id: string; ${r.displayField}: string${r.displayField === 'id' ? '' : ' | null'} }${r.optional ? ' | null' : ''}`,
+      `${r.name}${r.optional ? '?' : ''}: { ${r.displayField === 'id' ? 'id: string' : `id: string; ${r.displayField}: string | null`} }${r.optional ? ' | null' : ''}`,
     ]),
   ];
 }
