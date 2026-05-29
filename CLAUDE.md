@@ -96,6 +96,7 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 
 ## Hard rules
 - **Run `/ship` before every push.** This replaces branch protection for a solo operator and works on any machine. It runs typecheck → lint → tests → build → gitleaks → npm audit and stops on the first failure. Do not push on a red `/ship`.
+- **Before any push that touches auth, schemas, API routes, or anything under `lib/`, run the native `/code-review`** (fresh-context diff review) and resolve its findings. This replaces the CI review gate for a solo operator.
 - **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push (locally via `/ship`).
 - **Never log** any Restricted env var. The `no-secret-env-in-console` ESLint rule catches the obvious form; it does NOT catch interpolation into other variables — humans still apply judgement.
 - **Email bodies may carry Restricted content** (OTPs, presigned URLs). `lib/email.ts` logs only metadata. Never separately log `opts.text` / `opts.html`.
