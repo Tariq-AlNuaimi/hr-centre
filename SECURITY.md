@@ -221,6 +221,7 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 | Date | Package | Bump | CVE | Outcome |
 |---|---|---|---|---|
+| 2026-05-29 | `tmp` (transitive via `exceljs@4.4.0`) | `0.2.5` → `^0.2.7` via `package.json` `overrides` | Path traversal via unsanitized prefix/postfix (High) | Pinned the patched `tmp` without changing `exceljs` (already latest). `/ship` npm-audit gate clean at the high level; export contract test green. |
 | — | — | — | — | — |
 
 ---
