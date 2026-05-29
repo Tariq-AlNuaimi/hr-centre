@@ -150,6 +150,11 @@ They're configured at `error` -- do not relax without reviewing
 - `secrets-scan.yml` runs gitleaks on every push.
 - `sast.yml` runs Semgrep with OWASP + secrets rulesets.
 
+> **Reactivation step for the IT team:** these three workflows ship with their triggers
+> set to `workflow_dispatch`-only (they were dormant on the prototype's free plan).
+> On a paid plan, restore the `pull_request:` / `push:` triggers under `on:` in each file
+> (they're left commented in place) and turn on branch protection on `main`.
+
 ## What was NOT done
 
 - No load testing.

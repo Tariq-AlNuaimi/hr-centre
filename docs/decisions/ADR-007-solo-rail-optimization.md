@@ -106,8 +106,10 @@ reusable standard:
    principles already live in the hard-rules and "known traps"; the weight isn't justified.
 
 ## Migration triggers
-- **GitHub Actions billing restored / IT handoff:** re-activate the dormant CI workflows and turn
-  on branch protection (the dormant labels point here).
+- **GitHub Actions billing restored / IT handoff:** re-activate the dormant CI workflows by
+  restoring their real triggers (uncomment the `pull_request:` / `push:` lines under `on:` in
+  `verify.yml`, `secrets-scan.yml`, `sast.yml` — they are set to `workflow_dispatch`-only so they
+  don't auto-run and fail-in-2s on the free plan) and turn on branch protection.
 - **`/new-project` needed:** it is itself a GitHub Actions workflow and cannot run while billing is
   blocked — use `/first-fork` (manual) as the on-ramp until then. Its Cloudflare DNS step is
   **still wired** post-ADR-006 (`new-project.yml` uses `CLOUDFLARE_API_TOKEN` + `NEON_API_KEY` +

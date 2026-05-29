@@ -1,11 +1,16 @@
 # DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
 # The Semgrep scan is mirrored locally by the /audit skill. Activates at /handoff when the
 # IT team's paid plan runs Actions. See SECURITY.md §14 / ADR-007.
+#
+# Triggers are set to workflow_dispatch (manual) only so the job does not auto-run and
+# fail-in-2s on a billing-blocked plan. AT HANDOFF: restore the real triggers below.
 name: SAST
 
 on:
-  pull_request:
-  push:
+  workflow_dispatch:
+  # Restore at handoff (paid Actions):
+  # pull_request:
+  # push:
 
 jobs:
   semgrep:
