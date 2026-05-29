@@ -1,0 +1,32 @@
+import { test as setup } from "@playwright/test";
+
+// Logs in as the admin once and saves the session to disk so the UAT flows
+// run as an authenticated user. Credentials come from env — NEVER hardcoded.
+//   UAT_EMAIL / UAT_PASSWORD   (preferred for a dedicated UAT account)
+//   SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD  (fallback — the seeded admin)
+
+const authFile = "uat-results/.auth/admin.json";
+
+setup("authenticate as admin", async ({ page }) => {
+  const email = process.env.UAT_EMAIL ?? process.env.SEED_ADMIN_EMAIL;
+  const password = process.env.UAT_PASSWORD ?? process.env.SEED_ADMIN_PASSWORD;
+
+  if (!email || !password) {
+    throw new Error(
+      "UAT needs login credentials. Set UAT_EMAIL/UAT_PASSWORD (or SEED_ADMIN_EMAIL/" +
+        "SEED_ADMIN_PASSWORD) in your environment. Do not hardcode them in the test.",
+    );
+  }
+
+  await page.goto("/en/login");
+
+  // Ant Design Form.Item name -> input id; these selectors are locale-independent.
+  await page.locator("#email").fill(email);
+  await page.locator("#password").fill(password);
+  await page.locator('button[type="submit"]').click();
+
+  // On success the app routes to the dashboard at /en.
+  await page.waitForURL(/\/en\/?$/, { timeout: 15_000 });
+
+  await page.context().storageState({ path: authFile });
+});

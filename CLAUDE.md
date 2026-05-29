@@ -25,7 +25,10 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
   - `/quickstart` — idea → live URL. The most-used skill.
   - `/scaffold-entity` — Prisma model + CRUD routes + dashboard page in one shot.
   - `/scale-up` — add file uploads / cron / background jobs / realtime when the project needs them.
-  - `/ship` — pre-push verification (typecheck + lint + build).
+  - `/ship` — pre-push gate (typecheck → lint → tests → build → gitleaks → npm audit).
+  - `/audit` — on-demand security scan of any path (gitleaks + npm audit + Semgrep).
+  - `/uat` — browser-driven acceptance walkthrough in Chromium (Playwright), with screenshots.
+  - `/conform` — bring foreign code up to this template's standard (report-and-approve).
   - `/handoff` — produce clean handoff package for the IT team.
   - `/rebrand` — sweep template defaults to the new project's name.
   - `/migrate-from` — port an entity out of a monolith.
@@ -190,6 +193,7 @@ The rail handles all of these without migration. None require code restructuring
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
 - `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith
 - `npm test` — contract suite (rate limit, audit scrub, email, export, sentry scrub) via `node:test`
+- `npm run uat` — Playwright UAT (set `UAT_BASE_URL` for a deployed target; local auto-starts dev). `npm run uat:install` once per machine; `npm run uat:report` to view screenshots
 - `npm run prisma:migrate` / `:generate` / `:seed` / `:studio`
 - `npm run lint` — ESLint (incl. local plugin)
 - `make db-up` / `make db-down`

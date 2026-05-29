@@ -18,7 +18,11 @@
     "scaffold": "node scripts/scaffold-entity.mjs",
     "rebrand": "node scripts/rebrand.mjs",
     "migrate-from": "node scripts/migrate-from.mjs",
-    "new-project": "node scripts/new-project.mjs"
+    "new-project": "node scripts/new-project.mjs",
+    "uat": "playwright test",
+    "uat:headed": "playwright test --headed",
+    "uat:report": "playwright show-report uat-report",
+    "uat:install": "playwright install chromium"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -47,6 +51,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.2",
     "@types/pg": "^8.20.0",
