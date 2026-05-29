@@ -1,12 +1,17 @@
 # DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
 # Its checks are mirrored locally by the /ship skill. Activates at /handoff when the IT
 # team's paid plan runs Actions. See SECURITY.md §14 / ADR-007.
+#
+# Triggers are set to workflow_dispatch (manual) only so the job does not auto-run and
+# fail-in-2s on a billing-blocked plan. AT HANDOFF: restore the real triggers below.
 name: Verify
 
 on:
-  pull_request:
-  push:
-    branches-ignore: [main]
+  workflow_dispatch:
+  # Restore at handoff (paid Actions):
+  # pull_request:
+  # push:
+  #   branches-ignore: [main]
 
 env:
   # Dummy URL so prisma generate works without a real DB.

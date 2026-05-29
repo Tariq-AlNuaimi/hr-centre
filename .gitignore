@@ -13,6 +13,13 @@
 # testing
 /coverage
 
+# UAT (Playwright) artifacts -- screenshots, traces, reports, saved sessions
+/uat-results
+/uat-report
+/test-results
+/playwright-report
+/blob-report
+
 # next.js
 /.next/
 /out/
