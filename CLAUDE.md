@@ -145,6 +145,26 @@ and protects the operator.)
 - Suppressing a Semgrep / gitleaks / npm-audit finding (log in `SECURITY.md` §12)
 - Changing the locked stack from ADR-001 — write a new superseding ADR first
 
+## Requirements & planning (Superpowers vs `/quickstart`)
+
+For real, multi-file features that deserve a spec, use **Superpowers** (the community
+lifecycle skill: brainstorm → spec → plan → TDD build). For a throwaway idea-to-URL, use
+**`/quickstart`** — don't spend spec ceremony on something disposable.
+
+- **Superpowers** — install it as a Claude Code plugin (read its repo README for the
+  current command; as of this writing: `/plugin marketplace add obra/superpowers-marketplace`
+  then `/plugin install superpowers@superpowers-marketplace`, or
+  `/plugin install superpowers@claude-plugins-official`). Use for anything that will live,
+  be shared, or span several files.
+- **`/quickstart`** — one paragraph → live URL. Use for disposable prototypes and quick experiments.
+
+**Standing instruction — market benchmark before building.** Whenever a brainstorm /
+requirements pass runs (Superpowers' brainstorm step, or any "let's plan a new feature/app"
+moment), **first web-search what already exists** for this kind of app — products, libraries,
+open-source starters — and summarize the options (with trade-offs) to the operator before
+designing. The operator is a non-developer; surfacing prior art prevents reinventing or
+under-scoping. The resulting spec should contain a short "market scan" section.
+
 ## Growth path
 
 Projects start with one entity and grow. `/scale-up` covers what to add and when:
