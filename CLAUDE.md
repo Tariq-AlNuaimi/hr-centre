@@ -42,16 +42,24 @@ All harness files are project-name-agnostic and survive forks unchanged.
 - **Domains**: optional. `<slug>.vercel.app` is permanent. Custom domains via Vercel UI when the team is ready to share externally.
 - **Secrets**: env vars in the Vercel project UI. Never traverse Claude chat. There is no GHCR, no Portainer, no SSH, no Caddy, no droplet — those were deleted (see ADR-006 for the rationale).
 
-## CI gates (no local action required)
-Three workflows gate the repo. Failures block merge once branch protection is on.
+## CI gates — DORMANT on the free plan; local `/ship` is the active gate
+On the current plan (solo operator, free GitHub plan with Actions billing blocked) the CI
+workflows **do not run**. The active enforcement gate is the local **`/ship`** skill, which
+mirrors their checks and runs on any machine (no `.git/hooks`, nothing machine-specific).
 
-| Workflow | When | What |
+**`/ship` order — stop on first failure:** typecheck → lint → tests → build → gitleaks → npm audit.
+
+The workflow files stay in the repo, dormant and labeled, and **activate at `/handoff`** when
+the IT team's paid plan can run Actions and enforce branch protection:
+
+| Workflow | When (once active) | What |
 |---|---|---|
-| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit critical + scaffold smokes (scalars-only + enums+relations) |
+| `verify.yml` | PR + push (non-main) | tsc + ESLint (incl. local plugin) + `node:test` contract suite + Next build + npm audit high + scaffold smokes (scalars-only + enums+relations) |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full history |
 | `sast.yml` | PR + push (any) | Semgrep with p/javascript, p/typescript, p/nextjs, p/react, p/owasp-top-ten, p/secrets |
 
-Branch protection is **optional** on this template. The audience (non-dev stakeholders) doesn't review PRs; the operator is the only person pushing. Turn it on once handed off.
+Branch protection is **optional** on this template and unenforceable on the free plan. Turn it
+on once handed off. See `SECURITY.md` §14 and ADR-007.
 
 ## Stack
 - **Framework:** Next.js 16 (App Router) · React 19 · TypeScript 5
@@ -87,7 +95,9 @@ To silence a rule on a justified line:
 If the suppression touches security, log it in `SECURITY.md` §12 with rule, location, justification, reviewer, date.
 
 ## Hard rules
-- **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push.
+- **Run `/ship` before every push.** This replaces branch protection for a solo operator and works on any machine. It runs typecheck → lint → tests → build → gitleaks → npm audit and stops on the first failure. Do not push on a red `/ship`.
+- **Before any push that touches auth, schemas, API routes, or anything under `lib/`, run the native `/code-review`** (fresh-context diff review) and resolve its findings. This replaces the CI review gate for a solo operator.
+- **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push (locally via `/ship`).
 - **Never log** any Restricted env var. The `no-secret-env-in-console` ESLint rule catches the obvious form; it does NOT catch interpolation into other variables — humans still apply judgement.
 - **Email bodies may carry Restricted content** (OTPs, presigned URLs). `lib/email.ts` logs only metadata. Never separately log `opts.text` / `opts.html`.
 - **Adding a Restricted column?** Extend `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` AND its membership assertion in `tests/contracts/audit-scrub.test.ts` in the same commit.
@@ -103,6 +113,26 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - **Never cast `session` to `any`.** The augmentation in `types/index.ts` already types `session.user.role: Role`. The `no-any-cast-on-session` ESLint rule guards against regression.
 - **Naming:** snake_case tables (via `@@map`); camelCase Prisma fields and TS; PascalCase React + Prisma models + enum types.
 
+## Project tiers (`personal` vs `shared`)
+
+Every fork declares a tier in `project.config.json` (`"tier": "personal" | "shared"`,
+default `personal`, set during `/first-fork`). The tier scales the *ceremony* — it never
+lowers the *security floor*.
+
+**Security floor — applies to BOTH tiers, never optional:**
+- Auth wrappers (`withAuth` / `withAdminAuth` / `withInternalAuth`) on every route.
+- No leaked secrets; zod validation at every boundary; no raw SQL.
+- The four `rihal-template/*` ESLint rules at `error`.
+- **Audit log ON** (the Prisma audit extension + `SCRUB_FIELDS`).
+- **`/ship` before every push.**
+
+**`shared` adds:** the `/handoff` package; the compliance/PDPL section in `SECURITY.md`
+(§9); CI activation at handoff; the formal findings register.
+
+**`personal` skips:** `/handoff` (it refuses to run — there's no IT team); the compliance
+section; CI ceremony; SLA/findings formality. (The audit log still stays ON — it's cheap
+and protects the operator.)
+
 ## Ask before
 - Installing a runtime dep > 50 KB minified — needs ADR or `/scale-up` recipe reference
 - Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/api-helpers.ts`, `middleware.ts`, anything under `lib/prisma/`, `eslint-rules/`, or `prisma/migrations/`
@@ -114,6 +144,26 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - Pushing to `main` directly when branch protection is on
 - Suppressing a Semgrep / gitleaks / npm-audit finding (log in `SECURITY.md` §12)
 - Changing the locked stack from ADR-001 — write a new superseding ADR first
+
+## Requirements & planning (Superpowers vs `/quickstart`)
+
+For real, multi-file features that deserve a spec, use **Superpowers** (the community
+lifecycle skill: brainstorm → spec → plan → TDD build). For a throwaway idea-to-URL, use
+**`/quickstart`** — don't spend spec ceremony on something disposable.
+
+- **Superpowers** — install it as a Claude Code plugin (read its repo README for the
+  current command; as of this writing: `/plugin marketplace add obra/superpowers-marketplace`
+  then `/plugin install superpowers@superpowers-marketplace`, or
+  `/plugin install superpowers@claude-plugins-official`). Use for anything that will live,
+  be shared, or span several files.
+- **`/quickstart`** — one paragraph → live URL. Use for disposable prototypes and quick experiments.
+
+**Standing instruction — market benchmark before building.** Whenever a brainstorm /
+requirements pass runs (Superpowers' brainstorm step, or any "let's plan a new feature/app"
+moment), **first web-search what already exists** for this kind of app — products, libraries,
+open-source starters — and summarize the options (with trade-offs) to the operator before
+designing. The operator is a non-developer; surfacing prior art prevents reinventing or
+under-scoping. The resulting spec should contain a short "market scan" section.
 
 ## Growth path
 

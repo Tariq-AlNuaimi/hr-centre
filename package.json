@@ -58,6 +58,7 @@
     "typescript": "^5"
   },
   "overrides": {
-    "nodemailer": "^7.0.7"
+    "nodemailer": "^7.0.7",
+    "tmp": "^0.2.7"
   }
 }

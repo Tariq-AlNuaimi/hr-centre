@@ -5,6 +5,16 @@ description: One-prompt provisioner for a brand-new prototype. Creates a GitHub 
 
 # /new-project — Idea → live URL on a custom domain, in one workflow run
 
+> **⚠️ SHELVED on the current plan (ADR-007).** This skill is itself a GitHub Actions
+> workflow (`new-project.yml`) and **cannot run while Actions billing is blocked**.
+> Until billing is restored, use **`/first-fork`** (manual on-ramp) instead — it is the
+> working path to a live URL on Vercel + Neon.
+>
+> Its **Cloudflare DNS step is still wired** post-ADR-006: `new-project.yml` uses
+> `CLOUDFLARE_API_TOKEN` + `NEON_API_KEY` + `VERCEL_TOKEN` (no DO / SSH / GHCR / Portainer
+> remain). So when Actions billing returns, this skill works as written — including the
+> custom-domain CNAME.
+
 The fastest path from "I want to start a brand new prototype" to a live URL
 on `<slug>.<apex>` with TLS. Single trigger, ~3 minutes. Backed by
 `.github/workflows/new-project.yml`.

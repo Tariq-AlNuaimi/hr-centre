@@ -11,6 +11,13 @@ hosting, different ops model) can take ownership cleanly.
 
 ## Preconditions
 
+- **Tier must be `shared`.** Read `project.config.json`. If `"tier"` is
+  `personal`, **stop and refuse** with a friendly message:
+  > "This is a `personal`-tier project — there's no IT team to hand it to, so
+  > `/handoff` doesn't apply. If this is actually a company project, set
+  > `\"tier\": \"shared\"` in `project.config.json` and run `/handoff` again."
+
+  Do not generate `HANDOFF.md` for a `personal`-tier project.
 - The project is feature-complete enough for the team to approve.
 - The latest commit is on `main` and pushed.
 - Vercel + Neon are still hooked up (so we can capture their state).
@@ -152,7 +159,11 @@ They're configured at `error` -- do not relax without reviewing
 
 ## Open issues / known TODOs
 
-<list anything in GitHub Issues, the operator's notes, or ADR migration triggers>
+- **Audit-log retention is unscheduled.** The `app/api/internal/audit-purge`
+  endpoint exists but nothing calls it on a schedule (the monthly workflow was
+  removed in ADR-006). If this project will live long-term, wire a Vercel Cron
+  or a Neon retention policy to POST to it. (SECURITY.md §5, finding T-06.)
+- <list anything in GitHub Issues, the operator's notes, or ADR migration triggers>
 
 ## Contacts
 
@@ -180,6 +191,9 @@ Show the operator:
 - A reminder: **rotate any shared secrets** (AUTH_SECRET, AUTH_GOOGLE_SECRET,
   SMTP_PASSWORD, SENTRY_AUTH_TOKEN, etc.) before sending. The IT team will
   generate their own.
+- The **audit-log-retention TODO** must appear in the generated `HANDOFF.md`
+  (see the template's "Open issues" section) — retention is unscheduled and the
+  IT team needs to wire Vercel Cron or a Neon policy if the project lives long-term.
 
 ## Do NOT in this skill
 

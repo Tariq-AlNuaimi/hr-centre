@@ -1,3 +1,5 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this manual provisioner cannot
+# run. Until billing is restored, use /first-fork (manual on-ramp) instead. See ADR-007.
 name: New Project
 
 on:
