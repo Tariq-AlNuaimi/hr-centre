@@ -4,7 +4,7 @@ Template-level security baseline. **When you fork this into a project, this file
 
 **This template is unclassified.** It contains no real data and is not a deployment. Tier and PDPL posture are set per project — see §9.
 
-> **2026-05-21 update (ADR-006).** The template pivoted to Vercel + Neon and removed the self-hosted droplet machinery: Portainer, Docker baseline, GHCR, Caddy, MinIO, the encrypted off-host backup sidecar (age + rclone), and the deploy / promote / rollback / restore / build-snapshot / audit-retention / docker-build / restore-test workflows. Sections below that reference any of those describe machinery that **no longer ships in the template**. The **data classification rules, audit-scrubbing invariants, hard rules, and threat-model categories remain authoritative** — only the deploy plumbing changed. If a fork's data class requires operator-managed encryption keys, encrypted off-host backups, or self-hosted infrastructure, that fork should not use this template; it belongs on the IT team's stack from day zero. See `docs/decisions/ADR-006-pivot-to-vercel-neon.md` for the rationale.
+> **This file reflects the Vercel + Neon reality** (ADR-006) as of the solo-rail optimization (ADR-007). The self-hosted machinery — Droplet, Portainer, GHCR, Caddy, MinIO, the age/rclone backup sidecar, and the deploy/rollback/restore/audit-retention workflows — was removed and no longer ships. The **data-classification rules, audit-scrubbing invariants, hard rules, and threat-model categories remain authoritative**; only the deploy plumbing changed. Forks that need operator-managed encryption keys, encrypted off-host backups, or self-hosted infra do not belong on this template — they belong on the IT team's stack from day zero.
 
 ---
 
@@ -14,14 +14,14 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 | Class | Definition | Examples in the template |
 |---|---|---|
-| **Public** | No harm if disclosed | Static assets in `public/`, i18n message files in `messages/` |
-| **Internal** | No individual harm if leaked | `audit_logs.action`, `audit_logs.entityType`, role definitions (`Role` enum), seed fixtures, `AUDIT_RETENTION_DAYS`, `BACKUP_ENABLED`, `RCLONE_REMOTE` / `BACKUP_BUCKET` names |
-| **Confidential** | Disclosure harms individuals / contracts / competitive position | `users.email`, `users.name`, `users.image`, `users.lastLoginAt`, `audit_logs.before` / `after` / `changes` JSON blobs (they snapshot whatever entity you write — if the entity holds Confidential fields, the audit row inherits the label), `audit_logs.ipAddress`, `audit_logs.userAgent`, any file uploaded to MinIO |
-| **Restricted** | Significant harm or legal liability | `AUTH_SECRET`, `POSTGRES_PASSWORD`, `MINIO_SECRET_KEY` / `MINIO_ROOT_PASSWORD`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `BACKUP_AGE_IDENTITY`, `RCLONE_CONFIG` (contains remote credentials), `users.passwordHash` (bcryptjs — irreversible but still secret-equivalent if exfiltrated), Auth.js JWT cookies in transit, `accounts.refresh_token` / `access_token` / `id_token`, MinIO presigned URLs (time-limited but exploitable in the window), `AUTH_GOOGLE_SECRET` if OAuth is enabled |
+| **Public** | No harm if disclosed | Static assets in `public/`, i18n message files in `messages/`, Sentry DSN |
+| **Internal** | No individual harm if leaked | `audit_logs.action`, `audit_logs.entityType`, role definitions (`Role` enum), seed fixtures, `AUDIT_RETENTION_DAYS`, `RECYCLE_BIN_RETENTION_DAYS` |
+| **Confidential** | Disclosure harms individuals / contracts / competitive position | `users.email`, `users.name`, `users.image`, `users.lastLoginAt`, `audit_logs.before` / `after` / `changes` JSON blobs (they snapshot whatever entity you write — if the entity holds Confidential fields, the audit row inherits the label), `audit_logs.ipAddress`, `audit_logs.userAgent`, `DATABASE_URL` (embeds the Neon credential) |
+| **Restricted** | Significant harm or legal liability | `AUTH_SECRET`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `users.passwordHash` (bcryptjs — irreversible but still secret-equivalent if exfiltrated), Auth.js JWT cookies in transit, `accounts.refresh_token` / `access_token` / `id_token`, `AUTH_GOOGLE_SECRET` if OAuth is enabled, `SMTP_PASSWORD` if email is enabled |
 
 **Operational rules per class:**
 
-- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5). MinIO presigned URLs are short-lived (1h default) and must never appear in audit metadata or server logs.
+- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5).
 - **Confidential:** auth + role gate at the API boundary. Logged on sensitive read where the project defines one (the template doesn't ship read-side audit — write-side only).
 - **Internal:** auth + role gate.
 - **Public:** can appear unauthenticated.
@@ -39,6 +39,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 - **OAuth:** Google provider is wired but commented out in `lib/auth.ts`. Uncomment + set `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` to enable.
 - **Public paths** (no session auth required) are listed in `middleware.ts`: `/login`, `/api/auth/*`, `/api/health`, `/api/internal/*`. Internal routes are gated by a shared-secret `x-internal-token` header via `withInternalAuth(tokenEnv, ...)` instead.
 - **`prismaUnfiltered` in the authorize callback** is intentional — it sees soft-deleted users so the callback can distinguish "no such email" from "deactivated user" without leaking which. The `where` clause still filters `deletedAt: null` so deleted users cannot log in.
+- **`next-auth@5` is a beta release sitting directly in the auth path.** Pin the exact version and review the release notes before upgrading — a breaking change here lands on the security boundary.
 
 **Brute-force defense:** 🟢 **In-memory token bucket in `lib/rate-limit.ts`, applied to POST on `/api/auth/*` at 10/min/IP.** Returns 429 with `Retry-After` when exceeded. Horizontally-scaled forks MUST swap to a shared-state limiter (e.g. `@upstash/ratelimit` backed by Redis or Upstash). The contract suite (`tests/contracts/rate-limit.test.ts`) asserts the bucket semantics on every push.
 
@@ -61,25 +62,16 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 | Layer | State |
 |---|---|
-| TLS in transit | ⚠️ **Not in the template.** The Next.js container speaks HTTP on `:3000`. Put a TLS-terminating reverse proxy (Caddy / nginx / Cloudflare) in front. HSTS header is emitted by `next.config.ts` regardless. |
-| Disk encryption | Inherits from host. Document per project. |
+| TLS in transit | 🟢 **Vercel terminates TLS automatically** for every `*.vercel.app` deployment and for custom domains added through the Vercel UI. No reverse proxy to manage. HSTS header is emitted by `next.config.ts` regardless. |
+| Disk encryption | Neon encrypts data at rest on its managed Postgres. The app itself is stateless on Vercel. |
 | Column encryption of Restricted fields | ⚠️ **None.** `passwordHash` is bcrypt-hashed (irreversible by design). If a downstream project introduces Restricted columns (salaries, API tokens), add pgcrypto or app-layer AES-256-GCM and a row here. |
-| Backup encryption | 🟢 Postgres dump + MinIO tar encrypted via `age` to a recipient public key at `/opt/backup/recipient` (host bind, mode 644). Identity (private key) lives **only** in `BACKUP_AGE_IDENTITY` repo secret — not on the host that performs encryption. Off-host copy via `rclone` to a vendor-agnostic S3-compatible target. On-host retention 30d, off-host 90d. See `deploy/backup.sh` + `docker-compose.prod.yml` `backup` service. Gated by `BACKUP_ENABLED=true` (defaults off until `/first-fork` step 6 flips it on). |
-| Tested restore | 🟢 Quarterly via `.github/workflows/restore-test.yml` — cron `0 3 1 1,4,7,10 *`. Decrypts the newest backup with `BACKUP_AGE_IDENTITY`, restores into an ephemeral Postgres service, asserts `SELECT count(*) > 0 FROM users`. Skips with a warning if backup secrets are not yet configured. |
-| Secrets in code | ✅ None. All in `.env` (mode 600 on the host) or repo secrets. `.env.example` is in git; `.env` is in `.gitignore`. Enforced by `secrets-scan.yml` (gitleaks) on every push. |
+| Secrets in code | ✅ None. All in Vercel project env vars (prod) or local `.env` (gitignored). `.env.example` is in git; `.env` is in `.gitignore`. Enforced by gitleaks — run locally via `/ship` (and by `secrets-scan.yml` once CI is active at handoff). |
 | Password hashing | ✅ bcryptjs only (`lib/auth.ts`). Default cost factor. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2. |
 | Auth.js JWT signing | ✅ `AUTH_SECRET` (Restricted). Rotation invalidates every session. |
-| MinIO at rest | Inherits from MinIO config + disk encryption. Default install is unencrypted at rest. Document per project. |
 
 **Default security headers** (emitted by `next.config.ts`): Content-Security-Policy, X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy, Strict-Transport-Security. CSP allows `'unsafe-inline'` for script/style (Ant Design SSR + Next bootstrap); `'unsafe-eval'` added only in dev for HMR.
 
-**Restore-drill cadence + reviewer roster** (project-specific; default template values):
-
-- Cron: 03:00 UTC on the 1st of Jan / Apr / Jul / Oct.
-- On-demand: any change to `deploy/backup.sh`, `restore-test.yml`, or `BACKUP_AGE_IDENTITY` / `RCLONE_CONFIG` repo secrets MUST be followed by a manual `workflow_dispatch` of `restore-test.yml`.
-- Reviewer-of-record: project owner.
-- **Where the identity lives:** GitHub repo secret only — never on the host that runs encryption. A host compromise cannot decrypt prior backups.
-- **Rotation:** annually + on personnel changes. Procedure mirrors `rihal-ops-portal` §4 — generate new keypair on host, copy the recipient public key to `/opt/backup/recipient`, paste the secret line into the `BACKUP_AGE_IDENTITY` repo secret, shred the temp file, trigger a `workflow_dispatch` of the next nightly backup, trigger `restore-test.yml` to verify the new identity decrypts the new ciphertext. Old ciphertext stays decryptable with the prior identity until the 90-day off-host window expires — keep the prior identity in escrow (1Password / Vault) labelled with that expiry date, then destroy.
+**Backups:** managed by Neon. The free tier has none; Neon Launch ($19/mo) adds point-in-time recovery up to 7 days. Choosing and configuring a backup tier is a per-project / IT-team decision — there is no template-managed backup pipeline anymore (removed in ADR-006).
 
 ---
 
@@ -91,56 +83,28 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 - **Soft-delete detection:** an `update` that sets `deletedAt` from null is rewritten as `action: "DELETE"`; an update that clears `deletedAt` is `action: "RESTORE"`.
 - **Attribution comes from `AuditContext`** seeded by `withAuth` / `withAdminAuth`. Calls outside the wrappers (`withInternalAuth` endpoints, cron jobs, seed scripts) attribute to `null` user.
 - **Restricted-field scrubbing:** `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` replaces values for `passwordHash`, `password`, `refresh_token`, `access_token`, `id_token`, `session_state`, `sessionToken`, `token`, `secret`, `apiKey`, `api_key`. The contract suite (`tests/contracts/audit-scrub.test.ts`) asserts the membership and behavior.
-- **Retention:** 🟢 `app/api/internal/audit-purge` deletes rows older than `AUDIT_RETENTION_DAYS` (default 365). Called monthly by `.github/workflows/audit-retention.yml` at 03:00 UTC on the 1st, gated by `AUDIT_PURGE_TOKEN`. The endpoint returns 503 if the token is unset; the workflow skips with a warning. **Forks set `AUDIT_PURGE_TOKEN` and `PROD_BASE_URL` in `/first-fork` step 3.**
+- **Retention:** ⚠️ **not scheduled.** `app/api/internal/audit-purge` exists and deletes rows older than `AUDIT_RETENTION_DAYS` (default 365) when called with `AUDIT_PURGE_TOKEN`, but **nothing calls it on a schedule** — there is no cron in the template. Retention is the IT team's responsibility post-handoff (Vercel Cron or a Neon retention policy). See finding T-06.
 - **Append-only:** enforced at the application layer. No DB-level `REVOKE` is set.
 
 ---
 
 ## 6. Secrets
 
-| Secret | Today | Notes |
-|---|---|---|
-| `AUTH_SECRET` | `.env` (Restricted) | JWT signing key. Rotation invalidates every session. `openssl rand -base64 32`. |
-| `POSTGRES_PASSWORD` | `.env` / Portainer stack (Restricted) | DB superuser-equivalent. Rotation requires DB lockout coordination. |
-| `MINIO_ROOT_PASSWORD` / `MINIO_SECRET_KEY` | `.env` (Restricted) | Rotation invalidates every presigned URL in flight. |
-| `MINIO_ROOT_USER` / `MINIO_ACCESS_KEY` | `.env` (Confidential) | Rotate as a unit with the secret half. **Forks should mint a scoped MinIO user during `/first-fork` step 7 and use the scoped credentials in the app, not the root.** |
-| `SEED_ADMIN_PASSWORD` | `.env` (Restricted) | One-shot bootstrap. Rotate on first login or remove the seed call after initial deploy. |
-| `AUDIT_PURGE_TOKEN` | `.env` + repo secret (Restricted, optional) | Gates `/api/internal/audit-purge`. `openssl rand -base64 48`. |
-| `BACKUP_AGE_IDENTITY` | GitHub repo secret only (Restricted) | age private key for decrypting backups. **Never** on the host. |
-| `BACKUP_AGE_RECIPIENT` | GitHub repo secret + host `/opt/backup/recipient` mode 644 (Restricted) | age **public** key used by `deploy/backup.sh` to encrypt. Technically not secret on its own — public keys never are — but classified Restricted here because pairing the recipient with the private identity in a compromise lets an attacker brute-force candidate plaintexts against captured ciphertext at high speed. Cloud-init writes the file on first boot from this secret. |
-| `RCLONE_CONFIG` | GitHub repo secret + host `/opt/backup/rclone.conf` mode 600 (Restricted) | Full rclone INI; contains DO Spaces access key + secret. Cloud-init writes the file on first boot from this secret (replacing the previous manual SSH step). |
-| `GHCR_PULL_TOKEN` | GitHub repo secret + Droplet `/root/.docker/config.json` mode 0600 (Restricted) | Classic PAT, `read:packages` scope ONLY (smallest scope GitHub exposes). Used by the Droplet's Docker daemon to pull the fork's private GHCR image. Leak blast radius is limited to "attacker can pull the operator's private GHCR images" — NOT repo source code, NOT GH Actions secrets, NOT write access. Account-scoped (packages permission is account-wide), so this is the ONE token the operator can reuse across every fork. Rotate annually. |
-| `RCLONE_REMOTE` / `BACKUP_BUCKET` | repo secret + Portainer stack (Confidential) | Remote name + bucket. |
-| `BACKUP_ENABLED` | Portainer stack (Internal) | Set to `true` after rclone + age are configured to wake the backup sidecar. |
-| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | `.env` (Restricted — only if OAuth enabled) | Rotate from Google Cloud Console. |
-| `DATABASE_URL` | `.env` (Confidential — embeds the password) | Reconstruct from `POSTGRES_*` rather than logging the URL. |
-| `IMAGE_TAG` | Portainer stack env (Internal) | Optional. Set to `sha-<short>` to pin prod to a specific build. Defaults to `latest`. |
-| `PORTAINER_WEBHOOK_URL` | GitHub repo secret (Restricted) | Anyone with this URL can trigger a redeploy. **Use a stack webhook** so the SHA query string is honored. |
-| `PROD_BASE_URL` | GitHub repo secret (Confidential) | Used by `audit-retention.yml` to know where to POST. |
-| GHCR push token | `GITHUB_TOKEN` (Restricted — managed by Actions) | Inherits the workflow token. |
-| `DO_API_TOKEN` | GH repo secret (Restricted) | DigitalOcean PAT — full-account scope (DO has no fine-grained PATs). Used by `deploy.yml` / `new-project.yml` to provision Droplets, reserved IPs, Spaces. **Use a dedicated automation DO account isolated from billing-owner.** Per ADR-004: the token now lives only in the repo's GitHub secrets — it never traverses Claude chat or the operator's shell during normal use. |
-| `CLOUDFLARE_API_TOKEN` | GH repo secret (Restricted) | Cloudflare API token scoped to `Zone.DNS:Edit` on one zone. Used by `deploy.yml` / `new-project.yml` to upsert A records. Per ADR-004: GH repo secret, not operator-side. |
-| `GH_AUTOMATION_TOKEN` | GH repo secret (Restricted) | GitHub PAT with `repo` + `workflow`. Used by ops workflows to set secrets on the forked repo, push to `deployment-state`, etc. Falls back to `GITHUB_TOKEN` (in-workflow) if unset, which lacks cross-repo scope. Per ADR-004. |
-| `SSH_PRIVATE_KEY` | GH repo secret (Restricted) | ed25519 private key the deploy / new-project workflows install into the runner's `~/.ssh/id_ed25519` to reach the Droplet for Portainer install. Generated fresh per project; **never** an operator's personal key. Per ADR-004. |
-| `SENTRY_AUTH_TOKEN` | GitHub repo secret (Restricted) | CI-only. Used by `docker-build.yml` to upload source-maps to Sentry on each main-branch build. Scope: `project:releases` + `org:read`. Missing token → upload step skips silently; app still runs. See ADR-002. |
-| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | GH repo + Portainer stack (Public) | Per-project Sentry DSN. **Not classified as Restricted** — Sentry DSNs are designed by Sentry to ship in client bundles. Documented here for clarity / completeness. See ADR-002. |
-| `SENTRY_ORG` / `SENTRY_PROJECT` | GitHub repo **vars** (Public) | Sentry org / project slugs. Repo vars (not secrets) so they're configurable per fork without exposing the token. |
-| `BETTER_UPTIME_API_KEY` | GH repo secret (Restricted) | Used by `deploy.yml` to POST a Better Uptime monitor against `https://<domain>/api/health` and to DELETE it on `action=destroy`. Holder can read / write / delete every monitor on the account — keep scoped to a project-specific Better Stack team. Per ADR-004: now a repo secret (was operator-shell-only before the CI pivot). See ADR-002. |
+Production secrets live in **Vercel project environment variables** (set in the Vercel UI per project). They never traverse Claude chat or the operator's shell. Local development reads them from `.env` (gitignored); `.env.example` documents the shape.
 
-**The `deployment-state` orphan branch (per ADR-004):** Workflows commit
-`.deploy-state.<env>.json` files to a long-lived orphan branch named
-`deployment-state`. The branch carries **resource IDs** (DO Droplet IDs,
-reserved IP, Spaces bucket name, Cloudflare zone+record ID, Portainer stack
-ID, Better Uptime monitor ID, GitHub repo metadata) plus the Portainer
-**stack webhook URL** and the **Portainer admin password** that
-`deploy.mjs` mints during install (the URL and password are needed for
-subsequent rollback / redeploy runs to authenticate against Portainer).
-Repo collaborators with read access can see this branch. Treat the branch
-as **Confidential** for any repo where Portainer admin equals control of
-the deployed app; restrict repo read access accordingly, or move the
-Portainer admin password to a per-env GH environment secret in a follow-up
-ADR if the threat model demands it. The branch carries **no** DO / CF / GH
-/ Sentry / age / rclone credentials — those stay in repo secrets only.
+| Secret | Class | Where | Notes |
+|---|---|---|---|
+| `AUTH_SECRET` | Restricted | Vercel env / `.env` | JWT signing key. Rotation invalidates every session. `openssl rand -base64 32`. |
+| `DATABASE_URL` | Confidential | Vercel env / `.env` | Embeds the Neon role password. Don't log the URL; rotate by rotating the Neon role. |
+| `SEED_ADMIN_PASSWORD` | Restricted | Vercel env / `.env` | One-shot bootstrap. Rotate on first login or remove the seed call after initial deploy. |
+| `AUDIT_PURGE_TOKEN` | Restricted (optional) | Vercel env / `.env` | Gates `/api/internal/audit-purge`. Endpoint returns 503 if unset. `openssl rand -base64 48`. |
+| `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Restricted (only if OAuth enabled) | Vercel env / `.env` | Rotate from Google Cloud Console. |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | `SMTP_PASSWORD` Restricted; rest Confidential | Vercel env / `.env` | Optional. `lib/email.ts` is gated by `SMTP_HOST`; unset → `sendEmail` returns `{ sent: false }`. Never log `opts.text` / `opts.html`. |
+| `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Public | Vercel env / `.env` | Public-by-design — Sentry DSNs ship in client bundles. **Not** Restricted. See ADR-002. |
+| `SENTRY_AUTH_TOKEN` | Restricted | Vercel env (build) | Optional. Uploads source-maps at build time. Scope: `project:releases` + `org:read`. Missing → upload skips; app still runs. See ADR-002. |
+| `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_ENVIRONMENT` | Public | Vercel env / `.env` | Org / project slugs + environment label. Not secret. |
+
+**CI-provisioning secrets (dormant on the free plan).** The `/new-project` GitHub Actions workflow (`new-project.yml`) — which cannot run until GitHub Actions billing is restored, see ADR-007 / Phase 6 — uses three repo-level secrets when active: `VERCEL_TOKEN`, `NEON_API_KEY`, and `CLOUDFLARE_API_TOKEN` (scoped to `Zone.DNS:Edit` on one zone, for the optional custom-domain CNAME). All Restricted. They live only as GitHub repo secrets, never operator-side. They are irrelevant to a fork that on-ramps via the manual `/first-fork`.
 
 **Rotation log:** (downstream projects record every rotation event here)
 
@@ -150,7 +114,7 @@ ADR if the threat model demands it. The branch carries **no** DO / CF / GH
 
 Rotate any secret after any chat-history-with-secret event. Rotating must never require a code change.
 
-`.env.example` lives in git. `.env` never does. ✅ (enforced by gitleaks)
+`.env.example` lives in git. `.env` never does. ✅ (enforced by gitleaks via `/ship`)
 
 ---
 
@@ -167,27 +131,40 @@ Template-level baseline. Re-run per project on: scope expansion, new external in
 ### T2 — Audit-log snapshot leak
 - **Status:** Mitigated by `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts`. Contract suite asserts redaction on every push.
 
-### T3 — MinIO presigned URL leak
-- **Control:** short expiry (1h default) ✅; never log presigned URLs ✅ (project-enforced); restrict bucket policy via scoped key in `/first-fork` step 7 — forks that skip this run on the MinIO root key (finding T-09).
+### T3 — Presigned upload-URL leak
+- **Status:** N/A by default — the template ships no file uploads. **Only relevant if `/scale-up` adds Vercel Blob.** When it does: keep upload URLs short-lived, never log them, and never let them land in audit metadata. Revisit this entry the moment uploads are wired.
 
-### T4 — Compromised Portainer webhook
-- **Control:** stored as GitHub repo secret ✅; webhook carries `?IMAGE_TAG=sha-<short>` so stack-webhook deployments pin to the build SHA ✅; rotate in Portainer if leaked.
+### T4 — Vercel/Neon account compromise
+- **Who:** anyone who phishes or hijacks the operator's Vercel or Neon login.
+- **Blast:** Vercel → can read every project env var (`AUTH_SECRET`, `DATABASE_URL`, etc.), redeploy arbitrary code, change domains. Neon → full read/write of the database, including every `passwordHash` and audit row.
+- **Control:** **enable MFA on both the Vercel and the Neon account.** Rotate `AUTH_SECRET` and the Neon role credential on any suspected compromise. Use a dedicated, isolated account for project ops, not a shared personal login.
 
-### T5 — Host compromise
-- **Blast:** full exfil of `AUTH_SECRET`, `POSTGRES_PASSWORD`, `MINIO_*`, every `passwordHash`, every uploaded file, every audit row. **But not the prior backups** — the age identity is in GitHub repo secrets, not on the host.
-- **Control:** project-specific host hardening. Backup identity isolation ✅ (prior backups remain decryptable only with `BACKUP_AGE_IDENTITY` repo secret).
+### T5 — Dependency / supply-chain compromise
+- **Who:** a malicious or compromised npm package in the tree.
+- **Blast:** arbitrary code in the build or runtime.
+- **Control:** `npm audit --audit-level=high --omit=dev` and gitleaks run locally via `/ship` on every push ✅; Semgrep (`p/owasp-top-ten`, `p/secrets`, …) via `/audit` on demand ✅; pin `next-auth@5` (beta) and review release notes before bumping (§2). CI mirrors these once active at handoff.
 
 ---
 
 ## 8. Incident response
 
-Project-specific. Template stub: rotate the suspected secret, take the public hostname offline at the reverse proxy or DNS, snapshot the host volumes, page the on-call. Filled in per fork.
+Project-specific. Template stub for the Vercel + Neon stack:
+
+1. **Rotate the suspected secret in the Vercel project env** (e.g. regenerate `AUTH_SECRET`; this invalidates every session).
+2. **Revoke / rotate the Neon role** behind `DATABASE_URL` — reset the password or create a fresh role and retire the old one.
+3. **Take the deployment offline via Vercel** if active exploitation is suspected (disable the deployment / remove the domain / roll back to a known-good deployment in the Vercel UI).
+4. **Page the project owner.** Record the timeline and the rotations performed in the §6 rotation log.
+
+Filled in per fork with real contacts and escalation paths.
 
 ---
 
 ## 9. Compliance baseline
 
-Project-specific. The template is unclassified. PDPL / GDPR / sector-specific posture documented in the fork's first project ADR (`/adr` step 11 of `/first-fork`).
+Project-specific. The template is unclassified. PDPL / GDPR / sector-specific posture documented in the fork's first project ADR.
+
+- **`shared`-tier projects** (flow to an IT handoff, may carry Omani PDPL or contractual obligations): fill in the compliance posture here before sharing externally.
+- **`personal`-tier projects** (never shared with the company, no handoff): have no external compliance surface — this section can stay as the template stub. See the tier switch documented in `CLAUDE.md` (ADR-007 / Phase 8).
 
 ---
 
@@ -196,42 +173,37 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 | Risk | Coverage |
 |---|---|
 | A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` boundary ✅; middleware enforces auth on every non-public path ✅. |
-| A02 Cryptographic Failures | TLS at reverse proxy (out of template) ⚠️; HSTS ✅; bcryptjs ✅; encrypted backups via age ✅. **Strengthened by ADR-004:** all vendor API tokens (DO, CF, GH, Better Uptime, Sentry, age identity, rclone) now live as GH repo secrets and are injected directly into Actions runners. They never traverse Claude chat or the operator's shell during normal ops, eliminating the chat-transcript exfiltration vector. |
-| A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; Semgrep `p/owasp-top-ten` on every push ✅. |
+| A02 Cryptographic Failures | TLS terminated automatically at Vercel ✅; HSTS ✅; bcryptjs ✅; Neon encrypts at rest ✅. Production secrets live in Vercel env vars (never in chat / shell). |
+| A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; Semgrep `p/owasp-top-ten` via `/audit` ✅. |
 | A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; no MFA (T-02). |
-| A05 Security Misconfiguration | Security headers + CSP ✅; non-root container ✅; standalone build ✅. |
-| A06 Vulnerable Components | `npm audit --audit-level=high --omit=dev` in `verify.yml` ✅. |
+| A05 Security Misconfiguration | Security headers + CSP ✅; standalone build ✅. |
+| A06 Vulnerable Components | `npm audit --audit-level=high --omit=dev` runs locally via `/ship` ✅ (and in `verify.yml` once CI is active). |
 | A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; rate limit ✅; no MFA ⚠️ (T-02); no account lockout ⚠️. |
-| A08 Software & Data Integrity | GHCR image SHA-pinning via stack webhook ✅; gitleaks blocking ✅; Semgrep blocking ✅; tested restore drill quarterly ✅. |
-| A09 Logging & Monitoring | Auto-audit ✅; retention enforced via `/api/internal/audit-purge` ✅; Sentry SaaS (opt-in per project, ADR-002) ✅; Better Uptime SaaS for `/api/health` (opt-in per project, ADR-002) ✅; no Prometheus / metrics yet ⚠️. |
+| A08 Software & Data Integrity | gitleaks (full-history secret scan) ✅; Semgrep ✅ — both run locally via `/ship` and `/audit`. |
+| A09 Logging & Monitoring | Auto-audit ✅; Sentry SaaS (opt-in per project, ADR-002) ✅; **audit-log retention is unscheduled** ⚠️ (T-06, IT to wire post-handoff); no Prometheus / metrics yet ⚠️. |
 | A10 SSRF | No outbound HTTP from the app by default. |
 
-ASVS Level 2 is a reasonable target once T-02 (MFA) and T-09 (scoped MinIO key per fork) are closed.
+ASVS Level 2 is a reasonable target once T-02 (MFA) is closed.
 
 ---
 
-## 11. Findings SLAs
+## 11. Findings register
 
-| Severity | SLA |
-|---|---|
-| Critical | 7d (feature-flag off if not patched) |
-| High | 30d |
-| Medium | 90d |
-| Low | best-effort |
+(The severity→SLA table was removed in ADR-007: there is no team to make response-time promises to on a solo, free-plan rail. Severities below still indicate priority.)
 
 | ID | Severity | Status | Title | Notes |
 |---|---|---|---|---|
 | T-01 | High | ✅ Closed (`e16a8c6`) | No rate limit on `/api/auth/*` | In-memory bucket, 10/min/IP. Horizontally-scaled forks swap to `@upstash/ratelimit`. Contract suite asserts. |
 | T-02 | High | Open | No MFA | Deferred — product decision (WebAuthn / TOTP / front with SSO). |
 | T-03 | High | ✅ Closed (`bb4918a`) | `passwordHash` snapshotted into `audit_logs` on user update | `SCRUB_FIELDS` redacts. Contract suite asserts. |
-| T-04 | Medium | ✅ Closed (`104bc45`) | GHCR image tag pinned to `:latest` | Resolves through `${IMAGE_TAG:-latest}`; CI passes `?IMAGE_TAG=sha-<short>` on the webhook. Opt-in to SHA pinning via Portainer **stack** webhook. |
+| T-04 | Medium | ✅ Closed (`104bc45`) | Container image tag pinned to `:latest` | N/A on the current stack — the GHCR/Portainer image pipeline was removed in ADR-006. Vercel builds and serves directly from git; rollback is "promote a prior deployment." |
 | T-05 | Medium | ✅ Closed (`de555fb`) | No CSP header | Conservative policy in `next.config.ts`. Caveats in §4. |
-| T-06 | Medium | ✅ Closed (`2aa745f`) | No audit-log retention policy | `/api/internal/audit-purge` + monthly `audit-retention.yml`. |
-| T-07 | Medium | ✅ Closed (`c5a6279`) | No encrypted backup pipeline | age + rclone sidecar; quarterly `restore-test.yml`. |
-| T-08 | Low | ✅ Closed (`bf5b542`) | `session.user.role` typed as `any` | `next-auth` `User` augmented in `types/index.ts`; `lib/auth.ts` cast-free. |
-| T-09 | Low | Per-fork (closed in `/first-fork` step 7) | MinIO uses root credentials in the app | Template ships with root; `/first-fork` mints a scoped key per fork. |
+| T-06 | Medium | ⚠️ Open (descoped) | No audit-log retention policy | `/api/internal/audit-purge` exists but is **unscheduled** (the monthly workflow was removed in ADR-006). Retention is the IT team's responsibility post-handoff (Vercel Cron or Neon policy). See §5. |
+| T-07 | Medium | N/A — removed in ADR-006 | No encrypted backup pipeline | The age/rclone backup sidecar was deleted. Backups are now Neon's responsibility (PITR on the Launch tier). |
+| T-08 | Low | ✅ Closed (`bf5b542`) | `session.user.role` typed as `any` | `next-auth` `User` augmented in `types/index.ts`; `lib/auth.ts` cast-free. Guarded by the `no-any-cast-on-session` ESLint rule. |
+| T-09 | Low | N/A — removed in ADR-006 | MinIO uses root credentials in the app | MinIO was deleted. The template ships no object storage; `/scale-up` adds Vercel Blob if needed. |
 
-**No-Critical/High gate before production.** An open finding blocks release unless a time-bound risk acceptance is documented here by the project owner.
+**No-High gate before sharing externally.** An open High finding should block an external share unless a time-bound risk acceptance is documented here by the project owner.
 
 ---
 
@@ -255,30 +227,30 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 ## 14. CI security gates
 
-Five workflows gate the repo. None require local action.
+Four workflows live in `.github/workflows/`:
 
 | Workflow | Triggers | What it gates | Blocks on |
 |---|---|---|---|
-| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint, `node:test` contract suite, `next build`, `npm audit --audit-level=high --omit=dev`, scaffold smoke | High+ CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
+| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, `next build`, `npm audit --audit-level=high --omit=dev`, scaffold smokes | High+ CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full git history | Any detected secret pattern |
 | `sast.yml` | PR + push (any) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets` | Any finding at default severity |
-| `audit-retention.yml` | Monthly cron (`0 3 1 * *`) + dispatch | POST `/api/internal/audit-purge` with `AUDIT_PURGE_TOKEN`; deletes rows older than `AUDIT_RETENTION_DAYS` | Non-200 from the endpoint; warns + skips if secrets unset |
-| `restore-test.yml` | Quarterly cron (`0 3 1 1,4,7,10 *`) + dispatch | Pull newest backup from rclone remote, decrypt with `BACKUP_AGE_IDENTITY`, restore into ephemeral Postgres, assert `count(users) > 0` | Empty `users` after restore = broken backup chain; warns + skips if secrets unset |
+| `new-project.yml` | Manual dispatch | One-shot provisioner (GitHub repo + Neon + Vercel + Cloudflare DNS). Not a gate. | — |
 
-Pushes to `main` go through `docker-build.yml` instead — if the build fails (which exercises the same compile path as `verify`), the Portainer webhook is not called and production does not redeploy.
-
-**Enable branch protection on `main`** during `/first-fork` step 10 to require `Verify`, `Secrets scan`, `SAST` checks before merge. The template ships the workflows but cannot configure rulesets on forks.
+**On the current plan (solo operator, free GitHub plan with Actions billing blocked) these workflows do not run.** Their security checks are mirrored locally by the `/ship` skill (typecheck → lint → tests → build → gitleaks → npm audit) plus the on-demand `/audit` skill (gitleaks + npm audit + Semgrep). **CI activates at `/handoff`**, when the IT team's paid plan can run Actions and enforce branch protection.
 
 ---
 
 ## 15. Test coverage gates
 
-The contract suite (`tests/contracts/*.test.ts`, run via `node:test` + `tsx`) covers the highest-risk invariants. Failures block `verify.yml` and therefore block merge.
+The contract suite (`tests/contracts/*.test.ts`, run via `node:test` + `tsx`) covers the highest-risk invariants. Failures block `/ship` locally (and `verify.yml` once CI is active).
 
 | Module | Test file | Covers |
 |---|---|---|
 | `lib/rate-limit.ts` | `tests/contracts/rate-limit.test.ts` | Allow within window, block past limit, separate buckets per `id`, separate buckets per IP, `x-real-ip` fallback, window expiry resets bucket |
 | `lib/prisma/audit-extension.ts` (the `scrub` + `computeChanges` + `SCRUB_FIELDS` exports) | `tests/contracts/audit-scrub.test.ts` | Per-field redaction, non-scrubbed pass-through, null/undefined edge cases, change detection, `updatedAt` skip, no-op detection, unscrubbed verbatim, `SCRUB_FIELDS` membership |
+| `lib/email.ts` | `tests/contracts/email.test.ts` | `sendEmail` gated by `SMTP_HOST` (returns `{ sent: false }` when unset), metadata-only logging (never body), transport invocation shape |
+| `lib/export.ts` | `tests/contracts/export.test.ts` | `toExcel` buffer generation, column mapping + `format` callbacks, `excelDownloadHeaders` content-type + filename |
+| `lib/sentry.ts` | `tests/contracts/sentry-scrub.test.ts` | Context scrubbing shares `SCRUB_FIELDS`, `setUserContext` forwards only the id (no email / name / PII), `setUserContext(null)` clears, `captureError` with/without context |
 
 Deliberately not covered yet (would need disproportionate Prisma / Auth.js mocking for the value): `withAuth` / `withAdminAuth` / `withInternalAuth` HOFs, soft-delete extension behavior. These are smoke-tested by every entity that uses them; explicit unit tests are a future bucket.
 
