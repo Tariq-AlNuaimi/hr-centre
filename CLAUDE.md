@@ -112,6 +112,26 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - **Never cast `session` to `any`.** The augmentation in `types/index.ts` already types `session.user.role: Role`. The `no-any-cast-on-session` ESLint rule guards against regression.
 - **Naming:** snake_case tables (via `@@map`); camelCase Prisma fields and TS; PascalCase React + Prisma models + enum types.
 
+## Project tiers (`personal` vs `shared`)
+
+Every fork declares a tier in `project.config.json` (`"tier": "personal" | "shared"`,
+default `personal`, set during `/first-fork`). The tier scales the *ceremony* — it never
+lowers the *security floor*.
+
+**Security floor — applies to BOTH tiers, never optional:**
+- Auth wrappers (`withAuth` / `withAdminAuth` / `withInternalAuth`) on every route.
+- No leaked secrets; zod validation at every boundary; no raw SQL.
+- The four `rihal-template/*` ESLint rules at `error`.
+- **Audit log ON** (the Prisma audit extension + `SCRUB_FIELDS`).
+- **`/ship` before every push.**
+
+**`shared` adds:** the `/handoff` package; the compliance/PDPL section in `SECURITY.md`
+(§9); CI activation at handoff; the formal findings register.
+
+**`personal` skips:** `/handoff` (it refuses to run — there's no IT team); the compliance
+section; CI ceremony; SLA/findings formality. (The audit log still stays ON — it's cheap
+and protects the operator.)
+
 ## Ask before
 - Installing a runtime dep > 50 KB minified — needs ADR or `/scale-up` recipe reference
 - Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/api-helpers.ts`, `middleware.ts`, anything under `lib/prisma/`, `eslint-rules/`, or `prisma/migrations/`

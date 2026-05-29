@@ -11,6 +11,13 @@ hosting, different ops model) can take ownership cleanly.
 
 ## Preconditions
 
+- **Tier must be `shared`.** Read `project.config.json`. If `"tier"` is
+  `personal`, **stop and refuse** with a friendly message:
+  > "This is a `personal`-tier project — there's no IT team to hand it to, so
+  > `/handoff` doesn't apply. If this is actually a company project, set
+  > `\"tier\": \"shared\"` in `project.config.json` and run `/handoff` again."
+
+  Do not generate `HANDOFF.md` for a `personal`-tier project.
 - The project is feature-complete enough for the team to approve.
 - The latest commit is on `main` and pushed.
 - Vercel + Neon are still hooked up (so we can capture their state).

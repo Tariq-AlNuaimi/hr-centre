@@ -1,0 +1,4 @@
+{
+  "tier": "personal",
+  "$comment": "tier governs project ceremony, NOT the security floor (which is identical for both). 'personal' = never shared with the company: no /handoff, no compliance section, no CI ceremony. 'shared' = company project that flows to an IT handoff and may carry PDPL/compliance obligations: adds /handoff, the compliance section in SECURITY.md, CI activation at handoff, formal findings register. Set during /first-fork. See CLAUDE.md 'Project tiers' for the full contract."
+}

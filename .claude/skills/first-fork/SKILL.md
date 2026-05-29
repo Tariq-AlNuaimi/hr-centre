@@ -27,6 +27,21 @@ npm run rebrand -- --slug <kebab-slug> --name '<Display Name>' --owner <gh-owner
 git add -A && git commit -m 'chore: rebrand from template' && git push
 ```
 
+### 1b. Set the project tier
+
+The repo ships `project.config.json` with `"tier": "personal"`. Ask the operator
+which this project is and set it:
+
+- **`personal`** — never shared with the company. No `/handoff`, no compliance
+  section, no CI ceremony. (Default — leave it.)
+- **`shared`** — a company project that will flow to an IT handoff and may carry
+  PDPL/compliance obligations. Set `"tier": "shared"`.
+
+The **security floor is identical for both** (auth wrappers, no leaked secrets,
+zod at the boundary, no raw SQL, the four ESLint rules, audit log ON, `/ship`
+before push). The tier only scales the ceremony on top. See `CLAUDE.md`
+"Project tiers". Commit the change with the rebrand commit in step 1.
+
 ### 2. Create a Neon Postgres project
 
 1. Open https://console.neon.tech → **New Project**.
