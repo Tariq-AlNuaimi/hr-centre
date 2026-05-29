@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { ok } from "@/lib/api-response";
 import { withInternalAuth } from "@/lib/api-helpers";
 
-// Internal endpoint -- called by .github/workflows/audit-retention.yml on a monthly cron.
+// Internal endpoint -- DORMANT. Nothing calls it on a schedule. The monthly
+// audit-retention workflow was removed in ADR-006 and the template ships no cron.
+// Audit-log retention is the IT team's responsibility post-handoff: wire a Vercel
+// Cron or a Neon retention policy to POST here if the project will live long-term.
 // Header: x-internal-token must match the AUDIT_PURGE_TOKEN env var.
 // Returns 503 if AUDIT_PURGE_TOKEN is unset (template ships without it configured).
 //
