@@ -1,0 +1,59 @@
+# UAT — browser acceptance tests (Playwright) against a deployed URL.
+#
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does
+# not run until Actions is enabled (a paid plan, or a public repo). See
+# SECURITY.md / ADR-007 for how the other workflows sit dormant the same way.
+#
+# Manual-first BY DESIGN: once Actions is enabled, run it from the GitHub
+# website — Actions tab -> "UAT" -> "Run workflow" — no terminal, any machine.
+# The screenshot report is uploaded as a downloadable artifact on the run page.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   UAT_BASE_URL   deployed URL to test (e.g. https://your-app.vercel.app)
+#   UAT_EMAIL      a UAT login (or set SEED_ADMIN_EMAIL)
+#   UAT_PASSWORD   its password   (or set SEED_ADMIN_PASSWORD)
+name: UAT
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Target URL (optional; overrides the UAT_BASE_URL secret)"
+        required: false
+  # Optional nightly run once Actions is enabled — uncomment to schedule:
+  # schedule:
+  #   - cron: "0 3 * * *"
+
+jobs:
+  uat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run UAT
+        env:
+          UAT_BASE_URL: ${{ github.event.inputs.base_url || secrets.UAT_BASE_URL }}
+          UAT_EMAIL: ${{ secrets.UAT_EMAIL }}
+          UAT_PASSWORD: ${{ secrets.UAT_PASSWORD }}
+          SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
+        run: npm run uat
+
+      - name: Upload UAT report (screenshots)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: uat-report
+          path: uat-report/
+          retention-days: 30
