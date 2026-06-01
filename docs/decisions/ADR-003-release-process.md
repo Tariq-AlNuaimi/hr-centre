@@ -1,9 +1,11 @@
 # ADR-003 — Release process: `/release` after `/promote`
 
-**Status:** Accepted
+**Status:** Superseded by ADR-006
 **Date:** 2026-05-18
 **Decision owner:** Tariq AlNuaimi
 **Reviewers:** —
+
+> **Superseded by ADR-006 (Vercel + Neon pivot).** This ADR describes a release flow built on `/promote`, Portainer prod webhooks, and `prod-YYYYMMDD-HHmm` tags — all of which ADR-006 removed. On the current rail, Vercel owns deploys (push to `main` → production; revert the commit to roll back) and there is no `/promote` or `/release` skill. Kept for historical context only.
 
 ## Context
 

@@ -1,9 +1,11 @@
 # ADR-004 — CI-driven ops (Claude proposes, GitHub Actions executes)
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR-006
 - **Date:** 2026-05-18
 - **Supersedes:** none (extends the operational model implied by ADR-001 / ADR-002 / ADR-003)
 - **Authors:** template maintainers
+
+> **Superseded by ADR-006 (Vercel + Neon pivot).** This ADR moved the `/deploy`, `/promote`, `/rollback`, `/restore`, `/release` ops skills into GitHub Actions hitting DigitalOcean, Cloudflare, Portainer, and Better Uptime, with per-environment state in `.deploy-state.<env>.json`. ADR-006 deleted that entire ops surface — Vercel now owns deploys natively, so none of those skills or vendor integrations exist on the current rail. (The leftover `deployment-state` branch on the remote is a relic of this model; it is not used by the Vercel rail and must never be propagated into forks.) Kept for historical context only.
 
 ## Context
 

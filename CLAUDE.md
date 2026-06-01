@@ -283,5 +283,6 @@ const data = [
 - `vercel.json` runs `prisma migrate deploy` on every build — keep migrations small and forward-compatible. Don't drop columns in a migration that the running version still reads.
 - File uploads are not wired in the template — `/scale-up` adds Vercel Blob when you need them.
 - PDF export is intentionally not in `lib/export.ts` — pdfkit's font tracing is fragile in serverless. Future ADR.
+- A root `app/not-found.tsx` exists alongside `app/[locale]/not-found.tsx` **on purpose.** Next 16 prerenders a synthetic `/_not-found` (and `/_global-error`) page at build time that lives *outside* the `[locale]` segment, so it has no locale/theme providers. The root `not-found.tsx` is deliberately self-contained (renders its own `<html>`/`<body>`, uses no React context) so that prerender can't fail. If a fork's `next build` dies during static prerender of `/_global-error` or `/_not-found` with `TypeError: Cannot read properties of null (reading 'useContext')`, that's the upstream Next 16 regression (vercel/next.js #85668, #86178, #84994) — the fix is a context-free root `not-found.tsx` (and, if needed, a context-free `app/global-error.tsx`), **not** editing the locale providers. The template's pinned next@16.2.6 / react@19.2.5 builds clean; the bug only bites forks that drift into a broken Next/React range.
 
 When in doubt, stop and ask.
