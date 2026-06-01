@@ -222,6 +222,7 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 | Date | Package | Bump | CVE | Outcome |
 |---|---|---|---|---|
 | 2026-05-29 | `tmp` (transitive via `exceljs@4.4.0`) | `0.2.5` → `^0.2.7` via `package.json` `overrides` | Path traversal via unsanitized prefix/postfix (High) | Pinned the patched `tmp` without changing `exceljs` (already latest). `/ship` npm-audit gate clean at the high level; export contract test green. |
+| 2026-06-01 | 14 advisories (2 low, 12 moderate): `postcss`/`next` chain (`@ant-design/nextjs-registry`, `@sentry/nextjs`, `next-intl`), `nodemailer` (SMTP injection), `exceljs`→`uuid`, dev-only `@prisma/dev`→`@hono/node-server` | No bump | Various moderate/low | **Reviewed, no action.** All below the gate: `verify.yml` / `/ship` run `npm audit --audit-level=high --omit=dev`, so 0 of these block (none are High/critical; dev-only ones excluded). No safe non-breaking fix exists — `npm audit fix --force` would downgrade `exceljs` 4.x → 3.4.0 (breaking, and would undo the `tmp` override above). `postcss`/`next` chain resolves when Next ships a patched release. **Watch:** `nodemailer` SMTP-injection has no patched version on the current range yet — re-check on next `nodemailer` release. |
 | — | — | — | — | — |
 
 ---
