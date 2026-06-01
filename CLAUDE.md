@@ -64,12 +64,15 @@ egress, surface the exact hosts to allowlist — do not mistake it for a missing
 | Network policy — allowed hosts | `api.vercel.com`, `console.neon.tech` (add `api.cloudflare.com` for custom domains; `*.neon.tech:5432` to seed from the session; `api.github.com` only if creating repos) |
 | Env var `NEON_API_KEY` | Neon account API key |
 | Env var `VERCEL_TOKEN` | Vercel account token |
-| Env var `CLOUDFLARE_API_TOKEN` | optional — only for `/deploy --apex <zone>` custom domains (scope `Zone.DNS:Edit`) |
+| Env var `CLOUDFLARE_API_TOKEN` | optional — only for custom domains (`--apex`, scope `Zone.DNS:Edit`) |
+| Env var `GH_AUTOMATION_TOKEN` | optional — only for **`/new-project`** (creates the repo); GitHub PAT, scopes `repo` + `workflow` |
 | Env var `NEON_ORG_ID` | optional — only if the key sees >1 Neon org |
 | Env var `VERCEL_TEAM_ID` | optional — only for Team-scoped Vercel projects |
 
-Custom domain: `npm run deploy -- ... --apex <your-zone> [--subdomain <label>]` →
-`https://<label>.<zone>` with auto-TLS (Cloudflare CNAME + Vercel domain attach).
+- **`/deploy`** (existing fork): `npm run deploy -- --slug … --owner … --admin-email … [--apex <zone> [--subdomain <label>]]`
+- **`/new-project`** (creates the repo from the template too): `npm run new-project -- --slug … --display-name … --owner … --admin-email … [--apex <zone>]` — also needs `GH_AUTOMATION_TOKEN` + egress to `api.github.com`.
+
+Custom domain via `--apex <zone>` → `https://<label>.<zone>` with auto-TLS (Cloudflare CNAME + Vercel domain attach).
 
 Set these in the Claude Code web **environment configuration** (network policy + environment
 variables), not in chat. See https://code.claude.com/docs/en/claude-code-on-the-web . The

@@ -5,19 +5,48 @@ description: One-prompt provisioner for a brand-new prototype. Creates a GitHub 
 
 # /new-project — Idea → live URL on a custom domain, in one workflow run
 
-> **⚠️ SHELVED on the current plan (ADR-007).** This skill is itself a GitHub Actions
-> workflow (`new-project.yml`) and **cannot run while Actions billing is blocked**.
-> Until billing is restored, use **`/first-fork`** (manual on-ramp) instead — it is the
-> working path to a live URL on Vercel + Neon.
+> **Two ways to run the same `scripts/new-project.mjs`:**
+> 1. **Headless from a Claude Code web session (or any machine)** — the default now.
+>    `npm run new-project -- ...` with the tokens set as env vars and egress allowed.
+>    No GitHub Actions needed. See **"Run headlessly"** below.
+> 2. **GitHub Actions workflow** (`new-project.yml`) — **SHELVED while Actions billing
+>    is blocked (ADR-007)**. Works as written once billing returns.
 >
-> Its **Cloudflare DNS step is still wired** post-ADR-006: `new-project.yml` uses
-> `CLOUDFLARE_API_TOKEN` + `NEON_API_KEY` + `VERCEL_TOKEN` (no DO / SSH / GHCR / Portainer
-> remain). So when Actions billing returns, this skill works as written — including the
-> custom-domain CNAME.
+> For an **existing** fork you've already built in (no repo creation), use **`/deploy`**.
+> For a fully manual browser walk-through, use **`/first-fork`**.
 
-The fastest path from "I want to start a brand new prototype" to a live URL
-on `<slug>.<apex>` with TLS. Single trigger, ~3 minutes. Backed by
-`.github/workflows/new-project.yml`.
+The fastest path from "I want to start a brand new prototype" to a live URL — it
+creates the GitHub repo from this template, the Neon DB, the Vercel project, an
+optional Cloudflare custom domain, and the first deploy, in one command.
+
+## Run headlessly (Claude Code web session or any machine)
+
+```sh
+npm run new-project -- \
+  --slug <kebab-slug> --display-name "<Display Name>" \
+  --owner <gh-owner> --admin-email <you@example.com> \
+  [--apex <your-zone> [--subdomain defaults-to-slug]]   # omit for <slug>.vercel.app only
+```
+
+**Tokens** (env vars, never in chat): `GH_AUTOMATION_TOKEN` (GitHub PAT, scopes
+`repo` + `workflow`), `NEON_API_KEY`, `VERCEL_TOKEN`, and `CLOUDFLARE_API_TOKEN`
+only when `--apex` is used. Optional: `VERCEL_TEAM_ID`, `NEON_ORG_ID`.
+
+**Egress** (Claude Code web network policy): `api.github.com`, `api.vercel.com`,
+`console.neon.tech` (and `api.cloudflare.com` with `--apex`). The script runs a
+**preflight** and, if a host is blocked, prints exactly which to allow and stops —
+a blocked host is an env-config issue, not a missing token. Docs:
+https://code.claude.com/docs/en/claude-code-on-the-web
+
+**Seed the admin** once the first build is green (the build runs `prisma migrate
+deploy`): from a machine with the Neon **direct** string,
+`DATABASE_URL="..." npx prisma db seed`. The script prints the generated admin
+email + password to rotate.
+
+## GitHub Actions path (shelved)
+
+Backed by `.github/workflows/new-project.yml` — identical logic, triggered from the
+Actions tab. Re-enable when Actions billing returns.
 
 ## Preconditions (one-time, per template repo)
 

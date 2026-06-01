@@ -50,8 +50,8 @@ if (!slug || !/^[a-z][a-z0-9-]{1,38}$/.test(slug)) {
 if (!adminEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) {
   bail(P, "admin-email is required and must look like an email");
 }
-if (!apex || apex.length < 4) {
-  bail(P, "apex is required (e.g. ops-rihal.com)");
+if (apex && apex.length < 4) {
+  bail(P, "--apex, when set, must be a domain you control in Cloudflare (e.g. ops-rihal.com)");
 }
 if (!owner) {
   bail(P, "owner is required (GitHub user or org that will hold the new repo)");
@@ -67,11 +67,11 @@ const missing = [];
 if (!GH_TOKEN) missing.push("GH_AUTOMATION_TOKEN");
 if (!NEON_KEY) missing.push("NEON_API_KEY");
 if (!VERCEL_TOKEN) missing.push("VERCEL_TOKEN");
-if (!CF_TOKEN) missing.push("CLOUDFLARE_API_TOKEN");
+if (apex && !CF_TOKEN) missing.push("CLOUDFLARE_API_TOKEN (required for --apex)");
 if (missing.length) bail(P, `missing env: ${missing.join(", ")}`);
 
 const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` : "";
-const customDomain = `${slug}.${apex}`;
+const customDomain = apex ? `${slug}.${apex}` : null;
 
 const authSecret = randomBytes(32).toString("base64");
 const seedAdminPassword = randomBytes(18)
@@ -87,6 +87,53 @@ async function api(label, url, opts = {}) {
   if (r.status === 204) return null;
   const ct = r.headers.get("content-type") || "";
   return ct.includes("application/json") ? r.json() : r.text();
+}
+
+// 0. Preflight -- is egress to the provider APIs allowed? In a Claude Code web
+// session, outbound is governed by an allowlist proxy; blocked hosts answer
+// HTTP 403 with `x-deny-reason: host_not_allowed`, or the socket never
+// connects. Probe first so the failure is one clear, actionable message rather
+// than a mid-run crash after a repo has already been created.
+const egressHosts = [
+  "https://api.github.com",
+  "https://api.vercel.com/v2/user",
+  "https://console.neon.tech/api/v2/users/me",
+];
+if (apex) egressHosts.push("https://api.cloudflare.com/client/v4/user");
+
+step(P, "Preflight: checking egress to provider APIs...");
+{
+  const blocked = [];
+  for (const url of egressHosts) {
+    const host = new URL(url).host;
+    try {
+      const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
+      if (r.headers.get("x-deny-reason")) blocked.push(host);
+    } catch {
+      blocked.push(host);
+    }
+  }
+  if (blocked.length) {
+    const hosts = [
+      "api.github.com",
+      "api.vercel.com",
+      "console.neon.tech",
+      ...(apex ? ["api.cloudflare.com (for the custom domain)"] : []),
+      "*.neon.tech (port 5432, only to seed from the session)",
+    ];
+    bail(
+      P,
+      "Egress to the provider APIs is blocked by this environment's network " +
+        `policy (blocked: ${blocked.join(", ")}).\n` +
+        "  This is NOT a credentials problem -- API tokens cannot bypass the proxy.\n" +
+        "  Fix: configure the Claude Code web environment with a network policy\n" +
+        "  that allows these hosts, then re-run:\n" +
+        hosts.map((h) => `    - ${h}`).join("\n") +
+        "\n  Docs: https://code.claude.com/docs/en/claude-code-on-the-web\n" +
+        "  (Or run this from a machine with open egress and the tokens set.)"
+    );
+  }
+  ok(P, "Egress OK.");
 }
 
 // 1. GitHub: create repo from template
@@ -185,51 +232,52 @@ const vercelProject = await api(
 );
 ok(P, `Vercel project: ${vercelProject.id} (${vercelProject.name})`);
 
-// 4. Cloudflare: zone lookup + CNAME create
-step(P, `Looking up Cloudflare zone for ${apex}...`);
-const zoneData = await api(
-  "CF zone lookup",
-  `https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(apex)}`,
-  { headers: { Authorization: `Bearer ${CF_TOKEN}` } }
-);
-const zoneId = zoneData.result?.[0]?.id;
-if (!zoneId) bail(P, `Cloudflare zone not found: ${apex}`);
-ok(P, `CF zone: ${zoneId}`);
-
-step(P, `Creating CNAME ${customDomain} -> cname.vercel-dns.com...`);
-try {
-  await api("CF DNS create", `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      type: "CNAME",
-      name: slug,
-      content: "cname.vercel-dns.com",
-      proxied: false,
-      ttl: 1,
-      comment: `${displayName} (created by new-project workflow)`,
-    }),
-  });
-  ok(P, `CF CNAME: ${customDomain} -> cname.vercel-dns.com (proxied: off)`);
-} catch (e) {
-  warn(P, `CF CNAME create failed; the record may already exist. Continuing. (${e.message})`);
-}
-
-// 5. Vercel: attach custom domain to the project
-step(P, `Adding ${customDomain} to Vercel project...`);
-try {
-  await api(
-    "Vercel domain add",
-    `https://api.vercel.com/v10/projects/${vercelProject.id}/domains${teamQs}`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: customDomain }),
-    }
+// 4-5. Cloudflare CNAME + attach custom domain to the project (only with --apex)
+if (apex) {
+  step(P, `Looking up Cloudflare zone for ${apex}...`);
+  const zoneData = await api(
+    "CF zone lookup",
+    `https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(apex)}`,
+    { headers: { Authorization: `Bearer ${CF_TOKEN}` } }
   );
-  ok(P, `Vercel domain: ${customDomain} (TLS issuance is automatic once DNS propagates)`);
-} catch (e) {
-  warn(P, `Vercel domain add failed; visit the project's Domains tab to add manually. (${e.message})`);
+  const zoneId = zoneData.result?.[0]?.id;
+  if (!zoneId) bail(P, `Cloudflare zone not found: ${apex}`);
+  ok(P, `CF zone: ${zoneId}`);
+
+  step(P, `Creating CNAME ${customDomain} -> cname.vercel-dns.com...`);
+  try {
+    await api("CF DNS create", `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "CNAME",
+        name: slug,
+        content: "cname.vercel-dns.com",
+        proxied: false,
+        ttl: 1,
+        comment: `${displayName} (created by new-project)`,
+      }),
+    });
+    ok(P, `CF CNAME: ${customDomain} -> cname.vercel-dns.com (proxied: off)`);
+  } catch (e) {
+    warn(P, `CF CNAME create failed; the record may already exist. Continuing. (${e.message})`);
+  }
+
+  step(P, `Adding ${customDomain} to Vercel project...`);
+  try {
+    await api(
+      "Vercel domain add",
+      `https://api.vercel.com/v10/projects/${vercelProject.id}/domains${teamQs}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: customDomain }),
+      }
+    );
+    ok(P, `Vercel domain: ${customDomain} (TLS issuance is automatic once DNS propagates)`);
+  } catch (e) {
+    warn(P, `Vercel domain add failed; visit the project's Domains tab to add manually. (${e.message})`);
+  }
 }
 
 // 6. Trigger first production deployment
@@ -262,8 +310,10 @@ const summary = [
   `- **GitHub repo:** ${ghRepo.html_url}`,
   `- **Vercel project:** https://vercel.com/dashboard (id \`${vercelProject.id}\`)`,
   `- **Neon project:** https://console.neon.tech/app/projects/${neon.project.id}`,
-  `- **Production URL:** https://${customDomain} (TLS issuance can take 1-2 min after CF DNS propagates)`,
-  `- **Vercel preview URL:** https://${slug}.vercel.app (active immediately)`,
+  ...(customDomain
+    ? [`- **Production URL:** https://${customDomain} (TLS can take 1-2 min after CF DNS propagates)`]
+    : []),
+  `- **Vercel URL:** https://${slug}.vercel.app (active once the first build finishes)`,
   "",
   "## Seeded admin credentials (rotate after first login)",
   "",
@@ -273,7 +323,7 @@ const summary = [
   "## Next steps",
   "",
   "1. Wait ~2 minutes for the first build to finish (Vercel runs migrate + seed automatically).",
-  `2. Open ${customDomain} and log in with the credentials above.`,
+  `2. Open ${customDomain ?? `${slug}.vercel.app`} and log in with the credentials above.`,
   `3. Start a Claude Code session on \`${owner}/${slug}\` and type \`/quickstart "<your idea>"\` to scaffold features.`,
   "",
 ].join("\n");
