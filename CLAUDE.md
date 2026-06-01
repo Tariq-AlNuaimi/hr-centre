@@ -22,6 +22,7 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
 - **Skills** in `.claude/skills/`:
   - `/new-project` — one-shot: GitHub repo + Neon + Vercel + Cloudflare DNS. Triggered via GitHub Actions; outputs URL + admin creds in the run summary.
   - `/first-fork` — connect Vercel + Neon manually, first deploy. Once per project. (Alternative to `/new-project` when you're already inside a fresh fork.)
+  - `/deploy` — provision Neon + Vercel for the **current** fork and ship it to a live URL headlessly (no browser). Runs from a Claude Code web session **iff** the environment's network policy allows `api.vercel.com` + `console.neon.tech`; otherwise from any machine with `NEON_API_KEY` + `VERCEL_TOKEN` set. See ADR-009.
   - `/quickstart` — idea → live URL. The most-used skill.
   - `/scaffold-entity` — Prisma model + CRUD routes + dashboard page in one shot.
   - `/scale-up` — add file uploads / cron / background jobs / realtime when the project needs them.
@@ -191,6 +192,7 @@ The rail handles all of these without migration. None require code restructuring
 - `npm run dev` — Next.js dev server
 - `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...']`
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
+- `npm run deploy -- --slug <kebab> --display-name '<Display>' --owner <gh-owner> --admin-email <email>` — provision Neon + Vercel for the current repo and deploy (needs `NEON_API_KEY` + `VERCEL_TOKEN`; egress to `api.vercel.com` + `console.neon.tech`)
 - `npm run migrate-from -- --source-db ... --target-db ... --map /tmp/migrate.json` — port a feature out of a monolith
 - `npm test` — contract suite (rate limit, audit scrub, email, export, sentry scrub) via `node:test`
 - `npm run uat` — Playwright UAT (set `UAT_BASE_URL` for a deployed target; local auto-starts dev). `npm run uat:install` once per machine; `npm run uat:report` to view screenshots

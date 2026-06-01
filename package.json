@@ -22,7 +22,8 @@
     "uat": "playwright test",
     "uat:headed": "playwright test --headed",
     "uat:report": "playwright show-report uat-report",
-    "uat:install": "playwright install chromium"
+    "uat:install": "playwright install chromium",
+    "deploy": "node scripts/deploy.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
