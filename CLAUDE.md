@@ -46,6 +46,32 @@ All harness files are project-name-agnostic and survive forks unchanged.
 - **Domains**: optional. `<slug>.vercel.app` is permanent. Custom domains via Vercel UI when the team is ready to share externally.
 - **Secrets**: env vars in the Vercel project UI. Never traverse Claude chat. There is no GHCR, no Portainer, no SSH, no Caddy, no droplet — those were deleted (see ADR-006 for the rationale).
 
+### Deploying a fork headlessly (`/deploy`) — every project
+
+`/deploy` (ADR-009) takes an **existing** fork to a live `<slug>.vercel.app` with one
+command — no browser, no GitHub Actions. It works from a Claude Code **web session** when
+the environment is configured for it, so it should be the default "make it live" path for
+every project once a build is green.
+
+**Standing instruction:** after a green `/ship`, if the fork has no Vercel project yet,
+**offer `/deploy`** (run it when the operator agrees). If its preflight reports blocked
+egress, surface the exact hosts to allowlist — do not mistake it for a missing token.
+
+**One-time environment setup (applies to ALL projects in that web environment):**
+
+| What | Value |
+|---|---|
+| Network policy — allowed hosts | `api.vercel.com`, `console.neon.tech` (add `*.neon.tech:5432` to seed from the session; `api.github.com` only if creating repos) |
+| Env var `NEON_API_KEY` | Neon account API key |
+| Env var `VERCEL_TOKEN` | Vercel account token |
+| Env var `NEON_ORG_ID` | optional — only if the key sees >1 Neon org |
+| Env var `VERCEL_TEAM_ID` | optional — only for Team-scoped Vercel projects |
+
+Set these in the Claude Code web **environment configuration** (network policy + environment
+variables), not in chat. See https://code.claude.com/docs/en/claude-code-on-the-web . The
+network policy is fixed at environment creation, so changing it takes effect in a **new**
+session. Tokens cannot bypass a blocked policy — egress is the gate.
+
 ## CI gates — DORMANT on the free plan; local `/ship` is the active gate
 On the current plan (solo operator, free GitHub plan with Actions billing blocked) the CI
 workflows **do not run**. The active enforcement gate is the local **`/ship`** skill, which
