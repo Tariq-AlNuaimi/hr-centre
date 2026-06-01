@@ -24,6 +24,7 @@ a network policy that allows:
 
 - `api.vercel.com`
 - `console.neon.tech`
+- `api.cloudflare.com` (only if attaching a custom domain with `--apex`)
 - `*.neon.tech` on port 5432 (only if you also run `prisma migrate`/`seed` from
   the session; otherwise seed from your laptop with the Neon **direct** string)
 
@@ -36,8 +37,18 @@ opened, run the same command from a laptop with the tokens set — it's identica
 |---|---|---|
 | `NEON_API_KEY` | Neon account API key | https://console.neon.tech/app/settings/api-keys |
 | `VERCEL_TOKEN` | Vercel account token | https://vercel.com/account/tokens |
+| `CLOUDFLARE_API_TOKEN` | only for `--apex`; custom token scoped `Zone.DNS:Edit` on the apex zone | https://dash.cloudflare.com/profile/api-tokens |
 | `VERCEL_TEAM_ID` | optional, only for Team-scoped projects | Vercel team settings |
 | `NEON_ORG_ID` | optional, only if your key sees multiple Neon orgs | Neon settings |
+
+## Custom domain (optional)
+
+Pass `--apex <zone>` (a domain you control in Cloudflare) and optionally
+`--subdomain <label>` (defaults to the slug) to get
+`https://<label>.<zone>` with automatic TLS. The script creates the
+`CNAME -> cname.vercel-dns.com` (DNS-only, not proxied) and attaches the domain
+to the Vercel project. Without `--apex`, the project is reachable at
+`<slug>.vercel.app` only. Requires `CLOUDFLARE_API_TOKEN`.
 
 ## Steps
 

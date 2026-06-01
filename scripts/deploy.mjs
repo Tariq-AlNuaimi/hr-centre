@@ -12,20 +12,19 @@
 //      exact hosts to add to the environment's network policy and stop.
 //   2. Create a Neon Postgres project; derive the pooled DATABASE_URL.
 //   3. Create a Vercel project linked to <owner>/<slug>, with the 5 env vars.
-//   4. Trigger the first production deploy (uses the repoId Vercel returns from
+//   4. (Optional, with --apex) Point a Cloudflare CNAME at Vercel and attach
+//      the custom domain so Vercel issues TLS.
+//   5. Trigger the first production deploy (uses the repoId Vercel returns from
 //      the git link -- no GitHub token needed).
-//   5. Print the URLs + seeded admin credentials to stdout.
-//
-// Cloudflare / custom domains are intentionally out of scope here -- the
-// <slug>.vercel.app URL is enough to share. Use scripts/new-project.mjs (in
-// Actions) when you want the apex-domain CNAME flow.
+//   6. Print the URLs + seeded admin credentials to stdout.
 //
 // Required env: NEON_API_KEY, VERCEL_TOKEN
-// Optional env: VERCEL_TEAM_ID, NEON_ORG_ID
+// Optional env: VERCEL_TEAM_ID, NEON_ORG_ID, CLOUDFLARE_API_TOKEN (for --apex)
 //
 //   node scripts/deploy.mjs --slug coo-update-dashboard \
 //     --display-name "COO Update Dashboard" \
-//     --owner tariq-alnuaimi --admin-email you@example.com
+//     --owner tariq-alnuaimi --admin-email you@example.com \
+//     [--apex example.com] [--subdomain coo]
 //
 // See .claude/skills/deploy/SKILL.md.
 
@@ -43,6 +42,8 @@ const { values } = parseArgs({
     owner: { type: "string" },
     "neon-region": { type: "string", default: "aws-eu-central-1" },
     ref: { type: "string", default: "main" },
+    apex: { type: "string" },        // Cloudflare zone apex, e.g. example.com
+    subdomain: { type: "string" },   // host label, defaults to the slug
   },
 });
 
@@ -52,6 +53,8 @@ const adminEmail = values["admin-email"];
 const owner = values.owner;
 const neonRegion = values["neon-region"];
 const ref = values.ref;
+const apex = values.apex;
+const subdomain = values.subdomain || slug;
 
 if (!slug || !/^[a-z][a-z0-9-]{1,38}$/.test(slug)) {
   bail(P, `--slug must match /^[a-z][a-z0-9-]{1,38}$/ (got: ${JSON.stringify(slug)})`);
@@ -60,14 +63,17 @@ if (!adminEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) {
   bail(P, "--admin-email is required and must look like an email");
 }
 if (!owner) bail(P, "--owner is required (GitHub user/org that holds the repo)");
+if (apex && apex.length < 4) bail(P, "--apex must be a domain you control in Cloudflare (e.g. example.com)");
 
 const NEON_KEY = process.env.NEON_API_KEY;
 const VERCEL_TOKEN = process.env.VERCEL_TOKEN;
 const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID || "";
+const CF_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
 
 const missing = [];
 if (!NEON_KEY) missing.push("NEON_API_KEY");
 if (!VERCEL_TOKEN) missing.push("VERCEL_TOKEN");
+if (apex && !CF_TOKEN) missing.push("CLOUDFLARE_API_TOKEN (required for --apex)");
 if (missing.length) {
   bail(
     P,
@@ -77,6 +83,7 @@ if (missing.length) {
 }
 
 const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` : "";
+const customDomain = apex ? `${subdomain}.${apex}` : null;
 
 // ---------------------------------------------------------------------------
 // 0. Preflight -- is egress to the provider APIs allowed?
@@ -86,24 +93,19 @@ const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` 
 // connection times out. We probe before doing any work so the failure is a
 // clear, actionable message instead of a mid-run crash.
 // ---------------------------------------------------------------------------
-const EGRESS_HOSTS = [
+const egressHosts = [
   "https://api.vercel.com/v2/user",
   "https://console.neon.tech/api/v2/users/me",
 ];
+if (apex) egressHosts.push("https://api.cloudflare.com/client/v4/user");
 
 async function preflight() {
   step(P, "Preflight: checking egress to provider APIs...");
   const blocked = [];
-  for (const url of EGRESS_HOSTS) {
+  for (const url of egressHosts) {
     const host = new URL(url).host;
     try {
-      const r = await fetch(url, {
-        method: "GET",
-        signal: AbortSignal.timeout(8000),
-        // No auth header -- we only care whether the request *leaves*. A real
-        // API answers 200/401/403-from-the-API; the proxy answers 403 with a
-        // deny-reason header, or the socket never connects.
-      });
+      const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
       if (r.headers.get("x-deny-reason")) blocked.push(host);
     } catch {
       blocked.push(host);
@@ -114,6 +116,7 @@ async function preflight() {
       "api.vercel.com",
       "console.neon.tech",
       "*.neon.tech (port 5432, for prisma migrate/seed)",
+      ...(apex ? ["api.cloudflare.com (for the custom domain)"] : []),
       "api.github.com (only if creating repos)",
     ];
     bail(
@@ -215,7 +218,55 @@ const vercelProject = await api(
 );
 ok(P, `Vercel project: ${vercelProject.id} (${vercelProject.name})`);
 
-// 3. Trigger the first production deploy. Vercel returns the numeric repoId on
+// 3. (Optional) Cloudflare CNAME + attach custom domain to the Vercel project
+if (apex) {
+  step(P, `Looking up Cloudflare zone for ${apex}...`);
+  const zoneData = await api(
+    "CF zone lookup",
+    `https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(apex)}`,
+    { headers: { Authorization: `Bearer ${CF_TOKEN}` } }
+  );
+  const zoneId = zoneData.result?.[0]?.id;
+  if (!zoneId) bail(P, `Cloudflare zone not found: ${apex} (is the token scoped to this zone?)`);
+  ok(P, `CF zone: ${zoneId}`);
+
+  step(P, `Creating CNAME ${customDomain} -> cname.vercel-dns.com...`);
+  try {
+    await api("CF DNS create", `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "CNAME",
+        name: subdomain,
+        content: "cname.vercel-dns.com",
+        proxied: false,
+        ttl: 1,
+        comment: `${displayName} (created by /deploy)`,
+      }),
+    });
+    ok(P, `CF CNAME: ${customDomain} -> cname.vercel-dns.com (proxied: off)`);
+  } catch (e) {
+    warn(P, `CF CNAME create failed; the record may already exist. Continuing. (${e.message})`);
+  }
+
+  step(P, `Adding ${customDomain} to the Vercel project...`);
+  try {
+    await api(
+      "Vercel domain add",
+      `https://api.vercel.com/v10/projects/${vercelProject.id}/domains${teamQs}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: customDomain }),
+      }
+    );
+    ok(P, `Vercel domain: ${customDomain} (TLS issues automatically once DNS propagates)`);
+  } catch (e) {
+    warn(P, `Vercel domain add failed; add ${customDomain} in the project's Domains tab. (${e.message})`);
+  }
+}
+
+// 4. Trigger the first production deploy. Vercel returns the numeric repoId on
 //    the git link, so we don't need a GitHub token to reference it.
 const repoId = vercelProject.link?.repoId;
 if (repoId) {
@@ -239,7 +290,7 @@ if (repoId) {
   warn(P, `No repoId on the Vercel git link; push to ${ref} to trigger the first deploy.`);
 }
 
-// 4. Operator-facing summary
+// 5. Operator-facing summary
 console.log(
   [
     "",
@@ -247,7 +298,10 @@ console.log(
     "",
     `- **Vercel project:** https://vercel.com/dashboard (id \`${vercelProject.id}\`)`,
     `- **Neon project:** https://console.neon.tech/app/projects/${neon.project.id}`,
-    `- **Production URL:** https://${slug}.vercel.app (live after the build finishes, ~90s)`,
+    `- **Vercel URL:** https://${slug}.vercel.app (live after the build finishes, ~90s)`,
+    ...(customDomain
+      ? [`- **Custom URL:** https://${customDomain} (TLS issues 1-2 min after Cloudflare DNS propagates)`]
+      : []),
     "",
     "The build runs `prisma migrate deploy` automatically. To seed the admin user,",
     "once the deploy is green, run from a machine with the Neon DIRECT string:",
