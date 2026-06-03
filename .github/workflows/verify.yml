@@ -13,6 +13,13 @@ on:
   # push:
   #   branches-ignore: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   # Dummy URL so prisma generate works without a real DB.
   DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
@@ -21,6 +28,7 @@ env:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
 
@@ -30,7 +38,7 @@ jobs:
           cache: 'npm'
 
       - name: Install deps
-        run: npm install --no-audit --no-fund
+        run: npm ci
 
       - name: Generate Prisma client
         run: npx prisma generate
@@ -67,7 +75,7 @@ jobs:
           npx tsc --noEmit
           git checkout -- prisma/schema.prisma \
             lib/prisma/soft-delete-extension.ts \
-            app/api/recycling-bin/route.ts \
+            lib/prisma/recyclable.ts \
             components/layout/AppSidebar.tsx
           rm -rf lib/validations/test-entity.ts \
             app/api/test-entity \
@@ -85,7 +93,7 @@ jobs:
           npx tsc --noEmit
           git checkout -- prisma/schema.prisma \
             lib/prisma/soft-delete-extension.ts \
-            app/api/recycling-bin/route.ts \
+            lib/prisma/recyclable.ts \
             components/layout/AppSidebar.tsx
           rm -rf lib/validations/test-rel.ts \
             app/api/test-rel \

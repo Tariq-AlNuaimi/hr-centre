@@ -12,11 +12,20 @@ on:
   # pull_request:
   # push:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: sast-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   semgrep:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container:
-      image: semgrep/semgrep
+      # Pinned tag (not :latest) for reproducibility. Bump deliberately.
+      image: semgrep/semgrep:1.139.0
     steps:
       - uses: actions/checkout@v5
 

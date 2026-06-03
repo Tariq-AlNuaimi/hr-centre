@@ -1,0 +1,24 @@
+# Dependabot keeps dependencies patched. Like the workflows, this is most useful
+# once the project is on a plan that runs Actions (it opens PRs that CI then
+# gates). Grouped to keep PR noise low. See SECURITY.md §13 (CVE remediations).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for routine minor/patch bumps; majors come as individual PRs.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+    labels:
+      - "dependencies"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "github-actions"
