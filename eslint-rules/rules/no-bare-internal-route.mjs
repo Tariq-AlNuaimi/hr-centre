@@ -42,14 +42,31 @@ export default {
     if (!INTERNAL_ROUTE_PATTERN.test(filename)) return {};
     return {
       ExportNamedDeclaration(node) {
-        if (!node.declaration || node.declaration.type !== "VariableDeclaration") return;
-        for (const decl of node.declaration.declarations) {
-          if (!decl.id || decl.id.type !== "Identifier") continue;
-          if (!HANDLER_NAMES.has(decl.id.name)) continue;
-          if (wrapsWithInternalAuth(decl.init)) continue;
-          context.report({ node: decl, messageId: "noBareInternalRoute" });
+        if (!node.declaration) return;
+        // `export const GET = withInternalAuth(...)`
+        if (node.declaration.type === "VariableDeclaration") {
+          for (const decl of node.declaration.declarations) {
+            if (!decl.id || decl.id.type !== "Identifier") continue;
+            if (!HANDLER_NAMES.has(decl.id.name)) continue;
+            if (wrapsWithInternalAuth(decl.init)) continue;
+            context.report({ node: decl, messageId: "noBareInternalRoute" });
+          }
+          return;
+        }
+        // `export function GET() {}` / `export async function GET() {}` --
+        // a function-declaration handler can't be wrapped with
+        // withInternalAuth, so it always bypasses the gate.
+        if (node.declaration.type === "FunctionDeclaration") {
+          const id = node.declaration.id;
+          if (id && HANDLER_NAMES.has(id.name)) {
+            context.report({ node: node.declaration, messageId: "noBareInternalRoute" });
+          }
         }
       },
+      // `export function GET() {}` without the named-declaration wrapper, and
+      // any other top-level function declaration that is later exported, is
+      // caught above. Direct `export default function GET` is not a valid route
+      // handler name, so it is intentionally not matched.
     };
   },
 };

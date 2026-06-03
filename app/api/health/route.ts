@@ -5,7 +5,9 @@ export async function GET() {
   const checks: Record<string, string> = {};
 
   try {
-    await prismaUnfiltered.$queryRawUnsafe("SELECT 1");
+    // Parameterized tagged-template form (not $queryRawUnsafe) to honor the
+    // template's own "no raw-unsafe" hard rule, even for a constant query.
+    await prismaUnfiltered.$queryRaw`SELECT 1`;
     checks.db = "ok";
   } catch {
     checks.db = "error";

@@ -1,16 +1,25 @@
 // instrumentation.ts — Next.js 16 server-side instrumentation entry point.
 //
 // Called by Next once per process at boot, separately for the `nodejs` and
-// `edge` runtimes. Used here to wire `@sentry/nextjs` for error tracking +
-// auto-instrumentation. DSN comes from the per-project SENTRY_DSN env (see
-// lib/env.ts + ADR-002). If unset, Sentry init is a no-op so local dev / CI
-// without Sentry continues to work.
+// `edge` runtimes. Used here to (1) fail-fast validate env via lib/env.ts and
+// (2) wire `@sentry/nextjs` for error tracking + auto-instrumentation. DSN
+// comes from the per-project SENTRY_DSN env. If unset, Sentry init is a no-op
+// so local dev / CI without Sentry continues to work.
 //
 // See ADR-002 (observability stack).
 
 import * as Sentry from "@sentry/nextjs";
 
 export async function register() {
+  // Validate required env once, at server boot, on the Node runtime. This is
+  // the only import of lib/env.ts -- without it the zod schema is dead code and
+  // a misconfigured DATABASE_URL / AUTH_SECRET surfaces as a late runtime crash
+  // instead of a clear boot-time error. Edge runtime gets a subset of env, so
+  // we don't parse there.
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("./lib/env");
+  }
+
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return;
 

@@ -16,7 +16,7 @@ const envSchema = z.object({
 
   // Seeding
   SEED_ADMIN_EMAIL: z.string().email().default("admin@example.com"),
-  SEED_ADMIN_PASSWORD: z.string().min(6).default("changeme"),
+  SEED_ADMIN_PASSWORD: z.string().min(8).default("changeme"),
 
   // Recycling bin
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),

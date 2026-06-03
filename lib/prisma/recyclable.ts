@@ -10,6 +10,27 @@ export type RecyclableRecord = {
   [key: string]: unknown;
 };
 
+// Single source of truth for which entity types participate in the recycling
+// bin. BOTH the list/restore route AND the permanent-delete route validate
+// against this -- never index prismaUnfiltered by an unvalidated URL segment.
+// /scaffold-entity appends here in lockstep with registerSoftDeleteModel().
+export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
+  User: { displayField: "name" },
+  // Add more entity types here as you create them:
+  // Project: { displayField: "name" },
+};
+
+/**
+ * Returns the camelCase Prisma delegate accessor for a recyclable entity type,
+ * or null if the type is not on the allowlist. Callers MUST treat null as 404.
+ */
+export function recyclableAccessor(entityType: string): string | null {
+  if (!Object.prototype.hasOwnProperty.call(RECYCLABLE_ENTITY_TYPES, entityType)) {
+    return null;
+  }
+  return entityType[0].toLowerCase() + entityType.slice(1);
+}
+
 export type RecyclableDelegate = {
   findMany: (args: {
     where: { deletedAt: { not: null } };

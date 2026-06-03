@@ -4,7 +4,7 @@ import { emailSchema } from "./common";
 export const createUserSchema = z.object({
   email: emailSchema,
   name: z.string().min(1).max(255),
-  password: z.string().min(6).max(128),
+  password: z.string().min(8).max(128),
   role: z.enum(["ADMIN", "EDITOR", "VIEWER"]).default("VIEWER"),
 });
 

@@ -2,14 +2,13 @@ import { NextRequest } from "next/server";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-helpers";
 import { ok, notFound } from "@/lib/api-response";
-import type { RecyclableDelegate, RecyclableRecord } from "@/lib/prisma/recyclable";
-
-// Register all soft-deletable entity types and their display field
-const ENTITY_TYPES: Record<string, { displayField: string }> = {
-  User: { displayField: "name" },
-  // Add more entity types here as you create them:
-  // Project: { displayField: "name" },
-};
+import {
+  RECYCLABLE_ENTITY_TYPES as ENTITY_TYPES,
+  recyclableAccessor,
+  type RecyclableDelegate,
+  type RecyclableRecord,
+} from "@/lib/prisma/recyclable";
+import { recordAudit } from "@/lib/prisma/audit-extension";
 
 const recyclable = prismaUnfiltered as unknown as Record<string, RecyclableDelegate>;
 
@@ -56,11 +55,11 @@ export const GET = withAuth(async () => {
 export const POST = withAuth(async (request: NextRequest) => {
   const { entityType, id } = (await request.json()) as { entityType: string; id: string };
 
-  if (!ENTITY_TYPES[entityType]) {
+  const accessor = recyclableAccessor(entityType);
+  if (!accessor) {
     return notFound(entityType);
   }
 
-  const accessor = entityType[0].toLowerCase() + entityType.slice(1);
   const record = (await recyclable[accessor].findUnique({
     where: { id },
   })) as RecyclableRecord | null;
@@ -72,6 +71,16 @@ export const POST = withAuth(async (request: NextRequest) => {
   const restored = await recyclable[accessor].update({
     where: { id },
     data: { deletedAt: null, deletedBy: null },
+  });
+
+  // The restore goes through prismaUnfiltered (outside the audit extension),
+  // so record the RESTORE row explicitly.
+  await recordAudit(prismaUnfiltered, {
+    entityType,
+    entityId: id,
+    action: "RESTORE",
+    before: record as unknown as Record<string, unknown>,
+    after: restored as unknown as Record<string, unknown>,
   });
 
   return ok(restored);

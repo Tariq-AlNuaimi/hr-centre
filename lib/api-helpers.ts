@@ -32,7 +32,16 @@ export function withAuth(handler: AuthedHandler) {
     // No-op if Sentry isn't configured.
     setUserContext(session.user.id);
 
-    return withAuditContext({ userId: session.user.id }, () =>
+    // Capture request attribution so the audit extension records who + from
+    // where. ipAddress / userAgent are Confidential (see SECURITY.md §1); they
+    // are stored on audit_logs, never logged.
+    const ipAddress =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      undefined;
+    const userAgent = req.headers.get("user-agent") ?? undefined;
+
+    return withAuditContext({ userId: session.user.id, ipAddress, userAgent }, () =>
       handler(req, { ...ctx, session })
     );
   };

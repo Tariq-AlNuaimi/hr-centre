@@ -28,6 +28,22 @@ export default {
   },
   create(context) {
     let isClient = false;
+
+    function isPrismaPath(src) {
+      if (typeof src !== "string") return false;
+      return (
+        PRISMA_LIB_PATHS.includes(src) ||
+        src.endsWith("/lib/prisma") ||
+        src.endsWith("/lib/prisma/client")
+      );
+    }
+
+    function reportIfPrisma(node, src) {
+      if (isPrismaPath(src)) {
+        context.report({ node, messageId: "noPrismaInClient", data: { path: src } });
+      }
+    }
+
     return {
       Program(node) {
         for (const stmt of node.body) {
@@ -45,20 +61,25 @@ export default {
           }
         }
       },
+      // import x from "@/lib/prisma"
       ImportDeclaration(node) {
         if (!isClient) return;
-        const src = node.source && node.source.value;
-        if (typeof src !== "string") return;
-        if (
-          PRISMA_LIB_PATHS.includes(src) ||
-          src.endsWith("/lib/prisma") ||
-          src.endsWith("/lib/prisma/client")
-        ) {
-          context.report({
-            node,
-            messageId: "noPrismaInClient",
-            data: { path: src },
-          });
+        reportIfPrisma(node, node.source && node.source.value);
+      },
+      // export { prisma } from "@/lib/prisma"  /  export * from "@/lib/prisma"
+      ExportNamedDeclaration(node) {
+        if (!isClient || !node.source) return;
+        reportIfPrisma(node, node.source.value);
+      },
+      ExportAllDeclaration(node) {
+        if (!isClient || !node.source) return;
+        reportIfPrisma(node, node.source.value);
+      },
+      // const p = await import("@/lib/prisma")
+      ImportExpression(node) {
+        if (!isClient) return;
+        if (node.source && node.source.type === "Literal") {
+          reportIfPrisma(node, node.source.value);
         }
       },
     };

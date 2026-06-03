@@ -40,6 +40,46 @@ type AnyClient = {
   };
 };
 
+// Minimal shape needed to write an audit row through any client (notably
+// `prismaUnfiltered`, which is outside the audit extension). `create` is typed
+// loosely so Prisma's generated delegate (with its strict input type) remains
+// assignable -- same pattern the extension uses for its internal audit writes.
+type AuditWriter = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  auditLog: { create: (args: any) => Promise<unknown> };
+};
+
+/**
+ * Explicitly record an audit row for an operation performed OUTSIDE the audit
+ * extension (e.g. recycling-bin restore / permanent delete go through
+ * `prismaUnfiltered`). Pulls attribution from the request's AuditContext and
+ * scrubs Restricted fields, identical to the automatic extension path.
+ */
+export async function recordAudit(
+  client: AuditWriter,
+  entry: {
+    entityType: string;
+    entityId: string;
+    action: "CREATE" | "UPDATE" | "DELETE" | "RESTORE";
+    before?: Record<string, unknown> | null;
+    after?: Record<string, unknown> | null;
+  }
+) {
+  const ctx = getAuditContext();
+  await client.auditLog.create({
+    data: {
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      action: entry.action,
+      before: scrub(entry.before ?? undefined),
+      after: scrub(entry.after ?? undefined),
+      userId: ctx.userId,
+      ipAddress: ctx.ipAddress,
+      userAgent: ctx.userAgent,
+    },
+  });
+}
+
 function modelAccessor(client: unknown, model: string) {
   const key = model[0].toLowerCase() + model.slice(1);
   return (client as AnyClient)[key];
