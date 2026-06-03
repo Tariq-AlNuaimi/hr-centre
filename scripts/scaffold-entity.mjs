@@ -630,6 +630,7 @@ export default function ${Pascal}sPage() {
     }
   }, [page, pageSize, search, list, showError]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchItems(); }, [fetchItems]);
 
   const handleDelete = async (id: string) => {

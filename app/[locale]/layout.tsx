@@ -48,7 +48,12 @@ export default async function LocaleLayout({
   const initialIsDark = initialMode === "dark";
 
   return (
-    <html lang={locale} dir={direction}>
+    // suppressHydrationWarning: the THEME_INIT_SCRIPT below sets data-theme +
+    // color-scheme on <html> BEFORE hydration (to avoid a theme flash), so the
+    // server markup intentionally differs from the post-script DOM. This is the
+    // idiomatic React escape hatch for pre-hydration theme scripts; it scopes
+    // the suppression to <html>'s own attributes only.
+    <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
