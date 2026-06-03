@@ -1,9 +1,18 @@
 # ADR-002 — Observability stack: Sentry SaaS + Better Uptime SaaS
 
-**Status:** Accepted
+**Status:** Accepted (Sentry half); **Better-Uptime / `/deploy` integration partially superseded by ADR-006**
 **Date:** 2026-05-18
 **Decision owner:** Tariq AlNuaimi
 **Reviewers:** —
+
+> **2026-05-21 — ADR-006 superseded the self-hosted ops half of this ADR.** The
+> Sentry wiring is live and accurate (`instrumentation.ts`, `instrumentation-client.ts`,
+> `lib/sentry.ts`, `tests/contracts/sentry-scrub.test.ts`). But the **Better Uptime**
+> auto-registration, the `scripts/lib/better-uptime.mjs` helper, the `docker-build.yml`
+> source-map step, and the "`/deploy` registers a monitor" / `first-fork` step 12
+> claims below describe the deleted DigitalOcean/Portainer ops surface — they do **not**
+> exist on the Vercel + Neon rail. Uptime is now an optional `/scale-up` add-on. Treat
+> the Better-Uptime sections as historical.
 
 ## Context
 

@@ -15,13 +15,19 @@ shows you the screenshot + step so you (or a follow-up edit) can fix it.
 
 ## Backbone
 
-Committed Playwright specs in `tests/uat/`, driven by `playwright.config.ts`:
-- `helpers.ts` — `UAT_PREFIX` tagging, `uatName()`, per-role credential lookup, role session paths. (Named so neither Playwright nor the unit runner collects it.)
-- `auth.setup.ts` — logs in **per role** from env creds, saves one session per role.
-- `smoke.uat.ts` — authenticated walkthrough of each screen, with screenshots.
+**What ships** in `tests/uat/` today (driven by `playwright.config.ts`):
+- `auth.setup.ts` — logs in once from `UAT_EMAIL`/`UAT_PASSWORD` (or the seeded
+  `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`) and saves one storage state.
+- `smoke.uat.ts` — authenticated walkthrough of the shipped screens, with screenshots.
 - `guard.uat.ts` — unauthenticated visitors are bounced to login.
-- `roles.uat.ts` — **permission matrix**: each role reaches what it should and is blocked (→ forbidden/login) from what it shouldn't.
+
+**Add these as the app grows** (they are NOT in the template — create them when you
+need multi-role / data-writing coverage):
+- `helpers.ts` — `UAT_PREFIX` tagging, `uatName()`, per-role credential lookup.
+- a per-role `auth.setup.ts` (one storage state per role from `UAT_<ROLE>_*` env vars).
+- `roles.uat.ts` — permission matrix: each role reaches what it should, is blocked from what it shouldn't.
 - `*.uat.ts` journeys — data-writing flows (create → verify → edit), one per key entity.
+- `scripts/uat-cleanup.ts` + an `uat:cleanup` npm script — only if a flow creates records with no UI delete path.
 
 > Spec files are `*.uat.ts` + `auth.setup.ts`; the chromium project sets
 > `testMatch: /\.uat\.ts$/` so they run AND so the unit runner (which matches
@@ -46,25 +52,24 @@ Committed Playwright specs in `tests/uat/`, driven by `playwright.config.ts`:
    machine. **Do NOT report a pass when the browser could not launch** — that's a
    "could not run," not a green.
 
-3. **Check credentials — env only, per role.** Log in using per-role env vars
-   (e.g. `UAT_ADMIN_EMAIL`/`UAT_ADMIN_PASSWORD`, `UAT_<ROLE>_EMAIL`/`_PASSWORD`),
-   falling back to `SEED_ADMIN_*`. Never hardcode. A role with no creds is
-   skipped (so a subset still runs); admin is needed for the main suite. If a
-   required login is unset, the setup step fails with a clear message — surface it.
+3. **Check credentials — env only.** The shipped `auth.setup.ts` logs in from
+   `UAT_EMAIL`/`UAT_PASSWORD`, falling back to `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`.
+   Never hardcode. If the login is unset, the setup step fails with a clear message —
+   surface it. (For multi-role coverage, add per-role `UAT_<ROLE>_*` vars + a per-role
+   setup as described in the Backbone "add these" list.)
 
 4. **Fit the flows to the app.** Inventory the app's routes
    (`app/[locale]/(dashboard)/**/page.tsx`), the `Role` enum, and the scaffolded
-   entities. Add any missing screens to `smoke.uat.ts`; add a data-writing
-   journey per entity; align `roles.uat.ts` to the real role gates. Keep selectors
-   locale-independent (ids / `getByRole`) since the app ships `en` + `ar`.
+   entities. Add any missing screens to `smoke.uat.ts`; add data-writing journeys and a
+   role matrix as you grow them. Keep selectors locale-independent (ids / `getByRole`)
+   since the app ships `en` + `ar`.
 
-5. **Tag everything you create, and clean up.** Stamp created records with
-   `UAT_PREFIX` (`uatName()`), so test data is identifiable.
+5. **Tag everything you create, and clean up.** Stamp created records with a stable
+   `UAT —` prefix so test data is identifiable.
    - Prefer the app's own delete / **recycling-bin** (soft-delete) to clean up in-UI.
-   - For records with no delete path, ship `scripts/uat-cleanup.ts` (dry-run by
-     default; `--confirm` to delete; strictly scoped to the `UAT —` prefix;
-     children before parents) and run `npm run uat:cleanup`. Point `DATABASE_URL`
-     at the **test** DB.
+   - For records with no delete path, add a `scripts/uat-cleanup.ts` (dry-run by
+     default; `--confirm` to delete; strictly scoped to the `UAT —` prefix; children
+     before parents) and an `uat:cleanup` script. Point `DATABASE_URL` at the **test** DB.
 
 6. **Run.** `npm run uat` (headless) or `npm run uat:headed` to watch it. With a
    deployed target:

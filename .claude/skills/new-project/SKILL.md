@@ -99,7 +99,7 @@ gh workflow run new-project.yml \
    - `SEED_ADMIN_PASSWORD` (random; surfaced in the run summary)
 4. **Cloudflare** — creates a CNAME record `<slug>.<apex>` → `cname.vercel-dns.com` (proxied: off — Vercel needs DNS-validated TLS).
 5. **Vercel** — attaches the custom domain to the project; Vercel auto-issues a Let's Encrypt cert once DNS propagates.
-6. **Vercel** — triggers the first production deployment. The build runs `prisma migrate deploy && prisma db seed && next build`, so tables + admin user are ready when the URL goes live.
+6. **Vercel** — triggers the first production deployment. The build runs `prisma migrate deploy && next build`, so tables are ready when the URL goes live. Seeding the admin is a separate one-shot step (surfaced in the run summary) — the build does **not** seed, so a forgotten `SEED_ADMIN_PASSWORD` can't ship a guessable admin.
 
 ## Output
 

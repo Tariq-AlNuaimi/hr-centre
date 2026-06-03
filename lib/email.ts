@@ -3,8 +3,8 @@
 // Gated by SMTP_HOST being set. If unset, sendEmail() logs a warning and returns
 // `{ sent: false }` without throwing -- the template ships email-disabled so a
 // fresh fork doesn't need SMTP configured before first deploy. Forks enable
-// email during /first-fork step 9 by setting SMTP_HOST, SMTP_PORT, SMTP_USER,
-// SMTP_PASSWORD, SMTP_FROM in the Portainer stack env.
+// email during /first-fork by setting SMTP_HOST, SMTP_PORT, SMTP_USER,
+// SMTP_PASSWORD, SMTP_FROM as Vercel project env vars.
 //
 // Security (SECURITY.md §1 + §6):
 //   - SMTP_PASSWORD is Restricted -- never logged, never returned by any API.

@@ -16,10 +16,10 @@
 /middleware.ts                        @Tariq-AlNuaimi
 /lib/prisma/audit-extension.ts        @Tariq-AlNuaimi
 /lib/prisma/soft-delete-extension.ts  @Tariq-AlNuaimi
+/lib/env.ts                           @Tariq-AlNuaimi
+/eslint-rules/                        @Tariq-AlNuaimi
 /prisma/migrations/                   @Tariq-AlNuaimi
 /.github/workflows/                   @Tariq-AlNuaimi
 /.github/CODEOWNERS                   @Tariq-AlNuaimi
 /docs/decisions/                      @Tariq-AlNuaimi
-/deploy/                              @Tariq-AlNuaimi
-/docker-compose.prod.yml              @Tariq-AlNuaimi
-/Dockerfile                           @Tariq-AlNuaimi
+/vercel.json                          @Tariq-AlNuaimi

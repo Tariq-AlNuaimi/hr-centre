@@ -106,9 +106,15 @@ Sign up at https://inngest.com, connect the Vercel project, copy
 }
 ```
 
-The route is already wrapped with `withInternalAuth`, so set
-`AUDIT_PURGE_TOKEN` (32+ chars) as a Vercel env var and Vercel Cron will
-pass it as the `Authorization: Bearer <token>` header automatically.
+**Auth caveat (important):** Vercel Cron authenticates by sending
+`Authorization: Bearer $CRON_SECRET` (a Vercel-managed env var you set on the
+project) — it does **not** forward an arbitrary env var, and it **cannot** set a
+custom `x-internal-token` header. The shipped `withInternalAuth` checks
+`x-internal-token`, so pick one:
+- **(a)** keep `withInternalAuth` and trigger the route from an external
+  scheduler (e.g. a GitHub Actions cron) that sends `x-internal-token: $AUDIT_PURGE_TOKEN`; or
+- **(b)** use Vercel Cron and add a check in the route for
+  `Authorization: Bearer $CRON_SECRET` instead of (or in addition to) the header.
 
 **Cost:** free on Hobby; included on Pro.
 

@@ -38,7 +38,7 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 - **`/quickstart`** — turn one paragraph of an idea into a live URL
 - **`/scaffold-entity <Name>`** — generate a full CRUD entity (model, validation, API routes, dashboard page) following the soft-delete + audit + RBAC invariants
 - **`/scale-up`** — add file uploads / cron / background jobs / realtime when the project needs them
-- **`/ship`** — typecheck + lint + build before pushing
+- **`/ship`** — pre-push gate: typecheck + lint + tests + build + gitleaks + npm audit (stops on first failure)
 - **`/handoff`** — produce clean handoff package for the IT team
 - **`/rebrand`** — sweep template defaults to the new project's name
 - **`/migrate-from`** — port a feature out of a monolith
@@ -80,7 +80,7 @@ DATABASE_URL="<direct neon url>" npx prisma db seed
 
 ```bash
 cp .env.example .env
-# Edit .env: set DATABASE_URL (any local or hosted Postgres), AUTH_SECRET, NEXT_PUBLIC_APP_URL
+# Edit .env: set DATABASE_URL (any local or hosted Postgres), AUTH_SECRET, NEXT_PUBLIC_APP_NAME
 npm install
 make db-up               # starts local Postgres in Docker
 npx prisma migrate dev
@@ -118,7 +118,7 @@ prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs
 eslint-rules/                # Project-local ESLint plugin (4 hard rules)
 tests/contracts/             # Contract test suite (node:test)
-.github/workflows/           # verify.yml + secrets-scan.yml + sast.yml
+.github/workflows/           # verify, secrets-scan, sast, uat, new-project (dormant on free plan)
 ```
 
 ## Adding a New Entity
@@ -140,13 +140,18 @@ The scaffold creates: Prisma model (with soft-delete fields + audit hooks), zod 
 
 ## CI
 
-Three workflows gate every push to a non-main branch:
+The workflows in `.github/workflows/` are **dormant on the free GitHub plan**
+(Actions billing blocked) — they are set to `workflow_dispatch` only and gate
+nothing today. The active gate is the local **`/ship`** skill, which mirrors
+their checks (typecheck → lint → tests → build → gitleaks → npm audit). CI
+activates at `/handoff` when the IT team's paid plan can run Actions:
 
-- **verify.yml**: typecheck + lint + tests + build + npm audit + two scaffold smoke tests
+- **verify.yml**: typecheck + lint + tests + build + npm audit + scaffold smoke tests
 - **secrets-scan.yml**: gitleaks across full git history
 - **sast.yml**: Semgrep with OWASP + secrets rulesets
+- **uat.yml** / **new-project.yml**: manual-dispatch UAT + provisioner (not gates)
 
-Vercel handles production deploys automatically on push to `main`.
+Vercel handles production deploys automatically on push to `main`. See `SECURITY.md` §14 / ADR-007.
 
 ## Documentation
 

@@ -61,3 +61,6 @@ next-env.d.ts
 # Sentry CLI artifacts (auth token cache + bundler debug files)
 .sentryclirc
 .sentry-build-plugin/
+
+# Working plan artifacts (not shipped in forks)
+plans/

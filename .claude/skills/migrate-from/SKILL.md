@@ -11,7 +11,7 @@ Targets the "spin off a feature from a monolith" pattern. Source-schema variance
 
 - Target repo is already scaffolded (entities exist via `/scaffold-entity` or `/new-project`).
 - Source DB is reachable from the operator's machine (direct, or via SSH tunnel).
-- `pg_dump`, `psql`, `rclone` are on PATH.
+- `pg_dump`, `psql` are on PATH.
 
 ## Flow
 

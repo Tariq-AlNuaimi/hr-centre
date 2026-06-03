@@ -30,11 +30,9 @@
 - [ ] Any SAST / gitleaks / npm-audit suppression is logged in SECURITY.md §12 with rule ID, location, justification, reviewer, date
 
 ## Verification
-- [ ] `verify.yml` is green on this PR (typecheck + lint + node:test + build + npm audit + scaffold smoke)
-- [ ] `secrets-scan.yml` is green
-- [ ] `sast.yml` is green
-- [ ] If touching backup chain: `restore-test.yml` `workflow_dispatch` was triggered and passed
-- [ ] If touching audit: `audit-retention.yml` `workflow_dispatch` was triggered against staging and returned a sensible count
+- [ ] Local `/ship` is green (typecheck → lint → tests → build → gitleaks → npm audit) — the active gate on the free plan
+- [ ] (At handoff, paid Actions) `verify.yml` / `secrets-scan.yml` / `sast.yml` are green
+- [ ] If touching audit / soft-delete: verified an audit row is written (CREATE / UPDATE / DELETE / RESTORE) with attribution
 
 ## Rollback plan
-<!-- One sentence: how to undo this if it breaks prod. "Set IMAGE_TAG=sha-<previous> in Portainer" is usually enough for runtime changes. -->
+<!-- One sentence: how to undo this if it breaks prod. On the Vercel rail: `git revert` the commit, or "Promote to Production" on the prior deployment in the Vercel UI. -->
