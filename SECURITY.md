@@ -230,14 +230,17 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 ## 14. CI security gates
 
-Four workflows live in `.github/workflows/`:
+Five workflows live in `.github/workflows/`:
 
 | Workflow | Triggers | What it gates | Blocks on |
 |---|---|---|---|
-| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, `next build`, `npm audit --audit-level=high --omit=dev`, scaffold smokes | High+ CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
+| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, `next build`, `npm audit --audit-level=critical --omit=dev`, scaffold smokes | Critical CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full git history | Any detected secret pattern |
 | `sast.yml` | PR + push (any) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets` | Any finding at default severity |
+| `uat.yml` | Manual dispatch | Playwright UAT against a deployed URL; uploads a screenshot report. Not a gate. | — |
 | `new-project.yml` | Manual dispatch | One-shot provisioner (GitHub repo + Neon + Vercel + Cloudflare DNS). Not a gate. | — |
+
+(All five are **dormant** on the free plan — triggers are `workflow_dispatch` only. The active gate is local `/ship`. See §14 intro + ADR-007.)
 
 **On the current plan (solo operator, free GitHub plan with Actions billing blocked) these workflows do not run.** Their security checks are mirrored locally by the `/ship` skill (typecheck → lint → tests → build → gitleaks → npm audit) plus the on-demand `/audit` skill (gitleaks + npm audit + Semgrep). **CI activates at `/handoff`**, when the IT team's paid plan can run Actions and enforce branch protection.
 
