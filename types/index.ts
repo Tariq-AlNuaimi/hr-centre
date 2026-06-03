@@ -24,11 +24,8 @@ declare module "@auth/core/jwt" {
   }
 }
 
-export interface ApiResponse<T = unknown> {
-  data?: T;
-  error?: string;
-  message?: string;
-}
+// ApiResponse lives in lib/api-response.ts (the only producer of API envelopes);
+// it is intentionally not re-declared here to avoid a drifting duplicate.
 
 export interface PaginatedResponse<T> {
   data: T[];

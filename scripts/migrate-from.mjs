@@ -33,7 +33,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { step, ok, warn, bail, info, dryPrefix } from './lib/log.mjs';
+import { step, ok, bail, info, dryPrefix } from './lib/log.mjs';
 
 const { values } = parseArgs({
   options: {
@@ -56,6 +56,43 @@ if (!values.map) bail('migrate-from', `--map <path> is required`);
 const map = JSON.parse(await readFile(values.map, 'utf8'));
 if (!Array.isArray(map.tables)) bail('migrate-from', `map.tables must be an array`);
 
+// Identifiers (table + column names) are interpolated into pg_dump -t flags,
+// the COPY ... TO STDOUT SQL, and a bash -c string. None of those contexts is
+// escaped, so anything other than a plain SQL identifier is an injection
+// surface. Validate every table/column up front and reject the whole run on
+// the first bad one -- never reach for a shell-quoting band-aid.
+const IDENT_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+function assertIdent(kind, value) {
+  if (typeof value !== 'string' || !IDENT_RE.test(value)) {
+    bail('migrate-from', `invalid ${kind} ${JSON.stringify(value)} -- must match ${IDENT_RE}. Refusing to run (injection guard).`);
+  }
+  return value;
+}
+
+for (const t of map.tables) {
+  assertIdent('source table', t.source);
+  if (typeof t.target !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(t.target)) {
+    bail('migrate-from', `invalid target model ${JSON.stringify(t.target)} for table ${JSON.stringify(t.source)}.`);
+  }
+  if (!t.columns || typeof t.columns !== 'object') {
+    bail('migrate-from', `table ${JSON.stringify(t.source)} is missing a "columns" map.`);
+  }
+  for (const col of Object.keys(t.columns)) assertIdent('column', col);
+
+  // t.where is a free SQL predicate, not an identifier, so it can't match
+  // IDENT_RE. It still lands unescaped inside both the COPY SQL and the bash
+  // -c string, so reject the metacharacters that would let it break out of
+  // either context (quotes, statement separators, command substitution, ...).
+  if (t.where != null) {
+    if (typeof t.where !== 'string') {
+      bail('migrate-from', `table ${JSON.stringify(t.source)}: "where" must be a string.`);
+    }
+    if (/["'`;$\\\n\r]|--|\/\*|\*\//.test(t.where)) {
+      bail('migrate-from', `table ${JSON.stringify(t.source)}: "where" contains forbidden characters (quotes, ; $ \\ backtick, comment markers). Refusing to run (injection guard).`);
+    }
+  }
+}
+
 if (!DRY) {
   if (!values['source-db']) bail('migrate-from', `--source-db is required for non-dry runs`);
   if (!values['target-db']) bail('migrate-from', `--target-db is required for non-dry runs`);
@@ -69,7 +106,14 @@ if (!values['data-only']) {
     spawnSync('mkdir', ['-p', values['dump-dir']]);
     const tables = map.tables.map(t => `-t ${t.source}`).join(' ');
     const r = spawnSync('bash', ['-c', `pg_dump --schema-only --no-owner ${tables} "${values['source-db']}" > ${values['dump-dir']}/schema.sql`], { stdio: 'inherit' });
-    if (r.status !== 0) warn('migrate-from', `pg_dump schema exit ${r.status} -- check that pg_dump is on PATH and the source DB is reachable`);
+    if (r.error?.code === 'ENOENT') {
+      bail('migrate-from', `could not spawn bash to run pg_dump (${r.error.message}).`);
+    }
+    if (r.status !== 0) {
+      // A non-zero exit means we'd otherwise leave an empty/partial schema.sql
+      // behind and report success. Hard-fail so the operator notices.
+      bail('migrate-from', `pg_dump schema failed (exit ${r.status}) -- check that pg_dump is on PATH and the source DB is reachable.`);
+    }
   }
 }
 
@@ -84,8 +128,15 @@ if (!values['schema-only']) {
       const sql = `COPY (SELECT ${cols} FROM ${t.source} ${where}) TO STDOUT WITH (FORMAT csv, HEADER true)`;
       const out = `${values['dump-dir']}/${t.source}.csv`;
       const r = spawnSync('bash', ['-c', `psql "${values['source-db']}" -c "${sql.replace(/"/g, '\\"')}" > ${out}`], { stdio: 'inherit' });
-      if (r.status !== 0) warn('migrate-from', `psql copy exit ${r.status} for ${t.source}`);
-      else ok('migrate-from', `dumped ${t.source} -> ${out}`);
+      if (r.error?.code === 'ENOENT') {
+        bail('migrate-from', `could not spawn bash to run psql (${r.error.message}).`);
+      }
+      if (r.status !== 0) {
+        // Don't continue: a failed COPY leaves an empty CSV that the seed would
+        // happily "import" as zero rows, masking the failure.
+        bail('migrate-from', `psql COPY failed (exit ${r.status}) for ${t.source} -- check that psql is on PATH and the source DB is reachable.`);
+      }
+      ok('migrate-from', `dumped ${t.source} -> ${out}`);
     }
   }
 }
@@ -128,15 +179,41 @@ function renderSeed(map, dumpDir) {
 
 import { prisma } from '@/lib/prisma';
 import { readFile } from 'node:fs/promises';
-import { parse } from 'node:path';
 
-function parseCSV(s: string) {
-  const lines = s.trim().split('\\n');
-  const header = lines[0].split(',');
-  return lines.slice(1).map(line => {
-    const cells = line.split(',');
-    return Object.fromEntries(header.map((h, i) => [h, cells[i] ?? null]));
-  });
+// Minimal RFC-4180 CSV parser. The COPY ... TO STDOUT CSV output uses standard
+// quoting: fields containing a comma, double-quote, or newline are wrapped in
+// double-quotes, and embedded double-quotes are doubled (""). A naive
+// line.split(',') corrupts any such value, so honor the quoting here.
+function parseCSV(s: string): Record<string, string | null>[] {
+  const rows: string[][] = [];
+  let field = '';
+  let row: string[] = [];
+  let inQuotes = false;
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (s[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ',') { row.push(field); field = ''; i++; continue; }
+    if (c === '\\r') { i++; continue; }
+    if (c === '\\n') { row.push(field); rows.push(row); field = ''; row = []; i++; continue; }
+    field += c; i++;
+  }
+  // Flush the final field/row if the file doesn't end in a newline.
+  if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+
+  if (rows.length === 0) return [];
+  const header = rows[0];
+  return rows.slice(1)
+    // A trailing newline produces one empty row; drop blank lines.
+    .filter((cells) => !(cells.length === 1 && cells[0] === ''))
+    .map((cells) => Object.fromEntries(header.map((h, idx) => [h, cells[idx] ?? null])));
 }
 
 async function main() {
@@ -162,6 +239,8 @@ function renderTable(t) {
     const raw = await readFile(\`\${import.meta.dirname}/${csvPath}\`, 'utf8');
     const rows = parseCSV(raw);
     for (const row of rows) {
+      // Insert-or-skip: \`update: {}\` means re-running this seed never mutates
+      // rows that already exist (matched by id) -- only missing rows are created.
       await prisma.${target[0].toLowerCase() + target.slice(1)}.upsert({
         where: { id: row['id'] },
         update: {},

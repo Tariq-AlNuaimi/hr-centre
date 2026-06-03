@@ -13,7 +13,11 @@
     "loading": "Loading...",
     "noData": "No data found",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "backHome": "Back Home",
+    "tryAgain": "Try Again",
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedError": "An unexpected error occurred. Please try again."
   },
   "nav": {
     "home": "Home",
@@ -31,6 +35,12 @@
     "signIn": "Sign In",
     "invalidCredentials": "Invalid email or password"
   },
+  "dashboard": {
+    "usersDescription": "Manage application users and roles",
+    "resources": "Resources",
+    "resourcesDescription": "Add your entity cards here",
+    "settingsDescription": "Application configuration"
+  },
   "users": {
     "title": "Users",
     "createUser": "Create User",
@@ -38,25 +48,50 @@
     "name": "Name",
     "email": "Email",
     "role": "Role",
+    "password": "Password",
+    "passwordLeaveBlank": "Leave blank to keep current",
+    "roleAdmin": "Admin",
+    "roleEditor": "Editor",
+    "roleViewer": "Viewer",
     "createdAt": "Created",
     "lastLogin": "Last Login",
-    "deleteConfirm": "Are you sure you want to delete this user?"
+    "deleteConfirm": "Are you sure you want to delete this user?",
+    "editAction": "Edit user",
+    "deleteAction": "Delete user",
+    "loadFailed": "Failed to load users",
+    "deleted": "User deleted",
+    "deleteFailed": "Failed to delete user",
+    "created": "User created",
+    "createFailed": "Failed to create user",
+    "updated": "User updated",
+    "updateFailed": "Failed to update user",
+    "notFound": "User not found"
   },
   "recyclingBin": {
     "title": "Recycling Bin",
+    "name": "Name",
     "restore": "Restore",
+    "restoreAction": "Restore item",
     "permanentDelete": "Permanently Delete",
+    "permanentDeleteAction": "Permanently delete item",
     "deletedBy": "Deleted By",
     "deletedAt": "Deleted At",
     "entityType": "Type",
     "permanentDeleteConfirm": "This action cannot be undone. Permanently delete?",
     "restoreConfirm": "Restore this item?",
-    "empty": "Recycling bin is empty"
+    "empty": "Recycling bin is empty",
+    "loadFailed": "Failed to load recycling bin",
+    "restored": "{name} restored",
+    "restoreFailed": "Failed to restore item",
+    "permanentlyDeleted": "{name} permanently deleted",
+    "deleteFailed": "Failed to delete item"
   },
   "settings": {
     "title": "Settings",
     "profile": "Profile",
     "general": "General",
+    "appName": "App Name",
+    "environment": "Environment",
     "name": "Name",
     "email": "Email",
     "role": "Role",
@@ -65,7 +100,8 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "passwordChanged": "Password changed successfully",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "passwordChangeFailed": "Failed to change password"
   },
   "auditLog": {
     "title": "Audit Log",
@@ -76,11 +112,16 @@
     "user": "User",
     "changes": "Changes",
     "filterEntity": "Filter by entity",
-    "filterAction": "Filter by action"
+    "filterAction": "Filter by action",
+    "loadFailed": "Failed to load audit log"
   },
   "theme": {
     "light": "Light",
     "dark": "Dark",
-    "system": "System"
+    "system": "System",
+    "toggle": "Toggle theme"
+  },
+  "notFound": {
+    "subtitle": "The page you visited does not exist."
   }
 }

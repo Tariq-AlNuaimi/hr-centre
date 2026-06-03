@@ -55,20 +55,20 @@ export function UserForm({
 
       <Form.Item
         name="password"
-        label="Password"
+        label={t("password")}
         rules={[{ required: !isEdit, min: 6, max: 128 }]}
       >
         <Input.Password
-          placeholder={isEdit ? "Leave blank to keep current" : undefined}
+          placeholder={isEdit ? t("passwordLeaveBlank") : undefined}
         />
       </Form.Item>
 
       <Form.Item name="role" label={t("role")} rules={[{ required: true }]}>
         <Select
           options={[
-            { value: "ADMIN", label: "Admin" },
-            { value: "EDITOR", label: "Editor" },
-            { value: "VIEWER", label: "Viewer" },
+            { value: "ADMIN", label: t("roleAdmin") },
+            { value: "EDITOR", label: t("roleEditor") },
+            { value: "VIEWER", label: t("roleViewer") },
           ]}
         />
       </Form.Item>

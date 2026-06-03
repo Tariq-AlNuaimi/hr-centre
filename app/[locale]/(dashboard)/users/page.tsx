@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { Typography, Button, Space } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { useTranslations } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
+import type { SortChange } from "@/components/shared/DataTable";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { getUserColumns } from "@/components/users/UserColumns";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
@@ -24,19 +26,19 @@ interface UserRecord {
 export default function UsersPage() {
   const t = useTranslations("users");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { list, remove, loading } = useCrud<UserRecord & { id: string }>({
+  const { list, remove, listLoading } = useCrud<UserRecord & { id: string }>({
     basePath: "/api/users",
   });
-
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
 
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortChange>({});
+  const [role, setRole] = useState<string>();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -44,13 +46,18 @@ export default function UsersPage() {
         page: String(page),
         pageSize: String(pageSize),
         ...(search ? { search } : {}),
+        ...(sort.field ? { sort: sort.field } : {}),
+        ...(sort.order
+          ? { order: sort.order === "ascend" ? "asc" : "desc" }
+          : {}),
+        ...(role ? { role } : {}),
       });
       setUsers(result.data as unknown as UserRecord[]);
       setTotal(result.total);
     } catch {
-      showError("Failed to load users");
+      showError(t("loadFailed"));
     }
-  }, [page, pageSize, search, list, showError]);
+  }, [page, pageSize, search, sort, role, list, showError, t]);
 
   // Standard "fetch on mount + when deps change" pattern. fetchUsers is a
   // useCallback that internally calls setState; the lint rule traces the
@@ -62,12 +69,17 @@ export default function UsersPage() {
   }, [fetchUsers]);
 
   const handleDelete = async (id: string) => {
+    // Optimistic: drop the row immediately so the table never blanks behind a
+    // full-table spinner. Re-sync (and restore on failure) via fetchUsers.
+    const previous = users;
+    setUsers((rows) => rows.filter((u) => u.id !== id));
     try {
       await remove(id);
-      success("User deleted");
+      success(t("deleted"));
       fetchUsers();
     } catch {
-      showError("Failed to delete user");
+      setUsers(previous);
+      showError(t("deleteFailed"));
     }
   };
 
@@ -101,7 +113,7 @@ export default function UsersPage() {
       <DataTable<UserRecord>
         columns={columns}
         dataSource={users}
-        loading={loading}
+        loading={listLoading}
         total={total}
         page={page}
         pageSize={pageSize}
@@ -109,8 +121,30 @@ export default function UsersPage() {
           setPage(p);
           setPageSize(ps);
         }}
+        onSortChange={(s) => {
+          setSort(s);
+          setPage(1);
+        }}
+        onFilterChange={(filters) => {
+          const roleFilter = filters.role;
+          setRole(
+            roleFilter && roleFilter.length > 0
+              ? String(roleFilter[0])
+              : undefined
+          );
+          setPage(1);
+        }}
         searchable
-        onSearch={setSearch}
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        emptyText={
+          <EmptyState
+            actionLabel={t("createUser")}
+            onAction={() => router.push(`/${locale}/users/new`)}
+          />
+        }
       />
     </>
   );

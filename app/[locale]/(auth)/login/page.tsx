@@ -3,8 +3,8 @@
 import { Card, Form, Input, Button, Typography, App } from "antd";
 import { LockOutlined, MailOutlined } from "@ant-design/icons";
 import { signIn } from "next-auth/react";
-import { useTranslations } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const { Title } = Typography;
@@ -12,11 +12,9 @@ const { Title } = Typography;
 export default function LoginPage() {
   const t = useTranslations("auth");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
-
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
 
   async function onFinish(values: { email: string; password: string }) {
     setLoading(true);
@@ -43,20 +41,29 @@ export default function LoginPage() {
       <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
         {t("login")}
       </Title>
-      <Form layout="vertical" onFinish={onFinish} autoComplete="off">
+      <Form layout="vertical" onFinish={onFinish}>
         <Form.Item
           name="email"
           label={t("email")}
           rules={[{ required: true, type: "email" }]}
         >
-          <Input prefix={<MailOutlined />} size="large" />
+          <Input
+            prefix={<MailOutlined />}
+            size="large"
+            type="email"
+            autoComplete="email"
+          />
         </Form.Item>
         <Form.Item
           name="password"
           label={t("password")}
           rules={[{ required: true, min: 6 }]}
         >
-          <Input.Password prefix={<LockOutlined />} size="large" />
+          <Input.Password
+            prefix={<LockOutlined />}
+            size="large"
+            autoComplete="current-password"
+          />
         </Form.Item>
         <Form.Item>
           <Button

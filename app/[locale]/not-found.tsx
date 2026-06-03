@@ -1,7 +1,13 @@
+"use client";
+
 import { Result, Button } from "antd";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function NotFound() {
+  const t = useTranslations("notFound");
+  const tCommon = useTranslations("common");
+
   return (
     <div
       style={{
@@ -14,10 +20,10 @@ export default function NotFound() {
       <Result
         status="404"
         title="404"
-        subTitle="The page you visited does not exist."
+        subTitle={t("subtitle")}
         extra={
           <Link href="/">
-            <Button type="primary">Back Home</Button>
+            <Button type="primary">{tCommon("backHome")}</Button>
           </Link>
         }
       />

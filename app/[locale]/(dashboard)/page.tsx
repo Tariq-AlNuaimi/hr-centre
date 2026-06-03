@@ -12,6 +12,7 @@ const { Title } = Typography;
 
 export default function DashboardPage() {
   const t = useTranslations("nav");
+  const tDash = useTranslations("dashboard");
 
   return (
     <>
@@ -22,7 +23,7 @@ export default function DashboardPage() {
             <Card.Meta
               avatar={<UserOutlined style={{ fontSize: 24 }} />}
               title={t("users")}
-              description="Manage application users and roles"
+              description={tDash("usersDescription")}
             />
           </Card>
         </Col>
@@ -30,8 +31,8 @@ export default function DashboardPage() {
           <Card hoverable>
             <Card.Meta
               avatar={<FileOutlined style={{ fontSize: 24 }} />}
-              title="Resources"
-              description="Add your entity cards here"
+              title={tDash("resources")}
+              description={tDash("resourcesDescription")}
             />
           </Card>
         </Col>
@@ -40,7 +41,7 @@ export default function DashboardPage() {
             <Card.Meta
               avatar={<SettingOutlined style={{ fontSize: 24 }} />}
               title={t("settings")}
-              description="Application configuration"
+              description={tDash("settingsDescription")}
             />
           </Card>
         </Col>

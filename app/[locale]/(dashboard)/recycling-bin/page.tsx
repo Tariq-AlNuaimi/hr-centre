@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Typography, Table, Button, Space, Tag, Modal } from "antd";
+import { Typography, Table, Button, Space, Tag, App } from "antd";
 import {
   UndoOutlined,
   DeleteOutlined,
@@ -25,6 +25,7 @@ export default function RecyclingBinPage() {
   const t = useTranslations("recyclingBin");
   const tCommon = useTranslations("common");
   const { success, error: showError } = useNotify();
+  const { modal } = App.useApp();
   const { data: session } = useSession();
   // types/index.ts augments next-auth's Session.user with role: Role,
   // so this access is typed -- no `as any` needed.
@@ -40,11 +41,11 @@ export default function RecyclingBinPage() {
       const json = await res.json();
       setItems(json.data ?? []);
     } catch {
-      showError("Failed to load recycling bin");
+      showError(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [showError, t]);
 
   useEffect(() => {
     fetchItems();
@@ -61,15 +62,15 @@ export default function RecyclingBinPage() {
         }),
       });
       if (!res.ok) throw new Error();
-      success(`${item.displayName} restored`);
+      success(t("restored", { name: item.displayName }));
       fetchItems();
     } catch {
-      showError("Failed to restore item");
+      showError(t("restoreFailed"));
     }
   };
 
   const handlePermanentDelete = (item: DeletedItem) => {
-    Modal.confirm({
+    modal.confirm({
       title: t("permanentDeleteConfirm"),
       icon: <ExclamationCircleOutlined />,
       okType: "danger",
@@ -82,10 +83,10 @@ export default function RecyclingBinPage() {
             { method: "DELETE" }
           );
           if (!res.ok) throw new Error();
-          success(`${item.displayName} permanently deleted`);
+          success(t("permanentlyDeleted", { name: item.displayName }));
           fetchItems();
         } catch {
-          showError("Failed to delete item");
+          showError(t("deleteFailed"));
         }
       },
     });
@@ -99,7 +100,7 @@ export default function RecyclingBinPage() {
       render: (val: string) => <Tag>{val}</Tag>,
     },
     {
-      title: "Name",
+      title: t("name"),
       dataIndex: "displayName",
       key: "displayName",
     },
@@ -122,6 +123,7 @@ export default function RecyclingBinPage() {
         <Space>
           <Button
             icon={<UndoOutlined />}
+            aria-label={t("restoreAction")}
             onClick={() => handleRestore(record)}
           >
             {t("restore")}
@@ -130,6 +132,7 @@ export default function RecyclingBinPage() {
             <Button
               danger
               icon={<DeleteOutlined />}
+              aria-label={t("permanentDeleteAction")}
               onClick={() => handlePermanentDelete(record)}
             >
               {t("permanentDelete")}

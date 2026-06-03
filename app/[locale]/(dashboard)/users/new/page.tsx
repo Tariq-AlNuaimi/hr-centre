@@ -1,8 +1,8 @@
 "use client";
 
 import { Typography } from "antd";
-import { useTranslations } from "next-intl";
-import { useRouter, usePathname } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
@@ -21,12 +21,10 @@ type UserPayload = {
 export default function NewUserPage() {
   const t = useTranslations("users");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const { success, error: showError } = useNotify();
   const { create } = useCrud<UserPayload>({ basePath: "/api/users" });
   const [loading, setLoading] = useState(false);
-
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
 
   const handleSubmit = async (values: {
     email: string;
@@ -37,10 +35,10 @@ export default function NewUserPage() {
     setLoading(true);
     try {
       await create(values);
-      success("User created");
+      success(t("created"));
       router.push(`/${locale}/users`);
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to create user");
+      showError(err instanceof Error ? err.message : t("createFailed"));
     } finally {
       setLoading(false);
     }

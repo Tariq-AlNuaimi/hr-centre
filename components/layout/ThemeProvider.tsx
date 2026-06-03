@@ -29,25 +29,26 @@ function getSystemDark() {
 export function ThemeProvider({
   children,
   direction = "ltr",
+  initialMode = "system",
+  initialIsDark = false,
 }: {
   children: React.ReactNode;
   direction?: "ltr" | "rtl";
+  /** Seeded from the `theme-mode` cookie on the server so SSR and the first
+   * client paint agree — avoids the light→saved-theme flash (FOUC). */
+  initialMode?: ThemeMode;
+  /** Server's best guess at dark, so the first paint matches the cookie. For
+   * `system` mode the server can't read matchMedia; the effect corrects it. */
+  initialIsDark?: boolean;
 }) {
-  const [mode, setMode] = useState<ThemeMode>("system");
-  const [isDark, setIsDark] = useState(false);
-
-  // localStorage + matchMedia → setState inside useEffect is the documented
-  // Next.js pattern for theme persistence under SSR. Reading these synchronously
-  // during render would cause hydration mismatch. The set-state-in-effect rule's
-  // own docs allow "external platform sync"; we suppress per-line here.
-  useEffect(() => {
-    const saved = localStorage.getItem("theme-mode") as ThemeMode | null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved) setMode(saved);
-  }, []);
+  const [mode, setMode] = useState<ThemeMode>(initialMode);
+  const [isDark, setIsDark] = useState(initialIsDark);
 
   useEffect(() => {
     localStorage.setItem("theme-mode", mode);
+    // Persist to a cookie too so the server can render the right theme on the
+    // next request and skip the flash. 1-year, lax, path=/.
+    document.cookie = `theme-mode=${mode}; path=/; max-age=31536000; samesite=lax`;
     if (mode === "system") {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDark(getSystemDark());
@@ -59,6 +60,13 @@ export function ThemeProvider({
       setIsDark(mode === "dark");
     }
   }, [mode]);
+
+  // Mirror the resolved theme onto <html> so plain CSS (e.g. scrollbar styling
+  // in globals.css) can follow the in-app toggle, not just the OS preference.
+  useEffect(() => {
+    document.documentElement.dataset.theme = isDark ? "dark" : "light";
+    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
+  }, [isDark]);
 
   return (
     <ThemeContext.Provider value={{ mode, setMode, isDark }}>

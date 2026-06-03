@@ -8,7 +8,7 @@ import {
   MoonOutlined,
   GlobalOutlined,
 } from "@ant-design/icons";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "./ThemeProvider";
@@ -23,8 +23,7 @@ export function AppHeader() {
   const { isDark, setMode } = useTheme();
   const router = useRouter();
   const pathname = usePathname();
-
-  const currentLocale = pathname.startsWith("/ar") ? "ar" : "en";
+  const currentLocale = useLocale();
 
   const switchLocale = () => {
     const newLocale = currentLocale === "en" ? "ar" : "en";
@@ -81,6 +80,7 @@ export function AppHeader() {
           icon={isDark ? <SunOutlined /> : <MoonOutlined />}
           onClick={() => setMode(isDark ? "light" : "dark")}
           title={isDark ? tTheme("light") : tTheme("dark")}
+          aria-label={tTheme("toggle")}
         />
 
         <Dropdown menu={{ items: userMenuItems }} trigger={["click"]}>

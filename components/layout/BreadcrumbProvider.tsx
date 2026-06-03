@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
 
 interface BreadcrumbContextValue {
   dynamicLabels: Record<string, string>;
@@ -29,8 +35,13 @@ export function BreadcrumbProvider({
     setDynamicLabels((prev) => ({ ...prev, [segment]: label }));
   }, []);
 
+  const value = useMemo(
+    () => ({ dynamicLabels, setDynamicLabel }),
+    [dynamicLabels, setDynamicLabel]
+  );
+
   return (
-    <BreadcrumbContext.Provider value={{ dynamicLabels, setDynamicLabel }}>
+    <BreadcrumbContext.Provider value={value}>
       {children}
     </BreadcrumbContext.Provider>
   );

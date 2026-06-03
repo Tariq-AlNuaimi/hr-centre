@@ -1,8 +1,8 @@
 "use client";
 
 import { Typography, Spin } from "antd";
-import { useTranslations } from "next-intl";
-import { useRouter, usePathname, useParams } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter, useParams } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
@@ -22,14 +22,13 @@ interface UserRecord {
 export default function EditUserPage() {
   const t = useTranslations("users");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const params = useParams();
   const { success, error: showError } = useNotify();
   const { getById, update } = useCrud<UserRecord>({
     basePath: "/api/users",
   });
 
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
   const id = params.id as string;
 
   const [user, setUser] = useState<UserRecord | null>(null);
@@ -41,9 +40,9 @@ export default function EditUserPage() {
   useEffect(() => {
     getById(id)
       .then(setUser)
-      .catch(() => showError("User not found"))
+      .catch(() => showError(t("notFound")))
       .finally(() => setLoading(false));
-  }, [id, getById, showError]);
+  }, [id, getById, showError, t]);
 
   const handleSubmit = async (values: {
     email: string;
@@ -57,10 +56,10 @@ export default function EditUserPage() {
       const data = { ...values };
       if (!data.password) delete data.password;
       await update(id, data);
-      success("User updated");
+      success(t("updated"));
       router.push(`/${locale}/users`);
     } catch (err) {
-      showError(err instanceof Error ? err.message : "Failed to update user");
+      showError(err instanceof Error ? err.message : t("updateFailed"));
     } finally {
       setSaving(false);
     }

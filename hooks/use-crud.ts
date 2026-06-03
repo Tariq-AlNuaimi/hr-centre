@@ -10,15 +10,22 @@ interface UseCrudOptions {
 export function useCrud<T extends { id: string }>({
   basePath,
 }: UseCrudOptions) {
-  const [loading, setLoading] = useState(false);
+  // Split loading per concern: `listLoading` drives the table spinner (reads),
+  // `mutating` covers create/update/delete. A delete no longer blanks the whole
+  // table behind the read spinner. `loading` is kept as the union for callers
+  // that don't distinguish.
+  const [listLoading, setListLoading] = useState(false);
+  const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const request = useCallback(
     async <R>(
       path: string,
-      options?: RequestInit
+      options?: RequestInit,
+      kind: "read" | "mutate" = "read"
     ): Promise<R> => {
-      setLoading(true);
+      const setBusy = kind === "read" ? setListLoading : setMutating;
+      setBusy(true);
       setError(null);
       try {
         const res = await fetch(path, {
@@ -33,7 +40,7 @@ export function useCrud<T extends { id: string }>({
         setError(msg);
         throw err;
       } finally {
-        setLoading(false);
+        setBusy(false);
       }
     },
     []
@@ -54,27 +61,45 @@ export function useCrud<T extends { id: string }>({
 
   const create = useCallback(
     (data: Partial<T>) =>
-      request<T>(basePath, {
-        method: "POST",
-        body: JSON.stringify(data),
-      }),
+      request<T>(
+        basePath,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        },
+        "mutate"
+      ),
     [basePath, request]
   );
 
   const update = useCallback(
     (id: string, data: Partial<T>) =>
-      request<T>(`${basePath}/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      }),
+      request<T>(
+        `${basePath}/${id}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(data),
+        },
+        "mutate"
+      ),
     [basePath, request]
   );
 
   const remove = useCallback(
     (id: string) =>
-      request<T>(`${basePath}/${id}`, { method: "DELETE" }),
+      request<T>(`${basePath}/${id}`, { method: "DELETE" }, "mutate"),
     [basePath, request]
   );
 
-  return { list, getById, create, update, remove, loading, error };
+  return {
+    list,
+    getById,
+    create,
+    update,
+    remove,
+    listLoading,
+    mutating,
+    loading: listLoading || mutating,
+    error,
+  };
 }

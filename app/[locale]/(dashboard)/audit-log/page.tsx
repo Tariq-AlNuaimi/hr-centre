@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Typography, Table, Select, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
+import { useNotify } from "@/hooks/use-notify";
 
 const { Title } = Typography;
 
@@ -26,6 +27,7 @@ const ACTION_COLORS: Record<string, string> = {
 
 export default function AuditLogPage() {
   const t = useTranslations("auditLog");
+  const { error: showError } = useNotify();
 
   const [data, setData] = useState<AuditEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -50,11 +52,15 @@ export default function AuditLogPage() {
       if (res.ok) {
         setData(json.data.data);
         setTotal(json.data.total);
+      } else {
+        showError(t("loadFailed"));
       }
+    } catch {
+      showError(t("loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, entityType, action]);
+  }, [page, pageSize, entityType, action, showError, t]);
 
   useEffect(() => {
     fetchLogs();

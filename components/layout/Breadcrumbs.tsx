@@ -3,7 +3,7 @@
 import { Breadcrumb } from "antd";
 import { HomeOutlined } from "@ant-design/icons";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useBreadcrumb } from "./BreadcrumbProvider";
 import Link from "next/link";
 
@@ -21,8 +21,7 @@ export function Breadcrumbs() {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const { dynamicLabels } = useBreadcrumb();
-
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
+  const locale = useLocale();
 
   // Strip locale prefix: /en/users/123 -> ['users', '123']
   const segments = pathname

@@ -40,6 +40,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { useTheme } from "@/components/layout/ThemeProvider";
 
 export type ChartType = "line" | "bar" | "area" | "pie";
 
@@ -80,7 +81,10 @@ export function Chart<T extends Record<string, unknown>>({
   valueKey = "value",
   colors = DEFAULT_COLORS,
 }: ChartProps<T>) {
-  const gridStroke = "rgba(0,0,0,0.06)";
+  const { isDark } = useTheme();
+  // Read grid contrast from the active theme so the grid is visible on the dark
+  // background instead of vanishing into it.
+  const gridStroke = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
 
   if (type === "line") {
     return (

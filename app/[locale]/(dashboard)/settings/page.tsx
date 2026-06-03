@@ -11,10 +11,10 @@ export default function SettingsPage() {
       <Typography.Title level={2}>{t("title")}</Typography.Title>
       <Card>
         <Descriptions column={1} bordered>
-          <Descriptions.Item label="App Name">
+          <Descriptions.Item label={t("appName")}>
             {process.env.NEXT_PUBLIC_APP_NAME ?? "My App"}
           </Descriptions.Item>
-          <Descriptions.Item label="Environment">
+          <Descriptions.Item label={t("environment")}>
             {process.env.NODE_ENV}
           </Descriptions.Item>
         </Descriptions>

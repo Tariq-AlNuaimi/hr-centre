@@ -788,11 +788,14 @@ async function patchSoftDeleteRegistry() {
 
 async function patchRecyclingBin() {
   if (!softDelete) return null;
-  const path = join(ROOT, 'app/api/recycling-bin/route.ts');
+  // The recyclable allowlist is the single source of truth in
+  // lib/prisma/recyclable.ts (both the list/restore and permanent-delete routes
+  // read it). Register the new entity there.
+  const path = join(ROOT, 'lib/prisma/recyclable.ts');
   const src = await readFile(path, 'utf8');
   if (src.includes(`${Pascal}: { displayField`)) return null;
   const marker = '  // Add more entity types here as you create them:';
-  if (!src.includes(marker)) throw new Error('Could not locate ENTITY_TYPES marker.');
+  if (!src.includes(marker)) throw new Error('Could not locate RECYCLABLE_ENTITY_TYPES marker.');
   const insertion = `  ${Pascal}: { displayField: "${displayField}" },\n`;
   return { path, content: src.replace(marker, insertion + marker) };
 }
@@ -843,16 +846,31 @@ write(`app/[locale]/(dashboard)/${entityKebab}/page.tsx`, listPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/new/page.tsx`, newPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/[id]/page.tsx`, editPageFile());
 
+// ---------- All-or-nothing patch computation ----------
+//
+// The three patch helpers (soft-delete registry, recycling bin, sidebar) throw
+// if their marker is missing in the target file. We compute EVERY patch here,
+// BEFORE writing a single file. If any precondition fails, we exit having
+// written nothing -- otherwise a marker that disappears mid-run would leave a
+// half-scaffolded repo that the idempotency guard above then refuses to retry.
+//
 // Schema patch: enums + model + target back-refs.
-const schemaPatched = patchedTargetModels(schemaSrc) + enumBlocks() + schemaModelBlock();
-const schemaWrite = { path: join(ROOT, 'prisma/schema.prisma'), content: schemaPatched };
+let patches;
+try {
+  const schemaPatched = patchedTargetModels(schemaSrc) + enumBlocks() + schemaModelBlock();
+  const schemaWrite = { path: join(ROOT, 'prisma/schema.prisma'), content: schemaPatched };
 
-const patches = [
-  schemaWrite,
-  await patchSoftDeleteRegistry(),
-  await patchRecyclingBin(),
-  await patchSidebar(),
-].filter(Boolean);
+  patches = [
+    schemaWrite,
+    await patchSoftDeleteRegistry(),
+    await patchRecyclingBin(),
+    await patchSidebar(),
+  ].filter(Boolean);
+} catch (e) {
+  console.error(`ERROR: precondition failed -- ${e.message}`);
+  console.error('Nothing was written. Restore the missing marker in the target file and re-run.');
+  process.exit(1);
+}
 
 if (dryRun) {
   console.log('--- DRY RUN ---');

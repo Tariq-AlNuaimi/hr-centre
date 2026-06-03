@@ -13,7 +13,11 @@
     "loading": "جاري التحميل...",
     "noData": "لا توجد بيانات",
     "yes": "نعم",
-    "no": "لا"
+    "no": "لا",
+    "backHome": "العودة للرئيسية",
+    "tryAgain": "إعادة المحاولة",
+    "somethingWentWrong": "حدث خطأ ما",
+    "unexpectedError": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
   },
   "nav": {
     "home": "الرئيسية",
@@ -31,6 +35,12 @@
     "signIn": "دخول",
     "invalidCredentials": "بريد إلكتروني أو كلمة مرور غير صحيحة"
   },
+  "dashboard": {
+    "usersDescription": "إدارة مستخدمي التطبيق وأدوارهم",
+    "resources": "الموارد",
+    "resourcesDescription": "أضف بطاقات الكيانات الخاصة بك هنا",
+    "settingsDescription": "إعدادات التطبيق"
+  },
   "users": {
     "title": "المستخدمون",
     "createUser": "إنشاء مستخدم",
@@ -38,25 +48,50 @@
     "name": "الاسم",
     "email": "البريد الإلكتروني",
     "role": "الدور",
+    "password": "كلمة المرور",
+    "passwordLeaveBlank": "اتركه فارغًا للإبقاء على الحالي",
+    "roleAdmin": "مدير",
+    "roleEditor": "محرر",
+    "roleViewer": "مشاهد",
     "createdAt": "تاريخ الإنشاء",
     "lastLogin": "آخر دخول",
-    "deleteConfirm": "هل أنت متأكد من حذف هذا المستخدم؟"
+    "deleteConfirm": "هل أنت متأكد من حذف هذا المستخدم؟",
+    "editAction": "تعديل المستخدم",
+    "deleteAction": "حذف المستخدم",
+    "loadFailed": "فشل تحميل المستخدمين",
+    "deleted": "تم حذف المستخدم",
+    "deleteFailed": "فشل حذف المستخدم",
+    "created": "تم إنشاء المستخدم",
+    "createFailed": "فشل إنشاء المستخدم",
+    "updated": "تم تحديث المستخدم",
+    "updateFailed": "فشل تحديث المستخدم",
+    "notFound": "المستخدم غير موجود"
   },
   "recyclingBin": {
     "title": "سلة المحذوفات",
+    "name": "الاسم",
     "restore": "استعادة",
+    "restoreAction": "استعادة العنصر",
     "permanentDelete": "حذف نهائي",
+    "permanentDeleteAction": "حذف العنصر نهائيًا",
     "deletedBy": "حذف بواسطة",
     "deletedAt": "تاريخ الحذف",
     "entityType": "النوع",
     "permanentDeleteConfirm": "لا يمكن التراجع عن هذا. حذف نهائي؟",
     "restoreConfirm": "استعادة هذا العنصر؟",
-    "empty": "سلة المحذوفات فارغة"
+    "empty": "سلة المحذوفات فارغة",
+    "loadFailed": "فشل تحميل سلة المحذوفات",
+    "restored": "تمت استعادة {name}",
+    "restoreFailed": "فشل استعادة العنصر",
+    "permanentlyDeleted": "تم حذف {name} نهائيًا",
+    "deleteFailed": "فشل حذف العنصر"
   },
   "settings": {
     "title": "الإعدادات",
     "profile": "الملف الشخصي",
     "general": "عام",
+    "appName": "اسم التطبيق",
+    "environment": "البيئة",
     "name": "الاسم",
     "email": "البريد الإلكتروني",
     "role": "الدور",
@@ -65,7 +100,8 @@
     "newPassword": "كلمة المرور الجديدة",
     "confirmPassword": "تأكيد كلمة المرور",
     "passwordChanged": "تم تغيير كلمة المرور بنجاح",
-    "passwordMismatch": "كلمات المرور غير متطابقة"
+    "passwordMismatch": "كلمات المرور غير متطابقة",
+    "passwordChangeFailed": "فشل تغيير كلمة المرور"
   },
   "auditLog": {
     "title": "سجل التدقيق",
@@ -76,11 +112,16 @@
     "user": "المستخدم",
     "changes": "التغييرات",
     "filterEntity": "تصفية حسب الكيان",
-    "filterAction": "تصفية حسب الإجراء"
+    "filterAction": "تصفية حسب الإجراء",
+    "loadFailed": "فشل تحميل سجل التدقيق"
   },
   "theme": {
     "light": "فاتح",
     "dark": "داكن",
-    "system": "النظام"
+    "system": "النظام",
+    "toggle": "تبديل المظهر"
+  },
+  "notFound": {
+    "subtitle": "الصفحة التي زرتها غير موجودة."
   }
 }

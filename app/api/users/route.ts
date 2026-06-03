@@ -5,27 +5,57 @@ import { withAuth, withAdminAuth } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import { createUserSchema } from "@/lib/validations/user";
+import type { Prisma } from "@/generated/prisma/client";
+
+// Allowlist of sortable columns — prevents raw column injection via ?sort=.
+const SORTABLE_COLUMNS = [
+  "name",
+  "email",
+  "role",
+  "createdAt",
+  "lastLoginAt",
+] as const;
+type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
+
+const VALID_ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
 
 export const GET = withAuth(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
   const search = searchParams.get("search") ?? undefined;
 
-  const where = search
-    ? {
-        OR: [
-          { name: { contains: search, mode: "insensitive" as const } },
-          { email: { contains: search, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  const sortParam = searchParams.get("sort");
+  const sortField: SortableColumn =
+    sortParam && (SORTABLE_COLUMNS as readonly string[]).includes(sortParam)
+      ? (sortParam as SortableColumn)
+      : "createdAt";
+  const order: "asc" | "desc" =
+    searchParams.get("order") === "asc" ? "asc" : "desc";
+
+  const roleParam = searchParams.get("role");
+  const role =
+    roleParam && (VALID_ROLES as readonly string[]).includes(roleParam)
+      ? roleParam
+      : undefined;
+
+  const where: Prisma.UserWhereInput = {
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: "insensitive" as const } },
+            { email: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+    ...(role ? { role: role as Prisma.UserWhereInput["role"] } : {}),
+  };
 
   const [data, total] = await Promise.all([
     prisma.user.findMany({
       where,
       skip: pagination.skip,
       take: pagination.take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [sortField]: order },
       select: {
         id: true,
         email: true,

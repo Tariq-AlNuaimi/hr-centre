@@ -8,7 +8,7 @@ import {
   DeleteOutlined,
   AuditOutlined,
 } from "@ant-design/icons";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
@@ -19,10 +19,10 @@ export function AppSidebar() {
   const t = useTranslations("nav");
   const router = useRouter();
   const pathname = usePathname();
+  const locale = useLocale();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
 
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
   // types/index.ts augments next-auth's Session.user with role: Role,
   // so this access is typed -- no `as any` needed.
   const isAdmin = session?.user?.role === "ADMIN";

@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "node --import tsx --test tests/contracts/*.test.ts",
     "test:watch": "node --import tsx --test --watch tests/contracts/*.test.ts",
+    "test:components": "node --import tsx --import global-jsdom/register --import ./tests/components/setup.ts --test tests/components/*.test.tsx",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
@@ -53,6 +54,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.2",
     "@types/pg": "^8.20.0",
@@ -60,6 +64,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.3",
+    "global-jsdom": "^25.0.0",
+    "jsdom": "^25.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5"
   },

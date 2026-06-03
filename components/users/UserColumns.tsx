@@ -50,10 +50,11 @@ export function getUserColumns({
         <Tag color={roleColors[role] ?? "default"}>{role}</Tag>
       ),
       filters: [
-        { text: "Admin", value: "ADMIN" },
-        { text: "Editor", value: "EDITOR" },
-        { text: "Viewer", value: "VIEWER" },
+        { text: t("roleAdmin"), value: "ADMIN" },
+        { text: t("roleEditor"), value: "EDITOR" },
+        { text: t("roleViewer"), value: "VIEWER" },
       ],
+      filterMultiple: false,
     },
     {
       title: t("lastLogin"),
@@ -79,13 +80,19 @@ export function getUserColumns({
           <Button
             type="text"
             icon={<EditOutlined />}
+            aria-label={t("editAction")}
             onClick={() => onEdit(record.id)}
           />
           <ConfirmAction
             title={t("deleteConfirm")}
             onConfirm={() => onDelete(record.id)}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} />
+            <Button
+              type="text"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label={t("deleteAction")}
+            />
           </ConfirmAction>
         </Space>
       ),

@@ -86,6 +86,65 @@ const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` 
 const customDomain = apex ? `${subdomain}.${apex}` : null;
 
 // ---------------------------------------------------------------------------
+// Rollback bookkeeping.
+//
+// Provisioning spans several providers; a failure partway through (e.g. the
+// Vercel project create fails after Neon already created the database) would
+// otherwise orphan whatever was created before the failure. We record each
+// resource id as it's created, and `teardown()` makes a best-effort attempt to
+// delete them (newest first) before we exit non-zero, printing exactly what was
+// and wasn't cleaned up. Teardown is best-effort: a delete that itself fails is
+// reported, never thrown, so the operator gets the full picture.
+// ---------------------------------------------------------------------------
+const created = { neonProjectId: null, vercelProjectId: null };
+
+async function teardown() {
+  const left = [];
+  // Vercel project first (it references the repo + holds the env vars), then Neon.
+  if (created.vercelProjectId) {
+    step(P, `Rolling back: deleting Vercel project ${created.vercelProjectId}...`);
+    try {
+      const r = await fetch(
+        `https://api.vercel.com/v9/projects/${created.vercelProjectId}${teamQs}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }
+      );
+      if (r.ok || r.status === 404) ok(P, `Rolled back Vercel project ${created.vercelProjectId}.`);
+      else { left.push(`Vercel project ${created.vercelProjectId} (HTTP ${r.status})`); warn(P, `Could not delete Vercel project ${created.vercelProjectId} (HTTP ${r.status}).`); }
+    } catch (e) {
+      left.push(`Vercel project ${created.vercelProjectId} (${e.message})`);
+      warn(P, `Could not delete Vercel project ${created.vercelProjectId}: ${e.message}`);
+    }
+  }
+  if (created.neonProjectId) {
+    step(P, `Rolling back: deleting Neon project ${created.neonProjectId}...`);
+    try {
+      const r = await fetch(
+        `https://console.neon.tech/api/v2/projects/${created.neonProjectId}`,
+        { method: "DELETE", headers: { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" } }
+      );
+      if (r.ok || r.status === 404) ok(P, `Rolled back Neon project ${created.neonProjectId}.`);
+      else { left.push(`Neon project ${created.neonProjectId} (HTTP ${r.status})`); warn(P, `Could not delete Neon project ${created.neonProjectId} (HTTP ${r.status}).`); }
+    } catch (e) {
+      left.push(`Neon project ${created.neonProjectId} (${e.message})`);
+      warn(P, `Could not delete Neon project ${created.neonProjectId}: ${e.message}`);
+    }
+  }
+  if (left.length) {
+    warn(P, `Manual cleanup still required for: ${left.join("; ")}`);
+  } else if (created.neonProjectId || created.vercelProjectId) {
+    ok(P, "Rollback complete -- no orphaned resources left behind.");
+  }
+}
+
+// bailWithRollback: run best-effort teardown, then exit non-zero. Use this for
+// any failure that can occur AFTER a resource has been created. Pre-creation
+// validation keeps using plain bail() (nothing to clean up yet).
+async function bailWithRollback(msg) {
+  await teardown();
+  bail(P, msg);
+}
+
+// ---------------------------------------------------------------------------
 // 0. Preflight -- is egress to the provider APIs allowed?
 //
 // In a Claude Code web session the egress is governed by an allowlist proxy;
@@ -138,7 +197,25 @@ async function api(label, url, opts = {}) {
   const r = await fetch(url, opts);
   if (!r.ok) {
     const body = await r.text();
-    bail(P, `${label} failed: HTTP ${r.status} -- ${body.slice(0, 400)}`);
+    // Any HTTP failure here may come AFTER a resource was created, so roll back
+    // before exiting. teardown() only touches ids that were actually recorded.
+    await bailWithRollback(`${label} failed: HTTP ${r.status} -- ${body.slice(0, 400)}`);
+  }
+  if (r.status === 204) return null;
+  const ct = r.headers.get("content-type") || "";
+  return ct.includes("application/json") ? r.json() : r.text();
+}
+
+// apiTry: like api(), but THROWS on an HTTP error instead of exiting. Used by
+// the optional, intentionally-non-fatal steps (CF DNS, domain attach, deploy
+// trigger) so their existing try/catch keeps treating a failure as a warning
+// and the run still succeeds -- no rollback for those (the project is already
+// provisioned). Keeps the happy-path response handling identical to api().
+async function apiTry(label, url, opts = {}) {
+  const r = await fetch(url, opts);
+  if (!r.ok) {
+    const body = await r.text();
+    throw new Error(`${label} failed: HTTP ${r.status} -- ${body.slice(0, 400)}`);
   }
   if (r.status === 204) return null;
   const ct = r.headers.get("content-type") || "";
@@ -186,9 +263,12 @@ const neon = await api("Neon project create", "https://console.neon.tech/api/v2/
     project: { name: slug, region_id: neonRegion, pg_version: 17, org_id: neonOrgId },
   }),
 });
+// Record the Neon project id the moment it exists so any later failure (incl.
+// the pooler_host check just below, or the Vercel create) rolls it back.
+created.neonProjectId = neon.project?.id ?? null;
 const cp = neon.connection_uris?.[0]?.connection_parameters;
 if (!cp?.pooler_host) {
-  bail(P, `Neon response missing pooler_host; got: ${JSON.stringify(neon).slice(0, 400)}`);
+  await bailWithRollback(`Neon response missing pooler_host; got: ${JSON.stringify(neon).slice(0, 400)}`);
 }
 const databaseUrl = `postgresql://${cp.role}:${cp.password}@${cp.pooler_host}/${cp.database}?sslmode=require&channel_binding=require`;
 ok(P, `Neon project: ${neon.project.id} (endpoint ${cp.endpoint_id})`);
@@ -216,6 +296,10 @@ const vercelProject = await api(
     }),
   }
 );
+// Record so a later fatal step would roll the Vercel project back too. The
+// remaining steps (CF DNS, domain attach, deploy trigger) are non-fatal
+// (they only warn), so by this point provisioning is effectively done.
+created.vercelProjectId = vercelProject.id ?? null;
 ok(P, `Vercel project: ${vercelProject.id} (${vercelProject.name})`);
 
 // 3. (Optional) Cloudflare CNAME + attach custom domain to the Vercel project
@@ -227,12 +311,12 @@ if (apex) {
     { headers: { Authorization: `Bearer ${CF_TOKEN}` } }
   );
   const zoneId = zoneData.result?.[0]?.id;
-  if (!zoneId) bail(P, `Cloudflare zone not found: ${apex} (is the token scoped to this zone?)`);
+  if (!zoneId) await bailWithRollback(`Cloudflare zone not found: ${apex} (is the token scoped to this zone?)`);
   ok(P, `CF zone: ${zoneId}`);
 
   step(P, `Creating CNAME ${customDomain} -> cname.vercel-dns.com...`);
   try {
-    await api("CF DNS create", `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+    await apiTry("CF DNS create", `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
       method: "POST",
       headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -251,7 +335,7 @@ if (apex) {
 
   step(P, `Adding ${customDomain} to the Vercel project...`);
   try {
-    await api(
+    await apiTry(
       "Vercel domain add",
       `https://api.vercel.com/v10/projects/${vercelProject.id}/domains${teamQs}`,
       {
@@ -272,7 +356,7 @@ const repoId = vercelProject.link?.repoId;
 if (repoId) {
   step(P, `Triggering first production deploy from ${ref}...`);
   try {
-    const deploy = await api("Vercel deploy", `https://api.vercel.com/v13/deployments${teamQs}`, {
+    const deploy = await apiTry("Vercel deploy", `https://api.vercel.com/v13/deployments${teamQs}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
       body: JSON.stringify({
