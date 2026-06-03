@@ -19,6 +19,13 @@ export default function RootNotFound() {
         <div style={{ textAlign: "center" }}>
           <h2>404 — Page not found</h2>
           <p>
+            {/*
+              Plain anchor on purpose: this root 404 renders OUTSIDE the Next
+              router/locale context (see file header), so next/link's <Link>
+              has no router to consume. eslint-disable is the documented escape
+              hatch for the one route that legitimately can't use <Link>.
+            */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/en">Go home</a>
           </p>
         </div>

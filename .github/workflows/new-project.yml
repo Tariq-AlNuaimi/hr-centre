@@ -38,12 +38,22 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Untrusted workflow_dispatch inputs are passed via env and referenced
+          # as quoted shell vars -- never interpolated into the run: script --
+          # to close the GitHub Actions script-injection sink. This job holds
+          # repo-creating + cloud tokens, so the sink would be high-value.
+          IN_SLUG: ${{ inputs.slug }}
+          IN_DISPLAY_NAME: ${{ inputs.display_name }}
+          IN_ADMIN_EMAIL: ${{ inputs.admin_email }}
+          IN_APEX: ${{ vars.APEX_DOMAIN || 'ops-rihal.com' }}
+          IN_OWNER: ${{ vars.GH_OWNER || github.repository_owner }}
+          IN_NEON_REGION: ${{ vars.NEON_REGION || 'aws-eu-central-1' }}
         run: |
           node scripts/new-project.mjs \
-            --slug "${{ inputs.slug }}" \
-            --display-name "${{ inputs.display_name || inputs.slug }}" \
-            --admin-email "${{ inputs.admin_email }}" \
-            --apex "${{ vars.APEX_DOMAIN || 'ops-rihal.com' }}" \
-            --owner "${{ vars.GH_OWNER || github.repository_owner }}" \
-            --neon-region "${{ vars.NEON_REGION || 'aws-eu-central-1' }}" \
-            >> $GITHUB_STEP_SUMMARY
+            --slug "$IN_SLUG" \
+            --display-name "${IN_DISPLAY_NAME:-$IN_SLUG}" \
+            --admin-email "$IN_ADMIN_EMAIL" \
+            --apex "$IN_APEX" \
+            --owner "$IN_OWNER" \
+            --neon-region "$IN_NEON_REGION" \
+            >> "$GITHUB_STEP_SUMMARY"

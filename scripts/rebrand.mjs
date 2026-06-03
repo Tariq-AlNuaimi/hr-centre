@@ -42,43 +42,15 @@ const OWNER = values.owner;
 const OWNER_NAME = values['owner-name'] ?? OWNER;
 const DRY = values['dry-run'];
 
+// NOTE: The Vercel + Neon pivot (ADR-006) deleted the Docker/GHCR/Portainer
+// surface, so rebrand only touches the identity strings that still exist on the
+// current rail: package name, the public app name, and the CLAUDE.md / README
+// headers. docker-compose.yml + Makefile carry no template-specific identity.
 const FILES = [
   {
     path: 'package.json',
     rules: [
       { from: /"name": "fullstack-next-template"/, to: `"name": "${SLUG}"` },
-    ],
-  },
-  {
-    path: 'docker-compose.yml',
-    rules: [
-      { from: /ghcr\.io\/rihal-om\/fullstack-next-template/g, to: `ghcr.io/${OWNER}/${SLUG}` },
-      { from: /next-template-/g, to: `${SLUG}-` },
-    ],
-  },
-  {
-    path: 'docker-compose.prod.yml',
-    rules: [
-      { from: /ghcr\.io\/rihal-om\/fullstack-next-template/g, to: `ghcr.io/${OWNER}/${SLUG}` },
-      { from: /next-template-/g, to: `${SLUG}-` },
-      { from: /NEXT_PUBLIC_APP_NAME:-My App/g, to: `NEXT_PUBLIC_APP_NAME:-${NAME}` },
-    ],
-  },
-  {
-    path: 'Makefile',
-    rules: [
-      { from: /ghcr\.io\/rihal-om\/fullstack-next-template/g, to: `ghcr.io/${OWNER}/${SLUG}` },
-    ],
-  },
-  {
-    // Container-name defaults referenced inside backup.sh -- the script picks
-    // POSTGRES_HOST from env, falling back to `next-template-db`. After
-    // rebrand, the fallback should match the renamed `${SLUG}-db` container
-    // so a stack misconfiguration doesn't connect backups to a non-existent
-    // host with the old name.
-    path: 'deploy/backup.sh',
-    rules: [
-      { from: /next-template-/g, to: `${SLUG}-` },
     ],
   },
   {
@@ -91,12 +63,22 @@ const FILES = [
     path: 'CLAUDE.md',
     rules: [
       {
-        from: /^# CLAUDE\.md — Fullstack Next\.js Template\n\nReusable starter for Rihal internal tools\. Next\.js 16 \+ Prisma 7 \(Postgres\) \+ Auth\.js v5 \+ MinIO \+ Ant Design \+ next-intl\. Deploys as a single Docker image to a Portainer-managed host via GHCR webhook\. Owner: Tariq Al-Naaimi\./m,
-        to: `# CLAUDE.md — ${NAME}\n\n${NAME}. Forked from the fullstack-vibe-template (Next.js 16 + Prisma 7 + Auth.js v5 + MinIO + Ant Design + next-intl). Deploys as a single Docker image via GHCR + Portainer webhook. Owner: ${OWNER_NAME}.`,
+        from: /^# CLAUDE\.md — Fullstack Next\.js Template \(Prototype Rail\)$/m,
+        to: `# CLAUDE.md — ${NAME}`,
       },
       {
-        from: /\*\*This is the template\.\*\* When you fork it into a project, replace this section with the project-specific intro, owners, environments, and ADR references\. Sections below describe what the template ships out of the box — treat them as defaults to keep, tighten, or replace\.\n\n/,
-        to: '',
+        // Current tagline line (single line; matches up to the trailing owner sentence).
+        from: /^Reusable starter for Rihal internal-tool prototypes\..*Owner: .+\.$/m,
+        to: `${NAME} — forked from fullstack-vibe-template. Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Ant Design + next-intl. Deploys to Vercel + Neon via \`git push\`. Owner: ${OWNER_NAME}.`,
+      },
+    ],
+  },
+  {
+    path: 'README.md',
+    rules: [
+      {
+        from: /^# Fullstack Next\.js Template \(Prototype Rail\)$/m,
+        to: `# ${NAME}`,
       },
     ],
   },
@@ -150,4 +132,4 @@ for (const d of diffs) {
 console.log('');
 console.log('Rebrand complete. Next:');
 console.log(`  git add -A && git commit -m "chore: rebrand to ${SLUG}"`);
-console.log('  /first-fork    # finish the bootstrap (secrets, Portainer, branch protection)');
+console.log('  /first-fork    # finish the bootstrap (Vercel + Neon, env vars, first deploy)');

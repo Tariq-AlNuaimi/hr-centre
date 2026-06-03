@@ -9,6 +9,17 @@ async function main() {
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "changeme";
 
+  // Refuse to seed a guessable admin into a real deployment. The default
+  // password is fine for local dev, but in production it would ship a
+  // publicly-known ADMIN credential. Fail loudly instead.
+  if (process.env.NODE_ENV === "production" && adminPassword === "changeme") {
+    console.error(
+      "Refusing to seed: SEED_ADMIN_PASSWORD is unset in production " +
+        "(would create admin@example.com / 'changeme'). Set a strong password and re-run."
+    );
+    process.exit(1);
+  }
+
   const existing = await prisma.user.findUnique({
     where: { email: adminEmail },
   });
