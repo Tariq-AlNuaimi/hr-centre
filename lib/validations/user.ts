@@ -11,7 +11,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   email: emailSchema.optional(),
   name: z.string().min(1).max(255).optional(),
-  password: z.string().min(6).max(128).optional(),
+  password: z.string().min(8).max(128).optional(), // min 8 matches createUserSchema + the self-service route
   role: z.enum(["ADMIN", "EDITOR", "VIEWER"]).optional(),
 });
 

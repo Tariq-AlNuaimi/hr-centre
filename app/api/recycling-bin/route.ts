@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prismaUnfiltered } from "@/lib/prisma";
-import { withAuth } from "@/lib/api-helpers";
+import { withAuth, withAdminAuth } from "@/lib/api-helpers";
 import { ok, notFound } from "@/lib/api-response";
 import {
   RECYCLABLE_ENTITY_TYPES as ENTITY_TYPES,
@@ -52,7 +52,10 @@ export const GET = withAuth(async () => {
   return ok(results);
 });
 
-export const POST = withAuth(async (request: NextRequest) => {
+// Restore is a state-changing, admin-grade action (re-activating a soft-deleted
+// record -- including, e.g., a deactivated ADMIN account), so it is gated to
+// ADMIN, matching the permanent-delete route. Listing the bin stays withAuth.
+export const POST = withAdminAuth(async (request: NextRequest) => {
   const { entityType, id } = (await request.json()) as { entityType: string; id: string };
 
   const accessor = recyclableAccessor(entityType);

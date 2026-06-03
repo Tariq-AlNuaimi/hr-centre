@@ -5,7 +5,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
 
   // Auth
-  AUTH_SECRET: z.string().min(1),
+  AUTH_SECRET: z.string().min(32), // matches `openssl rand -base64 32`; rejects a weak JWT signing key
   AUTH_URL: z.string().url().optional(),
 
   // App
