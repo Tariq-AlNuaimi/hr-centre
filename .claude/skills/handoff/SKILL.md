@@ -22,6 +22,17 @@ hosting, different ops model) can take ownership cleanly.
 - The latest commit is on `main` and pushed.
 - Vercel + Neon are still hooked up (so we can capture their state).
 
+### Shared-tier security checklist (before handling sensitive data)
+
+A `shared`-tier fork that will hold Confidential / Restricted production data must
+work through **`SECURITY.md` §16 — "Shared-tier security checklist (at `/handoff`)"**
+before handoff: MFA (T-02), atomic audit (ADR-010), nonce-based CSP, account lockout
+(Upstash), column encryption for any Restricted field, and SARIF / CodeQL active.
+Each item is "done, or risk-accepted in writing by the project owner" (record
+acceptances in `SECURITY.md` §11). Surface this list to the operator and reflect its
+state in the generated `HANDOFF.md` "Security notes" / "Open issues" sections — do not
+silently treat an unstarted checklist as cleared.
+
 ## What this produces
 
 A single `HANDOFF.md` at the repo root, structured for the IT team to read
@@ -137,6 +148,9 @@ See `SECURITY.md` for:
 - Audit-log scrubbing invariants (`SCRUB_FIELDS`).
 - Soft-delete semantics.
 - API auth wrappers (`withAuth`, `withAdminAuth`, `withInternalAuth`).
+- **§16 — the shared-tier security checklist** (MFA, atomic audit, nonce-CSP,
+  account lockout, column encryption, SARIF/CodeQL). Complete or risk-accept each
+  item before this app handles sensitive production data.
 
 ## ESLint rules
 
@@ -146,20 +160,25 @@ They're configured at `error` -- do not relax without reviewing
 
 ## CI / verification
 
-- `verify.yml` runs typecheck + lint + tests + build + audit + scaffold smokes.
-- `secrets-scan.yml` runs gitleaks on every push.
-- `sast.yml` runs Semgrep with OWASP + secrets rulesets.
+- `verify.yml` runs typecheck + lint + contract tests + component tests + build (with `.next/cache`) + audit + scaffold smokes.
+- `secrets-scan.yml` runs gitleaks on every push and uploads SARIF to the Security tab.
+- `sast.yml` runs Semgrep with OWASP + secrets rulesets and uploads SARIF to the Security tab.
+- `codeql.yml` runs CodeQL `javascript-typescript` analysis (manual dispatch + a weekly schedule); results land in the Security tab.
 
-> **Reactivation step for the IT team:** these three workflows ship with their triggers
-> set to `workflow_dispatch`-only (they were dormant on the prototype's free plan).
-> On a paid plan, restore the `pull_request:` / `push:` triggers under `on:` in each file
-> (they're left commented in place) and turn on branch protection on `main`.
+> **Reactivation step for the IT team:** these workflows ship with their `pull_request:` /
+> `push:` triggers set to `workflow_dispatch`-only (they were dormant on the prototype's free
+> plan; `codeql.yml` keeps a weekly `schedule`). On a paid plan, restore the commented
+> `pull_request:` / `push:` triggers under `on:` in each file, confirm the `security-events:
+> write` permission stays so SARIF reaches the Security tab, and turn on branch protection on
+> `main`.
 
 ## What was NOT done
 
 - No load testing.
 - No formal penetration test.
-- No multi-tenancy (one-org assumption).
+- No multi-tenancy — isolation is by deployment (one Vercel+Neon project per tool),
+  a deliberate decision (ADR-011), not a gap. RLS / an `organizationId` model is only
+  needed if a fork goes multi-org from a single deployment.
 - <list anything the operator and team agreed was out of scope>
 
 ## Open issues / known TODOs

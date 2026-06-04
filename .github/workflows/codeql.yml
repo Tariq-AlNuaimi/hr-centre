@@ -1,0 +1,54 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
+# CodeQL has no local /ship mirror (it is GitHub-hosted analysis); it activates at /handoff
+# when the IT team's paid plan runs Actions and enforces branch protection. See SECURITY.md
+# §14 / ADR-007.
+#
+# Triggers are workflow_dispatch (manual) + a weekly schedule. The schedule is left ENABLED
+# (unlike the push/PR triggers on the other dormant workflows) because on a billing-blocked
+# plan it simply does not fire, and at handoff it gives the Security tab a standing cadence
+# with no extra wiring. AT HANDOFF: add `pull_request` / `push` triggers if PR-time analysis
+# is wanted in addition to the schedule.
+name: CodeQL
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Monday 06:00 UTC. Dormant until Actions is enabled.
+    - cron: "0 6 * * 1"
+  # Restore at handoff for PR-time analysis (paid Actions):
+  # pull_request:
+  # push:
+  #   branches-ignore: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          # 'security-and-quality' is broader than the default 'security-extended';
+          # narrow to 'security-extended' if quality noise is unwanted at handoff.
+          queries: security-and-quality
+
+      # JS/TS needs no compiled build for CodeQL; autobuild is a no-op safety net.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

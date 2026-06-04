@@ -230,17 +230,18 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 ## 14. CI security gates
 
-Five workflows live in `.github/workflows/`:
+Workflows live in `.github/workflows/`:
 
 | Workflow | Triggers | What it gates | Blocks on |
 |---|---|---|---|
-| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, `next build`, `npm audit --audit-level=critical --omit=dev`, scaffold smokes | Critical CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
-| `secrets-scan.yml` | PR + push (any) | gitleaks across full git history | Any detected secret pattern |
-| `sast.yml` | PR + push (any) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets` | Any finding at default severity |
+| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, component tests (`test:components`), `next build` (with `.next/cache`), `npm audit --audit-level=critical --omit=dev`, scaffold smokes | Critical CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
+| `secrets-scan.yml` | PR + push (any) | gitleaks across full git history; uploads SARIF to the Security tab | Any detected secret pattern |
+| `sast.yml` | PR + push (any) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets`; uploads SARIF to the Security tab | Any finding at default severity |
+| `codeql.yml` | Manual dispatch + weekly schedule | CodeQL `javascript-typescript` analysis; results in the Security tab | Any finding at the configured severity |
 | `uat.yml` | Manual dispatch | Playwright UAT against a deployed URL; uploads a screenshot report. Not a gate. | — |
 | `new-project.yml` | Manual dispatch | One-shot provisioner (GitHub repo + Neon + Vercel + Cloudflare DNS). Not a gate. | — |
 
-(All five are **dormant** on the free plan — triggers are `workflow_dispatch` only. The active gate is local `/ship`. See §14 intro + ADR-007.)
+(All are **dormant** on the free plan — triggers are `workflow_dispatch` (and a dormant `schedule` for `codeql.yml`). The SARIF upload steps in `secrets-scan.yml` / `sast.yml` are guarded so they no-op when there is nothing to upload. The active gate is local `/ship`. See §14 intro + ADR-007.)
 
 **On the current plan (solo operator, free GitHub plan with Actions billing blocked) these workflows do not run.** Their security checks are mirrored locally by the `/ship` skill (typecheck → lint → tests → build → gitleaks → npm audit) plus the on-demand `/audit` skill (gitleaks + npm audit + Semgrep). **CI activates at `/handoff`**, when the IT team's paid plan can run Actions and enforce branch protection.
 
@@ -257,7 +258,39 @@ The contract suite (`tests/contracts/*.test.ts`, run via `node:test` + `tsx`) co
 | `lib/email.ts` | `tests/contracts/email.test.ts` | `sendEmail` gated by `SMTP_HOST` (returns `{ sent: false }` when unset), metadata-only logging (never body), transport invocation shape |
 | `lib/export.ts` | `tests/contracts/export.test.ts` | `toExcel` buffer generation, column mapping + `format` callbacks, `excelDownloadHeaders` content-type + filename |
 | `lib/sentry.ts` | `tests/contracts/sentry-scrub.test.ts` | Context scrubbing shares `SCRUB_FIELDS`, `setUserContext` forwards only the id (no email / name / PII), `setUserContext(null)` clears, `captureError` with/without context |
+| `lib/api-helpers.ts` (auth wrappers) | `tests/contracts/api-auth.test.ts` | `withInternalAuth`: 503 when the token env var is unset, 401 on missing / mismatched `x-internal-token`, pass-through on match. `withAuth` / `withAdminAuth`: 401 with no session, 403 for a non-admin, session pass-through to the handler, ADMIN pass-through |
 
-Deliberately not covered yet (would need disproportionate Prisma / Auth.js mocking for the value): `withAuth` / `withAdminAuth` / `withInternalAuth` HOFs, soft-delete extension behavior. These are smoke-tested by every entity that uses them; explicit unit tests are a future bucket.
+**Note on the auth-wrapper tests.** The session-bearing cases stub `auth()` (and `lib/sentry`) via `node:test`'s `mock.module`, which needs `--experimental-test-module-mocks`. The plain `npm test` command does not pass that flag, so those cases **self-skip** there — but the `withInternalAuth` token-gate cases (the security-critical branch) run on every `npm test`. To exercise the full file:
+```
+node --experimental-test-module-mocks --import tsx --test tests/contracts/api-auth.test.ts
+```
+
+Still deliberately not covered (would need disproportionate Prisma mocking for the value): the soft-delete extension behavior and `middleware.ts` request routing. These are smoke-tested by every entity that uses them and by `/uat`; explicit unit tests are a future bucket.
 
 **Adding a new Restricted field-name to `SCRUB_FIELDS`?** Add it to the membership assertion in `tests/contracts/audit-scrub.test.ts` in the same commit, or future contributors lose the assertion that the field is scrubbed.
+
+---
+
+## 16. Shared-tier security checklist (at `/handoff`)
+
+The template's **security floor** (auth wrappers, no leaked secrets, zod at every
+boundary, no raw SQL, the four `rihal-template/*` ESLint rules, audit log ON, `/ship`
+before every push) holds for **both** tiers from day zero — see `CLAUDE.md` → "Project
+tiers". A prototype that has only been reviewed by stakeholders via a shared URL is **not
+yet cleared to hold sensitive (Confidential / Restricted) production data.**
+
+A `shared`-tier fork must complete the following **post-UAT, before-handoff** layers before
+it handles sensitive data. `/handoff` surfaces this list; each item is "done or risk-accepted
+in writing by the project owner" (record acceptances in §11).
+
+| # | Layer | Why / finding | Where |
+|---|---|---|---|
+| 1 | **MFA** (WebAuthn / TOTP, or front the app with an SSO provider) | Closes **T-02** (open High). A single stolen credential is full account takeover without it. | Auth.js providers (`/scale-up` → "OAuth login" / SSO) |
+| 2 | **Atomic audit** (Postgres-trigger-based audit writing `audit_logs` in the same transaction as the DML) | **ADR-010** accepted the non-atomic gap for the prototype rail; a shared fork carrying records that must be tamper-evident closes it. | DB triggers + its own ADR |
+| 3 | **Nonce-based CSP** (drop `'unsafe-inline'` on `script-src` / `style-src`) | **T-05** shipped a conservative CSP that still allows inline for Ant Design SSR + Next bootstrap. Nonce-CSP removes the XSS-amplification surface. | `next.config.ts` / middleware nonce; revisit on Ant Design 7 (ADR-001 migration trigger) |
+| 4 | **Account lockout / brute-force throttle** across instances | A07 gap (no lockout); the in-memory rate limiter is per-instance and reset on cold start. | Upstash Redis + `@upstash/ratelimit` (`/scale-up` → "Rate limiter across instances") |
+| 5 | **Column-level encryption** for any Restricted field beyond what `SCRUB_FIELDS` covers | `SCRUB_FIELDS` only protects audit/Sentry payloads, not the row at rest. Restricted columns (salary, health, national ID, etc.) need encryption + its own ADR (ADR-001 migration trigger). | Prisma field encryption + ADR |
+| 6 | **SARIF / CodeQL active** in the Security tab | `codeql.yml` + the SARIF uploads in `secrets-scan.yml` / `sast.yml` are dormant on the free plan; activate them with branch protection at handoff so findings are visible and gating. | §14 + `.github/workflows/` |
+
+`personal`-tier forks skip this checklist (there is no handoff and no sensitive-data
+mandate); the security floor still applies.

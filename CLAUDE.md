@@ -26,7 +26,7 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
   - `/quickstart` — idea → live URL. The most-used skill.
   - `/scaffold-entity` — Prisma model + CRUD routes + dashboard page in one shot.
   - `/scale-up` — add file uploads / cron / background jobs / realtime when the project needs them.
-  - `/ship` — pre-push gate (typecheck → lint → tests → build → gitleaks → npm audit).
+  - `/ship` — pre-push gate (typecheck → lint → tests → component tests → build → gitleaks → npm audit).
   - `/audit` — on-demand security scan of any path (gitleaks + npm audit + Semgrep).
   - `/uat` — browser-driven acceptance walkthrough in Chromium (Playwright), with screenshots.
   - `/conform` — bring foreign code up to this template's standard (report-and-approve).
@@ -84,7 +84,7 @@ On the current plan (solo operator, free GitHub plan with Actions billing blocke
 workflows **do not run**. The active enforcement gate is the local **`/ship`** skill, which
 mirrors their checks and runs on any machine (no `.git/hooks`, nothing machine-specific).
 
-**`/ship` order — stop on first failure:** typecheck → lint → tests → build → gitleaks → npm audit.
+**`/ship` order — stop on first failure:** typecheck → lint → tests → component tests → build → gitleaks → npm audit.
 
 The workflow files stay in the repo, dormant and labeled, and **activate at `/handoff`** when
 the IT team's paid plan can run Actions and enforce branch protection:
@@ -132,7 +132,7 @@ To silence a rule on a justified line:
 If the suppression touches security, log it in `SECURITY.md` §12 with rule, location, justification, reviewer, date.
 
 ## Hard rules
-- **Run `/ship` before every push.** This replaces branch protection for a solo operator and works on any machine. It runs typecheck → lint → tests → build → gitleaks → npm audit and stops on the first failure. Do not push on a red `/ship`.
+- **Run `/ship` before every push.** This replaces branch protection for a solo operator and works on any machine. It runs typecheck → lint → tests → component tests → build → gitleaks → npm audit and stops on the first failure. Do not push on a red `/ship`.
 - **Before any push that touches auth, schemas, API routes, or anything under `lib/`, run the native `/code-review`** (fresh-context diff review) and resolve its findings. This replaces the CI review gate for a solo operator.
 - **Never commit `.env`.** Auth, DB, and SMTP credentials are Restricted — see `SECURITY.md` §1. gitleaks gates every push (locally via `/ship`).
 - **Never log** any Restricted env var. The `no-secret-env-in-console` ESLint rule catches the obvious form; it does NOT catch interpolation into other variables — humans still apply judgement.

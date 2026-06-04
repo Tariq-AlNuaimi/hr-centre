@@ -33,6 +33,11 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/internal") ||
+    // /api/v1/* is the public, versioned API surface (rewrites to /api/* via
+    // next.config). Let it through here so the rewrite + the route's own wrapper
+    // (withApiAuth for external consumers, or withAuth) decide -- middleware must
+    // not blanket-401 it before the rewrite resolves. See ADR-013.
+    pathname.startsWith("/api/v1") ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {

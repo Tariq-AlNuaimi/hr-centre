@@ -24,6 +24,13 @@ on:
   # schedule:
   #   - cron: "0 3 * * *"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: uat-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   uat:
     runs-on: ubuntu-latest
@@ -38,7 +45,19 @@ jobs:
 
       - run: npm ci
 
+      # Cache the Playwright browser download so reruns skip the ~100MB fetch.
+      # Keyed on the @playwright/test version in the lockfile so a Playwright
+      # bump (which can require a new browser build) busts the cache.
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+
       - name: Install Chromium
+        # On a cache hit the browser binary is already present; still run with
+        # --with-deps so the OS-level libraries (never cached) are installed.
         run: npx playwright install --with-deps chromium
 
       - name: Run UAT

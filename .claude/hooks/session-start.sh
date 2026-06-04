@@ -19,8 +19,8 @@ if [ ! -d node_modules ]; then
   npm install --no-audit --no-fund
 fi
 
-# 3. Generate the Prisma client if missing. Uses a dummy DATABASE_URL -- same trick the Dockerfile uses
-#    so client generation does not require a running database.
+# 3. Generate the Prisma client if missing. Uses a dummy DATABASE_URL so client
+#    generation does not require a running database.
 if [ ! -d generated/prisma ]; then
   echo "[harness] generating prisma client..."
   DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate >/dev/null

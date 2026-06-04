@@ -52,6 +52,20 @@ jobs:
       - name: Test (contract suite)
         run: npm test
 
+      - name: Test (component suite)
+        run: npm run test:components
+
+      # Cache Next's build cache so incremental builds reuse compiled output.
+      # Keyed on lockfile + source so a dep or code change busts it; restore-keys
+      # let an older cache seed a partial hit.
+      - name: Cache Next build
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
       - name: Build
         run: npm run build
 
