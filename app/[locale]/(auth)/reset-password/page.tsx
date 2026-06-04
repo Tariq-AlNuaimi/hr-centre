@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Suspense, useState } from "react";
+import { apiClient } from "@/lib/api-client";
 
 const { Title, Paragraph } = Typography;
 
@@ -42,17 +43,13 @@ function ResetPasswordForm() {
   }) {
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, newPassword: values.newPassword }),
+      // apiClient throws ApiError carrying the server's `error` message on a
+      // non-2xx, so the user can tell expiry from a network error; an empty
+      // message falls back to the generic copy below.
+      await apiClient.post("/api/auth/reset-password", {
+        token,
+        newPassword: values.newPassword,
       });
-      if (!res.ok) {
-        // Surface the API's specific reason (e.g. "invalid or expired") rather
-        // than a generic catch-all, so the user can tell expiry from a network error.
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(body?.error || "");
-      }
       message.success(t("resetSuccess"));
       router.push(`/${locale}/login`);
     } catch (e) {

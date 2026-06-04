@@ -87,12 +87,13 @@ jobs:
           npm run scaffold -- --name TestEntity --fields 'title:string,note:string?'
           npx prisma generate
           npx tsc --noEmit
-          git checkout -- prisma/schema.prisma \
+          git checkout prisma/schema.prisma \
             lib/prisma/soft-delete-extension.ts \
             lib/prisma/recyclable.ts \
-            components/layout/AppSidebar.tsx
+            components/layout/AppSidebar.tsx \
+            messages/en.json \
+            messages/ar.json
           rm -rf lib/validations/test-entity.ts \
-            messages/_scaffold-test-entity.json \
             app/api/test-entity \
             components/test-entity \
             'app/[locale]/(dashboard)/test-entity'
@@ -106,12 +107,13 @@ jobs:
             --relations 'owner:User?'
           npx prisma generate
           npx tsc --noEmit
-          git checkout -- prisma/schema.prisma \
+          git checkout prisma/schema.prisma \
             lib/prisma/soft-delete-extension.ts \
             lib/prisma/recyclable.ts \
-            components/layout/AppSidebar.tsx
+            components/layout/AppSidebar.tsx \
+            messages/en.json \
+            messages/ar.json
           rm -rf lib/validations/test-rel.ts \
-            messages/_scaffold-test-rel.json \
             app/api/test-rel \
             components/test-rel \
             'app/[locale]/(dashboard)/test-rel'
@@ -123,12 +125,13 @@ jobs:
           grep -q 'withEditorAuth' app/api/test-ed/route.ts
           npx prisma generate
           npx tsc --noEmit
-          git checkout -- prisma/schema.prisma \
+          git checkout prisma/schema.prisma \
             lib/prisma/soft-delete-extension.ts \
             lib/prisma/recyclable.ts \
-            components/layout/AppSidebar.tsx
+            components/layout/AppSidebar.tsx \
+            messages/en.json \
+            messages/ar.json
           rm -rf lib/validations/test-ed.ts \
-            messages/_scaffold-test-ed.json \
             app/api/test-ed \
             components/test-ed \
             'app/[locale]/(dashboard)/test-ed'

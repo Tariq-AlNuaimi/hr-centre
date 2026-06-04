@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { PaginatedResponse } from "@/types";
+import { apiClient } from "@/lib/api-client";
 
 interface UseCrudOptions {
   basePath: string;
@@ -24,16 +25,22 @@ export function useCrud<T extends { id: string }>({
   // aborted -- each must complete.
   const listAbortRef = useRef<AbortController | null>(null);
 
+  // Internal dispatcher. Reads flow through apiClient with an abort signal so a
+  // newer read supersedes the previous one; mutations carry a JSON body. The
+  // returned hook shape is unchanged -- this only swaps the transport for the
+  // typed `apiClient` (which parses the `ApiResponse<T>` envelope and throws an
+  // `ApiError` carrying the server's message on non-2xx).
   const request = useCallback(
     async <R>(
+      method: "GET" | "POST" | "PUT" | "DELETE",
       path: string,
-      options?: RequestInit,
+      body?: unknown,
       kind: "read" | "mutate" = "read"
     ): Promise<R> => {
       const setBusy = kind === "read" ? setListLoading : setMutating;
 
       // For reads, abort the previous in-flight read before starting a new one.
-      let signal: AbortSignal | undefined = options?.signal ?? undefined;
+      let signal: AbortSignal | undefined;
       if (kind === "read") {
         listAbortRef.current?.abort();
         const controller = new AbortController();
@@ -44,14 +51,7 @@ export function useCrud<T extends { id: string }>({
       setBusy(true);
       setError(null);
       try {
-        const res = await fetch(path, {
-          headers: { "Content-Type": "application/json" },
-          ...options,
-          signal,
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error ?? "Request failed");
-        return json.data as R;
+        return await apiClient.request<R>(path, { method, body, signal });
       } catch (err) {
         // A superseded read was intentionally aborted -- swallow it so the
         // caller's catch doesn't surface a spurious error for the stale request.
@@ -76,45 +76,29 @@ export function useCrud<T extends { id: string }>({
   const list = useCallback(
     (params?: Record<string, string>) => {
       const qs = params ? "?" + new URLSearchParams(params).toString() : "";
-      return request<PaginatedResponse<T>>(`${basePath}${qs}`);
+      return request<PaginatedResponse<T>>("GET", `${basePath}${qs}`);
     },
     [basePath, request]
   );
 
   const getById = useCallback(
-    (id: string) => request<T>(`${basePath}/${id}`),
+    (id: string) => request<T>("GET", `${basePath}/${id}`),
     [basePath, request]
   );
 
   const create = useCallback(
-    (data: Partial<T>) =>
-      request<T>(
-        basePath,
-        {
-          method: "POST",
-          body: JSON.stringify(data),
-        },
-        "mutate"
-      ),
+    (data: Partial<T>) => request<T>("POST", basePath, data, "mutate"),
     [basePath, request]
   );
 
   const update = useCallback(
     (id: string, data: Partial<T>) =>
-      request<T>(
-        `${basePath}/${id}`,
-        {
-          method: "PUT",
-          body: JSON.stringify(data),
-        },
-        "mutate"
-      ),
+      request<T>("PUT", `${basePath}/${id}`, data, "mutate"),
     [basePath, request]
   );
 
   const remove = useCallback(
-    (id: string) =>
-      request<T>(`${basePath}/${id}`, { method: "DELETE" }, "mutate"),
+    (id: string) => request<T>("DELETE", `${basePath}/${id}`, undefined, "mutate"),
     [basePath, request]
   );
 

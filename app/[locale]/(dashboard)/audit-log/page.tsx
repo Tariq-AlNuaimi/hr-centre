@@ -5,6 +5,7 @@ import { Typography, Table, Select, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
 import { useNotify } from "@/hooks/use-notify";
+import { apiClient } from "@/lib/api-client";
 
 const { Title } = Typography;
 
@@ -47,14 +48,13 @@ export default function AuditLogPage() {
       if (entityType) params.set("entityType", entityType);
       if (action) params.set("action", action);
 
-      const res = await fetch(`/api/audit-log?${params}`);
-      const json = await res.json();
-      if (res.ok) {
-        setData(json.data.data);
-        setTotal(json.data.total);
-      } else {
-        showError(t("loadFailed"));
-      }
+      // The audit-log GET wraps a paginated payload in the envelope, so the
+      // unwrapped `data` is itself `{ data: AuditEntry[]; total: number }`.
+      const res = await apiClient.get<{ data: AuditEntry[]; total: number }>(
+        `/api/audit-log?${params}`
+      );
+      setData(res.data);
+      setTotal(res.total);
     } catch {
       showError(t("loadFailed"));
     } finally {

@@ -105,7 +105,7 @@ const pascalFromCamel = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const kebab = (s) => s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 const snake = (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
 // "dueAt" -> "Due At", "name" -> "Name". Used to seed human-readable English
-// defaults in the i18n companion file the operator merges into the messages.
+// defaults in the i18n namespace merged into messages/en.json + messages/ar.json.
 const humanize = (s) =>
   s
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -273,8 +273,10 @@ function schemaModelBlock() {
 
   for (const f of fields.filter((x) => x.indexed)) lines.push(`  @@index([${f.name}])`);
   for (const r of relations) lines.push(`  @@index([${r.name}Id])`);
-  // The soft-delete extension filters `deletedAt: null` on every read; index it.
-  if (softDelete) lines.push('  @@index([deletedAt])');
+  // The soft-delete extension filters `deletedAt: null` on every read, and the
+  // default list sort is `createdAt desc`; one composite index serves both (the
+  // `deletedAt` prefix covers the filter). Mirrors the base User model.
+  if (softDelete) lines.push('  @@index([deletedAt, createdAt])');
 
   lines.push(`  @@map("${entitySnakePlural}")`);
   lines.push('}');
@@ -929,14 +931,12 @@ export default function Edit${Pascal}Page() {
 `;
 }
 
-// next-intl companion: the generated pages/forms/columns all call
-// useTranslations("<i18nNs>"). We MUST NOT edit the shared messages/*.json
-// (owned elsewhere), so instead we emit every key this entity needs into a
-// standalone messages/_scaffold-<entity>.json. The operator merges its single
-// top-level namespace into messages/en.json + messages/ar.json (the
-// post-scaffold instructions spell this out). English values double as the
-// Arabic placeholders until translated.
-function companionMessages() {
+// next-intl namespace: the generated pages/forms/columns all call
+// useTranslations("<i18nNs>"). We merge this entity's namespace directly into
+// BOTH messages/en.json and messages/ar.json (see mergeMessages below). English
+// values double as the Arabic placeholders until an operator translates them, so
+// the two files stay in exact key parity.
+function entityMessageKeys() {
   const keys = {};
   // Field / enum / relation labels (column headers + form labels).
   for (const f of fields) keys[f.name] = humanize(f.name);
@@ -959,11 +959,22 @@ function companionMessages() {
   keys.createFailed = `Failed to create ${entityCamel}`;
   keys.updated = `${Pascal} updated`;
   keys.updateFailed = `Failed to update ${entityCamel}`;
-  return { [i18nNs]: keys };
+  return keys;
 }
 
-function companionMessagesFile() {
-  return JSON.stringify(companionMessages(), null, 2) + '\n';
+// Merge the entity namespace into an existing messages file's parsed object,
+// returning the serialized JSON (2-space + trailing newline, matching the
+// existing files). Idempotent: if the namespace already exists, the file is
+// returned byte-for-byte unchanged so a re-scaffold can't duplicate keys.
+function mergeMessages(src, namespace, keys) {
+  const parsed = JSON.parse(src);
+  if (Object.hasOwn(parsed, namespace)) {
+    // Namespace already present -- leave the file exactly as-is (don't reflow
+    // formatting or clobber existing/translated values).
+    return src;
+  }
+  parsed[namespace] = keys;
+  return JSON.stringify(parsed, null, 2) + '\n';
 }
 
 // ---------- Existing-file patches ----------
@@ -1040,9 +1051,6 @@ write(`components/${entityKebab}/${Pascal}Form.tsx`, formFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/page.tsx`, listPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/new/page.tsx`, newPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/[id]/page.tsx`, editPageFile());
-// i18n companion -- merge into messages/en.json + messages/ar.json (we can't
-// touch the shared message files directly; see post-scaffold instructions).
-write(`messages/_scaffold-${entityKebab}.json`, companionMessagesFile());
 
 // ---------- All-or-nothing patch computation ----------
 //
@@ -1058,8 +1066,23 @@ try {
   const schemaPatched = patchedTargetModels(schemaSrc) + enumBlocks() + schemaModelBlock();
   const schemaWrite = { path: join(ROOT, 'prisma/schema.prisma'), content: schemaPatched };
 
+  // i18n: merge this entity's namespace into BOTH messages/en.json and
+  // messages/ar.json. English values seed both (the ar copy is a placeholder an
+  // operator translates later) -- parity stays exact. Idempotent: if the
+  // namespace already exists, mergeMessages returns the file unchanged, so a
+  // re-scaffold can't duplicate keys. Computed here (before any write) so the
+  // all-or-nothing semantics hold: a malformed/missing messages file aborts the
+  // whole run rather than leaving a half-scaffolded repo.
+  const messageKeys = entityMessageKeys();
+  const enPath = join(ROOT, 'messages/en.json');
+  const arPath = join(ROOT, 'messages/ar.json');
+  const enWrite = { path: enPath, content: mergeMessages(await readFile(enPath, 'utf8'), i18nNs, messageKeys) };
+  const arWrite = { path: arPath, content: mergeMessages(await readFile(arPath, 'utf8'), i18nNs, messageKeys) };
+
   patches = [
     schemaWrite,
+    enWrite,
+    arWrite,
     await patchSoftDeleteRegistry(),
     await patchRecyclingBin(),
     await patchSidebar(),
@@ -1099,9 +1122,7 @@ if (enums.length > 0) {
 console.log(`  1. Review prisma/schema.prisma (new model + enums + back-refs).`);
 console.log(`  2. Run: npm run prisma:migrate -- --name add_${entitySnake}`);
 console.log(`  3. Run: npm run prisma:generate`);
-console.log('  4. i18n: the generated UI calls useTranslations("' + i18nNs + '").');
-console.log(`     Merge the "${i18nNs}" namespace from messages/_scaffold-${entityKebab}.json`);
-console.log('     into BOTH messages/en.json and messages/ar.json (translate the ar values),');
-console.log(`     then delete messages/_scaffold-${entityKebab}.json. Until you do, those keys`);
-console.log('     render as the raw key string.');
+console.log('  4. i18n: the "' + i18nNs + '" namespace was merged into BOTH');
+console.log('     messages/en.json and messages/ar.json (English text seeds both).');
+console.log('     Translate the new "' + i18nNs + '" values in messages/ar.json.');
 console.log(`  5. Commit; CI verifies build + lint + typecheck.`);

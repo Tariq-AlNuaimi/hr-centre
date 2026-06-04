@@ -1,8 +1,13 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withSentryConfig } from "@sentry/nextjs";
+import withBundleAnalyzer from "@next/bundle-analyzer";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+// `npm run analyze` (ANALYZE=true) emits an interactive bundle treemap so a fork
+// can see what ships to the client before optimizing. No-op on normal builds.
+const withAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -60,7 +65,7 @@ const nextConfig: NextConfig = {
 const hasSentryAuth = Boolean(process.env.SENTRY_AUTH_TOKEN);
 const isCI = process.env.CI === "true" || process.env.CI === "1";
 
-const baseConfig = withNextIntl(nextConfig);
+const baseConfig = withAnalyzer(withNextIntl(nextConfig));
 
 export default withSentryConfig(baseConfig, {
   org: process.env.SENTRY_ORG,

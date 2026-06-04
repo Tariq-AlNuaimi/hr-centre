@@ -6,6 +6,7 @@ import { LockOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { useNotify } from "@/hooks/use-notify";
+import { apiClient, ApiError } from "@/lib/api-client";
 
 export default function ProfilePage() {
   const t = useTranslations("settings");
@@ -25,20 +26,13 @@ export default function ProfilePage() {
   }) {
     setLoading(true);
     try {
-      const res = await fetch(`/api/users/${user?.id}/password`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        showError(json.error ?? "Failed to change password");
-        return;
-      }
+      await apiClient.put(`/api/users/${user?.id}/password`, values);
       success(t("passwordChanged"));
       form.resetFields();
-    } catch {
-      showError("Failed to change password");
+    } catch (e) {
+      // Surface the server's reason (carried by ApiError) on a non-2xx; fall
+      // back to the generic copy for a network/parse failure.
+      showError(e instanceof ApiError ? e.message : "Failed to change password");
     } finally {
       setLoading(false);
     }

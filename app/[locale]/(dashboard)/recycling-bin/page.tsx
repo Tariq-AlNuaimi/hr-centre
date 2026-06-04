@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { useNotify } from "@/hooks/use-notify";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/shared/DataTable";
+import { apiClient } from "@/lib/api-client";
 
 const { Title } = Typography;
 
@@ -56,13 +57,15 @@ export default function RecyclingBinPage() {
           page: String(nextPage),
           pageSize: String(nextPageSize),
         }).toString();
-        const res = await fetch(`/api/recycling-bin?${qs}`);
-        if (!res.ok) throw new Error();
-        const json = (await res.json()) as RecyclingBinResponse;
-        setItems(json.data ?? []);
-        setTotal(json.total ?? 0);
-        setPage(json.page ?? nextPage);
-        setPageSize(json.pageSize ?? nextPageSize);
+        // apiClient unwraps the `ApiResponse` envelope, so this is the inner
+        // paginated payload (`{ data, total, page, pageSize }`).
+        const res = await apiClient.get<RecyclingBinResponse>(
+          `/api/recycling-bin?${qs}`
+        );
+        setItems(res.data ?? []);
+        setTotal(res.total ?? 0);
+        setPage(res.page ?? nextPage);
+        setPageSize(res.pageSize ?? nextPageSize);
       } catch {
         showError(t("loadFailed"));
       } finally {
@@ -84,15 +87,10 @@ export default function RecyclingBinPage() {
 
   const handleRestore = async (item: DeletedItem) => {
     try {
-      const res = await fetch("/api/recycling-bin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entityType: item.entityType,
-          id: item.id,
-        }),
+      await apiClient.post("/api/recycling-bin", {
+        entityType: item.entityType,
+        id: item.id,
       });
-      if (!res.ok) throw new Error();
       success(t("restored", { name: item.displayName }));
       fetchItems(page, pageSize);
     } catch {
@@ -109,11 +107,9 @@ export default function RecyclingBinPage() {
       cancelText: tCommon("cancel"),
       async onOk() {
         try {
-          const res = await fetch(
-            `/api/recycling-bin/${item.entityType}/${item.id}`,
-            { method: "DELETE" }
+          await apiClient.delete(
+            `/api/recycling-bin/${item.entityType}/${item.id}`
           );
-          if (!res.ok) throw new Error();
           success(t("permanentlyDeleted", { name: item.displayName }));
           fetchItems(page, pageSize);
         } catch {
