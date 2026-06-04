@@ -29,7 +29,7 @@ jobs:
       # Pinned tag (not :latest) for reproducibility. Bump deliberately.
       image: semgrep/semgrep:1.139.0
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       # Rulesets:
       #   p/javascript       -- generic JS/TS issues (eval, XSS sinks, etc.)
@@ -57,7 +57,7 @@ jobs:
       # report, and `!cancelled()` lets it run even after the scan step failed.
       - name: Upload Semgrep SARIF
         if: ${{ !cancelled() && hashFiles('semgrep.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@d77b13a0df3134d64a457ea9003f600b09fa1c8a # v3
         with:
           sarif_file: semgrep.sarif
           category: semgrep

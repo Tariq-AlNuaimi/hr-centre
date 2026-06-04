@@ -34,10 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@d77b13a0df3134d64a457ea9003f600b09fa1c8a # v3
         with:
           languages: javascript-typescript
           # 'security-and-quality' is broader than the default 'security-extended';
@@ -46,9 +46,9 @@ jobs:
 
       # JS/TS needs no compiled build for CodeQL; autobuild is a no-op safety net.
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@d77b13a0df3134d64a457ea9003f600b09fa1c8a # v3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@d77b13a0df3134d64a457ea9003f600b09fa1c8a # v3
         with:
           category: "/language:javascript-typescript"
