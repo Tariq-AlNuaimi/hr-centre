@@ -27,8 +27,7 @@ export default function ForgotPasswordPage() {
       // leak which emails exist. The API mirrors this behaviour.
       setSubmitted(true);
     } catch {
-      // TODO i18n: generic error copy
-      message.error("Something went wrong. Please try again.");
+      message.error(t("genericError"));
     } finally {
       setLoading(false);
     }
@@ -37,15 +36,13 @@ export default function ForgotPasswordPage() {
   return (
     <Card style={{ width: 400, maxWidth: "100%" }}>
       <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
-        {/* TODO i18n: dedicated key for "Forgot password" */}
-        Forgot password
+        {t("forgotPassword")}
       </Title>
 
       {submitted ? (
         <>
           <Paragraph style={{ textAlign: "center" }}>
-            {/* TODO i18n: dedicated key for the neutral confirmation copy */}
-            If that email exists, a reset link was sent.
+            {t("resetLinkSent")}
           </Paragraph>
           <Button block size="large">
             <Link href={`/${locale}/login`}>{t("login")}</Link>
@@ -73,8 +70,7 @@ export default function ForgotPasswordPage() {
               block
               size="large"
             >
-              {/* TODO i18n: dedicated key for "Send reset link" */}
-              Send reset link
+              {t("sendResetLink")}
             </Button>
           </Form.Item>
           <div style={{ textAlign: "center" }}>

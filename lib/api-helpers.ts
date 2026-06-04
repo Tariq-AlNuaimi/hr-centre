@@ -1,11 +1,22 @@
 import { NextRequest } from "next/server";
 import { Session } from "next-auth";
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { auth } from "./auth";
 import { withAuditContext } from "./audit-context";
 import { err, forbidden } from "./api-response";
 import { setUserContext } from "./sentry";
 import { rateLimit, type RateLimitOptions } from "./rate-limit";
+
+// Constant-time secret comparison for shared tokens (avoids a timing oracle on
+// the secret). Length is allowed to leak (different-length inputs short-circuit);
+// for a fixed-length secret that leaks nothing useful.
+function safeEqual(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -96,7 +107,7 @@ export function withInternalAuth(tokenEnv: string, handler: InternalHandler) {
     if (!expected) return err("Endpoint not configured", 503);
 
     const provided = req.headers.get("x-internal-token");
-    if (!provided || provided !== expected) return err("Unauthorized", 401);
+    if (!provided || !safeEqual(provided, expected)) return err("Unauthorized", 401);
 
     return handler(req, ctx);
   };
@@ -140,7 +151,7 @@ export function withApiAuth(tokenEnv: string, handler: InternalHandler) {
 
     const header = req.headers.get("authorization") ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-    if (!token || token !== expected) return err("Unauthorized", 401);
+    if (!token || !safeEqual(token, expected)) return err("Unauthorized", 401);
 
     return handler(req, ctx);
   };

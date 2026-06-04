@@ -141,7 +141,7 @@ If the suppression touches security, log it in `SECURITY.md` §12 with rule, loc
 - **Excel exports must not include Restricted columns.** `SCRUB_FIELDS` does NOT protect export output — it's a separate gate. Audit your column list per route.
 - **Go through Prisma.** No raw SQL except via `prisma.$queryRaw` with parameter placeholders. Never `prisma.$executeRawUnsafe` on user input.
 - **UI → API route → service → Prisma.** Server components and API routes are the only places that touch `prisma`. The `no-prisma-in-client` ESLint rule blocks the most common slip.
-- **Use the auth wrappers.** Every API route handler wraps with `withAuth`, `withAdminAuth`, or `withInternalAuth`. Internal routes are doubly protected (middleware passes them through; `no-bare-internal-route` ESLint rule fires if the wrap is missing).
+- **Use the auth wrappers.** Every API route handler wraps with one of the wrappers in `lib/api-helpers.ts`: `withAuth` (any authenticated user), `withAdminAuth` (ADMIN only), `withEditorAuth` (ADMIN or EDITOR; rejects VIEWER — use on editor-writable routes), `withInternalAuth` (shared-secret `x-internal-token` for cron/Actions), or `withApiAuth` (Bearer-token gate for machine/API consumers — the `/api/v1` seam; ADR-013). Compose `withRateLimit(handler, { id, limit, windowMs })` OUTSIDE the auth wrapper to throttle a route per-IP. Internal routes are doubly protected (middleware passes them through; `no-bare-internal-route` ESLint rule fires if the wrap is missing).
 - **Audit is automatic but fragile.** `auditExtension` runs on every Prisma `create` / `update` / `delete` outside the EXCLUDE set. Don't add models to that set without an ADR.
 - **Soft-delete is opt-in.** `/scaffold-entity` does it in lockstep; manual additions must too.
 - **`prismaUnfiltered` ≠ `prisma`.** Auth + recycling-bin only.
@@ -157,7 +157,7 @@ default `personal`, set during `/first-fork`). The tier scales the *ceremony* �
 lowers the *security floor*.
 
 **Security floor — applies to BOTH tiers, never optional:**
-- Auth wrappers (`withAuth` / `withAdminAuth` / `withInternalAuth`) on every route.
+- Auth wrappers (`withAuth` / `withAdminAuth` / `withEditorAuth` / `withInternalAuth` / `withApiAuth`, composed with `withRateLimit` where needed) on every route.
 - No leaked secrets; zod validation at every boundary; no raw SQL.
 - The four `rihal-template/*` ESLint rules at `error`.
 - **Audit log ON** (the Prisma audit extension + `SCRUB_FIELDS`).
@@ -175,7 +175,7 @@ and protects the operator.)
 - Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/api-helpers.ts`, `middleware.ts`, anything under `lib/prisma/`, `eslint-rules/`, or `prisma/migrations/`
 - Adding a model to the audit `EXCLUDE` set
 - Adding a new public path or `/api/internal/*` route
-- Bypassing `withAuth` / `withAdminAuth` / `withInternalAuth`
+- Bypassing `withAuth` / `withAdminAuth` / `withEditorAuth` / `withInternalAuth` / `withApiAuth`
 - Disabling any `rihal-template/*` ESLint rule beyond a single-line `eslint-disable-next-line`
 - Changing the `Role` enum or how roles are checked
 - Pushing to `main` directly when branch protection is on

@@ -17,7 +17,13 @@
 //                                         spec: fieldName:TargetModel[?]
 //                                         The target model must already exist in schema
 //   --soft-delete <true|false>            Default true
-//   --admin-writes <true|false>           Default false
+//   --writes <admin|editor|any>           Auth wrapper for write routes (POST/PUT/DELETE).
+//                                         admin  => withAdminAuth (ADMIN only)
+//                                         editor => withEditorAuth (ADMIN or EDITOR)
+//                                         any    => withAuth (any authenticated user)
+//                                         Default "any". GET routes always use withAuth.
+//   --admin-writes <true|false>           Back-compat alias. true => --writes admin.
+//                                         --writes takes precedence if both are given.
 //   --display-field <field>               For recycling bin display; default "name"
 //   --dry-run
 //
@@ -47,6 +53,7 @@ const { values } = parseArgs({
     enums: { type: 'string' },
     relations: { type: 'string' },
     'soft-delete': { type: 'string', default: 'true' },
+    writes: { type: 'string' },
     'admin-writes': { type: 'string', default: 'false' },
     'display-field': { type: 'string', default: 'name' },
     'dry-run': { type: 'boolean', default: false },
@@ -67,7 +74,27 @@ if (!/^[A-Z][A-Za-z0-9]*$/.test(Entity)) {
 }
 
 const softDelete = values['soft-delete'] !== 'false';
-const adminWrites = values['admin-writes'] === 'true';
+
+// Write-route auth wrapper. `--writes` takes precedence; `--admin-writes` is a
+// back-compat alias (true => admin). Default "any" preserves the historical
+// default (no --admin-writes => withAuth).
+const WRITE_WRAPPERS = {
+  admin: 'withAdminAuth',
+  editor: 'withEditorAuth',
+  any: 'withAuth',
+};
+let writesMode;
+if (values.writes !== undefined) {
+  writesMode = values.writes;
+  if (!Object.hasOwn(WRITE_WRAPPERS, writesMode)) {
+    console.error(`ERROR: invalid --writes "${writesMode}" -- expected one of: ${Object.keys(WRITE_WRAPPERS).join(', ')}.`);
+    process.exit(1);
+  }
+} else {
+  writesMode = values['admin-writes'] === 'true' ? 'admin' : 'any';
+}
+const writeWrap = WRITE_WRAPPERS[writesMode];
+
 const displayField = values['display-field'];
 const dryRun = values['dry-run'];
 
@@ -315,9 +342,9 @@ export type Update${Pascal}Input = z.infer<typeof update${Pascal}Schema>;
 }
 
 function apiListRouteFile() {
-  const writeWrap = adminWrites ? 'withAdminAuth' : 'withAuth';
+  // GET always uses withAuth; write routes use the resolved writeWrap.
   const wrapList = ['withAuth'];
-  if (adminWrites) wrapList.push('withAdminAuth');
+  if (writeWrap !== 'withAuth') wrapList.push(writeWrap);
   wrapList.push('withRateLimit');
   const wrapImports = wrapList.join(', ');
 
@@ -403,9 +430,9 @@ export const POST = withRateLimit(${writeWrap}(async (request: NextRequest) => {
 }
 
 function apiItemRouteFile() {
-  const writeWrap = adminWrites ? 'withAdminAuth' : 'withAuth';
+  // GET always uses withAuth; write routes use the resolved writeWrap.
   const wrapList = ['withAuth'];
-  if (adminWrites) wrapList.push('withAdminAuth');
+  if (writeWrap !== 'withAuth') wrapList.push(writeWrap);
   wrapList.push('withRateLimit');
   const wrapImports = wrapList.join(', ');
 

@@ -22,17 +22,14 @@ function ResetPasswordForm() {
     return (
       <Card style={{ width: 400, maxWidth: "100%" }}>
         <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
-          {/* TODO i18n: dedicated key for "Reset password" */}
-          Reset password
+          {t("resetPassword")}
         </Title>
         <Paragraph style={{ textAlign: "center" }}>
-          {/* TODO i18n: dedicated key for the missing/invalid token copy */}
-          This reset link is invalid or has expired.
+          {t("resetInvalidOrExpired")}
         </Paragraph>
         <Button block size="large">
           <Link href={`/${locale}/forgot-password`}>
-            {/* TODO i18n: dedicated key for "Request a new link" */}
-            Request a new link
+            {t("requestNewLink")}
           </Link>
         </Button>
       </Card>
@@ -56,14 +53,10 @@ function ResetPasswordForm() {
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error || "");
       }
-      // TODO i18n: dedicated key for the success toast
-      message.success("Your password has been reset. Please sign in.");
+      message.success(t("resetSuccess"));
       router.push(`/${locale}/login`);
     } catch (e) {
-      // TODO i18n: dedicated key for the failure toast
-      message.error(
-        (e as Error).message || "Could not reset your password. The link may have expired."
-      );
+      message.error((e as Error).message || t("resetFailed"));
     } finally {
       setLoading(false);
     }
@@ -72,8 +65,7 @@ function ResetPasswordForm() {
   return (
     <Card style={{ width: 400, maxWidth: "100%" }}>
       <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
-        {/* TODO i18n: dedicated key for "Reset password" */}
-        Reset password
+        {t("resetPassword")}
       </Title>
       <Form layout="vertical" onFinish={onFinish}>
         <Form.Item
@@ -90,8 +82,7 @@ function ResetPasswordForm() {
         </Form.Item>
         <Form.Item
           name="confirmPassword"
-          // TODO i18n: dedicated key for "Confirm password"
-          label="Confirm password"
+          label={t("confirmPassword")}
           dependencies={["newPassword"]}
           hasFeedback
           rules={[
@@ -101,8 +92,7 @@ function ResetPasswordForm() {
                 if (!value || getFieldValue("newPassword") === value) {
                   return Promise.resolve();
                 }
-                // TODO i18n: dedicated key for the mismatch message
-                return Promise.reject(new Error("Passwords do not match"));
+                return Promise.reject(new Error(t("passwordsMustMatch")));
               },
             }),
           ]}
@@ -121,8 +111,7 @@ function ResetPasswordForm() {
             block
             size="large"
           >
-            {/* TODO i18n: dedicated key for "Reset password" */}
-            Reset password
+            {t("resetPassword")}
           </Button>
         </Form.Item>
       </Form>

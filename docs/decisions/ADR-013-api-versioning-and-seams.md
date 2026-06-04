@@ -35,10 +35,11 @@ behind the rewrite. A future breaking surface ships as `/api/v2/*` (a second
 rewrite) with zero churn to existing `v1` routes.
 
 > **Seam, not a live surface yet:** `/api/v1/*` rewrites and passes middleware,
-> but every shipped route uses `withAuth` (session). No route is wrapped with
-> `withApiAuth` by default, so a Bearer-only machine consumer gets 401 until a
-> fork opts a route in. This is intentional — the path + wrappers exist so
-> enabling programmatic access is a one-line change, with zero refactor.
+> but every shipped route is gated by a session-based wrapper — `withAuth`,
+> `withAdminAuth`, or `withInternalAuth` depending on the route. No route is
+> wrapped with `withApiAuth` by default, so a Bearer-only machine consumer gets
+> 401 until a fork opts a route in. This is intentional — the path + wrappers
+> exist so enabling programmatic access is a one-line change, with zero refactor.
 
 Two **library seams** are recorded for when a fork needs them (they are seams,
 not day-zero features):
@@ -79,9 +80,12 @@ consumers depend on.
 ### Mitigations
 - Keep the rewrite a simple `:path*` passthrough so the mental model is "strip
   `/v1`"; reserve `/v2` for genuinely breaking changes.
-- When `withApiAuth` is implemented, it reuses `lib/rate-limit.ts` and the audit
-  context so the security floor (ADR-001) is inherited, and any Bearer secret is
-  classified Restricted in `SECURITY.md` §1.
+- `withApiAuth` gates by `Authorization: Bearer <token>` only — it does **not**
+  itself rate-limit. Throttling the Bearer path is achieved by composing it with
+  `withRateLimit(handler, { id, limit, windowMs })` (from `lib/api-helpers.ts`,
+  backed by `lib/rate-limit.ts`) outside the auth wrapper, so the security floor
+  (ADR-001) is inherited. Any Bearer secret is classified Restricted in
+  `SECURITY.md` §1.
 
 ## Alternatives considered
 1. **Serve routes directly at `/api/<path>` (no version prefix).** Rejected:

@@ -68,8 +68,7 @@ export default function LoginPage() {
         </Form.Item>
         <div style={{ textAlign: "right", marginBottom: 16 }}>
           <Link href={`/${locale}/forgot-password`}>
-            {/* TODO i18n: dedicated key for "Forgot password?" */}
-            Forgot password?
+            {t("forgotPasswordLink")}
           </Link>
         </div>
         <Form.Item>

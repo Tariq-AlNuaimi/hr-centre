@@ -55,6 +55,20 @@ guaranteed atomicity should move to **database-trigger-based audit** (Postgres t
 writing `audit_logs` in the same transaction as the DML). That is a larger change and
 gets its own ADR if/when a project requires it.
 
+### Bulk-write blind spot (`updateMany` / `createMany`)
+
+The audit extension intercepts only the **per-row** `create` / `update` / `delete`
+operations. A `prisma.<model>.updateMany(...)` or `prisma.<model>.createMany(...)` on an
+audited model writes **NO audit row** — the extension never sees the individual rows, so
+nothing is recorded, even though SECURITY.md §5 / ADR-001 frame the audit log as capturing
+"every write." (The soft-delete extension's `deleteMany` path is separately handled, but
+only for soft-deletable models, and only for deletes.)
+
+**A fork doing bulk writes on an audited model must either** (a) avoid `updateMany` /
+`createMany` and loop per-row through the audited client, **or** (b) write an explicit
+`recordAudit()` row alongside the bulk op. Database-trigger-based audit (above) would close
+this gap too, since triggers fire per affected row regardless of how the DML was issued.
+
 ## Consequences
 
 - `SECURITY.md` §5 now describes real behavior, including the atomicity caveat.
