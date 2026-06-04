@@ -458,7 +458,7 @@ scoped, revocable) under `/api/v1/*`; audit is attributed to the key's `createdB
    → copy the `key` from the response (starts with `rk_live_`).
 3. Call the consumer route with it:
    ```bash
-   curl -H "Authorization: Bearer rk_live_xxx" http://localhost:3000/api/v1/projects
+   curl -H "Authorization: Bearer $API_KEY" http://localhost:3000/api/v1/projects
    ```
    → 200 + JSON. Omit/typo the header → 401. Use a key minted with only `["READ"]` against a
    `WRITE`-scoped route → 403.

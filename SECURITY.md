@@ -217,6 +217,7 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 | Date | Tool | Rule | Location | Justification | Reviewer |
 |---|---|---|---|---|---|
+| 2026-06-04 | gitleaks | curl-auth-header | `docs/recipes/saas/2-api-keys-openapi.md` | Illustrative placeholder token `rk_live_xxx` in a `curl` example (not a real secret). Allowlisted by tight regex in `.gitleaks.toml`; the live example was also changed to `Bearer $API_KEY`. | Tariq Al-Naaimi |
 | — | — | — | — | — | — |
 
 ---

@@ -3,3 +3,15 @@
 
 [extend]
 useDefault = true
+
+# Allowlist: documentation example placeholders only. These are illustrative
+# tokens in docs/recipes/* code blocks (NOT real secrets). Each entry is a tight
+# regex on the literal placeholder, not a path-wide allow, and is logged in
+# SECURITY.md §12 with justification. Do NOT add real secret patterns here.
+[allowlist]
+description = "Docs-only example placeholders (see SECURITY.md §12)"
+regexes = [
+  # `curl -H "Authorization: Bearer rk_live_xxx"` example in the api-keys recipe;
+  # trips the default `curl-auth-header` rule. The literal is a placeholder.
+  '''rk_live_xxx''',
+]
