@@ -25,6 +25,15 @@ ADR-014). When a graduating project needs one, open the recipe and apply it
 - `3-nonce-csp.md` — nonce-based CSP (drops `'unsafe-inline'` script-src; AntD cssinjs nonce wiring)
 - `4-atomic-audit-triggers.md` — Postgres-trigger audit (closes ADR-010 non-atomicity + the bulk/upsert blind spot)
 - `5-column-encryption.md` — AES-256-GCM field encryption for Restricted columns
+- `6-can-helper.md` (O12) — `can(user, action, resource)` per-resource / row-level authorization on top of the role wrappers (e.g. EDITOR edits only their own records); SECURITY.md §3
+
+**Performance** (`docs/recipes/perf/`):
+- `1-rsc-list-reads.md` (O1) — convert a client-fetch list page to a React Server Component reading Prisma from `searchParams`, with a client island for the interactive DataTable
+- `2-search-trigram.md` (O4) — `pg_trgm` GIN indexes so `ILIKE`/`contains` search uses an index instead of a seq scan at volume
+- `3-perf-budget-uat.md` (O9) — opt-in Lighthouse / bundle-size budget in the `/uat` flow that fails the run on regression
+
+**Developer experience** (`docs/recipes/dx/`):
+- `1-storybook.md` (O7) — Storybook 8 for the shared component library (DataTable / Chart / KanbanBoard / EmptyState / ConfirmAction) with the AntD `ConfigProvider` + `next-intl` decorator; dev-only, kept out of the base (ADR-014)
 
 **SaaS features** (`docs/recipes/saas/`):
 - `1-sso-oidc-saml.md` — enterprise SSO via the `mapSsoRole` seam (OIDC + SAML/jackson), JIT provisioning

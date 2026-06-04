@@ -33,6 +33,19 @@ acceptances in `SECURITY.md` §11). Surface this list to the operator and reflec
 state in the generated `HANDOFF.md` "Security notes" / "Open issues" sections — do not
 silently treat an unstarted checklist as cleared.
 
+**Offer atomic audit before handing over regulated data (§16 item 2).** For a
+`shared`-tier fork that will hold records the IT team must treat as tamper-evident /
+provably complete (financial, compliance, anything regulated), **offer to apply
+`docs/recipes/shared-security/4-atomic-audit-triggers.md`** as part of the handoff
+prep. The shipped app-level audit (ADR-010) is non-atomic and has a bulk/upsert blind
+spot; the Postgres-trigger recipe makes audit atomic (same transaction as the DML) and
+complete across `updateMany` / `createMany` / `upsert` — the right state in which to
+hand regulated data to a team that will be asked to *prove* the audit trail. It's a
+significant change with its own ADR, so propose it, don't auto-apply: if the operator
+agrees, walk the recipe (then `/code-review` + `/ship`) before generating `HANDOFF.md`;
+if they decline, record the risk-acceptance in `SECURITY.md` §11 and reflect "atomic
+audit: not applied (risk-accepted)" in the `HANDOFF.md` "Open issues" section.
+
 ## What this produces
 
 A single `HANDOFF.md` at the repo root, structured for the IT team to read
