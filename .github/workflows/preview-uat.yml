@@ -1,0 +1,79 @@
+# Preview-env UAT gate — run the Playwright UAT against the Vercel PREVIEW URL of
+# a PR, so a broken flow blocks the merge.
+#
+# DORMANT on the free GitHub plan (Actions billing blocked): this does not run
+# until Actions is enabled (a paid plan or a public repo). See SECURITY.md /
+# ADR-007 for how the other workflows sit dormant.
+#
+# How it activates (at /handoff, paid Actions):
+#   1. Uncomment the `deployment_status` trigger below. Vercel's GitHub
+#      integration emits a `deployment_status` event when a Preview deploy is
+#      ready; `target_url` is the preview URL we test.
+#   2. Make this a required status check on the PR branch protection rule.
+#   3. Set the UAT login secrets (UAT_EMAIL/UAT_PASSWORD or SEED_ADMIN_*).
+# Until then, run it by hand from the Actions tab with a base_url input.
+name: Preview UAT
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Preview URL to test (e.g. https://app-abc123.vercel.app)"
+        required: true
+  # Activate at handoff: UAT every Vercel Preview deploy.
+  # deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per PR/ref; cancel superseded preview deploys.
+  group: preview-uat-${{ github.event.deployment.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview-uat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Only act on a SUCCESSFUL Preview deployment (or a manual dispatch). Skips
+    # the noisy pending/error deployment_status events and non-preview envs.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       contains(github.event.deployment_status.environment, 'Preview'))
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run UAT against the preview
+        env:
+          # Manual input, else the Vercel preview URL from the deployment event.
+          UAT_BASE_URL: ${{ github.event.inputs.base_url || github.event.deployment_status.target_url }}
+          UAT_EMAIL: ${{ secrets.UAT_EMAIL }}
+          UAT_PASSWORD: ${{ secrets.UAT_PASSWORD }}
+          SEED_ADMIN_EMAIL: ${{ secrets.SEED_ADMIN_EMAIL }}
+          SEED_ADMIN_PASSWORD: ${{ secrets.SEED_ADMIN_PASSWORD }}
+        run: npm run uat
+
+      - name: Upload UAT report (screenshots)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: preview-uat-report
+          path: uat-report/
+          retention-days: 30

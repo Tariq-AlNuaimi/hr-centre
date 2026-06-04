@@ -19,7 +19,7 @@
 //       { header: "Owner", key: "owner", format: (v) => v?.name ?? "-" },
 //       { header: "Created", key: "createdAt", format: (v) => new Date(v).toISOString() },
 //     ], { sheetName: "Projects", title: "Project export" });
-//     return new Response(xlsx, { headers: excelDownloadHeaders(`projects-${Date.now()}.xlsx`) });
+//     return new Response(new Uint8Array(xlsx), { headers: excelDownloadHeaders(`projects-${Date.now()}.xlsx`) });
 //   });
 //
 // Security: exports MUST go through `withAuth`/`withAdminAuth` and respect the

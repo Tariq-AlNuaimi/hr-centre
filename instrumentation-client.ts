@@ -21,6 +21,9 @@ if (dsn) {
     ],
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0.0,
+    // Safe ONLY because replayIntegration() defaults to maskAllText: true + blockAllMedia: true.
+    // A fork MUST NOT set maskAllText: false — that would ship Confidential PII (emails/names)
+    // to Sentry, contradicting SECURITY.md §1 / lib/sentry.ts.
     replaysOnErrorSampleRate: 1.0,
     debug: false,
   });

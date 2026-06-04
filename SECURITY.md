@@ -51,7 +51,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 🟢 Three-role enum: `ADMIN` / `EDITOR` / `VIEWER` (`prisma/schema.prisma` `Role`). Bound to `users.role`; the JWT carries it.
 
-- **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) or `withInternalAuth` (shared-secret) from `lib/api-helpers.ts`. UI gating is defense-in-depth, **not** the boundary.
+- **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) or `withInternalAuth` (shared-secret) or `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) from `lib/api-helpers.ts`. UI gating is defense-in-depth, **not** the boundary.
 - **Role wrappers:** `withAdminAuth` (ADMIN only) and `withEditorAuth` (ADMIN **or** EDITOR; rejects VIEWER) are both shipped in `lib/api-helpers.ts`. Use `withEditorAuth` on write routes editors should reach but viewers shouldn't. Finer-grained, per-resource permissions (a `can()` helper) remain a project-specific addition documented here.
 - **CSRF:** state-changing routes are same-origin + cookie-based; Auth.js sets `SameSite=Lax` session cookies, which blocks cross-site form/`fetch` POSTs from carrying the session. Custom POST/PUT/DELETE routes rely on this (no separate CSRF token). If a fork adds cross-origin browser clients or relaxes `SameSite`, add explicit CSRF protection (double-submit token or origin check) and note it here.
 - **Row-level scoping** (e.g. "users only see their own records") is project-specific. Add an explicit `WHERE` clause in every list / get query. Postgres RLS is not enabled by default.
@@ -176,7 +176,7 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 
 | Risk | Coverage |
 |---|---|
-| A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` boundary ✅; middleware enforces auth on every non-public path ✅. |
+| A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` / `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) boundary ✅; middleware enforces auth on every non-public path ✅. |
 | A02 Cryptographic Failures | TLS terminated automatically at Vercel ✅; HSTS ✅; bcryptjs ✅; Neon encrypts at rest ✅. Production secrets live in Vercel env vars (never in chat / shell). |
 | A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; Semgrep `p/owasp-top-ten` via `/audit` ✅. |
 | A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; no MFA (T-02). |

@@ -5,10 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-On the Vercel + Neon rail (ADR-006) there is no release/tag workflow: pushing to
-`main` deploys to production, and a rollback is a `git revert` (or "Promote to
-Production" on a prior Vercel deployment). Record notable changes here by hand.
-The pre-pivot `/promote` + `release.yml` tag flow was removed with ADR-006.
+On the Vercel + Neon rail (ADR-006) there is no active release/tag workflow on the
+free plan: pushing to `main` deploys to production, and a rollback is a `git revert`
+(or "Promote to Production" on a prior Vercel deployment). Record notable changes here
+by hand. Versioned releases + auto CHANGELOG are available via Changesets
+(`npm run changeset`), wired into a **dormant** `release.yml` that activates at `/handoff`
+when the IT team's paid plan runs Actions.
 
 ## [Unreleased]
 
@@ -26,6 +28,7 @@ The pre-pivot `/promote` + `release.yml` tag flow was removed with ADR-006.
 - DB integration test suite (`npm run test:integration`) exercising the audit + soft-delete paths against a live Postgres.
 - ESLint RuleTester tests for the local `rihal-template/*` plugin (`npm run test:lint-rules`).
 - AGENTS.md — cross-tool AI-assistant pointer to `CLAUDE.md` / `SECURITY.md`.
+- Changesets release tooling (dormant): `@changesets/cli`, `.changeset/` config, `npm run changeset` / `changeset:version` scripts, and a dormant `release.yml` workflow that activates at `/handoff` for versioned releases + auto CHANGELOG.
 
 ### Changed
 - Charts and Kanban board are now lazy-loaded (dynamic import) to cut the initial bundle.

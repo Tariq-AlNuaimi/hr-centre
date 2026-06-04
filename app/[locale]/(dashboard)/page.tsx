@@ -31,7 +31,14 @@ async function getDashboardData() {
   // total users + per-role breakdown (soft-delete filtered via `prisma`)
   const [totalUsers, usersByRole] = await Promise.all([
     prisma.user.count(),
-    prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
+    // NOTE: the soft-delete extension does NOT intercept groupBy/aggregate, so
+    // filter deletedAt explicitly here -- otherwise the role breakdown would
+    // include soft-deleted users while totalUsers (count) excludes them.
+    prisma.user.groupBy({
+      by: ["role"],
+      where: { deletedAt: null },
+      _count: { _all: true },
+    }),
   ]);
 
   // Count soft-deleted records across every recyclable entity. `prismaUnfiltered`

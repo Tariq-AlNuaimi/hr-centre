@@ -56,7 +56,7 @@ export function UserForm({
       <Form.Item
         name="password"
         label={t("password")}
-        rules={[{ required: !isEdit, min: 6, max: 128 }]}
+        rules={[{ required: !isEdit, min: 8, max: 128 }]}
       >
         <Input.Password
           placeholder={isEdit ? t("passwordLeaveBlank") : undefined}

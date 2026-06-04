@@ -1,0 +1,44 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
+# Release tooling is Changesets (npm run changeset / changeset:version). Activates at /handoff
+# when the IT team's paid plan runs Actions. See SECURITY.md §14 / ADR-007.
+#
+# Triggers are set to workflow_dispatch (manual) only so the job does not auto-run and
+# fail-in-2s on a billing-blocked plan. AT HANDOFF: restore the push trigger below.
+name: Release
+
+on:
+  workflow_dispatch:
+  # Restore at handoff (paid Actions):
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Opens/updates a "Version Packages" PR, or tags a release when one merges.
+      - name: Changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        with:
+          version: npm run changeset:version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

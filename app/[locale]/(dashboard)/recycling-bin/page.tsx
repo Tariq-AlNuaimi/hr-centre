@@ -152,13 +152,17 @@ export default function RecyclingBinPage() {
       key: "actions",
       render: (_: unknown, record: DeletedItem) => (
         <Space>
-          <Button
-            icon={<UndoOutlined />}
-            aria-label={t("restoreAction")}
-            onClick={() => handleRestore(record)}
-          >
-            {t("restore")}
-          </Button>
+          {/* Restore + permanent delete are both ADMIN-only (POST/DELETE are
+              withAdminAuth); don't show buttons that would 403 for non-admins. */}
+          {isAdmin && (
+            <Button
+              icon={<UndoOutlined />}
+              aria-label={t("restoreAction")}
+              onClick={() => handleRestore(record)}
+            >
+              {t("restore")}
+            </Button>
+          )}
           {isAdmin && (
             <Button
               danger

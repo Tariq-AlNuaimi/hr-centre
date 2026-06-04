@@ -80,7 +80,7 @@ export default function ProfilePage() {
           <Form.Item
             name="newPassword"
             label={t("newPassword")}
-            rules={[{ required: true, min: 6 }]}
+            rules={[{ required: true, min: 8 }]}
           >
             <Input.Password prefix={<LockOutlined />} />
           </Form.Item>
