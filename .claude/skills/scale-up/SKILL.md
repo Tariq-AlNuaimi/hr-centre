@@ -12,6 +12,26 @@ the additions Vercel + Neon make easy. Each item: **trigger** (when to add),
 Pick one or more based on what the user is describing. Confirm with the user
 before installing anything; this skill suggests, the operator approves.
 
+## Shared-tier capability recipes (post-UAT / at `/handoff`)
+
+For the heavier `shared`-tier security + SaaS capabilities, full copy-paste,
+template-specific recipes live in `docs/recipes/` (kept OUT of the lean base — see
+ADR-014). When a graduating project needs one, open the recipe and apply it
+(then `/code-review` + `/ship`):
+
+**Shared-tier security** (`docs/recipes/shared-security/`, mirrors SECURITY.md §16):
+- `1-account-lockout.md` — per-account lockout + cross-instance limiter (Upstash); closes the rest of T-01
+- `2-mfa-totp.md` — TOTP 2FA (otplib + qrcode); closes T-02
+- `3-nonce-csp.md` — nonce-based CSP (drops `'unsafe-inline'` script-src; AntD cssinjs nonce wiring)
+- `4-atomic-audit-triggers.md` — Postgres-trigger audit (closes ADR-010 non-atomicity + the bulk/upsert blind spot)
+- `5-column-encryption.md` — AES-256-GCM field encryption for Restricted columns
+
+**SaaS features** (`docs/recipes/saas/`):
+- `1-sso-oidc-saml.md` — enterprise SSO via the `mapSsoRole` seam (OIDC + SAML/jackson), JIT provisioning
+- `2-api-keys-openapi.md` — per-consumer API keys (hashed, scoped) on the `/api/v1` + `withApiAuth` seam, + OpenAPI/Swagger
+- `3-webhooks.md` — outbound HMAC-signed webhooks + delivery log
+- `4-scim-provisioning.md` — SCIM 2.0 user/group lifecycle for IdP-driven provisioning
+
 ---
 
 ## 1. File uploads (Vercel Blob)

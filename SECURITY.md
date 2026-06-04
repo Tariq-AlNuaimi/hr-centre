@@ -295,5 +295,11 @@ in writing by the project owner" (record acceptances in §11).
 | 5 | **Column-level encryption** for any Restricted field beyond what `SCRUB_FIELDS` covers | `SCRUB_FIELDS` only protects audit/Sentry payloads, not the row at rest. Restricted columns (salary, health, national ID, etc.) need encryption + its own ADR (ADR-001 migration trigger). | Prisma field encryption + ADR |
 | 6 | **SARIF / CodeQL active** in the Security tab | `codeql.yml` + the SARIF uploads in `secrets-scan.yml` / `sast.yml` are dormant on the free plan; activate them with branch protection at handoff so findings are visible and gating. | §14 + `.github/workflows/` |
 
+**Ready-to-apply recipes** (full template-specific code — open, apply, `/code-review`, `/ship`):
+items 1–5 map directly to `docs/recipes/shared-security/` (`2-mfa-totp`, `4-atomic-audit-triggers`,
+`3-nonce-csp`, `1-account-lockout`, `5-column-encryption`); item 6 is `.github/workflows/`
+(activate at handoff). SSO / API-keys / webhooks / SCIM recipes are in `docs/recipes/saas/`.
+The recipes are kept out of the lean base by design — see **ADR-014**.
+
 `personal`-tier forks skip this checklist (there is no handoff and no sensitive-data
 mandate); the security floor still applies.
