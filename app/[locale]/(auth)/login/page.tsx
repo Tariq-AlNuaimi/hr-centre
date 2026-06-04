@@ -5,6 +5,7 @@ import { LockOutlined, MailOutlined } from "@ant-design/icons";
 import { signIn } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState } from "react";
 
 const { Title } = Typography;
@@ -65,6 +66,12 @@ export default function LoginPage() {
             autoComplete="current-password"
           />
         </Form.Item>
+        <div style={{ textAlign: "right", marginBottom: 16 }}>
+          <Link href={`/${locale}/forgot-password`}>
+            {/* TODO i18n: dedicated key for "Forgot password?" */}
+            Forgot password?
+          </Link>
+        </div>
         <Form.Item>
           <Button
             type="primary"

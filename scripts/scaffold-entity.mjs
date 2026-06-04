@@ -77,12 +77,21 @@ const camel = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 const pascalFromCamel = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const kebab = (s) => s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
 const snake = (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+// "dueAt" -> "Due At", "name" -> "Name". Used to seed human-readable English
+// defaults in the i18n companion file the operator merges into the messages.
+const humanize = (s) =>
+  s
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase());
 
 const Pascal = Entity;
 const entityCamel = camel(Entity);
 const entityKebab = kebab(Entity);
 const entitySnake = snake(Entity);
 const entitySnakePlural = entitySnake + 's';
+// next-intl namespace for this entity's UI strings. Mirrors the hand-written
+// `users` namespace in messages/*.json (camelCase + plural).
+const i18nNs = entityCamel + 's';
 
 // ---------- Field parsing ----------
 
@@ -143,6 +152,10 @@ if (fields.length + enums.length + relations.length === 0) {
   console.error('ERROR: at least one of --fields / --enums / --relations is required.');
   process.exit(1);
 }
+
+// The list view can offer free-text search only if there is a string/text
+// field to search against. Used by both the GET route and the list page.
+const searchField = fields.find((f) => f.type === 'string' || f.type === 'text');
 
 // ---------- Schema parsing (for target-model lookups) ----------
 
@@ -233,6 +246,8 @@ function schemaModelBlock() {
 
   for (const f of fields.filter((x) => x.indexed)) lines.push(`  @@index([${f.name}])`);
   for (const r of relations) lines.push(`  @@index([${r.name}Id])`);
+  // The soft-delete extension filters `deletedAt: null` on every read; index it.
+  if (softDelete) lines.push('  @@index([deletedAt])');
 
   lines.push(`  @@map("${entitySnakePlural}")`);
   lines.push('}');
@@ -301,8 +316,14 @@ export type Update${Pascal}Input = z.infer<typeof update${Pascal}Schema>;
 
 function apiListRouteFile() {
   const writeWrap = adminWrites ? 'withAdminAuth' : 'withAuth';
-  const wrapImports = adminWrites ? 'withAuth, withAdminAuth' : 'withAuth';
-  const searchField = fields.find((f) => f.type === 'string' && !f.optional);
+  const wrapList = ['withAuth'];
+  if (adminWrites) wrapList.push('withAdminAuth');
+  wrapList.push('withRateLimit');
+  const wrapImports = wrapList.join(', ');
+
+  // Search uses the first string/text field, optional or not (shared
+  // `searchField`). If the model has no string-ish field, there's nothing to
+  // search and the list page omits the search box (no `searchable`).
   const searchClause = searchField
     ? `
   const search = searchParams.get("search") ?? undefined;
@@ -313,6 +334,14 @@ function apiListRouteFile() {
     : `
   const where = {};
 `;
+
+  // Sortable allowlist: scalar + enum fields + createdAt. Guards against raw
+  // column injection via ?sort=. Relations are not directly sortable here.
+  const sortableNames = [
+    ...fields.map((f) => f.name),
+    ...enums.map((e) => e.name),
+    'createdAt',
+  ];
 
   const includeClause = relations.length === 0
     ? ''
@@ -328,16 +357,30 @@ import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import { create${Pascal}Schema } from "@/lib/validations/${entityKebab}";
 
+// Allowlist of sortable columns -- prevents raw column injection via ?sort=.
+const SORTABLE_COLUMNS = [
+${sortableNames.map((n) => `  "${n}",`).join('\n')}
+] as const;
+type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
+
 export const GET = withAuth(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
 ${searchClause}
+  const sortParam = searchParams.get("sort");
+  const sortField: SortableColumn =
+    sortParam && (SORTABLE_COLUMNS as readonly string[]).includes(sortParam)
+      ? (sortParam as SortableColumn)
+      : "createdAt";
+  const order: "asc" | "desc" =
+    searchParams.get("order") === "asc" ? "asc" : "desc";
+
   const [data, total] = await Promise.all([
     prisma.${entityCamel}.findMany({
       where,
       skip: pagination.skip,
       take: pagination.take,
-      orderBy: { createdAt: "desc" },${includeClause}
+      orderBy: { [sortField]: order },${includeClause}
     }),
     prisma.${entityCamel}.count({ where }),
   ]);
@@ -345,7 +388,7 @@ ${searchClause}
   return ok(paginatedResponse(data, total, pagination));
 });
 
-export const POST = ${writeWrap}(async (request: NextRequest) => {
+export const POST = withRateLimit(${writeWrap}(async (request: NextRequest) => {
   const body = await request.json();
   const parsed = create${Pascal}Schema.safeParse(body);
   if (!parsed.success) {
@@ -355,13 +398,16 @@ export const POST = ${writeWrap}(async (request: NextRequest) => {
   const ${entityCamel} = await prisma.${entityCamel}.create({ data: parsed.data });
 
   return created(${entityCamel});
-});
+}), { id: "${entityKebab}-write", limit: 30, windowMs: 60000 });
 `;
 }
 
 function apiItemRouteFile() {
   const writeWrap = adminWrites ? 'withAdminAuth' : 'withAuth';
-  const wrapImports = adminWrites ? 'withAuth, withAdminAuth' : 'withAuth';
+  const wrapList = ['withAuth'];
+  if (adminWrites) wrapList.push('withAdminAuth');
+  wrapList.push('withRateLimit');
+  const wrapImports = wrapList.join(', ');
 
   const includeClause = relations.length === 0
     ? ''
@@ -382,7 +428,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
   return ok(record);
 });
 
-export const PUT = ${writeWrap}(async (request: NextRequest, ctx) => {
+export const PUT = withRateLimit(${writeWrap}(async (request: NextRequest, ctx) => {
   const { id } = await ctx.params;
   const body = await request.json();
   const parsed = update${Pascal}Schema.safeParse(body);
@@ -396,15 +442,15 @@ export const PUT = ${writeWrap}(async (request: NextRequest, ctx) => {
     data: parsed.data,
   });
   return ok(updated);
-});
+}), { id: "${entityKebab}-write", limit: 30, windowMs: 60000 });
 
-export const DELETE = ${writeWrap}(async (_request: NextRequest, ctx) => {
+export const DELETE = withRateLimit(${writeWrap}(async (_request: NextRequest, ctx) => {
   const { id } = await ctx.params;
   const existing = await prisma.${entityCamel}.findUnique({ where: { id } });
   if (!existing) return notFound("${Pascal}");
   await prisma.${entityCamel}.delete({ where: { id } });
   return ok({ id });
-});
+}), { id: "${entityKebab}-write", limit: 30, windowMs: 60000 });
 `;
 }
 
@@ -423,30 +469,41 @@ function columnsFile() {
   const recordType = `{ id: string; ${recordTypeFields().join('; ')}; createdAt: string; }`;
   const TAG_COLORS = ['blue', 'green', 'orange', 'red', 'purple', 'cyan', 'magenta', 'gold'];
 
-  const scalarCols = fields.map((f) => `    {
-      title: "${f.name}",
+  // Date/datetime scalars render as locale dates; everything else uses the
+  // default cell renderer. `sorter: true` is server-driven (see the GET route's
+  // SORTABLE_COLUMNS allowlist + onSortChange wiring on the list page).
+  const scalarCols = fields.map((f) => {
+    const render = (f.type === 'date' || f.type === 'datetime')
+      ? `
+      render: (val: string | null) => (val ? new Date(val).toLocaleDateString() : "-"),`
+      : '';
+    return `    {
+      title: t("${f.name}"),
       dataIndex: "${f.name}",
       key: "${f.name}",
-      sorter: true,
-    },`);
+      sorter: true,${render}
+    },`;
+  });
 
   const enumCols = enums.map((e) => {
     const colorMap = e.values.map((v, i) => `"${v}": "${TAG_COLORS[i % TAG_COLORS.length]}"`).join(', ');
     return `    {
-      title: "${e.name}",
+      title: t("${e.name}"),
       dataIndex: "${e.name}",
       key: "${e.name}",
+      sorter: true,
       render: (val: string | null) => {
         if (!val) return "-";
         const colors: Record<string, string> = { ${colorMap} };
         return <Tag color={colors[val] ?? "default"}>{val}</Tag>;
       },
       filters: [${e.values.map((v) => `{ text: "${v}", value: "${v}" }`).join(', ')}],
+      filterMultiple: false,
     },`;
   });
 
   const relationCols = relations.map((r) => `    {
-      title: "${r.name}",
+      title: t("${r.name}"),
       key: "${r.name}",
       render: (_: unknown, record: ${Pascal}Record) => record.${r.name}?.${r.displayField} ?? "-",
     },`);
@@ -467,14 +524,16 @@ export interface ${Pascal}Record ${recordType}
 export function get${Pascal}Columns({
   onEdit,
   onDelete,
+  t,
 }: {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  t: (key: string) => string;
 }): ColumnsType<${Pascal}Record> {
   return [
 ${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
     {
-      title: "Created",
+      title: t("createdAt"),
       dataIndex: "createdAt",
       key: "createdAt",
       render: (val: string) => new Date(val).toLocaleDateString(),
@@ -486,9 +545,14 @@ ${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
       width: 100,
       render: (_: unknown, record: ${Pascal}Record) => (
         <Space>
-          <Button type="text" icon={<EditOutlined />} onClick={() => onEdit(record.id)} />
-          <ConfirmAction title="Delete?" onConfirm={() => onDelete(record.id)}>
-            <Button type="text" danger icon={<DeleteOutlined />} />
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            aria-label={t("editAction")}
+            onClick={() => onEdit(record.id)}
+          />
+          <ConfirmAction title={t("deleteConfirm")} onConfirm={() => onDelete(record.id)}>
+            <Button type="text" danger icon={<DeleteOutlined />} aria-label={t("deleteAction")} />
           </ConfirmAction>
         </Space>
       ),
@@ -506,16 +570,16 @@ function formFile() {
       : f.type === 'date' || f.type === 'datetime' ? '<DatePicker style={{ width: "100%" }} />'
       : f.type === 'text' || f.type === 'json' ? '<Input.TextArea rows={4} />'
       : '<Input />';
-    return `      <Form.Item name="${f.name}" label="${f.name}" rules={[{ required: ${!f.optional} }]}>
+    return `      <Form.Item name="${f.name}" label={t("${f.name}")} rules={[{ required: ${!f.optional} }]}>
         ${widget}
       </Form.Item>`;
   });
 
-  const enumItems = enums.map((e) => `      <Form.Item name="${e.name}" label="${e.name}" rules={[{ required: ${!e.optional} }]}>
+  const enumItems = enums.map((e) => `      <Form.Item name="${e.name}" label={t("${e.name}")} rules={[{ required: ${!e.optional} }]}>
         <Select options={[${e.values.map((v) => `{ value: "${v}", label: "${v}" }`).join(', ')}]} />
       </Form.Item>`);
 
-  const relationItems = relations.map((r) => `      <Form.Item name="${r.name}Id" label="${r.name}" rules={[{ required: ${!r.optional} }]}>
+  const relationItems = relations.map((r) => `      <Form.Item name="${r.name}Id" label={t("${r.name}")} rules={[{ required: ${!r.optional} }]}>
         <RelationSelect path="/api/${r.targetKebab}" displayField="${r.displayField}" />
       </Form.Item>`);
 
@@ -535,6 +599,10 @@ function formFile() {
   if (fields.some((f) => ['date', 'datetime'].includes(f.type))) antdImports.push('DatePicker');
   if (enums.length > 0 || relations.length > 0) antdImports.push('Select');
 
+  // Relation targets can exceed the page size, so the select fetches
+  // server-side via the parent list route's `?search=` (debounced). It seeds
+  // an initial page on mount and re-queries as the operator types, so targets
+  // beyond the first page are still selectable.
   const relationSelectComponent = relations.length === 0 ? '' : `
 function RelationSelect({ path, displayField, value, onChange }: {
   path: string;
@@ -543,9 +611,13 @@ function RelationSelect({ path, displayField, value, onChange }: {
   onChange?: (v: string) => void;
 }) {
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    fetch(path + "?pageSize=100")
+  const [loading, setLoading] = useState(false);
+
+  const load = useCallback((search: string) => {
+    setLoading(true);
+    const qs = new URLSearchParams({ pageSize: "50" });
+    if (search) qs.set("search", search);
+    fetch(path + "?" + qs.toString())
       .then((r) => r.json())
       .then((j) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -556,15 +628,43 @@ function RelationSelect({ path, displayField, value, onChange }: {
       })
       .finally(() => setLoading(false));
   }, [path, displayField]);
-  return <Select loading={loading} options={options} value={value} onChange={onChange} showSearch optionFilterProp="label" />;
+
+  // Initial page on mount.
+  useEffect(() => { load(""); }, [load]);
+
+  // Debounce the type-ahead so a >100-row target stays searchable without a
+  // request per keystroke.
+  const onSearch = useMemo(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    return (search: string) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => load(search), 300);
+    };
+  }, [load]);
+
+  return (
+    <Select
+      loading={loading}
+      options={options}
+      value={value}
+      onChange={onChange}
+      showSearch
+      filterOption={false}
+      onSearch={onSearch}
+      optionFilterProp="label"
+    />
+  );
 }
 `;
 
-  const reactImports = relations.length === 0 ? '' : 'import { useEffect, useState } from "react";\n';
+  const reactImports = relations.length === 0
+    ? ''
+    : 'import { useCallback, useEffect, useMemo, useState } from "react";\n';
 
   return `"use client";
 
 ${reactImports}import { ${antdImports.join(', ')} } from "antd";
+import { useTranslations } from "next-intl";
 
 interface ${Pascal}FormProps {
   initialValues?: Partial<${valueType}>;
@@ -574,13 +674,14 @@ interface ${Pascal}FormProps {
 }
 ${relationSelectComponent}
 export function ${Pascal}Form({ initialValues, onSubmit, onCancel, loading = false }: ${Pascal}FormProps) {
+  const t = useTranslations("${i18nNs}");
   return (
     <Form layout="vertical" initialValues={initialValues} onFinish={onSubmit} style={{ maxWidth: 500 }}>
 ${[...scalarItems, ...enumItems, ...relationItems].join('\n')}
       <Form.Item>
         <Space>
-          <Button type="primary" htmlType="submit" loading={loading}>Save</Button>
-          <Button onClick={onCancel}>Cancel</Button>
+          <Button type="primary" htmlType="submit" loading={loading}>{t("save")}</Button>
+          <Button onClick={onCancel}>{t("cancel")}</Button>
         </Space>
       </Form.Item>
     </Form>
@@ -590,13 +691,29 @@ ${[...scalarItems, ...enumItems, ...relationItems].join('\n')}
 }
 
 function listPageFile() {
+  const searchState = searchField ? '\n  const [search, setSearch] = useState("");' : '';
+  const searchParam = searchField ? '\n        ...(search ? { search } : {}),' : '';
+  const fetchDeps = searchField
+    ? '[page, pageSize, search, sort, list, showError, t]'
+    : '[page, pageSize, sort, list, showError, t]';
+  const searchProps = searchField
+    ? `
+        searchable
+        onSearch={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}`
+    : '';
+
   return `"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { Typography, Button, Space } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { useRouter, usePathname } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
+import type { SortChange } from "@/components/shared/DataTable";
 import { get${Pascal}Columns, type ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
@@ -604,68 +721,79 @@ import { useNotify } from "@/hooks/use-notify";
 const { Title } = Typography;
 
 export default function ${Pascal}sPage() {
+  const t = useTranslations("${i18nNs}");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { list, remove, loading } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
+  const { list, remove, listLoading } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
 
   const [items, setItems] = useState<${Pascal}Record[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(20);${searchState}
+  const [sort, setSort] = useState<SortChange>({});
 
   const fetchItems = useCallback(async () => {
     try {
       const result = await list({
         page: String(page),
-        pageSize: String(pageSize),
-        ...(search ? { search } : {}),
+        pageSize: String(pageSize),${searchParam}
+        ...(sort.field ? { sort: sort.field } : {}),
+        ...(sort.order
+          ? { order: sort.order === "ascend" ? "asc" : "desc" }
+          : {}),
       });
       setItems(result.data);
       setTotal(result.total);
     } catch {
-      showError("Failed to load");
+      showError(t("loadFailed"));
     }
-  }, [page, pageSize, search, list, showError]);
+  }, ${fetchDeps});
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchItems(); }, [fetchItems]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchItems();
+  }, [fetchItems]);
 
   const handleDelete = async (id: string) => {
+    const previous = items;
+    setItems((rows) => rows.filter((r) => r.id !== id));
     try {
       await remove(id);
-      success("Deleted");
+      success(t("deleted"));
       fetchItems();
     } catch {
-      showError("Failed to delete");
+      setItems(previous);
+      showError(t("deleteFailed"));
     }
   };
 
   const columns = get${Pascal}Columns({
     onEdit: (id) => router.push(\`/\${locale}/${entityKebab}/\${id}\`),
     onDelete: handleDelete,
+    t,
   });
 
   return (
     <>
       <Space style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <Title level={2} style={{ margin: 0 }}>${Pascal}s</Title>
+        <Title level={2} style={{ margin: 0 }}>{t("title")}</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push(\`/\${locale}/${entityKebab}/new\`)}>
-          New ${Pascal}
+          {t("createNew")}
         </Button>
       </Space>
       <DataTable<${Pascal}Record>
         columns={columns}
         dataSource={items}
-        loading={loading}
+        loading={listLoading}
         total={total}
         page={page}
         pageSize={pageSize}
         onPageChange={(p, ps) => { setPage(p); setPageSize(ps); }}
-        searchable
-        onSearch={setSearch}
+        onSortChange={(s) => {
+          setSort(s);
+          setPage(1);
+        }}${searchProps}
       />
     </>
   );
@@ -676,7 +804,8 @@ export default function ${Pascal}sPage() {
 function newPageFile() {
   return `"use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { Typography } from "antd";
 import { ${Pascal}Form } from "@/components/${entityKebab}/${Pascal}Form";
 import { useCrud } from "@/hooks/use-crud";
@@ -686,29 +815,29 @@ import type { ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Colum
 const { Title } = Typography;
 
 export default function New${Pascal}Page() {
+  const t = useTranslations("${i18nNs}");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { create, loading } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
+  const { create, mutating } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
 
   const handleSubmit = async (values: Partial<${Pascal}Record>) => {
     try {
       await create(values);
-      success("Created");
+      success(t("created"));
       router.push(\`/\${locale}/${entityKebab}\`);
     } catch {
-      showError("Failed to create");
+      showError(t("createFailed"));
     }
   };
 
   return (
     <>
-      <Title level={2}>New ${Pascal}</Title>
+      <Title level={2}>{t("createNew")}</Title>
       <${Pascal}Form
         onSubmit={handleSubmit}
         onCancel={() => router.push(\`/\${locale}/${entityKebab}\`)}
-        loading={loading}
+        loading={mutating}
       />
     </>
   );
@@ -720,7 +849,8 @@ function editPageFile() {
   return `"use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname, useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
+import { useTranslations, useLocale } from "next-intl";
 import { Typography, Spin } from "antd";
 import { ${Pascal}Form } from "@/components/${entityKebab}/${Pascal}Form";
 import { useCrud } from "@/hooks/use-crud";
@@ -730,28 +860,28 @@ import type { ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Colum
 const { Title } = Typography;
 
 export default function Edit${Pascal}Page() {
+  const t = useTranslations("${i18nNs}");
   const router = useRouter();
-  const pathname = usePathname();
+  const locale = useLocale();
   const params = useParams<{ id: string }>();
   const { success, error: showError } = useNotify();
-  const { getById, update, loading } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
-  const locale = pathname.startsWith("/ar") ? "ar" : "en";
+  const { getById, update, mutating } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
 
   const [record, setRecord] = useState<${Pascal}Record | null>(null);
 
   useEffect(() => {
     if (!params?.id) return;
-    getById(params.id).then(setRecord).catch(() => showError("Failed to load"));
-  }, [params?.id, getById, showError]);
+    getById(params.id).then(setRecord).catch(() => showError(t("loadFailed")));
+  }, [params?.id, getById, showError, t]);
 
   const handleSubmit = async (values: Partial<${Pascal}Record>) => {
     if (!params?.id) return;
     try {
       await update(params.id, values);
-      success("Saved");
+      success(t("updated"));
       router.push(\`/\${locale}/${entityKebab}\`);
     } catch {
-      showError("Failed to save");
+      showError(t("updateFailed"));
     }
   };
 
@@ -759,17 +889,54 @@ export default function Edit${Pascal}Page() {
 
   return (
     <>
-      <Title level={2}>Edit ${Pascal}</Title>
+      <Title level={2}>{t("editTitle")}</Title>
       <${Pascal}Form
         initialValues={record}
         onSubmit={handleSubmit}
         onCancel={() => router.push(\`/\${locale}/${entityKebab}\`)}
-        loading={loading}
+        loading={mutating}
       />
     </>
   );
 }
 `;
+}
+
+// next-intl companion: the generated pages/forms/columns all call
+// useTranslations("<i18nNs>"). We MUST NOT edit the shared messages/*.json
+// (owned elsewhere), so instead we emit every key this entity needs into a
+// standalone messages/_scaffold-<entity>.json. The operator merges its single
+// top-level namespace into messages/en.json + messages/ar.json (the
+// post-scaffold instructions spell this out). English values double as the
+// Arabic placeholders until translated.
+function companionMessages() {
+  const keys = {};
+  // Field / enum / relation labels (column headers + form labels).
+  for (const f of fields) keys[f.name] = humanize(f.name);
+  for (const e of enums) keys[e.name] = humanize(e.name);
+  for (const r of relations) keys[r.name] = humanize(r.name);
+  // Fixed UI strings used by the generated columns/form/pages.
+  keys.title = `${Pascal}s`;
+  keys.createNew = `New ${Pascal}`;
+  keys.editTitle = `Edit ${Pascal}`;
+  keys.createdAt = 'Created';
+  keys.save = 'Save';
+  keys.cancel = 'Cancel';
+  keys.editAction = `Edit ${entityCamel}`;
+  keys.deleteAction = `Delete ${entityCamel}`;
+  keys.deleteConfirm = `Are you sure you want to delete this ${entityCamel}?`;
+  keys.loadFailed = `Failed to load ${i18nNs}`;
+  keys.deleted = `${Pascal} deleted`;
+  keys.deleteFailed = `Failed to delete ${entityCamel}`;
+  keys.created = `${Pascal} created`;
+  keys.createFailed = `Failed to create ${entityCamel}`;
+  keys.updated = `${Pascal} updated`;
+  keys.updateFailed = `Failed to update ${entityCamel}`;
+  return { [i18nNs]: keys };
+}
+
+function companionMessagesFile() {
+  return JSON.stringify(companionMessages(), null, 2) + '\n';
 }
 
 // ---------- Existing-file patches ----------
@@ -846,6 +1013,9 @@ write(`components/${entityKebab}/${Pascal}Form.tsx`, formFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/page.tsx`, listPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/new/page.tsx`, newPageFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/[id]/page.tsx`, editPageFile());
+// i18n companion -- merge into messages/en.json + messages/ar.json (we can't
+// touch the shared message files directly; see post-scaffold instructions).
+write(`messages/_scaffold-${entityKebab}.json`, companionMessagesFile());
 
 // ---------- All-or-nothing patch computation ----------
 //
@@ -902,4 +1072,9 @@ if (enums.length > 0) {
 console.log(`  1. Review prisma/schema.prisma (new model + enums + back-refs).`);
 console.log(`  2. Run: npm run prisma:migrate -- --name add_${entitySnake}`);
 console.log(`  3. Run: npm run prisma:generate`);
-console.log(`  4. Commit; CI verifies build + lint + typecheck.`);
+console.log('  4. i18n: the generated UI calls useTranslations("' + i18nNs + '").');
+console.log(`     Merge the "${i18nNs}" namespace from messages/_scaffold-${entityKebab}.json`);
+console.log('     into BOTH messages/en.json and messages/ar.json (translate the ar values),');
+console.log(`     then delete messages/_scaffold-${entityKebab}.json. Until you do, those keys`);
+console.log('     render as the raw key string.');
+console.log(`  5. Commit; CI verifies build + lint + typecheck.`);

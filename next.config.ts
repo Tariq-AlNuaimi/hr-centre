@@ -41,11 +41,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  env: {
-    NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
-  },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
+  },
+  // API-versioning seam (ADR-013): external/machine consumers hit the stable
+  // `/api/v1/*` path, which rewrites to the current `/api/*` handlers -- zero
+  // route churn today, and a real v2 can diverge later without breaking v1.
+  // Internal app code keeps calling `/api/*` directly.
+  async rewrites() {
+    return [{ source: "/api/v1/:path*", destination: "/api/:path*" }];
   },
 };
 

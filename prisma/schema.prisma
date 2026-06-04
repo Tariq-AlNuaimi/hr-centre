@@ -38,6 +38,10 @@ model User {
   sessions      Session[]
   auditLogs     AuditLog[]
 
+  // The soft-delete extension filters `deletedAt: null` on every list/count;
+  // index it so those queries don't scan. Scaffolded soft-deletable models do
+  // the same (see scripts/scaffold-entity.mjs).
+  @@index([deletedAt])
   @@map("users")
 }
 

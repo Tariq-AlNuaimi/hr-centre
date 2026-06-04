@@ -36,7 +36,9 @@ export function scrub<T extends Record<string, unknown> | null | undefined>(obj:
 
 type AnyClient = {
   [key: string]: {
-    findUnique: (args: { where: { id: string } }) => Promise<unknown>;
+    // Accept any unique selector, not just { id } -- update/delete may target a
+    // different unique field (e.g. { email }); the before-snapshot must still work.
+    findUnique: (args: { where: Record<string, unknown> }) => Promise<unknown>;
   };
 };
 
@@ -139,15 +141,15 @@ export const auditExtension = Prisma.defineExtension((client) => {
           if (EXCLUDE.has(model)) return query(args);
 
           const ctx = getAuditContext();
-          const where = args.where as { id: string };
+          const where = args.where as Record<string, unknown>;
 
           let before: Record<string, unknown> | null = null;
           try {
             before = (await modelAccessor(client, model).findUnique({
-              where: { id: where.id },
+              where,
             })) as Record<string, unknown> | null;
           } catch {
-            // Model might not have simple id lookup - skip before snapshot
+            // Model might not have a simple unique lookup - skip before snapshot
           }
 
           const result = await query(args);
@@ -184,12 +186,12 @@ export const auditExtension = Prisma.defineExtension((client) => {
           if (EXCLUDE.has(model)) return query(args);
 
           const ctx = getAuditContext();
-          const where = args.where as { id: string };
+          const where = args.where as Record<string, unknown>;
 
           let before: Record<string, unknown> | null = null;
           try {
             before = (await modelAccessor(client, model).findUnique({
-              where: { id: where.id },
+              where,
             })) as Record<string, unknown> | null;
           } catch {
             // Skip

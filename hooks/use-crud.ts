@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import type { PaginatedResponse } from "@/types";
 
 interface UseCrudOptions {
@@ -18,6 +18,12 @@ export function useCrud<T extends { id: string }>({
   const [mutating, setMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Tracks the in-flight `list` (read) request so a newer search/page keystroke
+  // can abort the previous one. Without this, fast typing can land stale
+  // responses out of order and overwrite fresher results. Mutations are not
+  // aborted -- each must complete.
+  const listAbortRef = useRef<AbortController | null>(null);
+
   const request = useCallback(
     async <R>(
       path: string,
@@ -25,22 +31,43 @@ export function useCrud<T extends { id: string }>({
       kind: "read" | "mutate" = "read"
     ): Promise<R> => {
       const setBusy = kind === "read" ? setListLoading : setMutating;
+
+      // For reads, abort the previous in-flight read before starting a new one.
+      let signal: AbortSignal | undefined = options?.signal ?? undefined;
+      if (kind === "read") {
+        listAbortRef.current?.abort();
+        const controller = new AbortController();
+        listAbortRef.current = controller;
+        signal = controller.signal;
+      }
+
       setBusy(true);
       setError(null);
       try {
         const res = await fetch(path, {
           headers: { "Content-Type": "application/json" },
           ...options,
+          signal,
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error ?? "Request failed");
         return json.data as R;
       } catch (err) {
+        // A superseded read was intentionally aborted -- swallow it so the
+        // caller's catch doesn't surface a spurious error for the stale request.
+        if (err instanceof DOMException && err.name === "AbortError") {
+          throw err;
+        }
         const msg = err instanceof Error ? err.message : "Unknown error";
         setError(msg);
         throw err;
       } finally {
-        setBusy(false);
+        // Only clear the busy flag if this read is still the current one; an
+        // aborted read's finally would otherwise prematurely stop the spinner
+        // for the request that superseded it.
+        if (kind !== "read" || signal?.aborted !== true) {
+          setBusy(false);
+        }
       }
     },
     []

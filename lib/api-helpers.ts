@@ -5,6 +5,7 @@ import { auth } from "./auth";
 import { withAuditContext } from "./audit-context";
 import { err, forbidden } from "./api-response";
 import { setUserContext } from "./sentry";
+import { rateLimit, type RateLimitOptions } from "./rate-limit";
 
 type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -17,6 +18,9 @@ type InternalHandler = (
   req: NextRequest,
   ctx: RouteContext
 ) => Promise<NextResponse>;
+
+// A fully-wrapped route handler (the shape withAuth/withAdminAuth return).
+type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<NextResponse>;
 
 /**
  * Wraps an API route handler with authentication + audit context.
@@ -79,6 +83,50 @@ export function withInternalAuth(tokenEnv: string, handler: InternalHandler) {
 
     const provided = req.headers.get("x-internal-token");
     if (!provided || provided !== expected) return err("Unauthorized", 401);
+
+    return handler(req, ctx);
+  };
+}
+
+/**
+ * Per-route rate limiting. Compose OUTSIDE the auth wrapper so abusive clients
+ * are throttled before auth work runs:
+ *   export const POST = withRateLimit(withAdminAuth(handler), { id: "x-write", limit: 30, windowMs: 60_000 });
+ * Returns 429 + Retry-After when the per-IP bucket is exceeded. NOTE: the bucket
+ * is in-memory/per-instance (see lib/rate-limit.ts) -- swap to @upstash/ratelimit
+ * for multi-instance deployments.
+ */
+export function withRateLimit(handler: RouteHandler, opts: RateLimitOptions): RouteHandler {
+  return async (req, ctx) => {
+    const result = rateLimit(req, opts);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "retry-after": String(result.retryAfter) } }
+      );
+    }
+    return handler(req, ctx);
+  };
+}
+
+/**
+ * SSO/handoff SEAM: gates a route for external/machine API consumers via a
+ * Bearer token (`Authorization: Bearer <token>`) matched against the env var
+ * named by `tokenEnv`. Returns 503 if unset, 401 on missing/bad token.
+ *
+ * This is the minimal seam so the template is "API-ready" without bloat. The
+ * full per-consumer model (a hashed, scoped `ApiKey` table + `/api/v1` + OpenAPI)
+ * is a `shared`-tier `/scale-up` recipe -- see ADR-013. Until then, set a single
+ * shared key in the env var to expose a route to a trusted caller.
+ */
+export function withApiAuth(tokenEnv: string, handler: InternalHandler) {
+  return async (req: NextRequest, ctx: RouteContext) => {
+    const expected = process.env[tokenEnv];
+    if (!expected) return err("Endpoint not configured", 503);
+
+    const header = req.headers.get("authorization") ?? "";
+    const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    if (!token || token !== expected) return err("Unauthorized", 401);
 
     return handler(req, ctx);
   };

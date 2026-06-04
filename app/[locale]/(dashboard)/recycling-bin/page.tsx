@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Typography, Table, Button, Space, Tag, App } from "antd";
+import { Typography, Button, Space, Tag, App } from "antd";
 import {
   UndoOutlined,
   DeleteOutlined,
@@ -10,6 +10,7 @@ import {
 import { useTranslations } from "next-intl";
 import { useNotify } from "@/hooks/use-notify";
 import { useSession } from "next-auth/react";
+import { DataTable } from "@/components/shared/DataTable";
 
 const { Title } = Typography;
 
@@ -20,6 +21,16 @@ interface DeletedItem {
   deletedAt: string;
   deletedBy: string | null;
 }
+
+// Envelope returned by the paginated GET /api/recycling-bin.
+interface RecyclingBinResponse {
+  data: DeletedItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+const DEFAULT_PAGE_SIZE = 20;
 
 export default function RecyclingBinPage() {
   const t = useTranslations("recyclingBin");
@@ -33,23 +44,43 @@ export default function RecyclingBinPage() {
 
   const [items, setItems] = useState<DeletedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] = useState(0);
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/recycling-bin");
-      const json = await res.json();
-      setItems(json.data ?? []);
-    } catch {
-      showError(t("loadFailed"));
-    } finally {
-      setLoading(false);
-    }
-  }, [showError, t]);
+  const fetchItems = useCallback(
+    async (nextPage: number, nextPageSize: number) => {
+      setLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          page: String(nextPage),
+          pageSize: String(nextPageSize),
+        }).toString();
+        const res = await fetch(`/api/recycling-bin?${qs}`);
+        if (!res.ok) throw new Error();
+        const json = (await res.json()) as RecyclingBinResponse;
+        setItems(json.data ?? []);
+        setTotal(json.total ?? 0);
+        setPage(json.page ?? nextPage);
+        setPageSize(json.pageSize ?? nextPageSize);
+      } catch {
+        showError(t("loadFailed"));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showError, t]
+  );
 
   useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+    fetchItems(page, pageSize);
+    // Initial load only; subsequent loads go through handlers below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePageChange = (nextPage: number, nextPageSize: number) => {
+    fetchItems(nextPage, nextPageSize);
+  };
 
   const handleRestore = async (item: DeletedItem) => {
     try {
@@ -63,7 +94,7 @@ export default function RecyclingBinPage() {
       });
       if (!res.ok) throw new Error();
       success(t("restored", { name: item.displayName }));
-      fetchItems();
+      fetchItems(page, pageSize);
     } catch {
       showError(t("restoreFailed"));
     }
@@ -84,7 +115,7 @@ export default function RecyclingBinPage() {
           );
           if (!res.ok) throw new Error();
           success(t("permanentlyDeleted", { name: item.displayName }));
-          fetchItems();
+          fetchItems(page, pageSize);
         } catch {
           showError(t("deleteFailed"));
         }
@@ -146,12 +177,16 @@ export default function RecyclingBinPage() {
   return (
     <>
       <Title level={2}>{t("title")}</Title>
-      <Table
+      <DataTable<DeletedItem>
         dataSource={items}
         columns={columns}
         loading={loading}
         rowKey={(r) => `${r.entityType}-${r.id}`}
-        locale={{ emptyText: t("empty") }}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={handlePageChange}
+        emptyText={t("empty")}
       />
     </>
   );

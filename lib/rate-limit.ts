@@ -1,9 +1,9 @@
 // In-memory token bucket rate limiter.
 //
-// Fine for the template's default single-container Portainer deploy. Horizontally-scaled
-// downstream projects MUST swap to a shared-state limiter (e.g. @upstash/ratelimit backed
-// by Redis or Upstash) -- per-instance buckets are bypassed by round-robin load balancing.
-// See SECURITY.md finding T-01.
+// Fine for the template's default single Vercel function instance; swap to @upstash/ratelimit
+// when horizontally scaled. Horizontally-scaled downstream projects MUST swap to a shared-state
+// limiter (e.g. @upstash/ratelimit backed by Redis or Upstash) -- per-instance buckets are
+// bypassed by round-robin load balancing. See SECURITY.md finding T-01.
 
 interface Entry {
   count: number;

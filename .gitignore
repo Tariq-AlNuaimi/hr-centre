@@ -52,7 +52,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# deploy state -- contains droplet IPs, Portainer admin password, webhook URLs
+# deploy state -- local/secret artifacts (provisioning output, tokens, URLs)
 .deploy-state.*.json
 
 # migration scratch

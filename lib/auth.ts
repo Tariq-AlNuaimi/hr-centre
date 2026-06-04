@@ -6,6 +6,18 @@ import bcrypt from "bcryptjs";
 import type { Role } from "../generated/prisma/client";
 import { prismaUnfiltered } from "./prisma";
 
+/**
+ * SSO SEAM (ADR-013): map an IdP's claims to our Role enum. Wire this in when a
+ * `shared`-tier fork enables enterprise SSO (OIDC/SAML via Auth.js providers or
+ * @boxyhq/saml-jackson). Default is least-privilege (VIEWER); a fork overrides
+ * by group/role claim, e.g.:
+ *   if (claims?.groups?.includes("app-admins")) return "ADMIN";
+ * Keep the default restrictive so a misconfigured IdP can't grant ADMIN.
+ */
+export function mapSsoRole(_claims: Record<string, unknown> | undefined): Role {
+  return "VIEWER";
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   // @auth/prisma-adapter declares the adapter against the top-level @auth/core,
   // while next-auth resolves Adapter from its nested @auth/core (which carries
@@ -56,8 +68,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         };
       },
     }),
-    // Add OAuth providers via env vars:
+    // Add OAuth / enterprise SSO providers via env vars (the SSO seam):
     // Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET }),
+    // For OIDC (Entra/Okta/generic), add the provider here and map the role in
+    // the jwt callback via mapSsoRole(profile claims). SAML: @boxyhq/saml-jackson.
+    // See docs/decisions/ADR-013.
   ],
   callbacks: {
     jwt({ token, user }) {

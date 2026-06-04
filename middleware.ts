@@ -7,7 +7,14 @@ import { NextResponse } from "next/server";
 
 const intlMiddleware = createMiddleware(routing);
 
-const publicPaths = ["/login", "/api/auth", "/api/health", "/api/internal"];
+const publicPaths = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth",
+  "/api/health",
+  "/api/internal",
+];
 
 function isPublicPath(pathname: string): boolean {
   // Strip locale prefix for matching

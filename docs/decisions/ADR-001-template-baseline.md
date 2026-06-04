@@ -7,6 +7,8 @@
 
 > **2026-05-21 update — ADR-006 supersedes the following parts of this ADR:**
 > `output: "standalone"` Docker baseline, GHCR / Portainer CI/CD line, MinIO baseline, and the "Vercel deployment was rejected" alternative. The remaining invariants (Prisma extensions, Auth.js wrappers, audit scrubbing, soft-delete, security headers, rate limiter) are unchanged.
+>
+> The **"Verification automation" section below is historical** and is NOT covered by the supersession line above. Its "five workflows" list still names the deleted `audit-retention.yml` and `restore-test.yml` (removed with the on-host backup/cron infra in ADR-006) and the Docker "Image tag pinning" invariant no longer applies. The live CI surface is `verify.yml`, `secrets-scan.yml`, `sast.yml` (+ `codeql.yml`, `uat.yml`); audit purge now runs via Vercel Cron (see CLAUDE.md). Treat that section as a record of the original baseline, not the current state.
 
 ## Context
 
