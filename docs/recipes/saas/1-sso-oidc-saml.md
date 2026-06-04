@@ -147,7 +147,11 @@ callbacks: {
     }
     // SSO login: derive role from IdP claims and persist it on the User row so
     // the app's own role checks (and the admin UI) stay the source of truth.
-    if (account && account.type === "oidc" && profile) {
+    // Match BOTH OIDC providers (account.type "oidc") AND the BoxyHQ SAML
+    // provider from part (b), which Auth.js types as "oauth" -- otherwise SAML
+    // logins skip role mapping here (they still get role via the provider's
+    // profile(), but gate on both so this block is the single source of truth).
+    if (account && (account.type === "oidc" || account.type === "oauth") && profile) {
       const role = mapSsoRole(profile as Record<string, unknown>);
       token.role = role;
       if (token.id) {

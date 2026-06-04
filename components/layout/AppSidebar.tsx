@@ -69,7 +69,10 @@ export function AppSidebar() {
       label: t("settings"),
       onClick: () => router.push(`/${locale}/settings`),
     },
-  ];
+    // NOTE: scaffolded entity nav entries are inserted before the recycling-bin
+    // item above (see scripts/scaffold-entity.mjs patchSidebar marker) -- keep
+    // that literal intact.
+  ].filter((item) => item.key !== "recycling-bin" || isAdmin); // bin is admin-only (API is withAdminAuth)
 
   return (
     <Sider

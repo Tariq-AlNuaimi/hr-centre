@@ -212,6 +212,10 @@ export async function deliver(deliveryId: string, url: string, secret: string, r
         },
       });
     }
+    // CAUTION: this in-request sleep is for local/dev only. On Vercel the
+    // function will be KILLED at its timeout mid-retry, silently truncating
+    // delivery. In production, deliver via the Inngest seam below (one attempt
+    // per step, Inngest owns the backoff) -- do NOT ship this synchronous loop.
     if (attempt < MAX_ATTEMPTS) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt] ?? 30_000));
   }
 }

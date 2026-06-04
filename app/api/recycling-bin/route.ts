@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prismaUnfiltered } from "@/lib/prisma";
-import { withAuth, withAdminAuth } from "@/lib/api-helpers";
+import { withAdminAuth } from "@/lib/api-helpers";
 import { ok, notFound } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import {
@@ -19,7 +19,9 @@ const recyclable = prismaUnfiltered as unknown as Record<string, RecyclableDeleg
 // project should move retention/purge upstream (see /api/internal/audit-purge).
 const MERGE_CAP = 500;
 
-export const GET = withAuth(async (request: NextRequest) => {
+// Admin-only: the bin lists soft-deleted records (incl. deleted-user PII + who
+// deleted them); not exposed to VIEWER/EDITOR. The bin nav is also admin-gated.
+export const GET = withAdminAuth(async (request: NextRequest) => {
   const pagination = parsePagination(request.nextUrl.searchParams);
 
   const merged: Array<{

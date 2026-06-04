@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
-import { withAuth, withAdminAuth } from "@/lib/api-helpers";
+import { withAdminAuth } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import { createUserSchema } from "@/lib/validations/user";
@@ -19,7 +19,9 @@ type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
 const VALID_ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
 
-export const GET = withAuth(async (request: NextRequest) => {
+// Admin-only: the user directory (email/role/lastLogin) is not exposed to
+// VIEWER/EDITOR; the users nav is also admin-gated. See SECURITY.md §3.
+export const GET = withAdminAuth(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
   const search = searchParams.get("search") ?? undefined;

@@ -101,8 +101,10 @@ export async function recordFailedLogin(email: string): Promise<void> {
   const key = emailKey(email);
   const count = await redis.incr(key);
   if (count === 1) await redis.expire(key, WINDOW_SEC);
-  // Once tripped, hold the lock for LOCK_SEC (re-arm the TTL to the lock duration).
-  if (count >= MAX_FAILS) await redis.expire(key, LOCK_SEC);
+  // Arm the lock ONCE, exactly when the threshold is first crossed -- use `=== MAX_FAILS`
+  // (not `>= MAX_FAILS`) so further attempts while locked do NOT re-extend the TTL.
+  // Otherwise an attacker could keep a real user locked out indefinitely.
+  if (count === MAX_FAILS) await redis.expire(key, LOCK_SEC);
 }
 
 /** Clear on a successful authentication. */

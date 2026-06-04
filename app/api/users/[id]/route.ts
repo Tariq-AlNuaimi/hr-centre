@@ -1,11 +1,12 @@
 import { NextRequest } from "next/server";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
-import { withAuth, withAdminAuth } from "@/lib/api-helpers";
+import { withAdminAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { updateUserSchema } from "@/lib/validations/user";
 
-export const GET = withAuth(async (
+// Admin-only (matches the list route + admin-gated users nav). See SECURITY.md §3.
+export const GET = withAdminAuth(async (
   _request: NextRequest,
   { params }
 ) => {
