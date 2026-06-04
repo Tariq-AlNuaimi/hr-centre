@@ -269,10 +269,17 @@ declare module "next-auth" {
   interface User { role: Role; mfaEnabled?: boolean }
   interface Session { user: { id: string; role: Role; mfaEnabled: boolean; mfaVerified: boolean } & DefaultSession["user"] }
 }
-declare module "next-auth/jwt" {
+// NOTE: augment `@auth/core/jwt` (NOT `next-auth/jwt`) — this template's JWT
+// augmentation lives there (see types/index.ts + the duplicate-@auth/core note
+// in lib/auth.ts). Using `next-auth/jwt` leaves token.mfa* untyped → /ship fails.
+declare module "@auth/core/jwt" {
   interface JWT { id: string; role: Role; mfaEnabled?: boolean; mfaVerified?: boolean }
 }
 ```
+
+> **Step-up refresh caveat:** the `/mfa` page must call `useSession().update()`
+> (not just `router.refresh()`) to force the `jwt` callback pass that flips
+> `mfaVerified` — otherwise the middleware redirect can loop.
 
 ## Enforcement — `middleware.ts`
 

@@ -58,7 +58,7 @@ export default function LoginPage() {
         <Form.Item
           name="password"
           label={t("password")}
-          rules={[{ required: true, min: 6 }]}
+          rules={[{ required: true, min: 8 }]}
         >
           <Input.Password
             prefix={<LockOutlined />}

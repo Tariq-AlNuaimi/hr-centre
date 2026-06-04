@@ -71,12 +71,6 @@ export function AppSidebar() {
     },
   ];
 
-  const buildTime = process.env.NEXT_PUBLIC_BUILD_TIME
-    ? new Date(process.env.NEXT_PUBLIC_BUILD_TIME)
-        .toISOString()
-        .replace(/:\d{2}\.\d{3}Z$/, "")
-    : null;
-
   return (
     <Sider
       collapsible
@@ -92,19 +86,6 @@ export function AppSidebar() {
           items={menuItems}
           style={{ flex: 1, borderRight: 0 }}
         />
-        {buildTime && !collapsed && (
-          <div
-            style={{
-              padding: "8px 16px",
-              fontSize: 11,
-              opacity: 0.45,
-              textAlign: "center",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {buildTime}
-          </div>
-        )}
       </div>
     </Sider>
   );
