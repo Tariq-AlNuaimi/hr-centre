@@ -96,5 +96,7 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
     after: restored as unknown as Record<string, unknown>,
   });
 
-  return ok(restored);
+  // Don't echo the full unfiltered row -- it can carry Restricted fields like
+  // passwordHash (SECURITY.md §1). The audit row above captured the change.
+  return ok({ entityType, id, restored: true });
 });

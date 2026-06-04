@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ok } from "@/lib/api-response";
 import { withInternalAuth } from "@/lib/api-helpers";
+import { env } from "@/lib/env";
 
 // Internal endpoint -- DORMANT. Nothing calls it on a schedule. The monthly
 // audit-retention workflow was removed in ADR-006 and the template ships no cron.
@@ -15,7 +16,9 @@ import { withInternalAuth } from "@/lib/api-helpers";
 // recursively write more audit rows.
 
 export const POST = withInternalAuth("AUDIT_PURGE_TOKEN", async (_req: NextRequest) => {
-  const retentionDays = Number(process.env.AUDIT_RETENTION_DAYS ?? "365");
+  // Use the zod-validated env (coerced + defaulted) -- not a raw parse, which
+  // would yield NaN -> Invalid Date on a malformed value.
+  const retentionDays = env.AUDIT_RETENTION_DAYS;
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

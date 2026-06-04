@@ -8,6 +8,7 @@
 import { Typography, Card, Row, Col, Statistic, Table, Tag } from "antd";
 import { UserOutlined, DeleteOutlined } from "@ant-design/icons";
 import { getTranslations } from "next-intl/server";
+import { auth } from "@/lib/auth";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
 import { Chart } from "@/components/shared/Chart";
 import { RECYCLABLE_ENTITY_TYPES } from "@/lib/prisma/recyclable";
@@ -81,6 +82,22 @@ export default async function DashboardPage() {
   const tCommon = await getTranslations("common");
   const tAudit = await getTranslations("auditLog");
   const tDash = await getTranslations("dashboard");
+
+  // The dashboard surfaces user/role counts and recent audit-log entries -- both
+  // ADMIN-gated elsewhere (audit-log API is withAdminAuth; the sidebar hides
+  // users/audit-log from non-admins). Gate the data here too so this RSC doesn't
+  // become a side-channel that leaks admin data to VIEWER/EDITOR.
+  const session = await auth();
+  const isAdmin = session?.user?.role === "ADMIN";
+
+  if (!isAdmin) {
+    return (
+      <>
+        <Title level={2}>{t("home")}</Title>
+        <Card>{tDash("welcome")}</Card>
+      </>
+    );
+  }
 
   const { totalUsers, roleDistribution, softDeletedTotal, recentAudit } =
     await getDashboardData();

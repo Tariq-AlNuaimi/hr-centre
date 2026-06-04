@@ -22,7 +22,12 @@ Generate a new CRUD entity mirroring the User reference implementation. Codegen 
   - Adds `<name>Id` FK column + `@@index([<name>Id])` to the source
   - Detects the target's display field automatically (`name` > `title` > `label` > `email` > `id`), used by both the column traversal and the searchable `RelationSelect`
 - **Soft-delete?** Default yes. Pass `--soft-delete false` to opt out.
-- **Admin-only writes?** Default no. Pass `--admin-writes true` to wrap POST/PUT/DELETE with `withAdminAuth`.
+- **Who can write?** `--writes admin|editor|any` selects the auth wrapper for the write routes (POST/PUT/DELETE):
+  - `admin` → `withAdminAuth` (ADMIN only)
+  - `editor` → `withEditorAuth` (ADMIN or EDITOR; rejects VIEWER)
+  - `any` → `withAuth` (any authenticated user) — **default**
+  - GET routes always use `withAuth`.
+  - `--admin-writes true` is kept as a **back-compat alias** for `--writes admin`; `--writes` takes precedence if both are given.
 - **Display field** for the recycling bin: `--display-field name` (default).
 
 ## Examples
@@ -46,8 +51,15 @@ npm run scaffold -- --name Employee \
   --fields 'fullName:string,joinDate:date' \
   --enums 'contractType:FULL_TIME|PART_TIME|CONTRACTOR' \
   --relations 'manager:User?' \
-  --admin-writes true \
+  --writes admin \
   --display-field fullName
+```
+
+Editor-writable entity (ADMIN or EDITOR can write; VIEWER is read-only):
+```
+npm run scaffold -- --name Article \
+  --fields 'title:string,body:text' \
+  --writes editor
 ```
 
 ## After scaffolding
@@ -70,8 +82,8 @@ npm run scaffold -- --name Employee \
   - **Server-side pagination** (`parsePagination` + `paginatedResponse`).
   - **Server-side search** -- only when the entity has a string/text field: `?search=` does a case-insensitive `contains` on the first string/text field. No search support is emitted when the entity has no string-ish field.
   - **Server-side sort** -- `?sort=&order=` validated against a `SORTABLE_COLUMNS` allowlist (scalar fields + enum fields + `createdAt`) that guards against raw column injection. Defaults to `createdAt desc`.
-  - The POST is wrapped `withRateLimit(<withAuth|withAdminAuth>(handler), { id: "<kebab>-write", limit: 30, windowMs: 60000 })`.
-- `app/api/<kebab>/[id]/route.ts` -- GET / PUT / DELETE. PUT and DELETE are each wrapped with the same `withRateLimit(..., { id: "<kebab>-write", limit: 30, windowMs: 60000 })`.
+  - The POST is wrapped `withRateLimit(<withAuth|withEditorAuth|withAdminAuth>(handler), { id: "<kebab>-write", limit: 30, windowMs: 60000 })` — the write wrapper is chosen by `--writes` (default `withAuth`).
+- `app/api/<kebab>/[id]/route.ts` -- GET / PUT / DELETE. GET uses `withAuth`; PUT and DELETE use the `--writes` wrapper, each wrapped with the same `withRateLimit(..., { id: "<kebab>-write", limit: 30, windowMs: 60000 })`.
 - `components/<kebab>/<Pascal>Columns.tsx` -- DataTable columns; enums rendered as colored Tags with filter dropdowns; relations rendered via traversal (`record.<name>?.<displayField>`). Column titles use i18n keys via `t(...)`. `sorter: true` is set on scalar/enum/`createdAt` columns and is now **server-driven** (wired to the GET route's `?sort=&order=` via the list page's `onSortChange`).
 - `components/<kebab>/<Pascal>Form.tsx` -- Ant Form; scalar widgets per type; enum Select with hardcoded options. Relation fields use a **debounced searchable `RelationSelect`**: it seeds an initial page (`?pageSize=50`) on mount and re-queries the parent list route's `?search=` as the operator types (300ms debounce), so targets beyond the first page stay selectable -- it is **not** a fixed 100-row fetch. Labels use i18n keys via `t(...)`.
 - `app/[locale]/(dashboard)/<kebab>/page.tsx` -- list page; wires a debounced search box (only when a string/text field exists), server-driven sort, and pagination into the GET route.
@@ -88,7 +100,7 @@ npm run scaffold -- --name Employee \
 
 ## Hard rules preserved
 
-- Every API handler wraps with `withAuth` / `withAdminAuth` -- never bare. Write handlers (POST/PUT/DELETE) are additionally wrapped with `withRateLimit(..., { id: "<kebab>-write", limit: 30, windowMs: 60000 })`.
+- Every API handler wraps with `withAuth` / `withEditorAuth` / `withAdminAuth` -- never bare. GET uses `withAuth`; write handlers (POST/PUT/DELETE) use the `--writes` wrapper (default `withAuth`) and are additionally wrapped with `withRateLimit(..., { id: "<kebab>-write", limit: 30, windowMs: 60000 })`.
 - Uses `prisma` (not `prismaUnfiltered`) so soft-deleted rows stay filtered on the entity itself. (Note: relation `include`s do not filter target soft-deletes -- a known Prisma-extension limitation. Hand-edit if needed.)
 - zod parses request bodies before any Prisma call.
 - snake_case `@@map` for the table name; camelCase Prisma fields; PascalCase model + enum types.

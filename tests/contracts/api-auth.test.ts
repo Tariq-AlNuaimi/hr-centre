@@ -13,10 +13,11 @@
 //   node --experimental-test-module-mocks --import tsx \
 //     --test tests/contracts/api-auth.test.ts
 //
-//   * With the flag, ALL cases below run against the mocked auth().
-//   * Under plain `npm test` (no flag) lib/auth is loaded as-is. withInternalAuth
-//     never calls auth(), so its four cases -- the security-critical token gate
-//     -- always run; the session cases self-skip.
+// The `test` npm script now passes --experimental-test-module-mocks, so ALL
+// cases below (incl. the withAuth/withAdminAuth/withEditorAuth session/role
+// checks) run on every `npm test` / `/ship` / CI -- nothing self-skips. The
+// `skip: !canMock` guards remain only so the file still works if run WITHOUT
+// the flag (then the session cases skip and the token-gate cases still run).
 
 import { test, before, mock } from "node:test";
 import assert from "node:assert/strict";

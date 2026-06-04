@@ -21,11 +21,21 @@ The pre-pivot `/promote` + `release.yml` tag flow was removed with ADR-006.
 - `SECURITY.md` §16: shared-tier checklist.
 - CodeQL scanning with SARIF upload; SHA-pinned GitHub Actions; Dependabot.
 - Component and auth test suites.
+- `withEditorAuth` wrapper (`lib/api-helpers.ts`): ADMIN or EDITOR may write, VIEWER is rejected — for editor-writable routes.
+- Scaffold `--writes admin|editor|any` flag to pick the write-route auth wrapper (`withAdminAuth` / `withEditorAuth` / `withAuth`; default `any`; GET always `withAuth`). EDITOR write routes are now reachable. `--admin-writes` retained as a back-compat alias.
+- DB integration test suite (`npm run test:integration`) exercising the audit + soft-delete paths against a live Postgres.
+- ESLint RuleTester tests for the local `rihal-template/*` plugin (`npm run test:lint-rules`).
+- AGENTS.md — cross-tool AI-assistant pointer to `CLAUDE.md` / `SECURITY.md`.
 
 ### Changed
 - Charts and Kanban board are now lazy-loaded (dynamic import) to cut the initial bundle.
 - Recycling bin is paginated.
 - Scaffold parity with the User reference: generated entities now get server-side sort (`SORTABLE_COLUMNS` allowlist + `?sort=&order=`), server-side search (`?search=` when a string/text field exists), i18n companion file (merge into `en.json`/`ar.json`), `@@index` for indexed fields + relation FKs, a debounced searchable `RelationSelect`, and per-route rate limiting on writes.
+- Password-reset flow is now fully internationalized (en/ar) — request and reset pages plus emailed copy.
+- Ant Design `Space` migrated from the deprecated `direction` prop to `orientation` across the UI.
+
+### Security
+- Token comparisons in `withInternalAuth` / `withApiAuth` now use constant-time `timingSafeEqual` to close a timing side-channel on the shared-secret / Bearer-token checks.
 
 ### Fixed
 - `useCrud`: abort in-flight requests and resolve the race where a stale response could overwrite newer state.

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
-import { withAuth } from "@/lib/api-helpers";
+import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, err, forbidden } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -11,7 +11,10 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters").max(128),
 });
 
-export const PUT = withAuth(async (
+// Rate-limited: this route verifies currentPassword with bcrypt, so throttle it
+// per-IP to blunt online password-guessing even though it's self-scoped.
+export const PUT = withRateLimit(
+  withAuth(async (
   request: NextRequest,
   { params, session }
 ) => {
@@ -48,4 +51,6 @@ export const PUT = withAuth(async (
   });
 
   return ok({ changed: true });
-});
+}),
+  { id: "password-change", limit: 5, windowMs: 60_000 }
+);

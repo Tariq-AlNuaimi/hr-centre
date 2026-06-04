@@ -139,12 +139,15 @@ Manual recipe:
 npm run scaffold -- --name MyEntity \
   --fields 'title:string,note:string?,price:int,status:STATUS' \
   --enums 'status:DRAFT|PUBLISHED' \
-  --relations 'owner:User?'
+  --relations 'owner:User?' \
+  --writes editor
 npx prisma generate
 npx prisma migrate dev --name add_my_entity
 ```
 
-The scaffold creates: Prisma model (with soft-delete fields + audit hooks + `@@index`es), zod validation, API routes (`GET`/`POST`/`PUT`/`DELETE` wrapped with `withAuth`, writes rate-limited; the list route supports server-side search/sort/pagination), a dashboard page with DataTable + Form, sidebar nav entry, and recycling-bin registration.
+`--writes admin|editor|any` selects the auth wrapper for the write routes (POST/PUT/DELETE): `admin` → `withAdminAuth` (ADMIN only), `editor` → `withEditorAuth` (ADMIN or EDITOR), `any` → `withAuth` (any authenticated user). Default is `any`; GET always uses `withAuth`. (`--admin-writes true` is kept as a back-compat alias for `--writes admin`.)
+
+The scaffold creates: Prisma model (with soft-delete fields + audit hooks + `@@index`es), zod validation, API routes (`GET` wrapped with `withAuth`; `POST`/`PUT`/`DELETE` wrapped with the `--writes` wrapper, writes rate-limited; the list route supports server-side search/sort/pagination), a dashboard page with DataTable + Form, sidebar nav entry, and recycling-bin registration.
 
 The generated UI uses i18n keys, so the scaffold also emits a `messages/_scaffold-<kebab>.json` companion. **Required follow-up:** merge its namespace into `messages/en.json` and `messages/ar.json` (translate the Arabic), then delete the companion — until merged, the UI renders the raw key strings. See `.claude/skills/scaffold-entity/SKILL.md`.
 

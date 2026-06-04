@@ -115,3 +115,20 @@ jobs:
             app/api/test-rel \
             components/test-rel \
             'app/[locale]/(dashboard)/test-rel'
+
+      # Smoke 3: --writes editor (exercises the withEditorAuth codegen path)
+      - name: Scaffold smoke (--writes editor)
+        run: |
+          npm run scaffold -- --name TestEd --fields 'title:string' --writes editor
+          grep -q 'withEditorAuth' app/api/test-ed/route.ts
+          npx prisma generate
+          npx tsc --noEmit
+          git checkout -- prisma/schema.prisma \
+            lib/prisma/soft-delete-extension.ts \
+            lib/prisma/recyclable.ts \
+            components/layout/AppSidebar.tsx
+          rm -rf lib/validations/test-ed.ts \
+            messages/_scaffold-test-ed.json \
+            app/api/test-ed \
+            components/test-ed \
+            'app/[locale]/(dashboard)/test-ed'

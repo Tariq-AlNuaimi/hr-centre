@@ -30,13 +30,19 @@ export const GET = withAuth(async (
 
 export const PUT = withAdminAuth(async (
   request: NextRequest,
-  { params }
+  { params, session }
 ) => {
   const { id } = await params;
   const body = await request.json();
   const parsed = updateUserSchema.safeParse(body);
   if (!parsed.success) {
     return err(parsed.error.issues.map((i) => i.message).join(", "));
+  }
+
+  // Don't let an admin lock themselves out by self-downgrading (mirrors the
+  // self-delete guard below).
+  if (id === session.user.id && parsed.data.role && parsed.data.role !== "ADMIN") {
+    return err("Cannot change your own admin role", 400);
   }
 
   const existing = await prisma.user.findUnique({ where: { id } });
@@ -77,6 +83,8 @@ export const DELETE = withAdminAuth(async (
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) return notFound("User");
 
-  const user = await prisma.user.delete({ where: { id } });
-  return ok(user);
+  await prisma.user.delete({ where: { id } });
+  // Don't echo the full row back -- it carries passwordHash + other Restricted
+  // fields (SECURITY.md §1). The soft-delete + audit already recorded the event.
+  return ok({ id, deleted: true });
 });

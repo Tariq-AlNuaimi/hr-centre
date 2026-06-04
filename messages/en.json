@@ -57,7 +57,8 @@
     "deletedRecords": "Deleted records",
     "rolesInUse": "Roles in use",
     "usersByRole": "Users by role",
-    "recentActivity": "Recent activity"
+    "recentActivity": "Recent activity",
+    "welcome": "Welcome. Use the sidebar to navigate."
   },
   "users": {
     "title": "Users",

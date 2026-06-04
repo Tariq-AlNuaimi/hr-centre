@@ -27,8 +27,10 @@ If anything here conflicts with `CLAUDE.md` / `SECURITY.md`, those files win.
   `.env`. gitleaks gates every push.
 - **Audit is automatic.** The Prisma audit extension records every per-row
   `create` / `update` / `delete` outside the EXCLUDE set. Don't add models to
-  that set without an ADR. Note: bulk `updateMany` / `createMany` are NOT
-  auto-audited (see ADR-010 / SECURITY.md §5).
+  that set without an ADR. Note: bulk `updateMany` / `createMany` and `upsert`
+  are NOT auto-audited (Prisma doesn't decompose `upsert` into create/update the
+  extension can see) — loop per-row or write an explicit `recordAudit()` row (see
+  ADR-010 / SECURITY.md §5).
 - **Soft-delete is opt-in** and must be wired in lockstep with the model.
 - **Never cast `session` to `any`** — `session.user.role` is already typed `Role`.
 - **Run `/ship` before every push** (typecheck → lint → tests → component tests →

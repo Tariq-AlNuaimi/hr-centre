@@ -18,6 +18,11 @@ function wrapsWithInternalAuth(initNode) {
   if (callee.type === "MemberExpression" && callee.object) {
     return wrapsWithInternalAuth(callee.object);
   }
+  // Allow composed wrappers, e.g. `withRateLimit(withInternalAuth(...), opts)`:
+  // recurse into the call's arguments to find the inner withInternalAuth.
+  if (Array.isArray(initNode.arguments) && initNode.arguments.some(wrapsWithInternalAuth)) {
+    return true;
+  }
   return false;
 }
 

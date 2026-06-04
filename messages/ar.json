@@ -57,7 +57,8 @@
     "deletedRecords": "السجلات المحذوفة",
     "rolesInUse": "الأدوار المستخدمة",
     "usersByRole": "المستخدمون حسب الدور",
-    "recentActivity": "النشاط الأخير"
+    "recentActivity": "النشاط الأخير",
+    "welcome": "مرحباً. استخدم الشريط الجانبي للتنقل."
   },
   "users": {
     "title": "المستخدمون",
