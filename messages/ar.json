@@ -39,7 +39,12 @@
     "usersDescription": "إدارة مستخدمي التطبيق وأدوارهم",
     "resources": "الموارد",
     "resourcesDescription": "أضف بطاقات الكيانات الخاصة بك هنا",
-    "settingsDescription": "إعدادات التطبيق"
+    "settingsDescription": "إعدادات التطبيق",
+    "totalUsers": "إجمالي المستخدمين",
+    "deletedRecords": "السجلات المحذوفة",
+    "rolesInUse": "الأدوار المستخدمة",
+    "usersByRole": "المستخدمون حسب الدور",
+    "recentActivity": "النشاط الأخير"
   },
   "users": {
     "title": "المستخدمون",

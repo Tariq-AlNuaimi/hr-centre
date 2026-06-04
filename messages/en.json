@@ -39,7 +39,12 @@
     "usersDescription": "Manage application users and roles",
     "resources": "Resources",
     "resourcesDescription": "Add your entity cards here",
-    "settingsDescription": "Application configuration"
+    "settingsDescription": "Application configuration",
+    "totalUsers": "Total users",
+    "deletedRecords": "Deleted records",
+    "rolesInUse": "Roles in use",
+    "usersByRole": "Users by role",
+    "recentActivity": "Recent activity"
   },
   "users": {
     "title": "Users",

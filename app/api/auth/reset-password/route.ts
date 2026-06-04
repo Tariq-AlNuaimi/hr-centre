@@ -16,7 +16,8 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest): Promise<Response> {
-  const limit = rateLimit(req, { id: "auth-reset", limit: 5, windowMs: 60_000 });
+  // Distinct bucket from forgot-password so exhausting one doesn't lock the other.
+  const limit = rateLimit(req, { id: "auth-reset-complete", limit: 5, windowMs: 60_000 });
   if (!limit.ok) return err("Too many requests", 429);
 
   const body = await req.json().catch(() => null);

@@ -80,6 +80,7 @@ export default async function DashboardPage() {
   const t = await getTranslations("nav");
   const tCommon = await getTranslations("common");
   const tAudit = await getTranslations("auditLog");
+  const tDash = await getTranslations("dashboard");
 
   const { totalUsers, roleDistribution, softDeletedTotal, recentAudit } =
     await getDashboardData();
@@ -99,7 +100,7 @@ export default async function DashboardPage() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              title={t("users")}
+              title={tDash("totalUsers")}
               value={totalUsers}
               prefix={<UserOutlined />}
             />
@@ -108,8 +109,7 @@ export default async function DashboardPage() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              // TODO i18n: dedicated key for "Deleted records"
-              title={t("recyclingBin")}
+              title={tDash("deletedRecords")}
               value={softDeletedTotal}
               prefix={<DeleteOutlined />}
             />
@@ -118,8 +118,7 @@ export default async function DashboardPage() {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
-              // TODO i18n: dedicated key for "Roles in use"
-              title={t("settings")}
+              title={tDash("rolesInUse")}
               value={roleDistribution.length}
             />
           </Card>
@@ -128,8 +127,7 @@ export default async function DashboardPage() {
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={10}>
-          {/* TODO i18n: dedicated key for "Users by role" */}
-          <Card title={t("users")}>
+          <Card title={tDash("usersByRole")}>
             {roleDistribution.length > 0 ? (
               <Chart
                 type="pie"
@@ -146,7 +144,7 @@ export default async function DashboardPage() {
           </Card>
         </Col>
         <Col xs={24} lg={14}>
-          <Card title={tAudit("title")}>
+          <Card title={tDash("recentActivity")}>
             <Table<RecentAudit>
               dataSource={recentAudit}
               rowKey="id"

@@ -22,13 +22,14 @@ Two further "SaaS-readiness" gaps recur:
   Bearer-token path.
 - **SSO role mapping.** When a fork fronts auth with an SSO/OIDC provider, the
   provider's groups/claims must map onto the template's `Role` enum
-  (USER / ADMIN) in one well-known place rather than ad hoc per route.
+  (ADMIN / EDITOR / VIEWER) in one well-known place rather than ad hoc per route.
 
 ## Decision
 
 **The public API is exposed under a stable, versioned prefix `/api/v1/*`,
-implemented as a `next.config.ts` rewrite** (`/api/v1/:path*` → `/api/:path*`,
-being added by another owner). External consumers call the versioned path; the
+implemented as a `next.config.ts` rewrite** (`/api/v1/:path*` → `/api/:path*`;
+`middleware.ts` lets `/api/v1/*` pass through so the rewrite resolves before the
+session gate). External consumers call the versioned path; the
 internal route folders stay at `app/api/**` and can be reorganized freely
 behind the rewrite. A future breaking surface ships as `/api/v2/*` (a second
 rewrite) with zero churn to existing `v1` routes.
@@ -102,5 +103,5 @@ Revisit when:
 - `docs/decisions/ADR-012-rest-zod-not-trpc.md` — REST + zod + the OpenAPI seam
 - `docs/decisions/ADR-001-template-baseline.md` — auth wrappers, `Role` enum, zod boundary
 - `docs/decisions/ADR-006-pivot-to-vercel-neon.md` — handoff model
-- `next.config.ts` — the `/api/v1/:path*` → `/api/:path*` rewrite (added separately)
+- `next.config.ts` — the `/api/v1/:path*` → `/api/:path*` rewrite (implemented)
 - `CLAUDE.md` — auth-wrapper hard rules; "ask before" (new public path, role changes)

@@ -50,13 +50,20 @@ function ResetPasswordForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword: values.newPassword }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        // Surface the API's specific reason (e.g. "invalid or expired") rather
+        // than a generic catch-all, so the user can tell expiry from a network error.
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(body?.error || "");
+      }
       // TODO i18n: dedicated key for the success toast
       message.success("Your password has been reset. Please sign in.");
       router.push(`/${locale}/login`);
-    } catch {
+    } catch (e) {
       // TODO i18n: dedicated key for the failure toast
-      message.error("Could not reset your password. The link may have expired.");
+      message.error(
+        (e as Error).message || "Could not reset your password. The link may have expired."
+      );
     } finally {
       setLoading(false);
     }

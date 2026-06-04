@@ -18,6 +18,9 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 
 - Full audit trail on all entity changes (create, update, delete, restore)
 - Soft deletion with recycling bin (restore or permanently delete)
+- Password-reset flow (forgot / reset, token-based, emailed)
+- Server-rendered (RSC) dashboard wired to live data
+- Versioned public API surface (`/api/v1`) with Bearer-token + SSO role-map seams
 - Role-based access control (Admin, Editor, Viewer)
 - Reusable layout with header, collapsible sidebar, breadcrumbs, footer
 - Dark mode toggle with system preference detection
@@ -34,11 +37,16 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 
 `.claude/` ships with a permission allowlist, a SessionStart hook that boots dependencies, and these skills:
 
+- **`/new-project`** — one-shot provisioner: GitHub repo + Neon + Vercel + Cloudflare DNS (via GitHub Actions)
 - **`/first-fork`** — one-time setup: Vercel + Neon + first deploy (~10 min)
+- **`/deploy`** — provision Neon + Vercel for the current fork and ship it to a live URL headlessly
 - **`/quickstart`** — turn one paragraph of an idea into a live URL
 - **`/scaffold-entity <Name>`** — generate a full CRUD entity (model, validation, API routes, dashboard page) following the soft-delete + audit + RBAC invariants
 - **`/scale-up`** — add file uploads / cron / background jobs / realtime when the project needs them
 - **`/ship`** — pre-push gate: typecheck + lint + tests + build + gitleaks + npm audit (stops on first failure)
+- **`/audit`** — on-demand security scan of any path (gitleaks + npm audit + Semgrep)
+- **`/uat`** — browser-driven acceptance walkthrough in Chromium (Playwright), with screenshots
+- **`/conform`** — bring foreign code up to this template's standard (report-and-approve)
 - **`/handoff`** — produce clean handoff package for the IT team
 - **`/rebrand`** — sweep template defaults to the new project's name
 - **`/migrate-from`** — port a feature out of a monolith
@@ -136,7 +144,9 @@ npx prisma generate
 npx prisma migrate dev --name add_my_entity
 ```
 
-The scaffold creates: Prisma model (with soft-delete fields + audit hooks), zod validation, API routes (`GET`/`POST`/`PUT`/`DELETE` wrapped with `withAuth`), a dashboard page with DataTable + Form, sidebar nav entry, and recycling-bin registration.
+The scaffold creates: Prisma model (with soft-delete fields + audit hooks + `@@index`es), zod validation, API routes (`GET`/`POST`/`PUT`/`DELETE` wrapped with `withAuth`, writes rate-limited; the list route supports server-side search/sort/pagination), a dashboard page with DataTable + Form, sidebar nav entry, and recycling-bin registration.
+
+The generated UI uses i18n keys, so the scaffold also emits a `messages/_scaffold-<kebab>.json` companion. **Required follow-up:** merge its namespace into `messages/en.json` and `messages/ar.json` (translate the Arabic), then delete the companion — until merged, the UI renders the raw key strings. See `.claude/skills/scaffold-entity/SKILL.md`.
 
 ## CI
 

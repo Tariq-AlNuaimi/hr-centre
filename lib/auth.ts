@@ -38,9 +38,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        // Normalize casing to match how emails are stored (emailSchema lowercases
+        // on create; forgot-password lowercases on lookup) -- otherwise a
+        // differently-cased login silently fails to match.
+        const email = (credentials.email as string).toLowerCase().trim();
         const user = await prismaUnfiltered.user.findUnique({
           where: {
-            email: credentials.email as string,
+            email,
             deletedAt: null,
           },
         });

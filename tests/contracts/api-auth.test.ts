@@ -115,6 +115,97 @@ test("withInternalAuth passes through when the token matches", async () => {
   });
 });
 
+// --- withApiAuth: Bearer-token gate (pure env + header, no session) ---
+
+const API_ENV = "TEST_API_KEY_DO_NOT_SHIP";
+
+function withApiEnv(value: string | undefined, fn: () => Promise<void>) {
+  const prev = process.env[API_ENV];
+  if (value === undefined) delete process.env[API_ENV];
+  else process.env[API_ENV] = value;
+  return fn().finally(() => {
+    if (prev === undefined) delete process.env[API_ENV];
+    else process.env[API_ENV] = prev;
+  });
+}
+
+test("withApiAuth returns 503 when the token env var is unset", async () => {
+  await withApiEnv(undefined, async () => {
+    const res = await helpers.withApiAuth(API_ENV, okHandler)(
+      new NextRequest("http://localhost/api/v1/x"),
+      ctx
+    );
+    assert.equal(res.status, 503);
+  });
+});
+
+test("withApiAuth returns 401 when the Bearer header is missing or malformed", async () => {
+  await withApiEnv("api-key-value", async () => {
+    const noHeader = await helpers.withApiAuth(API_ENV, okHandler)(
+      new NextRequest("http://localhost/api/v1/x"),
+      ctx
+    );
+    assert.equal(noHeader.status, 401);
+    const malformed = await helpers.withApiAuth(API_ENV, okHandler)(
+      new NextRequest("http://localhost/api/v1/x", {
+        headers: { authorization: "api-key-value" }, // missing "Bearer "
+      }),
+      ctx
+    );
+    assert.equal(malformed.status, 401);
+  });
+});
+
+test("withApiAuth returns 401 when the Bearer token does not match", async () => {
+  await withApiEnv("api-key-value", async () => {
+    const res = await helpers.withApiAuth(API_ENV, okHandler)(
+      new NextRequest("http://localhost/api/v1/x", {
+        headers: { authorization: "Bearer wrong" },
+      }),
+      ctx
+    );
+    assert.equal(res.status, 401);
+  });
+});
+
+test("withApiAuth passes through on a matching Bearer token", async () => {
+  await withApiEnv("api-key-value", async () => {
+    let called = false;
+    const handler = helpers.withApiAuth(API_ENV, async () => {
+      called = true;
+      return NextResponse.json({ data: "ran" });
+    });
+    const res = await handler(
+      new NextRequest("http://localhost/api/v1/x", {
+        headers: { authorization: "Bearer api-key-value" },
+      }),
+      ctx
+    );
+    assert.equal(res.status, 200);
+    assert.equal(called, true);
+  });
+});
+
+// --- withRateLimit: per-IP token bucket wrapper ---
+
+test("withRateLimit allows within the limit then returns 429 with Retry-After", async () => {
+  const handler = helpers.withRateLimit(okHandler, {
+    id: "test-seam-rl",
+    limit: 2,
+    windowMs: 60_000,
+  });
+  // Fixed IP so all three hit the same bucket; unique id avoids cross-test bleed.
+  const mk = () =>
+    new NextRequest("http://localhost/api/x", {
+      headers: { "x-forwarded-for": "203.0.113.77" },
+    });
+  assert.equal((await handler(mk(), ctx)).status, 200);
+  assert.equal((await handler(mk(), ctx)).status, 200);
+  const limited = await handler(mk(), ctx);
+  assert.equal(limited.status, 429);
+  assert.ok(limited.headers.get("retry-after"));
+});
+
 // --- withAuth / withAdminAuth: session branches (need module mocking) ---
 
 test("withAuth returns 401 when there is no session", { skip: !canMock }, async () => {
@@ -130,7 +221,7 @@ test("withAdminAuth returns 401 when there is no session", { skip: !canMock }, a
 });
 
 test("withAuth passes the session through to the handler", { skip: !canMock }, async () => {
-  current = { user: { id: "u1", role: "USER" } };
+  current = { user: { id: "u1", role: "VIEWER" } };
   let seen: unknown;
   const handler = helpers.withAuth(async (_req, c) => {
     seen = c.session;
@@ -142,7 +233,7 @@ test("withAuth passes the session through to the handler", { skip: !canMock }, a
 });
 
 test("withAdminAuth returns 403 for a non-admin session", { skip: !canMock }, async () => {
-  current = { user: { id: "u2", role: "USER" } };
+  current = { user: { id: "u2", role: "VIEWER" } };
   const res = await helpers.withAdminAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
   assert.equal(res.status, 403);
 });

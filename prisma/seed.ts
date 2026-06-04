@@ -6,7 +6,7 @@ async function main() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
   const prisma = new PrismaClient({ adapter });
 
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@example.com";
+  const adminEmail = (process.env.SEED_ADMIN_EMAIL ?? "admin@example.com").toLowerCase().trim();
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "changeme";
 
   // Refuse to seed a guessable admin into a real deployment. The default

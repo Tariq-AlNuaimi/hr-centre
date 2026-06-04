@@ -92,6 +92,7 @@ jobs:
             lib/prisma/recyclable.ts \
             components/layout/AppSidebar.tsx
           rm -rf lib/validations/test-entity.ts \
+            messages/_scaffold-test-entity.json \
             app/api/test-entity \
             components/test-entity \
             'app/[locale]/(dashboard)/test-entity'
@@ -110,6 +111,7 @@ jobs:
             lib/prisma/recyclable.ts \
             components/layout/AppSidebar.tsx
           rm -rf lib/validations/test-rel.ts \
+            messages/_scaffold-test-rel.json \
             app/api/test-rel \
             components/test-rel \
             'app/[locale]/(dashboard)/test-rel'
