@@ -62,6 +62,20 @@ export function withAdminAuth(handler: AuthedHandler) {
 }
 
 /**
+ * Like withAuth but requires write-level access: ADMIN or EDITOR (VIEWER is
+ * rejected with 403). Use this on write routes that editors should reach but
+ * viewers shouldn't -- it closes the gap where the EDITOR role existed but only
+ * ADMIN-vs-not was ever enforced. (SECURITY.md §3.)
+ */
+export function withEditorAuth(handler: AuthedHandler) {
+  return withAuth(async (req, ctx) => {
+    const role = ctx.session.user.role;
+    if (role !== "ADMIN" && role !== "EDITOR") return forbidden();
+    return handler(req, ctx);
+  });
+}
+
+/**
  * Gates an internal endpoint by a shared-secret header.
  *
  * The header `x-internal-token` must match the value of the env var named by

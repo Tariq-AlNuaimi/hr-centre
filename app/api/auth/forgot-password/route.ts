@@ -31,6 +31,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     where: { email, deletedAt: null },
     select: { id: true },
   });
+  // Response BODY is identical whether or not the account exists (no
+  // enumeration). A small response-time difference remains (the existing path
+  // does token + email work) -- accepted at prototype scale; a fork hardening
+  // against a timing oracle can do the token work unconditionally or add jitter.
   if (!user) return neutral;
 
   const token = randomBytes(32).toString("base64url");

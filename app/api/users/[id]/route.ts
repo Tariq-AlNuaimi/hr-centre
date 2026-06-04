@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withAdminAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
@@ -44,7 +44,7 @@ export const PUT = withAdminAuth(async (
 
   const data: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.password) {
-    data.passwordHash = await bcrypt.hash(parsed.data.password, 12);
+    data.passwordHash = await hashPassword(parsed.data.password);
     delete data.password;
   }
 

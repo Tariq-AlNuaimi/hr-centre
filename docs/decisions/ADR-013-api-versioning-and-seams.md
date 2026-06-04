@@ -34,6 +34,12 @@ internal route folders stay at `app/api/**` and can be reorganized freely
 behind the rewrite. A future breaking surface ships as `/api/v2/*` (a second
 rewrite) with zero churn to existing `v1` routes.
 
+> **Seam, not a live surface yet:** `/api/v1/*` rewrites and passes middleware,
+> but every shipped route uses `withAuth` (session). No route is wrapped with
+> `withApiAuth` by default, so a Bearer-only machine consumer gets 401 until a
+> fork opts a route in. This is intentional — the path + wrappers exist so
+> enabling programmatic access is a one-line change, with zero refactor.
+
 Two **library seams** are recorded for when a fork needs them (they are seams,
 not day-zero features):
 - **`withApiAuth` (Bearer).** A sibling wrapper to `withAuth` that authenticates

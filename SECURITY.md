@@ -52,7 +52,8 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 🟢 Three-role enum: `ADMIN` / `EDITOR` / `VIEWER` (`prisma/schema.prisma` `Role`). Bound to `users.role`; the JWT carries it.
 
 - **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) or `withInternalAuth` (shared-secret) from `lib/api-helpers.ts`. UI gating is defense-in-depth, **not** the boundary.
-- **EDITOR vs VIEWER split is not enforced by the template** — only Admin-vs-not. Downstream projects that need EDITOR > VIEWER must add a `withEditorAuth` (or a permission-string `can()` helper) and document it here.
+- **Role wrappers:** `withAdminAuth` (ADMIN only) and `withEditorAuth` (ADMIN **or** EDITOR; rejects VIEWER) are both shipped in `lib/api-helpers.ts`. Use `withEditorAuth` on write routes editors should reach but viewers shouldn't. Finer-grained, per-resource permissions (a `can()` helper) remain a project-specific addition documented here.
+- **CSRF:** state-changing routes are same-origin + cookie-based; Auth.js sets `SameSite=Lax` session cookies, which blocks cross-site form/`fetch` POSTs from carrying the session. Custom POST/PUT/DELETE routes rely on this (no separate CSRF token). If a fork adds cross-origin browser clients or relaxes `SameSite`, add explicit CSRF protection (double-submit token or origin check) and note it here.
 - **Row-level scoping** (e.g. "users only see their own records") is project-specific. Add an explicit `WHERE` clause in every list / get query. Postgres RLS is not enabled by default.
 - **`session.user.role`** is typed as `Role` via the augmentation in `types/index.ts`; callbacks in `lib/auth.ts` are cast-free.
 

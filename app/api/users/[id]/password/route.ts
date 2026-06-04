@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-helpers";
 import { ok, err, forbidden } from "@/lib/api-response";
@@ -40,7 +41,7 @@ export const PUT = withAuth(async (
   );
   if (!valid) return err("Current password is incorrect", 403);
 
-  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+  const passwordHash = await hashPassword(parsed.data.newPassword);
   await prisma.user.update({
     where: { id },
     data: { passwordHash },

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { z } from "zod";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
 import { ok, err } from "@/lib/api-response";
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return err("This reset link is invalid or has expired.", 400);
   }
 
-  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
+  const passwordHash = await hashPassword(parsed.data.newPassword);
   // Audited client: the password change lands in audit_logs (hash scrubbed),
   // attributed to null actor (no session) -- a deliberate, queryable record.
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });

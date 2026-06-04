@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import bcrypt from "bcryptjs";
+import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withAdminAuth } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
@@ -84,7 +84,7 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return err("Email already in use", 409);
 
-  const passwordHash = await bcrypt.hash(password, 12);
+  const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({
     data: { email, name, passwordHash, role },

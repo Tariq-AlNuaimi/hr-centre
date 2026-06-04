@@ -249,3 +249,17 @@ test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, as
   assert.equal(res.status, 200);
   assert.equal(called, true);
 });
+
+test("withEditorAuth returns 403 for a VIEWER session", { skip: !canMock }, async () => {
+  current = { user: { id: "u4", role: "VIEWER" } };
+  const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+  assert.equal(res.status, 403);
+});
+
+test("withEditorAuth passes through for EDITOR and ADMIN sessions", { skip: !canMock }, async () => {
+  for (const role of ["EDITOR", "ADMIN"]) {
+    current = { user: { id: "u5", role } };
+    const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+    assert.equal(res.status, 200, `${role} should pass withEditorAuth`);
+  }
+});
