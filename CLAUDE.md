@@ -41,6 +41,19 @@ All harness files are project-name-agnostic and survive forks unchanged.
 
 **Vercel does the ops.** Push to `main` → production redeploys in ~90s. Push to any other branch → preview URL appears at `<branch>-<hash>-<team>.vercel.app`. Rollback = revert the commit (or click "Promote to Production" on the prior deployment in the Vercel UI).
 
+> **Standing instruction — `main` is the fork source-of-truth; keep it current.**
+> New repos are generated from the template's **default branch (`main`) only**
+> (`scripts/new-project.mjs` calls the GitHub generate API with
+> `include_all_branches: false`), so a fork inherits **nothing** that lives on a
+> feature branch. The operator does not run git — **Claude does, across independent
+> sessions** — so this binds the agent: **before a session ends, land its completed,
+> green work on `main`** (fast-forward/merge the working branch), and **merge often**
+> rather than stacking days of commits on a long-lived branch. A stale `main` means
+> every fork is born stale (missing the skill/hardening just built). The SessionStart
+> hook warns when a branch has fallen *behind* `main`; this instruction is the other
+> half — don't leave finished work stranded *ahead* of it. Don't force-land red or
+> half-done work; `/ship` green is the bar, same as any push.
+
 - **Database migrations** apply automatically: `vercel.json` sets `buildCommand` to `prisma generate && prisma migrate deploy && next build`. Every deploy runs pending migrations against Neon before the app starts serving the new bundle.
 - **Backups**: Neon Launch tier (paid) does PITR (point-in-time recovery) up to 7 days. Free tier has none — fine for prototypes.
 - **Domains**: optional. `<slug>.vercel.app` is permanent. Custom domains via Vercel UI when the team is ready to share externally.
