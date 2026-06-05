@@ -23,6 +23,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { synthesizeRecommendations } from "./uat-recommend.mjs";
+import { loadBenchmark } from "./uat-benchmark.mjs";
 
 const ROOT = process.cwd();
 const RESULTS_DIR = path.join(ROOT, "uat-results");
@@ -35,6 +36,10 @@ const CRUD_JSON = path.join(RESULTS_DIR, "crud-journeys.json");
 const UIUX_JSON = path.join(RESULTS_DIR, "uiux-findings.json");
 const OUT_DIR = path.join(ROOT, "uat-report");
 const OUT_PDF = path.join(OUT_DIR, "uat-report.pdf");
+// A self-contained single-file HTML twin of the PDF (screenshots inlined as data
+// URIs) — handy to browse/share without a PDF viewer, and the exact source the
+// PDF is rendered from.
+const OUT_HTML = path.join(OUT_DIR, "uat-report.html");
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -336,6 +341,81 @@ function buildRecommendationsSection() {
   ${tiers}`;
 }
 
+/**
+ * P6 (Build E): peer + enterprise benchmark. Renders uat-results/benchmark.json
+ * (produced by the agent via web search during a full run — see uat-benchmark.mjs
+ * + the skill). When the file is absent we NOTE the skip in full mode (P6 never
+ * fails a run); in lean mode the section is omitted entirely.
+ */
+function buildBenchmarkSection(mode) {
+  // P6 is a full-mode phase only — never render it in a lean report.
+  if (mode !== "full") return "";
+
+  const loaded = loadBenchmark(ROOT);
+
+  if (!loaded || !loaded.data) {
+    const why = loaded?.errors?.length
+      ? `benchmark.json present but invalid: ${esc(loaded.errors.join("; "))}`
+      : "no <code>uat-results/benchmark.json</code> was produced (web search unavailable or skipped)";
+    return `<h2>Peer + enterprise benchmark</h2>
+    <p class="bench-skip">P6 skipped — ${why}. This phase compares the app against enterprise norms + peer products and needs web access; it never fails the run.</p>`;
+  }
+
+  const d = loaded.data;
+  const statusChip = (s) => {
+    const cls =
+      s === "present" ? "ok" : s === "partial" ? "warn" : s === "absent" ? "bad" : "na";
+    return `<span class="chip ${cls}">${esc(s ?? "—")}</span>`;
+  };
+
+  const norms = (d.enterpriseNorms ?? [])
+    .map(
+      (n) => `<tr>
+        <td><b>${esc(n.capability)}</b></td>
+        <td>${esc(n.norm ?? "—")}</td>
+        <td>${statusChip(n.appStatus)}</td>
+        <td>${esc(n.evidence ?? "—")}</td>
+        <td class="notes">${esc(n.recommendation ?? "—")}</td>
+      </tr>`,
+    )
+    .join("\n");
+
+  const peers = (d.peers ?? [])
+    .map((p) => {
+      const better = (p.betterAtThanUs ?? []).map((x) => esc(x)).join(" · ");
+      const name = p.url
+        ? `<a href="${esc(p.url)}">${esc(p.name)}</a>`
+        : `<b>${esc(p.name)}</b>`;
+      return `<tr>
+        <td>${name}</td>
+        <td>${esc(p.positioning ?? "—")}</td>
+        <td class="notes">${better || "—"}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  const normsTable = norms
+    ? `<h3 class="rec-h p2">Enterprise norms</h3>
+      <table>
+        <thead><tr><th>Capability</th><th>Norm</th><th>Our status</th><th>Evidence</th><th>Recommendation</th></tr></thead>
+        <tbody>${norms}</tbody>
+      </table>`
+    : "";
+  const peersTable = peers
+    ? `<h3 class="rec-h p2">Peer products</h3>
+      <table>
+        <thead><tr><th>Product</th><th>Positioning</th><th>Leads us on</th></tr></thead>
+        <tbody>${peers}</tbody>
+      </table>`
+    : "";
+
+  return `<h2>Peer + enterprise benchmark</h2>
+  <p class="meta"><b>Domain:</b> ${esc(d.domain)}${d.generatedAt ? ` · sourced ${esc(String(d.generatedAt).slice(0, 10))}` : ""}</p>
+  ${d.summary ? `<p class="bench-summary">${esc(d.summary)}</p>` : ""}
+  ${normsTable}
+  ${peersTable}`;
+}
+
 function buildHtml(report, rows) {
   const startTime =
     report.stats?.startTime ?? report.config?.metadata?.startTime ?? null;
@@ -471,6 +551,10 @@ function buildHtml(report, rows) {
   .src { display: inline-block; font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 0 5px; border-radius: 8px; margin-inline-end: 5px; vertical-align: middle; }
   .src.uat { background: #e6f4ff; color: #0958d9; }
   .src.static { background: #f9f0ff; color: #722ed1; }
+  /* P6 benchmark */
+  .bench-skip { color: #ad6800; background: #fffbe6; border: 1px solid #ffe58f; padding: 8px 12px; border-radius: 6px; font-size: 12px; }
+  .bench-summary { font-size: 12px; color: #333; background: #fafafa; padding: 8px 12px; border-radius: 6px; }
+  .chip.na { background: #f0f0f0; color: #999; }
 </style></head>
 <body>
   <h1>UAT Report</h1>
@@ -506,11 +590,11 @@ function buildHtml(report, rows) {
 
   <!-- P5 (Build D): logic + UX recommendations (P0/P1/P2). Omitted when clean. -->
   ${buildRecommendationsSection()}
+  <!-- P6 (Build E): peer + enterprise benchmark. Skipped-note in full, omitted in lean. -->
+  ${buildBenchmarkSection(mode)}
 
   <h2>Screenshots</h2>
   ${shotSections || `<p class="empty">No screenshots were attached in this run.</p>`}
-
-  <!-- TODO(P6): peer + enterprise benchmark comparison injected here (Build E). -->
 </body></html>`;
 }
 
@@ -538,6 +622,10 @@ async function main() {
   const rows = flatten(report);
   const html = buildHtml(report, rows);
 
+  // Write the self-contained HTML twin first (so it exists even if the headless
+  // Chromium render below is unavailable on this machine).
+  fs.writeFileSync(OUT_HTML, html);
+
   // Render with the Chromium bundled in @playwright/test — no extra deps.
   let chromium;
   try {
@@ -557,6 +645,7 @@ async function main() {
 
   console.log(
     `uat:pdf — wrote ${path.relative(ROOT, OUT_PDF)} ` +
+      `+ ${path.relative(ROOT, OUT_HTML)} ` +
       `(${rows.length} specs, ${rows.filter((r) => r.status === "passed").length} passed).`,
   );
 }

@@ -44,9 +44,8 @@ run in lean. Full mode also flips video from `retain-on-failure` to `on`.
 
 ## The 7 Full phases
 
-Full mode is a phased deep audit. **P1–P5 + P7 run today** (plus the lean smoke +
-guard, which Full always includes); **P6 is delivered in Build E** and is
-documented here so the shape is fixed:
+Full mode is a phased deep audit. **All seven phases are delivered** (lean always
+runs the smoke + guard; the rest are full-only):
 
 | Phase | Name | What it does | Status |
 |---|---|---|---|
@@ -55,8 +54,8 @@ documented here so the shape is fixed:
 | **P3** | CRUD journeys | One data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts` |
 | **P4** | UI/UX sweep | Per-section checks: visible heading (not a blank shell), no uncaught runtime errors, RTL (`ar`) flips `dir="rtl"`, console-error tally. | **Delivered (Build C)** — `uiux.full.uat.ts` |
 | **P5** | Logic + UX recommendations | Synthesize the run's outcomes (failing flows, authz mismatches, runtime/console errors) + a static stub-marker scan into a prioritized P0/P1/P2 list with `file:line` evidence. | **Delivered (Build D)** — `scripts/uat-recommend.mjs` |
-| **P6** | Peer + enterprise benchmark | **Needs web search.** Compare the app against enterprise norms + 3–5 peer products for its domain. **Skips gracefully if web access is unavailable** (notes the skip in the report rather than failing). | Build E |
-| **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf`. | **Delivered** — `scripts/uat-pdf.mjs`; P5–P6 sections slot in at marked anchors |
+| **P6** | Peer + enterprise benchmark | **Needs web search.** Compare the app against enterprise norms + 3–5 peer products for its domain (the agent runs the searches and writes `uat-results/benchmark.json`). **Skips gracefully if web access is unavailable** (notes the skip in the report rather than failing). | **Delivered (Build E)** — `scripts/uat-benchmark.mjs` (loader/validator) + PDF renderer |
+| **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf` (+ a self-contained `uat-report.html` twin). | **Delivered** — `scripts/uat-pdf.mjs` |
 
 Each future phase ships as `*.full.uat.ts` specs (lean ignores them) and injects a
 report section at the corresponding `TODO(P#)` anchor in `scripts/uat-pdf.mjs`.
@@ -134,18 +133,28 @@ into the report. The sinks are reset at the start of every full run by
    - With a deployed target:
      `UAT_BASE_URL="https://<app>.vercel.app" UAT_EMAIL=... UAT_PASSWORD=... npm run uat`.
 
-6. **Build the PDF.** After the run, `npm run uat:pdf` reads
-   `uat-results/results.json` + the attached screenshots and writes
-   `uat-report/uat-report.pdf`. It auto-runs the P5 synthesizer
-   (`npm run uat:recommend`, which you can also run standalone) so the report
-   always carries fresh prioritized recommendations. It degrades gracefully when
-   there are no results yet.
+6. **(Full only) P6 benchmark — run the web searches.** Full mode's benchmark is
+   produced by **you (the agent)**, not a Node script. Infer the app's **domain**
+   from the discovered entities + Prisma schema, then **web-search** enterprise
+   norms for that domain + 3–5 peer products, and write the findings to
+   `uat-results/benchmark.json` (run `npm run uat:benchmark -- --schema` for the
+   exact shape; `-- --check` validates it). Ground each `appStatus` in real
+   evidence from the codebase. **If web access is unavailable, skip this** — the
+   report notes the skip; it never fails the run.
 
-7. **Report.** Summarize pass/fail per flow with the screenshot for each. Point to
+7. **Build the PDF.** After the run, `npm run uat:pdf` reads
+   `uat-results/results.json` + the attached screenshots and writes
+   `uat-report/uat-report.pdf` **and** a self-contained `uat-report.html` twin. It
+   auto-runs the P5 synthesizer (`npm run uat:recommend`, also runnable standalone)
+   so the report always carries fresh prioritized recommendations, and renders the
+   P6 benchmark (or its skip note) in full mode. It degrades gracefully when there
+   are no results yet.
+
+8. **Report.** Summarize pass/fail per flow with the screenshot for each. Point to
    **both** the HTML report (`npm run uat:report`) and the PDF
    (`uat-report/uat-report.pdf`). For failures, include the step and the screenshot
-   so the fix is targeted. For Full, also surface the P2–P6 sections (as those
-   builds land).
+   so the fix is targeted. For Full, also surface the P2–P6 sections (matrix, CRUD
+   journeys, UI/UX sweep, recommendations, benchmark).
 
 ## Run it online (no terminal) — `uat.yml`
 

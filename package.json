@@ -28,6 +28,7 @@
     "uat:report": "playwright show-report uat-report",
     "uat:pdf": "node scripts/uat-pdf.mjs",
     "uat:recommend": "node scripts/uat-recommend.mjs",
+    "uat:benchmark": "node scripts/uat-benchmark.mjs",
     "uat:install": "playwright install chromium",
     "deploy": "node scripts/deploy.mjs",
     "changeset": "changeset",
