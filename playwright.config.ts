@@ -58,6 +58,9 @@ export default defineConfig({
       : []),
     {
       name: "chromium",
+      // UAT specs are named *.uat.ts; without this, the default testMatch
+      // (*.spec/*.test) matches none of them and `npm run uat` runs 0 tests.
+      testMatch: /\.uat\.ts$/,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "uat-results/.auth/admin.json",
