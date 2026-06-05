@@ -28,6 +28,10 @@ const RESULTS_DIR = path.join(ROOT, "uat-results");
 const RESULTS_JSON = path.join(RESULTS_DIR, "results.json");
 // P2 (Build B): the per-role permission matrix written by roles.full.uat.ts.
 const MATRIX_JSON = path.join(RESULTS_DIR, "role-matrix.json");
+// P3 (Build C): per-entity CRUD journeys written by crud.full.uat.ts.
+const CRUD_JSON = path.join(RESULTS_DIR, "crud-journeys.json");
+// P4 (Build C): per-section UI/UX findings written by uiux.full.uat.ts.
+const UIUX_JSON = path.join(RESULTS_DIR, "uiux-findings.json");
 const OUT_DIR = path.join(ROOT, "uat-report");
 const OUT_PDF = path.join(OUT_DIR, "uat-report.pdf");
 
@@ -180,6 +184,104 @@ function buildMatrixSection() {
   </table>`;
 }
 
+/**
+ * P3 (Build C): per-entity CRUD-journey section from crud-journeys.json (written
+ * by crud.full.uat.ts). One row per entity, one pill per phase (create → confirm
+ * → edit → delete). Returns "" when there were no journeys (lean run, or a
+ * read-only fork) so the section is simply omitted.
+ */
+function buildCrudSection() {
+  let journeys;
+  try {
+    if (!fs.existsSync(CRUD_JSON)) return "";
+    journeys = JSON.parse(fs.readFileSync(CRUD_JSON, "utf8"));
+  } catch {
+    return "";
+  }
+  if (!Array.isArray(journeys) || journeys.length === 0) return "";
+
+  const pill = (p) => {
+    const cls =
+      p.status === "passed" ? "pass" : p.status === "skipped" ? "skip" : "fail";
+    return `<span class="phase ${cls}" title="${esc(p.detail ?? "")}">${esc(p.phase)}</span>`;
+  };
+
+  const rowsHtml = journeys
+    .map((j) => {
+      const phases = (j.phases ?? []).map(pill).join(" ");
+      const anyFail = (j.phases ?? []).some((p) => p.status === "failed");
+      const errs = [
+        ...(j.pageErrors ?? []).map((e) => ({ kind: "runtime", text: e })),
+        ...(j.consoleErrors ?? []).map((e) => ({ kind: "console", text: e })),
+      ];
+      const errHtml = errs.length
+        ? `<details class="errs"><summary>${errs.length} error(s) seen during the journey</summary><ul>${errs
+            .map(
+              (e) =>
+                `<li><span class="ek ${e.kind === "runtime" ? "bad" : "warn"}">${e.kind}</span> ${esc(e.text)}</li>`,
+            )
+            .join("")}</ul></details>`
+        : "";
+      return `<tr>
+        <td><b>${esc(j.entity)}</b><div class="path">${esc(j.listPath)}</div></td>
+        <td>${phases || "<i>no phases recorded</i>"}${errHtml}</td>
+        <td class="${anyFail ? "j-bad" : "j-ok"}">${anyFail ? "needs attention" : "ok"}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  return `<h2>CRUD journeys (per entity)</h2>
+  <p class="meta">Each entity discovered with a create form + record page is driven through create → confirm-in-list → edit → soft-delete. <span class="phase pass">green</span> passed · <span class="phase skip">amber</span> skipped (non-standard, not fatal) · <span class="phase fail">red</span> failed. Console/runtime errors seen on the (otherwise un-swept) create + edit forms are listed inline.</p>
+  <table>
+    <thead><tr><th>Entity</th><th>Phases</th><th>Result</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>`;
+}
+
+/**
+ * P4 (Build C): UI/UX-sweep section from uiux-findings.json (written by
+ * uiux.full.uat.ts). One row per main section with runtime-error / heading /
+ * RTL / console-error signals. Returns "" when there are no findings.
+ */
+function buildUiuxSection() {
+  let findings;
+  try {
+    if (!fs.existsSync(UIUX_JSON)) return "";
+    findings = JSON.parse(fs.readFileSync(UIUX_JSON, "utf8"));
+  } catch {
+    return "";
+  }
+  if (!Array.isArray(findings) || findings.length === 0) return "";
+
+  const yn = (ok) =>
+    ok
+      ? '<span class="chip ok">✓</span>'
+      : '<span class="chip bad">✗</span>';
+  const num = (n, badWhenPositive) =>
+    `<span class="chip ${badWhenPositive && n > 0 ? "bad" : n > 0 ? "warn" : "ok"}">${n}</span>`;
+
+  const rowsHtml = findings
+    .map((f) => {
+      const notes = (f.notes ?? []).map((n) => esc(n)).join("<br>");
+      return `<tr>
+        <td><b>${esc(f.section)}</b><div class="path">${esc(f.path)}</div></td>
+        <td>${num(f.pageErrors, true)}</td>
+        <td>${yn(f.headingOk)}</td>
+        <td>${yn(f.rtlOk)}</td>
+        <td>${num(f.consoleErrors, false)}</td>
+        <td class="notes">${notes || "—"}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  return `<h2>UI/UX sweep (per section)</h2>
+  <p class="meta">Runtime errors gate the run; console errors are tallied (library dev-warnings are common). RTL checks the Arabic (<code>ar</code>) variant flips <code>dir="rtl"</code>.</p>
+  <table>
+    <thead><tr><th>Section</th><th>Runtime errors</th><th>Heading</th><th>RTL (ar)</th><th>Console errors</th><th>Notes</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>`;
+}
+
 function buildHtml(report, rows) {
   const startTime =
     report.stats?.startTime ?? report.config?.metadata?.startTime ?? null;
@@ -279,6 +381,27 @@ function buildHtml(report, rows) {
   .matrix td.cell .flag { color: #cf1322; font-size: 11px; vertical-align: super; }
   .mx-ok { color: #389e0d; font-size: 12px; }
   .mx-bad { color: #cf1322; font-weight: 600; font-size: 12px; }
+  .path { font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: #999; margin-top: 2px; }
+  /* P3 CRUD journeys */
+  .phase { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin: 0 3px 3px 0; }
+  .phase.pass { background: #d9f7be; color: #237804; }
+  .phase.skip { background: #fff1b8; color: #ad6800; }
+  .phase.fail { background: #ffccc7; color: #a8071a; }
+  td.j-ok { color: #389e0d; font-weight: 600; }
+  td.j-bad { color: #cf1322; font-weight: 700; }
+  .errs { margin-top: 6px; }
+  .errs summary { font-size: 10px; color: #ad6800; cursor: pointer; }
+  .errs ul { margin: 4px 0 0; padding-inline-start: 16px; }
+  .errs li { font-size: 10px; color: #555; margin-bottom: 2px; }
+  .ek { display: inline-block; font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 0 5px; border-radius: 8px; margin-inline-end: 4px; }
+  .ek.bad { background: #fff1f0; color: #cf1322; }
+  .ek.warn { background: #fff7e6; color: #ad6800; }
+  /* P4 UI/UX sweep */
+  .chip { display: inline-block; min-width: 18px; text-align: center; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
+  .chip.ok { background: #f6ffed; color: #237804; }
+  .chip.warn { background: #fff7e6; color: #ad6800; }
+  .chip.bad { background: #fff1f0; color: #cf1322; }
+  td.notes { font-size: 10px; color: #8c4b00; }
 </style></head>
 <body>
   <h1>UAT Report</h1>
@@ -307,7 +430,10 @@ function buildHtml(report, rows) {
 
   <!-- P2 (Build B): permission-matrix table. Omitted when there is no matrix. -->
   ${buildMatrixSection()}
-  <!-- TODO(P3): per-entity CRUD journey results injected here (Build C). -->
+  <!-- P3 (Build C): per-entity CRUD journey results. Omitted when none ran. -->
+  ${buildCrudSection()}
+  <!-- P4 (Build C): per-section UI/UX sweep. Omitted when none ran. -->
+  ${buildUiuxSection()}
 
   <h2>Screenshots</h2>
   ${shotSections || `<p class="empty">No screenshots were attached in this run.</p>`}

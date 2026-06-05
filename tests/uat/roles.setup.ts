@@ -50,14 +50,19 @@ const roles = discoverRoles();
 const nonAdminRoles = roles.filter((r) => r !== ADMIN_ROLE);
 
 setup("discovers non-admin roles", async () => {
-  // Start each FULL run with a clean matrix sink so stale role×section cells from
-  // a previous run never leak into this run's PDF. roles.full.uat.ts appends to it.
-  try {
-    fs.rmSync(path.join(process.cwd(), "uat-results", "role-matrix.json"), {
-      force: true,
-    });
-  } catch {
-    // Best-effort; a missing/locked file must not fail setup.
+  // Start each FULL run with clean report sinks so stale rows from a previous run
+  // never leak into this run's PDF. roles.full.uat.ts and crud.full.uat.ts append
+  // to these (the permission matrix and the per-entity CRUD journeys).
+  for (const sink of [
+    "role-matrix.json",
+    "crud-journeys.json",
+    "uiux-findings.json",
+  ]) {
+    try {
+      fs.rmSync(path.join(process.cwd(), "uat-results", sink), { force: true });
+    } catch {
+      // Best-effort; a missing/locked file must not fail setup.
+    }
   }
 
   // Soft guard: if discovery found no non-admin roles, there is nothing to set

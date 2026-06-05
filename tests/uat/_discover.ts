@@ -194,3 +194,58 @@ export function discoverSectionAccess(
     return { name: s.name, path: s.path, adminOnly };
   });
 }
+
+// --- P3 (Build C): CRUD-entity discovery -------------------------------------
+//
+// Still DISCOVERY-DRIVEN. A "CRUD entity" is any top-level dashboard section
+// that the scaffold gave BOTH a create form (`<entity>/new/page.tsx`) AND a
+// record/edit page (`<entity>/[id]/page.tsx`). That's the scaffold's signature
+// for "this entity has the full create→edit→delete loop," so we can drive the
+// journey without anyone naming the entity. A fork that scaffolds `projects`
+// gets a `projects` CRUD journey for free; one that only has read-only sections
+// yields no journeys (and P3 records that, rather than failing).
+
+export type CrudEntity = {
+  name: string; // top-level segment, e.g. "users"
+  listPath: string; // "/<locale>/users"
+  createPath: string; // "/<locale>/users/new"
+};
+
+export function discoverCrudEntities(
+  locale = "en",
+  root = process.cwd(),
+): CrudEntity[] {
+  const base = path.join(root, DASHBOARD_GLOB);
+  if (!fs.existsSync(base)) return [];
+
+  const entities: CrudEntity[] = [];
+  for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const seg = entry.name;
+    // Top-level real segments only — skip route groups and dynamic folders.
+    if (isRouteGroup(seg) || isDynamicSegment(seg)) continue;
+
+    const dir = path.join(base, seg);
+    const hasCreate = fs.existsSync(path.join(dir, "new", "page.tsx"));
+    // The record/edit page lives under a dynamic segment ([id], [slug], ...).
+    const hasRecordPage = fs
+      .readdirSync(dir, { withFileTypes: true })
+      .some(
+        (e) =>
+          e.isDirectory() &&
+          isDynamicSegment(e.name) &&
+          fs.existsSync(path.join(dir, e.name, "page.tsx")),
+      );
+
+    if (hasCreate && hasRecordPage) {
+      entities.push({
+        name: seg,
+        listPath: `/${locale}/${seg}`,
+        createPath: `/${locale}/${seg}/new`,
+      });
+    }
+  }
+
+  entities.sort((a, b) => a.name.localeCompare(b.name));
+  return entities;
+}

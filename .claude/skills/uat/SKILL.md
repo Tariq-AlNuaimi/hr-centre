@@ -44,19 +44,19 @@ run in lean. Full mode also flips video from `retain-on-failure` to `on`.
 
 ## The 7 Full phases
 
-Full mode is a phased deep audit. **Today only P1 runs** (plus the lean smoke +
-guard, which Full always includes); **P2–P7 are delivered incrementally across
-Builds B–E** and are documented here so the shape is fixed:
+Full mode is a phased deep audit. **P1–P4 + P7 run today** (plus the lean smoke +
+guard, which Full always includes); **P5–P6 are delivered incrementally across
+Builds D–E** and are documented here so the shape is fixed:
 
 | Phase | Name | What it does | Status |
 |---|---|---|---|
-| **P1** | Discover | Scan `app/[locale]/(dashboard)/**/page.tsx` (+ the Prisma schema) to enumerate every screen/entity; this drives the smoke breadth pass. | **Delivered (this build)** — `tests/uat/_discover.ts` + `smoke.uat.ts` |
-| **P2** | Permission matrix | Log in as each `Role`; assert each role reaches its allowed screens and is blocked from the rest. | Build B |
-| **P3** | CRUD journeys | One data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete/restore. Covers the dynamic + `new` routes P1 skips. | Build C |
-| **P4** | UI/UX sweep | Per-screen UI checks: empty states, loading, broken links, form validation, RTL (`ar`), dark mode, console errors. | Build C |
+| **P1** | Discover | Scan `app/[locale]/(dashboard)/**/page.tsx` (+ the Prisma schema) to enumerate every screen/entity; this drives the smoke breadth pass. | **Delivered** — `tests/uat/_discover.ts` + `smoke.uat.ts` |
+| **P2** | Permission matrix | Log in as each `Role`; assert each role reaches its allowed screens and is blocked from the rest. | **Delivered (Build B)** — `roles.setup.ts` + `roles.full.uat.ts` |
+| **P3** | CRUD journeys | One data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts` |
+| **P4** | UI/UX sweep | Per-section checks: visible heading (not a blank shell), no uncaught runtime errors, RTL (`ar`) flips `dir="rtl"`, console-error tally. | **Delivered (Build C)** — `uiux.full.uat.ts` |
 | **P5** | Logic + UX recommendations | Synthesize findings into a prioritized P0/P1/P2 recommendation list (wired/partial/stubbed inventory with `file:line` evidence). | Build D |
 | **P6** | Peer + enterprise benchmark | **Needs web search.** Compare the app against enterprise norms + 3–5 peer products for its domain. **Skips gracefully if web access is unavailable** (notes the skip in the report rather than failing). | Build E |
-| **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf`. | **Assembler delivered (this build)** — `scripts/uat-pdf.mjs`; P2–P6 sections slot in at marked `TODO(P#)` anchors |
+| **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf`. | **Delivered** — `scripts/uat-pdf.mjs`; P5–P6 sections slot in at marked anchors |
 
 Each future phase ships as `*.full.uat.ts` specs (lean ignores them) and injects a
 report section at the corresponding `TODO(P#)` anchor in `scripts/uat-pdf.mjs`.
@@ -91,12 +91,17 @@ Driven by `playwright.config.ts`:
   status < 400 + not bounced to `/login`, and attaches a full-page screenshot.
 - `guard.uat.ts` — unauthenticated visitors are bounced to login.
 
-**Added by future Full builds** (as `*.full.uat.ts`, ignored by lean):
-- a per-role `auth.setup.ts` (one storage state per role from `UAT_<ROLE>_*` env vars).
+**Full-mode specs** (as `*.full.uat.ts`, ignored by lean):
+- `roles.setup.ts` — per-role auth setup (one storage state per role, env creds).
 - `roles.full.uat.ts` — P2 permission matrix.
-- `<entity>.full.uat.ts` journeys — P3 CRUD flows, one per key entity.
-- `scripts/uat-cleanup.ts` + an `uat:cleanup` npm script — only if a flow creates
-  records with no UI delete path.
+- `crud.full.uat.ts` — P3 CRUD journeys, one per discovered entity (create →
+  confirm → edit → soft-delete), generic form-filler, console/runtime-error capture.
+- `uiux.full.uat.ts` — P4 per-section UI/UX sweep (heading, runtime errors, RTL).
+
+Each writes a JSON sink under `uat-results/` (`role-matrix.json`,
+`crud-journeys.json`, `uiux-findings.json`) that `scripts/uat-pdf.mjs` renders
+into the report. The sinks are reset at the start of every full run by
+`roles.setup.ts`.
 
 > Spec files are `*.uat.ts` + `auth.setup.ts`; the chromium project sets
 > `testMatch: /\.uat\.ts$/` so they run AND so the unit runner (which matches

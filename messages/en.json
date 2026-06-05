@@ -26,7 +26,8 @@
     "settings": "Settings",
     "profile": "Profile",
     "recyclingBin": "Recycling Bin",
-    "logout": "Logout"
+    "logout": "Logout",
+    "create": "Create"
   },
   "auth": {
     "login": "Login",
