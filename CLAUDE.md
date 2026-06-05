@@ -18,7 +18,7 @@ Reusable starter for Rihal internal-tool prototypes. Next.js 16 + Prisma 7 (Post
 This template is tuned for Claude Code sessions. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build.
 
 - **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose (for local Postgres), make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
-- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing.
+- **SessionStart hook** (`.claude/hooks/session-start.sh`) runs on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing, and (advisory) warns if the current working branch has fallen behind `origin/main` so drift is caught as a clean fast-forward instead of a big reconcile later. The drift check never blocks, never auto-merges, and stays silent on `main` / offline / no remote.
 - **Skills** in `.claude/skills/`:
   - `/new-project` — one-shot: GitHub repo + Neon + Vercel + Cloudflare DNS. Triggered via GitHub Actions; outputs URL + admin creds in the run summary.
   - `/first-fork` — connect Vercel + Neon manually, first deploy. Once per project. (Alternative to `/new-project` when you're already inside a fresh fork.)

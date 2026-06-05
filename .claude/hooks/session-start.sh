@@ -27,3 +27,28 @@ if [ ! -d generated/prisma ]; then
 fi
 
 echo "[harness] ready -- run 'make db-up' to start dev containers when you need the DB"
+
+# 4. Drift check (advisory). If the current working branch has fallen behind
+#    origin/main, say so up front -- caught at session start it's a clean
+#    fast-forward; caught after stacking days of work it's a manual reconcile
+#    (see the merge that prompted this). Never blocks, never auto-merges, and
+#    stays silent when on main / offline / no remote, so it can't get in the way.
+if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+  branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo '')"
+  if [ -n "$branch" ] && [ "$branch" != "main" ] && [ "$branch" != "HEAD" ]; then
+    # Fetch quietly with a short timeout so an offline/slow remote never stalls
+    # the synchronous hook. A failed fetch just skips the check.
+    if command -v timeout >/dev/null 2>&1; then
+      fetched="$(timeout 15 git fetch --quiet origin main 2>/dev/null && echo ok || echo no)"
+    else
+      fetched="$(git fetch --quiet origin main 2>/dev/null && echo ok || echo no)"
+    fi
+    if [ "$fetched" = ok ]; then
+      behind="$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)"
+      if [ "${behind:-0}" -gt 0 ]; then
+        echo "[harness] WARNING: '$branch' is $behind commit(s) behind origin/main -- consider 'git merge origin/main' before stacking more work (avoids a big reconcile later)"
+      fi
+    fi
+  fi
+fi
+
