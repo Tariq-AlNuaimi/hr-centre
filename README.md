@@ -126,7 +126,7 @@ prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs
 eslint-rules/                # Project-local ESLint plugin (4 hard rules)
 tests/contracts/             # Contract test suite (node:test)
-.github/workflows/           # verify, secrets-scan, sast, uat, new-project (dormant on free plan)
+.github/workflows/           # verify, secrets-scan, sast, codeql, uat, preview-uat, release, new-project (all dispatch-only on free plan)
 ```
 
 ## Adding a New Entity
@@ -159,10 +159,12 @@ nothing today. The active gate is the local **`/ship`** skill, which mirrors
 their checks (typecheck → lint → tests → build → gitleaks → npm audit). CI
 activates at `/handoff` when the IT team's paid plan can run Actions:
 
-- **verify.yml**: typecheck + lint + tests + build + npm audit + scaffold smoke tests
+- **verify.yml**: typecheck + lint + tests + build + `npm audit --audit-level=high` + scaffold smoke tests
 - **secrets-scan.yml**: gitleaks across full git history
 - **sast.yml**: Semgrep with OWASP + secrets rulesets
-- **uat.yml** / **new-project.yml**: manual-dispatch UAT + provisioner (not gates)
+- **codeql.yml**: GitHub CodeQL static analysis (JS/TS)
+- **release.yml**: Changesets versioning + release notes
+- **uat.yml** / **preview-uat.yml** / **new-project.yml**: manual-dispatch UAT, preview-deploy UAT, and provisioner (not gates)
 
 Vercel handles production deploys automatically on push to `main`. See `SECURITY.md` §14 / ADR-007.
 

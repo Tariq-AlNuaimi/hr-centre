@@ -69,17 +69,15 @@ jobs:
       - name: Build
         run: npm run build
 
-      # npm audit gate.
+      # npm audit gate -- matches the active `/ship` bar (`--audit-level=high`).
       #
-      # `--audit-level=critical` -- the high-only threshold flagged transitive
-      # vulns through next-auth@beta's nested @auth/core -> old nodemailer chain
-      # that a fork consumer can't fully resolve. The `overrides` field forces
-      # all resolutions to nodemailer ^7, but @auth/core itself carries
-      # advisories until next-auth ships a non-beta release.
-      #
-      # Documented as a deferred-finding in SECURITY.md §11.
-      - name: npm audit (critical, prod deps only)
-        run: npm audit --audit-level=critical --omit=dev
+      # Previously pinned to `critical` because `high` flagged the next-auth@beta
+      # -> @auth/core -> old nodemailer chain. That chain was remediated
+      # (2026-06-05, SECURITY.md §13): `overrides` pin uuid/postcss/@hono and a
+      # nodemailer 7->8 bump cleared all 14 advisories, so `high` is now clean.
+      # Keeping CI and `/ship` at the same threshold (high) avoids doc drift.
+      - name: npm audit (high, prod deps only)
+        run: npm audit --audit-level=high --omit=dev
 
       # Smoke 1: scalar-only entity
       - name: Scaffold smoke (scalars only)

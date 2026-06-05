@@ -30,7 +30,7 @@ first failure** — do not run later steps, do not commit, do not push.
      - macOS: `brew install gitleaks`
      - Linux / other: download the binary from https://github.com/gitleaks/gitleaks/releases and put it on PATH
    - A planted test secret in a tracked file MUST make this step fail.
-7. **Dependency audit.** `npm audit --audit-level=high --omit=dev`. Surfaces High+ CVEs in production dependencies locally (this is the check `verify.yml` runs in CI). Record any accepted/remediated CVE in `SECURITY.md` §13.
+7. **Dependency audit.** `npm audit --audit-level=high --omit=dev`. Surfaces High+ CVEs in production dependencies locally — the same threshold `verify.yml` runs in CI (both at `high`). Record any accepted/remediated CVE in `SECURITY.md` §13.
 
 ## On failure
 - Report the failing step, the `file:line`, and the first 20 lines of error output.

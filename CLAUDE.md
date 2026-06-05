@@ -17,7 +17,7 @@ Reusable starter for Rihal internal-tool prototypes. Next.js 16 + Prisma 7 (Post
 ## Vibe-coding harness (`.claude/`)
 This template is tuned for Claude Code sessions. Humans coding by hand can ignore `.claude/`; it does not affect the runtime build.
 
-- **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose (for local Postgres), make, non-destructive git (including pushes to any branch). Force pushes, `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes still prompt.
+- **Permission allowlist** (`.claude/settings.json`) pre-approves npm, prisma, docker compose (for local Postgres), make, non-destructive git (including pushes to any branch). Destructive ops — force pushes (`--force`/`-f`/`--force-with-lease`), `rm -rf`, `git reset --hard`, `git commit --amend`, branch deletes, `git clean`, `git checkout/restore .` — are in the **deny** list (blocked outright, not just prompted).
 - **SessionStart hook** (`.claude/hooks/session-start.sh`) runs on boot: copies `.env.example` → `.env` if missing, runs `npm install` if `node_modules` is missing, runs `prisma generate` if the client is missing, and (advisory) warns if the current working branch has fallen behind `origin/main` so drift is caught as a clean fast-forward instead of a big reconcile later. The drift check never blocks, never auto-merges, and stays silent on `main` / offline / no remote.
 - **Skills** in `.claude/skills/`:
   - `/new-project` — one-shot: GitHub repo + Neon + Vercel + Cloudflare DNS. Triggered via GitHub Actions; outputs URL + admin creds in the run summary.
@@ -82,7 +82,7 @@ egress, surface the exact hosts to allowlist — do not mistake it for a missing
 | Env var `NEON_ORG_ID` | optional — only if the key sees >1 Neon org |
 | Env var `VERCEL_TEAM_ID` | optional — only for Team-scoped Vercel projects |
 
-- **`/deploy`** (existing fork): `npm run deploy -- --slug … --owner … --admin-email … [--apex <zone> [--subdomain <label>]]`
+- **`/deploy`** (existing fork): `npm run deploy -- --slug … --display-name '<Display>' --owner … --admin-email … [--apex <zone> [--subdomain <label>]]`
 - **`/new-project`** (creates the repo from the template too): `npm run new-project -- --slug … --display-name … --owner … --admin-email … [--apex <zone>]` — also needs `GH_AUTOMATION_TOKEN` + egress to `api.github.com`.
 
 Custom domain via `--apex <zone>` → `https://<label>.<zone>` with auto-TLS (Cloudflare CNAME + Vercel domain attach).

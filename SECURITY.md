@@ -239,7 +239,7 @@ Workflows live in `.github/workflows/`:
 
 | Workflow | Triggers | What it gates | Blocks on |
 |---|---|---|---|
-| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, component tests (`test:components`), `next build` (with `.next/cache`), `npm audit --audit-level=critical --omit=dev`, scaffold smokes | Critical CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
+| `verify.yml` | PR + push (non-main) | `tsc --noEmit`, ESLint (incl. local plugin), `node:test` contract suite, component tests (`test:components`), `next build` (with `.next/cache`), `npm audit --audit-level=high --omit=dev`, scaffold smokes | High+ CVE in a production dep, typecheck error, lint error, test failure, build failure, scaffold breakage |
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full git history; uploads SARIF to the Security tab | Any detected secret pattern |
 | `sast.yml` | PR + push (any) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets`; uploads SARIF to the Security tab | Any finding at default severity |
 | `codeql.yml` | Manual dispatch + weekly schedule | CodeQL `javascript-typescript` analysis; results in the Security tab | Any finding at the configured severity |
