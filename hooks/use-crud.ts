@@ -17,7 +17,6 @@ export function useCrud<T extends { id: string }>({
   // that don't distinguish.
   const [listLoading, setListLoading] = useState(false);
   const [mutating, setMutating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   // Tracks the in-flight `list` (read) request so a newer search/page keystroke
   // can abort the previous one. Without this, fast typing can land stale
@@ -48,19 +47,12 @@ export function useCrud<T extends { id: string }>({
         signal = controller.signal;
       }
 
+      // Errors propagate to the caller, which surfaces them via useNotify (the
+      // template's single error path); callers ignore the AbortError thrown when
+      // a newer read supersedes an in-flight one.
       setBusy(true);
-      setError(null);
       try {
         return await apiClient.request<R>(path, { method, body, signal });
-      } catch (err) {
-        // A superseded read was intentionally aborted -- swallow it so the
-        // caller's catch doesn't surface a spurious error for the stale request.
-        if (err instanceof DOMException && err.name === "AbortError") {
-          throw err;
-        }
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        setError(msg);
-        throw err;
       } finally {
         // Only clear the busy flag if this read is still the current one; an
         // aborted read's finally would otherwise prematurely stop the spinner
@@ -111,6 +103,5 @@ export function useCrud<T extends { id: string }>({
     listLoading,
     mutating,
     loading: listLoading || mutating,
-    error,
   };
 }

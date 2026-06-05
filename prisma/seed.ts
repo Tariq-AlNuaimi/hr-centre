@@ -20,27 +20,32 @@ async function main() {
     process.exit(1);
   }
 
-  const existing = await prisma.user.findUnique({
-    where: { email: adminEmail },
-  });
+  // Always release the pool, whether we created the admin or skipped it.
+  try {
+    const existing = await prisma.user.findUnique({
+      where: { email: adminEmail },
+    });
 
-  if (existing) {
-    console.log(`Admin user ${adminEmail} already exists, skipping seed.`);
-    return;
+    if (existing) {
+      console.log(`Admin user ${adminEmail} already exists, skipping seed.`);
+      return;
+    }
+
+    const passwordHash = await hashPassword(adminPassword);
+
+    await prisma.user.create({
+      data: {
+        email: adminEmail,
+        name: "Admin",
+        passwordHash,
+        role: "ADMIN",
+      },
+    });
+
+    console.log(`Admin user created: ${adminEmail}`);
+  } finally {
+    await prisma.$disconnect();
   }
-
-  const passwordHash = await hashPassword(adminPassword);
-
-  await prisma.user.create({
-    data: {
-      email: adminEmail,
-      name: "Admin",
-      passwordHash,
-      role: "ADMIN",
-    },
-  });
-
-  console.log(`Admin user created: ${adminEmail}`);
 }
 
 main().catch((e) => {

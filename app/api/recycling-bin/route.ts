@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/api-helpers";
-import { ok, notFound } from "@/lib/api-response";
+import { ok, notFound, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import {
   RECYCLABLE_ENTITY_TYPES as ENTITY_TYPES,
@@ -12,6 +13,14 @@ import {
 import { recordAudit } from "@/lib/prisma/audit-extension";
 
 const recyclable = prismaUnfiltered as unknown as Record<string, RecyclableDelegate>;
+
+// Validate the restore body at the boundary (zod, like every other mutating
+// route). entityType is still allowlist-checked below; this just turns a
+// malformed/missing field into a clean 400 instead of an unhandled 500.
+const restoreSchema = z.object({
+  entityType: z.string().min(1),
+  id: z.string().min(1),
+});
 
 // Per-type fetch cap before in-memory merge/paginate. The bin spans multiple
 // tables, so we can't push offset/limit into one query; we cap each type, merge,
@@ -68,7 +77,11 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
 // record -- including, e.g., a deactivated ADMIN account), so it is gated to
 // ADMIN, matching the permanent-delete route. Listing the bin stays withAuth.
 export const POST = withAdminAuth(async (request: NextRequest) => {
-  const { entityType, id } = (await request.json()) as { entityType: string; id: string };
+  const parsed = restoreSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return err(parsed.error.issues.map((i) => i.message).join(", "));
+  }
+  const { entityType, id } = parsed.data;
 
   const accessor = recyclableAccessor(entityType);
   if (!accessor) {

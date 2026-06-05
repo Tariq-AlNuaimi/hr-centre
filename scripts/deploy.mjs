@@ -35,6 +35,10 @@ import { step, ok, warn, bail } from "./lib/log.mjs";
 const P = "deploy";
 
 const { values } = parseArgs({
+  // strict: fail fast on a typo'd flag (e.g. --slugg) instead of silently
+  // ignoring it and proceeding with slug=undefined. Matches scaffold/rebrand/
+  // migrate-from.
+  strict: true,
   options: {
     slug: { type: "string" },
     "display-name": { type: "string" },
