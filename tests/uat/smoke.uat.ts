@@ -1,20 +1,22 @@
 import { test, expect } from "@playwright/test";
+import { discoverScreens } from "./_discover";
 
-// Authenticated smoke walkthrough of the template's shipped screens.
-// Each step asserts the screen loads (not bounced to login) and attaches a
-// full-page screenshot — the screenshots double as the artifact you can send
-// to stakeholders for review.
+// Authenticated smoke walkthrough of the app's shipped screens — the lean breadth
+// pass. The screen list is DISCOVERED at runtime from the dashboard route tree
+// (see _discover.ts), so this auto-covers any entity you scaffold without anyone
+// editing a hardcoded array.
 //
-// When you scaffold new entities, add their screens here (or ask /uat to
-// regenerate this list from the app's routes).
+// Each step asserts the screen loads (status < 400, not bounced to login) and
+// attaches a full-page screenshot — the screenshots double as the artifact you
+// send stakeholders, and the JSON reporter's attachments feed `npm run uat:pdf`.
 
-const screens = [
-  { name: "dashboard", path: "/en" },
-  { name: "users", path: "/en/users" },
-  { name: "audit-log", path: "/en/audit-log" },
-  { name: "recycling-bin", path: "/en/recycling-bin" },
-  { name: "settings", path: "/en/settings" },
-];
+const screens = discoverScreens("en");
+
+test("discovers at least one screen", () => {
+  // Guard: an empty discovery means the route scan broke (or cwd is wrong) — fail
+  // loudly rather than report a vacuous green.
+  expect(screens.length, "route discovery found no dashboard screens").toBeGreaterThan(0);
+});
 
 for (const screen of screens) {
   test(`loads ${screen.name}`, async ({ page }, testInfo) => {
