@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prismaUnfiltered } from "@/lib/prisma";
@@ -10,6 +10,12 @@ import { sendEmail } from "@/lib/email";
 // Always returns 200 with the same body whether or not the email exists, so it
 // cannot be used to enumerate accounts. Token is stored in VerificationToken
 // (identifier = email) and expires in 1 hour.
+//
+// Anti-enumeration is BOTH body- and timing-safe: the account lookup + token
+// create + email send run in next/server's after() (i.e. AFTER the response is
+// flushed), so the handler returns the neutral 200 in constant time whether or
+// not the account exists. after() runs the work post-response on Vercel, so no
+// timing oracle remains. (A reset email is inherently async anyway.)
 
 const schema = z.object({ email: z.string().email() });
 const TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -27,28 +33,32 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!parsed.success) return neutral;
 
   const email = parsed.data.email.toLowerCase();
-  const user = await prismaUnfiltered.user.findUnique({
-    where: { email, deletedAt: null },
-    select: { id: true },
-  });
-  // Response BODY is identical whether or not the account exists (no
-  // enumeration). A small response-time difference remains (the existing path
-  // does token + email work) -- accepted at prototype scale; a fork hardening
-  // against a timing oracle can do the token work unconditionally or add jitter.
-  if (!user) return neutral;
+  const origin = req.nextUrl.origin; // capture before the response is sent
 
-  const token = randomBytes(32).toString("base64url");
-  await prismaUnfiltered.verificationToken.create({
-    data: { identifier: email, token, expires: new Date(Date.now() + TOKEN_TTL_MS) },
-  });
+  // Do the existence-dependent work AFTER the response flushes, so the response
+  // time is identical whether or not the account exists (closes the enumeration
+  // timing oracle). Errors here are logged by the runtime and never reach the
+  // already-sent neutral response.
+  after(async () => {
+    const user = await prismaUnfiltered.user.findUnique({
+      where: { email, deletedAt: null },
+      select: { id: true },
+    });
+    if (!user) return;
 
-  const url = `${req.nextUrl.origin}/reset-password?token=${token}`;
-  // Body may carry the reset URL (Restricted) -- lib/email logs metadata only.
-  await sendEmail({
-    to: email,
-    subject: "Reset your password",
-    text: `Open ${url} to reset your password. This link expires in 1 hour. If you didn't request this, ignore this email.`,
-    html: `<p>Open <a href="${url}">this link</a> to reset your password. Expires in 1 hour.</p><p>If you didn't request this, ignore this email.</p>`,
+    const token = randomBytes(32).toString("base64url");
+    await prismaUnfiltered.verificationToken.create({
+      data: { identifier: email, token, expires: new Date(Date.now() + TOKEN_TTL_MS) },
+    });
+
+    const url = `${origin}/reset-password?token=${token}`;
+    // Body may carry the reset URL (Restricted) -- lib/email logs metadata only.
+    await sendEmail({
+      to: email,
+      subject: "Reset your password",
+      text: `Open ${url} to reset your password. This link expires in 1 hour. If you didn't request this, ignore this email.`,
+      html: `<p>Open <a href="${url}">this link</a> to reset your password. Expires in 1 hour.</p><p>If you didn't request this, ignore this email.</p>`,
+    });
   });
 
   return neutral;

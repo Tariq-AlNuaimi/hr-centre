@@ -197,7 +197,7 @@ ASVS Level 2 is a reasonable target once T-02 (MFA) is closed.
 
 | ID | Severity | Status | Title | Notes |
 |---|---|---|---|---|
-| T-01 | High | ✅ Closed (`e16a8c6`) | No rate limit on `/api/auth/*` | In-memory bucket, 10/min/IP. Horizontally-scaled forks swap to `@upstash/ratelimit`. Contract suite asserts. |
+| T-01 | High | ✅ Closed (`e16a8c6`) | No rate limit on `/api/auth/*` | In-memory bucket, 10/min/IP. IP source hardened (2026-06-05): prefers `x-real-ip` over the spoofable `x-forwarded-for[0]`, and honors an optional `RATE_LIMIT_TRUSTED_IP_HEADER` (e.g. `cf-connecting-ip`) so a fork can trust only its proxy's real-client-IP header. Per-instance/in-memory remains best-effort — horizontally-scaled forks swap to `@upstash/ratelimit`. Contract suite asserts. |
 | T-02 | High | Open | No MFA | Deferred — product decision (WebAuthn / TOTP / front with SSO). |
 | T-03 | High | ✅ Closed (`bb4918a`) | `passwordHash` snapshotted into `audit_logs` on user update | `SCRUB_FIELDS` redacts. Contract suite asserts. |
 | T-04 | Medium | ✅ Closed (`104bc45`) | Container image tag pinned to `:latest` | N/A on the current stack — the GHCR/Portainer image pipeline was removed in ADR-006. Vercel builds and serves directly from git; rollback is "promote a prior deployment." |
