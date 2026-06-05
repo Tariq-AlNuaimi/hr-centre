@@ -152,7 +152,9 @@ test("authorize: valid login returns the user (with role) and stamps lastLoginAt
     image: null,
     role: "ADMIN",
   });
-  assert.equal(out?.passwordHash, undefined, "must NOT leak passwordHash to the session");
+  // (assert.deepEqual above narrows `out` to the literal shape, so widen back to
+  // index a key it intentionally must NOT carry.)
+  assert.equal((out as Record<string, unknown>).passwordHash, undefined, "must NOT leak passwordHash to the session");
   assert.equal(updateCalls.length, 1, "should stamp lastLoginAt exactly once");
   const data = (updateCalls[0] as { data: { lastLoginAt: unknown } }).data;
   assert.ok(data.lastLoginAt instanceof Date, "lastLoginAt should be a Date");
