@@ -1,21 +1,21 @@
 import { test, expect } from "@playwright/test";
-import { discoverScreens } from "./_discover";
+import { discoverMainSections } from "./_discover";
 
-// Authenticated smoke walkthrough of the app's shipped screens — the lean breadth
-// pass. The screen list is DISCOVERED at runtime from the dashboard route tree
-// (see _discover.ts), so this auto-covers any entity you scaffold without anyone
-// editing a hardcoded array.
+// LEAN breadth pass — walk only the MAIN sections (top-level nav), DISCOVERED at
+// runtime from the dashboard route tree (see _discover.ts). No hardcoded list, so
+// it auto-covers any top-level section you scaffold. Sub-pages, create forms,
+// record pages, every-button + CRUD journeys are FULL mode's job (*.full.uat.ts).
 //
 // Each step asserts the screen loads (status < 400, not bounced to login) and
-// attaches a full-page screenshot — the screenshots double as the artifact you
-// send stakeholders, and the JSON reporter's attachments feed `npm run uat:pdf`.
+// attaches a full-page screenshot — the screenshots double as the stakeholder
+// artifact, and the JSON reporter's attachments feed `npm run uat:pdf`.
 
-const screens = discoverScreens("en");
+const screens = discoverMainSections("en");
 
-test("discovers at least one screen", () => {
+test("discovers at least one main section", () => {
   // Guard: an empty discovery means the route scan broke (or cwd is wrong) — fail
   // loudly rather than report a vacuous green.
-  expect(screens.length, "route discovery found no dashboard screens").toBeGreaterThan(0);
+  expect(screens.length, "route discovery found no main sections").toBeGreaterThan(0);
 });
 
 for (const screen of screens) {

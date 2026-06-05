@@ -15,7 +15,7 @@ import path from "node:path";
 // The result feeds smoke.uat.ts. Future Full-mode phases (CRUD journeys) handle
 // the dynamic + "new" routes that this intentionally skips.
 
-export type Screen = { name: string; path: string };
+export type Screen = { name: string; path: string; depth: number };
 
 const DASHBOARD_GLOB = path.join("app", "[locale]", "(dashboard)");
 
@@ -32,12 +32,13 @@ function isSkippedSegment(seg: string): boolean {
 }
 
 /**
- * Discover the navigable dashboard screens for a given locale.
+ * Discover ALL navigable dashboard screens (every static nested route) for a
+ * locale. Used by FULL mode (deep journey). Lean uses {@link discoverMainSections}.
  *
  * @param locale  URL locale prefix (default "en").
  * @param root    Repo root to scan from (default process.cwd()); injectable for tests.
  */
-export function discoverScreens(locale = "en", root = process.cwd()): Screen[] {
+export function discoverAllScreens(locale = "en", root = process.cwd()): Screen[] {
   const base = path.join(root, DASHBOARD_GLOB);
   if (!fs.existsSync(base)) return [];
 
@@ -56,7 +57,7 @@ export function discoverScreens(locale = "en", root = process.cwd()): Screen[] {
       const name = segments.length === 0 ? "dashboard" : segments.join("/");
       const urlPath =
         segments.length === 0 ? `/${locale}` : `/${locale}/${segments.join("/")}`;
-      screens.push({ name, path: urlPath });
+      screens.push({ name, path: urlPath, depth: segments.length });
     }
 
     for (const entry of entries) {
@@ -81,4 +82,14 @@ export function discoverScreens(locale = "en", root = process.cwd()): Screen[] {
   });
 
   return screens;
+}
+
+/**
+ * Discover the MAIN sections only — the top-level nav (the dashboard root + its
+ * direct children, depth <= 1). This is the LEAN breadth pass: "explore the main
+ * sections," not every sub-page. Sub-routes (e.g. settings/profile), create
+ * forms, and record pages are FULL mode's job. Fully discovered, never hardcoded.
+ */
+export function discoverMainSections(locale = "en", root = process.cwd()): Screen[] {
+  return discoverAllScreens(locale, root).filter((s) => s.depth <= 1);
 }

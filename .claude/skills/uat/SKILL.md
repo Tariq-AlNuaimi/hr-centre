@@ -23,8 +23,15 @@ Every run produces **both** a navigable **HTML report** (`uat-report/`, open wit
 
 | Mode | Command | What runs | When |
 |---|---|---|---|
-| **Lean** (default) | `npm run uat` (`UAT_MODE=lean`) | route-discovered smoke + the auth guard | the everyday "does it still load" pass before sharing |
-| **Full** | `npm run uat:full` (`UAT_MODE=full`) | everything lean runs **plus** the `*.full.uat.ts` deep-audit phases, with video recorded for every test | a thorough audit before a milestone / handoff / external share |
+| **Lean** (default) | `npm run uat` (`UAT_MODE=lean`) | the **MAIN sections only** (top-level nav, depth ≤ 1) — discovered, not hardcoded — each loads + screenshot, + the auth guard | the everyday "does it still load" pass before sharing |
+| **Full** | `npm run uat:full` (`UAT_MODE=full`) | the **full journey** — every screen + sub-page + every button + per-entity CRUD + the per-role matrix (the `*.full.uat.ts` phases), all discovered; video recorded for every test | a thorough audit before a milestone / handoff / external share |
+
+> **Both modes are fully discovery-driven — NEVER hardcode an app's screens,
+> entities, roles, or buttons.** Lean derives the *main sections*
+> (`discoverMainSections()` — depth ≤ 1); Full derives the *whole surface*
+> (`discoverAllScreens()` + the Prisma schema for entities/roles + a DOM crawl for
+> buttons). This is what lets the same skill audit *any* app the template produces,
+> however far the builds diverge.
 
 > **Standing instruction — ASK every time.** On every `/uat` invocation, **ask the
 > operator "Lean or Full?" through the question UI** before running anything. **Lean
@@ -59,7 +66,7 @@ report section at the corresponding `TODO(P#)` anchor in `scripts/uat-pdf.mjs`.
 This skill is **app-agnostic**. It does not hardcode screen names — it derives them
 from the app itself, so it works for any fork without edits:
 
-- **Routes** — `tests/uat/_discover.ts` `discoverScreens()` scans the dashboard
+- **Routes** — `tests/uat/_discover.ts` `discoverMainSections()` (lean) / `discoverAllScreens()` (full) scans the dashboard
   route tree at runtime (node `fs`), mapping each `page.tsx` to a URL
   (`users` → `/en/users`, the group root → `/en`, nested like `settings/profile`).
   It **skips** dynamic segments (`[id]`, `[...all]`), `new` create-forms, and route
@@ -79,7 +86,7 @@ present; DOM-crawl when it isn't.
 Driven by `playwright.config.ts`:
 - `auth.setup.ts` — logs in once from `UAT_EMAIL`/`UAT_PASSWORD` (or the seeded
   `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`) and saves one storage state.
-- `_discover.ts` — `discoverScreens()`, the runtime route scanner (P1).
+- `_discover.ts` — `discoverMainSections()` (lean) / `discoverAllScreens()` (full), the runtime route scanner (P1).
 - `smoke.uat.ts` — route-discovered authenticated walkthrough; per screen asserts
   status < 400 + not bounced to `/login`, and attaches a full-page screenshot.
 - `guard.uat.ts` — unauthenticated visitors are bounced to login.
