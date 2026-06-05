@@ -44,9 +44,9 @@ run in lean. Full mode also flips video from `retain-on-failure` to `on`.
 
 ## The 7 Full phases
 
-Full mode is a phased deep audit. **P1–P4 + P7 run today** (plus the lean smoke +
-guard, which Full always includes); **P5–P6 are delivered incrementally across
-Builds D–E** and are documented here so the shape is fixed:
+Full mode is a phased deep audit. **P1–P5 + P7 run today** (plus the lean smoke +
+guard, which Full always includes); **P6 is delivered in Build E** and is
+documented here so the shape is fixed:
 
 | Phase | Name | What it does | Status |
 |---|---|---|---|
@@ -54,7 +54,7 @@ Builds D–E** and are documented here so the shape is fixed:
 | **P2** | Permission matrix | Log in as each `Role`; assert each role reaches its allowed screens and is blocked from the rest. | **Delivered (Build B)** — `roles.setup.ts` + `roles.full.uat.ts` |
 | **P3** | CRUD journeys | One data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts` |
 | **P4** | UI/UX sweep | Per-section checks: visible heading (not a blank shell), no uncaught runtime errors, RTL (`ar`) flips `dir="rtl"`, console-error tally. | **Delivered (Build C)** — `uiux.full.uat.ts` |
-| **P5** | Logic + UX recommendations | Synthesize findings into a prioritized P0/P1/P2 recommendation list (wired/partial/stubbed inventory with `file:line` evidence). | Build D |
+| **P5** | Logic + UX recommendations | Synthesize the run's outcomes (failing flows, authz mismatches, runtime/console errors) + a static stub-marker scan into a prioritized P0/P1/P2 list with `file:line` evidence. | **Delivered (Build D)** — `scripts/uat-recommend.mjs` |
 | **P6** | Peer + enterprise benchmark | **Needs web search.** Compare the app against enterprise norms + 3–5 peer products for its domain. **Skips gracefully if web access is unavailable** (notes the skip in the report rather than failing). | Build E |
 | **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf`. | **Delivered** — `scripts/uat-pdf.mjs`; P5–P6 sections slot in at marked anchors |
 
@@ -136,7 +136,10 @@ into the report. The sinks are reset at the start of every full run by
 
 6. **Build the PDF.** After the run, `npm run uat:pdf` reads
    `uat-results/results.json` + the attached screenshots and writes
-   `uat-report/uat-report.pdf`. It degrades gracefully when there are no results yet.
+   `uat-report/uat-report.pdf`. It auto-runs the P5 synthesizer
+   (`npm run uat:recommend`, which you can also run standalone) so the report
+   always carries fresh prioritized recommendations. It degrades gracefully when
+   there are no results yet.
 
 7. **Report.** Summarize pass/fail per flow with the screenshot for each. Point to
    **both** the HTML report (`npm run uat:report`) and the PDF

@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { synthesizeRecommendations } from "./uat-recommend.mjs";
 
 const ROOT = process.cwd();
 const RESULTS_DIR = path.join(ROOT, "uat-results");
@@ -282,6 +283,59 @@ function buildUiuxSection() {
   </table>`;
 }
 
+/**
+ * P5 (Build D): logic + UX recommendations. Re-synthesizes from the current run
+ * sinks (so the PDF always reflects the latest results) and renders a prioritized
+ * P0/P1/P2 list with file:line evidence. Returns "" when there is nothing to
+ * recommend (a clean run with no stub markers) — a green report needs no section.
+ */
+function buildRecommendationsSection() {
+  let report;
+  try {
+    report = synthesizeRecommendations(ROOT);
+  } catch {
+    return "";
+  }
+  if (!report || !Array.isArray(report.items) || report.items.length === 0) {
+    return "";
+  }
+
+  const tierMeta = {
+    P0: { cls: "p0", label: "P0 — fix before sharing" },
+    P1: { cls: "p1", label: "P1 — incomplete" },
+    P2: { cls: "p2", label: "P2 — polish" },
+  };
+
+  const tiers = ["P0", "P1", "P2"]
+    .map((tier) => {
+      const items = report.items.filter((it) => it.priority === tier);
+      if (items.length === 0) return "";
+      const lis = items
+        .map((it) => {
+          const ev = (it.evidence ?? [])
+            .map((e) => `<code>${esc(e)}</code>`)
+            .join(" · ");
+          const detail = it.detail
+            ? `<div class="rec-detail">${esc(it.detail)}</div>`
+            : "";
+          return `<li>
+            <div class="rec-title"><span class="src ${it.source}">${esc(it.source)}</span> ${esc(it.title)}</div>
+            ${detail}
+            ${ev ? `<div class="rec-ev">${ev}</div>` : ""}
+          </li>`;
+        })
+        .join("\n");
+      return `<h3 class="rec-h ${tierMeta[tier].cls}">${tierMeta[tier].label} <span class="rec-n">${items.length}</span></h3>
+      <ul class="recs">${lis}</ul>`;
+    })
+    .join("\n");
+
+  const { P0, P1, P2 } = report.counts;
+  return `<h2>Logic + UX recommendations</h2>
+  <p class="meta">Synthesized from this run's outcomes (failing flows, authorization mismatches, runtime/console errors) plus a static scan for stub markers. ${P0} P0 · ${P1} P1 · ${P2} P2.</p>
+  ${tiers}`;
+}
+
 function buildHtml(report, rows) {
   const startTime =
     report.stats?.startTime ?? report.config?.metadata?.startTime ?? null;
@@ -402,6 +456,21 @@ function buildHtml(report, rows) {
   .chip.warn { background: #fff7e6; color: #ad6800; }
   .chip.bad { background: #fff1f0; color: #cf1322; }
   td.notes { font-size: 10px; color: #8c4b00; }
+  /* P5 recommendations */
+  .rec-h { font-size: 13px; margin: 16px 0 6px; padding: 4px 10px; border-radius: 4px; display: inline-block; }
+  .rec-h .rec-n { font-weight: 400; opacity: 0.7; }
+  .rec-h.p0 { background: #fff1f0; color: #a8071a; }
+  .rec-h.p1 { background: #fff7e6; color: #ad6800; }
+  .rec-h.p2 { background: #f0f5ff; color: #1d39c4; }
+  ul.recs { list-style: none; margin: 0 0 8px; padding: 0; }
+  ul.recs li { border-inline-start: 3px solid #eee; padding: 4px 0 4px 10px; margin-bottom: 8px; page-break-inside: avoid; }
+  .rec-title { font-size: 12px; font-weight: 600; }
+  .rec-detail { font-size: 11px; color: #555; margin-top: 2px; }
+  .rec-ev { font-size: 10px; color: #888; margin-top: 3px; }
+  .rec-ev code, .rec-title code { background: #f5f5f5; padding: 0 4px; border-radius: 3px; }
+  .src { display: inline-block; font-size: 8px; font-weight: 700; text-transform: uppercase; padding: 0 5px; border-radius: 8px; margin-inline-end: 5px; vertical-align: middle; }
+  .src.uat { background: #e6f4ff; color: #0958d9; }
+  .src.static { background: #f9f0ff; color: #722ed1; }
 </style></head>
 <body>
   <h1>UAT Report</h1>
@@ -435,10 +504,12 @@ function buildHtml(report, rows) {
   <!-- P4 (Build C): per-section UI/UX sweep. Omitted when none ran. -->
   ${buildUiuxSection()}
 
+  <!-- P5 (Build D): logic + UX recommendations (P0/P1/P2). Omitted when clean. -->
+  ${buildRecommendationsSection()}
+
   <h2>Screenshots</h2>
   ${shotSections || `<p class="empty">No screenshots were attached in this run.</p>`}
 
-  <!-- TODO(P5): logic + UX recommendations (P0/P1/P2) injected here (Build D). -->
   <!-- TODO(P6): peer + enterprise benchmark comparison injected here (Build E). -->
 </body></html>`;
 }
