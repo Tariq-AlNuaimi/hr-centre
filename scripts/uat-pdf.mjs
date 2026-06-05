@@ -26,6 +26,8 @@ import { fileURLToPath } from "node:url";
 const ROOT = process.cwd();
 const RESULTS_DIR = path.join(ROOT, "uat-results");
 const RESULTS_JSON = path.join(RESULTS_DIR, "results.json");
+// P2 (Build B): the per-role permission matrix written by roles.full.uat.ts.
+const MATRIX_JSON = path.join(RESULTS_DIR, "role-matrix.json");
 const OUT_DIR = path.join(ROOT, "uat-report");
 const OUT_PDF = path.join(OUT_DIR, "uat-report.pdf");
 
@@ -96,8 +98,89 @@ function imgDataUri(absOrRel) {
   }
 }
 
+/**
+ * P2 (Build B): build the permission-matrix HTML section from role-matrix.json
+ * (written by roles.full.uat.ts). Rows = sections, columns = roles. Each cell
+ * shows expected-vs-actual: ✓ = reached, — = blocked. A cell where actual differs
+ * from expected is flagged (mismatch) so a regression is visible at a glance.
+ *
+ * Returns "" when there is no matrix (lean run, or full run that skipped the
+ * matrix) so the section is simply omitted.
+ */
+function buildMatrixSection() {
+  let cells;
+  try {
+    if (!fs.existsSync(MATRIX_JSON)) return "";
+    cells = JSON.parse(fs.readFileSync(MATRIX_JSON, "utf8"));
+  } catch {
+    return "";
+  }
+  if (!Array.isArray(cells) || cells.length === 0) return "";
+
+  // Stable axes derived from the data (never hardcoded).
+  const roles = [...new Set(cells.map((c) => c.role))];
+  // Sections in first-seen order, carrying their adminOnly flag + path.
+  const sectionOrder = [];
+  const sectionMeta = new Map();
+  for (const c of cells) {
+    if (!sectionMeta.has(c.section)) {
+      sectionMeta.set(c.section, {
+        adminOnly: c.adminOnly,
+        path: c.sectionPath,
+      });
+      sectionOrder.push(c.section);
+    }
+  }
+
+  const byKey = new Map(cells.map((c) => [`${c.role}::${c.section}`, c]));
+
+  const headRoles = roles.map((r) => `<th class="rc">${esc(r)}</th>`).join("");
+
+  const bodyRows = sectionOrder
+    .map((section) => {
+      const meta = sectionMeta.get(section);
+      const tag = meta.adminOnly
+        ? '<span class="tag admin">admin-only</span>'
+        : '<span class="tag all">all roles</span>';
+      const cellsHtml = roles
+        .map((role) => {
+          const c = byKey.get(`${role}::${section}`);
+          if (!c) return '<td class="cell na">·</td>';
+          // Expected glyph vs actual glyph.
+          const reached = c.reached;
+          const expected = c.expectedReach;
+          const glyph = reached ? "✓" : "—";
+          const cls = reached ? "reach" : "block";
+          const mismatch = c.ok === false;
+          const title = `expected ${expected ? "reach" : "blocked"}, ` +
+            `actual ${c.outcome}`;
+          return `<td class="cell ${cls}${mismatch ? " bad" : ""}" title="${esc(title)}">` +
+            `${glyph}${mismatch ? '<span class="flag">!</span>' : ""}` +
+            `<div class="oc">${esc(c.outcome)}</div></td>`;
+        })
+        .join("");
+      return `<tr>
+        <td class="sec"><b>${esc(section)}</b> ${tag}<div class="path">${esc(meta.path)}</div></td>
+        ${cellsHtml}
+      </tr>`;
+    })
+    .join("\n");
+
+  const mismatches = cells.filter((c) => c.ok === false).length;
+  const note = mismatches
+    ? `<p class="mx-bad">${mismatches} cell(s) did not match the expected access derived from the app's sidebar gating.</p>`
+    : `<p class="mx-ok">All role×section outcomes matched the access expected from the app's own gating.</p>`;
+
+  return `<h2>Permission matrix (per role)</h2>
+  <p class="meta">✓ = role reached the section · — = role was blocked (redirected / forbidden). Admin-only sections (GET API is <code>withAdminAuth</code>) should be reachable only by ADMIN.</p>
+  ${note}
+  <table class="matrix">
+    <thead><tr><th>Section</th>${headRoles}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+  </table>`;
+}
+
 function buildHtml(report, rows) {
-  const meta = report.stats ?? report.config?.metadata ?? {};
   const startTime =
     report.stats?.startTime ?? report.config?.metadata?.startTime ?? null;
   const total = rows.length;
@@ -179,6 +262,23 @@ function buildHtml(report, rows) {
   .shots img { max-width: 100%; border: 1px solid #ddd; border-radius: 6px; }
   .shots figcaption { font-size: 11px; color: #888; margin-top: 4px; }
   .empty { color: #999; font-style: italic; }
+  /* P2 permission matrix */
+  table.matrix td, table.matrix th { text-align: center; }
+  table.matrix td.sec { text-align: left; }
+  table.matrix th.rc { font-size: 11px; color: #1f1f1f; }
+  .matrix .sec .path { font-family: ui-monospace, Menlo, monospace; font-size: 10px; color: #999; margin-top: 2px; }
+  .matrix .tag { font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; margin-inline-start: 6px; }
+  .matrix .tag.admin { background: #fff7e6; color: #ad6800; }
+  .matrix .tag.all { background: #e6f4ff; color: #0958d9; }
+  .matrix td.cell { font-size: 15px; font-weight: 700; position: relative; }
+  .matrix td.cell.reach { background: #f6ffed; color: #237804; }
+  .matrix td.cell.block { background: #fafafa; color: #8c8c8c; }
+  .matrix td.cell.bad { outline: 2px solid #cf1322; outline-offset: -2px; }
+  .matrix td.cell.na { color: #ccc; }
+  .matrix td.cell .oc { font-size: 9px; font-weight: 500; color: #999; margin-top: 1px; }
+  .matrix td.cell .flag { color: #cf1322; font-size: 11px; vertical-align: super; }
+  .mx-ok { color: #389e0d; font-size: 12px; }
+  .mx-bad { color: #cf1322; font-weight: 600; font-size: 12px; }
 </style></head>
 <body>
   <h1>UAT Report</h1>
@@ -205,7 +305,8 @@ function buildHtml(report, rows) {
       : `<p class="empty">No spec results in this run.</p>`
   }
 
-  <!-- TODO(P2): permission-matrix table injected here (Build B). -->
+  <!-- P2 (Build B): permission-matrix table. Omitted when there is no matrix. -->
+  ${buildMatrixSection()}
   <!-- TODO(P3): per-entity CRUD journey results injected here (Build C). -->
 
   <h2>Screenshots</h2>

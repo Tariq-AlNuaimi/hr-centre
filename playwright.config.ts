@@ -41,19 +41,36 @@ export default defineConfig({
     video: isFull ? "on" : "retain-on-failure",
   },
   projects: [
-    // Logs in once and saves the session so flows don't re-authenticate each time.
+    // Logs in once as ADMIN and saves the session so flows don't re-authenticate.
     { name: "setup", testMatch: /auth\.setup\.ts/ },
+    // P2 (full only): provision + log in EACH non-admin role and save its storage
+    // state, so the permission-matrix spec can drive the app as that role. Depends
+    // on `setup` because it reuses admin.json for the ADMIN column. Registered ONLY
+    // in full mode — lean never runs roles.setup or the matrix.
+    ...(isFull
+      ? [
+          {
+            name: "roles-setup",
+            testMatch: /roles\.setup\.ts/,
+            dependencies: ["setup"],
+          },
+        ]
+      : []),
     {
       name: "chromium",
       use: {
         ...devices["Desktop Chrome"],
         storageState: "uat-results/.auth/admin.json",
       },
-      dependencies: ["setup"],
+      // Lean depends on the admin setup only. Full additionally depends on the
+      // per-role setup so every role's storage state exists before the matrix runs.
+      dependencies: isFull ? ["setup", "roles-setup"] : ["setup"],
       // Spec selection by mode:
       //   - Both modes run the smoke + guard specs (`*.uat.ts`).
-      //   - Only full mode runs the deep-audit specs (`*.full.uat.ts`).
-      // Lean ignores `*.full.uat.ts` so future Full-only phases never run in lean.
+      //   - Only full mode runs the deep-audit specs (`*.full.uat.ts`) — incl. the
+      //     P2 permission matrix (roles.full.uat.ts).
+      // Lean ignores `*.full.uat.ts` so Full-only phases never run in lean. We also
+      // ignore the *.setup.ts files here so they don't double-run as chromium specs.
       testMatch: /\.uat\.ts$/,
       testIgnore: isFull ? undefined : /\.full\.uat\.ts$/,
     },

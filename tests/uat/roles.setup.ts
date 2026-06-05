@@ -1,0 +1,133 @@
+import { test as setup } from "@playwright/test";
+import fs from "node:fs";
+import path from "node:path";
+import { prismaUnfiltered } from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
+import { discoverRoles } from "./_discover";
+
+// P2 (Build B) per-role auth setup — FULL mode only (wired as a dependency of the
+// chromium-full run in playwright.config.ts; never runs in lean).
+//
+// For EACH role discovered from prisma/schema.prisma (except ADMIN, which reuses
+// the admin.json saved by auth.setup.ts), this:
+//   1. upserts a test user via prismaUnfiltered with a bcrypt hash + the role,
+//   2. logs in through the UI, and
+//   3. saves the storage state to uat-results/.auth/<role>.json
+// so the permission-matrix spec (roles.full.uat.ts) can drive the app AS that role.
+//
+// Credentials come from env, never hardcoded:
+//   email:    UAT_<ROLE>_EMAIL    (default "<role>@example.com")
+//   password: UAT_<ROLE>_PASSWORD (default SEED_ADMIN_PASSWORD, the local seed pwd)
+//
+// The test users are idempotent FIXTURES — we leave them in the local test DB
+// (the upsert below is the single source of truth, so re-running is safe). They
+// are NEVER created against production: UAT runs against a local/preview DB only.
+// To clean them up, delete the rows whose email matches `*@example.com` test
+// addresses, or drop the local test DB.
+//
+// A role whose login fails (e.g. creds missing on a deployed-URL run where we
+// can't reach the DB) is SKIPPED with a warning — it must not crash the suite.
+
+const ADMIN_ROLE = "ADMIN";
+
+function authFileFor(role: string): string {
+  return `uat-results/.auth/${role.toLowerCase()}.json`;
+}
+
+function emailFor(role: string): string {
+  return (
+    process.env[`UAT_${role}_EMAIL`] ?? `${role.toLowerCase()}@example.com`
+  ).toLowerCase().trim();
+}
+
+function passwordFor(role: string): string | undefined {
+  return process.env[`UAT_${role}_PASSWORD`] ?? process.env.SEED_ADMIN_PASSWORD;
+}
+
+const roles = discoverRoles();
+
+// Skip ADMIN: auth.setup.ts already logs the seeded admin in and saves admin.json.
+const nonAdminRoles = roles.filter((r) => r !== ADMIN_ROLE);
+
+setup("discovers non-admin roles", async () => {
+  // Start each FULL run with a clean matrix sink so stale role×section cells from
+  // a previous run never leak into this run's PDF. roles.full.uat.ts appends to it.
+  try {
+    fs.rmSync(path.join(process.cwd(), "uat-results", "role-matrix.json"), {
+      force: true,
+    });
+  } catch {
+    // Best-effort; a missing/locked file must not fail setup.
+  }
+
+  // Soft guard: if discovery found no non-admin roles, there is nothing to set
+  // up — the matrix will only have the admin column. Log it; do not fail (a fork
+  // could legitimately have a single role).
+  if (nonAdminRoles.length === 0) {
+    console.warn(
+      "roles.setup — no non-admin roles discovered from prisma/schema.prisma; " +
+        "the permission matrix will cover ADMIN only.",
+    );
+  }
+});
+
+for (const role of nonAdminRoles) {
+  setup(`provision + authenticate as ${role}`, async ({ page }) => {
+    const email = emailFor(role);
+    const password = passwordFor(role);
+
+    if (!password) {
+      console.warn(
+        `roles.setup — skipping ${role}: no password. Set UAT_${role}_PASSWORD ` +
+          `(or SEED_ADMIN_PASSWORD) to include this role in the permission matrix.`,
+      );
+      setup.skip();
+      return;
+    }
+
+    // 1) Ensure the test user exists with the right role + a known password.
+    //    Idempotent: re-running refreshes the hash/role rather than duplicating.
+    try {
+      const passwordHash = await hashPassword(password);
+      await prismaUnfiltered.user.upsert({
+        where: { email },
+        update: { passwordHash, role: role as never, deletedAt: null },
+        create: {
+          email,
+          name: `UAT ${role}`,
+          passwordHash,
+          role: role as never,
+        },
+      });
+    } catch (e) {
+      // Can't reach the DB (e.g. running against a deployed URL with no local DB
+      // access). Don't crash the suite — skip this role's column.
+      console.warn(
+        `roles.setup — skipping ${role}: could not upsert the test user ` +
+          `(${e instanceof Error ? e.message : String(e)}). ` +
+          `Seed a ${role} user manually or run against a DB you can write to.`,
+      );
+      setup.skip();
+      return;
+    }
+
+    // 2) Log in through the UI (same flow as auth.setup.ts).
+    try {
+      await page.goto("/en/login");
+      await page.locator("#email").fill(email);
+      await page.locator("#password").fill(password);
+      await page.locator('button[type="submit"]').click();
+      await page.waitForURL(/\/en\/?$/, { timeout: 15_000 });
+    } catch (e) {
+      console.warn(
+        `roles.setup — skipping ${role}: login did not land on the dashboard ` +
+          `(${e instanceof Error ? e.message : String(e)}).`,
+      );
+      setup.skip();
+      return;
+    }
+
+    // 3) Save the per-role session so the matrix spec can reuse it.
+    await page.context().storageState({ path: authFileFor(role) });
+  });
+}
