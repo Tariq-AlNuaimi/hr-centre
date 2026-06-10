@@ -127,11 +127,15 @@ never opinion.
 | 3 · **UAT** (acceptance) | `/uat` FULL | **operator** (business) | functional passed → acceptance traced + signed off |
 
 **UI-quality Definition of Done — a screen isn't "done" until it passes ALL of:**
+- **Design direction declared first** (rubric Tier 0): before building a new surface,
+  state the one-line design read (surface / audience / tone / density) and honor the
+  anti-slop defaults — one accent (`components/layout/antd-theme.ts`), one primary
+  action per screen, no nested Cards, no emoji-as-icons, density locked per app.
 - **States designed:** real empty / loading / error states (no blank shell, no
   spinner-forever, no raw error dump); hover/focus/disabled covered.
 - **On-token:** spacing on the scale, palette colors, typography from the design system
-  (`tokens.css` / AntD theme) — no ad-hoc margins or off-palette hues; no cramped or huge
-  dead space.
+  (`app/tokens.css` / `antd-theme.ts` — lockstep-tested) — no ad-hoc margins or
+  off-palette hues; no cramped or huge dead space.
 - **Validation at the boundary:** inputs reject bad data with a clear message (e.g. a
   phone field rejects letters); required fields enforced.
 - **Every control does what it says:** no dead buttons; the primary action is singular and

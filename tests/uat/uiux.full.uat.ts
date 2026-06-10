@@ -77,9 +77,14 @@ for (const section of SECTIONS as Screen[]) {
     await page.goto(section.path, { waitUntil: "networkidle" });
     await page.waitForLoadState("networkidle").catch(() => {});
 
+    // Wait for the heading (don't snapshot isVisible() instantly): a cold Vercel
+    // serverless function + a client-island page may not have painted its <h2>
+    // within the short networkidle above. An instant check there is a false
+    // "blank shell" on cold starts. Give it a real grace budget instead.
     const heading = page.locator("h1, h2").first();
     const headingOk = await heading
-      .isVisible()
+      .waitFor({ state: "visible", timeout: 8000 })
+      .then(() => true)
       .catch(() => false);
     if (!headingOk) notes.push("no visible <h1>/<h2> heading (blank shell?)");
 

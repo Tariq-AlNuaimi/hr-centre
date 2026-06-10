@@ -26,6 +26,38 @@ operator, don't bury it as a finding.
 
 ---
 
+## Tier 0 — Design direction (generation-time; before code is written)
+The gate below *catches* slop; this section *prevents* it. Before building a new
+screen or surface, the agent declares a **one-line design read** in the response
+(not a file): *"Building \<surface\> for \<audience\>; tone \<calm | dense-data |
+form-heavy | …\>; density \<default | compact\>; accent = `colorPrimary`."* Then
+commit to it — consistency comes from the declared system, not restraint in the
+moment.
+
+**The ruler:** `app/tokens.css` (spacing/type/density/radius scale) +
+`components/layout/antd-theme.ts` (the AntD side; lockstep-tested). Spacing comes
+off the 4px scale or a `--density-*` semantic; type comes off the type scale —
+ad-hoc values are Tier-1 findings.
+
+**Anti-slop defaults** — the recognizable AI tells, banned unless the brief
+explicitly asks (each is a Tier-1 finding citing this section as anchor):
+- **One accent per app** — `colorPrimary` is the accent; no per-screen hues, no
+  purple→blue gradient panels, no glow shadows.
+- **One primary action per screen** — a single `type="primary"` button; five
+  equal blue buttons is a hierarchy fail.
+- **No nested Cards** (Card inside Card) — group with spacing, `Divider`, or
+  plain sections instead of stacking chrome.
+- **No emoji as icons** — `@ant-design/icons` only; one icon family, one weight.
+- **No label/eyebrow spam** — not every heading needs a small uppercase label;
+  the page position already categorizes a section.
+- **No gray-on-colored text** — copy passes WCAG AA against its actual background.
+- **Honest demo data** — no fake-precise numbers (`94.2%`, `4.8×`) in seeds or
+  empty-state copy unless real or marked as sample.
+- **No dead chrome** — every control does something; no decorative buttons,
+  no filler sections to make a screen look "designed."
+- **Density picked once** — `default` or `compact` (AntD algorithm/`size`) per
+  app, not per screen.
+
 ## Tier 1 — Design QA (fidelity): does it match the intended design?
 Owner: front-end (the agent). Gate: **before** functional QA. Tool: `/design-qa`.
 Per-**component** first (catch a broken variant once), then per-**screen**.

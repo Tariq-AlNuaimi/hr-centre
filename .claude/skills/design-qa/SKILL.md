@@ -19,6 +19,8 @@ Score each screen **0–5** on: spacing & rhythm · alignment & grid · visual h
 · color & token adherence · density & whitespace · **state coverage**
 (hover/focus/disabled/loading/empty/error) · consistency · responsive + RTL + dark ·
 **a11y (axe)**. The rubric table defines what "5" vs "fail" looks like for each.
+Plus the rubric's **Tier-0 anti-slop defaults** — each tell found is a finding
+citing Tier 0 as its anchor.
 
 ## Method — per-component first, then per-screen
 1. **Discover the surface** (app-agnostic, never hardcoded): reuse `/uat`'s
@@ -44,7 +46,10 @@ Score each screen **0–5** on: spacing & rhythm · alignment & grid · visual h
    screenshot and actually look at it** against the heuristics + the mockup. (Lesson:
    a run once reported "all screens pass" while the dashboard showed its KPI strip and
    funnel twice — only the visual pass caught it.) If you didn't look at the pixels,
-   you didn't do design QA.
+   you didn't do design QA. While looking, sweep for the rubric's **Tier-0 slop
+   tells**: off-accent hues / gradient panels, more than one primary button, nested
+   Cards, emoji-as-icons, eyebrow-label spam, gray-on-colored text, fake-precise
+   demo numbers, dead controls, density flipping between screens.
 7. **Score + report** — emit one **scorecard per screen** (rubric template): the 0–5s,
    the cited deviations ranked by severity, the axe violations, and the benchmark shot
    next to ours where look-and-feel is contested.
