@@ -1,10 +1,10 @@
 "use client";
 
-import { Spin } from "antd";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { FormSkeleton } from "@/components/shared/Skeletons";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
 import { useDynamicBreadcrumb } from "@/hooks/use-breadcrumb";
@@ -64,7 +64,7 @@ export default function EditUserPage() {
     }
   };
 
-  if (loading) return <Spin size="large" />;
+  if (loading) return <FormSkeleton fields={4} />;
   if (!user) return null;
 
   return (
