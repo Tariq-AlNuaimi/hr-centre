@@ -30,6 +30,14 @@ import { discoverRoles } from "./_discover";
 
 const ADMIN_ROLE = "ADMIN";
 
+// Against a deployed URL the test runner usually can't reach the DB to provision
+// fixtures — and a Prisma connect attempt HANGS the whole setup timeout. So only
+// DB-upsert role fixtures for LOCAL targets; for a remote URL the role users are
+// expected to already exist (seeded / created by the operator) and we authenticate
+// via the UI with the provided UAT_<ROLE>_EMAIL / UAT_<ROLE>_PASSWORD.
+const UAT_TARGET = process.env.UAT_BASE_URL ?? "";
+const isLocalTarget = UAT_TARGET === "" || /localhost|127\.0\.0\.1/.test(UAT_TARGET);
+
 function authFileFor(role: string): string {
   return `uat-results/.auth/${role.toLowerCase()}.json`;
 }
@@ -78,6 +86,7 @@ setup("discovers non-admin roles", async () => {
 
 for (const role of nonAdminRoles) {
   setup(`provision + authenticate as ${role}`, async ({ page }) => {
+    setup.setTimeout(120_000); // absorb first-hit dashboard cold-compile on dev
     const email = emailFor(role);
     const password = passwordFor(role);
 
@@ -90,30 +99,23 @@ for (const role of nonAdminRoles) {
       return;
     }
 
-    // 1) Ensure the test user exists with the right role + a known password.
-    //    Idempotent: re-running refreshes the hash/role rather than duplicating.
-    try {
-      const passwordHash = await hashPassword(password);
-      await prismaUnfiltered.user.upsert({
-        where: { email },
-        update: { passwordHash, role: role as never, deletedAt: null },
-        create: {
-          email,
-          name: `UAT ${role}`,
-          passwordHash,
-          role: role as never,
-        },
-      });
-    } catch (e) {
-      // Can't reach the DB (e.g. running against a deployed URL with no local DB
-      // access). Don't crash the suite — skip this role's column.
-      console.warn(
-        `roles.setup — skipping ${role}: could not upsert the test user ` +
-          `(${e instanceof Error ? e.message : String(e)}). ` +
-          `Seed a ${role} user manually or run against a DB you can write to.`,
-      );
-      setup.skip();
-      return;
+    // 1) LOCAL targets only: provision the fixture user via the DB (idempotent).
+    //    Skipped for remote URLs — a Prisma connect to an unreachable DB hangs the
+    //    whole timeout; the role user must already exist there and we log in below.
+    if (isLocalTarget) {
+      try {
+        const passwordHash = await hashPassword(password);
+        await prismaUnfiltered.user.upsert({
+          where: { email },
+          update: { passwordHash, role: role as never, deletedAt: null },
+          create: { email, name: `UAT ${role}`, passwordHash, role: role as never },
+        });
+      } catch (e) {
+        console.warn(
+          `roles.setup — ${role}: DB upsert failed ` +
+            `(${e instanceof Error ? e.message : String(e)}); will try UI login.`,
+        );
+      }
     }
 
     // 2) Log in through the UI (same flow as auth.setup.ts).
@@ -122,7 +124,7 @@ for (const role of nonAdminRoles) {
       await page.locator("#email").fill(email);
       await page.locator("#password").fill(password);
       await page.locator('button[type="submit"]').click();
-      await page.waitForURL(/\/en\/?$/, { timeout: 15_000 });
+      await page.waitForURL(/\/en\/?$/, { timeout: 60_000 });
     } catch (e) {
       console.warn(
         `roles.setup — skipping ${role}: login did not land on the dashboard ` +
