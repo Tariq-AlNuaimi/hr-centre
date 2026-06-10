@@ -51,6 +51,99 @@ export type DimensionAnalysis = z.infer<typeof dimensionSchema>;
 export type CoverageAnalysis = z.infer<typeof coverageSchema>;
 export type Finding = z.infer<typeof findingSchema>;
 
+// -- Tolerant normalization --
+// OpenAI-compatible providers (and smaller models) don't enforce the schema, so
+// their JSON can be wrapped, miss fields, or use near-miss types. Coerce it into a
+// schema-valid object before zod validates — so a usable result is produced rather
+// than the whole dimension failing on a missing key.
+
+function asObj(x: unknown): Record<string, unknown> {
+  return x && typeof x === "object" && !Array.isArray(x) ? (x as Record<string, unknown>) : {};
+}
+
+// Unwrap a single wrapper layer like {"analysis": {...}} / {"result": {...}}.
+function unwrap(raw: unknown): Record<string, unknown> {
+  const o = asObj(raw);
+  const hasOwn = (k: string) => Object.prototype.hasOwnProperty.call(o, k);
+  if (hasOwn("score") || hasOwn("status") || hasOwn("findings") || hasOwn("requirements")) return o;
+  for (const v of Object.values(o)) {
+    const inner = asObj(v);
+    if ("score" in inner || "findings" in inner || "requirements" in inner) return inner;
+  }
+  return o;
+}
+
+const STATUS_SCORE: Record<"PASS" | "WARN" | "FAIL", number> = { PASS: 85, WARN: 60, FAIL: 35 };
+
+function coerceStatus(s: unknown): "PASS" | "WARN" | "FAIL" {
+  const u = String(s ?? "").toUpperCase();
+  return u === "PASS" || u === "WARN" || u === "FAIL" ? u : "WARN";
+}
+
+function coerceScore(v: unknown, status: "PASS" | "WARN" | "FAIL"): number {
+  const n = typeof v === "number" ? v : Number(v);
+  if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)));
+  return STATUS_SCORE[status];
+}
+
+function normalizeFinding(f: unknown): Finding {
+  const o = asObj(f);
+  const sev = String(o.severity ?? "MEDIUM").toUpperCase();
+  const allowed = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
+  return {
+    severity: (allowed.includes(sev) ? sev : "MEDIUM") as Finding["severity"],
+    title: String(o.title ?? o.name ?? "Finding").slice(0, 500),
+    detail: String(o.detail ?? o.description ?? o.message ?? ""),
+    recommendation: String(o.recommendation ?? o.fix ?? ""),
+    evidence: String(o.evidence ?? ""),
+  };
+}
+
+function normalizeDimension(raw: unknown): DimensionAnalysis {
+  const o = unwrap(raw);
+  const status = coerceStatus(o.status);
+  return {
+    score: coerceScore(o.score, status),
+    status,
+    summary: String(o.summary ?? o.summaryText ?? ""),
+    findings: Array.isArray(o.findings) ? o.findings.map(normalizeFinding) : [],
+  };
+}
+
+function normalizeCoverage(raw: unknown): CoverageAnalysis {
+  const o = unwrap(raw);
+  const status = coerceStatus(o.status);
+  const requirements = (Array.isArray(o.requirements) ? o.requirements : [])
+    .map((r) => {
+      const x = asObj(r);
+      const st = String(x.status ?? "MISSING").toUpperCase();
+      return {
+        requirement: String(x.requirement ?? x.text ?? x.name ?? ""),
+        status: (["MET", "PARTIAL", "MISSING"].includes(st) ? st : "MISSING") as
+          | "MET"
+          | "PARTIAL"
+          | "MISSING",
+        evidence: String(x.evidence ?? ""),
+      };
+    })
+    .filter((r) => r.requirement);
+  // Derive the score from coverage when the model didn't give a usable number.
+  let score = coerceScore(o.score, status);
+  if (!Number.isFinite(Number(o.score)) && requirements.length > 0) {
+    const met =
+      requirements.filter((r) => r.status === "MET").length +
+      0.5 * requirements.filter((r) => r.status === "PARTIAL").length;
+    score = Math.round((100 * met) / requirements.length);
+  }
+  return {
+    score,
+    status,
+    summary: String(o.summary ?? ""),
+    requirements,
+    findings: Array.isArray(o.findings) ? o.findings.map(normalizeFinding) : [],
+  };
+}
+
 // -- JSON schema (Anthropic structured outputs) + a text shape hint (OpenAI path) --
 
 const findingJsonSchema = {
@@ -107,12 +200,15 @@ const FINDING_SHAPE =
   `{"severity":"CRITICAL|HIGH|MEDIUM|LOW|INFO","title":string,"detail":string,` +
   `"recommendation":string,"evidence":string}`;
 const DIMENSION_SHAPE_HINT =
-  `Respond with ONLY a JSON object: {"score":number 0-100,"status":"PASS|WARN|FAIL",` +
-  `"summary":string,"findings":[${FINDING_SHAPE}]}. Use "" for recommendation/evidence when N/A.`;
+  `Output ONLY a single JSON object — no markdown, no code fences, no wrapper key, no commentary. ` +
+  `Exactly these top-level keys: {"score":<number 0-100>,"status":"PASS"|"WARN"|"FAIL",` +
+  `"summary":<string>,"findings":[${FINDING_SHAPE}]}. "score" is REQUIRED. Use "" for ` +
+  `recommendation/evidence when not applicable; use [] when there are no findings.`;
 const COVERAGE_SHAPE_HINT =
-  `Respond with ONLY a JSON object: {"score":number 0-100,"status":"PASS|WARN|FAIL",` +
-  `"summary":string,"requirements":[{"requirement":string,"status":"MET|PARTIAL|MISSING",` +
-  `"evidence":string}],"findings":[${FINDING_SHAPE}]}.`;
+  `Output ONLY a single JSON object — no markdown, no code fences, no wrapper key, no commentary. ` +
+  `Exactly these top-level keys: {"score":<number 0-100>,"status":"PASS"|"WARN"|"FAIL",` +
+  `"summary":<string>,"requirements":[{"requirement":<string>,"status":"MET"|"PARTIAL"|"MISSING",` +
+  `"evidence":<string>}],"findings":[${FINDING_SHAPE}]}. "score" is REQUIRED.`;
 
 const SYSTEM = `You are a senior QA + design + security reviewer evaluating a live website.
 Be specific, evidence-backed, and honest — cite what you actually observe in the screenshot,
@@ -283,7 +379,7 @@ export async function analyzeDimension(
   ].join("\n");
 
   const raw = await runAnalysis(prompt, capture, dimensionJsonSchema, DIMENSION_SHAPE_HINT, "dimension_analysis");
-  return dimensionSchema.parse(raw);
+  return dimensionSchema.parse(normalizeDimension(raw));
 }
 
 /** BRD coverage: extract requirements from the scope and judge each against the page. */
@@ -306,5 +402,5 @@ export async function analyzeBrdCoverage(
   ].join("\n");
 
   const raw = await runAnalysis(prompt, capture, coverageJsonSchema, COVERAGE_SHAPE_HINT, "brd_coverage");
-  return coverageSchema.parse(raw);
+  return coverageSchema.parse(normalizeCoverage(raw));
 }
