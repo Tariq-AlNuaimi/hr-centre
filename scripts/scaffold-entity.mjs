@@ -737,17 +737,17 @@ function listPageFile() {
   return `"use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Typography, Button, Space } from "antd";
+import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
 import type { SortChange } from "@/components/shared/DataTable";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { get${Pascal}Columns, type ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
-
-const { Title } = Typography;
 
 export default function ${Pascal}sPage() {
   const t = useTranslations("${i18nNs}");
@@ -805,12 +805,14 @@ export default function ${Pascal}sPage() {
 
   return (
     <>
-      <Space style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <Title level={2} style={{ margin: 0 }}>{t("title")}</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push(\`/\${locale}/${entityKebab}/new\`)}>
-          {t("createNew")}
-        </Button>
-      </Space>
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push(\`/\${locale}/${entityKebab}/new\`)}>
+            {t("createNew")}
+          </Button>
+        }
+      />
       <DataTable<${Pascal}Record>
         columns={columns}
         dataSource={items}
@@ -823,6 +825,7 @@ export default function ${Pascal}sPage() {
           setSort(s);
           setPage(1);
         }}${searchProps}
+        emptyText={<EmptyState actionLabel={t("createNew")} onAction={() => router.push(\`/\${locale}/${entityKebab}/new\`)} />}
       />
     </>
   );
@@ -835,13 +838,11 @@ function newPageFile() {
 
 import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { Typography } from "antd";
 import { ${Pascal}Form } from "@/components/${entityKebab}/${Pascal}Form";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
 import type { ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
-
-const { Title } = Typography;
 
 export default function New${Pascal}Page() {
   const t = useTranslations("${i18nNs}");
@@ -862,7 +863,7 @@ export default function New${Pascal}Page() {
 
   return (
     <>
-      <Title level={2}>{t("createNew")}</Title>
+      <PageHeader title={t("createNew")} />
       <${Pascal}Form
         onSubmit={handleSubmit}
         onCancel={() => router.push(\`/\${locale}/${entityKebab}\`)}
@@ -880,13 +881,12 @@ function editPageFile() {
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
-import { Typography, Spin } from "antd";
 import { ${Pascal}Form } from "@/components/${entityKebab}/${Pascal}Form";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { FormSkeleton } from "@/components/shared/Skeletons";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
 import type { ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
-
-const { Title } = Typography;
 
 export default function Edit${Pascal}Page() {
   const t = useTranslations("${i18nNs}");
@@ -914,11 +914,11 @@ export default function Edit${Pascal}Page() {
     }
   };
 
-  if (!record) return <Spin />;
+  if (!record) return <FormSkeleton />;
 
   return (
     <>
-      <Title level={2}>{t("editTitle")}</Title>
+      <PageHeader title={t("editTitle")} />
       <${Pascal}Form
         initialValues={record}
         onSubmit={handleSubmit}
