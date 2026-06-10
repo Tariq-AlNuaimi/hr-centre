@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { updateAssessmentSchema } from "@/lib/validations/assessment";
+import { reapStaleRuns } from "@/lib/testing/reap";
 
 // Read one assessment (any authenticated user), with its run history.
 export const GET = withAuth(async (_request: NextRequest, { params }) => {
   const { id } = await params;
+  await reapStaleRuns(id); // mark any run killed past the time limit as FAILED
   const assessment = await prisma.assessment.findUnique({
     where: { id },
     include: {

@@ -2,10 +2,12 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/api-helpers";
 import { ok, notFound } from "@/lib/api-response";
+import { reapStaleRuns } from "@/lib/testing/reap";
 
 // Read a single run with its full report (any authenticated user).
 export const GET = withAuth(async (_request: NextRequest, { params }) => {
   const { id } = await params;
+  await reapStaleRuns(); // sweep any stale runs so a zombie surfaces as FAILED
   const run = await prisma.testRun.findUnique({
     where: { id },
     include: {
