@@ -15,6 +15,47 @@ enum Role {
   VIEWER
 }
 
+// -- Vibe Inspector: website E2E testing tool (ADR-015) --
+
+// The testing dimensions a run can cover. Stored on Assessment.dimensions as a
+// String[] of these names (Prisma enum arrays are supported on Postgres).
+enum TestDimension {
+  DESIGN // visual / UX fidelity + accessibility
+  FUNCTIONALITY // flows, buttons, broken links, runtime errors, behavior vs BRD
+  BRD_COVERAGE // requirement-by-requirement traceability against the scope
+  SECURITY // lightweight: TLS, headers, exposed info (NOT a pentest)
+  BENCHMARK // comparison vs named peer products (advisory / judgment)
+}
+
+enum RunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// Per-dimension verdict + per-run rollup.
+enum ResultStatus {
+  PASS
+  WARN
+  FAIL
+}
+
+enum Severity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+// BRD requirement coverage verdict.
+enum CoverageStatus {
+  MET
+  PARTIAL
+  MISSING
+}
+
 // -- Auth.js Models --
 
 model User {
@@ -37,6 +78,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   auditLogs     AuditLog[]
+  assessments   Assessment[]
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -106,4 +148,99 @@ model AuditLog {
   @@index([userId])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+// -- Vibe Inspector models (ADR-015) --
+
+// A configured target: the website under test + the BRD/scope it's judged against.
+// User-facing CRUD entity -> soft-delete + audit + RBAC (registered in
+// lib/prisma/soft-delete-extension.ts + lib/prisma/recyclable.ts).
+model Assessment {
+  id         String          @id @default(cuid())
+  name       String
+  targetUrl  String
+  brdText    String          @db.Text
+  dimensions TestDimension[]
+
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  runs TestRun[]
+
+  // Soft deletion
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Composite index serves the soft-delete filter prefix + the default createdAt-desc sort.
+  @@index([deletedAt, createdAt])
+  @@map("assessments")
+}
+
+// One execution of an assessment. Run artifacts (results/findings/coverage) are
+// machine-generated and cascade-delete with the run.
+model TestRun {
+  id           String       @id @default(cuid())
+  assessmentId String
+  assessment   Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  status       RunStatus    @default(PENDING)
+  overallScore Float? // 0-100, average of dimension scores
+  summary      String?      @db.Text
+  error        String?      @db.Text // populated on FAILED
+  finalUrl     String? // URL after redirects, captured at run time
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  dimensionResults DimensionResult[]
+  requirements     RequirementCoverage[]
+
+  @@index([assessmentId, createdAt])
+  @@map("test_runs")
+}
+
+model DimensionResult {
+  id        String        @id @default(cuid())
+  runId     String
+  run       TestRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
+  dimension TestDimension
+  score     Float? // 0-100
+  status    ResultStatus  @default(WARN)
+  summary   String        @db.Text
+  createdAt DateTime      @default(now())
+
+  findings Finding[]
+
+  @@index([runId])
+  @@map("dimension_results")
+}
+
+model Finding {
+  id                String          @id @default(cuid())
+  dimensionResultId String
+  dimensionResult   DimensionResult @relation(fields: [dimensionResultId], references: [id], onDelete: Cascade)
+  severity          Severity        @default(MEDIUM)
+  title             String
+  detail            String          @db.Text
+  recommendation    String?         @db.Text
+  evidence          String?         @db.Text // selector / URL / quote backing the finding
+  createdAt         DateTime        @default(now())
+
+  @@index([dimensionResultId])
+  @@map("findings")
+}
+
+model RequirementCoverage {
+  id          String         @id @default(cuid())
+  runId       String
+  run         TestRun        @relation(fields: [runId], references: [id], onDelete: Cascade)
+  requirement String         @db.Text
+  status      CoverageStatus @default(MISSING)
+  evidence    String?        @db.Text
+  createdAt   DateTime       @default(now())
+
+  @@index([runId])
+  @@map("requirement_coverage")
 }
