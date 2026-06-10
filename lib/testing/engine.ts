@@ -1,4 +1,4 @@
-// Vibe Inspector — run orchestrator (ADR-015).
+// Vibe Inspector — run orchestrator (ADR-016).
 //
 // Executes one TestRun synchronously: capture the site, run each selected dimension
 // through Claude, persist results/findings/coverage, and roll up an overall score.
@@ -154,7 +154,7 @@ export async function executeRun(runId: string): Promise<void> {
     }
 
     // Headline score: average the authoritative (non-advisory) dimensions; fall
-    // back to advisory-only when that's all that was selected (ADR-015).
+    // back to advisory-only when that's all that was selected (ADR-016).
     const core = scores.filter((s) => !s.advisory);
     const pool = core.length > 0 ? core : scores;
     const overall = Math.round(pool.reduce((sum, s) => sum + s.score, 0) / pool.length);

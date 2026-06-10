@@ -1,30 +1,20 @@
-// Vibe Inspector — Claude analysis layer (ADR-015).
+// Vibe Inspector — AI analysis layer (ADR-016).
 //
-// Per-dimension judgement of a captured site against the BRD, using the Anthropic
-// SDK with vision (the screenshot) + structured outputs (a JSON schema on
-// output_config.format) so each dimension returns a typed { score, status,
-// findings }. BRD coverage additionally returns a per-requirement traceability list.
-// The model's JSON is validated at runtime with the zod schemas below.
-//
-// Gated by ANTHROPIC_API_KEY. When unset, analysis throws a clear error so the run
-// is recorded as FAILED.
+// Per-dimension judgement of a captured site against the BRD. Provider-agnostic:
+//   • ANTHROPIC          → Anthropic SDK, vision (screenshot) + structured outputs.
+//   • OPENAI_COMPATIBLE  → any /chat/completions endpoint (self-hosted LiteLLM,
+//                          OpenAI, Gemini-compat) via fetch, JSON-object mode,
+//                          text-only (so text models like gpt-oss-120b work).
+// Both return JSON validated at runtime with the zod schemas below; the provider
+// is resolved from Settings (DB) with an env fallback. See lib/testing/ai-config.ts.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { TestDimension } from "@/generated/prisma/client";
 import { DIMENSION_META } from "./dimensions";
 import type { CaptureResult } from "./capture";
-
-const DEFAULT_MODEL = "claude-opus-4-8";
-
-function getClient(): Anthropic {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error(
-      "Analysis engine not configured. Set ANTHROPIC_API_KEY (see .env.example / ADR-015) to run a test."
-    );
-  }
-  return new Anthropic();
-}
+import { resolveAiConfig, type ResolvedAiConfig } from "./ai-config";
+import { redactSecret } from "@/lib/secret-box";
 
 // -- Runtime validation schemas (zod 3) --
 
@@ -32,7 +22,6 @@ const findingSchema = z.object({
   severity: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]),
   title: z.string(),
   detail: z.string(),
-  // Empty string when not applicable (keeps the schema strict & simple).
   recommendation: z.string(),
   evidence: z.string(),
 });
@@ -62,7 +51,7 @@ export type DimensionAnalysis = z.infer<typeof dimensionSchema>;
 export type CoverageAnalysis = z.infer<typeof coverageSchema>;
 export type Finding = z.infer<typeof findingSchema>;
 
-// -- JSON schemas sent to the API (structured outputs; all-required + closed objects) --
+// -- JSON schema (Anthropic structured outputs) + a text shape hint (OpenAI path) --
 
 const findingJsonSchema = {
   type: "object",
@@ -114,6 +103,17 @@ const coverageJsonSchema = {
   required: ["score", "status", "summary", "requirements", "findings"],
 };
 
+const FINDING_SHAPE =
+  `{"severity":"CRITICAL|HIGH|MEDIUM|LOW|INFO","title":string,"detail":string,` +
+  `"recommendation":string,"evidence":string}`;
+const DIMENSION_SHAPE_HINT =
+  `Respond with ONLY a JSON object: {"score":number 0-100,"status":"PASS|WARN|FAIL",` +
+  `"summary":string,"findings":[${FINDING_SHAPE}]}. Use "" for recommendation/evidence when N/A.`;
+const COVERAGE_SHAPE_HINT =
+  `Respond with ONLY a JSON object: {"score":number 0-100,"status":"PASS|WARN|FAIL",` +
+  `"summary":string,"requirements":[{"requirement":string,"status":"MET|PARTIAL|MISSING",` +
+  `"evidence":string}],"findings":[${FINDING_SHAPE}]}.`;
+
 const SYSTEM = `You are a senior QA + design + security reviewer evaluating a live website.
 Be specific, evidence-backed, and honest — cite what you actually observe in the screenshot,
 text, links, console errors, or headers. Never invent passing results. Score 0-100 where
@@ -121,7 +121,6 @@ text, links, console errors, or headers. Never invent passing results. Score 0-1
 there are critical/high problems, WARN for medium gaps, PASS only when genuinely solid.
 Keep findings actionable; use "" for recommendation/evidence when none applies.`;
 
-/** Shared capture context block (everything except the BRD-coverage specifics). */
 function captureContext(capture: CaptureResult): string {
   return [
     `URL: ${capture.finalUrl}`,
@@ -139,51 +138,127 @@ function captureContext(capture: CaptureResult): string {
   ].join("\n");
 }
 
-function imageBlock(capture: CaptureResult): Anthropic.ImageBlockParam {
-  return {
-    type: "image",
-    source: {
-      type: "base64",
-      media_type: capture.screenshotMediaType,
-      data: capture.screenshotBase64,
-    },
-  };
+// Tolerant JSON extraction for the OpenAI-compatible path (json_object mode is
+// reliable, but some proxies wrap output in prose or ```json fences).
+function parseJsonLoose(text: string): unknown {
+  const trimmed = text.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const fenced = trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+    const start = fenced.indexOf("{");
+    const end = fenced.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(fenced.slice(start, end + 1));
+    }
+    throw new Error("Model did not return valid JSON");
+  }
 }
 
-// Pull the model's JSON out of the response text blocks (skips thinking blocks).
-function extractJson(response: Anthropic.Message): string {
-  return response.content
+async function callAnthropic(
+  cfg: ResolvedAiConfig,
+  prompt: string,
+  capture: CaptureResult,
+  jsonSchema: Record<string, unknown>,
+  schemaName: string
+): Promise<unknown> {
+  const client = new Anthropic({ apiKey: cfg.apiKey });
+  const response = await client.messages.create({
+    model: cfg.model,
+    max_tokens: 16000,
+    thinking: { type: "adaptive" },
+    system: SYSTEM,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `${prompt}\n\nThe attached screenshot is the rendered page; use it for visual judgement.`,
+          },
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: capture.screenshotMediaType,
+              data: capture.screenshotBase64,
+            },
+          },
+        ],
+      },
+    ],
+    output_config: { format: { type: "json_schema", schema: jsonSchema } },
+  });
+  if (response.stop_reason === "max_tokens") {
+    throw new Error(`Analysis output truncated (max_tokens) for ${schemaName}`);
+  }
+  const text = response.content
     .filter((b): b is Anthropic.TextBlock => b.type === "text")
     .map((b) => b.text)
     .join("")
     .trim();
+  if (!text) throw new Error(`Analysis returned no output for ${schemaName}`);
+  return JSON.parse(text);
+}
+
+async function callOpenAICompatible(
+  cfg: ResolvedAiConfig,
+  prompt: string
+): Promise<unknown> {
+  if (!cfg.baseUrl) throw new Error("OpenAI-compatible provider requires a base URL");
+  // Text-only (no screenshot) so text models work; the prompt notes the absence.
+  const endpoint = `${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`;
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${cfg.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: cfg.model,
+      messages: [
+        { role: "system", content: SYSTEM },
+        {
+          role: "user",
+          content:
+            "(No screenshot is available to this provider — judge from the page signals below.)\n\n" +
+            prompt,
+        },
+      ],
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    // Some providers echo the Authorization key in error bodies — scrub it.
+    throw new Error(`Provider error (${res.status}): ${redactSecret(body, cfg.apiKey).slice(0, 300)}`);
+  }
+  const data = (await res.json()) as {
+    choices?: { message?: { content?: string | { text?: string }[] } }[];
+  };
+  // content is usually a string, but some OpenAI-compatible shims return an array
+  // of content parts — handle both.
+  const raw = data.choices?.[0]?.message?.content;
+  const content = Array.isArray(raw)
+    ? raw.map((p) => (typeof p === "string" ? p : p?.text ?? "")).join("")
+    : raw;
+  if (!content) throw new Error("Provider returned an empty response");
+  return parseJsonLoose(content);
 }
 
 async function runAnalysis(
   prompt: string,
   capture: CaptureResult,
-  schema: Record<string, unknown>,
+  jsonSchema: Record<string, unknown>,
+  shapeHint: string,
   schemaName: string
 ): Promise<unknown> {
-  const client = getClient();
-  // 16000 stays under the SDK's non-streaming HTTP timeout while leaving ample room
-  // for adaptive thinking + a full coverage list, so the JSON isn't truncated.
-  const response = await client.messages.create({
-    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-    max_tokens: 16000,
-    thinking: { type: "adaptive" },
-    system: SYSTEM,
-    messages: [{ role: "user", content: [{ type: "text", text: prompt }, imageBlock(capture)] }],
-    output_config: { format: { type: "json_schema", schema } },
-  });
-  if (response.stop_reason === "max_tokens") {
-    // The structured JSON was cut off — surface it clearly rather than letting
-    // JSON.parse throw an opaque SyntaxError.
-    throw new Error(`Analysis output truncated (max_tokens) for ${schemaName}`);
+  const cfg = await resolveAiConfig();
+  if (cfg.provider === "ANTHROPIC") {
+    return callAnthropic(cfg, prompt, capture, jsonSchema, schemaName);
   }
-  const text = extractJson(response);
-  if (!text) throw new Error(`Analysis returned no output for ${schemaName}`);
-  return JSON.parse(text);
+  // OpenAI-compatible: the schema isn't enforced server-side, so embed the shape.
+  return callOpenAICompatible(cfg, `${prompt}\n\n${shapeHint}`);
 }
 
 /** Standard per-dimension analysis (DESIGN, FUNCTIONALITY, SECURITY, BENCHMARK). */
@@ -205,11 +280,9 @@ export async function analyzeDimension(
     ``,
     `--- Captured page signals ---`,
     captureContext(capture),
-    ``,
-    `The attached screenshot is the rendered page. Produce the structured analysis.`,
   ].join("\n");
 
-  const raw = await runAnalysis(prompt, capture, dimensionJsonSchema, "dimension_analysis");
+  const raw = await runAnalysis(prompt, capture, dimensionJsonSchema, DIMENSION_SHAPE_HINT, "dimension_analysis");
   return dimensionSchema.parse(raw);
 }
 
@@ -230,10 +303,8 @@ export async function analyzeBrdCoverage(
     ``,
     `--- Captured page signals ---`,
     captureContext(capture),
-    ``,
-    `The attached screenshot is the rendered page. Produce the structured coverage analysis.`,
   ].join("\n");
 
-  const raw = await runAnalysis(prompt, capture, coverageJsonSchema, "brd_coverage");
+  const raw = await runAnalysis(prompt, capture, coverageJsonSchema, COVERAGE_SHAPE_HINT, "brd_coverage");
   return coverageSchema.parse(raw);
 }

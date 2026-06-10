@@ -1,14 +1,20 @@
 "use client";
 
-import { Typography, Card, Descriptions } from "antd";
+import { Typography, Card, Descriptions, Space } from "antd";
 import { useTranslations } from "next-intl";
+import { useSession } from "next-auth/react";
+import { AiProviderSettings } from "@/components/settings/AiProviderSettings";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
-    <>
-      <Typography.Title level={2}>{t("title")}</Typography.Title>
+    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+      <Typography.Title level={2} style={{ margin: 0 }}>
+        {t("title")}
+      </Typography.Title>
       <Card>
         <Descriptions column={1} bordered>
           <Descriptions.Item label={t("appName")}>
@@ -19,6 +25,8 @@ export default function SettingsPage() {
           </Descriptions.Item>
         </Descriptions>
       </Card>
-    </>
+      {/* AI provider config calls an admin-only API; only render it for admins. */}
+      {isAdmin && <AiProviderSettings />}
+    </Space>
   );
 }

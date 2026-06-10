@@ -6,7 +6,7 @@ import {
 } from "../../lib/validations/assessment";
 import { DIMENSION_META, DIMENSION_ORDER } from "../../lib/testing/dimensions";
 
-// Vibe Inspector (ADR-015) — boundary-validation + catalog contracts. Pure: no DB,
+// Vibe Inspector (ADR-016) — boundary-validation + catalog contracts. Pure: no DB,
 // no network, no engine (the Browserbase/Claude calls aren't exercised here).
 
 test("createAssessmentSchema accepts a valid assessment", () => {

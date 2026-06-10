@@ -2,21 +2,32 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { withRateLimit, withAuth } from "@/lib/api-helpers";
 import { ok, err } from "@/lib/api-response";
+import { resolveAiConfig } from "@/lib/testing/ai-config";
 
 export const maxDuration = 120;
 
-const DEFAULT_MODEL = "claude-opus-4-8";
 const MAX_PDF_BYTES = 8 * 1024 * 1024; // 8 MB
 
 // Extract plain text from an uploaded BRD/scope document so it can populate the
 // assessment's brdText. Plain-text/markdown files are read client-side; this route
-// handles PDFs (via Claude's native document support — no PDF-parser dependency).
+// handles PDFs via Claude's native document support, so it requires the Anthropic
+// provider (no PDF-parser dependency). With an OpenAI-compatible provider, the
+// operator pastes the text instead.
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest) => {
-    if (!process.env.ANTHROPIC_API_KEY) {
+    let cfg;
+    try {
+      cfg = await resolveAiConfig();
+    } catch {
       return err(
-        "Document parsing needs the analysis engine. Set ANTHROPIC_API_KEY, or paste the BRD text directly.",
+        "Document parsing needs an AI provider. Configure one in Settings, or paste the BRD text directly.",
         503
+      );
+    }
+    if (cfg.provider !== "ANTHROPIC" || !cfg.apiKey) {
+      return err(
+        "PDF parsing requires the Anthropic (Claude) provider. Switch provider in Settings, or paste the BRD text.",
+        400
       );
     }
 
@@ -35,9 +46,9 @@ export const POST = withRateLimit(
       return err("PDF too large (max 8 MB). Paste the text instead.", 413);
     }
 
-    const client = new Anthropic();
+    const client = new Anthropic({ apiKey: cfg.apiKey });
     const response = await client.messages.create({
-      model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+      model: cfg.model,
       max_tokens: 16000,
       messages: [
         {

@@ -6,7 +6,7 @@ import { executeRun } from "@/lib/testing/engine";
 
 // A run can take a while (browser capture + several Claude calls). Give the function
 // generous headroom; Vercel caps this at the plan limit (60s Hobby / 300s Pro). For
-// heavier crawls, move to a durable background job (Inngest) per ADR-015.
+// heavier crawls, move to a durable background job (Inngest) per ADR-016.
 export const maxDuration = 300;
 
 // List runs for an assessment (any authenticated user).

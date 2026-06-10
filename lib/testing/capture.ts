@@ -1,4 +1,4 @@
-// Vibe Inspector — site capture via Browserbase (ADR-015).
+// Vibe Inspector — site capture via Browserbase (ADR-016).
 //
 // Creates a hosted Chromium session on Browserbase via its REST API, connects to
 // it over CDP with playwright-core (the browser is REMOTE — no Chromium binary in
@@ -54,7 +54,7 @@ function requireEngineConfig(): { apiKey: string; projectId: string } {
   if (!apiKey || !projectId) {
     throw new Error(
       "Browser engine not configured. Set BROWSERBASE_API_KEY and " +
-        "BROWSERBASE_PROJECT_ID (see .env.example / ADR-015) to run a test."
+        "BROWSERBASE_PROJECT_ID (see .env.example / ADR-016) to run a test."
     );
   }
   return { apiKey, projectId };

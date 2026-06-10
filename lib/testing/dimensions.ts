@@ -1,4 +1,4 @@
-// Vibe Inspector — dimension catalog (ADR-015).
+// Vibe Inspector — dimension catalog (ADR-016).
 // Single source of truth for the testing dimensions: their display labels and the
 // analysis brief each one hands to Claude. Keep in lockstep with the TestDimension
 // enum in prisma/schema.prisma.

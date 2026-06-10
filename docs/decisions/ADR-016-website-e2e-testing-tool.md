@@ -1,4 +1,4 @@
-# ADR-015 — "Vibe Inspector": an in-app website E2E testing tool (Browserbase + Claude)
+# ADR-016 — "Vibe Inspector": an in-app website E2E testing tool (Browserbase + Claude)
 
 **Status:** Accepted
 **Date:** 2026-06-10

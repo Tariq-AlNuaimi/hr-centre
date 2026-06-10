@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { isPrivateHost } from "./url-safety";
 
-// Vibe Inspector — assessment validation (ADR-015). Boundary validation for the
+// Vibe Inspector — assessment validation (ADR-016). Boundary validation for the
 // /api/assessments routes.
 
 export const DIMENSION_VALUES = [
@@ -10,18 +11,6 @@ export const DIMENSION_VALUES = [
   "SECURITY",
   "BENCHMARK",
 ] as const;
-
-// Reject loopback / link-local / private-range hosts. Capture runs in Browserbase's
-// cloud (not our infra), so this is defence-in-depth, not the only SSRF control.
-function isPrivateHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  if (h === "localhost" || h.endsWith(".local") || h.endsWith(".internal")) return true;
-  if (h === "::1" || h === "0.0.0.0") return true;
-  if (/^127\./.test(h) || /^10\./.test(h) || /^192\.168\./.test(h)) return true;
-  if (/^169\.254\./.test(h)) return true; // link-local (cloud metadata)
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true; // 172.16.0.0/12
-  return false;
-}
 
 // Accept a host or a full URL; the capture layer normalises to https:// if needed.
 const targetUrlSchema = z
