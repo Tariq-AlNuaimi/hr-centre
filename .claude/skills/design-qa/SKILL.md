@@ -38,7 +38,14 @@ Score each screen **0–5** on: spacing & rhythm · alignment & grid · visual h
    typography? Compare each screen to its `design/*` mockup. **Baseline = the mockups**
    on the first pass; thereafter the screenshots are the **visual-regression** baseline,
    so unintended drift is caught on every run.
-6. **Score + report** — emit one **scorecard per screen** (rubric template): the 0–5s,
+6. **EYEBALL every screenshot — mandatory, never skip.** axe + load checks catch
+   crashes + a11y; they are **blind** to *duplicated widgets, a wrong field label, a
+   broken layout, a cramped/empty screen, two stacked AI panels.* So **open each
+   screenshot and actually look at it** against the heuristics + the mockup. (Lesson:
+   a run once reported "all screens pass" while the dashboard showed its KPI strip and
+   funnel twice — only the visual pass caught it.) If you didn't look at the pixels,
+   you didn't do design QA.
+7. **Score + report** — emit one **scorecard per screen** (rubric template): the 0–5s,
    the cited deviations ranked by severity, the axe violations, and the benchmark shot
    next to ours where look-and-feel is contested.
 
