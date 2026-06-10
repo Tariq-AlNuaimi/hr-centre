@@ -32,8 +32,11 @@ Chromium is heavy and fragile in the Lambda runtime.
 Build **Vibe Inspector** as a first-class feature in the template (not a skill), with:
 
 1. **Browser engine — Browserbase (hosted Chromium) over CDP.** A Browserbase session is created
-   via its REST API; we connect with `playwright-core`'s `chromium.connectOverCDP(connectUrl)` and
-   drive the *remote* browser. No Chromium binary ships in the bundle, no `playwright install` step.
+   via its REST API; we drive the *remote* browser directly over the Chrome DevTools Protocol on a
+   WebSocket (the small `ws` client). No Chromium binary ships in the bundle, no `playwright install`
+   step. (We initially used `playwright-core` over CDP, but its data files don't trace cleanly into a
+   Vercel serverless function — "Cannot find module .../browsers.json" — so we replaced it with a
+   minimal raw-CDP client, which is deterministic and serverless-friendly.)
    Gated by `BROWSERBASE_API_KEY` + `BROWSERBASE_PROJECT_ID` — when unset, a run fails with a clear
    "configure the engine" message (same graceful-degradation pattern as `lib/email.ts` + `SMTP_HOST`).
 
@@ -66,9 +69,9 @@ Build **Vibe Inspector** as a first-class feature in the template (not a skill),
 
 ## Consequences
 
-- **Two new runtime deps** (`@anthropic-ai/sdk`, `playwright-core`). Both are core to the feature;
-  recorded here per the CLAUDE.md "ask before installing a dep > 50 KB" rule. `playwright-core`
-  carries no browser binaries (remote-only), keeping the bundle reasonable.
+- **Two new runtime deps** (`@anthropic-ai/sdk`, `ws`). Both are core to the feature;
+  recorded here per the CLAUDE.md "ask before installing a dep > 50 KB" rule. `ws` is a tiny,
+  pure-JS WebSocket client that bundles cleanly into a serverless function.
 - **New public-ish surface** `/api/assessments/*` + `/api/runs/*`, all wrapped with the auth helpers
   (`withAuth` for reads, `withEditorAuth` for writes) and rate-limited on writes/run-trigger.
 - **External calls leave the process** to Browserbase + the Anthropic API. The target URL + BRD text
