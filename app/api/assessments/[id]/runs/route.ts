@@ -1,12 +1,15 @@
-import { NextRequest } from "next/server";
+import { NextRequest, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth, withRateLimit } from "@/lib/api-helpers";
+import { withAuditContext } from "@/lib/audit-context";
 import { ok, created, notFound } from "@/lib/api-response";
 import { executeRun } from "@/lib/testing/engine";
 
-// A run can take a while (browser capture + several Claude calls). Give the function
-// generous headroom; Vercel caps this at the plan limit (60s Hobby / 300s Pro). For
-// heavier crawls, move to a durable background job (Inngest) per ADR-016.
+// A run does a browser capture + several model calls. We process it AFTER sending
+// the response (Next's `after`) so the POST returns immediately and the client
+// polls GET /api/runs/[id] for the result — no long-held request that the browser
+// or gateway times out. maxDuration still bounds the background work (60s Hobby /
+// 300s Pro); heavier runs want a durable job (Inngest) per ADR-016.
 export const maxDuration = 300;
 
 // List runs for an assessment (any authenticated user).
@@ -27,35 +30,35 @@ export const GET = withAuth(async (_request: NextRequest, { params }) => {
   return ok(runs);
 });
 
-// Trigger a new run (ADMIN or EDITOR). Executes synchronously then returns the
-// finished (or FAILED) run with its results. Rate-limited — runs cost API + browser
-// credits.
+// Start a run (ADMIN or EDITOR). Creates a PENDING run, kicks off processing in the
+// background, and returns the run id immediately. Rate-limited — runs cost API +
+// browser credits.
 export const POST = withRateLimit(
-  withEditorAuth(async (_request: NextRequest, { params }) => {
+  withEditorAuth(async (_request: NextRequest, { params, session }) => {
     const { id } = await params;
     const assessment = await prisma.assessment.findUnique({ where: { id } });
     if (!assessment) return notFound("Assessment");
 
     const run = await prisma.testRun.create({
       data: { assessmentId: id, status: "PENDING" },
-      select: { id: true },
+      select: { id: true, status: true, createdAt: true },
     });
 
-    // executeRun catches its own errors and marks the run FAILED — it never throws.
-    await executeRun(run.id);
-
-    const finished = await prisma.testRun.findUnique({
-      where: { id: run.id },
-      include: {
-        dimensionResults: {
-          orderBy: { createdAt: "asc" },
-          include: { findings: { orderBy: { severity: "asc" } } },
-        },
-        requirements: { orderBy: { createdAt: "asc" } },
-      },
+    // Process after the response is sent. executeRun catches its own errors and
+    // marks the run FAILED — it never throws. Re-establish the audit context so the
+    // background writes are still attributed to the triggering user.
+    const userId = session.user.id;
+    after(async () => {
+      // executeRun is self-contained (records its own FAILED), but guard anyway so a
+      // stray rejection can't surface as an unhandled rejection in the background task.
+      try {
+        await withAuditContext({ userId }, () => executeRun(run.id));
+      } catch {
+        /* swallowed — the read-time reaper will catch a left-behind run */
+      }
     });
 
-    return created(finished);
+    return created(run);
   }),
   { id: "assessment-run", limit: 10, windowMs: 60_000 }
 );

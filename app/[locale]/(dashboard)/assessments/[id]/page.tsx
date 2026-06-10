@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Typography,
   Button,
@@ -63,6 +63,17 @@ export default function AssessmentDetailPage() {
   const [running, setRunning] = useState(false);
   const [loadingRun, setLoadingRun] = useState(false);
 
+  // Guards for the background poll loop: stop on unmount, and cancel a prior poll
+  // when a newer run starts.
+  const mountedRef = useRef(true);
+  const pollTokenRef = useRef(0);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const loadRunReport = useCallback(
     async (runId: string) => {
       setLoadingRun(true);
@@ -104,25 +115,50 @@ export default function AssessmentDetailPage() {
   }, [fetchAssessment]);
 
   const handleRun = async () => {
+    const myToken = ++pollTokenRef.current; // cancels any prior poll
     setRunning(true);
     setSelectedRun(null);
+    const active = () => mountedRef.current && pollTokenRef.current === myToken;
     try {
-      const run = await apiClient.post<ReportRun>(`/api/assessments/${id}/runs`);
-      setSelectedRun(run);
-      if (run.status === "FAILED") {
-        showError(run.error ?? t("runFailedGeneric"));
-      } else {
-        success(t("runComplete"));
+      // The POST returns immediately with a PENDING run; processing happens in the
+      // background. Poll the run until it reaches a terminal state.
+      const run = await apiClient.post<{ id: string }>(`/api/assessments/${id}/runs`);
+      fetchAssessment(false); // surface the new PENDING run in history right away
+
+      const POLL_MS = 4000;
+      const MAX_ATTEMPTS = 75; // ~5 min ceiling on the client poll
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        await new Promise((r) => setTimeout(r, POLL_MS));
+        if (!active()) return; // unmounted or superseded by a newer run
+        let full: ReportRun;
+        try {
+          full = await apiClient.get<ReportRun>(`/api/runs/${run.id}`);
+        } catch (pollErr) {
+          // Stop on a definitive error (deleted / auth); keep polling on transient 5xx.
+          if (pollErr instanceof ApiError && [401, 403, 404].includes(pollErr.status)) {
+            if (active()) showError(pollErr.message);
+            return;
+          }
+          continue;
+        }
+        if (!active()) return;
+        if (full.status === "COMPLETED" || full.status === "FAILED") {
+          setSelectedRun(full);
+          if (full.status === "FAILED") showError(full.error ?? t("runFailedGeneric"));
+          else success(t("runComplete"));
+          fetchAssessment(false);
+          return;
+        }
       }
-      // Refresh the history list only — we already have the fresh report.
-      fetchAssessment(false);
-    } catch {
-      // The request may have timed out (long run) while the server keeps going —
-      // refresh so a run that completed server-side still surfaces.
-      showError(t("runTimeout"));
-      fetchAssessment(true);
+      // Still running after the ceiling — likely exceeded this plan's time limit.
+      if (active()) {
+        showError(t("runTimeout"));
+        fetchAssessment(true);
+      }
+    } catch (err) {
+      if (active()) showError(err instanceof Error ? err.message : t("runFailedGeneric"));
     } finally {
-      setRunning(false);
+      if (mountedRef.current && pollTokenRef.current === myToken) setRunning(false);
     }
   };
 

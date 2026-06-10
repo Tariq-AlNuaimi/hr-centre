@@ -91,13 +91,13 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
     // run honestly rather than scoring a blank about:blank page as if it loaded.
     let response: PWResponse | null = null;
     try {
-      response = await page.goto(url, { waitUntil: "load", timeout: 45_000 });
+      response = await page.goto(url, { waitUntil: "load", timeout: 25_000 });
     } catch (navErr) {
       const reason = navErr instanceof Error ? navErr.message : String(navErr);
       throw new Error(`Could not load ${url}: ${reason}`);
     }
     // Settle briefly for client-rendered content without waiting on networkidle forever.
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1000);
 
     const finalUrl = page.url();
     const title = await page.title().catch(() => "");
