@@ -10,6 +10,7 @@ import {
   Alert,
   Empty,
   Divider,
+  theme,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
@@ -73,15 +74,23 @@ const COVERAGE_COLOR: Record<ReportRequirement["status"], string> = {
   MISSING: "red",
 };
 
-function scoreColor(score: number | null): string {
-  if (score == null) return "#999";
-  if (score >= 70) return "#52c41a";
-  if (score >= 50) return "#faad14";
-  return "#ff4d4f";
+// Score → semantic theme token (not a raw hex): adapts to dark mode and stays
+// on-palette. token comes from theme.useToken() at the call site.
+type ScoreTokens = Pick<
+  ReturnType<typeof theme.useToken>["token"],
+  "colorSuccess" | "colorWarning" | "colorError" | "colorTextTertiary"
+>;
+
+function scoreColor(score: number | null, token: ScoreTokens): string {
+  if (score == null) return token.colorTextTertiary;
+  if (score >= 70) return token.colorSuccess;
+  if (score >= 50) return token.colorWarning;
+  return token.colorError;
 }
 
 export function RunReport({ run }: { run: ReportRun }) {
   const t = useTranslations("assessments");
+  const { token } = theme.useToken();
 
   if (run.status === "FAILED") {
     return (
@@ -138,7 +147,7 @@ export function RunReport({ run }: { run: ReportRun }) {
             type="dashboard"
             percent={run.overallScore ?? 0}
             size={120}
-            strokeColor={scoreColor(run.overallScore)}
+            strokeColor={scoreColor(run.overallScore, token)}
             format={(p) => `${p}`}
           />
           <div>
@@ -162,7 +171,7 @@ export function RunReport({ run }: { run: ReportRun }) {
             <Space>
               <span>{dimensionLabel(dr.dimension as never)}</span>
               <Tag color={RESULT_COLOR[dr.status]}>{dr.status}</Tag>
-              <Tag color={scoreColor(dr.score)}>{dr.score ?? "-"}/100</Tag>
+              <Tag color={scoreColor(dr.score, token)}>{dr.score ?? "-"}/100</Tag>
             </Space>
           }
         >
