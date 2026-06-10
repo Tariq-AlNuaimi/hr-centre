@@ -87,6 +87,12 @@ out of scope while ADR-001 holds.
   ADR-001 rewrite, or losing AntD's built-in RTL/a11y/data components.
 - The token scale makes an already-strong gate (`/design-qa`) enforceable instead
   of aspirational, and gives the agent a fixed design vocabulary.
+- The token boundary is **machine-enforced**, not just documented: the
+  `rihal-template/no-raw-hex-color` ESLint rule (at `error`) fails the build on a
+  raw hex color literal in a component, so color must come from the theme tokens
+  (`components/layout/antd-theme.ts`) or `app/tokens.css`. The considered theme
+  cannot silently drift back to generic as the app grows. (`antd-theme.ts` owns
+  the brand palette + chart colors and is exempt; `tests/**` is exempt.)
 - Zero new runtime dependencies; harvested rules are prompt text, and the detector
   is a dev-only `npx` spike (not a runtime dep, so no >50KB-dep ADR needed for it).
 - Avoids running two competing QA systems — Impeccable's 23-command surface and

@@ -167,7 +167,7 @@ evidence-backed passes. Release only when the **release-readiness checklist**
 **File uploads are not wired by default.** The template used to ship a MinIO sidecar; that was deleted in ADR-006 because most prototypes don't need uploads on day 1. When you do need them, `/scale-up` adds Vercel Blob in ~10 lines of code.
 
 ## Local ESLint plugin
-`eslint-rules/` is a project-local plugin enforcing four CLAUDE.md hard rules. It runs on every push via `verify.yml`. All four rules are configured at `error`.
+`eslint-rules/` is a project-local plugin enforcing five CLAUDE.md hard rules. It runs on every push via `verify.yml`. All five rules are configured at `error`.
 
 | Rule | What it catches |
 |---|---|
@@ -175,6 +175,7 @@ evidence-backed passes. Release only when the **release-readiness checklist**
 | `rihal-template/no-any-cast-on-session` | `something as any` where the expression mentions `session` (regression guard for T-08) |
 | `rihal-template/no-secret-env-in-console` | `console.*(process.env.<PASSWORD\|SECRET\|TOKEN\|KEY\|HASH\|IDENTITY\|WEBHOOK\|RECIPIENT>)` |
 | `rihal-template/no-bare-internal-route` | `app/api/internal/**/route.ts` exports a handler not wrapped with `withInternalAuth` |
+| `rihal-template/no-raw-hex-color` | raw hex color literal in a component (design-token enforcement, ADR-015) — color must come from `antd-theme.ts` tokens or `app/tokens.css` vars; `antd-theme.ts` + `tests/**` are exempt |
 
 To silence a rule on a justified line:
 ```ts

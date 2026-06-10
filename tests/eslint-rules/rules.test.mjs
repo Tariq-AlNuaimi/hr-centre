@@ -1,7 +1,8 @@
-// RuleTester coverage for the four local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the five local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
-// own automated guard -- a regression here silently removes a security gate.
+// own automated guard -- a regression here silently removes a security gate
+// (or, for no-raw-hex-color, the design-token boundary).
 //
 // Wired into the test gate via `npm run test:lint-rules` (which `npm test`
 // chains). Uses ESLint's RuleTester driven by node:test, matching the repo's
@@ -16,6 +17,7 @@ import noPrismaInClient from "../../eslint-rules/rules/no-prisma-in-client.mjs";
 import noAnyCastOnSession from "../../eslint-rules/rules/no-any-cast-on-session.mjs";
 import noSecretEnvInConsole from "../../eslint-rules/rules/no-secret-env-in-console.mjs";
 import noBareInternalRoute from "../../eslint-rules/rules/no-bare-internal-route.mjs";
+import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -187,3 +189,54 @@ ruleTest(
   },
   { ecmaVersion: 2022, sourceType: "module" }
 );
+
+// --- no-raw-hex-color ------------------------------------------------------
+// Color must come from the theme tokens / CSS vars, not a raw hex in a
+// component. The token source file (antd-theme.ts) is exempt; comments aren't
+// literals so example hexes in docs don't trip it.
+const THEME_SRC = "/repo/components/layout/antd-theme.ts";
+const A_COMPONENT = "/repo/components/shared/Widget.tsx";
+ruleTest("no-raw-hex-color", noRawHexColor, {
+  valid: [
+    // Color from a token / CSS var, not a literal.
+    { filename: A_COMPONENT, code: `const c = token.colorBorderSecondary;` },
+    { filename: A_COMPONENT, code: `const s = { marginBottom: "var(--space-4)" };` },
+    // A "#"-string that is NOT a hex color (anchor / id / route fragment).
+    { filename: A_COMPONENT, code: `const href = "#main";` },
+    { filename: A_COMPONENT, code: `const a = "#section-2";` },
+    // The token source file owns the brand colors + chart palette.
+    {
+      filename: THEME_SRC,
+      code: `export const chartPalette = ["#1677ff", "#52c41a"];`,
+    },
+  ],
+  invalid: [
+    {
+      // Whole-string hex in an inline style.
+      filename: A_COMPONENT,
+      code: `const s = { color: "#3a3a3a" };`,
+      errors: [{ messageId: "noRawHexColor" }],
+    },
+    {
+      // Short (3-digit) hex.
+      filename: A_COMPONENT,
+      code: `const s = { background: "#fff" };`,
+      errors: [{ messageId: "noRawHexColor" }],
+    },
+    {
+      // Hex embedded in a larger CSS-ish string.
+      filename: A_COMPONENT,
+      code: `const s = { border: "1px solid #1677ff" };`,
+      errors: [{ messageId: "noRawHexColor" }],
+    },
+    {
+      // A one-off palette array in a component (belongs in the token layer).
+      filename: A_COMPONENT,
+      code: `const palette = ["#1677ff", "#52c41a"];`,
+      errors: [
+        { messageId: "noRawHexColor" },
+        { messageId: "noRawHexColor" },
+      ],
+    },
+  ],
+});

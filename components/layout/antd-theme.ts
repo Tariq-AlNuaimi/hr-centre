@@ -20,6 +20,23 @@ export const brandTokens: NonNullable<ThemeConfig["token"]> = {
 };
 
 /**
+ * Categorical palette for charts (components/shared/Chart). Recharts has no
+ * theme awareness, so the series colors live HERE — the one design-token home —
+ * not hardcoded in the chart component (which the no-raw-hex-color ESLint rule
+ * forbids). Rebrand the whole app's chart colors by editing this array.
+ */
+export const chartPalette = [
+  "#1677ff",
+  "#52c41a",
+  "#faad14",
+  "#f5222d",
+  "#722ed1",
+  "#13c2c2",
+  "#eb2f96",
+  "#fa8c16",
+];
+
+/**
  * The full AntD theme for a given mode. Neutral / background tokens MUST be set
  * per-mode: hardcoding a light neutral onto brandTokens would bleed into dark
  * mode (the classic AntD trap), so they live here where `isDark` is known.
