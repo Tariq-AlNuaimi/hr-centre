@@ -13,6 +13,13 @@ stakeholders. See ADR-008.
 `/uat` **runs and reports**. It does not change app code. If a flow fails, it
 shows you the screenshot + step so you (or a follow-up edit) can fix it.
 
+> **Tier 3 of the QA system** (`docs/uat-rubric.md`). UAT validates **acceptance** —
+> *does it meet the business need?* — judged by the **operator** against acceptance
+> criteria, with a **traceability matrix** (every requirement → ≥1 scenario → pass/fail).
+> It runs **after** design QA (`/design-qa`) and functional QA (`/ship`) have passed (the
+> `/qa` orchestrator enforces that order). UAT is **not** a second bug-hunt — the agent
+> produces the evidence pack; the operator signs off.
+
 Every run produces **both** a navigable **HTML report** (`uat-report/`, open with
 `npm run uat:report`) **and a single PDF** (`uat-report/uat-report.pdf`, via
 `npm run uat:pdf`) — the PDF is the shareable, archivable artifact.

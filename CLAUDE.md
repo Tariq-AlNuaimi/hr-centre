@@ -28,7 +28,9 @@ This template is tuned for Claude Code sessions. Humans coding by hand can ignor
   - `/scale-up` — add file uploads / cron / background jobs / realtime when the project needs them.
   - `/ship` — pre-push gate (typecheck → lint → tests → component tests → build → gitleaks → npm audit).
   - `/audit` — on-demand security scan of any path (gitleaks + npm audit + Semgrep).
-  - `/uat` — browser-driven acceptance walkthrough in Chromium (Playwright), with screenshots.
+  - `/uat` — browser-driven acceptance walkthrough in Chromium (Playwright), with screenshots (Tier 3 of the QA system).
+  - `/design-qa` — design-fidelity QA (Tier 1): per-component + per-screen states, axe a11y, diff vs `design/*` + tokens; scores against `docs/uat-rubric.md`.
+  - `/qa` — the QA orchestrator: runs design-QA → functional (`/ship`) → UAT in gated order against `docs/uat-rubric.md`, anchored to the 4 pillars; a red gate stops the line.
   - `/conform` — bring foreign code up to this template's standard (report-and-approve).
   - `/handoff` — produce clean handoff package for the IT team.
   - `/rebrand` — sweep template defaults to the new project's name.
@@ -110,6 +112,38 @@ the IT team's paid plan can run Actions and enforce branch protection:
 
 Branch protection is **optional** on this template and unenforceable on the free plan. Turn it
 on once handed off. See `SECURITY.md` §14 and ADR-007.
+
+## QA system — design-QA → functional → UAT (gated), `docs/uat-rubric.md` is the bar
+Quality is enforced by **three gated tiers**, not one vague "test it" step. `/qa`
+orchestrates them in order — a red gate **stops the line** and reports, it never barrels
+ahead. Every finding cites a **pillar** (scalable / maintainable / fast / secure) **+ an
+anchor** (objectives / scope / benchmark vs a named peer / KB / the `design/*` handoff) —
+never opinion.
+
+| Tier | Skill | Owner | Gate |
+|---|---|---|---|
+| 1 · **Design QA** (fidelity) | `/design-qa` | front-end (agent) | build green → no fidelity/a11y criticals |
+| 2 · **Functional QA** (correctness) | `/ship` + risk-based case matrix | dev/QA (agent) | design-QA passed → regression green, high-risk exhaustive |
+| 3 · **UAT** (acceptance) | `/uat` FULL | **operator** (business) | functional passed → acceptance traced + signed off |
+
+**UI-quality Definition of Done — a screen isn't "done" until it passes ALL of:**
+- **States designed:** real empty / loading / error states (no blank shell, no
+  spinner-forever, no raw error dump); hover/focus/disabled covered.
+- **On-token:** spacing on the scale, palette colors, typography from the design system
+  (`tokens.css` / AntD theme) — no ad-hoc margins or off-palette hues; no cramped or huge
+  dead space.
+- **Validation at the boundary:** inputs reject bad data with a clear message (e.g. a
+  phone field rejects letters); required fields enforced.
+- **Every control does what it says:** no dead buttons; the primary action is singular and
+  obvious; post-action flow leads somewhere sensible.
+- **Honest feedback:** success only on real success; failures surface, never a green toast
+  over an empty result.
+- **Responsive + RTL (`ar`) + dark** hold; **axe** has no serious/critical violations.
+- The **4 pillars** hold and the **security floor** is intact.
+
+The operator does the adjudication + UAT sign-off; the agent does the exhaustive,
+evidence-backed passes. Release only when the **release-readiness checklist**
+(`docs/uat-rubric.md`) is fully green.
 
 ## Stack
 - **Framework:** Next.js 16 (App Router) · React 19 · TypeScript 5
