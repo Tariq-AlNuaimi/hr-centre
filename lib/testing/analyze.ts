@@ -99,18 +99,27 @@ function normalizeFinding(f: unknown): Finding {
   };
 }
 
-function normalizeDimension(raw: unknown): DimensionAnalysis {
+function summaryFallback(summary: string, findingsCount: number, rawText: string): string {
+  // If the model gave us nothing structured, surface its raw words so the result
+  // isn't a silent, meaningless default.
+  if (summary || findingsCount > 0) return summary;
+  const cleaned = rawText.replace(/```[a-z]*|```/gi, "").trim();
+  return cleaned ? cleaned.slice(0, 1500) : summary;
+}
+
+function normalizeDimension(raw: unknown, rawText = ""): DimensionAnalysis {
   const o = unwrap(raw);
   const status = coerceStatus(o.status);
+  const findings = Array.isArray(o.findings) ? o.findings.map(normalizeFinding) : [];
   return {
     score: coerceScore(o.score, status),
     status,
-    summary: String(o.summary ?? o.summaryText ?? ""),
-    findings: Array.isArray(o.findings) ? o.findings.map(normalizeFinding) : [],
+    summary: summaryFallback(String(o.summary ?? o.summaryText ?? ""), findings.length, rawText),
+    findings,
   };
 }
 
-function normalizeCoverage(raw: unknown): CoverageAnalysis {
+function normalizeCoverage(raw: unknown, rawText = ""): CoverageAnalysis {
   const o = unwrap(raw);
   const status = coerceStatus(o.status);
   const requirements = (Array.isArray(o.requirements) ? o.requirements : [])
@@ -135,12 +144,13 @@ function normalizeCoverage(raw: unknown): CoverageAnalysis {
       0.5 * requirements.filter((r) => r.status === "PARTIAL").length;
     score = Math.round((100 * met) / requirements.length);
   }
+  const findings = Array.isArray(o.findings) ? o.findings.map(normalizeFinding) : [];
   return {
     score,
     status,
-    summary: String(o.summary ?? ""),
+    summary: summaryFallback(String(o.summary ?? ""), requirements.length + findings.length, rawText),
     requirements,
-    findings: Array.isArray(o.findings) ? o.findings.map(normalizeFinding) : [],
+    findings,
   };
 }
 
@@ -257,7 +267,7 @@ async function callAnthropic(
   capture: CaptureResult,
   jsonSchema: Record<string, unknown>,
   schemaName: string
-): Promise<unknown> {
+): Promise<RawAnalysis> {
   const client = new Anthropic({ apiKey: cfg.apiKey });
   const response = await client.messages.create({
     model: cfg.model,
@@ -294,13 +304,13 @@ async function callAnthropic(
     .join("")
     .trim();
   if (!text) throw new Error(`Analysis returned no output for ${schemaName}`);
-  return JSON.parse(text);
+  return { value: JSON.parse(text), raw: text };
 }
 
 async function callOpenAICompatible(
   cfg: ResolvedAiConfig,
   prompt: string
-): Promise<unknown> {
+): Promise<RawAnalysis> {
   if (!cfg.baseUrl) throw new Error("OpenAI-compatible provider requires a base URL");
   // Text-only (no screenshot) so text models work; the prompt notes the absence.
   const endpoint = `${cfg.baseUrl.replace(/\/+$/, "")}/chat/completions`;
@@ -321,6 +331,8 @@ async function callOpenAICompatible(
             prompt,
         },
       ],
+      // Generous ceiling so the JSON isn't truncated by a small provider default.
+      max_tokens: 6000,
       response_format: { type: "json_object" },
     }),
   });
@@ -339,7 +351,12 @@ async function callOpenAICompatible(
     ? raw.map((p) => (typeof p === "string" ? p : p?.text ?? "")).join("")
     : raw;
   if (!content) throw new Error("Provider returned an empty response");
-  return parseJsonLoose(content);
+  return { value: parseJsonLoose(content), raw: content };
+}
+
+interface RawAnalysis {
+  value: unknown;
+  raw: string; // the model's raw text, for a summary fallback
 }
 
 async function runAnalysis(
@@ -348,7 +365,7 @@ async function runAnalysis(
   jsonSchema: Record<string, unknown>,
   shapeHint: string,
   schemaName: string
-): Promise<unknown> {
+): Promise<RawAnalysis> {
   const cfg = await resolveAiConfig();
   if (cfg.provider === "ANTHROPIC") {
     return callAnthropic(cfg, prompt, capture, jsonSchema, schemaName);
@@ -378,8 +395,14 @@ export async function analyzeDimension(
     captureContext(capture),
   ].join("\n");
 
-  const raw = await runAnalysis(prompt, capture, dimensionJsonSchema, DIMENSION_SHAPE_HINT, "dimension_analysis");
-  return dimensionSchema.parse(normalizeDimension(raw));
+  const { value, raw } = await runAnalysis(
+    prompt,
+    capture,
+    dimensionJsonSchema,
+    DIMENSION_SHAPE_HINT,
+    "dimension_analysis"
+  );
+  return dimensionSchema.parse(normalizeDimension(value, raw));
 }
 
 /** BRD coverage: extract requirements from the scope and judge each against the page. */
@@ -401,6 +424,12 @@ export async function analyzeBrdCoverage(
     captureContext(capture),
   ].join("\n");
 
-  const raw = await runAnalysis(prompt, capture, coverageJsonSchema, COVERAGE_SHAPE_HINT, "brd_coverage");
-  return coverageSchema.parse(normalizeCoverage(raw));
+  const { value, raw } = await runAnalysis(
+    prompt,
+    capture,
+    coverageJsonSchema,
+    COVERAGE_SHAPE_HINT,
+    "brd_coverage"
+  );
+  return coverageSchema.parse(normalizeCoverage(value, raw));
 }
