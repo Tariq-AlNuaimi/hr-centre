@@ -11,7 +11,7 @@
 // clear, actionable error so the run is recorded as FAILED (never a false green) —
 // the same graceful-degradation contract as lib/email.ts + SMTP_HOST.
 
-import { chromium, type Response as PWResponse } from "playwright-core";
+import type { Response as PWResponse } from "playwright-core";
 import { resolveBrowserConfig } from "./browser-config";
 
 export interface CaptureResult {
@@ -70,6 +70,9 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
   const { apiKey, projectId } = await resolveBrowserConfig();
 
   const url = /^https?:\/\//i.test(targetUrl) ? targetUrl : `https://${targetUrl}`;
+  // Lazy-load the browser driver so the route module never fails to load on it,
+  // and a load/runtime problem surfaces as a FAILED run, not a 500.
+  const { chromium } = await import("playwright-core");
   const session = await createSession(apiKey, projectId);
 
   const browser = await chromium.connectOverCDP(

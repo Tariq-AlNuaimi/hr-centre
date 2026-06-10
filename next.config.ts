@@ -46,6 +46,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // playwright-core (Vibe Inspector's browser driver, ADR-016) must be loaded from
+  // node_modules at runtime, not bundled into the serverless function — bundling
+  // breaks its dynamic file requires and makes the route module fail to load (500).
+  serverExternalPackages: ["playwright-core"],
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
