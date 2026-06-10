@@ -1,18 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Typography, Button, Space } from "antd";
+import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
 import type { SortChange } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { getUserColumns } from "@/components/users/UserColumns";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
-
-const { Title } = Typography;
 
 interface UserRecord {
   id: string;
@@ -91,24 +90,18 @@ export default function UsersPage() {
 
   return (
     <>
-      <Space
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 16,
-        }}
-      >
-        <Title level={2} style={{ margin: 0 }}>
-          {t("title")}
-        </Title>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => router.push(`/${locale}/users/new`)}
-        >
-          {t("createUser")}
-        </Button>
-      </Space>
+      <PageHeader
+        title={t("title")}
+        actions={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => router.push(`/${locale}/users/new`)}
+          >
+            {t("createUser")}
+          </Button>
+        }
+      />
 
       <DataTable<UserRecord>
         columns={columns}

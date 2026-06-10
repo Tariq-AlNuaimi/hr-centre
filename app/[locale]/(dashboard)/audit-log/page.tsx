@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Typography, Table, Select, Space, Tag } from "antd";
+import { Table, Select, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
-
-const { Title } = Typography;
 
 interface AuditEntry {
   id: string;
@@ -116,7 +115,7 @@ export default function AuditLogPage() {
 
   return (
     <>
-      <Title level={2}>{t("title")}</Title>
+      <PageHeader title={t("title")} />
 
       <Space style={{ marginBottom: 16 }}>
         <Select

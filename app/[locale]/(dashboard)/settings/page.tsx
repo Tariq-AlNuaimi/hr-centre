@@ -1,14 +1,15 @@
 "use client";
 
-import { Typography, Card, Descriptions } from "antd";
+import { Card, Descriptions } from "antd";
 import { useTranslations } from "next-intl";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
 
   return (
     <>
-      <Typography.Title level={2}>{t("title")}</Typography.Title>
+      <PageHeader title={t("title")} />
       <Card>
         <Descriptions column={1} bordered>
           <Descriptions.Item label={t("appName")}>
