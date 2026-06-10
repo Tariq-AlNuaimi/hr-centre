@@ -32,6 +32,29 @@ function isSkippedSegment(seg: string): boolean {
 }
 
 /**
+ * True iff a `page.tsx` is a pure redirect stub (e.g. a back-compat route kept
+ * only to forward an old URL: `redirect(\`/${locale}/somewhere\`)`). Such a page
+ * is NOT a navigable section — it renders no content and always forwards
+ * elsewhere — so the screen/section discovery must not treat it as one (else the
+ * permission matrix flags every allowed role as "redirected-away" on a benign
+ * forwarder). Heuristic: the file calls `redirect(` from next/navigation and
+ * returns no JSX.
+ */
+function isRedirectOnlyPage(pageFile: string): boolean {
+  let src = "";
+  try {
+    src = fs.readFileSync(pageFile, "utf8");
+  } catch {
+    return false;
+  }
+  const callsRedirect =
+    /from\s+["']next\/navigation["']/.test(src) && /\bredirect\s*\(/.test(src);
+  // A renderable page returns JSX; a redirect stub has none. Detect any JSX tag.
+  const hasJsx = /<[A-Za-z>]/.test(src);
+  return callsRedirect && !hasJsx;
+}
+
+/**
  * Discover ALL navigable dashboard screens (every static nested route) for a
  * locale. Used by FULL mode (deep journey). Lean uses {@link discoverMainSections}.
  *
@@ -53,7 +76,10 @@ export function discoverAllScreens(locale = "en", root = process.cwd()): Screen[
     const hasPage = entries.some(
       (e) => e.isFile() && e.name === "page.tsx",
     );
-    if (hasPage && !segments.some(isSkippedSegment)) {
+    // A redirect-only stub (back-compat URL forwarder) is not a navigable screen.
+    const isRedirectStub =
+      hasPage && isRedirectOnlyPage(path.join(dir, "page.tsx"));
+    if (hasPage && !isRedirectStub && !segments.some(isSkippedSegment)) {
       const name = segments.length === 0 ? "dashboard" : segments.join("/");
       const urlPath =
         segments.length === 0 ? `/${locale}` : `/${locale}/${segments.join("/")}`;
