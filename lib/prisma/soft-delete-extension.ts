@@ -15,7 +15,7 @@ type SoftDeleteDelegate = {
 };
 
 // Models that have deletedAt/deletedBy fields
-const SOFT_DELETE_MODELS = new Set(["User"]);
+const SOFT_DELETE_MODELS = new Set(["User", "Assessment"]);
 
 export const softDeleteExtension = Prisma.defineExtension((client) => {
   return client.$extends({

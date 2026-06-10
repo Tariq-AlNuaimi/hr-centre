@@ -16,6 +16,7 @@ export type RecyclableRecord = {
 // /scaffold-entity appends here in lockstep with registerSoftDeleteModel().
 export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
   User: { displayField: "name" },
+  Assessment: { displayField: "name" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

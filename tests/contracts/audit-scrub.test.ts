@@ -82,6 +82,7 @@ test("SCRUB_FIELDS includes all critical Restricted-class field names", () => {
     "secret",
     "apiKey",
     "api_key",
+    "apiKeyEnc",
   ]) {
     assert.ok(
       SCRUB_FIELDS.has(expected),
