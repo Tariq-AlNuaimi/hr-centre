@@ -8,12 +8,11 @@
 // RSC passes serializable data down to this client component, which renders it.
 // This is the canonical RSC + client-island split (see docs/recipes/perf/1-rsc-list-reads.md).
 
-import { Typography, Card, Row, Col, Statistic, Table, Tag } from "antd";
+import { Card, Row, Col, Statistic, Table, Tag } from "antd";
 import { UserOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { Chart } from "@/components/shared/Chart";
-
-const { Title } = Typography;
+import { PageHeader } from "@/components/shared/PageHeader";
 
 export interface RecentAudit {
   id: string;
@@ -53,7 +52,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
   if (!isAdmin || !data) {
     return (
       <>
-        <Title level={2}>{t("home")}</Title>
+        <PageHeader title={t("home")} />
         <Card>{tDash("welcome")}</Card>
       </>
     );
@@ -63,7 +62,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
 
   return (
     <>
-      <Title level={2}>{t("home")}</Title>
+      <PageHeader title={t("home")} />
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>

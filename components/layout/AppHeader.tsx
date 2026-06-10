@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Space, Dropdown, Avatar, Button, Typography } from "antd";
+import { Layout, Space, Dropdown, Avatar, Button, Typography, theme } from "antd";
 import {
   UserOutlined,
   LogoutOutlined,
@@ -21,6 +21,7 @@ export function AppHeader() {
   const tTheme = useTranslations("theme");
   const { data: session } = useSession();
   const { isDark, setMode } = useTheme();
+  const { token } = theme.useToken();
   const router = useRouter();
   const pathname = usePathname();
   const currentLocale = useLocale();
@@ -53,9 +54,7 @@ export function AppHeader() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 24px",
-        background: isDark ? "#141414" : "#fff",
-        borderBottom: `1px solid ${isDark ? "#303030" : "#f0f0f0"}`,
+        borderBottom: `1px solid ${token.colorBorderSecondary}`,
         position: "sticky",
         top: 0,
         zIndex: 100,

@@ -19,7 +19,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Layout>
             <AppSidebar />
             <Layout>
-              <Content style={{ padding: 24, minHeight: 360 }}>
+              {/* padding comes from .ant-layout-content (var(--density-page)
+                  in app/globals.css) so the whole app's page density is one
+                  token, not a per-shell hardcode. */}
+              <Content style={{ minHeight: 360 }}>
                 <Breadcrumbs />
                 {children}
               </Content>

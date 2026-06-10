@@ -1,8 +1,9 @@
 "use client";
 
-import { Typography, Card, Descriptions, Space } from "antd";
+import { Card, Descriptions, Space } from "antd";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { AiProviderSettings } from "@/components/settings/AiProviderSettings";
 import { BrowserEngineSettings } from "@/components/settings/BrowserEngineSettings";
 
@@ -13,9 +14,7 @@ export default function SettingsPage() {
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%" }}>
-      <Typography.Title level={2} style={{ margin: 0 }}>
-        {t("title")}
-      </Typography.Title>
+      <PageHeader title={t("title")} />
       <Card>
         <Descriptions column={1} bordered>
           <Descriptions.Item label={t("appName")}>

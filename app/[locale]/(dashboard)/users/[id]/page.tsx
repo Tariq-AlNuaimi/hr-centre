@@ -1,15 +1,14 @@
 "use client";
 
-import { Typography, Spin } from "antd";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { FormSkeleton } from "@/components/shared/Skeletons";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
 import { useDynamicBreadcrumb } from "@/hooks/use-breadcrumb";
 import { useEffect, useState } from "react";
-
-const { Title } = Typography;
 
 interface UserRecord {
   id: string;
@@ -65,12 +64,12 @@ export default function EditUserPage() {
     }
   };
 
-  if (loading) return <Spin size="large" />;
+  if (loading) return <FormSkeleton fields={4} />;
   if (!user) return null;
 
   return (
     <>
-      <Title level={2}>{t("editUser")}</Title>
+      <PageHeader title={t("editUser")} />
       <UserForm
         initialValues={{
           email: user.email,

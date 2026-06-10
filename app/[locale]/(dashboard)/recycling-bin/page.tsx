@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Typography, Button, Space, Tag, App } from "antd";
+import { Button, Space, Tag, App } from "antd";
 import {
   UndoOutlined,
   DeleteOutlined,
@@ -11,9 +11,8 @@ import { useTranslations } from "next-intl";
 import { useNotify } from "@/hooks/use-notify";
 import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/shared/DataTable";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { apiClient } from "@/lib/api-client";
-
-const { Title } = Typography;
 
 interface DeletedItem {
   entityType: string;
@@ -176,7 +175,7 @@ export default function RecyclingBinPage() {
 
   return (
     <>
-      <Title level={2}>{t("title")}</Title>
+      <PageHeader title={t("title")} />
       <DataTable<DeletedItem>
         dataSource={items}
         columns={columns}

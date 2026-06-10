@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Typography, Card, Descriptions, Spin, Form, Input, Button, Divider } from "antd";
+import { Card, Descriptions, Form, Input, Button, Divider } from "antd";
 import { LockOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { PageSkeleton } from "@/components/shared/Skeletons";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
 
@@ -16,7 +18,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
 
-  if (status === "loading") return <Spin size="large" />;
+  if (status === "loading") return <PageSkeleton rows={6} />;
 
   const user = session?.user;
 
@@ -40,7 +42,7 @@ export default function ProfilePage() {
 
   return (
     <>
-      <Typography.Title level={2}>{t("profile")}</Typography.Title>
+      <PageHeader title={t("profile")} />
       <Card>
         <Descriptions column={1} bordered>
           <Descriptions.Item label={t("name")}>

@@ -1,14 +1,12 @@
 "use client";
 
-import { Typography } from "antd";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useCrud } from "@/hooks/use-crud";
 import { useNotify } from "@/hooks/use-notify";
 import { useState } from "react";
-
-const { Title } = Typography;
 
 type UserPayload = {
   id: string;
@@ -46,7 +44,7 @@ export default function NewUserPage() {
 
   return (
     <>
-      <Title level={2}>{t("createUser")}</Title>
+      <PageHeader title={t("createUser")} />
       <UserForm
         onSubmit={handleSubmit}
         onCancel={() => router.push(`/${locale}/users`)}
