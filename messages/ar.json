@@ -148,7 +148,12 @@
     "saveFailed": "تعذّر حفظ الإعدادات",
     "testOk": "الاتصال سليم",
     "testFailed": "فشل الاتصال",
-    "loadFailed": "تعذّر تحميل الإعدادات"
+    "loadFailed": "تعذّر تحميل الإعدادات",
+    "browserEngineTitle": "محرّك المتصفّح",
+    "browserEngineIntro": "يفتح Vibe Inspector الموقع المستهدف في متصفّح Chromium مُستضاف عبر Browserbase. أضِف معرّف مشروع Browserbase ومفتاح الـ API هنا. سجّل عبر",
+    "browserbaseProjectId": "معرّف مشروع Browserbase",
+    "browserbaseProjectIdRequired": "معرّف المشروع مطلوب",
+    "browserbaseApiKey": "مفتاح Browserbase API"
   },
   "auditLog": {
     "title": "سجل التدقيق",

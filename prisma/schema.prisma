@@ -270,3 +270,20 @@ model AiProviderConfig {
 
   @@map("ai_provider_config")
 }
+
+// Singleton browser-engine (Browserbase) configuration, set via Settings. Lets the
+// operator enter the Browserbase API key + project id in-app instead of as env vars.
+// apiKeyEnc is AES-256-GCM ciphertext (Restricted: scrubbed from audit via the
+// shared "apiKeyEnc" SCRUB_FIELDS entry, never returned to the client). When no row
+// exists, capture falls back to env (BROWSERBASE_API_KEY / BROWSERBASE_PROJECT_ID).
+// See ADR-016.
+model BrowserEngineConfig {
+  id        String   @id @default("singleton")
+  projectId String? // Browserbase project id (an identifier, not a secret)
+  apiKeyEnc String?  @db.Text // AES-256-GCM ciphertext; null = use env fallback
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("browser_engine_config")
+}

@@ -4,6 +4,7 @@ import { Typography, Card, Descriptions, Space } from "antd";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { AiProviderSettings } from "@/components/settings/AiProviderSettings";
+import { BrowserEngineSettings } from "@/components/settings/BrowserEngineSettings";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
@@ -25,8 +26,9 @@ export default function SettingsPage() {
           </Descriptions.Item>
         </Descriptions>
       </Card>
-      {/* AI provider config calls an admin-only API; only render it for admins. */}
+      {/* These call admin-only APIs; only render them for admins. */}
       {isAdmin && <AiProviderSettings />}
+      {isAdmin && <BrowserEngineSettings />}
     </Space>
   );
 }

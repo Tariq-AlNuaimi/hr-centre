@@ -148,7 +148,12 @@
     "saveFailed": "Could not save settings",
     "testOk": "Connection OK",
     "testFailed": "Connection failed",
-    "loadFailed": "Could not load settings"
+    "loadFailed": "Could not load settings",
+    "browserEngineTitle": "Browser engine",
+    "browserEngineIntro": "Vibe Inspector opens the target site in a hosted Chromium browser via Browserbase. Add your Browserbase project id + API key here. Sign up at",
+    "browserbaseProjectId": "Browserbase project ID",
+    "browserbaseProjectIdRequired": "Project ID is required",
+    "browserbaseApiKey": "Browserbase API key"
   },
   "auditLog": {
     "title": "Audit Log",

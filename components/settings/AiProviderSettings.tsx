@@ -111,8 +111,18 @@ export function AiProviderSettings() {
   const handleTest = async () => {
     setTesting(true);
     try {
+      // Test what's currently in the form (so a freshly-typed, unsaved key is
+      // exercised); a blank key falls back to the stored one server-side.
+      const v = form.getFieldsValue();
+      const payload: FormValues = {
+        provider: v.provider,
+        model: v.model,
+        baseUrl: v.provider === "OPENAI_COMPATIBLE" ? v.baseUrl : "",
+        ...(v.apiKey && v.apiKey.trim() ? { apiKey: v.apiKey.trim() } : {}),
+      };
       const res = await apiClient.post<{ ok: boolean; provider: string; model: string }>(
-        "/api/settings/ai-provider/test"
+        "/api/settings/ai-provider/test",
+        payload
       );
       success(`${t("testOk")} — ${res.model}`);
     } catch (err) {

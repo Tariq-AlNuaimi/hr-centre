@@ -6,11 +6,13 @@
 // needs: a screenshot, visible text, links, control counts, console errors, and
 // security-relevant response headers.
 //
-// Gated by BROWSERBASE_API_KEY + BROWSERBASE_PROJECT_ID. When unset, captureSite
-// throws a clear, actionable error so the run is recorded as FAILED (never a false
-// green) — the same graceful-degradation contract as lib/email.ts + SMTP_HOST.
+// Config (API key + project id) comes from Settings → Browser engine (DB) with an
+// env fallback — see lib/testing/browser-config.ts. When unset, captureSite throws a
+// clear, actionable error so the run is recorded as FAILED (never a false green) —
+// the same graceful-degradation contract as lib/email.ts + SMTP_HOST.
 
 import { chromium, type Response as PWResponse } from "playwright-core";
+import { resolveBrowserConfig } from "./browser-config";
 
 export interface CaptureResult {
   finalUrl: string;
@@ -47,19 +49,6 @@ interface BrowserbaseSession {
   id: string;
 }
 
-/** Throws with a configuration hint when the engine isn't set up. */
-function requireEngineConfig(): { apiKey: string; projectId: string } {
-  const apiKey = process.env.BROWSERBASE_API_KEY;
-  const projectId = process.env.BROWSERBASE_PROJECT_ID;
-  if (!apiKey || !projectId) {
-    throw new Error(
-      "Browser engine not configured. Set BROWSERBASE_API_KEY and " +
-        "BROWSERBASE_PROJECT_ID (see .env.example / ADR-016) to run a test."
-    );
-  }
-  return { apiKey, projectId };
-}
-
 async function createSession(apiKey: string, projectId: string): Promise<BrowserbaseSession> {
   const res = await fetch("https://api.browserbase.com/v1/sessions", {
     method: "POST",
@@ -78,7 +67,7 @@ async function createSession(apiKey: string, projectId: string): Promise<Browser
  * Timeouts are bounded so a slow target can't blow the function's maxDuration.
  */
 export async function captureSite(targetUrl: string): Promise<CaptureResult> {
-  const { apiKey, projectId } = requireEngineConfig();
+  const { apiKey, projectId } = await resolveBrowserConfig();
 
   const url = /^https?:\/\//i.test(targetUrl) ? targetUrl : `https://${targetUrl}`;
   const session = await createSession(apiKey, projectId);
