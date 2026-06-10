@@ -41,6 +41,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useTheme } from "@/components/layout/ThemeProvider";
+import { chartPalette } from "@/components/layout/antd-theme";
 
 export type ChartType = "line" | "bar" | "area" | "pie";
 
@@ -60,16 +61,7 @@ export interface ChartProps<T extends Record<string, unknown>> {
   colors?: string[];
 }
 
-const DEFAULT_COLORS = [
-  "#1677ff",
-  "#52c41a",
-  "#faad14",
-  "#f5222d",
-  "#722ed1",
-  "#13c2c2",
-  "#eb2f96",
-  "#fa8c16",
-];
+const DEFAULT_COLORS = chartPalette;
 
 export function Chart<T extends Record<string, unknown>>({
   type,
