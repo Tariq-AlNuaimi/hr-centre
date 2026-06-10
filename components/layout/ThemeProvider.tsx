@@ -2,7 +2,7 @@
 
 import { ConfigProvider, theme, App } from "antd";
 import { createContext, useContext, useEffect, useState } from "react";
-import { brandTokens } from "./antd-theme";
+import { buildTheme } from "./antd-theme";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -75,7 +75,7 @@ export function ThemeProvider({
         direction={direction}
         theme={{
           algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          token: brandTokens,
+          ...buildTheme(isDark),
         }}
       >
         <App>{children}</App>
