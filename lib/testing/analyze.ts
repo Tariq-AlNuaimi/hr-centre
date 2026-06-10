@@ -333,7 +333,10 @@ async function callOpenAICompatible(
       ],
       // Generous ceiling so the JSON isn't truncated by a small provider default.
       max_tokens: 6000,
-      response_format: { type: "json_object" },
+      // NOTE: deliberately NOT setting response_format: json_object. Through some
+      // proxies (e.g. LiteLLM → Anthropic) it routes the answer into a tool call
+      // and leaves message.content empty. The strong shape hint + tolerant parse
+      // produces JSON reliably across providers instead.
     }),
   });
   if (!res.ok) {
@@ -342,15 +345,24 @@ async function callOpenAICompatible(
     throw new Error(`Provider error (${res.status}): ${redactSecret(body, cfg.apiKey).slice(0, 300)}`);
   }
   const data = (await res.json()) as {
-    choices?: { message?: { content?: string | { text?: string }[] } }[];
+    choices?: {
+      message?: {
+        content?: string | { text?: string }[];
+        reasoning_content?: string;
+        tool_calls?: { function?: { arguments?: string } }[];
+      };
+    }[];
   };
-  // content is usually a string, but some OpenAI-compatible shims return an array
-  // of content parts — handle both.
-  const raw = data.choices?.[0]?.message?.content;
-  const content = Array.isArray(raw)
-    ? raw.map((p) => (typeof p === "string" ? p : p?.text ?? "")).join("")
-    : raw;
-  if (!content) throw new Error("Provider returned an empty response");
+  const msg = data.choices?.[0]?.message;
+  const rawContent = msg?.content;
+  // content is usually a string; some shims return an array of parts, route the
+  // JSON into a tool call's arguments, or only fill reasoning_content.
+  let content = Array.isArray(rawContent)
+    ? rawContent.map((p) => (typeof p === "string" ? p : p?.text ?? "")).join("")
+    : rawContent ?? "";
+  if (!content.trim()) content = msg?.tool_calls?.[0]?.function?.arguments ?? "";
+  if (!content.trim()) content = msg?.reasoning_content ?? "";
+  if (!content.trim()) throw new Error("Provider returned an empty response");
   return { value: parseJsonLoose(content), raw: content };
 }
 
