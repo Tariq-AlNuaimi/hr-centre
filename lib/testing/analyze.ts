@@ -14,6 +14,7 @@ import type { TestDimension } from "@/generated/prisma/client";
 import { DIMENSION_META } from "./dimensions";
 import type { CaptureResult } from "./capture";
 import { resolveAiConfig, type ResolvedAiConfig } from "./ai-config";
+import { DIMENSION_RUBRIC } from "./rubrics";
 import { redactSecret } from "@/lib/secret-box";
 
 // -- Runtime validation schemas (zod 3) --
@@ -424,6 +425,9 @@ export async function analyzeDimension(
       ? `This dimension is ADVISORY — frame findings as judgement, not authoritative facts.`
       : ``,
     ``,
+    `--- Methodology / rubric to grade against ---`,
+    DIMENSION_RUBRIC[dimension],
+    ``,
     `--- Business requirements / scope of work ---`,
     brdText.trim() ? brdText.slice(0, 12_000) : "(none provided)",
     ``,
@@ -454,6 +458,9 @@ export async function analyzeBrdCoverage(
     `against the captured page as MET, PARTIAL, or MISSING with brief evidence. Score = the`,
     `share of requirements satisfactorily met (weight PARTIAL ~0.5). Add findings for the most`,
     `important gaps.`,
+    ``,
+    `--- Methodology / rubric to grade against ---`,
+    DIMENSION_RUBRIC.BRD_COVERAGE,
     ``,
     `--- Business requirements / scope of work ---`,
     brdText.trim() ? brdText.slice(0, 14_000) : "(none provided — note this and score 0)",

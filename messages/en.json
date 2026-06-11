@@ -245,6 +245,8 @@
     "password": "Password",
     "cookie": "Session cookie",
     "addRole": "Add role",
-    "runRole": "Role"
+    "runRole": "Role",
+    "downloadPdf": "Download PDF",
+    "pdfFailed": "Could not generate the PDF"
   }
 }

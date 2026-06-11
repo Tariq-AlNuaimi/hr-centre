@@ -19,6 +19,7 @@ import WebSocket from "ws";
 import axe from "axe-core";
 import { resolveBrowserConfig } from "./browser-config";
 import { isSafePublicUrl } from "@/lib/validations/url-safety";
+import { redactSecret } from "@/lib/secret-box";
 
 export interface AxeViolation {
   id: string;
@@ -77,13 +78,13 @@ const SECURITY_HEADER_NAMES = [
   "x-xss-protection",
 ];
 
-const CONNECT_BASE = "wss://connect.browserbase.com";
+export const CONNECT_BASE = "wss://connect.browserbase.com";
 
 interface BrowserbaseSession {
   id: string;
 }
 
-async function createSession(apiKey: string, projectId: string): Promise<BrowserbaseSession> {
+export async function createSession(apiKey: string, projectId: string): Promise<BrowserbaseSession> {
   const res = await fetch("https://api.browserbase.com/v1/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-BB-API-Key": apiKey },
@@ -102,7 +103,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 type CdpParams = Record<string, unknown>;
 type EventHandler = (params: CdpParams, sessionId?: string) => void;
 
-class Cdp {
+export class Cdp {
   private nextId = 1;
   private pending = new Map<number, { resolve: (v: CdpParams) => void; reject: (e: Error) => void }>();
   private handlers = new Map<string, EventHandler[]>();
@@ -321,7 +322,8 @@ export async function captureSite(targetUrl: string, auth?: CaptureAuth): Promis
       });
       ws.once("error", (e) => {
         clearTimeout(timer);
-        reject(e);
+        // Scrub the API key — the connect URL (which some ws errors echo) carries it.
+        reject(new Error(redactSecret(e instanceof Error ? e.message : String(e), apiKey)));
       });
     });
 

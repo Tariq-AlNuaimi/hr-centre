@@ -13,7 +13,7 @@ import {
   Spin,
   Popconfirm,
 } from "antd";
-import { ThunderboltOutlined, DeleteOutlined } from "@ant-design/icons";
+import { ThunderboltOutlined, DeleteOutlined, FilePdfOutlined } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -62,6 +62,7 @@ export default function AssessmentDetailPage() {
   const [selectedRun, setSelectedRun] = useState<ReportRun | null>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [loadingRun, setLoadingRun] = useState(false);
 
   // Guards for the background poll loop: stop on unmount, and cancel a prior poll
@@ -160,6 +161,31 @@ export default function AssessmentDetailPage() {
       if (active()) showError(err instanceof Error ? err.message : t("runFailedGeneric"));
     } finally {
       if (mountedRef.current && pollTokenRef.current === myToken) setRunning(false);
+    }
+  };
+
+  const handleDownloadPdf = async (runId: string) => {
+    setPdfLoading(true);
+    try {
+      // Binary download — bypass the JSON apiClient.
+      const res = await fetch(`/api/runs/${runId}/pdf`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? t("pdfFailed"));
+      }
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `vibe-inspector-${runId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      showError(e instanceof Error ? e.message : t("pdfFailed"));
+    } finally {
+      setPdfLoading(false);
     }
   };
 
@@ -266,7 +292,20 @@ export default function AssessmentDetailPage() {
           <Spin />
         </div>
       ) : selectedRun ? (
-        <RunReport run={selectedRun} />
+        <>
+          {selectedRun.status === "COMPLETED" && (
+            <div style={{ textAlign: "right" }}>
+              <Button
+                icon={<FilePdfOutlined />}
+                loading={pdfLoading}
+                onClick={() => handleDownloadPdf(selectedRun.id)}
+              >
+                {t("downloadPdf")}
+              </Button>
+            </div>
+          )}
+          <RunReport run={selectedRun} />
+        </>
       ) : (
         !running &&
         assessment.runs.length === 0 && (
