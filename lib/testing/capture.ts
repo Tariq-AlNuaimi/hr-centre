@@ -1,23 +1,50 @@
 // Vibe Inspector — site capture via Browserbase over raw CDP (ADR-016).
 //
 // We talk to the remote Chromium directly over the Chrome DevTools Protocol on a
-// WebSocket (the `ws` client) instead of bundling playwright-core — a heavy package
-// whose data files don't trace cleanly into a Vercel serverless function. CDP gives
-// us exactly what the analysis layer needs: a screenshot, visible text, links,
-// control counts, the main-document status + security headers.
+// WebSocket (the `ws` client) instead of bundling playwright-core. One session
+// collects everything the analysis layer needs for a comprehensive audit:
+//   • desktop + mobile screenshots (design / responsive)
+//   • visible text, links, control counts (functionality / BRD coverage)
+//   • console + runtime errors (functionality)
+//   • performance metrics — load timing, request count, transfer size
+//   • accessibility violations via an injected axe-core scan
+//   • main-document status + security headers
+//   • broken internal links (HEAD-checked from the function)
 //
-// Config (API key + project id) comes from Settings → Browser engine (DB) with an
-// env fallback — see lib/testing/browser-config.ts. When unset, captureSite throws
-// a clear, actionable error so the run is recorded as FAILED (never a false green).
+// Config comes from Settings → Browser engine (DB) with an env fallback — see
+// lib/testing/browser-config.ts. When unset, captureSite throws a clear error so the
+// run is recorded as FAILED (never a false green).
 
 import WebSocket from "ws";
+import axe from "axe-core";
 import { resolveBrowserConfig } from "./browser-config";
+import { isSafePublicUrl } from "@/lib/validations/url-safety";
+
+export interface AxeViolation {
+  id: string;
+  impact: string; // critical | serious | moderate | minor
+  help: string;
+  nodes: number;
+}
+
+export interface PerfMetrics {
+  loadMs: number;
+  domContentLoadedMs: number;
+  requestCount: number;
+  transferKb: number;
+}
+
+export interface BrokenLink {
+  url: string;
+  status: number; // HTTP status, or 0 for unreachable/timeout
+}
 
 export interface CaptureResult {
   finalUrl: string;
   title: string;
   status: number | null;
-  screenshotBase64: string;
+  screenshotBase64: string; // desktop
+  mobileScreenshotBase64: string; // mobile (may be "" if it failed)
   screenshotMediaType: "image/png";
   visibleText: string;
   links: string[];
@@ -25,6 +52,9 @@ export interface CaptureResult {
   formsCount: number;
   inputsCount: number;
   consoleErrors: string[];
+  perf: PerfMetrics;
+  axeViolations: AxeViolation[];
+  brokenLinks: BrokenLink[];
   securityHeaders: Record<string, string>;
   isHttps: boolean;
 }
@@ -93,7 +123,6 @@ class Cdp {
     this.handlers.set(method, arr);
   }
 
-  /** Resolve when `method` fires matching `predicate`, or reject after `timeoutMs`. */
   waitFor(method: string, predicate: (p: CdpParams, sid?: string) => boolean, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`Timed out waiting for ${method}`)), timeoutMs);
@@ -131,7 +160,6 @@ class Cdp {
   }
 }
 
-// Runs in the page; returns the DOM signals the analysis layer uses.
 const PAGE_SCRIPT = `(() => {
   const text = (document.body && document.body.innerText || "").replace(/\\s+/g, " ").trim();
   const hrefs = Array.from(document.querySelectorAll("a[href]"))
@@ -147,9 +175,87 @@ const PAGE_SCRIPT = `(() => {
   };
 })()`;
 
+const PERF_SCRIPT = `(() => {
+  const nav = (performance.getEntriesByType("navigation")[0] || {});
+  const res = performance.getEntriesByType("resource") || [];
+  const transfer = res.reduce((s, r) => s + (r.transferSize || 0), 0) + (nav.transferSize || 0);
+  return {
+    loadMs: Math.max(0, Math.round(nav.loadEventEnd || 0)),
+    domContentLoadedMs: Math.max(0, Math.round(nav.domContentLoadedEventEnd || 0)),
+    requestCount: res.length + 1,
+    transferKb: Math.round(transfer / 1024),
+  };
+})()`;
+
+// Runs axe-core (already injected) and returns a compact violations list.
+const AXE_RUN_SCRIPT = `(async () => {
+  try {
+    const r = await axe.run(document, { resultTypes: ["violations"] });
+    return r.violations.slice(0, 60).map((v) => ({ id: v.id, impact: v.impact || "minor", help: v.help, nodes: v.nodes.length }));
+  } catch (e) { return []; }
+})()`;
+
+const EMPTY_PERF: PerfMetrics = { loadMs: 0, domContentLoadedMs: 0, requestCount: 0, transferKb: 0 };
+
+interface PageData {
+  finalUrl: string;
+  title: string;
+  text: string;
+  links: string[];
+  buttonsCount: number;
+  formsCount: number;
+  inputsCount: number;
+}
+const EMPTY_PAGE: PageData = {
+  finalUrl: "",
+  title: "",
+  text: "",
+  links: [],
+  buttonsCount: 0,
+  formsCount: 0,
+  inputsCount: 0,
+};
+
+// HEAD-check a bounded sample of links on the ORIGINAL target host; flag 4xx/5xx/
+// unreachable. SSRF-guarded: anchored to the operator-validated target host (not the
+// post-redirect finalUrl), each link re-validated as a public URL, and redirects are
+// NOT followed (a 3xx Location can't drag us onto an internal/metadata host).
+async function checkBrokenLinks(links: string[], targetHost: string): Promise<BrokenLink[]> {
+  if (!targetHost) return [];
+  const sample = links
+    .filter((l) => {
+      try {
+        return new URL(l).hostname === targetHost && isSafePublicUrl(l);
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, 12);
+
+  const broken: BrokenLink[] = [];
+  await Promise.all(
+    sample.map(async (l) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      try {
+        let r = await fetch(l, { method: "HEAD", redirect: "manual", signal: controller.signal });
+        // Some servers reject HEAD (405) — retry with GET before judging.
+        if (r.status === 405) r = await fetch(l, { method: "GET", redirect: "manual", signal: controller.signal });
+        // 3xx is a redirect we deliberately don't follow — not "broken".
+        if (r.status >= 400) broken.push({ url: l, status: r.status });
+      } catch {
+        broken.push({ url: l, status: 0 });
+      } finally {
+        clearTimeout(timer);
+      }
+    })
+  );
+  return broken;
+}
+
 /**
- * Capture a single page. The target URL is normalised to include a protocol.
- * Timeouts are bounded so a slow target can't blow the function's maxDuration.
+ * Capture a single page comprehensively. Timeouts are bounded so a slow target
+ * can't blow the function's maxDuration.
  */
 export async function captureSite(targetUrl: string): Promise<CaptureResult> {
   const { apiKey, projectId } = await resolveBrowserConfig();
@@ -173,16 +279,31 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
     });
 
     const cdp = new Cdp(ws);
-
     const { targetId } = (await cdp.send("Target.createTarget", { url: "about:blank" })) as { targetId: string };
-    const { sessionId } = (await cdp.send("Target.attachToTarget", {
-      targetId,
-      flatten: true,
-    })) as { sessionId: string };
+    const { sessionId } = (await cdp.send("Target.attachToTarget", { targetId, flatten: true })) as {
+      sessionId: string;
+    };
 
     await cdp.send("Page.enable", {}, sessionId);
     await cdp.send("Network.enable", {}, sessionId);
     await cdp.send("Runtime.enable", {}, sessionId);
+
+    // Console + runtime errors.
+    const consoleErrors: string[] = [];
+    const CONSOLE_CAP = 100; // bound memory against a hostile/noisy page
+    cdp.on("Runtime.consoleAPICalled", (p, sid) => {
+      if (sid !== sessionId || p.type !== "error" || consoleErrors.length >= CONSOLE_CAP) return;
+      const args = (p.args as { value?: unknown; description?: string }[] | undefined) ?? [];
+      const text = args.map((a) => String(a.value ?? a.description ?? "")).join(" ");
+      if (text) consoleErrors.push(text.slice(0, 300));
+    });
+    cdp.on("Runtime.exceptionThrown", (p, sid) => {
+      if (sid !== sessionId || consoleErrors.length >= CONSOLE_CAP) return;
+      const d = p.exceptionDetails as { text?: string; exception?: { description?: string } } | undefined;
+      const text = d?.exception?.description ?? d?.text ?? "";
+      if (text) consoleErrors.push(String(text).slice(0, 300));
+    });
+
     await cdp
       .send(
         "Emulation.setDeviceMetricsOverride",
@@ -191,12 +312,11 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
       )
       .catch(() => {});
 
-    // Capture the main-document response (status + headers) as it arrives.
+    // Main-document status + security headers.
     let status: number | null = null;
     const rawHeaders: Record<string, string> = {};
     cdp.on("Network.responseReceived", (params, sid) => {
-      if (sid !== sessionId) return;
-      if (params.type !== "Document" || status !== null) return;
+      if (sid !== sessionId || params.type !== "Document" || status !== null) return;
       const response = params.response as { status?: number; headers?: Record<string, string> } | undefined;
       if (response) {
         status = response.status ?? null;
@@ -210,23 +330,69 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
     } catch (navErr) {
       throw new Error(`Could not load ${url}: ${navErr instanceof Error ? navErr.message : String(navErr)}`);
     }
-    // Wait for load, but don't fail the whole run if 'load' never fires (SPAs) —
-    // proceed after the bound and capture whatever rendered.
     await loaded.catch(() => {});
     await sleep(1000);
 
+    // Desktop screenshot.
     const { data: screenshotBase64 } = (await cdp.send(
       "Page.captureScreenshot",
       { format: "png", captureBeyondViewport: false },
       sessionId
     )) as { data: string };
 
-    const evalRes = (await cdp.send(
+    // DOM signals.
+    const domRes = (await cdp.send(
       "Runtime.evaluate",
-      { expression: PAGE_SCRIPT, returnByValue: true, awaitPromise: false },
+      { expression: PAGE_SCRIPT, returnByValue: true },
       sessionId
-    )) as { result?: { value?: PageData }; exceptionDetails?: unknown };
-    const page: PageData = evalRes.result?.value ?? EMPTY_PAGE;
+    )) as { result?: { value?: PageData } };
+    const page: PageData = domRes.result?.value ?? EMPTY_PAGE;
+
+    // Performance metrics.
+    let perf: PerfMetrics = EMPTY_PERF;
+    try {
+      const perfRes = (await cdp.send(
+        "Runtime.evaluate",
+        { expression: PERF_SCRIPT, returnByValue: true },
+        sessionId
+      )) as { result?: { value?: PerfMetrics } };
+      if (perfRes.result?.value) perf = perfRes.result.value;
+    } catch {
+      /* leave EMPTY_PERF */
+    }
+
+    // Accessibility — inject axe-core, then run it.
+    let axeViolations: AxeViolation[] = [];
+    try {
+      await cdp.send("Runtime.evaluate", { expression: axe.source }, sessionId);
+      const axeRes = (await cdp.send(
+        "Runtime.evaluate",
+        { expression: AXE_RUN_SCRIPT, awaitPromise: true, returnByValue: true },
+        sessionId
+      )) as { result?: { value?: AxeViolation[] } };
+      if (Array.isArray(axeRes.result?.value)) axeViolations = axeRes.result!.value!;
+    } catch {
+      /* axe unavailable — leave empty */
+    }
+
+    // Mobile screenshot (responsive).
+    let mobileScreenshotBase64 = "";
+    try {
+      await cdp.send(
+        "Emulation.setDeviceMetricsOverride",
+        { width: 390, height: 844, deviceScaleFactor: 2, mobile: true },
+        sessionId
+      );
+      await sleep(600);
+      const shot = (await cdp.send(
+        "Page.captureScreenshot",
+        { format: "png", captureBeyondViewport: false },
+        sessionId
+      )) as { data: string };
+      mobileScreenshotBase64 = shot.data;
+    } catch {
+      /* mobile capture optional */
+    }
 
     await cdp.send("Target.closeTarget", { targetId }).catch(() => {});
 
@@ -237,18 +403,32 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
     }
 
     const finalUrl = page.finalUrl || url;
+    // Anchor the broken-link check to the ORIGINAL validated target host, never the
+    // (potentially redirected) finalUrl — see checkBrokenLinks SSRF note.
+    let targetHost = "";
+    try {
+      targetHost = new URL(url).hostname;
+    } catch {
+      /* leave empty -> no link checks */
+    }
+    const brokenLinks = await checkBrokenLinks(page.links, targetHost);
+
     return {
       finalUrl,
       title: page.title,
       status,
       screenshotBase64,
+      mobileScreenshotBase64,
       screenshotMediaType: "image/png",
       visibleText: page.text,
       links: page.links,
       buttonsCount: page.buttonsCount,
       formsCount: page.formsCount,
       inputsCount: page.inputsCount,
-      consoleErrors: [], // not collected over raw CDP in the MVP
+      consoleErrors: consoleErrors.slice(0, 50),
+      perf,
+      axeViolations,
+      brokenLinks,
       securityHeaders,
       isHttps: finalUrl.startsWith("https://"),
     };
@@ -260,23 +440,3 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
     }
   }
 }
-
-interface PageData {
-  finalUrl: string;
-  title: string;
-  text: string;
-  links: string[];
-  buttonsCount: number;
-  formsCount: number;
-  inputsCount: number;
-}
-
-const EMPTY_PAGE: PageData = {
-  finalUrl: "",
-  title: "",
-  text: "",
-  links: [],
-  buttonsCount: 0,
-  formsCount: 0,
-  inputsCount: 0,
-};

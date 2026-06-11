@@ -228,15 +228,37 @@ there are critical/high problems, WARN for medium gaps, PASS only when genuinely
 Keep findings actionable; use "" for recommendation/evidence when none applies.`;
 
 function captureContext(capture: CaptureResult): string {
+  const axeByImpact: Record<string, number> = {};
+  for (const v of capture.axeViolations) axeByImpact[v.impact] = (axeByImpact[v.impact] ?? 0) + 1;
+  const axeSummary =
+    capture.axeViolations.length === 0
+      ? "none detected by axe-core"
+      : `${capture.axeViolations.length} (${Object.entries(axeByImpact)
+          .map(([k, n]) => `${n} ${k}`)
+          .join(", ")})`;
+  const axeTop = capture.axeViolations
+    .slice(0, 12)
+    .map((v) => `${v.impact}: ${v.id} — ${v.help} (${v.nodes} node${v.nodes === 1 ? "" : "s"})`)
+    .join("\n");
+  const broken =
+    capture.brokenLinks.length === 0
+      ? "none found among sampled internal links"
+      : capture.brokenLinks.map((b) => `${b.status || "unreachable"} ${b.url}`).join(" | ");
+
   return [
     `URL: ${capture.finalUrl}`,
     `Title: ${capture.title || "(none)"}`,
     `HTTP status: ${capture.status ?? "unknown"} | HTTPS: ${capture.isHttps}`,
     `Controls: ${capture.buttonsCount} buttons, ${capture.formsCount} forms, ${capture.inputsCount} inputs`,
     `Security headers present: ${Object.keys(capture.securityHeaders).join(", ") || "NONE"}`,
-    `Console errors (${capture.consoleErrors.length}): ${
+    `Performance: load ${capture.perf.loadMs}ms, DOMContentLoaded ${capture.perf.domContentLoadedMs}ms, ` +
+      `${capture.perf.requestCount} requests, ${capture.perf.transferKb} KB transferred`,
+    `Accessibility (axe-core) violations: ${axeSummary}`,
+    axeTop ? `Top axe violations:\n${axeTop}` : ``,
+    `Console/runtime errors (${capture.consoleErrors.length}): ${
       capture.consoleErrors.slice(0, 15).join(" | ") || "none"
     }`,
+    `Broken internal links: ${broken}`,
     `Links (${capture.links.length}): ${capture.links.slice(0, 40).join(", ")}`,
     ``,
     `Visible text (truncated):`,
@@ -266,33 +288,34 @@ async function callAnthropic(
   prompt: string,
   capture: CaptureResult,
   jsonSchema: Record<string, unknown>,
-  schemaName: string
+  schemaName: string,
+  mobileImageBase64?: string
 ): Promise<RawAnalysis> {
   const client = new Anthropic({ apiKey: cfg.apiKey });
+  const content: Anthropic.ContentBlockParam[] = [
+    {
+      type: "text",
+      text: mobileImageBase64
+        ? `${prompt}\n\nTwo screenshots are attached: the first is DESKTOP, the second is MOBILE. Judge responsiveness across both.`
+        : `${prompt}\n\nThe attached screenshot is the rendered page; use it for visual judgement.`,
+    },
+    {
+      type: "image",
+      source: { type: "base64", media_type: capture.screenshotMediaType, data: capture.screenshotBase64 },
+    },
+  ];
+  if (mobileImageBase64) {
+    content.push({
+      type: "image",
+      source: { type: "base64", media_type: capture.screenshotMediaType, data: mobileImageBase64 },
+    });
+  }
   const response = await client.messages.create({
     model: cfg.model,
     max_tokens: 16000,
     thinking: { type: "adaptive" },
     system: SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `${prompt}\n\nThe attached screenshot is the rendered page; use it for visual judgement.`,
-          },
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: capture.screenshotMediaType,
-              data: capture.screenshotBase64,
-            },
-          },
-        ],
-      },
-    ],
+    messages: [{ role: "user", content }],
     output_config: { format: { type: "json_schema", schema: jsonSchema } },
   });
   if (response.stop_reason === "max_tokens") {
@@ -376,11 +399,12 @@ async function runAnalysis(
   capture: CaptureResult,
   jsonSchema: Record<string, unknown>,
   shapeHint: string,
-  schemaName: string
+  schemaName: string,
+  mobileImageBase64?: string
 ): Promise<RawAnalysis> {
   const cfg = await resolveAiConfig();
   if (cfg.provider === "ANTHROPIC") {
-    return callAnthropic(cfg, prompt, capture, jsonSchema, schemaName);
+    return callAnthropic(cfg, prompt, capture, jsonSchema, schemaName, mobileImageBase64);
   }
   // OpenAI-compatible: the schema isn't enforced server-side, so embed the shape.
   return callOpenAICompatible(cfg, `${prompt}\n\n${shapeHint}`);
@@ -412,7 +436,9 @@ export async function analyzeDimension(
     capture,
     dimensionJsonSchema,
     DIMENSION_SHAPE_HINT,
-    "dimension_analysis"
+    "dimension_analysis",
+    // Mobile screenshot only matters for the Design dimension (vision path).
+    dimension === "DESIGN" ? capture.mobileScreenshotBase64 || undefined : undefined
   );
   return dimensionSchema.parse(normalizeDimension(value, raw));
 }

@@ -20,8 +20,10 @@ enum Role {
 // The testing dimensions a run can cover. Stored on Assessment.dimensions as a
 // String[] of these names (Prisma enum arrays are supported on Postgres).
 enum TestDimension {
-  DESIGN // visual / UX fidelity + accessibility
-  FUNCTIONALITY // flows, buttons, broken links, runtime errors, behavior vs BRD
+  DESIGN // visual / UX fidelity (desktop + mobile)
+  ACCESSIBILITY // axe-core WCAG violations
+  PERFORMANCE // load timing, request count, transfer size
+  FUNCTIONALITY // flows, buttons, broken links, runtime/console errors, behavior vs BRD
   BRD_COVERAGE // requirement-by-requirement traceability against the scope
   SECURITY // lightweight: TLS, headers, exposed info (NOT a pentest)
   BENCHMARK // comparison vs named peer products (advisory / judgment)

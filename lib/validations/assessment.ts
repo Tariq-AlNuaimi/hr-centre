@@ -6,6 +6,8 @@ import { isPrivateHost } from "./url-safety";
 
 export const DIMENSION_VALUES = [
   "DESIGN",
+  "ACCESSIBILITY",
+  "PERFORMANCE",
   "FUNCTIONALITY",
   "BRD_COVERAGE",
   "SECURITY",

@@ -7,6 +7,8 @@ import type { TestDimension } from "@/generated/prisma/client";
 
 export const DIMENSION_ORDER: TestDimension[] = [
   "DESIGN",
+  "ACCESSIBILITY",
+  "PERFORMANCE",
   "FUNCTIONALITY",
   "BRD_COVERAGE",
   "SECURITY",
@@ -27,9 +29,28 @@ export const DIMENSION_META: Record<TestDimension, DimensionMeta> = {
     label: "Design fidelity",
     short: "Design",
     brief:
-      "Visual and UX quality: layout, hierarchy, spacing, typography, colour, " +
-      "responsiveness signals, and obvious accessibility issues (contrast, alt text, " +
-      "focus order). Judge against the BRD's intent and general design heuristics.",
+      "Visual and UX quality across the desktop AND mobile screenshots: layout, hierarchy, " +
+      "spacing, typography, colour, responsiveness (does the mobile view hold up?), and " +
+      "design polish. Judge against the BRD's intent and general design heuristics.",
+    advisory: false,
+  },
+  ACCESSIBILITY: {
+    label: "Accessibility (a11y)",
+    short: "A11y",
+    brief:
+      "WCAG accessibility, grounded in the axe-core scan results provided (violations by " +
+      "impact: critical/serious/moderate/minor). Summarise the most important violations, who " +
+      "they affect, and how to fix them. Score from the count + severity of real violations; " +
+      "do not invent issues beyond axe + what's visible.",
+    advisory: false,
+  },
+  PERFORMANCE: {
+    label: "Performance",
+    short: "Perf",
+    brief:
+      "Front-end performance from the captured metrics: load time, DOMContentLoaded, number of " +
+      "requests, and total transfer size. Flag slow loads, heavy pages, and excessive requests; " +
+      "suggest concrete wins. Score against common web-performance norms (fast < 2.5s LCP-ish).",
     advisory: false,
   },
   FUNCTIONALITY: {

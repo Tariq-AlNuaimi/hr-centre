@@ -105,7 +105,7 @@ export async function executeRun(runId: string): Promise<void> {
       | { dimension: TestDimension; kind: "dim"; dim: DimensionAnalysis }
       | { dimension: TestDimension; kind: "error"; error: string };
 
-    const analyses: Outcome[] = await mapLimit(selected, 3, async (dimension): Promise<Outcome> => {
+    const analyses: Outcome[] = await mapLimit(selected, 4, async (dimension): Promise<Outcome> => {
       try {
         if (dimension === "BRD_COVERAGE") {
           return { dimension, kind: "coverage", coverage: await analyzeBrdCoverage(capture, assessment.brdText) };
