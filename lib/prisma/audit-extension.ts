@@ -20,6 +20,8 @@ export const SCRUB_FIELDS = new Set([
   "apiKey",
   "api_key",
   "apiKeyEnc",
+  "passwordEnc",
+  "cookieEnc",
 ]);
 
 export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {

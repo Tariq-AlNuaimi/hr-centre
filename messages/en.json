@@ -228,6 +228,23 @@
     "requirementCoverage": "Requirement coverage",
     "findings": "Findings",
     "noFindings": "No findings for this dimension.",
-    "runTimeout": "The request timed out, but the run may still be finishing. Refreshing — check the run history in a moment."
+    "runTimeout": "The request timed out, but the run may still be finishing. Refreshing — check the run history in a moment.",
+    "authentication": "Authentication",
+    "authHint": "If the site (or pages you want audited) require login, configure it here. The audit runs once per role.",
+    "authNone": "None (public)",
+    "authForm": "Form login",
+    "authCookie": "Session cookie",
+    "loginUrl": "Login page URL",
+    "loginUrlHint": "The page with the username + password form. The tool fills and submits it before capturing.",
+    "loginUrlRequired": "Login URL is required for form login",
+    "rolesFormHint": "Add one row per role to test (e.g. Admin, Editor, Viewer). The audit runs once for each.",
+    "rolesCookieHint": "Paste a pre-authenticated cookie per role (from your browser's devtools). Use this for SSO/MFA logins.",
+    "roleRequired": "Role label is required",
+    "rolePlaceholder": "Role (e.g. Admin)",
+    "username": "Username / email",
+    "password": "Password",
+    "cookie": "Session cookie",
+    "addRole": "Add role",
+    "runRole": "Role"
   }
 }

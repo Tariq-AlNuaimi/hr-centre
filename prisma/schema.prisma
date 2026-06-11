@@ -64,6 +64,13 @@ enum AiProvider {
   OPENAI_COMPATIBLE // any /chat/completions endpoint: self-hosted LiteLLM, OpenAI, OpenRouter, Gemini-compat
 }
 
+// How Vibe Inspector authenticates to a target before capturing (ADR-016).
+enum AuthMode {
+  NONE // public site, capture as anonymous (default)
+  FORM // log in via a username/password form before capturing
+  COOKIE // set a pre-authenticated session cookie/header (SSO/MFA workaround)
+}
+
 // -- Auth.js Models --
 
 model User {
@@ -170,10 +177,15 @@ model Assessment {
   brdText    String          @db.Text
   dimensions TestDimension[]
 
+  // Authentication to the target (ADR-016). NONE = capture as anonymous.
+  authMode AuthMode @default(NONE)
+  loginUrl String? // FORM mode: the page to submit credentials on
+
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
-  runs TestRun[]
+  runs        TestRun[]
+  credentials AssessmentCredential[]
 
   // Soft deletion
   deletedAt DateTime?
@@ -187,6 +199,25 @@ model Assessment {
   @@map("assessments")
 }
 
+// A role + its login secret for an authenticated assessment. The audit runs once
+// per credential so each role's experience is captured. Secrets are encrypted at
+// rest (AES-256-GCM via lib/secret-box) and scrubbed from audit (SCRUB_FIELDS) —
+// never returned to the client. See ADR-016.
+model AssessmentCredential {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  role         String // display label, e.g. "Admin", "Editor", "Viewer"
+  username     String? // FORM mode
+  passwordEnc  String?    @db.Text // FORM mode (encrypted)
+  cookieEnc    String?    @db.Text // COOKIE mode: "name=value; name2=value2" (encrypted)
+  order        Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([assessmentId])
+  @@map("assessment_credentials")
+}
+
 // One execution of an assessment. Run artifacts (results/findings/coverage) are
 // machine-generated and cascade-delete with the run.
 model TestRun {
@@ -194,6 +225,7 @@ model TestRun {
   assessmentId String
   assessment   Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   status       RunStatus    @default(PENDING)
+  role         String? // which credential/role this run audited (null = anonymous)
   overallScore Float? // 0-100, average of dimension scores
   summary      String?      @db.Text
   error        String?      @db.Text // populated on FAILED

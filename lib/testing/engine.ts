@@ -9,9 +9,32 @@
 // FAILED with the reason — it never reports a false green.
 
 import { prisma } from "@/lib/prisma";
-import type { TestDimension } from "@/generated/prisma/client";
+import { tryDecryptSecret } from "@/lib/secret-box";
+import type { TestDimension, Assessment, AssessmentCredential } from "@/generated/prisma/client";
 import { DIMENSION_ORDER, DIMENSION_META } from "./dimensions";
-import { captureSite } from "./capture";
+import { captureSite, type CaptureAuth } from "./capture";
+
+// Build the capture auth for a run's role from the assessment + its credentials.
+function buildAuth(
+  assessment: Assessment & { credentials: AssessmentCredential[] },
+  role: string | null
+): CaptureAuth | undefined {
+  if (assessment.authMode === "NONE") return undefined;
+  const cred = assessment.credentials.find((c) => c.role === role) ?? assessment.credentials[0];
+  if (!cred) return undefined;
+  if (assessment.authMode === "FORM") {
+    return {
+      mode: "FORM",
+      loginUrl: assessment.loginUrl ?? undefined,
+      username: cred.username ?? "",
+      password: tryDecryptSecret(cred.passwordEnc) ?? "",
+    };
+  }
+  if (assessment.authMode === "COOKIE") {
+    return { mode: "COOKIE", cookie: tryDecryptSecret(cred.cookieEnc) ?? "" };
+  }
+  return undefined;
+}
 import {
   analyzeDimension,
   analyzeBrdCoverage,
@@ -76,7 +99,7 @@ export async function executeRun(runId: string): Promise<void> {
   try {
     const run = await prisma.testRun.findUnique({
       where: { id: runId },
-      include: { assessment: true },
+      include: { assessment: { include: { credentials: true } } },
     });
     if (!run || !run.assessment) {
       throw new Error("Run or its assessment not found");
@@ -88,7 +111,8 @@ export async function executeRun(runId: string): Promise<void> {
       data: { status: "RUNNING", startedAt: new Date() },
     });
 
-    const capture = await captureSite(assessment.targetUrl);
+    const auth = buildAuth(assessment, run.role);
+    const capture = await captureSite(assessment.targetUrl, auth);
     await prisma.testRun.update({ where: { id: runId }, data: { finalUrl: capture.finalUrl } });
 
     const selected = DIMENSION_ORDER.filter((d) => assessment.dimensions.includes(d));

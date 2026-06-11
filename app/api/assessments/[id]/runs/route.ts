@@ -36,29 +36,41 @@ export const GET = withAuth(async (_request: NextRequest, { params }) => {
 export const POST = withRateLimit(
   withEditorAuth(async (_request: NextRequest, { params, session }) => {
     const { id } = await params;
-    const assessment = await prisma.assessment.findUnique({ where: { id } });
+    const assessment = await prisma.assessment.findUnique({
+      where: { id },
+      include: { credentials: { orderBy: { order: "asc" } } },
+    });
     if (!assessment) return notFound("Assessment");
 
-    const run = await prisma.testRun.create({
-      data: { assessmentId: id, status: "PENDING" },
-      select: { id: true, status: true, createdAt: true },
-    });
+    // Authenticated assessment with roles -> one run per role; otherwise one
+    // anonymous run. (Multiple roles run concurrently in the background; on the free
+    // plan only the first reliably fits the time limit — see ADR-016.)
+    const roles: (string | null)[] =
+      assessment.authMode !== "NONE" && assessment.credentials.length > 0
+        ? assessment.credentials.map((c) => c.role)
+        : [null];
 
-    // Process after the response is sent. executeRun catches its own errors and
-    // marks the run FAILED — it never throws. Re-establish the audit context so the
-    // background writes are still attributed to the triggering user.
     const userId = session.user.id;
-    after(async () => {
-      // executeRun is self-contained (records its own FAILED), but guard anyway so a
-      // stray rejection can't surface as an unhandled rejection in the background task.
-      try {
-        await withAuditContext({ userId }, () => executeRun(run.id));
-      } catch {
-        /* swallowed — the read-time reaper will catch a left-behind run */
-      }
-    });
+    const runs: { id: string; status: string; role: string | null; createdAt: Date }[] = [];
+    for (const role of roles) {
+      const run = await prisma.testRun.create({
+        data: { assessmentId: id, status: "PENDING", role },
+        select: { id: true, status: true, role: true, createdAt: true },
+      });
+      runs.push(run);
+      // Process after the response. executeRun is self-contained (records its own
+      // FAILED); guard anyway so a stray rejection isn't unhandled.
+      after(async () => {
+        try {
+          await withAuditContext({ userId }, () => executeRun(run.id));
+        } catch {
+          /* swallowed — the read-time reaper will catch a left-behind run */
+        }
+      });
+    }
 
-    return created(run);
+    // Return the first run for the client to poll; others appear in run history.
+    return created({ ...runs[0], runs });
   }),
   { id: "assessment-run", limit: 10, windowMs: 60_000 }
 );

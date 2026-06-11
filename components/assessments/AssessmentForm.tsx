@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Checkbox, Space, Upload, Typography } from "antd";
-import { UploadOutlined } from "@ant-design/icons";
+import { Form, Input, Button, Checkbox, Space, Upload, Typography, Segmented, Card, Divider } from "antd";
+import { UploadOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { useTranslations } from "next-intl";
 import { apiClient } from "@/lib/api-client";
@@ -12,11 +12,21 @@ import { DIMENSION_ORDER, DIMENSION_META } from "@/lib/testing/dimensions";
 const { TextArea } = Input;
 const { Text } = Typography;
 
+export interface CredentialValue {
+  role: string;
+  username?: string;
+  password?: string;
+  cookie?: string;
+}
+
 export interface AssessmentFormValues {
   name: string;
   targetUrl: string;
   brdText: string;
   dimensions: string[];
+  authMode?: "NONE" | "FORM" | "COOKIE";
+  loginUrl?: string;
+  credentials?: CredentialValue[];
 }
 
 interface AssessmentFormProps {
@@ -43,6 +53,7 @@ export function AssessmentForm({
   const { error: showError, success } = useNotify();
   const [form] = Form.useForm<AssessmentFormValues>();
   const [parsing, setParsing] = useState(false);
+  const authMode = Form.useWatch("authMode", form) ?? "NONE";
 
   // Read .txt/.md directly; send PDF to the server for Claude-based extraction.
   const beforeUpload: UploadProps["beforeUpload"] = async (file) => {
@@ -122,7 +133,77 @@ export function AssessmentForm({
         </Space>
       </Form.Item>
 
-      <Form.Item>
+      <Divider />
+
+      <Form.Item name="authMode" label={t("authentication")} initialValue="NONE" extra={t("authHint")}>
+        <Segmented
+          options={[
+            { label: t("authNone"), value: "NONE" },
+            { label: t("authForm"), value: "FORM" },
+            { label: t("authCookie"), value: "COOKIE" },
+          ]}
+        />
+      </Form.Item>
+
+      {authMode === "FORM" && (
+        <Form.Item
+          name="loginUrl"
+          label={t("loginUrl")}
+          extra={t("loginUrlHint")}
+          rules={[{ required: true, message: t("loginUrlRequired") }]}
+        >
+          <Input placeholder="https://example.com/login" />
+        </Form.Item>
+      )}
+
+      {authMode !== "NONE" && (
+        <Form.List name="credentials">
+          {(fields, { add, remove }) => (
+            <Space direction="vertical" size="middle" style={{ display: "flex" }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {authMode === "FORM" ? t("rolesFormHint") : t("rolesCookieHint")}
+              </Text>
+              {fields.map((field) => (
+                <Card key={field.key} size="small">
+                  <Space align="baseline" wrap style={{ width: "100%" }}>
+                    <Form.Item
+                      name={[field.name, "role"]}
+                      rules={[{ required: true, message: t("roleRequired") }]}
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Input placeholder={t("rolePlaceholder")} style={{ width: 140 }} />
+                    </Form.Item>
+                    {authMode === "FORM" ? (
+                      <>
+                        <Form.Item name={[field.name, "username"]} style={{ marginBottom: 0 }}>
+                          <Input placeholder={t("username")} style={{ width: 200 }} />
+                        </Form.Item>
+                        <Form.Item name={[field.name, "password"]} style={{ marginBottom: 0 }}>
+                          <Input.Password placeholder={t("password")} style={{ width: 200 }} autoComplete="new-password" />
+                        </Form.Item>
+                      </>
+                    ) : (
+                      <Form.Item name={[field.name, "cookie"]} style={{ marginBottom: 0 }}>
+                        <Input.Password
+                          placeholder="session=…; token=…"
+                          style={{ width: 360 }}
+                          autoComplete="new-password"
+                        />
+                      </Form.Item>
+                    )}
+                    <MinusCircleOutlined onClick={() => remove(field.name)} />
+                  </Space>
+                </Card>
+              ))}
+              <Button type="dashed" onClick={() => add({ role: "" })} icon={<PlusOutlined />} block>
+                {t("addRole")}
+              </Button>
+            </Space>
+          )}
+        </Form.List>
+      )}
+
+      <Form.Item style={{ marginTop: 24 }}>
         <Space>
           <Button type="primary" htmlType="submit" loading={loading}>
             {submitLabel}

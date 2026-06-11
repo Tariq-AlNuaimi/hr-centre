@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { updateAssessmentSchema } from "@/lib/validations/assessment";
+import { toCredentialRows, credentialSummaries } from "@/lib/testing/credentials";
 import { reapStaleRuns } from "@/lib/testing/reap";
 
 // Read one assessment (any authenticated user), with its run history.
@@ -13,11 +14,13 @@ export const GET = withAuth(async (_request: NextRequest, { params }) => {
     where: { id },
     include: {
       owner: { select: { name: true, email: true } },
+      credentials: true,
       runs: {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
           status: true,
+          role: true,
           overallScore: true,
           summary: true,
           createdAt: true,
@@ -28,7 +31,9 @@ export const GET = withAuth(async (_request: NextRequest, { params }) => {
   });
 
   if (!assessment) return notFound("Assessment");
-  return ok(assessment);
+  // Never return credential secrets — only a secret-free summary.
+  const { credentials, ...rest } = assessment;
+  return ok({ ...rest, credentials: credentialSummaries(credentials) });
 });
 
 // Update an assessment (ADMIN or EDITOR).
@@ -43,10 +48,32 @@ export const PUT = withEditorAuth(async (request: NextRequest, { params }) => {
   const existing = await prisma.assessment.findUnique({ where: { id } });
   if (!existing) return notFound("Assessment");
 
-  const assessment = await prisma.assessment.update({
-    where: { id },
-    data: parsed.data,
-    select: { id: true, name: true, targetUrl: true, dimensions: true, updatedAt: true },
+  const { credentials, authMode, loginUrl, ...rest } = parsed.data;
+  // Auth fields are replaced as a unit when authMode is provided; otherwise left as-is.
+  const authData =
+    authMode === undefined
+      ? {}
+      : {
+          authMode,
+          loginUrl: authMode === "FORM" ? loginUrl?.trim() || null : null,
+        };
+
+  const assessment = await prisma.$transaction(async (tx) => {
+    if (authMode !== undefined) {
+      // Replace the credential set wholesale (secrets are re-supplied on edit).
+      await tx.assessmentCredential.deleteMany({ where: { assessmentId: id } });
+      const rows = toCredentialRows(credentials, authMode);
+      if (rows.length > 0) {
+        await tx.assessmentCredential.createMany({
+          data: rows.map((r) => ({ ...r, assessmentId: id })),
+        });
+      }
+    }
+    return tx.assessment.update({
+      where: { id },
+      data: { ...rest, ...authData },
+      select: { id: true, name: true, targetUrl: true, dimensions: true, updatedAt: true },
+    });
   });
 
   return ok(assessment);

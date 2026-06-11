@@ -35,6 +35,21 @@ const targetUrlSchema = z
     { message: "Enter a valid public website URL (e.g. example.com or https://example.com)" }
   );
 
+// A role + its login secret. password/cookie are plaintext at the boundary; the
+// route encrypts them before persisting and never returns them.
+const credentialSchema = z.object({
+  role: z.string().trim().min(1).max(60),
+  username: z.string().trim().max(200).optional(),
+  password: z.string().max(400).optional(),
+  cookie: z.string().max(4000).optional(),
+});
+
+const authFields = {
+  authMode: z.enum(["NONE", "FORM", "COOKIE"]).optional(),
+  loginUrl: targetUrlSchema.optional().or(z.literal("")),
+  credentials: z.array(credentialSchema).max(10).optional(),
+};
+
 export const createAssessmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
   targetUrl: targetUrlSchema,
@@ -43,6 +58,7 @@ export const createAssessmentSchema = z.object({
     .array(z.enum(DIMENSION_VALUES))
     .min(1, "Select at least one dimension")
     .max(DIMENSION_VALUES.length),
+  ...authFields,
 });
 
 export const updateAssessmentSchema = z.object({
@@ -50,7 +66,9 @@ export const updateAssessmentSchema = z.object({
   targetUrl: targetUrlSchema.optional(),
   brdText: z.string().max(50_000).optional(),
   dimensions: z.array(z.enum(DIMENSION_VALUES)).min(1).max(DIMENSION_VALUES.length).optional(),
+  ...authFields,
 });
 
 export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
 export type UpdateAssessmentInput = z.infer<typeof updateAssessmentSchema>;
+export type CredentialInput = z.infer<typeof credentialSchema>;

@@ -39,6 +39,14 @@ export interface BrokenLink {
   status: number; // HTTP status, or 0 for unreachable/timeout
 }
 
+export interface CaptureAuth {
+  mode: "FORM" | "COOKIE";
+  loginUrl?: string; // FORM
+  username?: string; // FORM
+  password?: string; // FORM
+  cookie?: string; // COOKIE: "name=value; name2=value2"
+}
+
 export interface CaptureResult {
   finalUrl: string;
   title: string;
@@ -197,6 +205,45 @@ const AXE_RUN_SCRIPT = `(async () => {
 
 const EMPTY_PERF: PerfMetrics = { loadMs: 0, domContentLoadedMs: 0, requestCount: 0, transferKb: 0 };
 
+// Fills a login form heuristically (username/email + password) and submits it.
+// Returns whether the fields were found so the caller can fail loudly if not.
+function loginFillScript(username: string, password: string): string {
+  return `(() => {
+    const u = document.querySelector("input[type=email]")
+      || document.querySelector("input[name*='user' i]")
+      || document.querySelector("input[id*='user' i]")
+      || document.querySelector("input[id*='email' i]")
+      || document.querySelector("input[name*='email' i]")
+      || document.querySelector("input[type=text]");
+    const p = document.querySelector("input[type=password]");
+    const set = (el, v) => { if (!el) return; el.focus(); el.value = v;
+      el.dispatchEvent(new Event('input',{bubbles:true})); el.dispatchEvent(new Event('change',{bubbles:true})); };
+    set(u, ${JSON.stringify(username)}); set(p, ${JSON.stringify(password)});
+    const btn = document.querySelector("button[type=submit]")
+      || document.querySelector("input[type=submit]")
+      || (p && p.form && p.form.querySelector("button"))
+      || document.querySelector("button");
+    let submitted = false;
+    if (btn) { btn.click(); submitted = true; }
+    else if (p && p.form) { p.form.submit(); submitted = true; }
+    return { foundUser: !!u, foundPass: !!p, submitted };
+  })()`;
+}
+
+// Parses a "name=value; name2=value2" cookie string into CDP cookie params for the
+// target URL. Bounded; ignores malformed pairs.
+function parseCookies(cookie: string, url: string): { name: string; value: string; url: string }[] {
+  return cookie
+    .split(/;\s*/)
+    .map((pair) => {
+      const idx = pair.indexOf("=");
+      if (idx <= 0) return null;
+      return { name: pair.slice(0, idx).trim(), value: pair.slice(idx + 1).trim(), url };
+    })
+    .filter((c): c is { name: string; value: string; url: string } => c !== null && c.name.length > 0)
+    .slice(0, 30);
+}
+
 interface PageData {
   finalUrl: string;
   title: string;
@@ -257,7 +304,7 @@ async function checkBrokenLinks(links: string[], targetHost: string): Promise<Br
  * Capture a single page comprehensively. Timeouts are bounded so a slow target
  * can't blow the function's maxDuration.
  */
-export async function captureSite(targetUrl: string): Promise<CaptureResult> {
+export async function captureSite(targetUrl: string, auth?: CaptureAuth): Promise<CaptureResult> {
   const { apiKey, projectId } = await resolveBrowserConfig();
   const url = /^https?:\/\//i.test(targetUrl) ? targetUrl : `https://${targetUrl}`;
 
@@ -312,18 +359,65 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
       )
       .catch(() => {});
 
-    // Main-document status + security headers.
-    let status: number | null = null;
-    const rawHeaders: Record<string, string> = {};
+    // Collect Document responses only while CAPTURING the target (after any login
+    // navigation). We pick the one matching the final URL afterwards, so a slow
+    // login/redirect response can't be mistaken for the target's.
+    let capturing = false;
+    const documents: { url: string; status: number | null; headers: Record<string, string> }[] = [];
     cdp.on("Network.responseReceived", (params, sid) => {
-      if (sid !== sessionId || params.type !== "Document" || status !== null) return;
-      const response = params.response as { status?: number; headers?: Record<string, string> } | undefined;
-      if (response) {
-        status = response.status ?? null;
-        Object.assign(rawHeaders, response.headers ?? {});
-      }
+      if (!capturing || sid !== sessionId || params.type !== "Document") return;
+      const r = params.response as { url?: string; status?: number; headers?: Record<string, string> } | undefined;
+      if (r) documents.push({ url: r.url ?? "", status: r.status ?? null, headers: r.headers ?? {} });
     });
 
+    // -- Authentication (ADR-016): fail LOUDLY if auth was requested but can't be
+    // applied (missing login URL/password, or an empty/undecryptable cookie) — never
+    // silently capture anonymously and report a passing authenticated result.
+    if (auth?.mode === "FORM" && (!auth.loginUrl?.trim() || !auth.password)) {
+      throw new Error(
+        "Authentication is set to form login, but the login URL or password is missing/undecryptable. " +
+          "Re-enter the credentials (secrets aren't stored in plaintext and may need re-supplying)."
+      );
+    }
+    if (auth?.mode === "COOKIE" && !auth.cookie?.trim()) {
+      throw new Error(
+        "Authentication is set to cookie, but no session cookie was provided (or it could not be decrypted). Re-enter it."
+      );
+    }
+
+    if (auth?.mode === "COOKIE" && auth.cookie?.trim()) {
+      const cookies = parseCookies(auth.cookie, url);
+      if (cookies.length > 0) await cdp.send("Network.setCookies", { cookies }, sessionId).catch(() => {});
+    }
+    if (auth?.mode === "FORM" && auth.loginUrl?.trim()) {
+      const loginLoaded = cdp.waitFor("Page.loadEventFired", (_p, sid) => sid === sessionId, 20_000);
+      await cdp.send("Page.navigate", { url: auth.loginUrl }, sessionId).catch(() => {});
+      await loginLoaded.catch(() => {});
+      await sleep(800);
+      const fillRes = (await cdp
+        .send(
+          "Runtime.evaluate",
+          { expression: loginFillScript(auth.username ?? "", auth.password ?? ""), returnByValue: true },
+          sessionId
+        )
+        .catch(() => ({ result: { value: { foundUser: false, foundPass: false, submitted: false } } }))) as {
+        result?: { value?: { foundUser: boolean; foundPass: boolean; submitted: boolean } };
+      };
+      const fill = fillRes.result?.value;
+      if (!fill?.foundPass || !fill?.submitted) {
+        throw new Error(
+          "Login failed: could not find/submit a username+password form on the login page. " +
+            "Check the login URL, or use Cookie mode for SSO/MFA."
+        );
+      }
+      // Wait for the post-submit navigation (or settle if it's an XHR login).
+      await cdp.waitFor("Page.loadEventFired", (_p, sid) => sid === sessionId, 15_000).catch(() => {});
+      await sleep(1200);
+    }
+
+    // Now capture the target.
+    capturing = true;
+    consoleErrors.length = 0; // drop any login-page noise
     const loaded = cdp.waitFor("Page.loadEventFired", (_p, sid) => sid === sessionId, 25_000);
     try {
       await cdp.send("Page.navigate", { url }, sessionId);
@@ -396,13 +490,18 @@ export async function captureSite(targetUrl: string): Promise<CaptureResult> {
 
     await cdp.send("Target.closeTarget", { targetId }).catch(() => {});
 
+    const finalUrl = page.finalUrl || url;
+    // Pick the main document by final URL (falls back to the last Document seen),
+    // so a slow login/redirect response isn't mistaken for the target's.
+    const mainDoc = documents.find((d) => d.url === finalUrl) ?? documents[documents.length - 1];
+    const status = mainDoc?.status ?? null;
+    const rawHeaders = mainDoc?.headers ?? {};
+
     const securityHeaders: Record<string, string> = {};
     for (const [k, v] of Object.entries(rawHeaders)) {
       const key = k.toLowerCase();
       if (SECURITY_HEADER_NAMES.includes(key)) securityHeaders[key] = v;
     }
-
-    const finalUrl = page.finalUrl || url;
     // Anchor the broken-link check to the ORIGINAL validated target host, never the
     // (potentially redirected) finalUrl — see checkBrokenLinks SSRF note.
     let targetHost = "";

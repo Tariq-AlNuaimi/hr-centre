@@ -4,6 +4,7 @@ import { withAuth, withEditorAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import { createAssessmentSchema } from "@/lib/validations/assessment";
+import { toCredentialRows } from "@/lib/testing/credentials";
 import type { Prisma } from "@/generated/prisma/client";
 
 // List assessments (any authenticated user). Includes a run count + the latest run
@@ -57,8 +58,18 @@ export const POST = withRateLimit(
       return err(parsed.error.issues.map((i) => i.message).join(", "));
     }
 
+    const { credentials, authMode, loginUrl, ...rest } = parsed.data;
+    const mode = authMode ?? "NONE";
+    const rows = toCredentialRows(credentials, mode);
+
     const assessment = await prisma.assessment.create({
-      data: { ...parsed.data, ownerId: session.user.id },
+      data: {
+        ...rest,
+        ownerId: session.user.id,
+        authMode: mode,
+        loginUrl: mode === "FORM" ? loginUrl?.trim() || null : null,
+        ...(rows.length > 0 ? { credentials: { create: rows } } : {}),
+      },
       select: { id: true, name: true, targetUrl: true, dimensions: true, createdAt: true },
     });
 

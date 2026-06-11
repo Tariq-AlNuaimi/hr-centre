@@ -26,6 +26,7 @@ const { Title, Paragraph, Text } = Typography;
 interface RunSummary {
   id: string;
   status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+  role: string | null;
   overallScore: number | null;
   summary: string | null;
   createdAt: string;
@@ -248,6 +249,7 @@ export default function AssessmentDetailPage() {
               >
                 <Space>
                   <Tag color={RUN_STATUS_COLOR[run.status]}>{run.status}</Tag>
+                  {run.role && <Tag color="purple">{run.role}</Tag>}
                   {run.status === "COMPLETED" && run.overallScore != null && (
                     <Text strong>{run.overallScore}/100</Text>
                   )}
