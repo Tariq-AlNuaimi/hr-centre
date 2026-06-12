@@ -7,7 +7,6 @@ import {
   SettingOutlined,
   DeleteOutlined,
   AuditOutlined,
-  ThunderboltOutlined,
 } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
@@ -41,12 +40,6 @@ export function AppSidebar() {
       icon: <HomeOutlined />,
       label: t("home"),
       onClick: () => router.push(`/${locale}`),
-    },
-    {
-      key: "assessments",
-      icon: <ThunderboltOutlined />,
-      label: t("assessments"),
-      onClick: () => router.push(`/${locale}/assessments`),
     },
     ...(isAdmin
       ? [

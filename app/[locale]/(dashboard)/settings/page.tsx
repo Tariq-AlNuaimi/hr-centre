@@ -1,19 +1,14 @@
 "use client";
 
-import { Card, Descriptions, Space } from "antd";
+import { Card, Descriptions } from "antd";
 import { useTranslations } from "next-intl";
-import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { AiProviderSettings } from "@/components/settings/AiProviderSettings";
-import { BrowserEngineSettings } from "@/components/settings/BrowserEngineSettings";
 
 export default function SettingsPage() {
   const t = useTranslations("settings");
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
-    <Space direction="vertical" size="large" style={{ width: "100%" }}>
+    <>
       <PageHeader title={t("title")} />
       <Card>
         <Descriptions column={1} bordered>
@@ -25,9 +20,6 @@ export default function SettingsPage() {
           </Descriptions.Item>
         </Descriptions>
       </Card>
-      {/* These call admin-only APIs; only render them for admins. */}
-      {isAdmin && <AiProviderSettings />}
-      {isAdmin && <BrowserEngineSettings />}
-    </Space>
+    </>
   );
 }
