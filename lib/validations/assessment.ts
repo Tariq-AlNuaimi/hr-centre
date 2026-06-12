@@ -50,6 +50,10 @@ const authFields = {
   credentials: z.array(credentialSchema).max(10).optional(),
 };
 
+// How many pages to crawl + audit (entry page + same-origin links). Capped low so a
+// run fits the serverless time budget; bigger crawls want the Pro plan.
+const maxPagesSchema = z.coerce.number().int().min(1).max(10);
+
 export const createAssessmentSchema = z.object({
   name: z.string().trim().min(1).max(200),
   targetUrl: targetUrlSchema,
@@ -58,6 +62,7 @@ export const createAssessmentSchema = z.object({
     .array(z.enum(DIMENSION_VALUES))
     .min(1, "Select at least one dimension")
     .max(DIMENSION_VALUES.length),
+  maxPages: maxPagesSchema.default(3),
   ...authFields,
 });
 
@@ -66,6 +71,7 @@ export const updateAssessmentSchema = z.object({
   targetUrl: targetUrlSchema.optional(),
   brdText: z.string().max(50_000).optional(),
   dimensions: z.array(z.enum(DIMENSION_VALUES)).min(1).max(DIMENSION_VALUES.length).optional(),
+  maxPages: maxPagesSchema.optional(),
   ...authFields,
 });
 

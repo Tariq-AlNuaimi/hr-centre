@@ -13,7 +13,7 @@ import {
   Spin,
   Popconfirm,
 } from "antd";
-import { ThunderboltOutlined, DeleteOutlined, FilePdfOutlined } from "@ant-design/icons";
+import { ThunderboltOutlined, DeleteOutlined, FilePdfOutlined, EditOutlined } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useParams } from "next/navigation";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -235,6 +235,9 @@ export default function AssessmentDetailPage() {
             onClick={handleRun}
           >
             {t("runTest")}
+          </Button>
+          <Button icon={<EditOutlined />} onClick={() => router.push(`/${locale}/assessments/${id}/edit`)}>
+            {t("edit")}
           </Button>
           <Popconfirm title={t("deleteConfirm")} onConfirm={handleDelete} okText={t("delete")}>
             <Button danger icon={<DeleteOutlined />} />

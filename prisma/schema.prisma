@@ -181,6 +181,9 @@ model Assessment {
   authMode AuthMode @default(NONE)
   loginUrl String? // FORM mode: the page to submit credentials on
 
+  // How many pages to crawl + audit per run (the entry page + same-origin links).
+  maxPages Int @default(3)
+
   ownerId String?
   owner   User?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
@@ -230,6 +233,8 @@ model TestRun {
   summary      String?      @db.Text
   error        String?      @db.Text // populated on FAILED
   finalUrl     String? // URL after redirects, captured at run time
+  pagesAudited Int? // number of pages crawled + audited this run
+  auditedUrls  String[] // the URLs audited (entry first)
   startedAt    DateTime?
   finishedAt   DateTime?
   createdAt    DateTime     @default(now())

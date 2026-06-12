@@ -32,6 +32,8 @@ export const GET = withAuth(async (_request: NextRequest, { params }) => {
     overallScore: run.overallScore,
     summary: run.summary,
     finalUrl: run.finalUrl,
+    pagesAudited: run.pagesAudited,
+    auditedUrls: run.auditedUrls,
     createdAt: run.createdAt,
     assessment: run.assessment,
     dimensionResults: run.dimensionResults.map((d) => ({

@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { updateAssessmentSchema } from "@/lib/validations/assessment";
-import { toCredentialRows, credentialSummaries } from "@/lib/testing/credentials";
+import { mergeCredentialRows, credentialSummaries } from "@/lib/testing/credentials";
 import { reapStaleRuns } from "@/lib/testing/reap";
 
 // Read one assessment (any authenticated user), with its run history.
@@ -60,9 +60,11 @@ export const PUT = withEditorAuth(async (request: NextRequest, { params }) => {
 
   const assessment = await prisma.$transaction(async (tx) => {
     if (authMode !== undefined) {
-      // Replace the credential set wholesale (secrets are re-supplied on edit).
+      // Re-shape the credential set, PRESERVING stored secrets where the edit left
+      // the password/cookie blank (they're never sent back to the client).
+      const existingCreds = await tx.assessmentCredential.findMany({ where: { assessmentId: id } });
       await tx.assessmentCredential.deleteMany({ where: { assessmentId: id } });
-      const rows = toCredentialRows(credentials, authMode);
+      const rows = mergeCredentialRows(credentials, authMode, existingCreds);
       if (rows.length > 0) {
         await tx.assessmentCredential.createMany({
           data: rows.map((r) => ({ ...r, assessmentId: id })),

@@ -28,6 +28,41 @@ export function toCredentialRows(credentials: CredentialInput[] | undefined, aut
     }));
 }
 
+/**
+ * Like toCredentialRows, but PRESERVES an existing encrypted secret (matched by
+ * role) when the incoming secret is blank — so editing an assessment without
+ * re-typing passwords/cookies doesn't wipe working logins. Secrets are never sent
+ * back to the client, so a blank field on the edit form means "keep what's stored".
+ */
+export function mergeCredentialRows(
+  credentials: CredentialInput[] | undefined,
+  authMode: AuthMode,
+  existing: AssessmentCredential[]
+): CredentialRow[] {
+  if (authMode === "NONE" || !credentials) return [];
+  const byRole = new Map(existing.map((e) => [e.role, e]));
+  return credentials
+    .filter((c) => c.role.trim().length > 0)
+    .map((c, i) => {
+      const prev = byRole.get(c.role.trim());
+      return {
+        role: c.role.trim(),
+        // Username is non-secret and round-trips in the edit form, so an empty field
+        // means "clear it" (unlike the secrets below, where blank means "keep stored").
+        username: authMode === "FORM" ? c.username?.trim() || null : null,
+        passwordEnc:
+          authMode === "FORM"
+            ? c.password
+              ? encryptSecret(c.password)
+              : prev?.passwordEnc ?? null
+            : null,
+        cookieEnc:
+          authMode === "COOKIE" ? (c.cookie ? encryptSecret(c.cookie) : prev?.cookieEnc ?? null) : null,
+        order: i,
+      };
+    });
+}
+
 /** Secret-free view for the client — never expose password/cookie ciphertext. */
 export function credentialSummaries(rows: AssessmentCredential[]) {
   return [...rows]

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Form, Input, Button, Checkbox, Space, Upload, Typography, Segmented, Card, Divider } from "antd";
+import { Form, Input, Button, Checkbox, Space, Upload, Typography, Segmented, Card, Divider, InputNumber } from "antd";
 import { UploadOutlined, MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 import { useTranslations } from "next-intl";
@@ -24,6 +24,7 @@ export interface AssessmentFormValues {
   targetUrl: string;
   brdText: string;
   dimensions: string[];
+  maxPages?: number;
   authMode?: "NONE" | "FORM" | "COOKIE";
   loginUrl?: string;
   credentials?: CredentialValue[];
@@ -84,7 +85,7 @@ export function AssessmentForm({
     <Form<AssessmentFormValues>
       form={form}
       layout="vertical"
-      initialValues={{ dimensions: DIMENSION_ORDER as unknown as string[], ...initialValues }}
+      initialValues={{ dimensions: DIMENSION_ORDER as unknown as string[], maxPages: 3, ...initialValues }}
       onFinish={onSubmit}
       style={{ maxWidth: 720 }}
     >
@@ -110,6 +111,10 @@ export function AssessmentForm({
         rules={[{ required: true, message: t("dimensionsRequired") }]}
       >
         <Checkbox.Group options={dimensionOptions} />
+      </Form.Item>
+
+      <Form.Item name="maxPages" label={t("maxPages")} extra={t("maxPagesHint")}>
+        <InputNumber min={1} max={10} style={{ width: 120 }} />
       </Form.Item>
 
       <Form.Item

@@ -50,6 +50,8 @@ export interface ReportRun {
   summary: string | null;
   error: string | null;
   finalUrl: string | null;
+  pagesAudited: number | null;
+  auditedUrls: string[];
   dimensionResults: ReportDimensionResult[];
   requirements: ReportRequirement[];
 }
@@ -156,8 +158,13 @@ export function RunReport({ run }: { run: ReportRun }) {
             </Title>
             <Paragraph style={{ marginBottom: 4 }}>{run.summary}</Paragraph>
             {run.finalUrl && (
-              <Text type="secondary" style={{ fontSize: 12 }}>
+              <Text type="secondary" style={{ fontSize: 12, display: "block" }}>
                 {t("testedUrl")}: {run.finalUrl}
+              </Text>
+            )}
+            {run.pagesAudited != null && run.pagesAudited > 1 && (
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {t("pagesAudited")}: {run.pagesAudited}
               </Text>
             )}
           </div>

@@ -112,8 +112,15 @@ export async function executeRun(runId: string): Promise<void> {
     });
 
     const auth = buildAuth(assessment, run.role);
-    const capture = await captureSite(assessment.targetUrl, auth);
-    await prisma.testRun.update({ where: { id: runId }, data: { finalUrl: capture.finalUrl } });
+    const capture = await captureSite(assessment.targetUrl, auth, assessment.maxPages);
+    await prisma.testRun.update({
+      where: { id: runId },
+      data: {
+        finalUrl: capture.finalUrl,
+        pagesAudited: capture.pagesAudited,
+        auditedUrls: capture.pages.map((p) => p.url),
+      },
+    });
 
     const selected = DIMENSION_ORDER.filter((d) => assessment.dimensions.includes(d));
     const scores: DimensionScore[] = [];

@@ -66,6 +66,47 @@ export interface CaptureResult {
   brokenLinks: BrokenLink[];
   securityHeaders: Record<string, string>;
   isHttps: boolean;
+  // Multi-page crawl (ADR-016): per-page summaries (entry first), a couple of extra
+  // desktop screenshots for the design pass, and how many pages were audited. The
+  // top-level fields above are the ENTRY page; the array/aggregate fields
+  // (axeViolations, brokenLinks, consoleErrors, links) are unioned across all pages.
+  pages: PageSummary[];
+  extraScreenshots: string[];
+  pagesAudited: number;
+}
+
+// Lightweight per-page record carried into the analysis + report.
+export interface PageSummary {
+  url: string;
+  title: string;
+  status: number | null;
+  perf: PerfMetrics;
+  axeCount: number;
+  consoleErrorCount: number;
+  brokenLinkCount: number;
+  buttonsCount: number;
+  formsCount: number;
+  inputsCount: number;
+  textSnippet: string;
+}
+
+// Full per-page capture (internal; screenshots are heavy so only a few are kept).
+interface PageAudit {
+  url: string;
+  title: string;
+  status: number | null;
+  screenshotBase64: string;
+  mobileScreenshotBase64: string;
+  visibleText: string;
+  links: string[];
+  buttonsCount: number;
+  formsCount: number;
+  inputsCount: number;
+  consoleErrors: string[];
+  perf: PerfMetrics;
+  axeViolations: AxeViolation[];
+  brokenLinks: BrokenLink[];
+  securityHeaders: Record<string, string>;
 }
 
 const SECURITY_HEADER_NAMES = [
@@ -305,7 +346,11 @@ async function checkBrokenLinks(links: string[], targetHost: string): Promise<Br
  * Capture a single page comprehensively. Timeouts are bounded so a slow target
  * can't blow the function's maxDuration.
  */
-export async function captureSite(targetUrl: string, auth?: CaptureAuth): Promise<CaptureResult> {
+export async function captureSite(
+  targetUrl: string,
+  auth?: CaptureAuth,
+  maxPages = 1
+): Promise<CaptureResult> {
   const { apiKey, projectId } = await resolveBrowserConfig();
   const url = /^https?:\/\//i.test(targetUrl) ? targetUrl : `https://${targetUrl}`;
 
@@ -417,121 +462,201 @@ export async function captureSite(targetUrl: string, auth?: CaptureAuth): Promis
       await sleep(1200);
     }
 
-    // Now capture the target.
     capturing = true;
-    consoleErrors.length = 0; // drop any login-page noise
-    const loaded = cdp.waitFor("Page.loadEventFired", (_p, sid) => sid === sessionId, 25_000);
+    // Anchor crawling + the broken-link check to the ORIGINAL validated target host,
+    // never a (potentially redirected) finalUrl — see checkBrokenLinks SSRF note.
+    let entryHost = "";
     try {
-      await cdp.send("Page.navigate", { url }, sessionId);
-    } catch (navErr) {
-      throw new Error(`Could not load ${url}: ${navErr instanceof Error ? navErr.message : String(navErr)}`);
-    }
-    await loaded.catch(() => {});
-    await sleep(1000);
-
-    // Desktop screenshot.
-    const { data: screenshotBase64 } = (await cdp.send(
-      "Page.captureScreenshot",
-      { format: "png", captureBeyondViewport: false },
-      sessionId
-    )) as { data: string };
-
-    // DOM signals.
-    const domRes = (await cdp.send(
-      "Runtime.evaluate",
-      { expression: PAGE_SCRIPT, returnByValue: true },
-      sessionId
-    )) as { result?: { value?: PageData } };
-    const page: PageData = domRes.result?.value ?? EMPTY_PAGE;
-
-    // Performance metrics.
-    let perf: PerfMetrics = EMPTY_PERF;
-    try {
-      const perfRes = (await cdp.send(
-        "Runtime.evaluate",
-        { expression: PERF_SCRIPT, returnByValue: true },
-        sessionId
-      )) as { result?: { value?: PerfMetrics } };
-      if (perfRes.result?.value) perf = perfRes.result.value;
+      entryHost = new URL(url).hostname;
     } catch {
-      /* leave EMPTY_PERF */
+      /* leave empty -> no link checks / no crawl */
     }
 
-    // Accessibility — inject axe-core, then run it.
-    let axeViolations: AxeViolation[] = [];
-    try {
-      await cdp.send("Runtime.evaluate", { expression: axe.source }, sessionId);
-      const axeRes = (await cdp.send(
-        "Runtime.evaluate",
-        { expression: AXE_RUN_SCRIPT, awaitPromise: true, returnByValue: true },
-        sessionId
-      )) as { result?: { value?: AxeViolation[] } };
-      if (Array.isArray(axeRes.result?.value)) axeViolations = axeRes.result!.value!;
-    } catch {
-      /* axe unavailable — leave empty */
-    }
+    // Capture ONE page end-to-end: navigate, desktop (+ optional mobile) screenshot,
+    // DOM signals, perf, axe, and resolve its main-document status/headers + broken links.
+    async function capturePage(pageUrl: string, withMobile: boolean): Promise<PageAudit> {
+      await cdp
+        .send(
+          "Emulation.setDeviceMetricsOverride",
+          { width: 1366, height: 900, deviceScaleFactor: 1, mobile: false },
+          sessionId
+        )
+        .catch(() => {});
+      consoleErrors.length = 0; // per-page console errors
+      documents.length = 0; // per-page documents — don't inherit a prior page's status/headers
+      const loaded = cdp.waitFor("Page.loadEventFired", (_p, sid) => sid === sessionId, 25_000);
+      try {
+        await cdp.send("Page.navigate", { url: pageUrl }, sessionId);
+      } catch (navErr) {
+        throw new Error(`Could not load ${pageUrl}: ${navErr instanceof Error ? navErr.message : String(navErr)}`);
+      }
+      await loaded.catch(() => {});
+      await sleep(900);
 
-    // Mobile screenshot (responsive).
-    let mobileScreenshotBase64 = "";
-    try {
-      await cdp.send(
-        "Emulation.setDeviceMetricsOverride",
-        { width: 390, height: 844, deviceScaleFactor: 2, mobile: true },
-        sessionId
-      );
-      await sleep(600);
-      const shot = (await cdp.send(
+      const { data: screenshotBase64 } = (await cdp.send(
         "Page.captureScreenshot",
         { format: "png", captureBeyondViewport: false },
         sessionId
       )) as { data: string };
-      mobileScreenshotBase64 = shot.data;
-    } catch {
-      /* mobile capture optional */
+
+      const domRes = (await cdp.send(
+        "Runtime.evaluate",
+        { expression: PAGE_SCRIPT, returnByValue: true },
+        sessionId
+      )) as { result?: { value?: PageData } };
+      const dom: PageData = domRes.result?.value ?? EMPTY_PAGE;
+
+      let perf: PerfMetrics = EMPTY_PERF;
+      try {
+        const perfRes = (await cdp.send(
+          "Runtime.evaluate",
+          { expression: PERF_SCRIPT, returnByValue: true },
+          sessionId
+        )) as { result?: { value?: PerfMetrics } };
+        if (perfRes.result?.value) perf = perfRes.result.value;
+      } catch {
+        /* leave EMPTY_PERF */
+      }
+
+      let axeViolations: AxeViolation[] = [];
+      try {
+        await cdp.send("Runtime.evaluate", { expression: axe.source }, sessionId);
+        const axeRes = (await cdp.send(
+          "Runtime.evaluate",
+          { expression: AXE_RUN_SCRIPT, awaitPromise: true, returnByValue: true },
+          sessionId
+        )) as { result?: { value?: AxeViolation[] } };
+        if (Array.isArray(axeRes.result?.value)) axeViolations = axeRes.result!.value!;
+      } catch {
+        /* axe unavailable */
+      }
+
+      let mobileScreenshotBase64 = "";
+      if (withMobile) {
+        try {
+          await cdp.send(
+            "Emulation.setDeviceMetricsOverride",
+            { width: 390, height: 844, deviceScaleFactor: 2, mobile: true },
+            sessionId
+          );
+          await sleep(500);
+          const shot = (await cdp.send(
+            "Page.captureScreenshot",
+            { format: "png", captureBeyondViewport: false },
+            sessionId
+          )) as { data: string };
+          mobileScreenshotBase64 = shot.data;
+        } catch {
+          /* mobile optional */
+        }
+      }
+
+      const finalUrl = dom.finalUrl || pageUrl;
+      const docs = documents.filter((d) => d.url === finalUrl);
+      const mainDoc = docs[docs.length - 1] ?? documents[documents.length - 1];
+      const securityHeaders: Record<string, string> = {};
+      for (const [k, v] of Object.entries(mainDoc?.headers ?? {})) {
+        const key = k.toLowerCase();
+        if (SECURITY_HEADER_NAMES.includes(key)) securityHeaders[key] = v;
+      }
+      const brokenLinks = await checkBrokenLinks(dom.links, entryHost);
+      return {
+        url: finalUrl,
+        title: dom.title,
+        status: mainDoc?.status ?? null,
+        screenshotBase64,
+        mobileScreenshotBase64,
+        visibleText: dom.text,
+        links: dom.links,
+        buttonsCount: dom.buttonsCount,
+        formsCount: dom.formsCount,
+        inputsCount: dom.inputsCount,
+        consoleErrors: [...consoleErrors],
+        perf,
+        axeViolations,
+        brokenLinks,
+        securityHeaders,
+      };
+    }
+
+    // Entry page (with the mobile shot), then crawl same-origin links up to maxPages.
+    const entry = await capturePage(url, true);
+
+    const visited = new Set<string>([entry.url.split("#")[0]]);
+    const queue: string[] = [];
+    for (const href of entry.links) {
+      const clean = href.split("#")[0];
+      let host = "";
+      try {
+        host = new URL(clean).hostname;
+      } catch {
+        continue;
+      }
+      if (host !== entryHost) continue; // same-origin only
+      if (!isSafePublicUrl(clean)) continue; // SSRF parity with the broken-link checker
+      if (visited.has(clean) || queue.includes(clean)) continue;
+      if (/\.(pdf|zip|jpe?g|png|gif|svg|webp|mp4|webm|css|js|ico|woff2?)(\?|$)/i.test(clean)) continue;
+      queue.push(clean);
+      if (queue.length >= Math.max(0, maxPages - 1)) break;
+    }
+
+    const audits: PageAudit[] = [entry];
+    for (const link of queue) {
+      try {
+        const a = await capturePage(link, false);
+        audits.push(a);
+        visited.add(a.url.split("#")[0]);
+      } catch {
+        /* a page that won't load shouldn't sink the run — skip it */
+      }
     }
 
     await cdp.send("Target.closeTarget", { targetId }).catch(() => {});
 
-    const finalUrl = page.finalUrl || url;
-    // Pick the main document by final URL (falls back to the last Document seen),
-    // so a slow login/redirect response isn't mistaken for the target's.
-    const mainDoc = documents.find((d) => d.url === finalUrl) ?? documents[documents.length - 1];
-    const status = mainDoc?.status ?? null;
-    const rawHeaders = mainDoc?.headers ?? {};
+    // Aggregate issue signals across every audited page (dedup, capped).
+    const axeMap = new Map<string, AxeViolation>();
+    for (const v of audits.flatMap((a) => a.axeViolations)) {
+      const e = axeMap.get(v.id);
+      if (!e || v.nodes > e.nodes) axeMap.set(v.id, v);
+    }
+    const brokenMap = new Map<string, BrokenLink>();
+    for (const b of audits.flatMap((a) => a.brokenLinks)) if (!brokenMap.has(b.url)) brokenMap.set(b.url, b);
 
-    const securityHeaders: Record<string, string> = {};
-    for (const [k, v] of Object.entries(rawHeaders)) {
-      const key = k.toLowerCase();
-      if (SECURITY_HEADER_NAMES.includes(key)) securityHeaders[key] = v;
-    }
-    // Anchor the broken-link check to the ORIGINAL validated target host, never the
-    // (potentially redirected) finalUrl — see checkBrokenLinks SSRF note.
-    let targetHost = "";
-    try {
-      targetHost = new URL(url).hostname;
-    } catch {
-      /* leave empty -> no link checks */
-    }
-    const brokenLinks = await checkBrokenLinks(page.links, targetHost);
+    const pages: PageSummary[] = audits.map((a) => ({
+      url: a.url,
+      title: a.title,
+      status: a.status,
+      perf: a.perf,
+      axeCount: a.axeViolations.length,
+      consoleErrorCount: a.consoleErrors.length,
+      brokenLinkCount: a.brokenLinks.length,
+      buttonsCount: a.buttonsCount,
+      formsCount: a.formsCount,
+      inputsCount: a.inputsCount,
+      textSnippet: a.visibleText.slice(0, 600),
+    }));
 
     return {
-      finalUrl,
-      title: page.title,
-      status,
-      screenshotBase64,
-      mobileScreenshotBase64,
+      finalUrl: entry.url,
+      title: entry.title,
+      status: entry.status,
+      screenshotBase64: entry.screenshotBase64,
+      mobileScreenshotBase64: entry.mobileScreenshotBase64,
       screenshotMediaType: "image/png",
-      visibleText: page.text,
-      links: page.links,
-      buttonsCount: page.buttonsCount,
-      formsCount: page.formsCount,
-      inputsCount: page.inputsCount,
-      consoleErrors: consoleErrors.slice(0, 50),
-      perf,
-      axeViolations,
-      brokenLinks,
-      securityHeaders,
-      isHttps: finalUrl.startsWith("https://"),
+      visibleText: entry.visibleText,
+      links: Array.from(new Set(audits.flatMap((a) => a.links))).slice(0, 100),
+      buttonsCount: entry.buttonsCount,
+      formsCount: entry.formsCount,
+      inputsCount: entry.inputsCount,
+      consoleErrors: Array.from(new Set(audits.flatMap((a) => a.consoleErrors))).slice(0, 60),
+      perf: entry.perf,
+      axeViolations: Array.from(axeMap.values()).slice(0, 60),
+      brokenLinks: Array.from(brokenMap.values()).slice(0, 50),
+      securityHeaders: entry.securityHeaders,
+      isHttps: entry.url.startsWith("https://"),
+      pages,
+      extraScreenshots: audits.slice(1, 3).map((a) => a.screenshotBase64).filter(Boolean),
+      pagesAudited: audits.length,
     };
   } finally {
     try {

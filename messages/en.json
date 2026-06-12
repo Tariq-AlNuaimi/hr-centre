@@ -247,6 +247,15 @@
     "addRole": "Add role",
     "runRole": "Role",
     "downloadPdf": "Download PDF",
-    "pdfFailed": "Could not generate the PDF"
+    "pdfFailed": "Could not generate the PDF",
+    "maxPages": "Pages to crawl",
+    "maxPagesHint": "How many pages to audit per run — the entry page plus same-origin links it finds (1–10). More pages = a fuller audit but a longer run (free plan ~60s fits ~3–4).",
+    "editAssessment": "Edit test",
+    "editIntro": "Update the URL, BRD, dimensions, pages to crawl, or login roles. Leave a password/cookie blank to keep the one already stored.",
+    "saveChanges": "Save changes",
+    "edit": "Edit",
+    "saved": "Saved",
+    "saveFailed": "Could not save changes",
+    "pagesAudited": "Pages audited"
   }
 }

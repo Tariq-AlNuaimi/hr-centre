@@ -246,23 +246,41 @@ function captureContext(capture: CaptureResult): string {
       ? "none found among sampled internal links"
       : capture.brokenLinks.map((b) => `${b.status || "unreachable"} ${b.url}`).join(" | ");
 
+  // Multi-page crawl: list every page audited so the analysis covers the whole
+  // surface, and make clear the issue tallies are AGGREGATED across all pages.
+  const pagesBlock =
+    capture.pagesAudited > 1
+      ? [
+          `Pages audited (${capture.pagesAudited}) — the metrics below are AGGREGATED across all of them:`,
+          ...capture.pages.map(
+            (p, i) =>
+              `  ${i + 1}. ${p.url} — "${p.title || "(no title)"}" [${p.status ?? "?"}] | ` +
+              `${p.perf.loadMs}ms load, ${p.axeCount} a11y, ${p.consoleErrorCount} console err, ` +
+              `${p.brokenLinkCount} broken links, ${p.buttonsCount} buttons/${p.formsCount} forms/${p.inputsCount} inputs` +
+              (p.textSnippet ? `\n     ↳ ${p.textSnippet.slice(0, 240)}` : "")
+          ),
+          ``,
+        ]
+      : [];
+
   return [
-    `URL: ${capture.finalUrl}`,
+    ...pagesBlock,
+    `Entry URL: ${capture.finalUrl}`,
     `Title: ${capture.title || "(none)"}`,
     `HTTP status: ${capture.status ?? "unknown"} | HTTPS: ${capture.isHttps}`,
-    `Controls: ${capture.buttonsCount} buttons, ${capture.formsCount} forms, ${capture.inputsCount} inputs`,
-    `Security headers present: ${Object.keys(capture.securityHeaders).join(", ") || "NONE"}`,
-    `Performance: load ${capture.perf.loadMs}ms, DOMContentLoaded ${capture.perf.domContentLoadedMs}ms, ` +
+    `Controls (entry): ${capture.buttonsCount} buttons, ${capture.formsCount} forms, ${capture.inputsCount} inputs`,
+    `Security headers present (entry): ${Object.keys(capture.securityHeaders).join(", ") || "NONE"}`,
+    `Performance (entry): load ${capture.perf.loadMs}ms, DOMContentLoaded ${capture.perf.domContentLoadedMs}ms, ` +
       `${capture.perf.requestCount} requests, ${capture.perf.transferKb} KB transferred`,
-    `Accessibility (axe-core) violations: ${axeSummary}`,
+    `Accessibility (axe-core) violations [all pages]: ${axeSummary}`,
     axeTop ? `Top axe violations:\n${axeTop}` : ``,
-    `Console/runtime errors (${capture.consoleErrors.length}): ${
+    `Console/runtime errors [all pages] (${capture.consoleErrors.length}): ${
       capture.consoleErrors.slice(0, 15).join(" | ") || "none"
     }`,
-    `Broken internal links: ${broken}`,
+    `Broken internal links [all pages]: ${broken}`,
     `Links (${capture.links.length}): ${capture.links.slice(0, 40).join(", ")}`,
     ``,
-    `Visible text (truncated):`,
+    `Entry page visible text (truncated):`,
     capture.visibleText.slice(0, 8000),
   ].join("\n");
 }
@@ -290,27 +308,28 @@ async function callAnthropic(
   capture: CaptureResult,
   jsonSchema: Record<string, unknown>,
   schemaName: string,
-  mobileImageBase64?: string
+  extraImages?: string[]
 ): Promise<RawAnalysis> {
   const client = new Anthropic({ apiKey: cfg.apiKey });
+  const extras = (extraImages ?? []).filter(Boolean).slice(0, 4);
   const content: Anthropic.ContentBlockParam[] = [
     {
       type: "text",
-      text: mobileImageBase64
-        ? `${prompt}\n\nTwo screenshots are attached: the first is DESKTOP, the second is MOBILE. Judge responsiveness across both.`
+      text: extras.length
+        ? `${prompt}\n\nThe FIRST screenshot is the entry page (desktop). The additional screenshots are the MOBILE view and/or OTHER audited pages — judge responsiveness and cross-page consistency.`
         : `${prompt}\n\nThe attached screenshot is the rendered page; use it for visual judgement.`,
     },
     {
       type: "image",
       source: { type: "base64", media_type: capture.screenshotMediaType, data: capture.screenshotBase64 },
     },
+    ...extras.map(
+      (img): Anthropic.ContentBlockParam => ({
+        type: "image",
+        source: { type: "base64", media_type: capture.screenshotMediaType, data: img },
+      })
+    ),
   ];
-  if (mobileImageBase64) {
-    content.push({
-      type: "image",
-      source: { type: "base64", media_type: capture.screenshotMediaType, data: mobileImageBase64 },
-    });
-  }
   const response = await client.messages.create({
     model: cfg.model,
     max_tokens: 16000,
@@ -401,11 +420,11 @@ async function runAnalysis(
   jsonSchema: Record<string, unknown>,
   shapeHint: string,
   schemaName: string,
-  mobileImageBase64?: string
+  extraImages?: string[]
 ): Promise<RawAnalysis> {
   const cfg = await resolveAiConfig();
   if (cfg.provider === "ANTHROPIC") {
-    return callAnthropic(cfg, prompt, capture, jsonSchema, schemaName, mobileImageBase64);
+    return callAnthropic(cfg, prompt, capture, jsonSchema, schemaName, extraImages);
   }
   // OpenAI-compatible: the schema isn't enforced server-side, so embed the shape.
   return callOpenAICompatible(cfg, `${prompt}\n\n${shapeHint}`);
@@ -441,8 +460,10 @@ export async function analyzeDimension(
     dimensionJsonSchema,
     DIMENSION_SHAPE_HINT,
     "dimension_analysis",
-    // Mobile screenshot only matters for the Design dimension (vision path).
-    dimension === "DESIGN" ? capture.mobileScreenshotBase64 || undefined : undefined
+    // Design gets the mobile view + a couple of other-page screenshots (vision path).
+    dimension === "DESIGN"
+      ? [capture.mobileScreenshotBase64, ...capture.extraScreenshots].filter(Boolean)
+      : undefined
   );
   return dimensionSchema.parse(normalizeDimension(value, raw));
 }
