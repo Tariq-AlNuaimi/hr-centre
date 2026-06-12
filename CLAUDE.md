@@ -13,6 +13,12 @@ Fork lifecycle: `/rebrand` → `/first-fork` (or `/new-project` / `/deploy`) →
 - `docs/recipes.md` — copy-paste examples (email, Excel export, kanban, charts) — load only when needed
 - `docs/token-policy.md` — token-thrift rules for sessions (ADR-019)
 
+## Token thrift (binding; full policy: `docs/token-policy.md`, ADR-019)
+- Delegate repo-wide searches/investigations to the **scout** agent (haiku, read-only); don't read >5 files inline for orientation. `docs/REPO-MAP.md` answers "where is X" for free.
+- Output style: concise; targeted edits over rewrites; no preamble/recap fluff; read a file once unless it changed.
+- When compacting, always preserve: the modified-file list, last `/ship` status, open findings, and the operator's goal.
+- When the context watchdog warns, run `/handoff-session` at the next milestone; repetitive N-file jobs go through `/batch`, not one long session.
+
 ## Harness (`.claude/`)
 Skills cover the whole lifecycle — discover them via the skill list; each SKILL.md is self-documenting. Most used: `/quickstart`, `/scaffold-entity`, `/ship`, `/deploy`, `/qa`, `/conform`, `/handoff`. The permission allowlist pre-approves npm/prisma/docker/make/non-destructive git; destructive git ops are deny-listed. The SessionStart hook bootstraps `.env`/deps/client and warns when the branch is behind `origin/main`. Read access to `.next/`, `node_modules/`, `generated/` is denied — work from source + `lib/` types, not build artifacts.
 

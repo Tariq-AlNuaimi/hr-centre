@@ -9,6 +9,37 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/context-watchdog.mjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/verbose-guard.mjs"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/session-receipt.mjs"
+          }
+        ]
+      }
     ]
   },
   "permissions": {
@@ -81,5 +112,10 @@
       "Read(./node_modules/**)",
       "Read(./generated/**)"
     ]
+  },
+  "model": "sonnet",
+  "statusLine": {
+    "type": "command",
+    "command": "node $CLAUDE_PROJECT_DIR/.claude/statusline.mjs"
   }
 }

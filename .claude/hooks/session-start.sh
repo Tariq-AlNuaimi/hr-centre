@@ -52,3 +52,14 @@ if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; th
   fi
 fi
 
+
+# --- token thrift (ADR-019) ---
+# Regenerate the orientation map when schema/app/lib changed since last build.
+if [ ! -f docs/REPO-MAP.md ] || [ -n "$(find prisma/schema.prisma app lib -newer docs/REPO-MAP.md -print -quit 2>/dev/null)" ]; then
+  node scripts/repo-map.mjs >/dev/null 2>&1 && echo "[harness] repo-map refreshed (docs/REPO-MAP.md)"
+fi
+# Warn when many MCP servers are configured (schemas cost context; prune via /mcp).
+mcp_count=$( (cat .mcp.json "$HOME/.claude.json" 2>/dev/null | grep -o '"command"' | wc -l) || echo 0 )
+if [ "${mcp_count:-0}" -gt 3 ]; then
+  echo "[harness] NOTE: ~$mcp_count MCP server entries configured -- each loads tool schemas into context; disable unused ones via /mcp (docs/token-policy.md)"
+fi

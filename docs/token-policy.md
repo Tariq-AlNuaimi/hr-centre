@@ -57,3 +57,28 @@ operator's half of the contract.
     `--allowedTools` and `--max-turns` — fresh minimal context each run beats
     one giant session (Airbnb's 3.5k-file migration pattern: cheap capped
     retries, validation gates in the loop).
+
+## Automation shipped (ADR-019) — what the harness now does for you
+| Concern | Mechanism |
+|---|---|
+| Know the burn live | statusline: `model \| ctx % \| msgs \| $` (.claude/statusline.mjs) |
+| Detect when to start fresh | UserPromptSubmit watchdog warns at 60% / 80% context |
+| Hand off cheaply | `/handoff-session` writes HANDOFF.md + paste-ready prompt |
+| Stop token-bomb commands | PreToolUse guard denies raw `npm test`/build/dev-server with the quiet alternative (override: prefix `VERBOSE=1`) |
+| Cheap exploration | `scout` agent (haiku, read-only, ≤30-line reports) |
+| O(1) orientation | docs/REPO-MAP.md, auto-refreshed by SessionStart when stale |
+| Batch jobs | `/batch` — headless per-file runs, capped turns/retries, cost logged |
+| Per-session accounting | SessionEnd receipt → .claude/usage-log.jsonl |
+| Cheaper default model | project default = sonnet (override per session: `/model`) |
+| MCP overload | SessionStart warns when >3 servers configured |
+
+## Operator-only (one-time / per-session, cannot be automated from the repo)
+| Action | How |
+|---|---|
+| Prune MCP servers | `/mcp` → disable unused (check `/context` first) |
+| Monthly hard cap | `/usage-credits` → set limit |
+| Architecture-day model | `/model opus` (or fable) for that session only |
+| Side questions | `/btw` (never enters history) |
+| Thinking budget (opt-in) | `MAX_THINKING_TOKENS=8000` env for mechanical sessions — NOT global |
+| Code-intelligence plugin | install an LSP plugin once: go-to-def replaces grep+reads |
+| Weekly review | `/usage` + `.claude/usage-log.jsonl` (or `npx ccusage`) |
