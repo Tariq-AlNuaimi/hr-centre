@@ -12,6 +12,28 @@ updates:
       # One PR for routine minor/patch bumps; majors come as individual PRs.
       minor-and-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Majors locked by ADR-001 -- bumping any of these requires a superseding
+      # ADR (see CLAUDE.md "Ask before"), so Dependabot must not propose them.
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "recharts"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "jsdom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "global-jsdom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # next is exact-pinned and bumped deliberately (known-trap note in CLAUDE.md);
+      # its toolchain siblings move in lockstep with it, not via Dependabot.
+      - dependency-name: "next"
+      - dependency-name: "eslint-config-next"
+      - dependency-name: "@next/bundle-analyzer"
     labels:
       - "dependencies"
 
