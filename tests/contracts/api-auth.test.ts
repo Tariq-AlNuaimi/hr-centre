@@ -116,6 +116,105 @@ test("withInternalAuth passes through when the token matches", async () => {
   });
 });
 
+// -- ADR-018: opt-in Bearer + silent-skip dormancy on withInternalAuth --
+
+test("withInternalAuth accepts Authorization: Bearer when the route opts in (Vercel Cron form, ADR-018)", async () => {
+  await withTokenEnv("s3cret-token-value", async () => {
+    let called = false;
+    const handler = helpers.withInternalAuth(
+      TOKEN_ENV,
+      async () => {
+        called = true;
+        return NextResponse.json({ data: "ran" });
+      },
+      { bearer: true }
+    );
+    const req = new NextRequest("http://localhost/api/internal/x", {
+      headers: { authorization: "Bearer s3cret-token-value" },
+    });
+    const res = await handler(req, ctx);
+    assert.equal(res.status, 200);
+    assert.equal(called, true);
+  });
+});
+
+test("withInternalAuth REJECTS a valid Bearer token when the route has not opted in (no silent surface widening)", async () => {
+  await withTokenEnv("s3cret-token-value", async () => {
+    const handler = helpers.withInternalAuth(TOKEN_ENV, okHandler);
+    const req = new NextRequest("http://localhost/api/internal/x", {
+      headers: { authorization: "Bearer s3cret-token-value" },
+    });
+    const res = await handler(req, ctx);
+    assert.equal(res.status, 401);
+  });
+});
+
+test("withInternalAuth rejects a bare Authorization header (no Bearer scheme) even when opted in", async () => {
+  await withTokenEnv("s3cret-token-value", async () => {
+    const handler = helpers.withInternalAuth(TOKEN_ENV, okHandler, { bearer: true });
+    const req = new NextRequest("http://localhost/api/internal/x", {
+      headers: { authorization: "s3cret-token-value" },
+    });
+    const res = await handler(req, ctx);
+    assert.equal(res.status, 401);
+  });
+});
+
+test("withInternalAuth returns 401 for a wrong Bearer token when opted in", async () => {
+  await withTokenEnv("s3cret-token-value", async () => {
+    const handler = helpers.withInternalAuth(TOKEN_ENV, okHandler, { bearer: true });
+    const req = new NextRequest("http://localhost/api/internal/x", {
+      headers: { authorization: "Bearer wrong" },
+    });
+    const res = await handler(req, ctx);
+    assert.equal(res.status, 401);
+  });
+});
+
+test("withInternalAuth: x-internal-token is authoritative -- a wrong value is not rescued by a correct Bearer", async () => {
+  await withTokenEnv("s3cret-token-value", async () => {
+    const handler = helpers.withInternalAuth(TOKEN_ENV, okHandler, { bearer: true });
+    const req = new NextRequest("http://localhost/api/internal/x", {
+      headers: {
+        "x-internal-token": "wrong",
+        authorization: "Bearer s3cret-token-value",
+      },
+    });
+    const res = await handler(req, ctx);
+    assert.equal(res.status, 401);
+  });
+});
+
+test("withInternalAuth with skipWhenUnconfigured returns 200 {skipped:true} when the env var is unset", async () => {
+  await withTokenEnv(undefined, async () => {
+    let called = false;
+    const handler = helpers.withInternalAuth(
+      TOKEN_ENV,
+      async () => {
+        called = true;
+        return NextResponse.json({ data: "ran" });
+      },
+      { skipWhenUnconfigured: true }
+    );
+    const res = await handler(new NextRequest("http://localhost/api/internal/x"), ctx);
+    assert.equal(res.status, 200);
+    assert.equal(called, false);
+    const body = (await res.json()) as { data: { skipped: boolean } };
+    assert.equal(body.data.skipped, true);
+  });
+});
+
+test("withInternalAuth with skipWhenUnconfigured still enforces the secret once it IS set", async () => {
+  await withTokenEnv("s3cret-token-value", async () => {
+    const handler = helpers.withInternalAuth(TOKEN_ENV, okHandler, {
+      bearer: true,
+      skipWhenUnconfigured: true,
+    });
+    const res = await handler(new NextRequest("http://localhost/api/internal/x"), ctx);
+    assert.equal(res.status, 401);
+  });
+});
+
 // --- withApiAuth: Bearer-token gate (pure env + header, no session) ---
 
 const API_ENV = "TEST_API_KEY_DO_NOT_SHIP";

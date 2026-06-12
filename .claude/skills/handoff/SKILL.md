@@ -196,10 +196,11 @@ They're configured at `error` -- do not relax without reviewing
 
 ## Open issues / known TODOs
 
-- **Audit-log retention is unscheduled.** The `app/api/internal/audit-purge`
-  endpoint exists but nothing calls it on a schedule (the monthly workflow was
-  removed in ADR-006). If this project will live long-term, wire a Vercel Cron
-  or a Neon retention policy to POST to it. (SECURITY.md §5, finding T-06.)
+- **Audit-log retention** runs as a daily Vercel Cron (`vercel.json` →
+  GET `/api/internal/audit-purge`, batched deletes; ADR-018). It is active iff
+  the `CRON_SECRET` env var is set on the Vercel project (silent 200 no-op
+  otherwise) — verify it is set and >=32 chars. Manual purges: POST with
+  `x-internal-token: $AUDIT_PURGE_TOKEN`. (SECURITY.md §5, finding T-06 closed.)
 - <list anything in GitHub Issues, the operator's notes, or ADR migration triggers>
 
 ## Contacts

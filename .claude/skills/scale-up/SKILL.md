@@ -120,30 +120,30 @@ Sign up at https://inngest.com, connect the Vercel project, copy
 
 ## 3. Cron (Vercel Cron, built in)
 
-**Trigger:** monthly audit-log purge, daily report email, hourly cleanup.
+**Trigger:** daily report email, hourly cleanup, any scheduled job.
 
-**Recipe:** edit `vercel.json`:
+**Already shipped:** the template ships ONE cron out of the box — the daily
+audit-log purge (`/api/internal/audit-purge`, `0 3 * * *`; ADR-018). Do not
+remove it when adding more.
 
-```json
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "prisma generate && prisma migrate deploy && next build",
-  "framework": "nextjs",
-  "crons": [
-    { "path": "/api/internal/audit-purge", "schedule": "0 3 1 * *" }
-  ]
-}
+**Recipe:** ADD an entry to the existing `crons` array in `vercel.json` —
+**edit, never overwrite, that file** (it also carries the `buildCommand` with
+the migrate + seed steps):
+
+```jsonc
+// vercel.json -- ADD to the existing "crons" array:
+{ "path": "/api/internal/<your-job>", "schedule": "0 6 * * *" }
 ```
 
-**Auth caveat (important):** Vercel Cron authenticates by sending
-`Authorization: Bearer $CRON_SECRET` (a Vercel-managed env var you set on the
-project) — it does **not** forward an arbitrary env var, and it **cannot** set a
-custom `x-internal-token` header. The shipped `withInternalAuth` checks
-`x-internal-token`, so pick one:
-- **(a)** keep `withInternalAuth` and trigger the route from an external
-  scheduler (e.g. a GitHub Actions cron) that sends `x-internal-token: $AUDIT_PURGE_TOKEN`; or
-- **(b)** use Vercel Cron and add a check in the route for
-  `Authorization: Bearer $CRON_SECRET` instead of (or in addition to) the header.
+**Auth:** Vercel Cron authenticates by sending `Authorization: Bearer
+$CRON_SECRET` (set that env var on the project) — it **cannot** send a custom
+`x-internal-token` header. The shipped `withInternalAuth` already supports
+this: wrap the new route with
+`withInternalAuth("CRON_SECRET", handler, { bearer: true, skipWhenUnconfigured: true })`
+and compose `withRateLimit` outside it (copy the pattern from
+`app/api/internal/audit-purge/route.ts`). External schedulers that CAN send
+custom headers (e.g. GitHub Actions) use a plain `withInternalAuth("<TOKEN_ENV>", handler)`
+and send `x-internal-token`.
 
 **Cost:** free on Hobby; included on Pro.
 

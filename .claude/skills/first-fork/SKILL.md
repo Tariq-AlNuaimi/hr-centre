@@ -128,9 +128,11 @@ If this works, the rail is set up. From here:
 - **SMTP**: set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`,
   `SMTP_FROM`. Email is gated on `SMTP_HOST` — when unset, `sendEmail()`
   returns `{ sent: false }` and the app still runs.
-- **Audit purge cron**: set `AUDIT_PURGE_TOKEN`, then add a cron entry in
-  `vercel.json` calling `/api/internal/audit-purge`. See `/scale-up` for the
-  exact config.
+- **Audit purge cron**: already wired — `vercel.json` ships a daily cron
+  GETting `/api/internal/audit-purge`. To activate it, set **`CRON_SECRET`**
+  (>=32 chars, `openssl rand -base64 48`) as a Vercel env var; until then the
+  cron is a silent no-op. `AUDIT_PURGE_TOKEN` is only for manual/Actions POSTs.
+  (ADR-018; /deploy sets `CRON_SECRET` automatically.)
 
 ## What you do NOT need
 

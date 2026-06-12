@@ -61,9 +61,10 @@ to the Vercel project. Without `--apex`, the project is reachable at
      --owner <gh-owner> --admin-email <you@example.com>
    ```
    It preflights egress, creates the Neon project, creates the Vercel project
-   linked to `<owner>/<slug>` with the 5 env vars (`DATABASE_URL`, `AUTH_SECRET`,
-   `NEXT_PUBLIC_APP_NAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`), and
-   triggers the first production deploy.
+   linked to `<owner>/<slug>` with the 6 env vars (`DATABASE_URL`, `AUTH_SECRET`,
+   `NEXT_PUBLIC_APP_NAME`, `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, and
+   `CRON_SECRET` -- the last activates the daily audit-retention cron, ADR-018),
+   and triggers the first production deploy.
 4. **Seed the admin** once the build is green (the build auto-runs
    `prisma migrate deploy`):
    ```sh

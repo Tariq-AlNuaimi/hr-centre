@@ -229,6 +229,10 @@ async function apiTry(label, url, opts = {}) {
 await preflight();
 
 const authSecret = randomBytes(32).toString("base64");
+// Audit-retention cron secret (ADR-018): provisioning it here is what activates
+// the daily audit-purge cron shipped in vercel.json -- without it the cron
+// no-ops (200 {skipped:true}) forever. >=32 chars per lib/env.ts.
+const cronSecret = randomBytes(32).toString("base64");
 const seedAdminPassword = randomBytes(18)
   .toString("base64")
   .replace(/[+/=]/g, (c) => ({ "+": "A", "/": "B", "=": "" })[c]);
@@ -296,6 +300,7 @@ const vercelProject = await api(
         { key: "NEXT_PUBLIC_APP_NAME", value: displayName, target: envTargets, type: "plain" },
         { key: "SEED_ADMIN_EMAIL", value: adminEmail, target: envTargets, type: "plain" },
         { key: "SEED_ADMIN_PASSWORD", value: seedAdminPassword, target: envTargets, type: "encrypted" },
+        { key: "CRON_SECRET", value: cronSecret, target: envTargets, type: "encrypted" },
       ],
     }),
   }

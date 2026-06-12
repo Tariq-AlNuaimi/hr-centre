@@ -21,9 +21,12 @@ const envSchema = z.object({
   // Recycling bin
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 
-  // Audit retention -- AUDIT_PURGE_TOKEN gates /api/internal/audit-purge.
-  // Optional: when unset, the endpoint returns 503. Wire Vercel Cron to call
-  // it monthly once set (see /scale-up).
+  // Audit retention (ADR-018) -- two secrets gate /api/internal/audit-purge,
+  // both optional and dormant until set, both with the same strength floor:
+  // CRON_SECRET authorizes the daily Vercel Cron GET (Vercel auto-sends it as
+  // `Authorization: Bearer`); AUDIT_PURGE_TOKEN authorizes manual / Actions
+  // POSTs via `x-internal-token`. They may be set to the same value.
+  CRON_SECRET: z.string().min(32).optional(),
   AUDIT_PURGE_TOKEN: z.string().min(32).optional(),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
 
