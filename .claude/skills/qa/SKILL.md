@@ -55,6 +55,16 @@ Tie-breaker across all three: the **4 pillars** hold and the **security floor** 
 - The agent does the **exhaustive evidence-backed passes**; the operator **adjudicates
   the judgment calls and signs off** — far less work than finding the misses by hand.
 
+## Re-run scoping (keep repeat QA cheap)
+- A re-run after fixes does **not** restart from zero. Scope tier 1 and tier 3 passes to
+  screens whose code (page/components/styles/messages it imports) changed since the last
+  pass — `git diff --name-only <last-qa-commit>..HEAD` is the source of truth — plus any
+  screen the previous run flagged red. Unchanged + previously-green screens carry their
+  verdict forward, noted as "carried (unchanged since <sha>)" in the scorecard.
+- The **functional gate (`/ship`) always runs in full** — it's cheap and global.
+- A full from-scratch pass is still required before release sign-off and whenever shared
+  layout/theme/token files changed (those invalidate every screen).
+
 ## Boundaries
 - `/qa` orchestrates the **existing** tier skills; it doesn't replace them. Security
   *code* scanning is `/audit`; live-app pentest is the future `/vapt`.

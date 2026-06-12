@@ -113,6 +113,12 @@ the IT team's paid plan can run Actions and enforce branch protection:
 Branch protection is **optional** on this template and unenforceable on the free plan. Turn it
 on once handed off. See `SECURITY.md` §14 and ADR-007.
 
+**Activation criteria (so dormancy never becomes permanent):** turn the workflows on at the
+FIRST of — (a) `/handoff` to a team whose plan runs Actions, (b) Actions billing unblocking
+on this account, or (c) a second regular contributor joining (solo-operator assumption broken).
+Dependency cadence is governed by ADR-017: in-range updates continuously (any session,
+gated by `/ship`), held majors reviewed in a quarterly stack-refresh ADR.
+
 ## QA system — design-QA → functional → UAT (gated), `docs/uat-rubric.md` is the bar
 Quality is enforced by **three gated tiers**, not one vague "test it" step. `/qa`
 orchestrates them in order — a red gate **stops the line** and reports, it never barrels

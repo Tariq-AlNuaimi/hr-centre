@@ -14,6 +14,13 @@ plan can run Actions.
 Run the seven checks below **in order**, cheapest-to-most-expensive. **Stop on the
 first failure** — do not run later steps, do not commit, do not push.
 
+**Parallelization (optional, saves ~30-40% wall time):** steps 1-4 are independent
+of each other — they may run **concurrently** (e.g. as parallel tool calls or
+backgrounded shells), as long as ALL four are green before step 5 (build) starts
+and a failure in any of them is reported with the same stop-the-line semantics.
+Steps 5-7 stay sequential. When in doubt, run sequentially — correctness of the
+gate beats speed.
+
 > Companion: for any push that touches auth, schemas, API routes, or anything under
 > `lib/`, run the native **`/code-review`** (fresh-context diff review) and resolve
 > its findings before `/ship`.
@@ -21,6 +28,11 @@ first failure** — do not run later steps, do not commit, do not push.
 ## Steps (in order)
 
 1. **Typecheck.** `npx tsc --noEmit`. Catches schema-vs-code drift after Prisma generate and Auth.js callback fallout.
+   - **Stale-cache trap:** `tsconfig.json` includes `.next/types`, which is generated
+     by the *last* build. After large deletions/renames of routes or pages, typecheck
+     can fail with `TS2307: Cannot find module '../../app/...'` errors pointing into
+     `.next/types/` — that's the stale build cache, not your code. Fix: delete the
+     `.next` directory and re-run (step 5 regenerates it).
 2. **Lint.** `npm run lint`. Surfaces unused imports, hooks-rules violations, missing keys, accessibility regressions, and the four local `rihal-template/*` security rules.
 3. **Tests (contract suite).** `npm test`. Runs the `node:test` contract suite (rate limit, audit scrub, email, export, sentry scrub, auth wrappers) — the highest-risk invariants.
 4. **Tests (component suite).** `npm run test:components`. Runs the jsdom React component tests (`tests/components/*.test.tsx`) — DataTable, EmptyState, DashboardError. Catches shared-UI regressions tsc/lint miss.
