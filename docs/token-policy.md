@@ -1,0 +1,59 @@
+# Token policy — operating Claude Code without burning the budget
+
+Research-backed (ADR-019; sources: code.claude.com/docs/en/costs, /best-practices,
+/context-window, /large-codebases; community-measured repos; enterprise rollouts).
+The repo side is already enforced by this template; the session habits are the
+operator's half of the contract.
+
+## Repo side (enforced by this template)
+
+1. **CLAUDE.md ≤ ~200 lines.** It is loaded every session and re-sent after every
+   compaction; every line is a permanent tax AND dilutes instruction-following
+   ("bloated CLAUDE.md files cause Claude to ignore your actual instructions" —
+   Anthropic). Details live behind pointers: `docs/recipes.md`, skill SKILL.mds,
+   ADRs. When adding to CLAUDE.md ask: "would removing this cause mistakes?" If
+   not, it goes in a doc/skill instead.
+2. **Quiet gates.** `npm run ship` prints ~12 lines, not thousands — verbose
+   test/build output is the #1 in-session token sink (Anthropic's own example:
+   10k-line log → hundreds of tokens). Never run the full suite raw when the
+   gate script exists; never tail a dev server in foreground.
+3. **Read-deny on bulk artifacts.** `.claude/settings.json` denies Read on
+   `.next/`, `node_modules/`, `generated/` so a stray search can't pull a 600KB
+   minified chunk or the generated Prisma client into context.
+4. **Skills = progressive disclosure.** Workflow knowledge lives in
+   `.claude/skills/*/SKILL.md`, loaded only when invoked — never inline in
+   CLAUDE.md.
+
+## Session habits (the operator's half — biggest levers first)
+
+1. **One task per session; `/clear` between tasks.** After 2 failed corrections,
+   `/clear` and re-prompt with what you learned — "a clean session with a better
+   prompt almost always outperforms a long session with accumulated corrections."
+2. **Prune MCP servers** (`/mcp`, check `/context`). Community-measured: up to
+   ~67k tokens of tool schemas before your first prompt; one search server alone
+   was 14k. Prefer CLIs (`gh`, `vercel`) over MCP equivalents.
+3. **Model tiering.** Sonnet by default; Opus/Fable only for architecture-grade
+   work; `model: haiku` for simple subagents. Thinking tokens bill as output —
+   lower `/effort` or set `MAX_THINKING_TOKENS` for routine sessions.
+4. **Subagents for exploration.** "Investigate X with a subagent" keeps hundreds
+   of file-reads out of the main window; only the summary returns. Avoid the
+   named failure mode: unscoped "explore the codebase".
+5. **Specific prompts.** "Add zod validation to POST /api/users in
+   app/api/users/route.ts" — not "improve validation". Vague prompts buy
+   repo-wide scanning.
+6. **`/compact <instructions>` proactively** at natural milestones (after a green
+   ship), not when forced at the limit; `/btw` for side questions (never enters
+   history); save plans/specs to files — files survive compaction, history may not.
+7. **Don't break the prompt cache.** Cache reads are 0.1x price; changing
+   settings/MCP set/system content mid-session invalidates the cached prefix.
+   Keep CLAUDE.md stable within a working day.
+8. **Watch the meter.** `/usage` (per-session + 7d attribution), `/usage-credits`,
+   `/context` (live breakdown); `ccusage` (16k-star community tool) for local
+   session reports. Anthropic baseline: ~$13/dev/active-day average, 90% < $30.
+9. **Plan mode economics.** Use it for multi-file work (prevents expensive
+   re-work); skip it when you could describe the diff in one sentence — plan
+   mode itself costs overhead.
+10. **Headless for batch.** Repetitive migrations: `claude -p` per file with
+    `--allowedTools` and `--max-turns` — fresh minimal context each run beats
+    one giant session (Airbnb's 3.5k-file migration pattern: cheap capped
+    retries, validation gates in the loop).

@@ -76,7 +76,10 @@
       "Bash(git clean -f*)",
       "Bash(git clean -d*)",
       "Bash(git rebase -i*)",
-      "Bash(git commit --amend*)"
+      "Bash(git commit --amend*)",
+      "Read(./.next/**)",
+      "Read(./node_modules/**)",
+      "Read(./generated/**)"
     ]
   }
 }
