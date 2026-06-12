@@ -281,6 +281,7 @@ The rail handles all of these without migration. None require code restructuring
 
 ## Commands
 - `npm run dev` — Next.js dev server
+- `npm run ship` — the full 7-step `/ship` gate, parallel + cached (~45s warm); preferred over running the steps by hand
 - `npm run scaffold -- --name <Pascal> --fields '<spec>' [--enums '...'] [--relations '...'] [--writes admin|editor|any]` — `--writes` picks the write-route auth wrapper (admin→`withAdminAuth`, editor→`withEditorAuth`, any→`withAuth`; default `any`; GET always `withAuth`; `--admin-writes` kept as a back-compat alias)
 - `npm run rebrand -- --slug <kebab> --name '<Display>' --owner <gh-owner>`
 - `npm run deploy -- --slug <kebab> --display-name '<Display>' --owner <gh-owner> --admin-email <email>` — provision Neon + Vercel for the current repo and deploy (needs `NEON_API_KEY` + `VERCEL_TOKEN`; egress to `api.vercel.com` + `console.neon.tech`)

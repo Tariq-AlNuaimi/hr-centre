@@ -11,10 +11,17 @@ run, so the checks they would perform are mirrored here and run locally, on any
 machine, before every push. CI re-activates at `/handoff` when the IT team's paid
 plan can run Actions.
 
-Run the seven checks below **in order**, cheapest-to-most-expensive. **Stop on the
-first failure** — do not run later steps, do not commit, do not push.
+**Preferred execution: `npm run ship`** (`scripts/ship.mjs`). It runs the same seven
+checks with steps 1-4 in parallel, tsc/eslint caches under `node_modules/.cache`
+(cold on fresh clones and CI, warm within a session), auto-heals the stale-`.next/types`
+trap, and stops the line on any failure with the `file:line`. Measured: **~45s warm /
+~100s cold** vs ~4-6 min sequential. Failure semantics are identical to running the
+steps by hand.
 
-**Parallelization (optional, saves ~30-40% wall time):** steps 1-4 are independent
+Fallback: run the seven checks below **in order**, cheapest-to-most-expensive. **Stop
+on the first failure** — do not run later steps, do not commit, do not push.
+
+**Parallelization (when running by hand):** steps 1-4 are independent
 of each other — they may run **concurrently** (e.g. as parallel tool calls or
 backgrounded shells), as long as ALL four are green before step 5 (build) starts
 and a failure in any of them is reported with the same stop-the-line semantics.

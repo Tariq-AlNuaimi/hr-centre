@@ -33,7 +33,8 @@
     "deploy": "node scripts/deploy.mjs",
     "changeset": "changeset",
     "changeset:version": "changeset version",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "ANALYZE=true next build",
+    "ship": "node scripts/ship.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
