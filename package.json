@@ -22,6 +22,7 @@
     "rebrand": "node scripts/rebrand.mjs",
     "migrate-from": "node scripts/migrate-from.mjs",
     "new-project": "node scripts/new-project.mjs",
+    "sync-template": "node scripts/sync-from-template.mjs",
     "uat": "UAT_MODE=lean playwright test",
     "uat:full": "UAT_MODE=full playwright test",
     "uat:headed": "UAT_MODE=lean playwright test --headed",

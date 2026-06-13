@@ -1,0 +1,88 @@
+---
+name: sync-from-template
+description: Pull later template enhancements into a fork that was generated from this template (GitHub "Use this template" -> no shared git history). Path-scoped, additive checkout of template-owned layers only; mixed files (lib/, CLAUDE.md, Ask-before files) get a review diff, never an auto-overwrite. Records a version marker so a fork can tell when it is behind. Use when the user says "pull template updates", "sync from template", "update from upstream", "get the latest template changes", "/sync-from-template", or asks how to make existing projects follow new template enhancements.
+---
+
+# /sync-from-template — propagate template enhancements into an existing fork
+
+Forks are created with GitHub **"Use this template"** (`scripts/new-project.mjs`
+hits the `/generate` API), which produces an **unrelated git history**. So there
+is no `git merge upstream`. This skill instead does a **path-scoped, additive**
+checkout of the template's infrastructure layers and leaves everything staged for
+review — the fork's own data/features are never touched.
+
+Backed by `scripts/sync-from-template.mjs`.
+
+## What it does
+
+- Adds a `template` git remote (default
+  `https://github.com/Tariq-AlNuaimi/fullstack-vibe-template.git`; override with
+  `--template <url>`), fetches `main`.
+- **OWNED layers** (pulled, then unstaged for review): `.claude/skills`,
+  `.claude/agents`, `.claude/hooks`, `.claude/statusline.mjs`, `eslint-rules`,
+  `scripts`, `docs/decisions`, `docs/token-policy.md`, `docs/recipes.md`,
+  `docs/uat-rubric.md`, `.gitleaks.toml`, `eslint.config.mjs`. Path-scoped
+  checkout is additive — fork-only files at these paths are preserved.
+- **REVIEW layers** (diff only, NEVER auto-applied): `lib`, `CLAUDE.md`,
+  `AGENTS.md`, `.claude/settings.json`, `middleware.ts`, `vercel.json`,
+  `next.config.ts`, `package.json`, `tsconfig.json`, `playwright.config.ts`,
+  `tests/contracts`. These mix template improvements with per-fork edits and
+  include the Ask-before files, so a human reconciles them. The diff is written
+  to `.template-sync-review.diff` (gitignored).
+- **Fork-owned** (never touched): `prisma/`, `app/`, `components/`, `messages/`,
+  `i18n/`, `project.config.json`, package identity, `.env*`, `public/`.
+- Writes **`.template-sync.json`** (committed) recording the template commit the
+  fork is now based on — the version marker.
+
+## Run
+
+```sh
+# See how far behind, and exactly which files differ — touches nothing:
+npm run sync-template -- --check
+
+# Preview what a sync would pull:
+npm run sync-template -- --dry-run
+
+# Do it (requires a clean working tree; stages OWNED layers for review):
+npm run sync-template
+```
+
+Flags: `--template <url>` (source; remembered in the marker after first run),
+`--ref <branch>` (default `main`), `--remote <name>` (default `template`).
+
+`--check` exits **3** when the fork is behind (0 when up to date) so it can gate a
+hook or CI step later.
+
+## After running
+
+1. `git diff` — review the auto-pulled OWNED changes.
+2. Merge the mixed files by hand from `.template-sync-review.diff`. Treat the
+   Ask-before files (`lib/api-helpers.ts`, `lib/rate-limit.ts`, `lib/email.ts`,
+   `lib/export.ts`, anything under `lib/prisma/`, `middleware.ts`) as
+   stop-and-think: only port the template's *improvement*, keep the fork's logic.
+3. If anything under auth / `lib` / schemas / API routes changed, run
+   `/code-review`.
+4. `npm run ship` until green, then commit (include `.template-sync.json`).
+
+## Notes & limits
+
+- **Clean tree required** for an apply — the script refuses on a dirty tree so the
+  sync lands as its own reviewable commit. `--check` / `--dry-run` always run.
+- **Additive, not a mirror.** A file the template *deleted* is not removed from
+  the fork; this skill brings in updates/additions, it does not prune. Intentional
+  — pruning would risk deleting fork features.
+- **Private template:** `git fetch` uses your existing git credentials; ensure
+  they can read the template repo.
+- **Self-updating:** because `scripts/` and `.claude/skills/` are OWNED, running a
+  sync also updates this skill and script to the template's latest.
+- This skill ships in the template, so every *future* fork inherits it. To seed it
+  into an *existing* fork, copy `scripts/sync-from-template.mjs` +
+  `.claude/skills/sync-from-template/` over once, or run the manual recipe in the
+  "What it does" list, then use the skill from then on.
+
+## When NOT to use
+
+- Brand-new project from scratch — use `/new-project` or `/first-fork`.
+- Foreign code built outside the template — use `/conform` (uplifts external code
+  to the standard and pushes to a new repo).
+- Porting **data** from another database — use `/migrate-from`.

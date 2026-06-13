@@ -69,3 +69,7 @@ plans/
 # Handoff is docs/SESSION-HANDOFF.md: TRACKED on working branches (must survive a
 # fresh remote container), never merged to main. ADR-019.
 .claude/usage-log.jsonl
+
+# /sync-from-template scratch: the review diff for mixed files is local-only.
+# The version marker (.template-sync.json) is TRACKED -- it is the fork's baseline.
+.template-sync-review.diff
