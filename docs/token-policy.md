@@ -69,7 +69,7 @@ operator's half of the contract.
 | O(1) orientation | docs/REPO-MAP.md, auto-refreshed by SessionStart when stale |
 | Batch jobs | `/batch` — headless per-file runs, capped turns/retries, cost logged |
 | Per-session accounting | SessionEnd receipt → .claude/usage-log.jsonl |
-| Cheaper default model | project default = sonnet (override per session: `/model`) |
+| Model choice | NO forced project default — your account/`/model` choice stands. Subagents still tier down (scout = haiku). Drop to `/model sonnet` yourself for mechanical sessions. |
 | MCP overload | SessionStart warns when >3 servers configured |
 
 ## Operator-only (one-time / per-session, cannot be automated from the repo)

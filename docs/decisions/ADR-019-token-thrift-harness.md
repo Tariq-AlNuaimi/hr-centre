@@ -34,9 +34,13 @@ Ship token discipline as code in `.claude/` (full mapping: `docs/token-policy.md
 5. **Repo map**: `scripts/repo-map.mjs` → `docs/REPO-MAP.md` (~1k tokens:
    routes+methods, models+fields, lib exports, components), auto-refreshed by
    the SessionStart hook when schema/app/lib are newer.
-6. **Model default = sonnet** in project settings; `/model` is the per-session
-   escalation for architecture/review days. Subagents inherit cheap defaults
-   (scout = haiku).
+6. **Model tiering by task, not a forced default.** Deliberately NO project-level
+   `model` in settings.json: it would only bite sessions where the operator
+   didn't choose (and the operator's `/model` always overrides it anyway), while
+   risking an under-powered architecture/review session — the dimension where
+   capability matters most. Subagents still tier down where it's pure win
+   (scout = haiku, retrieval only). The operator drops to `/model sonnet` for
+   mechanical sessions by choice; `docs/token-policy.md` documents this.
 7. **Metering**: statusline (model | ctx% | msgs | $), SessionEnd receipt to
    `.claude/usage-log.jsonl` (gitignored), SessionStart warning when >3 MCP
    servers are configured.
@@ -59,8 +63,12 @@ opt-in `MAX_THINKING_TOKENS`, LSP plugin install, weekly `/usage` review.
 - Hooks add ~100ms per event and can misfire; the guard may deny a command the
   operator genuinely wanted raw (mitigated: `VERBOSE=1` escape hatch, and all
   hooks fail open on any parse error).
-- Default-sonnet may underpower an architecture session the operator forgot to
-  escalate (mitigated: statusline shows the model at all times).
+- No forced model default means a "didn't think about it" session uses whatever
+  the operator's account default is — could be more expensive than necessary for
+  a mechanical task (mitigated: statusline shows the model; operator tiers down
+  by choice). This was a deliberate reversal — capping the operator's own model
+  fights the goal of high-quality output for a power user; the savings come from
+  context hygiene, not from a capability cap.
 
 ### Mitigations
 - All hooks are fail-open (`catch → exit 0`); the harness can never block work.
