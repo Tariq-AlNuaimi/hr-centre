@@ -63,7 +63,7 @@ operator's half of the contract.
 |---|---|
 | Know the burn live | statusline: `model \| ctx % \| msgs \| $` (.claude/statusline.mjs) |
 | Detect when to start fresh | UserPromptSubmit watchdog warns at 60% / 80% context |
-| Hand off cheaply | `/handoff-session` writes HANDOFF.md + paste-ready prompt |
+| Hand off cheaply | `/handoff-session` commits `docs/SESSION-HANDOFF.md` to the branch (survives a fresh remote container) AND prints the full handoff to paste — both carriers, works on web + laptop |
 | Stop token-bomb commands | PreToolUse guard denies raw `npm test`/build/dev-server with the quiet alternative (override: prefix `VERBOSE=1`) |
 | Cheap exploration | `scout` agent (haiku, read-only, ≤30-line reports) |
 | O(1) orientation | docs/REPO-MAP.md, auto-refreshed by SessionStart when stale |

@@ -65,6 +65,7 @@ next-env.d.ts
 # Working plan artifacts (not shipped in forks)
 plans/
 
-# session scratch (token thrift)
-HANDOFF.md
+# session scratch (token thrift) -- usage log local-only.
+# Handoff is docs/SESSION-HANDOFF.md: TRACKED on working branches (must survive a
+# fresh remote container), never merged to main. ADR-019.
 .claude/usage-log.jsonl
