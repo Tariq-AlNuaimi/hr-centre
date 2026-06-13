@@ -21,6 +21,13 @@ const envSchema = z.object({
   // Recycling bin
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 
+  // Rate limiting (optional). Names the proxy's trusted real-client-IP header so
+  // lib/rate-limit.ts can stop trusting the spoofable x-forwarded-for[0] -- e.g.
+  // "cf-connecting-ip" (Cloudflare) or "x-real-ip" (Vercel/nginx). Unset = fall
+  // back to x-real-ip then x-forwarded-for. Declared here for the env contract;
+  // consumed in lib/rate-limit.ts. See .env.example + SECURITY.md finding T-01.
+  RATE_LIMIT_TRUSTED_IP_HEADER: z.string().optional(),
+
   // Audit retention (ADR-018) -- two secrets gate /api/internal/audit-purge,
   // both optional and dormant until set, both with the same strength floor:
   // CRON_SECRET authorizes the daily Vercel Cron GET (Vercel auto-sends it as
