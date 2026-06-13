@@ -70,6 +70,8 @@ plans/
 # fresh remote container), never merged to main. ADR-019.
 .claude/usage-log.jsonl
 
-# /sync-from-template scratch: the review diff for mixed files is local-only.
+# /sync-from-template scratch: the review diff for mixed files is local-only,
+# and the session-start drift-check throttle stamp is machine-local.
 # The version marker (.template-sync.json) is TRACKED -- it is the fork's baseline.
 .template-sync-review.diff
+.claude/.template-check-stamp

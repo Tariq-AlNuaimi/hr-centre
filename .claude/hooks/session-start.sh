@@ -59,7 +59,35 @@ if [ ! -f docs/REPO-MAP.md ] || [ -n "$(find prisma/schema.prisma app lib -newer
   node scripts/repo-map.mjs >/dev/null 2>&1 && echo "[harness] repo-map refreshed (docs/REPO-MAP.md)"
 fi
 # Warn when many MCP servers are configured (schemas cost context; prune via /mcp).
-mcp_count=$( (cat .mcp.json "$HOME/.claude.json" 2>/dev/null | grep -o '"command"' | wc -l) || echo 0 )
+# tr -dc collapses the count to a single integer -- under pipefail a no-match grep
+# makes the subshell exit non-zero, so `|| echo 0` can append a second line.
+mcp_count=$( ( (cat .mcp.json "$HOME/.claude.json" 2>/dev/null | grep -o '"command"' | wc -l) || echo 0 ) | tr -dc '0-9' )
 if [ "${mcp_count:-0}" -gt 3 ]; then
   echo "[harness] NOTE: ~$mcp_count MCP server entries configured -- each loads tool schemas into context; disable unused ones via /mcp (docs/token-policy.md)"
+fi
+
+# --- template drift (advisory; forks only) ---
+# If this fork has synced from the template before (.template-sync.json is
+# present and tracked), occasionally check whether the template has moved ahead
+# and nudge to run /sync-from-template. Gated on the marker so it NEVER runs in
+# the template repo itself or in a never-synced fork. Throttled to once/24h via a
+# gitignored stamp, short timeout, fail-open -- it must never block or slow
+# session start, and stays silent when offline / up to date.
+if [ -f .template-sync.json ]; then
+  stamp=".claude/.template-check-stamp"
+  now="$(date +%s)"
+  last=0
+  [ -f "$stamp" ] && last="$(cat "$stamp" 2>/dev/null || echo 0)"
+  if [ "$(( now - last ))" -ge 86400 ]; then
+    echo "$now" > "$stamp" 2>/dev/null || true
+    if command -v timeout >/dev/null 2>&1; then
+      drift="$(timeout 25 npm run --silent sync-template -- --check 2>/dev/null || true)"
+    else
+      drift="$(npm run --silent sync-template -- --check 2>/dev/null || true)"
+    fi
+    if echo "$drift" | grep -q "Behind by"; then
+      n="$(echo "$drift" | grep -o 'Behind by [0-9]*' | grep -o '[0-9]*' | head -1)"
+      echo "[harness] NOTE: the template has ${n:-some} new commit(s) since your last sync -- run 'npm run sync-template -- --check' to see what, then 'npm run sync-template' to pull them (/sync-from-template)"
+    fi
+  fi
 fi
