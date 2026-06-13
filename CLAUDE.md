@@ -29,6 +29,7 @@ Skills cover the whole lifecycle — discover them via the skill list; each SKIL
 - **After a green `/ship`, if the fork has no Vercel project, offer `/deploy`** (ADR-009; needs `NEON_API_KEY` + `VERCEL_TOKEN` + egress to `api.vercel.com`/`console.neon.tech` — see `.claude/skills/deploy/SKILL.md` for the full env table). If preflight reports blocked egress, surface the hosts; don't mistake it for a missing token.
 - **Market benchmark before building.** Any brainstorm/requirements pass starts with a web search of existing products/libraries/starters, summarized with trade-offs before designing. Specs include a short "market scan" section.
 - For real multi-file features use Superpowers (plugin: brainstorm → spec → plan → TDD); for disposable idea-to-URL use `/quickstart`. Don't spend spec ceremony on throwaways.
+- **Auto-plan high blast-radius / ambiguous work.** Before acting, self-assess and call `EnterPlanMode` (plan first, await sign-off) when ANY holds: the change is multi-file or multi-step; it touches the Ask-before surface (auth, `lib/`, Prisma schema/migrations, API routes, `middleware.ts`, `eslint-rules`); requirements are ambiguous/underspecified; the code is unfamiliar; or the change is hard to reverse. Act directly (no plan) for questions/read-only lookups, single-file low-risk edits, typos/renames, and disposable `/quickstart` work. On a close call, plan — and name the trigger in one line.
 
 ## Hard rules
 - **Never commit `.env`.** Auth/DB/SMTP credentials are Restricted (SECURITY.md §1). gitleaks gates every push via `/ship`.
