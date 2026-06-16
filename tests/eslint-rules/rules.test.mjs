@@ -549,6 +549,19 @@ ruleTest(
         code: `import { prisma, prismaUnfiltered } from "@/lib/prisma";`,
         errors: [{ messageId: "unfilteredImport" }],
       },
+      {
+        // Boundary: a SIBLING dashboard page is NOT the allowlisted home page,
+        // so the dashboard fragment must not exempt it.
+        filename: "/repo/app/[locale]/(dashboard)/settings/page.tsx",
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Boundary: a nested dashboard page is likewise not exempt.
+        filename: "/repo/app/[locale]/(dashboard)/users/[id]/page.tsx",
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
     ],
   },
   { ecmaVersion: 2022, sourceType: "module" }

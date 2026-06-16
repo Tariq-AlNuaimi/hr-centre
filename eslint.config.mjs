@@ -78,6 +78,11 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // NOTE: these tests/** + scripts/** override blocks MUST stay AFTER the
+  // rihal-template plugin block above -- flat config is last-write-wins, so a
+  // new rule added below them would also apply to tests/scripts. Keep additions
+  // to the plugin block above this point.
+  //
   // Tests legitimately embed example hex colors -- RuleTester fixtures for
   // no-raw-hex-color, sample data in component tests. The design-token rule is
   // about app/component code, so switch it off under tests/. Tests also drive

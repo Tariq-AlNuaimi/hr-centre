@@ -16,7 +16,9 @@
 //   - app/api/recycling-bin/*        -- the recycle bin's whole job is deleted rows
 //   - app/api/audit-log/*            -- reads audit rows (an EXCLUDE-set model)
 //   - app/api/internal/*             -- scheduler / maintenance (e.g. audit-purge)
-//   - app/api/health/*               -- liveness ping
+//   - app/api/health/*               -- liveness ping; uses the raw client to skip
+//                                       extension overhead on a zero-row infra
+//                                       query (SELECT 1), NOT for data access
 //   - the dashboard home RSC         -- counts soft-deleted rows for the recycle-
 //                                       bin-stats widget (read-only, recycling-bin
 //                                       justification class)
@@ -29,6 +31,17 @@
 // Ask-before change (CLAUDE.md): a NEW legitimate caller should be a deliberate,
 // reviewed decision, not a silent reach. If a one-off use is justified, suppress
 // on the import line with a reason (the CLAUDE.md single-line-disable convention).
+//
+// Known limitations (consistent with the sibling rules' accepted gaps):
+//   - Only a static named-specifier `import { prismaUnfiltered }` is tracked. A
+//     namespace import (`import * as p from "@/lib/prisma"; p.prismaUnfiltered`),
+//     a dynamic `import()`, a `require()`, or a re-export are not detected. These
+//     forms don't appear in this ESM codebase and would stand out in review; a
+//     justified suppress is the right tool if one ever appears.
+//   - Allowlist fragments are substring matches, so a deliberately odd filename
+//     (`lib/prisma.ts.bak`, `lib/auth.tsx`) could match a single-file fragment.
+//     The template's strict layering makes this a non-issue in practice; the
+//     fragments are anchored as tightly as a substring allows.
 
 // Path fragments (normalized to forward slashes) whose files may import the raw
 // client. Substring match against the absolute filename.
@@ -42,8 +55,10 @@ const ALLOWED_PATH_FRAGMENTS = [
   "/app/api/internal/",
   "/app/api/health/",
   // Dashboard home RSC: aggregates soft-deleted counts for the recycle-bin-stats
-  // widget. Scoped to the single page file, not the whole (dashboard) group.
-  "/(dashboard)/page.tsx",
+  // widget. Anchored on the `[locale]/(dashboard)/page.tsx` suffix so it matches
+  // ONLY the dashboard home, not sibling pages (`(dashboard)/settings/page.tsx`)
+  // or any nested route group.
+  "/[locale]/(dashboard)/page.tsx",
 ];
 
 function isAllowedFile(filename) {
