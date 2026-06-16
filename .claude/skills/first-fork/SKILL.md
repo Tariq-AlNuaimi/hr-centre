@@ -38,7 +38,7 @@ which this project is and set it:
   PDPL/compliance obligations. Set `"tier": "shared"`.
 
 The **security floor is identical for both** (auth wrappers, no leaked secrets,
-zod at the boundary, no raw SQL, the nine ESLint rules, audit log ON, `/ship`
+zod at the boundary, no raw SQL, the ten ESLint rules, audit log ON, `/ship`
 before push). The tier only scales the ceremony on top. See `CLAUDE.md`
 "Project tiers". Commit the change with the rebrand commit in step 1.
 

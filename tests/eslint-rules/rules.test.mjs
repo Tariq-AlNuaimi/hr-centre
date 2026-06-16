@@ -1,4 +1,4 @@
-// RuleTester coverage for the nine local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the ten local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -22,6 +22,7 @@ import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-wri
 import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
 import noRateLimitInsideAuth from "../../eslint-rules/rules/no-rate-limit-inside-auth.mjs";
 import noRestrictedExportColumn from "../../eslint-rules/rules/no-restricted-export-column.mjs";
+import noPrismaUnfilteredImport from "../../eslint-rules/rules/no-prisma-unfiltered-import.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -480,6 +481,73 @@ ruleTest(
           { messageId: "restrictedExportColumn" },
           { messageId: "restrictedExportColumn" },
         ],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-prisma-unfiltered-import -------------------------------------------
+// prismaUnfiltered (raw client, bypasses soft-delete + audit) may only be
+// imported in allowlisted files (auth / recycling-bin / audit-log / internal /
+// health / the prisma lib). The filename is load-bearing, so each case sets an
+// absolute path.
+const ORDINARY_ROUTE = "/repo/app/api/projects/route.ts";
+const ALLOWED_AUTH = "/repo/app/api/auth/reset-password/route.ts";
+const ALLOWED_RECYCLE = "/repo/app/api/recycling-bin/route.ts";
+const ALLOWED_LIB = "/repo/lib/auth.ts";
+ruleTest(
+  "no-prisma-unfiltered-import",
+  noPrismaUnfilteredImport,
+  {
+    valid: [
+      // Allowlisted files may import the raw client.
+      {
+        filename: ALLOWED_AUTH,
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+      },
+      {
+        filename: ALLOWED_RECYCLE,
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+      },
+      {
+        filename: ALLOWED_LIB,
+        code: `import { prismaUnfiltered } from "./prisma";`,
+      },
+      // The dashboard home RSC aggregates soft-deleted counts (allowlisted).
+      {
+        filename: "/repo/app/[locale]/(dashboard)/page.tsx",
+        code: `import { prisma, prismaUnfiltered } from "@/lib/prisma";`,
+      },
+      // An ordinary route importing the AUDITED client is fine.
+      {
+        filename: ORDINARY_ROUTE,
+        code: `import { prisma } from "@/lib/prisma";`,
+      },
+      // Importing something else whose name merely contains the substring.
+      {
+        filename: ORDINARY_ROUTE,
+        code: `import { prismaUnfilteredHelper } from "@/lib/helpers";`,
+      },
+    ],
+    invalid: [
+      {
+        // Ordinary feature route reaching for the raw client.
+        filename: ORDINARY_ROUTE,
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Aliased import does not escape the gate (matched on imported name).
+        filename: ORDINARY_ROUTE,
+        code: `import { prismaUnfiltered as db } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Mixed import: the audited client is fine, the raw one is flagged.
+        filename: ORDINARY_ROUTE,
+        code: `import { prisma, prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
       },
     ],
   },

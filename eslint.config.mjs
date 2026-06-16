@@ -38,6 +38,11 @@ const eslintConfig = defineConfig([
       // SCRUB_FIELDS does not cover export output. At error so a fork can't leak
       // a secret column through an export route as it adds them.
       "rihal-template/no-restricted-export-column": "error",
+      // Raw-client containment: prismaUnfiltered bypasses soft-delete + audit, so
+      // it's allowlisted to auth / recycling-bin / maintenance files. At error so
+      // an ordinary feature route can't silently drop those invariants by reaching
+      // for the raw client. (tests/** + scripts/** are exempt below.)
+      "rihal-template/no-prisma-unfiltered-import": "error",
     },
   },
 
@@ -83,6 +88,10 @@ const eslintConfig = defineConfig([
     rules: {
       "rihal-template/no-raw-hex-color": "off",
       "rihal-template/no-unaudited-bulk-write": "off",
+      // Integration / contract / UAT-setup suites legitimately drive the raw
+      // client (assert soft-deleted rows, seed fixtures), so the containment
+      // gate is for app/lib runtime, not the test harness.
+      "rihal-template/no-prisma-unfiltered-import": "off",
     },
   },
 
@@ -91,7 +100,10 @@ const eslintConfig = defineConfig([
   // bulk/upsert there is expected. The bulk-write gate stays on for app/lib.
   {
     files: ["scripts/**", "prisma/seed.*", "prisma/**/seed.*"],
-    rules: { "rihal-template/no-unaudited-bulk-write": "off" },
+    rules: {
+      "rihal-template/no-unaudited-bulk-write": "off",
+      "rihal-template/no-prisma-unfiltered-import": "off",
+    },
   },
 
   // Override default ignores of eslint-config-next.
