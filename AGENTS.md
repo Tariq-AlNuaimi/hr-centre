@@ -36,6 +36,24 @@ If anything here conflicts with `CLAUDE.md` / `SECURITY.md`, those files win.
 - **Run `/ship` before every push** (typecheck → lint → tests → component tests →
   build → gitleaks → npm audit). Do not push on a red `/ship`.
 
+<!-- BEGIN senior-code-review (managed) -->
+## Mandatory: senior code review (post-push)
+
+Every push of code MUST be followed by a senior-code-reviewer pass. It is the
+**async, post-push breadth review** — it catches cross-cutting invariant gaps,
+threat-model holes, and operational drift that a fast diff review misses.
+
+- **CI (preferred):** `.github/workflows/senior-review.yml` runs it on PRs and
+  posts findings. Non-blocking — it never delays your push. Activate by setting
+  the `ANTHROPIC_API_KEY` secret and restoring the triggers in that file.
+- **In-session fallback (when CI is off):** after pushing, invoke the
+  `senior-code-reviewer` agent on the change before considering the work done.
+
+This does NOT replace your pre-push checks (`/ship` + the `/code-review` diff
+gate). It layers on top: fast diff gate before push, breadth review after. See
+ADR-020 and `tools/senior-review/README.md`.
+<!-- END senior-code-review (managed) -->
+
 ## When in doubt
 
 Stop and ask. The "Ask before" section of `CLAUDE.md` lists changes (auth, schema,

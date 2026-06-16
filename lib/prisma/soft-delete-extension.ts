@@ -17,53 +17,71 @@ type SoftDeleteDelegate = {
 // Models that have deletedAt/deletedBy fields
 const SOFT_DELETE_MODELS = new Set(["User"]);
 
+/**
+ * Whether this model participates in soft-delete filtering. Exposed so the
+ * read-operation hooks (and tests) share one decision instead of re-deriving it.
+ */
+export function isSoftDeleteModel(model: string): boolean {
+  return !EXCLUDE.has(model) && SOFT_DELETE_MODELS.has(model);
+}
+
+/**
+ * Inject `deletedAt: null` into a query's `where`, unless the caller is
+ * explicitly querying by `deletedAt` (e.g. the recycling bin asking for deleted
+ * rows). Single source of truth for every read hook below, so adding a new
+ * read operation can't silently diverge from the others.
+ *
+ * NOTE (nested includes): this filters the TOP-LEVEL `where` only. Prisma query
+ * extensions do not receive a generic, type-safe hook to rewrite arbitrary
+ * nested `include`/`select` relation args, so a relation pulled via `include`
+ * can still surface soft-deleted children. Callers that include a
+ * soft-deletable relation must add the filter themselves, e.g.
+ *   prisma.user.findUnique({ where, include: { posts: { where: { deletedAt: null } } } })
+ * This limitation is asserted by tests/contracts/soft-delete-filter.test.ts so a
+ * future change that "fixes" it is a conscious one.
+ */
+export function applySoftDeleteFilter<A extends { where?: unknown }>(
+  model: string,
+  args: A
+): A {
+  if (!isSoftDeleteModel(model)) return args;
+  const where = args.where as Record<string, unknown> | undefined;
+  if (!where?.deletedAt) {
+    args.where = { ...(args.where as object), deletedAt: null } as A["where"];
+  }
+  return args;
+}
+
 export const softDeleteExtension = Prisma.defineExtension((client) => {
   return client.$extends({
     query: {
       $allModels: {
         async findMany({ model, args, query }) {
-          if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
-            return query(args);
-          }
-          // Only add deletedAt filter if not explicitly querying deleted records
-          const where = args.where as Record<string, unknown> | undefined;
-          if (!where?.deletedAt) {
-            args.where = { ...args.where, deletedAt: null };
-          }
-          return query(args);
+          return query(applySoftDeleteFilter(model, args));
         },
         async findFirst({ model, args, query }) {
-          if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
-            return query(args);
-          }
-          const where = args.where as Record<string, unknown> | undefined;
-          if (!where?.deletedAt) {
-            args.where = { ...args.where, deletedAt: null };
-          }
-          return query(args);
+          return query(applySoftDeleteFilter(model, args));
+        },
+        async findFirstOrThrow({ model, args, query }) {
+          return query(applySoftDeleteFilter(model, args));
         },
         async findUnique({ model, args, query }) {
-          if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
-            return query(args);
-          }
-          const where = args.where as Record<string, unknown> | undefined;
-          if (!where?.deletedAt) {
-            args.where = { ...args.where, deletedAt: null };
-          }
-          return query(args);
+          return query(applySoftDeleteFilter(model, args));
+        },
+        async findUniqueOrThrow({ model, args, query }) {
+          return query(applySoftDeleteFilter(model, args));
         },
         async count({ model, args, query }) {
-          if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
-            return query(args);
-          }
-          const where = args.where as Record<string, unknown> | undefined;
-          if (!where?.deletedAt) {
-            args.where = { ...args.where, deletedAt: null };
-          }
-          return query(args);
+          return query(applySoftDeleteFilter(model, args));
+        },
+        async aggregate({ model, args, query }) {
+          return query(applySoftDeleteFilter(model, args));
+        },
+        async groupBy({ model, args, query }) {
+          return query(applySoftDeleteFilter(model, args));
         },
         async delete({ model, args, query }) {
-          if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
+          if (!isSoftDeleteModel(model)) {
             return query(args);
           }
           // Rewrite delete to soft-delete (update deletedAt + deletedBy).
@@ -100,7 +118,7 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
           return updated;
         },
         async deleteMany({ model, args, query }) {
-          if (EXCLUDE.has(model) || !SOFT_DELETE_MODELS.has(model)) {
+          if (!isSoftDeleteModel(model)) {
             return query(args);
           }
           const { where } = args ?? {};

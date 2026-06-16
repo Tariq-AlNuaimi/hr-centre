@@ -27,7 +27,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -39,15 +39,17 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole
+- lib/client-ip.ts: clientIp
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
-- lib/export.ts: ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
+- lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: BCRYPT_COST, hashPassword
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate
-- lib/prisma/soft-delete-extension.ts: softDeleteExtension, registerSoftDeleteModel
+- lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
 - lib/prisma.ts: prisma, prismaUnfiltered
+- lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
@@ -62,6 +64,7 @@
 - components/layout/BreadcrumbProvider.tsx
 - components/layout/Breadcrumbs.tsx
 - components/layout/ThemeProvider.tsx
+- components/providers/QueryProvider.tsx
 - components/shared/Chart.impl.tsx
 - components/shared/Chart.tsx
 - components/shared/ConfirmAction.tsx

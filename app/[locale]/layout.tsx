@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 import "@/app/globals.css";
 
 type ThemeMode = "light" | "dark" | "system";
@@ -65,7 +66,9 @@ export default async function LocaleLayout({
               initialMode={initialMode}
               initialIsDark={initialIsDark}
             >
-              {children}
+              {/* QueryProvider sits inside ThemeProvider so its error-toast
+                  bridge can reach AntD's App context (useNotify). ADR-021. */}
+              <QueryProvider>{children}</QueryProvider>
             </ThemeProvider>
           </AntdRegistry>
         </NextIntlClientProvider>

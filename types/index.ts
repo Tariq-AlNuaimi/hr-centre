@@ -14,6 +14,9 @@ declare module "next-auth" {
 
   interface User {
     role: Role;
+    // Stamped by the credentials provider so the jwt callback can bind a token
+    // to the password epoch and revoke it after a reset.
+    passwordChangedAt?: Date | null;
   }
 }
 
@@ -21,16 +24,14 @@ declare module "@auth/core/jwt" {
   interface JWT {
     id: string;
     role: Role;
+    // Epoch (ms) of the password this token is bound to; 0 if never changed.
+    passwordChangedAt?: number;
   }
 }
 
 // ApiResponse lives in lib/api-response.ts (the only producer of API envelopes);
 // it is intentionally not re-declared here to avoid a drifting duplicate.
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
+//
+// PaginatedResponse has a single home in lib/pagination.ts (its only producer);
+// re-exported here so client code can keep importing it from `@/types`.
+export type { PaginatedResponse } from "@/lib/pagination";

@@ -45,9 +45,11 @@ export const PUT = withRateLimit(
   if (!valid) return err("Current password is incorrect", 403);
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
+  // Stamp passwordChangedAt so the jwt callback revokes every existing session
+  // for this user (lib/auth.ts) -- a password change must end other sessions.
   await prisma.user.update({
     where: { id },
-    data: { passwordHash },
+    data: { passwordHash, passwordChangedAt: new Date() },
   });
 
   return ok({ changed: true });

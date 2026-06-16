@@ -7,6 +7,7 @@ import { withAuditContext } from "./audit-context";
 import { err, forbidden, ok } from "./api-response";
 import { setUserContext } from "./sentry";
 import { rateLimit, type RateLimitOptions } from "./rate-limit";
+import { clientIp } from "./client-ip";
 
 // Constant-time secret comparison for shared tokens (avoids a timing oracle on
 // the secret). Length is allowed to leak (different-length inputs short-circuit);
@@ -49,11 +50,11 @@ export function withAuth(handler: AuthedHandler) {
 
     // Capture request attribution so the audit extension records who + from
     // where. ipAddress / userAgent are Confidential (see SECURITY.md §1); they
-    // are stored on audit_logs, never logged.
-    const ipAddress =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      undefined;
+    // are stored on audit_logs, never logged. Resolve the IP through the same
+    // shared helper the rate limiter uses, so the throttled IP and the audited
+    // IP are derived identically (and the spoofable-XFF hardening applies here
+    // too). withAuditContext truncates both before they hit the DB.
+    const ipAddress = clientIp(req) ?? undefined;
     const userAgent = req.headers.get("user-agent") ?? undefined;
 
     return withAuditContext({ userId: session.user.id, ipAddress, userAgent }, () =>

@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, prismaUnfiltered } from "@/lib/prisma";
 import { ok } from "@/lib/api-response";
 import { withInternalAuth, withRateLimit } from "@/lib/api-helpers";
 import { env } from "@/lib/env";
@@ -46,8 +46,19 @@ async function purge() {
     if (deleted < BATCH_SIZE) break;
   }
 
+  // Garbage-collect expired password-reset tokens. They are only deleted when a
+  // reset completes for that identifier, so unused/expired tokens would
+  // otherwise accumulate in verification_tokens forever. Piggybacking on the
+  // daily retention cron keeps the table bounded with no new schedule.
+  // prismaUnfiltered: VerificationToken is in the soft-delete EXCLUDE set, and
+  // this hard-delete of already-expired rows wants no filtering.
+  const tokensPurged = await prismaUnfiltered.verificationToken.deleteMany({
+    where: { expires: { lt: new Date() } },
+  });
+
   return ok({
     purged,
+    expiredTokensPurged: tokensPurged.count,
     cutoff: cutoff.toISOString(),
     retentionDays,
   });

@@ -344,7 +344,9 @@ export type Update${Pascal}Input = z.infer<typeof update${Pascal}Schema>;
 }
 
 function apiListRouteFile() {
-  // GET always uses withAuth; write routes use the resolved writeWrap.
+  // GET uses withAuth (reads); write routes use the resolved writeWrap. Both
+  // read and write are wrapped with withRateLimit so an authenticated client
+  // can't hammer the list/detail endpoints either.
   const wrapList = ['withAuth'];
   if (writeWrap !== 'withAuth') wrapList.push(writeWrap);
   wrapList.push('withRateLimit');
@@ -392,7 +394,7 @@ ${sortableNames.map((n) => `  "${n}",`).join('\n')}
 ] as const;
 type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
-export const GET = withAuth(async (request: NextRequest) => {
+export const GET = withRateLimit(withAuth(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
 ${searchClause}
@@ -415,7 +417,7 @@ ${searchClause}
   ]);
 
   return ok(paginatedResponse(data, total, pagination));
-});
+}), { id: "${entityKebab}-read", limit: 120, windowMs: 60000 });
 
 export const POST = withRateLimit(${writeWrap}(async (request: NextRequest) => {
   const body = await request.json();
@@ -432,7 +434,9 @@ export const POST = withRateLimit(${writeWrap}(async (request: NextRequest) => {
 }
 
 function apiItemRouteFile() {
-  // GET always uses withAuth; write routes use the resolved writeWrap.
+  // GET uses withAuth (reads); write routes use the resolved writeWrap. Both
+  // read and write are wrapped with withRateLimit so an authenticated client
+  // can't hammer the list/detail endpoints either.
   const wrapList = ['withAuth'];
   if (writeWrap !== 'withAuth') wrapList.push(writeWrap);
   wrapList.push('withRateLimit');
@@ -450,12 +454,12 @@ import { ${wrapImports} } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { update${Pascal}Schema } from "@/lib/validations/${entityKebab}";
 
-export const GET = withAuth(async (_request: NextRequest, ctx) => {
+export const GET = withRateLimit(withAuth(async (_request: NextRequest, ctx) => {
   const { id } = await ctx.params;
   const record = await prisma.${entityCamel}.findUnique({ where: { id },${includeClause} });
   if (!record) return notFound("${Pascal}");
   return ok(record);
-});
+}), { id: "${entityKebab}-read", limit: 120, windowMs: 60000 });
 
 export const PUT = withRateLimit(${writeWrap}(async (request: NextRequest, ctx) => {
   const { id } = await ctx.params;
@@ -721,10 +725,7 @@ ${[...scalarItems, ...enumItems, ...relationItems].join('\n')}
 
 function listPageFile() {
   const searchState = searchField ? '\n  const [search, setSearch] = useState("");' : '';
-  const searchParam = searchField ? '\n        ...(search ? { search } : {}),' : '';
-  const fetchDeps = searchField
-    ? '[page, pageSize, search, sort, list, showError, t]'
-    : '[page, pageSize, sort, list, showError, t]';
+  const searchParam = searchField ? '\n    ...(search ? { search } : {}),' : '';
   const searchProps = searchField
     ? `
         searchable
@@ -736,7 +737,7 @@ function listPageFile() {
 
   return `"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
@@ -746,7 +747,7 @@ import type { SortChange } from "@/components/shared/DataTable";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { get${Pascal}Columns, type ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
-import { useCrud } from "@/hooks/use-crud";
+import { useEntityList, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 
 export default function ${Pascal}sPage() {
@@ -754,45 +755,31 @@ export default function ${Pascal}sPage() {
   const router = useRouter();
   const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { list, remove, listLoading } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
 
-  const [items, setItems] = useState<${Pascal}Record[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);${searchState}
   const [sort, setSort] = useState<SortChange>({});
 
-  const fetchItems = useCallback(async () => {
-    try {
-      const result = await list({
-        page: String(page),
-        pageSize: String(pageSize),${searchParam}
-        ...(sort.field ? { sort: sort.field } : {}),
-        ...(sort.order
-          ? { order: sort.order === "ascend" ? "asc" : "desc" }
-          : {}),
-      });
-      setItems(result.data);
-      setTotal(result.total);
-    } catch {
-      showError(t("loadFailed"));
-    }
-  }, ${fetchDeps});
+  const params: Record<string, string> = {
+    page: String(page),
+    pageSize: String(pageSize),${searchParam}
+    ...(sort.field ? { sort: sort.field } : {}),
+    ...(sort.order ? { order: sort.order === "ascend" ? "asc" : "desc" } : {}),
+  };
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchItems();
-  }, [fetchItems]);
+  // Declarative data layer (ADR-021): the query caches + keeps the previous page
+  // visible while a new page/search/sort loads, and the delete mutation
+  // invalidates the list so it refetches itself -- no manual fetch/setState.
+  // Read failures toast via the QueryProvider's cache-level onError (the message
+  // passed here), so we don't hand-roll an error effect per page.
+  const { data, isLoading } = useEntityList<${Pascal}Record>("/api/${entityKebab}", params, t("loadFailed"));
+  const { remove } = useEntityMutations<${Pascal}Record>("/api/${entityKebab}");
 
   const handleDelete = async (id: string) => {
-    const previous = items;
-    setItems((rows) => rows.filter((r) => r.id !== id));
     try {
-      await remove(id);
+      await remove.mutateAsync(id);
       success(t("deleted"));
-      fetchItems();
     } catch {
-      setItems(previous);
       showError(t("deleteFailed"));
     }
   };
@@ -815,9 +802,9 @@ export default function ${Pascal}sPage() {
       />
       <DataTable<${Pascal}Record>
         columns={columns}
-        dataSource={items}
-        loading={listLoading}
-        total={total}
+        dataSource={data?.data ?? []}
+        loading={isLoading}
+        total={data?.total ?? 0}
         page={page}
         pageSize={pageSize}
         onPageChange={(p, ps) => { setPage(p); setPageSize(ps); }}
@@ -840,7 +827,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { ${Pascal}Form } from "@/components/${entityKebab}/${Pascal}Form";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { useCrud } from "@/hooks/use-crud";
+import { useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 import type { ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
 
@@ -849,11 +836,11 @@ export default function New${Pascal}Page() {
   const router = useRouter();
   const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { create, mutating } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
+  const { create } = useEntityMutations<${Pascal}Record>("/api/${entityKebab}");
 
   const handleSubmit = async (values: Partial<${Pascal}Record>) => {
     try {
-      await create(values);
+      await create.mutateAsync(values);
       success(t("created"));
       router.push(\`/\${locale}/${entityKebab}\`);
     } catch {
@@ -867,7 +854,7 @@ export default function New${Pascal}Page() {
       <${Pascal}Form
         onSubmit={handleSubmit}
         onCancel={() => router.push(\`/\${locale}/${entityKebab}\`)}
-        loading={mutating}
+        loading={create.isPending}
       />
     </>
   );
@@ -878,13 +865,12 @@ export default function New${Pascal}Page() {
 function editPageFile() {
   return `"use client";
 
-import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { ${Pascal}Form } from "@/components/${entityKebab}/${Pascal}Form";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { FormSkeleton } from "@/components/shared/Skeletons";
-import { useCrud } from "@/hooks/use-crud";
+import { useEntityItem, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 import type { ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
 
@@ -894,19 +880,14 @@ export default function Edit${Pascal}Page() {
   const locale = useLocale();
   const params = useParams<{ id: string }>();
   const { success, error: showError } = useNotify();
-  const { getById, update, mutating } = useCrud<${Pascal}Record>({ basePath: "/api/${entityKebab}" });
-
-  const [record, setRecord] = useState<${Pascal}Record | null>(null);
-
-  useEffect(() => {
-    if (!params?.id) return;
-    getById(params.id).then(setRecord).catch(() => showError(t("loadFailed")));
-  }, [params?.id, getById, showError, t]);
+  // Read failure toasts via the QueryProvider cache-level onError (message here).
+  const { data: record, isLoading } = useEntityItem<${Pascal}Record>("/api/${entityKebab}", params?.id, t("loadFailed"));
+  const { update } = useEntityMutations<${Pascal}Record>("/api/${entityKebab}");
 
   const handleSubmit = async (values: Partial<${Pascal}Record>) => {
     if (!params?.id) return;
     try {
-      await update(params.id, values);
+      await update.mutateAsync({ id: params.id, data: values });
       success(t("updated"));
       router.push(\`/\${locale}/${entityKebab}\`);
     } catch {
@@ -914,7 +895,8 @@ export default function Edit${Pascal}Page() {
     }
   };
 
-  if (!record) return <FormSkeleton />;
+  if (isLoading) return <FormSkeleton />;
+  if (!record) return null;
 
   return (
     <>
@@ -923,7 +905,7 @@ export default function Edit${Pascal}Page() {
         initialValues={record}
         onSubmit={handleSubmit}
         onCancel={() => router.push(\`/\${locale}/${entityKebab}\`)}
-        loading={mutating}
+        loading={update.isPending}
       />
     </>
   );

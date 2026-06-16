@@ -27,6 +27,11 @@ model User {
   role          Role      @default(VIEWER)
   lastLoginAt   DateTime?
 
+  // Stamped whenever the password changes (reset / admin change). The Auth.js
+  // `jwt` callback rejects any token issued before this instant, so completing a
+  // password reset revokes every pre-existing session on its next request.
+  passwordChangedAt DateTime?
+
   // Soft deletion
   deletedAt     DateTime?
   deletedBy     String?

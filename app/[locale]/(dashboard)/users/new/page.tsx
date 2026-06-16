@@ -4,9 +4,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { useCrud } from "@/hooks/use-crud";
+import { useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
-import { useState } from "react";
 
 type UserPayload = {
   id: string;
@@ -21,8 +20,7 @@ export default function NewUserPage() {
   const router = useRouter();
   const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { create } = useCrud<UserPayload>({ basePath: "/api/users" });
-  const [loading, setLoading] = useState(false);
+  const { create } = useEntityMutations<UserPayload>("/api/users");
 
   const handleSubmit = async (values: {
     email: string;
@@ -30,15 +28,12 @@ export default function NewUserPage() {
     password?: string;
     role: string;
   }) => {
-    setLoading(true);
     try {
-      await create(values);
+      await create.mutateAsync(values);
       success(t("created"));
       router.push(`/${locale}/users`);
     } catch (err) {
       showError(err instanceof Error ? err.message : t("createFailed"));
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -48,7 +43,7 @@ export default function NewUserPage() {
       <UserForm
         onSubmit={handleSubmit}
         onCancel={() => router.push(`/${locale}/users`)}
-        loading={loading}
+        loading={create.isPending}
       />
     </>
   );

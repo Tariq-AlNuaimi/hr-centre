@@ -17,6 +17,7 @@ import type { ReactElement, ReactNode } from "react";
 import { render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { App, ConfigProvider } from "antd";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mirrors messages/en.json closely enough for the shared components, which all
 // read the "common" namespace. Extend per test if a component reaches wider.
@@ -52,11 +53,19 @@ export function Providers({
   locale = "en",
   messages: msgs = messages,
 }: { children: ReactNode } & ProviderOptions) {
+  // A fresh QueryClient per render keeps tests isolated (no cache bleed between
+  // cases), and retry:false makes a failed query settle immediately instead of
+  // hanging the test on backoff. Mirrors the runtime QueryProvider (ADR-021).
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return (
     <NextIntlClientProvider locale={locale} messages={msgs}>
-      <ConfigProvider>
-        <App>{children}</App>
-      </ConfigProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigProvider>
+          <App>{children}</App>
+        </ConfigProvider>
+      </QueryClientProvider>
     </NextIntlClientProvider>
   );
 }

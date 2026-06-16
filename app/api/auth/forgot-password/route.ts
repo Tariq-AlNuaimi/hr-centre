@@ -5,6 +5,7 @@ import { prismaUnfiltered } from "@/lib/prisma";
 import { ok, err } from "@/lib/api-response";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendEmail } from "@/lib/email";
+import { env } from "@/lib/env";
 
 // PUBLIC route (middleware allows /api/auth/*). Initiates a password reset.
 // Always returns 200 with the same body whether or not the email exists, so it
@@ -33,32 +34,45 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!parsed.success) return neutral;
 
   const email = parsed.data.email.toLowerCase();
-  const origin = req.nextUrl.origin; // capture before the response is sent
+  // Build the reset link from a server-configured base URL, NOT the request's
+  // Host header. Trusting req.nextUrl.origin lets a forwarded/attacker Host
+  // poison the emailed link and leak the token (reset poisoning). AUTH_URL is
+  // injected automatically on Vercel; fall back to the request origin only when
+  // unconfigured (e.g. local dev), which is the lower-risk environment.
+  const origin = env.AUTH_URL ?? req.nextUrl.origin;
 
   // Do the existence-dependent work AFTER the response flushes, so the response
   // time is identical whether or not the account exists (closes the enumeration
-  // timing oracle). Errors here are logged by the runtime and never reach the
-  // already-sent neutral response.
+  // timing oracle). The neutral 200 has already been sent, so a failure here
+  // (DB or SMTP) must be swallowed -- an uncaught rejection in after() would
+  // surface as an unhandled rejection, not a useful signal. Log metadata only:
+  // never the email, token, or reset URL (all Restricted -- SECURITY.md §1).
   after(async () => {
-    const user = await prismaUnfiltered.user.findUnique({
-      where: { email, deletedAt: null },
-      select: { id: true },
-    });
-    if (!user) return;
+    try {
+      const user = await prismaUnfiltered.user.findUnique({
+        where: { email, deletedAt: null },
+        select: { id: true },
+      });
+      if (!user) return;
 
-    const token = randomBytes(32).toString("base64url");
-    await prismaUnfiltered.verificationToken.create({
-      data: { identifier: email, token, expires: new Date(Date.now() + TOKEN_TTL_MS) },
-    });
+      const token = randomBytes(32).toString("base64url");
+      await prismaUnfiltered.verificationToken.create({
+        data: { identifier: email, token, expires: new Date(Date.now() + TOKEN_TTL_MS) },
+      });
 
-    const url = `${origin}/reset-password?token=${token}`;
-    // Body may carry the reset URL (Restricted) -- lib/email logs metadata only.
-    await sendEmail({
-      to: email,
-      subject: "Reset your password",
-      text: `Open ${url} to reset your password. This link expires in 1 hour. If you didn't request this, ignore this email.`,
-      html: `<p>Open <a href="${url}">this link</a> to reset your password. Expires in 1 hour.</p><p>If you didn't request this, ignore this email.</p>`,
-    });
+      const url = `${origin}/reset-password?token=${token}`;
+      // Body may carry the reset URL (Restricted) -- lib/email logs metadata only.
+      await sendEmail({
+        to: email,
+        subject: "Reset your password",
+        text: `Open ${url} to reset your password. This link expires in 1 hour. If you didn't request this, ignore this email.`,
+        html: `<p>Open <a href="${url}">this link</a> to reset your password. Expires in 1 hour.</p><p>If you didn't request this, ignore this email.</p>`,
+      });
+    } catch (e) {
+      console.error("forgot-password: async reset delivery failed", {
+        name: e instanceof Error ? e.name : "Unknown",
+      });
+    }
   });
 
   return neutral;

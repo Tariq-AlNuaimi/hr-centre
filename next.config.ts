@@ -11,6 +11,20 @@ const withAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === "true
 
 const isDev = process.env.NODE_ENV !== "production";
 
+// When Sentry is configured, the browser SDK POSTs envelopes to its ingest host
+// (derived from the public DSN). Without it in connect-src, every error/session
+// report is silently blocked by CSP. Derive the origin from the DSN so the policy
+// stays tight (just that host) and is a no-op when Sentry isn't configured.
+function sentryConnectSrc(): string {
+  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (!dsn) return "";
+  try {
+    return " " + new URL(dsn).origin;
+  } catch {
+    return "";
+  }
+}
+
 // Conservative starting policy. Caveats documented in SECURITY.md finding T-05:
 //   - 'unsafe-inline' on script-src is needed for Next.js bootstrap inline
 //     scripts. Removing it requires a nonce-based setup that Ant Design's SSR
@@ -23,7 +37,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self'${sentryConnectSrc()}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -31,7 +45,10 @@ const csp = [
 
 const securityHeaders = [
   { key: "Content-Security-Policy", value: csp },
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  // DENY (not SAMEORIGIN): the app is never framed by itself either, and this
+  // matches the CSP `frame-ancestors 'none'` above. Belt-and-suspenders against
+  // clickjacking on the older header-based path.
+  { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-DNS-Prefetch-Control", value: "on" },

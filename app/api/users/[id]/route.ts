@@ -53,6 +53,9 @@ export const PUT = withAdminAuth(async (
   if (parsed.data.password) {
     data.passwordHash = await hashPassword(parsed.data.password);
     delete data.password;
+    // Admin-set password is still a password change: revoke the target user's
+    // existing sessions via the passwordChangedAt epoch (lib/auth.ts jwt).
+    data.passwordChangedAt = new Date();
   }
 
   const user = await prisma.user.update({

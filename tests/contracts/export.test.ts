@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
-import { toExcel, excelDownloadHeaders } from "../../lib/export";
+import { toExcel, excelDownloadHeaders, neutralizeFormula } from "../../lib/export";
 
 async function reload(buf: Uint8Array) {
   const wb = new ExcelJS.Workbook();
@@ -81,6 +81,33 @@ test("toExcel handles nullish values via the default (empty-string) coercion", a
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
   assert.ok(sheet.rowCount >= 3, `expected >=3 rows, got ${sheet.rowCount}`);
+});
+
+test("neutralizeFormula prefixes formula-trigger strings, leaves the rest", () => {
+  // CWE-1236: leading = + - @ (and tab/CR) would execute as a formula.
+  assert.equal(neutralizeFormula("=HYPERLINK(\"http://evil\")"), "'=HYPERLINK(\"http://evil\")");
+  assert.equal(neutralizeFormula("+1+1"), "'+1+1");
+  assert.equal(neutralizeFormula("-2"), "'-2");
+  assert.equal(neutralizeFormula("@SUM(A1)"), "'@SUM(A1)");
+  assert.equal(neutralizeFormula("\tinjected"), "'\tinjected");
+  // Inert text and non-strings untouched.
+  assert.equal(neutralizeFormula("Alice"), "Alice");
+  assert.equal(neutralizeFormula("a=b"), "a=b");
+  assert.equal(neutralizeFormula(42), 42);
+  assert.equal(neutralizeFormula(null), null);
+});
+
+test("toExcel neutralizes a formula-injection cell so it round-trips as inert text", async () => {
+  const payload = "=HYPERLINK(\"http://evil.example\",\"click\")";
+  const buf = await toExcel(
+    [{ note: payload }],
+    [{ header: "Note", key: "note" }]
+  );
+  const wb = await reload(buf);
+  const cell = wb.worksheets[0].getCell("A2");
+  // Stored as a plain string (apostrophe-guarded), NOT an Excel formula object.
+  assert.equal(typeof cell.value, "string");
+  assert.equal(cell.value, `'${payload}`);
 });
 
 test("excelDownloadHeaders builds correct content-type + disposition", () => {

@@ -31,6 +31,7 @@
 // proposed map to disk; operator opens it, edits, then reruns this script.
 
 import { readFile, writeFile } from 'node:fs/promises';
+import { openSync, closeSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { step, ok, bail, info, dryPrefix } from './lib/log.mjs';
@@ -104,10 +105,23 @@ if (!values['data-only']) {
   step('migrate-from', `${DRYP}dumping source schema`);
   if (!DRY) {
     spawnSync('mkdir', ['-p', values['dump-dir']]);
-    const tables = map.tables.map(t => `-t ${t.source}`).join(' ');
-    const r = spawnSync('bash', ['-c', `pg_dump --schema-only --no-owner ${tables} "${values['source-db']}" > ${values['dump-dir']}/schema.sql`], { stdio: 'inherit' });
+    // Pass every value as a discrete argv element and redirect stdout to the
+    // file via an fd -- no `bash -c` string, so a shell metacharacter in
+    // --tables / --source-db / --dump-dir can't break out or inject commands.
+    const tableArgs = map.tables.flatMap(t => ['-t', t.source]);
+    const schemaFd = openSync(`${values['dump-dir']}/schema.sql`, 'w');
+    let r;
+    try {
+      r = spawnSync(
+        'pg_dump',
+        ['--schema-only', '--no-owner', ...tableArgs, values['source-db']],
+        { stdio: ['ignore', schemaFd, 'inherit'] }
+      );
+    } finally {
+      closeSync(schemaFd);
+    }
     if (r.error?.code === 'ENOENT') {
-      bail('migrate-from', `could not spawn bash to run pg_dump (${r.error.message}).`);
+      bail('migrate-from', `could not spawn pg_dump (${r.error.message}); is it on PATH?`);
     }
     if (r.status !== 0) {
       // A non-zero exit means we'd otherwise leave an empty/partial schema.sql
@@ -127,9 +141,22 @@ if (!values['schema-only']) {
       const cols = Object.keys(t.columns).join(', ');
       const sql = `COPY (SELECT ${cols} FROM ${t.source} ${where}) TO STDOUT WITH (FORMAT csv, HEADER true)`;
       const out = `${values['dump-dir']}/${t.source}.csv`;
-      const r = spawnSync('bash', ['-c', `psql "${values['source-db']}" -c "${sql.replace(/"/g, '\\"')}" > ${out}`], { stdio: 'inherit' });
+      // psql connection string and -c SQL are discrete argv elements; stdout is
+      // redirected to the CSV via an fd. No shell, so no `"`-escaping dance and
+      // no interpolation of --source-db / --dump-dir into a command string.
+      const csvFd = openSync(out, 'w');
+      let r;
+      try {
+        r = spawnSync(
+          'psql',
+          [values['source-db'], '-c', sql],
+          { stdio: ['ignore', csvFd, 'inherit'] }
+        );
+      } finally {
+        closeSync(csvFd);
+      }
       if (r.error?.code === 'ENOENT') {
-        bail('migrate-from', `could not spawn bash to run psql (${r.error.message}).`);
+        bail('migrate-from', `could not spawn psql (${r.error.message}); is it on PATH?`);
       }
       if (r.status !== 0) {
         // Don't continue: a failed COPY leaves an empty CSV that the seed would

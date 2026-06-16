@@ -36,7 +36,7 @@ let config: {
     ) => Promise<Record<string, unknown> | null>;
   }>;
   callbacks: {
-    jwt: (a: { token: Record<string, unknown>; user?: Record<string, unknown> }) => Record<string, unknown>;
+    jwt: (a: { token: Record<string, unknown>; user?: Record<string, unknown> }) => Promise<Record<string, unknown> | null>;
     session: (a: { session: { user?: Record<string, unknown> }; token: Record<string, unknown> }) => { user?: Record<string, unknown> };
   };
 };
@@ -98,6 +98,7 @@ const VALID_USER = {
   image: null,
   role: "ADMIN",
   passwordHash: "hashed",
+  passwordChangedAt: null,
 };
 
 // --- authorize -------------------------------------------------------------
@@ -151,6 +152,7 @@ test("authorize: valid login returns the user (with role) and stamps lastLoginAt
     name: "User",
     image: null,
     role: "ADMIN",
+    passwordChangedAt: null,
   });
   // (assert.deepEqual above narrows `out` to the literal shape, so widen back to
   // index a key it intentionally must NOT carry.)
@@ -174,22 +176,56 @@ test("authorize: looks the user up by normalized (lowercased, trimmed) email + d
 
 // --- jwt callback ----------------------------------------------------------
 
-test("jwt: copies id + role from the user on sign-in", { skip: !canMock }, () => {
-  const token = config.callbacks.jwt({
+test("jwt: copies id + role + password epoch from the user on sign-in", { skip: !canMock }, async () => {
+  const token = await config.callbacks.jwt({
     token: {},
-    user: { id: "u9", role: "EDITOR" },
+    user: { id: "u9", role: "EDITOR", passwordChangedAt: new Date(1000) },
   });
+  assert.ok(token);
   assert.equal(token.id, "u9");
   assert.equal(token.role, "EDITOR");
+  assert.equal(token.passwordChangedAt, 1000, "binds the token to the password epoch");
 });
 
-test("jwt: leaves the token unchanged on subsequent calls (no user)", { skip: !canMock }, () => {
-  const token = config.callbacks.jwt({
-    token: { id: "u9", role: "ADMIN" },
+test("jwt: defaults password epoch to 0 when the user never changed it", { skip: !canMock }, async () => {
+  const token = await config.callbacks.jwt({
+    token: {},
+    user: { id: "u9", role: "VIEWER", passwordChangedAt: null },
+  });
+  assert.equal(token?.passwordChangedAt, 0);
+});
+
+test("jwt: keeps the token on subsequent calls when the password is unchanged", { skip: !canMock }, async () => {
+  // DB reports the same epoch the token carries -> token survives.
+  findUniqueResult = { passwordChangedAt: new Date(500) };
+  const token = await config.callbacks.jwt({
+    token: { id: "u9", role: "ADMIN", passwordChangedAt: 500 },
     user: undefined,
   });
+  assert.ok(token, "token should not be revoked");
   assert.equal(token.id, "u9");
   assert.equal(token.role, "ADMIN");
+  const where = (findUniqueArgs as { where: { id: string } }).where;
+  assert.equal(where.id, "u9", "revocation check looks the user up by token.id");
+});
+
+test("jwt: REVOKES the token when the password changed after it was issued", { skip: !canMock }, async () => {
+  // Password reset stamped a newer epoch than the token's -> reject (return null).
+  findUniqueResult = { passwordChangedAt: new Date(9999) };
+  const token = await config.callbacks.jwt({
+    token: { id: "u9", role: "ADMIN", passwordChangedAt: 500 },
+    user: undefined,
+  });
+  assert.equal(token, null, "a stale pre-reset session must be torn down");
+});
+
+test("jwt: REVOKES the token when the user no longer exists", { skip: !canMock }, async () => {
+  findUniqueResult = null;
+  const token = await config.callbacks.jwt({
+    token: { id: "gone", role: "ADMIN", passwordChangedAt: 0 },
+    user: undefined,
+  });
+  assert.equal(token, null);
 });
 
 // --- session callback ------------------------------------------------------

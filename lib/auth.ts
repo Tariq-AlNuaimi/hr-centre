@@ -25,7 +25,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   // is unaffected.
   adapter: PrismaAdapter(prismaUnfiltered) as Adapter,
   trustHost: true,
-  session: { strategy: "jwt" },
+  // Explicit lifetime (NextAuth defaults to ~30 days when unset). Bounds how
+  // long a stolen JWT is usable even absent a password change; the
+  // passwordChangedAt check below revokes sooner on reset.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 7 },
   pages: {
     signIn: "/login",
   },
@@ -69,6 +72,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           name: user.name,
           image: user.image,
           role: user.role,
+          passwordChangedAt: user.passwordChangedAt,
         };
       },
     }),
@@ -79,10 +83,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // See docs/decisions/ADR-013.
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
+      // Sign-in: stamp identity + the password epoch this token is bound to.
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        token.passwordChangedAt = user.passwordChangedAt?.getTime() ?? 0;
+        return token;
+      }
+      // Subsequent requests: reject the token if the password changed after it
+      // was issued (a completed reset stamps users.passwordChangedAt = now), or
+      // if the user no longer exists. Returning null tears the session down on
+      // the next request -- the point of the recovery flow.
+      //
+      // Cost: one narrow indexed read per request. A fork that prefers zero
+      // per-request reads can drop this block and lean on session.maxAge alone,
+      // accepting a stolen-token window of up to maxAge after a reset.
+      if (token.id) {
+        const current = await prismaUnfiltered.user.findUnique({
+          where: { id: token.id as string },
+          select: { passwordChangedAt: true },
+        });
+        if (!current) return null;
+        const changedAt = current.passwordChangedAt?.getTime() ?? 0;
+        if (changedAt > ((token.passwordChangedAt as number | undefined) ?? 0)) {
+          return null;
+        }
       }
       return token;
     },

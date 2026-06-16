@@ -1,0 +1,51 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does
+# not run. It is the ASYNC, POST-PUSH "senior code review" gate -- non-blocking
+# by design (it comments, it does not fail your push). It layers ON TOP of the
+# pre-push /ship + /code-review diff gate; it does not replace them.
+#
+# ACTIVATE (at /handoff, or any repo with paid Actions):
+#   1. Set repo secret ANTHROPIC_API_KEY (Settings > Secrets > Actions).
+#   2. Restore the real triggers below (pull_request + push to non-main).
+#   3. That's it -- it reads .claude/agents/senior-code-reviewer.md and reviews
+#      the change, posting findings as a PR comment.
+#
+# See ADR-020 (mandatory post-push review) and tools/senior-review/README.md.
+name: Senior code review
+
+on:
+  workflow_dispatch:
+  # Restore at activation (paid Actions + ANTHROPIC_API_KEY set):
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+  # push:
+  #   branches-ignore: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: senior-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  senior-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0 # full history so the reviewer can diff against the base
+
+      # Runs the senior-code-reviewer agent over the whole change and posts a
+      # PR comment. The action is stack-agnostic -- it shells Claude over the
+      # diff, so this same step works in a Next.js, Go, or Python repo unchanged.
+      - name: Senior code review
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Use the senior-code-reviewer agent to review this change.
+            Scope: git diff against the base branch plus the files it touches.
+            Post the severity-ranked findings as a single PR comment. This is an
+            advisory pass -- do not fail the job; surface risks for the operator.

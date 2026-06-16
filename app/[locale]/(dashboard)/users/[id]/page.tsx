@@ -5,10 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import { UserForm } from "@/components/users/UserForm";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { FormSkeleton } from "@/components/shared/Skeletons";
-import { useCrud } from "@/hooks/use-crud";
+import { useEntityItem, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 import { useDynamicBreadcrumb } from "@/hooks/use-breadcrumb";
-import { useEffect, useState } from "react";
 
 interface UserRecord {
   id: string;
@@ -24,24 +23,17 @@ export default function EditUserPage() {
   const locale = useLocale();
   const params = useParams();
   const { success, error: showError } = useNotify();
-  const { getById, update } = useCrud<UserRecord>({
-    basePath: "/api/users",
-  });
 
   const id = params.id as string;
 
-  const [user, setUser] = useState<UserRecord | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { data: user, isLoading } = useEntityItem<UserRecord>(
+    "/api/users",
+    id,
+    t("notFound")
+  );
+  const { update } = useEntityMutations<UserRecord>("/api/users");
 
   useDynamicBreadcrumb(id, user?.name ?? user?.email ?? id);
-
-  useEffect(() => {
-    getById(id)
-      .then(setUser)
-      .catch(() => showError(t("notFound")))
-      .finally(() => setLoading(false));
-  }, [id, getById, showError, t]);
 
   const handleSubmit = async (values: {
     email: string;
@@ -49,22 +41,19 @@ export default function EditUserPage() {
     password?: string;
     role: string;
   }) => {
-    setSaving(true);
     try {
       // Remove empty password
       const data = { ...values };
       if (!data.password) delete data.password;
-      await update(id, data);
+      await update.mutateAsync({ id, data });
       success(t("updated"));
       router.push(`/${locale}/users`);
     } catch (err) {
       showError(err instanceof Error ? err.message : t("updateFailed"));
-    } finally {
-      setSaving(false);
     }
   };
 
-  if (loading) return <FormSkeleton fields={4} />;
+  if (isLoading) return <FormSkeleton fields={4} />;
   if (!user) return null;
 
   return (
@@ -78,7 +67,7 @@ export default function EditUserPage() {
         }}
         onSubmit={handleSubmit}
         onCancel={() => router.push(`/${locale}/users`)}
-        loading={saving}
+        loading={update.isPending}
         isEdit
       />
     </>

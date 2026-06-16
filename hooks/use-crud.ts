@@ -8,6 +8,16 @@ interface UseCrudOptions {
   basePath: string;
 }
 
+/**
+ * @deprecated New code should use the TanStack Query hooks in
+ * `hooks/use-entity-queries.ts` (`useEntityList` / `useEntityItem` /
+ * `useEntityMutations`), which add caching, request dedup, keep-previous-data
+ * pagination, and automatic post-write invalidation (ADR-021). The scaffolder
+ * and the `users` reference pages have been migrated. This imperative hook is
+ * retained only for the RSC-list recipe (`docs/recipes/perf/1-rsc-list-reads.md`)
+ * and will be removed once that recipe is updated.
+ */
+
 export function useCrud<T extends { id: string }>({
   basePath,
 }: UseCrudOptions) {

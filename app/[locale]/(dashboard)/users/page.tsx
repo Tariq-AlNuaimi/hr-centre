@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useTranslations, useLocale } from "next-intl";
@@ -10,7 +10,7 @@ import type { SortChange } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { getUserColumns } from "@/components/users/UserColumns";
-import { useCrud } from "@/hooks/use-crud";
+import { useEntityList, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 
 interface UserRecord {
@@ -27,57 +27,39 @@ export default function UsersPage() {
   const router = useRouter();
   const locale = useLocale();
   const { success, error: showError } = useNotify();
-  const { list, remove, listLoading } = useCrud<UserRecord & { id: string }>({
-    basePath: "/api/users",
-  });
 
-  const [users, setUsers] = useState<UserRecord[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortChange>({});
   const [role, setRole] = useState<string>();
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const result = await list({
-        page: String(page),
-        pageSize: String(pageSize),
-        ...(search ? { search } : {}),
-        ...(sort.field ? { sort: sort.field } : {}),
-        ...(sort.order
-          ? { order: sort.order === "ascend" ? "asc" : "desc" }
-          : {}),
-        ...(role ? { role } : {}),
-      });
-      setUsers(result.data as unknown as UserRecord[]);
-      setTotal(result.total);
-    } catch {
-      showError(t("loadFailed"));
-    }
-  }, [page, pageSize, search, sort, role, list, showError, t]);
+  const params: Record<string, string> = {
+    page: String(page),
+    pageSize: String(pageSize),
+    ...(search ? { search } : {}),
+    ...(sort.field ? { sort: sort.field } : {}),
+    ...(sort.order ? { order: sort.order === "ascend" ? "asc" : "desc" } : {}),
+    ...(role ? { role } : {}),
+  };
 
-  // Standard "fetch on mount + when deps change" pattern. fetchUsers is a
-  // useCallback that internally calls setState; the lint rule traces the
-  // chain through the callback. SWR/React Query would replace this, but is
-  // out of scope for the template baseline.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchUsers();
-  }, [fetchUsers]);
+  // Declarative data layer (ADR-021): the query caches + keeps the previous page
+  // visible while a new page/search/sort loads, and the delete mutation
+  // invalidates the list so it refetches itself -- no manual fetch/setState.
+  // Read failures toast via the QueryProvider's cache-level onError (the message
+  // passed here), so we don't hand-roll an error effect per page.
+  const { data, isLoading } = useEntityList<UserRecord>(
+    "/api/users",
+    params,
+    t("loadFailed")
+  );
+  const { remove } = useEntityMutations<UserRecord>("/api/users");
 
   const handleDelete = async (id: string) => {
-    // Optimistic: drop the row immediately so the table never blanks behind a
-    // full-table spinner. Re-sync (and restore on failure) via fetchUsers.
-    const previous = users;
-    setUsers((rows) => rows.filter((u) => u.id !== id));
     try {
-      await remove(id);
+      await remove.mutateAsync(id);
       success(t("deleted"));
-      fetchUsers();
     } catch {
-      setUsers(previous);
       showError(t("deleteFailed"));
     }
   };
@@ -105,9 +87,9 @@ export default function UsersPage() {
 
       <DataTable<UserRecord>
         columns={columns}
-        dataSource={users}
-        loading={listLoading}
-        total={total}
+        dataSource={data?.data ?? []}
+        loading={isLoading}
+        total={data?.total ?? 0}
         page={page}
         pageSize={pageSize}
         onPageChange={(p, ps) => {

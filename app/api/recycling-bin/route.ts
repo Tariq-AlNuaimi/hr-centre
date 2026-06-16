@@ -22,10 +22,16 @@ const restoreSchema = z.object({
   id: z.string().min(1),
 });
 
-// Per-type fetch cap before in-memory merge/paginate. The bin spans multiple
-// tables, so we can't push offset/limit into one query; we cap each type, merge,
-// sort, then page in memory. Generous enough for a prototype bin; a high-volume
-// project should move retention/purge upstream (see /api/internal/audit-purge).
+// Caps for the in-memory merge/paginate. The bin spans multiple tables, so we
+// can't push offset/limit into one query; we cap each type, merge, sort by
+// recency, then cap the TOTAL and page in memory. PER_TYPE_CAP bounds each
+// query; MERGE_CAP is the ceiling on the merged result so adding more recyclable
+// models can't grow the reported total / working set without bound. The global
+// sort runs before the total cap, so the 500 we keep are the 500 most-recently
+// deleted across all types (not just whichever types iterated first). Generous
+// for a prototype bin; a high-volume project should move retention/purge
+// upstream (see /api/internal/audit-purge).
+const PER_TYPE_CAP = 500;
 const MERGE_CAP = 500;
 
 // Admin-only: the bin lists soft-deleted records (incl. deleted-user PII + who
@@ -46,7 +52,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
     const records = await recyclable[accessor].findMany({
       where: { deletedAt: { not: null } },
       orderBy: { deletedAt: "desc" },
-      take: MERGE_CAP,
+      take: PER_TYPE_CAP,
     });
 
     for (const record of records) {
@@ -68,8 +74,11 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
     (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
   );
 
-  const total = merged.length;
-  const page = merged.slice(pagination.skip, pagination.skip + pagination.take);
+  // Cap the merged total AFTER the global sort so the retained rows are the most
+  // recently deleted across every type, then paginate within that ceiling.
+  const capped = merged.slice(0, MERGE_CAP);
+  const total = capped.length;
+  const page = capped.slice(pagination.skip, pagination.skip + pagination.take);
   return ok(paginatedResponse(page, total, pagination));
 });
 

@@ -120,7 +120,7 @@ components/
   layout/                    # AppShell, Header, Sidebar, Footer, Breadcrumbs
   shared/                    # DataTable, Chart, KanbanBoard, ConfirmAction, EmptyState
   users/                     # Example entity components
-hooks/                       # useCrud, useNotify, useBreadcrumb
+hooks/                       # use-entity-queries (TanStack Query), useNotify, useBreadcrumb
 lib/                         # Prisma client, auth, email, export, validations
 prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs

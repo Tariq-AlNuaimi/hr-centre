@@ -46,7 +46,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   const passwordHash = await hashPassword(parsed.data.newPassword);
   // Audited client: the password change lands in audit_logs (hash scrubbed),
   // attributed to null actor (no session) -- a deliberate, queryable record.
-  await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  // passwordChangedAt invalidates every existing JWT session for this user on
+  // its next request (see lib/auth.ts jwt callback) -- the reset must end any
+  // session a compromise may have opened.
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash, passwordChangedAt: new Date() },
+  });
 
   // One-time use: remove every reset token for this identifier.
   await prismaUnfiltered.verificationToken.deleteMany({ where: { identifier: record.identifier } });

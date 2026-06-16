@@ -29,6 +29,22 @@
 
 import ExcelJS from "exceljs";
 
+// Neutralize spreadsheet formula injection (CWE-1236). A cell whose text starts
+// with = + - @ (or a leading tab / carriage return) is executed as a formula
+// when the .xlsx is opened, so user-supplied data like `=HYPERLINK(...)` becomes
+// live code. Prefix such strings with an apostrophe, which Excel/Sheets treat as
+// "force text" and strip on display. Non-string values (numbers, dates) are
+// never formulas and pass through untouched.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
+export function neutralizeFormula(
+  value: string | number | Date | null
+): string | number | Date | null {
+  if (typeof value === "string" && FORMULA_TRIGGER.test(value)) {
+    return `'${value}`;
+  }
+  return value;
+}
+
 export interface ExportColumn<T> {
   header: string;
   key: keyof T & string;
@@ -85,7 +101,8 @@ export async function toExcel<T extends Record<string, unknown>>(
   for (const row of data) {
     const rowData = columns.map((col) => {
       const raw = row[col.key] as T[keyof T & string];
-      return col.format ? col.format(raw, row) : (raw ?? "");
+      const value = col.format ? col.format(raw, row) : (raw ?? "");
+      return neutralizeFormula(value as string | number | Date | null);
     });
     sheet.addRow(rowData);
   }
