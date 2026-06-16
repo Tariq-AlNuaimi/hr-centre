@@ -264,6 +264,10 @@ ruleTest(
       // Bulk method name on a non-prisma object is irrelevant.
       { code: `await queue.createMany(items);` },
       { code: `await delegate.updateMany({ where, data });` },
+      // An alias bound to a NON-prisma client must not be flagged.
+      { code: `const db = makeClient();\nawait db.user.updateMany({ where, data });` },
+      // `$transaction` array form on an EXCLUDE model stays allowed.
+      { code: `await prisma.$transaction([prisma.session.deleteMany({ where })]);` },
     ],
     invalid: [
       {
@@ -300,6 +304,22 @@ ruleTest(
       {
         // Computed accessor form.
         code: `await prisma["user"].updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // Local re-bind alias: `const db = prisma` then bulk-write.
+        code: `const db = prisma;\nawait db.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // The textbook atomicity idiom: $transaction callback param `tx` is the
+        // extended client, so a bulk write through it is the same audit bypass.
+        code: `await prisma.$transaction(async (tx) => { await tx.user.updateMany({ where, data }); });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // $transaction array form: inner call is rooted at `prisma` directly.
+        code: `await prisma.$transaction([prisma.user.updateMany({ where, data })]);`,
         errors: [{ messageId: "noBulkWrite" }],
       },
     ],

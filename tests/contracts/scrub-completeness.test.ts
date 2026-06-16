@@ -17,6 +17,11 @@ import { SCRUB_FIELDS } from "../../lib/prisma/audit-extension";
 //
 // Scope: only `String` scalar fields (a secret value is virtually always a
 // String column) so relation / enum / DateTime fields can't false-positive.
+//
+// Note: a secret column whose NAME doesn't match SECRET_NAME (e.g.
+// `Account.session_state`) is out of this test's reach by design -- those are
+// covered by the explicit SCRUB_FIELDS membership assertion in
+// audit-scrub.test.ts. The two tests are complementary, not redundant.
 
 const SCHEMA_PATH = fileURLToPath(
   new URL("../../prisma/schema.prisma", import.meta.url)
@@ -25,7 +30,8 @@ const SCHEMA_PATH = fileURLToPath(
 // Field-name fragments that signal a Restricted, value-bearing secret column.
 // Intentionally broad: a false positive is cheap (add the field to SCRUB_FIELDS
 // or rename), a false negative leaks a secret into the audit trail.
-const SECRET_NAME = /(password|passwd|secret|token|apikey|api_key|privatekey|credential)/i;
+const SECRET_NAME =
+  /(password|passwd|secret|token|api_?key|private_?key|credential)/i;
 
 // Field names that match the pattern but are NOT secret VALUES and so are
 // correctly absent from SCRUB_FIELDS. Keep this list tiny and justified.
