@@ -20,6 +20,10 @@ const eslintConfig = defineConfig([
       // CSS variables, never a raw hex literal in a component. At error so the
       // considered theme can't quietly drift back to generic as the app grows.
       "rihal-template/no-raw-hex-color": "error",
+      // Audit completeness (ADR-010): Prisma bulk-write / upsert ops on an
+      // audited model write no audit row. At error so the "audit is automatic"
+      // promise can't silently regress as a fork adds bulk writes.
+      "rihal-template/no-unaudited-bulk-write": "error",
     },
   },
 
@@ -57,10 +61,23 @@ const eslintConfig = defineConfig([
 
   // Tests legitimately embed example hex colors -- RuleTester fixtures for
   // no-raw-hex-color, sample data in component tests. The design-token rule is
-  // about app/component code, so switch it off under tests/.
+  // about app/component code, so switch it off under tests/. Tests also drive
+  // bulk writes deliberately (fixture setup, teardown), so the bulk-write gate
+  // is for app/lib runtime, not test harnesses.
   {
     files: ["tests/**"],
-    rules: { "rihal-template/no-raw-hex-color": "off" },
+    rules: {
+      "rihal-template/no-raw-hex-color": "off",
+      "rihal-template/no-unaudited-bulk-write": "off",
+    },
+  },
+
+  // Scripts and the Prisma seed run as bootstrap tooling outside any request /
+  // AuditContext -- seeding/migration data is not request-attributable, so
+  // bulk/upsert there is expected. The bulk-write gate stays on for app/lib.
+  {
+    files: ["scripts/**", "prisma/seed.*", "prisma/**/seed.*"],
+    rules: { "rihal-template/no-unaudited-bulk-write": "off" },
   },
 
   // Override default ignores of eslint-config-next.

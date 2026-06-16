@@ -1,4 +1,4 @@
-// RuleTester coverage for the five local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the six local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -18,6 +18,7 @@ import noAnyCastOnSession from "../../eslint-rules/rules/no-any-cast-on-session.
 import noSecretEnvInConsole from "../../eslint-rules/rules/no-secret-env-in-console.mjs";
 import noBareInternalRoute from "../../eslint-rules/rules/no-bare-internal-route.mjs";
 import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
+import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-write.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -240,3 +241,68 @@ ruleTest("no-raw-hex-color", noRawHexColor, {
     },
   ],
 });
+
+// --- no-unaudited-bulk-write ----------------------------------------------
+// Prisma bulk-write / upsert ops on an AUDITED model bypass the per-row audit
+// extension (ADR-010). The rule flags them on `prisma` / `prismaUnfiltered`
+// and exempts the audit EXCLUDE-set models. Parse with the TS parser so the
+// `(prisma as any)` unwrap path is exercised.
+ruleTest(
+  "no-unaudited-bulk-write",
+  noUnauditedBulkWrite,
+  {
+    valid: [
+      // Per-row writes are audited -- always fine.
+      { code: `await prisma.user.create({ data });` },
+      { code: `await prisma.user.update({ where, data });` },
+      { code: `await prisma.user.delete({ where });` },
+      // Bulk ops on EXCLUDE-set models are not audited by design -> allowed.
+      { code: `await prismaUnfiltered.verificationToken.deleteMany({ where });` },
+      { code: `await prismaUnfiltered.auditLog.deleteMany({ where });` },
+      { code: `await prisma.session.deleteMany({ where });` },
+      { code: `await prisma.account.updateMany({ where, data });` },
+      // Bulk method name on a non-prisma object is irrelevant.
+      { code: `await queue.createMany(items);` },
+      { code: `await delegate.updateMany({ where, data });` },
+    ],
+    invalid: [
+      {
+        code: `await prisma.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        code: `await prisma.post.createMany({ data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        code: `await prisma.invoice.deleteMany({ where });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        code: `await prisma.user.upsert({ where, create, update });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // prismaUnfiltered on an audited model is just as blind.
+        code: `await prismaUnfiltered.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // `createManyAndReturn` is the same blind spot.
+        code: `await prisma.user.createManyAndReturn({ data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // TS type-assertion wrapper must not hide the prisma root.
+        code: `await (prisma as any).user.deleteMany({ where });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // Computed accessor form.
+        code: `await prisma["user"].updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
