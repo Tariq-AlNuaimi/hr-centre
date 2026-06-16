@@ -10,11 +10,19 @@
 //
 // This rule bans the `*Unsafe` methods outright at `error`. The method names
 // are Prisma-specific, so it flags them on any receiver (no need to resolve the
-// client identifier) -- which also closes aliasing. If you have genuinely
+// client identifier) -- which also closes aliasing. Both the call form
+// (`prisma.$queryRawUnsafe(sql)`) and the (unusual, equally-unsafe) tagged
+// form (``prisma.$executeRawUnsafe`...` ``) are caught. If you have genuinely
 // constant, non-user SQL that must use the Unsafe form (e.g. a dynamic table
 // name you fully control), suppress on that one line with a justification (the
 // CLAUDE.md single-line-disable convention) and log it in SECURITY.md §12 if
 // security-relevant.
+//
+// Known limitation (shared with no-unaudited-bulk-write): reflective
+// invocation (`prisma.$queryRawUnsafe.call(prisma, sql)` / `.apply`) and
+// destructured names (`const { $queryRawUnsafe } = prisma`) are not tracked.
+// These are obscure enough that a justified suppress is the right tool if they
+// ever appear; the gate is for the direct forms a fork actually reaches for.
 
 const UNSAFE_METHODS = new Set(["$queryRawUnsafe", "$executeRawUnsafe"]);
 
@@ -43,15 +51,19 @@ export default {
     schema: [],
   },
   create(context) {
+    function check(node, member) {
+      const method = methodName(member);
+      if (!method || !UNSAFE_METHODS.has(method)) return;
+      context.report({ node, messageId: "noRawSqlUnsafe", data: { method } });
+    }
     return {
+      // `prisma.$queryRawUnsafe(sql)`
       CallExpression(node) {
-        const method = methodName(node.callee);
-        if (!method || !UNSAFE_METHODS.has(method)) return;
-        context.report({
-          node,
-          messageId: "noRawSqlUnsafe",
-          data: { method },
-        });
+        check(node, node.callee);
+      },
+      // ``prisma.$executeRawUnsafe`...` `` -- tagged form is no safer.
+      TaggedTemplateExpression(node) {
+        check(node, node.tag);
       },
     };
   },

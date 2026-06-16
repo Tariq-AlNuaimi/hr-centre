@@ -358,6 +358,16 @@ ruleTest(
         code: "await db.$queryRawUnsafe(sql);",
         errors: [{ messageId: "noRawSqlUnsafe" }],
       },
+      {
+        // Aliased receiver, $executeRaw variant.
+        code: "await db.$executeRawUnsafe(sql);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        // Tagged-template form of an Unsafe method is no safer -- caught too.
+        code: "await prisma.$executeRawUnsafe`DROP TABLE ${t}`;",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
     ],
   },
   { ecmaVersion: 2022, sourceType: "module" }
