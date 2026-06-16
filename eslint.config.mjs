@@ -28,6 +28,11 @@ const eslintConfig = defineConfig([
       // parameterize. The safe tagged-template $queryRaw/$executeRaw stay
       // allowed; only the *Unsafe escape hatch is gated.
       "rihal-template/no-raw-sql-unsafe": "error",
+      // Throttle-ordering invariant: withRateLimit must compose OUTSIDE the
+      // auth wrapper so abusive/unauthenticated floods are rejected before any
+      // auth work (session lookup / bcrypt / secret compare) runs. At error so
+      // the ordering can't silently invert as a fork adds rate-limited routes.
+      "rihal-template/no-rate-limit-inside-auth": "error",
     },
   },
 

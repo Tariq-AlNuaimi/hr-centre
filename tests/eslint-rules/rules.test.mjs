@@ -1,4 +1,4 @@
-// RuleTester coverage for the seven local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the eight local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -20,6 +20,7 @@ import noBareInternalRoute from "../../eslint-rules/rules/no-bare-internal-route
 import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
 import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-write.mjs";
 import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
+import noRateLimitInsideAuth from "../../eslint-rules/rules/no-rate-limit-inside-auth.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -367,6 +368,56 @@ ruleTest(
         // Tagged-template form of an Unsafe method is no safer -- caught too.
         code: "await prisma.$executeRawUnsafe`DROP TABLE ${t}`;",
         errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-rate-limit-inside-auth ---------------------------------------------
+// withRateLimit must be the OUTER wrapper so throttling runs before auth work.
+// The violation is a withRateLimit(...) call sitting in the handler-argument
+// slot of an auth wrapper (arg 0 for the session wrappers, arg 1 for the
+// token wrappers whose first arg is the env-var name).
+ruleTest(
+  "no-rate-limit-inside-auth",
+  noRateLimitInsideAuth,
+  {
+    valid: [
+      // Correct: throttle is outermost, auth wrapper is its first argument.
+      { code: `export const POST = withRateLimit(withAdminAuth(handler), opts);` },
+      { code: `export const PUT = withRateLimit(withAuth(handler), { id: "x", limit: 5, windowMs: 60000 });` },
+      // Token wrapper nested inside the throttle is the sanctioned shape too.
+      { code: `export const GET = withRateLimit(withInternalAuth("CRON_SECRET", purge, { bearer: true }), opts);` },
+      // Auth wrapper alone (no rate limiting) is fine.
+      { code: `export const GET = withAdminAuth(handler);` },
+      // An arrow/identifier handler -- not a withRateLimit call -- is fine.
+      { code: `export const POST = withAuth(async (req, ctx) => handler(req, ctx));` },
+      // withRateLimit wrapping a non-auth call must not trip.
+      { code: `export const POST = withRateLimit(somethingElse(handler), opts);` },
+    ],
+    invalid: [
+      {
+        // Inverted: session wrapper outside the throttle (arg 0).
+        code: `export const POST = withAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        code: `export const DELETE = withAdminAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        code: `export const PUT = withEditorAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        // Token wrapper: handler is arg 1, so the throttle is in the wrong slot.
+        code: `export const GET = withInternalAuth("CRON_SECRET", withRateLimit(purge, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        code: `export const POST = withApiAuth("API_TOKEN", withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
       },
     ],
   },

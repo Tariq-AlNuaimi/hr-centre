@@ -39,6 +39,7 @@ when the IT team's paid plan runs Actions.
 
 ### Security
 - Token comparisons in `withInternalAuth` / `withApiAuth` now use constant-time `timingSafeEqual` to close a timing side-channel on the shared-secret / Bearer-token checks.
+- `rihal-template/no-rate-limit-inside-auth` ESLint rule (at `error`): enforces the ordering invariant that `withRateLimit` composes OUTSIDE the auth wrapper, so abusive/unauthenticated floods are throttled before any auth work (session lookup / bcrypt / secret compare) runs (OWASP A04). Brings the local plugin to eight rules.
 
 ### Fixed
 - `useCrud`: abort in-flight requests and resolve the race where a stale response could overwrite newer state.

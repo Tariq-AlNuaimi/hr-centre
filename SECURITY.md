@@ -180,7 +180,7 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 | A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` / `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) boundary ✅; middleware enforces auth on every non-public path ✅. |
 | A02 Cryptographic Failures | TLS terminated automatically at Vercel ✅; HSTS ✅; bcryptjs ✅; Neon encrypts at rest ✅. Production secrets live in Vercel env vars (never in chat / shell). |
 | A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; `rihal-template/no-raw-sql-unsafe` bans `$queryRawUnsafe`/`$executeRawUnsafe` at `error` ✅; Semgrep `p/owasp-top-ten` via `/audit` ✅. |
-| A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; no MFA (T-02). |
+| A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; `rihal-template/no-rate-limit-inside-auth` keeps `withRateLimit` composed OUTSIDE the auth wrapper at `error`, so floods are throttled before auth work runs ✅; no MFA (T-02). |
 | A05 Security Misconfiguration | Security headers + CSP ✅; standalone build ✅. |
 | A06 Vulnerable Components | `npm audit --audit-level=high --omit=dev` runs locally via `/ship` ✅ (and in `verify.yml` once CI is active). |
 | A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; rate limit ✅; no MFA ⚠️ (T-02); no account lockout ⚠️. |
@@ -281,7 +281,7 @@ Still deliberately not covered (would need disproportionate Prisma mocking for t
 ## 16. Shared-tier security checklist (at `/handoff`)
 
 The template's **security floor** (auth wrappers, no leaked secrets, zod at every
-boundary, no raw SQL, the seven `rihal-template/*` ESLint rules, audit log ON, `/ship`
+boundary, no raw SQL, the eight `rihal-template/*` ESLint rules, audit log ON, `/ship`
 before every push) holds for **both** tiers from day zero — see `CLAUDE.md` → "Project
 tiers". A prototype that has only been reviewed by stakeholders via a shared URL is **not
 yet cleared to hold sensitive (Confidential / Restricted) production data.**
