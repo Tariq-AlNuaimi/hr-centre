@@ -24,6 +24,10 @@ const eslintConfig = defineConfig([
       // audited model write no audit row. At error so the "audit is automatic"
       // promise can't silently regress as a fork adds bulk writes.
       "rihal-template/no-unaudited-bulk-write": "error",
+      // Injection floor (OWASP A03): the Unsafe raw-SQL methods don't
+      // parameterize. The safe tagged-template $queryRaw/$executeRaw stay
+      // allowed; only the *Unsafe escape hatch is gated.
+      "rihal-template/no-raw-sql-unsafe": "error",
     },
   },
 

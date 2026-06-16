@@ -10,6 +10,7 @@
 //   no-bare-internal-route    Handlers under app/api/internal/ must wrap with withInternalAuth.
 //   no-raw-hex-color          Raw hex color literals in components (design-token enforcement).
 //   no-unaudited-bulk-write   Prisma bulk/upsert ops on audited models bypass the audit log (ADR-010).
+//   no-raw-sql-unsafe         Prisma $queryRawUnsafe/$executeRawUnsafe -- SQL-injection vector (A03).
 //
 // See CLAUDE.md ‘Hard rules’ for the underlying invariants each rule protects.
 
@@ -19,6 +20,7 @@ import noSecretEnvInConsole from "./rules/no-secret-env-in-console.mjs";
 import noBareInternalRoute from "./rules/no-bare-internal-route.mjs";
 import noRawHexColor from "./rules/no-raw-hex-color.mjs";
 import noUnauditedBulkWrite from "./rules/no-unaudited-bulk-write.mjs";
+import noRawSqlUnsafe from "./rules/no-raw-sql-unsafe.mjs";
 
 const plugin = {
   meta: { name: "rihal-template", version: "1.0.0" },
@@ -29,6 +31,7 @@ const plugin = {
     "no-bare-internal-route": noBareInternalRoute,
     "no-raw-hex-color": noRawHexColor,
     "no-unaudited-bulk-write": noUnauditedBulkWrite,
+    "no-raw-sql-unsafe": noRawSqlUnsafe,
   },
 };
 

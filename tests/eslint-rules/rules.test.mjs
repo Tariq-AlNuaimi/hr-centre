@@ -1,4 +1,4 @@
-// RuleTester coverage for the six local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the seven local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -19,6 +19,7 @@ import noSecretEnvInConsole from "../../eslint-rules/rules/no-secret-env-in-cons
 import noBareInternalRoute from "../../eslint-rules/rules/no-bare-internal-route.mjs";
 import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
 import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-write.mjs";
+import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -321,6 +322,41 @@ ruleTest(
         // $transaction array form: inner call is rooted at `prisma` directly.
         code: `await prisma.$transaction([prisma.user.updateMany({ where, data })]);`,
         errors: [{ messageId: "noBulkWrite" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-raw-sql-unsafe -----------------------------------------------------
+// The parameterized tagged-template forms ($queryRaw/$executeRaw) are allowed;
+// only the unparameterized *Unsafe escape hatches are banned (OWASP A03).
+ruleTest(
+  "no-raw-sql-unsafe",
+  noRawSqlUnsafe,
+  {
+    valid: [
+      // Safe parameterized tagged templates -- the sanctioned raw form.
+      { code: "await prisma.$queryRaw`SELECT 1`;" },
+      { code: "await prismaUnfiltered.$queryRaw`SELECT 1`;" },
+      { code: "await prisma.$executeRaw`DELETE FROM t WHERE id = ${id}`;" },
+      // Unrelated method that merely contains "Raw" in the name.
+      { code: "await client.queryRawData(x);" },
+    ],
+    invalid: [
+      {
+        code: "await prisma.$queryRawUnsafe(`SELECT * FROM t WHERE id = ${id}`);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        code: "await prisma.$executeRawUnsafe('DELETE FROM t WHERE id = ' + id);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        // Flagged regardless of receiver (method name is Prisma-unique), so an
+        // aliased client can't escape the gate.
+        code: "await db.$queryRawUnsafe(sql);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
       },
     ],
   },
