@@ -27,7 +27,7 @@ lint + contract + component + build + gitleaks + npm audit, ~49s). Not deployed 
 **Landmines**
 - **Fresh container carries env drift**: must `npm install` + `DATABASE_URL=postgresql://u:p@localhost:5432/db npm run prisma:generate` before `/ship`, else typecheck fails on `passwordChangedAt` / `@tanstack/react-query` (commit #36 leftovers, NOT our changes).
 - **gitleaks not preinstalled**: download v8.21.2 linux_x64 to `/tmp`, add to PATH, or `/ship` reports RED on a missing tool.
-- Template now has **seven** `rihal-template/*` rules at `error` — keep the count consistent if adding more (CLAUDE.md ×2, SECURITY.md ×2, handoff/ship/conform/first-fork skills, rules.test.mjs header).
+- Template now has **eight** `rihal-template/*` rules at `error` — keep the count consistent if adding more (CLAUDE.md ×2, SECURITY.md ×2, handoff/ship/conform/first-fork skills, rules.test.mjs header, CHANGELOG.md).
 
 **Next steps**
 1. Pick the next enforce-the-floor guardrail: `withRateLimit` must compose OUTSIDE the auth wrapper (ordering invariant; currently only documented in CLAUDE.md hard rules).

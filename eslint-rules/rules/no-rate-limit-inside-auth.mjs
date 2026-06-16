@@ -24,11 +24,13 @@
 // and `withRateLimit` is only ever the api-helpers export.
 //
 // Known limitation (shared with no-raw-sql-unsafe / no-unaudited-bulk-write):
-// only the DIRECT lexical nesting is caught. Indirection through a variable
-// (`const limited = withRateLimit(h); export const POST = withAuth(limited);`) or
-// through another wrapper in between is not tracked -- the gate is for the direct
-// form a fork actually writes. A genuinely intentional inner composition can be
-// suppressed on the line with a justification (the CLAUDE.md single-line-disable
+// only the DIRECT lexical nesting with IDENTIFIER callees is caught. Indirection
+// through a variable (`const limited = withRateLimit(h); export const POST =
+// withAuth(limited);`), through another wrapper in between, or a namespace-
+// qualified inner call (`withAuth(helpers.withRateLimit(h))`) is not tracked --
+// the gate is for the direct form a fork actually writes (`withRateLimit` is only
+// ever the bare api-helpers export). A genuinely intentional inner composition can
+// be suppressed on the line with a justification (the CLAUDE.md single-line-disable
 // convention).
 
 // Auth wrapper name -> zero-based index of its handler argument.

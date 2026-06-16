@@ -419,6 +419,12 @@ ruleTest(
         code: `export const POST = withApiAuth("API_TOKEN", withRateLimit(handler, opts));`,
         errors: [{ messageId: "rateLimitInsideAuth" }],
       },
+      {
+        // Correct and inverted forms in one file: detections are independent,
+        // so only the inverted GET is flagged (the POST stays clean).
+        code: `export const POST = withRateLimit(withAuth(handler), opts);\nexport const GET = withAdminAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
     ],
   },
   { ecmaVersion: 2022, sourceType: "module" }
