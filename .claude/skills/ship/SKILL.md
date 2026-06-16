@@ -40,7 +40,7 @@ gate beats speed.
      can fail with `TS2307: Cannot find module '../../app/...'` errors pointing into
      `.next/types/` — that's the stale build cache, not your code. Fix: delete the
      `.next` directory and re-run (step 5 regenerates it).
-2. **Lint.** `npm run lint`. Surfaces unused imports, hooks-rules violations, missing keys, accessibility regressions, and the eight local `rihal-template/*` security rules.
+2. **Lint.** `npm run lint`. Surfaces unused imports, hooks-rules violations, missing keys, accessibility regressions, and the nine local `rihal-template/*` security rules.
 3. **Tests (contract suite).** `npm test`. Runs the `node:test` contract suite (rate limit, audit scrub, email, export, sentry scrub, auth wrappers) — the highest-risk invariants.
 4. **Tests (component suite).** `npm run test:components`. Runs the jsdom React component tests (`tests/components/*.test.tsx`) — DataTable, EmptyState, DashboardError. Catches shared-UI regressions tsc/lint miss.
 5. **Build.** `npm run build`. Catches Next.js-specific issues that tsc and ESLint miss: server/client boundary violations, missing `"use client"`, invalid metadata exports, server-only imports leaking to the client bundle.

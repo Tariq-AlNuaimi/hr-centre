@@ -21,7 +21,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 **Operational rules per class:**
 
-- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5).
+- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5). Excel export is a **separate** gate (`SCRUB_FIELDS` does not touch export output): `rihal-template/no-restricted-export-column` fails `/ship` at `error` when a secret-named field is used as a `toExcel` column key, so a fork can't dump a Restricted column into a downloadable `.xlsx` (its denylist is kept a superset of `SCRUB_FIELDS` by `tests/contracts/export-column-completeness.test.ts`).
 - **Confidential:** auth + role gate at the API boundary. Logged on sensitive read where the project defines one (the template doesn't ship read-side audit — write-side only).
 - **Internal:** auth + role gate.
 - **Public:** can appear unauthenticated.
@@ -281,7 +281,7 @@ Still deliberately not covered (would need disproportionate Prisma mocking for t
 ## 16. Shared-tier security checklist (at `/handoff`)
 
 The template's **security floor** (auth wrappers, no leaked secrets, zod at every
-boundary, no raw SQL, the eight `rihal-template/*` ESLint rules, audit log ON, `/ship`
+boundary, no raw SQL, the nine `rihal-template/*` ESLint rules, audit log ON, `/ship`
 before every push) holds for **both** tiers from day zero — see `CLAUDE.md` → "Project
 tiers". A prototype that has only been reviewed by stakeholders via a shared URL is **not
 yet cleared to hold sensitive (Confidential / Restricted) production data.**

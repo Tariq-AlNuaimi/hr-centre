@@ -1,4 +1,4 @@
-// RuleTester coverage for the eight local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the nine local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -21,6 +21,7 @@ import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
 import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-write.mjs";
 import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
 import noRateLimitInsideAuth from "../../eslint-rules/rules/no-rate-limit-inside-auth.mjs";
+import noRestrictedExportColumn from "../../eslint-rules/rules/no-restricted-export-column.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -424,6 +425,61 @@ ruleTest(
         // so only the inverted GET is flagged (the POST stays clean).
         code: `export const POST = withRateLimit(withAuth(handler), opts);\nexport const GET = withAdminAuth(withRateLimit(handler, opts));`,
         errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-restricted-export-column -------------------------------------------
+// A toExcel(...) column whose `key` names a Restricted/secret field leaks the
+// raw value into the .xlsx -- SCRUB_FIELDS does not cover export output. Both
+// the explicit SCRUB_FIELDS names and the forward-safe secret-name pattern are
+// flagged; safe business columns pass through.
+ruleTest(
+  "no-restricted-export-column",
+  noRestrictedExportColumn,
+  {
+    valid: [
+      // Ordinary, non-secret columns.
+      { code: `toExcel(rows, [{ header: "Name", key: "name" }, { header: "Created", key: "createdAt" }]);` },
+      // A secret value projected through `format` (not exported as a raw key).
+      { code: `toExcel(rows, [{ header: "Has key", key: "id", format: (v, row) => (row.apiKey ? "yes" : "no") }]);` },
+      // Not a toExcel call -- unrelated function with a "key" prop.
+      { code: `defineColumns([{ header: "Token", key: "token" }]);` },
+      // Columns built in a variable are out of the inline-literal scope.
+      { code: `toExcel(rows, cols);` },
+      // A computed key can't be read statically -> not flagged (documented scope).
+      { code: `toExcel(rows, [{ header: "Dyn", key: SECRET_FIELD }]);` },
+    ],
+    invalid: [
+      {
+        // Exact SCRUB_FIELDS name.
+        code: `toExcel(rows, [{ header: "Hash", key: "passwordHash" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Plain `token`.
+        code: `toExcel(rows, [{ header: "Name", key: "name" }, { header: "Tok", key: "token" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Forward-safe pattern: a secret-named column NOT in the explicit set.
+        code: `toExcel(rows, [{ header: "Stripe", key: "stripeSecret" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Snake_case OAuth token column.
+        code: `toExcel(rows, [{ header: "Refresh", key: "refresh_token" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Two restricted columns in one call -> one report each.
+        code: `toExcel(rows, [{ key: "apiKey" }, { key: "name" }, { key: "privateKey" }]);`,
+        errors: [
+          { messageId: "restrictedExportColumn" },
+          { messageId: "restrictedExportColumn" },
+        ],
       },
     ],
   },

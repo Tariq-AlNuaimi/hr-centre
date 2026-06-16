@@ -15,7 +15,7 @@ into line, and pushed to a fresh repo created from the template.
 **Report-and-approve only. NEVER silently auto-fix foreign code.**
 
 Foreign code does not know this template's invariants (auth wrappers, audit extension,
-soft-delete, the eight ESLint rules, zod-at-boundary). A silent edit could mask a real
+soft-delete, the nine ESLint rules, zod-at-boundary). A silent edit could mask a real
 security gap or introduce one. Every change is proposed, line-referenced, and applied
 **only after the operator approves it**. When in doubt, report — do not edit.
 

@@ -12,6 +12,7 @@
 //   no-unaudited-bulk-write   Prisma bulk/upsert ops on audited models bypass the audit log (ADR-010).
 //   no-raw-sql-unsafe         Prisma $queryRawUnsafe/$executeRawUnsafe -- SQL-injection vector (A03).
 //   no-rate-limit-inside-auth withRateLimit composed inside an auth wrapper -- throttle must be outermost.
+//   no-restricted-export-column Restricted/secret field name used as a toExcel column key -- export leak.
 //
 // See CLAUDE.md ‘Hard rules’ for the underlying invariants each rule protects.
 
@@ -23,6 +24,7 @@ import noRawHexColor from "./rules/no-raw-hex-color.mjs";
 import noUnauditedBulkWrite from "./rules/no-unaudited-bulk-write.mjs";
 import noRawSqlUnsafe from "./rules/no-raw-sql-unsafe.mjs";
 import noRateLimitInsideAuth from "./rules/no-rate-limit-inside-auth.mjs";
+import noRestrictedExportColumn from "./rules/no-restricted-export-column.mjs";
 
 const plugin = {
   meta: { name: "rihal-template", version: "1.0.0" },
@@ -35,6 +37,7 @@ const plugin = {
     "no-unaudited-bulk-write": noUnauditedBulkWrite,
     "no-raw-sql-unsafe": noRawSqlUnsafe,
     "no-rate-limit-inside-auth": noRateLimitInsideAuth,
+    "no-restricted-export-column": noRestrictedExportColumn,
   },
 };
 

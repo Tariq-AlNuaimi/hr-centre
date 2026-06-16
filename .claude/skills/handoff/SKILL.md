@@ -167,7 +167,7 @@ See `SECURITY.md` for:
 
 ## ESLint rules
 
-Eight local rules in `eslint-rules/` enforce the template's hard invariants.
+Nine local rules in `eslint-rules/` enforce the template's hard invariants.
 They're configured at `error` -- do not relax without reviewing
 `SECURITY.md` §12.
 

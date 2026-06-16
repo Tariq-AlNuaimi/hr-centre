@@ -33,6 +33,11 @@ const eslintConfig = defineConfig([
       // auth work (session lookup / bcrypt / secret compare) runs. At error so
       // the ordering can't silently invert as a fork adds rate-limited routes.
       "rihal-template/no-rate-limit-inside-auth": "error",
+      // Export egress gate (SECURITY.md §1): a Restricted/secret field name as a
+      // toExcel column key writes its raw value into the downloadable .xlsx --
+      // SCRUB_FIELDS does not cover export output. At error so a fork can't leak
+      // a secret column through an export route as it adds them.
+      "rihal-template/no-restricted-export-column": "error",
     },
   },
 
