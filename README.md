@@ -31,7 +31,7 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 - Excel export helper
 - Email sender (nodemailer, optional)
 - Health check endpoint
-- Four local ESLint rules guarding the template's invariants
+- Ten local ESLint rules guarding the template's invariants
 
 ## Claude Code
 
@@ -124,7 +124,7 @@ hooks/                       # use-entity-queries (TanStack Query), useNotify, u
 lib/                         # Prisma client, auth, email, export, validations
 prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs
-eslint-rules/                # Project-local ESLint plugin (4 hard rules)
+eslint-rules/                # Project-local ESLint plugin (10 hard rules)
 tests/contracts/             # Contract test suite (node:test)
 .github/workflows/           # verify, secrets-scan, sast, codeql, uat, preview-uat, release, new-project (all dispatch-only on free plan)
 ```

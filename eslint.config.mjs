@@ -20,6 +20,29 @@ const eslintConfig = defineConfig([
       // CSS variables, never a raw hex literal in a component. At error so the
       // considered theme can't quietly drift back to generic as the app grows.
       "rihal-template/no-raw-hex-color": "error",
+      // Audit completeness (ADR-010): Prisma bulk-write / upsert ops on an
+      // audited model write no audit row. At error so the "audit is automatic"
+      // promise can't silently regress as a fork adds bulk writes.
+      "rihal-template/no-unaudited-bulk-write": "error",
+      // Injection floor (OWASP A03): the Unsafe raw-SQL methods don't
+      // parameterize. The safe tagged-template $queryRaw/$executeRaw stay
+      // allowed; only the *Unsafe escape hatch is gated.
+      "rihal-template/no-raw-sql-unsafe": "error",
+      // Throttle-ordering invariant: withRateLimit must compose OUTSIDE the
+      // auth wrapper so abusive/unauthenticated floods are rejected before any
+      // auth work (session lookup / bcrypt / secret compare) runs. At error so
+      // the ordering can't silently invert as a fork adds rate-limited routes.
+      "rihal-template/no-rate-limit-inside-auth": "error",
+      // Export egress gate (SECURITY.md §1): a Restricted/secret field name as a
+      // toExcel column key writes its raw value into the downloadable .xlsx --
+      // SCRUB_FIELDS does not cover export output. At error so a fork can't leak
+      // a secret column through an export route as it adds them.
+      "rihal-template/no-restricted-export-column": "error",
+      // Raw-client containment: prismaUnfiltered bypasses soft-delete + audit, so
+      // it's allowlisted to auth / recycling-bin / maintenance files. At error so
+      // an ordinary feature route can't silently drop those invariants by reaching
+      // for the raw client. (tests/** + scripts/** are exempt below.)
+      "rihal-template/no-prisma-unfiltered-import": "error",
     },
   },
 
@@ -55,12 +78,37 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // NOTE: these tests/** + scripts/** override blocks MUST stay AFTER the
+  // rihal-template plugin block above -- flat config is last-write-wins, so a
+  // new rule added below them would also apply to tests/scripts. Keep additions
+  // to the plugin block above this point.
+  //
   // Tests legitimately embed example hex colors -- RuleTester fixtures for
   // no-raw-hex-color, sample data in component tests. The design-token rule is
-  // about app/component code, so switch it off under tests/.
+  // about app/component code, so switch it off under tests/. Tests also drive
+  // bulk writes deliberately (fixture setup, teardown), so the bulk-write gate
+  // is for app/lib runtime, not test harnesses.
   {
     files: ["tests/**"],
-    rules: { "rihal-template/no-raw-hex-color": "off" },
+    rules: {
+      "rihal-template/no-raw-hex-color": "off",
+      "rihal-template/no-unaudited-bulk-write": "off",
+      // Integration / contract / UAT-setup suites legitimately drive the raw
+      // client (assert soft-deleted rows, seed fixtures), so the containment
+      // gate is for app/lib runtime, not the test harness.
+      "rihal-template/no-prisma-unfiltered-import": "off",
+    },
+  },
+
+  // Scripts and the Prisma seed run as bootstrap tooling outside any request /
+  // AuditContext -- seeding/migration data is not request-attributable, so
+  // bulk/upsert there is expected. The bulk-write gate stays on for app/lib.
+  {
+    files: ["scripts/**", "prisma/seed.*", "prisma/**/seed.*"],
+    rules: {
+      "rihal-template/no-unaudited-bulk-write": "off",
+      "rihal-template/no-prisma-unfiltered-import": "off",
+    },
   },
 
   // Override default ignores of eslint-config-next.

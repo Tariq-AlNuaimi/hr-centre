@@ -21,7 +21,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 **Operational rules per class:**
 
-- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5).
+- **Restricted:** never logged, never returned by an API outside the owning user's own session, never in default exports. `audit_logs.before` / `after` automatically scrub Restricted field values via `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` (see §5). Excel export is a **separate** gate (`SCRUB_FIELDS` does not touch export output): `rihal-template/no-restricted-export-column` fails `/ship` at `error` when a secret-named field is used as a `toExcel` column key, so a fork can't dump a Restricted column into a downloadable `.xlsx` (its denylist is kept a superset of `SCRUB_FIELDS` by `tests/contracts/export-column-completeness.test.ts`).
 - **Confidential:** auth + role gate at the API boundary. Logged on sensitive read where the project defines one (the template doesn't ship read-side audit — write-side only).
 - **Internal:** auth + role gate.
 - **Public:** can appear unauthenticated.
@@ -84,7 +84,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 - **Captured per row:** `timestamp`, `entityType`, `entityId`, `action` (`CREATE` / `UPDATE` / `DELETE` / `RESTORE`), `before` (JSON snapshot pre-write, scrubbed), `after` (JSON snapshot post-write, scrubbed), `changes` (diff with `updatedAt` excluded; scrubbed fields show as `from: [redacted], to: [redacted]`), `userId` (from `AuditContext`), `ipAddress`, `userAgent`.
 - **Soft-delete coverage:** `prisma.<model>.delete()` is rewritten to a soft-delete by the soft-delete extension, which is the *outermost* hook and so bypasses the audit extension — it therefore writes its own `action: "DELETE"` audit row (with `deletedBy` set from the context). Recycling-bin **restore** and **permanent delete** go through `prismaUnfiltered` (outside the extension) and write explicit `RESTORE` / `DELETE` rows via `recordAudit()`. Password changes go through the audited client (`passwordHash` scrubbed). Net: create / update / soft-delete / restore / permanent-delete are all audited.
 - **Attribution comes from `AuditContext`** seeded by `withAuth` / `withAdminAuth`, which now captures `userId`, `ipAddress` (`x-forwarded-for` / `x-real-ip`), and `userAgent`. Calls outside the wrappers (`withInternalAuth` endpoints, cron jobs, seed scripts) attribute to `null` user.
-- **Bulk-write / upsert blind spot (not auto-audited):** the extension hooks only per-row `create` / `update` / `delete`. `prisma.<model>.updateMany(...)`, `createMany(...)`, and `upsert(...)` on an audited model write **no audit row** — Prisma does not decompose `upsert` into a `create`/`update` the extension can observe, so it is the same class of gap. A fork doing bulk or upsert writes must avoid them (loop per-row through the audited client) or write an explicit `recordAudit()` row alongside the op. See ADR-010.
+- **Bulk-write / upsert blind spot (not auto-audited):** the extension hooks only per-row `create` / `update` / `delete`. `prisma.<model>.updateMany(...)`, `createMany(...)`, and `upsert(...)` on an audited model write **no audit row** — Prisma does not decompose `upsert` into a `create`/`update` the extension can observe, so it is the same class of gap. A fork doing bulk or upsert writes must avoid them (loop per-row through the audited client) or write an explicit `recordAudit()` row alongside the op. The `rihal-template/no-unaudited-bulk-write` ESLint rule (at `error`) enforces this: it fails `/ship` on `prisma`/`prismaUnfiltered` `updateMany`/`createMany`/`deleteMany`/`upsert` against an audited model, so the blind spot can't be reintroduced silently (EXCLUDE-set models and `tests/`/`scripts/` are exempt). See ADR-010.
 - **Non-atomicity (accepted limitation):** the audit row is written as a *separate* statement after the data write, not in the same transaction (Prisma query extensions can't wrap the underlying op + the audit insert atomically without a base-client restructure that would risk the soft-delete/audit invariants). A failed audit insert after a committed write is therefore possible. For prototype scale this is accepted; a `shared`-tier project that needs guaranteed atomicity should move to DB-trigger-based audit (future ADR). See ADR-010.
 - **Restricted-field scrubbing:** `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` replaces values for `passwordHash`, `password`, `refresh_token`, `access_token`, `id_token`, `session_state`, `sessionToken`, `token`, `secret`, `apiKey`, `api_key`. The contract suite (`tests/contracts/audit-scrub.test.ts`) asserts the membership and behavior.
 - **Retention:** scheduled via Vercel Cron (ADR-018). `vercel.json` ships a daily cron that GETs `app/api/internal/audit-purge`, which deletes rows older than `AUDIT_RETENTION_DAYS` (default 365) in capped batches. The cron authenticates with `Authorization: Bearer $CRON_SECRET` (Vercel injects it); until `CRON_SECRET` is set the run is a silent 200 no-op (`{skipped:true}`). Manual / Actions callers POST with `x-internal-token: $AUDIT_PURGE_TOKEN`. `/deploy` provisions `CRON_SECRET` automatically; manually-connected forks must set it themselves. See finding T-06 (closed).
@@ -177,10 +177,10 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 
 | Risk | Coverage |
 |---|---|
-| A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` / `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) boundary ✅; middleware enforces auth on every non-public path ✅. |
+| A01 Broken Access Control | `withAuth` / `withAdminAuth` / `withInternalAuth` / `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) boundary ✅; middleware enforces auth on every non-public path ✅; `rihal-template/no-prisma-unfiltered-import` allowlists the soft-delete/audit-bypassing `prismaUnfiltered` client to auth/recycling-bin/maintenance files at `error` ✅. |
 | A02 Cryptographic Failures | TLS terminated automatically at Vercel ✅; HSTS ✅; bcryptjs ✅; Neon encrypts at rest ✅. Production secrets live in Vercel env vars (never in chat / shell). |
-| A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; Semgrep `p/owasp-top-ten` via `/audit` ✅. |
-| A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; no MFA (T-02). |
+| A03 Injection | Prisma parameterizes everything ✅; zod at boundary ✅; `rihal-template/no-raw-sql-unsafe` bans `$queryRawUnsafe`/`$executeRawUnsafe` at `error` ✅; Semgrep `p/owasp-top-ten` via `/audit` ✅. |
+| A04 Insecure Design | Audit + soft-delete + scrubbing framework-enforced ✅; rate-limit ✅; `rihal-template/no-rate-limit-inside-auth` keeps `withRateLimit` composed OUTSIDE the auth wrapper at `error`, so floods are throttled before auth work runs ✅; no MFA (T-02). |
 | A05 Security Misconfiguration | Security headers + CSP ✅; standalone build ✅. |
 | A06 Vulnerable Components | `npm audit --audit-level=high --omit=dev` runs locally via `/ship` ✅ (and in `verify.yml` once CI is active). |
 | A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; rate limit ✅; no MFA ⚠️ (T-02); no account lockout ⚠️. |
@@ -281,7 +281,7 @@ Still deliberately not covered (would need disproportionate Prisma mocking for t
 ## 16. Shared-tier security checklist (at `/handoff`)
 
 The template's **security floor** (auth wrappers, no leaked secrets, zod at every
-boundary, no raw SQL, the four `rihal-template/*` ESLint rules, audit log ON, `/ship`
+boundary, no raw SQL, the ten `rihal-template/*` ESLint rules, audit log ON, `/ship`
 before every push) holds for **both** tiers from day zero — see `CLAUDE.md` → "Project
 tiers". A prototype that has only been reviewed by stakeholders via a shared URL is **not
 yet cleared to hold sensitive (Confidential / Restricted) production data.**

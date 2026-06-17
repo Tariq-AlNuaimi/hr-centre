@@ -1,4 +1,4 @@
-// RuleTester coverage for the five local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the ten local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -18,6 +18,11 @@ import noAnyCastOnSession from "../../eslint-rules/rules/no-any-cast-on-session.
 import noSecretEnvInConsole from "../../eslint-rules/rules/no-secret-env-in-console.mjs";
 import noBareInternalRoute from "../../eslint-rules/rules/no-bare-internal-route.mjs";
 import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
+import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-write.mjs";
+import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
+import noRateLimitInsideAuth from "../../eslint-rules/rules/no-rate-limit-inside-auth.mjs";
+import noRestrictedExportColumn from "../../eslint-rules/rules/no-restricted-export-column.mjs";
+import noPrismaUnfilteredImport from "../../eslint-rules/rules/no-prisma-unfiltered-import.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -240,3 +245,324 @@ ruleTest("no-raw-hex-color", noRawHexColor, {
     },
   ],
 });
+
+// --- no-unaudited-bulk-write ----------------------------------------------
+// Prisma bulk-write / upsert ops on an AUDITED model bypass the per-row audit
+// extension (ADR-010). The rule flags them on `prisma` / `prismaUnfiltered`
+// and exempts the audit EXCLUDE-set models. Parse with the TS parser so the
+// `(prisma as any)` unwrap path is exercised.
+ruleTest(
+  "no-unaudited-bulk-write",
+  noUnauditedBulkWrite,
+  {
+    valid: [
+      // Per-row writes are audited -- always fine.
+      { code: `await prisma.user.create({ data });` },
+      { code: `await prisma.user.update({ where, data });` },
+      { code: `await prisma.user.delete({ where });` },
+      // Bulk ops on EXCLUDE-set models are not audited by design -> allowed.
+      { code: `await prismaUnfiltered.verificationToken.deleteMany({ where });` },
+      { code: `await prismaUnfiltered.auditLog.deleteMany({ where });` },
+      { code: `await prisma.session.deleteMany({ where });` },
+      { code: `await prisma.account.updateMany({ where, data });` },
+      // Bulk method name on a non-prisma object is irrelevant.
+      { code: `await queue.createMany(items);` },
+      { code: `await delegate.updateMany({ where, data });` },
+      // An alias bound to a NON-prisma client must not be flagged.
+      { code: `const db = makeClient();\nawait db.user.updateMany({ where, data });` },
+      // `$transaction` array form on an EXCLUDE model stays allowed.
+      { code: `await prisma.$transaction([prisma.session.deleteMany({ where })]);` },
+    ],
+    invalid: [
+      {
+        code: `await prisma.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        code: `await prisma.post.createMany({ data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        code: `await prisma.invoice.deleteMany({ where });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        code: `await prisma.user.upsert({ where, create, update });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // prismaUnfiltered on an audited model is just as blind.
+        code: `await prismaUnfiltered.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // `createManyAndReturn` is the same blind spot.
+        code: `await prisma.user.createManyAndReturn({ data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // TS type-assertion wrapper must not hide the prisma root.
+        code: `await (prisma as any).user.deleteMany({ where });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // Computed accessor form.
+        code: `await prisma["user"].updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // Local re-bind alias: `const db = prisma` then bulk-write.
+        code: `const db = prisma;\nawait db.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // The textbook atomicity idiom: $transaction callback param `tx` is the
+        // extended client, so a bulk write through it is the same audit bypass.
+        code: `await prisma.$transaction(async (tx) => { await tx.user.updateMany({ where, data }); });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // $transaction array form: inner call is rooted at `prisma` directly.
+        code: `await prisma.$transaction([prisma.user.updateMany({ where, data })]);`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-raw-sql-unsafe -----------------------------------------------------
+// The parameterized tagged-template forms ($queryRaw/$executeRaw) are allowed;
+// only the unparameterized *Unsafe escape hatches are banned (OWASP A03).
+ruleTest(
+  "no-raw-sql-unsafe",
+  noRawSqlUnsafe,
+  {
+    valid: [
+      // Safe parameterized tagged templates -- the sanctioned raw form.
+      { code: "await prisma.$queryRaw`SELECT 1`;" },
+      { code: "await prismaUnfiltered.$queryRaw`SELECT 1`;" },
+      { code: "await prisma.$executeRaw`DELETE FROM t WHERE id = ${id}`;" },
+      // Unrelated method that merely contains "Raw" in the name.
+      { code: "await client.queryRawData(x);" },
+    ],
+    invalid: [
+      {
+        code: "await prisma.$queryRawUnsafe(`SELECT * FROM t WHERE id = ${id}`);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        code: "await prisma.$executeRawUnsafe('DELETE FROM t WHERE id = ' + id);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        // Flagged regardless of receiver (method name is Prisma-unique), so an
+        // aliased client can't escape the gate.
+        code: "await db.$queryRawUnsafe(sql);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        // Aliased receiver, $executeRaw variant.
+        code: "await db.$executeRawUnsafe(sql);",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+      {
+        // Tagged-template form of an Unsafe method is no safer -- caught too.
+        code: "await prisma.$executeRawUnsafe`DROP TABLE ${t}`;",
+        errors: [{ messageId: "noRawSqlUnsafe" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-rate-limit-inside-auth ---------------------------------------------
+// withRateLimit must be the OUTER wrapper so throttling runs before auth work.
+// The violation is a withRateLimit(...) call sitting in the handler-argument
+// slot of an auth wrapper (arg 0 for the session wrappers, arg 1 for the
+// token wrappers whose first arg is the env-var name).
+ruleTest(
+  "no-rate-limit-inside-auth",
+  noRateLimitInsideAuth,
+  {
+    valid: [
+      // Correct: throttle is outermost, auth wrapper is its first argument.
+      { code: `export const POST = withRateLimit(withAdminAuth(handler), opts);` },
+      { code: `export const PUT = withRateLimit(withAuth(handler), { id: "x", limit: 5, windowMs: 60000 });` },
+      // Token wrapper nested inside the throttle is the sanctioned shape too.
+      { code: `export const GET = withRateLimit(withInternalAuth("CRON_SECRET", purge, { bearer: true }), opts);` },
+      // Auth wrapper alone (no rate limiting) is fine.
+      { code: `export const GET = withAdminAuth(handler);` },
+      // An arrow/identifier handler -- not a withRateLimit call -- is fine.
+      { code: `export const POST = withAuth(async (req, ctx) => handler(req, ctx));` },
+      // withRateLimit wrapping a non-auth call must not trip.
+      { code: `export const POST = withRateLimit(somethingElse(handler), opts);` },
+    ],
+    invalid: [
+      {
+        // Inverted: session wrapper outside the throttle (arg 0).
+        code: `export const POST = withAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        code: `export const DELETE = withAdminAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        code: `export const PUT = withEditorAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        // Token wrapper: handler is arg 1, so the throttle is in the wrong slot.
+        code: `export const GET = withInternalAuth("CRON_SECRET", withRateLimit(purge, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        code: `export const POST = withApiAuth("API_TOKEN", withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+      {
+        // Correct and inverted forms in one file: detections are independent,
+        // so only the inverted GET is flagged (the POST stays clean).
+        code: `export const POST = withRateLimit(withAuth(handler), opts);\nexport const GET = withAdminAuth(withRateLimit(handler, opts));`,
+        errors: [{ messageId: "rateLimitInsideAuth" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-restricted-export-column -------------------------------------------
+// A toExcel(...) column whose `key` names a Restricted/secret field leaks the
+// raw value into the .xlsx -- SCRUB_FIELDS does not cover export output. Both
+// the explicit SCRUB_FIELDS names and the forward-safe secret-name pattern are
+// flagged; safe business columns pass through.
+ruleTest(
+  "no-restricted-export-column",
+  noRestrictedExportColumn,
+  {
+    valid: [
+      // Ordinary, non-secret columns.
+      { code: `toExcel(rows, [{ header: "Name", key: "name" }, { header: "Created", key: "createdAt" }]);` },
+      // A secret value projected through `format` (not exported as a raw key).
+      { code: `toExcel(rows, [{ header: "Has key", key: "id", format: (v, row) => (row.apiKey ? "yes" : "no") }]);` },
+      // Not a toExcel call -- unrelated function with a "key" prop.
+      { code: `defineColumns([{ header: "Token", key: "token" }]);` },
+      // Columns built in a variable are out of the inline-literal scope.
+      { code: `toExcel(rows, cols);` },
+      // A computed key can't be read statically -> not flagged (documented scope).
+      { code: `toExcel(rows, [{ header: "Dyn", key: SECRET_FIELD }]);` },
+    ],
+    invalid: [
+      {
+        // Exact SCRUB_FIELDS name.
+        code: `toExcel(rows, [{ header: "Hash", key: "passwordHash" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Plain `token`.
+        code: `toExcel(rows, [{ header: "Name", key: "name" }, { header: "Tok", key: "token" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Forward-safe pattern: a secret-named column NOT in the explicit set.
+        code: `toExcel(rows, [{ header: "Stripe", key: "stripeSecret" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Snake_case OAuth token column.
+        code: `toExcel(rows, [{ header: "Refresh", key: "refresh_token" }]);`,
+        errors: [{ messageId: "restrictedExportColumn" }],
+      },
+      {
+        // Two restricted columns in one call -> one report each.
+        code: `toExcel(rows, [{ key: "apiKey" }, { key: "name" }, { key: "privateKey" }]);`,
+        errors: [
+          { messageId: "restrictedExportColumn" },
+          { messageId: "restrictedExportColumn" },
+        ],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-prisma-unfiltered-import -------------------------------------------
+// prismaUnfiltered (raw client, bypasses soft-delete + audit) may only be
+// imported in allowlisted files (auth / recycling-bin / audit-log / internal /
+// health / the prisma lib). The filename is load-bearing, so each case sets an
+// absolute path.
+const ORDINARY_ROUTE = "/repo/app/api/projects/route.ts";
+const ALLOWED_AUTH = "/repo/app/api/auth/reset-password/route.ts";
+const ALLOWED_RECYCLE = "/repo/app/api/recycling-bin/route.ts";
+const ALLOWED_LIB = "/repo/lib/auth.ts";
+ruleTest(
+  "no-prisma-unfiltered-import",
+  noPrismaUnfilteredImport,
+  {
+    valid: [
+      // Allowlisted files may import the raw client.
+      {
+        filename: ALLOWED_AUTH,
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+      },
+      {
+        filename: ALLOWED_RECYCLE,
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+      },
+      {
+        filename: ALLOWED_LIB,
+        code: `import { prismaUnfiltered } from "./prisma";`,
+      },
+      // The dashboard home RSC aggregates soft-deleted counts (allowlisted).
+      {
+        filename: "/repo/app/[locale]/(dashboard)/page.tsx",
+        code: `import { prisma, prismaUnfiltered } from "@/lib/prisma";`,
+      },
+      // An ordinary route importing the AUDITED client is fine.
+      {
+        filename: ORDINARY_ROUTE,
+        code: `import { prisma } from "@/lib/prisma";`,
+      },
+      // Importing something else whose name merely contains the substring.
+      {
+        filename: ORDINARY_ROUTE,
+        code: `import { prismaUnfilteredHelper } from "@/lib/helpers";`,
+      },
+    ],
+    invalid: [
+      {
+        // Ordinary feature route reaching for the raw client.
+        filename: ORDINARY_ROUTE,
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Aliased import does not escape the gate (matched on imported name).
+        filename: ORDINARY_ROUTE,
+        code: `import { prismaUnfiltered as db } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Mixed import: the audited client is fine, the raw one is flagged.
+        filename: ORDINARY_ROUTE,
+        code: `import { prisma, prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Boundary: a SIBLING dashboard page is NOT the allowlisted home page,
+        // so the dashboard fragment must not exempt it.
+        filename: "/repo/app/[locale]/(dashboard)/settings/page.tsx",
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // Boundary: a nested dashboard page is likewise not exempt.
+        filename: "/repo/app/[locale]/(dashboard)/users/[id]/page.tsx",
+        code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);

@@ -61,6 +61,10 @@ const typecheck = () =>
 
 let [tsc, lint, contract, components] = await Promise.all([
   typecheck(),
+  // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
+  // hash, NOT on the source of imported rule plugins. After editing a rule under
+  // eslint-rules/, clear `node_modules/.cache/eslint/` or the cache can serve a
+  // STALE result (a fixed rule looks green; a newly-strict rule looks clean).
   run("lint", "npx", ["eslint", "--cache", "--cache-location", `${CACHE}/eslint/`]),
   run("contract tests", "npm", ["test"]),
   run("component tests", "npm", ["run", "test:components"]),
