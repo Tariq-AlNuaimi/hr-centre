@@ -120,8 +120,8 @@ export default function StyleGuidePage() {
             <Tag color="gold">Pending</Tag>
             <Tag color="red">Blocked</Tag>
           </Space>
-          <Alert type="success" showIcon message="Saved successfully." />
-          <Alert type="error" showIcon message="Something went wrong. Try again." />
+          <Alert type="success" showIcon title="Saved successfully." />
+          <Alert type="error" showIcon title="Something went wrong. Try again." />
         </Space>
       </Section>
 

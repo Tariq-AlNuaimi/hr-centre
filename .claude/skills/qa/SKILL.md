@@ -1,6 +1,6 @@
 ---
 name: qa
-description: The QA orchestrator. Decomposes a change into per-component -> per-screen -> per-flow scope and runs the three QA tiers IN GATED ORDER -- design QA (/design-qa) -> functional QA (/ship + a risk-based case matrix) -> UAT (/uat) -- against the rubric in docs/uat-rubric.md, anchored to the 4 pillars (scalable/maintainable/fast/secure). A red gate stops the line and reports; it never barrels ahead. Collects a scorecard per screen/feature into one release-readiness verdict. This is the "don't fire off a granular mega-task" control. Trigger phrases: "qa", "/qa", "run qa", "full qa", "is this ready to ship", "release readiness", "quality gate", "audit the app properly".
+description: The QA orchestrator. Decomposes a change into per-component -> per-screen -> per-flow scope and runs the three QA tiers IN GATED ORDER -- design QA (/design-qa) -> functional QA (/ship + a risk-based case matrix) -> UAT (/uat) -- against the rubric in docs/uat-rubric.md, anchored to the 5 pillars (speed/secure/maintainable/scalable/high-quality). A red gate stops the line and reports; it never barrels ahead. Collects a scorecard per screen/feature into one release-readiness verdict. This is the "don't fire off a granular mega-task" control. Trigger phrases: "qa", "/qa", "run qa", "full qa", "is this ready to ship", "release readiness", "quality gate", "audit the app properly".
 ---
 
 # /qa — the gated QA orchestrator
@@ -23,7 +23,7 @@ the answer to "don't launch a granular mega-task blindly": it scopes the work an
 | 2 · Functional QA | **`/ship`** + risk-based **case matrix** | dev/QA (agent) | design-QA passed → regression green, no open criticals, high-risk covered |
 | 3 · UAT | **`/uat`** (FULL) | **operator** (business) | functional-QA passed → acceptance traced + signed off |
 
-Tie-breaker across all three: the **4 pillars** hold and the **security floor** is intact.
+Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scalable/high-quality) hold and the **security floor** is intact.
 
 ## How to run it
 1. **Decompose, don't blob.** Scope the change: which **components** changed → which

@@ -19,7 +19,8 @@ when the IT team's paid plan runs Actions.
 - RSC-wired dashboard: the home dashboard now reads its data server-side (React Server Components) instead of client fetches.
 - Public API surface: `/api/v1/*` rewrite plus Bearer-token (`withApiAuth`) and SSO role-map seams for future external/IdP integration (ADR-013).
 - Per-route rate limiting helper `withRateLimit(handler, { id, limit, windowMs })`; scaffolded write routes now use it (`{ limit: 30, windowMs: 60000 }`).
-- ADR-010 (audit completeness + atomicity), ADR-011 (tenancy by deployment), ADR-012 (stay REST + zod, not tRPC), ADR-013 (API versioning + auth/SSO seams).
+- Client data layer on TanStack Query (ADR-021): `hooks/use-entity-queries.ts` query/mutation factories with shared query-key conventions, request dedupe, and centralized cache invalidation, with `QueryClientProvider` wired into the locale providers — superseding the ad-hoc `useCrud` fetch hook (now `@deprecated`).
+- ADR-010 (audit completeness + atomicity), ADR-011 (tenancy by deployment), ADR-012 (stay REST + zod, not tRPC), ADR-013 (API versioning + auth/SSO seams), ADR-021 (client data layer on TanStack Query).
 - `SECURITY.md` §16: shared-tier checklist.
 - CodeQL scanning with SARIF upload; SHA-pinned GitHub Actions; Dependabot.
 - Component and auth test suites.
@@ -39,6 +40,7 @@ when the IT team's paid plan runs Actions.
 
 ### Security
 - Token comparisons in `withInternalAuth` / `withApiAuth` now use constant-time `timingSafeEqual` to close a timing side-channel on the shared-secret / Bearer-token checks.
+- `rihal-template/no-raw-sql-unsafe` ESLint rule (at `error`): bans `$queryRawUnsafe` / `$executeRawUnsafe` — unparameterized raw SQL is a direct injection vector (OWASP A03). Parameterized `$queryRaw` / `$executeRaw` tagged templates remain allowed. Brings the local plugin to seven rules.
 - `rihal-template/no-rate-limit-inside-auth` ESLint rule (at `error`): enforces the ordering invariant that `withRateLimit` composes OUTSIDE the auth wrapper, so abusive/unauthenticated floods are throttled before any auth work (session lookup / bcrypt / secret compare) runs (OWASP A04). Brings the local plugin to eight rules.
 - `rihal-template/no-restricted-export-column` ESLint rule (at `error`): bans a Restricted/secret-named field (the `SCRUB_FIELDS` set + a forward-safe secret-name pattern) as a `toExcel` column key — export output is a separate egress gate that `SCRUB_FIELDS` does not cover, so a raw secret column would otherwise dump into the downloadable `.xlsx` (SECURITY.md §1). `tests/contracts/export-column-completeness.test.ts` keeps the rule's denylist a superset of `SCRUB_FIELDS`. Brings the local plugin to nine rules.
 - `rihal-template/no-prisma-unfiltered-import` ESLint rule (at `error`): restricts the raw `prismaUnfiltered` client (which bypasses the soft-delete filter and audit guarantees) to an allowlist of files that legitimately need it — `lib/auth.ts`, the prisma lib, and the `auth` / `recycling-bin` / `audit-log` / `internal` / `health` route groups. An ordinary feature route importing it now fails `/ship`, so the soft-delete + audit invariants can't be silently dropped; adding a new caller is a deliberate (Ask-before) allowlist edit. `tests/**` + `scripts/**` are exempt. Brings the local plugin to ten rules.

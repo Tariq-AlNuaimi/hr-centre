@@ -40,11 +40,14 @@ NOT protect export output. Audit the column list per route.
 ## Kanban board
 ```tsx
 import { KanbanBoard } from "@/components/shared/KanbanBoard";
+import { chartPalette } from "@/components/layout/antd-theme";
 
+// Column accents come off the shared palette in antd-theme.ts — never raw hex
+// (the `rihal-template/no-raw-hex-color` rule; tokens are the single source).
 const columns = [
   { id: "TODO", title: "To do" },
-  { id: "IN_PROGRESS", title: "In progress", color: "#1677ff" },
-  { id: "DONE", title: "Done", color: "#52c41a" },
+  { id: "IN_PROGRESS", title: "In progress", color: chartPalette[0] }, // brand/primary
+  { id: "DONE", title: "Done", color: chartPalette[1] }, // success green
 ];
 
 <KanbanBoard

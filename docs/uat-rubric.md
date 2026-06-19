@@ -11,11 +11,12 @@ per-domain.
 
 ---
 
-## The 4 governing pillars (every finding justifies against these)
-1. **Scalable** — handles growth (bulk paths not N×1; pagination; rate-limit-aware; no N+1).
-2. **Maintainable** — reuses existing primitives/services; typed; no dead code; small, forward-compatible migrations.
-3. **Fast** — RSC reads, no needless round-trips, debounced inputs, bounded payloads.
-4. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage.
+## The 5 governing pillars (every finding justifies against these)
+1. **Speed** — RSC reads, no needless round-trips, debounced inputs, bounded payloads. *(Formerly "Fast".)*
+2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage.
+3. **Maintainable** — reuses existing primitives/services; typed; no dead code; small, forward-compatible migrations.
+4. **Scalable** — handles growth (bulk paths not N×1; pagination; rate-limit-aware; no N+1).
+5. **High-Quality** — the polish pillar a finding cites when it isn't one of the four above: correctness + UX fidelity, automated gates (CI / pre-push / axe / coverage), honest empty/loading/error states, and no deprecation drift.
 
 ## The anchors (a finding cites at least one)
 **Objectives** (what this screen/feature is for) · **Scope** (in/out of bounds) ·
