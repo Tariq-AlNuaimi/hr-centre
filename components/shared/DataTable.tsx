@@ -5,7 +5,11 @@ import type { TableProps, TablePaginationConfig } from "antd";
 import type { FilterValue } from "antd/es/table/interface";
 import { SearchOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+// Debounce window for the search box: long enough to coalesce a burst of
+// keystrokes into one API query, short enough to feel live.
+const SEARCH_DEBOUNCE_MS = 300;
 
 export interface SortChange {
   field?: string;
@@ -40,6 +44,22 @@ export function DataTable<T extends object>({
 }: DataTableProps<T>) {
   const t = useTranslations("common");
   const [searchValue, setSearchValue] = useState("");
+
+  // Debounce the onSearch callback (CP-PO2) so typing fires ONE query, not one
+  // per keystroke. The input stays controlled/instant; only the parent
+  // notification is delayed. A ref holds the latest onSearch so the debounced
+  // closure never goes stale, and the pending timer is cleared on unmount.
+  const onSearchRef = useRef(onSearch);
+  useEffect(() => {
+    onSearchRef.current = onSearch;
+  }, [onSearch]);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+  const handleSearch = useCallback((value: string) => {
+    setSearchValue(value);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onSearchRef.current?.(value), SEARCH_DEBOUNCE_MS);
+  }, []);
 
   const pagination: TablePaginationConfig = {
     current: page,
@@ -78,10 +98,7 @@ export function DataTable<T extends object>({
           prefix={<SearchOutlined />}
           placeholder={t("search")}
           value={searchValue}
-          onChange={(e) => {
-            setSearchValue(e.target.value);
-            onSearch?.(e.target.value);
-          }}
+          onChange={(e) => handleSearch(e.target.value)}
           allowClear
           style={{ maxWidth: 400 }}
         />

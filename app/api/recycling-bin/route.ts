@@ -7,12 +7,12 @@ import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import {
   RECYCLABLE_ENTITY_TYPES as ENTITY_TYPES,
   recyclableAccessor,
-  type RecyclableDelegate,
+  recyclableClient,
   type RecyclableRecord,
 } from "@/lib/prisma/recyclable";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 
-const recyclable = prismaUnfiltered as unknown as Record<string, RecyclableDelegate>;
+const recyclable = recyclableClient(prismaUnfiltered);
 
 // Validate the restore body at the boundary (zod, like every other mutating
 // route). entityType is still allowlist-checked below; this just turns a
@@ -39,36 +39,32 @@ const MERGE_CAP = 500;
 export const GET = withAdminAuth(async (request: NextRequest) => {
   const pagination = parsePagination(request.nextUrl.searchParams);
 
-  const merged: Array<{
-    entityType: string;
-    id: string;
-    displayName: string;
-    deletedAt: Date;
-    deletedBy: string | null;
-  }> = [];
-
-  for (const [entityType, config] of Object.entries(ENTITY_TYPES)) {
-    const accessor = entityType[0].toLowerCase() + entityType.slice(1);
-    const records = await recyclable[accessor].findMany({
-      where: { deletedAt: { not: null } },
-      orderBy: { deletedAt: "desc" },
-      take: PER_TYPE_CAP,
-    });
-
-    for (const record of records) {
-      const displayValue =
-        (record[config.displayField] as string | undefined) ??
-        (record.email as string | undefined) ??
-        record.id;
-      merged.push({
+  // Query every recyclable type in PARALLEL (CP-PO5): the per-type findMany calls
+  // are independent, so fan them out with Promise.all instead of awaiting each in
+  // sequence -- total latency becomes the slowest single query, not their sum.
+  const perType = await Promise.all(
+    Object.entries(ENTITY_TYPES).map(async ([entityType, config]) => {
+      // recyclableAccessor() is the single source of truth for the mapping; keys
+      // come from ENTITY_TYPES so it is always non-null here.
+      const accessor = recyclableAccessor(entityType)!;
+      const records = await recyclable[accessor].findMany({
+        where: { deletedAt: { not: null } },
+        orderBy: { deletedAt: "desc" },
+        take: PER_TYPE_CAP,
+      });
+      return records.map((record) => ({
         entityType,
         id: record.id,
-        displayName: displayValue,
+        displayName:
+          (record[config.displayField] as string | undefined) ??
+          (record.email as string | undefined) ??
+          record.id,
         deletedAt: record.deletedAt as Date,
         deletedBy: record.deletedBy as string | null,
-      });
-    }
-  }
+      }));
+    })
+  );
+  const merged = perType.flat();
 
   merged.sort(
     (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()

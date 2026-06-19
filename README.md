@@ -126,7 +126,7 @@ prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs
 eslint-rules/                # Project-local ESLint plugin (10 hard rules)
 tests/contracts/             # Contract test suite (node:test)
-.github/workflows/           # verify, secrets-scan, sast, codeql, uat, preview-uat, release, new-project (all dispatch-only on free plan)
+.github/workflows/           # verify, secrets-scan, sast, codeql, senior-review, uat, preview-uat, release, new-project (all dispatch-only on free plan)
 ```
 
 ## Adding a New Entity
@@ -163,6 +163,7 @@ activates at `/handoff` when the IT team's paid plan can run Actions:
 - **secrets-scan.yml**: gitleaks across full git history
 - **sast.yml**: Semgrep with OWASP + secrets rulesets
 - **codeql.yml**: GitHub CodeQL static analysis (JS/TS)
+- **senior-review.yml**: async post-push breadth review by the **senior-code-reviewer** (cross-cutting invariants, adversarial/output-side trust boundaries, operational drift) — layers on top of the pre-push `/code-review` diff gate (ADR-020). Non-blocking; needs `ANTHROPIC_API_KEY`. When CI is off, invoke the `senior-code-reviewer` agent locally after a push.
 - **release.yml**: Changesets versioning + release notes
 - **uat.yml** / **preview-uat.yml** / **new-project.yml**: manual-dispatch UAT, preview-deploy UAT, and provisioner (not gates)
 

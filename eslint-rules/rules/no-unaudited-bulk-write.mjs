@@ -113,6 +113,20 @@ export default {
         if (isPrismaLikeRoot(node.init)) aliases.add(node.id.name);
       },
 
+      // Assignment-form rebindings: `let db; db = prisma;` and, inside a
+      // `$transaction(async (tx) => ...)` callback, `db = tx;` -- the declarator
+      // hook above only sees `const x = <init>`, so without this a rebind via a
+      // bare assignment (or a re-alias of `tx`) would slip the gate (SR-M3).
+      AssignmentExpression(node) {
+        if (
+          node.operator === "=" &&
+          node.left.type === "Identifier" &&
+          isPrismaLikeRoot(node.right)
+        ) {
+          aliases.add(node.left.name);
+        }
+      },
+
       CallExpression(node) {
         const callee = node.callee;
         if (!callee || callee.type !== "MemberExpression") return;

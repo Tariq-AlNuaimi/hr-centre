@@ -12,8 +12,9 @@
 //     This module logs only metadata (to summary, subject, messageId) -- never the
 //     full body. Callers that pass Restricted content in `text`/`html` MUST NOT
 //     forward those values to console / Sentry / structured loggers separately.
-//   - For mass sends, prefer `to: string[]` over comma-joining manually -- the
-//     log line summarizes as "N recipients" rather than dumping the full list.
+//   - Recipient addresses are Confidential: the log line summarizes every send
+//     as "N recipients" (via recipientLabel) and never prints an address, not
+//     even a single `to`. Prefer `to: string[]` over comma-joining manually.
 
 import nodemailer, { type Transporter, type SendMailOptions } from "nodemailer";
 
@@ -60,6 +61,14 @@ export function isEmailEnabled(): boolean {
   return !!process.env.SMTP_HOST;
 }
 
+// Recipient addresses are Confidential (SECURITY.md §1) -- never log them
+// verbatim, not even a single `to`. Summarize as a count so the log line stays
+// useful (did we attempt a send, to how many?) without leaking who.
+export function recipientLabel(to: string | string[]): string {
+  const n = Array.isArray(to) ? to.length : 1;
+  return `${n} recipient${n === 1 ? "" : "s"}`;
+}
+
 /**
  * Build a nodemailer SendMailOptions object from our higher-level shape.
  * Exported separately so the contract suite can verify message construction
@@ -78,16 +87,14 @@ export function buildMailOptions(opts: SendEmailOptions): SendMailOptions {
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
   const t = getTransporter();
   if (!t) {
-    const toLabel = Array.isArray(opts.to) ? `${opts.to.length} recipients` : opts.to;
-    console.warn(`[email] SMTP_HOST not set; skipping send to=${toLabel} subject="${opts.subject}"`);
+    console.warn(`[email] SMTP_HOST not set; skipping send to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
     return { sent: false };
   }
 
   const info = await t.sendMail(buildMailOptions(opts));
 
-  // Metadata-only log line. Never the body.
-  const toLabel = Array.isArray(opts.to) ? `${opts.to.length} recipients` : opts.to;
-  console.log(`[email] sent messageId=${info.messageId} to=${toLabel} subject="${opts.subject}"`);
+  // Metadata-only log line. Never the body, never the raw recipient address.
+  console.log(`[email] sent messageId=${info.messageId} to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
 
   return { sent: true, messageId: info.messageId };
 }

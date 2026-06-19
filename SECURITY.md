@@ -71,7 +71,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | Password hashing | ✅ bcryptjs only (`lib/auth.ts`). Default cost factor. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2. |
 | Auth.js JWT signing | ✅ `AUTH_SECRET` (Restricted). Rotation invalidates every session. |
 
-**Default security headers** (emitted by `next.config.ts`): Content-Security-Policy, X-Frame-Options: SAMEORIGIN, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy, Strict-Transport-Security. CSP allows `'unsafe-inline'` for script/style (Ant Design SSR + Next bootstrap); `'unsafe-eval'` added only in dev for HMR.
+**Default security headers** (emitted by `next.config.ts`): Content-Security-Policy, X-Frame-Options: DENY (matches the CSP `frame-ancestors 'none'` — the app is never framed, by itself or anyone else), X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy, Strict-Transport-Security. CSP allows `'unsafe-inline'` for script/style (Ant Design SSR + Next bootstrap); `'unsafe-eval'` added only in dev for HMR.
 
 **Backups:** managed by Neon. The free tier has none; Neon Launch ($19/mo) adds point-in-time recovery up to 7 days. Choosing and configuring a backup tier is a per-project / IT-team decision — there is no template-managed backup pipeline anymore (removed in ADR-006).
 
@@ -220,6 +220,7 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 | Date | Tool | Rule | Location | Justification | Reviewer |
 |---|---|---|---|---|---|
 | 2026-06-04 | gitleaks | curl-auth-header | `docs/recipes/saas/2-api-keys-openapi.md` | Illustrative placeholder token `rk_live_xxx` in a `curl` example (not a real secret). Allowlisted by tight regex in `.gitleaks.toml`; the live example was also changed to `Bearer $API_KEY`. | Tariq Al-Naaimi |
+| 2026-06-19 | npm audit | GHSA-p6gq-j5cr-w38f (nodemailer, High) | `audit-allowlist.json` | No fixed nodemailer version is published; the advisory is reachable only via the `raw`/attacker-controlled address path, which `lib/email.ts` never exercises. It cascades into the Auth.js chain (`@auth/core`, `next-auth`, `@auth/prisma-adapter`); downgrading `next-auth` would break the ADR-001 locked stack. Scoped allow in `audit-allowlist.json` (single advisory id, not a path/level relaxation); `/ship` still fails any other High+ advisory. Re-audit on every bump; remove the moment a fix ships. See §13. | Tariq Al-Naaimi |
 | — | — | — | — | — | — |
 
 ---
@@ -231,6 +232,7 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 | 2026-05-29 | `tmp` (transitive via `exceljs@4.4.0`) | `0.2.5` → `^0.2.7` via `package.json` `overrides` | Path traversal via unsanitized prefix/postfix (High) | Pinned the patched `tmp` without changing `exceljs` (already latest). `/ship` npm-audit gate clean at the high level; export contract test green. |
 | 2026-06-01 | 14 advisories (2 low, 12 moderate): `postcss`/`next` chain (`@ant-design/nextjs-registry`, `@sentry/nextjs`, `next-intl`), `nodemailer` (SMTP injection), `exceljs`→`uuid`, dev-only `@prisma/dev`→`@hono/node-server` | No bump | Various moderate/low | **Reviewed, deferred — now RESOLVED 2026-06-05 (see next row).** At the time all were below the gate (none High/critical) and lacked a non-breaking `npm audit fix`. Subsequently cleared with targeted `overrides` + a `nodemailer` major bump. |
 | 2026-06-05 | `uuid` 8.3.2→`^11` (via `exceljs`); `postcss` 8.4.31→`^8.5.10` (via the `next` chain); `@hono/node-server`→`^1.19.13` (dev-only, via `@prisma/dev`); `nodemailer` 7.0.13→`^8.0.5` (direct dep + override + `@types/nodemailer`→`^8`) | `overrides` pins + one direct-dep major bump | GHSA-w5hq-g745-h8pq (uuid buffer bounds); postcss `</style>` XSS; hono serveStatic middleware bypass; nodemailer SMTP injection (`envelope.size` / transport-name CRLF) | **Fixed — `npm audit` now reports 0 vulnerabilities (was 14).** `exceljs` uses only uuid's main-entry `{ v4 }` (compatible with v11); postcss 8.5 is a backward-compatible minor; hono override is dev-only tooling. `nodemailer` needed a direct-dep major (override alone hit `EOVERRIDE`); `lib/email.ts` uses only the stable `createTransport`/`sendMail` core. Verified: email contract test, production build, and full `/ship` gate all green. |
+| 2026-06-19 | `nodemailer` (GHSA-p6gq-j5cr-w38f, High) | **No bump available** — triaged & scoped-allowed | nodemailer address-interpretation flaw reachable only via the `raw`/attacker-controlled address path | **Triaged NOT reachable; scoped allow recorded.** `lib/email.ts` never passes attacker-controlled `raw`/addresses through the affected path. No fixed nodemailer version is published, and the advisory cascades into the Auth.js chain (`@auth/core`, `next-auth`, `@auth/prisma-adapter`) — downgrading `next-auth` would break the ADR-001 locked stack. Scoped allow in `audit-allowlist.json` (single advisory id; `/ship` still gates every other High+ CVE). Re-audit on every bump; remove the entry the moment an upstream fix ships. See §12. |
 | — | — | — | — | — |
 
 ---
@@ -245,10 +247,11 @@ Workflows live in `.github/workflows/`:
 | `secrets-scan.yml` | PR + push (any) | gitleaks across full git history; uploads SARIF to the Security tab | Any detected secret pattern |
 | `sast.yml` | PR + push (any) | Semgrep with `p/javascript`, `p/typescript`, `p/nextjs`, `p/react`, `p/owasp-top-ten`, `p/secrets`; uploads SARIF to the Security tab | Any finding at default severity |
 | `codeql.yml` | Manual dispatch + weekly schedule | CodeQL `javascript-typescript` analysis; results in the Security tab | Any finding at the configured severity |
+| `senior-review.yml` | PR + push (non-main) | Async post-push breadth review by the `senior-code-reviewer` (cross-cutting invariants, adversarial/output-side trust boundaries, operational drift) — layers on top of the pre-push `/code-review` diff gate (ADR-020). Non-blocking; dormant until `ANTHROPIC_API_KEY` + triggers are set. | — (advisory) |
 | `uat.yml` | Manual dispatch | Playwright UAT against a deployed URL; uploads a screenshot report. Not a gate. | — |
 | `new-project.yml` | Manual dispatch | One-shot provisioner (GitHub repo + Neon + Vercel + Cloudflare DNS). Not a gate. | — |
 
-(All are **dormant** on the free plan — triggers are `workflow_dispatch` (and a dormant `schedule` for `codeql.yml`). The SARIF upload steps in `secrets-scan.yml` / `sast.yml` are guarded so they no-op when there is nothing to upload. The active gate is local `/ship`. See §14 intro + ADR-007.)
+(All are **dormant** on the free plan — triggers are `workflow_dispatch` (and a dormant `schedule` for `codeql.yml`). The SARIF upload steps in `secrets-scan.yml` / `sast.yml` are guarded so they no-op when there is nothing to upload. The active gate is local `/ship`. See the paragraph below + ADR-007.)
 
 **On the current plan (solo operator, free GitHub plan with Actions billing blocked) these workflows do not run.** Their security checks are mirrored locally by the `/ship` skill (typecheck → lint → tests → build → gitleaks → npm audit) plus the on-demand `/audit` skill (gitleaks + npm audit + Semgrep). **CI activates at `/handoff`**, when the IT team's paid plan can run Actions and enforce branch protection.
 

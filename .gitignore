@@ -75,3 +75,6 @@ plans/
 # The version marker (.template-sync.json) is TRACKED -- it is the fork's baseline.
 .template-sync-review.diff
 .claude/.template-check-stamp
+
+# Generated SBOM (run `npm run sbom` on demand / in CI)
+sbom.json

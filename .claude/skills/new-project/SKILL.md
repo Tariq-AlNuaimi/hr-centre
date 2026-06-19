@@ -89,7 +89,7 @@ gh workflow run new-project.yml \
 
 ## What happens (~3 minutes)
 
-1. **GitHub** — creates `tariq-alnuaimi/<slug>` from this template (private repo).
+1. **GitHub** — creates `Tariq-AlNuaimi/<slug>` from this template (private repo).
 2. **Neon** — creates a Postgres 17 project in the configured region, captures the pooled `DATABASE_URL`.
 3. **Vercel** — creates a project linked to the new GitHub repo with 5 env vars baked in:
    - `DATABASE_URL` (the Neon pooled URL)
@@ -116,7 +116,7 @@ Find the run in the workflow's run history. The run's **Summary** tab shows:
 
 1. Wait ~2 min for the first Vercel build + DNS propagation.
 2. Open `https://<slug>.<apex>` and log in with the seeded credentials.
-3. Start a Claude Code session on `tariq-alnuaimi/<slug>` and type:
+3. Start a Claude Code session on `Tariq-AlNuaimi/<slug>` and type:
    ```
    /quickstart "describe your idea here"
    ```

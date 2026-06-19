@@ -13,6 +13,7 @@ import { useSession } from "next-auth/react";
 import { DataTable } from "@/components/shared/DataTable";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { apiClient } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/format";
 
 interface DeletedItem {
   entityType: string;
@@ -134,7 +135,7 @@ export default function RecyclingBinPage() {
       title: t("deletedAt"),
       dataIndex: "deletedAt",
       key: "deletedAt",
-      render: (val: string) => new Date(val).toLocaleString(),
+      render: (val: string) => formatDateTime(val),
     },
     {
       title: t("deletedBy"),

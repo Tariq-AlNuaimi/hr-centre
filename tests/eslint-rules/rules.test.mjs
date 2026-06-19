@@ -326,6 +326,18 @@ ruleTest(
         code: `await prisma.$transaction([prisma.user.updateMany({ where, data })]);`,
         errors: [{ messageId: "noBulkWrite" }],
       },
+      {
+        // SR-M3: assignment-form rebinding (not `const x = ...`) is tracked, so
+        // a bare `db = prisma` reassignment can't slip a bulk write past.
+        code: `let db;\ndb = prisma;\nawait db.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // SR-M3: re-aliasing the `$transaction` param inside the callback is
+        // tracked too (`db = tx` -> `db.user.updateMany` is the same bypass).
+        code: `await prisma.$transaction(async (tx) => { let db; db = tx; await db.user.updateMany({ where, data }); });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
     ],
   },
   { ecmaVersion: 2022, sourceType: "module" }
@@ -560,6 +572,14 @@ ruleTest(
         // Boundary: a nested dashboard page is likewise not exempt.
         filename: "/repo/app/[locale]/(dashboard)/users/[id]/page.tsx",
         code: `import { prismaUnfiltered } from "@/lib/prisma";`,
+        errors: [{ messageId: "unfilteredImport" }],
+      },
+      {
+        // SR-M4: `lib/auth.tsx` must NOT inherit `lib/auth.ts`'s allowance.
+        // File fragments are endsWith-anchored, so a near-miss extension
+        // (`auth.tsx`, `prisma.ts.bak`) cannot satisfy a `.ts` allowance.
+        filename: "/repo/lib/auth.tsx",
+        code: `import { prismaUnfiltered } from "./prisma";`,
         errors: [{ messageId: "unfilteredImport" }],
       },
     ],

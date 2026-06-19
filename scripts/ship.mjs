@@ -47,6 +47,63 @@ function run(name, cmd, args, env = {}) {
 }
 
 const report = (r) => console.log(`  ${r.ok ? "PASS" : "FAIL"}  ${r.name} (${r.secs}s)`);
+
+// -- npm-audit evaluation with a scoped allowlist (audit-allowlist.json) -----
+// `npm audit --json` lists EVERY severity; we keep the old `--audit-level=high`
+// semantics by only counting High/Critical advisories, then drop any whose GHSA
+// id is allowlisted (an upstream-unfixed, triaged-not-reachable advisory with a
+// SECURITY.md §12/§13 row). A High+ advisory NOT in the allowlist still fails.
+function loadAuditAllowlist() {
+  if (!existsSync("audit-allowlist.json")) return new Set();
+  try {
+    const j = JSON.parse(readFileSync("audit-allowlist.json", "utf8"));
+    const advisories = Array.isArray(j.advisories) ? j.advisories : [];
+    return new Set(advisories.map((a) => a.id));
+  } catch (err) {
+    // Safe-fail: an empty allowlist makes every High+ advisory fail /ship. Warn
+    // loudly so the cause is the malformed file, not a confusing "new advisory".
+    console.warn(
+      `  warn: audit-allowlist.json is malformed -- treating as empty (every High+ advisory will fail /ship): ${err.message}`
+    );
+    return new Set();
+  }
+}
+
+function evaluateAudit(out) {
+  let j;
+  try {
+    j = JSON.parse(out);
+  } catch {
+    return { ok: false, out: `npm audit did not return JSON (registry/network error?):\n${out.slice(0, 800)}` };
+  }
+  // A successful `npm audit --json` always carries `vulnerabilities` + `metadata`.
+  // A registry/network failure returns `{ "error": {...} }` (valid JSON, no vuln
+  // map) -- without this guard that would read as zero offenders => false green.
+  if (j.error || !j.metadata || !j.vulnerabilities) {
+    return { ok: false, out: `npm audit did not complete (no results):\n${out.slice(0, 800)}` };
+  }
+  const allow = loadAuditAllowlist();
+  const offenders = new Map(); // GHSA id -> { title, severity }
+  for (const v of Object.values(j.vulnerabilities || {})) {
+    for (const via of v.via || []) {
+      if (typeof via !== "object" || !via.url) continue;
+      if (via.severity !== "high" && via.severity !== "critical") continue;
+      const m = String(via.url).match(/GHSA-[0-9a-z-]+/i);
+      const id = m ? m[0] : via.url;
+      if (!allow.has(id)) offenders.set(id, { title: via.title, severity: via.severity });
+    }
+  }
+  if (offenders.size === 0) {
+    return { ok: true, out: allow.size ? `clean (allowlisted: ${[...allow].join(", ")})` : "clean" };
+  }
+  const lines = [...offenders.entries()].map(([id, x]) => `  - ${id} (${x.severity}) ${x.title || ""}`);
+  return {
+    ok: false,
+    out:
+      `npm audit found High+ advisories NOT in audit-allowlist.json:\n${lines.join("\n")}\n` +
+      `If unfixable + not reachable, add to audit-allowlist.json with a SECURITY.md §12/§13 row.`,
+  };
+}
 const fail = (r) => {
   console.error(`\nship: RED -- ${r.name} failed. First 20 lines:\n`);
   console.error(r.out.split("\n").slice(0, 20).join("\n"));
@@ -98,9 +155,11 @@ if (!gitleaks.ok && /ENOENT/.test(gitleaks.out)) {
 report(gitleaks);
 if (!gitleaks.ok) fail(gitleaks);
 
-const audit = await run("npm audit", "npm", ["audit", "--audit-level=high", "--omit=dev"]);
+const auditRaw = await run("npm audit", "npm", ["audit", "--json", "--audit-level=high", "--omit=dev"]);
+const audit = { name: "npm audit", secs: auditRaw.secs, ...evaluateAudit(auditRaw.out) };
 report(audit);
 if (!audit.ok) fail(audit);
+if (audit.out.startsWith("clean (allowlisted")) console.log(`  note: npm audit ${audit.out}`);
 
 console.log(
   `\nship: green -- typecheck + lint + tests + component tests + build + gitleaks + npm audit all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`

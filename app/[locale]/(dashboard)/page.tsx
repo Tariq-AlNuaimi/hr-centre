@@ -8,25 +8,43 @@
 // cross it either). So this RSC renders no JSX of its own -- all UI lives in the
 // client island. See docs/recipes/perf/1-rsc-list-reads.md.
 
+import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
-import { RECYCLABLE_ENTITY_TYPES } from "@/lib/prisma/recyclable";
+import {
+  RECYCLABLE_ENTITY_TYPES,
+  recyclableAccessor,
+  recyclableClient,
+} from "@/lib/prisma/recyclable";
 import {
   DashboardContent,
   type DashboardData,
   type RecentAudit,
 } from "@/components/dashboard/DashboardContent";
 
-// Recompute on every request -- this page reflects live counts.
+// The page stays dynamic for the per-request auth gate; the heavy aggregate
+// below is what's cached, not the page.
 export const dynamic = "force-dynamic";
 
-async function getDashboardData(): Promise<DashboardData> {
+// Cache the 8-query dashboard aggregate for a short window (CP-PO6). The counts
+// are GLOBAL (not per-user) and the dashboard tolerates ~30s staleness, so every
+// admin page-load no longer recomputes them. unstable_cache reads no
+// cookies/headers (the auth gate runs in the page, outside this function).
+const getDashboardData = unstable_cache(
+  getDashboardDataUncached,
+  ["dashboard-data"],
+  { revalidate: 30, tags: ["dashboard-data"] }
+);
+
+async function getDashboardDataUncached(): Promise<DashboardData> {
   // total users + per-role breakdown (soft-delete filtered via `prisma`)
   const [totalUsers, usersByRole] = await Promise.all([
     prisma.user.count(),
-    // NOTE: the soft-delete extension does NOT intercept groupBy/aggregate, so
-    // filter deletedAt explicitly here -- otherwise the role breakdown would
-    // include soft-deleted users while totalUsers (count) excludes them.
+    // The soft-delete extension DOES intercept groupBy/aggregate (it injects
+    // `deletedAt: null` through the same applySoftDeleteFilter as every read
+    // hook), so this explicit `where` is redundant defense-in-depth -- kept so
+    // the intent is visible at the call site and locked by the groupBy case in
+    // tests/integration/audit-softdelete.test.ts.
     prisma.user.groupBy({
       by: ["role"],
       where: { deletedAt: null },
@@ -36,16 +54,14 @@ async function getDashboardData(): Promise<DashboardData> {
 
   // Count soft-deleted records across every recyclable entity. `prismaUnfiltered`
   // bypasses the soft-delete filter so deletedAt rows are visible.
+  const recyclable = recyclableClient(prismaUnfiltered);
   const deletedCounts = await Promise.all(
     Object.keys(RECYCLABLE_ENTITY_TYPES).map((entityType) => {
-      const accessor = entityType[0].toLowerCase() + entityType.slice(1);
-      const delegate = (
-        prismaUnfiltered as unknown as Record<
-          string,
-          { count: (a: { where: { deletedAt: { not: null } } }) => Promise<number> }
-        >
-      )[accessor];
-      return delegate.count({ where: { deletedAt: { not: null } } });
+      // recyclableAccessor() is the single source of truth for the entityType ->
+      // delegate-name mapping (and validates against the allowlist). Keys here
+      // come from RECYCLABLE_ENTITY_TYPES, so the accessor is always non-null.
+      const accessor = recyclableAccessor(entityType)!;
+      return recyclable[accessor].count({ where: { deletedAt: { not: null } } });
     })
   );
   const softDeletedTotal = deletedCounts.reduce((a, b) => a + b, 0);

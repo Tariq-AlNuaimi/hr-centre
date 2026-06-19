@@ -13,6 +13,7 @@ import { UserOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { Chart } from "@/components/shared/Chart";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { formatDateTime } from "@/lib/format";
 
 export interface RecentAudit {
   id: string;
@@ -135,7 +136,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                   title: tAudit("timestamp"),
                   dataIndex: "timestamp",
                   key: "timestamp",
-                  render: (val: string) => new Date(val).toLocaleString(),
+                  render: (val: string) => formatDateTime(val),
                 },
               ]}
             />

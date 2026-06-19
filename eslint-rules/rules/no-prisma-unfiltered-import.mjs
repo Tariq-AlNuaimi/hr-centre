@@ -38,13 +38,16 @@
 //     a dynamic `import()`, a `require()`, or a re-export are not detected. These
 //     forms don't appear in this ESM codebase and would stand out in review; a
 //     justified suppress is the right tool if one ever appears.
-//   - Allowlist fragments are substring matches, so a deliberately odd filename
-//     (`lib/prisma.ts.bak`, `lib/auth.tsx`) could match a single-file fragment.
-//     The template's strict layering makes this a non-issue in practice; the
-//     fragments are anchored as tightly as a substring allows.
+//   - File fragments are anchored with `endsWith` (so `/lib/auth.ts` matches ONLY
+//     a file ending exactly in `/lib/auth.ts`, never `/lib/auth.tsx` or
+//     `/lib/prisma.ts.bak`); directory fragments (trailing `/`) match as a
+//     contained path segment. A deliberately odd path could still nest a real
+//     allowed directory, but that requires a sanctioned segment to be present.
 
 // Path fragments (normalized to forward slashes) whose files may import the raw
-// client. Substring match against the absolute filename.
+// client. Fragments ending in `/` are DIRECTORY prefixes (substring/contains
+// match); the rest are FILE paths (exact `endsWith` suffix match) so a near-miss
+// extension like `auth.tsx` cannot satisfy the `auth.ts` allowance.
 const ALLOWED_PATH_FRAGMENTS = [
   "/lib/prisma.ts",
   "/lib/prisma/",
@@ -64,7 +67,9 @@ const ALLOWED_PATH_FRAGMENTS = [
 function isAllowedFile(filename) {
   if (!filename) return false;
   const normalized = filename.replace(/\\/g, "/");
-  return ALLOWED_PATH_FRAGMENTS.some((frag) => normalized.includes(frag));
+  return ALLOWED_PATH_FRAGMENTS.some((frag) =>
+    frag.endsWith("/") ? normalized.includes(frag) : normalized.endsWith(frag)
+  );
 }
 
 export default {
