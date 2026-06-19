@@ -4,6 +4,7 @@ import { Button, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { ConfirmAction } from "@/components/shared/ConfirmAction";
+import { formatDate } from "@/lib/format";
 
 interface UserRecord {
   id: string;
@@ -60,15 +61,14 @@ export function getUserColumns({
       title: t("lastLogin"),
       dataIndex: "lastLoginAt",
       key: "lastLoginAt",
-      render: (val: string | null) =>
-        val ? new Date(val).toLocaleDateString() : "-",
+      render: (val: string | null) => (val ? formatDate(val) : "-"),
       sorter: true,
     },
     {
       title: t("createdAt"),
       dataIndex: "createdAt",
       key: "createdAt",
-      render: (val: string) => new Date(val).toLocaleDateString(),
+      render: (val: string) => formatDate(val),
       sorter: true,
     },
     {

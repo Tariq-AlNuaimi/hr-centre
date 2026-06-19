@@ -35,8 +35,9 @@ test("DataTable hides the search input by default", () => {
   assert.equal(screen.queryByPlaceholderText("Search..."), null);
 });
 
-test("DataTable shows the search input when searchable and fires onSearch", () => {
+test("DataTable shows the search input when searchable and debounces onSearch", async () => {
   let searched: string | null = null;
+  let calls = 0;
   renderWithProviders(
     <DataTable<Row>
       columns={columns}
@@ -45,6 +46,7 @@ test("DataTable shows the search input when searchable and fires onSearch", () =
       searchable
       onSearch={(v) => {
         searched = v;
+        calls += 1;
       }}
     />,
   );
@@ -60,7 +62,13 @@ test("DataTable shows the search input when searchable and fires onSearch", () =
   setter.call(input, "ali");
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
 
+  // Debounced: not fired synchronously on keystroke (CP-PO2).
+  assert.equal(searched, null);
+
+  // Fires exactly once with the final value after the debounce window.
+  await new Promise((resolve) => setTimeout(resolve, 400));
   assert.equal(searched, "ali");
+  assert.equal(calls, 1);
 });
 
 test("DataTable invokes onPageChange when the pager is clicked", () => {

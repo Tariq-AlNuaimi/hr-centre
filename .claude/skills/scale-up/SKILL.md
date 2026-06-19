@@ -31,6 +31,7 @@ ADR-014). When a graduating project needs one, open the recipe and apply it
 - `1-rsc-list-reads.md` (O1) — convert a client-fetch list page to a React Server Component reading Prisma from `searchParams`, with a client island for the interactive DataTable
 - `2-search-trigram.md` (O4) — `pg_trgm` GIN indexes so `ILIKE`/`contains` search uses an index instead of a seq scan at volume
 - `3-perf-budget-uat.md` (O9) — opt-in Lighthouse / bundle-size budget in the `/uat` flow that fails the run on regression
+- **List virtualization** (CP-PO7) — `DataTable` paginates server-side by default, so this is only needed if a fork renders very large client-side `pageSize`s (e.g. an in-page export preview). Add `virtual` + a fixed `scroll.y` to the AntD `Table` (AntD 6 ships row virtualization), or drop in `@tanstack/react-virtual`. A per-page change, not a base dependency.
 
 **Developer experience** (`docs/recipes/dx/`):
 - `1-storybook.md` (O7) — Storybook 8 for the shared component library (DataTable / Chart / KanbanBoard / EmptyState / ConfirmAction) with the AntD `ConfigProvider` + `next-intl` decorator; dev-only, kept out of the base (ADR-014)

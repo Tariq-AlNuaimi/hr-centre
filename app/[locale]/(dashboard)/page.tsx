@@ -8,6 +8,7 @@
 // cross it either). So this RSC renders no JSX of its own -- all UI lives in the
 // client island. See docs/recipes/perf/1-rsc-list-reads.md.
 
+import { unstable_cache } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
 import {
@@ -21,10 +22,21 @@ import {
   type RecentAudit,
 } from "@/components/dashboard/DashboardContent";
 
-// Recompute on every request -- this page reflects live counts.
+// The page stays dynamic for the per-request auth gate; the heavy aggregate
+// below is what's cached, not the page.
 export const dynamic = "force-dynamic";
 
-async function getDashboardData(): Promise<DashboardData> {
+// Cache the 8-query dashboard aggregate for a short window (CP-PO6). The counts
+// are GLOBAL (not per-user) and the dashboard tolerates ~30s staleness, so every
+// admin page-load no longer recomputes them. unstable_cache reads no
+// cookies/headers (the auth gate runs in the page, outside this function).
+const getDashboardData = unstable_cache(
+  getDashboardDataUncached,
+  ["dashboard-data"],
+  { revalidate: 30, tags: ["dashboard-data"] }
+);
+
+async function getDashboardDataUncached(): Promise<DashboardData> {
   // total users + per-role breakdown (soft-delete filtered via `prisma`)
   const [totalUsers, usersByRole] = await Promise.all([
     prisma.user.count(),

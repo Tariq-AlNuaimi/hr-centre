@@ -39,38 +39,32 @@ const MERGE_CAP = 500;
 export const GET = withAdminAuth(async (request: NextRequest) => {
   const pagination = parsePagination(request.nextUrl.searchParams);
 
-  const merged: Array<{
-    entityType: string;
-    id: string;
-    displayName: string;
-    deletedAt: Date;
-    deletedBy: string | null;
-  }> = [];
-
-  for (const [entityType, config] of Object.entries(ENTITY_TYPES)) {
-    // recyclableAccessor() is the single source of truth for the mapping; keys
-    // come from ENTITY_TYPES so it is always non-null here.
-    const accessor = recyclableAccessor(entityType)!;
-    const records = await recyclable[accessor].findMany({
-      where: { deletedAt: { not: null } },
-      orderBy: { deletedAt: "desc" },
-      take: PER_TYPE_CAP,
-    });
-
-    for (const record of records) {
-      const displayValue =
-        (record[config.displayField] as string | undefined) ??
-        (record.email as string | undefined) ??
-        record.id;
-      merged.push({
+  // Query every recyclable type in PARALLEL (CP-PO5): the per-type findMany calls
+  // are independent, so fan them out with Promise.all instead of awaiting each in
+  // sequence -- total latency becomes the slowest single query, not their sum.
+  const perType = await Promise.all(
+    Object.entries(ENTITY_TYPES).map(async ([entityType, config]) => {
+      // recyclableAccessor() is the single source of truth for the mapping; keys
+      // come from ENTITY_TYPES so it is always non-null here.
+      const accessor = recyclableAccessor(entityType)!;
+      const records = await recyclable[accessor].findMany({
+        where: { deletedAt: { not: null } },
+        orderBy: { deletedAt: "desc" },
+        take: PER_TYPE_CAP,
+      });
+      return records.map((record) => ({
         entityType,
         id: record.id,
-        displayName: displayValue,
+        displayName:
+          (record[config.displayField] as string | undefined) ??
+          (record.email as string | undefined) ??
+          record.id,
         deletedAt: record.deletedAt as Date,
         deletedBy: record.deletedBy as string | null,
-      });
-    }
-  }
+      }));
+    })
+  );
+  const merged = perType.flat();
 
   merged.sort(
     (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()

@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/format";
 
 interface AuditEntry {
   id: string;
@@ -70,11 +71,7 @@ export default function AuditLogClient() {
       title: t("timestamp"),
       dataIndex: "timestamp",
       width: 180,
-      render: (v: string) =>
-        new Date(v).toLocaleString(undefined, {
-          dateStyle: "short",
-          timeStyle: "medium",
-        }),
+      render: (v: string) => formatDateTime(v),
     },
     {
       title: t("action"),
