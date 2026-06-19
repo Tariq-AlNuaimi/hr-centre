@@ -40,13 +40,14 @@
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole
 - lib/client-ip.ts: clientIp
-- lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
+- lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
+- lib/format.ts: formatDateTime, formatDate
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: BCRYPT_COST, hashPassword
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
-- lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate
+- lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
 - lib/prisma.ts: prisma, prismaUnfiltered
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError

@@ -1,0 +1,8 @@
+# Active pre-push gate (BM-1): run the full /ship verification before any push,
+# so the gate is enforced by structure, not memory -- on the free GitHub plan
+# the CI workflows are dormant (ADR-007), making this the real gate. It mirrors
+# CI exactly (typecheck -> lint -> tests -> build -> gitleaks -> npm audit).
+#
+# Emergency bypass: `git push --no-verify` (use sparingly; CI will still gate
+# once active at /handoff).
+npm run ship
