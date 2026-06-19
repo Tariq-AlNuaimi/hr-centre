@@ -90,6 +90,7 @@ test("neutralizeFormula prefixes formula-trigger strings, leaves the rest", () =
   assert.equal(neutralizeFormula("-2"), "'-2");
   assert.equal(neutralizeFormula("@SUM(A1)"), "'@SUM(A1)");
   assert.equal(neutralizeFormula("\tinjected"), "'\tinjected");
+  assert.equal(neutralizeFormula("\rinjected"), "'\rinjected");
   // Inert text and non-strings untouched.
   assert.equal(neutralizeFormula("Alice"), "Alice");
   assert.equal(neutralizeFormula("a=b"), "a=b");

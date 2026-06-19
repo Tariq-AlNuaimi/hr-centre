@@ -42,8 +42,9 @@ const BATCH_SIZE = 10_000;
 
 // Recycling-bin GC (SR-H1): permanently remove rows soft-deleted longer ago than
 // RECYCLE_BIN_RETENTION_DAYS. Bounded so a huge backlog can't exceed the function
-// duration -- RECYCLE_GC_BATCH per query, RECYCLE_GC_MAX per run (the remainder
-// waits for the next daily run, like the audit_logs purge above).
+// duration -- RECYCLE_GC_BATCH per query, RECYCLE_GC_MAX PER ENTITY TYPE per run
+// (so a high-volume type can't starve another type's GC; the remainder of any
+// type waits for the next daily run, like the audit_logs purge above).
 const RECYCLE_GC_BATCH = 500;
 const RECYCLE_GC_MAX = 5_000;
 
@@ -52,15 +53,20 @@ async function purgeRecycleBin() {
   const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
   const recyclable = recyclableClient(prismaUnfiltered);
 
+  const purgedByType: Record<string, number> = {};
   let purged = 0;
   for (const entityType of Object.keys(RECYCLABLE_ENTITY_TYPES)) {
     const accessor = recyclableAccessor(entityType);
     if (!accessor) continue;
 
-    while (purged < RECYCLE_GC_MAX) {
-      // Never fetch more than the per-run budget still allows, so the cap holds
+    // Per-type budget: every recyclable type gets its OWN RECYCLE_GC_MAX per run,
+    // so the retention invariant ("deleted PII does not linger past the window")
+    // holds for every type as a fork scaffolds more of them.
+    let typePurged = 0;
+    while (typePurged < RECYCLE_GC_MAX) {
+      // Never fetch more than the per-type budget still allows, so the cap holds
       // exactly (no overshoot by up to a batch on the final iteration).
-      const take = Math.min(RECYCLE_GC_BATCH, RECYCLE_GC_MAX - purged);
+      const take = Math.min(RECYCLE_GC_BATCH, RECYCLE_GC_MAX - typePurged);
       const batch = await recyclable[accessor].findMany({
         where: { deletedAt: { not: null, lt: cutoff } },
         take,
@@ -73,13 +79,15 @@ async function purgeRecycleBin() {
         // with the manual permanent-delete route. Sequential by design: a
         // daily off-peak GC must not exhaust the Prisma connection pool.
         await permanentlyDelete(prismaUnfiltered, accessor, entityType, record);
-        purged += 1;
+        typePurged += 1;
       }
 
       if (batch.length < take) break;
     }
+    purgedByType[entityType] = typePurged;
+    purged += typePurged;
   }
-  return { purged, retentionDays, cutoff: cutoff.toISOString() };
+  return { purged, purgedByType, retentionDays, cutoff: cutoff.toISOString() };
 }
 
 async function purge() {
@@ -122,16 +130,20 @@ async function purge() {
     cutoff: cutoff.toISOString(),
     retentionDays,
     recycleBinPurged: recycle.purged,
+    recycleBinPurgedByType: recycle.purgedByType,
     recycleBinRetentionDays: recycle.retentionDays,
     recycleBinCutoff: recycle.cutoff,
   });
 }
 
+// Distinct rate-limit buckets for the two callers so the routine cron GET can't
+// consume the window an emergency manual POST (e.g. a GDPR deletion) needs when
+// both exit via the same IP.
 export const GET = withRateLimit(
   withInternalAuth("CRON_SECRET", purge, { bearer: true, skipWhenUnconfigured: true }),
-  { id: "audit-purge", limit: 5, windowMs: 60_000 }
+  { id: "audit-purge-cron", limit: 5, windowMs: 60_000 }
 );
 export const POST = withRateLimit(
   withInternalAuth("AUDIT_PURGE_TOKEN", purge),
-  { id: "audit-purge", limit: 5, windowMs: 60_000 }
+  { id: "audit-purge-manual", limit: 5, windowMs: 60_000 }
 );

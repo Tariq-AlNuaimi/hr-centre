@@ -57,8 +57,14 @@ function loadAuditAllowlist() {
   if (!existsSync("audit-allowlist.json")) return new Set();
   try {
     const j = JSON.parse(readFileSync("audit-allowlist.json", "utf8"));
-    return new Set((j.advisories || []).map((a) => a.id));
-  } catch {
+    const advisories = Array.isArray(j.advisories) ? j.advisories : [];
+    return new Set(advisories.map((a) => a.id));
+  } catch (err) {
+    // Safe-fail: an empty allowlist makes every High+ advisory fail /ship. Warn
+    // loudly so the cause is the malformed file, not a confusing "new advisory".
+    console.warn(
+      `  warn: audit-allowlist.json is malformed -- treating as empty (every High+ advisory will fail /ship): ${err.message}`
+    );
     return new Set();
   }
 }

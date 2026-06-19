@@ -39,9 +39,13 @@ not on this branch** (this branch was cut from `main`).
   `hooks/use-crud.ts`.
 
 **Reviews** — `/code-review` (high) ran on PR-2: 0 correctness bugs; cleanup findings
-(duplication) were addressed by the recyclable.ts consolidation. **`senior-code-reviewer`
-launched post-push on the full `main...HEAD` change** (the mandated post-push pass) — see
-its output; act on any blocking finding before this branch merges to `main`.
+(duplication) addressed by the recyclable.ts consolidation. **`senior-code-reviewer` ran
+post-push** on the full `main...HEAD` change: **0 Critical/High**. Its 2 Mediums + 2 Lows
+were all fixed in `cf...` (commit after `c961ac8`): (1) recycle-bin GC `purged` budget is now
+**per entity type** (was a shared global cap that could starve a 2nd scaffolded type) +
+`recycleBinPurgedByType` in the response; (2) distinct rate-limit buckets for the cron GET vs
+manual POST on audit-purge; (3) `ship.mjs` warns on a malformed `audit-allowlist.json`;
+(4) `neutralizeFormula` `\r` test case added. /ship green after.
 
 **Decisions**
 - Operator approved all 4 PRs in one session, one branch (no per-PR sign-off gate).
@@ -79,5 +83,5 @@ its output; act on any blocking finding before this branch merges to `main`.
 6. Shared-tier "best-of-best" (only if the operator wants a genuine 5/5 security floor for a
    shared fork): VAPT-V02 MFA+lockout, V-03 nonce-CSP via the `docs/recipes/shared-security/*`
    recipes — a deliberate PR-5, not personal-tier.
-7. Address any `senior-code-reviewer` findings; then this branch is ready for a PR to `main`
-   (main is the fork source-of-truth). Operator has NOT asked for a PR yet.
+7. Senior-review findings all addressed — this branch is ready for a PR to `main` (main is
+   the fork source-of-truth). Operator has NOT asked for a PR yet.
