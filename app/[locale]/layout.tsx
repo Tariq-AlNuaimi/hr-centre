@@ -13,6 +13,14 @@ type ThemeMode = "light" | "dark" | "system";
 // set the native color-scheme before paint to keep scrollbars/form controls in
 // sync and minimize the flash. Explicit light/dark are already handled by the
 // cookie-seeded SSR below. Self-contained string — no React context.
+//
+// SECURITY (must stay constant): this is injected verbatim via
+// dangerouslySetInnerHTML into an inline <script>, and the CSP allows
+// 'unsafe-inline' for script (AntD SSR + Next bootstrap). It MUST remain a
+// static, build-time literal — never interpolate a request value, cookie,
+// locale, or any user/runtime input into this string, or it becomes a stored-
+// XSS sink that the CSP cannot catch. Read input inside the IIFE at runtime
+// (as the cookie read below does), never by string-building the script.
 const THEME_INIT_SCRIPT = `
 (function () {
   try {

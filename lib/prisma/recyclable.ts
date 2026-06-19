@@ -3,6 +3,8 @@
 // Prisma's per-model types can't express that without an explicit cast.
 // Centralizing the shape here keeps the cast safer than `any`.
 
+import { recordAudit } from "./audit-extension";
+
 export type RecyclableRecord = {
   id: string;
   deletedAt: Date | null;
@@ -33,7 +35,10 @@ export function recyclableAccessor(entityType: string): string | null {
 
 export type RecyclableDelegate = {
   findMany: (args: {
-    where: { deletedAt: { not: null } };
+    // `lt` is optional so the recycling-bin GC (audit-purge cron) can select
+    // rows soft-deleted before a retention cutoff; the bin's list/restore paths
+    // pass `{ not: null }` alone.
+    where: { deletedAt: { not: null; lt?: Date } };
     orderBy?: { deletedAt: "desc" };
     take?: number;
   }) => Promise<RecyclableRecord[]>;
@@ -43,4 +48,37 @@ export type RecyclableDelegate = {
     data: { deletedAt: null; deletedBy: null };
   }) => Promise<RecyclableRecord>;
   delete: (args: { where: { id: string } }) => Promise<RecyclableRecord>;
+  count: (args: { where: { deletedAt: { not: null } } }) => Promise<number>;
 };
+
+// The raw client (`prismaUnfiltered`) typed for polymorphic delegate access.
+// One place owns the `as unknown as` cast the comment above promises to
+// centralize, so the recycling-bin routes, the audit-purge GC, and the
+// dashboard stats widget stop re-deriving it.
+export function recyclableClient(
+  client: Parameters<typeof recordAudit>[0]
+): Record<string, RecyclableDelegate> {
+  return client as unknown as Record<string, RecyclableDelegate>;
+}
+
+/**
+ * Permanently (hard) delete a soft-deleted record through the RAW client and
+ * record the explicit DELETE audit row in the same step. The hard delete
+ * bypasses the audit extension, so the audit write MUST accompany it -- this
+ * helper is the single owner of that invariant, shared by the manual
+ * permanent-delete route and the recycling-bin GC cron.
+ */
+export async function permanentlyDelete(
+  client: Parameters<typeof recordAudit>[0],
+  accessor: string,
+  entityType: string,
+  record: RecyclableRecord
+): Promise<void> {
+  await recyclableClient(client)[accessor].delete({ where: { id: record.id } });
+  await recordAudit(client, {
+    entityType,
+    entityId: record.id,
+    action: "DELETE",
+    before: record as unknown as Record<string, unknown>,
+  });
+}

@@ -55,6 +55,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       });
       if (!user) return;
 
+      // Invalidate any prior reset tokens for this identifier before issuing a
+      // new one: a re-request silently revokes older emailed links (only the
+      // latest is valid) and keeps verification_tokens bounded between the daily
+      // cron GCs (SR-L1). VerificationToken is in the audit/soft-delete EXCLUDE
+      // set, so this bulk delete is allowed and unaudited by design.
+      await prismaUnfiltered.verificationToken.deleteMany({ where: { identifier: email } });
+
       const token = randomBytes(32).toString("base64url");
       await prismaUnfiltered.verificationToken.create({
         data: { identifier: email, token, expires: new Date(Date.now() + TOKEN_TTL_MS) },

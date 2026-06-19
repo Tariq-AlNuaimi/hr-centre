@@ -158,3 +158,60 @@ test(
     });
   }
 );
+
+test(
+  "groupBy is soft-delete filtered (the extension intercepts groupBy/aggregate)",
+  { skip: !dbReachable },
+  async () => {
+    // Locks the invariant the dashboard relies on: prisma.user.groupBy excludes
+    // soft-deleted rows (SR-H3). The contract suite is DB-free and can't run the
+    // extension's query hooks, so this is the only place it is exercised.
+    await withAuditContext(CTX, async () => {
+      const role = "EDITOR" as const;
+      const filteredCount = async () => {
+        const g = await prisma.user.groupBy({
+          by: ["role"],
+          where: { role },
+          _count: { _all: true },
+        });
+        return g[0]?._count._all ?? 0;
+      };
+      const unfilteredCount = async () => {
+        const g = await prismaUnfiltered.user.groupBy({
+          by: ["role"],
+          where: { role },
+          _count: { _all: true },
+        });
+        return g[0]?._count._all ?? 0;
+      };
+
+      const filteredBefore = await filteredCount();
+      const unfilteredBefore = await unfilteredCount();
+
+      const user = await prisma.user.create({
+        data: {
+          email: email("groupby"),
+          name: "GroupBy Case",
+          passwordHash: "hash-groupby",
+          role,
+        },
+      });
+      createdUserIds.push(user.id);
+
+      assert.equal(await filteredCount(), filteredBefore + 1, "live EDITOR counted by groupBy");
+
+      await prisma.user.delete({ where: { id: user.id } });
+
+      assert.equal(
+        await filteredCount(),
+        filteredBefore,
+        "groupBy(prisma) excludes the soft-deleted EDITOR (extension filtered)"
+      );
+      assert.equal(
+        await unfilteredCount(),
+        unfilteredBefore + 1,
+        "groupBy(prismaUnfiltered) still counts it -- the row is physically present"
+      );
+    });
+  }
+);

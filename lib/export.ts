@@ -120,10 +120,21 @@ export async function toExcel<T extends Record<string, unknown>>(
  * Standard download headers for an .xlsx response.
  */
 export function excelDownloadHeaders(filename: string): Record<string, string> {
-  const safe = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
+  const withExtension = filename.endsWith(".xlsx") ? filename : `${filename}.xlsx`;
+  // Header-injection / disposition-splitting defense: a filename built from
+  // user/entity data (e.g. `${project.name}.xlsx`) can carry CR/LF (splits the
+  // response into forged headers), `"` (breaks out of the quoted-string), `;`
+  // (forges Content-Disposition params), or `\` -- strip them from the ASCII
+  // `filename=`. Map any remaining non-printable/non-ASCII byte to `_` so the
+  // quoted value is pure ASCII, and carry the full UTF-8 name in the RFC 6266
+  // `filename*` parameter (which browsers prefer when present).
+  const asciiSafe = withExtension
+    .replace(/[\r\n";\\]/g, "")
+    .replace(/[^\x20-\x7E]/g, "_");
+  const encoded = encodeURIComponent(withExtension);
   return {
     "content-type":
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "content-disposition": `attachment; filename="${safe.replace(/"/g, "")}"`,
+    "content-disposition": `attachment; filename="${asciiSafe}"; filename*=UTF-8''${encoded}`,
   };
 }

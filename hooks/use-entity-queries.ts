@@ -93,25 +93,30 @@ export function useEntityMutations<T extends { id: string }>(basePath: string) {
   const queryClient = useQueryClient();
   const keys = entityKeys(basePath);
 
-  const invalidate = (id?: string) => {
-    queryClient.invalidateQueries({ queryKey: keys.lists() });
-    if (id) queryClient.invalidateQueries({ queryKey: keys.detail(id) });
+  // Invalidate everything under the entity root (`keys.all` is the prefix of
+  // both lists() and detail()), so a write refreshes the lists AND every cached
+  // detail in one call -- including sibling details a per-id invalidation would
+  // miss (e.g. a relation edit that changes another record's rendered name).
+  // TanStack only refetches the queries that are currently mounted; the rest are
+  // just marked stale, so this is correct, not wasteful.
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: keys.all });
   };
 
   const create = useMutation({
     mutationFn: (data: Partial<T>) => apiClient.post<T>(basePath, data),
-    onSuccess: () => invalidate(),
+    onSuccess: invalidate,
   });
 
   const update = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<T> }) =>
       apiClient.put<T>(`${basePath}/${id}`, data),
-    onSuccess: (_result, { id }) => invalidate(id),
+    onSuccess: invalidate,
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => apiClient.delete<T>(`${basePath}/${id}`),
-    onSuccess: (_result, id) => invalidate(id),
+    onSuccess: invalidate,
   });
 
   return { create, update, remove };

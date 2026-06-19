@@ -18,7 +18,9 @@ const envSchema = z.object({
   SEED_ADMIN_EMAIL: z.string().email().default("admin@example.com"),
   SEED_ADMIN_PASSWORD: z.string().min(8).default("changeme"),
 
-  // Recycling bin
+  // Recycling bin -- soft-deleted records are permanently GC'd past this many
+  // days by the daily audit-purge cron (app/api/internal/audit-purge), so
+  // deleted PII does not linger in the bin forever.
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 
   // Rate limiting (optional). Names the proxy's trusted real-client-IP header so

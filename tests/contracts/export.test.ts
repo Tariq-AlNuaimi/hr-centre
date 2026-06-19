@@ -116,15 +116,41 @@ test("excelDownloadHeaders builds correct content-type + disposition", () => {
     h["content-type"],
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
-  assert.equal(h["content-disposition"], 'attachment; filename="projects-2026.xlsx"');
+  assert.equal(
+    h["content-disposition"],
+    `attachment; filename="projects-2026.xlsx"; filename*=UTF-8''projects-2026.xlsx`
+  );
 });
 
 test("excelDownloadHeaders appends .xlsx when missing", () => {
   const h = excelDownloadHeaders("report");
-  assert.equal(h["content-disposition"], 'attachment; filename="report.xlsx"');
+  assert.equal(
+    h["content-disposition"],
+    `attachment; filename="report.xlsx"; filename*=UTF-8''report.xlsx`
+  );
 });
 
 test("excelDownloadHeaders strips embedded quotes from the filename", () => {
   const h = excelDownloadHeaders('a"b.xlsx');
-  assert.equal(h["content-disposition"], 'attachment; filename="ab.xlsx"');
+  assert.equal(
+    h["content-disposition"],
+    `attachment; filename="ab.xlsx"; filename*=UTF-8''a%22b.xlsx`
+  );
+});
+
+test("excelDownloadHeaders neutralizes CRLF / semicolon header injection", () => {
+  // A filename built from user data must not be able to inject headers or forge
+  // Content-Disposition params. CR/LF/";"/"\" are stripped from the ASCII name.
+  const h = excelDownloadHeaders('evil\r\nSet-Cookie: x=1;name.xlsx');
+  const cd = h["content-disposition"];
+  assert.ok(!/[\r\n]/.test(cd), "no raw CR/LF in the header value");
+  assert.equal(cd.split('"')[1], "evilSet-Cookie: x=1name.xlsx");
+});
+
+test("excelDownloadHeaders maps non-ASCII to _ in filename and keeps UTF-8 in filename*", () => {
+  const h = excelDownloadHeaders("rapport-café.xlsx");
+  assert.equal(
+    h["content-disposition"],
+    `attachment; filename="rapport-caf_.xlsx"; filename*=UTF-8''rapport-caf%C3%A9.xlsx`
+  );
 });

@@ -10,7 +10,11 @@
 
 import { auth } from "@/lib/auth";
 import { prisma, prismaUnfiltered } from "@/lib/prisma";
-import { RECYCLABLE_ENTITY_TYPES } from "@/lib/prisma/recyclable";
+import {
+  RECYCLABLE_ENTITY_TYPES,
+  recyclableAccessor,
+  recyclableClient,
+} from "@/lib/prisma/recyclable";
 import {
   DashboardContent,
   type DashboardData,
@@ -24,9 +28,11 @@ async function getDashboardData(): Promise<DashboardData> {
   // total users + per-role breakdown (soft-delete filtered via `prisma`)
   const [totalUsers, usersByRole] = await Promise.all([
     prisma.user.count(),
-    // NOTE: the soft-delete extension does NOT intercept groupBy/aggregate, so
-    // filter deletedAt explicitly here -- otherwise the role breakdown would
-    // include soft-deleted users while totalUsers (count) excludes them.
+    // The soft-delete extension DOES intercept groupBy/aggregate (it injects
+    // `deletedAt: null` through the same applySoftDeleteFilter as every read
+    // hook), so this explicit `where` is redundant defense-in-depth -- kept so
+    // the intent is visible at the call site and locked by the groupBy case in
+    // tests/integration/audit-softdelete.test.ts.
     prisma.user.groupBy({
       by: ["role"],
       where: { deletedAt: null },
@@ -36,16 +42,14 @@ async function getDashboardData(): Promise<DashboardData> {
 
   // Count soft-deleted records across every recyclable entity. `prismaUnfiltered`
   // bypasses the soft-delete filter so deletedAt rows are visible.
+  const recyclable = recyclableClient(prismaUnfiltered);
   const deletedCounts = await Promise.all(
     Object.keys(RECYCLABLE_ENTITY_TYPES).map((entityType) => {
-      const accessor = entityType[0].toLowerCase() + entityType.slice(1);
-      const delegate = (
-        prismaUnfiltered as unknown as Record<
-          string,
-          { count: (a: { where: { deletedAt: { not: null } } }) => Promise<number> }
-        >
-      )[accessor];
-      return delegate.count({ where: { deletedAt: { not: null } } });
+      // recyclableAccessor() is the single source of truth for the entityType ->
+      // delegate-name mapping (and validates against the allowlist). Keys here
+      // come from RECYCLABLE_ENTITY_TYPES, so the accessor is always non-null.
+      const accessor = recyclableAccessor(entityType)!;
+      return recyclable[accessor].count({ where: { deletedAt: { not: null } } });
     })
   );
   const softDeletedTotal = deletedCounts.reduce((a, b) => a + b, 0);
