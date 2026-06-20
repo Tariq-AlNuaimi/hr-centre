@@ -32,21 +32,26 @@ the branch AND prints the full content for the operator to paste.
    - **Next steps** — numbered, concrete, first step actionable immediately.
 
 2. Write it to `docs/SESSION-HANDOFF.md` (TRACKED, not gitignored — it must
-   survive a fresh container) and **commit + push to the working branch**:
-   `git add docs/SESSION-HANDOFF.md && git commit -m "chore: session handoff" && git push`.
+   survive a fresh container) and **commit it to the working branch (do not push
+   yet — the push is step 3, after memory is also committed):**
+   `git add docs/SESSION-HANDOFF.md && git commit -m "chore: session handoff"`.
    NEVER merge this file to `main` (forks must not inherit it) — it lives only on
    working branches and the next session overwrites or deletes it.
 
-3. **Promote durable items to agent memory (ADR-022).** Scan the **Decisions**
-   and **Landmines** sections you just built: anything that will still matter
-   *after this task ships* (a choice not to relitigate, a trap that cost time, a
-   convention established) belongs in `docs/agent-memory.md`, not just the
-   transient handoff. Append those as dated one-liners to the right section there
-   (same rules as `/remember`), honoring its ~150-line curation budget — promote
-   into CLAUDE.md / an ADR and prune rather than letting it bloat. Skip anything
-   purely in-flight (that's what SESSION-HANDOFF.md is for). Stage it with the
-   handoff commit: `git add docs/agent-memory.md`. Unlike the handoff file,
-   `docs/agent-memory.md` IS meant to reach `main`.
+3. **Promote durable items to agent memory (ADR-022), then push.** Scan the
+   **Decisions** and **Landmines** sections you just built: anything that will
+   still matter *after this task ships* (a choice not to relitigate, a trap that
+   cost time, a convention established) belongs in `docs/agent-memory.md`, not
+   just the transient handoff. Append those as dated one-liners to the right
+   section there (same rules as `/remember`), honoring its ~150-line curation
+   budget — promote into CLAUDE.md / an ADR and prune rather than letting it
+   bloat. Skip anything purely in-flight (that's what SESSION-HANDOFF.md is for).
+   **Never write secrets/Restricted values** there — it is tracked, reaches
+   `main`, and is inherited by forks. Commit memory as its OWN commit (so it can
+   land on `main` independently of the handoff scratch), then push both:
+   `git add docs/agent-memory.md && git commit -m "chore: remember <summary>"` —
+   then `git push`. If there were no durable items, just `git push`. Unlike the
+   handoff file, `docs/agent-memory.md` IS meant to reach `main`.
 
 4. Print the **entire handoff content** in the chat inside one fenced block,
    prefixed with this line so it is self-contained even with no file access:

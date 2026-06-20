@@ -19,6 +19,9 @@ recurring context tax — same discipline as CLAUDE.md.
   fix is promotion + pruning, not a bigger budget.
 - One fact per line: `YYYY-MM-DD — <fact>` (add `(ADR-NNN)` / `file:line` when
   there is a canonical home).
+- **Never write secrets, passwords, tokens, or Restricted values here.** This
+  file is tracked, lands on `main`, is inherited by forks, and is printed into
+  every session at startup — treat it like CLAUDE.md, not like `.env`.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->

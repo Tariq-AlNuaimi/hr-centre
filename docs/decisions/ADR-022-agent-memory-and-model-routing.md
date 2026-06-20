@@ -39,8 +39,8 @@ Adopt the two *ideas*, not the tool, using the lightest on-template mechanism.
    *Conventions discovered* — under a stated curation rule: keep it bounded
    (~150 lines), promote stable items into CLAUDE.md / an ADR and prune the rest.
    The `SessionStart` hook surfaces it into context (whole file if within budget,
-   else the most-recent section + a pointer), fail-open like the existing drift
-   check. Writes happen via a new `/remember` skill and via `/handoff-session`
+   else the file's head — first ~60 lines, newest-first by convention — plus a
+   pointer to read the rest), fail-open like the existing drift check. Writes happen via a new `/remember` skill and via `/handoff-session`
    promoting its "Decisions" section. No daemon, no external store, no vector DB,
    no added network egress.
 
