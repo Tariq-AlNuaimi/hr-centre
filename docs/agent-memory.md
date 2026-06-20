@@ -32,7 +32,14 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
-- (none yet — add traps that cost you time so the next session skips the lesson)
+- 2026-06-20 — SessionStart hook installs deps / generates the Prisma client only
+  when **missing, not stale**. After checking out a branch whose `package.json` or
+  `prisma/schema.prisma` moved ahead, run `npm install` + `npx prisma generate`
+  before `/ship` or typecheck fails on phantom missing modules / fields.
+- 2026-06-20 — Fresh containers can have local `main` far behind `origin/main`.
+  Before fast-forward-merging a working branch into `main`, verify `origin/main`
+  is an ancestor of the branch (`git merge-base --is-ancestor origin/main <branch>`)
+  so the FF doesn't strand remote commits.
 
 ## Conventions discovered
 <!-- patterns/idioms established in practice that are not yet written down elsewhere -->
