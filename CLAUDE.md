@@ -18,6 +18,7 @@ Fork lifecycle: `/rebrand` → `/first-fork` (or `/new-project` / `/deploy`) →
 - Output style: concise; targeted edits over rewrites; no preamble/recap fluff; read a file once unless it changed.
 - When compacting, always preserve: the modified-file list, last `/ship` status, open findings, and the operator's goal.
 - When the context watchdog warns, run `/handoff-session` at the next milestone; repetitive N-file jobs go through `/batch`, not one long session.
+- Durable cross-session knowledge (decisions/gotchas/conventions) lives in `docs/agent-memory.md` (surfaced at SessionStart, bounded ~150 lines) — add via `/remember`; route work by model tier (haiku/sonnet/opus) per the table in `docs/token-policy.md` (ADR-022).
 
 ## Harness (`.claude/`)
 Skills cover the whole lifecycle — discover them via the skill list; each SKILL.md is self-documenting. Most used: `/quickstart`, `/scaffold-entity`, `/ship`, `/deploy`, `/qa`, `/conform`, `/handoff`. The permission allowlist pre-approves npm/prisma/docker/make/non-destructive git; destructive git ops are deny-listed. The SessionStart hook bootstraps `.env`/deps/client and warns when the branch is behind `origin/main`. Read access to `.next/`, `node_modules/`, `generated/` is denied — work from source + `lib/` types, not build artifacts.

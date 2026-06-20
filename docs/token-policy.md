@@ -58,6 +58,26 @@ operator's half of the contract.
     one giant session (Airbnb's 3.5k-file migration pattern: cheap capped
     retries, validation gates in the loop).
 
+## Model-routing tiers (ADR-022)
+
+Route work to the cheapest model that can do it well. This is the formalized
+version of habit #3 above — guidance, not an auto-router (a metric with no real
+token accounting behind it is theater; see ADR-022). Enforcement points are
+subagent `model:` frontmatter and your per-session `/model` choice.
+
+| Tier | Model | Route here | Mechanism / where |
+|---|---|---|---|
+| **Cheap** | `haiku` | repo-wide search, "where is X / how does Y work", orientation passes, reading >5 files, repetitive codemods, scaffold lookups | `scout` agent (`model: haiku`); `/batch` headless per-file runs |
+| **Mid** | `sonnet` | functional single-/few-file edits, post-push review breadth, moderate multi-file work | default working model; `senior-code-reviewer` (`model: sonnet`) |
+| **Top** | `opus` / `fable` | architecture & design, ambiguous/high-blast-radius work, anything on the Ask-before surface (auth, `lib/`, schema, migrations, `middleware.ts`), spec/plan authorship | `/model opus` (or fable) for that session only |
+
+Rules of thumb: **delegate down before working up** — push exploration to `scout`
+and batch jobs to `/batch` so the top-tier session spends its context on judgment,
+not file-reads. Don't pin a project-wide default model (ADR-019): your account /
+`/model` choice stands; only subagents tier down in their definitions. When a
+session is purely mechanical, drop yourself to `/model sonnet` and let `scout`
+carry the haiku-tier reads.
+
 ## Automation shipped (ADR-019) — what the harness now does for you
 | Concern | Mechanism |
 |---|---|
@@ -66,6 +86,8 @@ operator's half of the contract.
 | Hand off cheaply | `/handoff-session` commits `docs/SESSION-HANDOFF.md` to the branch (survives a fresh remote container) AND prints the full handoff to paste — both carriers, works on web + laptop |
 | Stop token-bomb commands | PreToolUse guard denies raw `npm test`/build/dev-server with the quiet alternative (override: prefix `VERBOSE=1`) |
 | Cheap exploration | `scout` agent (haiku, read-only, ≤30-line reports) |
+| Durable cross-session memory | `docs/agent-memory.md` surfaced at SessionStart (bounded), written via `/remember` + `/handoff-session` promotion (ADR-022) |
+| Model routing | tier table above (haiku/sonnet/opus) — guidance + subagent frontmatter, no auto-router (ADR-022) |
 | O(1) orientation | docs/REPO-MAP.md, auto-refreshed by SessionStart when stale |
 | Batch jobs | `/batch` — headless per-file runs, capped turns/retries, cost logged |
 | Per-session accounting | SessionEnd receipt → .claude/usage-log.jsonl |

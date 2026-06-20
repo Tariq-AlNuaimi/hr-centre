@@ -37,16 +37,27 @@ the branch AND prints the full content for the operator to paste.
    NEVER merge this file to `main` (forks must not inherit it) — it lives only on
    working branches and the next session overwrites or deletes it.
 
-3. Print the **entire handoff content** in the chat inside one fenced block,
+3. **Promote durable items to agent memory (ADR-022).** Scan the **Decisions**
+   and **Landmines** sections you just built: anything that will still matter
+   *after this task ships* (a choice not to relitigate, a trap that cost time, a
+   convention established) belongs in `docs/agent-memory.md`, not just the
+   transient handoff. Append those as dated one-liners to the right section there
+   (same rules as `/remember`), honoring its ~150-line curation budget — promote
+   into CLAUDE.md / an ADR and prune rather than letting it bloat. Skip anything
+   purely in-flight (that's what SESSION-HANDOFF.md is for). Stage it with the
+   handoff commit: `git add docs/agent-memory.md`. Unlike the handoff file,
+   `docs/agent-memory.md` IS meant to reach `main`.
+
+4. Print the **entire handoff content** in the chat inside one fenced block,
    prefixed with this line so it is self-contained even with no file access:
 
    > New session: we are mid-stream on <repo>. Below is the full handoff — read
    > it, confirm the branch matches, then start on "Next steps" item 1. Do not
    > re-explore what it answers.
 
-4. Tell the operator: start a new session (web) or `/clear` (laptop). If the new
+5. Tell the operator: start a new session (web) or `/clear` (laptop). If the new
    session is on the SAME working branch, `docs/SESSION-HANDOFF.md` is already
-   there; otherwise paste the block from step 3.
+   there; otherwise paste the block from step 4.
 
 ## Rules
 - Tracked file on the working branch is the durable carrier; the printed block is

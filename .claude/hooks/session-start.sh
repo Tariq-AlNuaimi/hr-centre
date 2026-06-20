@@ -58,6 +58,21 @@ fi
 if [ ! -f docs/REPO-MAP.md ] || [ -n "$(find prisma/schema.prisma app lib -newer docs/REPO-MAP.md -print -quit 2>/dev/null)" ]; then
   node scripts/repo-map.mjs >/dev/null 2>&1 && echo "[harness] repo-map refreshed (docs/REPO-MAP.md)"
 fi
+
+# --- agent memory (ADR-022) ---
+# Surface durable cross-session memory (decisions/gotchas/conventions) into the
+# session up front. Whole file when within the context budget; otherwise the head
+# + a pointer, so an un-pruned file can't tax every session. Fail-open, advisory.
+if [ -f docs/agent-memory.md ]; then
+  mem_lines="$( (wc -l < docs/agent-memory.md 2>/dev/null || echo 0) | tr -dc '0-9' )"
+  echo "[harness] agent memory (docs/agent-memory.md) -- durable cross-session notes:"
+  if [ "${mem_lines:-0}" -le 150 ]; then
+    cat docs/agent-memory.md
+  else
+    head -n 60 docs/agent-memory.md
+    echo "[harness] ...agent-memory.md is ${mem_lines} lines (over the ~150 budget) -- showing the head only; read the full file, then prune/promote per its curation rule"
+  fi
+fi
 # Warn when many MCP servers are configured (schemas cost context; prune via /mcp).
 # tr -dc collapses the count to a single integer -- under pipefail a no-match grep
 # makes the subshell exit non-zero, so `|| echo 0` can append a second line.
