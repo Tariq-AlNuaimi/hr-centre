@@ -15,27 +15,26 @@ win — inline script is what XSS payloads exploit) and **keeps the style-src ca
 documented. Full style nonce-ing waits for AntD 7 (already an ADR-001 migration
 trigger).
 
-## What changes (the two tricky integration points)
+## What changes
 
-1. **`middleware.ts`** generates a fresh nonce per request, sets the CSP header
-   *there* (a static `next.config.ts` header can't carry a per-request nonce), and
-   forwards the nonce to the app on a request header.
-2. **`app/[locale]/layout.tsx`** reads that nonce and (a) puts it on the inline
-   `THEME_INIT_SCRIPT`, and (b) feeds it to Ant Design's `@ant-design/cssinjs`
-   `StyleProvider` so emotion's injected `<style>` tags carry the nonce. The
-   `@ant-design/nextjs-registry` `AntdRegistry` is replaced with a thin custom
-   registry that threads the nonce through.
+1. **`middleware.ts`** generates a fresh nonce per request and sets the CSP header
+   (a static `next.config.ts` header can't carry a per-request nonce) on **both** the
+   response **and** the forwarded request headers. Next.js reads the nonce from the
+   **request** CSP header and auto-applies it to the scripts it emits — this is what
+   makes `'strict-dynamic'` work (the browser ignores `'self'` and trusts only nonce'd
+   scripts + what they load, so Next's bootstrap must be nonced).
+2. **`app/[locale]/layout.tsx`** reads the nonce and puts it on the inline
+   `THEME_INIT_SCRIPT`. That is the only app change. AntD's stock `AntdRegistry` is
+   left **as-is**: its SSR `<style>` tags fall under `style-src 'unsafe-inline'` (kept
+   for AntD 6 emotion), so they need no nonce. **Only scripts are nonced.**
 
-No new dependency to install — `@ant-design/cssinjs` ships transitively under
-`antd`/`@ant-design/nextjs-registry`, but install it explicitly so the import is a
-declared dep:
+No new dependency to install.
 
-```bash
-npm install @ant-design/cssinjs
-```
-
-(It's part of the AntD family already in the tree — under 50 KB net new; no ADR
-needed beyond this recipe, which §16 references.)
+> **Why no custom style registry?** Earlier drafts of this recipe threaded the nonce
+> into `@ant-design/cssinjs` `StyleProvider`. Two problems: the installed cssinjs
+> version's `StyleProvider` has no `nonce` prop (typecheck fails), and — more
+> fundamentally — it buys nothing while `style-src` keeps `'unsafe-inline'` (which it
+> must on AntD 6, see below). So we don't touch the registry at all.
 
 ## Change 1 — `next.config.ts`: stop emitting the script CSP statically
 
@@ -93,13 +92,15 @@ function buildCsp(nonce: string): string {
     // scripts they load inherit trust. 'unsafe-inline' is IGNORED by browsers when a
     // nonce is present, so we leave it out of script-src entirely.
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
-    // STYLE caveat (T-05, unchanged): Ant Design v6 + emotion inject runtime <style>
-    // tags. We nonce them via StyleProvider (see layout), but emotion also sets inline
-    // style attributes that a nonce can't cover, so 'unsafe-inline' STAYS on style-src
-    // until AntD 7. Documented in SECURITY.md §4.
+    // STYLE caveat (T-05, unchanged): Ant Design v6 + emotion emit inline
+    // style="..." attributes a nonce can't cover, so 'unsafe-inline' STAYS on
+    // style-src until AntD 7. We do NOT nonce styles at all (the stock AntdRegistry
+    // is untouched). Documented in SECURITY.md §4.
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
+    // The template also appends the Sentry ingest origin here when
+    // NEXT_PUBLIC_SENTRY_DSN is set (so error envelopes aren't CSP-blocked).
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
@@ -107,8 +108,8 @@ function buildCsp(nonce: string): string {
   ].join("; ");
 }
 
-// Helper: attach the nonce to the request (so RSC can read it) and the CSP to the response.
-function withNonce(req: Request, nonce: string, res: NextResponse): NextResponse {
+// Helper: attach the nonce + CSP to a response.
+function withNonce(nonce: string, res: NextResponse): NextResponse {
   res.headers.set("Content-Security-Policy", buildCsp(nonce));
   res.headers.set("x-nonce", nonce);
   return res;
@@ -118,11 +119,15 @@ export default auth((req) => {
   const { pathname } = req.nextUrl;
   const nonce = randomBytes(16).toString("base64");
 
-  // Forward the nonce to the app on a REQUEST header so the server layout can read it.
+  // Forward to the app on REQUEST headers: x-nonce (layout reads it for the inline
+  // script) AND the full CSP. Next reads the nonce from the request CSP header and
+  // auto-nonces the scripts it emits — required under 'strict-dynamic'.
+  const csp = buildCsp(nonce);
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", csp);
   const pass = () =>
-    withNonce(req, nonce, NextResponse.next({ request: { headers: requestHeaders } }));
+    withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
 
   if (
     pathname.startsWith("/api/auth") ||
@@ -141,21 +146,21 @@ export default auth((req) => {
 
     if (!isAuth && !isPublic) {
       const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
-      return withNonce(req, nonce, NextResponse.redirect(new URL(`/${locale}/login`, req.url)));
+      return withNonce(nonce, NextResponse.redirect(new URL(`/${locale}/login`, req.url)));
     }
     if (isAuth && isPublicPath(pathname)) {
       const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
-      return withNonce(req, nonce, NextResponse.redirect(new URL(`/${locale}`, req.url)));
+      return withNonce(nonce, NextResponse.redirect(new URL(`/${locale}`, req.url)));
     }
 
     // next-intl needs the forwarded request headers too; build it from the same set.
     const intlReq = new Request(req.url, { headers: requestHeaders });
     const intlRes = intlMiddleware(intlReq as never) as NextResponse;
-    return withNonce(req, nonce, intlRes);
+    return withNonce(nonce, intlRes);
   }
 
   if (!req.auth) {
-    return withNonce(req, nonce, NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
+    return withNonce(nonce, NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
   }
   return pass();
 });
@@ -170,53 +175,15 @@ export const config = {
 > set the nonce header on `intlMiddleware`'s result directly (it returns a
 > `NextResponse`).
 
-## Change 3 — `app/[locale]/layout.tsx`: nonce the inline script + AntD styles
+## Change 3 — `app/[locale]/layout.tsx`: nonce the inline script
 
-Read the nonce from the forwarded header, apply it to the `THEME_INIT_SCRIPT` tag,
-and replace `@ant-design/nextjs-registry`'s `AntdRegistry` with a custom registry
-that passes the nonce to `@ant-design/cssinjs` `StyleProvider`.
-
-First, the **custom registry** (new file `components/layout/AntdNonceRegistry.tsx`):
-
-```tsx
-// components/layout/AntdNonceRegistry.tsx — AntdRegistry, nonce-aware.
-"use client";
-import React from "react";
-import { useServerInsertedHTML } from "next/navigation";
-import { createCache, extractStyle, StyleProvider } from "@ant-design/cssinjs";
-
-// Mirrors @ant-design/nextjs-registry's AntdRegistry, but threads a nonce into
-// StyleProvider so emotion's injected <style> tags are CSP-compliant.
-export function AntdNonceRegistry({
-  children,
-  nonce,
-}: {
-  children: React.ReactNode;
-  nonce: string;
-}) {
-  const cache = React.useMemo(() => createCache(), []);
-  useServerInsertedHTML(() => (
-    <style
-      nonce={nonce}
-      id="antd"
-      dangerouslySetInnerHTML={{ __html: extractStyle(cache, true) }}
-    />
-  ));
-  return (
-    <StyleProvider cache={cache} nonce={nonce}>
-      {children}
-    </StyleProvider>
-  );
-}
-```
-
-Then wire it in `app/[locale]/layout.tsx` — read the nonce via `headers()`, replace
-`<AntdRegistry>`, and add `nonce={...}` to the inline theme script:
+Read the nonce from the forwarded header and apply it to the `THEME_INIT_SCRIPT`
+tag. **Leave `AntdRegistry` exactly as it is** — its SSR `<style>` is allowed by
+`style-src 'unsafe-inline'`, so it needs no nonce. Only the inline script changes:
 
 ```tsx
 import { headers } from "next/headers";
-import { AntdNonceRegistry } from "@/components/layout/AntdNonceRegistry";
-// remove: import { AntdRegistry } from "@ant-design/nextjs-registry";
+// AntdRegistry import stays unchanged.
 
 export default async function LocaleLayout({ children, params }: {
   children: React.ReactNode;
@@ -235,27 +202,22 @@ export default async function LocaleLayout({ children, params }: {
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <AntdNonceRegistry nonce={nonce}>
-            <ThemeProvider direction={direction} initialMode={initialMode} initialIsDark={initialIsDark}>
-              {children}
-            </ThemeProvider>
-          </AntdNonceRegistry>
-        </NextIntlClientProvider>
+        {/* AntdRegistry, ThemeProvider, etc. all unchanged. */}
+        {children}
       </body>
     </html>
   );
 }
 ```
 
-> **The honest part about AntD SSR.** Ant Design v6 uses emotion-based CSS-in-JS.
-> `StyleProvider nonce={...}` makes the **server-extracted** `<style id="antd">`
-> and emotion's runtime-injected `<style>` tags carry the nonce, which is why we can
-> drop `'unsafe-inline'` from **script**-src. But emotion also emits **inline
-> `style="..."` attributes** on elements, which a CSP nonce cannot cover — that's
-> why **`style-src 'unsafe-inline'` stays**. Removing it breaks AntD rendering. Don't
-> try to nonce style-src on AntD 6; revisit at the AntD 7 migration (ADR-001 trigger).
-> The script-src tightening is the real security win and is safe.
+> **The honest part about AntD SSR.** Ant Design v6 uses emotion-based CSS-in-JS
+> that emits inline `style="..."` attributes a CSP nonce cannot cover, so
+> **`style-src 'unsafe-inline'` stays** — and because it stays, there's no point
+> noncing AntD's `<style>` tags either (leave the stock registry alone). Removing
+> `'unsafe-inline'` from style-src breaks AntD rendering; revisit at the AntD 7
+> migration (ADR-001 trigger). The **script-src** tightening is the real security
+> win and is safe — Next nonces its own scripts once it sees the nonce in the
+> request CSP header (Change 2).
 
 > The root `app/not-found.tsx` (the context-free Next-16 prerender page — see the
 > CLAUDE.md "Known traps") renders its own `<html>`/`<body>` and runs **outside**
@@ -268,9 +230,8 @@ export default async function LocaleLayout({ children, params }: {
 | File | Change |
 |---|---|
 | `next.config.ts` | Remove the static `Content-Security-Policy` header; update T-05 comment |
-| `middleware.ts` | Per-request nonce + CSP header; **Ask-before file** |
-| `components/layout/AntdNonceRegistry.tsx` | **New** — nonce-aware AntD registry |
-| `app/[locale]/layout.tsx` | Read nonce, nonce the theme script, swap the registry |
+| `middleware.ts` | Per-request nonce + CSP on **request and response** headers; **Ask-before file** |
+| `app/[locale]/layout.tsx` | Read nonce, nonce the inline theme script (registry untouched) |
 | `SECURITY.md` | Update §4 + T-05 (script nonce-d; style caveat remains) |
 
 > `middleware.ts` is an "Ask before" file. Run `/code-review` then `/ship`.
@@ -285,8 +246,8 @@ None.
    `Content-Security-Policy` has `script-src 'self' 'nonce-<base64>' 'strict-dynamic'`
    and **no** `'unsafe-inline'` on script-src. Each reload yields a different nonce.
 2. **No CSP violations in the console.** Ant Design renders correctly (proves the
-   StyleProvider nonce + the retained style-src `'unsafe-inline'` are right). The
-   theme-flash script runs (its `<script>` tag has a matching `nonce`).
+   retained style-src `'unsafe-inline'` is right). The theme-flash script runs (its
+   `<script>` tag has a matching `nonce`), and Next's own scripts carry the nonce.
 3. Toggle dark mode, switch locale (`/ar` RTL) — styling intact, no violations.
 4. **Negative check:** temporarily inject `<script>alert(1)</script>` into a page —
    the browser blocks it (no nonce). Remove it.
@@ -295,10 +256,8 @@ None.
 ## Rollback
 
 1. Revert `next.config.ts` (restore the static CSP header with `'unsafe-inline'` on
-   script-src), `middleware.ts`, and `app/[locale]/layout.tsx` (restore `AntdRegistry`).
-2. Delete `components/layout/AntdNonceRegistry.tsx`.
-3. `npm uninstall @ant-design/cssinjs` (optional — it's transitive anyway).
-4. Revert SECURITY.md §4 / T-05.
+   script-src), `middleware.ts`, and `app/[locale]/layout.tsx` (drop the script nonce).
+2. Revert SECURITY.md §4 / T-05.
 
 Pure code change, no DB, instant rollback.
 

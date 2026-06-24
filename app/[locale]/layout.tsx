@@ -1,6 +1,6 @@
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { routing } from "@/i18n/routing";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
@@ -47,6 +47,11 @@ export default async function LocaleLayout({
   const messages = (await import(`@/messages/${locale}.json`)).default;
   const direction = locale === "ar" ? "rtl" : "ltr";
 
+  // Per-request nonce from middleware (recipe shared-security/3): the inline theme
+  // script and AntD's StyleProvider carry it so the CSP can drop 'unsafe-inline'
+  // from script-src. Empty string on paths rendered outside middleware.
+  const nonce = (await headers()).get("x-nonce") ?? "";
+
   const cookieStore = await cookies();
   const savedMode = cookieStore.get("theme-mode")?.value;
   const initialMode: ThemeMode =
@@ -64,10 +69,15 @@ export default async function LocaleLayout({
     // the suppression to <html>'s own attributes only.
     <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* The inline theme script carries the per-request nonce (CSP script-src). */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
+          {/* AntD's SSR <style> tags fall under style-src 'unsafe-inline' (kept for
+              AntD 6 emotion inline-style attributes), so the stock registry is fine —
+              only SCRIPT needs the nonce, handled on the inline script above and by
+              Next's automatic nonce propagation (CSP set on the request in middleware). */}
           <AntdRegistry>
             <ThemeProvider
               direction={direction}

@@ -1,5 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import type { Provider } from "next-auth/providers";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import bcrypt from "bcryptjs";
@@ -7,15 +9,114 @@ import type { Role } from "../generated/prisma/client";
 import { prismaUnfiltered } from "./prisma";
 
 /**
- * SSO SEAM (ADR-013): map an IdP's claims to our Role enum. Wire this in when a
- * `shared`-tier fork enables enterprise SSO (OIDC/SAML via Auth.js providers or
- * @boxyhq/saml-jackson). Default is least-privilege (VIEWER); a fork overrides
- * by group/role claim, e.g.:
+ * SSO SEAM (ADR-013 / ADR-024): map an IdP's claims to our Role enum. Default is
+ * least-privilege (VIEWER) so a misconfigured IdP can't grant ADMIN; an admin
+ * promotes the user in-app after first SSO login. A fork that trusts its IdP's
+ * group/role claims can override here, e.g.:
  *   if (claims?.groups?.includes("app-admins")) return "ADMIN";
- * Keep the default restrictive so a misconfigured IdP can't grant ADMIN.
  */
 export function mapSsoRole(_claims: Record<string, unknown> | undefined): Role {
   return "VIEWER";
+}
+
+/**
+ * SSO config resolution (ADR-024). Pure function of env so it is unit-testable
+ * without booting NextAuth. Microsoft Entra ID is dormant until its env vars are
+ * set, mirroring the template's other opt-in features (Sentry, cron).
+ *   - credentialsEnabled: password login is removed only when SSO is BOTH
+ *     configured AND enforced (SSO-only) — that combination closes T-02.
+ *   - ssoEnabled: the Entra provider is registered once its client id is present.
+ */
+export function ssoProviderPlan(env: NodeJS.ProcessEnv = process.env): {
+  configured: boolean;
+  enforced: boolean;
+  credentialsEnabled: boolean;
+  ssoEnabled: boolean;
+} {
+  // Require BOTH id and secret: a half-set config (id only) would otherwise
+  // register the provider and render a "Sign in with Microsoft" button that
+  // fails at the token exchange. Issuer is optional (defaults to multi-tenant).
+  const configured = Boolean(
+    env.AUTH_MICROSOFT_ENTRA_ID_ID && env.AUTH_MICROSOFT_ENTRA_ID_SECRET
+  );
+  const enforced = env.AUTH_ENFORCE_SSO === "true";
+  return {
+    configured,
+    enforced,
+    credentialsEnabled: !(configured && enforced),
+    ssoEnabled: configured,
+  };
+}
+
+// Captured at module load (env is fixed at boot on Vercel). The login page reads
+// these server-side to decide which controls to render.
+export const ssoConfigured = ssoProviderPlan().configured;
+export const ssoEnforced = ssoProviderPlan().enforced;
+
+const credentialsProvider = Credentials({
+  credentials: {
+    email: { label: "Email", type: "email" },
+    password: { label: "Password", type: "password" },
+  },
+  async authorize(credentials) {
+    if (!credentials?.email || !credentials?.password) return null;
+
+    // Normalize casing to match how emails are stored (emailSchema lowercases
+    // on create; forgot-password lowercases on lookup) -- otherwise a
+    // differently-cased login silently fails to match.
+    const email = (credentials.email as string).toLowerCase().trim();
+    const user = await prismaUnfiltered.user.findUnique({
+      where: {
+        email,
+        deletedAt: null,
+      },
+    });
+
+    if (!user?.passwordHash) return null;
+
+    const valid = await bcrypt.compare(
+      credentials.password as string,
+      user.passwordHash
+    );
+    if (!valid) return null;
+
+    // Update last login
+    await prismaUnfiltered.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      role: user.role,
+      passwordChangedAt: user.passwordChangedAt,
+    };
+  },
+});
+
+function buildProviders(): Provider[] {
+  const plan = ssoProviderPlan();
+  const providers: Provider[] = [];
+  // Credentials stays unless SSO is configured AND enforced (SSO-only).
+  if (plan.credentialsEnabled) {
+    providers.push(credentialsProvider);
+  }
+  // Microsoft Entra ID OIDC. allowDangerousEmailAccountLinking stays OFF
+  // (default): an Entra login whose email matches an existing password user is
+  // NOT auto-linked, which prevents account takeover via a spoofable email claim.
+  if (plan.ssoEnabled) {
+    providers.push(
+      MicrosoftEntraID({
+        clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
+        clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
+        issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
+      })
+    );
+  }
+  return providers;
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -32,56 +133,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  providers: [
-    Credentials({
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        // Normalize casing to match how emails are stored (emailSchema lowercases
-        // on create; forgot-password lowercases on lookup) -- otherwise a
-        // differently-cased login silently fails to match.
-        const email = (credentials.email as string).toLowerCase().trim();
-        const user = await prismaUnfiltered.user.findUnique({
-          where: {
-            email,
-            deletedAt: null,
-          },
-        });
-
-        if (!user?.passwordHash) return null;
-
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-        if (!valid) return null;
-
-        // Update last login
-        await prismaUnfiltered.user.update({
-          where: { id: user.id },
-          data: { lastLoginAt: new Date() },
-        });
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-          passwordChangedAt: user.passwordChangedAt,
-        };
-      },
-    }),
-    // Add OAuth / enterprise SSO providers via env vars (the SSO seam):
-    // Google({ clientId: process.env.AUTH_GOOGLE_ID, clientSecret: process.env.AUTH_GOOGLE_SECRET }),
-    // For OIDC (Entra/Okta/generic), add the provider here and map the role in
-    // the jwt callback via mapSsoRole(profile claims). SAML: @boxyhq/saml-jackson.
-    // See docs/decisions/ADR-013.
-  ],
+  // Credentials + (when configured) Microsoft Entra ID SSO. See buildProviders
+  // above and ADR-024. New SSO users land at the DB default role (VIEWER) and an
+  // admin promotes them in-app; the jwt callback deliberately does NOT call
+  // mapSsoRole, so an in-app promotion survives the next SSO login. mapSsoRole is
+  // the seam a fork wires into the jwt OAuth branch ONLY if it wants the IdP's
+  // group/role claims to be authoritative (accepting that they override in-app changes).
+  providers: buildProviders(),
   callbacks: {
     async jwt({ token, user }) {
       // Sign-in: stamp identity + the password epoch this token is bound to.

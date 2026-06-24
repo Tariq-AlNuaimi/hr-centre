@@ -9,8 +9,6 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 // can see what ships to the client before optimizing. No-op on normal builds.
 const withAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
 
-const isDev = process.env.NODE_ENV !== "production";
-
 // Docker is an OPT-IN second rail (ADR-023). Vercel (ADR-006) stays the default:
 // `output: "standalone"` is emitted ONLY when DOCKER_BUILD is set, so the Vercel
 // build is byte-for-byte unchanged and the self-host image stays small (it ships
@@ -18,43 +16,16 @@ const isDev = process.env.NODE_ENV !== "production";
 const isDockerBuild =
   process.env.DOCKER_BUILD === "1" || process.env.DOCKER_BUILD === "true";
 
-// When Sentry is configured, the browser SDK POSTs envelopes to its ingest host
-// (derived from the public DSN). Without it in connect-src, every error/session
-// report is silently blocked by CSP. Derive the origin from the DSN so the policy
-// stays tight (just that host) and is a no-op when Sentry isn't configured.
-function sentryConnectSrc(): string {
-  const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
-  if (!dsn) return "";
-  try {
-    return " " + new URL(dsn).origin;
-  } catch {
-    return "";
-  }
-}
-
-// Conservative starting policy. Caveats documented in SECURITY.md finding T-05:
-//   - 'unsafe-inline' on script-src is needed for Next.js bootstrap inline
-//     scripts. Removing it requires a nonce-based setup that Ant Design's SSR
-//     doesn't support out of the box.
-//   - 'unsafe-inline' on style-src is needed for Ant Design's runtime CSS-in-JS.
-//   - 'unsafe-eval' on script-src is needed in dev for React Refresh / HMR.
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  `connect-src 'self'${sentryConnectSrc()}`,
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
-
+// NOTE (T-05 / recipe shared-security/3): Content-Security-Policy is intentionally
+// NOT set here. A static next.config header can't carry a per-request nonce, so
+// `middleware.ts` now builds the CSP — nonce-based on script-src (drops
+// 'unsafe-inline'); style-src keeps 'unsafe-inline' for Ant Design 6 emotion until
+// AntD 7. The Sentry connect-src origin is derived there too. The OTHER security
+// headers below are static and stay here.
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
   // DENY (not SAMEORIGIN): the app is never framed by itself either, and this
-  // matches the CSP `frame-ancestors 'none'` above. Belt-and-suspenders against
-  // clickjacking on the older header-based path.
+  // matches the CSP `frame-ancestors 'none'` (now set in middleware.ts).
+  // Belt-and-suspenders against clickjacking on the older header-based path.
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

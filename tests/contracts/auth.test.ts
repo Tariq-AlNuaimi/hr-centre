@@ -55,6 +55,10 @@ before(async () => {
   mockApi.module!("next-auth/providers/credentials", {
     defaultExport: (cfg: unknown) => cfg,
   });
+  // MicrosoftEntraID(cfg) → cfg (only invoked when SSO env is set; unset here).
+  mockApi.module!("next-auth/providers/microsoft-entra-id", {
+    defaultExport: (cfg: unknown) => cfg,
+  });
   mockApi.module!("@auth/prisma-adapter", {
     namedExports: { PrismaAdapter: () => ({}) },
   });
@@ -81,8 +85,19 @@ before(async () => {
     },
   });
 
-  await import(import.meta.resolve("../../lib/auth.ts"));
+  authMod = (await import(import.meta.resolve("../../lib/auth.ts"))) as typeof authMod;
 });
+
+// Named exports under test for SSO gating (ADR-024). Pure helpers, env-driven.
+let authMod: {
+  ssoProviderPlan: (env?: Record<string, string | undefined>) => {
+    configured: boolean;
+    enforced: boolean;
+    credentialsEnabled: boolean;
+    ssoEnabled: boolean;
+  };
+  mapSsoRole: (claims: Record<string, unknown> | undefined) => string;
+};
 
 beforeEach(() => {
   findUniqueArgs = null;
@@ -245,4 +260,56 @@ test("session: tolerates a session with no user (no throw)", { skip: !canMock },
     token: { id: "u1", role: "VIEWER" },
   });
   assert.ok(session, "should return the session object even when user is absent");
+});
+
+// --- SSO provider gating (ADR-024) -----------------------------------------
+
+test("ssoProviderPlan: no SSO env -> credentials only, SSO dormant", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({});
+  assert.equal(plan.configured, false);
+  assert.equal(plan.ssoEnabled, false);
+  assert.equal(plan.credentialsEnabled, true, "password login stays on by default");
+});
+
+test("ssoProviderPlan: Entra configured (id+secret), not enforced -> BOTH providers", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({
+    AUTH_MICROSOFT_ENTRA_ID_ID: "client-123",
+    AUTH_MICROSOFT_ENTRA_ID_SECRET: "shh",
+  });
+  assert.equal(plan.configured, true);
+  assert.equal(plan.ssoEnabled, true, "Entra registered once id+secret are set");
+  assert.equal(plan.credentialsEnabled, true, "password login remains alongside SSO");
+});
+
+test("ssoProviderPlan: id WITHOUT secret -> NOT configured (no broken button)", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ AUTH_MICROSOFT_ENTRA_ID_ID: "client-123" });
+  assert.equal(plan.configured, false, "a half-set config must not enable SSO");
+  assert.equal(plan.ssoEnabled, false);
+  assert.equal(plan.credentialsEnabled, true);
+});
+
+test("ssoProviderPlan: configured AND enforced -> SSO ONLY (closes T-02)", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({
+    AUTH_MICROSOFT_ENTRA_ID_ID: "client-123",
+    AUTH_MICROSOFT_ENTRA_ID_SECRET: "shh",
+    AUTH_ENFORCE_SSO: "true",
+  });
+  assert.equal(plan.ssoEnabled, true);
+  assert.equal(plan.credentialsEnabled, false, "credentials removed so IdP MFA is mandatory");
+});
+
+test("ssoProviderPlan: enforce flag alone (no Entra) does NOT lock out password login", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ AUTH_ENFORCE_SSO: "true" });
+  assert.equal(plan.configured, false);
+  assert.equal(plan.ssoEnabled, false);
+  assert.equal(plan.credentialsEnabled, true, "never strand a fork with no usable provider");
+});
+
+test("mapSsoRole: defaults to VIEWER (least privilege) for any claims", { skip: !canMock }, () => {
+  assert.equal(authMod.mapSsoRole(undefined), "VIEWER");
+  assert.equal(authMod.mapSsoRole({ groups: ["app-admins"] }), "VIEWER");
+});
+
+test("default build (no SSO env at import) registers exactly the credentials provider", { skip: !canMock }, () => {
+  assert.equal(config.providers.length, 1, "SSO must stay dormant unless env opts in");
 });

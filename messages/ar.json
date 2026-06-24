@@ -47,7 +47,10 @@
     "resetFailed": "تعذر إعادة تعيين كلمة المرور. قد يكون الرابط منتهي الصلاحية.",
     "resetInvalidOrExpired": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",
     "requestNewLink": "طلب رابط جديد",
-    "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى."
+    "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
+    "or": "أو",
+    "signInWithMicrosoft": "تسجيل الدخول باستخدام Microsoft",
+    "ssoOnlyHint": "سجّل الدخول باستخدام حساب مؤسستك."
   },
   "dashboard": {
     "usersDescription": "إدارة مستخدمي التطبيق وأدوارهم",
