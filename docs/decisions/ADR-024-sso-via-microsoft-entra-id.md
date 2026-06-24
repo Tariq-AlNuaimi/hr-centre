@@ -56,6 +56,16 @@ tokens persisted in `Account` are already covered by `SCRUB_FIELDS`.
   UAT. Unit/contract tests cover `mapSsoRole` (least privilege) and provider gating.
 - Another IdP (Okta/Auth0/generic OIDC) is a small follow-up: add the provider in
   `buildProviders()` and, if desired, map claims in `mapSsoRole`.
+- **Activation requires id + secret + issuer (all three).** Issuer is mandatory so
+  the provider can't silently default to the any-tenant `common` endpoint (which
+  would let any Microsoft account sign in). A `signIn` callback blocks new sign-ins
+  by soft-deleted SSO users (the adapter path, unlike credentials, doesn't filter
+  `deletedAt`); already-issued JWTs persist to `maxAge` — rotate `AUTH_SECRET` to
+  revoke now. An optional `CSP_REPORT_URI` is unrelated but ships alongside.
+- **Operational cost:** the existing jwt callback runs one indexed `users` read per
+  authenticated request; SSO users hit the same path (no extra cost vs credentials).
+  A shared-tier fork at high RPS can drop that block and lean on `maxAge` (documented
+  in `lib/auth.ts`).
 
 ## Alternatives considered
 

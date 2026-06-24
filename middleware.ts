@@ -48,7 +48,7 @@ function sentryConnectSrc(): string {
 // AntD 7, ADR-001). We do NOT nonce styles at all — the stock AntdRegistry's
 // <style> tags rely on that style-src 'unsafe-inline'; only scripts are nonced.
 function buildCsp(nonce: string): string {
-  return [
+  const directives = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
@@ -59,7 +59,13 @@ function buildCsp(nonce: string): string {
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
-  ].join("; ");
+  ];
+  // Optional violation reporting: set CSP_REPORT_URI (e.g. a Sentry CSP endpoint)
+  // for production visibility into blocked resources / XSS attempts. Dormant until
+  // set, like the rest of the opt-in surface.
+  const reportUri = process.env.CSP_REPORT_URI;
+  if (reportUri) directives.push(`report-uri ${reportUri}`);
+  return directives.join("; ");
 }
 
 // Attach the CSP (with this request's nonce) + the nonce header to a response.
@@ -108,19 +114,17 @@ export default auth((req) => {
     const isPublic = isPublicPath(pathname);
     const isAuth = !!req.auth;
 
-    // Redirect unauthenticated users to login
+    // Redirects carry no CSP/nonce — they render no HTML; the destination page
+    // gets its own per-request CSP when the browser follows.
     if (!isAuth && !isPublic) {
       const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
-      return withNonce(
-        nonce,
-        NextResponse.redirect(new URL(`/${locale}/login`, req.url))
-      );
+      return NextResponse.redirect(new URL(`/${locale}/login`, req.url));
     }
 
     // Redirect authenticated users away from login
     if (isAuth && isPublicPath(pathname)) {
       const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
-      return withNonce(nonce, NextResponse.redirect(new URL(`/${locale}`, req.url)));
+      return NextResponse.redirect(new URL(`/${locale}`, req.url));
     }
 
     // next-intl needs the nonce-bearing request headers too. Hand it a real
@@ -132,12 +136,9 @@ export default auth((req) => {
     return withNonce(nonce, intlRes);
   }
 
-  // API routes - check auth
+  // API routes - check auth. JSON 401 carries no CSP/nonce (not an HTML doc).
   if (!req.auth) {
-    return withNonce(
-      nonce,
-      NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    );
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   return pass();
