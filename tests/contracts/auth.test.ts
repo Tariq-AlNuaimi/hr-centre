@@ -36,6 +36,7 @@ let config: {
     ) => Promise<Record<string, unknown> | null>;
   }>;
   callbacks: {
+    signIn: (a: { user?: Record<string, unknown>; account?: Record<string, unknown> }) => Promise<boolean>;
     jwt: (a: { token: Record<string, unknown>; user?: Record<string, unknown> }) => Promise<Record<string, unknown> | null>;
     session: (a: { session: { user?: Record<string, unknown> }; token: Record<string, unknown> }) => { user?: Record<string, unknown> };
   };
@@ -271,31 +272,59 @@ test("ssoProviderPlan: no SSO env -> credentials only, SSO dormant", { skip: !ca
   assert.equal(plan.credentialsEnabled, true, "password login stays on by default");
 });
 
-test("ssoProviderPlan: Entra configured (id+secret), not enforced -> BOTH providers", { skip: !canMock }, () => {
-  const plan = authMod.ssoProviderPlan({
-    AUTH_MICROSOFT_ENTRA_ID_ID: "client-123",
-    AUTH_MICROSOFT_ENTRA_ID_SECRET: "shh",
-  });
+const FULL_SSO_ENV = {
+  AUTH_MICROSOFT_ENTRA_ID_ID: "client-123",
+  AUTH_MICROSOFT_ENTRA_ID_SECRET: "shh",
+  AUTH_MICROSOFT_ENTRA_ID_ISSUER: "https://login.microsoftonline.com/tenant/v2.0",
+};
+
+test("ssoProviderPlan: id+secret+issuer, not enforced -> BOTH providers", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ ...FULL_SSO_ENV });
   assert.equal(plan.configured, true);
-  assert.equal(plan.ssoEnabled, true, "Entra registered once id+secret are set");
+  assert.equal(plan.ssoEnabled, true, "Entra registered once id+secret+issuer are set");
   assert.equal(plan.credentialsEnabled, true, "password login remains alongside SSO");
 });
 
-test("ssoProviderPlan: id WITHOUT secret -> NOT configured (no broken button)", { skip: !canMock }, () => {
+test("ssoProviderPlan: id without secret -> NOT configured (no broken button)", { skip: !canMock }, () => {
   const plan = authMod.ssoProviderPlan({ AUTH_MICROSOFT_ENTRA_ID_ID: "client-123" });
   assert.equal(plan.configured, false, "a half-set config must not enable SSO");
   assert.equal(plan.ssoEnabled, false);
-  assert.equal(plan.credentialsEnabled, true);
 });
 
-test("ssoProviderPlan: configured AND enforced -> SSO ONLY (closes T-02)", { skip: !canMock }, () => {
+test("ssoProviderPlan: id+secret WITHOUT issuer -> NOT configured (no silent multi-tenant)", { skip: !canMock }, () => {
   const plan = authMod.ssoProviderPlan({
     AUTH_MICROSOFT_ENTRA_ID_ID: "client-123",
     AUTH_MICROSOFT_ENTRA_ID_SECRET: "shh",
-    AUTH_ENFORCE_SSO: "true",
   });
+  assert.equal(plan.configured, false, "missing issuer must keep SSO dormant (avoid any-tenant default)");
+  assert.equal(plan.ssoEnabled, false);
+});
+
+test("ssoProviderPlan: configured AND enforced -> SSO ONLY (closes T-02)", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ ...FULL_SSO_ENV, AUTH_ENFORCE_SSO: "true" });
   assert.equal(plan.ssoEnabled, true);
   assert.equal(plan.credentialsEnabled, false, "credentials removed so IdP MFA is mandatory");
+});
+
+// --- signIn callback: soft-deleted SSO users blocked (HIGH fix) -------------
+
+test("signIn: denies an OAuth sign-in when the user row is soft-deleted", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: new Date() };
+  const ok = await config.callbacks.signIn({ user: { id: "u1" }, account: { type: "oauth" } });
+  assert.equal(ok, false, "off-boarded SSO user must not be able to re-authenticate");
+});
+
+test("signIn: allows an OAuth sign-in for a live user", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: null };
+  const ok = await config.callbacks.signIn({ user: { id: "u1" }, account: { type: "oauth" } });
+  assert.equal(ok, true);
+});
+
+test("signIn: allows credentials sign-in without an extra deletedAt lookup", { skip: !canMock }, async () => {
+  findUniqueArgs = null;
+  const ok = await config.callbacks.signIn({ user: { id: "u1" }, account: { type: "credentials" } });
+  assert.equal(ok, true);
+  assert.equal(findUniqueArgs, null, "credentials path already filters deletedAt in authorize");
 });
 
 test("ssoProviderPlan: enforce flag alone (no Entra) does NOT lock out password login", { skip: !canMock }, () => {

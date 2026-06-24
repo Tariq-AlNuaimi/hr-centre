@@ -33,11 +33,15 @@ export function ssoProviderPlan(env: NodeJS.ProcessEnv = process.env): {
   credentialsEnabled: boolean;
   ssoEnabled: boolean;
 } {
-  // Require BOTH id and secret: a half-set config (id only) would otherwise
-  // register the provider and render a "Sign in with Microsoft" button that
-  // fails at the token exchange. Issuer is optional (defaults to multi-tenant).
+  // Require id + secret + issuer together. id-only would render a broken button;
+  // and omitting issuer would make MicrosoftEntraID default to the multi-tenant
+  // `.../common/v2.0` endpoint, silently accepting ANY Microsoft account from ANY
+  // tenant. Requiring a tenant-scoped issuer keeps SSO dormant until that audience
+  // restriction is set explicitly (a fork wanting multi-tenant sets issuer=common).
   const configured = Boolean(
-    env.AUTH_MICROSOFT_ENTRA_ID_ID && env.AUTH_MICROSOFT_ENTRA_ID_SECRET
+    env.AUTH_MICROSOFT_ENTRA_ID_ID &&
+      env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
+      env.AUTH_MICROSOFT_ENTRA_ID_ISSUER
   );
   const enforced = env.AUTH_ENFORCE_SSO === "true";
   return {
@@ -141,6 +145,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   // group/role claims to be authoritative (accepting that they override in-app changes).
   providers: buildProviders(),
   callbacks: {
+    // The Credentials authorize() filters deletedAt:null, but the OAuth path goes
+    // through PrismaAdapter (prismaUnfiltered), which does NOT — so without this a
+    // soft-deleted (off-boarded) SSO user could keep signing in indefinitely.
+    // Deny OAuth sign-in when the linked user row is soft-deleted. (Existing JWTs
+    // persist until maxAge, same accepted gap as credentials; rotate AUTH_SECRET to
+    // revoke immediately — SECURITY.md §2.)
+    async signIn({ user, account }) {
+      if (account?.type === "oauth" && user?.id) {
+        const row = await prismaUnfiltered.user.findUnique({
+          where: { id: user.id },
+          select: { deletedAt: true },
+        });
+        if (row?.deletedAt) return false;
+      }
+      return true;
+    },
     async jwt({ token, user }) {
       // Sign-in: stamp identity + the password epoch this token is bound to.
       if (user) {
