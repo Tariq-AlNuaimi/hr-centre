@@ -58,10 +58,10 @@ runs the smoke + guard; the rest are full-only):
 |---|---|---|---|
 | **P1** | Discover | Scan `app/[locale]/(dashboard)/**/page.tsx` (+ the Prisma schema) to enumerate every screen/entity; this drives the smoke breadth pass. | **Delivered** — `tests/uat/_discover.ts` + `smoke.uat.ts` |
 | **P2** | Permission matrix | Log in as each `Role`; assert each role reaches its allowed screens and is blocked from the rest. | **Delivered (Build B)** — `roles.setup.ts` + `roles.full.uat.ts` |
-| **P3** | CRUD journeys | One data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts` |
+| **P3** | CRUD journeys | A data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete (+ restore where applicable). Exercise **each enum variant** and **at least one populated relation** per entity (not just the happy default), and one **boundary/invalid** submit per writable field so validation is proven, not assumed. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts` |
 | **P4** | UI/UX sweep | Per-section checks: visible heading (not a blank shell), no uncaught runtime errors, RTL (`ar`) flips `dir="rtl"`, console-error tally. | **Delivered (Build C)** — `uiux.full.uat.ts` |
 | **P5** | Logic + UX recommendations | Synthesize the run's outcomes (failing flows, authz mismatches, runtime/console errors) + a static stub-marker scan into a prioritized P0/P1/P2 list with `file:line` evidence. | **Delivered (Build D)** — `scripts/uat-recommend.mjs` |
-| **P6** | Peer + enterprise benchmark | **Needs web search.** Compare the app against enterprise norms + 3–5 peer products for its domain (the agent runs the searches and writes `uat-results/benchmark.json`). **Skips gracefully if web access is unavailable** (notes the skip in the report rather than failing). | **Delivered (Build E)** — `scripts/uat-benchmark.mjs` (loader/validator) + PDF renderer |
+| **P6** | Peer + enterprise benchmark | **Needs web search. Required in Full.** Compare the app against enterprise norms + 3–5 peer products for its domain (the agent runs the searches and writes `uat-results/benchmark.json`). If web access is unavailable the Full run is reported **INCOMPLETE** (loud WARN + logged operator decision), not a silent pass. | **Delivered (Build E)** — `scripts/uat-benchmark.mjs` (loader/validator) + PDF renderer |
 | **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf` (+ a self-contained `uat-report.html` twin). | **Delivered** — `scripts/uat-pdf.mjs` |
 
 Each future phase ships as `*.full.uat.ts` specs (lean ignores them) and injects a
@@ -150,15 +150,21 @@ into the report. The sinks are reset at the start of every full run by
    - With a deployed target:
      `UAT_BASE_URL="https://<app>.vercel.app" UAT_EMAIL=... UAT_PASSWORD=... npm run uat`.
 
-6. **(Full only) P6 benchmark — run the web searches.** Full mode's benchmark is
-   produced by **you (the agent)**, not a Node script. Infer the app's **domain**
-   from the discovered entities + Prisma schema, then **web-search** enterprise
-   norms for that domain + 3–5 peer products, and write the findings to
+6. **(Full only) P6 benchmark — REQUIRED, run the web searches.** Full mode's
+   benchmark is produced by **you (the agent)**, not a Node script. Infer the app's
+   **domain** from the discovered entities + Prisma schema, then **web-search**
+   enterprise norms for that domain + 3–5 peer products, and write the findings to
    `uat-results/benchmark.json` (run `npm run uat:benchmark -- --schema` for the
    exact shape; `-- --check` validates it). Ground each `appStatus` in real
-   evidence from the codebase. **If web access is unavailable, skip this** — the report
-   records exactly `Benchmark: skipped (web access unavailable)` and the run still
-   **succeeds**; a missing benchmark never fails the run.
+   evidence from the codebase. A **Full** run is not complete without the
+   benchmark — it's half the point of Full vs. Lean.
+   - **If web access is genuinely unavailable**, do NOT silently pass. Surface a
+     loud WARN — "Full UAT INCOMPLETE: benchmark could not run (web access
+     unavailable)" — record it in the report, and tell the operator their options
+     (open egress / run from a machine with web / accept the gap explicitly). The
+     operator may accept it, but that's a logged decision (`docs/findings-register.md`),
+     not the run quietly declaring success. Don't report a Full UAT as done with a
+     missing benchmark unless the operator acknowledged it.
 
 7. **Build the PDF.** After the run, `npm run uat:pdf` reads
    `uat-results/results.json` + the attached screenshots and writes
@@ -200,6 +206,9 @@ for exploration; keep `tests/uat/` as the repeatable backbone.
   a scoped `uat:cleanup`); point cleanup at the **test** DB, never production.
 - Do **not** call a run green if the browser/credentials could not be set up — say
   "could not run" and how to fix it.
-- P6 (benchmark) **requires web access** — if unavailable, it skips, the report records
-  `Benchmark: skipped (web access unavailable)`, and the run still succeeds; it does not
-  fail the run.
+- P6 (benchmark) is **required in Full mode** and **requires web access**. If web
+  access is unavailable it does NOT silently pass: the run is reported **INCOMPLETE**
+  with a loud WARN, and proceeding without it is an operator-acknowledged, logged
+  decision (`docs/findings-register.md`) — never a quiet success. (Lean mode does
+  not run P6 or the PDF; that's expected and is stated up front when the operator
+  picks Lean.)
