@@ -66,6 +66,15 @@ the branch AND prints the full content for the operator to paste.
    handoff commit and move on. Unlike the handoff file, `docs/agent-memory.md` IS
    meant to reach `main`.
 
+   **Verify the push actually landed — do not assume.** A commit that wasn't
+   pushed is invisible to the next session's fresh container (#3, #14), and a push
+   can fail silently (network, auth, non-fast-forward, branch protection). After
+   pushing, confirm the branch is in sync: `git rev-list --count @{u}..HEAD` must
+   print `0` (and `git status -sb` should show no `ahead`). If it isn't 0, the push
+   did NOT land — surface the exact error, retry (up to 4× with backoff for network
+   errors), and do NOT report the handoff as done until the count is 0. The whole
+   point of this skill is defeated if the carrier commit never reaches the remote.
+
 4. Print the **entire handoff content** in the chat inside one fenced block,
    prefixed with this line so it is self-contained even with no file access:
 

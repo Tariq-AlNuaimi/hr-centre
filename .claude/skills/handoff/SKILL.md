@@ -185,22 +185,22 @@ Vercel + Neon is the prototype rail (ADR-006); a regulated/long-lived production
 owner often re-containerizes. The app is plain Next.js + Postgres, so this is a
 packaging change, not a rewrite.
 
+**Use the `/docker` skill** — it wraps the steps below against the shipped rail.
+
 **Steps:**
 
-1. **Enable standalone output.** Set `output: "standalone"` in `next.config.ts`
-   (or flip the `DOCKER_BUILD` build flag if the fork already exposes one). This
-   makes Next emit a self-contained server bundle with only the needed
-   `node_modules`.
-2. **Add a `Dockerfile` + `.dockerignore`.** Multi-stage build: install deps,
-   `prisma generate`, `next build`, then copy `.next/standalone`, `.next/static`,
-   and `public` into a slim runtime image; run `prisma migrate deploy` on start
-   (mirroring what `vercel.json` does today). Reference the repo's
-   `docker-compose.dev.yml` for the local Postgres + app wiring, and the
-   `pre-pivot` git tag for the last shipped Dockerfile if those reference files
-   are present (this template no longer ships them by default — see the warning
-   below).
-3. **Build & push to a registry** (GHCR / ECR / Artifact Registry):
-   `docker build -t <registry>/<slug>:<tag> . && docker push <registry>/<slug>:<tag>`.
+1. **The rail ships by default (ADR-023).** `Dockerfile`, `.dockerignore`, and
+   `docker-compose.dev.yml` are in the repo, and `next.config.ts` emits
+   `output: "standalone"` whenever `DOCKER_BUILD=1` (so the Vercel build is
+   unchanged). You do NOT need to re-add these or hunt the `pre-pivot` tag —
+   that guidance predated the rail.
+2. **Build the image.** `make docker-build` (sets `DOCKER_BUILD=1`,
+   multi-stage → slim runtime; runs `prisma migrate deploy` on start, mirroring
+   `vercel.json`). Tag override: `make docker-build IMAGE=<registry>/<slug>:<tag>`.
+   For a full local app+DB stack instead, `make docker-up`.
+3. **Push to a registry** (GHCR / ECR / Artifact Registry):
+   `docker push <registry>/<slug>:<tag>`. The image holds no secrets
+   (`.dockerignore` excludes `.env`); secrets are injected at runtime.
 4. **Deploy as a stateless service.** The image holds no state; provide
    `DATABASE_URL` (any Postgres host — Neon, RDS, self-managed) and the rest of
    the env vars from the "Environment variables" section above. Scale horizontally

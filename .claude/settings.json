@@ -31,6 +31,26 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/session-stop.mjs"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[pre-compact] Persist in-flight state BEFORE context is summarized: run /handoff-session so the modified-file list, last /ship status, open findings, and the goal survive — and commit+push so nothing is lost (#3/#14).'"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [

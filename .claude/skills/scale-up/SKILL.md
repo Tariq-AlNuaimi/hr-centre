@@ -296,6 +296,21 @@ interface so call sites don't change.
 
 ---
 
+## 11. Self-host / containerize (opt-in Docker rail)
+
+**Trigger:** the project must run on-prem, air-gapped, or in k8s/ECS rather than
+on Vercel — or IT wants a runnable image at `/handoff`.
+
+**Recipe:** use the **`/docker`** skill. The rail already ships (ADR-023):
+`Dockerfile`, `docker-compose.dev.yml`, and the `DOCKER_BUILD=1` gate in
+`next.config.ts`. `make docker-build` → image; `make docker-up` → full local
+stack. Vercel + Neon stays the default (ADR-006); this is additive, not a swap.
+
+**Cost:** none (infra you already host). Don't re-enable `output: "standalone"`
+unconditionally — it's gated so the Vercel build stays unchanged.
+
+---
+
 ## Decision rule
 
 Default position: **don't add until the user describes the symptom**. The
