@@ -32,6 +32,8 @@
     "uat:recommend": "node scripts/uat-recommend.mjs",
     "uat:benchmark": "node scripts/uat-benchmark.mjs",
     "uat:install": "playwright install chromium",
+    "manual-uat:matrix": "node scripts/rbac-matrix.mjs",
+    "manual-uat:users": "tsx scripts/manual-uat-users.mjs",
     "deploy": "node scripts/deploy.mjs",
     "changeset": "changeset",
     "changeset:version": "changeset version",
