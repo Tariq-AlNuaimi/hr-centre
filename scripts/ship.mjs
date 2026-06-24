@@ -31,18 +31,30 @@ function walkRoutes(dir, acc = []) {
   if (!existsSync(dir)) return acc;
   for (const name of readdirSync(dir)) {
     const p = `${dir}/${name}`;
-    if (statSync(p).isDirectory()) walkRoutes(p, acc);
+    let stat;
+    try { stat = statSync(p); } catch { continue; } // skip broken symlinks etc.
+    if (stat.isDirectory()) walkRoutes(p, acc);
     else if (p.endsWith("route.ts")) acc.push(p);
   }
   return acc;
 }
 function scanScalability() {
   const t0 = Date.now();
-  const BOUND = /\btake\b|\bskip\b|\bcursor\b|parsePagination|paginat|pillar:scalable-ok/;
+  // Bound tokens are checked against the ARGUMENT BLOCK of each findMany call
+  // (the ~250 chars after `.findMany(`), NOT the whole file -- otherwise the words
+  // "take"/"skip" in an unrelated comment would mask a genuinely unbounded call.
+  const BOUND = /\btake\b|\bskip\b|\bcursor\b|parsePagination|paginat/;
+  const ESCAPE = /pillar:scalable-ok/; // explicit per-file waiver (+ register line)
   const offenders = [];
   for (const file of walkRoutes("app/api")) {
-    const src = readFileSync(file, "utf8");
-    if (src.includes(".findMany(") && !BOUND.test(src)) offenders.push(file);
+    let src;
+    try { src = readFileSync(file, "utf8"); } catch { continue; }
+    if (ESCAPE.test(src)) continue;
+    const parts = src.split(".findMany(");
+    // parts[0] is the text before the first call; each later part begins with a
+    // call's arguments. An unbounded arg block = an offending file.
+    const unbounded = parts.slice(1).some((after) => !BOUND.test(after.slice(0, 250)));
+    if (unbounded) offenders.push(file);
   }
   const secs = ((Date.now() - t0) / 1000).toFixed(1);
   if (offenders.length === 0) return { name: "scalability", ok: true, out: "clean", secs };
