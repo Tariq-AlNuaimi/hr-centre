@@ -32,6 +32,14 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-24 — `gitleaks` is NOT on PATH in fresh remote containers, so `/ship`
+  goes red at phase B ("gitleaks is not on PATH"). Install the release binary to
+  `~/.local/bin` (e.g. v8.21.2 from github.com/gitleaks/gitleaks/releases) and
+  re-export PATH before `/ship`. The binary does not survive a new container.
+- 2026-06-24 — SessionStart hook now installs deps / regenerates the Prisma client
+  on **stale** (package.json or schema.prisma newer than node_modules/generated),
+  not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit) — this fixes
+  the trap below. Until that lands on `main`, the manual workaround still applies.
 - 2026-06-20 — SessionStart hook installs deps / generates the Prisma client only
   when **missing, not stale**. After checking out a branch whose `package.json` or
   `prisma/schema.prisma` moved ahead, run `npm install` + `npx prisma generate`
