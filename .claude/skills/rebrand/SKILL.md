@@ -5,7 +5,7 @@ description: Sweep the template's hardcoded identity defaults (package name, app
 
 # /rebrand — Project rename sweep
 
-Replace the template's defaults with the fork's project identity. Idempotent: running twice with the same args is a no-op.
+Replace the template's defaults with the fork's project identity. **Run this immediately after forking the template, BEFORE `/first-fork`** — the bootstrap assumes the identity is already swept. Idempotent: running twice with the same args is a no-op.
 
 > The Vercel + Neon pivot (ADR-006) deleted the Docker/GHCR/Portainer surface, so
 > rebrand no longer touches any container/image strings — there is nothing to rename
@@ -24,12 +24,12 @@ Replace the template's defaults with the fork's project identity. Idempotent: ru
    ```
    npm run rebrand -- --slug <slug> --name "<Display Name>" --owner <gh-owner> [--owner-name "<Owner Name>"] [--dry-run]
    ```
-3. The script edits only the identity strings that exist on the current rail:
+3. The script edits only the identity strings that exist on the current rail (it prints which files it changed):
    - `package.json` name: `"fullstack-next-template"` -> `"<slug>"`
    - `.env.example`: `NEXT_PUBLIC_APP_NAME="My App"` -> `"<Display Name>"`
    - `CLAUDE.md`: the H1 + tagline line (name, stack, owner)
    - `README.md`: the H1 title
-4. Report the diff to the user (filenames + rule counts).
+4. Report the diff to the user (filenames + rule counts). If the script reports **no changes**, say *why* — usually the fork is already rebranded, or the slug/display name drifted from the defaults the script matches on — rather than reporting a silent success.
 5. Suggest: commit + push, then `/first-fork` for the rest of the bootstrap.
 
 ## Hard rule preserved

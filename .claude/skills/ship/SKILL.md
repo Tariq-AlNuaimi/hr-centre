@@ -31,6 +31,13 @@ gate beats speed.
 > Companion: for any push that touches auth, schemas, API routes, or anything under
 > `lib/`, run the native **`/code-review`** (fresh-context diff review) and resolve
 > its findings before `/ship`.
+>
+> Companion (post-push): `/ship` gates **code correctness** (does the diff typecheck,
+> lint, test, build, and pass the secret/dep scans). It does **not** see cross-cutting
+> invariants — audit completeness, output-side trust boundaries, operational drift,
+> architecture. Those are the ADR-020 **`senior-code-reviewer`** breadth pass that
+> runs after the push (CI `senior-review.yml`, or invoke the agent when CI is off).
+> A green `/ship` alone is **not** sufficient before calling work done.
 
 ## Steps (in order)
 
@@ -44,12 +51,14 @@ gate beats speed.
 3. **Tests (contract suite).** `npm test`. Runs the `node:test` contract suite (rate limit, audit scrub, email, export, sentry scrub, auth wrappers) — the highest-risk invariants.
 4. **Tests (component suite).** `npm run test:components`. Runs the jsdom React component tests (`tests/components/*.test.tsx`) — DataTable, EmptyState, DashboardError. Catches shared-UI regressions tsc/lint miss.
 5. **Build.** `npm run build`. Catches Next.js-specific issues that tsc and ESLint miss: server/client boundary violations, missing `"use client"`, invalid metadata exports, server-only imports leaking to the client bundle.
+   - **Local env/NODE_ENV.** This repo's `.env` (copied from `.env.example` by the SessionStart hook) sets `NODE_ENV=development`, and Prisma 7 config does not auto-load `.env`. The production build phase needs `NODE_ENV=production` — locally, `export NODE_ENV=production` for this step or prerendering fails. If any step can't resolve `DATABASE_URL`, load the env first: `set -a; . ./.env; set +a`. Neither applies on Vercel (`.env` is gitignored; the platform builds with `NODE_ENV=production`).
 6. **Secret scan (gitleaks).** `gitleaks detect --no-banner --redact` (the repo ships `.gitleaks.toml`; gitleaks picks it up automatically). Scans the full git history for committed secrets.
    - **If `gitleaks` is not on PATH, do NOT silently skip.** Stop and tell the operator how to install it, then treat ship as **not green** until it can run:
      - macOS: `brew install gitleaks`
      - Linux / other: download the binary from https://github.com/gitleaks/gitleaks/releases and put it on PATH
    - A planted test secret in a tracked file MUST make this step fail.
-7. **Dependency audit.** `npm audit --audit-level=high --omit=dev`. Surfaces High+ CVEs in production dependencies locally — the same threshold `verify.yml` runs in CI (both at `high`). Record any accepted/remediated CVE in `SECURITY.md` §13.
+7. **Dependency audit.** `npm audit --audit-level=high --omit=dev`. Surfaces High+ CVEs in production dependencies locally — the same threshold `verify.yml` runs in CI (both at `high`).
+   - **CVE-acceptance flow.** A High+ CVE that's upstream-unfixed (or not reachable in this app's usage) can be accepted via `audit-allowlist.json` at the repo root: add the GHSA id to its `advisories` array (`{ "advisories": [{ "id": "GHSA-…" }] }`) and `scripts/ship.mjs` drops it from the offender count so the step passes (it reports `clean (allowlisted: …)`). A High+ advisory NOT in the allowlist still fails. Every entry MUST be justified with a `SECURITY.md` §12/§13 row (advisory, why it's accepted, revisit date) in the same commit — an allowlist entry without that record is an unjustified suppression (see "Ask before"). A malformed file safe-fails to empty (every High+ advisory then fails the gate).
 
 ## On failure
 - Report the failing step, the `file:line`, and the first 20 lines of error output.
@@ -63,9 +72,3 @@ gate beats speed.
 ## Skip when
 - You only touched docs, files under `.claude/`, or `messages/*.json` -- none of those affect the build. Run `npm run lint` + `gitleaks detect` (steps 2 and 5) instead; docs can still leak a secret.
 - You only touched `prisma/schema.prisma` -- run `npm run prisma:generate` first, then the full ship sequence (typecheck will catch the rest).
-
-> Local note: this repo's `.env` (copied from `.env.example` by the SessionStart hook)
-> sets `NODE_ENV=development`, and Prisma 7 config does not auto-load `.env`. If a step
-> can't resolve `DATABASE_URL`, load the env first: `set -a; . ./.env; set +a`. For
-> step 4 also `export NODE_ENV=production`, or prerendering fails locally. Neither
-> applies on Vercel (`.env` is gitignored; the platform sets `NODE_ENV=production`).

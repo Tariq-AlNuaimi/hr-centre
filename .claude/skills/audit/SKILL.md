@@ -27,18 +27,26 @@ the operator dropped foreign code into.
 1. **Secrets — gitleaks.**
    - `gitleaks detect --source <path> --no-banner --redact` (this repo ships
      `.gitleaks.toml`; gitleaks extends the default ruleset).
+   - **Scanning a sub-path:** both forms work — `gitleaks detect --source <path>`,
+     or `cd <path> && gitleaks detect`. Pick whichever keeps the `file:line` paths
+     readable for the report.
    - Reports any committed/embedded secret with `file:line` (redacted value).
 
 2. **Dependency CVEs — npm audit.**
    - If `<path>` has a `package.json`: `npm audit --audit-level=high --omit=dev`
      (run with `--prefix <path>` or from inside it). Surfaces High+ CVEs in
      production dependencies.
-   - If there is no lockfile, note that and recommend `npm install` first so the
-     tree is resolvable.
+   - **No lockfile?** `npm audit` cannot resolve the tree. Do **not** treat this as
+     a failure — report it as `NOT RUN: no lockfile (run npm install first)` and
+     recommend `npm install` so the tree is resolvable, then it can be re-run.
 
 3. **SAST — Semgrep.**
    - `semgrep --config p/javascript --config p/typescript --config p/nextjs --config p/react --config p/owasp-top-ten --config p/secrets <path>`
      (the exact rulesets `sast.yml` uses).
+   - **No local semgrep binary?** Run it via Docker — volume-mount the target path
+     and point `--config` at the mount, e.g.
+     `docker run --rm -v "$PWD:/src" semgrep/semgrep semgrep --config auto /src`
+     (swap `--config auto` for the explicit `p/*` rulesets above to mirror `sast.yml`).
    - Reports findings with `file:line` and rule id.
 
 ## If a tool is not installed

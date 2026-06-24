@@ -50,18 +50,25 @@ hit an admin API directly).
 
 1. **Playwright MCP** must be available — this skill drives the browser through it.
    This repo ships `.mcp.json` wiring the `playwright` server (`@playwright/mcp`).
-   If the MCP tools aren't present in your session, tell the operator to approve
-   the server and restart the session; **do not silently fall back to canned
-   specs** and call it a manual run. (If the operator declines MCP, the honest
-   fallback is `/uat --full`, which is *not* the same thing — say so.)
+   **First, check the MCP tools (`browser_navigate`, `browser_click`, …) are actually
+   present in your session.** If they are NOT, **stop and surface the error to the
+   operator** — name the missing tools, tell them to approve the server and restart the
+   session. **Never silently fall back to the canned `/uat` specs and call it a manual
+   run** — that is a different thing and reporting it as manual-uat is dishonest. (If the
+   operator declines MCP, the honest fallback is `/uat --full`, stated as such.)
 2. **A running target.** Prefer a deployed preview/prod URL (matches the
    share-via-URL workflow); otherwise local `http://localhost:3000` with a running,
    seeded DB (`make db-up` + `npm run prisma:seed`).
 3. **Role logins.** Admin is the seeded `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`.
-   For the other roles, run `npm run manual-uat:users` (local/test DB only — it
-   refuses in production) to upsert one user per non-admin role; creds come from
-   `UAT_<ROLE>_EMAIL` / `UAT_<ROLE>_PASSWORD` (falling back to
+   For the other roles, run `npm run manual-uat:users` to upsert one user per non-admin
+   role; creds come from `UAT_<ROLE>_EMAIL` / `UAT_<ROLE>_PASSWORD` (falling back to
    `SEED_ADMIN_PASSWORD`). Never hardcode or print passwords.
+   **Production refusal (built in):** `manual-uat:users` guards before writing any User
+   row — it exits with an error if `NODE_ENV === "production"`, and it **allowlists local
+   hosts**: it refuses unless `DATABASE_URL`'s host is `localhost` / `127.0.0.1` / `[::1]`.
+   So a hosted/prod connection string (e.g. a `.neon.tech` branch reached from a
+   `development` env) is refused, not written to. It runs only against a local/test DB;
+   never override the guard to write to prod.
 
 ## Step 0 — build the benchmark FIRST (so the RBAC check is real)
 
@@ -92,12 +99,18 @@ For the capability model, **`rbac-expected.json` is canonical, NOT live.** If th
 app has an admin-editable permissions table (`role_permissions`, resolved in
 `lib/permissions.ts`), an admin can grant/revoke at runtime, so the running app
 legitimately differs from the code defaults. **Before judging anything an
-escalation, fetch the live grants** — `GET` the app's admin-permissions endpoint
-(e.g. `/api/admin/permissions`) as ADMIN, or read the DB — and treat THAT as the
-benchmark. A role reaching a capability the *live* table grants is correct config,
-not a bug; only a divergence from **live** grants is a finding. (Skipping this step
-turns every admin permission edit into a false P0 — the canonical matrix alone will
+escalation, fetch the live grants** — `GET /api/admin/permissions` (the app's
+admin-permissions endpoint) as ADMIN, or read the `role_permissions` table — and treat
+THAT as the benchmark. A role reaching a capability the *live* table grants is correct
+config, not a bug; only a divergence from **live** grants is a finding. (Skipping this
+step turns every admin permission edit into a false P0 — the canonical matrix alone will
 lie on any app whose permissions have been tuned.)
+
+**Document the reconciled matrix in the report.** Record both inputs — the static
+**code defaults** (`rbac-expected.json`) and the **live grants** fetched above — and the
+**reconciled matrix** (static ∪ live overrides) you actually judged against. Without the
+live-grants column in the report, a stale canonical matrix can silently hide permission
+drift, so the reconciliation must be visible, not implicit.
 
 This reconciled matrix is the source of truth. The live walkthrough's job is to
 find every place the **running app disagrees with it** — in *either* direction:
@@ -148,11 +161,16 @@ their own roster, e.g. admin → pmo_manager → … → sales), via the Playwri
    - **Flow abuse:** double-click submit, submit then back-button, deep-link
      straight to an edit URL for a record you shouldn't see, refresh mid-wizard.
    - **Authorization probes (the RBAC worst path):** as this role, try to reach
-     every section + route the matrix says it must **not** — both via the **UI**
-     (type the URL directly, not just the nav) and, where you can, via a **direct
-     API call** (e.g. POST to an admin-only route). Expect a guard redirect or
-     403/401. A success here is a **P0**. This is what catches an EDITOR hitting an
-     admin API the sidebar merely hides.
+     every section + route the matrix says it must **not**, testing **BOTH** boundaries
+     and recording each:
+     - **UI navigation** — type the forbidden URL directly (not just the nav).
+       **Success criterion: a guard redirect or a 403 page.** A rendered page is a
+       failure.
+     - **Direct API call** — hit the route's API directly (e.g. POST to an admin-only
+       route). **Success criterion: 401 or 403.**
+     A **2xx (a 200) on either probe is a P0 privilege escalation** — the worst case.
+     Testing only the UI misses the API; this is what catches an EDITOR hitting an admin
+     API the sidebar merely hides.
 
 4. **Record as you go** (don't rely on memory): for every step, capture
    role · flow · track (happy/worst) · expected · actual · screenshot · verdict ·
@@ -213,6 +231,22 @@ artifacts) and summarize in chat. Structure:
 Prioritize: **P0** broken/security-relevant (authz bypass, crash, data leak, silent
 data loss) · **P1** incomplete (a user story that can't be finished, a missing
 guard the matrix expects) · **P2** polish (copy, minor a11y, console noise).
+
+### Report template (RBAC findings table)
+
+```
+## Verdict
+NOT READY — 1 P0 privilege escalation.
+
+## RBAC findings (live vs reconciled matrix)
+| Sev | Role   | Route / capability        | Probe         | Expected      | Actual | Note                                  |
+|-----|--------|---------------------------|---------------|---------------|--------|---------------------------------------|
+| P0  | EDITOR | POST /api/admin/users     | direct API    | 403           | 200    | under-enforced: created an admin user |
+| P1  | VIEWER | GET /reports (export btn) | UI nav        | visible+usable| 403    | over-enforced: matrix grants `report:read` |
+```
+
+(Under-enforced P0 = reached something the reconciled matrix forbids; over-enforced
+P1 = blocked from something it grants. Cite role · route/capability · probe.)
 
 ## Boundaries
 

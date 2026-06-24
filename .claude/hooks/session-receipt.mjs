@@ -2,7 +2,9 @@
 // SessionEnd hook -- session cost receipt (ADR-019).
 // Appends one JSONL row per session to .claude/usage-log.jsonl (gitignored) so
 // spend drift is visible the day it happens. Pure local accounting; no network.
-import { readFileSync, appendFileSync, existsSync } from "node:fs";
+import { readFileSync, appendFileSync, writeFileSync, existsSync } from "node:fs";
+
+const MAX_ROWS = 500; // keep the log bounded -- it's local accounting, not history.
 
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
@@ -29,6 +31,12 @@ try {
     output_tokens: out,
     final_context: lastCtx,
   };
-  appendFileSync(new URL("../usage-log.jsonl", import.meta.url), JSON.stringify(row) + "\n");
+  const logUrl = new URL("../usage-log.jsonl", import.meta.url);
+  appendFileSync(logUrl, JSON.stringify(row) + "\n");
+  // Rotate: keep only the most recent MAX_ROWS so the log can't grow unbounded.
+  try {
+    const all = readFileSync(logUrl, "utf8").trim().split("\n");
+    if (all.length > MAX_ROWS) writeFileSync(logUrl, all.slice(-MAX_ROWS).join("\n") + "\n");
+  } catch { /* rotation is best-effort */ }
 } catch { /* never fail session end */ }
 process.exit(0);

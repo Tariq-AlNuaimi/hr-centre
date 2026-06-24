@@ -22,6 +22,24 @@ hosting, different ops model) can take ownership cleanly.
 - The latest commit is on `main` and pushed.
 - Vercel + Neon are still hooked up (so we can capture their state).
 
+### Preflight: confirm the skill is in sync with the repo
+
+Before generating anything, verify the files this skill references actually exist;
+warn (don't crash) on each miss so the operator knows the handoff text may be stale:
+
+- `docs/recipes/shared-security/4-atomic-audit-triggers.md` — the atomic-audit
+  recipe offered above. If absent, say so and skip the offer.
+- `docs/decisions/ADR-006-*.md` and `ADR-023` — referenced in the containerize
+  section. Warn if `ADR-023` is missing (the section points at it).
+- The re-containerize reference files (`docker-compose.dev.yml`, a shipped
+  `Dockerfile`, the `pre-pivot` git tag). These are **not** guaranteed to be in a
+  given fork; if any is missing, soften the containerize steps from "reference X"
+  to "build X from scratch (it does not ship in this repo)" rather than pointing at
+  a path that 404s for the IT team.
+
+A clean preflight = proceed silently. A miss = one-line warning per item, then
+continue with the affected sections adjusted.
+
 ### Shared-tier security checklist (before handling sensitive data)
 
 A `shared`-tier fork that will hold Confidential / Restricted production data must
@@ -70,6 +88,20 @@ Read the current state of the repo and gather:
 - **Env vars actually in use**: parse `lib/env.ts` for the zod schema.
 - **Optional services wired**: check whether `lib/inngest.ts`,
   `lib/storage.ts`, or anything in `/scale-up`'s list got added.
+
+### 1b. Feature-complete gate (ask before packaging)
+
+A handoff that hides known defects isn't clean. Before writing `HANDOFF.md`:
+
+- **Ask the operator directly:** "Any open bugs, half-finished features, or TODOs
+  the IT team should inherit?" Capture their answer.
+- **Pull GitHub issues** for the repo (`gh issue list --state open --json number,title,labels`
+  or the GitHub MCP) and fold open issues into the **Open issues** section below.
+- Grep the tree for `TODO` / `FIXME` markers and surface notable ones.
+
+Fold all of this into the generated `HANDOFF.md` "Open issues / known TODOs"
+section — an empty/clean result is fine, but it must be a deliberate "none open",
+not an omission.
 
 ### 2. Write `HANDOFF.md`
 
@@ -145,13 +177,55 @@ The project runs on Vercel + Neon. To take over:
 3. Re-set the env vars in the new Vercel project.
 4. Point DNS to the new Vercel deployment.
 
-To move OFF Vercel entirely (containerize):
+### Moving OFF Vercel entirely (re-containerize)
 
-1. Add a `Dockerfile` (template available in the original fullstack-vibe-template
-   repo at the `pre-pivot` tag, if needed for reference).
-2. Switch `output: "standalone"` in `next.config.ts`.
-3. Self-host wherever (Portainer, Kubernetes, ECS, etc.).
-4. Provide a Postgres URL via env. No code change needed.
+**When:** the IT team's ops model is container-based (Kubernetes / ECS / Nomad /
+Portainer) rather than serverless, or they need to self-host on their own infra.
+Vercel + Neon is the prototype rail (ADR-006); a regulated/long-lived production
+owner often re-containerizes. The app is plain Next.js + Postgres, so this is a
+packaging change, not a rewrite.
+
+**Steps:**
+
+1. **Enable standalone output.** Set `output: "standalone"` in `next.config.ts`
+   (or flip the `DOCKER_BUILD` build flag if the fork already exposes one). This
+   makes Next emit a self-contained server bundle with only the needed
+   `node_modules`.
+2. **Add a `Dockerfile` + `.dockerignore`.** Multi-stage build: install deps,
+   `prisma generate`, `next build`, then copy `.next/standalone`, `.next/static`,
+   and `public` into a slim runtime image; run `prisma migrate deploy` on start
+   (mirroring what `vercel.json` does today). Reference the repo's
+   `docker-compose.dev.yml` for the local Postgres + app wiring, and the
+   `pre-pivot` git tag for the last shipped Dockerfile if those reference files
+   are present (this template no longer ships them by default — see the warning
+   below).
+3. **Build & push to a registry** (GHCR / ECR / Artifact Registry):
+   `docker build -t <registry>/<slug>:<tag> . && docker push <registry>/<slug>:<tag>`.
+4. **Deploy as a stateless service.** The image holds no state; provide
+   `DATABASE_URL` (any Postgres host — Neon, RDS, self-managed) and the rest of
+   the env vars from the "Environment variables" section above. Scale horizontally
+   freely; the in-memory rate limiter becomes per-instance (swap to Upstash if
+   that matters — `/scale-up`).
+5. **Context:** see **ADR-006** Consequences / Mitigations (why the rail is
+   serverless and what re-containerizing costs) and **ADR-023** for the
+   containerization guidance, if present in `docs/decisions/`.
+
+## Pre-handoff checklist
+
+The `shared`-tier security layers (`SECURITY.md` §16), each marked
+**Done** / **Risk-accepted** (with the §11 acceptance reference) / **Not done**:
+
+| # | Layer | Status |
+|---|-------|--------|
+| 1 | MFA (T-02) | <Done / Risk-accepted (§11 …) / Not done> |
+| 2 | Atomic audit (ADR-010 / triggers) | <Done / Risk-accepted (§11 …) / Not done> |
+| 3 | Nonce-based CSP (T-05) | <Done / Risk-accepted (§11 …) / Not done> |
+| 4 | Account lockout / cross-instance throttle | <Done / Risk-accepted (§11 …) / Not done> |
+| 5 | Column-level encryption for Restricted fields | <Done / Risk-accepted (§11 …) / Not done> |
+| 6 | SARIF / CodeQL active + branch protection | <Done / Risk-accepted (§11 …) / Not done> |
+
+> Do not mark an unstarted item "Done". An unaddressed item is **Not done** unless
+> the project owner accepted the risk in writing in `SECURITY.md` §11.
 
 ## Security notes (read before deploying)
 
@@ -210,10 +284,14 @@ They're configured at `error` -- do not relax without reviewing
 - IT team contact: <fill in>
 ```
 
-### 3. (Optional) Create a clean tarball
+### 3. (Optional, gated) Create a clean tarball
 
-If the user asks for a tarball (some IT teams want a sealed artifact, not a
-GitHub fork):
+**Only build a tarball when the operator explicitly asks for one, or the target is
+airgapped / cannot consume a GitHub fork.** The default handoff is the repo +
+`HANDOFF.md`; a sealed artifact is the exception, not the norm — don't produce it
+unprompted (it duplicates the repo and is one more place a stale secret can hide).
+
+When asked / airgapped:
 
 ```sh
 git archive --format=tar.gz --output=<slug>-handoff-$(date +%Y%m%d).tar.gz HEAD

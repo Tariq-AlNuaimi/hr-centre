@@ -61,6 +61,18 @@ npx prisma migrate dev --name add_<entity>
 
 (Local Postgres must be up: `make db-up` if not.)
 
+**Things the scaffold wires for you (don't fight them):**
+- **i18n:** until you merge the emitted `messages/_scaffold-<kebab>.json` into
+  `messages/en.json` + `messages/ar.json`, the UI shows the **raw key strings**
+  (e.g. `title`, `save`) instead of labels. Merge before sharing the URL.
+- **Auth + rate limit:** generated routes auto-wrap `withRateLimit` OUTSIDE
+  `withAuth` (write routes use the `--writes` wrapper). Don't remove or reorder
+  them — the order is a hard rule.
+- **Soft-delete is ON by default:** deletes are soft and the entity auto-registers
+  in the recycling bin. Pass `--soft-delete false` to opt out.
+- **Enum default:** in `--enums 'status:OPT_A|OPT_B'` the **first value is the
+  default** unless `?` is passed (which makes the field optional/nullable).
+
 ### 3. Quick smoke
 
 ```sh

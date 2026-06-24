@@ -98,6 +98,25 @@ npm run dev              # http://localhost:3000
 
 Log in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from your `.env`.
 
+### Self-hosting with Docker (opt-in — ADR-023)
+
+Production is **Vercel + Neon** by default (ADR-006). For forks that must
+self-host (on-prem, air-gapped, Kubernetes), there's an opt-in container rail.
+It leaves the Vercel path untouched: `output: "standalone"` is emitted only when
+`DOCKER_BUILD=1` is set (which `make docker-build` does).
+
+```bash
+make docker-up           # full local stack (app + Postgres) via docker-compose.dev.yml
+make docker-down
+
+make docker-build        # build the app image  (override tag: IMAGE=repo/app:1.0.0)
+make docker-run          # run it against the DATABASE_URL in your .env
+```
+
+The image runs `prisma migrate deploy` on boot and expects `DATABASE_URL` (and
+auth/SMTP env) injected at runtime — never baked in. See ADR-023 and the
+`Dockerfile` for the full rationale and the `/handoff` re-containerize steps.
+
 ## Project Structure
 
 ```

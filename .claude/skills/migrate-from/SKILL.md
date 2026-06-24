@@ -21,6 +21,14 @@ Run `pg_dump --schema-only -t <table>` for each in-scope table. Show the operato
 
 ### 2. Propose column → field mapping
 
+> **IMPORTANT — Restricted-column gate (security).** Before proposing any map,
+> scan the source schema for Restricted columns — names matching `password*`,
+> `*token*`, `secret`, `api*key`, `salary`, `ssn` (SECURITY.md §1). If any are
+> found, **STOP and get explicit written operator approval** (a comment in
+> `/tmp/migrate.json` or an inline ack) before proposing the column→field map.
+> The script delegates this judgment to you; make the gate explicit and do not
+> silently carry a Restricted column across.
+
 Compare source columns to the target Prisma model. Propose a JSON map:
 
 ```json
@@ -50,7 +58,10 @@ Compare source columns to the target Prisma model. Propose a JSON map:
 
 Available transforms: `upper`, `lower`, `date` (string → `new Date(...)`). Anything richer → the operator hand-edits the generated seed.
 
-Write the proposal to `/tmp/migrate.json`. Tell the operator: "Open `/tmp/migrate.json`, edit anything wrong, then come back."
+**Claude writes the mapping file.** You (Claude) generate `/tmp/migrate.json`
+yourself from the source schema + target model — it is not authored by the script
+or by hand. Then tell the operator: "Open `/tmp/migrate.json`, edit anything
+wrong, then come back."
 
 ### 3. Run the dumper
 
@@ -77,7 +88,10 @@ DATABASE_URL=postgresql://... npm run prisma:seed
 
 ### 5. Validate
 
-- Row counts: `SELECT count(*)` on source vs. target for each table.
+- Row counts: `SELECT count(*)` on source vs. target for each table. **Note:**
+  soft-delete filtering hides `deletedAt IS NOT NULL` rows from the default
+  `prisma` client, so a count via `prisma` undercounts versus the source. To see
+  soft-deleted rows, use `prismaUnfiltered` (or count directly in `psql`).
 - Sample 5 random rows per table and diff manually.
 - FK integrity: every `Allocation.employeeId` resolves to an `Employee.id`.
 

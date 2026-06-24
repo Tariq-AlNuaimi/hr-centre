@@ -35,8 +35,12 @@ the branch AND prints the full content for the operator to paste.
    survive a fresh container) and **commit it to the working branch (do not push
    yet — the push is step 3, after memory is also committed):**
    `git add docs/SESSION-HANDOFF.md && git commit -m "chore: session handoff"`.
-   NEVER merge this file to `main` (forks must not inherit it) — it lives only on
-   working branches and the next session overwrites or deletes it.
+   **NEVER merge this file to `main`.** It is working-branch scratch — transient
+   in-flight state (dirty tree, started-but-unfinished work, "next steps") that is
+   stale the moment the task ships and is meaningless to a fork that never had this
+   session. It lives only on working branches and the next session overwrites or
+   deletes it. The *durable* slice (decisions, landmines, conventions) is what
+   reaches `main` — but via `docs/agent-memory.md` in step 3, not this file.
 
 3. **Promote durable items to agent memory (ADR-022), then push.** Scan the
    **Decisions** and **Landmines** sections you just built: anything that will
@@ -47,11 +51,20 @@ the branch AND prints the full content for the operator to paste.
    budget — promote into CLAUDE.md / an ADR and prune rather than letting it
    bloat. Skip anything purely in-flight (that's what SESSION-HANDOFF.md is for).
    **Never write secrets/Restricted values** there — it is tracked, reaches
-   `main`, and is inherited by forks. Commit memory as its OWN commit (so it can
+   `main`, and is inherited by forks. Recognize a Restricted value by
+   `SECURITY.md` §1 (auth/DB/SMTP credentials, tokens, salaries, national IDs,
+   etc.); if a landmine can only be stated by quoting one, generalize it instead.
+   Concrete promotion: a landmine like *"forgot the middleware regex when adding
+   `fr`"* becomes a **Gotchas & landmines** line —
+   `2026-06-24 — Adding a locale also needs the regex in middleware.ts updated (next-intl strips the prefix).`
+   Commit memory as its OWN commit (so it can
    land on `main` independently of the handoff scratch), then push both:
    `git add docs/agent-memory.md && git commit -m "chore: remember <summary>"` —
-   then `git push`. If there were no durable items, just `git push`. Unlike the
-   handoff file, `docs/agent-memory.md` IS meant to reach `main`.
+   then `git push`. **If there were no durable items, just `git push`.** And if
+   the session produced no net work at all (nothing staged, `git status` clean
+   beyond the handoff commit), there's nothing to promote — just `git push` the
+   handoff commit and move on. Unlike the handoff file, `docs/agent-memory.md` IS
+   meant to reach `main`.
 
 4. Print the **entire handoff content** in the chat inside one fenced block,
    prefixed with this line so it is self-contained even with no file access:

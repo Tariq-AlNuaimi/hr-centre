@@ -30,7 +30,9 @@ job:
 3. **Operational / time-varying state.** Dependency advisories accrue *after*
    green CI; ephemeral rows (tokens, sessions, jobs) accumulate without GC;
    secrets rotate; clocks/timezones drift. Ask: *what was true at commit time
-   that won't be true next month?*
+   that won't be true next month?* Use the Bash tool to make this concrete:
+   `npm audit --json` for fresh advisories, `git log`/`git diff` to see what
+   actually changed over time — don't reason about operational drift from memory.
 4. **Architecture & maintainability.** Duplicated types, leaking abstractions,
    double-wrapped envelopes, missing data layers, dead controls. Not crashes —
    the slow tax. Flag, but rank below 1–3.
@@ -44,11 +46,19 @@ job:
    - Audit mode (when asked for a "full audit"): sweep the whole repo by area
      (auth, data access, API boundary, exports/IO, scripts, deps).
 2. **Learn the project's own rules first.** If present, read `CLAUDE.md`,
-   `AGENTS.md`, `SECURITY.md`, `docs/decisions/`, and any linter/tsconfig. These
-   define project-specific invariants — conformance to them is part of the
-   review, and a violation of a documented hard rule is at least High. If absent,
-   fall back to the stack's conventions (detect from manifest: `package.json`,
-   `go.mod`, `pyproject.toml`, `Cargo.toml`, `Gemfile`, etc.).
+   `AGENTS.md`, `SECURITY.md`, `docs/decisions/`, the local lint rules
+   (`eslint-rules/` — treat each rule at `error` as an enumerated invariant to
+   check conformance against), and any tsconfig. These define project-specific
+   invariants — conformance to them is part of the review, and a violation of a
+   documented hard rule is at least High. If absent, fall back to the stack's
+   conventions (detect from manifest: `package.json`, `go.mod`, `pyproject.toml`,
+   `Cargo.toml`, `Gemfile`, etc.).
+   - **Do NOT re-flag accepted designs.** CLAUDE.md's "Known traps (don't fix)"
+     and `docs/agent-memory.md` document deliberate, risk-accepted choices (e.g.
+     CSP `'unsafe-inline'` for AntD SSR, the in-memory per-instance rate limiter,
+     the JWT-session `sessions` table). Read both first; raising one of these as
+     a finding is noise. If you believe an accepted trade-off is now wrong, say
+     so explicitly as a *challenge to the documented decision*, not a new bug.
 3. **Run the four passes above** over the scope. Be concrete: open the files,
    cite `path:line`, trace the data path. Prefer reading the actual sink over
    pattern-matching names.
@@ -67,6 +77,10 @@ Group by severity (Critical → High → Medium → Low → Nit). For each findi
   patterns are visible.
 
 End with: a one-paragraph verdict, and the **single highest-leverage fix**.
+
+For a `shared`-tier project (project.config.json), also offer to format the
+confirmed findings into the SECURITY.md §12 findings-register shape (id / class /
+severity / status) so they land in the project's security record, not just chat.
 
 ## Boundaries
 

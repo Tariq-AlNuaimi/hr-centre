@@ -40,13 +40,21 @@ which this project is and set it:
 The **security floor is identical for both** (auth wrappers, no leaked secrets,
 zod at the boundary, no raw SQL, the ten ESLint rules, audit log ON, `/ship`
 before push). The tier only scales the ceremony on top. See `CLAUDE.md`
-"Project tiers". Commit the change with the rebrand commit in step 1.
+"Project tiers".
+
+Set the tier **after** the rebrand but fold it into the **same commit** — amend
+the rebrand commit rather than adding a second one:
+
+```sh
+# edit project.config.json -> "tier": "shared"   (or leave "personal")
+git add project.config.json && git commit --amend --no-edit && git push --force-with-lease
+```
 
 ### 2. Create a Neon Postgres project
 
 1. Open https://console.neon.tech → **New Project**.
 2. Name it the same as the repo slug. Region: pick one near you (e.g. `eu-central-1`).
-3. Postgres 17 is the default — keep it.
+3. Postgres 17 is the default — keep it; it matches the locked stack (ADR-001).
 4. After creation, Neon shows two connection strings:
    - **Pooled** (`...-pooler.<region>.aws.neon.tech...`) — use this as `DATABASE_URL`.
    - **Direct** (`...<region>.aws.neon.tech...`) — keep for `prisma migrate` from your laptop.
@@ -61,7 +69,9 @@ before push). The tier only scales the ceremony on top. See `CLAUDE.md`
 5. **Build & Output**: leave defaults — `vercel.json` in the repo overrides them
    to run `prisma generate && prisma migrate deploy && next build`.
 6. Click **Deploy** — it'll fail on the first build because env vars are missing.
-   That's expected. Continue to step 4.
+   That's **expected**. Do NOT re-run / redeploy yet — go straight to step 4 and
+   add the env vars first, then redeploy from there. Steps 3→4 are a pair:
+   deploy-expecting-failure → add env vars → redeploy.
 
 ### 4. Set env vars in Vercel
 
@@ -119,6 +129,11 @@ If this works, the rail is set up. From here:
 - When the project gets complex (cron, file uploads, background jobs), use
   `/scale-up`.
 - When the team approves, use `/handoff` to produce a clean package for IT.
+
+> **Next steps:** `/first-fork` is one-time. Once Vercel + Neon are wired, every
+> future production deploy is just `git push` to `main`; to re-provision or wire a
+> fork that already exists on GitHub, use **`/deploy`** — not `/first-fork` again
+> (ADR-009).
 
 ## Optional extras (only when you need them)
 

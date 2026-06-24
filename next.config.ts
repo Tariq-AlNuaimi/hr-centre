@@ -11,6 +11,13 @@ const withAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === "true
 
 const isDev = process.env.NODE_ENV !== "production";
 
+// Docker is an OPT-IN second rail (ADR-023). Vercel (ADR-006) stays the default:
+// `output: "standalone"` is emitted ONLY when DOCKER_BUILD is set, so the Vercel
+// build is byte-for-byte unchanged and the self-host image stays small (it ships
+// just the traced runtime under .next/standalone). `make docker-build` sets it.
+const isDockerBuild =
+  process.env.DOCKER_BUILD === "1" || process.env.DOCKER_BUILD === "true";
+
 // When Sentry is configured, the browser SDK POSTs envelopes to its ingest host
 // (derived from the public DSN). Without it in connect-src, every error/session
 // report is silently blocked by CSP. Derive the origin from the DSN so the policy
@@ -63,6 +70,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Opt-in only -- see isDockerBuild above (ADR-023). `undefined` on Vercel.
+  output: isDockerBuild ? "standalone" : undefined,
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },

@@ -1,4 +1,4 @@
-.PHONY: dev db-up db-down db-migrate db-seed db-studio setup
+.PHONY: dev db-up db-down db-migrate db-seed db-studio setup docker-build docker-run docker-up docker-down
 
 # Local dev: Postgres in Docker, app via `npm run dev`.
 # Production is Vercel + Neon -- see CLAUDE.md.
@@ -29,3 +29,25 @@ db-seed:
 
 db-studio:
 	npx prisma studio
+
+# --- Docker self-host rail (opt-in; ADR-023) -------------------------------
+# Production is Vercel + Neon by default (ADR-006). These targets exist for forks
+# that need to self-host (on-prem / air-gapped / k8s). DOCKER_BUILD=1 makes
+# next.config.ts emit `output: "standalone"` for a small runtime image.
+
+# Build the app image. Tag override: `make docker-build IMAGE=myrepo/app:1.2.3`
+IMAGE ?= app:local
+docker-build:
+	DOCKER_BUILD=1 docker build -t $(IMAGE) .
+
+# Run the built image against a DATABASE_URL you provide (e.g. a Neon URL or a
+# local Postgres). Secrets are passed at runtime, never baked into the image.
+docker-run:
+	docker run --rm -p 3000:3000 --env-file .env $(IMAGE)
+
+# Full local stack (app + Postgres) via docker-compose.dev.yml.
+docker-up:
+	docker compose -f docker-compose.dev.yml up -d --build
+
+docker-down:
+	docker compose -f docker-compose.dev.yml down

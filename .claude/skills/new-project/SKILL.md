@@ -6,11 +6,11 @@ description: One-prompt provisioner for a brand-new prototype. Creates a GitHub 
 # /new-project — Idea → live URL on a custom domain, in one workflow run
 
 > **Two ways to run the same `scripts/new-project.mjs`:**
-> 1. **Headless from a Claude Code web session (or any machine)** — the default now.
+> 1. **Headless from a Claude Code web session (or any machine)** — the **PRIMARY path**.
 >    `npm run new-project -- ...` with the tokens set as env vars and egress allowed.
 >    No GitHub Actions needed. See **"Run headlessly"** below.
-> 2. **GitHub Actions workflow** (`new-project.yml`) — **SHELVED while Actions billing
->    is blocked (ADR-007)**. Works as written once billing returns.
+> 2. **GitHub Actions workflow** (`new-project.yml`) — **dormant** until Actions billing
+>    is enabled (ADR-007). Identical logic; activates as written once billing is on.
 >
 > For an **existing** fork you've already built in (no repo creation), use **`/deploy`**.
 > For a fully manual browser walk-through, use **`/first-fork`**.
@@ -28,6 +28,11 @@ npm run new-project -- \
   [--apex <your-zone> [--subdomain defaults-to-slug]]   # omit for <slug>.vercel.app only
 ```
 
+**`--owner`** is the GitHub org or user that will own the new repo — the
+account the repo gets created under, e.g. `--owner Tariq-AlNuaimi` creates
+`Tariq-AlNuaimi/<slug>`. Use your own GitHub username if you're not creating it
+under an organization.
+
 **Tokens** (env vars, never in chat): `GH_AUTOMATION_TOKEN` (GitHub PAT, scopes
 `repo` + `workflow`), `NEON_API_KEY`, `VERCEL_TOKEN`, and `CLOUDFLARE_API_TOKEN`
 only when `--apex` is used. Optional: `VERCEL_TEAM_ID`, `NEON_ORG_ID`.
@@ -43,10 +48,11 @@ deploy`): from a machine with the Neon **direct** string,
 `DATABASE_URL="..." npx prisma db seed`. The script prints the generated admin
 email + password to rotate.
 
-## GitHub Actions path (shelved)
+## GitHub Actions path (dormant)
 
 Backed by `.github/workflows/new-project.yml` — identical logic, triggered from the
-Actions tab. Re-enable when Actions billing returns.
+Actions tab. Activates when Actions billing is enabled (ADR-007); the headless path
+above is the primary one until then.
 
 ## Preconditions (one-time, per template repo)
 
@@ -116,11 +122,20 @@ Find the run in the workflow's run history. The run's **Summary** tab shows:
 
 1. Wait ~2 min for the first Vercel build + DNS propagation.
 2. Open `https://<slug>.<apex>` and log in with the seeded credentials.
-3. Start a Claude Code session on `Tariq-AlNuaimi/<slug>` and type:
+3. **Set the project tier** right after provisioning (mirrors `/first-fork`): edit
+   `project.config.json` `"tier"` to `personal` (default) or `shared`, then commit
+   + push. The security floor is identical either way; the tier only scales the
+   ceremony (see `CLAUDE.md` "Project tiers").
+4. Start a Claude Code session on `Tariq-AlNuaimi/<slug>` and type:
    ```
    /quickstart "describe your idea here"
    ```
    I'll scaffold the entities, push, and the URL updates with the new features.
+
+> **Free-tier limits:** the Vercel project lands on the **Hobby** plan
+> (100 GB-hours of serverless function execution per month, non-commercial use).
+> Fine for a prototype shared with a review team; if the app gets heavy traffic or
+> goes commercial, upgrade at Vercel project → Settings → Billing (Pro plan).
 
 ## Failure recovery
 
@@ -132,6 +147,12 @@ The script is not fully idempotent on the first version. If a step fails partway
 
 Re-running with the same slug will fail at step 1 (GitHub already has the repo).
 Clean up first.
+
+**Changing args after a successful run** (e.g. a different admin email, display
+name, or DB region): the env vars are baked in at provision time, so editing the
+command and re-running won't take. Delete the **Vercel project + Neon project**
+(and the GitHub repo if you also want the repo recreated), then re-run with the
+new args. That delete-then-re-run is the idempotency boundary.
 
 ## When NOT to use
 

@@ -76,6 +76,7 @@ Declare the design read first (surface/audience/tone/density); one accent, one p
 - CSP allows `'unsafe-inline'` script+style (AntD SSR + Next bootstrap). Vercel auto-injects `AUTH_URL`; don't set it manually unless wiring a custom domain first.
 - `vercel.json` runs `prisma migrate deploy` every build — keep migrations small and forward-compatible; never drop columns the running version still reads. It also ships the daily audit-purge cron (ADR-018; silent no-op until `CRON_SECRET` is set).
 - File uploads are not wired (ADR-006); PDF export is intentionally absent from `lib/export.ts` (pdfkit fragile in serverless).
+- Docker is an **opt-in self-host rail** (ADR-023), not the default: `output: "standalone"` is gated on `DOCKER_BUILD=1` in `next.config.ts`, so the Vercel build is unchanged. Don't re-enable standalone unconditionally — it does nothing for Vercel. Use `make docker-build` / `make docker-up`; Vercel + Neon stays the default deploy path.
 - The root `app/not-found.tsx` is deliberately context-free (no providers): Next 16 prerenders `/_not-found` outside `[locale]`. If a fork's build dies in `/_global-error` or `/_not-found` with a `useContext` TypeError, that's upstream Next regression #85668/#86178 — fix with a context-free root file, never by editing the locale providers. Pinned next@16.2.9 builds clean.
 - After large route deletions, a stale `.next` can break typecheck with TS2307 into `.next/types` — `npm run ship` auto-heals this.
 

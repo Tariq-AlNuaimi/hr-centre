@@ -12,6 +12,11 @@ for the former.
 
 ## Steps
 
+0. **Dedupe first.** Before appending, search `CLAUDE.md` and `docs/decisions/`
+   for the same fact (grep a distinctive keyword). If it's already documented
+   there, do NOT restate it — add only a one-line cross-reference in the right
+   section (`YYYY-MM-DD — see ADR-NNN` / `see CLAUDE.md → "<heading>"`), or skip
+   entirely if a pointer already exists. Memory is for what isn't written yet.
 1. **Classify the entry** into exactly one section of `docs/agent-memory.md`:
    - **Durable decisions** — a choice made with the operator (so it isn't relitigated).
    - **Gotchas & landmines** — a non-obvious trap that cost time; prefer a `file:line` or `ADR-NNN` pointer.
@@ -20,15 +25,43 @@ for the former.
    `YYYY-MM-DD — <fact>` (UTC date). Keep it to one fact; add `(ADR-NNN)` or
    `file:line` when there is a canonical home. Replace a section's `(none yet ...)`
    placeholder rather than stacking under it.
-3. **Honor the curation rule.** If the file is near/over ~150 lines, do NOT just
-   append — promote any now-stable entry into CLAUDE.md or an ADR and delete it
-   here first. Bounded file in, bounded file out.
-4. **Decide whether it belongs here at all.** If it's really an architectural
-   decision, write an ADR (`/adr`) and leave a one-line pointer here. If it's a
-   permanent rule, it belongs in CLAUDE.md. Memory is for the in-between.
+3. **Honor the curation rule (act proactively, don't wait for the wall).** The
+   file is bounded at ~150 lines. **Once it reaches ~140 lines, do NOT just
+   append** — first promote any now-stable entry out and delete it here, so the
+   add lands under budget. Bounded file in, bounded file out; curate early rather
+   than at overflow.
+4. **Decide whether it belongs here at all** — the promotion decision tree:
+   - **A choice made with the operator** (an architectural decision) → write an
+     ADR (`/adr`) and leave a one-line pointer in **Durable decisions**.
+   - **A permanent rule** the codebase must always follow → put it in `CLAUDE.md`
+     and leave a pointer in **Conventions discovered**.
+   - **A costly gotcha** with a canonical fix → if the fix is architectural, write
+     an ADR and point **Gotchas & landmines** at it; otherwise keep the dated line
+     in **Gotchas & landmines** with a `file:line`.
+   Memory is for the in-between — facts not yet stable enough for CLAUDE.md/an ADR.
 5. **Commit on the working branch** (this file is meant to land on `main` via the
    normal merge): `git add docs/agent-memory.md && git commit -m "chore: remember <short summary>"`.
    Do not push solely for this; let it ride with the session's next push/`/ship`.
+
+## Examples
+
+Each fact lands under the section its kind maps to (the three section headers in
+`docs/agent-memory.md`):
+
+```markdown
+## Durable decisions
+2026-06-24 — Rate limiter stays in-memory until multi-instance; revisit via Upstash (see ADR-007).
+
+## Gotchas & landmines
+2026-06-24 — Adding a locale also needs the regex in middleware.ts updated (next-intl strips the prefix).
+
+## Conventions discovered
+2026-06-24 — New audited Restricted columns extend SCRUB_FIELDS + its assertion in the same commit.
+```
+
+The first is a decision (pointer to an ADR), the second a costly gotcha (`file`
+pointer), the third a convention now in CLAUDE.md (so this would be a
+cross-reference line, not a fresh fact — see step 0).
 
 ## Rules
 - One fact per line; dated; newest-first within a section.

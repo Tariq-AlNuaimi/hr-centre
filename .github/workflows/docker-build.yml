@@ -1,0 +1,90 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does
+# not run. It builds the OPT-IN self-host image (ADR-023) and smoke-tests that it
+# boots. It is NOT part of the default Vercel + Neon deploy path (ADR-006); it
+# exists so a fork that self-hosts can prove the container still builds + starts.
+#
+# ACTIVATE (at /handoff to a team that self-hosts, or any repo with paid Actions):
+#   1. Restore the real triggers below (push to non-main + pull_request).
+#   2. (Optional) to publish: add registry creds (e.g. GHCR uses GITHUB_TOKEN)
+#      and uncomment the login + push steps.
+#
+# See ADR-023 (Docker opt-in second rail) and the root Dockerfile.
+name: Docker build
+
+on:
+  workflow_dispatch:
+  # Restore at activation (paid Actions):
+  # push:
+  #   branches-ignore: [main]
+  # pull_request:
+  #   types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # DOCKER_BUILD=1 (set in the Dockerfile builder stage) makes next.config.ts
+      # emit the standalone output. Build with layer caching; load into the local
+      # daemon so the smoke test can run it.
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: app:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Boot the image against a throwaway Postgres and assert it serves. Catches
+      # standalone-output regressions (missing static/public, Prisma engine, etc.)
+      # that a plain `next build` would not.
+      - name: Smoke test (boot + health)
+        run: |
+          docker network create ci-net
+          docker run -d --name pg --network ci-net \
+            -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app_secret -e POSTGRES_DB=app_db \
+            postgres:17-alpine
+          # wait for postgres
+          for i in $(seq 1 30); do
+            docker exec pg pg_isready -U app -d app_db && break || sleep 2
+          done
+          docker run -d --name app --network ci-net -p 3000:3000 \
+            -e DATABASE_URL="postgresql://app:app_secret@pg:5432/app_db" \
+            -e AUTH_SECRET="ci-only-not-a-real-secret" \
+            -e AUTH_TRUST_HOST="true" \
+            app:ci
+          # wait for the app to answer (any HTTP status = the server is up)
+          ok=no
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null -w '%{http_code}' http://localhost:3000 | grep -qE '^[2-4]'; then
+              ok=yes; break
+            fi
+            sleep 2
+          done
+          docker logs app
+          [ "$ok" = yes ] || { echo "app did not become healthy"; exit 1; }
+
+      # To publish to GHCR at activation, uncomment:
+      # - name: Log in to GHCR
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Push
+      #   run: |
+      #     docker tag app:ci ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+      #     docker push ghcr.io/${{ github.repository }}:sha-${{ github.sha }}

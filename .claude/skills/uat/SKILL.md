@@ -81,11 +81,12 @@ from the app itself, so it works for any fork without edits:
 - **Schema** — Full phases (P2/P3) read the `Role` enum and the Prisma models to
   build the permission matrix and per-entity CRUD journeys.
 
-**Foreign-app DOM-crawl fallback.** When the target is a foreign app (no
-template route tree on disk — e.g. a deployed URL with no matching local repo),
-P1 falls back to **crawling the rendered DOM**: log in, read the nav/sidebar links,
-and treat each reachable in-app link as a screen. Routes-first when the source is
-present; DOM-crawl when it isn't.
+**Routes-first vs DOM-crawl — the discovery trigger.** **Routes-first** (scan the
+local `app/` route tree) is the default and runs **whenever the local `app/` source is
+present on disk**. **DOM-crawl** runs **only when there is no local repo** — i.e. running
+against a deployed URL with no matching `app/` tree on disk: P1 then logs in, reads the
+nav/sidebar links, and treats each reachable in-app link as a screen. Presence of local
+source decides it: source present → routes-first; deployed-only → DOM-crawl.
 
 ## Backbone — what ships in `tests/uat/`
 
@@ -125,9 +126,18 @@ into the report. The sinks are reset at the start of every full run by
      `npm run dev` (needs a running DB + seeded admin).
 
 3. **Check the browser is installed.** If the run reports the Chromium binary is
-   missing, tell the operator to run `npm run uat:install` once on this machine.
+   missing, tell the operator to run `npm run uat:install` once on this machine — it
+   installs Chromium under `PLAYWRIGHT_BROWSERS_PATH` (default `~/.cache/ms-playwright`;
+   check there when debugging a "binary missing" that persists after install).
    **Do NOT report a pass when the browser could not launch** — that's a "could not
    run," not a green.
+
+> **"Could not run" vs "red" — the boundary that gates the `/qa` tiers.** *Could not
+> run* = the **Chromium binary is still missing after `uat:install`**, OR **login /
+> credentials failed** (auth.setup couldn't authenticate). Everything else — a broken
+> flow, a failed assertion, a console/runtime error, a 4xx/5xx on the wire — is **red
+> (a real failure)**, never "could not run." `/qa` treats could-not-run as *blocked*
+> (re-run after fixing the env) and red as a *failing gate that stops the line*.
 
 4. **Check credentials — env only.** The shipped `auth.setup.ts` logs in from
    `UAT_EMAIL`/`UAT_PASSWORD`, falling back to `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`.
@@ -146,8 +156,9 @@ into the report. The sinks are reset at the start of every full run by
    norms for that domain + 3–5 peer products, and write the findings to
    `uat-results/benchmark.json` (run `npm run uat:benchmark -- --schema` for the
    exact shape; `-- --check` validates it). Ground each `appStatus` in real
-   evidence from the codebase. **If web access is unavailable, skip this** — the
-   report notes the skip; it never fails the run.
+   evidence from the codebase. **If web access is unavailable, skip this** — the report
+   records exactly `Benchmark: skipped (web access unavailable)` and the run still
+   **succeeds**; a missing benchmark never fails the run.
 
 7. **Build the PDF.** After the run, `npm run uat:pdf` reads
    `uat-results/results.json` + the attached screenshots and writes
@@ -189,5 +200,6 @@ for exploration; keep `tests/uat/` as the repeatable backbone.
   a scoped `uat:cleanup`); point cleanup at the **test** DB, never production.
 - Do **not** call a run green if the browser/credentials could not be set up — say
   "could not run" and how to fix it.
-- P6 (benchmark) **requires web access** — if unavailable, it skips and the report
-  notes the skip; it does not fail the run.
+- P6 (benchmark) **requires web access** — if unavailable, it skips, the report records
+  `Benchmark: skipped (web access unavailable)`, and the run still succeeds; it does not
+  fail the run.

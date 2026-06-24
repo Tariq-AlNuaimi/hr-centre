@@ -142,7 +142,15 @@ $CRON_SECRET` (set that env var on the project) — it **cannot** send a custom
 this: wrap the new route with
 `withInternalAuth("CRON_SECRET", handler, { bearer: true, skipWhenUnconfigured: true })`
 and compose `withRateLimit` outside it (copy the pattern from
-`app/api/internal/audit-purge/route.ts`). External schedulers that CAN send
+`app/api/internal/audit-purge/route.ts`).
+
+> **`withRateLimit` MUST compose OUTSIDE `withInternalAuth`** (OWASP A04) — so a
+> flood is throttled *before* any auth/handler work runs, not after. The correct
+> pattern is `withRateLimit(withInternalAuth(..., handler), { ... })`. See
+> `app/api/internal/audit-purge/route.ts` for the reference order; the
+> `no-rate-limit-inside-auth` ESLint rule enforces this.
+
+External schedulers that CAN send
 custom headers (e.g. GitHub Actions) use a plain `withInternalAuth("<TOKEN_ENV>", handler)`
 and send `x-internal-token`.
 
@@ -267,6 +275,10 @@ Other providers (GitHub, Microsoft, Apple): https://authjs.dev/getting-started/p
 (implicit at any nonzero traffic on Vercel) AND the rate limiter or cache
 matters.
 
+The shipped in-memory rate limiter is **correct and sufficient on a single
+instance**. Only add Upstash once more than one instance can run concurrently —
+otherwise each instance keeps its own counter and the effective limit multiplies.
+
 **Recipe:** replace `lib/rate-limit.ts` (in-memory) with
 `@upstash/ratelimit`:
 
@@ -289,6 +301,11 @@ interface so call sites don't change.
 Default position: **don't add until the user describes the symptom**. The
 prototype rail is about speed; every dependency added is a future
 maintenance cost the IT team inherits at `/handoff`.
+
+Before adding any runtime dep > 50 KB minified, or one that contradicts the
+locked stack, **check ADR-001** (the locked stack). A dependency that swaps or
+fights a locked choice needs a **superseding ADR written first** — don't slip it
+in via a recipe.
 
 When in doubt, ask: "Is this for validation, or for the IT team's
 production version?" If validation, add it. If production, defer to the

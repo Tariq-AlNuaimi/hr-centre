@@ -10,6 +10,13 @@ the browser clicking of `/first-fork`. Backed by `scripts/deploy.mjs`, which
 calls the Neon + Vercel APIs directly (the same logic `/new-project` uses, minus
 the repo-create and Cloudflare steps).
 
+## Precondition — the GitHub repo must already exist
+
+`/deploy` links a Vercel project to an **existing** `<owner>/<slug>` GitHub repo;
+it does not create one. If the repo doesn't exist yet, stop and use `/new-project`
+(Actions) or `/first-fork` (manual) — those create the repo first. Confirm the repo
+is present before running the provisioner.
+
 ## Hard prerequisite — network egress
 
 `scripts/deploy.mjs` talks to `api.vercel.com` and `console.neon.tech`. In a
@@ -24,6 +31,10 @@ a network policy that allows:
 
 - `api.vercel.com`
 - `console.neon.tech`
+- `api.github.com` (only if the script auto-creates the GitHub repo; **not** needed
+  when the repo already exists — and for `/deploy` it normally does, see the
+  precondition below. Allow it only to silence a false "blocked egress" report
+  when repo-create is in play.)
 - `api.cloudflare.com` (only if attaching a custom domain with `--apex`)
 - `*.neon.tech` on port 5432 (only if you also run `prisma migrate`/`seed` from
   the session; otherwise seed from your laptop with the Neon **direct** string)
@@ -72,6 +83,21 @@ to the Vercel project. Without `--apex`, the project is reachable at
    ```
 5. **Report** the production URL + seeded admin email/password (tell the operator
    to rotate the password after first login).
+
+## On mid-provision failure (teardown / rollback)
+
+Provisioning is multi-step (Neon project → Vercel project + env vars → first deploy)
+and not atomic — a failure partway can leave **orphaned** resources (a Neon project
+with no Vercel project, or a Vercel project pointing at a dead DB). The script does a
+**best-effort cleanup** of resources it created in the failed run, then reports
+**what was and wasn't cleaned**. Cleanup is best-effort only: if an API call to delete
+fails (rate limit, revoked token), the orphan stays.
+
+After any failed run, treat the result as untrusted and **verify in the dashboards**
+before retrying — Neon (https://console.neon.tech) for a stray project, Vercel
+(https://vercel.com/dashboard) for a stray project — and delete by hand whatever the
+report listed as not cleaned. Re-running `/deploy` over an un-cleaned partial state can
+create duplicates.
 
 ## Do NOT
 

@@ -19,21 +19,31 @@ Score each screen **0–5** on: spacing & rhythm · alignment & grid · visual h
 · color & token adherence · density & whitespace · **state coverage**
 (hover/focus/disabled/loading/empty/error) · consistency · responsive + RTL + dark ·
 **a11y (axe)**. The rubric table defines what "5" vs "fail" looks like for each.
-Plus the rubric's **Tier-0 anti-slop defaults** — each tell found is a finding
-citing Tier 0 as its anchor.
+Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md` →
+**Tier-0**, where each tell is caught) — each tell found is a finding citing
+`docs/uat-rubric.md` Tier-0 as its anchor.
 
 ## Method — per-component first, then per-screen
 1. **Discover the surface** (app-agnostic, never hardcoded): reuse `/uat`'s
    `tests/uat/_discover.ts` (`discoverAllScreens()`) for routes; for a foreign/deployed
    target, DOM-crawl the nav. Discover the design source: `design/**/*` mockups +
    `app/globals.css` / `tokens.css` + the AntD theme tokens.
-2. **Per component** — for the shared primitives (`components/shared/*`,
-   `components/**/<Entity>*`), render each in its **states** (hover/focus/disabled/
-   loading/empty/error) and screenshot. Catching a broken variant once is cheaper than
+2. **Per component** — enumerate the surface from two sources so coverage is complete:
+   the shared primitives in `components/shared/*` **plus** the per-entity components
+   (`components/**/<Entity>*`). Render **each one** in **all six states**
+   (hover/focus/disabled/loading/empty/error) and screenshot every state. A component
+   missing a state is itself a finding. Catching a broken variant once is cheaper than
    catching it on twelve screens.
-3. **Per screen** — drive Playwright (authed via `/uat`'s `auth.setup.ts` env creds),
+3. **Per screen** — drive Playwright,
    screenshot each route at desktop + a mobile breakpoint, in **light and dark**, and
    with `ar` (RTL) to confirm `dir="rtl"` mirrors.
+
+> **Canonical Playwright workflow.** Author the design-QA captures as specs under
+> `tests/uat/` (e.g. `design.uat.ts`), **reusing `/uat`'s `auth.setup.ts`** so the same
+> `UAT_EMAIL`/`UAT_PASSWORD` env creds and saved storage state log you in — never a
+> separate auth path. This is the one pattern: committed specs over the `/uat` backbone.
+> The Playwright **MCP** is for ad-hoc "look at this one screen with me now" exploration
+> only — keep the repeatable captures in `tests/uat/`.
 4. **Run axe** on each screen (`@axe-core/playwright`); record serious/critical
    violations (unlabeled inputs, contrast, focus order, keyboard traps).
 5. **Diff against the design source** — spacing on the token scale? palette colors?

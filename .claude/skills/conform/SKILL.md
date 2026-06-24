@@ -44,6 +44,20 @@ Check the code against this template's hard-rules (from `CLAUDE.md` / `SECURITY.
 - `session` never cast to `any`.
 - Audit + soft-delete posture for new entities (or a noted reason they're absent).
 
+Also check the **ten local ESLint rules** (`eslint-rules/`, all at `error`) — the
+template's enforcement layer the hard-rules sit on top of:
+
+- `no-prisma-in-client` — no Prisma import in a client component.
+- `no-any-cast-on-session` — never cast `session` to `any`.
+- `no-secret-env-in-console` — don't log Restricted env vars.
+- `no-bare-internal-route` — `/api/internal/*` must use `withInternalAuth`.
+- `no-raw-hex-color` — colors come from tokens, not raw hex.
+- `no-unaudited-bulk-write` — no bulk/upsert on an audited model (bypasses audit).
+- `no-raw-sql-unsafe` — no `$queryRawUnsafe`/`$executeRawUnsafe`.
+- `no-rate-limit-inside-auth` — `withRateLimit` composes OUTSIDE the auth wrapper.
+- `no-restricted-export-column` — no secret-named field as a `toExcel` column key.
+- `no-prisma-unfiltered-import` — `prismaUnfiltered` only in allowlisted files.
+
 Produce a **conformance report**, every item line-referenced:
 
 ```
@@ -63,15 +77,20 @@ schema in `lib/validations/`, move a secret to env, scaffold missing CRUD via
 and wait for explicit approval before touching anything.** Approval is per-change: the
 operator can accept some and decline others. **No edit happens in step 6 without it.**
 
+Expected approval format — number the checklist items and ask the operator to reply
+with the ones to apply, e.g. `Approve: 1,3,5` (apply those only) or `APPROVE ALL`.
+Anything not approved is **not** edited. Never edit without an explicit approval line.
+
 ### 6. Align
 Apply ONLY the approved changes. Then re-run **`/audit`** and **`/ship`** to verify the
 result is clean and green. If anything is still red, report and stop — do not paper over it.
 
 ### 7. Push
-Create a new repo **from this template** (use `/first-fork` as the on-ramp while GitHub
-Actions billing is blocked — `/new-project` cannot run; see ADR-007), drop the conformed
-code in, run `/rebrand`, set the project **tier** (`personal` or `shared`, see Phase 8 /
-`CLAUDE.md`), and push. Vercel deploys from there.
+Create a new repo **from this template** using the current on-ramp — see the
+**Fork lifecycle** in `CLAUDE.md` for which skill applies right now (`/first-fork` vs
+`/new-project`), rather than hardcoding it here. Drop the conformed code in, run
+`/rebrand`, set the project **tier** (`personal` or `shared`, see Phase 8 / `CLAUDE.md`),
+and push. Vercel deploys from there.
 
 ## Do NOT in this skill
 

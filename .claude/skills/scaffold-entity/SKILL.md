@@ -7,6 +7,15 @@ description: Scaffold a new CRUD entity end-to-end -- Prisma model (with enums +
 
 Generate a new CRUD entity mirroring the User reference implementation. Codegen lives in `scripts/scaffold-entity.mjs`; this skill orchestrates inputs and reports the result.
 
+## IMPORTANT — Restricted-field gate (read BEFORE scaffolding)
+
+If ANY field will hold **Restricted** data (passwords, tokens, salary, API keys,
+secrets — SECURITY.md §1), you MUST extend `SCRUB_FIELDS` in
+`lib/prisma/audit-extension.ts` **AND** its assertion in
+`tests/contracts/audit-scrub.test.ts` **before/with** the scaffold, in the same
+change. The audit extension logs every create/update; an un-scrubbed Restricted
+column lands its **raw value** in the audit log. Do this first — do not defer it.
+
 ## Inputs to gather
 
 - **Entity name** (PascalCase, singular). Examples: `Project`, `Invoice`, `TimeEntry`.
@@ -102,6 +111,8 @@ npm run scaffold -- --name Article \
 
 - Every API handler wraps with `withAuth` / `withEditorAuth` / `withAdminAuth` -- never bare. GET uses `withAuth`; write handlers (POST/PUT/DELETE) use the `--writes` wrapper (default `withAuth`) and are additionally wrapped with `withRateLimit(..., { id: "<kebab>-write", limit: 30, windowMs: 60000 })`.
 - Uses `prisma` (not `prismaUnfiltered`) so soft-deleted rows stay filtered on the entity itself. (Note: relation `include`s do not filter target soft-deletes -- a known Prisma-extension limitation. Hand-edit if needed.)
+- Soft-delete and audit are **not** in conflict: the soft-delete extension is the **outermost** layer — it rewrites `delete()` into a soft-delete (setting `deletedAt`), and the audit extension still writes an explicit `DELETE` audit row. Audit is not blind to soft-deletes.
+- `?sort=&order=` is validated against the generated `SORTABLE_COLUMNS` allowlist, which guards against sort-column injection (only scalar/enum/`createdAt` columns are sortable).
 - zod parses request bodies before any Prisma call.
 - snake_case `@@map` for the table name; camelCase Prisma fields; PascalCase model + enum types.
 - The entity is **not** added to the audit `EXCLUDE` set -- writes are auto-audited.
@@ -119,4 +130,18 @@ Refuses to overwrite an existing entity. Refuses if the model already exists in 
 
 ## Multiple relations to the same target
 
-The codegen handles each relation independently and adds one back-ref per relation. If you scaffold an entity with two relations to the same target (e.g. `Task` with both `createdBy:User` and `assignee:User`), Prisma will require explicit `@relation("Name", ...)` disambiguators that the codegen does NOT auto-write. Edit the schema by hand for the second relation before running the migration.
+The codegen handles each relation independently and adds one back-ref per relation. If you scaffold an entity with two relations to the same target (e.g. `Task` with both `createdBy:User` and `assignee:User`), Prisma will require explicit `@relation("Name", ...)` disambiguators that the codegen does NOT auto-write. Edit the schema by hand for the second relation before running the migration. For example, name each side of both relations:
+
+```prisma
+model Task {
+  createdById String
+  createdBy   User   @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  assigneeId  String?
+  assignee    User?  @relation("TaskAssignee", fields: [assigneeId], references: [id])
+}
+
+model User {
+  createdTasks  Task[] @relation("TaskCreatedBy")
+  assignedTasks Task[] @relation("TaskAssignee")
+}
+```

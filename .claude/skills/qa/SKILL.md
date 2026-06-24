@@ -19,7 +19,7 @@ the answer to "don't launch a granular mega-task blindly": it scopes the work an
 ## The pipeline (run in order; a red gate halts + reports)
 | Tier | Skill | Owner | Entry → Exit |
 |---|---|---|---|
-| 1 · Design QA | **`/design-qa`** | front-end (agent) | build green → no fidelity/a11y criticals |
+| 1 · Design QA | **`/design-qa`** | front-end (agent) | build green **+ running app + seeded test creds** → no fidelity/a11y criticals |
 | 2 · Functional QA | **`/ship`** + risk-based **case matrix** | dev/QA (agent) | design-QA passed → regression green, no open criticals, high-risk covered |
 | 3 · UAT | **`/uat`** (FULL) | **operator** (business) | functional-QA passed → acceptance traced + signed off |
 
@@ -30,17 +30,19 @@ Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scala
    **screens** they appear on → which **flows** they touch. QA the components first
    (a broken variant caught once), then screens, then flows. Fan out sub-agents per
    screen where independent; collect their scorecards.
-2. **Tier 1 — `/design-qa`.** Run it on the in-scope screens/components. If it returns
-   fidelity/a11y **criticals**, **stop**: report them; don't start functional QA on a
-   visually-broken surface.
+2. **Tier 1 — `/design-qa`.** Entry gate is concrete: **a green build + a running app +
+   seeded test credentials**. If any is missing the run is **blocked, not a pass** —
+   "could not run" is never green (bring up the local DB + seed + login first). Run it on
+   the in-scope screens/components. If it returns fidelity/a11y **criticals**, **stop**:
+   report them; don't start functional QA on a visually-broken surface.
 3. **Tier 2 — functional.** Run `/ship` (tsc → lint → tests → component tests → build →
    gitleaks → audit) **plus** a **risk-based case matrix** for the changed functions
    (auth/data-integrity/Restricted/approvals = exhaustive; toggles = smoke). Add the
    missing lower-pyramid tests rather than leaning on E2E. Stop on red.
 4. **Tier 3 — `/uat`.** Build the **traceability matrix** (requirement → scenario →
    pass/fail) and run `/uat` FULL against prod-like data. The agent produces the
-   evidence pack (screenshots + PDF); **the operator signs off** — `/qa` never
-   self-accepts UAT.
+   evidence pack (screenshots + PDF); **the business-stakeholder operator signs off in
+   writing — recorded in the scorecard, not the agent** — `/qa` never self-accepts UAT.
 5. **Collect + verdict.** Assemble one **scorecard per screen/feature** (rubric
    template) into a single **release-readiness** verdict: *ship* or *fix-first* with the
    blocker list. Every finding cites a **pillar + anchor**.
@@ -56,6 +58,11 @@ Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scala
   the judgment calls and signs off** — far less work than finding the misses by hand.
 
 ## Re-run scoping (keep repeat QA cheap)
+- **The `<last-qa-commit>` baseline** is the SHA of `HEAD` at the **last green `/qa` run**
+  (record it in that run's scorecard). A re-run scopes its diff against *that* SHA — get
+  the baseline wrong and the carry-forward is invalid (a changed screen reads as
+  unchanged and skips QA). If no prior green run exists, there is no baseline: do a full
+  from-scratch pass.
 - A re-run after fixes does **not** restart from zero. Scope tier 1 and tier 3 passes to
   screens whose code (page/components/styles/messages it imports) changed since the last
   pass — `git diff --name-only <last-qa-commit>..HEAD` is the source of truth — plus any

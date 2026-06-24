@@ -27,8 +27,10 @@ Backed by `scripts/sync-from-template.mjs`.
   `AGENTS.md`, `.claude/settings.json`, `middleware.ts`, `vercel.json`,
   `next.config.ts`, `package.json`, `tsconfig.json`, `playwright.config.ts`,
   `tests/contracts`. These mix template improvements with per-fork edits and
-  include the Ask-before files, so a human reconciles them. The diff is written
-  to `.template-sync-review.diff` (gitignored).
+  include the **Ask-before files** (the security-critical ones: auth,
+  rate-limit, email, export, anything under `lib/prisma/`, `middleware.ts`), so a
+  human reconciles them **by hand** — they are never auto-applied. The diff is
+  written to `.template-sync-review.diff` (gitignored).
 - **Fork-owned** (never touched): `prisma/`, `app/`, `components/`, `messages/`,
   `i18n/`, `project.config.json`, package identity, `.env*`, `public/`.
 - Writes **`.template-sync.json`** (committed) recording the template commit the
@@ -61,8 +63,14 @@ hook or CI step later.
    `lib/export.ts`, anything under `lib/prisma/`, `middleware.ts`) as
    stop-and-think: only port the template's *improvement*, keep the fork's logic.
 3. If anything under auth / `lib` / schemas / API routes changed, run
-   `/code-review`.
-4. `npm run ship` until green, then commit (include `.template-sync.json`).
+   `/code-review`. **If the REVIEW diff is large or conflicting** (many
+   `lib/` / `CLAUDE.md` / Ask-before hunks, or hunks that clash with the fork's
+   own edits), run `/code-review` **before committing** so a security-critical
+   change isn't silently dropped while reconciling.
+4. `npm run ship` until green, then commit (include `.template-sync.json`). Name
+   the commit with the template commit hash from `.template-sync.json`, e.g.
+   `chore: sync from template @ <short-hash>` — so the fork's history records
+   exactly which template version it pulled.
 
 ## Notes & limits
 
@@ -75,6 +83,12 @@ hook or CI step later.
   they can read the template repo.
 - **Self-updating:** because `scripts/` and `.claude/skills/` are OWNED, running a
   sync also updates this skill and script to the template's latest.
+- **Hook + `lib/` coordination:** `.claude/hooks` is OWNED (auto-pulled) but `lib/`
+  is REVIEW (hand-merged). When a sync changes **both** in the same run, a new hook
+  can land while the `lib/` change it depends on is still sitting unreconciled in
+  `.template-sync-review.diff` — a hook calling into a not-yet-merged helper. Land
+  the `lib/` half first, or stage them together, and `npm run ship` before
+  committing so the mismatch surfaces.
 - This skill ships in the template, so every *future* fork inherits it. To seed it
   into an *existing* fork, copy `scripts/sync-from-template.mjs` +
   `.claude/skills/sync-from-template/` over once, or run the manual recipe in the

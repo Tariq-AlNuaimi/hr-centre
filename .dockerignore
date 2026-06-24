@@ -1,3 +1,6 @@
+# Keeps the Docker build context small + secret-free (ADR-023). The builder runs
+# `npm ci` and `prisma generate` fresh, so local installs/artifacts are excluded
+# and never shadow the clean build.
 node_modules
 .next
 .git
@@ -5,3 +8,9 @@ node_modules
 .env*
 !.env.example
 docker-compose*.yml
+generated
+.vercel
+uat-results
+coverage
+.claude/.template-check-stamp
+npm-debug.log*

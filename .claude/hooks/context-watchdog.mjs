@@ -5,8 +5,11 @@
 // (and Claude) know when to /handoff-session + /clear instead of degrading.
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 
-const LIMIT = 200_000; // effective window; [1m] models just warn later, harmlessly
+// Effective window. Override via CLAUDE_CTX_LIMIT for [1m] models so the warnings
+// fire at the right fraction instead of harmlessly late.
+const LIMIT = Number(process.env.CLAUDE_CTX_LIMIT) || 200_000;
 const THRESHOLDS = [
+  [0.9, "context ~{pct}% -- STOP: /handoff-session THIS turn before quality drops; you are near the hard limit"],
   [0.8, "context ~{pct}% -- run /handoff-session NOW and continue in a fresh session (quality + cost degrade from here)"],
   [0.6, "context ~{pct}% -- plan to /handoff-session at the next natural milestone (green ship / landed commit)"],
 ];

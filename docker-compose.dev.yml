@@ -1,0 +1,48 @@
+# Full local-dev parity (ADR-023): app + Postgres in containers, so a fork can
+# run the WHOLE stack with one command and exercise the production-like
+# standalone server -- not just the DB (that's docker-compose.yml, kept for the
+# lighter "DB-in-Docker, app via npm run dev" loop).
+#
+# Usage:  make docker-up        (build + run app + db)
+#         make docker-down      (stop + remove)
+#
+# This is a DEV convenience, NOT the production deploy. Production self-host uses
+# the Dockerfile image pushed to a registry (see ADR-023 / /handoff).
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app_secret
+      POSTGRES_DB: app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Talks to the db service over the compose network. Override secrets here
+      # for local runs only -- never commit real values (CLAUDE.md hard rule).
+      DATABASE_URL: "postgresql://app:app_secret@db:5432/app_db"
+      AUTH_SECRET: "dev-only-not-for-production-change-me"
+      AUTH_TRUST_HOST: "true"
+      NODE_ENV: "production"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata_dev:

@@ -13,16 +13,24 @@ if [ ! -f .env ] && [ -f .env.example ]; then
   echo "[harness] copied .env.example -> .env"
 fi
 
-# 2. Install deps if missing. npm install (not ci) so the container layer cache picks it up on rebuilds.
-if [ ! -d node_modules ]; then
-  echo "[harness] installing npm deps..."
+# 2. Install deps if MISSING OR STALE. npm install (not ci) so the container layer
+#    cache picks it up on rebuilds. Stale check (package.json / lockfile newer than
+#    node_modules) fixes the documented landmine: after checking out a branch whose
+#    package.json moved ahead, "missing-only" left phantom missing modules at
+#    typecheck (docs/agent-memory.md 2026-06-20).
+if [ ! -d node_modules ] \
+  || [ package.json -nt node_modules ] \
+  || { [ -f package-lock.json ] && [ package-lock.json -nt node_modules ]; }; then
+  echo "[harness] installing npm deps (missing or stale)..."
   npm install --no-audit --no-fund
 fi
 
-# 3. Generate the Prisma client if missing. Uses a dummy DATABASE_URL so client
+# 3. Generate the Prisma client if MISSING OR STALE (schema newer than the
+#    generated client). Same landmine: a branch whose schema.prisma moved ahead
+#    used to typecheck against stale generated types. Dummy DATABASE_URL so
 #    generation does not require a running database.
-if [ ! -d generated/prisma ]; then
-  echo "[harness] generating prisma client..."
+if [ ! -d generated/prisma ] || [ prisma/schema.prisma -nt generated/prisma ]; then
+  echo "[harness] generating prisma client (missing or stale)..."
   DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate >/dev/null
 fi
 
