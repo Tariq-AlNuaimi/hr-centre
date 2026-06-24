@@ -109,6 +109,11 @@ npm run scaffold -- --name Article \
 - `app/[locale]/(dashboard)/<kebab>/page.tsx` -- list page; wires a debounced search box (only when a string/text field exists), server-driven sort, and pagination into the GET route.
 - `app/[locale]/(dashboard)/<kebab>/new/page.tsx` -- create page
 - `app/[locale]/(dashboard)/<kebab>/[id]/page.tsx` -- edit page
+
+  > The generated pages already follow the design recipes (PageHeader, DataTable
+  > with an `emptyText`, vertical Form, the state triad). When you **customize**
+  > them, stay on-pattern: use `/design-system` + `docs/design-recipes.md`, don't
+  > hand-roll new layout — that's how a clean scaffold drifts into slop.
 - `messages/_scaffold-<kebab>.json` -- i18n companion holding the entity's `<entityCamel>s` namespace (field/enum/relation labels + fixed UI strings). **Must be merged into `messages/en.json` + `messages/ar.json` and then deleted** (see "After scaffolding" step 4). The generated UI uses these i18n keys, **not** the field names directly.
 
 ## What gets patched
