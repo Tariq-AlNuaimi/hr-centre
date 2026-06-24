@@ -1,14 +1,4 @@
 {
   "$comment": "Scoped npm-audit allowlist consumed by scripts/ship.mjs (the /ship gate). Each entry is a High+ advisory with NO non-breaking upstream fix, triaged as not reachable in this template. RULE: every id here MUST have a matching row in SECURITY.md §13 (tracked CVE remediations) and §12 (suppression log). Re-audit on every dependency bump; delete the entry the moment a fix ships or reachability changes. A High+ advisory NOT listed here still fails /ship.",
-  "advisories": [
-    {
-      "id": "GHSA-p6gq-j5cr-w38f",
-      "package": "nodemailer",
-      "severity": "high",
-      "reason": "nodemailer email-address interpretation flaw reachable only via the `raw`/attacker-controlled address path. lib/email.ts never passes attacker-controlled `raw` or addresses through the affected path. No fixed nodemailer version is published; the advisory cascades through the Auth.js chain (@auth/core, next-auth, @auth/prisma-adapter), and downgrading next-auth would break the ADR-001 locked stack. Triaged NOT reachable.",
-      "reachable": false,
-      "reviewedBy": "Tariq Al-Naaimi",
-      "reviewed": "2026-06-19"
-    }
-  ]
+  "advisories": []
 }

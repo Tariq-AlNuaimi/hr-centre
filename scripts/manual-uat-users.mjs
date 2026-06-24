@@ -65,6 +65,18 @@ async function main() {
     console.error("DATABASE_URL is unset — start the dev DB (`make db-up`) and try again.");
     process.exit(1);
   }
+  // NODE_ENV alone is not enough: it is unset in many CI/self-hosted shells, and a
+  // local NODE_ENV=development can still point DATABASE_URL at a remote/prod branch
+  // (a common incident-triage mistake). Refuse a non-local DB unless explicitly
+  // opted in, so this writer never silently provisions users into a shared DB.
+  const isLocalDb = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(process.env.DATABASE_URL);
+  if (!isLocalDb && process.env.UAT_ALLOW_REMOTE !== "1") {
+    console.error(
+      "DATABASE_URL does not look local. This helper writes User rows — refusing a\n" +
+        "non-local DB. Set UAT_ALLOW_REMOTE=1 to override (only for a throwaway test/preview DB).",
+    );
+    process.exit(1);
+  }
 
   const roles = discoverRoles();
   const nonAdmin = roles.filter((r) => r !== "ADMIN");
@@ -73,6 +85,11 @@ async function main() {
     return;
   }
 
+  // Bare PrismaClient by design: this standalone UAT helper (no `@/` alias, no app
+  // runtime) deliberately bypasses the audit + soft-delete extensions in lib/prisma/.
+  // Provisioning throwaway test logins is UAT scaffolding, not an audited domain
+  // mutation, and it runs only against a local/test DB (guarded above) — so audit
+  // coverage of the UAT user lifecycle is intentionally out of scope.
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
 

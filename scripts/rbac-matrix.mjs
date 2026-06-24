@@ -94,8 +94,12 @@ function loadCapabilityCatalog(admin) {
     const src = fs.readFileSync(p, "utf8");
     if (!/CANONICAL_PERMISSIONS/.test(src)) continue;
     const map = new Map();
-    // tolerant of field order: capture a key and the nearest following roles array
-    const re = /key:\s*["']([^"']+)["'][\s\S]*?roles:\s*\[([^\]]*)\]/g;
+    // Capture each entry's key + its roles array. `[^}]*?` keeps the match INSIDE
+    // one object literal so a roles-less entry can't borrow the next entry's roles
+    // (that would emit a false-permissive grant). Requires key-before-roles, which
+    // the canonical catalog always uses; an entry written roles-before-key is
+    // skipped rather than mis-resolved.
+    const re = /key:\s*["']([^"']+)["'][^}]*?roles:\s*\[([^\]]*)\]/g;
     let m;
     while ((m = re.exec(src))) {
       const key = m[1];
@@ -117,7 +121,12 @@ function loadWriteRoles() {
   const src = fs.readFileSync(p, "utf8");
   const block = src.match(/WRITE_ROLES[^=]*=\s*new Set<Role>\(\[([\s\S]*?)\]\)/);
   if (!block) return null;
-  const roles = [...block[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1]);
+  // Accept both string-literal ("admin") and enum-reference (Role.ADMIN) members,
+  // so a fork written either way resolves withEditorAuth correctly.
+  const roles = [
+    ...[...block[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1]),
+    ...[...block[1].matchAll(/\bRole\.([A-Za-z_][A-Za-z0-9_]*)/g)].map((x) => x[1]),
+  ];
   return roles.length ? roles : null;
 }
 
@@ -167,7 +176,10 @@ const KNOWN_WRAPPERS = [
 //     be visible and (if not allowlisted) flagged, never silently dropped.
 function parseRouteHandlers(src) {
   const handlers = [];
-  const NEXT_EXPORT = `(?=\\n\\s*export\\s+(?:const|(?:async\\s+)?function)\\s|$)`;
+  // `\\s*` (not `\\n\\s*`) so a same-line `;export const POST = ...` still terminates
+  // the previous handler's RHS — otherwise the capture bleeds into the next handler
+  // and an unguarded export adjacent to a wrapped one is mis-classified.
+  const NEXT_EXPORT = `(?=\\s*export\\s+(?:const|(?:async\\s+)?function)\\s|$)`;
   for (const method of HTTP_METHODS) {
     const constRe = new RegExp(
       `export\\s+const\\s+${method}\\s*=\\s*([\\s\\S]*?)${NEXT_EXPORT}`,
