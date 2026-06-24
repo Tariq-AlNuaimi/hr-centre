@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Table, Select, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
@@ -66,49 +66,54 @@ export default function AuditLogClient() {
     fetchLogs();
   }, [fetchLogs]);
 
-  const columns: ColumnsType<AuditEntry> = [
-    {
-      title: t("timestamp"),
-      dataIndex: "timestamp",
-      width: 180,
-      render: (v: string) => formatDateTime(v),
-    },
-    {
-      title: t("action"),
-      dataIndex: "action",
-      width: 100,
-      render: (v: string) => (
-        <Tag color={ACTION_COLORS[v] ?? "default"}>{v}</Tag>
-      ),
-    },
-    {
-      title: t("entity"),
-      dataIndex: "entityType",
-      width: 120,
-    },
-    {
-      title: t("entityId"),
-      dataIndex: "entityId",
-      width: 200,
-      render: (v: string) => (
-        <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span>
-      ),
-    },
-    {
-      title: t("user"),
-      dataIndex: "user",
-      width: 180,
-      render: (user: AuditEntry["user"]) =>
-        user ? user.name ?? user.email : "-",
-    },
-    {
-      title: t("changes"),
-      dataIndex: "changes",
-      ellipsis: true,
-      render: (changes: Record<string, unknown> | null) =>
-        changes ? Object.keys(changes).join(", ") : "-",
-    },
-  ];
+  // Memoized so <Table> receives a stable columns reference across renders
+  // (rebuilt only when the translators change). Mirrors the users page pattern.
+  const columns: ColumnsType<AuditEntry> = useMemo(
+    () => [
+      {
+        title: t("timestamp"),
+        dataIndex: "timestamp",
+        width: 180,
+        render: (v: string) => formatDateTime(v),
+      },
+      {
+        title: t("action"),
+        dataIndex: "action",
+        width: 100,
+        render: (v: string) => (
+          <Tag color={ACTION_COLORS[v] ?? "default"}>{v}</Tag>
+        ),
+      },
+      {
+        title: t("entity"),
+        dataIndex: "entityType",
+        width: 120,
+      },
+      {
+        title: t("entityId"),
+        dataIndex: "entityId",
+        width: 200,
+        render: (v: string) => (
+          <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span>
+        ),
+      },
+      {
+        title: t("user"),
+        dataIndex: "user",
+        width: 180,
+        render: (user: AuditEntry["user"]) =>
+          user ? user.name ?? user.email : "-",
+      },
+      {
+        title: t("changes"),
+        dataIndex: "changes",
+        ellipsis: true,
+        render: (changes: Record<string, unknown> | null) =>
+          changes ? Object.keys(changes).join(", ") : "-",
+      },
+    ],
+    [t]
+  );
 
   return (
     <>
