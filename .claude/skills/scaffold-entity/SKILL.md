@@ -16,6 +16,17 @@ secrets — SECURITY.md §1), you MUST extend `SCRUB_FIELDS` in
 change. The audit extension logs every create/update; an un-scrubbed Restricted
 column lands its **raw value** in the audit log. Do this first — do not defer it.
 
+## Before scaffolding — blueprint gate
+
+Run `/blueprint` first. For a one-off entity in disposable work, the lightweight
+track (one clarifying-question round + a one-line design + architecture read) is
+enough. For an entity that's part of a real multi-file feature, or that touches
+the Ask-before surface (auth/`lib/`/migrations/API routes), do the **full**
+track and commit `docs/blueprints/<feature>.md` first. The architecture read is
+where you confirm this entity isn't duplicating an existing model/route and that
+its fields, relations, and writer-role match what the operator actually needs —
+cheaper than re-running a migration after the fact.
+
 ## Inputs to gather
 
 - **Entity name** (PascalCase, singular). Examples: `Project`, `Invoice`, `TimeEntry`.

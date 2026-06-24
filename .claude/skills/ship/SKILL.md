@@ -50,6 +50,7 @@ gate beats speed.
 2. **Lint.** `npm run lint`. Surfaces unused imports, hooks-rules violations, missing keys, accessibility regressions, and the ten local `rihal-template/*` security rules.
 3. **Tests (contract suite).** `npm test`. Runs the `node:test` contract suite (rate limit, audit scrub, email, export, sentry scrub, auth wrappers) — the highest-risk invariants.
 4. **Tests (component suite).** `npm run test:components`. Runs the jsdom React component tests (`tests/components/*.test.tsx`) — DataTable, EmptyState, DashboardError. Catches shared-UI regressions tsc/lint miss.
+4b. **Scalability gate (Five Pillars).** A static scan (in `scripts/ship.mjs`, runs with phase A) fails the build on an **unbounded `findMany`** in any `app/api/**/route.ts` — a `findMany(` in a file with no `take`/`skip`/`cursor`/`parsePagination`. That pattern loads the whole table and only hurts at volume. Fix with `lib/pagination.ts` (`parsePagination`/`paginatedResponse`); or, for a table bounded by domain, add an inline `// pillar:scalable-ok: <reason>` AND a `docs/findings-register.md` line (a logged wave-off, never silent).
 5. **Build.** `npm run build`. Catches Next.js-specific issues that tsc and ESLint miss: server/client boundary violations, missing `"use client"`, invalid metadata exports, server-only imports leaking to the client bundle.
    - **Local env/NODE_ENV.** This repo's `.env` (copied from `.env.example` by the SessionStart hook) sets `NODE_ENV=development`, and Prisma 7 config does not auto-load `.env`. The production build phase needs `NODE_ENV=production` — locally, `export NODE_ENV=production` for this step or prerendering fails. If any step can't resolve `DATABASE_URL`, load the env first: `set -a; . ./.env; set +a`. Neither applies on Vercel (`.env` is gitignored; the platform builds with `NODE_ENV=production`).
 6. **Secret scan (gitleaks).** `gitleaks detect --no-banner --redact` (the repo ships `.gitleaks.toml`; gitleaks picks it up automatically). Scans the full git history for committed secrets.
@@ -66,7 +67,8 @@ gate beats speed.
 - Suggest the targeted fix; confirm with the user before re-running.
 
 ## On success
-- Print: `ship: green -- typecheck + lint + tests + component tests + build + gitleaks + npm audit all pass`.
+- Print: `ship: green -- typecheck + lint + tests + component tests + scalability + build + gitleaks + npm audit all pass`.
+- **Affirm the five pillars (blocking checklist — the part no static check covers).** Before declaring done, confirm in one line each that the change honors **Speed · Secure · Maintainable · Scalable · High-Quality** (CLAUDE.md "Five Pillars"). The automated steps cover Secure (ESLint) and Scalable (step 4b); you affirm Speed (no needless round-trips/unbounded payloads), Maintainable (reused existing primitives — checked `docs/REPO-MAP.md`, no dead code), and High-Quality (honest empty/loading/error states, axe-clean) by inspection. A pillar you can't affirm and choose not to fix is a **wave-off** → log it in `docs/findings-register.md`; do not silently pass it.
 - If there are staged or unstaged changes, offer to commit + push. Do not auto-push unless the user already asked for it in this session.
 
 ## Skip when

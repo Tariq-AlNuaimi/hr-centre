@@ -17,9 +17,46 @@
  * Usage: npm run ship
  */
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, rmSync } from "node:fs";
 
 const CACHE = "node_modules/.cache";
+
+// -- scalability pillar gate (CLAUDE.md "Five Pillars") ----------------------
+// A list/read route that calls findMany WITHOUT a bound (take / skip / cursor /
+// parsePagination) loads the whole table -- the failure that only surfaces at
+// volume. Block it at ship time, the same way a security rule blocks. Escape
+// hatch for a table that's genuinely bounded by domain: an inline
+// `// pillar:scalable-ok: <reason>` in the file + a docs/findings-register.md line.
+function walkRoutes(dir, acc = []) {
+  if (!existsSync(dir)) return acc;
+  for (const name of readdirSync(dir)) {
+    const p = `${dir}/${name}`;
+    if (statSync(p).isDirectory()) walkRoutes(p, acc);
+    else if (p.endsWith("route.ts")) acc.push(p);
+  }
+  return acc;
+}
+function scanScalability() {
+  const t0 = Date.now();
+  const BOUND = /\btake\b|\bskip\b|\bcursor\b|parsePagination|paginat|pillar:scalable-ok/;
+  const offenders = [];
+  for (const file of walkRoutes("app/api")) {
+    const src = readFileSync(file, "utf8");
+    if (src.includes(".findMany(") && !BOUND.test(src)) offenders.push(file);
+  }
+  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  if (offenders.length === 0) return { name: "scalability", ok: true, out: "clean", secs };
+  return {
+    name: "scalability",
+    ok: false,
+    secs,
+    out:
+      "Unbounded findMany (no take/skip/cursor/parsePagination) -- loads the whole table at volume (Five Pillars: Scalable):\n" +
+      offenders.map((f) => `  - ${f}`).join("\n") +
+      "\n  Fix: paginate via lib/pagination.ts (parsePagination/paginatedResponse).\n" +
+      "  Or, if the table is bounded by domain: inline `// pillar:scalable-ok: <reason>` + a docs/findings-register.md line.",
+  };
+}
 
 // -- env: load .env for DATABASE_URL etc. (Prisma 7 does not auto-load it) --
 if (existsSync(".env")) {
@@ -111,7 +148,10 @@ const fail = (r) => {
 };
 
 const t0 = Date.now();
-console.log("ship: phase A (typecheck | lint | contract tests | component tests) ...");
+console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability) ...");
+
+// Synchronous, sub-millisecond static gate -- runs alongside phase A.
+const scalability = scanScalability();
 
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
@@ -135,8 +175,8 @@ if (!tsc.ok && /TS2307/.test(tsc.out) && /\.next\/types/.test(tsc.out + " ") ) {
   tsc = await typecheck();
 }
 
-for (const r of [tsc, lint, contract, components]) report(r);
-const redA = [tsc, lint, contract, components].find((r) => !r.ok);
+for (const r of [tsc, lint, contract, components, scalability]) report(r);
+const redA = [tsc, lint, contract, components, scalability].find((r) => !r.ok);
 if (redA) fail(redA);
 
 console.log("ship: phase B (build -> gitleaks -> npm audit) ...");
@@ -162,5 +202,5 @@ if (!audit.ok) fail(audit);
 if (audit.out.startsWith("clean (allowlisted")) console.log(`  note: npm audit ${audit.out}`);
 
 console.log(
-  `\nship: green -- typecheck + lint + tests + component tests + build + gitleaks + npm audit all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
+  `\nship: green -- typecheck + lint + tests + component tests + scalability + build + gitleaks + npm audit all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
 );

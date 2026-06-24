@@ -22,6 +22,16 @@ send a screenshot back, you iterate with Claude, repeat until approved.
 
 ## Steps
 
+### 0. Blueprint (lightweight track) — required before scaffolding
+
+Run the **lightweight track** of `/blueprint` first: one `AskUserQuestion` round
+to close the highest-leverage unknowns (who + role, the one job, the fields that
+actually matter, what "done" looks like), then a one-line design read and a
+one-line architecture read (where this lives, what it reuses — don't duplicate an
+existing screen/route). This is ~30 seconds and is what keeps the prototype from
+diverging from what the operator actually meant. Don't skip it to "save time" —
+re-scaffolding the wrong model costs more.
+
 ### 1. Parse the idea into entities
 
 Read the user's prompt and propose a short entity model. Examples:
