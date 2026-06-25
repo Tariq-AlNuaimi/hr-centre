@@ -25,19 +25,13 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->
-- 2026-06-25 — Harness-hardening sweep (branch `claude/repo-skills-overview-baheeu`,
-  from 15 operator complaints): added `/blueprint` (tiered pre-build gate),
-  `/design-system` (proactive UI), `/docker` skill; Five Pillars now binding in
-  CLAUDE.md + a scalability scan in `/ship`; wave-off findings go in
-  `docs/findings-register.md` (never silently dropped); `Stop` hook guards
-  unpushed/uncommitted work. Operator wants these as BLOCKING gates — hardening
-  roadmap is in `docs/SESSION-HANDOFF.md`.
-- 2026-06-25 — Design: build a NATIVE vetted design system rather than importing
-  external "Claude design skills" wholesale (consistency with the ADR-022 ruflo
-  rejection — unvetted third-party skills are an Ask-before).
-- 2026-06-25 — Blueprint/discovery gate applies to EVERY feature, scaled by tier
-  (lightweight for `/quickstart`, full for multi-file/shared) — closes the
-  "throwaway skips spec → hallucinated requirements" loophole.
+- 2026-06-25 — Harness-hardening sweep (15 operator complaints) is COMPLETE and the
+  "tiered blocking gate · hard hooks" roadmap is implemented (ADR-025): pillars-as
+  -gates + the `Stop` hook hard-BLOCKS unpushed commits + `/ship` blueprint & tier
+  gates (blueprint/tier block on `shared`, warn on `personal`; escapes are recorded
+  `*Ack` keys / adjudicated register lines, never silent). Native design system =
+  ADR-026 (built, not imported — consistent with the ADR-022 native-over-imported
+  call). Don't relitigate these — read the ADRs.
 - 2026-06-20 — Adopted cross-session agent memory as committed Markdown + model
   routing as a documented tier table; evaluated and rejected ruflo wholesale
   (unverified claims, destructive-preinstall history, off-Anthropic egress,
