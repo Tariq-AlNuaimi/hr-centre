@@ -1,10 +1,18 @@
 # ADR-027 — UI library direction & standard app skeleton
 
-**Status:** Proposed (UI library pending operator sign-off; recommendation below)
+**Status:** Accepted
 **Date:** 2026-06-25
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
-**Supersedes:** the **UI** line of ADR-001 (`UI: Ant Design 6 + @ant-design/nextjs-registry`) once accepted. All other ADR-001 invariants stand.
+**Relation to ADR-001:** the ADR-001 UI line (`UI: Ant Design 6`) **stands** — see the 2026-06-25 decision note below.
+
+> **2026-06-25 — Operator decision (Part 1):** **Keep Ant Design 6; do NOT swap the UI library.** Instead of
+> migrating to shadcn/MUI/Mantine, invest in a **token-level aesthetic elevation of AntD** to reach a "peak"
+> enterprise look — delivered in `components/layout/antd-theme.ts` + `app/tokens.css` + `app/globals.css` +
+> shell polish (refined indigo accent, softer radius, premium type stack/weights, roomier controls, layered
+> soft elevation, refined per-mode neutrals, polished menu-selection + header brand mark). The library
+> comparison below is retained as the record of *why* a swap was considered and deferred, and as the basis
+> if the question is reopened (see Migration triggers). Part 2 (standard app skeleton) is unchanged.
 
 ## Context
 

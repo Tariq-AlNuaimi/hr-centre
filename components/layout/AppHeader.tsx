@@ -60,9 +60,33 @@ export function AppHeader() {
         zIndex: 100,
       }}
     >
-      <Text strong style={{ fontSize: 18 }}>
-        {process.env.NEXT_PUBLIC_APP_NAME ?? "My App"}
-      </Text>
+      <Space
+        size={10}
+        style={{ cursor: "pointer" }}
+        onClick={() => router.push(`/${currentLocale}`)}
+      >
+        <span
+          aria-hidden
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            inlineSize: 28,
+            blockSize: 28,
+            borderRadius: token.borderRadius,
+            background: token.colorPrimary,
+            color: token.colorTextLightSolid,
+            fontSize: 15,
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          {(process.env.NEXT_PUBLIC_APP_NAME ?? "My App").trim().charAt(0).toUpperCase()}
+        </span>
+        <Text strong style={{ fontSize: 18, letterSpacing: "-0.01em" }}>
+          {process.env.NEXT_PUBLIC_APP_NAME ?? "My App"}
+        </Text>
+      </Space>
 
       <Space size="middle">
         <Button

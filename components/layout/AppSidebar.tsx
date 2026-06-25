@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Menu } from "antd";
+import { Layout, Menu, theme } from "antd";
 import {
   HomeOutlined,
   UserOutlined,
@@ -21,6 +21,7 @@ export function AppSidebar() {
   const pathname = usePathname();
   const locale = useLocale();
   const { data: session } = useSession();
+  const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
 
   // types/index.ts augments next-auth's Session.user with role: Role,
@@ -80,9 +81,9 @@ export function AppSidebar() {
       collapsed={collapsed}
       onCollapse={setCollapsed}
       breakpoint="lg"
-      style={{ borderInlineEnd: "1px solid" }}
+      style={{ borderInlineEnd: `1px solid ${token.colorBorderSecondary}` }}
     >
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", paddingBlockStart: token.paddingSM }}>
         <Menu
           mode="inline"
           selectedKeys={[activeKey]}
