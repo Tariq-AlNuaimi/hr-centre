@@ -103,6 +103,17 @@ complaint #9/#10).
   guard (#10), and **tier** is set explicitly instead of defaulting silently to
   `personal` (#11).
 
+## Enforced by `/ship` (structural, not advisory)
+
+`/ship` (`scripts/ship.mjs`, phase A) detects a **new feature surface** — a
+newly-added `app/api/**/route.ts` file or a new `prisma/migrations/` directory
+(vs the `origin/main` merge-base) — and requires a committed
+`docs/blueprints/<feature>.md` in the same change. It is **tiered**: `shared`
+projects **block**, `personal` projects only **warn** (the disposable
+`/quickstart` flow stays unblocked). It keys on *added* surface only, so editing
+an existing route/lib file (a fix or refactor) never trips it. Escape: add the
+blueprint, or set `"blueprintAck": "<reason>"` in `project.config.json`.
+
 ## Skip when
 
 - Pure questions / read-only lookups, typo or rename, a single-file low-risk edit.

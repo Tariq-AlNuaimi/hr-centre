@@ -16,7 +16,7 @@
  *
  * Usage: npm run ship
  */
-import { spawn } from "node:child_process";
+import { spawn, execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, rmSync } from "node:fs";
 
 const CACHE = "node_modules/.cache";
@@ -68,6 +68,151 @@ function scanScalability() {
       "\n  Fix: paginate via lib/pagination.ts (parsePagination/paginatedResponse).\n" +
       "  Or, if the table is bounded by domain: inline `// pillar:scalable-ok: <reason>` + a docs/findings-register.md line.",
   };
+}
+
+// -- pillar wave-off gate (CLAUDE.md "Five Pillars") ------------------------
+// A pillar concern the operator chooses not to fix is a WAVE-OFF logged in
+// docs/findings-register.md, and it must be ADJUDICATED (accepted/scheduled) or
+// fixed before /ship goes green -- "acceptable" is a recorded decision, not a
+// silent shrug (complaint #12). An entry is OPEN until then. Block on any open
+// wave-off, the same way a security or scalability finding blocks.
+//
+// Matches only real entries: a line beginning with a dash + an ISO date and
+// carrying `status: open`. The format-documentation line ("- Format: `YYYY-MM-DD
+// ... status: open | adjudicated(...)`") is NOT matched -- its date is the literal
+// "YYYY-MM-DD" (no digits) and its "open" is immediately followed by " |".
+function scanWaveOffs() {
+  const t0 = Date.now();
+  const file = "docs/findings-register.md";
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  if (!existsSync(file)) return { name: "wave-offs", ok: true, out: "no register", secs: secs() };
+  let src;
+  try { src = readFileSync(file, "utf8"); } catch { return { name: "wave-offs", ok: true, out: "unreadable register (skipped)", secs: secs() }; }
+  const OPEN = /^-\s*\d{4}-\d{2}-\d{2}\b.*\bstatus:\s*open\b(?!\s*\|)/i;
+  const open = src.split("\n").filter((l) => OPEN.test(l)).map((l) => l.trim());
+  if (open.length === 0) return { name: "wave-offs", ok: true, out: "clean (no open wave-offs)", secs: secs() };
+  return {
+    name: "wave-offs",
+    ok: false,
+    secs: secs(),
+    out:
+      `${open.length} OPEN pillar wave-off(s) in ${file} — adjudicate (accept/schedule) or fix before green (Five Pillars):\n` +
+      open.map((l) => `  ${l}`).join("\n") +
+      `\n  An open wave-off is an un-adjudicated decision. Flip it to status: adjudicated(<date>) or fixed(<commit>).`,
+  };
+}
+
+// -- tier-vs-reality gate (CLAUDE.md "Project tiers") -----------------------
+// `project.config.json` tier defaults to "personal" (never shared with the
+// company: no /handoff, no SECURITY.md §9 compliance, no formal findings
+// register, no CI activation). When a project has actually grown into a SHARED
+// company tool, leaving the default silently skips that ceremony. The concrete,
+// low-false-positive signal that a project has outgrown "personal" is a SECOND
+// human contributor -- the very line CLAUDE.md already draws for CI activation.
+// Bots (Claude's noreply, dependabot, *[bot]) don't count. Escape hatch for a
+// genuinely-personal repo that still has >1 human author: set "tierAck":
+// "personal" in project.config.json (an explicit, recorded affirmation).
+function isBotAuthor(email, name) {
+  const e = (email || "").toLowerCase();
+  const n = (name || "").toLowerCase();
+  return (
+    e === "noreply@anthropic.com" ||
+    e.startsWith("dependabot") ||
+    n.includes("[bot]") ||
+    e.includes("[bot]")
+  );
+}
+function scanTier() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out) => ({ name: "tier", ok: true, out, secs: secs() });
+  if (!existsSync("project.config.json")) return ok("no project.config.json (skipped)");
+  let cfg;
+  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); }
+  catch { return ok("project.config.json unparseable (skipped)"); }
+  const tier = cfg.tier ?? "personal";
+  if (tier !== "personal") return ok(`tier=${tier} (no escalation check needed)`);
+  if (cfg.tierAck === "personal") return ok("tier=personal (acknowledged despite contributors)");
+
+  // Count distinct human authors across history.
+  let raw = "";
+  try {
+    // %x09 (tab) as the field separator -- a literal `|` would be parsed by the
+    // shell execSync runs under (`/bin/sh -c`) and split the command in two.
+    raw = execSync("git log --format=%ae%x09%an", { stdio: ["ignore", "pipe", "ignore"] }).toString();
+  } catch { return ok("no git history (skipped)"); }
+  const humans = new Set();
+  for (const line of raw.split("\n")) {
+    if (!line.trim()) continue;
+    const [email, ...rest] = line.split("\t");
+    const name = rest.join("\t");
+    if (!isBotAuthor(email, name)) humans.add(email.toLowerCase());
+  }
+  if (humans.size < 2) return ok(`tier=personal, ${humans.size} human contributor(s) — consistent`);
+  return {
+    name: "tier",
+    ok: false,
+    secs: secs(),
+    out:
+      `tier is still "personal" (default) but this repo has ${humans.size} distinct human contributors:\n` +
+      [...humans].map((h) => `  - ${h}`).join("\n") +
+      `\n  A multi-contributor project is a SHARED tool — "personal" skips /handoff, SECURITY.md §9\n` +
+      `  compliance, the formal findings register, and CI activation.\n` +
+      `  Fix: set "tier": "shared" in project.config.json (then complete the shared-tier ceremony),\n` +
+      `  OR, if it is genuinely still personal, set "tierAck": "personal" to record that choice.`,
+  };
+}
+
+// -- blueprint structural gate (/blueprint full track) ----------------------
+// A real feature should ship its contract: /blueprint writes docs/blueprints/
+// <feature>.md BEFORE the code, and /qa, /uat, /manual-uat trace coverage
+// against it. To make that structural rather than advisory, /ship looks for a
+// NEW FEATURE SURFACE in the diff -- a newly-ADDED API route file or a new
+// Prisma migration directory (vs the origin/main merge-base) -- and requires a
+// committed blueprint for it.
+//
+// Deliberately narrow to avoid false positives: it keys on *added* feature
+// surface only, never on edits to existing auth/lib/route files (a bug fix,
+// refactor, or dependency bump is not a new feature and must not be blocked).
+// And it is TIERED: shared (company) projects BLOCK; personal (disposable
+// /quickstart) projects only WARN, so the idea-to-URL flow stays unblocked.
+// Escape hatches: a docs/blueprints/*.md added in the same change, or
+// "blueprintAck": "<reason>" in project.config.json.
+function scanBlueprint() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out, extra = {}) => ({ name: "blueprint", ok: true, out, secs: secs(), ...extra });
+  let base = "";
+  try { base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
+  catch { return ok("no origin/main base (skipped)"); }
+  if (!base) return ok("no diff base (skipped)");
+  let names = "";
+  try {
+    // Added files across committed (base..HEAD) AND the working tree.
+    names = execSync(`git diff --name-status --diff-filter=A ${base}`, { stdio: ["ignore", "pipe", "ignore"] }).toString();
+  } catch { return ok("diff failed (skipped)"); }
+  const added = names.split("\n").map((l) => l.split("\t")[1]).filter(Boolean);
+  const newRoutes = added.filter((p) => /^app\/api\/.*route\.ts$/.test(p));
+  const newMigrationDirs = [
+    ...new Set(added.filter((p) => /^prisma\/migrations\/.+/.test(p)).map((p) => p.split("/").slice(0, 3).join("/"))),
+  ];
+  const newBlueprints = added.filter((p) => /^docs\/blueprints\/.+\.md$/.test(p) && !/README\.md$/.test(p));
+  const signals = [...newRoutes, ...newMigrationDirs];
+  if (signals.length === 0) return ok("no new feature surface in diff");
+  if (newBlueprints.length > 0) return ok(`new feature surface + blueprint present (${newBlueprints.join(", ")})`);
+
+  let cfg = {};
+  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); } catch {}
+  if (cfg.blueprintAck) return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck}`);
+  const tierVal = cfg.tier ?? "personal";
+  const detail =
+    `New feature surface with no committed docs/blueprints/*.md in this change:\n` +
+    signals.map((s) => `  - ${s}`).join("\n") +
+    `\n  A real feature should ship its blueprint contract (/blueprint full track).\n` +
+    `  Add docs/blueprints/<feature>.md, or set "blueprintAck": "<reason>" in project.config.json.`;
+  if (tierVal === "shared") return { name: "blueprint", ok: false, secs: secs(), out: detail };
+  // personal tier: ceremony stays light -- warn, don't block.
+  return ok(`new feature surface, no blueprint (personal tier — recommended, not blocking)`, { warn: detail });
 }
 
 // -- env: load .env for DATABASE_URL etc. (Prisma 7 does not auto-load it) --
@@ -160,10 +305,13 @@ const fail = (r) => {
 };
 
 const t0 = Date.now();
-console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability) ...");
+console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability | wave-offs | tier | blueprint) ...");
 
-// Synchronous, sub-millisecond static gate -- runs alongside phase A.
+// Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
+const waveoffs = scanWaveOffs();
+const tier = scanTier();
+const blueprint = scanBlueprint();
 
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
@@ -187,8 +335,9 @@ if (!tsc.ok && /TS2307/.test(tsc.out) && /\.next\/types/.test(tsc.out + " ") ) {
   tsc = await typecheck();
 }
 
-for (const r of [tsc, lint, contract, components, scalability]) report(r);
-const redA = [tsc, lint, contract, components, scalability].find((r) => !r.ok);
+for (const r of [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint]) report(r);
+if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
+const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint].find((r) => !r.ok);
 if (redA) fail(redA);
 
 console.log("ship: phase B (build -> gitleaks -> npm audit) ...");
@@ -214,5 +363,5 @@ if (!audit.ok) fail(audit);
 if (audit.out.startsWith("clean (allowlisted")) console.log(`  note: npm audit ${audit.out}`);
 
 console.log(
-  `\nship: green -- typecheck + lint + tests + component tests + scalability + build + gitleaks + npm audit all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
+  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + build + gitleaks + npm audit all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
 );
