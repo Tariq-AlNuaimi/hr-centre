@@ -103,6 +103,23 @@ blueprint, or an adjudicated register line — never a silent flag.
    now — `/ship` already owns the pre-push gate and has the diff context; a
    per-tool-call check is noisier and harder to scope.
 
+## Known limitations (recorded so they aren't re-discovered)
+- **Stop hook is a one-shot, not a persistent barrier.** The `stop_hook_active`
+  guard means it blocks at most once per stop attempt; on the second attempt the
+  turn ends even if the push failed. Acceptable trade-off (the alternative is an
+  infinite loop); `/handoff-session` is the belt-and-suspenders.
+- **`scanBlueprint` is a no-op in shallow CI.** If `origin/main` isn't fetched
+  (e.g. `--depth 1` with no ref), `git merge-base` fails and the gate safely
+  skips. Fine while `/ship` is the local gate; revisit when CI activates at
+  `/handoff`.
+- **`scanTier` keys on the exact `noreply@anthropic.com` committer.** A fork that
+  configures Claude with a different committer email would count those commits as
+  human. Low likelihood given the `Co-Authored-By` convention.
+- **`scanScalability` can false-negative on a bound keyword inside a string/
+  comment within 250 chars of `.findMany(`** (e.g. `action: 'take-snapshot'`).
+  Inspect the call and add `// pillar:scalable-ok:` or paginate explicitly; a
+  full AST parse would be needed to eliminate it.
+
 ## Migration triggers
 - If a gate's false-positive rate makes operators reach for the escape hatch
   routinely, tighten the signal or downgrade that gate to a warning.

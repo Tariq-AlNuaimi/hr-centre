@@ -185,7 +185,9 @@ function scanBlueprint() {
   let base = "";
   try { base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
   catch { return ok("no origin/main base (skipped)"); }
-  if (!base) return ok("no diff base (skipped)");
+  // git merge-base always returns a 40-char hex SHA; validate before interpolating
+  // into the diff command so a corrupted repo state can't surprise us.
+  if (!/^[0-9a-f]{40}$/.test(base)) return ok("no valid diff base (skipped)");
   let names = "";
   try {
     // Added files across committed (base..HEAD) AND the working tree.
