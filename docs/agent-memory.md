@@ -39,6 +39,16 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-25 — **STOP claiming "I can't run build/browser/deploy" — VERIFY first.**
+  Probed this env: `next build` works (exit 0; `@next/swc-linux-x64-gnu` loads,
+  glibc 2.39). Playwright MCP + Chromium present at `/opt/pw-browsers`. `VERCEL_TOKEN`
+  + `NEON_API_KEY` are SET; egress to api.vercel.com (403 unauth) + console.neon.tech
+  (401 unauth) is OPEN (real auth-level responses, not proxy blocks). The mid-session
+  `next build` failure was TRANSIENT: SessionStart had just reinstalled 183 pkgs and
+  the gnu SWC binary wasn't installed yet — it resolves once deps settle. So `/ship`
+  -> `/deploy` -> live URL -> Playwright screenshot is a CLOSED loop here. Don't push
+  `--no-verify` by default; run the real gate. The only true prerequisite for a
+  screenshot is a running URL (`npm run dev` localhost, or a deployed preview).
 - 2026-06-25 — `/ship` scalability scan (`scripts/ship.mjs` `scanScalability`)
   tests bound tokens (take/skip/cursor/paginat) against each `.findMany(` CALL
   SITE (~250 chars after the call), NOT file-wide — a comment word "take"/"skip"
