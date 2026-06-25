@@ -25,6 +25,19 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->
+- 2026-06-25 — Harness-hardening sweep (branch `claude/repo-skills-overview-baheeu`,
+  from 15 operator complaints): added `/blueprint` (tiered pre-build gate),
+  `/design-system` (proactive UI), `/docker` skill; Five Pillars now binding in
+  CLAUDE.md + a scalability scan in `/ship`; wave-off findings go in
+  `docs/findings-register.md` (never silently dropped); `Stop` hook guards
+  unpushed/uncommitted work. Operator wants these as BLOCKING gates — hardening
+  roadmap is in `docs/SESSION-HANDOFF.md`.
+- 2026-06-25 — Design: build a NATIVE vetted design system rather than importing
+  external "Claude design skills" wholesale (consistency with the ADR-022 ruflo
+  rejection — unvetted third-party skills are an Ask-before).
+- 2026-06-25 — Blueprint/discovery gate applies to EVERY feature, scaled by tier
+  (lightweight for `/quickstart`, full for multi-file/shared) — closes the
+  "throwaway skips spec → hallucinated requirements" loophole.
 - 2026-06-20 — Adopted cross-session agent memory as committed Markdown + model
   routing as a documented tier table; evaluated and rejected ruflo wholesale
   (unverified claims, destructive-preinstall history, off-Anthropic egress,
@@ -32,6 +45,12 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-25 — `/ship` scalability scan (`scripts/ship.mjs` `scanScalability`)
+  tests bound tokens (take/skip/cursor/paginat) against each `.findMany(` CALL
+  SITE (~250 chars after the call), NOT file-wide — a comment word "take"/"skip"
+  must not mask a genuinely unbounded query. `walkRoutes` guards `statSync` so a
+  broken symlink under `app/api` can't hard-kill `/ship`. Per-file waiver marker:
+  `pillar:scalable-ok` (+ a register line).
 - 2026-06-24 — `gitleaks` is NOT on PATH in fresh remote containers, so `/ship`
   goes red at phase B ("gitleaks is not on PATH"). Install the release binary to
   `~/.local/bin` (e.g. v8.21.2 from github.com/gitleaks/gitleaks/releases) and
