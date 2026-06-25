@@ -10,6 +10,11 @@ intended design?"** — *not* "does it work" (that's `/ship` / functional QA) an
 "does it meet the business need" (that's `/uat`). Runs and **reports**; it doesn't
 change app code. Owned by the front-end (the agent); it gates the next tier.
 
+> This is the **reactive** half. The **proactive** half is `/design-system` +
+> `docs/design-recipes.md` — build to the recipes up front and most of what this
+> tier would flag never gets written. If you're seeing many findings here, the fix
+> is to start from `/design-system`, not to keep re-auditing.
+
 **Every finding cites a pillar + an anchor** (`docs/uat-rubric.md`) — design-token
 violation, axe rule, or "Greenhouse does X here and we don't." No anchor → mark it a
 **judgment call** for the operator, don't bury it as a finding.

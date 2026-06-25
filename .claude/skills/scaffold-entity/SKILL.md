@@ -16,6 +16,17 @@ secrets — SECURITY.md §1), you MUST extend `SCRUB_FIELDS` in
 change. The audit extension logs every create/update; an un-scrubbed Restricted
 column lands its **raw value** in the audit log. Do this first — do not defer it.
 
+## Before scaffolding — blueprint gate
+
+Run `/blueprint` first. For a one-off entity in disposable work, the lightweight
+track (one clarifying-question round + a one-line design + architecture read) is
+enough. For an entity that's part of a real multi-file feature, or that touches
+the Ask-before surface (auth/`lib/`/migrations/API routes), do the **full**
+track and commit `docs/blueprints/<feature>.md` first. The architecture read is
+where you confirm this entity isn't duplicating an existing model/route and that
+its fields, relations, and writer-role match what the operator actually needs —
+cheaper than re-running a migration after the fact.
+
 ## Inputs to gather
 
 - **Entity name** (PascalCase, singular). Examples: `Project`, `Invoice`, `TimeEntry`.
@@ -98,6 +109,11 @@ npm run scaffold -- --name Article \
 - `app/[locale]/(dashboard)/<kebab>/page.tsx` -- list page; wires a debounced search box (only when a string/text field exists), server-driven sort, and pagination into the GET route.
 - `app/[locale]/(dashboard)/<kebab>/new/page.tsx` -- create page
 - `app/[locale]/(dashboard)/<kebab>/[id]/page.tsx` -- edit page
+
+  > The generated pages already follow the design recipes (PageHeader, DataTable
+  > with an `emptyText`, vertical Form, the state triad). When you **customize**
+  > them, stay on-pattern: use `/design-system` + `docs/design-recipes.md`, don't
+  > hand-roll new layout — that's how a clean scaffold drifts into slop.
 - `messages/_scaffold-<kebab>.json` -- i18n companion holding the entity's `<entityCamel>s` namespace (field/enum/relation labels + fixed UI strings). **Must be merged into `messages/en.json` + `messages/ar.json` and then deleted** (see "After scaffolding" step 4). The generated UI uses these i18n keys, **not** the field names directly.
 
 ## What gets patched

@@ -33,6 +33,17 @@ Backed by `scripts/sync-from-template.mjs`.
   written to `.template-sync-review.diff` (gitignored).
 - **Fork-owned** (never touched): `prisma/`, `app/`, `components/`, `messages/`,
   `i18n/`, `project.config.json`, package identity, `.env*`, `public/`.
+
+> **Hook wiring trap (why a hook can be "template-only").** `.claude/hooks` is
+> OWNED (auto-pulled) but `.claude/settings.json` — which *wires* each hook to its
+> event (`SessionStart`/`UserPromptSubmit`/`Stop`/`PreCompact`) — is a REVIEW layer.
+> So a fork that pulls a NEW or changed hook script but skips the `settings.json`
+> diff ends up with the script on disk and **no event binding → the hook never
+> fires**. This is the usual cause of "the context-watchdog works in the template
+> but not in my fork." After any sync that touches `.claude/hooks`, **always
+> reconcile the `settings.json` `hooks` block** from `.template-sync-review.diff`
+> and confirm every shipped hook is bound. (A self-check: the hook scripts present
+> under `.claude/hooks/` should each have a matching command in `settings.json`.)
 - Writes **`.template-sync.json`** (committed) recording the template commit the
   fork is now based on — the version marker.
 

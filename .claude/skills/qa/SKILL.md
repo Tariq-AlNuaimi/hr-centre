@@ -26,6 +26,13 @@ the answer to "don't launch a granular mega-task blindly": it scopes the work an
 Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scalable/high-quality) hold and the **security floor** is intact.
 
 ## How to run it
+0. **Anchor on the blueprint (the coverage source).** If the feature has a
+   `docs/blueprints/<feature>.md`, its **user stories** are the coverage contract:
+   every story × role × {happy, worst} must be exercised across the tiers below —
+   that's what makes coverage exhaustive-by-construction instead of "whatever the
+   agent thought to try." No blueprint (older/disposable work)? Derive the story
+   list from the changed routes/entities and say so, but don't skip the step — an
+   un-anchored QA is how basic cases get missed (#1/#5/#6).
 1. **Decompose, don't blob.** Scope the change: which **components** changed → which
    **screens** they appear on → which **flows** they touch. QA the components first
    (a broken variant caught once), then screens, then flows. Fan out sub-agents per
@@ -51,9 +58,16 @@ Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scala
 - A tier **only starts if the prior tier passed.** A red gate **stops** the line and
   reports — it does not silently continue.
 - **"Could not run" ≠ pass.** Browser/creds/DB not set up is a blocked run, not green.
+- **No open wave-offs on the changed surface.** `/qa` does **not** return a *ship*
+  verdict while `docs/findings-register.md` has an **open** (un-adjudicated) entry
+  touching the in-scope surface (or an open SECURITY.md §12 security suppression).
+  A deferred finding is a recorded operator decision, not a silent pass (#12) — the
+  operator adjudicates it (accepts/schedules) or it's fixed before *ship*.
 - **Evidence, not opinion.** Every finding cites a pillar + an anchor
   (objectives/scope/benchmark/KB/design). Residual taste → flagged as a judgment call
-  for the operator, not buried as a finding.
+  for the operator. A judgment call you decide to wave off is **logged in
+  `docs/findings-register.md`**, not silently dropped — "buried as not-a-finding" is
+  exactly the wave-off this gate forbids.
 - The agent does the **exhaustive evidence-backed passes**; the operator **adjudicates
   the judgment calls and signs off** — far less work than finding the misses by hand.
 

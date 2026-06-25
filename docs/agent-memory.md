@@ -25,6 +25,13 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->
+- 2026-06-25 — Harness-hardening sweep (15 operator complaints) is COMPLETE and the
+  "tiered blocking gate · hard hooks" roadmap is implemented (ADR-025): pillars-as
+  -gates + the `Stop` hook hard-BLOCKS unpushed commits + `/ship` blueprint & tier
+  gates (blueprint/tier block on `shared`, warn on `personal`; escapes are recorded
+  `*Ack` keys / adjudicated register lines, never silent). Native design system =
+  ADR-026 (built, not imported — consistent with the ADR-022 native-over-imported
+  call). Don't relitigate these — read the ADRs.
 - 2026-06-20 — Adopted cross-session agent memory as committed Markdown + model
   routing as a documented tier table; evaluated and rejected ruflo wholesale
   (unverified claims, destructive-preinstall history, off-Anthropic egress,
@@ -32,6 +39,12 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-25 — `/ship` scalability scan (`scripts/ship.mjs` `scanScalability`)
+  tests bound tokens (take/skip/cursor/paginat) against each `.findMany(` CALL
+  SITE (~250 chars after the call), NOT file-wide — a comment word "take"/"skip"
+  must not mask a genuinely unbounded query. `walkRoutes` guards `statSync` so a
+  broken symlink under `app/api` can't hard-kill `/ship`. Per-file waiver marker:
+  `pillar:scalable-ok` (+ a register line).
 - 2026-06-24 — `gitleaks` is NOT on PATH in fresh remote containers, so `/ship`
   goes red at phase B ("gitleaks is not on PATH"). Install the release binary to
   `~/.local/bin` (e.g. v8.21.2 from github.com/gitleaks/gitleaks/releases) and

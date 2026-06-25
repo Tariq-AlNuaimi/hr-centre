@@ -19,6 +19,14 @@ The fastest path from "I want to start a brand new prototype" to a live URL — 
 creates the GitHub repo from this template, the Neon DB, the Vercel project, an
 optional Cloudflare custom domain, and the first deploy, in one command.
 
+> **Run it, then read the verdict — don't assume "no access" first.** A live URL
+> is the goal. The script's preflight is the only authority on whether this
+> environment can provision: it prints either `Egress OK.` or the exact blocked
+> hosts, and the env-check names any missing token. Do not tell the operator you
+> lack access or pivot to local setup before the command has actually run and
+> failed — and when it does, report the *specific* cause (missing token vs.
+> blocked egress), which the script distinguishes for you.
+
 ## Run headlessly (Claude Code web session or any machine)
 
 ```sh

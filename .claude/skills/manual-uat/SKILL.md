@@ -132,6 +132,36 @@ Don't hardcode screens. Derive them the way `/uat` does — read the result of
 entities have full CRUD, which actions are sensitive (writes, deletes, role
 changes, exports).
 
+## Step 1b — build the coverage matrix (the completion contract)
+
+The walk below is **checklist-driven, not exploratory** — that's what stops basic
+cases slipping through (#1/#6). Before testing, enumerate every cell you owe; the
+run is **not complete** until each has a verdict.
+
+Build the matrix as the cartesian product:
+
+> **entity × operation × role × track**
+> where operation ∈ {create, read/list, edit, soft-delete (+ restore where it
+> applies)}, role ∈ every role in the reconciled matrix, track ∈ {happy, worst}.
+
+Plus two coverage axes the product alone misses:
+
+- **Per-field validation variants** (the worst-path detail): for each writable
+  field, at least one of each applicable — required-empty, boundary (max, max+1,
+  min−1), wrong type, malformed format, duplicate-unique, injection-ish string.
+- **Per-role field/data visibility:** for each entity, confirm fields that a role
+  must not see are absent from BOTH the UI and the API response (not just hidden).
+
+**Anchor on the blueprint.** If `docs/blueprints/<feature>.md` exists, every **user
+story × role × {happy, worst}** is a required row — map stories onto the matrix so
+the test proves the contract, not an arbitrary subset. No blueprint? Derive rows
+from the discovered entities/routes and say so.
+
+Track each cell's verdict (pass / fail / **N/A with a one-line reason** — never
+N/A by omission). A cell left untested is an **incomplete run**, reported as such
+in Step 6 — it does not silently read as a pass. Aim for 100% of non-N/A cells
+exercised; report the exact coverage number.
+
 ## Step 2 — per role, walk happy then worst (the core loop)
 
 For **each** role in the matrix (most-privileged first — ADMIN — down to the
@@ -220,6 +250,10 @@ Write `uat-results/manual-uat-report.md` (gitignored, alongside the `/uat`
 artifacts) and summarize in chat. Structure:
 
 - **Verdict** — ready / not-ready to share, one line.
+- **Coverage** — `<tested>/<total>` matrix cells exercised (and the list of any
+  untested or N/A cells with reasons). Anything short of full non-N/A coverage
+  makes the verdict **at best "not ready — incomplete"**; a confident "ready" needs
+  the matrix actually walked, not sampled.
 - **RBAC findings** — the live-vs-matrix diff: under-enforced (P0) first, then
   over-enforced (P1), then the matrix anomalies from Step 0. Cite role · route/section.
 - **Worst-path findings** — crashes, silent accepts, wrong/missing validation,

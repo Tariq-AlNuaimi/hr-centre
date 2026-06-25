@@ -2,12 +2,21 @@
 // SessionEnd hook -- session cost receipt (ADR-019).
 // Appends one JSONL row per session to .claude/usage-log.jsonl (gitignored) so
 // spend drift is visible the day it happens. Pure local accounting; no network.
-import { readFileSync, appendFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, appendFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 
 const MAX_ROWS = 500; // keep the log bounded -- it's local accounting, not history.
 
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
+  // GC the per-session /tmp dedup markers the UserPromptSubmit + Stop hooks leave
+  // behind. SessionEnd fires unconditionally at every session end, so it is the
+  // natural collection point -- the markers are written on warn/threshold paths
+  // and would otherwise accumulate one-per-session on a persistent dev machine.
+  if (input.session_id) {
+    for (const f of [`/tmp/ctx-watchdog-${input.session_id}`, `/tmp/session-guard-${input.session_id}`]) {
+      try { if (existsSync(f)) unlinkSync(f); } catch { /* best-effort */ }
+    }
+  }
   const t = input.transcript_path;
   if (!t || !existsSync(t)) process.exit(0);
   let msgs = 0, out = 0, lastCtx = 0;

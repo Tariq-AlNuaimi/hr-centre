@@ -41,7 +41,14 @@ for the former.
    Memory is for the in-between — facts not yet stable enough for CLAUDE.md/an ADR.
 5. **Commit on the working branch** (this file is meant to land on `main` via the
    normal merge): `git add docs/agent-memory.md && git commit -m "chore: remember <short summary>"`.
-   Do not push solely for this; let it ride with the session's next push/`/ship`.
+   You needn't push *solely* for this — it can ride with the session's next
+   push/`/ship` — **but the commit MUST reach the remote before the session ends.**
+   An unpushed memory commit is invisible to the next container, which is the whole
+   failure this skill exists to prevent (#14). If you're not confident another push
+   is coming this session (e.g. the user is wrapping up, or context is high), push
+   now and confirm it landed (`git rev-list --count @{u}..HEAD` → `0`). The
+   `session-stop` guard will flag an unpushed commit, but don't rely on the human
+   noticing it.
 
 ## Examples
 

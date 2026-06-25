@@ -22,6 +22,16 @@ send a screenshot back, you iterate with Claude, repeat until approved.
 
 ## Steps
 
+### 0. Blueprint (lightweight track) — required before scaffolding
+
+Run the **lightweight track** of `/blueprint` first: one `AskUserQuestion` round
+to close the highest-leverage unknowns (who + role, the one job, the fields that
+actually matter, what "done" looks like), then a one-line design read and a
+one-line architecture read (where this lives, what it reuses — don't duplicate an
+existing screen/route). This is ~30 seconds and is what keeps the prototype from
+diverging from what the operator actually meant. Don't skip it to "save time" —
+re-scaffolding the wrong model costs more.
+
 ### 1. Parse the idea into entities
 
 Read the user's prompt and propose a short entity model. Examples:
@@ -81,6 +91,14 @@ npm run dev
 
 Open `http://localhost:3000`, log in with the seed credentials, navigate to
 the new entity's page, create one row. If it works locally, push.
+
+### 3b. Ship gate (required before push)
+
+Run **`/ship`** (`npm run ship`). Quickstart scaffolds real auth-wrapped API
+routes + pages — "ship before every push" (CLAUDE.md, binding) applies here too;
+the ESLint security rules and the scalability gate run at ship time. Don't push a
+red build to Vercel (push = deploy). The `/ship` skip rule only exempts docs-only
+changes, which a scaffold is not.
 
 ### 4. Push
 

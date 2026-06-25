@@ -68,7 +68,19 @@ if (!GH_TOKEN) missing.push("GH_AUTOMATION_TOKEN");
 if (!NEON_KEY) missing.push("NEON_API_KEY");
 if (!VERCEL_TOKEN) missing.push("VERCEL_TOKEN");
 if (apex && !CF_TOKEN) missing.push("CLOUDFLARE_API_TOKEN (required for --apex)");
-if (missing.length) bail(P, `missing env: ${missing.join(", ")}`);
+if (missing.length) {
+  bail(
+    P,
+    `Missing required token env var(s): ${missing.join(", ")}.\n` +
+      "  This is a CREDENTIALS problem (not a network/egress block) -- set the\n" +
+      "  token(s) as environment variables, then re-run. Where to mint them:\n" +
+      "    - GH_AUTOMATION_TOKEN -> GitHub PAT, scopes repo + workflow\n" +
+      "    - NEON_API_KEY        -> https://console.neon.tech/app/settings/api-keys\n" +
+      "    - VERCEL_TOKEN        -> https://vercel.com/account/tokens\n" +
+      "    - CLOUDFLARE_API_TOKEN-> only for --apex (Zone.DNS:Edit on the apex zone)\n" +
+      "  (Egress to the provider hosts is checked separately by the preflight below.)"
+  );
+}
 
 const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` : "";
 const customDomain = apex ? `${slug}.${apex}` : null;

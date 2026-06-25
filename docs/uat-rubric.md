@@ -33,7 +33,11 @@ screen or surface, the agent declares a **one-line design read** in the response
 (not a file): *"Building \<surface\> for \<audience\>; tone \<calm | dense-data |
 form-heavy | …\>; density \<default | compact\>; accent = `colorPrimary`."* Then
 commit to it — consistency comes from the declared system, not restraint in the
-moment.
+moment. **This is a required step, not optional** — `/blueprint` and
+`/design-system` both enforce it. Build from the vetted patterns in
+`docs/design-recipes.md` (the proactive recipes) on the shipped
+`components/shared/*` primitives; improvising the layout is what produces the
+findings the tiers below then have to catch.
 
 **The ruler:** `app/tokens.css` (spacing/type/density/radius scale) +
 `components/layout/antd-theme.ts` (the AntD side; lockstep-tested). Spacing comes
