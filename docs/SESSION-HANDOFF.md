@@ -63,13 +63,24 @@ amateur") and make Arabic/RTL optional. Blueprint:
   `/design-qa` → `/manual-uat`. Login split-screen already validated on local dev
   (light+dark); Inter loads + brand primary renders (verified live, localhost).
 
+## Template fixes landed (so forks never hit these again)
+- ✅ **gitleaks on fresh containers** (`65bd782`): session-start.sh auto-installs
+  it → `~/.local/bin`; ship.mjs resolves it there regardless of PATH. Proven with
+  `~/.local/bin` stripped from PATH → /ship still green. Was a per-fork `/ship`-RED.
+
 ## Remaining (operator / direct-egress session)
 1. Authenticated browser design-qa of the deployed preview (dashboard, gallery
    at `/en/style-guide`, ⌘K palette, notifications, org switcher) across
-   light/dark (+ RTL if a fork enables `ar`).
+   light/dark (+ RTL if a fork enables `ar`). Blocked in-container (proxy + no DB).
 2. Re-run the Phase 3+4 `senior-code-reviewer` (spend-limit interrupted).
-3. Optional: land the working branch on `main` when the operator is ready (it's
-   the fork source-of-truth; verify `origin/main` is an ancestor first).
+3. **Optional template improvement** (env friction, NOT a code bug): make the
+   UAT/design-qa Playwright harness proxy-aware — when `HTTPS_PROXY` is set, pass
+   `proxy:{server}` + `--ignore-certificate-errors` and, on `ERR_CONNECTION_CLOSED`,
+   print a clear "run from a direct-egress machine" message instead of a raw stack.
+   (The agent MITM proxy still blocks Chromium here, so this only improves the
+   error UX + helps in less-restrictive proxies — see agent-memory landmine.)
+4. Optional: land the working branch on `main` when ready (fork source-of-truth;
+   verify `origin/main` is an ancestor first).
 
 ## Landmines / notes
 - **Pre-existing hydration warning** (NOT mine): the CSP `nonce` on the inline
