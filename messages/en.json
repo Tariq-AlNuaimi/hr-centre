@@ -173,5 +173,10 @@
     "notFoundTitle": "Page not found",
     "errorTitle": "Something went wrong",
     "errorSubtitle": "An unexpected error occurred. Please try again."
+  },
+  "data": {
+    "selected": "{count} selected",
+    "clearSelection": "Clear",
+    "columns": "Columns"
   }
 }

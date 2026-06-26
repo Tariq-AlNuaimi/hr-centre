@@ -8,11 +8,13 @@
 // RSC passes serializable data down to this client component, which renders it.
 // This is the canonical RSC + client-island split (see docs/recipes/perf/1-rsc-list-reads.md).
 
-import { Card, Row, Col, Statistic, Table, Tag } from "antd";
-import { UserOutlined, DeleteOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Table, Tag } from "antd";
+import { UserOutlined, DeleteOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { Chart } from "@/components/shared/Chart";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { StatCard } from "@/components/shared/StatCard";
+import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDateTime } from "@/lib/format";
 
 export interface RecentAudit {
@@ -67,33 +69,31 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
-            <Statistic
-              title={tDash("totalUsers")}
-              value={totalUsers}
-              prefix={<UserOutlined />}
-            />
-          </Card>
+          <StatCard
+            title={tDash("totalUsers")}
+            value={totalUsers}
+            icon={<UserOutlined />}
+          />
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
-            <Statistic
-              title={tDash("deletedRecords")}
-              value={softDeletedTotal}
-              prefix={<DeleteOutlined />}
-            />
-          </Card>
+          <StatCard
+            title={tDash("deletedRecords")}
+            value={softDeletedTotal}
+            icon={<DeleteOutlined />}
+          />
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <Card>
-            <Statistic title={tDash("rolesInUse")} value={roleDistribution.length} />
-          </Card>
+          <StatCard
+            title={tDash("rolesInUse")}
+            value={roleDistribution.length}
+            icon={<SafetyCertificateOutlined />}
+          />
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={10}>
-          <Card title={tDash("usersByRole")}>
+          <SectionCard title={tDash("usersByRole")}>
             {roleDistribution.length > 0 ? (
               <Chart
                 type="pie"
@@ -107,10 +107,10 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                 {tCommon("noData")}
               </div>
             )}
-          </Card>
+          </SectionCard>
         </Col>
         <Col xs={24} lg={14}>
-          <Card title={tDash("recentActivity")}>
+          <SectionCard title={tDash("recentActivity")} noBodyPadding>
             <Table<RecentAudit>
               dataSource={recentAudit}
               rowKey="id"
@@ -140,7 +140,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                 },
               ]}
             />
-          </Card>
+          </SectionCard>
         </Col>
       </Row>
     </>

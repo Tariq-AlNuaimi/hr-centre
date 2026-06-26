@@ -173,5 +173,10 @@
     "notFoundTitle": "الصفحة غير موجودة",
     "errorTitle": "حدث خطأ ما",
     "errorSubtitle": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
+  },
+  "data": {
+    "selected": "{count} محدد",
+    "clearSelection": "مسح",
+    "columns": "الأعمدة"
   }
 }
