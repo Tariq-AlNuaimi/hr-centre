@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { routing } from "@/i18n/routing";
+import { directionForLocale } from "@/i18n/config";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import "@/app/globals.css";
@@ -45,7 +46,7 @@ export default async function LocaleLayout({
   }
 
   const messages = (await import(`@/messages/${locale}.json`)).default;
-  const direction = locale === "ar" ? "rtl" : "ltr";
+  const direction = directionForLocale(locale);
 
   // Per-request nonce from middleware (recipe shared-security/3): the inline theme
   // script and AntD's StyleProvider carry it so the CSP can drop 'unsafe-inline'

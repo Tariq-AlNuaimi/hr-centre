@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 import createMiddleware from "next-intl/middleware";
 import { auth } from "./lib/auth";
 import { routing } from "./i18n/routing";
+import { localePrefixRegex } from "./i18n/config";
 import { NextResponse, NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 
@@ -18,8 +19,8 @@ const publicPaths = [
 ];
 
 function isPublicPath(pathname: string): boolean {
-  // Strip locale prefix for matching
-  const stripped = pathname.replace(/^\/(en|ar)/, "") || "/";
+  // Strip locale prefix for matching (regex derived from configured locales)
+  const stripped = pathname.replace(localePrefixRegex, "") || "/";
   return publicPaths.some(
     (p) => stripped === p || stripped.startsWith(p + "/")
   );
@@ -117,13 +118,13 @@ export default auth((req) => {
     // Redirects carry no CSP/nonce — they render no HTML; the destination page
     // gets its own per-request CSP when the browser follows.
     if (!isAuth && !isPublic) {
-      const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
+      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}/login`, req.url));
     }
 
     // Redirect authenticated users away from login
     if (isAuth && isPublicPath(pathname)) {
-      const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
+      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}`, req.url));
     }
 

@@ -12,6 +12,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
+import { localePrefixRegex } from "@/i18n/config";
 
 const { Sider } = Layout;
 
@@ -31,7 +32,7 @@ export function AppSidebar() {
   // Strip locale prefix for active key matching
   const activeKey =
     pathname
-      .replace(/^\/(en|ar)/, "")
+      .replace(localePrefixRegex, "")
       .split("/")
       .filter(Boolean)[0] ?? "home";
 

@@ -11,7 +11,8 @@ import { discoverMainSections, type Screen } from "./_discover";
 //
 //   - No uncaught runtime errors (page `pageerror`) while the screen loads.
 //   - The screen renders real content (a visible heading), not a blank error shell.
-//   - RTL works: the Arabic (`ar`) variant flips <html dir> to "rtl".
+//   - RTL works (ONLY when the fork ships an RTL locale): the Arabic (`ar`)
+//     variant flips <html dir> to "rtl". English-only forks skip this check.
 //   - Console errors are tallied (recorded as findings, not failed — they're
 //     noisy and often library dev-warnings; uncaught errors above are the gate).
 //
@@ -21,6 +22,24 @@ import { discoverMainSections, type Screen } from "./_discover";
 const EN = "en";
 const AR = "ar";
 const SECTIONS = discoverMainSections(EN);
+
+// RTL is OPTIONAL per fork (i18n/config.ts): the `ar` locale, plus the rest of
+// the RTL surface, only ships when project.config.json `locales` includes it.
+// Read that config directly (fs — no alias resolution needed in the test runner)
+// so the RTL assertion runs ONLY when Arabic is actually enabled. English-only
+// forks skip the ar variant instead of failing on a locale they don't ship.
+const RTL_LOCALES = new Set(["ar", "he", "fa", "ur"]);
+const RTL_ENABLED = (() => {
+  try {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "project.config.json"), "utf8"),
+    ) as { locales?: unknown };
+    const locales = Array.isArray(cfg.locales) ? cfg.locales : [];
+    return locales.some((l) => typeof l === "string" && RTL_LOCALES.has(l));
+  } catch {
+    return false;
+  }
+})();
 const FINDINGS_FILE = path.join(
   process.cwd(),
   "uat-results",
@@ -94,20 +113,26 @@ for (const section of SECTIONS as Screen[]) {
     });
 
     // --- AR (RTL) variant ---------------------------------------------------
-    let rtlOk = false;
-    try {
-      await page.goto(toArabic(section.path), { waitUntil: "networkidle" });
-      const dir = await page.locator("html").getAttribute("dir");
-      rtlOk = dir === "rtl";
-      if (!rtlOk) notes.push(`ar variant <html dir> was "${dir}", expected "rtl"`);
-      await testInfo.attach(`${section.name}-ar.png`, {
-        body: await page.screenshot({ fullPage: true }),
-        contentType: "image/png",
-      });
-    } catch (e) {
-      notes.push(
-        `ar variant failed to load: ${e instanceof Error ? e.message : String(e)}`,
-      );
+    // Skipped (and treated as vacuously OK) when the fork ships no RTL locale.
+    let rtlOk = true;
+    if (RTL_ENABLED) {
+      rtlOk = false;
+      try {
+        await page.goto(toArabic(section.path), { waitUntil: "networkidle" });
+        const dir = await page.locator("html").getAttribute("dir");
+        rtlOk = dir === "rtl";
+        if (!rtlOk) notes.push(`ar variant <html dir> was "${dir}", expected "rtl"`);
+        await testInfo.attach(`${section.name}-ar.png`, {
+          body: await page.screenshot({ fullPage: true }),
+          contentType: "image/png",
+        });
+      } catch (e) {
+        notes.push(
+          `ar variant failed to load: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    } else {
+      notes.push("RTL not configured (no ar locale) — RTL assertion skipped");
     }
 
     if (consoleErrors.length > 0) {
@@ -136,6 +161,7 @@ for (const section of SECTIONS as Screen[]) {
     expect(headingOk, `${section.name} rendered no heading (blank shell?)`).toBe(
       true,
     );
+    // Only a gate when RTL is configured; English-only forks pass vacuously.
     expect(rtlOk, `${section.name} ar variant did not apply dir="rtl"`).toBe(true);
   });
 }

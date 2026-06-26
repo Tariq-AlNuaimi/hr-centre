@@ -12,6 +12,18 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "./ThemeProvider";
+import {
+  hasMultipleLocales,
+  localePrefixRegex,
+  nextLocale,
+} from "@/i18n/config";
+
+// Native names for the locales we ship; falls back to the uppercased code so an
+// unmapped locale still gets a sensible switcher label.
+const LOCALE_LABELS: Record<string, string> = {
+  en: "English",
+  ar: "العربية",
+};
 
 const { Header } = Layout;
 const { Text } = Typography;
@@ -26,9 +38,9 @@ export function AppHeader() {
   const pathname = usePathname();
   const currentLocale = useLocale();
 
+  const target = nextLocale(currentLocale);
   const switchLocale = () => {
-    const newLocale = currentLocale === "en" ? "ar" : "en";
-    const newPath = pathname.replace(/^\/(en|ar)/, `/${newLocale}`);
+    const newPath = pathname.replace(localePrefixRegex, `/${target}`);
     router.push(newPath);
   };
 
@@ -89,14 +101,16 @@ export function AppHeader() {
       </Space>
 
       <Space size="middle">
-        <Button
-          type="text"
-          icon={<GlobalOutlined />}
-          onClick={switchLocale}
-          title={currentLocale === "en" ? "العربية" : "English"}
-        >
-          {currentLocale === "en" ? "AR" : "EN"}
-        </Button>
+        {hasMultipleLocales && (
+          <Button
+            type="text"
+            icon={<GlobalOutlined />}
+            onClick={switchLocale}
+            title={LOCALE_LABELS[target] ?? target.toUpperCase()}
+          >
+            {target.toUpperCase()}
+          </Button>
+        )}
 
         <Button
           type="text"

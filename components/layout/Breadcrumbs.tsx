@@ -5,6 +5,7 @@ import { HomeOutlined } from "@ant-design/icons";
 import { usePathname } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useBreadcrumb } from "./BreadcrumbProvider";
+import { localePrefixRegex } from "@/i18n/config";
 import Link from "next/link";
 
 const segmentToNavKey: Record<string, string> = {
@@ -25,7 +26,7 @@ export function Breadcrumbs() {
 
   // Strip locale prefix: /en/users/123 -> ['users', '123']
   const segments = pathname
-    .replace(/^\/(en|ar)/, "")
+    .replace(localePrefixRegex, "")
     .split("/")
     .filter(Boolean);
 
