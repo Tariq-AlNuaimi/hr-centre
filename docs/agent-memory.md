@@ -82,10 +82,11 @@ recurring context tax — same discipline as CLAUDE.md.
   must not mask a genuinely unbounded query. `walkRoutes` guards `statSync` so a
   broken symlink under `app/api` can't hard-kill `/ship`. Per-file waiver marker:
   `pillar:scalable-ok` (+ a register line).
-- 2026-06-24 — `gitleaks` is NOT on PATH in fresh remote containers, so `/ship`
-  goes red at phase B ("gitleaks is not on PATH"). Install the release binary to
-  `~/.local/bin` (e.g. v8.21.2 from github.com/gitleaks/gitleaks/releases) and
-  re-export PATH before `/ship`. The binary does not survive a new container.
+- 2026-06-26 — gitleaks-on-fresh-container is now AUTO-FIXED in the template:
+  `.claude/hooks/session-start.sh` installs gitleaks v8.21.2 → `~/.local/bin`
+  (fail-open, gated on missing) and `scripts/ship.mjs` prefers that exact path,
+  so PATH need not include `~/.local/bin`. Manual install only needed if the
+  hook's download was blocked (offline egress). Supersedes the 2026-06-24 note.
 - 2026-06-24 — SessionStart hook now installs deps / regenerates the Prisma client
   on **stale** (package.json or schema.prisma newer than node_modules/generated),
   not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit) — this fixes

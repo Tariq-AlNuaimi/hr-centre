@@ -34,6 +34,33 @@ if [ ! -d generated/prisma ] || [ prisma/schema.prisma -nt generated/prisma ]; t
   DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate >/dev/null
 fi
 
+# 3b. Install gitleaks (the /ship secret-scan gate) to ~/.local/bin if missing.
+#     Fresh remote containers don't ship it, which made `/ship` go RED at phase B
+#     on every fork (docs/agent-memory.md 2026-06-24). scripts/ship.mjs prefers
+#     this exact path, so PATH need not include ~/.local/bin. Fail-open + gated on
+#     missing: a download failure (offline / blocked egress) must NEVER block
+#     session start -- /ship prints its own install hint if it's still absent.
+gitleaks_bin="$HOME/.local/bin/gitleaks"
+if ! command -v gitleaks >/dev/null 2>&1 && [ ! -x "$gitleaks_bin" ]; then
+  gl_ver="8.21.2"
+  case "$(uname -m)" in
+    x86_64|amd64) gl_arch="x64" ;;
+    aarch64|arm64) gl_arch="arm64" ;;
+    *) gl_arch="" ;;
+  esac
+  if [ -n "$gl_arch" ] && command -v curl >/dev/null 2>&1; then
+    mkdir -p "$HOME/.local/bin" 2>/dev/null || true
+    gl_url="https://github.com/gitleaks/gitleaks/releases/download/v${gl_ver}/gitleaks_${gl_ver}_linux_${gl_arch}.tar.gz"
+    if command -v timeout >/dev/null 2>&1; then gl_dl="timeout 60 curl -sSL"; else gl_dl="curl -sSL"; fi
+    if $gl_dl -o /tmp/gitleaks.tgz "$gl_url" 2>/dev/null \
+      && tar -xzf /tmp/gitleaks.tgz -C "$HOME/.local/bin" gitleaks 2>/dev/null; then
+      chmod +x "$gitleaks_bin" 2>/dev/null || true
+      echo "[harness] installed gitleaks v${gl_ver} -> ~/.local/bin (the /ship secret-scan gate)"
+    fi
+    rm -f /tmp/gitleaks.tgz 2>/dev/null || true
+  fi
+fi
+
 echo "[harness] ready -- run 'make db-up' to start dev containers when you need the DB"
 
 # 4. Drift check (advisory). If the current working branch has fallen behind
