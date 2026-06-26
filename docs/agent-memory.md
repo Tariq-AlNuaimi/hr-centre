@@ -39,6 +39,15 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-26 — First-deploy env-var race (#50): BOTH scripts/deploy.mjs AND
+  scripts/new-project.mjs must set all 6 env vars (incl CRON_SECRET) and
+  poll-confirm them via `GET /v9/projects/:id/env` BEFORE triggering the first
+  deploy — else the first build runs without CRON_SECRET (dead audit-purge cron)
+  / SEED_ADMIN_* (no admin). The Vercel build already seeds (vercel.json); #51
+  was a symptom of #50. seed.ts skips cleanly (exit 0) in prod with no password.
+- 2026-06-26 — `AskUserQuestion` failed repeatedly in this remote env ("Tool
+  permission stream closed before response received"). If it errors twice, stop
+  retrying and pose decisions as plain text in the reply.
 - 2026-06-25 — **STOP claiming "I can't run build/browser/deploy" — VERIFY first.**
   Probed this env: `next build` works (exit 0; `@next/swc-linux-x64-gnu` loads,
   glibc 2.39). Playwright MCP + Chromium present at `/opt/pw-browsers`. `VERCEL_TOKEN`
