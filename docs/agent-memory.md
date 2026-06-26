@@ -39,19 +39,28 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
-- 2026-06-26 — **Deployed-browser QA is blocked in this remote container, two
-  independent ways** (neither is a code defect): (1) Playwright/bundled-Chromium
-  CANNOT traverse the agent MITM egress proxy — page.goto to any `*.vercel.app`
-  fails `net::ERR_CONNECTION_CLOSED` even with `proxy:{server:HTTPS_PROXY}` +
-  `--ignore-certificate-errors` (curl reaches the same URL fine; the proxy
-  README lists WebSocket/non-443 as unsupported). (2) No local Postgres (no
-  docker daemon; Neon is raw-TCP:5432, not proxied) so a localhost authenticated
-  run is also impossible. LOCAL dev screenshots DO work (localhost is in the
-  proxy noProxy list) — but only UNauth screens render without a DB. So: validate
-  the deployed AUTHENTICATED UI from a direct-egress machine (`UAT_BASE_URL=<url>
-  SEED_ADMIN_* npm run uat`) or just open the live URL. Deployment health is
-  still verifiable here via curl: `/api/health`→db ok, `/api/auth/csrf`, and the
-  `/en`→`/en/login` 307 gate.
+- 2026-06-26 — **CORRECTION (supersedes the prior "no local Postgres" claim):
+  authenticated browser QA on a faithful LOCAL carbon-copy IS achievable in this
+  container — PROVEN.** Postgres 16 is installed at `/usr/lib/postgresql/16/bin`
+  (no docker needed). Recipe (run the cluster as the `postgres` system user —
+  PG refuses root): `mkdir -p /tmp/pgqa/data && chown -R postgres:postgres
+  /tmp/pgqa` → `runuser -u postgres -- $PGBIN/initdb -D /tmp/pgqa/data -U postgres
+  --auth=trust` → `pg_ctl -D … -o "-p 5433 -k /tmp/pgqa" -w start` → `createdb …
+  appdb`. Then with `DATABASE_URL=postgresql://postgres@localhost:5433/appdb?schema=public`:
+  `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=… SEED_ADMIN_PASSWORD=… npm run
+  prisma:seed`. Start dev with that DATABASE_URL + `AUTH_TRUST_HOST=true
+  AUTH_URL=http://localhost:3000`, then `UAT_BASE_URL=http://localhost:3000
+  SEED_ADMIN_* npm run uat` — chromium reaches localhost (noProxy); all 9 lean
+  UAT screens passed authenticated (dashboard/users/audit/recycling/settings/
+  style-guide). Caveat: NOT a substitute for *deploy-specific* checks (CSP nonces,
+  Vercel headers, prod build, prod data) — for those use the live URL. Two real
+  limits remain: (a) bundled Chromium still cannot traverse the MITM proxy to a
+  `*.vercel.app` host (page.goto → ERR_CONNECTION_CLOSED; curl works); (b) the
+  Playwright **MCP** tools + AskUserQuestion/ExitPlanMode intermittently error
+  "Tool permission stream closed" — so drive the browser via the repo's
+  `npm run uat` (Playwright test runner), NOT the MCP, for reliability. Also: the
+  container restarts mid-task and kills background servers (DB *data* under
+  /tmp survived a restart; the running processes did not — just re-`pg_ctl start`).
 - 2026-06-26 — Auth.js v5 credentials login via raw curl/fetch returns
   `?error=MissingCSRF` unless the `__Host-authjs.csrf-token` cookie is threaded
   exactly (GET /api/auth/csrf cookie → POST /api/auth/callback/credentials).
