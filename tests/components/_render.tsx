@@ -69,11 +69,13 @@ export const messages = {
     switchWorkspace: "Switch workspace",
     singleWorkspaceHint: "You're in your only workspace.",
   },
-  // DataView selection/column controls.
+  // DataView selection/column controls + StatCard trend label.
   data: {
-    selected: "{count} selected",
+    selected: "{count, plural, =1 {1 selected} other {# selected}}",
     clearSelection: "Clear",
     columns: "Columns",
+    trendUp: "Up {value}%",
+    trendDown: "Down {value}%",
   },
 };
 

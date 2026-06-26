@@ -172,8 +172,10 @@
     "errorSubtitle": "An unexpected error occurred. Please try again."
   },
   "data": {
-    "selected": "{count} selected",
+    "selected": "{count, plural, =1 {1 selected} other {# selected}}",
     "clearSelection": "Clear",
-    "columns": "Columns"
+    "columns": "Columns",
+    "trendUp": "Up {value}%",
+    "trendDown": "Down {value}%"
   }
 }

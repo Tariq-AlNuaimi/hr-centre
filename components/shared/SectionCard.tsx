@@ -8,6 +8,12 @@ const { Title, Text } = Typography;
 export interface SectionCardProps {
   /** Section heading. */
   title: ReactNode;
+  /**
+   * Heading level for the title (default 3). The canonical nesting is a
+   * PageHeader (h2) above SectionCards (h3) — keep the document outline
+   * gap-free (WCAG 2.4.6); use 4 for a SectionCard inside a sub-section.
+   */
+  headingLevel?: 1 | 2 | 3 | 4 | 5;
   /** Optional one-line description under the title. */
   subtitle?: ReactNode;
   /** Inline-end slot for the section's actions (RTL-mirrors automatically). */
@@ -26,6 +32,7 @@ export interface SectionCardProps {
  */
 export function SectionCard({
   title,
+  headingLevel = 3,
   subtitle,
   actions,
   noBodyPadding,
@@ -47,7 +54,7 @@ export function SectionCard({
         }}
       >
         <div>
-          <Title level={5} style={{ margin: 0 }}>
+          <Title level={headingLevel} style={{ margin: 0 }}>
             {title}
           </Title>
           {subtitle && (

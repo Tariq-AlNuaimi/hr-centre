@@ -26,7 +26,6 @@ import {
 } from "antd";
 import {
   PlusOutlined,
-  DownloadOutlined,
   UserOutlined,
   DeleteOutlined,
   SafetyCertificateOutlined,
@@ -54,7 +53,7 @@ const { Title, Text, Paragraph } = Typography;
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <Title level={4} style={{ marginTop: 0 }}>
+      <Title level={3} style={{ marginTop: 0 }}>
         {title}
       </Title>
       {children}
@@ -99,9 +98,6 @@ export default function StyleGuidePage() {
       <PageHeader
         title="Style guide"
         subtitle="The design system in one place — tokens, typography, controls, and the shared patterns. Use it as the fidelity reference and the /design-qa target."
-        actions={
-          <Button icon={<DownloadOutlined />}>Export tokens</Button>
-        }
       />
 
       <Section title="Typography">

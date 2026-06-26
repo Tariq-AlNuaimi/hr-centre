@@ -172,8 +172,10 @@
     "errorSubtitle": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
   },
   "data": {
-    "selected": "{count} محدد",
+    "selected": "{count, plural, zero {لا عناصر محددة} one {عنصر واحد محدد} two {عنصران محددان} few {# عناصر محددة} many {# عنصرًا محددًا} other {# عنصر محدد}}",
     "clearSelection": "مسح",
-    "columns": "الأعمدة"
+    "columns": "الأعمدة",
+    "trendUp": "ارتفاع {value}%",
+    "trendDown": "انخفاض {value}%"
   }
 }

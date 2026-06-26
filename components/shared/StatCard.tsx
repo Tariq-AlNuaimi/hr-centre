@@ -2,6 +2,7 @@
 
 import { Card, Typography, theme } from "antd";
 import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
+import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 
 const { Text } = Typography;
@@ -27,6 +28,7 @@ export interface StatCardProps {
  */
 export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
   const { token } = theme.useToken();
+  const t = useTranslations("data");
 
   const trendUp = trend?.direction === "up";
   const positiveIsGood = trend?.positiveIsGood ?? true;
@@ -81,16 +83,23 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
             </span>
             {trend && (
               <span
+                aria-label={
+                  trendUp
+                    ? t("trendUp", { value: Math.abs(trend.value) })
+                    : t("trendDown", { value: Math.abs(trend.value) })
+                }
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 2,
+                  gap: token.marginXXS,
                   fontSize: token.fontSizeSM,
                   fontWeight: 600,
                   color: trendColor,
                 }}
               >
-                {trendUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                <span aria-hidden>
+                  {trendUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                </span>
                 {Math.abs(trend.value)}%
               </span>
             )}

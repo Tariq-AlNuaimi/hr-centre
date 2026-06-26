@@ -5,7 +5,7 @@ import type { ColumnType, ColumnsType } from "antd/es/table";
 import type { FilterValue } from "antd/es/table/interface";
 import { ControlOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable, type SortChange } from "./DataTable";
 
 const { Text } = Typography;
@@ -60,6 +60,10 @@ export interface DataViewProps<T> {
  * action bar that appears on selection, and a column-visibility control. Builds
  * on the existing DataTable primitive (server pagination/search/sort) rather
  * than reimplementing it.
+ *
+ * Selection is preserved across pages (`preserveSelectedRowKeys`) so bulk actions
+ * can span pages. If you swap `dataSource` for an entirely different dataset
+ * (not just paginate), call the `clear` callback to drop stale selection.
  */
 export function DataView<T extends object>({
   columns,
@@ -84,6 +88,20 @@ export function DataView<T extends object>({
   );
   const [visibleKeys, setVisibleKeys] = useState<string[]>(allKeys);
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // `useState` only reads its initializer once, so columns added/removed after
+  // mount (feature flag, permission, async data) would otherwise stay hidden.
+  // Keep still-present keys in order and append newly-appeared ones as visible.
+  useEffect(() => {
+    setVisibleKeys((prev) => {
+      const prevSet = new Set(prev);
+      const kept = allKeys.filter((k) => prevSet.has(k));
+      const added = allKeys.filter((k) => !prevSet.has(k));
+      return kept.length + added.length === prev.length && added.length === 0
+        ? prev
+        : [...kept, ...added];
+    });
+  }, [allKeys]);
 
   // Keep only configured-visible columns; always keep at least one.
   const visibleColumns = useMemo(() => {
