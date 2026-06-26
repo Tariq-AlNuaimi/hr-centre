@@ -15,7 +15,11 @@ import { defineConfig, devices } from "@playwright/test";
 //      dev machine, so auto-detect is a no-op off-platform and the bundled
 //      binary is used exactly as before — making this purely additive.
 function resolveChromiumPath(): string | undefined {
-  if (process.env.PW_EXECUTABLE_PATH) return process.env.PW_EXECUTABLE_PATH;
+  if (process.env.PW_EXECUTABLE_PATH) {
+    const p = process.env.PW_EXECUTABLE_PATH;
+    if (existsSync(p)) return p;
+    console.warn(`[playwright] PW_EXECUTABLE_PATH=${p} does not exist; falling back to auto-detect / bundled Chromium.`);
+  }
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
   try {
     // Prefer the highest revision present (readdir is unordered, so sort desc).

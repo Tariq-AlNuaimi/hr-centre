@@ -164,9 +164,15 @@ async function bailWithRollback(msg) {
 }
 
 const authSecret = randomBytes(32).toString("base64");
+// Audit-retention cron secret (ADR-018): without it the daily audit-purge cron
+// shipped in vercel.json no-ops (200 {skipped:true}) forever. Must be set on the
+// project BEFORE the first build, same as /deploy. >=32 chars per lib/env.ts.
+const cronSecret = randomBytes(32).toString("base64");
 const seedAdminPassword = randomBytes(18)
   .toString("base64")
   .replace(/[+/=]/g, (c) => ({ "+": "A", "/": "B", "=": "" })[c]);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function api(label, url, opts = {}) {
   const r = await fetch(url, opts);
@@ -342,6 +348,7 @@ const vercelProject = await api(
         { key: "NEXT_PUBLIC_APP_NAME", value: displayName, target: envTargets, type: "plain" },
         { key: "SEED_ADMIN_EMAIL", value: adminEmail, target: envTargets, type: "plain" },
         { key: "SEED_ADMIN_PASSWORD", value: seedAdminPassword, target: envTargets, type: "encrypted" },
+        { key: "CRON_SECRET", value: cronSecret, target: envTargets, type: "encrypted" },
       ],
     }),
   }
@@ -351,6 +358,53 @@ const vercelProject = await api(
 // only warn), so by this point provisioning is effectively done.
 created.vercelProjectId = vercelProject.id ?? null;
 ok(P, `Vercel project: ${vercelProject.id} (${vercelProject.name})`);
+
+// 3b. Confirm all env vars are visible on the project BEFORE the first deploy
+// (#50). Mirrors scripts/deploy.mjs: a first build that runs before CRON_SECRET /
+// the SEED_ADMIN_* vars land bakes in a permanently dead audit-purge cron and
+// seeds no admin. Poll the env list, and only proceed once all six keys exist.
+const expectedEnvKeys = [
+  "DATABASE_URL",
+  "AUTH_SECRET",
+  "NEXT_PUBLIC_APP_NAME",
+  "SEED_ADMIN_EMAIL",
+  "SEED_ADMIN_PASSWORD",
+  "CRON_SECRET",
+];
+step(P, "Verifying all env vars are set on the project before deploying...");
+let envConfirmed = false;
+let lastMissing = expectedEnvKeys;
+for (let attempt = 1; attempt <= 5 && !envConfirmed; attempt++) {
+  let present = [];
+  try {
+    const envList = await apiTry(
+      "Vercel env list",
+      `https://api.vercel.com/v9/projects/${vercelProject.id}/env${teamQs}`,
+      { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }
+    );
+    present = (envList.envs || []).map((e) => e.key);
+  } catch (e) {
+    warn(P, `Env list read failed (attempt ${attempt}/5): ${e.message}`);
+  }
+  lastMissing = expectedEnvKeys.filter((k) => !present.includes(k));
+  if (lastMissing.length === 0) {
+    envConfirmed = true;
+    break;
+  }
+  if (attempt < 5) {
+    warn(P, `Env not fully propagated yet (missing: ${lastMissing.join(", ")}); retrying in ${attempt * 2}s...`);
+    await sleep(attempt * 2000);
+  }
+}
+if (!envConfirmed) {
+  await bailWithRollback(
+    `Env vars did not propagate to the Vercel project after 5 attempts ` +
+      `(still missing: ${lastMissing.join(", ")}). Aborting BEFORE deploy so we ` +
+      `don't ship a first build that can't see CRON_SECRET / SEED_ADMIN_* ` +
+      `(dead cron + no admin user).`
+  );
+}
+ok(P, `All ${expectedEnvKeys.length} env vars confirmed on the project.`);
 
 // 4-5. Cloudflare CNAME + attach custom domain to the project (only with --apex)
 if (apex) {

@@ -259,6 +259,14 @@ async function assertCronSecretLive(deployId, deployUrl) {
       warn(P, `Could not read deployment status: ${e.message}`);
       break;
     }
+    if (!d) {
+      // apiTry returns null on a 204 / empty body; guard so the field access
+      // below can't throw a TypeError out past the deploy trigger's catch and
+      // surface a misleading "Auto-deploy trigger failed" on a good deploy.
+      warn(P, "Deployment status response was empty; skipping CRON_SECRET verification.");
+      printCronManualCheck(deployUrl);
+      return;
+    }
     const state = d.readyState || d.status;
     if (state === "READY") {
       ready = true;
@@ -288,12 +296,21 @@ async function assertCronSecretLive(deployId, deployUrl) {
     } else if (r.status === 401) {
       warn(P, "Got a non-JSON 401 (likely Vercel Deployment Protection, not our app); verify CRON_SECRET manually.");
       printCronManualCheck(deployUrl);
-    } else if (r.status === 200 && (await r.text()).includes("skipped")) {
-      warn(
-        P,
-        "CRON_SECRET is NOT visible to the running deployment -- the audit-purge " +
-          "cron is a dead no-op. Re-check the env var in the Vercel dashboard and redeploy."
-      );
+    } else if (r.status === 200) {
+      // Match the JSON skip key (`"skipped"`) rather than the bare word, so a
+      // non-JSON 200 (e.g. an edge-middleware intercept) reads as inconclusive
+      // instead of a false dead-cron verdict. Robust to response nesting.
+      const isJson = (r.headers.get("content-type") || "").includes("application/json");
+      if (isJson && (await r.text()).includes('"skipped"')) {
+        warn(
+          P,
+          "CRON_SECRET is NOT visible to the running deployment -- the audit-purge " +
+            "cron is a dead no-op. Re-check the env var in the Vercel dashboard and redeploy."
+        );
+      } else {
+        warn(P, "Inconclusive audit-purge probe (HTTP 200 without the skip marker); verify manually.");
+        printCronManualCheck(deployUrl);
+      }
     } else {
       warn(P, `Inconclusive audit-purge probe (HTTP ${r.status}); verify manually.`);
       printCronManualCheck(deployUrl);
