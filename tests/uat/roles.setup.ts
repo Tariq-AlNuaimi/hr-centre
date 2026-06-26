@@ -52,6 +52,15 @@ function passwordFor(role: string): string | undefined {
   return process.env[`UAT_${role}_PASSWORD`] ?? process.env.SEED_ADMIN_PASSWORD;
 }
 
+// Defensive: a Prisma "invalid connection string" error can echo the full
+// DATABASE_URL — which embeds the Neon credential (Confidential, SECURITY.md §1)
+// — into the warning, and that warning lands in the shareable Playwright HTML
+// report. Strip any `//user:password@` authority before logging.
+function safeErr(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  return msg.replace(/\/\/[^/@\s]*@/g, "//[credentials]@");
+}
+
 const roles = discoverRoles();
 
 // Skip ADMIN: auth.setup.ts already logs the seeded admin in and saves admin.json.
@@ -113,7 +122,7 @@ for (const role of nonAdminRoles) {
       } catch (e) {
         console.warn(
           `roles.setup — ${role}: DB upsert failed ` +
-            `(${e instanceof Error ? e.message : String(e)}); will try UI login. ` +
+            `(${safeErr(e)}); will try UI login. ` +
             `On a local carbon-copy this almost always means DATABASE_URL still ` +
             `points at the remote/unreachable DB — export the local DATABASE_URL ` +
             `to the uat:full command so this process can provision the fixture.`,
@@ -131,7 +140,7 @@ for (const role of nonAdminRoles) {
     } catch (e) {
       console.warn(
         `roles.setup — skipping ${role}: login did not land on the dashboard ` +
-          `(${e instanceof Error ? e.message : String(e)}).`,
+          `(${safeErr(e)}).`,
       );
       setup.skip();
       return;
