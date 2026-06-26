@@ -159,9 +159,6 @@
     "notifications": "Notifications",
     "noNotifications": "You're all caught up",
     "noNotificationsHint": "New notifications will appear here.",
-    "markAllRead": "Mark all as read",
-    "viewAll": "View all",
-    "workspace": "Workspace",
     "switchWorkspace": "Switch workspace",
     "singleWorkspaceHint": "You're in your only workspace."
   },

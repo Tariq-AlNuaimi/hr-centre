@@ -53,6 +53,28 @@ export const messages = {
     errorTitle: "Something went wrong",
     errorSubtitle: "An unexpected error occurred. Please try again.",
   },
+  // Chrome (AppHeader / CommandPalette / NotificationsMenu / OrgSwitcher).
+  chrome: {
+    search: "Search or jump to…",
+    openCommand: "Open command menu",
+    commandPlaceholder: "Search pages and actions…",
+    noResults: "No matching commands",
+    groupNavigate: "Navigate",
+    groupActions: "Actions",
+    actionToggleTheme: "Toggle light / dark",
+    actionLogout: "Sign out",
+    notifications: "Notifications",
+    noNotifications: "You're all caught up",
+    noNotificationsHint: "New notifications will appear here.",
+    switchWorkspace: "Switch workspace",
+    singleWorkspaceHint: "You're in your only workspace.",
+  },
+  // DataView selection/column controls.
+  data: {
+    selected: "{count} selected",
+    clearSelection: "Clear",
+    columns: "Columns",
+  },
 };
 
 type ProviderOptions = {
