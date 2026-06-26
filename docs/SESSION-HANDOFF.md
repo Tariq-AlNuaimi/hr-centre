@@ -33,11 +33,18 @@ the regex, now fixed). No open findings.
 - dashboard pie pac-man wedge = degenerate single-role seed artifact, not a defect.
 
 ## Next steps
-1. Operator: review the style-guide contrast exemption decision; if it should be landed
-   on `main`, FF `claude/template-qa-next-steps-2rbwtw` → main (verify origin/main is an
-   ancestor first). Operator signs off UAT.
-2. Optional: full UAT (`UAT_MODE=full`) — note roles.setup EDITOR/VIEWER "DB upsert
-   failed" on the local carbon-copy (seed only made admin); provision roles before the
-   permission-matrix phase, or it skips.
+1. **Operator decision (still open):** review the style-guide contrast exemption decision;
+   if it should be landed on `main`, FF `claude/...` → main (verify origin/main is an
+   ancestor first). Operator signs off UAT. — *Not actionable without operator sign-off;
+   task-branch rules forbid touching `main` autonomously.*
+2. ~~Optional: full UAT roles.setup EDITOR/VIEWER "DB upsert failed".~~ **RESOLVED this
+   session.** Root cause: `uat:full` provisions role fixtures via Prisma *inside the
+   Playwright process*, which reads `DATABASE_URL` from env — on a local carbon-copy that
+   still pointed at the remote/unreachable DB, so the upsert failed and EDITOR/VIEWER were
+   skipped. Fix: export the local `DATABASE_URL` to the `uat:full` command (now documented
+   in `tests/uat/README.md`), and `roles.setup.ts`'s warning now names `DATABASE_URL` as
+   the cause. Verified: stood up the local carbon-copy (PG :5433, migrated + seeded) and
+   ran `--project=roles-setup` in full mode — EDITOR + VIEWER provisioned + authenticated
+   (editor.json/viewer.json written), 4 passed, no "DB upsert failed".
 3. Local carbon-copy recipe + landmines: docs/agent-memory.md (Postgres :5433, drive via
    `npm run uat` not the Playwright MCP, container restarts kill bg servers).

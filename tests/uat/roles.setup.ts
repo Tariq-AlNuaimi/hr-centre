@@ -113,7 +113,10 @@ for (const role of nonAdminRoles) {
       } catch (e) {
         console.warn(
           `roles.setup — ${role}: DB upsert failed ` +
-            `(${e instanceof Error ? e.message : String(e)}); will try UI login.`,
+            `(${e instanceof Error ? e.message : String(e)}); will try UI login. ` +
+            `On a local carbon-copy this almost always means DATABASE_URL still ` +
+            `points at the remote/unreachable DB — export the local DATABASE_URL ` +
+            `to the uat:full command so this process can provision the fixture.`,
         );
       }
     }
