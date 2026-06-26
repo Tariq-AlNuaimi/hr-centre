@@ -17,8 +17,9 @@ const screens = discoverMainSections("en");
 // AA as text/swatch demos. We still gate its STRUCTURE strictly (labels,
 // button-names, svg-alt, etc.) but exempt color-contrast there — product
 // screens carry NO such exemption. Adjudicated wave-off: docs/findings-register.md
-// (DQA-2026-06-26). Match on the route's last segment so it's locale-agnostic.
-const isTokenShowroom = (path: string) => /\/style-guide\/?$/.test(path);
+// (DQA-2026-06-26). Anchored to the depth-1 dashboard route (locale-prefixed)
+// so a deeper route ending in /style-guide can't silently inherit the exemption.
+const isTokenShowroom = (path: string) => /^\/[a-z-]+\/style-guide\/?$/.test(path);
 
 for (const screen of screens) {
   test(`a11y: ${screen.name} has no serious/critical axe violations`, async ({ page }) => {

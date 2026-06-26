@@ -54,6 +54,12 @@ here as pointers so they aren't re-litigated as new findings:
   page exists to show or force a brand-palette change. Its structure is still gated
   strictly (label/button-name/svg-img-alt enforced there); every PRODUCT screen carries
   NO contrast exemption and is axe-clean. Rationale lives in the spec comment.
+- Disabled input/Select placeholders now render at active-placeholder contrast (the
+  `colorTextPlaceholder` token was lifted to AA). Intentional AA-first choice; disabled
+  state is still signalled by the disabled border + background. Don't re-litigate.
+- DataView row-selection checkboxes share one generic accessible name ("Select row").
+  axe-clean (label present), but not row-unique; a future a11y pass could thread a
+  per-row label accessor for screen-reader correlation. Net improvement over prior (no name).
 - Dashboard "Users by role" pie shows a pac-man wedge with degenerate single-role seed
   data (1 ADMIN) — a cosmetic recharts artifact of a single 100% slice; fills in with
   real multi-role data. Not a defect.
