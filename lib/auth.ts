@@ -152,7 +152,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // persist until maxAge, same accepted gap as credentials; rotate AUTH_SECRET to
     // revoke immediately — SECURITY.md §2.)
     async signIn({ user, account }) {
-      if (account?.type === "oauth" && user?.id) {
+      // Match by account.type !== "credentials": Microsoft Entra ID registers as
+      // type "oidc" (NOT "oauth"), so an === "oauth" check would silently never
+      // fire and leave SSO users unguarded. A new (not-yet-linked) SSO user has no
+      // DB row yet → findUnique returns null → row?.deletedAt is falsy → allowed
+      // (onboarding proceeds); only an existing soft-deleted user is denied.
+      if (account && account.type !== "credentials" && user?.id) {
         const row = await prismaUnfiltered.user.findUnique({
           where: { id: user.id },
           select: { deletedAt: true },
