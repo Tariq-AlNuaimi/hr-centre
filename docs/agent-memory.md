@@ -39,6 +39,24 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-26 — **Deployed-browser QA is blocked in this remote container, two
+  independent ways** (neither is a code defect): (1) Playwright/bundled-Chromium
+  CANNOT traverse the agent MITM egress proxy — page.goto to any `*.vercel.app`
+  fails `net::ERR_CONNECTION_CLOSED` even with `proxy:{server:HTTPS_PROXY}` +
+  `--ignore-certificate-errors` (curl reaches the same URL fine; the proxy
+  README lists WebSocket/non-443 as unsupported). (2) No local Postgres (no
+  docker daemon; Neon is raw-TCP:5432, not proxied) so a localhost authenticated
+  run is also impossible. LOCAL dev screenshots DO work (localhost is in the
+  proxy noProxy list) — but only UNauth screens render without a DB. So: validate
+  the deployed AUTHENTICATED UI from a direct-egress machine (`UAT_BASE_URL=<url>
+  SEED_ADMIN_* npm run uat`) or just open the live URL. Deployment health is
+  still verifiable here via curl: `/api/health`→db ok, `/api/auth/csrf`, and the
+  `/en`→`/en/login` 307 gate.
+- 2026-06-26 — Auth.js v5 credentials login via raw curl/fetch returns
+  `?error=MissingCSRF` unless the `__Host-authjs.csrf-token` cookie is threaded
+  exactly (GET /api/auth/csrf cookie → POST /api/auth/callback/credentials).
+  Browsers do this automatically; for a headless auth smoke prefer a real browser
+  or carefully forward the __Host- csrf cookie. Not an app bug.
 - 2026-06-26 — First-deploy env-var race (#50): BOTH scripts/deploy.mjs AND
   scripts/new-project.mjs must set all 6 env vars (incl CRON_SECRET) and
   poll-confirm them via `GET /v9/projects/:id/env` BEFORE triggering the first

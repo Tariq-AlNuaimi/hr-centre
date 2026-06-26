@@ -44,17 +44,32 @@ amateur") and make Arabic/RTL optional. Blueprint:
    Senior review running post-push.
 
 ## In flight
-- **Phase 3 — branded HOCs + dashboard** (NEXT). KPI/StatCard, SectionCard,
-  DataView (bulk actions + row select + column controls), DescriptionList,
-  Toolbar; enrich the dashboard. Build on `components/shared/*` primitives.
-- Phase 4 — component gallery (light/dark/RTL states), update
-  docs/design-recipes.md, write ADR-028 extending ADR-027.
+- **ALL 6 BUILD UNITS DONE + pushed + merged.** Part 1 + Phases 0–4 are on the
+  working branch (tip `dcaf5b0`), each /ship-green. Senior reviews: Part 1 +
+  Phase 2 done (clean, nits folded in); Phase 3+4 review hit a spend limit
+  (incomplete — re-run `senior-code-reviewer` on `git diff 80391ad..HEAD`).
 
-## After all phases (per task)
-Re-`/deploy` a preview (seed auto-runs), then
-`UAT_BASE_URL=… SEED_ADMIN_* npm run uat` → `/design-qa` → `/manual-uat`.
-The authenticated chrome (palette/org/notifications/dashboard) gets its full
-browser design-qa there — login split-screen already validated locally.
+## Deployed preview (LIVE)
+- Vercel project **`it-support`** (already linked to this repo) auto-deploys
+  every push. Latest preview of the full reshaped UI:
+  **https://it-support-8j9ikwsjw-tariq-s-projects4.vercel.app** (commit dcaf5b0,
+  READY, publicly reachable — no SSO protection).
+- Verified functional via curl: `/api/health` → `{db: ok}` (Neon connected,
+  migrations + seed ran), `/api/auth/csrf` live, `/en` → 307 `/en/login` (config-
+  driven auth gate works on the deployed build).
+- **Authenticated VISUAL design-qa is still PENDING** — blocked in this container
+  (see agent-memory landmine: Playwright↔MITM-proxy + no local DB). Run from a
+  direct-egress machine: `UAT_BASE_URL=<url> SEED_ADMIN_* npm run uat` →
+  `/design-qa` → `/manual-uat`. Login split-screen already validated on local dev
+  (light+dark); Inter loads + brand primary renders (verified live, localhost).
+
+## Remaining (operator / direct-egress session)
+1. Authenticated browser design-qa of the deployed preview (dashboard, gallery
+   at `/en/style-guide`, ⌘K palette, notifications, org switcher) across
+   light/dark (+ RTL if a fork enables `ar`).
+2. Re-run the Phase 3+4 `senior-code-reviewer` (spend-limit interrupted).
+3. Optional: land the working branch on `main` when the operator is ready (it's
+   the fork source-of-truth; verify `origin/main` is an ancestor first).
 
 ## Landmines / notes
 - **Pre-existing hydration warning** (NOT mine): the CSP `nonce` on the inline
