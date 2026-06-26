@@ -82,9 +82,15 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         rowHover: "#1f242c",
         border: "#272c35",
         borderSecondary: "#20242c",
+        // Darker, ready-to-interact border on input hover (one step up).
+        controlBorderHover: "#3a414d",
+        // Subtle tinted fill for ghost/secondary surfaces (segmented, fills).
+        fillSubtle: "rgba(255, 255, 255, 0.04)",
         // Calm indigo wash for the selected nav item (no harsh fill).
         menuSelectedBg: "rgba(99, 102, 241, 0.18)",
         menuSelectedColor: "#a5b4fc",
+        // High-contrast tooltip surface (inverts against the dark canvas).
+        tooltipBg: "#2a3038",
         shadow:
           "0 1px 2px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.44)",
         shadowSecondary:
@@ -99,14 +105,22 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         rowHover: "#f6f7f9",
         border: "#e8eaed",
         borderSecondary: "#eef0f3",
+        controlBorderHover: "#c5cad3",
+        fillSubtle: "#f4f5f7",
         menuSelectedBg: "#eef2ff",
         menuSelectedColor: "#4f46e5",
+        tooltipBg: "#1f2430",
         shadow:
           "0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07)",
         shadowSecondary:
           "0 8px 24px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.05)",
         shadowTertiary: "0 1px 2px rgba(16, 24, 40, 0.05)",
       };
+
+  // On-brand focus ring shared by the input family (mirrors --ring in
+  // tokens.css, softened for a premium, non-shouty highlight). Brand-tinted in
+  // both modes so focus reads consistently.
+  const focusShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
 
   return {
     token: {
@@ -152,12 +166,77 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         primaryShadow: "none",
         defaultShadow: "none",
         paddingInline: 16,
+        // Slightly tighter radius than containers for a crisper control feel.
+        borderRadius: 8,
       },
       Card: {
         paddingLG: 24,
+        // Cards are the primary surface — give them the large radius + a soft
+        // resting elevation so they read as considered panels, not flat boxes.
+        borderRadiusLG: 12,
+        boxShadowTertiary: n.shadow,
+        headerFontSize: 16,
+        headerBg: "transparent",
       },
-      Segmented: { borderRadius: 8 },
+      // --- Input family: consistent height, hover/focus affordance ----------
+      Input: {
+        paddingBlock: 7,
+        paddingInline: 12,
+        hoverBorderColor: n.controlBorderHover,
+        activeShadow: focusShadow,
+        activeBorderColor: brand.colors.primary,
+      },
+      InputNumber: {
+        hoverBorderColor: n.controlBorderHover,
+        activeShadow: focusShadow,
+        activeBorderColor: brand.colors.primary,
+      },
+      Select: {
+        optionSelectedBg: n.menuSelectedBg,
+        optionSelectedColor: n.menuSelectedColor,
+        optionSelectedFontWeight: 500,
+        controlItemBgHover: n.rowHover,
+        borderRadius: 8,
+      },
+      DatePicker: {
+        hoverBorderColor: n.controlBorderHover,
+        activeShadow: focusShadow,
+        activeBorderColor: brand.colors.primary,
+        cellActiveWithRangeBg: n.menuSelectedBg,
+      },
+      Form: {
+        // Calmer, denser label/field rhythm than AntD's roomy default.
+        labelColor: isDark ? "#c5ccd6" : "#374151",
+        labelFontSize: 14,
+        verticalLabelPadding: "0 0 6px",
+        itemMarginBottom: 20,
+      },
+      // --- Navigation & overlays -------------------------------------------
+      Tabs: {
+        itemColor: isDark ? "#9aa3b2" : "#5b6472",
+        itemSelectedColor: brand.colors.primary,
+        itemHoverColor: brand.colors.primary,
+        inkBarColor: brand.colors.primary,
+        titleFontSize: 14,
+        horizontalItemPaddingLG: "12px 0",
+        horizontalItemGutter: 28,
+      },
+      Tooltip: {
+        borderRadius: 8,
+        colorBgSpotlight: n.tooltipBg,
+      },
+      Dropdown: {
+        borderRadiusLG: 12,
+        controlItemBgHover: n.rowHover,
+        paddingBlock: 6,
+      },
+      Tag: {
+        borderRadiusSM: 6,
+      },
+      Segmented: { borderRadius: 8, itemSelectedColor: brand.colors.primary },
       Modal: { borderRadiusLG: 12 },
+      Drawer: { borderRadiusLG: 12 },
+      Popover: { borderRadiusLG: 12 },
       Notification: { borderRadiusLG: 12 },
       Message: { borderRadiusLG: 10 },
     },
