@@ -234,10 +234,67 @@ by hand (they're frequent `/design-qa` misses):
 
 ---
 
-## 9. Living showcase (states baseline for `/design-qa`)
+## 9. Brand contract — `brand.config.ts` (white-label)
 
-For a rendered catalog of every primitive in all its states to diff against, add the
-**Storybook DX recipe** (`docs/recipes/dx/1-storybook.md`) via `/scale-up` — it wires
-the AntD `ConfigProvider` + `next-intl` decorators so stories render on-theme,
-on-locale. Kept out of the lean base (ADR-014); add it when a fork's component set
-grows enough to warrant a showcase.
+One file owns the fork's identity: app name, brand colors, radius, density, and the
+UI font. `antd-theme.ts`, the layout, and the chrome all derive from it — **rebrand
+here, never per-component**. The font is loaded (Inter via `next/font`); to swap it,
+change the `next/font` import in `app/[locale]/layout.tsx` AND `brand.font` (next/font
+needs a literal `variable`; a lockstep test guards the pair). Brand hex lives here and
+in `antd-theme.ts` only — both are exempt from `no-raw-hex-color`; everywhere else
+pulls from `theme.useToken()` (ADR-028).
+
+## 10. Branded data + detail components
+
+Build list/detail screens from these, not raw AntD — they carry the brand + the state
+chrome a "finished" app needs (ADR-028; all in `components/shared/*`):
+
+```tsx
+import { StatCard } from "@/components/shared/StatCard";        // KPI: chip + value + trend
+import { SectionCard } from "@/components/shared/SectionCard";  // titled panel + subtitle + actions
+import { DataView } from "@/components/shared/DataView";        // DataTable + toolbar + bulk + columns
+import { DescriptionList } from "@/components/shared/DescriptionList"; // key/value detail
+import { Toolbar } from "@/components/shared/Toolbar";          // filters (start) + actions (end)
+
+<DataView<Case>
+  columns={columns} dataSource={rows} rowKey="id"
+  searchable onSearch={setQuery}
+  total={total} page={page} pageSize={pageSize} onPageChange={setPage}
+  toolbarActions={<Button type="primary" icon={<PlusOutlined />}>{t("new")}</Button>}
+  bulkActions={({ selectedRowKeys, clear }) => (
+    <Button danger onClick={() => { bulkDelete(selectedRowKeys); clear(); }}>
+      {t("delete")} {selectedRowKeys.length}
+    </Button>
+  )}
+/>
+```
+
+`DataView` composes `DataTable` (server pagination/search/sort) and adds a toolbar,
+row selection with a bulk-action bar that appears on selection, and a column-visibility
+control — don't hand-roll those on a bare `Table`. `StatCard` replaces `Card + Statistic`;
+`SectionCard` replaces `Card title={}` when you need a subtitle or header actions.
+
+## 11. Branded status screens — `BrandedStatus`
+
+404 / 403 / 500 / maintenance all render through one primitive (brand mark + headline +
+copy + actions), so they stay consistent and rebrandable. The pages already exist
+(`app/[locale]/not-found.tsx`, `forbidden/`, `maintenance/`, the dashboard `error.tsx`).
+Reuse `BrandedStatus` for any new dead-end state instead of a bare AntD `Result`.
+
+## 12. Product chrome (the app shell)
+
+`AppShell` mounts the chrome: a ⌘K **command palette** (`CommandPalette`, also opened
+from the header search button via the `OPEN_COMMAND_PALETTE` event), a **notifications**
+bell (honest empty state until a feed is wired), and a single-tenant **workspace
+switcher**. Auth pages use the branded **split-screen** layout. Don't rebuild these per
+screen — they live in the shell.
+
+## 13. Living showcase (states baseline for `/design-qa`)
+
+The `/<locale>/style-guide` page is the living gallery: every primitive + the branded
+components above, in one screen, viewed across the theme toggle (light/dark) and the
+locale switch (LTR/RTL when `ar` is enabled). It's the `/design-qa` fidelity target.
+For a fuller per-component catalog, add the **Storybook DX recipe**
+(`docs/recipes/dx/1-storybook.md`) via `/scale-up` — it wires the AntD `ConfigProvider`
++ `next-intl` decorators so stories render on-theme, on-locale. Kept out of the lean
+base (ADR-014); add it when a fork's component set grows enough to warrant it.
