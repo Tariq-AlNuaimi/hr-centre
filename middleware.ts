@@ -72,10 +72,13 @@ function buildCsp(nonce: string): string {
   return directives.join("; ");
 }
 
-// Attach the CSP (with this request's nonce) + the nonce header to a response.
+// Attach the per-request CSP to a response. The nonce travels ONLY on the
+// request headers (set below) where the layout reads it via next/headers — it is
+// deliberately NOT echoed on the response, so a network/CDN/log observer can't
+// capture a live nonce and forge a nonce-bearing <script> (weakening the nonce
+// guarantee for the reflected-XSS case). The request-side x-nonce is sufficient.
 function withNonce(nonce: string, res: NextResponse): NextResponse {
   res.headers.set("Content-Security-Policy", buildCsp(nonce));
-  res.headers.set("x-nonce", nonce);
   return res;
 }
 
