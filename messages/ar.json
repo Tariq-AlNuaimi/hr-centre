@@ -146,5 +146,32 @@
   },
   "notFound": {
     "subtitle": "الصفحة التي زرتها غير موجودة."
+  },
+  "chrome": {
+    "search": "ابحث أو انتقل…",
+    "openCommand": "فتح قائمة الأوامر",
+    "commandPlaceholder": "ابحث في الصفحات والإجراءات…",
+    "noResults": "لا توجد أوامر مطابقة",
+    "groupNavigate": "التنقل",
+    "groupActions": "الإجراءات",
+    "actionToggleTheme": "تبديل الوضع الفاتح / الداكن",
+    "actionLogout": "تسجيل الخروج",
+    "notifications": "الإشعارات",
+    "noNotifications": "لا جديد لديك",
+    "noNotificationsHint": "ستظهر الإشعارات الجديدة هنا.",
+    "markAllRead": "تعليم الكل كمقروء",
+    "viewAll": "عرض الكل",
+    "workspace": "مساحة العمل",
+    "switchWorkspace": "تبديل مساحة العمل",
+    "singleWorkspaceHint": "أنت في مساحة العمل الوحيدة لديك."
+  },
+  "status": {
+    "forbiddenTitle": "تم رفض الوصول",
+    "forbiddenSubtitle": "ليس لديك إذن لعرض هذه الصفحة.",
+    "maintenanceTitle": "سنعود قريبًا",
+    "maintenanceSubtitle": "يخضع التطبيق لصيانة مجدولة. يرجى المحاولة بعد قليل.",
+    "notFoundTitle": "الصفحة غير موجودة",
+    "errorTitle": "حدث خطأ ما",
+    "errorSubtitle": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
   }
 }

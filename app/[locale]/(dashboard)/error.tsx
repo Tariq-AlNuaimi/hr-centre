@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { Result, Button } from "antd";
+import { Button } from "antd";
 import { useTranslations } from "next-intl";
 import * as Sentry from "@sentry/nextjs";
+import { BrandedStatus } from "@/components/shared/BrandedStatus";
 
 export default function DashboardError({
   error,
@@ -13,6 +14,7 @@ export default function DashboardError({
   reset: () => void;
 }) {
   const t = useTranslations("common");
+  const tStatus = useTranslations("status");
 
   useEffect(() => {
     // Log + report the real error; never render it to the user (it can carry
@@ -33,11 +35,10 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <Result
-      status="error"
-      title={t("somethingWentWrong")}
-      subTitle={t("unexpectedError")}
-      extra={
+    <BrandedStatus
+      title={tStatus("errorTitle")}
+      subtitle={tStatus("errorSubtitle")}
+      actions={
         <Button type="primary" onClick={reset}>
           {t("tryAgain")}
         </Button>

@@ -31,6 +31,35 @@ body {
   background: rgba(79, 70, 229, 0.18);
 }
 
+/* Header command-search trigger: a search-field-styled button with a ⌘K hint.
+   On narrow screens it collapses to just the icon (label + kbd hide). */
+.header-search-label {
+  font-size: var(--font-size-base);
+}
+.header-search-kbd {
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
+  color: var(--ant-color-text-tertiary, #8c8c8c);
+}
+@media (max-width: 575px) {
+  .header-search-label,
+  .header-search-kbd {
+    display: none;
+  }
+}
+
+/* Split-screen auth: hide the brand panel on small screens so the form is the
+   whole view on mobile. */
+@media (max-width: 768px) {
+  .auth-brand-panel {
+    display: none !important;
+  }
+}
+
 /* Ant Design layout overrides */
 .ant-layout {
   min-height: 100vh;

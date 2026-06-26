@@ -7,6 +7,7 @@ import { AppSidebar } from "./AppSidebar";
 import { AppFooter } from "./AppFooter";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { BreadcrumbProvider } from "./BreadcrumbProvider";
+import { CommandPalette } from "./CommandPalette";
 
 const { Content } = Layout;
 
@@ -14,6 +15,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <BreadcrumbProvider>
+        {/* ⌘K command palette — mounted once; opens on the shortcut or the
+            header search button (OPEN_COMMAND_PALETTE event). */}
+        <CommandPalette />
         <Layout style={{ minHeight: "100vh" }}>
           <AppHeader />
           <Layout>

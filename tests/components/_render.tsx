@@ -40,6 +40,18 @@ export const messages = {
     somethingWentWrong: "Something went wrong",
     unexpectedError: "An unexpected error occurred. Please try again.",
     tryAgain: "Try Again",
+    backHome: "Back Home",
+  },
+  // Branded status pages (BrandedStatus) read this namespace.
+  status: {
+    forbiddenTitle: "Access denied",
+    forbiddenSubtitle: "You don't have permission to view this page.",
+    maintenanceTitle: "We'll be right back",
+    maintenanceSubtitle:
+      "The app is undergoing scheduled maintenance. Please check back shortly.",
+    notFoundTitle: "Page not found",
+    errorTitle: "Something went wrong",
+    errorSubtitle: "An unexpected error occurred. Please try again.",
   },
 };
 

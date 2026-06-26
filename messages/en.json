@@ -146,5 +146,32 @@
   },
   "notFound": {
     "subtitle": "The page you visited does not exist."
+  },
+  "chrome": {
+    "search": "Search or jump to…",
+    "openCommand": "Open command menu",
+    "commandPlaceholder": "Search pages and actions…",
+    "noResults": "No matching commands",
+    "groupNavigate": "Navigate",
+    "groupActions": "Actions",
+    "actionToggleTheme": "Toggle light / dark",
+    "actionLogout": "Sign out",
+    "notifications": "Notifications",
+    "noNotifications": "You're all caught up",
+    "noNotificationsHint": "New notifications will appear here.",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all",
+    "workspace": "Workspace",
+    "switchWorkspace": "Switch workspace",
+    "singleWorkspaceHint": "You're in your only workspace."
+  },
+  "status": {
+    "forbiddenTitle": "Access denied",
+    "forbiddenSubtitle": "You don't have permission to view this page.",
+    "maintenanceTitle": "We'll be right back",
+    "maintenanceSubtitle": "The app is undergoing scheduled maintenance. Please check back shortly.",
+    "notFoundTitle": "Page not found",
+    "errorTitle": "Something went wrong",
+    "errorSubtitle": "An unexpected error occurred. Please try again."
   }
 }

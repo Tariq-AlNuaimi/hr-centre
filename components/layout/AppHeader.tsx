@@ -7,7 +7,11 @@ import {
   SunOutlined,
   MoonOutlined,
   GlobalOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
+import { OrgSwitcher } from "./OrgSwitcher";
+import { NotificationsMenu } from "./NotificationsMenu";
+import { OPEN_COMMAND_PALETTE } from "./CommandPalette";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
@@ -17,7 +21,6 @@ import {
   localePrefixRegex,
   nextLocale,
 } from "@/i18n/config";
-import { brand } from "@/brand.config";
 
 // Native names for the locales we ship; falls back to the uppercased code so an
 // unmapped locale still gets a sensible switcher label.
@@ -32,6 +35,7 @@ const { Text } = Typography;
 export function AppHeader() {
   const t = useTranslations("nav");
   const tTheme = useTranslations("theme");
+  const tChrome = useTranslations("chrome");
   const { data: session } = useSession();
   const { isDark, setMode } = useTheme();
   const { token } = theme.useToken();
@@ -73,35 +77,26 @@ export function AppHeader() {
         zIndex: 100,
       }}
     >
-      <Space
-        size={10}
-        style={{ cursor: "pointer" }}
-        onClick={() => router.push(`/${currentLocale}`)}
-      >
-        <span
-          aria-hidden
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            inlineSize: 28,
-            blockSize: 28,
-            borderRadius: token.borderRadius,
-            background: token.colorPrimary,
-            color: token.colorTextLightSolid,
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1,
-          }}
-        >
-          {brand.monogram}
-        </span>
-        <Text strong style={{ fontSize: 18, letterSpacing: "-0.01em" }}>
-          {brand.appName}
-        </Text>
-      </Space>
+      <OrgSwitcher />
 
       <Space size="middle">
+        <Button
+          icon={<SearchOutlined />}
+          onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE))}
+          aria-label={tChrome("openCommand")}
+          style={{
+            color: token.colorTextSecondary,
+            paddingInline: 12,
+            justifyContent: "flex-start",
+            gap: 8,
+          }}
+        >
+          <span className="header-search-label">{tChrome("search")}</span>
+          <kbd className="header-search-kbd">⌘K</kbd>
+        </Button>
+
+        <NotificationsMenu />
+
         {hasMultipleLocales && (
           <Button
             type="text"
