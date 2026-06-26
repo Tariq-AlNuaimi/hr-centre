@@ -11,13 +11,22 @@ async function main() {
 
   // Refuse to seed a guessable admin into a real deployment. The default
   // password is fine for local dev, but in production it would ship a
-  // publicly-known ADMIN credential. Fail loudly instead.
+  // publicly-known ADMIN credential. Skip CLEANLY rather than erroring: this
+  // seed runs in the Vercel build (vercel.json) where a non-zero exit is
+  // swallowed by `|| echo 'seed skipped'` and is indistinguishable from a real
+  // failure. A clean skip keeps that error-masking honest — only genuine seed
+  // errors trip the fallback — and a fresh deploy with no SEED_ADMIN_PASSWORD
+  // gets no admin (better than a known credential) instead of a silent crash.
+  // /deploy sets SEED_ADMIN_EMAIL + SEED_ADMIN_PASSWORD so the build DOES seed
+  // the admin on the first deploy (#50/#51). (#51)
   if (process.env.NODE_ENV === "production" && adminPassword === "changeme") {
-    console.error(
-      "Refusing to seed: SEED_ADMIN_PASSWORD is unset in production " +
-        "(would create admin@example.com / 'changeme'). Set a strong password and re-run."
+    console.warn(
+      "Skipping admin seed: SEED_ADMIN_PASSWORD is unset in production " +
+        "(would create admin@example.com / 'changeme'). Set SEED_ADMIN_EMAIL + " +
+        "SEED_ADMIN_PASSWORD and redeploy to create the admin user."
     );
-    process.exit(1);
+    await prisma.$disconnect();
+    return;
   }
 
   // Always release the pool, whether we created the admin or skipped it.

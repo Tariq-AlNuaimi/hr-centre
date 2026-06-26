@@ -1,4 +1,39 @@
+import { existsSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+
+// Chromium binary resolution (ADR / issue #52).
+//
+// In a Claude Code web session the env ships a pre-installed Chromium under
+// /opt/pw-browsers, but its revision can lag the one the installed @playwright
+// version expects (e.g. PW 1.61 wants rev 1228; the env ships 1194), so the
+// bundled-binary launch fails with "Executable doesn't exist". We let the
+// caller point Playwright at a known-good binary instead of re-downloading:
+//   1. PW_EXECUTABLE_PATH (explicit override) always wins.
+//   2. Otherwise auto-detect a chromium build under PLAYWRIGHT_BROWSERS_PATH
+//      (defaults to /opt/pw-browsers). This directory does NOT exist on a normal
+//      dev machine, so auto-detect is a no-op off-platform and the bundled
+//      binary is used exactly as before — making this purely additive.
+function resolveChromiumPath(): string | undefined {
+  if (process.env.PW_EXECUTABLE_PATH) return process.env.PW_EXECUTABLE_PATH;
+  const root = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
+  try {
+    // Prefer the highest revision present (readdir is unordered, so sort desc).
+    const dirs = readdirSync(root)
+      .filter((d) => d.startsWith("chromium"))
+      .sort()
+      .reverse();
+    for (const d of dirs) {
+      const candidate = path.join(root, d, "chrome-linux", "chrome");
+      if (existsSync(candidate)) return candidate;
+    }
+  } catch {
+    // root missing / unreadable -> fall through to the bundled binary.
+  }
+  return undefined;
+}
+
+const chromiumPath = resolveChromiumPath();
 
 // UAT (User Acceptance Testing) config — browser-driven walkthrough of the app.
 //
@@ -39,6 +74,9 @@ export default defineConfig({
     trace: "on-first-retry",
     // Full mode records every flow (deep audit / PDF); lean keeps video only on failure.
     video: isFull ? "on" : "retain-on-failure",
+    // Point Chromium at an explicit / auto-detected binary when one is resolved
+    // (web-session envs); undefined elsewhere -> Playwright uses its bundled one.
+    launchOptions: chromiumPath ? { executablePath: chromiumPath } : undefined,
   },
   projects: [
     // Logs in once as ADMIN and saves the session so flows don't re-authenticate.

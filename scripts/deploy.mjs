@@ -89,6 +89,8 @@ if (missing.length) {
 const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` : "";
 const customDomain = apex ? `${subdomain}.${apex}` : null;
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 // ---------------------------------------------------------------------------
 // Rollback bookkeeping.
 //
@@ -226,6 +228,82 @@ async function apiTry(label, url, opts = {}) {
   return ct.includes("application/json") ? r.json() : r.text();
 }
 
+// printCronManualCheck / assertCronSecretLive (#50): after the deploy, confirm
+// the RUNNING deployment actually SEES CRON_SECRET -- not merely that it's set on
+// the project. We wait for the deployment to be READY, then probe the audit-purge
+// cron endpoint unauthenticated:
+//   - HTTP 401            -> CRON_SECRET IS live (the daily cron will run).
+//   - HTTP 200 {skipped}  -> CRON_SECRET NOT seen -> the cron is a dead no-op.
+// Best-effort: provisioning is already complete and correct at this point, so a
+// blocked egress or a slow build downgrades to a WARN + manual-check hint, never
+// a hard failure (which would needlessly roll back a good deployment).
+function printCronManualCheck(deployUrl) {
+  console.log(
+    `\n  Manual CRON_SECRET check (expect HTTP 401 once the build is live):\n` +
+      `    curl -s -o /dev/null -w '%{http_code}\\n' https://${deployUrl}/api/internal/audit-purge\n`
+  );
+}
+
+async function assertCronSecretLive(deployId, deployUrl) {
+  step(P, "Verifying the live deployment sees CRON_SECRET (audit-purge cron)...");
+  let ready = false;
+  for (let i = 0; i < 30 && !ready; i++) {
+    let d;
+    try {
+      d = await apiTry(
+        "Vercel deployment status",
+        `https://api.vercel.com/v13/deployments/${deployId}${teamQs}`,
+        { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }
+      );
+    } catch (e) {
+      warn(P, `Could not read deployment status: ${e.message}`);
+      break;
+    }
+    const state = d.readyState || d.status;
+    if (state === "READY") {
+      ready = true;
+      break;
+    }
+    if (state === "ERROR" || state === "CANCELED") {
+      warn(P, `Deployment ended in ${state}; cannot verify CRON_SECRET -- check the Vercel build logs.`);
+      return;
+    }
+    await sleep(10_000);
+  }
+  if (!ready) {
+    warn(P, "Deployment did not reach READY in time; verify CRON_SECRET once it finishes.");
+    printCronManualCheck(deployUrl);
+    return;
+  }
+  try {
+    const r = await fetch(`https://${deployUrl}/api/internal/audit-purge`, {
+      method: "GET",
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (r.status === 401 && (r.headers.get("content-type") || "").includes("application/json")) {
+      // Our app's auth wrapper returns a JSON 401; a Vercel Deployment-Protection
+      // / SSO challenge returns an HTML 401, so the content-type guard prevents a
+      // false "confirmed" when the deployment URL is gated by Vercel.
+      ok(P, "CRON_SECRET confirmed live: audit-purge returns 401 to unauthenticated callers.");
+    } else if (r.status === 401) {
+      warn(P, "Got a non-JSON 401 (likely Vercel Deployment Protection, not our app); verify CRON_SECRET manually.");
+      printCronManualCheck(deployUrl);
+    } else if (r.status === 200 && (await r.text()).includes("skipped")) {
+      warn(
+        P,
+        "CRON_SECRET is NOT visible to the running deployment -- the audit-purge " +
+          "cron is a dead no-op. Re-check the env var in the Vercel dashboard and redeploy."
+      );
+    } else {
+      warn(P, `Inconclusive audit-purge probe (HTTP ${r.status}); verify manually.`);
+      printCronManualCheck(deployUrl);
+    }
+  } catch (e) {
+    warn(P, `Could not reach the deployment to verify CRON_SECRET (${e.message}); likely blocked egress, not a real failure.`);
+    printCronManualCheck(deployUrl);
+  }
+}
+
 await preflight();
 
 const authSecret = randomBytes(32).toString("base64");
@@ -311,6 +389,56 @@ const vercelProject = await api(
 created.vercelProjectId = vercelProject.id ?? null;
 ok(P, `Vercel project: ${vercelProject.id} (${vercelProject.name})`);
 
+// 2b. Confirm all env vars are visible on the project BEFORE triggering the
+// first deploy (#50). The create call sets them synchronously, but we re-read to
+// defeat any eventual-consistency lag between the env-var write and the build
+// pulling env -- the root cause of a dead audit-purge cron (and an unseeded
+// admin) on fresh forks: a first build that runs before CRON_SECRET / the
+// SEED_ADMIN_* vars land bakes in a no-op cron forever and seeds no admin. We
+// only trigger the deploy once all six keys are confirmed present.
+const expectedEnvKeys = [
+  "DATABASE_URL",
+  "AUTH_SECRET",
+  "NEXT_PUBLIC_APP_NAME",
+  "SEED_ADMIN_EMAIL",
+  "SEED_ADMIN_PASSWORD",
+  "CRON_SECRET",
+];
+step(P, "Verifying all env vars are set on the project before deploying...");
+let envConfirmed = false;
+let lastMissing = expectedEnvKeys;
+for (let attempt = 1; attempt <= 5 && !envConfirmed; attempt++) {
+  let present = [];
+  try {
+    const envList = await apiTry(
+      "Vercel env list",
+      `https://api.vercel.com/v9/projects/${vercelProject.id}/env${teamQs}`,
+      { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }
+    );
+    present = (envList.envs || []).map((e) => e.key);
+  } catch (e) {
+    warn(P, `Env list read failed (attempt ${attempt}/5): ${e.message}`);
+  }
+  lastMissing = expectedEnvKeys.filter((k) => !present.includes(k));
+  if (lastMissing.length === 0) {
+    envConfirmed = true;
+    break;
+  }
+  if (attempt < 5) {
+    warn(P, `Env not fully propagated yet (missing: ${lastMissing.join(", ")}); retrying in ${attempt * 2}s...`);
+    await sleep(attempt * 2000);
+  }
+}
+if (!envConfirmed) {
+  await bailWithRollback(
+    `Env vars did not propagate to the Vercel project after 5 attempts ` +
+      `(still missing: ${lastMissing.join(", ")}). Aborting BEFORE deploy so we ` +
+      `don't ship a first build that can't see CRON_SECRET / SEED_ADMIN_* ` +
+      `(dead cron + no admin user).`
+  );
+}
+ok(P, `All ${expectedEnvKeys.length} env vars confirmed on the project.`);
+
 // 3. (Optional) Cloudflare CNAME + attach custom domain to the Vercel project
 if (apex) {
   step(P, `Looking up Cloudflare zone for ${apex}...`);
@@ -376,6 +504,10 @@ if (repoId) {
       }),
     });
     ok(P, `Deploy queued: https://${deploy.url}`);
+    // Post-deploy assertion: confirm the running deployment sees CRON_SECRET (#50).
+    if (deploy.id && deploy.url) {
+      await assertCronSecretLive(deploy.id, deploy.url);
+    }
   } catch (e) {
     warn(P, `Auto-deploy trigger failed; push to ${ref} to deploy. (${e.message})`);
   }
@@ -396,10 +528,12 @@ console.log(
       ? [`- **Custom URL:** https://${customDomain} (TLS issues 1-2 min after Cloudflare DNS propagates)`]
       : []),
     "",
-    "The build runs `prisma migrate deploy` automatically. To seed the admin user,",
-    "once the deploy is green, run from a machine with the Neon DIRECT string:",
+    "The build runs `prisma migrate deploy` AND seeds the admin user automatically",
+    "(SEED_ADMIN_EMAIL/PASSWORD are set on the project; prisma/seed.ts is idempotent),",
+    "so you can log in as soon as the deploy is green -- no manual seed step. If you",
+    "ever need to re-seed manually, run from a machine with the Neon DIRECT string:",
     "",
-    "    DATABASE_URL=\"<neon-direct-url>\" npx prisma db seed",
+    "    DATABASE_URL=\"<neon-direct-url>\" SEED_ADMIN_EMAIL=\"…\" SEED_ADMIN_PASSWORD=\"…\" npx prisma db seed",
     "",
     "## Seeded admin credentials (rotate after first login)",
     "",

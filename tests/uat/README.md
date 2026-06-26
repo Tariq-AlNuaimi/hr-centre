@@ -9,6 +9,27 @@ produce double as the artifact you share with stakeholders. See ADR-008 and the
 npm run uat:install   # downloads the Chromium binary
 ```
 
+### Running in a Claude Code web session (issue #52)
+Web-session environments ship a pre-installed Chromium under `/opt/pw-browsers`,
+but its revision can lag the one the installed Playwright version expects (e.g.
+PW 1.61 wants rev 1228; the env ships 1194), so the default launch fails with
+`Executable doesn't exist`. `playwright.config.ts` resolves the binary in this
+order, so you usually don't need to do anything:
+1. **`PW_EXECUTABLE_PATH`** — explicit override, always wins:
+   ```sh
+   PW_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
+   UAT_BASE_URL="https://<your-app>.vercel.app" npm run uat
+   ```
+2. **Auto-detect** — if unset, the config scans `$PLAYWRIGHT_BROWSERS_PATH`
+   (default `/opt/pw-browsers`) for a `chromium-*/chrome-linux/chrome` and uses
+   the highest revision found. This directory doesn't exist on normal dev
+   machines, so it's a no-op there.
+
+> Outbound egress to drive a *deployed* browser target may still be restricted
+> by the session's network policy — that's an environment limit, not a config
+> one. Run UAT against a deployed `UAT_BASE_URL` from a machine with egress, or
+> use the Playwright MCP browser for in-session walkthroughs.
+
 ## Run it
 ```sh
 # Against a deployed URL (preferred — your Vercel preview / prod):
