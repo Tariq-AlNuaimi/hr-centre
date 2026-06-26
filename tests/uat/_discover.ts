@@ -17,6 +17,44 @@ import path from "node:path";
 
 export type Screen = { name: string; path: string; depth: number };
 
+// --- Locale config (read from project.config.json, the single source) -------
+// The UAT runner builds locale-prefixed URLs, so it must use the SAME locales
+// the app ships — not a hardcoded "en". Read via fs (no @/ alias / JSON-import
+// dependency on the test bundler) so this stays robust across runners.
+const RTL_LOCALES = new Set(["ar", "he", "fa", "ur"]);
+
+function readLocaleConfig(): { locales: string[]; defaultLocale: string } {
+  try {
+    const cfg = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "project.config.json"), "utf8"),
+    ) as { locales?: unknown; defaultLocale?: unknown };
+    const locales =
+      Array.isArray(cfg.locales) &&
+      cfg.locales.every((l) => typeof l === "string") &&
+      cfg.locales.length > 0
+        ? (cfg.locales as string[])
+        : ["en"];
+    const defaultLocale =
+      typeof cfg.defaultLocale === "string" && locales.includes(cfg.defaultLocale)
+        ? cfg.defaultLocale
+        : locales[0];
+    return { locales, defaultLocale };
+  } catch {
+    return { locales: ["en"], defaultLocale: "en" };
+  }
+}
+
+const localeConfig = readLocaleConfig();
+
+/** Locales this fork ships (e.g. ["en"] or ["en","ar"]). */
+export const configuredLocales = localeConfig.locales;
+/** The default locale UAT URLs are built from (driven by project.config.json). */
+export const defaultLocale = localeConfig.defaultLocale;
+/** The first RTL locale configured, if any (drives the optional RTL checks). */
+export const rtlLocale = configuredLocales.find((l) => RTL_LOCALES.has(l));
+/** True when the fork ships an RTL locale → RTL assertions are meaningful. */
+export const rtlEnabled = rtlLocale !== undefined;
+
 const DASHBOARD_GLOB = path.join("app", "[locale]", "(dashboard)");
 
 function isDynamicSegment(seg: string): boolean {

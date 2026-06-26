@@ -1,4 +1,5 @@
 import { test as setup } from "@playwright/test";
+import { defaultLocale } from "./_discover";
 
 // Logs in as the admin once and saves the session to disk so the UAT flows
 // run as an authenticated user. Credentials come from env — NEVER hardcoded.
@@ -18,15 +19,15 @@ setup("authenticate as admin", async ({ page }) => {
     );
   }
 
-  await page.goto("/en/login");
+  await page.goto(`/${defaultLocale}/login`);
 
   // Ant Design Form.Item name -> input id; these selectors are locale-independent.
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
   await page.locator('button[type="submit"]').click();
 
-  // On success the app routes to the dashboard at /en.
-  await page.waitForURL(/\/en\/?$/, { timeout: 15_000 });
+  // On success the app routes to the dashboard at /<defaultLocale>.
+  await page.waitForURL(new RegExp(`/${defaultLocale}/?$`), { timeout: 15_000 });
 
   await page.context().storageState({ path: authFile });
 });

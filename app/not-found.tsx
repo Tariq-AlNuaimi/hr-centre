@@ -25,8 +25,11 @@ export default function RootNotFound() {
               has no router to consume. eslint-disable is the documented escape
               hatch for the one route that legitimately can't use <Link>.
             */}
+            {/* Bare root, not a hardcoded /en: app/page.tsx redirects "/" to
+                the configured default locale. This file is context-free (can't
+                import config), so "/" is the locale-agnostic safe target. */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-            <a href="/en">Go home</a>
+            <a href="/">Go home</a>
           </p>
         </div>
       </body>

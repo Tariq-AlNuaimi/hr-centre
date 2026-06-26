@@ -1,7 +1,13 @@
 import { test, expect } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { discoverMainSections, type Screen } from "./_discover";
+import {
+  discoverMainSections,
+  defaultLocale,
+  rtlLocale,
+  rtlEnabled,
+  type Screen,
+} from "./_discover";
 
 // P4 (Build C) — UI/UX SWEEP. FULL mode only (`*.full.uat.ts`).
 //
@@ -19,27 +25,13 @@ import { discoverMainSections, type Screen } from "./_discover";
 // Per-section findings are appended to uat-results/uiux-findings.json for the
 // PDF (P4 section). Screenshots of the en + ar variants are attached.
 
-const EN = "en";
-const AR = "ar";
+// Source + RTL locales come from project.config.json via _discover (the single
+// config source) — never hardcoded "en"/"ar". The base sweep runs in the
+// default locale; the RTL variant runs ONLY when the fork ships an RTL locale.
+const EN = defaultLocale;
+const AR = rtlLocale ?? "ar";
 const SECTIONS = discoverMainSections(EN);
-
-// RTL is OPTIONAL per fork (i18n/config.ts): the `ar` locale, plus the rest of
-// the RTL surface, only ships when project.config.json `locales` includes it.
-// Read that config directly (fs — no alias resolution needed in the test runner)
-// so the RTL assertion runs ONLY when Arabic is actually enabled. English-only
-// forks skip the ar variant instead of failing on a locale they don't ship.
-const RTL_LOCALES = new Set(["ar", "he", "fa", "ur"]);
-const RTL_ENABLED = (() => {
-  try {
-    const cfg = JSON.parse(
-      fs.readFileSync(path.join(process.cwd(), "project.config.json"), "utf8"),
-    ) as { locales?: unknown };
-    const locales = Array.isArray(cfg.locales) ? cfg.locales : [];
-    return locales.some((l) => typeof l === "string" && RTL_LOCALES.has(l));
-  } catch {
-    return false;
-  }
-})();
+const RTL_ENABLED = rtlEnabled;
 const FINDINGS_FILE = path.join(
   process.cwd(),
   "uat-results",
@@ -76,9 +68,10 @@ function recordFinding(finding: Finding): void {
   }
 }
 
-/** The Arabic variant of an `/en/...` path (`/en/users` -> `/ar/users`). */
+/** The RTL variant of a default-locale path (`/en/users` -> `/ar/users`),
+ *  swapping the configured default-locale prefix for the RTL locale. */
 function toArabic(enPath: string): string {
-  return enPath.replace(/^\/en(\/|$)/, `/${AR}$1`);
+  return enPath.replace(new RegExp(`^/${EN}(/|$)`), `/${AR}$1`);
 }
 
 for (const section of SECTIONS as Screen[]) {

@@ -76,6 +76,7 @@ export const runtime = "nodejs";
 import createMiddleware from "next-intl/middleware";
 import { auth } from "./lib/auth";
 import { routing } from "./i18n/routing";
+import { localePrefixRegex } from "./i18n/config"; // config-driven /<locale> prefix
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 
@@ -145,11 +146,11 @@ export default auth((req) => {
     const isAuth = !!req.auth;
 
     if (!isAuth && !isPublic) {
-      const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
+      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
       return withNonce(nonce, NextResponse.redirect(new URL(`/${locale}/login`, req.url)));
     }
     if (isAuth && isPublicPath(pathname)) {
-      const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
+      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
       return withNonce(nonce, NextResponse.redirect(new URL(`/${locale}`, req.url)));
     }
 

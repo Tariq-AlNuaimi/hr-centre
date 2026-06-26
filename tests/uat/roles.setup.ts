@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
-import { discoverRoles } from "./_discover";
+import { discoverRoles, defaultLocale } from "./_discover";
 
 // P2 (Build B) per-role auth setup — FULL mode only (wired as a dependency of the
 // chromium-full run in playwright.config.ts; never runs in lean).
@@ -120,11 +120,11 @@ for (const role of nonAdminRoles) {
 
     // 2) Log in through the UI (same flow as auth.setup.ts).
     try {
-      await page.goto("/en/login");
+      await page.goto(`/${defaultLocale}/login`);
       await page.locator("#email").fill(email);
       await page.locator("#password").fill(password);
       await page.locator('button[type="submit"]').click();
-      await page.waitForURL(/\/en\/?$/, { timeout: 60_000 });
+      await page.waitForURL(new RegExp(`/${defaultLocale}/?$`), { timeout: 60_000 });
     } catch (e) {
       console.warn(
         `roles.setup — skipping ${role}: login did not land on the dashboard ` +

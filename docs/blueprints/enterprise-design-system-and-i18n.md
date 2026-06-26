@@ -1,5 +1,23 @@
 # Blueprint — Enterprise design-system overhaul + optional Arabic/RTL
 
+Status: **IN PROGRESS** — decisions signed off (1A config-flag English-only,
+2A full overhaul Phases 0–4, 3A one brand.config per client).
+
+## Implementation status
+- ✅ **Part 1 — Arabic/RTL optional** (config flag). `locales`/`defaultLocale`
+  in `project.config.json` → `i18n/config.ts` (single source: routing,
+  `localePrefixRegex`, `localeDirection`, switcher visibility). All six
+  hardcoded `(en|ar)` regexes replaced; UAT RTL assertion + URL building are
+  config-driven; recipe docs + `app/page.tsx`/`not-found.tsx` no longer hardcode
+  `/en`. `messages/ar.json` kept inert.
+- ✅ **Phase 0 — Brand contract & font.** `brand.config.ts` (white-label single
+  source) feeds `antd-theme.ts` + layout; Inter loaded via `next/font`.
+- ⏳ Phases 1–4 — in progress.
+
+---
+
+(Original draft below.)
+
 Status: **DRAFT — awaiting operator sign-off on the 3 decisions below.**
 Owner: Tariq Al-Naaimi. Created: 2026-06-26.
 Context: operator wants apps that look *enterprise-grade / sellable to clients*

@@ -295,9 +295,11 @@ after the existing unauthenticated redirect, in the non-API branch:
       | { user?: { mfaEnabled?: boolean; mfaVerified?: boolean } }
       | null;
     const needsMfa = !!sess?.user?.mfaEnabled && !sess.user.mfaVerified;
-    const onMfaPage = pathname.replace(/^\/(en|ar)/, "").startsWith("/mfa");
+    // localePrefixRegex (import from "./i18n/config") strips the config-driven
+    // /<locale> prefix — don't hardcode (en|ar); it rots when locales change.
+    const onMfaPage = pathname.replace(localePrefixRegex, "").startsWith("/mfa");
     if (isAuth && needsMfa && !onMfaPage) {
-      const locale = pathname.match(/^\/(en|ar)/)?.[1] ?? routing.defaultLocale;
+      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
       return NextResponse.redirect(new URL(`/${locale}/mfa`, req.url));
     }
 ```
