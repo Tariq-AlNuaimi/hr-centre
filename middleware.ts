@@ -57,6 +57,10 @@ function buildCsp(nonce: string): string {
     "font-src 'self' data:",
     `connect-src 'self'${sentryConnectSrc()}`,
     "object-src 'none'",
+    // Sentry Replay (instrumentation-client.ts) spins up a compression Web Worker
+    // from a blob: URL; without this it's blocked under 'strict-dynamic' and error
+    // replays silently degrade.
+    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
