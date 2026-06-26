@@ -12,9 +12,10 @@
 // #rrggbb / #rrggbbaa) or that embeds a 6-/8-digit hex color. Comments are
 // not literals, so example hexes in docs/comments are fine.
 //
-// Exempt: the token source file itself (antd-theme.ts) -- that's where brand
-// colors and the chart palette legitimately live. To use a justified literal
-// elsewhere (rare), disable per line:
+// Exempt: the token SOURCE files -- antd-theme.ts (brand tokens + chart
+// palette) and brand.config.ts (the white-label brand-color contract). Those
+// are the legitimate homes for brand hex; everything else pulls from the tokens.
+// To use a justified literal elsewhere (rare), disable per line:
 //   // eslint-disable-next-line rihal-template/no-raw-hex-color
 //
 // CSS files (tokens.css / globals.css) are out of scope for this rule -- ESLint
@@ -25,7 +26,7 @@ const WHOLE_HEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 // bounded so it isn't part of a longer hex/word run.
 const EMBEDDED_HEX = /(?:^|[^0-9a-fA-F])#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?(?![0-9a-fA-F])/;
 
-const EXEMPT_FILE = /antd-theme\.ts$/;
+const EXEMPT_FILE = /(?:antd-theme|brand\.config)\.ts$/;
 
 function isHexColor(value) {
   if (typeof value !== "string") return false;

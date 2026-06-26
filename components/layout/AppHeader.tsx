@@ -17,6 +17,7 @@ import {
   localePrefixRegex,
   nextLocale,
 } from "@/i18n/config";
+import { brand } from "@/brand.config";
 
 // Native names for the locales we ship; falls back to the uppercased code so an
 // unmapped locale still gets a sensible switcher label.
@@ -93,10 +94,10 @@ export function AppHeader() {
             lineHeight: 1,
           }}
         >
-          {(process.env.NEXT_PUBLIC_APP_NAME ?? "My App").trim().charAt(0).toUpperCase()}
+          {brand.monogram}
         </span>
         <Text strong style={{ fontSize: 18, letterSpacing: "-0.01em" }}>
-          {process.env.NEXT_PUBLIC_APP_NAME ?? "My App"}
+          {brand.appName}
         </Text>
       </Space>
 

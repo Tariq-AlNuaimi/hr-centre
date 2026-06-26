@@ -200,6 +200,7 @@ ruleTest(
 // component. The token source file (antd-theme.ts) is exempt; comments aren't
 // literals so example hexes in docs don't trip it.
 const THEME_SRC = "/repo/components/layout/antd-theme.ts";
+const BRAND_SRC = "/repo/brand.config.ts";
 const A_COMPONENT = "/repo/components/shared/Widget.tsx";
 ruleTest("no-raw-hex-color", noRawHexColor, {
   valid: [
@@ -213,6 +214,11 @@ ruleTest("no-raw-hex-color", noRawHexColor, {
     {
       filename: THEME_SRC,
       code: `export const chartPalette = ["#1677ff", "#52c41a"];`,
+    },
+    // brand.config.ts is the white-label brand-color contract — also exempt.
+    {
+      filename: BRAND_SRC,
+      code: `export const brand = { colors: { primary: "#4f46e5" } };`,
     },
   ],
   invalid: [

@@ -1,37 +1,37 @@
 import type { ThemeConfig } from "antd";
+import { brand, brandFontFamily } from "@/brand.config";
 
 /**
- * The fork's visual identity, in AntD-token form — the single place to retune
- * brand color, radius, and type for the whole app (ThemeProvider feeds it to
- * ConfigProvider; the dark/light algorithm is chosen there at runtime).
+ * The fork's visual identity, in AntD-token form. The white-label values
+ * (brand color, radius, font) come from `brand.config.ts` — the single place a
+ * fork retunes identity; this file maps them onto AntD tokens and adds the
+ * system-level constants (semantic colors, control sizing) that aren't brand.
+ * ThemeProvider feeds the result to ConfigProvider; the dark/light algorithm
+ * and density are chosen there at runtime.
  *
  * app/tokens.css is the same ruler for plain-CSS land; the overlapping values
  * (borderRadius = --radius-base, fontSize = --font-size-base) are asserted in
  * lockstep by tests/contracts/design-tokens.test.ts — change one, change both.
  *
- * Rebranding a fork: change colorPrimary (and radius if the brand calls for
- * it) HERE, not per-component. One accent per app — per-screen accent colors
- * are a design-QA finding (docs/uat-rubric.md).
+ * Rebranding a fork: edit `brand.config.ts`, not per-component. One accent per
+ * app — per-screen accent colors are a design-QA finding (docs/uat-rubric.md).
  *
- * Premium font note: the stack leads with "Inter" but does NOT load it, so it
- * falls back to the (excellent) system UI font everywhere. To actually ship
- * Inter, wire `next/font/google` in app/[locale]/layout.tsx and expose its CSS
- * variable here — purely additive, no token churn.
+ * The font (Inter by default) IS loaded now — app/[locale]/layout.tsx wires it
+ * via next/font and binds brand.font.cssVar; `brandFontFamily` chains that var
+ * ahead of the system fallback so there's no longer a silent system-font swap.
  */
 export const brandTokens: NonNullable<ThemeConfig["token"]> = {
-  // Refined indigo accent — a modern, premium-feeling default that still reads
-  // as "enterprise blue". Forks rebrand this one value.
-  colorPrimary: "#4f46e5",
-  colorInfo: "#4f46e5",
+  // Brand color from brand.config.ts (forks rebrand it there, in one place).
+  colorPrimary: brand.colors.primary,
+  colorInfo: brand.colors.primary,
   // Cohesive, slightly desaturated semantic set (modern over stock AntD).
   colorSuccess: "#16a34a",
   colorWarning: "#f59e0b",
   colorError: "#ef4444",
   // Softer corners read more premium; lockstep with --radius-base in tokens.css.
-  borderRadius: 8,
+  borderRadius: brand.radius,
   fontSize: 14,
-  fontFamily:
-    '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+  fontFamily: brandFontFamily,
   fontWeightStrong: 600,
   // Generous control sizing — the spacious, deliberate feel of Linear/Stripe.
   controlHeight: 36,

@@ -3,6 +3,7 @@
 import { ConfigProvider, theme, App } from "antd";
 import { createContext, useContext, useEffect, useState } from "react";
 import { buildTheme } from "./antd-theme";
+import { brand } from "@/brand.config";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -80,7 +81,17 @@ export function ThemeProvider({
           // component style. Measured on this template: ~5x smaller SSR-inlined
           // style payload on dashboard pages.
           cssVar: {},
-          algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+          // Brand density (brand.config.ts): layer AntD's compact algorithm on
+          // top of light/dark for data-dense tools; comfortable is the default.
+          algorithm:
+            brand.density === "compact"
+              ? [
+                  isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+                  theme.compactAlgorithm,
+                ]
+              : isDark
+                ? theme.darkAlgorithm
+                : theme.defaultAlgorithm,
           ...buildTheme(isDark),
         }}
       >

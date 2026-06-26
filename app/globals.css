@@ -11,6 +11,11 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* The brand font (next/font binds --font-sans on <html>; brand.config.ts owns
+     it). Ensures plain CSS / pre-AntD paint use the same family as the AntD
+     fontFamily token, with a graceful system fallback before the webfont loads. */
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   /* Premium type rendering — crisper glyphs on macOS/iOS and Firefox. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

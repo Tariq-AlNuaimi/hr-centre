@@ -1,14 +1,29 @@
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
+import { Inter } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { routing } from "@/i18n/routing";
 import { directionForLocale } from "@/i18n/config";
+import { brand } from "@/brand.config";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import "@/app/globals.css";
 
 type ThemeMode = "light" | "dark" | "system";
+
+// The UI font, self-hosted at build time by next/font (no runtime Google
+// request, no layout-shift flash). next/font requires LITERAL option values
+// (build-time static analysis), so `variable` must be written out — it MUST
+// equal brand.config.ts `font.cssVar` ("--font-sans"), which everything else
+// (the AntD fontFamily token, globals.css body) references. A mismatch is
+// caught by tests/contracts/design-tokens.test.ts. To swap fonts, change this
+// import AND brand.config.ts `font`.
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 // Inline, pre-hydration: for `system` mode the server can't read matchMedia, so
 // set the native color-scheme before paint to keep scrollbars/form controls in
@@ -68,7 +83,12 @@ export default async function LocaleLayout({
     // server markup intentionally differs from the post-script DOM. This is the
     // idiomatic React escape hatch for pre-hydration theme scripts; it scopes
     // the suppression to <html>'s own attributes only.
-    <html lang={locale} dir={direction} suppressHydrationWarning>
+    <html
+      lang={locale}
+      dir={direction}
+      className={sans.variable}
+      suppressHydrationWarning
+    >
       <head>
         {/* The inline theme script carries the per-request nonce (CSP script-src). */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
