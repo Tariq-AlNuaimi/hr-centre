@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Checkbox, Popover, Space, Typography, theme } from "antd";
+import type { CheckboxProps } from "antd";
 import type { ColumnType, ColumnsType } from "antd/es/table";
 import type { FilterValue } from "antd/es/table/interface";
 import { ControlOutlined } from "@ant-design/icons";
@@ -202,6 +203,12 @@ export function DataView<T extends object>({
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,
                 preserveSelectedRowKeys: true,
+                // AntD's selection checkboxes ship without accessible names
+                // (axe `label`). Name each row's checkbox so screen readers can
+                // operate bulk selection. (The header select-all is named via a
+                // global rule in app/globals.css.)
+                getCheckboxProps: () =>
+                  ({ "aria-label": t("selectRow") }) as Partial<CheckboxProps>,
               }
             : undefined
         }

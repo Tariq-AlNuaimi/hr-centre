@@ -95,6 +95,7 @@ export function DataTable<T extends object>({
     <Space orientation="vertical" style={{ width: "100%" }} size="middle">
       {searchable && (
         <Input
+          aria-label={t("search")}
           prefix={<SearchOutlined />}
           placeholder={t("search")}
           value={searchValue}

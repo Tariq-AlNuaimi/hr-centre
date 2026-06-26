@@ -128,8 +128,9 @@ export default function StyleGuidePage() {
 
       <Section title="Form controls">
         <Space orientation="vertical" size="middle" style={{ width: "100%", maxWidth: 360 }}>
-          <Input placeholder="Text input" />
+          <Input aria-label="Text input" placeholder="Text input" />
           <Select
+            aria-label="Select"
             placeholder="Select"
             style={{ width: "100%" }}
             options={[
@@ -139,7 +140,7 @@ export default function StyleGuidePage() {
             ]}
           />
           <Space>
-            <Switch defaultChecked /> <Text>Toggle</Text>
+            <Switch defaultChecked aria-label="Toggle" /> <Text>Toggle</Text>
           </Space>
         </Space>
       </Section>
@@ -279,7 +280,7 @@ export default function StyleGuidePage() {
 
       <Section title="Toolbar">
         <Toolbar
-          start={<Input prefix={<UserOutlined />} placeholder="Filter…" style={{ maxWidth: 220 }} />}
+          start={<Input aria-label="Filter" prefix={<UserOutlined />} placeholder="Filter…" style={{ maxWidth: 220 }} />}
           end={<Button type="primary" icon={<PlusOutlined />}>Create</Button>}
         />
       </Section>
@@ -325,7 +326,11 @@ export default function StyleGuidePage() {
       <Section title="Loading skeletons (layout-matched)">
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Space>
-            <Switch checked={showSkeletons} onChange={setShowSkeletons} />
+            <Switch
+              checked={showSkeletons}
+              onChange={setShowSkeletons}
+              aria-label="Toggle skeletons"
+            />
             <Text>Toggle skeletons</Text>
           </Space>
           {showSkeletons ? (

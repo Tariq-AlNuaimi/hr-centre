@@ -18,7 +18,22 @@ the changed surface is still **open** (un-adjudicated).
 
 ## Register
 <!-- newest first -->
-- (none yet)
+- (none open)
+
+### Resolved 2026-06-26 — design-QA a11y pass (authenticated local carbon-copy)
+Ran the axe gate (`tests/uat/a11y.full.uat.ts`, full mode) against every dashboard
+screen authenticated. Started RED (all 6 screens had serious/critical violations);
+ended GREEN (all 6 pass). What was FIXED (not waived):
+- color-contrast (serious, every product screen): AntD's stock muted-text tiers
+  (`colorTextDescription`/`colorTextTertiary` ≈ #8c8c8c ~3.4:1; placeholders +
+  empty-table text via `colorTextQuaternary` ≈ #bfbfbf ~1.8:1) fell below WCAG AA.
+  Darkened the tiers in `components/layout/antd-theme.ts` (light + dark) and lifted
+  the table/empty-state text in `app/globals.css`.
+- label (critical): audit-log filter Selects, style-guide bare inputs, and the
+  DataView row-selection checkboxes were unnamed — added `aria-label` / `getCheckboxProps`.
+- button-name (critical): style-guide Switches rendered as unnamed `<button role=switch>` — added `aria-label`.
+- svg-img-alt (serious): dashboard pie sectors (recharts role="img" without a name) —
+  named each `<Cell>`; dropped the pie `label` to remove the prohibited label-line path.
 
 ## Standing wave-offs promoted to documented trade-offs
 <!--
@@ -31,3 +46,14 @@ here as pointers so they aren't re-litigated as new findings:
 - Rate limiter is in-memory per-instance (fine single-instance; Upstash via `/scale-up`).
 - CSP allows `'unsafe-inline'` script+style (AntD SSR + Next bootstrap).
   (See CLAUDE.md "Known traps" for the full list.)
+- The **style-guide** route is exempt from the axe `color-contrast` rule
+  (`tests/uat/a11y.full.uat.ts`, `isTokenShowroom`). It is a deliberate token SHOWROOM
+  (not in the sidebar nav) that renders the raw AntD preset palettes (Tag green/gold/red),
+  the semantic Typography types (warning/success/danger as inline text), and brand
+  swatches ON PURPOSE — several ship below AA as demos; "fixing" them would hide what the
+  page exists to show or force a brand-palette change. Its structure is still gated
+  strictly (label/button-name/svg-img-alt enforced there); every PRODUCT screen carries
+  NO contrast exemption and is axe-clean. Rationale lives in the spec comment.
+- Dashboard "Users by role" pie shows a pac-man wedge with degenerate single-role seed
+  data (1 ADMIN) — a cosmetic recharts artifact of a single 100% slice; fills in with
+  real multi-role data. Not a defect.

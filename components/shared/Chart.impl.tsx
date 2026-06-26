@@ -148,10 +148,18 @@ export function Chart<T extends Record<string, unknown>>({
             cx="50%"
             cy="50%"
             outerRadius="80%"
-            label
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={colors[i % colors.length]} />
+            {data.map((d, i) => (
+              <Cell
+                key={i}
+                fill={colors[i % colors.length]}
+                // Recharts marks each sector role="img"; without a name axe
+                // flags svg-img-alt. Cell props spread onto the sector <path>,
+                // so this gives each slice an accessible name (the slice label).
+                aria-label={String(
+                  (d as Record<string, unknown>)[nameKey] ?? `Segment ${i + 1}`,
+                )}
+              />
             ))}
           </Pie>
         </PieChart>

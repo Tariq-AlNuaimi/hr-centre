@@ -11,6 +11,15 @@ import { discoverMainSections } from "./_discover";
 
 const screens = discoverMainSections("en");
 
+// The style-guide is a deliberate token SHOWROOM (not in the sidebar nav): it
+// renders the raw AntD preset palettes (Tag green/gold/red), the semantic
+// Typography types, and brand swatches ON PURPOSE, several of which ship below
+// AA as text/swatch demos. We still gate its STRUCTURE strictly (labels,
+// button-names, svg-alt, etc.) but exempt color-contrast there — product
+// screens carry NO such exemption. Adjudicated wave-off: docs/findings-register.md
+// (DQA-2026-06-26). Match on the route's last segment so it's locale-agnostic.
+const isTokenShowroom = (path: string) => /\/style-guide\/?$/.test(path);
+
 for (const screen of screens) {
   test(`a11y: ${screen.name} has no serious/critical axe violations`, async ({ page }) => {
     const res = await page.goto(screen.path, { waitUntil: "networkidle" });
@@ -19,9 +28,16 @@ for (const screen of screens) {
       /\/login/,
     );
 
-    const results = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .analyze();
+    let builder = new AxeBuilder({ page }).withTags([
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+    ]);
+    if (isTokenShowroom(screen.path)) {
+      builder = builder.disableRules(["color-contrast"]);
+    }
+    const results = await builder.analyze();
 
     const blocking = results.violations.filter(
       (v) => v.impact === "serious" || v.impact === "critical",

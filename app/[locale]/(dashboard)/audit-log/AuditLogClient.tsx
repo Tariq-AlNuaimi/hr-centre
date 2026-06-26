@@ -121,6 +121,7 @@ export default function AuditLogClient() {
 
       <Space style={{ marginBottom: 16 }}>
         <Select
+          aria-label={t("filterEntity")}
           placeholder={t("filterEntity")}
           allowClear
           style={{ width: 150 }}
@@ -128,6 +129,7 @@ export default function AuditLogClient() {
           options={[{ value: "User", label: "User" }]}
         />
         <Select
+          aria-label={t("filterAction")}
           placeholder={t("filterAction")}
           allowClear
           style={{ width: 150 }}

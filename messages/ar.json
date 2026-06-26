@@ -175,6 +175,7 @@
     "selected": "{count, plural, zero {لا عناصر محددة} one {عنصر واحد محدد} two {عنصران محددان} few {# عناصر محددة} many {# عنصرًا محددًا} other {# عنصر محدد}}",
     "clearSelection": "مسح",
     "columns": "الأعمدة",
+    "selectRow": "تحديد الصف",
     "trendUp": "ارتفاع {value}%",
     "trendDown": "انخفاض {value}%"
   }

@@ -43,13 +43,29 @@ body {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
-  color: var(--ant-color-text-tertiary, #8c8c8c);
+  color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.6));
 }
 @media (max-width: 575px) {
   .header-search-label,
   .header-search-kbd {
     display: none;
   }
+}
+
+/* AntD renders the table/list "No data" empty text in colorTextQuaternary
+   (≈ #bfbfbf, ~1.8:1 on white) — below WCAG AA. Lift it to an AA-compliant
+   muted tone (mode-aware) so empty states read for everyone. Literal values,
+   not AntD's hashed CSS-var, so the override is robust. Verified by axe in
+   tests/uat/a11y.full.uat.ts. */
+.ant-empty-description,
+.ant-table-placeholder,
+.ant-table-placeholder .ant-table-cell {
+  color: rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .ant-empty-description,
+[data-theme="dark"] .ant-table-placeholder,
+[data-theme="dark"] .ant-table-placeholder .ant-table-cell {
+  color: rgba(255, 255, 255, 0.65);
 }
 
 /* Split-screen auth: hide the brand panel on small screens so the form is the

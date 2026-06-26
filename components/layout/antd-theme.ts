@@ -91,6 +91,11 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         menuSelectedColor: "#a5b4fc",
         // High-contrast tooltip surface (inverts against the dark canvas).
         tooltipBg: "#2a3038",
+        // Muted-text tiers, darkened to clear WCAG AA (4.5:1) on the dark
+        // canvas — AntD's stock tertiary/description (.45 white) fails as body
+        // text. Drives Typography type="secondary", the footer, kbd hints, and
+        // card descriptions; verified by tests/uat/a11y.full.uat.ts (axe).
+        textTertiary: "rgba(255, 255, 255, 0.62)",
         shadow:
           "0 1px 2px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.44)",
         shadowSecondary:
@@ -110,6 +115,12 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         menuSelectedBg: "#eef2ff",
         menuSelectedColor: "#4f46e5",
         tooltipBg: "#1f2430",
+        // Muted-text tiers, darkened to clear WCAG AA (4.5:1) on white/#f7f8fa
+        // — AntD's stock tertiary/description (.45 black ≈ #8c8c8c) lands at
+        // ~3.4:1 and fails as body text. Drives Typography type="secondary",
+        // the footer, kbd hints, and card descriptions; verified by
+        // tests/uat/a11y.full.uat.ts (axe).
+        textTertiary: "rgba(0, 0, 0, 0.6)",
         shadow:
           "0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07)",
         shadowSecondary:
@@ -128,6 +139,15 @@ export function buildTheme(isDark: boolean): ThemeConfig {
       colorBgLayout: n.layout,
       colorBgContainer: n.surface,
       colorBgElevated: n.elevated,
+      // AA-compliant muted text (see note on n.textTertiary). colorTextSecondary
+      // (.65) already passes; tertiary + description (used by Typography
+      // type="secondary", footer, kbd) are the failing tier we darken here.
+      colorTextTertiary: n.textTertiary,
+      colorTextDescription: n.textTertiary,
+      // Input/Select placeholders default to colorTextQuaternary (≈ #bfbfbf,
+      // ~1.8:1) — visible, informative text that must clear AA. Lift to the
+      // same muted tier as descriptions.
+      colorTextPlaceholder: n.textTertiary,
       colorBorder: n.border,
       colorBorderSecondary: n.borderSecondary,
       boxShadow: n.shadow,

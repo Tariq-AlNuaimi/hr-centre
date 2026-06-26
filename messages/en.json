@@ -175,6 +175,7 @@
     "selected": "{count, plural, =1 {1 selected} other {# selected}}",
     "clearSelection": "Clear",
     "columns": "Columns",
+    "selectRow": "Select row",
     "trendUp": "Up {value}%",
     "trendDown": "Down {value}%"
   }
