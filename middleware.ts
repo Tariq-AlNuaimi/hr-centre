@@ -9,13 +9,14 @@ import { randomBytes } from "node:crypto";
 
 const intlMiddleware = createMiddleware(routing);
 
+// App (locale-prefixed) paths reachable WITHOUT a session. Consulted ONLY for
+// non-/api routes — isPublicPath runs after the /api early-return below, so the
+// /api allow-list (auth, health, internal, v1) lives there, not here. Listing
+// /api paths here too was dead code that read like a second bypass list.
 const publicPaths = [
   "/login",
   "/forgot-password",
   "/reset-password",
-  "/api/auth",
-  "/api/health",
-  "/api/internal",
 ];
 
 function isPublicPath(pathname: string): boolean {
