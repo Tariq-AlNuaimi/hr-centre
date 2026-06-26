@@ -1,51 +1,43 @@
 # Session handoff
 
-> New session: the enterprise design overhaul + optional i18n task is COMPLETE
-> and landed on `main`. This is a wrap-up, not in-flight work. Read it, then the
-> only remaining items are operator-side QA (see "Next steps").
+Goal — close the QA "Next steps": run /design-qa on a local carbon-copy, fix or
+wave-off, /ship, push. **DONE.**
 
-## Goal
-Make the template look enterprise/sellable (operator: UI "looks amateur") and
-make Arabic/RTL optional. DONE — Part 1 + design Phases 0–4, all on AntD
-(ADR-027/028). Plus two harness fixes from friction hit this session.
+State — branch `claude/template-qa-next-steps-2rbwtw`, tip `2aa5056`, in sync with
+origin (0 unpushed). `/ship` GREEN. NOT landed on main (task branch rules say push
+to the designated branch only; ask the operator before FF to `main`).
 
-## State
-- Branch: `main` — **in sync** with origin (`@{u}..HEAD` = 0), clean tree. The
-  working branch `claude/template-defects-deploy-seed-uat-0q7kb0` is the SAME
-  commit (ff-merged). Tip: `800c376`.
-- Last `/ship`: GREEN. Deployed: Vercel `it-support` project auto-deploys; live
-  preview of the full UI: https://it-support-8j9ikwsjw-tariq-s-projects4.vercel.app
-  (curl-verified: /api/health → db ok, auth gate works).
+## Done this session (design-QA a11y tier)
+Brought up a local authenticated carbon-copy (Postgres 16 :5433, seeded admin,
+`next dev`) and ran the axe gate (`tests/uat/a11y.full.uat.ts`, full mode) on all 6
+dashboard screens. Started RED (every screen had serious/critical axe violations);
+ended GREEN on all 6. Eyeballed every screen light + dark — clean.
 
-## Done (landed on main this session)
-- Part 1 i18n-optional (a8d6dc4) + stragglers (f17c96e); design Phase 0 brand+font
-  (12acaee), Phase 1 tokens (c68c58d), Phase 2 chrome (80391ad), Phase 3 HOCs
-  (6bc846e), Phase 4 gallery+docs+ADR-028 (dcaf5b0).
-- fix(harness): gitleaks auto-install on fresh containers (65bd782) — was a
-  per-fork /ship-RED; verified fixed.
-- fix(uat): proxy-aware Playwright for remote UAT_BASE_URL (800c376).
-- Senior reviews: Part 1 + Phase 2 clean (nits folded). Phase 3+4 review hit a
-  spend limit (incomplete).
+- `c3b2af2` fix(a11y): darkened AntD muted-text tokens (colorTextTertiary/Description/
+  Placeholder) light+dark in `antd-theme.ts`; lifted empty-table/placeholder text in
+  `globals.css` (mode-aware); aria-labels (audit-log Selects, style-guide inputs +
+  Switches, DataView checkboxes via getCheckboxProps, DataTable search); named recharts
+  pie `<Cell>`s + dropped pie `label`; data.selectRow in en+ar; scoped color-contrast
+  OFF for the style-guide token-showroom route only.
+- `2aa5056` fix(a11y): anchored the style-guide axe exemption to the depth-1 route
+  (`^/[a-z-]+/style-guide/?$`) per senior review; documented 2 intentional trade-offs.
 
-## In flight
-None — task shipped + merged to main.
+Senior-code-reviewer ran post-push: PASS (all contrast math confirmed AA; one Low =
+the regex, now fixed). No open findings.
 
-## Decisions
-- i18n: config flag, default English-only (1A). Design: full overhaul Phases 0–4
-  (2A). White-label: one brand.config per client (3A). Stay on AntD (ADR-027/028).
+## Wave-offs / trade-offs (documented in docs/findings-register.md, none open/blocking)
+- style-guide route is color-contrast-exempt (deliberate token showroom; product
+  screens have NO exemption and are fully axe-clean).
+- disabled-placeholder contrast now matches active (AA-first; state still signalled by
+  border/bg). DataView checkbox label is generic "Select row" (not row-unique) — future pass.
+- dashboard pie pac-man wedge = degenerate single-role seed artifact, not a defect.
 
-## Landmines (durable ones also in docs/agent-memory.md)
-- **In-container browser QA is blocked**: the agent MITM proxy rejects Chromium
-  (ERR_CONNECTION_CLOSED; curl works) AND no local DB (no docker). Credentials
-  are NOT the blocker — the network is. Authenticated VISUAL QA must run from a
-  direct-egress machine or after loosening the env network policy.
-- Pre-existing CSP-nonce hydration warning (baseline 4b6c1ee, Ask-before path) —
-  not the design work; don't "fix" without the operator.
-
-## Next steps (operator-side; pick one to see the authenticated UI)
-1. Open the live URL above in a browser, log in with the Vercel `it-support`
-   SEED_ADMIN_* creds → manual UAT of dashboard, `/en/style-guide` gallery, ⌘K
-   palette, notifications, org switcher (toggle light/dark).
-2. Or from a direct-internet machine: `UAT_BASE_URL=<url> SEED_ADMIN_EMAIL=…
-   SEED_ADMIN_PASSWORD=… npm run uat` (add `UAT_MODE=full`) → `/design-qa`.
-3. Re-run the Phase 3+4 `senior-code-reviewer` on `git diff 80391ad..dcaf5b0`.
+## Next steps
+1. Operator: review the style-guide contrast exemption decision; if it should be landed
+   on `main`, FF `claude/template-qa-next-steps-2rbwtw` → main (verify origin/main is an
+   ancestor first). Operator signs off UAT.
+2. Optional: full UAT (`UAT_MODE=full`) — note roles.setup EDITOR/VIEWER "DB upsert
+   failed" on the local carbon-copy (seed only made admin); provision roles before the
+   permission-matrix phase, or it skips.
+3. Local carbon-copy recipe + landmines: docs/agent-memory.md (Postgres :5433, drive via
+   `npm run uat` not the Playwright MCP, container restarts kill bg servers).
