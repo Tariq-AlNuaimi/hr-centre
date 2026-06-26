@@ -58,6 +58,19 @@ const baseURL = process.env.UAT_BASE_URL ?? "http://localhost:3000";
 const isLocal = baseURL.includes("localhost") || baseURL.includes("127.0.0.1");
 const isFull = process.env.UAT_MODE === "full";
 
+// Egress-proxy awareness: when UAT runs against a REMOTE url (a Vercel preview)
+// from inside a proxied container (Claude Code web / proxied CI), Chromium must
+// be told to tunnel through HTTPS_PROXY and tolerate the proxy's MITM cert --
+// otherwise page loads fail with ERR_CONNECTION_CLOSED. Localhost is bypassed so
+// local-dev UAT is unaffected. NOTE: some MITM proxies reject browser CONNECTs
+// outright (the agent proxy in this template's dev env does) -- there, run UAT
+// from a direct-egress machine; this config is correct for proxies that allow it.
+const httpsProxy = process.env.HTTPS_PROXY ?? process.env.https_proxy;
+const remoteProxy =
+  !isLocal && httpsProxy
+    ? { server: httpsProxy, bypass: "localhost,127.0.0.1,::1" }
+    : undefined;
+
 export default defineConfig({
   testDir: "./tests/uat",
   outputDir: "./uat-results",
@@ -78,9 +91,19 @@ export default defineConfig({
     trace: "on-first-retry",
     // Full mode records every flow (deep audit / PDF); lean keeps video only on failure.
     video: isFull ? "on" : "retain-on-failure",
+    // Route a remote-target run through the egress proxy + tolerate its MITM cert.
+    proxy: remoteProxy,
+    ignoreHTTPSErrors: !!remoteProxy,
     // Point Chromium at an explicit / auto-detected binary when one is resolved
     // (web-session envs); undefined elsewhere -> Playwright uses its bundled one.
-    launchOptions: chromiumPath ? { executablePath: chromiumPath } : undefined,
+    // When tunnelling through a MITM proxy, also pass --ignore-certificate-errors.
+    launchOptions:
+      chromiumPath || remoteProxy
+        ? {
+            ...(chromiumPath ? { executablePath: chromiumPath } : {}),
+            ...(remoteProxy ? { args: ["--ignore-certificate-errors"] } : {}),
+          }
+        : undefined,
   },
   projects: [
     // Logs in once as ADMIN and saves the session so flows don't re-authenticate.
