@@ -49,6 +49,16 @@ folded in. **NOT yet browser-QA'd** (`/design-qa`/`/uat` against the local PG :5
 carbon-copy or the live URL) — recommended before Phase 7 sign-off; recharts RTL/dark
 needs an eyeball.
 
+### AI / scoring configuration (operator FAQ)
+The LLM + scoring are **env-var driven, NOT configured in the Settings UI** (ADR-030,
+ARCHITECTURE §10 — data sovereignty; IT wires the endpoint). To enable: set
+`LLM_ENDPOINT_URL`/`LLM_ENDPOINT_TOKEN`/`LLM_MODEL` (AI Roles 1 & 2) and
+`SCORING_SERVICE_URL`/`SCORING_SERVICE_TOKEN` (deterministic scorer) on the
+deployment + redeploy. The `/app/settings` page (currently a Placeholder) is built
+in **Phase 8 (Compliance)** and will surface the LLM endpoint READ-ONLY for
+transparency (UI-SPEC D.10) + org/users/retention/PDPL-erasure/branding. Phase 8
+also builds the full `/methodology` page (now a stub).
+
 ### Phase 7 build order (next session, after operator review)
 OutcomeRecord (hired/probation/rating6m/rating12m/retained, attached to a Result) +
 ProfileCalibration (per role-profile-version metrics) + the manual-trigger calibration
