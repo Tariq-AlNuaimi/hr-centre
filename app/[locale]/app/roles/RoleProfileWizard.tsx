@@ -25,7 +25,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
-import { IPIP_FACETS } from "@/lib/ipip-facets";
+import { FACET_NAMES } from "./facet-vocab";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,7 +36,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { FacetPicker } from "./FacetPicker";
 
-const FACET_SET = new Set(IPIP_FACETS);
+const FACET_SET = FACET_NAMES;
 
 // Re-validate at the form boundary, mirroring lib/validations/roleProfile so a
 // row the API would 400 on is caught inline first.

@@ -7,11 +7,23 @@
 //   - the authoring UI facet picker.
 // tests/contracts/ipip-facets.test.ts asserts this list equals the distinct
 // facets in the seeded AssessmentItemBank, so the two can never drift.
+//
+// CLIENT-SAFE: the domain keys mirror the Prisma `Big5Domain` enum VALUES exactly
+// but are declared as plain strings here (NOT imported from the generated Prisma
+// client) so the facet picker can import this from a client component without
+// pulling the server-only Prisma client into the browser bundle.
 
-import { Big5Domain } from "../generated/prisma/client";
+export const BIG5_DOMAINS = [
+  "OPENNESS",
+  "CONSCIENTIOUSNESS",
+  "EXTRAVERSION",
+  "AGREEABLENESS",
+  "NEUROTICISM",
+] as const;
+export type Big5DomainKey = (typeof BIG5_DOMAINS)[number];
 
-export const IPIP_FACETS_BY_DOMAIN: Record<Big5Domain, readonly string[]> = {
-  [Big5Domain.OPENNESS]: [
+export const IPIP_FACETS_BY_DOMAIN: Record<Big5DomainKey, readonly string[]> = {
+  OPENNESS: [
     "imagination",
     "artistic_interests",
     "emotionality",
@@ -19,7 +31,7 @@ export const IPIP_FACETS_BY_DOMAIN: Record<Big5Domain, readonly string[]> = {
     "intellect",
     "liberalism",
   ],
-  [Big5Domain.CONSCIENTIOUSNESS]: [
+  CONSCIENTIOUSNESS: [
     "self_efficacy",
     "orderliness",
     "dutifulness",
@@ -27,7 +39,7 @@ export const IPIP_FACETS_BY_DOMAIN: Record<Big5Domain, readonly string[]> = {
     "self_discipline",
     "cautiousness",
   ],
-  [Big5Domain.EXTRAVERSION]: [
+  EXTRAVERSION: [
     "friendliness",
     "gregariousness",
     "assertiveness",
@@ -35,7 +47,7 @@ export const IPIP_FACETS_BY_DOMAIN: Record<Big5Domain, readonly string[]> = {
     "excitement_seeking",
     "cheerfulness",
   ],
-  [Big5Domain.AGREEABLENESS]: [
+  AGREEABLENESS: [
     "trust",
     "morality",
     "altruism",
@@ -43,7 +55,7 @@ export const IPIP_FACETS_BY_DOMAIN: Record<Big5Domain, readonly string[]> = {
     "modesty",
     "sympathy",
   ],
-  [Big5Domain.NEUROTICISM]: [
+  NEUROTICISM: [
     "anxiety",
     "anger",
     "depression",
@@ -66,9 +78,9 @@ export function isIpipFacet(facet: string): boolean {
 }
 
 /** The OCEAN domain a facet belongs to, or null if it is not a known facet. */
-export function domainForFacet(facet: string): Big5Domain | null {
+export function domainForFacet(facet: string): Big5DomainKey | null {
   for (const [domain, facets] of Object.entries(IPIP_FACETS_BY_DOMAIN)) {
-    if (facets.includes(facet)) return domain as Big5Domain;
+    if (facets.includes(facet)) return domain as Big5DomainKey;
   }
   return null;
 }
