@@ -40,9 +40,9 @@ export const PUT = withAdminAuth(async (
     return err(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  // Don't let an admin lock themselves out by self-downgrading (mirrors the
+  // Don't let an HR_ADMIN lock themselves out by self-downgrading (mirrors the
   // self-delete guard below).
-  if (id === session.user.id && parsed.data.role && parsed.data.role !== "ADMIN") {
+  if (id === session.user.id && parsed.data.role && parsed.data.role !== "HR_ADMIN") {
     return err("Cannot change your own admin role", 400);
   }
 

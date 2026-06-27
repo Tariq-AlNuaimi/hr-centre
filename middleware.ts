@@ -15,8 +15,10 @@ const intlMiddleware = createMiddleware(routing);
 // /api paths here too was dead code that read like a second bypass list.
 const publicPaths = [
   "/login",
-  "/forgot-password",
-  "/reset-password",
+  // The methodology page is the public defensibility surface (UI-SPEC D.11) —
+  // linked from the candidate consent screen and from results, so it must be
+  // reachable without a session.
+  "/methodology",
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -130,10 +132,11 @@ export default auth((req) => {
       return NextResponse.redirect(new URL(`/${locale}/login`, req.url));
     }
 
-    // Redirect authenticated users away from login
-    if (isAuth && isPublicPath(pathname)) {
+    // Redirect authenticated users away from login into the app. (Methodology
+    // is public-but-not-login, so don't bounce signed-in users off it.)
+    if (isAuth && pathname.replace(localePrefixRegex, "").startsWith("/login")) {
       const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
-      return NextResponse.redirect(new URL(`/${locale}`, req.url));
+      return NextResponse.redirect(new URL(`/${locale}/app`, req.url));
     }
 
     // next-intl needs the nonce-bearing request headers too. Hand it a real

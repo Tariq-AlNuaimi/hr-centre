@@ -64,25 +64,27 @@ export function withAuth(handler: AuthedHandler) {
 }
 
 /**
- * Like withAuth but also requires ADMIN role.
+ * Like withAuth but also requires the HR_ADMIN role. Gates the admin-only
+ * surfaces (role profiles, invites, calibration, settings, audit -- UI-SPEC
+ * Part B / D).
  */
 export function withAdminAuth(handler: AuthedHandler) {
   return withAuth(async (req, ctx) => {
-    if (ctx.session.user.role !== "ADMIN") return forbidden();
+    if (ctx.session.user.role !== "HR_ADMIN") return forbidden();
     return handler(req, ctx);
   });
 }
 
 /**
- * Like withAuth but requires write-level access: ADMIN or EDITOR (VIEWER is
- * rejected with 403). Use this on write routes that editors should reach but
- * viewers shouldn't -- it closes the gap where the EDITOR role existed but only
- * ADMIN-vs-not was ever enforced. (SECURITY.md §3.)
+ * Like withAuth but requires a recognized staff role (HR_ADMIN or
+ * HIRING_MANAGER). With only two roles today both pass, but routing writes
+ * through this wrapper (rather than bare withAuth) keeps the role check
+ * explicit and ready for a future read-only role. (SECURITY.md §3.)
  */
-export function withEditorAuth(handler: AuthedHandler) {
+export function withManagerAuth(handler: AuthedHandler) {
   return withAuth(async (req, ctx) => {
     const role = ctx.session.user.role;
-    if (role !== "ADMIN" && role !== "EDITOR") return forbidden();
+    if (role !== "HR_ADMIN" && role !== "HIRING_MANAGER") return forbidden();
     return handler(req, ctx);
   });
 }

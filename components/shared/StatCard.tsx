@@ -1,115 +1,35 @@
-"use client";
+import type { LucideIcon } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-import { Card, Typography, theme } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
-import { useTranslations } from "next-intl";
-import type { ReactNode } from "react";
-
-const { Text } = Typography;
-
-export interface StatCardProps {
-  /** Metric label (e.g. "Total users"). */
-  title: ReactNode;
-  /** The headline value. */
-  value: ReactNode;
-  /** Optional leading icon, shown in a tinted brand chip. */
-  icon?: ReactNode;
-  /** Optional trend: positive = up (good by default), negative = down. */
-  trend?: { value: number; direction: "up" | "down"; positiveIsGood?: boolean };
-  /** Optional muted line under the value (context for the number). */
-  hint?: ReactNode;
-}
-
-/**
- * Branded KPI card — the one stat surface for the app. A tinted brand chip for
- * the icon, a large value, and an optional trend pill with semantic color.
- * Replaces the bare `Card + Statistic` so every metric reads consistently
- * (the /design-system "build on a shared primitive" rule).
- */
-export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
-  const { token } = theme.useToken();
-  const t = useTranslations("data");
-
-  const trendUp = trend?.direction === "up";
-  const positiveIsGood = trend?.positiveIsGood ?? true;
-  // "Good" = up when up is good, or down when down is good.
-  const isGood = trendUp === positiveIsGood;
-  const trendColor = isGood ? token.colorSuccess : token.colorError;
-
+// Pipeline stat tile (UI-SPEC D.1). Tabular-nums keeps the figures aligned.
+export function StatCard({
+  label,
+  value,
+  icon: Icon,
+  className,
+}: {
+  label: string;
+  value: string | number;
+  icon?: LucideIcon;
+  className?: string;
+}) {
   return (
-    <Card styles={{ body: { padding: token.paddingLG } }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: token.marginSM }}>
-        {icon && (
-          <span
-            aria-hidden
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              inlineSize: 40,
-              blockSize: 40,
-              flex: "none",
-              borderRadius: token.borderRadius,
-              background: token.colorPrimaryBg,
-              color: token.colorPrimary,
-              fontSize: 18,
-            }}
-          >
-            {icon}
+    <Card className={cn("p-4", className)}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground">
+            {label}
+          </span>
+          <span className="font-display text-2xl font-semibold tabular-nums text-foreground">
+            {value}
+          </span>
+        </div>
+        {Icon && (
+          <span className="rounded-md bg-secondary p-2 text-accent">
+            <Icon className="size-4" />
           </span>
         )}
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <Text type="secondary" style={{ fontSize: token.fontSize }}>
-            {title}
-          </Text>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: token.marginSM,
-              marginBlockStart: token.marginXXS,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 28,
-                fontWeight: 700,
-                lineHeight: 1.1,
-                letterSpacing: "-0.01em",
-                color: token.colorTextHeading,
-              }}
-            >
-              {value}
-            </span>
-            {trend && (
-              <span
-                aria-label={
-                  trendUp
-                    ? t("trendUp", { value: Math.abs(trend.value) })
-                    : t("trendDown", { value: Math.abs(trend.value) })
-                }
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: token.marginXXS,
-                  fontSize: token.fontSizeSM,
-                  fontWeight: 600,
-                  color: trendColor,
-                }}
-              >
-                <span aria-hidden>
-                  {trendUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
-                </span>
-                {Math.abs(trend.value)}%
-              </span>
-            )}
-          </div>
-          {hint && (
-            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-              {hint}
-            </Text>
-          )}
-        </div>
       </div>
     </Card>
   );

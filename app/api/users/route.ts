@@ -17,11 +17,12 @@ const SORTABLE_COLUMNS = [
 ] as const;
 type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
-const VALID_ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
+const VALID_ROLES = ["HR_ADMIN", "HIRING_MANAGER"] as const;
 
-// Admin-only: the user directory (email/role/lastLogin) is not exposed to
-// VIEWER/EDITOR; the users nav is also admin-gated. See SECURITY.md §3.
-export const GET = withAdminAuth(async (request: NextRequest) => {
+// Admin-only + tenant-scoped: the user directory (email/role/lastLogin) is
+// visible only to HR_ADMIN, and only within the caller's organization. See
+// SECURITY.md §3 / ARCHITECTURE §8.
+export const GET = withAdminAuth(async (request: NextRequest, { session }) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
   const search = searchParams.get("search") ?? undefined;
@@ -41,6 +42,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       : undefined;
 
   const where: Prisma.UserWhereInput = {
+    orgId: session.user.orgId,
     ...(search
       ? {
           OR: [
@@ -74,7 +76,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   return ok(paginatedResponse(data, total, pagination));
 });
 
-export const POST = withAdminAuth(async (request: NextRequest) => {
+export const POST = withAdminAuth(async (request: NextRequest, { session }) => {
   const body = await request.json();
   const parsed = createUserSchema.safeParse(body);
   if (!parsed.success) {
@@ -89,7 +91,8 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({
-    data: { email, name, passwordHash, role },
+    // New users join the creating admin's organization (tenant scoping).
+    data: { email, name, passwordHash, role, orgId: session.user.orgId },
     select: {
       id: true,
       email: true,

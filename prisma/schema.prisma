@@ -7,24 +7,67 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================================================
+// Rihal Aptitude Assessment Platform — data model (ARCHITECTURE.md §8)
+//
+// Multi-tenant from day one: every domain row is scoped by `orgId` even though
+// Rihal is the only tenant today — cheap now, painful to retrofit later
+// (ARCHITECTURE §8). Phase 1 lays down tenancy + auth + role families; later
+// phases add RoleProfile/Competency/Assessment/Result/OutcomeRecord on this base.
+// ============================================================================
+
 // -- Enums --
 
+// The two authenticated audiences (ARCHITECTURE §8, UI-SPEC Part B):
+//   HR_ADMIN       — superset: role profiles, invites, calibration, settings, audit.
+//   HIRING_MANAGER — review results, compare, decide (no admin surfaces).
+// Default is least-privilege (HIRING_MANAGER): a misconfigured invite/SSO can't
+// silently mint an admin; an HR_ADMIN promotes in-app.
 enum Role {
-  ADMIN
-  EDITOR
-  VIEWER
+  HR_ADMIN
+  HIRING_MANAGER
+}
+
+// -- Tenancy --
+
+model Organization {
+  id            String  @id @default(cuid())
+  name          String
+  // URL-safe identifier; one tenant per slug.
+  slug          String  @unique
+  // Default candidate-facing language; candidates can still switch (UI-SPEC C.5).
+  defaultLocale String  @default("en")
+
+  // Soft deletion (org-level off-boarding; recycling-bin registered).
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  roleFamilies RoleFamily[]
+  auditLogs    AuditLog[]
+
+  @@index([deletedAt, createdAt])
+  @@map("organizations")
 }
 
 // -- Auth.js Models --
 
 model User {
   id            String    @id @default(cuid())
+  // Tenant scoping. Optional only so the very first bootstrap admin can be
+  // created before its org row exists in edge cases; every app path sets it.
+  orgId         String?
+  org           Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
   email         String    @unique
   emailVerified DateTime?
   name          String?
   passwordHash  String?
   image         String?
-  role          Role      @default(VIEWER)
+  role          Role      @default(HIRING_MANAGER)
   lastLoginAt   DateTime?
 
   // Stamped whenever the password changes (reset / admin change). The Auth.js
@@ -33,21 +76,21 @@ model User {
   passwordChangedAt DateTime?
 
   // Soft deletion
-  deletedAt     DateTime?
-  deletedBy     String?
+  deletedAt DateTime?
+  deletedBy String?
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  auditLogs     AuditLog[]
+  accounts  Account[]
+  sessions  Session[]
+  auditLogs AuditLog[]
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
-  // index serves both the filter prefix and the sort. Scaffolded soft-deletable
-  // models get the same (see scripts/scaffold-entity.mjs).
+  // index serves both the filter prefix and the sort.
   @@index([deletedAt, createdAt])
+  @@index([orgId])
   @@map("users")
 }
 
@@ -91,10 +134,41 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// -- Audit --
+// -- Role families (ARCHITECTURE §5) --
+//
+// The top-level taxonomy (Sales/BD, PMO, Support, Legal/GRC, Leadership, …)
+// under which versioned RoleProfiles are authored (added in Phase 3). Tenant-
+// scoped so each org curates its own families.
+model RoleFamily {
+  id    String @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // Stable machine key (e.g. "sales") + human label (e.g. "Sales / BD").
+  key         String
+  name        String
+  description String?
+
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgId, key])
+  @@index([deletedAt, createdAt])
+  @@map("role_families")
+}
+
+// -- Audit (PDPL / ISO audit trail, ARCHITECTURE §8/§11) --
 
 model AuditLog {
   id         String   @id @default(cuid())
+  // Tenant scoping for the audit surface (UI-SPEC D.10). Nullable: bootstrap /
+  // scheduler writes have no org context.
+  orgId      String?
+  org        Organization? @relation(fields: [orgId], references: [id], onDelete: SetNull)
+
   entityType String
   entityId   String
   action     String   // CREATE, UPDATE, DELETE, RESTORE
@@ -109,6 +183,7 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([userId])
+  @@index([orgId])
   @@index([timestamp])
   @@map("audit_logs")
 }

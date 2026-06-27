@@ -321,7 +321,7 @@ test("withAdminAuth returns 401 when there is no session", { skip: !canMock }, a
 });
 
 test("withAuth passes the session through to the handler", { skip: !canMock }, async () => {
-  current = { user: { id: "u1", role: "VIEWER" } };
+  current = { user: { id: "u1", role: "HIRING_MANAGER" } };
   let seen: unknown;
   const handler = helpers.withAuth(async (_req, c) => {
     seen = c.session;
@@ -333,13 +333,13 @@ test("withAuth passes the session through to the handler", { skip: !canMock }, a
 });
 
 test("withAdminAuth returns 403 for a non-admin session", { skip: !canMock }, async () => {
-  current = { user: { id: "u2", role: "VIEWER" } };
+  current = { user: { id: "u2", role: "HIRING_MANAGER" } };
   const res = await helpers.withAdminAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
   assert.equal(res.status, 403);
 });
 
-test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, async () => {
-  current = { user: { id: "u3", role: "ADMIN" } };
+test("withAdminAuth passes through for an HR_ADMIN session", { skip: !canMock }, async () => {
+  current = { user: { id: "u3", role: "HR_ADMIN" } };
   let called = false;
   const handler = helpers.withAdminAuth(async () => {
     called = true;
@@ -350,16 +350,10 @@ test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, as
   assert.equal(called, true);
 });
 
-test("withEditorAuth returns 403 for a VIEWER session", { skip: !canMock }, async () => {
-  current = { user: { id: "u4", role: "VIEWER" } };
-  const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
-  assert.equal(res.status, 403);
-});
-
-test("withEditorAuth passes through for EDITOR and ADMIN sessions", { skip: !canMock }, async () => {
-  for (const role of ["EDITOR", "ADMIN"]) {
+test("withManagerAuth passes through for both staff roles", { skip: !canMock }, async () => {
+  for (const role of ["HIRING_MANAGER", "HR_ADMIN"]) {
     current = { user: { id: "u5", role } };
-    const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
-    assert.equal(res.status, 200, `${role} should pass withEditorAuth`);
+    const res = await helpers.withManagerAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+    assert.equal(res.status, 200, `${role} should pass withManagerAuth`);
   }
 });

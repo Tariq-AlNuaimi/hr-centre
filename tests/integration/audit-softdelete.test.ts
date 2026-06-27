@@ -167,7 +167,7 @@ test(
     // soft-deleted rows (SR-H3). The contract suite is DB-free and can't run the
     // extension's query hooks, so this is the only place it is exercised.
     await withAuditContext(CTX, async () => {
-      const role = "EDITOR" as const;
+      const role = "HIRING_MANAGER" as const;
       const filteredCount = async () => {
         const g = await prisma.user.groupBy({
           by: ["role"],
@@ -198,7 +198,7 @@ test(
       });
       createdUserIds.push(user.id);
 
-      assert.equal(await filteredCount(), filteredBefore + 1, "live EDITOR counted by groupBy");
+      assert.equal(await filteredCount(), filteredBefore + 1, "live HIRING_MANAGER counted by groupBy");
 
       await prisma.user.delete({ where: { id: user.id } });
 

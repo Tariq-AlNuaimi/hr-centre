@@ -10,13 +10,13 @@ import { prismaUnfiltered } from "./prisma";
 
 /**
  * SSO SEAM (ADR-013 / ADR-024): map an IdP's claims to our Role enum. Default is
- * least-privilege (VIEWER) so a misconfigured IdP can't grant ADMIN; an admin
- * promotes the user in-app after first SSO login. A fork that trusts its IdP's
- * group/role claims can override here, e.g.:
- *   if (claims?.groups?.includes("app-admins")) return "ADMIN";
+ * least-privilege (HIRING_MANAGER) so a misconfigured IdP can't grant HR_ADMIN;
+ * an HR_ADMIN promotes the user in-app after first SSO login. A fork that trusts
+ * its IdP's group/role claims can override here, e.g.:
+ *   if (claims?.groups?.includes("hr-admins")) return "HR_ADMIN";
  */
 export function mapSsoRole(_claims: Record<string, unknown> | undefined): Role {
-  return "VIEWER";
+  return "HIRING_MANAGER";
 }
 
 /**
@@ -96,6 +96,7 @@ const credentialsProvider = Credentials({
       name: user.name,
       image: user.image,
       role: user.role,
+      orgId: user.orgId,
       passwordChangedAt: user.passwordChangedAt,
     };
   },
@@ -171,6 +172,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id!;
         token.role = user.role;
+        token.orgId = user.orgId ?? null;
         token.passwordChangedAt = user.passwordChangedAt?.getTime() ?? 0;
         return token;
       }
@@ -203,6 +205,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // no-any-cast-on-session lint rule does not fire.
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        session.user.orgId = (token.orgId as string | null) ?? null;
       }
       return session;
     },
