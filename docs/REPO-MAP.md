@@ -15,6 +15,7 @@
 - app/[locale]/app/settings/page.tsx
 - app/[locale]/methodology/page.tsx
 - app/[locale]/page.tsx
+- app/a/[token]/page.tsx
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
@@ -28,32 +29,40 @@
 - app/api/role-profiles/[id]/version/route.ts  [POST]
 - app/api/role-profiles/draft/route.ts  [POST]
 - app/api/role-profiles/route.ts  [GET,POST]
+- app/api/run/[token]/consent/route.ts  [POST]
+- app/api/run/[token]/response/route.ts  [POST]
+- app/api/run/[token]/submit/route.ts  [POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, roleProfiles, auditLogs
+- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, roleProfiles, invitations, assessments, auditLogs
 - User: id, orgId, org, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - RoleFamily: id, orgId, org, key, name, description, deletedAt, deletedBy, createdAt, updatedAt, roleProfiles
-- RoleProfile: id, orgId, org, roleFamilyId, roleFamily, lineageId, version, status, title, jdSourceText, isAiDrafted, createdById, approvedById, approvedAt, deletedAt, deletedBy, createdAt, updatedAt, competencies, sjtItems
+- RoleProfile: id, orgId, org, roleFamilyId, roleFamily, lineageId, version, status, title, jdSourceText, isAiDrafted, createdById, approvedById, approvedAt, deletedAt, deletedBy, createdAt, updatedAt, competencies, sjtItems, invitations
 - Competency: id, roleProfileId, roleProfile, name, onetRef, importance, weight, direction, targetPercentile, sourceCitation, order, facets, createdAt, updatedAt
 - CompetencyFacet: id, competencyId, competency, facet
 - SjtItem: id, roleProfileId, roleProfile, scenario_en, scenario_ar
 - AssessmentItemBank: id, itemNumber, itemCode, domain, facet, facetNumber, keyed, text_en, text_ar, createdAt, updatedAt
 - AuditLog: id, orgId, org, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
+- Invitation: id, orgId, org, roleProfileId, roleProfile, candidateEmail, candidateName, token, status, expiresAt, locale, sentById, batchId, deletedAt, deletedBy, createdAt, updatedAt, assessment
+- Assessment: id, orgId, org, invitationId, invitation, status, locale, consentAt, startedAt, submittedAt, deletedAt, deletedBy, createdAt, updatedAt, itemResponses, sjtResponses
+- ItemResponse: id, assessmentId, assessment, itemNumber, value, createdAt, updatedAt
+- SjtResponse: id, assessmentId, assessment, sjtItemId, sjtItem, chosenOptionId, createdAt, updatedAt
 
 ## lib/ exports
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
-- lib/api-helpers.ts: withAuth, withAdminAuth, withManagerAuth, withInternalAuth, withRateLimit, withApiAuth
+- lib/api-helpers.ts: withAuth, withAdminAuth, withManagerAuth, withInternalAuth, withRateLimit, withApiAuth, withCandidateToken
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
 - lib/authz.ts: requireSession, requireAdmin, isAdmin
+- lib/candidate-i18n.ts: CandidateLocale, CandidateStrings, candidateStrings
 - lib/client-ip.ts: clientIp
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
@@ -70,8 +79,10 @@
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/scoring.ts: ScoringError, isScoringConfigured, requestScoring
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
-- lib/services/roleProfile.ts: isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
+- lib/services/candidateRunner.ts: TokenState, ResolvedInvitation, TokenResolution, resolveToken, getInvitationDisplay, BilingualItem, BilingualSjtOption, BilingualSjtItem, getBilingualItems, getBilingualSjtItems, getSavedResponses, recordConsent, saveItemResponse, saveSjtResponse, submitAssessment
+- lib/services/roleProfile.ts: RoleProfileNotFoundError, isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
 - lib/utils.ts: cn
+- lib/validations/candidate.ts: IPIP_ITEM_COUNT, LIKERT_MIN, LIKERT_MAX, consentSchema, ConsentInput, responseSchema, ResponseInput, localeSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/roleProfile.ts: bandDirectionSchema, competencyInputSchema, CompetencyInput, CompetencyValue, sjtItemInputSchema, SjtItemInput, SjtItemValue, createRoleProfileSchema, CreateRoleProfileInput, CreateRoleProfile, updateRoleProfileSchema, UpdateRoleProfileInput, UpdateRoleProfile, draftRoleProfileSchema, DraftRoleProfileInput, llmDraftResponseSchema, LlmDraftResponse
 - lib/validations/scoring.ts: NUM_ITEMS, big5Domains, scoreBandSchema, answerSchema, scoreRequestSchema, facetScoreSchema, domainScoreSchema, scoreResponseSchema, ScoreRequestInput, ScoreRequest, ScoreResponse, DomainScore, FacetScore, Big5Domain
