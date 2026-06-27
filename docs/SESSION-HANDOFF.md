@@ -1,12 +1,63 @@
 # Session handoff — Rihal Aptitude Platform
 
-**Branch:** `claude/rihal-phase-5-invitations-b2zaau` (push verified; tip `9d32f2a`,
+**Branch:** `claude/rihal-phase-5-invitations-b2zaau` (push verified; tip `b8ab10c`,
 `git rev-list --count @{u}..HEAD` = 0). **Operator goal:** build ARCHITECTURE.md
 §12's 8 phases, **pausing for operator review after each phase.** Specs
 (ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request
 before any phase needing detail.
 
-## Status: Phases 1–5 DONE. Phase-5 senior-review findings + Resend transport DONE & pushed. Phase 6 BLUEPRINTED, ⏸ awaiting operator sign-off before the build.
+## Status: Phases 1–6 DONE + /ship GREEN + pushed. ⏸ PAUSED for operator review before Phase 7 (calibration). Phase 7 = OutcomeRecord + ProfileCalibration + adverse-impact monitor.
+
+### Deployment (live test URL)
+- **Live:** https://fullstack-vibe-template.vercel.app — admin `alnaaime@gmail.com`.
+  Deployed from THIS branch on the EXISTING repo (the standalone-repo step is
+  blocked — see below). Each push to b2zaau auto-builds; promote production from
+  b2zaau via the Vercel API (project `prj_jKdcMNnuGdkAlAyZXBKcPaGK8YJu`, team
+  `team_Buc334YaFWzCtASZs9oWvcI5`, repoId `1241728413`, ref the branch).
+- `SEED_SAMPLE_DATA=1` is set on Vercel → the build seeds 4 demo candidates (3 with
+  PRECOMPUTED results via the pure roll-up on synthetic scorer output) so the
+  evidence-trail UI is viewable WITHOUT a live Python scorer; 1 candidate is left
+  unscored to show the "scoring not configured" state.
+- `SCORING_SERVICE_URL` / `LLM_ENDPOINT_URL` are UNSET (graceful degrade) — live
+  end-to-end scoring + AI narrative can't be exercised here; they need the Python
+  services/scoring up + the LiteLLM endpoint reachable in the deployed env.
+
+### ⚠️ Standalone-repo step is BLOCKED (operator action needed)
+Task step 1 (spin into a fresh standalone GitHub repo) is blocked at the
+environment's egress-policy proxy: ALL GitHub paths 403 — MCP create_repository,
+the GH_AUTOMATION_TOKEN PAT used directly against api.github.com, AND git
+push-to-create. The proxy forces every GitHub call through a GitHub App scoped to
+`fullstack-vibe-template` only; no token widens it. UNBLOCK: the App installation
+backing this Cloud env needs repository access "All repositories" + Administration:
+write, OR create an empty private repo manually and hand over the name — then
+`git push <newremote> claude/rihal-phase-5-invitations-b2zaau` carries the full
+142-commit history. A `rihal` remote is pre-staged (currently 403s).
+
+## Phase 6 — DONE (results, dashboards & AI Role 2)
+Built per docs/blueprints/phase-6-results.md (full track, operator-signed-off):
+migration `add_result_and_decision` (Result + DecisionOutcome; Result registered
+for soft-delete + recycling; SCRUB_FIELDS unchanged) → pure `lib/scoring-rollup.ts`
+(15 contract tests) → `lib/services/result.ts` (lazy compute-on-view + persist,
+scoring-gated honest states, decision, narrative cache, candidates/compare/dashboard
+reads, all orgId-scoped) → AI Role 2 `lib/llm.draftResultNarrative` (numbers-only,
+no PII/JD, schema-validated, config-gated) → routes (compute/narrative/decision/pdf,
+withManagerAuth + withRateLimit OUTSIDE) → UI (dashboard wired, candidates list,
+the evidence-trail `candidates/[id]` page, compare, /methodology stub; shadcn +
+recharts, en+ar, on-token) → `@react-pdf` branded PDF (`lib/pdf/`). Two `/code-review`
+passes (backend + UI) + senior-review (backend PASS; UI pass running) — findings
+folded in. **NOT yet browser-QA'd** (`/design-qa`/`/uat` against the local PG :5433
+carbon-copy or the live URL) — recommended before Phase 7 sign-off; recharts RTL/dark
+needs an eyeball.
+
+### Phase 7 build order (next session, after operator review)
+OutcomeRecord (hired/probation/rating6m/rating12m/retained, attached to a Result) +
+ProfileCalibration (per role-profile-version metrics) + the manual-trigger calibration
+report (predicted-fit vs observed-outcome) + adverse-impact monitor. All ADVISORY —
+admin reviews → creates a NEW profile version; never auto-adjusts (ARCHITECTURE §7).
+
+---
+
+## (historical) Phases 1–5 DONE. Phase-5 senior-review findings + Resend transport DONE & pushed. Phase 6 was BLUEPRINTED then built this session.
 
 ### ⚠️ Branch trap (read first)
 This session was started on `claude/rihal-phase-5-invitations-FQV38U`, which is a
