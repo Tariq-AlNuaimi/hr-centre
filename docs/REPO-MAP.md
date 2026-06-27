@@ -69,7 +69,7 @@
 - lib/authz.ts: requireSession, requireAdmin, isAdmin
 - lib/candidate-i18n.ts: CandidateLocale, CandidateStrings, candidateStrings
 - lib/client-ip.ts: clientIp
-- lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
+- lib/email.ts: EmailTransport, selectTransport, isEmailEnabled, SendEmailOptions, SendEmailResult, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
@@ -87,7 +87,7 @@
 - lib/services/candidateRunner.ts: TokenState, ResolvedInvitation, TokenResolution, resolveToken, getInvitationDisplay, BilingualItem, BilingualSjtOption, BilingualSjtItem, getBilingualItems, getBilingualSjtItems, getSavedResponses, recordConsent, saveItemResponse, saveSjtResponse, submitAssessment
 - lib/services/invitation.ts: effectiveStatus, InvitationListFilters, InvitationRow, listInvitations, listActiveRoleProfiles, SingleResult, createInvitation, BulkResult, createInvitationsBulk, ActionResult, resendInvitation, revokeInvitation, markOpened
 - lib/services/roleProfile.ts: RoleProfileNotFoundError, isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
-- lib/token.ts: generateInvitationToken, hashInvitationToken, tokenHashEquals
+- lib/token.ts: generateInvitationToken, hashInvitationToken
 - lib/utils.ts: cn
 - lib/validations/candidate.ts: IPIP_ITEM_COUNT, LIKERT_MIN, LIKERT_MAX, consentSchema, ConsentInput, responseSchema, ResponseInput, localeSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
