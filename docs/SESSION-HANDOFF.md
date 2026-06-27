@@ -1,100 +1,44 @@
 # Session handoff — Rihal Aptitude Platform
 
-**Branch:** `claude/rihal-phase-2-scoring-c9m6xr`. Verify pushed: `git rev-list --count @{u}..HEAD` = 0.
-**Operator goal:** Build the platform in the 8 phases of ARCHITECTURE.md §12, **pausing for operator review after each phase.** Spec files (ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request them before any phase that needs the detail.
+**Branch:** `claude/rihal-phase-4-candidate-runner-3r3ix6` (tip pushed; `git rev-list --count @{u}..HEAD` = 0).
+**Operator goal:** Build the platform in ARCHITECTURE.md §12's 8 phases, **pausing for operator review after each phase.** Specs (ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request before any phase needing detail.
 
-## Status: Phase 3 BUILT+pushed (gates pending). Phase 4 STARTED — blueprint committed (`docs/blueprints/phase-4-candidate-runner.md`); the multi-file build was NOT started (a fresh resume was already at ~128% context from the two spec uploads — building the runner there would degrade exactly the PII/consent work that must be careful). **Next session: run the deferred Phase-3 gates, then build Phase 4 from its committed blueprint (re-supply ARCHITECTURE.md + UI-SPEC.md).**
+## Status: Phase 3 gates DONE. Phase 4 BUILT + ship-green + pushed; Phase-4 QA gates NOT yet run.
+This session: (1) ran the deferred Phase-3 gates and resolved findings, (2) built Phase 4 (candidate runner) backend + UI. Hit the context limit (~169%) right after the UI shipped green — so the Phase-4 **browser UAT / design-QA / senior-code-reviewer** did NOT run. Everything is committed + pushed (nothing lost). **Those three gates are the first task next session, then pause for operator review before Phase 5.**
 
-This session built Phase 3 end-to-end (backend + UI) but hit the context hard
-limit (~117%) right after the build went green, BEFORE the formal `/ship`,
-`/code-review`, and `senior-code-reviewer` gates could run. Everything is
-committed + pushed so nothing is lost; the gates are the first task next session.
+### ⚠️ MUST DO FIRST next session (Phase-4 gates — do NOT skip; do NOT start Phase 5 until done)
+1. `npm install` (after any FF), bring up local PG + seed (recipe below), start dev **with DATABASE_URL** (see the gotcha below — the runner 500s without it).
+2. **Browser UAT of the runner** (`/a/<token>`): full happy path consent → 120 items (paged, autosave, resume) → SJT → completion; worst paths (invalid/expired/revoked/completed token states; out-of-range value → 422; post-submit write → 409; save-failure inline retry). Use the test token below or mint a fresh one.
+3. **/design-qa on `/a/*`**: axe AA, EN + **AR full RTL**, mobile @360px, dark mode, reduced-motion, journey line, 44px targets. The runner was built to-spec but NOT yet visually verified or axe-tested.
+4. **senior-code-reviewer** on the Phase-4 diff (range `9fa5210..HEAD`, i.e. the 4 Phase-4 commits) — resolve findings, /ship green.
+5. State what's testable + **pause for operator review before Phase 5.**
 
-### ⚠️ MUST DO FIRST next session (the deferred gates — do NOT skip; do NOT start Phase 4 until green)
-1. `npm install` (branch deps), bring up local PG (recipe below), then:
-2. **`/code-review`** on the Phase-3 diff (touches schema/lib/API — required pre-push gate).
-3. **`/ship`** — must be GREEN. The pre-push BUILD gate passed on push, but the
-   full `/ship` (typecheck+lint+contract tests+build+gitleaks+npm-audit) was not
-   run as one pass this session. Backend pieces were each verified green
-   (tsc clean, eslint clean, 16 new contract tests pass, seed verified); the UI
-   was verified to typecheck clean. Run the real gate and fix anything.
-4. **`senior-code-reviewer`** (post-push breadth pass) — resolve findings.
-5. Then state what's testable + pause for operator review before Phase 4.
+### What Phase 4 shipped (committed + pushed, /ship green)
+**Blueprint:** `docs/blueprints/phase-4-candidate-runner.md` (the contract).
+**Schema** (migration `20260627070402_add_candidate_runner`, additive): `Invitation` (minimal — token entry + candidate PII; full invite UI is Phase 5), `Assessment`, `ItemResponse` `@@unique([assessmentId,itemNumber])`, `SjtResponse` `@@unique([assessmentId,sjtItemId])`. Enums `InvitationStatus`/`AssessmentStatus`. Soft-delete + recycling-bin: `Invitation`+`Assessment` (PDPL erasure; responses cascade on permanent delete). **All four audited** (per blueprint "audit ON for all" — see the trade-off note below). `candidateEmail`/`candidateName` + behavioral responses + `scoringKey` classified **Confidential** in SECURITY.md §1 (PDPL).
+**Auth + API:** `withCandidateToken` (lib/api-helpers.ts) — opaque high-entropy token authorizes (NOT a client id), uniform invalid/revoked/expired states (no enumeration), orgId stamped + **NULL user**, rate-limit OUTSIDE. `lib/services/candidateRunner.ts` — token resolution, **bilingual** item/SJT render with `scoringKey` NEVER selected, idempotent autosave via find-then-create/update (audited; no upsert → no `no-unaudited-bulk-write` trip; P2002 race → update), consent/submit lifecycle, `getInvitationDisplay` (read-only). Routes `app/api/run/[token]/{consent,response,submit}` — zod on every body; SJT option verified server-side; writes rejected once SUBMITTED. Public via middleware `/api/run` allow-list + `/a/*` non-localized passthrough. Contract test `tests/contracts/candidate-validation.test.ts`.
+**UI:** `app/a/layout.tsx` (own `<html>` outside `[locale]`; fonts + globals + ThemeProvider; NO next-intl). `app/a/[token]/{page.tsx (RSC),Runner,ConsentStep,ItemsStep,SjtStep,CompletionStep,JourneyLine,SaveIndicator,TokenStateScreen,save.ts}` + `lib/candidate-i18n.ts` (typed EN/AR dict). Consent (PDPL + /methodology link, Begin gated on checkbox → POST before any write), 120 items 5/screen native-radio Likert (44px, fieldset/legend), one-scenario SJT, completion (submit once, no score), journey line (reduced-motion safe), optimistic autosave + inline retry, resume-to-first-unanswered, EN/AR in-place toggle + full RTL via logical utilities + `dir`.
 
-### Key standing decisions (DO NOT relitigate)
-- UI = **Tailwind v4 + shadcn/ui** (AntD pivoted out in Phase 1).
-- Scoring = **deterministic Python service** (`services/scoring`), never the LLM (ADR-029).
-- **LLM is a runtime-config seam** (ADR-030): bounded to 2 roles, env-gated, no
-  hardcoded provider, works unset. Operator wires the endpoint from settings later.
-- Item bank = global reference data (no orgId). Everything else orgId-scoped (SECURITY.md §3).
-- RoleProfile versioning: `lineageId` + per-lineage `version`; APPROVED/ACTIVE
-  immutable; revise = clone to new DRAFT; exactly one ACTIVE per lineage.
+### Phase-3 gates resolved this session (commits b229971, e761d3f — pushed)
+/code-review + senior-code-reviewer + /design-qa on `/app/roles/*`. Fixed: unbounded findMany bounds (Pillar 4); StatusBadge + nav AA-contrast (added `--signal-*-ink` text tokens); `updateRoleProfile` service-layer orgId guard; `scoringKey` → SCRUB_FIELDS + export denylist + SECURITY.md; create/version routes mask SJT keys; LLM token floor on the draft path; `RoleFamily` recyclable; jdSourceText injection documented. Accepted design calls in `docs/findings-register.md`.
 
-### What Phase 3 shipped
-**Blueprint:** `docs/blueprints/phase-3-role-profile-authoring.md` (committed; the contract).
+### Test setup (proven this session)
+- A test invitation was created this session against the Support starter profile (120 items + 1 SJT, locale en). The token literal is intentionally NOT recorded here (gitleaks flags high-entropy strings, and it's a throwaway local-DB artifact). **Mint a fresh one**: `prisma.invitation.create` (or `update` an existing) against an ACTIVE profile with `token: randomBytes(32).toString("base64url")`, then open `/a/<that-token>`.
+- Starter profiles have **0 SJT items**; this session added 1 SJT to the Support profile for testing (only in the local DB, not seeded). Add SJTs per profile to exercise the SJT step, OR the runner correctly SKIPS the SJT step when empty.
 
-**Schema + migration** `20260627053751_add_role_profile_authoring` (additive):
-- `RoleProfile` (orgId, roleFamilyId, lineageId, version, status `RoleProfileStatus`
-  DRAFT→IN_REVIEW→APPROVED→ACTIVE→ARCHIVED, title, jdSourceText?, isAiDrafted,
-  createdById, approvedById, approvedAt, soft-delete). `Competency`,
-  `CompetencyFacet`, `SjtItem`. Enum `BandDirection` HIGH/MODERATE/LOW.
-- Registered: `SOFT_DELETE_MODELS` (+RoleProfile) + `RECYCLABLE_ENTITY_TYPES`
-  (RoleProfile→title). Audited automatically (not in EXCLUDE).
+### Local run recipe (proven; `npm install` after branch FF, then `npx prisma generate` with DATABASE_URL set)
+- PG16 at `/usr/lib/postgresql/16/bin`, run as the `postgres` system user (PG refuses root): `mkdir -p /tmp/pg4/data && chown -R postgres:postgres /tmp/pg4` → `runuser -u postgres -- $PGBIN/initdb -D /tmp/pg4/data -U postgres --auth=trust` → `cd /tmp && runuser -u postgres -- $PGBIN/pg_ctl -D /tmp/pg4/data -o "-p 5433 -k /tmp/pg4" -w start` → `runuser -u postgres -- $PGBIN/createdb -p 5433 -h /tmp/pg4 appdb`. (`rm -rf` is deny-listed — use a fresh dir name; docker is down.)
+- `export DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public"` then `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=hr@rihal.test SEED_ADMIN_PASSWORD='Passw0rd!demo' npm run prisma:seed`.
+- **Start dev WITH the env**: `DATABASE_URL=… AUTH_TRUST_HOST=true AUTH_URL=http://localhost:3000 AUTH_SECRET=<from .env> npm run dev`. ⚠️ **GOTCHA: if the dev server is started WITHOUT DATABASE_URL, `/a/*` 500s** inside `resolveToken` (DB call) — that's a dev-env issue, not a UI bug. Admin login + `/app/roles` worked authenticated this session.
+- Browser QA: drive via the Playwright test runner with `chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" })` (the bundled @playwright/test version mismatches the default browser path) + `@axe-core/playwright`. Put the script INSIDE the repo (ESM needs node_modules resolution) and clean it up. Login form: `#email`/`#password`/`button[type=submit]`; post-login lands at `/en/app` (NOT `/en/`).
+- `/ship` heals stale `.next` only via its build (phase B) — but typecheck (phase A) runs FIRST, so on a stale cache after adding a route it FAILS on `.next/dev/types`. Fix: run `npx next build` once (regenerates `.next/types`), THEN `npm run ship`. (`rm -rf .next` is denied.)
 
-**Backend:**
-- `lib/ipip-facets.ts` — single source of truth for the 30 IPIP facets (grouped by
-  domain). Test-locked to the seeded item bank (`tests/contracts/ipip-facets.test.ts`).
-- `lib/llm.ts` — AI Role 1 drafting: `isLlmConfigured()`, OpenAI-compatible env
-  endpoint (`LLM_ENDPOINT_URL/TOKEN/MODEL` in `lib/env.ts`), bounded timeout,
-  `LlmError`, model output validated by `llmDraftResponseSchema` (same competency
-  contract as humans). Dormant when unset → 503 → UI manual fallback.
-- `lib/validations/roleProfile.ts` — zod (competency/SJT/create/update/draft +
-  llmDraftResponse). Facets restricted to IPIP_FACETS; SJT scoringKey must
-  reference real option ids.
-- `lib/services/roleProfile.ts` — list/get/create/update/clone-version/approve/
-  listVersions + `maskScoringKeys` (SJT keys masked for non-admins SERVER-side).
-  AUDIT DESIGN: profile-level ops auto-audited; children written as atomic nested
-  relation writes; immutable versions preserve content history. (Worth a senior-
-  review look: per-child audit granularity is at the aggregate/version level.)
-- API routes `app/api/role-profiles/*`: `GET/POST /`, `GET/PUT/DELETE /[id]`,
-  `POST /[id]/version`, `POST /[id]/approve`, `POST /draft` (rate-limited). Writes
-  `withAdminAuth`; reads `withManagerAuth`; all orgId-scoped (404 cross-tenant);
-  edit blocked (409) on locked versions; approve needs ≥1 competency.
-- `prisma/seed.ts` + `prisma/data/starter-role-profiles.ts` — 5 grounded+cited
-  starter profiles, idempotent (stable lineageId `starter:<key>`, create-once,
-  never clobbers HR edits). Verified: 22 competencies, 26 facet maps, 0 facets
-  outside the IPIP bank.
-- ADR-030, SECURITY.md §6 (LLM tokens), `.env.example` LLM block.
-
-**UI (built by subagent against the locked API — REVIEW IT in /code-review):**
-- `components/layout/nav.ts` — "Role profiles" nav item (admin).
-- `app/[locale]/app/roles/page.tsx` (list, RSC), `roles/new/` (5-step AI-assisted
-  wizard, client), `roles/[id]/` (detail + version history), plus `FacetPicker.tsx`,
-  `RoleProfileWizard.tsx`, `StatusBadge.tsx`. New shadcn primitives:
-  `components/ui/{select,table,textarea}.tsx`. i18n keys added to `messages/en.json`
-  + `messages/ar.json`. AI-unconfigured path falls back to manual authoring.
-  ⚠️ The UI was NOT design-QA'd or manually exercised this session — do `/design-qa`
-  + a manual click-through (local run) as part of the gates.
-
-### Local run recipe (proven; run `npm install` after branch FF)
-- PG16 at `/usr/lib/postgresql/16/bin`: `mkdir -p /tmp/pg3/data && chown -R
-  postgres:postgres /tmp/pg3` → `runuser -u postgres -- $PGBIN/initdb -D
-  /tmp/pg3/data -U postgres --auth=trust` → `pg_ctl -D /tmp/pg3/data -o "-p 5433 -k
-  /tmp/pg3" -w start` → `createdb -p 5433 -h /tmp/pg3 appdb`. (rm -rf deny-listed —
-  use a fresh dir name; docker daemon is down, use PG-direct.)
-- `DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public"`
-  `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=hr@rihal.test
-  SEED_ADMIN_PASSWORD='Passw0rd!demo' npm run prisma:seed`.
-- `/ship` needs DATABASE_URL + AUTH_SECRET(32+) + AUTH_URL.
-- Optional: test AI drafting by setting LLM_ENDPOINT_URL to a mock; it's dormant otherwise.
-
-### NEXT: Phase 4 — Candidate runner (ARCHITECTURE §12.4, UI-SPEC C.1–C.5)
-Bilingual/RTL token-link runner: consent (PDPL), 120 IPIP items paged+autosave,
-SJT scenarios, completion. A scoring API route (persist responses → `requestScoring`
-→ store Result) also lands here (needs Assessment/Response/Result models — new
-schema). Re-request the spec uploads first. Pause for operator review after.
+### Open decisions for OPERATOR review (flagged, not silently shipped — see docs/findings-register.md)
+- **Audit ON for candidate responses** (per blueprint literal): every IPIP/SJT answer write is audited (null actor). Faithful to the blueprint but floods the audit surface with ~120 null-actor rows per candidate. If undesired, an ADR can move `ItemResponse`/`SjtResponse` to the audit EXCLUDE set (Ask-before) and switch autosave to upsert. **Operator: keep audited, or exclude?**
+- One-ACTIVE-per-lineage is app-enforced (no DB partial unique index — Prisma can't express it without migrate drift); Phase 4+ resolves the active profile deterministically. Accepted.
+- `RoleProfileStatus.APPROVED` is currently unreachable ("Approve & activate" is one action). Retained for a possible future two-approver workflow.
 
 ### Watch-outs
-- Spec files are session uploads, NOT in repo.
-- Don't push `--no-verify`; the pre-push hook runs the build (it gated this push).
-- Next dev shows a dev-tools overlay circle bottom-left (not a UI bug).
+- Specs are session uploads, NOT in repo.
+- The candidate runner is the first **public, unauthenticated** surface — treat the token routes + page as the highest-risk review target in the senior pass.
+- Result/scoring roll-up is **Phase 6** (Phase 4 stops at captured responses + submit).
