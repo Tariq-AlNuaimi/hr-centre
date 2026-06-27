@@ -3,7 +3,7 @@
 **Branch:** `claude/rihal-phase-2-scoring-c9m6xr`. Verify pushed: `git rev-list --count @{u}..HEAD` = 0.
 **Operator goal:** Build the platform in the 8 phases of ARCHITECTURE.md §12, **pausing for operator review after each phase.** Spec files (ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request them before any phase that needs the detail.
 
-## Status: Phase 3 (role-profile authoring) — BUILT, pushed. ⚠️ FINAL GATES NOT YET RUN (see "MUST DO FIRST").
+## Status: Phase 3 BUILT+pushed (gates pending). Phase 4 STARTED — blueprint committed (`docs/blueprints/phase-4-candidate-runner.md`); the multi-file build was NOT started (a fresh resume was already at ~128% context from the two spec uploads — building the runner there would degrade exactly the PII/consent work that must be careful). **Next session: run the deferred Phase-3 gates, then build Phase 4 from its committed blueprint (re-supply ARCHITECTURE.md + UI-SPEC.md).**
 
 This session built Phase 3 end-to-end (backend + UI) but hit the context hard
 limit (~117%) right after the build went green, BEFORE the formal `/ship`,
