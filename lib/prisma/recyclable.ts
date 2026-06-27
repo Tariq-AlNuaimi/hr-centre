@@ -56,8 +56,9 @@ export type RecyclableDelegate = {
   findMany: (args: {
     // `lt` is optional so the recycling-bin GC (audit-purge cron) can select
     // rows soft-deleted before a retention cutoff; the bin's list/restore paths
-    // pass `{ not: null }` alone.
-    where: { deletedAt: { not: null; lt?: Date } };
+    // pass `{ not: null }` alone. `orgId` is optional so the bin can tenant-scope
+    // its listing (every recyclable model carries orgId); the GC omits it.
+    where: { deletedAt: { not: null; lt?: Date }; orgId?: string | null };
     orderBy?: { deletedAt: "desc" };
     take?: number;
   }) => Promise<RecyclableRecord[]>;

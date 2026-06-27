@@ -56,7 +56,7 @@ export default async function CalibrationPage({
         listRoleCalibrationStatus(orgId),
         getAdverseImpact(orgId),
       ])
-    : [{ data: [], total: 0 }, [], { rows: [], total: 0 }];
+    : [{ data: [], total: 0 }, [], { rows: [], total: 0, dbTotal: 0, capped: false }];
 
   // Selected role for the report (query param, else the first calibratable role).
   const selectedRoleId =
@@ -226,6 +226,11 @@ export default async function CalibrationPage({
                 ))}
               </TableBody>
             </Table>
+          )}
+          {adverse.capped && (
+            <p className="text-xs text-[var(--signal-partial-ink)]">
+              {t("adverseCapped", { shown: format.number(adverse.total), total: format.number(adverse.dbTotal) })}
+            </p>
           )}
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <ShieldAlert aria-hidden className="mt-0.5 size-3.5 shrink-0 text-[var(--signal-partial-ink)]" />

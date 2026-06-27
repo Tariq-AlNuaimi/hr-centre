@@ -24,6 +24,12 @@ import type { CompetencyBand } from "./scoring-rollup";
 // then; true significance wants far more (ARCHITECTURE §13). Tunable.
 export const MIN_OUTCOMES_FOR_REPORT = 8;
 
+// Cap on the per-candidate scatter points kept in the persisted report (and echoed
+// to the browser). The correlation r is computed over the FULL population; only the
+// stored/plotted point array is down-sampled so a high-volume role can't grow the
+// ProfileCalibration.metrics JSONB blob / RSC payload without bound (senior-review H-1).
+export const MAX_SCATTER_POINTS = 500;
+
 // How an observed outcome collapses to a 0..1 success signal. Retention is the
 // strongest real-world signal, ratings the softest/most subjective — so weighted
 // but not dominant. Single source of truth; reweight here to re-tune the loop.
@@ -242,6 +248,15 @@ export function competencySignal(pairs: CalibrationPair[]): CompetencySignal[] {
   });
 }
 
+/** Even, deterministic down-sample of `xs` to at most `cap` items (keeps spread). */
+function sample<T>(xs: T[], cap: number): T[] {
+  if (xs.length <= cap) return xs;
+  const step = xs.length / cap;
+  const out: T[] = [];
+  for (let i = 0; i < cap; i++) out.push(xs[Math.floor(i * step)]);
+  return out;
+}
+
 /** Overall predicted-fit vs observed-success summary, with the scatter points. */
 export function fitSummary(pairs: CalibrationPair[]): FitSummary {
   const points = pairs
@@ -249,10 +264,11 @@ export function fitSummary(pairs: CalibrationPair[]): FitSummary {
     .filter((pt): pt is { fit: number; success: number } => pt.success !== null);
   return {
     n: points.length,
+    // r + means are computed over the FULL population; only `points` is down-sampled.
     r: pearson(points.map((pt) => ({ x: pt.fit, y: pt.success }))),
     meanSuccess: points.length ? round(mean(points.map((pt) => pt.success))) : 0,
     meanFit: points.length ? round(mean(points.map((pt) => pt.fit))) : 0,
-    points,
+    points: sample(points, MAX_SCATTER_POINTS),
   };
 }
 

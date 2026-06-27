@@ -545,7 +545,11 @@ model OutcomeRecord {
 // stays interpretable as bands evolve. `metrics` holds the full computed report
 // (per-competency signal, fit summary, advisory suggestions, selection rates),
 // validated by zod at the service boundary. Audited; NOT soft-deletable — regenerate
-// to refresh, old reports are kept as the evidence trail.
+// to refresh, old reports are kept as the evidence trail. There is intentionally NO
+// hard-delete route or recycling registration: rows are PERMANENT (an immutable audit
+// trail); the only cleanup path is direct DB access (no admin UI). roleProfileId is
+// onDelete: Restrict, so a profile with calibration history can't be hard-deleted
+// until its reports are removed at the DB layer (senior-review L-1, documented).
 model ProfileCalibration {
   id    String       @id @default(cuid())
   orgId String

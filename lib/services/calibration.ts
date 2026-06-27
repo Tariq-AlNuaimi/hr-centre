@@ -9,6 +9,13 @@ import {
   type SelectionRateRow,
   MIN_OUTCOMES_FOR_REPORT,
 } from "@/lib/calibration";
+
+// Bound the populations the generate + adverse reads pull into memory so a mature,
+// high-volume role can't trigger a full-table scan / serverless memory spike
+// (senior-review H-1/H-2). Both are surfaced honestly when hit (a truncated adverse
+// read flags `capped`; generate's cap is far above MIN and logged if reached).
+const MAX_GENERATE_RESULTS = 2000;
+const MAX_ADVERSE_RESULTS = 5000;
 import type { OutcomeInputBody } from "@/lib/validations/calibration";
 
 // Calibration service (ARCHITECTURE §7, Phase-7 blueprint). Orchestrates the pure
@@ -287,21 +294,30 @@ export async function generateCalibration(
   });
   if (!profile) return { kind: "not-found" };
 
-  // The whole outcome-recorded population for this role version — domain-bounded
-  // (one role's hires), not user-paginated: the stats need every point.
+  // The outcome-recorded population for this role version — domain-bounded (one
+  // role's hires), not user-paginated: the stats need every point. Capped at
+  // MAX_GENERATE_RESULTS so a very high-volume role can't pin memory (the cap is far
+  // above MIN_OUTCOMES_FOR_REPORT; a hit is logged for ops). The outcome relation is
+  // filtered to LIVE (non-erased) outcomes at the DB level — not an in-memory guard.
   const rows = await prisma.result.findMany({
-    where: { orgId, roleProfileId, assessment: { deletedAt: null }, outcome: { isNot: null } },
+    where: { orgId, roleProfileId, assessment: { deletedAt: null }, outcome: { is: { deletedAt: null } } },
+    take: MAX_GENERATE_RESULTS,
     select: {
       fitScore: true,
       competencyScores: true,
       outcome: {
-        select: { hired: true, probationPassed: true, rating6m: true, rating12m: true, retained: true, deletedAt: true },
+        select: { hired: true, probationPassed: true, rating6m: true, rating12m: true, retained: true },
       },
     },
   });
+  if (rows.length === MAX_GENERATE_RESULTS) {
+    console.warn(
+      `[calibration.generate] role ${roleProfileId} hit the ${MAX_GENERATE_RESULTS}-result cap; report computed on a capped sample`
+    );
+  }
 
   const pairs: CalibrationPair[] = rows
-    .filter((r) => r.outcome && !r.outcome.deletedAt)
+    .filter((r) => r.outcome) // DB already excluded absent/soft-deleted outcomes; narrow the type
     .map((r) => {
       const comps = (r.competencyScores as unknown as CompetencyScoreRow[]).map((c) => ({
         name: c.name,
@@ -369,7 +385,12 @@ export async function getLatestCalibration(
 
 export type AdverseImpactView = {
   rows: SelectionRateRow[];
+  /** Candidates included in the computation (≤ MAX_ADVERSE_RESULTS). */
   total: number;
+  /** True decided-result count in the org. */
+  dbTotal: number;
+  /** True when the read was truncated (total < dbTotal) — the UI must say so. */
+  capped: boolean;
 };
 
 /**
@@ -380,21 +401,30 @@ export type AdverseImpactView = {
  * structural — this is a selection-rate monitor, not an EEO adverse-impact study.
  */
 export async function getAdverseImpact(orgId: string): Promise<AdverseImpactView> {
-  // Decided results only (a decision is the selection event). Domain-bounded by the
-  // org's decided population; tenant-scoped, live sittings only.
-  const rows = await prisma.result.findMany({
-    where: { orgId, assessment: { deletedAt: null }, decision: { not: null } },
-    take: 5000,
-    select: {
-      decision: true,
-      competencyScores: true,
-      assessment: {
-        select: {
-          invitation: { select: { roleProfile: { select: { roleFamily: { select: { name: true } } } } } },
+  // Decided results only (a decision is the selection event). Tenant-scoped, live
+  // sittings only. Capped + counted so a truncated read is surfaced honestly (the
+  // UI shows "X of Y") rather than presenting partial rates as definitive (H-2).
+  const where: Prisma.ResultWhereInput = {
+    orgId,
+    assessment: { deletedAt: null },
+    decision: { not: null },
+  };
+  const [rows, dbTotal] = await Promise.all([
+    prisma.result.findMany({
+      where,
+      take: MAX_ADVERSE_RESULTS,
+      select: {
+        decision: true,
+        competencyScores: true,
+        assessment: {
+          select: {
+            invitation: { select: { roleProfile: { select: { roleFamily: { select: { name: true } } } } } },
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.result.count({ where }),
+  ]);
 
   const inputs = rows.map((r) => {
     const comps = r.competencyScores as unknown as CompetencyScoreRow[];
@@ -406,7 +436,12 @@ export async function getAdverseImpact(orgId: string): Promise<AdverseImpactView
     };
   });
 
-  return { rows: selectionRates(inputs), total: inputs.length };
+  return {
+    rows: selectionRates(inputs),
+    total: inputs.length,
+    dbTotal,
+    capped: inputs.length < dbTotal,
+  };
 }
 
 export { MIN_OUTCOMES_FOR_REPORT };

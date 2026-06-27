@@ -36,7 +36,12 @@ const MERGE_CAP = 500;
 
 // Admin-only: the bin lists soft-deleted records (incl. deleted-user PII + who
 // deleted them); not exposed to VIEWER/EDITOR. The bin nav is also admin-gated.
-export const GET = withAdminAuth(async (request: NextRequest) => {
+export const GET = withAdminAuth(async (request: NextRequest, { session }) => {
+  // Tenant-scope the bin: an admin only sees soft-deleted records from their own org
+  // (the bin carries Confidential PII — deleted-user data, candidate sittings, and
+  // now post-hire OutcomeRecords; SECURITY.md §1). Without this an admin for org A
+  // could list/restore/erase org B's records.
+  const orgId = session.user.orgId;
   const pagination = parsePagination(request.nextUrl.searchParams);
 
   // Query every recyclable type in PARALLEL (CP-PO5): the per-type findMany calls
@@ -48,7 +53,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       // come from ENTITY_TYPES so it is always non-null here.
       const accessor = recyclableAccessor(entityType)!;
       const records = await recyclable[accessor].findMany({
-        where: { deletedAt: { not: null } },
+        where: { deletedAt: { not: null }, orgId },
         orderBy: { deletedAt: "desc" },
         take: PER_TYPE_CAP,
       });
@@ -81,7 +86,7 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
 // Restore is a state-changing, admin-grade action (re-activating a soft-deleted
 // record -- including, e.g., a deactivated ADMIN account), so it is gated to
 // ADMIN, matching the permanent-delete route. Listing the bin stays withAuth.
-export const POST = withAdminAuth(async (request: NextRequest) => {
+export const POST = withAdminAuth(async (request: NextRequest, { session }) => {
   const parsed = restoreSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return err(parsed.error.issues.map((i) => i.message).join(", "));
@@ -97,7 +102,9 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
     where: { id },
   })) as RecyclableRecord | null;
 
-  if (!record || !record.deletedAt) {
+  // Tenant-scope: only restore records from the admin's own org (the unique id
+  // lookup is global; treat a cross-org id as not-found, never a disclosure).
+  if (!record || !record.deletedAt || record.orgId !== session.user.orgId) {
     return notFound(entityType);
   }
 

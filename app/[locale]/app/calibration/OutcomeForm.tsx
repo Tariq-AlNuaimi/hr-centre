@@ -32,7 +32,10 @@ export function OutcomeForm({ row }: { row: OutcomeCaptureRow }) {
   const o = row.outcome;
   const [open, setOpen] = React.useState(false);
 
-  const [hired, setHired] = React.useState<boolean>(o?.hired ?? true);
+  // Default a NEW outcome to "not hired" — the conservative default that requires a
+  // deliberate action to record a hire, so the calibration sample isn't biased toward
+  // over-reporting hires (senior-review L-2).
+  const [hired, setHired] = React.useState<boolean>(o?.hired ?? false);
   const [probation, setProbation] = React.useState<Tri>(boolToTri(o?.probationPassed ?? null));
   const [retained, setRetained] = React.useState<Tri>(boolToTri(o?.retained ?? null));
   const [rating6m, setRating6m] = React.useState<string>(ratingToStr(o?.rating6m ?? null));
@@ -45,7 +48,7 @@ export function OutcomeForm({ row }: { row: OutcomeCaptureRow }) {
   function onOpenChange(next: boolean) {
     setOpen(next);
     if (next) {
-      setHired(o?.hired ?? true);
+      setHired(o?.hired ?? false);
       setProbation(boolToTri(o?.probationPassed ?? null));
       setRetained(boolToTri(o?.retained ?? null));
       setRating6m(ratingToStr(o?.rating6m ?? null));

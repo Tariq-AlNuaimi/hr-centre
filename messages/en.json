@@ -552,6 +552,7 @@
     "adverseFlagged": "Below 4/5ths",
     "adverseOk": "OK",
     "adverseEmpty": "No decisions recorded yet — the monitor populates as managers record decisions.",
+    "adverseCapped": "Showing the {shown} most recent of {total} decided candidates — rates are partial.",
     "adverseDemographicNote": "Protected-class demographics are not collected by design (PDPL data-minimization), so this is a structural selection-rate monitor, not an EEO adverse-impact study."
   }
 }
