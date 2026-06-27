@@ -508,6 +508,12 @@ export async function resendInvitation(args: {
   // the rotation has stuck (new undelivered link is live, old link dead) — say
   // so honestly and tell the operator to resend, which re-rotates and retries
   // the send rather than leaving them to guess from a generic 500.
+  //
+  // Audit note: rotate + revert are two separate audited writes, so a failed
+  // resend leaves TWO UPDATE rows (rotate, then rollback) for one invitation —
+  // this is intentional and honest (the trail records what actually happened).
+  // The disabled case never reaches here (the isEmailEnabled() pre-check returns
+  // before any write), so this only occurs on a genuine transient send failure.
   try {
     await prisma.invitation.update({
       where: { id: inv.id },

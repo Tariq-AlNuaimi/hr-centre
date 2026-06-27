@@ -20,6 +20,11 @@
 //     console / Sentry / structured loggers separately.
 //   - Recipient addresses are Confidential: the log line summarizes every send
 //     as "N recipients" (via recipientLabel) and never prints an address.
+//   - `subject` IS logged (it's metadata, useful operationally). Callers must
+//     therefore keep PII OUT of the subject line. Provider error fields
+//     (e.g. Resend's `error.name`) are bounded + character-filtered before
+//     logging, since they originate from the provider and aren't trusted to be
+//     PII-free; provider error MESSAGES are never logged (they can echo input).
 
 import nodemailer, { type Transporter, type SendMailOptions } from "nodemailer";
 import { Resend } from "resend";
@@ -123,8 +128,17 @@ async function sendViaResend(opts: SendEmailOptions): Promise<SendEmailResult> {
   const resend = getResend();
   if (!resend) return { sent: false };
 
+  const from = fromAddress(opts);
+  if (from === "noreply@localhost") {
+    // Resend rejects unverified-domain senders, so the localhost fallback always
+    // fails there. Surface the real cause early instead of a generic 502.
+    console.warn(
+      `[email] RESEND_API_KEY is set but no From address (SMTP_FROM) is configured; Resend requires a verified-domain sender and will reject "${from}"`
+    );
+  }
+
   const { data, error } = await resend.emails.send({
-    from: fromAddress(opts),
+    from,
     to: opts.to,
     subject: opts.subject,
     text: opts.text,
@@ -133,15 +147,19 @@ async function sendViaResend(opts: SendEmailOptions): Promise<SendEmailResult> {
     ...(opts.html ? { html: opts.html } : {}),
   });
 
-  if (error) {
-    // Log the error TYPE only -- error.message can echo a recipient address or
-    // payload field, which would leak Confidential data into the logs.
-    console.warn(`[email] resend send failed type=${error.name} to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
+  // Treat an explicit error OR the {data:null,error:null} API anomaly as a
+  // non-delivery -- never report sent:true for a message with no provider id.
+  if (error || !data?.id) {
+    // Log the error TYPE only, bounded + character-filtered: error.name comes
+    // from Resend's backend and isn't trusted to be PII-free; error.message can
+    // echo a recipient address or payload field, so it's never logged.
+    const safeName = error ? String(error.name).slice(0, 64).replace(/[^\w.-]/g, "_") : "no-id";
+    console.warn(`[email] resend send failed type=${safeName} to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
     throw new Error("Resend send failed");
   }
 
-  console.log(`[email] sent via=resend messageId=${data?.id} to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
-  return { sent: true, messageId: data?.id };
+  console.log(`[email] sent via=resend messageId=${data.id} to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
+  return { sent: true, messageId: data.id };
 }
 
 async function sendViaSmtp(opts: SendEmailOptions): Promise<SendEmailResult> {

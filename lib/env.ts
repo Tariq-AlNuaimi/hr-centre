@@ -76,10 +76,15 @@ const envSchema = z.object({
   // seam, Resend preferred over SMTP:
   //   - RESEND_API_KEY (Restricted): when set, sends go through Resend. The
   //     operator's testing transport until the project ships to IT. Generate the
-  //     key in the Resend dashboard; `re_...` shape (no fixed length floor).
+  //     key in the Resend dashboard. Real keys are `re_<random>`; the prefix is
+  //     validated (no fixed length floor) so a placeholder / wrong-var typo fails
+  //     at startup rather than silently 502-ing on the first send.
   //   - SMTP_* below: nodemailer fallback when Resend is unset and SMTP_HOST set.
   // Neither set => sendEmail() returns { sent: false } (email disabled, no throw).
-  RESEND_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z
+    .string()
+    .regex(/^re_/, "RESEND_API_KEY must be a Resend key (starts with re_)")
+    .optional(),
 
   // SMTP (optional; used when RESEND_API_KEY is unset and SMTP_HOST is set)
   SMTP_HOST: z.string().optional(),
