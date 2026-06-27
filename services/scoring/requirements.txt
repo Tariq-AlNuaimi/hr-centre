@@ -1,0 +1,6 @@
+# Rihal Aptitude scoring service (ARCHITECTURE §12.2). Pinned for reproducible,
+# deterministic scoring -- the psychometric engine version is part of the contract.
+five-factor-e==1.13.1
+fastapi==0.138.1
+uvicorn[standard]==0.49.0
+pydantic==2.13.4

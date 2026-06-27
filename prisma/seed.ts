@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
+import { IPIP_NEO_120 } from "./data/ipip-neo-120";
 
 // Starter role families (ARCHITECTURE §5). Versioned RoleProfiles are authored
 // under these in Phase 3; here we just seed the taxonomy so the org is usable.
@@ -53,6 +54,36 @@ async function main() {
         create: { orgId: org.id, ...fam },
       });
     }
+
+    // Assessment item bank (ARCHITECTURE §12.2): the canonical IPIP-NEO-120
+    // instrument. Global reference data (no orgId) -- one shared instrument for
+    // every tenant. Idempotent upsert by the stable itemNumber, so re-seeding (or
+    // the Vercel build re-running this) never duplicates and re-applies any
+    // English-text corrections from the generated dataset WITHOUT clobbering an
+    // HR-authored Arabic translation (text_ar is left untouched on update).
+    for (const item of IPIP_NEO_120) {
+      await prisma.assessmentItemBank.upsert({
+        where: { itemNumber: item.itemNumber },
+        update: {
+          itemCode: item.itemCode,
+          domain: item.domain,
+          facet: item.facet,
+          facetNumber: item.facetNumber,
+          keyed: item.keyed,
+          text_en: item.text_en,
+        },
+        create: {
+          itemNumber: item.itemNumber,
+          itemCode: item.itemCode,
+          domain: item.domain,
+          facet: item.facet,
+          facetNumber: item.facetNumber,
+          keyed: item.keyed,
+          text_en: item.text_en,
+        },
+      });
+    }
+    console.log(`Assessment item bank seeded: ${IPIP_NEO_120.length} IPIP-NEO-120 items.`);
 
     const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
     if (existing) {

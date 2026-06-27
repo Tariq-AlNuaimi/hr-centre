@@ -39,6 +39,14 @@ const envSchema = z.object({
   AUDIT_PURGE_TOKEN: z.string().min(32).optional(),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
 
+  // Scoring microservice (ARCHITECTURE §12.2). The deterministic IPIP-NEO-120
+  // scorer is a separate Python service (services/scoring) reached over HTTP --
+  // no Vercel lock-in. URL is optional/dormant until the scorer is deployed;
+  // lib/scoring.isScoringConfigured() gates on it. TOKEN, when set, is sent as a
+  // Bearer header and must match the service's SCORING_SERVICE_TOKEN.
+  SCORING_SERVICE_URL: z.string().url().optional(),
+  SCORING_SERVICE_TOKEN: z.string().optional(),
+
   // SMTP (optional; email is gated on SMTP_HOST presence -- see lib/email.ts)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
