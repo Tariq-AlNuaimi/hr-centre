@@ -53,6 +53,7 @@ export default async function RoleProfileDetailPage({
     ? await prisma.user.findMany({
         where: { id: { in: actorIds }, orgId: orgId ?? undefined },
         select: { id: true, name: true, email: true },
+        take: actorIds.length, // bounded by the resolved actor id set (Pillar 4)
       })
     : [];
   const actorName = (uid: string | null) => {

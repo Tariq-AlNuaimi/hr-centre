@@ -278,6 +278,9 @@ export function listVersions(orgId: string, lineageId: string) {
   return prisma.roleProfile.findMany({
     where: { orgId, lineageId },
     orderBy: { version: "desc" },
+    // Bound the timeline (Pillar 4: Scalable). A lineage accrues versions slowly;
+    // 200 is far above any realistic revision count, newest-first.
+    take: 200,
     select: {
       id: true,
       version: true,

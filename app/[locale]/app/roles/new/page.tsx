@@ -20,6 +20,7 @@ export default async function NewRoleProfilePage({
         where: { orgId: session.user.orgId },
         select: { id: true, key: true, name: true },
         orderBy: { name: "asc" },
+        take: 200, // reference table, bounded (Pillar 4: Scalable)
       })
     : [];
 

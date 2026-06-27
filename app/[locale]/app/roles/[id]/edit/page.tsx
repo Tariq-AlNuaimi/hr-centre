@@ -30,6 +30,7 @@ export default async function EditRoleProfilePage({
         where: { orgId },
         select: { id: true, key: true, name: true },
         orderBy: { name: "asc" },
+        take: 200, // reference table, bounded (Pillar 4: Scalable)
       })
     : [];
 
