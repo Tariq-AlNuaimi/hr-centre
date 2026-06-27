@@ -9,7 +9,12 @@ before any phase needing detail.
 ## Status: Phases 1–6 DONE + /ship GREEN + pushed. ⏸ PAUSED for operator review before Phase 7 (calibration). Phase 7 = OutcomeRecord + ProfileCalibration + adverse-impact monitor.
 
 ### Deployment (live test URL)
-- **Live:** https://fullstack-vibe-template.vercel.app — admin `alnaaime@gmail.com`.
+- **Live (custom domain):** https://rihal-aptitude.ops-rihal.com — admin
+  `alnaaime@gmail.com`. (Also https://fullstack-vibe-template.vercel.app.) Domain
+  wired this session: CF zone `ops-rihal.com` (id `9dbbff1a78393aabbc613b1eb5d4db8a`)
+  CNAME `rihal-aptitude`→`cname.vercel-dns.com` (DNS-only); Vercel domain attached +
+  verified; `AUTH_URL=https://rihal-aptitude.ops-rihal.com` set (production) for
+  Auth.js. TLS auto-provisions; allow a few min for DNS+cert on first cutover.
   Deployed from THIS branch on the EXISTING repo (the standalone-repo step is
   blocked — see below). Each push to b2zaau auto-builds; promote production from
   b2zaau via the Vercel API (project `prj_jKdcMNnuGdkAlAyZXBKcPaGK8YJu`, team
@@ -49,15 +54,22 @@ folded in. **NOT yet browser-QA'd** (`/design-qa`/`/uat` against the local PG :5
 carbon-copy or the live URL) — recommended before Phase 7 sign-off; recharts RTL/dark
 needs an eyeball.
 
-### AI / scoring configuration (operator FAQ)
-The LLM + scoring are **env-var driven, NOT configured in the Settings UI** (ADR-030,
-ARCHITECTURE §10 — data sovereignty; IT wires the endpoint). To enable: set
-`LLM_ENDPOINT_URL`/`LLM_ENDPOINT_TOKEN`/`LLM_MODEL` (AI Roles 1 & 2) and
-`SCORING_SERVICE_URL`/`SCORING_SERVICE_TOKEN` (deterministic scorer) on the
-deployment + redeploy. The `/app/settings` page (currently a Placeholder) is built
-in **Phase 8 (Compliance)** and will surface the LLM endpoint READ-ONLY for
-transparency (UI-SPEC D.10) + org/users/retention/PDPL-erasure/branding. Phase 8
-also builds the full `/methodology` page (now a stub).
+### AI / scoring configuration — OPERATOR DECISION (2026-06-27): make it EDITABLE in Settings (Phase 8)
+Operator wants to configure the AI/scoring from the Settings UI, not only env vars.
+This SUPERSEDES the ADR-030 "env-driven, read-only" stance → **write a superseding
+ADR in Phase 8** before building. Phase-8 `/app/settings` (HR_ADMIN) scope now adds:
+- **Editable LLM config:** `LLM_ENDPOINT_URL`, `LLM_MODEL`, `LLM_ENDPOINT_TOKEN`
+  (and the scoring equivalents) settable in-app.
+- **Security (binding):** the TOKEN is **Restricted** (SECURITY.md §1) — store it
+  encrypted-at-rest (NOT plaintext in a normal column), add the field name to
+  `SCRUB_FIELDS` + the audit-scrub test in the SAME commit, never log it, never
+  return it to the client (write-only / masked in reads). Keep the **env var as an
+  override/fallback** so IT can still pin it at the platform layer; precedence +
+  the lib/llm.ts + lib/scoring.ts readers must consult the DB setting then env.
+- Until Phase 8 ships, config is still env-var only: set `LLM_ENDPOINT_URL`/
+  `_TOKEN`/`LLM_MODEL` + `SCORING_SERVICE_URL`/`_TOKEN` on the deployment + redeploy.
+Phase 8 Settings also covers org/users/retention/PDPL-erasure/branding + the full
+`/methodology` page (now a stub).
 
 ### ⏭ NEXT SESSION — apply Phase-6 UI senior-review findings FIRST (none blocking; none reachable today)
 No HIGH. Two MEDIUM + LOW/NIT (not reachable in Phase 6 — no route soft-deletes a
