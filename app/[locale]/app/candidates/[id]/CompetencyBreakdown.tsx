@@ -42,13 +42,15 @@ export function CompetencyBreakdown({
         <p className="text-sm text-muted-foreground">{t("breakdownSubtitle")}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {competencies.map((c) => {
+        {competencies.map((c, i) => {
           const isOpen = open.has(c.name);
+          const panelId = `competency-panel-${i}`;
           return (
             <div key={c.name} className="rounded-md border border-border">
               <button
                 type="button"
                 aria-expanded={isOpen}
+                aria-controls={panelId}
                 onClick={() => toggle(c.name)}
                 className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 px-3 py-3 text-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
@@ -68,7 +70,10 @@ export function CompetencyBreakdown({
                 />
               </button>
               {isOpen && (
-                <div className="flex flex-col gap-3 border-t border-[var(--rihal-sand)]/40 px-3 py-3">
+                <div
+                  id={panelId}
+                  className="flex flex-col gap-3 border-t border-[var(--rihal-sand)]/40 px-3 py-3"
+                >
                   <div className="flex flex-col gap-1.5">
                     <span className="text-xs font-medium text-muted-foreground">
                       {t("driversLabel")}

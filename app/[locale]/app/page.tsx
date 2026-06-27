@@ -45,7 +45,8 @@ export default async function DashboardPage({
       key: "awaitingReview",
       value: snapshot.awaitingReview,
       icon: ClipboardList,
-      href: "/app/candidates",
+      // Point at the undecided subset so the tile and its destination agree.
+      href: "/app/candidates?undecided=1",
     },
   ] as const;
 

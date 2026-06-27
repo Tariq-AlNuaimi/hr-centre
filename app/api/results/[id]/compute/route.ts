@@ -36,7 +36,10 @@ export const POST = withRateLimit(
         // 503: a healthy "feature not wired" state, surfaced calmly by the UI.
         return err("Scoring is not configured on this deployment", 503);
       case "scoring-unreachable":
-        return err(`Could not reach the scoring service: ${outcome.detail}`, 502);
+        // Log the raw detail server-side only — it can carry the internal scorer URL
+        // / transport error; staff get a generic message (no internal-infra leak).
+        console.error(`[results.compute] scoring unreachable for assessment ${id}: ${outcome.detail}`);
+        return err("Could not reach the scoring service", 502);
     }
   }),
   { id: "result-compute", limit: 20, windowMs: 60_000 }

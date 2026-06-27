@@ -20,7 +20,12 @@ export const GET = withRateLimit(
     if (!view) return err("Result not found", 404);
 
     const buffer = await renderToBuffer(ResultDocument({ view }));
-    const candidate = (view.candidateName ?? view.candidateEmail).replace(/[^a-zA-Z0-9_-]+/g, "_");
+    // ASCII-sanitize the name for the Content-Disposition filename; an Arabic-only
+    // name collapses to empty here, so fall back to the (latinizable) email local-part
+    // before defaulting to a generic slug — never emit `rihal-result-_.pdf`.
+    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+    const candidate =
+      sanitize(view.candidateName ?? "") || sanitize(view.candidateEmail) || "candidate";
     const filename = `rihal-result-${candidate}.pdf`;
 
     return new NextResponse(new Uint8Array(buffer), {

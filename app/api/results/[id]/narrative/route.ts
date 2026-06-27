@@ -22,7 +22,10 @@ export const POST = withRateLimit(
       case "llm-not-configured":
         return err("AI narrative is not configured on this deployment", 503);
       case "llm-failed":
-        return err(`Could not generate the narrative: ${outcome.detail}`, 502);
+        // Log the raw detail server-side only — it can carry the internal LLM
+        // endpoint / transport error; staff get a generic message.
+        console.error(`[results.narrative] LLM failed for result ${id}: ${outcome.detail}`);
+        return err("Could not generate the narrative", 502);
     }
   }),
   { id: "result-narrative", limit: 10, windowMs: 60_000 }

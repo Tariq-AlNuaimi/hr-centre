@@ -534,25 +534,33 @@ export async function listCandidates(
             roleProfile: { select: { title: true, roleFamily: { select: { name: true } } } },
           },
         },
-        result: { select: { id: true, fitScore: true, decision: true } },
+        // deletedAt is selected so a soft-deleted result can be filtered out below:
+        // the soft-delete extension only injects deletedAt:null on the TOP-LEVEL
+        // where, not on a nested to-one read (and a to-one `select` can't take a
+        // `where`), so an erased result would otherwise leak its fitScore/decision.
+        result: { select: { id: true, fitScore: true, decision: true, deletedAt: true } },
       },
     }),
     prisma.assessment.count({ where }),
   ]);
 
-  const data: CandidateRow[] = rows.map((r) => ({
-    assessmentId: r.id,
-    resultId: r.result?.id ?? null,
-    candidateEmail: r.invitation.candidateEmail,
-    candidateName: r.invitation.candidateName,
-    roleProfileId: r.invitation.roleProfileId,
-    roleTitle: r.invitation.roleProfile.title,
-    roleFamily: r.invitation.roleProfile.roleFamily.name,
-    status: r.status,
-    completedAt: r.submittedAt,
-    fitScore: r.result?.fitScore ?? null,
-    decision: r.result?.decision ?? null,
-  }));
+  const data: CandidateRow[] = rows.map((r) => {
+    // Treat a soft-deleted result as absent — never surface a stale score/decision.
+    const result = r.result && !r.result.deletedAt ? r.result : null;
+    return {
+      assessmentId: r.id,
+      resultId: result?.id ?? null,
+      candidateEmail: r.invitation.candidateEmail,
+      candidateName: r.invitation.candidateName,
+      roleProfileId: r.invitation.roleProfileId,
+      roleTitle: r.invitation.roleProfile.title,
+      roleFamily: r.invitation.roleProfile.roleFamily.name,
+      status: r.status,
+      completedAt: r.submittedAt,
+      fitScore: result?.fitScore ?? null,
+      decision: result?.decision ?? null,
+    };
+  });
   return { data, total };
 }
 

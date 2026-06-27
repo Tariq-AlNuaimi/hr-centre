@@ -28,10 +28,20 @@ export default async function CandidatesPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ page?: string; role?: string; decision?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    role?: string;
+    decision?: string;
+    undecided?: string;
+  }>;
 }) {
   const { locale } = await params;
-  const { page: pageParam, role: roleParam, decision: decisionParam } = await searchParams;
+  const {
+    page: pageParam,
+    role: roleParam,
+    decision: decisionParam,
+    undecided: undecidedParam,
+  } = await searchParams;
   const session = await requireSession(locale);
   const orgId = session.user.orgId;
 
@@ -48,6 +58,7 @@ export default async function CandidatesPage({
     ? (decisionParam as DecisionOutcomeValue)
     : undefined;
   const roleProfileId = roleParam || undefined;
+  const undecided = undecidedParam === "1";
 
   const [{ data, total }, roleProfiles] = orgId
     ? await Promise.all([
@@ -56,6 +67,7 @@ export default async function CandidatesPage({
           take: pagination.take,
           roleProfileId,
           decision,
+          undecided,
           submittedOnly: true,
         }),
         listActiveRoleProfiles(orgId),
@@ -63,7 +75,7 @@ export default async function CandidatesPage({
     : [{ data: [], total: 0 }, []];
 
   const { totalPages, page } = paginatedResponse(data, total, pagination);
-  const hasFilter = Boolean(roleProfileId || decision);
+  const hasFilter = Boolean(roleProfileId || decision || undecided);
   const hasAny = total > 0 || hasFilter;
 
   function pageHref(p: number): string {
@@ -71,6 +83,7 @@ export default async function CandidatesPage({
     q.set("page", String(p));
     if (roleProfileId) q.set("role", roleProfileId);
     if (decision) q.set("decision", decision);
+    if (undecided) q.set("undecided", "1");
     return `/app/candidates?${q.toString()}`;
   }
 

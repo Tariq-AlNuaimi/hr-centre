@@ -249,7 +249,7 @@ async function EvidenceTrail({ view }: { view: ResultView }) {
         decision={view.decision}
         decisionNote={view.decisionNote}
         decidedByName={view.decidedByName}
-        decidedAt={view.decidedAt}
+        decidedAt={view.decidedAt?.toISOString() ?? null}
       />
     </div>
   );

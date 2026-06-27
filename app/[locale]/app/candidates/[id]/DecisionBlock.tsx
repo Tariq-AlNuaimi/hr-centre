@@ -25,7 +25,9 @@ export function DecisionBlock({
   decision: DecisionOutcomeValue | null;
   decisionNote: string | null;
   decidedByName: string | null;
-  decidedAt: Date | null;
+  // ISO string, not Date — a Date crossing the RSC→client boundary arrives as a
+  // string at runtime; type it honestly and re-parse before formatting.
+  decidedAt: string | null;
 }) {
   const t = useTranslations("results");
   const tDecisions = useTranslations("results.decisions");
@@ -128,7 +130,7 @@ export function DecisionBlock({
             {t("decidedBy", {
               decision: tDecisions(decision),
               who: decidedByName,
-              when: format.dateTime(decidedAt, {
+              when: format.dateTime(new Date(decidedAt), {
                 year: "numeric",
                 month: "short",
                 day: "numeric",
