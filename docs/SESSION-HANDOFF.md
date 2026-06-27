@@ -59,7 +59,28 @@ in **Phase 8 (Compliance)** and will surface the LLM endpoint READ-ONLY for
 transparency (UI-SPEC D.10) + org/users/retention/PDPL-erasure/branding. Phase 8
 also builds the full `/methodology` page (now a stub).
 
-### Phase 7 build order (next session, after operator review)
+### ⏭ NEXT SESSION — apply Phase-6 UI senior-review findings FIRST (none blocking; none reachable today)
+No HIGH. Two MEDIUM + LOW/NIT (not reachable in Phase 6 — no route soft-deletes a
+Result; error echo is behind withManagerAuth with scoring/LLM unset):
+1. **[MED] listCandidates default select can surface a soft-deleted Result's
+   fitScore/decision** (`lib/services/result.ts` ~L537 nested `result` select).
+   NOTE: Prisma to-ONE relation `select` does NOT accept `where` — the reviewer's
+   one-liner won't compile as-is; instead filter post-query (`r.result?.deletedAt`)
+   or use a relation filter. Verify before applying.
+2. **[MED] compute/narrative routes echo `outcome.detail` (may contain internal
+   scorer/LLM URL) to authenticated staff** (`app/api/results/[id]/compute/route.ts:39`,
+   `narrative/route.ts:25`). Cap to a generic message; log detail server-side only.
+3. **[LOW] DecisionBlock `decidedAt` typed `Date|null` but is a string at the
+   RSC→client boundary** — serialize to ISO in the page, type the prop `string|null`.
+4. **[LOW] awaitingReview tile href is unfiltered `/app/candidates`** — point at the
+   undecided subset (add `?undecided=1` → list maps to `listCandidates({undecided})`).
+5. **[LOW] PDF filename → `rihal-result-_.pdf` for Arabic-only names** — fall back to
+   sanitized email. **[NIT]** CompetencyBreakdown expand buttons want `aria-controls`.
+6. **[BROWSER-QA] recharts RADAR/BARS dark-mode + RTL** — verify SVG token fills
+   update on theme toggle (recharts renders SVG, not CSS classes). Run /design-qa +
+   /uat against the local PG :5433 carbon-copy (recipe below) or the live URL.
+
+### Phase 7 build order (after the above + operator review)
 OutcomeRecord (hired/probation/rating6m/rating12m/retained, attached to a Result) +
 ProfileCalibration (per role-profile-version metrics) + the manual-trigger calibration
 report (predicted-fit vs observed-outcome) + adverse-impact monitor. All ADVISORY —
