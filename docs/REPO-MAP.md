@@ -8,6 +8,9 @@
 - app/[locale]/app/compare/page.tsx
 - app/[locale]/app/invites/page.tsx
 - app/[locale]/app/page.tsx
+- app/[locale]/app/roles/[id]/edit/page.tsx
+- app/[locale]/app/roles/[id]/page.tsx
+- app/[locale]/app/roles/new/page.tsx
 - app/[locale]/app/roles/page.tsx
 - app/[locale]/app/settings/page.tsx
 - app/[locale]/methodology/page.tsx
@@ -20,18 +23,27 @@
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
+- app/api/role-profiles/[id]/approve/route.ts  [POST]
+- app/api/role-profiles/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/role-profiles/[id]/version/route.ts  [POST]
+- app/api/role-profiles/draft/route.ts  [POST]
+- app/api/role-profiles/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, auditLogs
+- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, roleProfiles, auditLogs
 - User: id, orgId, org, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
-- RoleFamily: id, orgId, org, key, name, description, deletedAt, deletedBy, createdAt, updatedAt
+- RoleFamily: id, orgId, org, key, name, description, deletedAt, deletedBy, createdAt, updatedAt, roleProfiles
+- RoleProfile: id, orgId, org, roleFamilyId, roleFamily, lineageId, version, status, title, jdSourceText, isAiDrafted, createdById, approvedById, approvedAt, deletedAt, deletedBy, createdAt, updatedAt, competencies, sjtItems
+- Competency: id, roleProfileId, roleProfile, name, onetRef, importance, weight, direction, targetPercentile, sourceCitation, order, facets, createdAt, updatedAt
+- CompetencyFacet: id, competencyId, competency, facet
+- SjtItem: id, roleProfileId, roleProfile, scenario_en, scenario_ar
 - AssessmentItemBank: id, itemNumber, itemCode, domain, facet, facetNumber, keyed, text_en, text_ar, createdAt, updatedAt
 - AuditLog: id, orgId, org, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 
@@ -47,6 +59,8 @@
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
+- lib/ipip-facets.ts: BIG5_DOMAINS, Big5DomainKey, IPIP_FACETS_BY_DOMAIN, IPIP_FACETS, isIpipFacet, domainForFacet
+- lib/llm.ts: LlmError, isLlmConfigured, draftRoleProfile
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: BCRYPT_COST, hashPassword
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
@@ -56,8 +70,10 @@
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/scoring.ts: ScoringError, isScoringConfigured, requestScoring
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
+- lib/services/roleProfile.ts: isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
 - lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/roleProfile.ts: bandDirectionSchema, competencyInputSchema, CompetencyInput, CompetencyValue, sjtItemInputSchema, SjtItemInput, SjtItemValue, createRoleProfileSchema, CreateRoleProfileInput, CreateRoleProfile, updateRoleProfileSchema, UpdateRoleProfileInput, UpdateRoleProfile, draftRoleProfileSchema, DraftRoleProfileInput, llmDraftResponseSchema, LlmDraftResponse
 - lib/validations/scoring.ts: NUM_ITEMS, big5Domains, scoreBandSchema, answerSchema, scoreRequestSchema, facetScoreSchema, domainScoreSchema, scoreResponseSchema, ScoreRequestInput, ScoreRequest, ScoreResponse, DomainScore, FacetScore, Big5Domain
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 
@@ -80,5 +96,8 @@
 - components/ui/dropdown-menu.tsx
 - components/ui/input.tsx
 - components/ui/label.tsx
+- components/ui/select.tsx
 - components/ui/separator.tsx
 - components/ui/sheet.tsx
+- components/ui/table.tsx
+- components/ui/textarea.tsx
