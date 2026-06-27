@@ -3,10 +3,10 @@
 import * as React from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown, X } from "lucide-react";
-import { DOMAIN_FACETS, DOMAIN_KEYS } from "./facet-vocab";
+import { IPIP_FACETS_BY_DOMAIN, BIG5_DOMAINS } from "@/lib/ipip-facets";
 import { cn } from "@/lib/utils";
 
-const DOMAINS = DOMAIN_KEYS;
+const DOMAINS = BIG5_DOMAINS;
 
 // Grouped facet multi-select (UI-SPEC D.3 step 3). Disclosure panel of native
 // checkboxes grouped by OCEAN domain — no extra dep, fully keyboard/AT accessible.
@@ -85,7 +85,7 @@ export function FacetPicker({
                 <legend className="mb-1 text-xs font-semibold text-foreground">
                   {tDomain(domain)}
                 </legend>
-                {DOMAIN_FACETS[domain].map((facet) => {
+                {IPIP_FACETS_BY_DOMAIN[domain].map((facet) => {
                   const checked = value.includes(facet);
                   return (
                     <label
