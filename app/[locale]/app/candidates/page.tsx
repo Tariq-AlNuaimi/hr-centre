@@ -58,7 +58,10 @@ export default async function CandidatesPage({
     ? (decisionParam as DecisionOutcomeValue)
     : undefined;
   const roleProfileId = roleParam || undefined;
-  const undecided = undecidedParam === "1";
+  // `decision` and `undecided` are mutually exclusive (an explicit decision filter
+  // and "no decision yet" can't both hold) — a crafted URL with both would AND into
+  // a permanently empty list. An explicit decision wins; drop undecided.
+  const undecided = undecidedParam === "1" && !decision;
 
   const [{ data, total }, roleProfiles] = orgId
     ? await Promise.all([

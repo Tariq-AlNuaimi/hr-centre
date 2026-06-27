@@ -20,19 +20,22 @@ export const GET = withRateLimit(
     if (!view) return err("Result not found", 404);
 
     const buffer = await renderToBuffer(ResultDocument({ view }));
-    // ASCII-sanitize the name for the Content-Disposition filename; an Arabic-only
-    // name collapses to empty here, so fall back to the (latinizable) email local-part
-    // before defaulting to a generic slug — never emit `rihal-result-_.pdf`.
-    const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
-    const candidate =
-      sanitize(view.candidateName ?? "") || sanitize(view.candidateEmail) || "candidate";
-    const filename = `rihal-result-${candidate}.pdf`;
+    // RFC 6266 dual-parameter filename (mirrors lib/export.ts): an ASCII-only
+    // `filename` (Arabic-only names collapse to a generic slug, never `_`) PLUS a
+    // UTF-8 `filename*` that carries the real name — browsers prefer the latter, so
+    // an Arabic-script candidate name/email is preserved instead of falling back.
+    const rawName = (view.candidateName || view.candidateEmail).trim();
+    const ascii =
+      rawName.replace(/[\r\n";\\]/g, "").replace(/[^\x20-\x7E]/g, "_").replace(/_+/g, "_").replace(/^_+|_+$/g, "") ||
+      "candidate";
+    const filename = `rihal-result-${ascii}.pdf`;
+    const encoded = encodeURIComponent(`rihal-result-${rawName}.pdf`);
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="${filename}"`,
+        "Content-Disposition": `inline; filename="${filename}"; filename*=UTF-8''${encoded}`,
         "Cache-Control": "private, no-store",
       },
     });

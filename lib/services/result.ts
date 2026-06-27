@@ -302,7 +302,11 @@ export async function getResultByAssessment(
   assessmentId: string
 ): Promise<ResultView | null> {
   const row = await prisma.result.findFirst({
-    where: { assessmentId, orgId },
+    // assessment relation filter: a soft-deleted (PDPL-erased) sitting must not
+    // surface its live Result's candidate PII — the soft-delete extension only
+    // auto-injects deletedAt:null on the top-level model (Result here), not on a
+    // nested to-one read, so scope the assessment explicitly.
+    where: { assessmentId, orgId, assessment: { deletedAt: null } },
     select: RESULT_SELECT,
   });
   if (!row) return null;
@@ -312,7 +316,8 @@ export async function getResultByAssessment(
 /** Tenant-scoped read of a persisted Result by its own id (no compute). */
 export async function getResultById(orgId: string, resultId: string): Promise<ResultView | null> {
   const row = await prisma.result.findFirst({
-    where: { id: resultId, orgId },
+    // See getResultByAssessment: exclude results whose sitting was soft-deleted.
+    where: { id: resultId, orgId, assessment: { deletedAt: null } },
     select: RESULT_SELECT,
   });
   if (!row) return null;
@@ -588,7 +593,9 @@ export async function getCompareData(
   if (ids.length > COMPARE_MAX) return { kind: "too-many", cap: COMPARE_MAX };
 
   const rows = await prisma.result.findMany({
-    where: { id: { in: ids }, orgId },
+    // Exclude results whose sitting was soft-deleted (PDPL erasure) — same
+    // invariant as the single-result reads above.
+    where: { id: { in: ids }, orgId, assessment: { deletedAt: null } },
     select: RESULT_SELECT,
     take: COMPARE_MAX,
   });
