@@ -19,6 +19,12 @@ export const SCRUB_FIELDS = new Set([
   "secret",
   "apiKey",
   "api_key",
+  // SjtItem.scoringKey is the keyed best/worst answer — Confidential test-integrity
+  // data (SECURITY.md §1). Children are written as nested relation ops today (so the
+  // parent op is what's audited), but a top-level SjtItem create/update would land
+  // the raw key in audit_logs without this. Defensive ahead of the Phase-4 runner
+  // (senior-review T-12). Masked at the API layer; this closes the audit-storage gap.
+  "scoringKey",
 ]);
 
 export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {

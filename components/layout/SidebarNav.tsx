@@ -27,7 +27,7 @@ export function SidebarNav({
         if (items.length === 0) return null;
         return (
           <div key={section.id} className="flex flex-col gap-1">
-            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t(section.labelKey)}
             </p>
             {items.map((item) => {

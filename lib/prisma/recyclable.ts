@@ -19,6 +19,11 @@ export type RecyclableRecord = {
 export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
   User: { displayField: "name" },
   RoleProfile: { displayField: "title" },
+  // RoleFamily is soft-deletable (SOFT_DELETE_MODELS) — register it here too so a
+  // soft-deleted family can be restored rather than stranded in the bin forever
+  // (senior-review T-LOW). (Organization is deliberately NOT recyclable — deleting
+  // the tenant root is out of scope.)
+  RoleFamily: { displayField: "name" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

@@ -12,11 +12,13 @@ const badgeVariants = cva(
         default: "border-transparent bg-secondary text-secondary-foreground",
         outline: "border-border text-foreground",
         accent: "border-transparent bg-accent/10 text-accent",
-        pass: "border-transparent bg-[var(--signal-pass)]/12 text-[var(--signal-pass)]",
+        // Base hue tints the fill; the darker -ink shade carries the text so small
+        // badge labels clear WCAG AA 4.5:1 (UI-SPEC A.7) in both themes.
+        pass: "border-transparent bg-[var(--signal-pass)]/12 text-[var(--signal-pass-ink)]",
         partial:
-          "border-transparent bg-[var(--signal-partial)]/12 text-[var(--signal-partial)]",
+          "border-transparent bg-[var(--signal-partial)]/12 text-[var(--signal-partial-ink)]",
         below:
-          "border-transparent bg-[var(--signal-below)]/12 text-[var(--signal-below)]",
+          "border-transparent bg-[var(--signal-below)]/12 text-[var(--signal-below-ink)]",
       },
     },
     defaultVariants: {

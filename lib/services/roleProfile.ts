@@ -22,6 +22,14 @@ import type {
 // clones a new version), so "who changed what" (audit_logs) + "what each version
 // contained" (the version rows) together form the complete PDPL trail.
 
+/** Thrown by service writes when a tenant-scoped lookup finds no owned row. */
+export class RoleProfileNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Role profile ${id} not found in this organization`);
+    this.name = "RoleProfileNotFoundError";
+  }
+}
+
 // Statuses whose content may still be edited. APPROVED/ACTIVE/ARCHIVED are frozen.
 const EDITABLE_STATUSES: RoleProfileStatus[] = [
   RoleProfileStatus.DRAFT,
@@ -159,10 +167,23 @@ export function createRoleProfile(
  * atomic nested deleteMany+create (these children aren't soft-deletable, so a hard
  * replace is correct). Only provided sections are touched.
  */
-export function updateRoleProfile(
+export async function updateRoleProfile(
+  orgId: string,
   id: string,
   input: UpdateRoleProfile
 ): Promise<RoleProfileDetail> {
+  // Tenant guard at the SERVICE layer (not only the route's pre-read) so a future
+  // caller can't write cross-tenant by skipping the check (senior-review T-11).
+  // We guard with findFirst + update-by-id rather than `where:{id,orgId}` because
+  // the audit extension snapshots the before-image via findUnique({where}), which
+  // rejects the non-unique orgId filter — so the composite would silently drop the
+  // audit before-image. findFirst here keeps both tenancy AND a full audit trail.
+  const owned = await prisma.roleProfile.findFirst({
+    where: { id, orgId },
+    select: { id: true },
+  });
+  if (!owned) throw new RoleProfileNotFoundError(id);
+
   const data: Prisma.RoleProfileUpdateInput = {};
   if (input.title !== undefined) data.title = input.title;
   if (input.jdSourceText !== undefined) data.jdSourceText = input.jdSourceText ?? null;

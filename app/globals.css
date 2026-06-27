@@ -25,9 +25,15 @@
   --rihal-mist: #eaf1f5;    /* tinted surface; cards, section bands          */
   --rihal-paper: #fbfcfd;   /* app background (warmer than pure white)       */
   --rihal-sand: #c9a45b;    /* restrained gold; evidence-trail signature only*/
-  --signal-pass: #2e8b6f;   /* band met                                      */
+  --signal-pass: #2e8b6f;   /* band met (fills/bars/rings)                    */
   --signal-partial: #c58a2e;/* band partial                                  */
   --signal-below: #b4533e;  /* band below — muted clay, never alarm-red      */
+  /* AA text shades for small signal text on the 12% signal tint (UI-SPEC A.7
+     floor wins over the raw A.2 hue): the base hues are kept for fills/bars,
+     these -ink tokens are used wherever a signal color is TEXT. ≥4.5:1. */
+  --signal-pass-ink: #1a6750;    /* 5.9:1 on #e6f1ee                          */
+  --signal-partial-ink: #7a5414; /* 6.0:1 on #f8f1e6                          */
+  --signal-below-ink: #8f3a28;   /* 6.4:1 on #f6eae8                          */
   --rihal-line: #d8e0e6;    /* hairlines, borders                            */
 
   /* === A.4 Radius (10 cards / 8 controls) === */
@@ -82,6 +88,10 @@
   --secondary-foreground: #eaf1f5;
   --muted: #123047;
   --muted-foreground: #9db4c4;          /* AA on the dark navy               */
+  /* Lighter signal-text shades for the dark-mode tinted badges (≥4.5:1). */
+  --signal-pass-ink: #5cbfa0;
+  --signal-partial-ink: #e0a94e;
+  --signal-below-ink: #e08a73;
   --accent: #2e7da6;
   --accent-foreground: #07131e;
   --destructive: #c4604b;
@@ -115,6 +125,9 @@
   --color-signal-pass: var(--signal-pass);
   --color-signal-partial: var(--signal-partial);
   --color-signal-below: var(--signal-below);
+  --color-signal-pass-ink: var(--signal-pass-ink);
+  --color-signal-partial-ink: var(--signal-partial-ink);
+  --color-signal-below-ink: var(--signal-below-ink);
 
   /* shadcn semantic */
   --color-background: var(--background);

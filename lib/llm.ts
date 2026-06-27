@@ -40,6 +40,12 @@ export function isLlmConfigured(): boolean {
   return Boolean(process.env.LLM_ENDPOINT_URL);
 }
 
+// The same 32-char floor lib/env.ts declares for LLM_ENDPOINT_TOKEN, enforced at the
+// point of use. We do NOT import the eager `env` object here: this dormant seam (and
+// its unit tests) must load without the full app env (DATABASE_URL/AUTH_SECRET) being
+// valid, so the contract is checked locally instead (senior-review T-14).
+const LLM_TOKEN_MIN_LEN = 32;
+
 const DEFAULT_TIMEOUT_MS = 30_000; // drafting is a heavier call than scoring
 
 // The reference the prompt SUPPLIES so the model maps/structures rather than
@@ -91,6 +97,13 @@ function buildMessages(input: DraftRoleProfileInput): Array<{ role: string; cont
     "- No prose, no markdown fences.",
   ].join("\n");
 
+  // PROMPT-INJECTION NOTE (senior-review LOW): jdSourceText + roleTitle are admin-
+  // supplied free text injected into the user turn. A crafted JD could try to steer
+  // the model, but the CONTAINMENT is the strict llmDraftResponseSchema applied to
+  // the output (a draft must still be valid competencies) PLUS the mandatory human
+  // approval before any profile goes ACTIVE — the model never auto-publishes. Do not
+  // widen this surface (e.g. never feed raw JD text into the AI Role 2 narration,
+  // which must stay bound to computed numbers only).
   const user = [
     `Role family: ${input.roleFamilyKey}`,
     `Role title: ${input.roleTitle}`,
@@ -128,7 +141,16 @@ export async function draftRoleProfile(
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = process.env.LLM_ENDPOINT_TOKEN;
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (token) {
+    // Enforce the token-strength floor on the actual request path (not only the
+    // env schema, which isn't parsed unless another route imports it).
+    if (token.length < LLM_TOKEN_MIN_LEN) {
+      throw new LlmError(
+        `LLM_ENDPOINT_TOKEN must be at least ${LLM_TOKEN_MIN_LEN} characters`
+      );
+    }
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;

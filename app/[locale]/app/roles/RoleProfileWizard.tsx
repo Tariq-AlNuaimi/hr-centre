@@ -777,7 +777,7 @@ export function RoleProfileWizard({
                           {t("citationLabel")}: {c.sourceCitation}
                         </p>
                       ) : (
-                        <p className="text-xs text-muted-foreground/70">
+                        <p className="text-xs text-muted-foreground">
                           {t("noCitation")}
                         </p>
                       )}

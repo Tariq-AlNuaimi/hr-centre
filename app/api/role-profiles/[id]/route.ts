@@ -43,7 +43,7 @@ export const PUT = withAdminAuth(async (request: NextRequest, { params, session 
     return err(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const updated = await updateRoleProfile(id, parsed.data);
+  const updated = await updateRoleProfile(orgId, id, parsed.data);
   return ok(maskScoringKeys(updated, true));
 });
 

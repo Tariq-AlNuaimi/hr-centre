@@ -45,6 +45,9 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "secret",
   "apiKey",
   "api_key",
+  // SjtItem.scoringKey — the keyed best/worst answer (Confidential, SECURITY.md §1).
+  // Must never be a downloadable export column (SCRUB_FIELDS ⊆ this set invariant).
+  "scoringKey",
 ]);
 
 // Forward-safe name pattern: a column key matching this is treated as Restricted

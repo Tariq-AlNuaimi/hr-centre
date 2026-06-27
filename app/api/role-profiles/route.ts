@@ -4,7 +4,11 @@ import { withAdminAuth, withManagerAuth } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import { createRoleProfileSchema } from "@/lib/validations/roleProfile";
-import { listRoleProfiles, createRoleProfile } from "@/lib/services/roleProfile";
+import {
+  listRoleProfiles,
+  createRoleProfile,
+  maskScoringKeys,
+} from "@/lib/services/roleProfile";
 import { RoleProfileStatus } from "@/generated/prisma/client";
 
 const VALID_STATUSES = Object.values(RoleProfileStatus) as string[];
@@ -54,5 +58,7 @@ export const POST = withAdminAuth(async (request: NextRequest, { session }) => {
   if (!family) return err("Unknown role family", 400);
 
   const profile = await createRoleProfile(orgId, session.user.id, parsed.data);
-  return created(profile);
+  // Admin-only route, but mask explicitly so the key-masking contract lives in the
+  // response shape, not just the auth wrapper (senior-review T-12 consistency).
+  return created(maskScoringKeys(profile, true));
 });

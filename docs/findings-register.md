@@ -63,3 +63,26 @@ here as pointers so they aren't re-litigated as new findings:
 - Dashboard "Users by role" pie shows a pac-man wedge with degenerate single-role seed
   data (1 ADMIN) — a cosmetic recharts artifact of a single 100% slice; fills in with
   real multi-role data. Not a defect.
+
+### Phase-3 role-profile authoring (senior-review 2026-06-27 — accepted design calls)
+- **One-ACTIVE-per-lineage is enforced in the app approve flow, not by a DB partial
+  unique index.** `approveRoleProfile` archives the prior ACTIVE then activates the new
+  version (sequential, deliberately NOT a `$transaction` — the audit extension writes via
+  the outer client, so a tx would push the audit row outside it). A `(orgId,lineageId)
+  WHERE status='ACTIVE'` partial unique index would harden against a two-admins-approve-
+  the-same-lineage-simultaneously race, but Prisma can't express partial indexes in-schema
+  (raw SQL → migrate drift in a `migrate deploy` repo). Mitigation: the race is rare (two
+  concurrent approvals of two DRAFTs of the *same* lineage), the normal flow is self-healing
+  on retry, and **Phase 4+ resolves "the active profile" deterministically (highest version,
+  take 1)** so a transient double-ACTIVE never makes scoring ambiguous. Revisit (raw-SQL
+  index, accept the drift) if it ever manifests.
+- **`RoleProfileStatus.APPROVED` is currently unreachable.** Per UI-SPEC D.3 step 5
+  approval is a single "Approve & activate" action (DRAFT/IN_REVIEW → ACTIVE), so APPROVED
+  has no transition into it today. Retained in the enum for a possible future two-approver
+  workflow; no code relies on it. Not a defect.
+- **Child writes (Competency/CompetencyFacet/SjtItem) are audited at the parent/version
+  level, not per child.** They're nested relation writes inside the parent RoleProfile op,
+  so the audit extension records the parent CREATE/UPDATE (actor/timestamp/orgId) but not a
+  discrete row per child. Full *content* history is preserved by immutable versioning
+  (APPROVED/ACTIVE never mutate; revising clones a new DRAFT). Adequate PDPL trail for the
+  tier; a `shared` fork with stricter obligations can add explicit `recordAudit` calls.
