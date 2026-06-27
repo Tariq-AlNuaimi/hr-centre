@@ -48,6 +48,28 @@ enum ItemKey {
   MINUS
 }
 
+// Role-profile lifecycle (ARCHITECTURE §5, UI-SPEC D.2/D.3):
+//   DRAFT → IN_REVIEW → APPROVED → ACTIVE → ARCHIVED.
+// APPROVED/ACTIVE versions are IMMUTABLE — revising means cloning to a new DRAFT
+// version (so historical candidate results stay interpretable). Exactly one ACTIVE
+// version per lineage; activating a new version ARCHIVEs the prior ACTIVE.
+enum RoleProfileStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ACTIVE
+  ARCHIVED
+}
+
+// Direction of a competency's target band vs community percentiles (ARCHITECTURE
+// §5/§6). HIGH = at/above targetPercentile (e.g. Achievement-Striving for Sales);
+// LOW = at/below (e.g. low Neuroticism facets for Support); MODERATE = mid/balanced.
+enum BandDirection {
+  HIGH
+  MODERATE
+  LOW
+}
+
 // -- Tenancy --
 
 model Organization {
@@ -67,6 +89,7 @@ model Organization {
 
   users        User[]
   roleFamilies RoleFamily[]
+  roleProfiles RoleProfile[]
   auditLogs    AuditLog[]
 
   @@index([deletedAt, createdAt])
@@ -175,9 +198,133 @@ model RoleFamily {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  roleProfiles RoleProfile[]
+
   @@unique([orgId, key])
   @@index([deletedAt, createdAt])
   @@map("role_families")
+}
+
+// -- Role profiles (ARCHITECTURE §5/§12.3, UI-SPEC D.2–D.4) --
+//
+// A versioned, standards-anchored target competency profile for a role family.
+// Authored by HR_ADMIN: create → (bounded) AI draft → human edit → approve →
+// activate. Tenant-scoped (orgId). The first bounded-LLM use lands on the draft
+// path (AI Role 1), but everything here works with the LLM seam unset — drafting
+// is strictly additive. Soft-deletable + audited + recycling-bin registered.
+model RoleProfile {
+  id           String       @id @default(cuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  roleFamilyId String
+  // Restrict: a family in use by a profile can't be hard-deleted out from under it.
+  roleFamily   RoleFamily   @relation(fields: [roleFamilyId], references: [id], onDelete: Restrict)
+
+  // Versioning (ARCHITECTURE §5): lineageId groups versions of "the same" profile;
+  // version increments per lineage. The first version of a new lineage sets
+  // lineageId to its own id (done in the service on create). APPROVED/ACTIVE
+  // versions never mutate — revising clones to a new DRAFT with version+1.
+  lineageId String
+  version   Int               @default(1)
+  status    RoleProfileStatus @default(DRAFT)
+
+  title String
+  // The pasted JD the AI Role 1 draft was structured from (ARCHITECTURE §4). Org-
+  // internal business text, NOT Restricted/PII. Null for hand-authored/starter rows.
+  jdSourceText String?
+  // True when the competency draft originated from the bounded LLM (audit + UX badge).
+  isAiDrafted  Boolean @default(false)
+
+  // Who created / approved this version (user id; plain string like deletedBy, no
+  // back-relation needed). approvedAt set on the approve action (UI-SPEC D.3 step 5).
+  createdById  String?
+  approvedById String?
+  approvedAt   DateTime?
+
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  competencies Competency[]
+  sjtItems     SjtItem[]
+
+  @@unique([orgId, lineageId, version])
+  @@index([orgId, roleFamilyId])
+  @@index([orgId, status])
+  @@index([deletedAt, createdAt])
+  @@map("role_profiles")
+}
+
+// A single competency within a profile version (ARCHITECTURE §5/§6). Child of an
+// immutable version — edited only while the parent is a DRAFT. Audited.
+model Competency {
+  id            String      @id @default(cuid())
+  roleProfileId String
+  roleProfile   RoleProfile @relation(fields: [roleProfileId], references: [id], onDelete: Cascade)
+
+  // SHL "Great Eight" / Universal Competency Framework vocabulary (ARCHITECTURE §2).
+  name String
+  // O*NET work-style reference + its importance rating — the JD→competency anchor.
+  onetRef    String?
+  importance Float?
+  // Weight in the fit-score roll-up (ARCHITECTURE §6); validated > 0 at the boundary.
+  weight     Float @default(1)
+  // Target band: direction + the community-percentile threshold (1..99).
+  direction        BandDirection @default(HIGH)
+  targetPercentile Int           @default(50)
+  // The auditable citation (O*NET ref / published study) — the evidence trail.
+  sourceCitation String?
+  // Display order within the profile.
+  order Int @default(0)
+
+  facets CompetencyFacet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roleProfileId])
+  @@map("competencies")
+}
+
+// Maps a competency to the IPIP-NEO facet(s) that operationalize it (ARCHITECTURE
+// §5 CompetencyFacetMap). `facet` is the machine-name and MUST match an
+// AssessmentItemBank.facet — enforced at the API boundary against the 30 facets.
+model CompetencyFacet {
+  id           String     @id @default(cuid())
+  competencyId String
+  competency   Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  facet        String
+
+  @@unique([competencyId, facet])
+  @@index([competencyId])
+  @@map("competency_facets")
+}
+
+// Situational Judgement Test item for a role family (ARCHITECTURE §5, UI-SPEC C.3).
+// Child of a profile version. `scoringKey` is the keyed best/worst response and is
+// MASKED from non-admins at the API boundary (UI-SPEC D.4) — never sent to a
+// HIRING_MANAGER or a candidate. Audited.
+model SjtItem {
+  id            String      @id @default(cuid())
+  roleProfileId String
+  roleProfile   RoleProfile @relation(fields: [roleProfileId], references: [id], onDelete: Cascade)
+
+  scenario_en String
+  scenario_ar String?
+  // Response options: [{ id, text_en, text_ar }] — shape validated by zod at the
+  // boundary; rendered by the candidate runner (Phase 4).
+  options    Json
+  // Keyed best/worst response(s). Masked from non-admins server-side (UI-SPEC D.4).
+  scoringKey Json
+  order      Int  @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([roleProfileId])
+  @@map("sjt_items")
 }
 
 // -- Assessment item bank (ARCHITECTURE §12.2, UI-SPEC C.2) --

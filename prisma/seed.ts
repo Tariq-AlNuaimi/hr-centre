@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
 import { IPIP_NEO_120 } from "./data/ipip-neo-120";
+import { STARTER_ROLE_PROFILES } from "./data/starter-role-profiles";
 
 // Starter role families (ARCHITECTURE §5). Versioned RoleProfiles are authored
 // under these in Phase 3; here we just seed the taxonomy so the org is usable.
@@ -84,6 +85,52 @@ async function main() {
       });
     }
     console.log(`Assessment item bank seeded: ${IPIP_NEO_120.length} IPIP-NEO-120 items.`);
+
+    // Pre-approved starter role profiles (ARCHITECTURE §5), one ACTIVE v1 per
+    // family. Stable lineageId ("starter:<familyKey>") makes seeding idempotent;
+    // CREATE-ONCE (skip if it exists) so a re-seed never clobbers HR's edits or
+    // newer versions -- the same "leave HR-authored content untouched" discipline
+    // as the item bank's text_ar.
+    for (const starter of STARTER_ROLE_PROFILES) {
+      const family = await prisma.roleFamily.findUnique({
+        where: { orgId_key: { orgId: org.id, key: starter.familyKey } },
+        select: { id: true },
+      });
+      if (!family) continue;
+
+      const lineageId = `starter:${starter.familyKey}`;
+      const exists = await prisma.roleProfile.findFirst({
+        where: { orgId: org.id, lineageId },
+        select: { id: true },
+      });
+      if (exists) continue;
+
+      await prisma.roleProfile.create({
+        data: {
+          orgId: org.id,
+          roleFamilyId: family.id,
+          lineageId,
+          version: 1,
+          status: "ACTIVE",
+          title: starter.title,
+          isAiDrafted: false,
+          competencies: {
+            create: starter.competencies.map((c, i) => ({
+              name: c.name,
+              onetRef: c.onetRef,
+              importance: c.importance,
+              weight: c.weight,
+              direction: c.direction,
+              targetPercentile: c.targetPercentile,
+              sourceCitation: c.sourceCitation,
+              order: i,
+              facets: { create: c.facets.map((facet) => ({ facet })) },
+            })),
+          },
+        },
+      });
+    }
+    console.log(`Starter role profiles seeded: ${STARTER_ROLE_PROFILES.length} families.`);
 
     const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
     if (existing) {

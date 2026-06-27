@@ -50,6 +50,21 @@ const envSchema = z.object({
   // with `openssl rand -base64 48`. (senior-review MEDIUM, 2026-06-27)
   SCORING_SERVICE_TOKEN: z.string().min(32).optional(),
 
+  // Bounded LLM seam (ARCHITECTURE §4/§10, Phase 3). The ONLY two AI uses are
+  // role-profile drafting (AI Role 1, human-approved) and result narration (AI
+  // Role 2). All calls go to a self-hosted, OpenAI-compatible endpoint (Tariq's
+  // LiteLLM proxy, e.g. https://litellm.rihal.dev) -- NEVER a public API, for data
+  // sovereignty. All optional/dormant: lib/llm.isLlmConfigured() gates the feature
+  // and everything works (manual authoring) with these unset, so IT can wire the
+  // endpoint from settings post-build. Never hardcode a provider.
+  LLM_ENDPOINT_URL: z.string().url().optional(),
+  // Bearer token for the LLM gateway; same 32-char floor as the other service
+  // tokens (it's the only auth on a network-reachable model gateway).
+  LLM_ENDPOINT_TOKEN: z.string().min(32).optional(),
+  // Model id the gateway routes to (e.g. "gpt-oss-120b"). Has a sane default so a
+  // URL alone is enough to enable the feature.
+  LLM_MODEL: z.string().default("gpt-oss-120b"),
+
   // SMTP (optional; email is gated on SMTP_HOST presence -- see lib/email.ts)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
