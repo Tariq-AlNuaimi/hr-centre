@@ -399,16 +399,22 @@ export async function generateNarrative(orgId: string, resultId: string): Promis
   if (!isLlmConfigured()) return { kind: "llm-not-configured" };
 
   let narrative: string;
+  let model: string;
   try {
     const res = await draftResultNarrative(narrativeInput(view));
     narrative = res.narrative;
+    model = res.model;
   } catch (e) {
     return { kind: "llm-failed", detail: e instanceof LlmError ? e.message : "narrative failed" };
   }
 
+  // Tenancy anchor: `view` came from the orgId-scoped getResultById above, so the
+  // update-by-id is owned by this org (the established read-then-update-by-unique-id
+  // convention, cf. lib/services/invitation.ts — keeps the write inside the audit
+  // extension, which updateMany/compound-where would bypass).
   await prisma.result.update({
     where: { id: resultId },
-    data: { narrative, narrativeModel: process.env.LLM_MODEL ?? "gpt-oss-120b", narrativeAt: new Date() },
+    data: { narrative, narrativeModel: model, narrativeAt: new Date() },
   });
   return { kind: "ok", narrative };
 }
@@ -438,6 +444,10 @@ export async function recordDecision(
   });
   if (!existing) return { kind: "not-found" };
 
+  // Tenancy anchor: `existing` came from the orgId-scoped findFirst above, so this
+  // update-by-id is owned by this org (the established read-then-update-by-unique-id
+  // convention, cf. lib/services/invitation.ts — keeps the decision write inside the
+  // audit extension so who-decided-what is recorded; updateMany would bypass audit).
   await prisma.result.update({
     where: { id: resultId },
     data: {
@@ -601,7 +611,10 @@ export async function getDashboardSnapshot(orgId: string): Promise<DashboardSnap
       where: {
         orgId,
         status: "SUBMITTED",
-        OR: [{ result: { is: null } }, { result: { decision: null, deletedAt: null } }],
+        // No decision recorded yet = no Result row OR a Result with a null decision
+        // (a soft-deleted result still reads as "no live decision"); counting off the
+        // Assessment avoids undercounting un-viewed completed sittings (senior-review).
+        OR: [{ result: { is: null } }, { result: { decision: null } }],
       },
     }),
   ]);

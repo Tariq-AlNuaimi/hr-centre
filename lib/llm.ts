@@ -269,7 +269,7 @@ function buildNarrativeMessages(
 export async function draftResultNarrative(
   input: ResultNarrativeInput,
   opts: { signal?: AbortSignal; timeoutMs?: number } = {}
-): Promise<NarrativeResponse> {
+): Promise<NarrativeResponse & { model: string }> {
   const baseUrl = process.env.LLM_ENDPOINT_URL;
   if (!baseUrl) {
     throw new LlmError("LLM_ENDPOINT_URL is not configured");
@@ -310,6 +310,7 @@ export async function draftResultNarrative(
   }
 
   const json = (await res.json().catch(() => null)) as {
+    model?: string;
     choices?: Array<{ message?: { content?: string } }>;
   } | null;
   const content = json?.choices?.[0]?.message?.content;
@@ -328,5 +329,10 @@ export async function draftResultNarrative(
   if (!parsed.success) {
     throw new LlmError("LLM narrative did not match the required schema");
   }
-  return parsed.data;
+  // Provenance (ARCHITECTURE §4): record the model the gateway ACTUALLY routed to
+  // (OpenAI-compatible responses echo `model`), not the presumed default — falling
+  // back to the configured id only if the response omits it (senior-review LOW).
+  const model =
+    (typeof json?.model === "string" && json.model) || process.env.LLM_MODEL || "gpt-oss-120b";
+  return { narrative: parsed.data.narrative, model };
 }

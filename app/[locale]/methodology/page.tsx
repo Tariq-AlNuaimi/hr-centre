@@ -44,10 +44,34 @@ export default async function MethodologyPage() {
           </Card>
           <Card>
             <CardHeader>
+              <CardTitle>{t("decompositionTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-relaxed text-muted-foreground">
+              {t("decomposition")}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("constructTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-relaxed text-muted-foreground">
+              {t("construct")}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
               <CardTitle>{t("normsTitle")}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm leading-relaxed text-muted-foreground">
               {t("norms")}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("limitsTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm leading-relaxed text-muted-foreground">
+              {t("limits")}
             </CardContent>
           </Card>
         </div>

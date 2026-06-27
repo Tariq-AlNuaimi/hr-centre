@@ -3,6 +3,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
 import { IPIP_NEO_120 } from "./data/ipip-neo-120";
 import { STARTER_ROLE_PROFILES } from "./data/starter-role-profiles";
+import { seedSampleData } from "./seed-sample";
 
 // Starter role families (ARCHITECTURE §5). Versioned RoleProfiles are authored
 // under these in Phase 3; here we just seed the taxonomy so the org is usable.
@@ -147,6 +148,12 @@ async function main() {
         },
       });
       console.log(`HR_ADMIN user created: ${adminEmail} (org: ${org.slug})`);
+    }
+
+    // Phase-6 demo candidates + precomputed results (gated; see seed-sample.ts).
+    // Lets the deployed UI show the full evidence trail without a live scorer.
+    if (process.env.SEED_SAMPLE_DATA === "1") {
+      await seedSampleData(prisma, org.id);
     }
   } finally {
     await prisma.$disconnect();
