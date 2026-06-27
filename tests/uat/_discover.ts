@@ -55,7 +55,11 @@ export const rtlLocale = configuredLocales.find((l) => RTL_LOCALES.has(l));
 /** True when the fork ships an RTL locale → RTL assertions are meaningful. */
 export const rtlEnabled = rtlLocale !== undefined;
 
-const DASHBOARD_GLOB = path.join("app", "[locale]", "(dashboard)");
+// This fork nests the manager/admin dashboard under a literal `/<locale>/app`
+// segment (not the bare template's URL-invisible `(dashboard)` route group), so the
+// glob points at `app/[locale]/app` and discovered URLs carry the `/app` prefix.
+const DASHBOARD_GLOB = path.join("app", "[locale]", "app");
+const DASHBOARD_URL_PREFIX = "app";
 
 function isDynamicSegment(seg: string): boolean {
   return seg.startsWith("[");
@@ -120,7 +124,9 @@ export function discoverAllScreens(locale = "en", root = process.cwd()): Screen[
     if (hasPage && !isRedirectStub && !segments.some(isSkippedSegment)) {
       const name = segments.length === 0 ? "dashboard" : segments.join("/");
       const urlPath =
-        segments.length === 0 ? `/${locale}` : `/${locale}/${segments.join("/")}`;
+        segments.length === 0
+          ? `/${locale}/${DASHBOARD_URL_PREFIX}`
+          : `/${locale}/${DASHBOARD_URL_PREFIX}/${segments.join("/")}`;
       screens.push({ name, path: urlPath, depth: segments.length });
     }
 
@@ -304,8 +310,8 @@ export function discoverCrudEntities(
     if (hasCreate && hasRecordPage) {
       entities.push({
         name: seg,
-        listPath: `/${locale}/${seg}`,
-        createPath: `/${locale}/${seg}/new`,
+        listPath: `/${locale}/${DASHBOARD_URL_PREFIX}/${seg}`,
+        createPath: `/${locale}/${DASHBOARD_URL_PREFIX}/${seg}/new`,
       });
     }
   }

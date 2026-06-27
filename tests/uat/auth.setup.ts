@@ -26,8 +26,10 @@ setup("authenticate as admin", async ({ page }) => {
   await page.locator("#password").fill(password);
   await page.locator('button[type="submit"]').click();
 
-  // On success the app routes to the dashboard at /<defaultLocale>.
-  await page.waitForURL(new RegExp(`/${defaultLocale}/?$`), { timeout: 15_000 });
+  // On success the app routes to the manager/admin dashboard. This fork's
+  // authenticated landing is /<defaultLocale>/app (the bare template lands on the
+  // locale root), so accept either.
+  await page.waitForURL(new RegExp(`/${defaultLocale}(/app)?/?$`), { timeout: 15_000 });
 
   await page.context().storageState({ path: authFile });
 });

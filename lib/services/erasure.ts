@@ -11,21 +11,29 @@ import { prisma } from "@/lib/prisma";
 export type EraseResult = { kind: "ok"; sittings: number } | { kind: "not-found" };
 
 export async function eraseCandidate(orgId: string, email: string): Promise<EraseResult> {
-  // Find this candidate's invitations in the org, with their assessment + result ids.
+  // Find this candidate's invitations in the org, with their assessment + result +
+  // outcome ids.
   const invitations = await prisma.invitation.findMany({
     where: { orgId, candidateEmail: email },
     select: {
       id: true,
-      assessment: { select: { id: true, result: { select: { id: true } } } },
+      assessment: {
+        select: { id: true, result: { select: { id: true, outcome: { select: { id: true } } } } },
+      },
     },
   });
   if (invitations.length === 0) return { kind: "not-found" };
 
   for (const inv of invitations) {
     // Children first so each soft-delete is independently audited and nothing is
-    // stranded if a later step were to fail. Result → Assessment → Invitation.
-    const resultId = inv.assessment?.result?.id;
-    if (resultId) await prisma.result.delete({ where: { id: resultId } });
+    // stranded. OutcomeRecord → Result → Assessment → Invitation. The OutcomeRecord
+    // is soft-deleted EXPLICITLY: it has its own deletedAt + recycling registration,
+    // and the Result soft-delete does NOT cascade to it (the FK cascade only fires on
+    // a HARD delete) — without this it would survive the erasure and be restorable
+    // (senior-review MED-2, a PDPL completeness gap).
+    const result = inv.assessment?.result;
+    if (result?.outcome) await prisma.outcomeRecord.delete({ where: { id: result.outcome.id } });
+    if (result) await prisma.result.delete({ where: { id: result.id } });
     if (inv.assessment) await prisma.assessment.delete({ where: { id: inv.assessment.id } });
     await prisma.invitation.delete({ where: { id: inv.id } });
   }

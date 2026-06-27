@@ -1,10 +1,4 @@
-import {
-  hkdfSync,
-  randomBytes,
-  createCipheriv,
-  createDecipheriv,
-  timingSafeEqual,
-} from "node:crypto";
+import { hkdfSync, randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
 
 /**
  * App-layer secret encryption at rest (ADR-031). Used for the Restricted endpoint
@@ -86,12 +80,4 @@ export function secretHint(blob: string | null | undefined): string | null {
   // Last 4 chars of the base64 ciphertext segment — stable per stored value, opaque.
   const seg = blob.split(":")[2] ?? "";
   return seg.length >= 4 ? seg.slice(-4) : null;
-}
-
-/** Constant-time string compare (for any future token-equality checks). */
-export function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
 }

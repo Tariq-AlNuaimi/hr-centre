@@ -195,7 +195,7 @@ Project-specific. The template is unclassified. PDPL / GDPR / sector-specific po
 | A07 ID & Auth Failures | Auth.js v5 + bcryptjs ✅; rate limit ✅; no MFA ⚠️ (T-02); no account lockout ⚠️. |
 | A08 Software & Data Integrity | gitleaks (full-history secret scan) ✅; Semgrep ✅ — both run locally via `/ship` and `/audit`. |
 | A09 Logging & Monitoring | Auto-audit ✅; Sentry SaaS (opt-in per project, ADR-002) ✅; **audit-log retention is unscheduled** ⚠️ (T-06, IT to wire post-handoff); no Prometheus / metrics yet ⚠️. |
-| A10 SSRF | No outbound HTTP from the app by default. |
+| A10 SSRF | Controlled outbound HTTP to **operator-configured** endpoints only: the scoring service + the LLM gateway (`lib/scoring.ts`, `lib/llm.ts`). As of Phase 8 (ADR-031) these URLs are **HR_ADMIN-settable** in Settings (DB-then-env). The settable URL is validated (`lib/validations/settings.ts`) to an **http(s)** scheme and the cloud-metadata link-local target (`169.254.0.0/16`, `metadata.google.internal`) is blocked, so the classic SSRF-to-metadata vector is closed. Private/internal hosts are intentionally allowed (the gateway/scorer are internal, e.g. `http://scoring.internal`). Residual: a *compromised* HR_ADMIN could repoint an endpoint to capture the bearer token — accepted ADR-031 trade-off, mitigated by HR_ADMIN-only access + the **audited** URL change (the config change lands in `audit_logs`). |
 
 ASVS Level 2 is a reasonable target once T-02 (MFA) is closed.
 

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 // for this suite (the app always has AUTH_SECRET; this just makes the test hermetic).
 process.env.AUTH_SECRET = process.env.AUTH_SECRET || "test-auth-secret-at-least-32-chars-long-xx";
 
-import { encryptSecret, decryptSecret, secretHint, safeEqual } from "../../lib/crypto";
+import { encryptSecret, decryptSecret, secretHint } from "../../lib/crypto";
 
 // AES-256-GCM secret-at-rest helpers (ADR-031). These lock the encrypted-token
 // contract: a roundtrip recovers the plaintext, the ciphertext is non-deterministic
@@ -47,10 +47,4 @@ test("secretHint is an opaque last-4 of the ciphertext (not the plaintext)", () 
   assert.ok(hint && hint.length === 4);
   assert.ok(!plain.includes(hint!)); // derived from ciphertext, leaks nothing
   assert.equal(secretHint(null), null);
-});
-
-test("safeEqual is a correct constant-time compare", () => {
-  assert.equal(safeEqual("abc", "abc"), true);
-  assert.equal(safeEqual("abc", "abd"), false);
-  assert.equal(safeEqual("abc", "ab"), false);
 });
