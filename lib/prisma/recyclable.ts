@@ -24,6 +24,12 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   // (senior-review T-LOW). (Organization is deliberately NOT recyclable — deleting
   // the tenant root is out of scope.)
   RoleFamily: { displayField: "name" },
+  // Candidate runner (Phase 4), recyclable for PDPL right-to-erasure. Invitation
+  // carries the candidate PII (email shown in the bin); Assessment is the sitting
+  // (labelled by id). Permanent-deleting the Invitation cascades to the Assessment
+  // and its responses — full erasure.
+  Invitation: { displayField: "candidateEmail" },
+  Assessment: { displayField: "id" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

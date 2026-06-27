@@ -109,6 +109,10 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/internal") ||
+    // Candidate runner write routes (ARCHITECTURE §12.4, UI-SPEC C.1). NO session:
+    // the opaque token in the path authorizes via withCandidateToken (the route's
+    // own gate + rate limit). Must bypass the session 401 below, like /api/internal.
+    pathname.startsWith("/api/run") ||
     // /api/v1/* is the public, versioned API surface (rewrites to /api/* via
     // next.config). Let it through here so the rewrite + the route's own wrapper
     // (withApiAuth for external consumers, or withAuth) decide -- middleware must
@@ -117,6 +121,15 @@ export default auth((req) => {
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {
+    return pass();
+  }
+
+  // Candidate runner page (UI-SPEC C.1–C.5): public, token-authorized, and
+  // DELIBERATELY NOT locale-prefixed — it owns its EN/AR + RTL in-page (switchable
+  // mid-assessment without navigation, C.5), so it must bypass both the session
+  // gate AND next-intl's locale routing. The page resolves the token itself and
+  // renders the right state.
+  if (pathname === "/a" || pathname.startsWith("/a/")) {
     return pass();
   }
 

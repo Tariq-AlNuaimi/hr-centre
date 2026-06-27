@@ -70,6 +70,28 @@ enum BandDirection {
   LOW
 }
 
+// Invitation lifecycle (ARCHITECTURE §8, UI-SPEC D.5). Phase 4 drives the runner
+// subset (PENDING→OPENED→STARTED→COMPLETED); EXPIRED/REVOKED are set by the Phase-5
+// invite UI / expiry sweep. The candidate's first valid open flips PENDING→OPENED;
+// giving consent flips →STARTED; submitting flips →COMPLETED.
+enum InvitationStatus {
+  PENDING
+  OPENED
+  STARTED
+  COMPLETED
+  EXPIRED
+  REVOKED
+}
+
+// Assessment lifecycle (ARCHITECTURE §8, UI-SPEC C.1–C.4). Created at consent
+// (CONSENTED), flips to IN_PROGRESS on the first saved answer, SUBMITTED on submit.
+// Responses are rejected once SUBMITTED (no post-submit edits).
+enum AssessmentStatus {
+  CONSENTED
+  IN_PROGRESS
+  SUBMITTED
+}
+
 // -- Tenancy --
 
 model Organization {
@@ -90,6 +112,8 @@ model Organization {
   users        User[]
   roleFamilies RoleFamily[]
   roleProfiles RoleProfile[]
+  invitations  Invitation[]
+  assessments  Assessment[]
   auditLogs    AuditLog[]
 
   @@index([deletedAt, createdAt])
@@ -249,6 +273,7 @@ model RoleProfile {
 
   competencies Competency[]
   sjtItems     SjtItem[]
+  invitations  Invitation[]
 
   @@unique([orgId, lineageId, version])
   @@index([orgId, roleFamilyId])
@@ -322,6 +347,8 @@ model SjtItem {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  sjtResponses SjtResponse[]
 
   @@index([roleProfileId])
   @@map("sjt_items")
@@ -404,4 +431,137 @@ model AuditLog {
   @@index([orgId])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+// -- Candidate runner (ARCHITECTURE §8/§9/§12.4, UI-SPEC C.1–C.5) --
+//
+// The first surface that stores candidate PII. An Invitation is the token entry
+// point + candidate identity; Phase 4 keeps it MINIMAL (the full invite UI /
+// bulk-CSV / email send is Phase 5). `candidateEmail`/`candidateName` are
+// Confidential PII (SECURITY.md §1, PDPL). Soft-deletable + recycling-bin
+// registered so candidate erasure (PDPL right-to-erasure) goes through the bin;
+// permanent delete cascades to the Assessment and its responses.
+model Invitation {
+  id    String       @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  roleProfileId String
+  // Restrict: a profile with outstanding invitations can't be hard-deleted out
+  // from under them (results stay interpretable against the version assessed).
+  roleProfile   RoleProfile @relation(fields: [roleProfileId], references: [id], onDelete: Restrict)
+
+  // Confidential PII (SECURITY.md §1). candidateName optional (email is the key).
+  candidateEmail String
+  candidateName  String?
+
+  // Opaque, high-entropy token (32 random bytes, base64url). The candidate is
+  // authorized by THIS, not by a guessable id; unique + indexed for constant-time
+  // lookup. Considered for hashing-at-rest when bulk-generated in Phase 5.
+  token  String           @unique
+  status InvitationStatus @default(PENDING)
+
+  // Optional expiry (Phase 5 sets it on send); a past expiresAt → expired state.
+  expiresAt DateTime?
+  // Candidate-facing default language; the candidate can still switch (UI-SPEC C.5).
+  locale    String @default("en")
+
+  // Who sent it (user id; Phase 5 populates) + the batch it belonged to (bulk send).
+  sentById String?
+  batchId  String?
+
+  // Soft deletion (candidate erasure, PDPL §11; recycling-bin registered).
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One assessment per invitation (created at consent).
+  assessment Assessment?
+
+  @@index([orgId, status])
+  @@index([deletedAt, createdAt])
+  @@map("invitations")
+}
+
+// One candidate sitting of an assessment (ARCHITECTURE §8). Created when consent
+// is given (CONSENTED), flips to IN_PROGRESS on the first saved answer, SUBMITTED
+// on submit. Holds the PDPL consent + lifecycle timestamps. Soft-deletable for
+// erasure; responses cascade on permanent delete.
+model Assessment {
+  id    String       @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // Exactly one assessment per invitation. Cascade: permanently deleting the
+  // invitation (PDPL erasure) removes the sitting and its responses.
+  invitationId String     @unique
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+
+  status AssessmentStatus @default(CONSENTED)
+  locale String           @default("en")
+
+  // PDPL: consent timestamp captured BEFORE any item response is accepted
+  // (ARCHITECTURE §11, UI-SPEC C.1). startedAt = first answer; submittedAt = submit.
+  consentAt   DateTime?
+  startedAt   DateTime?
+  submittedAt DateTime?
+
+  // Soft deletion (candidate erasure, PDPL §11).
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  itemResponses ItemResponse[]
+  sjtResponses  SjtResponse[]
+
+  @@index([orgId])
+  @@index([deletedAt, createdAt])
+  @@map("assessments")
+}
+
+// One IPIP-NEO-120 Likert answer (ARCHITECTURE §8, UI-SPEC C.2). `itemNumber`
+// (1..120) joins AssessmentItemBank.itemNumber for scoring; `value` is the 1..5
+// Likert response. @@unique([assessmentId, itemNumber]) makes autosave idempotent
+// (a re-answer updates the same row). Hard child: cascades with the Assessment
+// (not soft-deletable — it's response payload, not an independently recyclable row).
+model ItemResponse {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  itemNumber Int
+  value      Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assessmentId, itemNumber])
+  @@index([assessmentId])
+  @@map("item_responses")
+}
+
+// One SJT scenario answer (ARCHITECTURE §8, UI-SPEC C.3). `chosenOptionId` is the
+// option id the candidate picked (from SjtItem.options); the keyed best/worst is
+// NEVER sent to the client, so scoring (Phase 6) compares server-side. @@unique
+// makes autosave idempotent. Hard child: cascades with the Assessment.
+model SjtResponse {
+  id           String     @id @default(cuid())
+  assessmentId String
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  sjtItemId String
+  sjtItem   SjtItem @relation(fields: [sjtItemId], references: [id], onDelete: Cascade)
+
+  chosenOptionId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assessmentId, sjtItemId])
+  @@index([assessmentId])
+  @@map("sjt_responses")
 }
