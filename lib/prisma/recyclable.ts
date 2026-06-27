@@ -34,6 +34,9 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   // soft-deleted result can be restored rather than stranded in the bin (the same
   // invariant as RoleFamily above). Labelled by id (no human-facing name field).
   Result: { displayField: "id" },
+  // OutcomeRecord (Phase 7) is soft-deletable — register it so a soft-deleted
+  // (corrected) outcome can be restored rather than stranded. Labelled by id.
+  OutcomeRecord: { displayField: "id" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

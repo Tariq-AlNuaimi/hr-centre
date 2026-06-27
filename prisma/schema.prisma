@@ -126,6 +126,8 @@ model Organization {
   assessments  Assessment[]
   results      Result[]
   auditLogs    AuditLog[]
+  outcomeRecords      OutcomeRecord[]
+  profileCalibrations ProfileCalibration[]
 
   @@index([deletedAt, createdAt])
   @@map("organizations")
@@ -286,6 +288,7 @@ model RoleProfile {
   sjtItems     SjtItem[]
   invitations  Invitation[]
   results      Result[]
+  calibrations ProfileCalibration[]
 
   @@unique([orgId, lineageId, version])
   @@index([orgId, roleFamilyId])
@@ -485,10 +488,86 @@ model Result {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  outcome OutcomeRecord?
+
   @@index([orgId])
   @@index([roleProfileId])
   @@index([deletedAt, createdAt])
   @@map("results")
+}
+
+// -- Calibration loop (ARCHITECTURE §7/§11/§12.7, UI-SPEC D.9) --
+//
+// The maturity loop "built from day one" (ARCHITECTURE §7). It is ADVISORY: it
+// surfaces predicted-fit-vs-observed-outcome signal and SUGGESTS band changes; a
+// human approves a NEW RoleProfile version — the system NEVER auto-adjusts a band.
+
+// One post-hire outcome per computed Result (the later-attachable outcome of
+// ARCHITECTURE §7). Captured manually now; later pulled from Jadawel / the Interview
+// Intelligence Hub. Confidential (performance signals) but holds no Restricted secret
+// → no SCRUB_FIELDS change. Soft-deletable (a mis-keyed outcome is correctable) +
+// audited + recycling-bin registered.
+model OutcomeRecord {
+  id    String       @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // One outcome per sitting's result. Cascade: erasing the result removes its outcome.
+  resultId String @unique
+  result   Result @relation(fields: [resultId], references: [id], onDelete: Cascade)
+
+  // The observed post-hire signals (ARCHITECTURE §7). hired is the gate; the rest are
+  // only meaningful once hired and accrue over time (nullable until known). Ratings
+  // are validated to 1..5 at the zod boundary.
+  hired           Boolean
+  probationPassed Boolean?
+  rating6m        Int?
+  rating12m       Int?
+  retained        Boolean?
+
+  // Who recorded it (user id; plain string like Result.decidedById, no back-relation).
+  recordedById String?
+  recordedAt   DateTime @default(now())
+
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId])
+  @@index([deletedAt, createdAt])
+  @@map("outcome_records")
+}
+
+// An append-only calibration report for one RoleProfile version (ARCHITECTURE §7).
+// Each manual generation writes a new row (history), so a role's calibration trail
+// stays interpretable as bands evolve. `metrics` holds the full computed report
+// (per-competency signal, fit summary, advisory suggestions, selection rates),
+// validated by zod at the service boundary. Audited; NOT soft-deletable — regenerate
+// to refresh, old reports are kept as the evidence trail.
+model ProfileCalibration {
+  id    String       @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // The profile lineage member this report is about. Restrict: a profile with a
+  // calibration history can't be hard-deleted out from under it.
+  roleProfileId String
+  roleProfile   RoleProfile @relation(fields: [roleProfileId], references: [id], onDelete: Restrict)
+  version       Int
+
+  // The full advisory report (lib/calibration.ts CalibrationReport), as JSON.
+  metrics Json
+  // How many outcomes the report was computed from (the honest sample size).
+  sampleSize Int
+
+  generatedById String?
+  generatedAt   DateTime @default(now())
+
+  @@index([orgId])
+  @@index([roleProfileId, version])
+  @@map("profile_calibrations")
 }
 
 model AuditLog {

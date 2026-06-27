@@ -28,6 +28,9 @@ const SOFT_DELETE_MODELS = new Set([
   // Result (Phase 6): soft-deletable so a PDPL erasure of a sitting can take its
   // computed result with it; the bin's permanent-delete then hard-removes the row.
   "Result",
+  // OutcomeRecord (Phase 7): a mis-keyed post-hire outcome is correctable, so it is
+  // soft-deletable + recycling-registered rather than hard-deleted.
+  "OutcomeRecord",
 ]);
 
 /**
