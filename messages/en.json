@@ -470,6 +470,7 @@
     "crossRoleBody": "Comparison only makes sense within one role. Choose candidates assessed for the same role.",
     "notFoundTitle": "Results not found",
     "notFoundBody": "Those results aren’t available — they may have been removed, or you may not have access.",
-    "goToCandidates": "Go to candidates"
+    "goToCandidates": "Go to candidates",
+    "radarOverflow": "Radar shows the first 3 of {count} candidates; the table below covers all."
   }
 }

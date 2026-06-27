@@ -28,7 +28,7 @@ export default async function DashboardPage({
   const [snapshot, awaiting, roleProfiles] = orgId
     ? await Promise.all([
         getDashboardSnapshot(orgId),
-        listCandidates(orgId, { skip: 0, take: 6, submittedOnly: true }),
+        listCandidates(orgId, { skip: 0, take: 5, submittedOnly: true, undecided: true }),
         listActiveRoleProfiles(orgId),
       ])
     : [
@@ -49,8 +49,9 @@ export default async function DashboardPage({
     },
   ] as const;
 
-  // Surface the completed sittings that still have no decision (the real review backlog).
-  const awaitingRows = awaiting.data.filter((r) => r.decision === null).slice(0, 5);
+  // The real review backlog: listCandidates already filtered to undecided sittings
+  // (same awaitingReviewWhere() the tile counts), so the panel and tile agree.
+  const awaitingRows = awaiting.data;
 
   return (
     <div>

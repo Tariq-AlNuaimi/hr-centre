@@ -484,7 +484,19 @@ export type CandidateFilters = {
   decision?: DecisionOutcomeValue;
   /** Only SUBMITTED sittings (completed) — the default the list shows. */
   submittedOnly?: boolean;
+  /** Only sittings awaiting a decision (the dashboard backlog) — see awaitingReviewWhere. */
+  undecided?: boolean;
 };
+
+// Single source of truth for "awaiting review" so the dashboard TILE (a count) and
+// the dashboard PANEL (a listCandidates page) can never disagree. A sitting awaits
+// review when it has NO result yet (un-viewed → lazy compute pending) OR a LIVE
+// result with no decision. A soft-deleted result is deliberately excluded — an
+// erased result is not an actionable backlog item (the nested relation filter is NOT
+// soft-delete-filtered by the extension, so deletedAt:null is explicit here).
+function awaitingReviewWhere(): Prisma.AssessmentWhereInput {
+  return { OR: [{ result: { is: null } }, { result: { decision: null, deletedAt: null } }] };
+}
 
 /** Tenant-scoped, bounded, paginated candidates/results list. No N+1 (result joined). */
 export async function listCandidates(
@@ -501,6 +513,7 @@ export async function listCandidates(
     // on the TOP-LEVEL where (documented limitation), so scope the Result here too
     // — a soft-deleted result must not surface a stale decision in the list.
     ...(filters.decision ? { result: { decision: filters.decision, deletedAt: null } } : {}),
+    ...(filters.undecided ? awaitingReviewWhere() : {}),
   };
 
   const [rows, total] = await Promise.all([
@@ -603,20 +616,12 @@ export async function getDashboardSnapshot(orgId: string): Promise<DashboardSnap
     prisma.invitation.count({ where: { orgId } }),
     prisma.assessment.count({ where: { orgId, status: { in: ["IN_PROGRESS", "SUBMITTED"] } } }),
     prisma.assessment.count({ where: { orgId, status: "SUBMITTED" } }),
-    // "Awaiting review" = COMPLETED sittings without a recorded decision. Results
-    // compute lazily on first view, so an un-viewed completed sitting has NO Result
-    // row yet — count off the assessment (result missing OR its decision is null),
-    // not off Result rows, or the tile undercounts the real backlog.
-    prisma.assessment.count({
-      where: {
-        orgId,
-        status: "SUBMITTED",
-        // No decision recorded yet = no Result row OR a Result with a null decision
-        // (a soft-deleted result still reads as "no live decision"); counting off the
-        // Assessment avoids undercounting un-viewed completed sittings (senior-review).
-        OR: [{ result: { is: null } }, { result: { decision: null } }],
-      },
-    }),
+    // "Awaiting review" = COMPLETED sittings without a recorded decision, via the
+    // shared awaitingReviewWhere() so this TILE count and the dashboard PANEL list
+    // (listCandidates {undecided:true}) can never disagree (code-review). Counts
+    // un-viewed sittings (no Result yet) + live undecided results; excludes
+    // soft-deleted results (an erased result isn't an actionable backlog item).
+    prisma.assessment.count({ where: { orgId, status: "SUBMITTED", ...awaitingReviewWhere() } }),
   ]);
   return { invited, started, completed, awaitingReview };
 }

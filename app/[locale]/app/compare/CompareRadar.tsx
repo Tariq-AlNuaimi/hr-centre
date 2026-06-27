@@ -16,25 +16,36 @@ export type CompareRadarSeries = { name: string; key: string };
 // Compare radar overlay (UI-SPEC D.8): each candidate's competency profile as a
 // named series on shared axes, plus the role target. On-token series colors cycle
 // through the brand palette; the legend names every series for accessibility.
+// The overlay is a readable 2–3 candidate comparison (UI-SPEC D.8); beyond that it
+// becomes unreadable, so it caps at RADAR_MAX and says so honestly — the table below
+// always carries the full set (code-review: never silently drop candidates).
 const SERIES_COLORS = ["var(--accent)", "var(--rihal-deep)", "var(--signal-pass)"];
+const RADAR_MAX = SERIES_COLORS.length;
 
 export function CompareRadar({
   data,
   series,
   targetKey,
   targetLabel,
+  overflowNote,
 }: {
   data: Record<string, string | number>[];
   series: CompareRadarSeries[];
   targetKey: string;
   targetLabel: string;
+  /** Shown when the cohort exceeds RADAR_MAX so the trimmed overlay is honest. */
+  overflowNote?: string;
 }) {
+  const shown = series.slice(0, RADAR_MAX);
   return (
     <div
-      className="h-96 w-full"
       role="img"
-      aria-label={[...series.map((s) => s.name), targetLabel].join(", ")}
+      aria-label={[...shown.map((s) => s.name), targetLabel].join(", ")}
     >
+      {series.length > RADAR_MAX && overflowNote && (
+        <p className="mb-2 text-xs text-muted-foreground">{overflowNote}</p>
+      )}
+      <div className="h-96 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data} outerRadius="70%">
           <PolarGrid stroke="var(--border)" />
@@ -54,7 +65,7 @@ export function CompareRadar({
             fill="var(--rihal-sand)"
             fillOpacity={0.08}
           />
-          {series.slice(0, 3).map((s, i) => (
+          {shown.map((s, i) => (
             <Radar
               key={s.key}
               name={s.name}
@@ -76,6 +87,7 @@ export function CompareRadar({
           />
         </RadarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

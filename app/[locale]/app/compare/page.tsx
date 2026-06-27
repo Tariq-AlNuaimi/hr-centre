@@ -87,6 +87,7 @@ export default async function ComparePage({
           }}
           radarTitle={t("radarTitle")}
           targetLabel={t("seriesTarget")}
+          radarOverflow={t("radarOverflow", { count: outcome.candidates.length })}
         />
       )}
     </div>
@@ -101,6 +102,7 @@ function CompareGrid({
   bandLabels,
   radarTitle,
   targetLabel,
+  radarOverflow,
 }: {
   roleTitle: string;
   competencyNames: string[];
@@ -109,6 +111,7 @@ function CompareGrid({
   bandLabels: Record<"PASS" | "PARTIAL" | "BELOW", string>;
   radarTitle: string;
   targetLabel: string;
+  radarOverflow: string;
 }) {
   // Per-candidate competency lookup by name (they share a role, so names align).
   const byName = candidates.map((c) => {
@@ -193,6 +196,7 @@ function CompareGrid({
             series={series}
             targetKey="target"
             targetLabel={targetLabel}
+            overflowNote={radarOverflow}
           />
         </CardContent>
       </Card>
