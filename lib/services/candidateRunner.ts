@@ -61,43 +61,61 @@ export async function resolveToken(token: string): Promise<TokenResolution> {
   return { state: "active", invitation };
 }
 
-// ---- Localized render payload (UI-SPEC C.2/C.3) ----
-
-export type RunnerItem = { itemNumber: number; text: string };
-export type RunnerSjtOption = { id: string; text: string };
-export type RunnerSjtItem = {
-  id: string;
-  scenario: string;
-  options: RunnerSjtOption[];
-};
-
-function pickLocale(en: string, ar: string | null, locale: string): string {
-  // AR falls back to EN where the translation is null (UI-SPEC C.2/C.5).
-  return locale === "ar" ? ar ?? en : en;
+/**
+ * Read-only display strings for the candidate runner header (UI-SPEC C.1): the
+ * role title + org name for branding context. Bounded single-row lookups; the
+ * scoringKey and any other non-display field are never selected. Used by the RSC
+ * page to brand the active flow — never reaches a write path.
+ */
+export async function getInvitationDisplay(
+  invitationId: string
+): Promise<{ roleTitle: string; orgName: string } | null> {
+  const inv = await prisma.invitation.findUnique({
+    where: { id: invitationId },
+    select: {
+      roleProfile: { select: { title: true } },
+      org: { select: { name: true } },
+    },
+  });
+  if (!inv) return null;
+  return { roleTitle: inv.roleProfile.title, orgName: inv.org.name };
 }
 
-/** The 120 IPIP items in the candidate's locale (AR→EN fallback), render order. */
-export async function getLocalizedItems(locale: string): Promise<RunnerItem[]> {
-  const items = await prisma.assessmentItemBank.findMany({
+// ---- Bilingual render payload (UI-SPEC C.2/C.3/C.5) ----
+//
+// Items/SJT carry BOTH languages so the client runner can switch EN/AR in place
+// without re-fetching or losing progress (C.5). The client picks ar ?? en for AR.
+// scoringKey is NEVER selected — it must not reach the client.
+
+export type BilingualItem = {
+  itemNumber: number;
+  text_en: string;
+  text_ar: string | null;
+};
+export type BilingualSjtOption = { id: string; text_en: string; text_ar: string | null };
+export type BilingualSjtItem = {
+  id: string;
+  scenario_en: string;
+  scenario_ar: string | null;
+  options: BilingualSjtOption[];
+};
+
+/** The fixed 120 IPIP items (both languages), render order. */
+export async function getBilingualItems(): Promise<BilingualItem[]> {
+  return prisma.assessmentItemBank.findMany({
     orderBy: { itemNumber: "asc" },
     take: 120, // the instrument is fixed at 120 (Pillar 4: bounded)
     select: { itemNumber: true, text_en: true, text_ar: true },
   });
-  return items.map((i) => ({
-    itemNumber: i.itemNumber,
-    text: pickLocale(i.text_en, i.text_ar, locale),
-  }));
 }
 
 /**
- * The role's SJT items for the candidate, localized — with scoringKey OMITTED at
- * the query level (never sent client-side, UI-SPEC C.3). Options carry only id +
- * localized text.
+ * The role's SJT items for the candidate (both languages), with scoringKey OMITTED
+ * at the query level (never sent client-side, UI-SPEC C.3).
  */
-export async function getLocalizedSjtItems(
-  roleProfileId: string,
-  locale: string
-): Promise<RunnerSjtItem[]> {
+export async function getBilingualSjtItems(
+  roleProfileId: string
+): Promise<BilingualSjtItem[]> {
   const items = await prisma.sjtItem.findMany({
     where: { roleProfileId },
     orderBy: { order: "asc" },
@@ -116,8 +134,9 @@ export async function getLocalizedSjtItems(
       : [];
     return {
       id: it.id,
-      scenario: pickLocale(it.scenario_en, it.scenario_ar, locale),
-      options: opts.map((o) => ({ id: o.id, text: pickLocale(o.text_en, o.text_ar, locale) })),
+      scenario_en: it.scenario_en,
+      scenario_ar: it.scenario_ar,
+      options: opts.map((o) => ({ id: o.id, text_en: o.text_en, text_ar: o.text_ar ?? null })),
     };
   });
 }
