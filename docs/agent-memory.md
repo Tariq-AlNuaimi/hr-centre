@@ -39,6 +39,17 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-27 — A `"use client"` component must NOT import a RUNTIME value from
+  `@/generated/prisma/client` (e.g. `Object.values(SomeEnum)`) — it drags
+  `node:module` into the browser bundle and Turbopack `next build` fails
+  ("chunking context does not support external modules"). tsc/lint pass; only the
+  build catches it. Use `import type` for enums, or a client-safe mirror const
+  (pattern: `INVITATION_STATUSES` in `lib/validations/invitation.ts`).
+- 2026-06-27 — Rihal phase branches can be MISLABELED: a `claude/rihal-phase-N-*`
+  branch may actually be bare template (== `origin/main`, 0 ahead). Verify the real
+  tip with `git log --all --oneline | grep -i phase` before building; FF the working
+  branch onto the true phase tip first (check `merge-base --is-ancestor` for a clean
+  FF). Phase 5 was built this way (FF'd onto the phase-4 qa-gates tip).
 - 2026-06-26 — **CORRECTION (supersedes the prior "no local Postgres" claim):
   authenticated browser QA on a faithful LOCAL carbon-copy IS achievable in this
   container — PROVEN.** Postgres 16 is installed at `/usr/lib/postgresql/16/bin`
