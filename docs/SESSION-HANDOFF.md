@@ -1,12 +1,56 @@
 # Session handoff — Rihal Aptitude Platform
 
-**Branch:** `claude/rihal-phase-5-invitations-b2zaau` (push verified; tip `b8ab10c`,
+**Branch:** `claude/rihal-phase-5-invitations-b2zaau` (push verified; tip `526f4f4`+,
 `git rev-list --count @{u}..HEAD` = 0). **Operator goal:** build ARCHITECTURE.md
-§12's 8 phases, **pausing for operator review after each phase.** Specs
-(ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request
-before any phase needing detail.
+§12's 8 phases. Specs (ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the
+repo — re-request before any phase needing detail.
 
-## Status: Phases 1–6 DONE + /ship GREEN + pushed. ⏸ PAUSED for operator review before Phase 7 (calibration). Phase 7 = OutcomeRecord + ProfileCalibration + adverse-impact monitor.
+## Status: **ALL 8 PHASES DONE + /ship GREEN + pushed + senior-reviewed.** ⏸ The only remaining step is the deferred FINAL QA PASS (browser/UAT/design-fidelity) against the live URL or the local PG :5433 carbon-copy — development was done test-free per the operator's directive.
+
+### This session (Phases 7 + 8)
+- **Phase-6 UI senior-review findings** applied (soft-deleted-Result leak on list +
+  detail/compare/PDF paths; compute/narrative error-detail capped; DecisionBlock ISO
+  date; undecided tile filter; PDF Arabic filename + RFC 6266 `filename*`; aria-controls).
+- **Phase 7 — calibration loop** (`feat(phase-7)` + a senior-review follow-up):
+  OutcomeRecord + ProfileCalibration models (migration `…140000`), pure unit-tested
+  `lib/calibration.ts` (16 tests; success blend, Pearson, per-competency advisory
+  signal, 4/5ths selection rule, insufficient-data gate), `lib/services/calibration.ts`,
+  routes (outcomes=withManagerAuth, generate=withAdminAuth), `/app/calibration` UI
+  (outcome capture, predicted-vs-observed scatter, advisory suggestions, adverse-impact
+  monitor with the honest "no protected-class demographics collected (PDPL)" note).
+  Follow-up: generate take-cap + scatter down-sample, adverse-impact honest "X of Y"
+  cap, DB-level soft-delete filter, **recycling-bin routes now orgId-scoped** (M-2),
+  hired-default-false. Advisory only — never auto-adjusts a band.
+- **Phase 8 — compliance + editable settings** (ADR-031 supersedes ADR-030):
+  - **8a editable AI/scoring config:** AppSetting model (migration `…150000`),
+    `lib/crypto.ts` (AES-256-GCM, key=HKDF(AUTH_SECRET); 7 tests), DB-then-env
+    precedence (`lib/settings.ts`), token write-only/masked + encrypted-at-rest +
+    `valueEncrypted` in SCRUB_FIELDS + export denylist; `lib/llm.ts`/`lib/scoring.ts`
+    take an injected config (env fallback); PUT /api/settings/ai; Settings AI form.
+    Security review PASS (token never reaches client/log/audit).
+  - **8b settings:** org profile (name/language), user management (reuses /api/users),
+    PDPL erasure (`/api/settings/erase-candidate` → soft-deletes invitation→assessment
+    →result), retention read-only display.
+  - **8c audit:** `/app/audit` filterable table + Excel export (`/api/audit-log/export`).
+  - **8d methodology:** the full `/methodology` page was already complete (standards
+    chain, AERA/APA/NCME + SIOP, Johnson-norm provenance, honest limits) — left as-is.
+
+### ⏭ NEXT: the deferred FINAL QA PASS (operator's step 4)
+Run /design-qa + /uat (lean then full) + /manual-uat against the live URL
+(https://rihal-aptitude.ops-rihal.com) and/or the local PG :5433 carbon-copy (recipe
+below + in agent-memory). Verify recharts radar/bars/scatter in dark + RTL; confirm
+custom-domain TLS + auth. NOTE the env caveats (agent-memory): bundled Chromium can't
+reach `*.vercel.app` through the MITM proxy → drive QA via `npm run uat` against the
+local carbon-copy, not the live host; the Playwright MCP is flaky → use the test
+runner. SCORING_SERVICE_URL/LLM are still unset in the deployed env, so live
+end-to-end scoring/narrative + the new calibration generate (needs ≥8 outcomes) can't
+be fully exercised without the Python svc + seeded outcomes — exercise the honest
+"not configured"/"insufficient" states. The Settings AI-config form now lets you set
+those endpoints in-app (encrypted) instead of redeploying.
+
+---
+
+## (historical) Status before this session: Phases 1–6 DONE + /ship GREEN + pushed. ⏸ PAUSED for operator review before Phase 7 (calibration). Phase 7 = OutcomeRecord + ProfileCalibration + adverse-impact monitor.
 
 ### Deployment (live test URL)
 - **Live (custom domain):** https://rihal-aptitude.ops-rihal.com — admin
