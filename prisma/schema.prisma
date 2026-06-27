@@ -92,6 +92,16 @@ enum AssessmentStatus {
   SUBMITTED
 }
 
+// The human hiring decision recorded against a computed Result (ARCHITECTURE §9
+// step 4, UI-SPEC D.7 §7). The tool NEVER decides — it surfaces the decomposed
+// evidence and the manager records Advance/Hold/Decline. A single CURRENT decision
+// lives on the Result; the full change history is the audit log (Phase-6 blueprint).
+enum DecisionOutcome {
+  ADVANCE
+  HOLD
+  DECLINE
+}
+
 // -- Tenancy --
 
 model Organization {
@@ -114,6 +124,7 @@ model Organization {
   roleProfiles RoleProfile[]
   invitations  Invitation[]
   assessments  Assessment[]
+  results      Result[]
   auditLogs    AuditLog[]
 
   @@index([deletedAt, createdAt])
@@ -274,6 +285,7 @@ model RoleProfile {
   competencies Competency[]
   sjtItems     SjtItem[]
   invitations  Invitation[]
+  results      Result[]
 
   @@unique([orgId, lineageId, version])
   @@index([orgId, roleFamilyId])
@@ -407,6 +419,78 @@ model AssessmentItemBank {
 
 // -- Audit (PDPL / ISO audit trail, ARCHITECTURE §8/§11) --
 
+// The computed, decomposed result of a SUBMITTED assessment (ARCHITECTURE §6/§8,
+// UI-SPEC D.7 — the product's signature "evidence trail"). Confidential: it holds
+// the candidate's behavioral profile (SECURITY.md §1). Computed lazily on first
+// manager view and PERSISTED (one row per assessment), so it isn't recomputed per
+// page load (Phase-6 blueprint, Speed pillar). No new Restricted *field* (the raw
+// SJT scoringKey never lands here — only derived sub-scores), so SCRUB_FIELDS is
+// unchanged. Audited (create/decision) + soft-deletable (PDPL erasure of a sitting
+// cascades here via the Assessment).
+model Result {
+  id           String     @id @default(cuid())
+  orgId        String
+  org          Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  // One result per sitting. Cascade: permanently deleting the assessment (PDPL
+  // erasure) removes its result too.
+  assessmentId String     @unique
+  assessment   Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+
+  // The profile + the EXACT version assessed against, snapshotted so the result
+  // stays interpretable after the profile versions on (ARCHITECTURE §5). Restrict:
+  // a profile with computed results can't be hard-deleted out from under them.
+  roleProfileId      String
+  roleProfile        RoleProfile @relation(fields: [roleProfileId], references: [id], onDelete: Restrict)
+  roleProfileVersion Int
+
+  // Deterministic scoring output (ARCHITECTURE §6), stored as JSON blobs validated
+  // by zod at the service boundary (lib/validations/result.ts):
+  //   facetScores      30 facets: { facet, facetNumber, domain, raw, percentile, band }
+  //   domainScores      5 domains: { domain, raw, percentile, band }
+  //   sjtScores         per-competency SJT sub-scores (key never stored — derived only)
+  //   competencyScores  per competency: { name, score 0–100, band, drivers[], citation }
+  facetScores      Json
+  domainScores     Json
+  sjtScores        Json
+  competencyScores Json
+
+  // Two surfaced scores (ARCHITECTURE §6). Fit-to-role is primary (needs no norms);
+  // community percentile is the secondary norm-referenced figure (nullable — only
+  // present when the scorer returns it).
+  fitScore            Int
+  communityPercentile Int?
+
+  // Provenance of the deterministic computation.
+  scoringModel String   @default("IPIP-NEO-120")
+  computedAt   DateTime @default(now())
+
+  // AI Role 2 narrative (ARCHITECTURE §4) — a plain-language restatement of the
+  // numbers above, cached here. Null until generated / when the LLM is unconfigured.
+  // narrativeModel records WHICH model wrote it (audit/provenance).
+  narrative      String?
+  narrativeModel String?
+  narrativeAt    DateTime?
+
+  // The human decision (UI-SPEC D.7 §7). Single current value; history in audit_logs.
+  decision     DecisionOutcome?
+  decisionNote String?
+  decidedById  String?
+  decidedAt    DateTime?
+
+  // Soft deletion (cascades from candidate erasure via the Assessment).
+  deletedAt DateTime?
+  deletedBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([orgId])
+  @@index([roleProfileId])
+  @@index([deletedAt, createdAt])
+  @@map("results")
+}
+
 model AuditLog {
   id         String   @id @default(cuid())
   // Tenant scoping for the audit surface (UI-SPEC D.10). Nullable: bootstrap /
@@ -519,6 +603,8 @@ model Assessment {
 
   itemResponses ItemResponse[]
   sjtResponses  SjtResponse[]
+  // One Result per assessment, computed lazily on first manager view (Phase 6).
+  result        Result?
 
   @@index([orgId])
   @@index([deletedAt, createdAt])

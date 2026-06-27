@@ -30,6 +30,10 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   // and its responses — full erasure.
   Invitation: { displayField: "candidateEmail" },
   Assessment: { displayField: "id" },
+  // Result (Phase 6) is soft-deletable (SOFT_DELETE_MODELS) — register it so a
+  // soft-deleted result can be restored rather than stranded in the bin (the same
+  // invariant as RoleFamily above). Labelled by id (no human-facing name field).
+  Result: { displayField: "id" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

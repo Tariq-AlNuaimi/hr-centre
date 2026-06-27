@@ -25,6 +25,9 @@ const SOFT_DELETE_MODELS = new Set([
   // NOT here — they're hard children that cascade with the Assessment.
   "Invitation",
   "Assessment",
+  // Result (Phase 6): soft-deletable so a PDPL erasure of a sitting can take its
+  // computed result with it; the bin's permanent-delete then hard-removes the row.
+  "Result",
 ]);
 
 /**

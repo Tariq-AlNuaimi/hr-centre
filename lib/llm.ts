@@ -4,6 +4,7 @@ import {
   type DraftRoleProfileInput,
   type LlmDraftResponse,
 } from "./validations/roleProfile";
+import { narrativeResponseSchema, type NarrativeResponse } from "./validations/result";
 
 /**
  * The bounded LLM seam (ARCHITECTURE §4/§10). The platform uses AI in exactly two
@@ -197,6 +198,135 @@ export async function draftRoleProfile(
     // Off-contract (bad facet, out-of-range band, etc.) -- treat as a soft failure
     // so the wizard offers manual authoring rather than persisting garbage.
     throw new LlmError("LLM draft did not match the required schema");
+  }
+  return parsed.data;
+}
+
+// ===========================================================================
+// AI Role 2 — narrative summary of an ALREADY-computed result (ARCHITECTURE §4).
+// ===========================================================================
+
+/**
+ * The numbers-only input for the result narrative. By construction it carries NO
+ * candidate PII (no name/email) and NO free text (no JD) — only the deterministic,
+ * already-computed figures (Phase-6 blueprint). This is the containment that keeps
+ * AI Role 2 from introducing any judgement not present in the numbers.
+ */
+export type ResultNarrativeInput = {
+  roleTitle: string;
+  fitScore: number;
+  competencies: Array<{
+    name: string;
+    score: number;
+    band: "PASS" | "PARTIAL" | "BELOW";
+    targetPercentile: number;
+    direction: "HIGH" | "MODERATE" | "LOW";
+  }>;
+  domains: Array<{ domain: string; percentile: number }>;
+  sjtOverall: number | null;
+};
+
+function buildNarrativeMessages(
+  input: ResultNarrativeInput
+): Array<{ role: string; content: string }> {
+  const system = [
+    "You write a SHORT, plain-language summary of an already-computed candidate",
+    "assessment result for a hiring manager. The numbers were computed by a",
+    "deterministic scoring engine — your ONLY job is to restate them in prose.",
+    "",
+    "HARD CONSTRAINTS (a violation makes the summary unusable):",
+    "- Use ONLY the numbers provided. Introduce NO judgement, trait, or fact not in them.",
+    "- Do NOT make a hire / no-hire / advance / reject recommendation. The human decides.",
+    "- Do NOT invent percentiles, competencies, or causes. No speculation about the person.",
+    "- Neutral, professional tone. 2–4 sentences. Name a few clear strengths (PASS) and",
+    "  any below-target areas (BELOW), framed as fit to THIS role's documented requirements.",
+    "- Return ONLY a JSON object: {\"narrative\":\"...\"}. No prose outside it, no markdown fences.",
+  ].join("\n");
+
+  // Numbers only — note there is deliberately NO candidate name/email and NO JD here.
+  const user = JSON.stringify({
+    roleTitle: input.roleTitle,
+    fitScore: input.fitScore,
+    competencies: input.competencies,
+    domainPercentiles: input.domains,
+    sjtJudgementScore: input.sjtOverall,
+  });
+
+  return [
+    { role: "system", content: system },
+    { role: "user", content: `Computed result (numbers only):\n${user}` },
+  ];
+}
+
+/**
+ * AI Role 2: write a numbers-bound narrative of a computed result. Returns a
+ * schema-validated `{ narrative }` (the caller caches it on Result). Throws
+ * LlmError on misconfiguration, transport failure, timeout, a non-2xx, or an
+ * off-contract payload — the caller then renders the numbers WITHOUT a narrative
+ * (never a broken panel; UI-SPEC D.7 §6). Dormant + graceful when the LLM is
+ * unconfigured (gate on isLlmConfigured() before calling).
+ */
+export async function draftResultNarrative(
+  input: ResultNarrativeInput,
+  opts: { signal?: AbortSignal; timeoutMs?: number } = {}
+): Promise<NarrativeResponse> {
+  const baseUrl = process.env.LLM_ENDPOINT_URL;
+  if (!baseUrl) {
+    throw new LlmError("LLM_ENDPOINT_URL is not configured");
+  }
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const token = process.env.LLM_ENDPOINT_TOKEN;
+  if (token) {
+    if (token.length < LLM_TOKEN_MIN_LEN) {
+      throw new LlmError(`LLM_ENDPOINT_TOKEN must be at least ${LLM_TOKEN_MIN_LEN} characters`);
+    }
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
+
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: process.env.LLM_MODEL ?? "gpt-oss-120b",
+        messages: buildNarrativeMessages(input),
+        temperature: 0.1, // lowest: restate, never improvise (ARCHITECTURE §4)
+      }),
+      signal,
+      cache: "no-store",
+    });
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : "network error";
+    throw new LlmError(`LLM endpoint unreachable: ${reason}`);
+  }
+
+  if (!res.ok) {
+    throw new LlmError(`LLM endpoint returned ${res.status}`, res.status);
+  }
+
+  const json = (await res.json().catch(() => null)) as {
+    choices?: Array<{ message?: { content?: string } }>;
+  } | null;
+  const content = json?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new LlmError("LLM endpoint returned an empty completion");
+  }
+
+  let candidate: unknown;
+  try {
+    candidate = JSON.parse(extractJson(content));
+  } catch {
+    throw new LlmError("LLM returned non-JSON content");
+  }
+
+  const parsed = narrativeResponseSchema.safeParse(candidate);
+  if (!parsed.success) {
+    throw new LlmError("LLM narrative did not match the required schema");
   }
   return parsed.data;
 }
