@@ -90,39 +90,32 @@ history it's the 3 commits `6cad32b`/`eae0a3b`/`5f5bf42`.
   install cleanly from PyPI here (egress OK). Could NOT `docker build` the image
   (daemon down) — Dockerfile unverified-by-build but straightforward.
 
-### ⚠️ DO BEFORE Phase 3 — senior-review findings (2026-06-27, Phase 1 + 2 pass)
-The senior-code-reviewer cleared Phase 2's scoring boundary (zod both ways,
-bounded timeout, constant-time token, no PII, faithful five-factor-e mapping,
-forward-compatible migration). It found a **cross-cutting Phase-1 tenancy gap** —
-dormant in single-tenant today, but fix it as a focused commit in a FRESH session
-(it's the Ask-before auth/lib surface; don't rush it at context-exhaustion):
-- **[HIGH] orgId not enforced on individual-record routes.** `GET/PUT/DELETE
-  /api/users/[id]/route.ts` use `findUnique/update/delete({ where: { id } })` with
-  no `orgId` — cross-tenant read/modify/soft-delete. Add `orgId:
-  session.user.orgId` to each `where` (session is in scope via withAdminAuth).
-- **[HIGH] `GET /api/audit-log/route.ts`** never filters by `orgId` → all-tenant
-  audit rows (incl. PII snapshots). Add `orgId: session.user.orgId` to findMany +
-  count `where`.
-- **[HIGH] Audit rows never stamp `orgId`.** `lib/audit-context.ts` AuditContext
-  lacks `orgId`; the 4 `auditLog.create` calls in `lib/prisma/audit-extension.ts`
-  + `recordAudit()` omit it → every row `orgId=null`, so even a fixed read filter
-  returns nothing. Thread `session.user.orgId` from `withAuth` → AuditContext →
-  every create. **Single highest-leverage fix: do this one + the two reads as ONE
-  commit.**
-- **[MED] DONE this session:** `SCORING_SERVICE_TOKEN` now `min(32)` in lib/env.ts.
-- **[MED] SECURITY.md §2/§3/§10/§16 + lib/auth.ts:142** still say ADMIN/EDITOR/
-  VIEWER — update to HR_ADMIN/HIRING_MANAGER (load-bearing file). Add
-  SCORING_SERVICE_TOKEN to §6 secrets table.
-- **[MED] No test for `withManagerAuth` REJECTION** of a future/unknown role (only
-  the pass case). Add a 403 test with a cast role.
-- **[LOW] Golden test gap:** `test_golden_regression_snapshot` checks domain raws
-  (sum-of-facets) but not per-facet raws — a facet transposition would pass.
-  Assert a known per-facet raw (e.g. NEUROTICISM/anxiety) with the existing vec.
-- **[LOW] `SEED_ORG_NAME`/`SEED_ORG_SLUG`** read by seed.ts but undocumented — add
-  to .env.example (a fork silently gets slug "rihal"). **[LOW] Dockerfile** pins
-  `python:3.11-slim` by major (consistent w/ ADR-023 Node rail; optionally digest-pin).
+### ✅ Senior-review findings (2026-06-27) — ALL FIXED this session (commit b6a5547)
+The senior-code-reviewer cleared Phase 2's scoring boundary. Its findings on the
+Phase-1 + 2 change are now all resolved + /ship green:
+- **[HIGH] org tenancy** — `orgId` threaded through `AuditContext` → stamped on
+  every `auditLog.create` (`lib/prisma/audit-extension.ts` + `recordAudit`);
+  `GET/PUT/DELETE /api/users/[id]` scope by `orgId` (findFirst{id,orgId});
+  `GET /api/audit-log` filters by `session.user.orgId`. (Caveat: pre-fix audit
+  rows have orgId=null and won't show in the scoped audit view — acceptable
+  pre-launch single-tenant; backfill if real history matters before launch.)
+- **[MED]** `SCORING_SERVICE_TOKEN` `min(32)`; SECURITY.md §2/§3/§6 + lib/auth.ts
+  comment → HR_ADMIN/HIRING_MANAGER + scoping invariant documented + SCORING_* in
+  the secrets table; `withManagerAuth` rejection contract test added.
+- **[LOW]** golden test locks per-facet percentiles; SEED_ORG_* documented in
+  .env.example. (Dockerfile major-pin left as-is — consistent w/ ADR-023 Node rail.)
 
-### NEXT: Phase 3 (ARCHITECTURE §12.3) — re-read §12.3 + UI-SPEC before starting
+### NEXT: Phase 3 (ARCHITECTURE §12.3) — NOT STARTED (needs the spec uploads + a fresh session)
+**Why not done this session:** context hit the hard limit right after the security
+fixes. Phase 3 is a substantial feature (role-profile authoring + the first bounded
+-LLM seam) and ARCHITECTURE.md/UI-SPEC.md are NOT in the repo (session uploads) — so
+the exact §12.3 scope (RoleProfile/Competency shape, versioning, the calibration
+hooks, the profile-drafting LLM contract) must be re-read from the uploads before
+designing the schema. Building it blind at context-exhaustion would violate the
+blueprint gate. **Operator note:** the operator will wire the LLM endpoint from app
+settings once development is done — so Phase 3 should make the LLM endpoint a
+runtime-config/env seam (drafting is gated behind it; everything works with it
+unset), NOT hardcode a provider. — re-read §12.3 + UI-SPEC before starting
 Phase 3 is role-profile authoring (RoleProfile/Competency versioned under the
 seeded RoleFamily taxonomy), per the Phase-1 schema comment. This is where the
 **bounded LLM** first appears (profile drafting with human approval) — keep it on
