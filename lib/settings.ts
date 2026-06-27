@@ -98,6 +98,30 @@ export async function setAppSetting(
   }
 }
 
+// ---- Org profile (the Organization row itself) ----
+
+export type OrgProfile = { name: string; defaultLocale: string };
+
+/** Read the org's editable profile (name + default candidate language). */
+export async function getOrgProfile(orgId: string): Promise<OrgProfile | null> {
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { name: true, defaultLocale: true },
+  });
+  return org ?? null;
+}
+
+/** Update the org name + default candidate language (audited via the Organization row). */
+export async function updateOrgProfile(
+  orgId: string,
+  input: { name: string; defaultLocale: string }
+): Promise<void> {
+  await prisma.organization.update({
+    where: { id: orgId },
+    data: { name: input.name, defaultLocale: input.defaultLocale },
+  });
+}
+
 // ---- AI / scoring config: DB-then-env precedence ----
 
 export type LlmConfig = { baseUrl: string | null; token: string | null; model: string };

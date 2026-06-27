@@ -23,3 +23,21 @@ export const aiSettingsSchema = z
   })
   .strict();
 export type AiSettingsInput = z.infer<typeof aiSettingsSchema>;
+
+// Org profile (PUT /api/settings/org). Updates the Organization row directly.
+export const orgProfileSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    defaultLocale: z.enum(["en", "ar"]),
+  })
+  .strict();
+export type OrgProfileInput = z.infer<typeof orgProfileSchema>;
+
+// PDPL candidate erasure (POST /api/settings/erase-candidate). Soft-deletes the
+// candidate's sitting (invitation → assessment → result) for the recycling-bin purge.
+export const eraseCandidateSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email(),
+  })
+  .strict();
+export type EraseCandidateInput = z.infer<typeof eraseCandidateSchema>;
