@@ -1,38 +1,110 @@
 # Session handoff — Rihal Aptitude Platform
 
-**Branch:** `claude/rihal-assessment-platform-orefdp` (all work pushed; verify `git rev-list --count @{u}..HEAD` = 0)
-**Operator goal:** Build the Rihal Aptitude Assessment Platform in the 8 phases of ARCHITECTURE.md §12, **pausing for review after each phase**. Two spec files were uploaded: ARCHITECTURE.md (system/data-model/scoring/AI/phases) and UI-SPEC.md (design system + every page). They are the source of truth.
+**Branch:** `claude/rihal-phase-2-scoring-c9m6xr` (Phase 2 work; fast-forwarded
+from the Phase-1 branch `claude/rihal-assessment-platform-orefdp`, then Phase 2
+added on top). Verify pushed: `git rev-list --count @{u}..HEAD` = 0.
+**Operator goal:** Build the Rihal Aptitude Assessment Platform in the 8 phases of
+ARCHITECTURE.md §12, **pausing for operator review after each phase**. The two
+spec files (ARCHITECTURE.md, UI-SPEC.md) were uploads in the original session —
+their relevant content is summarized in this handoff (re-request the uploads for
+§§ not yet quoted before a phase that needs them).
 
-## Status: Phase 1 COMPLETE + reviewed; operator said "phase 2" → **start Phase 2 in this fresh session.**
+## Status: Phase 2 COMPLETE + /ship green + senior-reviewed → **pause for operator review before Phase 3.**
 
-### Key standing decision (do not relitigate)
-The template shipped on **Ant Design**; the spec mandates **Tailwind v4 + shadcn/ui**. We pivoted the UI layer to Tailwind v4 + shadcn and **kept** the backend infra (Auth.js v5, Prisma 7, audit + soft-delete extensions, `lib/api-helpers`, next-intl, `middleware.ts` CSP). AntD + `@tanstack/react-query` + `@dnd-kit` were removed. The `scaffold-entity` generator + its skill/test were removed (hard-wired to the old AntD shell).
+### Branch note (how Phase 2 got here)
+This session opened on `claude/rihal-phase-2-scoring-c9m6xr`, which was still the
+bare template — Phase 1 lived only on `claude/rihal-assessment-platform-orefdp`.
+The phase-2 branch was an ancestor of phase-1, so it was **fast-forwarded** onto
+the Phase-1 tip (no work lost) and Phase 2 built on top. If you need the Phase-1
+history it's the 3 commits `6cad32b`/`eae0a3b`/`5f5bf42`.
 
-### What exists now (Phase 1)
-- **Schema** (`prisma/schema.prisma`, single migration `prisma/migrations/20260627000000_init_rihal/`): `Organization` (tenant, soft-delete), `User` (+`orgId`, role `HR_ADMIN|HIRING_MANAGER` default HIRING_MANAGER), `RoleFamily` (orgId-scoped, seeded), `AuditLog` (+`orgId`), Auth.js models. Soft-delete registry (`lib/prisma/soft-delete-extension.ts`) includes User/Organization/RoleFamily.
-- **Auth**: `lib/auth.ts` threads `orgId` into token/session; `mapSsoRole`→HIRING_MANAGER. `types/index.ts` adds `orgId` to Session/User/JWT. `lib/api-helpers.ts` = `withAdminAuth` (HR_ADMIN) + `withManagerAuth` (both). `lib/authz.ts` = server gating (`requireSession`/`requireAdmin`/`isAdmin`).
-- **Design system**: `app/globals.css` (Tailwind v4 `@theme`, all UI-SPEC Part A tokens + shadcn semantic vars + journey-line motif). Fonts (Inter/Sora/IBM Plex Sans Arabic) in `app/[locale]/layout.tsx`. `brand.config.ts` rebranded. `postcss.config.mjs`, `components.json`, `lib/utils.ts` (`cn`). NOTE: `app/tokens.css` was deleted (folded into globals @theme).
-- **shadcn primitives** in `components/ui/`: button, card, input, label, badge (with pass/partial/below signal variants), separator, avatar, dropdown-menu, sheet.
-- **Shell** (`components/layout/`): `AppShell`, `SidebarNav` + `nav.ts` (NAV_ITEMS, role-gated), `MobileSidebar`, `LocaleToggle`, `ThemeToggle`, `UserMenu`. `components/providers/ThemeProvider.tsx` (next-themes, `attribute="data-theme"`, nonce). `components/brand/Wordmark.tsx`. `components/shared/`: PageHeader, StatCard, Placeholder.
-- **Pages** (`app/[locale]/`): `app/` layout (session guard + org fetch) + dashboard `page.tsx`; stub pages `roles|invites|candidates|compare|calibration|settings|audit` (admin-only ones call `requireAdmin`); `(auth)/login/` (react-hook-form+zod); `methodology/` (public); `page.tsx` (→/app redirect); `not-found.tsx`, `error.tsx`. `middleware.ts` publicPaths = `/login`,`/methodology`; login redirect → `/app`.
-- **i18n**: `project.config.json` locales `["en","ar"]`. Fresh `messages/en.json` + `messages/ar.json` (Rihal namespaces: common/nav/auth/shell/dashboard/placeholder/methodology/notFound/error). RTL verified.
-- **Tests fixed**: `design-tokens.test.ts` (rewritten for Tailwind tokens), `auth.test.ts` + `api-auth.test.ts` (HR_ADMIN/HIRING_MANAGER, +orgId), `audit-softdelete.test.ts`.
+### Key standing decisions (do not relitigate)
+- **UI stack:** Tailwind v4 + shadcn/ui (the template's AntD layer was pivoted in
+  Phase 1; AntD/@tanstack/react-query/@dnd-kit removed). See Phase-1 section below.
+- **Scoring = separate Python service, deterministic, never the LLM** (ADR-029).
+- **Item bank is GLOBAL reference data** (no orgId) — a deliberate exception to
+  the orgId-scoping rule; the IPIP-NEO-120 is one fixed public-domain instrument
+  shared by all tenants. `text_ar` editable in place.
+- **Adopt, don't transcribe:** the item-bank (domain/facet/keyed) mapping is
+  GENERATED from five-factor-e, not hand-typed.
 
-`/ship` is GREEN (typecheck+lint+117 tests+build+gitleaks+audit). Verified runnable: local PG, migrate+seed, login, EN/AR/RTL.
+### What exists now (Phase 2 — item bank + scoring)
+- **Schema:** `AssessmentItemBank` (itemNumber 1..120 unique = the scorer's
+  question id, itemCode, domain `Big5Domain`, facet machine-name, facetNumber
+  1..6, keyed `ItemKey` PLUS|MINUS, text_en, text_ar?). Migration
+  `20260627043018_add_assessment_item_bank`. Audited (not in EXCLUDE); not
+  soft-deletable (fixed instrument).
+- **Dataset + seed:** `prisma/data/ipip-neo-120.ts` is GENERATED by
+  `services/scoring/scripts/gen_items.py` from five-factor-e's scoring algorithm +
+  55-item reverse list + the canonical questions.json (committed at
+  `services/scoring/data/questions-120.json`). `prisma/seed.ts` upserts all 120
+  idempotently by itemNumber, leaving any HR-authored `text_ar` untouched on
+  re-seed. Verified in DB: 5 domains × 24 items, 55 reverse-keyed, 120 total.
+- **Scoring service** (`services/scoring/`): standalone Python **FastAPI**
+  wrapping **five-factor-e==1.13.1**. `POST /score` (120 answers + sex/age) →
+  raw facet/domain sums + **Johnson-normed percentiles** (1..99) + low/avg/high
+  bands; `GET /health`. Deterministic (uuid/timestamp stripped). Optional Bearer
+  gate (`SCORING_SERVICE_TOKEN`, constant-time). Dockerfile (non-root, healthcheck),
+  requirements pinned. **13 pytest tests green** (structure, determinism, reverse-
+  keying direction, golden snapshot, validation, API + auth gate).
+- **Next wiring:** `lib/scoring.ts` (server-side client; zod-validates request
+  before send + response after receive; bounded `AbortSignal.timeout`;
+  `ScoringError`; `isScoringConfigured()`). `lib/validations/scoring.ts` (zod
+  contract; domain/facet ids match Prisma so a score row joins onto an item-bank
+  row). Env vars `SCORING_SERVICE_URL` / `SCORING_SERVICE_TOKEN` in `lib/env.ts`
+  + `.env.example` (optional, dormant until set).
+- **Docs:** `services/scoring/README.md` (API, run, **Johnson norms provenance +
+  limits** — self-selected web sample, not a selection instrument, English norms,
+  self-report, neutral-sex default). **ADR-029** records the separate-service
+  decision + the global-item-bank exception.
+- **Tests added:** `tests/contracts/ipip-item-bank.test.ts` (120-item invariants)
+  + `tests/contracts/scoring-client.test.ts` (the Next→scorer seam, mocked fetch).
+
+`/ship` GREEN (typecheck + lint + contract tests + build + gitleaks + audit).
+
+### Scoring crib (how the numbers work)
+- Answers are 1..5 Likert per item (1 Very Inaccurate .. 5 Very Accurate).
+- The library recodes the 55 reverse-keyed items (1↔5, 2↔4) then sums 4 items per
+  facet (raw 4..20) and 6 facets per domain (raw 24..120).
+- Percentiles are vs Johnson's community norms (age/sex-banded); we default
+  `sex="N"` (averaged norms) so candidates aren't normed by sex.
+- A balanced domain (equal +/- items, e.g. Openness) yields the same domain RAW
+  for any uniform answer — a real property, locked by a test, not a bug.
 
 ### Local run recipe (proven this env)
-PG16 at `/usr/lib/postgresql/16/bin`. `runuser -u postgres -- $PGBIN/initdb -D /tmp/pgqa/data -U postgres --auth=trust` → `pg_ctl ... -o "-p 5433 -k /tmp/pgqa" start` → `createdb -p 5433 -h /tmp/pgqa appdb`. Then `DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public"`: `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=hr@rihal.test SEED_ADMIN_PASSWORD='Passw0rd!demo' npm run prisma:seed`. Dev: add `AUTH_SECRET=...`(32+ chars) `AUTH_TRUST_HOST=true AUTH_URL=http://localhost:3000`. Playwright screenshots: `chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome" })` (pinned-version mismatch otherwise). Build/migrate-diff need `DATABASE_URL` set (prisma.config.ts requires it).
+- **DB:** PG16 at `/usr/lib/postgresql/16/bin`. `mkdir -p /tmp/pg2/data && chown -R
+  postgres:postgres /tmp/pg2` → `runuser -u postgres -- $PGBIN/initdb -D
+  /tmp/pg2/data -U postgres --auth=trust` → `pg_ctl -D /tmp/pg2/data -o "-p 5433 -k
+  /tmp/pg2" -w start` → `createdb -p 5433 -h /tmp/pg2 appdb`. (NOTE: `rm -rf` is
+  deny-listed — use a fresh dir name, don't try to clean the old one. Docker
+  daemon is NOT running here, so `make db-up` fails; use the PG-direct recipe.)
+- **Migrate+seed:** `DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public"`
+  `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=hr@rihal.test
+  SEED_ADMIN_PASSWORD='Passw0rd!demo' npm run prisma:seed`.
+- **/ship:** needs `DATABASE_URL` + `AUTH_SECRET` (32+) + `AUTH_URL`. **After a
+  branch fast-forward, run `npm install` first** — node_modules was installed for
+  the pre-FF package.json and is missing the Phase-1 UI deps (react-hook-form,
+  lucide-react, next-themes, shadcn). This bit me; documented gotcha.
+- **Scoring service:** `cd services/scoring && pip install -r requirements-dev.txt
+  && uvicorn app.main:app --port 8000` (or `pytest`). five-factor-e + fastapi
+  install cleanly from PyPI here (egress OK). Could NOT `docker build` the image
+  (daemon down) — Dockerfile unverified-by-build but straightforward.
 
-### NEXT: Phase 2 — Item bank + scoring service (ARCHITECTURE §12.2, §6; UI-SPEC F)
-1. **`AssessmentItemBank` model** (`itemCode, domain, facet, keyed:+|-, text_en, text_ar`) — load IPIP-NEO-120 (120 items, 5 domains × 6 facets × 4 items), public domain. Seed EN; AR translation editable (don't hardcode items — DB-driven per UI-SPEC C.2). New migration.
-2. **Python FastAPI scoring microservice** wrapping `five-factor-e` (PyPI) — raw→facet/domain scores (handle reverse-keyed) + percentile calc vs **Johnson IPIP-NEO community dataset** (OSF osf.io/jxpu4). Separate service/dir; **env-var driven** endpoint (no Vercel lock-in). Unit-test scoring against known cases.
-3. Wrap as a service the Next app calls via an env var URL. Keep scoring DETERMINISTIC (no LLM). Document Johnson dataset provenance/limits.
-4. Adopt, don't reinvent: use `five-factor-e` keys, don't transcribe.
-After Phase 2: state what's built/testable/next and **pause for operator review**.
+### NEXT: Phase 3 (ARCHITECTURE §12.3) — re-read §12.3 + UI-SPEC before starting
+Phase 3 is role-profile authoring (RoleProfile/Competency versioned under the
+seeded RoleFamily taxonomy), per the Phase-1 schema comment. This is where the
+**bounded LLM** first appears (profile drafting with human approval) — keep it on
+the env-var endpoint (`litellm.rihal.dev` / `gpt-oss-120b`), never a public API,
+and all scoring stays in the Python service. The calibration loop + audit must
+exist from the phase they're introduced. Confirm Phase 3 scope with the operator.
 
 ### Watch-outs
-- LLM (Phases 3/6) → env var `litellm.rihal.dev` / `gpt-oss-120b` only, never public API. AI bounded to 2 roles (profile drafting w/ human approval; numeric narration). All scoring is code.
-- Calibration loop + audit must exist from day one (OutcomeRecord/ProfileCalibration land in their phases; AuditLog already present).
-- `senior-code-reviewer` pass still owed on the Phase-1 change (touched auth/schema/lib) — operator was offered it; run before/at next milestone.
+- Spec files (ARCHITECTURE.md/UI-SPEC.md) are NOT in the repo — they were session
+  uploads. Work from this handoff's summaries; re-request the uploads for any §
+  not yet quoted.
+- LLM phases (3/6): env-var endpoint only; AI bounded to 2 roles (profile drafting
+  w/ human approval; numeric narration). All scoring is code.
+- A scoring API route (persist responses → call requestScoring → store result)
+  lands in **Phase 4** when there's an Assessment/Response model to score; Phase 2
+  intentionally ships only the client lib + service.
 - Next dev shows a dev-tools overlay circle bottom-left (not a UI bug).
-- Spec files are uploads in the original session; their content is summarized in ARCHITECTURE.md/UISPEC.md uploads — re-read §6/§12 + UI-SPEC C.2/F before Phase 2.
