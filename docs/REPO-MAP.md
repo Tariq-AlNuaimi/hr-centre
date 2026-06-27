@@ -22,6 +22,10 @@
 - app/api/auth/reset-password/route.ts
 - app/api/health/route.ts
 - app/api/internal/audit-purge/route.ts  [GET,POST]
+- app/api/invitations/[id]/resend/route.ts  [POST]
+- app/api/invitations/[id]/revoke/route.ts  [POST]
+- app/api/invitations/bulk/route.ts  [POST]
+- app/api/invitations/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
 - app/api/role-profiles/[id]/approve/route.ts  [POST]
@@ -30,6 +34,7 @@
 - app/api/role-profiles/draft/route.ts  [POST]
 - app/api/role-profiles/route.ts  [GET,POST]
 - app/api/run/[token]/consent/route.ts  [POST]
+- app/api/run/[token]/opened/route.ts  [POST]
 - app/api/run/[token]/response/route.ts  [POST]
 - app/api/run/[token]/submit/route.ts  [POST]
 - app/api/users/[id]/password/route.ts  [PUT]
@@ -50,7 +55,7 @@
 - SjtItem: id, roleProfileId, roleProfile, scenario_en, scenario_ar
 - AssessmentItemBank: id, itemNumber, itemCode, domain, facet, facetNumber, keyed, text_en, text_ar, createdAt, updatedAt
 - AuditLog: id, orgId, org, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
-- Invitation: id, orgId, org, roleProfileId, roleProfile, candidateEmail, candidateName, token, status, expiresAt, locale, sentById, batchId, deletedAt, deletedBy, createdAt, updatedAt, assessment
+- Invitation: id, orgId, org, roleProfileId, roleProfile, candidateEmail, candidateName, tokenHash, status, expiresAt, locale, sentById, batchId, deletedAt, deletedBy, createdAt, updatedAt, assessment
 - Assessment: id, orgId, org, invitationId, invitation, status, locale, consentAt, startedAt, submittedAt, deletedAt, deletedBy, createdAt, updatedAt, itemResponses, sjtResponses
 - ItemResponse: id, assessmentId, assessment, itemNumber, value, createdAt, updatedAt
 - SjtResponse: id, assessmentId, assessment, sjtItemId, sjtItem, chosenOptionId, createdAt, updatedAt
@@ -80,10 +85,13 @@
 - lib/scoring.ts: ScoringError, isScoringConfigured, requestScoring
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/services/candidateRunner.ts: TokenState, ResolvedInvitation, TokenResolution, resolveToken, getInvitationDisplay, BilingualItem, BilingualSjtOption, BilingualSjtItem, getBilingualItems, getBilingualSjtItems, getSavedResponses, recordConsent, saveItemResponse, saveSjtResponse, submitAssessment
+- lib/services/invitation.ts: effectiveStatus, InvitationListFilters, InvitationRow, listInvitations, listActiveRoleProfiles, SingleResult, createInvitation, BulkResult, createInvitationsBulk, ActionResult, resendInvitation, revokeInvitation, markOpened
 - lib/services/roleProfile.ts: RoleProfileNotFoundError, isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
+- lib/token.ts: generateInvitationToken, hashInvitationToken, tokenHashEquals
 - lib/utils.ts: cn
 - lib/validations/candidate.ts: IPIP_ITEM_COUNT, LIKERT_MIN, LIKERT_MAX, consentSchema, ConsentInput, responseSchema, ResponseInput, localeSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/invitation.ts: MAX_BATCH, INVITATION_STATUSES, InvitationStatusName, RecipientOutcome, RecipientResult, singleInvitationSchema, SingleInvitationInput, recipientSchema, RecipientInput, bulkInvitationSchema, BulkInvitationInput, ParsedRecipient, RecipientParse, parseRecipients
 - lib/validations/roleProfile.ts: bandDirectionSchema, competencyInputSchema, CompetencyInput, CompetencyValue, sjtItemInputSchema, SjtItemInput, SjtItemValue, createRoleProfileSchema, CreateRoleProfileInput, CreateRoleProfile, updateRoleProfileSchema, UpdateRoleProfileInput, UpdateRoleProfile, draftRoleProfileSchema, DraftRoleProfileInput, llmDraftResponseSchema, LlmDraftResponse
 - lib/validations/scoring.ts: NUM_ITEMS, big5Domains, scoreBandSchema, answerSchema, scoreRequestSchema, facetScoreSchema, domainScoreSchema, scoreResponseSchema, ScoreRequestInput, ScoreRequest, ScoreResponse, DomainScore, FacetScore, Big5Domain
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
