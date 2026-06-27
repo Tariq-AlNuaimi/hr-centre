@@ -90,6 +90,38 @@ history it's the 3 commits `6cad32b`/`eae0a3b`/`5f5bf42`.
   install cleanly from PyPI here (egress OK). Could NOT `docker build` the image
   (daemon down) — Dockerfile unverified-by-build but straightforward.
 
+### ⚠️ DO BEFORE Phase 3 — senior-review findings (2026-06-27, Phase 1 + 2 pass)
+The senior-code-reviewer cleared Phase 2's scoring boundary (zod both ways,
+bounded timeout, constant-time token, no PII, faithful five-factor-e mapping,
+forward-compatible migration). It found a **cross-cutting Phase-1 tenancy gap** —
+dormant in single-tenant today, but fix it as a focused commit in a FRESH session
+(it's the Ask-before auth/lib surface; don't rush it at context-exhaustion):
+- **[HIGH] orgId not enforced on individual-record routes.** `GET/PUT/DELETE
+  /api/users/[id]/route.ts` use `findUnique/update/delete({ where: { id } })` with
+  no `orgId` — cross-tenant read/modify/soft-delete. Add `orgId:
+  session.user.orgId` to each `where` (session is in scope via withAdminAuth).
+- **[HIGH] `GET /api/audit-log/route.ts`** never filters by `orgId` → all-tenant
+  audit rows (incl. PII snapshots). Add `orgId: session.user.orgId` to findMany +
+  count `where`.
+- **[HIGH] Audit rows never stamp `orgId`.** `lib/audit-context.ts` AuditContext
+  lacks `orgId`; the 4 `auditLog.create` calls in `lib/prisma/audit-extension.ts`
+  + `recordAudit()` omit it → every row `orgId=null`, so even a fixed read filter
+  returns nothing. Thread `session.user.orgId` from `withAuth` → AuditContext →
+  every create. **Single highest-leverage fix: do this one + the two reads as ONE
+  commit.**
+- **[MED] DONE this session:** `SCORING_SERVICE_TOKEN` now `min(32)` in lib/env.ts.
+- **[MED] SECURITY.md §2/§3/§10/§16 + lib/auth.ts:142** still say ADMIN/EDITOR/
+  VIEWER — update to HR_ADMIN/HIRING_MANAGER (load-bearing file). Add
+  SCORING_SERVICE_TOKEN to §6 secrets table.
+- **[MED] No test for `withManagerAuth` REJECTION** of a future/unknown role (only
+  the pass case). Add a 403 test with a cast role.
+- **[LOW] Golden test gap:** `test_golden_regression_snapshot` checks domain raws
+  (sum-of-facets) but not per-facet raws — a facet transposition would pass.
+  Assert a known per-facet raw (e.g. NEUROTICISM/anxiety) with the existing vec.
+- **[LOW] `SEED_ORG_NAME`/`SEED_ORG_SLUG`** read by seed.ts but undocumented — add
+  to .env.example (a fork silently gets slug "rihal"). **[LOW] Dockerfile** pins
+  `python:3.11-slim` by major (consistent w/ ADR-023 Node rail; optionally digest-pin).
+
 ### NEXT: Phase 3 (ARCHITECTURE §12.3) — re-read §12.3 + UI-SPEC before starting
 Phase 3 is role-profile authoring (RoleProfile/Competency versioned under the
 seeded RoleFamily taxonomy), per the Phase-1 schema comment. This is where the

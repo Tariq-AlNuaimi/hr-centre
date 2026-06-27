@@ -45,7 +45,10 @@ const envSchema = z.object({
   // lib/scoring.isScoringConfigured() gates on it. TOKEN, when set, is sent as a
   // Bearer header and must match the service's SCORING_SERVICE_TOKEN.
   SCORING_SERVICE_URL: z.string().url().optional(),
-  SCORING_SERVICE_TOKEN: z.string().optional(),
+  // Bearer token for the scoring service; same 32-char floor as CRON_SECRET /
+  // AUDIT_PURGE_TOKEN (it's the only auth on a network-reachable scorer). Generate
+  // with `openssl rand -base64 48`. (senior-review MEDIUM, 2026-06-27)
+  SCORING_SERVICE_TOKEN: z.string().min(32).optional(),
 
   // SMTP (optional; email is gated on SMTP_HOST presence -- see lib/email.ts)
   SMTP_HOST: z.string().optional(),
