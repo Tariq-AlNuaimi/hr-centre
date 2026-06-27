@@ -31,9 +31,9 @@ export default async function CandidateRunnerPage({
   const [items, sjt, display, saved] = await Promise.all([
     getBilingualItems(),
     getBilingualSjtItems(invitation.roleProfileId),
-    getInvitationDisplay(invitation.id),
+    getInvitationDisplay(invitation.id, invitation.orgId),
     invitation.assessment
-      ? getSavedResponses(invitation.assessment.id)
+      ? getSavedResponses(invitation.assessment.id, invitation.orgId)
       : Promise.resolve({ items: [], sjt: [] }),
   ]);
 

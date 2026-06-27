@@ -220,7 +220,9 @@ type CandidateHandler = (
  * Token-authorized candidate runner gate (ARCHITECTURE §12.4, UI-SPEC C.1). The
  * candidate has NO session: the opaque high-entropy `token` route param authorizes
  * the write. Resolves the token (UI-SPEC C.1 states), rejecting invalid (404),
- * revoked (403), and expired (410) uniformly; `active`/`completed` pass through so
+ * revoked (403), and expired (410) — erased/soft-deleted tokens resolve to the
+ * generic 404, indistinguishable from never-issued (no enumeration); revoked and
+ * expired get distinct UX-informative codes. `active`/`completed` pass through so
  * the handler applies status rules. Stamps the audit context with the invitation's
  * orgId and a NULL user (the candidate is not a User). Compose `withRateLimit`
  * OUTSIDE this wrapper — the surface is public, so floods must be throttled before

@@ -68,10 +68,14 @@ export async function resolveToken(token: string): Promise<TokenResolution> {
  * page to brand the active flow — never reaches a write path.
  */
 export async function getInvitationDisplay(
-  invitationId: string
+  invitationId: string,
+  orgId: string
 ): Promise<{ roleTitle: string; orgName: string } | null> {
-  const inv = await prisma.invitation.findUnique({
-    where: { id: invitationId },
+  // orgId-scoped (defensive tenancy): an unscoped findUnique({where:{id}}) is a
+  // cross-tenant disclosure class (SECURITY.md §3) — scope even when the id is
+  // token-derived today, so a future caller can't cross orgs.
+  const inv = await prisma.invitation.findFirst({
+    where: { id: invitationId, orgId },
     select: {
       roleProfile: { select: { title: true } },
       org: { select: { name: true } },
@@ -142,15 +146,16 @@ export async function getBilingualSjtItems(
 }
 
 /** A candidate's saved answers, for resume (UI-SPEC C.2 "resume to first unanswered"). */
-export async function getSavedResponses(assessmentId: string) {
+export async function getSavedResponses(assessmentId: string, orgId: string) {
+  // Scope through the assessment's orgId (defensive tenancy; see getInvitationDisplay).
   const [items, sjt] = await Promise.all([
     prisma.itemResponse.findMany({
-      where: { assessmentId },
+      where: { assessmentId, assessment: { orgId } },
       take: 120,
       select: { itemNumber: true, value: true },
     }),
     prisma.sjtResponse.findMany({
-      where: { assessmentId },
+      where: { assessmentId, assessment: { orgId } },
       take: 100,
       select: { sjtItemId: true, chosenOptionId: true },
     }),
@@ -173,16 +178,30 @@ export async function recordConsent(
   if (invitation.assessment) {
     return { id: invitation.assessment.id, locale: invitation.assessment.locale };
   }
-  const assessment = await prisma.assessment.create({
-    data: {
-      orgId: invitation.orgId,
-      invitationId: invitation.id,
-      status: AssessmentStatus.CONSENTED,
-      locale,
-      consentAt: new Date(),
-    },
-    select: { id: true, locale: true },
-  });
+  let assessment: { id: string; locale: string };
+  try {
+    assessment = await prisma.assessment.create({
+      data: {
+        orgId: invitation.orgId,
+        invitationId: invitation.id,
+        status: AssessmentStatus.CONSENTED,
+        locale,
+        consentAt: new Date(),
+      },
+      select: { id: true, locale: true },
+    });
+  } catch (e) {
+    // Two concurrent consent POSTs (mobile double-tap) both read assessment=null
+    // and race into create; the loser hits @@unique([invitationId]) (P2002). The
+    // op is idempotent — return the winner's row instead of 500-ing the candidate.
+    if (!isUniqueViolation(e)) throw e;
+    const existing = await prisma.assessment.findUnique({
+      where: { invitationId: invitation.id },
+      select: { id: true, locale: true },
+    });
+    if (!existing) throw e;
+    return existing;
+  }
   // Move the invitation forward (PENDING/OPENED → STARTED). Audited.
   await prisma.invitation.update({
     where: { id: invitation.id },

@@ -32,6 +32,26 @@ the changed surface is still **open** (un-adjudicated).
   trail (the sitting-level Assessment create/submit + consent timestamp still audit, so the
   PDPL consent/erasure story is unaffected). — owner: operator — status: awaiting-operator(non-blocking)
 
+### Phase-5 prerequisite (senior-review 2026-06-27 — scheduled, not yet due)
+- 2026-06-27 — [secure] **`invitations.token` is stored plaintext.** Fine for Phase 4
+  (one hand-made token, Neon encrypts at rest). Before **Phase 5** bulk-generates +
+  emails invitations (token count + blast radius jump; threat T-04 = DB read), switch
+  to hash-at-rest: store `tokenHash = HMAC-SHA256(token, TOKEN_HMAC_KEY)` (or bcrypt),
+  index the hash, look up by hash in `resolveToken`. Classified Restricted in
+  SECURITY.md §1. — owner: operator — status: scheduled(phase-5)
+
+### Senior-review findings RESOLVED this session (2026-06-27, commit pending — Phase-4 runner)
+- P2002 race on concurrent double-consent → was an unhandled 500 for a mobile
+  double-tap; now caught + returns the winning assessment (`recordConsent`).
+- `getInvitationDisplay`/`getSavedResponses` were org-unscoped (latent IDOR, not
+  reachable today); now `orgId`-scoped (`findFirst` + `assessment:{orgId}` filter).
+- Consent route returned 200 on an already-SUBMITTED sitting; now 409.
+- `withCandidateToken` docstring "uniformly" clarified; `invitations.token` added to
+  SECURITY.md §1 Restricted.
+- Verified SOUND by the senior pass (no change needed): token enumeration/timing,
+  Referer leakage, write-path tenancy, scoringKey exclusion, XSS (no dangerouslySetInnerHTML),
+  CSP nonce on `/a`, pre-consent/post-submit guards, PDPL consent-before-data.
+
 ### Resolved 2026-06-27 — Phase-4 candidate-runner design-QA (axe AA on `/a/*`, EN+AR, light+dark, mobile)
 Browser design-QA on the candidate runner (the first PUBLIC surface): axe (wcag2a/2aa/21a/21aa)
 across consent/items/SJT/completion × EN + AR-RTL × light + dark + mobile@360px + the
