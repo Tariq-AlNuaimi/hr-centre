@@ -580,5 +580,27 @@
     "saved": "Settings saved",
     "saveError": "Couldn’t save. Check the values and try again.",
     "moreComing": "Organization, users, data retention, branding, and the audit log are managed from their own surfaces."
+  },
+  "audit": {
+    "title": "Audit log",
+    "subtitle": "Every change to a profile, invite, result, decision, and setting — the ISO/PDPL evidence trail.",
+    "colTime": "Time",
+    "colActor": "Actor",
+    "colAction": "Action",
+    "colEntity": "Entity",
+    "colChanges": "Changed fields",
+    "actorSystem": "System",
+    "filterAction": "Action",
+    "filterEntity": "Entity type",
+    "filterAll": "All",
+    "export": "Export Excel",
+    "clear": "Clear filters",
+    "empty": "No audit entries match these filters.",
+    "emptyAll": "No audit activity yet.",
+    "actionCREATE": "Created",
+    "actionUPDATE": "Updated",
+    "actionDELETE": "Deleted",
+    "actionRESTORE": "Restored",
+    "noChanges": "—"
   }
 }
