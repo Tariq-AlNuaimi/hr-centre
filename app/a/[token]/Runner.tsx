@@ -154,7 +154,7 @@ export function Runner({ data }: { data: RunnerData }) {
       <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto w-full max-w-[680px] px-5">
           <div className="flex h-14 items-center justify-between gap-3">
-            <span className="font-display text-sm font-semibold tracking-tight text-primary">
+            <span className="font-display text-sm font-semibold tracking-tight text-primary dark:text-accent-ink">
               {t.wordmark}
             </span>
             <Button

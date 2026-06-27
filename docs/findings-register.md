@@ -20,6 +20,41 @@ the changed surface is still **open** (un-adjudicated).
 <!-- newest first -->
 - (none open)
 
+### Open operator decision (Phase 4 — advisory, NON-blocking; current behavior is the safe default)
+- 2026-06-27 — [secure/scalable] **Audit ON for every candidate answer** (`ItemResponse`
+  + `SjtResponse` writes are audited with a NULL actor) — ~120 IPIP rows + the SJT rows
+  per sitting flood `AuditLog`. The shipped behavior is faithful to the Phase-4 blueprint
+  ("audit ON for all") and is the **more** auditable / PDPL-defensible choice, so NO pillar
+  is violated and this does not gate `/ship`. The decision the operator owes is purely an
+  *optimization*: keep audit ON, or move `ItemResponse`/`SjtResponse` to the audit EXCLUDE
+  set (Ask-before, needs an ADR) and switch autosave to `upsert`. Trade-off: EXCLUDE cuts
+  ~120 null-actor rows/sitting (cheaper, cleaner audit surface) but drops the per-answer
+  trail (the sitting-level Assessment create/submit + consent timestamp still audit, so the
+  PDPL consent/erasure story is unaffected). — owner: operator — status: awaiting-operator(non-blocking)
+
+### Resolved 2026-06-27 — Phase-4 candidate-runner design-QA (axe AA on `/a/*`, EN+AR, light+dark, mobile)
+Browser design-QA on the candidate runner (the first PUBLIC surface): axe (wcag2a/2aa/21a/21aa)
+across consent/items/SJT/completion × EN + AR-RTL × light + dark + mobile@360px + the
+save-error state + reduced-motion. Started with 5 distinct serious `color-contrast` defects;
+ended GREEN on all 16 screen/mode combinations. What was FIXED (not waived), all in
+`app/globals.css` tokens + the 7 runner components:
+- The azure accent (`#2e7da6`) used as TEXT was sub-AA: the methodology link on the mist
+  tint (3.99:1) and the SJT "Scenario" heading on the dark card (3.81:1). Added a
+  text-tuned `--accent-ink` token (light `#1b6485`, dark `#5aa9d1`; ≥4.5:1 on paper/card/
+  tint) and pointed the link + heading + wordmark(dark) at it.
+- Dark-mode tinted surfaces used a FIXED light brand literal `bg-[var(--rihal-mist)]`, so
+  the consent block / selected Likert / selected SJT option / completion badge put light
+  semantic text on a light fill in dark (6 nodes on consent alone). Swapped to the
+  mode-aware `bg-secondary` (identical mist in light; deep navy in dark) — light unchanged.
+- The shared shadcn primary button was sub-AA in dark (dark label `#07131e` on azure
+  `#2e7da6` = 4.10:1) — a latent app-wide dark bug surfaced by the runner's Next/Begin.
+  Lightened dark `--primary`/`--sidebar-primary` to `#3a8cb8` (label → 5.0:1).
+- The inline save-error / retry copy (`text-destructive`) was sub-AA in dark (`#c4604b`
+  on the card = 4.25:1). Added `--destructive-ink` (light `#a8472f`, dark `#e08a73`) for
+  destructive-as-text and used it in `SaveIndicator` + the consent error alert.
+Reduced-motion is correctly honored (the global `prefers-reduced-motion` rule pins
+transition-duration to 0.001ms = imperceptible) — verified, no change needed.
+
 ### Resolved 2026-06-26 — design-QA a11y pass (authenticated local carbon-copy)
 Ran the axe gate (`tests/uat/a11y.full.uat.ts`, full mode) against every dashboard
 screen authenticated. Started RED (all 6 screens had serious/critical violations);

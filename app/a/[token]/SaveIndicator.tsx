@@ -20,7 +20,7 @@ export function SaveIndicator({
 
   if (status === "error") {
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-destructive">
+      <span className="inline-flex items-center gap-1.5 text-xs text-destructive-ink">
         <span>{t.saveFailed}</span>
         <button
           type="button"

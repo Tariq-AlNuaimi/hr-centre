@@ -54,8 +54,15 @@
   --muted-foreground: #44586b;          /* AA (~6:1) on paper/mist           */
   --accent: var(--rihal-azure);
   --accent-foreground: #ffffff;
+  /* Azure tuned for use as TEXT (links, wordmark): the raw --rihal-azure is only
+     ~4.0:1 on the mist tint / paper, below the AA floor — this darkened azure is
+     ≥4.5:1 on paper, white, and the mist/secondary tint (UI-SPEC A.7). */
+  --accent-ink: #1b6485;
   --destructive: var(--signal-below);
   --destructive-foreground: #ffffff;
+  /* Destructive as TEXT (inline error / retry copy): ≥4.5:1 on paper, card, and
+     the mist tint. --destructive itself is tuned as a FILL (white-on-fill). */
+  --destructive-ink: #a8472f;
   --border: var(--rihal-line);
   --input: var(--rihal-line);
   --ring: var(--rihal-azure);           /* A.7 focus ring = azure            */
@@ -82,7 +89,10 @@
   --card-foreground: #eaf1f5;
   --popover: #0b1b2b;
   --popover-foreground: #eaf1f5;
-  --primary: #2e7da6;                   /* azure leads in the dark           */
+  /* Azure leads in the dark. Lightened from #2e7da6 so the dark button label
+     (--primary-foreground) clears AA on the fill: #07131e on #3a8cb8 = 5.0:1
+     (was 4.1:1, a sub-AA latent bug on every dark primary button). */
+  --primary: #3a8cb8;
   --primary-foreground: #07131e;
   --secondary: #123047;
   --secondary-foreground: #eaf1f5;
@@ -94,14 +104,17 @@
   --signal-below-ink: #e08a73;
   --accent: #2e7da6;
   --accent-foreground: #07131e;
+  /* Lighter azure for text on the dark surfaces (≥4.5:1 on bg/card/secondary). */
+  --accent-ink: #5aa9d1;
   --destructive: #c4604b;
   --destructive-foreground: #ffffff;
+  --destructive-ink: #e08a73;           /* ≥4.5:1 as text on the dark surfaces */
   --border: #1d3a4f;
   --input: #1d3a4f;
   --ring: #2e7da6;
   --sidebar: #0b1b2b;
   --sidebar-foreground: #eaf1f5;
-  --sidebar-primary: #2e7da6;
+  --sidebar-primary: #3a8cb8;           /* match --primary: AA on the dark label */
   --sidebar-primary-foreground: #07131e;
   --sidebar-accent: #123047;
   --sidebar-accent-foreground: #eaf1f5;
@@ -144,6 +157,8 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-ink: var(--accent-ink);
+  --color-destructive-ink: var(--destructive-ink);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);

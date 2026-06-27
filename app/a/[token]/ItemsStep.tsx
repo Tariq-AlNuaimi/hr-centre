@@ -98,7 +98,7 @@ export function ItemsStep({
                         className={[
                           "flex min-h-[44px] cursor-pointer flex-col items-center justify-center gap-1 rounded-md border px-1 py-2 text-center transition-colors",
                           selected
-                            ? "border-accent bg-[var(--rihal-mist)] text-foreground"
+                            ? "border-accent bg-secondary text-foreground"
                             : "border-border bg-background text-muted-foreground hover:border-accent/60",
                         ].join(" ")}
                       >

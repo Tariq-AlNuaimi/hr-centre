@@ -86,7 +86,7 @@ export function ConsentStep({
 
       <section
         aria-labelledby="consent-h"
-        className="rounded-lg border border-border bg-[var(--rihal-mist)] p-6"
+        className="rounded-lg border border-border bg-secondary p-6"
       >
         <h2
           id="consent-h"
@@ -119,7 +119,7 @@ export function ConsentStep({
             href="/methodology"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-medium text-accent underline underline-offset-4 hover:no-underline"
+            className="font-medium text-accent-ink underline underline-offset-4 hover:no-underline"
           >
             {t.methodologyLink}
           </a>
@@ -139,7 +139,7 @@ export function ConsentStep({
       </section>
 
       {error && (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-ink">
           {error}
         </p>
       )}

@@ -64,7 +64,7 @@ export function SjtStep({
       </div>
 
       <div className="rounded-lg border border-border bg-card p-6 shadow-[var(--shadow-card)]">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-accent">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-accent-ink">
           {t.scenarioHeading}
         </h2>
         <p className="mt-2 text-base leading-relaxed text-foreground">
@@ -84,7 +84,7 @@ export function SjtStep({
                 className={[
                   "flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors",
                   selected
-                    ? "border-accent bg-[var(--rihal-mist)]"
+                    ? "border-accent bg-secondary"
                     : "border-border bg-card hover:border-accent/60",
                 ].join(" ")}
               >

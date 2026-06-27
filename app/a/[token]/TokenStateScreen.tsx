@@ -20,7 +20,7 @@ export function TokenStateScreen({
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[680px] flex-col items-center justify-center px-5 py-12 text-center">
-      <p className="mb-8 font-display text-sm font-semibold tracking-tight text-primary">
+      <p className="mb-8 font-display text-sm font-semibold tracking-tight text-primary dark:text-accent-ink">
         {s.wordmark}
       </p>
       <div className="w-full rounded-lg border border-border bg-card p-8 shadow-[var(--shadow-card)]">

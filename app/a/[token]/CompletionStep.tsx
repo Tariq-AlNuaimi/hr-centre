@@ -72,7 +72,7 @@ export function CompletionStep({
       className="flex flex-col items-center gap-5 py-12 text-center"
       aria-live="polite"
     >
-      <span className="flex size-14 items-center justify-center rounded-full bg-[var(--rihal-mist)]">
+      <span className="flex size-14 items-center justify-center rounded-full bg-secondary">
         <CheckCircle2 aria-hidden className="size-8 text-[var(--signal-pass-ink)]" />
       </span>
       <h1 className="font-display text-2xl font-semibold leading-tight tracking-tight text-foreground">
