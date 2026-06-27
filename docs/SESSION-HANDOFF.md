@@ -1,44 +1,130 @@
 # Session handoff — Rihal Aptitude Platform
 
-**Branch:** `claude/rihal-phase-5-invitations-b2zaau` (push verified; `git rev-list --count @{u}..HEAD` = 0).
-**Operator goal:** Build the platform in ARCHITECTURE.md §12's 8 phases, **pausing for operator review after each phase.** Specs (ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request before any phase needing detail.
+**Branch:** `claude/rihal-phase-5-invitations-b2zaau` (push verified; tip `9d32f2a`,
+`git rev-list --count @{u}..HEAD` = 0). **Operator goal:** build ARCHITECTURE.md
+§12's 8 phases, **pausing for operator review after each phase.** Specs
+(ARCHITECTURE.md, UI-SPEC.md) are session UPLOADS, NOT in the repo — re-request
+before any phase needing detail.
 
-## Status: Phases 1–5 DONE + Phase-5 `/ship` GREEN. ⏸ PAUSED for operator review before Phase 6 (results/scoring roll-up + AI Role 2).
+## Status: Phases 1–5 DONE. Phase-5 senior-review findings + Resend transport DONE & pushed. Phase 6 BLUEPRINTED, ⏸ awaiting operator sign-off before the build.
 
-### Branch note (read first)
-The branch `claude/rihal-phase-5-invitations-b2zaau` was created off **bare template** (== `origin/main`, 0 commits ahead) — it did NOT contain Phases 1–4. The Phase 1–4 source of truth was `origin/claude/rihal-phase-4-qa-gates-lufmik` (tip `dbe27c7`, 24 commits ahead of main). This session **fast-forwarded** the phase-5 branch onto `dbe27c7` (clean FF — phase-4 was strictly ahead; non-destructive) and built Phase 5 on top. If a future session finds a Rihal branch that looks like bare template, check `git log --all --oneline | grep phase` for the real tip.
+### ⚠️ Branch trap (read first)
+This session was started on `claude/rihal-phase-5-invitations-FQV38U`, which is a
+MISLABELED bare-template/QA branch (zero Rihal code). The REAL work is on
+`...-b2zaau` (this branch). If a future session lands on the wrong slug again,
+`git log --all --oneline | grep -i phase` finds the true tip; checkout/track
+`origin/claude/rihal-phase-5-invitations-b2zaau`. (Also in agent-memory.)
 
-### Phase 5 — Invitations (ARCHITECTURE §12.5, UI-SPEC D.5) — built this session
-- **Token hash-at-rest (Phase-5 prerequisite, was scheduled — now FIXED).** `invitations.token` → `tokenHash = HMAC-SHA256(rawToken, TOKEN_HMAC_KEY)` (`lib/token.ts`), unique-indexed. The RAW token lives ONLY in the emailed `/a/<token>` link, never persisted; `resolveToken` re-hashes the presented token and looks up by hash. Added to `SCRUB_FIELDS` + `RESTRICTED_EXPORT_KEYS` (lockstep drift tests green). `TOKEN_HMAC_KEY` Restricted env (falls back to `AUTH_SECRET`). Migration `20260627120000_hash_invitation_token` (column rename, pre-launch so no real tokens lost). SECURITY.md §1 updated.
-- **Service** `lib/services/invitation.ts`: `listInvitations` (tenant-scoped, paginated, status filter honors *effective* status incl. derived EXPIRED), `createInvitation` (single), `createInvitationsBulk` (one batchId, per-recipient results, MAX_BATCH=500), `resendInvitation` (ROTATES the token — old link dies; blocks STARTED/COMPLETED/REVOKED), `revokeInvitation` (→ REVOKED → runner 403), `markOpened` (PENDING→OPENED beacon), `effectiveStatus`.
-- **Validations** `lib/validations/invitation.ts`: single/bulk zod + `parseRecipients` (client-safe paste/CSV parser: dedupe, invalid flags, header skip, single-line `email,name` disambiguation) + `INVITATION_STATUSES` (client-safe enum mirror) + `RecipientResult` type (client-safe).
-- **Routes:** `app/api/invitations/{route,bulk,[id]/resend,[id]/revoke}` (withAdminAuth + withRateLimit OUTSIDE; GET list withManagerAuth) + `app/api/run/[token]/opened` (withCandidateToken beacon).
-- **UI** `app/[locale]/app/invites/`: list page (replaces placeholder; TanStack-spec'd but built on the shared shadcn Table per Phase-3 precedent), `SendInvitesPanel` (Sheet, single/bulk toggle, CSV upload, live preview, per-recipient results, over-limit gating), `InvitationActions` (resend/revoke islands), `InvitationStatusBadge`, `InvitesFilter`. i18n `invitations` namespace in en + ar. Runner gained the OPENED beacon (`app/a/[token]/Runner.tsx`).
-- **Email:** reuses the existing SMTP seam (`lib/email.ts`) — bilingual invite body, metadata-only logging. No new dep (operator chose SMTP over Resend; Resend is a later `/scale-up` swap).
+### Done this session
+1. **Applied the 4 Phase-5 senior-review findings** (commit `5d332de`):
+   - TOKEN_HMAC_KEY added to SECURITY.md §6 table + rotation warning.
+   - `resendInvitation` (lib/services/invitation.ts): pre-checks the transport
+     (no token rotation when delivery is impossible → **503**), snapshots prior
+     token state and **reverts on a failed send** (guarded; **502** on failure),
+     so a failed send never strands the candidate (dead old link + undelivered
+     new). Threads the acting admin's id into `sentById` (route→service).
+   - Removed dead `tokenHashEquals` from lib/token.ts (left a reintroduction note).
+2. **Wired Resend as a preferred email transport** (operator-approved Ask-before
+   on lib/email.ts; commit `5d332de`): added the `resend` dep; `selectTransport()`
+   prefers Resend (`RESEND_API_KEY`) over SMTP, else the `{sent:false}` no-op.
+   Metadata-only logging preserved. `RESEND_API_KEY` in lib/env.ts (validates
+   `re_` prefix), .env.example, SECURITY.md §1+§6 (Restricted). Contract test
+   asserts transport-selection precedence (tests/contracts/email.test.ts).
+3. **Senior-code-reviewer (post-push) = "structurally sound"** (no HIGH). Folded
+   its cheap findings into `caf3c88`: bound/char-filter Resend `error.name` before
+   logging (never `error.message`); treat `{data:null,error:null}` as non-delivery;
+   warn when Resend is on but no verified-domain From; documented the intentional
+   two-audit-row trail on a failed resend.
+4. **Phase 6 blueprint** committed (`9d32f2a`): `docs/blueprints/phase-6-results.md`.
 
-### Decisions resolved this session (AskUserQuestion, 2026-06-27 — see docs/findings-register.md)
-1. **Audit scope for candidate answers → KEEP AUDIT ON.** Phase-4 autosave stays find-then-create (no upsert, no EXCLUDE set, no ADR). Register line adjudicated.
-2. **Email provider → existing SMTP seam** (not Resend now).
+`/code-review` (high) + `/ship` GREEN before every push; all 3 commits pushed (0 unpushed).
 
-### Code-review (high effort) findings — fixed before /ship
-EXPIRED status filter now consistent with the displayed badge (`statusWhere` maps effective→stored); over-MAX_BATCH now gates submit + shows a proper message (not "invalid"); send-panel mode toggle is an honest `role=group`/`aria-pressed` segmented control (was an incomplete ARIA tabs widget); pagination renders a truly-inert disabled Button at boundaries (was a still-focusable `<a>`); single-line `email,name` parses correctly. Accepted (documented): a created-but-email-failed invite is recovered via per-row Resend, not bulk re-run (blocking a duplicate is correct).
+### ⏭ NEXT SESSION — do this first
+**Get operator sign-off on `docs/blueprints/phase-6-results.md`, THEN build Full
+Phase 6.** AskUserQuestion is flaky in this env (failed twice this session) — pose
+the sign-off as PLAIN TEXT, don't retry the tool. Operator already chose (via a
+working AskUserQuestion round): **@react-pdf/renderer** for PDF, **Full Phase 6**
+scope, **lazy-compute-on-view + persist** a Result row. Pause for operator review
+when Phase 6 is **gate-green, before Phase 7.**
 
-### Gate status
-`/blueprint` (full, committed `docs/blueprints/phase-5-invitations.md`) → `/code-review` (high, 5 findings fixed) → `/ship` GREEN → pushed (0 unpushed; pre-push ship hook re-ran green) → **senior-code-reviewer ran post-push: VERDICT "structurally sound"** (hash-at-rest, tenancy/orgId scoping, rate-limit-outside-auth, OPENED beacon, all tokenHash leak paths — audit scrub / export denylist / API responses / email logging — verified SOUND). 4 open findings to apply NEXT session (none block Phase 6 but fix in the Resend session since #2 touches the same path):
-- **MEDIUM** — `TOKEN_HMAC_KEY` missing from SECURITY.md **§6** secrets table (it's in §1 + .env.example but not the rotation/ops table). Add a row: Restricted (optional; prod SHOULD set), `openssl rand -base64 48`, **WARNING: rotating it invalidates every outstanding invitation link** (resend/re-invite needed).
-- **MEDIUM** — `resendInvitation` (lib/services/invitation.ts ~437) rotates `tokenHash` in the DB BEFORE the email send; if send throws, the old link is already dead and the new token was never delivered → candidate has NO working link, but the result says `failed` (looks like still-PENDING). Fix: save the prior hash, and on send-failure write a second update reverting to it (non-atomic but gives a fallback); or at minimum change the error to signal "token rotated, resend again". 
-- **LOW** — `tokenHashEquals` (lib/token.ts ~47) is dead code (resolveToken uses an indexed lookup). Delete it or comment it as reserved.
-- **LOW** — `resendInvitation` doesn't update `sentById`, so the list's "sent by" still shows the original sender after a resend. Thread `session.user.id` into the resend route → service → `update({ data: { sentById } })`. (Audit row is already correct via AuditContext; this is only the display column.)
+### Phase 6 build order (per the blueprint)
+1. **Migration** `add_result_and_decision`: `Result` model (1/assessment; JSON
+   facet/domain/sjt/competency blobs, `fitScore`, `communityPercentile`, cached
+   `narrative`+model+at, decision fields `decision`/`decisionNote`/`decidedById`/
+   `decidedAt`, `roleProfileVersion` snapshot, soft-delete) + `DecisionOutcome`
+   enum (ADVANCE|HOLD|DECLINE). Result is **Confidential** (no new Restricted field
+   → no SCRUB_FIELDS change; add a §1 row). Forward-only (adds table+enum). Phase-7
+   calibration tables (OutcomeRecord/ProfileCalibration) are OUT of scope.
+2. **`lib/scoring-rollup.ts`** — PURE, unit-tested (tests/contracts/scoring-rollup
+   .test.ts): SJT scoring (compare `SjtResponse.chosenOptionId` vs `SjtItem.scoringKey`
+   server-side, never leak the key), `facetContribution(p,direction)` (HIGH→p,
+   LOW→100−p, MODERATE→max(0,100−2·|p−target|)), competency = weighted mean of
+   facet contributions ± SJT, band PASS≥target / PARTIAL≥target−15 / BELOW, fit =
+   weighted mean of competency scores. **Inspect `SjtItem.scoringKey` + `options`
+   JSON shape and `lib/scoring.ts` ScoreResponse before coding the roll-up.**
+3. **`lib/services/result.ts`** — orchestrate: load assessment+responses+ACTIVE
+   profile → `requestScoring()` (Python svc) → roll up → persist Result (create;
+   on unique race re-read). Gated by `isScoringConfigured()`; typed "not
+   configured/unreachable" result otherwise (NO partial write).
+4. **AI Role 2** `lib/llm.draftResultNarrative` — mirror `draftRoleProfile`;
+   numbers-only input (NO JD, NO name/email), schema-validated `{narrative}`, low
+   temp, forbid hire/no-hire; dormant+graceful when `!isLlmConfigured()`.
+5. **Routes** (withManagerAuth + orgId + withRateLimit OUTSIDE): `POST
+   /api/results/[assessmentId]/compute`, `POST /api/results/[id]/narrative`, `POST
+   /api/results/[id]/decision` (zod), `GET /api/results/[id]/pdf`. Reads = RSC via
+   services, SJT keys masked.
+6. **UI** (shadcn + recharts; on-token, EN+AR/RTL, dark, axe-clean — use
+   /design-system): wire the dashboard tiles/tables to real counts
+   (`app/[locale]/app/page.tsx`, currently hard-coded 0s); `candidates` list +
+   `candidates/[id]` evidence-trail page (fit ring, radar, competency breakdown +
+   citations, Big-Five bars, SJT, labelled AI narrative, decision block, Export
+   PDF) — both currently `<Placeholder>`; `compare` grid (single role, cap 6).
+   i18n `results`+`candidates` namespaces. Add a minimal `/methodology` stub so
+   the result link isn't dead (full page = Phase 8).
+7. **PDF** `lib/pdf/` — `@react-pdf/renderer` branded result template (methodology
+   footer + provenance).
+
+### KNOWN CONSTRAINT for Phase-6 QA
+The scoring microservice (`SCORING_SERVICE_URL`) and LLM (`LLM_ENDPOINT_URL`) are
+**NOT reachable in this container** — live end-to-end scoring/narrative can't be
+QA'd here. Plan: full unit-test coverage on the pure roll-up; seams degrade to
+honest "not configured" states; **seed a sample COMPLETED assessment** (admin +
+an ACTIVE role profile with competencies + 120 ItemResponses + SjtResponses) to
+exercise the candidates/result/compare UI paths against the "not configured"
+branch. Real scoring needs the Python svc up (services/scoring) — try running it
+locally if Python deps install; otherwise note it for the deployed env.
 
 ### Local run recipe (proven; PG16 :5433)
-- `mkdir -p /tmp/pg5/data && chown -R postgres:postgres /tmp/pg5` → `runuser -u postgres -- /usr/lib/postgresql/16/bin/initdb -D /tmp/pg5/data -U postgres --auth=trust` → `cd /tmp && runuser -u postgres -- $PGBIN/pg_ctl -D /tmp/pg5/data -o "-p 5433 -k /tmp/pg5" -w start` (NOTE: `-w start` blocks the tool 2min — the cluster still starts; verify with `pg_ctl status`, then `createdb -p 5433 -h /tmp/pg5 appdb`).
-- `export DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public"` → `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=hr@rihal.test SEED_ADMIN_PASSWORD='Passw0rd!demo' npm run prisma:seed`.
-- **STALE-DEPS GOTCHA (cost real time this session):** after FF-ing onto a branch whose `package.json` moved ahead, `npm install` AGAIN before typecheck/build — else tsc reports phantom "Cannot find module 'lucide-react'/'react-hook-form'/cva" across the whole repo.
-- For `/ship` build: `NODE_ENV=production` + the local `DATABASE_URL` (+ `AUTH_SECRET` from `.env`).
-- Generated Prisma client import path: `@/generated/prisma/client`. `generated/` is read-denied to the agent — query via `psql` (camelCase columns, quote them) or a tsx script.
-- **Client/server boundary gotcha:** a `"use client"` component must NOT import a runtime value from `@/generated/prisma/client` (pulls `node:module` → Turbopack build error). Use `import type` for enums, or a client-safe mirror const (e.g. `INVITATION_STATUSES` in `lib/validations/invitation.ts`).
+- `mkdir -p /tmp/pg5/data && chown -R postgres:postgres /tmp/pg5` → `runuser -u
+  postgres -- /usr/lib/postgresql/16/bin/initdb -D /tmp/pg5/data -U postgres
+  --auth=trust` → `cd /tmp && runuser -u postgres -- $PGBIN/pg_ctl -D /tmp/pg5/data
+  -o "-p 5433 -k /tmp/pg5" -w start` (`-w` blocks the tool ~2min; cluster still
+  starts — verify `pg_ctl status`, then `createdb -p 5433 -h /tmp/pg5 appdb`).
+- `export DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public"`
+  → `npx prisma migrate deploy` + `SEED_ADMIN_EMAIL=hr@rihal.test
+  SEED_ADMIN_PASSWORD='Passw0rd!demo' npm run prisma:seed`.
+- **Prisma generate needs envs:** `DATABASE_URL=... AUTH_SECRET=<32+ chars> npx
+  prisma generate` (Prisma 7 config resolves env at generate time).
+- **STALE-DEPS / STALE-CLIENT GOTCHA:** after a branch/schema move, run `npm
+  install` AND `npx prisma generate` before typecheck — else tsc reports phantom
+  missing modules / missing enum members (InvitationStatus etc.). Cost real time
+  twice now.
+- `/ship` build needs no live DB (proven: build passes with DATABASE_URL set but
+  unreachable). Drive browser QA via `npm run uat` (Playwright runner), NOT the
+  MCP. Container restarts mid-task kill bg servers (DB data under /tmp survives —
+  just re-`pg_ctl start`); they also re-trigger SessionStart deps install.
 
-### Next steps (operator directives this session — do in this order)
-1. **Apply the 4 senior-review findings above** (2 MEDIUM + 2 LOW). The resend ones (#2, #4) sit on the same path you'll touch in step 2, so do them together. `/ship` green.
-2. **Wire Resend as the email transport** (operator: "wire resend also for testing purposes until we ship to IT"). Scope: add the `resend` dep (operator-authorized → satisfies the >50KB Ask-before), add `RESEND_API_KEY` to `lib/env.ts` + `.env.example` (Restricted) + SECURITY.md §1; branch `lib/email.ts` so `sendEmail` PREFERS Resend when `RESEND_API_KEY` is set, else falls back to the existing SMTP transport, else the current `{sent:false}` no-op. Keep the metadata-only logging + `recipientLabel` (never log addresses/bodies). `lib/email.ts` is Ask-before — operator approved this change. The invitation send path already calls `sendEmail`, so no caller changes. Add/extend a contract test for transport selection. `/code-review` + `/ship` green before push.
-3. **Phase 6 — Results + dashboards + AI Role 2** (ARCHITECTURE §12.6, UI-SPEC D.6/D.7): scoring roll-up (call the `services/scoring` FastAPI microservice — `lib/scoring.ts`), fit score, competency/trait decomposition (radar + bars, recharts), SJT judgement, AI narrative summary (AI Role 2, numbers-bound, `lib/llm.ts` seam), candidate compare, PDF export, decision capture. **`/blueprint` (full track) FIRST; re-request ARCHITECTURE.md + UI-SPEC.md uploads** (session uploads, not in repo). Pause for operator review when Phase 6 is gate-green, before Phase 7.
+### Client/server boundary (build-only trap)
+A `"use client"` component must NOT import a RUNTIME value from
+`@/generated/prisma/client` (e.g. `Object.values(Enum)`) — drags `node:module`
+into the browser bundle, Turbopack build fails (tsc/lint pass). Use `import type`
+for enums or a client-safe mirror const (pattern: `INVITATION_STATUSES` in
+lib/validations/invitation.ts). Phase 6's result/decision client islands will hit
+this — import `DecisionOutcome` as a type and mirror its values for any client picker.
+
+### Locked decisions (don't reopen)
+Tailwind v4/shadcn; deterministic Python scoring service; LLM = config-gated seam
+(ADR-030); tenant-scoped by orgId; role profiles versioned/immutable-when-approved;
+candidate runner token-authorized (withCandidateToken, null user); invitation
+tokens hash-at-rest (HMAC, lib/token.ts); audit ON for candidate answers; email
+via lib/email.ts seam (Resend preferred over SMTP as of this session).
