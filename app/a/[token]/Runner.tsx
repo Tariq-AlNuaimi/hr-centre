@@ -46,6 +46,17 @@ export function Runner({ data }: { data: RunnerData }) {
     document.documentElement.dir = dir;
   }, [locale, dir]);
 
+  // OPENED beacon (UI-SPEC D.5 status tracking). Fire once on mount so HR sees the
+  // link was viewed; idempotent server-side (only flips PENDING → OPENED). Skip
+  // when the candidate already consented (they're past "opened"). Fire-and-forget:
+  // a failed beacon must never block the assessment.
+  React.useEffect(() => {
+    if (data.consented) return;
+    void fetch(`/api/run/${data.token}/opened`, { method: "POST" }).catch(() => {});
+    // Once on mount only — status, not a reactive value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ---- Answer state (survives the EN/AR toggle: it's plain React state) ----
   const [itemValues, setItemValues] = React.useState<Map<number, number>>(
     () => new Map(data.savedItems.map((r) => [r.itemNumber, r.value]))

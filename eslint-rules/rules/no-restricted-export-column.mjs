@@ -42,6 +42,9 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "session_state",
   "sessionToken",
   "token",
+  // Invitation.tokenHash — HMAC-at-rest of the candidate credential (Restricted,
+  // SECURITY.md §1). Banned as an export column key in lockstep with SCRUB_FIELDS.
+  "tokenHash",
   "secret",
   "apiKey",
   "api_key",

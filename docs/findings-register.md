@@ -20,25 +20,22 @@ the changed surface is still **open** (un-adjudicated).
 <!-- newest first -->
 - (none open)
 
-### Open operator decision (Phase 4 — advisory, NON-blocking; current behavior is the safe default)
+### Operator decision RESOLVED (Phase 4 audit scope — adjudicated 2026-06-27)
 - 2026-06-27 — [secure/scalable] **Audit ON for every candidate answer** (`ItemResponse`
-  + `SjtResponse` writes are audited with a NULL actor) — ~120 IPIP rows + the SJT rows
-  per sitting flood `AuditLog`. The shipped behavior is faithful to the Phase-4 blueprint
-  ("audit ON for all") and is the **more** auditable / PDPL-defensible choice, so NO pillar
-  is violated and this does not gate `/ship`. The decision the operator owes is purely an
-  *optimization*: keep audit ON, or move `ItemResponse`/`SjtResponse` to the audit EXCLUDE
-  set (Ask-before, needs an ADR) and switch autosave to `upsert`. Trade-off: EXCLUDE cuts
-  ~120 null-actor rows/sitting (cheaper, cleaner audit surface) but drops the per-answer
-  trail (the sitting-level Assessment create/submit + consent timestamp still audit, so the
-  PDPL consent/erasure story is unaffected). — owner: operator — status: awaiting-operator(non-blocking)
+  + `SjtResponse` writes audited with a NULL actor) — ~120 IPIP rows + SJT rows per sitting.
+  **Operator chose: KEEP AUDIT ON** (AskUserQuestion, 2026-06-27). Phase-4 autosave stays
+  find-then-create (no `upsert`, no EXCLUDE-set change, no ADR). The more auditable / PDPL-
+  defensible option; no pillar violated. — owner: operator — status: adjudicated(2026-06-27)
 
-### Phase-5 prerequisite (senior-review 2026-06-27 — scheduled, not yet due)
-- 2026-06-27 — [secure] **`invitations.token` is stored plaintext.** Fine for Phase 4
-  (one hand-made token, Neon encrypts at rest). Before **Phase 5** bulk-generates +
-  emails invitations (token count + blast radius jump; threat T-04 = DB read), switch
-  to hash-at-rest: store `tokenHash = HMAC-SHA256(token, TOKEN_HMAC_KEY)` (or bcrypt),
-  index the hash, look up by hash in `resolveToken`. Classified Restricted in
-  SECURITY.md §1. — owner: operator — status: scheduled(phase-5)
+### Phase-5 prerequisite RESOLVED (token hash-at-rest — fixed this session)
+- 2026-06-27 — [secure] **`invitations.token` was stored plaintext → now HASH-AT-REST.**
+  Before Phase 5 bulk-generated + emailed tokens (token count + blast-radius jump; threat
+  T-04 = DB read). FIXED: renamed `invitations.token` → `tokenHash`
+  (`HMAC-SHA256(rawToken, TOKEN_HMAC_KEY)`, `lib/token.ts`), unique-indexed; the raw token
+  lives only in the emailed link and is never persisted; `resolveToken` looks up by hash.
+  Added to `SCRUB_FIELDS` + `RESTRICTED_EXPORT_KEYS` (lockstep tests green). `TOKEN_HMAC_KEY`
+  Restricted env (falls back to `AUTH_SECRET`). Migration `20260627120000_hash_invitation_token`.
+  — owner: operator — status: fixed(3c9c0cb)
 
 ### Senior-review findings RESOLVED this session (2026-06-27, commit pending — Phase-4 runner)
 - P2002 race on concurrent double-consent → was an unhandled 500 for a mobile

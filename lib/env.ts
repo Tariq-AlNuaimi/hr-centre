@@ -8,6 +8,13 @@ const envSchema = z.object({
   AUTH_SECRET: z.string().min(32), // matches `openssl rand -base64 32`; rejects a weak JWT signing key
   AUTH_URL: z.string().url().optional(),
 
+  // Invitation token hash-at-rest (Restricted; lib/token.ts, SECURITY.md §1). Keys
+  // the HMAC that turns a raw candidate token into the stored `tokenHash`. Optional:
+  // falls back to AUTH_SECRET when unset (dev/forks). Production SHOULD set its own
+  // so rotating AUTH_SECRET doesn't invalidate every outstanding invitation link.
+  // Generate with `openssl rand -base64 48`.
+  TOKEN_HMAC_KEY: z.string().min(32).optional(),
+
   // App
   NODE_ENV: z
     .enum(["development", "production", "test"])

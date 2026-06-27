@@ -4,6 +4,7 @@ import {
   InvitationStatus,
   AssessmentStatus,
 } from "@/generated/prisma/client";
+import { hashInvitationToken } from "@/lib/token";
 
 // Service layer for the candidate runner (ARCHITECTURE §8/§12.4, UI-SPEC C.1–C.4).
 // The candidate has NO account: an opaque high-entropy token (Invitation.token)
@@ -31,17 +32,19 @@ export type TokenResolution =
     };
 
 /**
- * Resolve a candidate token to its state + invitation (UI-SPEC C.1). Uses the
- * filtered client so a soft-deleted (erased) invitation resolves to `invalid` —
- * an erased candidate's link stops working. The token is high-entropy, so a direct
- * unique lookup is safe; missing/erased both return the same generic `invalid` so
- * the surface can't be enumerated.
+ * Resolve a candidate token to its state + invitation (UI-SPEC C.1). The presented
+ * RAW token is hashed (HMAC-SHA256, lib/token.ts) and looked up by `tokenHash` —
+ * the raw value is never stored (hash-at-rest, SECURITY.md §1). Uses the filtered
+ * client so a soft-deleted (erased) invitation resolves to `invalid` — an erased
+ * candidate's link stops working. The token is high-entropy, so a direct unique
+ * lookup is safe; missing/erased both return the same generic `invalid` so the
+ * surface can't be enumerated.
  */
 export async function resolveToken(token: string): Promise<TokenResolution> {
   if (!token || token.length < 16) return { state: "invalid" };
 
   const invitation = await prisma.invitation.findUnique({
-    where: { token },
+    where: { tokenHash: hashInvitationToken(token) },
     include: { assessment: true },
   });
   if (!invitation) return { state: "invalid" };

@@ -16,6 +16,10 @@ export const SCRUB_FIELDS = new Set([
   "session_state",
   "sessionToken",
   "token",
+  // Invitation.tokenHash — HMAC-at-rest of the candidate credential (SECURITY.md
+  // §1, Restricted). Not invertible, but it is the indexed lookup key, so keep it
+  // out of the audit trail too (defense-in-depth alongside hash-at-rest).
+  "tokenHash",
   "secret",
   "apiKey",
   "api_key",

@@ -455,11 +455,13 @@ model Invitation {
   candidateEmail String
   candidateName  String?
 
-  // Opaque, high-entropy token (32 random bytes, base64url). The candidate is
-  // authorized by THIS, not by a guessable id; unique + indexed for constant-time
-  // lookup. Considered for hashing-at-rest when bulk-generated in Phase 5.
-  token  String           @unique
-  status InvitationStatus @default(PENDING)
+  // Hash-at-rest of the opaque high-entropy token (SECURITY.md §1; Restricted).
+  // The RAW token (32 random bytes, base64url) lives ONLY in the emailed link; we
+  // store HMAC-SHA256(token, TOKEN_HMAC_KEY) and resolve a candidate by re-hashing
+  // the presented token (lib/token.ts, resolveToken). Unique + indexed so the
+  // lookup is a single indexed read; a DB read can't recover a usable URL token.
+  tokenHash String           @unique
+  status    InvitationStatus @default(PENDING)
 
   // Optional expiry (Phase 5 sets it on send); a past expiresAt → expired state.
   expiresAt DateTime?
