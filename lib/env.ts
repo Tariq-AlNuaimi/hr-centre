@@ -72,7 +72,16 @@ const envSchema = z.object({
   // URL alone is enough to enable the feature.
   LLM_MODEL: z.string().default("gpt-oss-120b"),
 
-  // SMTP (optional; email is gated on SMTP_HOST presence -- see lib/email.ts)
+  // Email transport (optional; see lib/email.ts). Two transports behind one
+  // seam, Resend preferred over SMTP:
+  //   - RESEND_API_KEY (Restricted): when set, sends go through Resend. The
+  //     operator's testing transport until the project ships to IT. Generate the
+  //     key in the Resend dashboard; `re_...` shape (no fixed length floor).
+  //   - SMTP_* below: nodemailer fallback when Resend is unset and SMTP_HOST set.
+  // Neither set => sendEmail() returns { sent: false } (email disabled, no throw).
+  RESEND_API_KEY: z.string().optional(),
+
+  // SMTP (optional; used when RESEND_API_KEY is unset and SMTP_HOST is set)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().optional(),

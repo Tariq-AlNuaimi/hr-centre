@@ -1,4 +1,4 @@
-import { randomBytes, createHmac, timingSafeEqual } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 
 // Invitation-token hash-at-rest (SECURITY.md §1; Phase-5 prerequisite, findings
 // register 2026-06-27). The candidate is authorized by an opaque high-entropy
@@ -41,13 +41,8 @@ export function hashInvitationToken(rawToken: string): string {
   return createHmac("sha256", hmacKey()).update(rawToken).digest("hex");
 }
 
-/**
- * Constant-time compare of two token hashes (both hex of equal length). Used where
- * a hash is compared in app code rather than via an indexed `where` lookup.
- */
-export function tokenHashEquals(a: string, b: string): boolean {
-  const ba = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ba.length !== bb.length) return false;
-  return timingSafeEqual(ba, bb);
-}
+// NOTE: a constant-time `tokenHashEquals` once lived here but was dead code —
+// `resolveToken` authorizes a candidate by an INDEXED `where: { tokenHash }`
+// lookup (the DB does the comparison), never by comparing two hashes in app
+// code. If a future path ever needs an in-process hash compare, reintroduce it
+// with `crypto.timingSafeEqual` (equal-length hex buffers) rather than `===`.

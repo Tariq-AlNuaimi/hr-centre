@@ -12,7 +12,7 @@ export const POST = withRateLimit(
     const { id } = await params;
 
     const baseUrl = process.env.AUTH_URL ?? request.nextUrl.origin;
-    const res = await resendInvitation({ orgId, id, baseUrl });
+    const res = await resendInvitation({ orgId, id, baseUrl, userId: session.user.id });
     if (res.status !== 200) return err(res.error, res.status);
     return ok({ result: res.result });
   }),

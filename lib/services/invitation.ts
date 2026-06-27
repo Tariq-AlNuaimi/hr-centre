@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma, InvitationStatus } from "@/generated/prisma/client";
 import { generateInvitationToken, hashInvitationToken } from "@/lib/token";
-import { sendEmail, type SendEmailResult } from "@/lib/email";
+import { sendEmail, isEmailEnabled, type SendEmailResult } from "@/lib/email";
 import type { RecipientInput, RecipientResult } from "@/lib/validations/invitation";
 
 // Service layer for Phase-5 invitations (ARCHITECTURE §12.5, UI-SPEC D.5). Owns
@@ -386,7 +386,7 @@ export async function createInvitationsBulk(args: {
 
 export type ActionResult =
   | { status: 200; result?: RecipientResult }
-  | { status: 404 | 409; error: string };
+  | { status: 404 | 409 | 502 | 503; error: string };
 
 /**
  * Resend (UI-SPEC D.5). ROTATES the token — the old link dies, a fresh one is
@@ -394,11 +394,22 @@ export type ActionResult =
  * resend it). Only meaningful before the candidate engaged or after expiry; a
  * STARTED/COMPLETED/REVOKED invite is not resent (409) so an in-progress or
  * finished sitting is never disrupted.
+ *
+ * Token rotation is committed BEFORE the email send (the link only resolves once
+ * the new hash is persisted). If delivery then fails — the transport throws OR
+ * email is disabled (`sent:false`) — we'd be left with a dead old link and an
+ * undelivered new one, so the candidate would have NO working link while the
+ * list still showed them as invited. To avoid that we snapshot the prior state
+ * and REVERT it on any non-delivery (non-atomic, but it restores the previous
+ * link as a fallback) and return 502 so the caller surfaces a real failure
+ * instead of a silent success (senior-review MEDIUM, 2026-06-27).
  */
 export async function resendInvitation(args: {
   orgId: string;
   id: string;
   baseUrl: string;
+  /** The admin performing the resend — becomes the new `sentById` on success. */
+  userId: string;
 }): Promise<ActionResult> {
   const inv = await prisma.invitation.findFirst({
     where: { id: args.id, orgId: args.orgId },
@@ -409,6 +420,8 @@ export async function resendInvitation(args: {
       status: true,
       expiresAt: true,
       locale: true,
+      tokenHash: true,
+      sentById: true,
       roleProfile: { select: { title: true, org: { select: { name: true } } } },
     },
   });
@@ -428,6 +441,28 @@ export async function resendInvitation(args: {
     };
   }
 
+  // Pre-check the transport: a resend that can never be delivered (no Resend /
+  // SMTP configured) must NOT rotate the token — that would kill the prior link
+  // for no gain and leave the candidate stranded. Fail clearly instead of doing
+  // a pointless rotate+revert (and emitting two misleading audit rows) on a
+  // deterministic config state.
+  if (!isEmailEnabled()) {
+    return {
+      status: 503,
+      error:
+        "Email delivery is not configured on this deployment, so invitations can't be resent.",
+    };
+  }
+
+  // Snapshot the prior state so a failed delivery can be reverted (keeps the
+  // previous link alive rather than stranding the candidate).
+  const prior = {
+    tokenHash: inv.tokenHash,
+    status: inv.status,
+    expiresAt: inv.expiresAt,
+    sentById: inv.sentById,
+  };
+
   const rawToken = generateInvitationToken();
   // If the link had already expired, clear the stale expiry so the resent link
   // works; a still-future expiry is preserved.
@@ -436,13 +471,18 @@ export async function resendInvitation(args: {
 
   await prisma.invitation.update({
     where: { id: inv.id },
-    data: { tokenHash: hashInvitationToken(rawToken), status: InvitationStatus.PENDING, expiresAt },
+    data: {
+      tokenHash: hashInvitationToken(rawToken),
+      status: InvitationStatus.PENDING,
+      expiresAt,
+      sentById: args.userId,
+    },
   });
 
   const link = `${args.baseUrl}/a/${rawToken}`;
-  let res: SendEmailResult;
+  let delivered = false;
   try {
-    res = await sendInvitationEmail({
+    const res = await sendInvitationEmail({
       to: inv.candidateEmail,
       candidateName: inv.candidateName,
       roleTitle: inv.roleProfile.title,
@@ -451,16 +491,45 @@ export async function resendInvitation(args: {
       locale: inv.locale === "ar" ? "ar" : "en",
       message: null,
     });
+    delivered = res.sent;
   } catch {
-    return { status: 200, result: { email: inv.candidateEmail, outcome: "failed", reason: "email-error" } };
+    delivered = false;
   }
+
+  if (delivered) {
+    return {
+      status: 200,
+      result: { email: inv.candidateEmail, outcome: "sent" },
+    };
+  }
+
+  // Delivery failed at runtime (transport threw). Roll the rotation back so the
+  // prior link/state survives. The revert is itself guarded: if it ALSO fails,
+  // the rotation has stuck (new undelivered link is live, old link dead) — say
+  // so honestly and tell the operator to resend, which re-rotates and retries
+  // the send rather than leaving them to guess from a generic 500.
+  try {
+    await prisma.invitation.update({
+      where: { id: inv.id },
+      data: {
+        tokenHash: prior.tokenHash,
+        status: prior.status,
+        expiresAt: prior.expiresAt,
+        sentById: prior.sentById,
+      },
+    });
+  } catch {
+    return {
+      status: 502,
+      error:
+        "Sending the invitation email failed and the previous link could not be restored. Please resend to issue a fresh link.",
+    };
+  }
+
   return {
-    status: 200,
-    result: {
-      email: inv.candidateEmail,
-      outcome: res.sent ? "sent" : "created",
-      reason: res.sent ? undefined : "email-disabled",
-    },
+    status: 502,
+    error:
+      "Could not send the invitation email — the invitation is unchanged. Check email delivery and try again.",
   };
 }
 
