@@ -357,3 +357,12 @@ test("withManagerAuth passes through for both staff roles", { skip: !canMock }, 
     assert.equal(res.status, 200, `${role} should pass withManagerAuth`);
   }
 });
+
+test("withManagerAuth returns 403 for an unrecognized/future role", { skip: !canMock }, async () => {
+  // The wrapper enforces an explicit allow-list; a role added to the enum later
+  // (e.g. CANDIDATE) must NOT pass unless deliberately added. This locks the
+  // rejection branch (senior-review MED, 2026-06-27).
+  current = { user: { id: "u7", role: "CANDIDATE" } };
+  const res = await helpers.withManagerAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+  assert.equal(res.status, 403);
+});

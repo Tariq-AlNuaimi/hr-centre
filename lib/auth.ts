@@ -139,7 +139,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   // Credentials + (when configured) Microsoft Entra ID SSO. See buildProviders
-  // above and ADR-024. New SSO users land at the DB default role (VIEWER) and an
+  // above and ADR-024. New SSO users land at the DB default role (HIRING_MANAGER) and an
   // admin promotes them in-app; the jwt callback deliberately does NOT call
   // mapSsoRole, so an in-app promotion survives the next SSO login. mapSsoRole is
   // the seam a fork wires into the jwt OAuth branch ONLY if it wants the IdP's

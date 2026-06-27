@@ -82,6 +82,18 @@ def test_golden_regression_snapshot():
         "AGREEABLENESS": [62, 1.0, "low"],
         "NEUROTICISM": [72, 55.31, "average"],
     }
+    # Per-facet lock (senior-review LOW): a facet transposition would leave the
+    # domain totals unchanged but rotate these labelled percentiles, so assert
+    # them by name.
+    n_facets = {f["facet"]: f["percentile"] for f in next(d for d in r["domains"] if d["domain"] == "NEUROTICISM")["facets"]}
+    assert n_facets == {
+        "anxiety": 47.51,
+        "anger": 48.06,
+        "depression": 62.21,
+        "self_consciousness": 48.6,
+        "immoderation": 45.49,
+        "vulnerability": 70.35,
+    }
 
 
 @pytest.mark.parametrize(

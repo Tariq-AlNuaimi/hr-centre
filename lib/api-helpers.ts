@@ -57,8 +57,9 @@ export function withAuth(handler: AuthedHandler) {
     const ipAddress = clientIp(req) ?? undefined;
     const userAgent = req.headers.get("user-agent") ?? undefined;
 
-    return withAuditContext({ userId: session.user.id, ipAddress, userAgent }, () =>
-      handler(req, { ...ctx, session })
+    return withAuditContext(
+      { userId: session.user.id, orgId: session.user.orgId ?? null, ipAddress, userAgent },
+      () => handler(req, { ...ctx, session })
     );
   };
 }

@@ -32,6 +32,7 @@
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - RoleFamily: id, orgId, org, key, name, description, deletedAt, deletedBy, createdAt, updatedAt
+- AssessmentItemBank: id, itemNumber, itemCode, domain, facet, facetNumber, keyed, text_en, text_ar, createdAt, updatedAt
 - AuditLog: id, orgId, org, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 
 ## lib/ exports
@@ -53,9 +54,11 @@
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
 - lib/prisma.ts: prisma, prismaUnfiltered
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
+- lib/scoring.ts: ScoringError, isScoringConfigured, requestScoring
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/scoring.ts: NUM_ITEMS, big5Domains, scoreBandSchema, answerSchema, scoreRequestSchema, facetScoreSchema, domainScoreSchema, scoreResponseSchema, ScoreRequestInput, ScoreRequest, ScoreResponse, DomainScore, FacetScore, Big5Domain
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 
 ## components/

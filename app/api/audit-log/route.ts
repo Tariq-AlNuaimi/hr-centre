@@ -30,7 +30,7 @@ const LIST_SELECT = {
   user: { select: { id: true, name: true, email: true } },
 } satisfies Prisma.AuditLogSelect;
 
-export const GET = withAdminAuth(async (request: NextRequest) => {
+export const GET = withAdminAuth(async (request: NextRequest, { session }) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
 
@@ -43,7 +43,12 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
     return err(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const where: Prisma.AuditLogWhereInput = {};
+  // Tenant scope: an HR_ADMIN sees only their own org's audit trail (senior-review
+  // HIGH). Rows are stamped with orgId at write time (lib/prisma/audit-extension).
+  // Strict equality is intentional: system/bootstrap rows (orgId null) and other
+  // tenants' rows are both excluded. NOTE: audit rows written BEFORE this fix have
+  // orgId=null and so won't appear — acceptable pre-launch (single tenant).
+  const where: Prisma.AuditLogWhereInput = { orgId: session.user.orgId };
   if (parsed.data.entityType) where.entityType = parsed.data.entityType;
   if (parsed.data.action) where.action = parsed.data.action;
   if (parsed.data.userId) where.userId = parsed.data.userId;
