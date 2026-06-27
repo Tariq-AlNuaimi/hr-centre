@@ -51,6 +51,9 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   // SjtItem.scoringKey — the keyed best/worst answer (Confidential, SECURITY.md §1).
   // Must never be a downloadable export column (SCRUB_FIELDS ⊆ this set invariant).
   "scoringKey",
+  // AppSetting.valueEncrypted — AES-256-GCM ciphertext of a Restricted endpoint token
+  // (ADR-031). Never a downloadable export column (keeps SCRUB_FIELDS ⊆ this set).
+  "valueEncrypted",
 ]);
 
 // Forward-safe name pattern: a column key matching this is treated as Restricted

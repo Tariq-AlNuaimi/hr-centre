@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { isScoringConfigured, requestScoring, ScoringError } from "@/lib/scoring";
+import { requestScoring, ScoringError } from "@/lib/scoring";
 import {
   draftResultNarrative,
-  isLlmConfigured,
   LlmError,
   type ResultNarrativeInput,
 } from "@/lib/llm";
+import { resolveScoringConfig, resolveLlmConfig } from "@/lib/settings";
 import {
   rollUp,
   type RollupResult,
@@ -219,14 +219,19 @@ export async function computeResult(
     return { kind: "incomplete", have: assessment.itemResponses.length, need: 120 };
   }
 
-  if (!isScoringConfigured()) return { kind: "scoring-not-configured" };
+  // Effective scoring config: org DB setting THEN env (ADR-031).
+  const scoringConfig = await resolveScoringConfig(orgId);
+  if (!scoringConfig.url) return { kind: "scoring-not-configured" };
 
   // Deterministic scoring across the trust boundary (ARCHITECTURE §6 steps 1–2).
   let score;
   try {
-    score = await requestScoring({
-      answers: assessment.itemResponses.map((r) => ({ itemNumber: r.itemNumber, response: r.value })),
-    });
+    score = await requestScoring(
+      {
+        answers: assessment.itemResponses.map((r) => ({ itemNumber: r.itemNumber, response: r.value })),
+      },
+      { config: scoringConfig }
+    );
   } catch (e) {
     const detail = e instanceof ScoringError ? e.message : "scoring failed";
     return { kind: "scoring-unreachable", detail };
@@ -401,12 +406,14 @@ function narrativeInput(view: ResultView): ResultNarrativeInput {
 export async function generateNarrative(orgId: string, resultId: string): Promise<NarrativeOutcome> {
   const view = await getResultById(orgId, resultId);
   if (!view) return { kind: "not-found" };
-  if (!isLlmConfigured()) return { kind: "llm-not-configured" };
+  // Effective LLM config: org DB setting THEN env (ADR-031).
+  const llmConfig = await resolveLlmConfig(orgId);
+  if (!llmConfig.baseUrl) return { kind: "llm-not-configured" };
 
   let narrative: string;
   let model: string;
   try {
-    const res = await draftResultNarrative(narrativeInput(view));
+    const res = await draftResultNarrative(narrativeInput(view), { config: llmConfig });
     narrative = res.narrative;
     model = res.model;
   } catch (e) {

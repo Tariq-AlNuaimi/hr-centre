@@ -128,6 +128,7 @@ model Organization {
   auditLogs    AuditLog[]
   outcomeRecords      OutcomeRecord[]
   profileCalibrations ProfileCalibration[]
+  appSettings         AppSetting[]
 
   @@index([deletedAt, createdAt])
   @@map("organizations")
@@ -572,6 +573,37 @@ model ProfileCalibration {
   @@index([orgId])
   @@index([roleProfileId, version])
   @@map("profile_calibrations")
+}
+
+// -- App settings (ARCHITECTURE §10/§11, ADR-031) --
+//
+// Per-org key/value config editable from /app/settings (HR_ADMIN). Non-secret values
+// (endpoint URLs, model id, retention days, language, branding) live in `value`;
+// Restricted secrets (the LLM/scoring tokens) live in `valueEncrypted` as AES-256-GCM
+// ciphertext (lib/crypto.ts). The plaintext token is materialized ONLY at the outbound
+// LLM/scoring call; reads return a masked "is set" flag, never the value. Audited;
+// `valueEncrypted` is in SCRUB_FIELDS so the ciphertext never lands in the audit log.
+// Config precedence is DB-setting-THEN-env (lib/settings.ts) — the env var stays the
+// platform fallback/override.
+model AppSetting {
+  id    String       @id @default(cuid())
+  orgId String
+  org   Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  key            String
+  // Plaintext for non-secret settings; null for secret keys (which use valueEncrypted).
+  value          String?
+  // AES-256-GCM ciphertext for Restricted settings (the tokens); null otherwise.
+  valueEncrypted String?
+
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([orgId, key])
+  @@index([orgId])
+  @@map("app_settings")
 }
 
 model AuditLog {

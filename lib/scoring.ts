@@ -45,9 +45,16 @@ const DEFAULT_TIMEOUT_MS = 10_000;
  */
 export async function requestScoring(
   input: ScoreRequestInput,
-  opts: { signal?: AbortSignal; timeoutMs?: number } = {}
+  opts: {
+    signal?: AbortSignal;
+    timeoutMs?: number;
+    // Resolved config (ADR-031): when the caller (a service with orgId) injects this,
+    // it has already applied DB-setting-THEN-env precedence. Absent → env fallback,
+    // so this module's isolated unit tests and any legacy caller are unchanged.
+    config?: { url: string | null; token: string | null };
+  } = {}
 ): Promise<ScoreResponse> {
-  const baseUrl = process.env.SCORING_SERVICE_URL;
+  const baseUrl = opts.config ? opts.config.url : process.env.SCORING_SERVICE_URL;
   if (!baseUrl) {
     throw new ScoringError("SCORING_SERVICE_URL is not configured");
   }
@@ -56,7 +63,7 @@ export async function requestScoring(
   const body = scoreRequestSchema.parse(input);
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = process.env.SCORING_SERVICE_TOKEN;
+  const token = opts.config ? opts.config.token : process.env.SCORING_SERVICE_TOKEN;
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   // Bound the call so a hung scorer can't pin a request handler. Compose the

@@ -554,5 +554,31 @@
     "adverseEmpty": "No decisions recorded yet — the monitor populates as managers record decisions.",
     "adverseCapped": "Showing the {shown} most recent of {total} decided candidates — rates are partial.",
     "adverseDemographicNote": "Protected-class demographics are not collected by design (PDPL data-minimization), so this is a structural selection-rate monitor, not an EEO adverse-impact study."
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure the platform — AI and scoring endpoints, and more below.",
+    "aiTitle": "AI & scoring endpoints",
+    "aiSubtitle": "Point the platform at your self-hosted LLM gateway and scoring service. Values set here override the platform environment defaults; leave a field blank to fall back to the platform value.",
+    "llmSection": "LLM — role-profile drafting & result narration",
+    "scoringSection": "Personality scoring service",
+    "endpointUrl": "Endpoint URL",
+    "model": "Model",
+    "token": "Token",
+    "urlPlaceholderLlm": "https://litellm.example.com/v1",
+    "urlPlaceholderScoring": "https://scoring.internal",
+    "modelPlaceholderEnv": "Platform default: {value}",
+    "urlUsingEnv": "Platform default in use: {value}",
+    "tokenPlaceholder": "Enter a token to set or replace",
+    "tokenWriteOnly": "For security the token is never shown. Enter a new value to replace it.",
+    "tokenSetDb": "Token set here ••{hint}",
+    "tokenSetEnv": "Token set via the platform default.",
+    "tokenNotSet": "No token set.",
+    "removeToken": "Remove the stored token",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Settings saved",
+    "saveError": "Couldn’t save. Check the values and try again.",
+    "moreComing": "Organization, users, data retention, branding, and the audit log are managed from their own surfaces."
   }
 }

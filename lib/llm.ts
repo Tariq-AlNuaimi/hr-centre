@@ -49,6 +49,23 @@ const LLM_TOKEN_MIN_LEN = 32;
 
 const DEFAULT_TIMEOUT_MS = 30_000; // drafting is a heavier call than scoring
 
+const DEFAULT_LLM_MODEL = "gpt-oss-120b";
+
+/** Resolved endpoint config (ADR-031). */
+export type LlmConfig = { baseUrl: string | null; token: string | null; model: string };
+
+// When a caller (a service with orgId) injects a resolved config, it has already
+// applied DB-setting-THEN-env precedence (lib/settings.ts). Absent → env fallback, so
+// this module's isolated unit tests and any legacy caller are unchanged.
+function resolveConfig(config?: LlmConfig): LlmConfig {
+  if (config) return config;
+  return {
+    baseUrl: process.env.LLM_ENDPOINT_URL ?? null,
+    token: process.env.LLM_ENDPOINT_TOKEN ?? null,
+    model: process.env.LLM_MODEL || DEFAULT_LLM_MODEL,
+  };
+}
+
 // The reference the prompt SUPPLIES so the model maps/structures rather than
 // inventing competencies from its own opinion (ARCHITECTURE §4 constraint). O*NET
 // work styles + the 30 IPIP facets it may map onto + the trait→performance crib.
@@ -133,15 +150,16 @@ function extractJson(content: string): string {
  */
 export async function draftRoleProfile(
   input: DraftRoleProfileInput,
-  opts: { signal?: AbortSignal; timeoutMs?: number } = {}
+  opts: { signal?: AbortSignal; timeoutMs?: number; config?: LlmConfig } = {}
 ): Promise<LlmDraftResponse> {
-  const baseUrl = process.env.LLM_ENDPOINT_URL;
+  const cfg = resolveConfig(opts.config);
+  const baseUrl = cfg.baseUrl;
   if (!baseUrl) {
     throw new LlmError("LLM_ENDPOINT_URL is not configured");
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = process.env.LLM_ENDPOINT_TOKEN;
+  const token = cfg.token;
   if (token) {
     // Enforce the token-strength floor on the actual request path (not only the
     // env schema, which isn't parsed unless another route imports it).
@@ -162,7 +180,7 @@ export async function draftRoleProfile(
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: process.env.LLM_MODEL ?? "gpt-oss-120b",
+        model: cfg.model,
         messages: buildMessages(input),
         temperature: 0.2, // low: structure, don't improvise (ARCHITECTURE §4)
       }),
@@ -268,15 +286,16 @@ function buildNarrativeMessages(
  */
 export async function draftResultNarrative(
   input: ResultNarrativeInput,
-  opts: { signal?: AbortSignal; timeoutMs?: number } = {}
+  opts: { signal?: AbortSignal; timeoutMs?: number; config?: LlmConfig } = {}
 ): Promise<NarrativeResponse & { model: string }> {
-  const baseUrl = process.env.LLM_ENDPOINT_URL;
+  const cfg = resolveConfig(opts.config);
+  const baseUrl = cfg.baseUrl;
   if (!baseUrl) {
     throw new LlmError("LLM_ENDPOINT_URL is not configured");
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = process.env.LLM_ENDPOINT_TOKEN;
+  const token = cfg.token;
   if (token) {
     if (token.length < LLM_TOKEN_MIN_LEN) {
       throw new LlmError(`LLM_ENDPOINT_TOKEN must be at least ${LLM_TOKEN_MIN_LEN} characters`);
@@ -293,7 +312,7 @@ export async function draftResultNarrative(
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: process.env.LLM_MODEL ?? "gpt-oss-120b",
+        model: cfg.model,
         messages: buildNarrativeMessages(input),
         temperature: 0.1, // lowest: restate, never improvise (ARCHITECTURE §4)
       }),
@@ -332,7 +351,6 @@ export async function draftResultNarrative(
   // Provenance (ARCHITECTURE §4): record the model the gateway ACTUALLY routed to
   // (OpenAI-compatible responses echo `model`), not the presumed default — falling
   // back to the configured id only if the response omits it (senior-review LOW).
-  const model =
-    (typeof json?.model === "string" && json.model) || process.env.LLM_MODEL || "gpt-oss-120b";
+  const model = (typeof json?.model === "string" && json.model) || cfg.model;
   return { narrative: parsed.data.narrative, model };
 }

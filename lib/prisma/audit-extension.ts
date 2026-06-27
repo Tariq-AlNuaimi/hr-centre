@@ -29,6 +29,10 @@ export const SCRUB_FIELDS = new Set([
   // the raw key in audit_logs without this. Defensive ahead of the Phase-4 runner
   // (senior-review T-12). Masked at the API layer; this closes the audit-storage gap.
   "scoringKey",
+  // AppSetting.valueEncrypted — AES-256-GCM ciphertext of a Restricted endpoint token
+  // (ADR-031, SECURITY.md §1). The ciphertext is useless without the AUTH_SECRET-derived
+  // key, but per the Restricted-field rule it must never land in audit_logs.
+  "valueEncrypted",
 ]);
 
 export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
