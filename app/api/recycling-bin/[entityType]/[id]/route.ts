@@ -6,14 +6,13 @@ import {
   recyclableAccessor,
   recyclableClient,
   permanentlyDelete,
-  type RecyclableRecord,
 } from "@/lib/prisma/recyclable";
 
 const recyclable = recyclableClient(prismaUnfiltered);
 
 export const DELETE = withAdminAuth(async (
   _request: NextRequest,
-  { params, session }
+  { params }
 ) => {
   const { entityType, id } = await params;
 
@@ -24,14 +23,9 @@ export const DELETE = withAdminAuth(async (
   if (!accessor) return notFound(entityType);
 
   try {
-    const record = (await recyclable[accessor].findUnique({
-      where: { id },
-    })) as RecyclableRecord | null;
+    const record = await recyclable[accessor].findUnique({ where: { id } });
 
     if (!record) return notFound(entityType);
-    // Tenant-scope: an admin can only permanently delete their own org's records
-    // (the id lookup is global; a cross-org id is treated as not-found).
-    if (record.orgId !== session.user.orgId) return notFound(entityType);
 
     // Hard-delete + explicit DELETE audit row in one step (the helper owns the
     // "permanent delete bypasses the extension, so it must be audited" rule).

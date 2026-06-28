@@ -8,7 +8,6 @@ import { err, forbidden, ok } from "./api-response";
 import { setUserContext } from "./sentry";
 import { rateLimit, type RateLimitOptions } from "./rate-limit";
 import { clientIp } from "./client-ip";
-import { resolveToken, type ResolvedInvitation } from "./services/candidateRunner";
 
 // Constant-time secret comparison for shared tokens (avoids a timing oracle on
 // the secret). Length is allowed to leak (different-length inputs short-circuit);
@@ -58,35 +57,32 @@ export function withAuth(handler: AuthedHandler) {
     const ipAddress = clientIp(req) ?? undefined;
     const userAgent = req.headers.get("user-agent") ?? undefined;
 
-    return withAuditContext(
-      { userId: session.user.id, orgId: session.user.orgId ?? null, ipAddress, userAgent },
-      () => handler(req, { ...ctx, session })
+    return withAuditContext({ userId: session.user.id, ipAddress, userAgent }, () =>
+      handler(req, { ...ctx, session })
     );
   };
 }
 
 /**
- * Like withAuth but also requires the HR_ADMIN role. Gates the admin-only
- * surfaces (role profiles, invites, calibration, settings, audit -- UI-SPEC
- * Part B / D).
+ * Like withAuth but also requires ADMIN role.
  */
 export function withAdminAuth(handler: AuthedHandler) {
   return withAuth(async (req, ctx) => {
-    if (ctx.session.user.role !== "HR_ADMIN") return forbidden();
+    if (ctx.session.user.role !== "ADMIN") return forbidden();
     return handler(req, ctx);
   });
 }
 
 /**
- * Like withAuth but requires a recognized staff role (HR_ADMIN or
- * HIRING_MANAGER). With only two roles today both pass, but routing writes
- * through this wrapper (rather than bare withAuth) keeps the role check
- * explicit and ready for a future read-only role. (SECURITY.md §3.)
+ * Like withAuth but requires write-level access: ADMIN or EDITOR (VIEWER is
+ * rejected with 403). Use this on write routes that editors should reach but
+ * viewers shouldn't -- it closes the gap where the EDITOR role existed but only
+ * ADMIN-vs-not was ever enforced. (SECURITY.md §3.)
  */
-export function withManagerAuth(handler: AuthedHandler) {
+export function withEditorAuth(handler: AuthedHandler) {
   return withAuth(async (req, ctx) => {
     const role = ctx.session.user.role;
-    if (role !== "HR_ADMIN" && role !== "HIRING_MANAGER") return forbidden();
+    if (role !== "ADMIN" && role !== "EDITOR") return forbidden();
     return handler(req, ctx);
   });
 }
@@ -201,56 +197,5 @@ export function withApiAuth(tokenEnv: string, handler: InternalHandler) {
     if (!token || !safeEqual(token, expected)) return err("Unauthorized", 401);
 
     return handler(req, ctx);
-  };
-}
-
-// The resolved, writable invitation handed to a candidate handler (active or
-// already-completed; the handler enforces the per-status rules, e.g. response
-// after submit → 409). Carries its assessment (may be null before consent).
-type CandidateContext = RouteContext & {
-  invitation: ResolvedInvitation;
-};
-
-type CandidateHandler = (
-  req: NextRequest,
-  ctx: CandidateContext
-) => Promise<NextResponse>;
-
-/**
- * Token-authorized candidate runner gate (ARCHITECTURE §12.4, UI-SPEC C.1). The
- * candidate has NO session: the opaque high-entropy `token` route param authorizes
- * the write. Resolves the token (UI-SPEC C.1 states), rejecting invalid (404),
- * revoked (403), and expired (410) — erased/soft-deleted tokens resolve to the
- * generic 404, indistinguishable from never-issued (no enumeration); revoked and
- * expired get distinct UX-informative codes. `active`/`completed` pass through so
- * the handler applies status rules. Stamps the audit context with the invitation's
- * orgId and a NULL user (the candidate is not a User). Compose `withRateLimit`
- * OUTSIDE this wrapper — the surface is public, so floods must be throttled before
- * the DB lookup runs.
- */
-export function withCandidateToken(handler: CandidateHandler): RouteHandler {
-  return async (req: NextRequest, ctx: RouteContext) => {
-    const { token } = await ctx.params;
-    const resolution = await resolveToken(token);
-
-    switch (resolution.state) {
-      case "invalid":
-        return err("This assessment link is not valid", 404);
-      case "revoked":
-        return err("This assessment link has been revoked", 403);
-      case "expired":
-        return err("This assessment link has expired", 410);
-      // "active" | "completed" carry an invitation; the handler decides.
-    }
-
-    const ipAddress = clientIp(req) ?? undefined;
-    const userAgent = req.headers.get("user-agent") ?? undefined;
-
-    // No session → no userId; the audit extension records a NULL actor (the
-    // candidate is not a User). orgId comes from the resolved invitation.
-    return withAuditContext(
-      { userId: undefined, orgId: resolution.invitation.orgId, ipAddress, userAgent },
-      () => handler(req, { ...ctx, invitation: resolution.invitation })
-    );
   };
 }

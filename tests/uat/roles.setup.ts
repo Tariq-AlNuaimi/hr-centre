@@ -28,12 +28,7 @@ import { discoverRoles, defaultLocale } from "./_discover";
 // A role whose login fails (e.g. creds missing on a deployed-URL run where we
 // can't reach the DB) is SKIPPED with a warning — it must not crash the suite.
 
-// The privileged role is the FIRST member of the Role enum by convention (see
-// _discover.ts), NOT a hardcoded "ADMIN" — this fork names it HR_ADMIN. It reuses
-// admin.json from auth.setup.ts, so it must be excluded from the per-role
-// provisioning below; hardcoding "ADMIN" wrongly provisioned HR_ADMIN as a second
-// fixture user.
-const ADMIN_ROLE = discoverRoles()[0] ?? "ADMIN";
+const ADMIN_ROLE = "ADMIN";
 
 // Against a deployed URL the test runner usually can't reach the DB to provision
 // fixtures — and a Prisma connect attempt HANGS the whole setup timeout. So only
@@ -55,15 +50,6 @@ function emailFor(role: string): string {
 
 function passwordFor(role: string): string | undefined {
   return process.env[`UAT_${role}_PASSWORD`] ?? process.env.SEED_ADMIN_PASSWORD;
-}
-
-// Defensive: a Prisma "invalid connection string" error can echo the full
-// DATABASE_URL — which embeds the Neon credential (Confidential, SECURITY.md §1)
-// — into the warning, and that warning lands in the shareable Playwright HTML
-// report. Strip any `//user:password@` authority before logging.
-function safeErr(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e);
-  return msg.replace(/\/\/[^/@\s]*@/g, "//[credentials]@");
 }
 
 const roles = discoverRoles();
@@ -127,10 +113,7 @@ for (const role of nonAdminRoles) {
       } catch (e) {
         console.warn(
           `roles.setup — ${role}: DB upsert failed ` +
-            `(${safeErr(e)}); will try UI login. ` +
-            `On a local carbon-copy this almost always means DATABASE_URL still ` +
-            `points at the remote/unreachable DB — export the local DATABASE_URL ` +
-            `to the uat:full command so this process can provision the fixture.`,
+            `(${e instanceof Error ? e.message : String(e)}); will try UI login.`,
         );
       }
     }
@@ -141,14 +124,11 @@ for (const role of nonAdminRoles) {
       await page.locator("#email").fill(email);
       await page.locator("#password").fill(password);
       await page.locator('button[type="submit"]').click();
-      // This fork's authenticated landing is /<locale>/app (not the bare locale
-      // root), so accept either — else a manager who lands on /app is treated as a
-      // failed login and the whole role is skipped, emptying its matrix column.
-      await page.waitForURL(new RegExp(`/${defaultLocale}(/app)?/?$`), { timeout: 60_000 });
+      await page.waitForURL(new RegExp(`/${defaultLocale}/?$`), { timeout: 60_000 });
     } catch (e) {
       console.warn(
         `roles.setup — skipping ${role}: login did not land on the dashboard ` +
-          `(${safeErr(e)}).`,
+          `(${e instanceof Error ? e.message : String(e)}).`,
       );
       setup.skip();
       return;

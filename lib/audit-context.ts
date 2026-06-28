@@ -2,10 +2,6 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export interface AuditContext {
   userId?: string;
-  // Tenant of the acting user, stamped onto every audit_logs row so the audit
-  // surface can be scoped per-org (UI-SPEC D.10). Null for bootstrap/scheduler
-  // writes that have no org context.
-  orgId?: string | null;
   ipAddress?: string;
   userAgent?: string;
 }

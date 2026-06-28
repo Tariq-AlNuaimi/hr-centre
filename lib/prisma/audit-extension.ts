@@ -16,23 +16,9 @@ export const SCRUB_FIELDS = new Set([
   "session_state",
   "sessionToken",
   "token",
-  // Invitation.tokenHash — HMAC-at-rest of the candidate credential (SECURITY.md
-  // §1, Restricted). Not invertible, but it is the indexed lookup key, so keep it
-  // out of the audit trail too (defense-in-depth alongside hash-at-rest).
-  "tokenHash",
   "secret",
   "apiKey",
   "api_key",
-  // SjtItem.scoringKey is the keyed best/worst answer — Confidential test-integrity
-  // data (SECURITY.md §1). Children are written as nested relation ops today (so the
-  // parent op is what's audited), but a top-level SjtItem create/update would land
-  // the raw key in audit_logs without this. Defensive ahead of the Phase-4 runner
-  // (senior-review T-12). Masked at the API layer; this closes the audit-storage gap.
-  "scoringKey",
-  // AppSetting.valueEncrypted — AES-256-GCM ciphertext of a Restricted endpoint token
-  // (ADR-031, SECURITY.md §1). The ciphertext is useless without the AUTH_SECRET-derived
-  // key, but per the Restricted-field rule it must never land in audit_logs.
-  "valueEncrypted",
 ]);
 
 export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
@@ -89,7 +75,6 @@ export async function recordAudit(
       action: entry.action,
       before: scrub(entry.before ?? undefined),
       after: scrub(entry.after ?? undefined),
-      orgId: ctx.orgId,
       userId: ctx.userId,
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
@@ -143,7 +128,6 @@ export const auditExtension = Prisma.defineExtension((client) => {
               entityId: String(record.id),
               action: "CREATE",
               after: scrub(record),
-              orgId: ctx.orgId,
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,
@@ -189,7 +173,6 @@ export const auditExtension = Prisma.defineExtension((client) => {
               before: scrub(before ?? undefined),
               after: scrub(after),
               changes,
-              orgId: ctx.orgId,
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,
@@ -223,7 +206,6 @@ export const auditExtension = Prisma.defineExtension((client) => {
               entityId: String((before as Record<string, unknown> | null)?.id ?? "unknown"),
               action: "DELETE",
               before: scrub(before ?? undefined),
-              orgId: ctx.orgId,
               userId: ctx.userId,
               ipAddress: ctx.ipAddress,
               userAgent: ctx.userAgent,

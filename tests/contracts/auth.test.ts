@@ -112,8 +112,7 @@ const VALID_USER = {
   email: "user@example.com",
   name: "User",
   image: null,
-  role: "HR_ADMIN",
-  orgId: "org1",
+  role: "ADMIN",
   passwordHash: "hashed",
   passwordChangedAt: null,
 };
@@ -168,8 +167,7 @@ test("authorize: valid login returns the user (with role) and stamps lastLoginAt
     email: "user@example.com",
     name: "User",
     image: null,
-    role: "HR_ADMIN",
-    orgId: "org1",
+    role: "ADMIN",
     passwordChangedAt: null,
   });
   // (assert.deepEqual above narrows `out` to the literal shape, so widen back to
@@ -336,9 +334,9 @@ test("ssoProviderPlan: enforce flag alone (no Entra) does NOT lock out password 
   assert.equal(plan.credentialsEnabled, true, "never strand a fork with no usable provider");
 });
 
-test("mapSsoRole: defaults to HIRING_MANAGER (least privilege) for any claims", { skip: !canMock }, () => {
-  assert.equal(authMod.mapSsoRole(undefined), "HIRING_MANAGER");
-  assert.equal(authMod.mapSsoRole({ groups: ["hr-admins"] }), "HIRING_MANAGER");
+test("mapSsoRole: defaults to VIEWER (least privilege) for any claims", { skip: !canMock }, () => {
+  assert.equal(authMod.mapSsoRole(undefined), "VIEWER");
+  assert.equal(authMod.mapSsoRole({ groups: ["app-admins"] }), "VIEWER");
 });
 
 test("default build (no SSO env at import) registers exactly the credentials provider", { skip: !canMock }, () => {

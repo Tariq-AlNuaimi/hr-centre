@@ -10,13 +10,13 @@ import { prismaUnfiltered } from "./prisma";
 
 /**
  * SSO SEAM (ADR-013 / ADR-024): map an IdP's claims to our Role enum. Default is
- * least-privilege (HIRING_MANAGER) so a misconfigured IdP can't grant HR_ADMIN;
- * an HR_ADMIN promotes the user in-app after first SSO login. A fork that trusts
- * its IdP's group/role claims can override here, e.g.:
- *   if (claims?.groups?.includes("hr-admins")) return "HR_ADMIN";
+ * least-privilege (VIEWER) so a misconfigured IdP can't grant ADMIN; an admin
+ * promotes the user in-app after first SSO login. A fork that trusts its IdP's
+ * group/role claims can override here, e.g.:
+ *   if (claims?.groups?.includes("app-admins")) return "ADMIN";
  */
 export function mapSsoRole(_claims: Record<string, unknown> | undefined): Role {
-  return "HIRING_MANAGER";
+  return "VIEWER";
 }
 
 /**
@@ -96,7 +96,6 @@ const credentialsProvider = Credentials({
       name: user.name,
       image: user.image,
       role: user.role,
-      orgId: user.orgId,
       passwordChangedAt: user.passwordChangedAt,
     };
   },
@@ -139,7 +138,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
   },
   // Credentials + (when configured) Microsoft Entra ID SSO. See buildProviders
-  // above and ADR-024. New SSO users land at the DB default role (HIRING_MANAGER) and an
+  // above and ADR-024. New SSO users land at the DB default role (VIEWER) and an
   // admin promotes them in-app; the jwt callback deliberately does NOT call
   // mapSsoRole, so an in-app promotion survives the next SSO login. mapSsoRole is
   // the seam a fork wires into the jwt OAuth branch ONLY if it wants the IdP's
@@ -153,12 +152,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // persist until maxAge, same accepted gap as credentials; rotate AUTH_SECRET to
     // revoke immediately — SECURITY.md §2.)
     async signIn({ user, account }) {
-      // Match by account.type !== "credentials": Microsoft Entra ID registers as
-      // type "oidc" (NOT "oauth"), so an === "oauth" check would silently never
-      // fire and leave SSO users unguarded. A new (not-yet-linked) SSO user has no
-      // DB row yet → findUnique returns null → row?.deletedAt is falsy → allowed
-      // (onboarding proceeds); only an existing soft-deleted user is denied.
-      if (account && account.type !== "credentials" && user?.id) {
+      if (account?.type === "oauth" && user?.id) {
         const row = await prismaUnfiltered.user.findUnique({
           where: { id: user.id },
           select: { deletedAt: true },
@@ -172,7 +166,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id!;
         token.role = user.role;
-        token.orgId = user.orgId ?? null;
         token.passwordChangedAt = user.passwordChangedAt?.getTime() ?? 0;
         return token;
       }
@@ -205,7 +198,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // no-any-cast-on-session lint rule does not fire.
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
-        session.user.orgId = (token.orgId as string | null) ?? null;
       }
       return session;
     },

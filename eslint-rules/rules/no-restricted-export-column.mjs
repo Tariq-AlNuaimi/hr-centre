@@ -42,18 +42,9 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "session_state",
   "sessionToken",
   "token",
-  // Invitation.tokenHash — HMAC-at-rest of the candidate credential (Restricted,
-  // SECURITY.md §1). Banned as an export column key in lockstep with SCRUB_FIELDS.
-  "tokenHash",
   "secret",
   "apiKey",
   "api_key",
-  // SjtItem.scoringKey — the keyed best/worst answer (Confidential, SECURITY.md §1).
-  // Must never be a downloadable export column (SCRUB_FIELDS ⊆ this set invariant).
-  "scoringKey",
-  // AppSetting.valueEncrypted — AES-256-GCM ciphertext of a Restricted endpoint token
-  // (ADR-031). Never a downloadable export column (keeps SCRUB_FIELDS ⊆ this set).
-  "valueEncrypted",
 ]);
 
 // Forward-safe name pattern: a column key matching this is treated as Restricted

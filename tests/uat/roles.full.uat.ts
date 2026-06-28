@@ -33,11 +33,7 @@ import {
 const LOCALE = "en";
 const ROLES = discoverRoles();
 const SECTIONS = discoverSectionAccess(LOCALE);
-// The privileged role is the FIRST member of the Role enum by convention
-// (documented in _discover.ts), NOT a hardcoded "ADMIN" — this fork names it
-// HR_ADMIN. Hardcoding "ADMIN" inverted every privileged-role expectation
-// (expecting HR_ADMIN to be BLOCKED from admin-only sections). Derive it.
-const ADMIN_ROLE = ROLES[0] ?? "ADMIN";
+const ADMIN_ROLE = "ADMIN";
 
 // The matrix sink the PDF reads. We append one row per role×section here.
 const MATRIX_FILE = path.join(process.cwd(), "uat-results", "role-matrix.json");

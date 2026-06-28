@@ -52,38 +52,35 @@ export interface BrandConfig {
   themeColor: string;
 }
 
-const appName =
-  process.env.NEXT_PUBLIC_APP_NAME?.trim() || "Rihal Aptitude";
+const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || "My App";
 
 export const brand: BrandConfig = {
   appName,
-  description:
-    "Rihal Aptitude — a standards-anchored, evidence-traceable assessment of behavioral fit for a role family.",
-  monogram: "R",
+  description: "Fullstack Next.js application",
+  monogram: appName.charAt(0).toUpperCase() || "A",
 
   colors: {
-    // UI-SPEC A.2 — brand deep blue + the azure "journey" accent. The full token
-    // set lives in app/globals.css (@theme); these feed brand metadata only.
-    primary: "#123047",
-    accent: "#2e7da6",
+    // Refined indigo — modern, premium, still reads as "enterprise blue".
+    primary: "#4f46e5",
+    accent: "#4f46e5",
   },
 
-  // 10px cards (UI-SPEC A.4); the radius scale derives from --radius in globals.
-  radius: 10,
+  // Softer corners read more premium; lockstep with --radius-base in tokens.css
+  // (asserted by tests/contracts/design-tokens.test.ts).
+  radius: 8,
 
-  // Data-instrument density.
-  density: "compact",
+  // Comfortable by default; flip to "compact" for dense, table-heavy tools.
+  density: "comfortable",
 
   font: {
-    // Body/UI face. The display face (Sora) + Arabic face (IBM Plex Sans Arabic)
-    // are loaded alongside in app/[locale]/layout.tsx (next/font).
-    cssVar: "--font-inter",
+    // app/[locale]/layout.tsx loads Inter via next/font and binds it to this var.
+    cssVar: "--font-sans",
     family: "Inter",
     fallback:
-      'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
   },
 
-  themeColor: "#123047",
+  themeColor: "#4f46e5",
 };
 
 /** The full CSS `font-family` value: the loaded webfont var, then the fallback. */

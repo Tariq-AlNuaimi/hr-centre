@@ -15,23 +15,7 @@ type SoftDeleteDelegate = {
 };
 
 // Models that have deletedAt/deletedBy fields
-const SOFT_DELETE_MODELS = new Set([
-  "User",
-  "Organization",
-  "RoleFamily",
-  "RoleProfile",
-  // Candidate runner (Phase 4): soft-deletable for PDPL erasure (the bin's
-  // permanent-delete then cascades to responses). ItemResponse/SjtResponse are
-  // NOT here — they're hard children that cascade with the Assessment.
-  "Invitation",
-  "Assessment",
-  // Result (Phase 6): soft-deletable so a PDPL erasure of a sitting can take its
-  // computed result with it; the bin's permanent-delete then hard-removes the row.
-  "Result",
-  // OutcomeRecord (Phase 7): a mis-keyed post-hire outcome is correctable, so it is
-  // soft-deletable + recycling-registered rather than hard-deleted.
-  "OutcomeRecord",
-]);
+const SOFT_DELETE_MODELS = new Set(["User"]);
 
 /**
  * Whether this model participates in soft-delete filtering. Exposed so the

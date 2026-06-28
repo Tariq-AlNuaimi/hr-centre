@@ -348,20 +348,12 @@ const build = await run("build", "npm", ["run", "build"], { NODE_ENV: "productio
 report(build);
 if (!build.ok) fail(build);
 
-// Resolve the gitleaks binary. The SessionStart hook auto-installs it to
-// ~/.local/bin on fresh containers (which often isn't on PATH), so prefer that
-// path when present -- otherwise rely on PATH (brew / system install). This kills
-// the recurring "gitleaks is not on PATH -> ship RED" friction on every fork.
-const localGitleaks = `${process.env.HOME ?? ""}/.local/bin/gitleaks`;
-const gitleaksBin =
-  process.env.HOME && existsSync(localGitleaks) ? localGitleaks : "gitleaks";
-const gitleaks = await run("gitleaks", gitleaksBin, ["detect", "--no-banner", "--redact"]);
+const gitleaks = await run("gitleaks", "gitleaks", ["detect", "--no-banner", "--redact"]);
 if (!gitleaks.ok && /ENOENT/.test(gitleaks.out)) {
   gitleaks.out =
     "gitleaks is not on PATH -- ship is NOT green until it runs.\n" +
-    "  The SessionStart hook auto-installs it to ~/.local/bin; if that failed:\n" +
     "  macOS: brew install gitleaks\n" +
-    "  Linux: download from https://github.com/gitleaks/gitleaks/releases to ~/.local/bin";
+    "  Linux: download from https://github.com/gitleaks/gitleaks/releases and put it on PATH";
 }
 report(gitleaks);
 if (!gitleaks.ok) fail(gitleaks);

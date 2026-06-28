@@ -9,16 +9,13 @@ import { randomBytes } from "node:crypto";
 
 const intlMiddleware = createMiddleware(routing);
 
-// App (locale-prefixed) paths reachable WITHOUT a session. Consulted ONLY for
-// non-/api routes — isPublicPath runs after the /api early-return below, so the
-// /api allow-list (auth, health, internal, v1) lives there, not here. Listing
-// /api paths here too was dead code that read like a second bypass list.
 const publicPaths = [
   "/login",
-  // The methodology page is the public defensibility surface (UI-SPEC D.11) —
-  // linked from the candidate consent screen and from results, so it must be
-  // reachable without a session.
-  "/methodology",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth",
+  "/api/health",
+  "/api/internal",
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -60,10 +57,6 @@ function buildCsp(nonce: string): string {
     "font-src 'self' data:",
     `connect-src 'self'${sentryConnectSrc()}`,
     "object-src 'none'",
-    // Sentry Replay (instrumentation-client.ts) spins up a compression Web Worker
-    // from a blob: URL; without this it's blocked under 'strict-dynamic' and error
-    // replays silently degrade.
-    "worker-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -76,13 +69,10 @@ function buildCsp(nonce: string): string {
   return directives.join("; ");
 }
 
-// Attach the per-request CSP to a response. The nonce travels ONLY on the
-// request headers (set below) where the layout reads it via next/headers — it is
-// deliberately NOT echoed on the response, so a network/CDN/log observer can't
-// capture a live nonce and forge a nonce-bearing <script> (weakening the nonce
-// guarantee for the reflected-XSS case). The request-side x-nonce is sufficient.
+// Attach the CSP (with this request's nonce) + the nonce header to a response.
 function withNonce(nonce: string, res: NextResponse): NextResponse {
   res.headers.set("Content-Security-Policy", buildCsp(nonce));
+  res.headers.set("x-nonce", nonce);
   return res;
 }
 
@@ -109,10 +99,6 @@ export default auth((req) => {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/internal") ||
-    // Candidate runner write routes (ARCHITECTURE §12.4, UI-SPEC C.1). NO session:
-    // the opaque token in the path authorizes via withCandidateToken (the route's
-    // own gate + rate limit). Must bypass the session 401 below, like /api/internal.
-    pathname.startsWith("/api/run") ||
     // /api/v1/* is the public, versioned API surface (rewrites to /api/* via
     // next.config). Let it through here so the rewrite + the route's own wrapper
     // (withApiAuth for external consumers, or withAuth) decide -- middleware must
@@ -121,15 +107,6 @@ export default auth((req) => {
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {
-    return pass();
-  }
-
-  // Candidate runner page (UI-SPEC C.1–C.5): public, token-authorized, and
-  // DELIBERATELY NOT locale-prefixed — it owns its EN/AR + RTL in-page (switchable
-  // mid-assessment without navigation, C.5), so it must bypass both the session
-  // gate AND next-intl's locale routing. The page resolves the token itself and
-  // renders the right state.
-  if (pathname === "/a" || pathname.startsWith("/a/")) {
     return pass();
   }
 
@@ -145,11 +122,10 @@ export default auth((req) => {
       return NextResponse.redirect(new URL(`/${locale}/login`, req.url));
     }
 
-    // Redirect authenticated users away from login into the app. (Methodology
-    // is public-but-not-login, so don't bounce signed-in users off it.)
-    if (isAuth && pathname.replace(localePrefixRegex, "").startsWith("/login")) {
+    // Redirect authenticated users away from login
+    if (isAuth && isPublicPath(pathname)) {
       const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
-      return NextResponse.redirect(new URL(`/${locale}/app`, req.url));
+      return NextResponse.redirect(new URL(`/${locale}`, req.url));
     }
 
     // next-intl needs the nonce-bearing request headers too. Hand it a real

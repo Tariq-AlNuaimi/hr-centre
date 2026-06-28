@@ -1,151 +1,79 @@
 # Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)
 
 ## Routes (app/)
+- app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
-- app/[locale]/app/audit/page.tsx
-- app/[locale]/app/calibration/page.tsx
-- app/[locale]/app/candidates/[id]/page.tsx
-- app/[locale]/app/candidates/page.tsx
-- app/[locale]/app/compare/page.tsx
-- app/[locale]/app/invites/page.tsx
-- app/[locale]/app/page.tsx
-- app/[locale]/app/roles/[id]/edit/page.tsx
-- app/[locale]/app/roles/[id]/page.tsx
-- app/[locale]/app/roles/new/page.tsx
-- app/[locale]/app/roles/page.tsx
-- app/[locale]/app/settings/page.tsx
-- app/[locale]/methodology/page.tsx
-- app/[locale]/page.tsx
-- app/a/[token]/page.tsx
-- app/api/audit-log/export/route.ts  [GET]
+- app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(dashboard)/audit-log/page.tsx
+- app/[locale]/(dashboard)/page.tsx
+- app/[locale]/(dashboard)/recycling-bin/page.tsx
+- app/[locale]/(dashboard)/settings/page.tsx
+- app/[locale]/(dashboard)/settings/profile/page.tsx
+- app/[locale]/(dashboard)/style-guide/page.tsx
+- app/[locale]/(dashboard)/users/[id]/page.tsx
+- app/[locale]/(dashboard)/users/new/page.tsx
+- app/[locale]/(dashboard)/users/page.tsx
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
-- app/api/calibration/[roleProfileId]/generate/route.ts  [POST]
-- app/api/calibration/outcomes/route.ts  [POST]
 - app/api/health/route.ts
 - app/api/internal/audit-purge/route.ts  [GET,POST]
-- app/api/invitations/[id]/resend/route.ts  [POST]
-- app/api/invitations/[id]/revoke/route.ts  [POST]
-- app/api/invitations/bulk/route.ts  [POST]
-- app/api/invitations/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
-- app/api/results/[id]/compute/route.ts  [POST]
-- app/api/results/[id]/decision/route.ts  [POST]
-- app/api/results/[id]/narrative/route.ts  [POST]
-- app/api/results/[id]/pdf/route.ts  [GET]
-- app/api/role-profiles/[id]/approve/route.ts  [POST]
-- app/api/role-profiles/[id]/route.ts  [GET,PUT,DELETE]
-- app/api/role-profiles/[id]/version/route.ts  [POST]
-- app/api/role-profiles/draft/route.ts  [POST]
-- app/api/role-profiles/route.ts  [GET,POST]
-- app/api/run/[token]/consent/route.ts  [POST]
-- app/api/run/[token]/opened/route.ts  [POST]
-- app/api/run/[token]/response/route.ts  [POST]
-- app/api/run/[token]/submit/route.ts  [POST]
-- app/api/settings/ai/route.ts  [PUT]
-- app/api/settings/erase-candidate/route.ts  [POST]
-- app/api/settings/org/route.ts  [PUT]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, roleProfiles, invitations, assessments, results, auditLogs, outcomeRecords, profileCalibrations, appSettings
-- User: id, orgId, org, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
-- RoleFamily: id, orgId, org, key, name, description, deletedAt, deletedBy, createdAt, updatedAt, roleProfiles
-- RoleProfile: id, orgId, org, roleFamilyId, roleFamily, lineageId, version, status, title, jdSourceText, isAiDrafted, createdById, approvedById, approvedAt, deletedAt, deletedBy, createdAt, updatedAt, competencies, sjtItems, invitations, results, calibrations
-- Competency: id, roleProfileId, roleProfile, name, onetRef, importance, weight, direction, targetPercentile, sourceCitation, order, facets, createdAt, updatedAt
-- CompetencyFacet: id, competencyId, competency, facet
-- SjtItem: id, roleProfileId, roleProfile, scenario_en, scenario_ar
-- AssessmentItemBank: id, itemNumber, itemCode, domain, facet, facetNumber, keyed, text_en, text_ar, createdAt, updatedAt
-- Result: id, orgId, org, assessmentId, assessment, roleProfileId, roleProfile, roleProfileVersion
-- OutcomeRecord: id, orgId, org, resultId, result, hired, probationPassed, rating6m, rating12m, retained, recordedById, recordedAt, deletedAt, deletedBy, createdAt, updatedAt
-- ProfileCalibration: id, orgId, org, roleProfileId, roleProfile, version, metrics, sampleSize, generatedById, generatedAt
-- AppSetting: id, orgId, org, key, value, valueEncrypted, updatedById, createdAt, updatedAt
-- AuditLog: id, orgId, org, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
-- Invitation: id, orgId, org, roleProfileId, roleProfile, candidateEmail, candidateName, tokenHash, status, expiresAt, locale, sentById, batchId, deletedAt, deletedBy, createdAt, updatedAt, assessment
-- Assessment: id, orgId, org, invitationId, invitation, status, locale, consentAt, startedAt, submittedAt, deletedAt, deletedBy, createdAt, updatedAt, itemResponses, sjtResponses, result
-- ItemResponse: id, assessmentId, assessment, itemNumber, value, createdAt, updatedAt
-- SjtResponse: id, assessmentId, assessment, sjtItemId, sjtItem, chosenOptionId, createdAt, updatedAt
+- AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 
 ## lib/ exports
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
-- lib/api-helpers.ts: withAuth, withAdminAuth, withManagerAuth, withInternalAuth, withRateLimit, withApiAuth, withCandidateToken
+- lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
-- lib/authz.ts: requireSession, requireAdmin, isAdmin
-- lib/calibration.ts: MIN_OUTCOMES_FOR_REPORT, MAX_SCATTER_POINTS, SuccessWeights, DEFAULT_SUCCESS_WEIGHTS, OutcomeInput, CalibrationPair, SelectionInput, BandSuggestion, CompetencySignal, FitSummary, SelectionRateRow, CalibrationReport, CalibrationOutcome, successScore, pearson, competencySignal, fitSummary, selectionRates, buildCalibration
-- lib/candidate-i18n.ts: CandidateLocale, CandidateStrings, candidateStrings
 - lib/client-ip.ts: clientIp
-- lib/crypto.ts: encryptSecret, decryptSecret, secretHint
-- lib/email.ts: EmailTransport, selectTransport, isEmailEnabled, SendEmailOptions, SendEmailResult, recipientLabel, buildMailOptions, sendEmail
+- lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
-- lib/ipip-facets.ts: BIG5_DOMAINS, Big5DomainKey, IPIP_FACETS_BY_DOMAIN, IPIP_FACETS, isIpipFacet, domainForFacet
-- lib/llm.ts: LlmError, isLlmConfigured, LlmConfig, draftRoleProfile, ResultNarrativeInput, draftResultNarrative
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: BCRYPT_COST, hashPassword
-- lib/pdf/theme.ts: PDF_COLORS, bandColor
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
 - lib/prisma.ts: prisma, prismaUnfiltered
+- lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
-- lib/scoring-rollup.ts: BandDirection, CompetencyBand, SjtChoice, RollupCompetency, RollupSjtItem, RollupSjtResponse, FacetScoreRow, DomainScoreRow, CompetencyDriver, CompetencyScoreRow, SjtItemScore, SjtScores, RollupResult, facetContribution, bandFor, scoreSjt, scoreCompetency, rollUp
-- lib/scoring.ts: ScoringError, isScoringConfigured, requestScoring
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
-- lib/services/audit.ts: AuditRow, AuditFilters, listAuditLog, AUDIT_EXPORT_CAP, listAuditLogForExport
-- lib/services/calibration.ts: OutcomeView, RecordOutcomeResult, recordOutcome, OutcomeCaptureRow, listOutcomeCaptureRows, RoleCalibrationStatus, listRoleCalibrationStatus, GenerateCalibrationResult, generateCalibration, StoredCalibration, getLatestCalibration, AdverseImpactView, getAdverseImpact
-- lib/services/candidateRunner.ts: TokenState, ResolvedInvitation, TokenResolution, resolveToken, getInvitationDisplay, BilingualItem, BilingualSjtOption, BilingualSjtItem, getBilingualItems, getBilingualSjtItems, getSavedResponses, recordConsent, saveItemResponse, saveSjtResponse, submitAssessment
-- lib/services/erasure.ts: EraseResult, eraseCandidate
-- lib/services/invitation.ts: effectiveStatus, InvitationListFilters, InvitationRow, listInvitations, listActiveRoleProfiles, SingleResult, createInvitation, BulkResult, createInvitationsBulk, ActionResult, resendInvitation, revokeInvitation, markOpened
-- lib/services/result.ts: ResultScores, ResultView, ComputeOutcome, computeResult, getResultByAssessment, getResultById, NarrativeOutcome, generateNarrative, DecisionOutcomeResult, recordDecision, CandidateRow, CandidateFilters, listCandidates, COMPARE_MAX, CompareOutcome, getCompareData, DashboardSnapshot, getDashboardSnapshot
-- lib/services/roleProfile.ts: RoleProfileNotFoundError, isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
-- lib/services/user.ts: OrgUserRow, listOrgUsers
-- lib/settings.ts: SETTING_KEYS, getAppSetting, getAppSecret, setAppSetting, OrgProfile, getOrgProfile, updateOrgProfile, LlmConfig, ScoringConfig, resolveLlmConfig, resolveScoringConfig, isLlmConfiguredFor, isScoringConfiguredFor, ConfigSource, AiSettingsView, getAiSettingsView, applyAiSettings
-- lib/token.ts: generateInvitationToken, hashInvitationToken
-- lib/utils.ts: cn
-- lib/validations/audit.ts: AUDIT_ACTIONS, AuditActionValue, AUDIT_ENTITY_TYPES
-- lib/validations/calibration.ts: outcomeInputSchema, OutcomeInputBody, BAND_SUGGESTIONS, BandSuggestionValue
-- lib/validations/candidate.ts: IPIP_ITEM_COUNT, LIKERT_MIN, LIKERT_MAX, consentSchema, ConsentInput, responseSchema, ResponseInput, localeSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
-- lib/validations/invitation.ts: MAX_BATCH, INVITATION_STATUSES, InvitationStatusName, RecipientOutcome, RecipientResult, singleInvitationSchema, SingleInvitationInput, recipientSchema, RecipientInput, bulkInvitationSchema, BulkInvitationInput, ParsedRecipient, RecipientParse, parseRecipients
-- lib/validations/result.ts: DECISION_OUTCOMES, DecisionOutcomeValue, decisionInputSchema, DecisionInput, narrativeResponseSchema, NarrativeResponse
-- lib/validations/roleProfile.ts: bandDirectionSchema, competencyInputSchema, CompetencyInput, CompetencyValue, sjtItemInputSchema, SjtItemInput, SjtItemValue, createRoleProfileSchema, CreateRoleProfileInput, CreateRoleProfile, updateRoleProfileSchema, UpdateRoleProfileInput, UpdateRoleProfile, draftRoleProfileSchema, DraftRoleProfileInput, llmDraftResponseSchema, LlmDraftResponse
-- lib/validations/scoring.ts: NUM_ITEMS, big5Domains, scoreBandSchema, answerSchema, scoreRequestSchema, facetScoreSchema, domainScoreSchema, scoreResponseSchema, ScoreRequestInput, ScoreRequest, ScoreResponse, DomainScore, FacetScore, Big5Domain
-- lib/validations/settings.ts: aiSettingsSchema, AiSettingsInput, orgProfileSchema, OrgProfileInput, eraseCandidateSchema, EraseCandidateInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 
 ## components/
-- components/brand/Wordmark.tsx
+- components/dashboard/DashboardContent.tsx
+- components/layout/AppFooter.tsx
+- components/layout/AppHeader.tsx
 - components/layout/AppShell.tsx
-- components/layout/LocaleToggle.tsx
-- components/layout/MobileSidebar.tsx
-- components/layout/SidebarNav.tsx
-- components/layout/ThemeToggle.tsx
-- components/layout/UserMenu.tsx
-- components/providers/ThemeProvider.tsx
+- components/layout/AppSidebar.tsx
+- components/layout/BreadcrumbProvider.tsx
+- components/layout/Breadcrumbs.tsx
+- components/layout/ThemeProvider.tsx
+- components/providers/QueryProvider.tsx
+- components/shared/Chart.impl.tsx
+- components/shared/Chart.tsx
+- components/shared/ConfirmAction.tsx
+- components/shared/DataTable.tsx
+- components/shared/EmptyState.tsx
+- components/shared/KanbanBoard.impl.tsx
+- components/shared/KanbanBoard.tsx
 - components/shared/PageHeader.tsx
-- components/shared/Placeholder.tsx
-- components/shared/StatCard.tsx
-- components/ui/avatar.tsx
-- components/ui/badge.tsx
-- components/ui/button.tsx
-- components/ui/card.tsx
-- components/ui/dropdown-menu.tsx
-- components/ui/input.tsx
-- components/ui/label.tsx
-- components/ui/select.tsx
-- components/ui/separator.tsx
-- components/ui/sheet.tsx
-- components/ui/table.tsx
-- components/ui/textarea.tsx
+- components/shared/Skeletons.tsx
+- components/users/UserColumns.tsx
+- components/users/UserForm.tsx

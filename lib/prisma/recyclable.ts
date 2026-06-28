@@ -18,25 +18,6 @@ export type RecyclableRecord = {
 // /scaffold-entity appends here in lockstep with registerSoftDeleteModel().
 export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
   User: { displayField: "name" },
-  RoleProfile: { displayField: "title" },
-  // RoleFamily is soft-deletable (SOFT_DELETE_MODELS) — register it here too so a
-  // soft-deleted family can be restored rather than stranded in the bin forever
-  // (senior-review T-LOW). (Organization is deliberately NOT recyclable — deleting
-  // the tenant root is out of scope.)
-  RoleFamily: { displayField: "name" },
-  // Candidate runner (Phase 4), recyclable for PDPL right-to-erasure. Invitation
-  // carries the candidate PII (email shown in the bin); Assessment is the sitting
-  // (labelled by id). Permanent-deleting the Invitation cascades to the Assessment
-  // and its responses — full erasure.
-  Invitation: { displayField: "candidateEmail" },
-  Assessment: { displayField: "id" },
-  // Result (Phase 6) is soft-deletable (SOFT_DELETE_MODELS) — register it so a
-  // soft-deleted result can be restored rather than stranded in the bin (the same
-  // invariant as RoleFamily above). Labelled by id (no human-facing name field).
-  Result: { displayField: "id" },
-  // OutcomeRecord (Phase 7) is soft-deletable — register it so a soft-deleted
-  // (corrected) outcome can be restored rather than stranded. Labelled by id.
-  OutcomeRecord: { displayField: "id" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };
@@ -56,9 +37,8 @@ export type RecyclableDelegate = {
   findMany: (args: {
     // `lt` is optional so the recycling-bin GC (audit-purge cron) can select
     // rows soft-deleted before a retention cutoff; the bin's list/restore paths
-    // pass `{ not: null }` alone. `orgId` is optional so the bin can tenant-scope
-    // its listing (every recyclable model carries orgId); the GC omits it.
-    where: { deletedAt: { not: null; lt?: Date }; orgId?: string | null };
+    // pass `{ not: null }` alone.
+    where: { deletedAt: { not: null; lt?: Date } };
     orderBy?: { deletedAt: "desc" };
     take?: number;
   }) => Promise<RecyclableRecord[]>;

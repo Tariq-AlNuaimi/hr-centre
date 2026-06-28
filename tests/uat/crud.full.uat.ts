@@ -1,29 +1,38 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Locator } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import { defaultLocale } from "./_discover";
+import { discoverCrudEntities } from "./_discover";
 
-// FULL-mode CRUD journey for THIS app (closes the deferred "CRUD journeys" gap).
+// P3 (Build C) — PER-ENTITY CRUD JOURNEY. FULL mode only (`*.full.uat.ts`).
 //
-// The bare template's generic introspective journey doesn't fit this fork: it
-// drives AntD widgets (this app is shadcn/Tailwind) and the only route-discovered
-// CRUD entity (role profiles) is authored through the AI wizard, whose drafting
-// step needs a configured LLM (UNSET here -> "not configured"). So instead of a
-// synthetic form-fill, this exercises the real, LLM-independent, admin-gated write
-// loop the product actually has: the INVITATION LIFECYCLE (UI-SPEC D.5):
+// Runs as ADMIN (the chromium project's default storage state). For EACH CRUD
+// entity DISCOVERED from the route tree (a section the scaffold gave both a
+// `/new` create form AND a `/[id]` record page — see discoverCrudEntities), it
+// drives the full data-writing loop:
 //
-//   send single invite -> confirm it lands in the list (PENDING) -> revoke it
-//   (confirm dialog) -> confirm it flips to REVOKED.
+//   create → confirm-in-list → edit → soft-delete (gone from list)
 //
-// Runs as ADMIN (the chromium project's default storage state). With SMTP unset
-// the send outcome is "created" (link generated, email skipped) — still a real
-// row + a real audit entry, which is exactly what we verify. The created invite
-// lives in the LOCAL test DB only (UAT never writes production). Each phase is
-// appended to uat-results/crud-journeys.json for the PDF (P3 section).
+// The form is INTROSPECTED, never hardcoded: visible inputs are filled by their
+// kind (email/password/number/text), and every <Select> picks its first option.
+// So a fork that scaffolds `projects` gets a `projects` journey for free; one
+// with only read-only sections yields no journeys (recorded, not failed).
+//
+// Created rows are stamped with a unique `UAT-<ts>` marker so they're easy to
+// find and clean up; they live in the LOCAL/preview test DB only (UAT never
+// writes production). Each journey's per-phase result is appended to
+// uat-results/crud-journeys.json for the PDF (P3 section).
 
-const LOCALE = defaultLocale;
-const INVITES_PATH = `/${LOCALE}/app/invites`;
-const JOURNEY_FILE = path.join(process.cwd(), "uat-results", "crud-journeys.json");
+const LOCALE = "en";
+const ENTITIES = discoverCrudEntities(LOCALE);
+const JOURNEY_FILE = path.join(
+  process.cwd(),
+  "uat-results",
+  "crud-journeys.json",
+);
+
+// A valid-by-default password for any create form that has a password field
+// (template rule: min 8). Not a secret — a throwaway local fixture value.
+const FIXTURE_PASSWORD = "UatTest123!";
 
 type PhaseStatus = "passed" | "failed" | "skipped";
 type JourneyPhase = { phase: string; status: PhaseStatus; detail?: string };
@@ -32,6 +41,9 @@ type Journey = {
   listPath: string;
   marker: string;
   phases: JourneyPhase[];
+  // Console/runtime errors observed anywhere in the journey (incl. the create +
+  // edit forms, which the main-section UI/UX sweep doesn't visit). Recorded so a
+  // form-only defect (e.g. a missing i18n key on /<entity>/new) is surfaced.
   consoleErrors?: string[];
   pageErrors?: string[];
 };
@@ -56,121 +68,272 @@ function recordJourney(journey: Journey): void {
   }
 }
 
-/** The table row that contains the given text (our created/revoked invite). */
-function rowWith(page: Page, value: string) {
+/**
+ * Fill every visible field in the page's form generically and return the value
+ * stamped into the first text field (the human-readable, searchable value) plus
+ * the email used, if any. Nothing about the entity's fields is hardcoded.
+ */
+async function fillFormGenerically(
+  page: Page,
+  marker: string,
+): Promise<{ searchValue: string; email: string | null }> {
+  const form = page.locator("form").first();
+  await form.waitFor({ state: "visible" });
+
+  let searchValue = marker;
+  let email: string | null = null;
+
+  // 1) Plain inputs + textareas (skip the ones antd uses inside Selects/search).
+  const fields = form.locator(
+    "input:visible, textarea:visible",
+  );
+  const count = await fields.count();
+  let firstTextDone = false;
+
+  for (let i = 0; i < count; i++) {
+    const field = fields.nth(i);
+    const type = (await field.getAttribute("type")) ?? "text";
+    const idAttr = (await field.getAttribute("id")) ?? "";
+    const placeholder = (await field.getAttribute("placeholder")) ?? "";
+    const hint = `${idAttr} ${placeholder}`.toLowerCase();
+
+    // Skip inputs that belong to a Select / combobox / search affordance — those
+    // are driven separately below; typing into them does nothing useful.
+    const role = await field.getAttribute("role");
+    if (role === "combobox") continue;
+    if (["hidden", "checkbox", "radio", "file", "submit", "button"].includes(type)) {
+      continue;
+    }
+
+    if (type === "password" || hint.includes("password")) {
+      await field.fill(FIXTURE_PASSWORD);
+    } else if (type === "email" || hint.includes("email") || hint.includes("mail")) {
+      email = `${marker}@example.com`.toLowerCase();
+      await field.fill(email);
+    } else if (type === "number") {
+      await field.fill("1");
+    } else {
+      // First free-text field carries the marker and becomes our search key.
+      const value = firstTextDone ? marker : marker;
+      await field.fill(value);
+      if (!firstTextDone) {
+        searchValue = value;
+        firstTextDone = true;
+      }
+    }
+  }
+
+  // 2) Ant Selects — open each and pick the first option. Covers role/status/etc.
+  const selects = form.locator(".ant-select");
+  const selectCount = await selects.count();
+  for (let i = 0; i < selectCount; i++) {
+    const select = selects.nth(i);
+    try {
+      await select.click();
+      const option = page.locator(".ant-select-item-option").first();
+      await option.waitFor({ state: "visible", timeout: 3000 });
+      await option.click();
+    } catch {
+      // A select with no options (e.g. an empty relation) — leave it; if it's
+      // required, the submit step will surface the validation error.
+    }
+  }
+
+  return { searchValue, email };
+}
+
+/** Submit the form and assert we left the create route (no validation errors). */
+async function submitForm(page: Page, leaveUrl: RegExp): Promise<void> {
+  await page.locator('form button[type="submit"]').first().click();
+  // Success path: the create handler navigates back to the list.
+  await page.waitForURL(leaveUrl, { timeout: 15_000 });
+}
+
+/** Type into the list's search box (if present) to narrow to our marker. */
+async function searchList(page: Page, value: string): Promise<void> {
+  const search = page.locator(".ant-input-affix-wrapper input").first();
+  if (await search.count()) {
+    await search.fill(value);
+    // Debounce + refetch settle.
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForTimeout(600);
+  }
+}
+
+/** The table row that contains the given text (our created/edited record). */
+function rowWith(page: Page, value: string): Locator {
   return page.locator("tbody tr", { hasText: value });
 }
 
-test("CRUD journey — invitations (send → confirm → revoke)", async ({ page }, testInfo) => {
-  // A full send→confirm→revoke loop is several navigations + a Sheet form + a
-  // confirm dialog; give it room past the 30s default.
-  test.setTimeout(120_000);
+for (const entity of ENTITIES) {
+  test(`CRUD journey — ${entity.name}`, async ({ page }, testInfo) => {
+    // A full create→confirm→edit→delete loop is several navigations + form fills
+    // + screenshots; it legitimately runs well past the 30s default. Give it room
+    // so a slow-but-correct journey isn't mis-reported as a failure.
+    test.setTimeout(120_000);
 
-  const marker = `uat-invite-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
-  const email = `${marker}@example.com`;
-  const phases: JourneyPhase[] = [];
+    // Unique per run + entity so parallel journeys never collide.
+    const marker = `UAT-${Date.now()}-${Math.floor(Math.random() * 1e6)}-${entity.name}`;
+    const phases: JourneyPhase[] = [];
 
-  const consoleErrors = new Set<string>();
-  const pageErrors = new Set<string>();
-  page.on("console", (msg) => {
-    if (msg.type() === "error" && consoleErrors.size < 25) consoleErrors.add(msg.text());
+    // Watch for console/runtime errors across the WHOLE journey — including the
+    // create + edit forms the main-section UI/UX sweep never visits. De-duped +
+    // capped so a chatty page doesn't bloat the report.
+    const consoleErrors = new Set<string>();
+    const pageErrors = new Set<string>();
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && consoleErrors.size < 25)
+        consoleErrors.add(msg.text());
+    });
+    page.on("pageerror", (err) => {
+      if (pageErrors.size < 25) pageErrors.add(err.message);
+    });
+
+    const finish = () =>
+      recordJourney({
+        entity: entity.name,
+        listPath: entity.listPath,
+        marker,
+        phases,
+        consoleErrors: [...consoleErrors],
+        pageErrors: [...pageErrors],
+      });
+
+    const shot = async (label: string) => {
+      const png = await page.screenshot({ fullPage: true });
+      await testInfo.attach(`${entity.name}-${label}.png`, {
+        body: png,
+        contentType: "image/png",
+      });
+    };
+
+    let searchValue = marker;
+
+    // --- CREATE -------------------------------------------------------------
+    try {
+      await page.goto(entity.createPath, { waitUntil: "networkidle" });
+      const filled = await fillFormGenerically(page, marker);
+      searchValue = filled.searchValue;
+      await shot("create-filled");
+      await submitForm(page, new RegExp(`${entity.listPath}/?($|\\?)`));
+      phases.push({ phase: "create", status: "passed" });
+    } catch (e) {
+      phases.push({
+        phase: "create",
+        status: "failed",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+      await shot("create-failed");
+      finish();
+      throw e; // create is the journey's foundation — a real failure is a real bug.
+    }
+
+    // --- CONFIRM IN LIST ----------------------------------------------------
+    try {
+      await page.goto(entity.listPath, { waitUntil: "networkidle" });
+      await searchList(page, searchValue);
+      await expect(
+        rowWith(page, searchValue),
+        `created ${entity.name} should appear in the list`,
+      ).toBeVisible({ timeout: 10_000 });
+      await shot("confirm-list");
+      phases.push({ phase: "confirm", status: "passed" });
+    } catch (e) {
+      phases.push({
+        phase: "confirm",
+        status: "failed",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+      await shot("confirm-failed");
+      finish();
+      throw e;
+    }
+
+    // --- EDIT (best-effort) -------------------------------------------------
+    // Click the row's edit affordance (scaffold uses an EditOutlined icon),
+    // tweak the first text field, save, and re-confirm. Recorded but not fatal:
+    // a non-standard edit form in some fork shouldn't red the whole journey.
+    const editedValue = `${searchValue}-edited`;
+    try {
+      const editBtn = rowWith(page, searchValue).locator(".anticon-edit").first();
+      await editBtn.click();
+      await page.waitForURL(new RegExp(`${entity.listPath}/[^/]+/?$`), {
+        timeout: 10_000,
+      });
+      const firstText = page
+        .locator('form input:visible:not([type="password"])')
+        .first();
+      await firstText.fill(editedValue);
+      await shot("edit-filled");
+      await submitForm(page, new RegExp(`${entity.listPath}/?($|\\?)`));
+
+      await searchList(page, editedValue);
+      await expect(
+        rowWith(page, editedValue),
+        `edited ${entity.name} should show the new value`,
+      ).toBeVisible({ timeout: 10_000 });
+      searchValue = editedValue;
+      await shot("edit-confirmed");
+      phases.push({ phase: "edit", status: "passed" });
+    } catch (e) {
+      phases.push({
+        phase: "edit",
+        status: "skipped",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+      await shot("edit-skipped");
+    }
+
+    // --- DELETE (soft) ------------------------------------------------------
+    try {
+      await page.goto(entity.listPath, { waitUntil: "networkidle" });
+      await searchList(page, searchValue);
+      const row = rowWith(page, searchValue);
+      await row.locator(".anticon-delete").first().click();
+      // Scaffold delete is an antd Popconfirm — confirm via its primary button.
+      const okBtn = page
+        .locator(".ant-popconfirm button.ant-btn-primary")
+        .first();
+      await okBtn.click();
+      // Soft-deleted -> drops out of the (default, non-deleted) list.
+      await expect(
+        rowWith(page, searchValue),
+        `soft-deleted ${entity.name} should disappear from the list`,
+      ).toHaveCount(0, { timeout: 10_000 });
+      await shot("delete-confirmed");
+      phases.push({ phase: "delete", status: "passed" });
+    } catch (e) {
+      phases.push({
+        phase: "delete",
+        status: "failed",
+        detail: e instanceof Error ? e.message : String(e),
+      });
+      await shot("delete-failed");
+      finish();
+      throw e;
+    }
+
+    finish();
+
+    // Uncaught runtime errors anywhere in the create→…→delete loop are real
+    // defects (the forms are exercised here, not in the main-section sweep).
+    // Console errors are recorded as notes but not gated (often library warnings
+    // or handled i18n fallbacks) — they show in the P3 report for triage.
+    expect(
+      [...pageErrors],
+      `${entity.name} journey threw uncaught runtime error(s)`,
+    ).toHaveLength(0);
   });
-  page.on("pageerror", (err) => {
-    if (pageErrors.size < 25) pageErrors.add(err.message);
-  });
-  // Revoke uses window.confirm — auto-accept so the journey is non-interactive.
-  page.on("dialog", (d) => d.accept().catch(() => {}));
+}
 
-  const finish = () =>
-    recordJourney({
-      entity: "invitations",
-      listPath: INVITES_PATH,
-      marker,
-      phases,
-      consoleErrors: [...consoleErrors],
-      pageErrors: [...pageErrors],
-    });
-
-  const shot = async (label: string) => {
-    const png = await page.screenshot({ fullPage: true });
-    await testInfo.attach(`invitations-${label}.png`, { body: png, contentType: "image/png" });
-  };
-
-  await page.goto(INVITES_PATH, { waitUntil: "networkidle" });
-  await expect(page, "invites is admin-only; admin must reach it").not.toHaveURL(/\/login|\/app\/?$/);
-
-  // --- SEND (single) --------------------------------------------------------
-  try {
-    await page.getByRole("button", { name: "Send invitations" }).click();
-    const emailField = page.locator("#inv-email");
-    await emailField.waitFor({ state: "visible", timeout: 10_000 });
-
-    // No active role profile -> sending is impossible by design; skip honestly
-    // rather than fail (a fork with no approved profiles is a legitimate state).
-    const noRoles = await page.getByText("No active role profiles").count();
-    test.skip(noRoles > 0, "no active role profiles seeded; cannot send an invite");
-
-    await emailField.fill(email);
-    await shot("send-filled");
-    await page.getByRole("button", { name: "Send invitation" }).click();
-
-    // Success resets the email field to "" (setEmail("")). That's the reliable,
-    // i18n-independent signal that the POST /api/invitations succeeded.
-    await expect(emailField, "email field clears on a successful send").toHaveValue("", {
-      timeout: 15_000,
-    });
-    phases.push({ phase: "send", status: "passed" });
-  } catch (e) {
-    phases.push({ phase: "send", status: "failed", detail: e instanceof Error ? e.message : String(e) });
-    await shot("send-failed");
-    finish();
-    throw e;
+// Loud guard: record (don't fail) when there are simply no CRUD entities — a
+// read-only fork is legitimate. But make the absence visible in the report.
+test("CRUD discovery is recorded", () => {
+  if (ENTITIES.length === 0) {
+    console.warn(
+      "crud.full — no CRUD entities discovered (no section has both /new and " +
+        "/[id]). The P3 journey section will note that there was nothing to test.",
+    );
   }
-
-  // --- CONFIRM IN LIST ------------------------------------------------------
-  try {
-    // Close the Sheet so it doesn't overlay the table, then reload the list.
-    await page.keyboard.press("Escape").catch(() => {});
-    await page.goto(INVITES_PATH, { waitUntil: "networkidle" });
-    const row = rowWith(page, email);
-    await expect(row, "sent invite should appear in the list").toBeVisible({ timeout: 10_000 });
-    // A fresh PENDING invite renders the localized status label "Sent" (not the raw
-    // enum) and exposes a Revoke action (canRevoke is true until COMPLETED/REVOKED).
-    // Assert the Revoke affordance rather than brittle status wording.
-    await expect(
-      row.getByRole("button", { name: "Revoke" }),
-      "a fresh invite should be revocable",
-    ).toBeVisible({ timeout: 10_000 });
-    await shot("confirm-list");
-    phases.push({ phase: "confirm", status: "passed" });
-  } catch (e) {
-    phases.push({ phase: "confirm", status: "failed", detail: e instanceof Error ? e.message : String(e) });
-    await shot("confirm-failed");
-    finish();
-    throw e;
-  }
-
-  // --- REVOKE ---------------------------------------------------------------
-  try {
-    const row = rowWith(page, email);
-    await row.getByRole("button", { name: "Revoke" }).click();
-    // The dialog handler accepts; the row refreshes to REVOKED and the Revoke
-    // button disappears (canRevoke is false once REVOKED).
-    await expect(row, "revoked invite should flip to REVOKED").toContainText(/REVOKED/i, {
-      timeout: 10_000,
-    });
-    await shot("revoke-confirmed");
-    phases.push({ phase: "revoke", status: "passed" });
-  } catch (e) {
-    phases.push({ phase: "revoke", status: "failed", detail: e instanceof Error ? e.message : String(e) });
-    await shot("revoke-failed");
-    finish();
-    throw e;
-  }
-
-  finish();
-
-  // Uncaught runtime errors anywhere in the loop are real defects — the send
-  // panel + per-row actions are exercised here, not in the main-section sweep.
-  expect([...pageErrors], "invitation journey threw uncaught runtime error(s)").toHaveLength(0);
+  expect(Array.isArray(ENTITIES)).toBe(true);
 });

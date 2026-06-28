@@ -2,76 +2,64 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { brandTokens } from "../../components/layout/antd-theme";
 import { brand } from "../../brand.config";
 
-// The Rihal design system is CSS-first (Tailwind v4): the locked brand tokens
-// (UI-SPEC Part A) live in app/globals.css and everything derives from them.
-// These assertions keep the token source honest -- the same lockstep discipline
-// as SCRUB_FIELDS + its membership test.
+// app/tokens.css (plain-CSS land) and components/layout/antd-theme.ts (AntD
+// land) describe the same ruler. These assertions keep them in lockstep --
+// the same pattern as SCRUB_FIELDS + its membership test.
 
 const root = join(import.meta.dirname, "..", "..");
+const tokensCss = readFileSync(join(root, "app", "tokens.css"), "utf8");
 const globalsCss = readFileSync(join(root, "app", "globals.css"), "utf8");
 const localeLayout = readFileSync(
   join(root, "app", "[locale]", "layout.tsx"),
   "utf8",
 );
 
-// UI-SPEC A.2 — the locked brand palette. Every one must be declared.
-const BRAND_TOKENS = [
-  "--rihal-ink",
-  "--rihal-deep",
-  "--rihal-azure",
-  "--rihal-mist",
-  "--rihal-paper",
-  "--rihal-sand",
-  "--signal-pass",
-  "--signal-partial",
-  "--signal-below",
-  "--rihal-line",
-];
+function cssVar(name: string): string {
+  const m = tokensCss.match(new RegExp(`${name}:\\s*([^;]+);`));
+  assert.ok(m, `tokens.css should define ${name}`);
+  return m[1].trim();
+}
 
-test("globals.css declares every locked brand token (UI-SPEC A.2)", () => {
-  for (const token of BRAND_TOKENS) {
-    assert.match(
-      globalsCss,
-      new RegExp(`${token}:\\s*#?[\\w(),.\\s-]+;`),
-      `globals.css must declare ${token}`,
-    );
+test("tokens.css --radius-base matches AntD borderRadius", () => {
+  assert.equal(cssVar("--radius-base"), `${brandTokens.borderRadius}px`);
+});
+
+test("tokens.css --font-size-base matches AntD fontSize", () => {
+  assert.equal(cssVar("--font-size-base"), `${brandTokens.fontSize}px`);
+});
+
+// next/font requires a LITERAL `variable` value, so app/[locale]/layout.tsx
+// can't reference brand.font.cssVar directly — the two must be kept in lockstep
+// by hand. This asserts the literal in layout matches the config, so the AntD
+// fontFamily token (which DOES derive from brand.font.cssVar) actually resolves
+// the loaded font instead of falling through to the system fallback silently.
+test("next/font variable in layout matches brand.font.cssVar", () => {
+  assert.match(
+    localeLayout,
+    new RegExp(`variable:\\s*"${brand.font.cssVar}"`),
+    `app/[locale]/layout.tsx must load the font into "${brand.font.cssVar}"`,
+  );
+});
+
+test("every --space-* step sits on the 4px scale", () => {
+  const steps = [...tokensCss.matchAll(/--space-\d+:\s*(\d+)px;/g)];
+  assert.ok(steps.length >= 8, "spacing scale should have at least 8 steps");
+  for (const [decl, px] of steps) {
+    assert.equal(Number(px) % 4, 0, `${decl} is off the 4px scale`);
   }
 });
 
-test("globals.css maps brand tokens into the Tailwind @theme (so utilities exist)", () => {
-  assert.match(globalsCss, /@theme inline\s*\{/);
-  for (const token of ["rihal-azure", "signal-pass", "signal-below"]) {
-    assert.match(
-      globalsCss,
-      new RegExp(`--color-${token}:\\s*var\\(--${token}\\);`),
-      `@theme must expose --color-${token}`,
-    );
+test("every --density-* semantic resolves to a --space-* step", () => {
+  const semantics = [...tokensCss.matchAll(/--density-[\w-]+:\s*([^;]+);/g)];
+  assert.ok(semantics.length >= 4, "expected the four density semantics");
+  for (const [decl, value] of semantics) {
+    assert.match(value.trim(), /^var\(--space-\d+\)$/, `${decl} must point at the spacing scale`);
   }
 });
 
-test("globals.css defines the radius scale root (UI-SPEC A.4)", () => {
-  assert.match(globalsCss, /--radius:\s*[\d.]+rem;/);
-});
-
-test("globals.css imports Tailwind v4", () => {
-  assert.match(globalsCss, /@import\s+"tailwindcss";/);
-});
-
-// A.3 — the three faces (Inter UI/data, Sora display, IBM Plex Sans Arabic) must
-// be loaded by next/font in the locale layout into the vars @theme reads.
-test("locale layout loads the three brand font variables (UI-SPEC A.3)", () => {
-  for (const cssVar of ["--font-inter", "--font-sora", "--font-plex-arabic"]) {
-    assert.match(
-      localeLayout,
-      new RegExp(`variable:\\s*"${cssVar}"`),
-      `layout must load a font into "${cssVar}"`,
-    );
-  }
-});
-
-test("brand.config primary/accent are the Rihal brand hexes", () => {
-  assert.equal(brand.colors.primary.toLowerCase(), "#123047");
-  assert.equal(brand.colors.accent.toLowerCase(), "#2e7da6");
+test("globals.css imports tokens.css so the scale is actually loaded", () => {
+  assert.match(globalsCss, /@import\s+"\.\/tokens\.css";/);
 });

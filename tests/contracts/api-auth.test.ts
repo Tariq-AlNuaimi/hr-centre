@@ -321,7 +321,7 @@ test("withAdminAuth returns 401 when there is no session", { skip: !canMock }, a
 });
 
 test("withAuth passes the session through to the handler", { skip: !canMock }, async () => {
-  current = { user: { id: "u1", role: "HIRING_MANAGER" } };
+  current = { user: { id: "u1", role: "VIEWER" } };
   let seen: unknown;
   const handler = helpers.withAuth(async (_req, c) => {
     seen = c.session;
@@ -333,13 +333,13 @@ test("withAuth passes the session through to the handler", { skip: !canMock }, a
 });
 
 test("withAdminAuth returns 403 for a non-admin session", { skip: !canMock }, async () => {
-  current = { user: { id: "u2", role: "HIRING_MANAGER" } };
+  current = { user: { id: "u2", role: "VIEWER" } };
   const res = await helpers.withAdminAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
   assert.equal(res.status, 403);
 });
 
-test("withAdminAuth passes through for an HR_ADMIN session", { skip: !canMock }, async () => {
-  current = { user: { id: "u3", role: "HR_ADMIN" } };
+test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, async () => {
+  current = { user: { id: "u3", role: "ADMIN" } };
   let called = false;
   const handler = helpers.withAdminAuth(async () => {
     called = true;
@@ -350,19 +350,16 @@ test("withAdminAuth passes through for an HR_ADMIN session", { skip: !canMock },
   assert.equal(called, true);
 });
 
-test("withManagerAuth passes through for both staff roles", { skip: !canMock }, async () => {
-  for (const role of ["HIRING_MANAGER", "HR_ADMIN"]) {
-    current = { user: { id: "u5", role } };
-    const res = await helpers.withManagerAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
-    assert.equal(res.status, 200, `${role} should pass withManagerAuth`);
-  }
+test("withEditorAuth returns 403 for a VIEWER session", { skip: !canMock }, async () => {
+  current = { user: { id: "u4", role: "VIEWER" } };
+  const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+  assert.equal(res.status, 403);
 });
 
-test("withManagerAuth returns 403 for an unrecognized/future role", { skip: !canMock }, async () => {
-  // The wrapper enforces an explicit allow-list; a role added to the enum later
-  // (e.g. CANDIDATE) must NOT pass unless deliberately added. This locks the
-  // rejection branch (senior-review MED, 2026-06-27).
-  current = { user: { id: "u7", role: "CANDIDATE" } };
-  const res = await helpers.withManagerAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
-  assert.equal(res.status, 403);
+test("withEditorAuth passes through for EDITOR and ADMIN sessions", { skip: !canMock }, async () => {
+  for (const role of ["EDITOR", "ADMIN"]) {
+    current = { user: { id: "u5", role } };
+    const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+    assert.equal(res.status, 200, `${role} should pass withEditorAuth`);
+  }
 });

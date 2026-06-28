@@ -55,11 +55,7 @@ export const rtlLocale = configuredLocales.find((l) => RTL_LOCALES.has(l));
 /** True when the fork ships an RTL locale → RTL assertions are meaningful. */
 export const rtlEnabled = rtlLocale !== undefined;
 
-// This fork nests the manager/admin dashboard under a literal `/<locale>/app`
-// segment (not the bare template's URL-invisible `(dashboard)` route group), so the
-// glob points at `app/[locale]/app` and discovered URLs carry the `/app` prefix.
-const DASHBOARD_GLOB = path.join("app", "[locale]", "app");
-const DASHBOARD_URL_PREFIX = "app";
+const DASHBOARD_GLOB = path.join("app", "[locale]", "(dashboard)");
 
 function isDynamicSegment(seg: string): boolean {
   return seg.startsWith("[");
@@ -124,9 +120,7 @@ export function discoverAllScreens(locale = "en", root = process.cwd()): Screen[
     if (hasPage && !isRedirectStub && !segments.some(isSkippedSegment)) {
       const name = segments.length === 0 ? "dashboard" : segments.join("/");
       const urlPath =
-        segments.length === 0
-          ? `/${locale}/${DASHBOARD_URL_PREFIX}`
-          : `/${locale}/${DASHBOARD_URL_PREFIX}/${segments.join("/")}`;
+        segments.length === 0 ? `/${locale}` : `/${locale}/${segments.join("/")}`;
       screens.push({ name, path: urlPath, depth: segments.length });
     }
 
@@ -202,36 +196,20 @@ export function discoverRoles(root = process.cwd()): string[] {
 export type SectionAccess = { name: string; path: string; adminOnly: boolean };
 
 /**
- * The Server Component file backing a discovered MAIN section. Sections live
- * under `app/[locale]/app`: the dashboard root is `.../app/page.tsx`, and every
- * other section `<name>` is `.../app/<name>/page.tsx` (a section name can carry
- * nested segments, so we split on "/").
- */
-function pageFileForSection(root: string, section: Screen): string {
-  const base = path.join(root, DASHBOARD_GLOB);
-  if (section.name === "dashboard") return path.join(base, "page.tsx");
-  return path.join(base, ...section.name.split("/"), "page.tsx");
-}
-
-/**
  * Classify each MAIN section (from {@link discoverMainSections}) as admin-only or
- * all-roles by reading the section's OWN SERVER-SIDE gate — the `requireAdmin(...)`
- * / `requireSession(...)` call in its `page.tsx` (lib/authz). This is the TRUE,
- * enforced policy, not nav visibility:
- *   - a page that calls `requireAdmin(` redirects non-admins  -> adminOnly: true
- *   - a page that calls only `requireSession(` is manager-readable -> all-roles
+ * all-roles by reading the app's OWN nav gating in
+ * `components/layout/AppSidebar.tsx`:
+ *   - Nav items rendered INSIDE the `isAdmin ? [ ... ] : []` block are admin-only.
+ *   - The recycling-bin item is admin-gated via a trailing `.filter(... isAdmin)`,
+ *     so it counts as admin-only too.
+ *   - Everything else is all-roles.
  *
- * Deriving the matrix's *expected reach* from the server gate (rather than the
- * sidebar's `adminOnly` nav flag) is deliberate: this fork intentionally HIDES
- * some manager-readable sections from the manager nav (e.g. role profiles are
- * nav-hidden from managers via nav.ts `adminOnly` yet served by `requireSession`
- * so a manager can still view them by URL). Expecting "blocked" from the nav flag
- * there would be a FALSE failure — the server, not the nav, is the access truth
- * the permission matrix verifies. A nav-vs-server consistency check is a separate
- * concern (see uiux.full.uat.ts), not the access invariant tested here.
+ * We map a nav item to a section by matching the section's last URL segment
+ * against the item's `router.push("/${locale}/<segment>")` target (or the bare
+ * `router.push("/${locale}")` for the home/dashboard root). A section with no
+ * matching nav entry defaults to all-roles (it isn't admin-gated in the sidebar).
  *
- * A section whose page has neither call (or is unreadable) defaults to all-roles
- * — it is not server-gated to admins, so every authenticated role may reach it.
+ * This derives the *expected* access from the app's gating, never a hardcoded list.
  *
  * @param locale  URL locale prefix (default "en").
  * @param root    Repo root to scan from (default process.cwd()); injectable for tests.
@@ -241,15 +219,42 @@ export function discoverSectionAccess(
   root = process.cwd(),
 ): SectionAccess[] {
   const sections = discoverMainSections(locale, root);
+  const sidebarPath = path.join(
+    root,
+    "components",
+    "layout",
+    "AppSidebar.tsx",
+  );
+  const src = fs.existsSync(sidebarPath)
+    ? fs.readFileSync(sidebarPath, "utf8")
+    : "";
+
+  // 1) Collect the route segments that live INSIDE the `isAdmin ? [ ... ] : []`
+  //    block — those nav items are admin-only.
+  const adminSegments = new Set<string>();
+  const adminBlock = src.match(/isAdmin\s*\?\s*\[([\s\S]*?)\]\s*:\s*\[\]/);
+  if (adminBlock) {
+    for (const m of adminBlock[1].matchAll(
+      /router\.push\(`\/\$\{locale\}\/([A-Za-z0-9_-]+)`\)/g,
+    )) {
+      adminSegments.add(m[1]);
+    }
+  }
+
+  // 2) Any nav item whose key/route is removed unless isAdmin via a trailing
+  //    `.filter(... isAdmin)` is also admin-gated. The template does this for
+  //    recycling-bin: `.filter((item) => item.key !== "recycling-bin" || isAdmin)`.
+  for (const m of src.matchAll(
+    /item\.key\s*!==\s*"([A-Za-z0-9_-]+)"\s*\|\|\s*isAdmin/g,
+  )) {
+    adminSegments.add(m[1]);
+  }
 
   return sections.map((s) => {
-    let src = "";
-    try {
-      src = fs.readFileSync(pageFileForSection(root, s), "utf8");
-    } catch {
-      // Unreadable page -> treat as not admin-gated (all-roles).
-    }
-    const adminOnly = /\brequireAdmin\s*\(/.test(src);
+    // The section's matching nav segment is its last URL path segment; the
+    // dashboard root (depth 0) has no segment and is never admin-gated.
+    const segment = s.name === "dashboard" ? "" : s.name.split("/").pop() ?? "";
+    const adminOnly = segment !== "" && adminSegments.has(segment);
     return { name: s.name, path: s.path, adminOnly };
   });
 }
@@ -299,8 +304,8 @@ export function discoverCrudEntities(
     if (hasCreate && hasRecordPage) {
       entities.push({
         name: seg,
-        listPath: `/${locale}/${DASHBOARD_URL_PREFIX}/${seg}`,
-        createPath: `/${locale}/${DASHBOARD_URL_PREFIX}/${seg}/new`,
+        listPath: `/${locale}/${seg}`,
+        createPath: `/${locale}/${seg}/new`,
       });
     }
   }

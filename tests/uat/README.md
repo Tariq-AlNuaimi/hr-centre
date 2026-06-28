@@ -44,26 +44,6 @@ SEED_ADMIN_EMAIL="admin@example.com" SEED_ADMIN_PASSWORD="..." \
 npm run uat:report    # open the HTML report with screenshots
 ```
 
-### Full mode needs DATABASE_URL on a local carbon-copy
-`npm run uat:full` runs the permission matrix, which first provisions one fixture
-user **per non-admin role** (EDITOR/VIEWER/…) by upserting through Prisma *inside
-the Playwright process* (`roles.setup.ts`). That process reads `DATABASE_URL` from
-the environment, so against a **local carbon-copy** you must export the local DB
-URL to the command — otherwise the upsert targets the remote/unreachable DB, fails
-with "DB upsert failed", and those roles are **skipped** from the matrix (the seed
-only creates the admin):
-
-```sh
-DATABASE_URL="postgresql://postgres@localhost:5433/appdb?schema=public" \
-UAT_BASE_URL="http://localhost:3000" \
-SEED_ADMIN_EMAIL="admin@example.com" SEED_ADMIN_PASSWORD="..." \
-  npm run uat:full
-```
-
-Against a deployed `UAT_BASE_URL` the role users are expected to already exist
-(seeded / created by the operator); `roles.setup.ts` skips the DB upsert there and
-authenticates each role via the UI with `UAT_<ROLE>_EMAIL` / `UAT_<ROLE>_PASSWORD`.
-
 ## Credentials
 Come from env only — never hardcoded:
 `UAT_EMAIL`/`UAT_PASSWORD` (preferred, a dedicated UAT account) or

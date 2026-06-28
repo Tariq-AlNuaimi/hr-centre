@@ -1,87 +1,135 @@
 "use client";
 
-import * as React from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Card, Form, Input, Button, Typography, Divider, App } from "antd";
+import { LockOutlined, MailOutlined, WindowsOutlined } from "@ant-design/icons";
 import { signIn } from "next-auth/react";
-import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useState } from "react";
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
-type FormValues = z.infer<typeof schema>;
+const { Title } = Typography;
 
-export function LoginForm() {
+// Server-derived flags (lib/auth: ssoConfigured / ssoEnforced). Passed in so the
+// secret-bearing env stays server-side; this client component only sees booleans.
+export function LoginForm({
+  ssoConfigured,
+  ssoEnforced,
+}: {
+  ssoConfigured: boolean;
+  ssoEnforced: boolean;
+}) {
   const t = useTranslations("auth");
-  const locale = useLocale();
   const router = useRouter();
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const locale = useLocale();
+  const { message } = App.useApp();
+  const [loading, setLoading] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { email: "", password: "" },
-  });
+  // When SSO is enforced, credentials are removed from the provider list
+  // (lib/auth), so the password form is hidden and SSO is the only way in.
+  const showCredentials = !(ssoConfigured && ssoEnforced);
 
-  async function onSubmit(values: FormValues) {
-    setFormError(null);
-    const res = await signIn("credentials", {
-      redirect: false,
-      email: values.email,
-      password: values.password,
-    });
-    if (res?.error) {
-      setFormError(t("invalidCredentials"));
-      return;
+  async function onFinish(values: { email: string; password: string }) {
+    setLoading(true);
+    try {
+      const result = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        message.error(t("invalidCredentials"));
+      } else {
+        router.push(`/${locale}`);
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
     }
-    router.replace("/app", { locale });
-    router.refresh();
+  }
+
+  function onSso() {
+    setSsoLoading(true);
+    // Full redirect to the IdP; on return Auth.js lands the session and routes home.
+    signIn("microsoft-entra-id", { callbackUrl: `/${locale}` });
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4" noValidate>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="email">{t("email")}</Label>
-        <Input
-          id="email"
-          type="email"
-          autoComplete="email"
-          dir="ltr"
-          aria-invalid={!!errors.email}
-          {...register("email")}
-        />
-      </div>
+    <Card style={{ width: 400, maxWidth: "100%" }}>
+      <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
+        {t("login")}
+      </Title>
 
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="password">{t("password")}</Label>
-        <Input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          dir="ltr"
-          aria-invalid={!!errors.password}
-          {...register("password")}
-        />
-      </div>
-
-      {formError && (
-        <p role="alert" className="text-sm text-[var(--signal-below)]">
-          {formError}
-        </p>
+      {showCredentials && (
+        <Form layout="vertical" onFinish={onFinish}>
+          <Form.Item
+            name="email"
+            label={t("email")}
+            rules={[{ required: true, type: "email" }]}
+          >
+            <Input
+              prefix={<MailOutlined />}
+              size="large"
+              type="email"
+              autoComplete="email"
+            />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label={t("password")}
+            rules={[{ required: true, min: 8 }]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              size="large"
+              autoComplete="current-password"
+            />
+          </Form.Item>
+          <div style={{ textAlign: "right", marginBottom: 16 }}>
+            <Link href={`/${locale}/forgot-password`}>
+              {t("forgotPasswordLink")}
+            </Link>
+          </div>
+          <Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+              block
+              size="large"
+            >
+              {t("signIn")}
+            </Button>
+          </Form.Item>
+        </Form>
       )}
 
-      <Button type="submit" className="mt-1 w-full" disabled={isSubmitting}>
-        {isSubmitting ? t("signingIn") : t("signIn")}
-      </Button>
-    </form>
+      {ssoConfigured && (
+        <>
+          {showCredentials && <Divider plain>{t("or")}</Divider>}
+          <Button
+            icon={<WindowsOutlined />}
+            onClick={onSso}
+            loading={ssoLoading}
+            block
+            size="large"
+            // Primary when it's the only option, default when it sits beside the form.
+            type={showCredentials ? "default" : "primary"}
+          >
+            {t("signInWithMicrosoft")}
+          </Button>
+          {!showCredentials && (
+            <Typography.Paragraph
+              type="secondary"
+              style={{ textAlign: "center", marginTop: 16, marginBottom: 0 }}
+            >
+              {t("ssoOnlyHint")}
+            </Typography.Paragraph>
+          )}
+        </>
+      )}
+    </Card>
   );
 }

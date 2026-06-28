@@ -1,278 +1,113 @@
-/* ============================================================================
- * Rihal Aptitude Platform — design system (UI-SPEC Part A).
- *
- * Tailwind v4, CSS-first. The locked brand tokens (A.2 color, A.3 type, A.4
- * layout, A.5 motion) live here and EVERYTHING derives from them. shadcn/ui
- * semantic tokens (--background, --primary, …) are mapped onto Rihal values so
- * every adopted primitive is automatically on-brand.
- *
- * Design thesis: "calm precision" — an instrument you trust. Gold (--rihal-sand)
- * is rationed to the evidence-trail signature only; never a generic accent.
- * ========================================================================== */
+@import "./tokens.css";
 
-@import "tailwindcss";
-@import "tw-animate-css";
-
-/* Dark mode is driven by data-theme on <html> (set pre-hydration in the locale
-   layout), not the `dark` class — so wire the variant to that attribute. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
-:root {
-  /* === A.2 Brand palette (locked) === */
-  --rihal-ink: #0b1b2b;     /* near-navy; primary text, deep surfaces        */
-  --rihal-deep: #123047;    /* brand deep blue; headers, primary actions     */
-  --rihal-azure: #2e7da6;   /* accent; links, active states, the journey line*/
-  --rihal-mist: #eaf1f5;    /* tinted surface; cards, section bands          */
-  --rihal-paper: #fbfcfd;   /* app background (warmer than pure white)       */
-  --rihal-sand: #c9a45b;    /* restrained gold; evidence-trail signature only*/
-  --signal-pass: #2e8b6f;   /* band met (fills/bars/rings)                    */
-  --signal-partial: #c58a2e;/* band partial                                  */
-  --signal-below: #b4533e;  /* band below — muted clay, never alarm-red      */
-  /* AA text shades for small signal text on the 12% signal tint (UI-SPEC A.7
-     floor wins over the raw A.2 hue): the base hues are kept for fills/bars,
-     these -ink tokens are used wherever a signal color is TEXT. ≥4.5:1. */
-  --signal-pass-ink: #1a6750;    /* 5.9:1 on #e6f1ee                          */
-  --signal-partial-ink: #7a5414; /* 6.0:1 on #f8f1e6                          */
-  --signal-below-ink: #8f3a28;   /* 6.4:1 on #f6eae8                          */
-  --rihal-line: #d8e0e6;    /* hairlines, borders                            */
-
-  /* === A.4 Radius (10 cards / 8 controls) === */
-  --radius: 0.625rem;       /* 10px                                          */
-
-  /* === shadcn semantic tokens → Rihal (light) === */
-  --background: var(--rihal-paper);
-  --foreground: var(--rihal-ink);
-  --card: #ffffff;
-  --card-foreground: var(--rihal-ink);
-  --popover: #ffffff;
-  --popover-foreground: var(--rihal-ink);
-  --primary: var(--rihal-deep);
-  --primary-foreground: var(--rihal-paper);
-  --secondary: var(--rihal-mist);
-  --secondary-foreground: var(--rihal-deep);
-  --muted: var(--rihal-mist);
-  --muted-foreground: #44586b;          /* AA (~6:1) on paper/mist           */
-  --accent: var(--rihal-azure);
-  --accent-foreground: #ffffff;
-  /* Azure tuned for use as TEXT (links, wordmark): the raw --rihal-azure is only
-     ~4.0:1 on the mist tint / paper, below the AA floor — this darkened azure is
-     ≥4.5:1 on paper, white, and the mist/secondary tint (UI-SPEC A.7). */
-  --accent-ink: #1b6485;
-  --destructive: var(--signal-below);
-  --destructive-foreground: #ffffff;
-  /* Destructive as TEXT (inline error / retry copy): ≥4.5:1 on paper, card, and
-     the mist tint. --destructive itself is tuned as a FILL (white-on-fill). */
-  --destructive-ink: #a8472f;
-  --border: var(--rihal-line);
-  --input: var(--rihal-line);
-  --ring: var(--rihal-azure);           /* A.7 focus ring = azure            */
-
-  /* Sidebar surface (app shell) */
-  --sidebar: #ffffff;
-  --sidebar-foreground: var(--rihal-ink);
-  --sidebar-primary: var(--rihal-deep);
-  --sidebar-primary-foreground: var(--rihal-paper);
-  --sidebar-accent: var(--rihal-mist);
-  --sidebar-accent-foreground: var(--rihal-deep);
-  --sidebar-border: var(--rihal-line);
-  --sidebar-ring: var(--rihal-azure);
-
-  /* === A.4 Elevation — two levels only (resting card, raised modal) === */
-  --shadow-card: 0 1px 2px rgba(11, 27, 43, 0.04), 0 1px 3px rgba(11, 27, 43, 0.06);
-  --shadow-raised: 0 8px 24px rgba(11, 27, 43, 0.1), 0 2px 6px rgba(11, 27, 43, 0.06);
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-[data-theme="dark"] {
-  --background: #07131e;
-  --foreground: #eaf1f5;
-  --card: #0b1b2b;
-  --card-foreground: #eaf1f5;
-  --popover: #0b1b2b;
-  --popover-foreground: #eaf1f5;
-  /* Azure leads in the dark. Lightened from #2e7da6 so the dark button label
-     (--primary-foreground) clears AA on the fill: #07131e on #3a8cb8 = 5.0:1
-     (was 4.1:1, a sub-AA latent bug on every dark primary button). */
-  --primary: #3a8cb8;
-  --primary-foreground: #07131e;
-  --secondary: #123047;
-  --secondary-foreground: #eaf1f5;
-  --muted: #123047;
-  --muted-foreground: #9db4c4;          /* AA on the dark navy               */
-  /* Lighter signal-text shades for the dark-mode tinted badges (≥4.5:1). */
-  --signal-pass-ink: #5cbfa0;
-  --signal-partial-ink: #e0a94e;
-  --signal-below-ink: #e08a73;
-  --accent: #2e7da6;
-  --accent-foreground: #07131e;
-  /* Lighter azure for text on the dark surfaces (≥4.5:1 on bg/card/secondary). */
-  --accent-ink: #5aa9d1;
-  --destructive: #c4604b;
-  --destructive-foreground: #ffffff;
-  --destructive-ink: #e08a73;           /* ≥4.5:1 as text on the dark surfaces */
-  --border: #1d3a4f;
-  --input: #1d3a4f;
-  --ring: #2e7da6;
-  --sidebar: #0b1b2b;
-  --sidebar-foreground: #eaf1f5;
-  --sidebar-primary: #3a8cb8;           /* match --primary: AA on the dark label */
-  --sidebar-primary-foreground: #07131e;
-  --sidebar-accent: #123047;
-  --sidebar-accent-foreground: #eaf1f5;
-  --sidebar-border: #1d3a4f;
-  --sidebar-ring: #2e7da6;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-raised: 0 8px 24px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.4);
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* The brand font (next/font binds --font-sans on <html>; brand.config.ts owns
+     it). Ensures plain CSS / pre-AntD paint use the same family as the AntD
+     fontFamily token, with a graceful system fallback before the webfont loads. */
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  /* Premium type rendering — crisper glyphs on macOS/iOS and Firefox. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* === Map tokens into Tailwind's theme so utilities exist (bg-primary,
-   text-rihal-azure, font-display, rounded-lg, shadow-card, …) === */
-@theme inline {
-  /* Brand palette */
-  --color-rihal-ink: var(--rihal-ink);
-  --color-rihal-deep: var(--rihal-deep);
-  --color-rihal-azure: var(--rihal-azure);
-  --color-rihal-mist: var(--rihal-mist);
-  --color-rihal-paper: var(--rihal-paper);
-  --color-rihal-sand: var(--rihal-sand);
-  --color-rihal-line: var(--rihal-line);
-  --color-signal-pass: var(--signal-pass);
-  --color-signal-partial: var(--signal-partial);
-  --color-signal-below: var(--signal-below);
-  --color-signal-pass-ink: var(--signal-pass-ink);
-  --color-signal-partial-ink: var(--signal-partial-ink);
-  --color-signal-below-ink: var(--signal-below-ink);
-
-  /* shadcn semantic */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent-ink: var(--accent-ink);
-  --color-destructive-ink: var(--destructive-ink);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-
-  /* A.3 Typography — Sora (display), Inter (UI/data), IBM Plex Sans Arabic.
-     The --font-* vars are bound by next/font in app/[locale]/layout.tsx. */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-display: var(--font-sora), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-arabic: var(--font-plex-arabic), "Segoe UI", Tahoma, sans-serif;
-
-  /* A.4 Radius scale (one system) */
-  --radius-sm: calc(var(--radius) - 4px); /* 6px  controls-tight */
-  --radius-md: calc(var(--radius) - 2px); /* 8px  controls       */
-  --radius-lg: var(--radius);             /* 10px cards          */
-  --radius-xl: calc(var(--radius) + 6px); /* 16px large panels   */
-
-  /* A.4 Elevation */
-  --shadow-card: var(--shadow-card);
-  --shadow-raised: var(--shadow-raised);
-
-  /* A.5 Motion */
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+* {
+  box-sizing: border-box;
 }
 
-@layer base {
-  * {
-    border-color: var(--border);
-  }
+/* On-brand text selection (indigo wash, AA-legible in both modes). */
+::selection {
+  background: rgba(79, 70, 229, 0.18);
+}
 
-  html {
-    /* A.3: tabular numerals everywhere numbers align (scores/tables). */
-    font-feature-settings: "tnum" 1, "cv11" 1;
-  }
-
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    min-height: 100vh;
-  }
-
-  /* Arabic UI never falls back to a system font (A.3). */
-  [dir="rtl"] body {
-    font-family: var(--font-arabic);
-  }
-
-  /* A.7: visible azure focus ring, 2px. */
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-
-  /* Display face for headings; tight tracking on large sizes (A.3). */
-  h1, h2, h3, .font-display {
-    font-family: var(--font-display);
-    letter-spacing: -0.01em;
-  }
-
-  /* A.5: honor reduced-motion globally. */
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
-      animation-duration: 0.001ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.001ms !important;
-    }
+/* Header command-search trigger: a search-field-styled button with a ⌘K hint.
+   On narrow screens it collapses to just the icon (label + kbd hide). */
+.header-search-label {
+  font-size: var(--font-size-base);
+}
+.header-search-kbd {
+  font-family: inherit;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
+  color: var(--ant-color-text-tertiary, #8c8c8c);
+}
+@media (max-width: 575px) {
+  .header-search-label,
+  .header-search-kbd {
+    display: none;
   }
 }
 
-/* ---- The "journey line" (A.5): the one orchestrated motion moment ---------
-   A thin azure progress line that advances through the candidate assessment.
-   Static fill width is set inline (style={{ '--journey': '42%' }}); the sheen
-   is the only animation, and it's suppressed under reduced-motion above. */
-@layer components {
-  .journey-line {
-    position: relative;
-    height: 3px;
-    width: 100%;
-    overflow: hidden;
-    border-radius: 999px;
-    background-color: var(--rihal-line);
-  }
-  .journey-line::after {
-    content: "";
-    position: absolute;
-    inset-inline-start: 0;
-    top: 0;
-    height: 100%;
-    width: var(--journey, 0%);
-    background: linear-gradient(90deg, var(--rihal-azure), var(--rihal-sand));
-    border-radius: 999px;
-    transition: width var(--motion-slow, 0.3s) var(--ease-out);
+/* Split-screen auth: hide the brand panel on small screens so the form is the
+   whole view on mobile. */
+@media (max-width: 768px) {
+  .auth-brand-panel {
+    display: none !important;
   }
 }
 
-/* Refined, theme-aware scrollbars. */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
+/* Ant Design layout overrides */
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-content {
+  padding: var(--density-page);
+}
+
+/* A hairline shadow under the sticky header lifts it off the content as the
+   page scrolls — subtle depth, on-token elevation. */
+.ant-layout-header {
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Refined scrollbars (both modes) -------------------------------------
+   Thin, unobtrusive, theme-aware — the kind of detail that reads "considered".
+   Keyed off the `data-theme` attribute ThemeProvider sets on <html>, so they
+   follow the in-app toggle, not just the OS preference. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: #cdd2da;
   border: 2px solid transparent;
   background-clip: padding-box;
   border-radius: 8px;
 }
-[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2a3b4a; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover {
+  background: #b4bac4;
+  background-clip: padding-box;
+}
+
+[data-theme="dark"] {
+  /* Dark elevation vars — counterpart to the light values in tokens.css. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.44);
+  --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.36);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #3a4150;
+  background-clip: padding-box;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #4a5365;
+  background-clip: padding-box;
+}
