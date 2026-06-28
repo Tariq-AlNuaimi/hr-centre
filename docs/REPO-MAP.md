@@ -17,10 +17,13 @@
 - app/[locale]/methodology/page.tsx
 - app/[locale]/page.tsx
 - app/a/[token]/page.tsx
+- app/api/audit-log/export/route.ts  [GET]
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
+- app/api/calibration/[roleProfileId]/generate/route.ts  [POST]
+- app/api/calibration/outcomes/route.ts  [POST]
 - app/api/health/route.ts
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/invitations/[id]/resend/route.ts  [POST]
@@ -42,24 +45,30 @@
 - app/api/run/[token]/opened/route.ts  [POST]
 - app/api/run/[token]/response/route.ts  [POST]
 - app/api/run/[token]/submit/route.ts  [POST]
+- app/api/settings/ai/route.ts  [PUT]
+- app/api/settings/erase-candidate/route.ts  [POST]
+- app/api/settings/org/route.ts  [PUT]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, roleProfiles, invitations, assessments, results, auditLogs
+- Organization: id, name, slug, defaultLocale, deletedAt, deletedBy, createdAt, updatedAt, users, roleFamilies, roleProfiles, invitations, assessments, results, auditLogs, outcomeRecords, profileCalibrations, appSettings
 - User: id, orgId, org, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - RoleFamily: id, orgId, org, key, name, description, deletedAt, deletedBy, createdAt, updatedAt, roleProfiles
-- RoleProfile: id, orgId, org, roleFamilyId, roleFamily, lineageId, version, status, title, jdSourceText, isAiDrafted, createdById, approvedById, approvedAt, deletedAt, deletedBy, createdAt, updatedAt, competencies, sjtItems, invitations, results
+- RoleProfile: id, orgId, org, roleFamilyId, roleFamily, lineageId, version, status, title, jdSourceText, isAiDrafted, createdById, approvedById, approvedAt, deletedAt, deletedBy, createdAt, updatedAt, competencies, sjtItems, invitations, results, calibrations
 - Competency: id, roleProfileId, roleProfile, name, onetRef, importance, weight, direction, targetPercentile, sourceCitation, order, facets, createdAt, updatedAt
 - CompetencyFacet: id, competencyId, competency, facet
 - SjtItem: id, roleProfileId, roleProfile, scenario_en, scenario_ar
 - AssessmentItemBank: id, itemNumber, itemCode, domain, facet, facetNumber, keyed, text_en, text_ar, createdAt, updatedAt
 - Result: id, orgId, org, assessmentId, assessment, roleProfileId, roleProfile, roleProfileVersion
+- OutcomeRecord: id, orgId, org, resultId, result, hired, probationPassed, rating6m, rating12m, retained, recordedById, recordedAt, deletedAt, deletedBy, createdAt, updatedAt
+- ProfileCalibration: id, orgId, org, roleProfileId, roleProfile, version, metrics, sampleSize, generatedById, generatedAt
+- AppSetting: id, orgId, org, key, value, valueEncrypted, updatedById, createdAt, updatedAt
 - AuditLog: id, orgId, org, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 - Invitation: id, orgId, org, roleProfileId, roleProfile, candidateEmail, candidateName, tokenHash, status, expiresAt, locale, sentById, batchId, deletedAt, deletedBy, createdAt, updatedAt, assessment
 - Assessment: id, orgId, org, invitationId, invitation, status, locale, consentAt, startedAt, submittedAt, deletedAt, deletedBy, createdAt, updatedAt, itemResponses, sjtResponses, result
@@ -73,14 +82,16 @@
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
 - lib/authz.ts: requireSession, requireAdmin, isAdmin
+- lib/calibration.ts: MIN_OUTCOMES_FOR_REPORT, MAX_SCATTER_POINTS, SuccessWeights, DEFAULT_SUCCESS_WEIGHTS, OutcomeInput, CalibrationPair, SelectionInput, BandSuggestion, CompetencySignal, FitSummary, SelectionRateRow, CalibrationReport, CalibrationOutcome, successScore, pearson, competencySignal, fitSummary, selectionRates, buildCalibration
 - lib/candidate-i18n.ts: CandidateLocale, CandidateStrings, candidateStrings
 - lib/client-ip.ts: clientIp
+- lib/crypto.ts: encryptSecret, decryptSecret, secretHint
 - lib/email.ts: EmailTransport, selectTransport, isEmailEnabled, SendEmailOptions, SendEmailResult, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
 - lib/ipip-facets.ts: BIG5_DOMAINS, Big5DomainKey, IPIP_FACETS_BY_DOMAIN, IPIP_FACETS, isIpipFacet, domainForFacet
-- lib/llm.ts: LlmError, isLlmConfigured, draftRoleProfile, ResultNarrativeInput, draftResultNarrative
+- lib/llm.ts: LlmError, isLlmConfigured, LlmConfig, draftRoleProfile, ResultNarrativeInput, draftResultNarrative
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: BCRYPT_COST, hashPassword
 - lib/pdf/theme.ts: PDF_COLORS, bandColor
@@ -92,18 +103,26 @@
 - lib/scoring-rollup.ts: BandDirection, CompetencyBand, SjtChoice, RollupCompetency, RollupSjtItem, RollupSjtResponse, FacetScoreRow, DomainScoreRow, CompetencyDriver, CompetencyScoreRow, SjtItemScore, SjtScores, RollupResult, facetContribution, bandFor, scoreSjt, scoreCompetency, rollUp
 - lib/scoring.ts: ScoringError, isScoringConfigured, requestScoring
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
+- lib/services/audit.ts: AuditRow, AuditFilters, listAuditLog, AUDIT_EXPORT_CAP, listAuditLogForExport
+- lib/services/calibration.ts: OutcomeView, RecordOutcomeResult, recordOutcome, OutcomeCaptureRow, listOutcomeCaptureRows, RoleCalibrationStatus, listRoleCalibrationStatus, GenerateCalibrationResult, generateCalibration, StoredCalibration, getLatestCalibration, AdverseImpactView, getAdverseImpact
 - lib/services/candidateRunner.ts: TokenState, ResolvedInvitation, TokenResolution, resolveToken, getInvitationDisplay, BilingualItem, BilingualSjtOption, BilingualSjtItem, getBilingualItems, getBilingualSjtItems, getSavedResponses, recordConsent, saveItemResponse, saveSjtResponse, submitAssessment
+- lib/services/erasure.ts: EraseResult, eraseCandidate
 - lib/services/invitation.ts: effectiveStatus, InvitationListFilters, InvitationRow, listInvitations, listActiveRoleProfiles, SingleResult, createInvitation, BulkResult, createInvitationsBulk, ActionResult, resendInvitation, revokeInvitation, markOpened
 - lib/services/result.ts: ResultScores, ResultView, ComputeOutcome, computeResult, getResultByAssessment, getResultById, NarrativeOutcome, generateNarrative, DecisionOutcomeResult, recordDecision, CandidateRow, CandidateFilters, listCandidates, COMPARE_MAX, CompareOutcome, getCompareData, DashboardSnapshot, getDashboardSnapshot
 - lib/services/roleProfile.ts: RoleProfileNotFoundError, isEditable, roleProfileDetailInclude, RoleProfileDetail, ListFilters, listRoleProfiles, getRoleProfile, createRoleProfile, updateRoleProfile, cloneNewVersion, approveRoleProfile, listVersions, maskScoringKeys
+- lib/services/user.ts: OrgUserRow, listOrgUsers
+- lib/settings.ts: SETTING_KEYS, getAppSetting, getAppSecret, setAppSetting, OrgProfile, getOrgProfile, updateOrgProfile, LlmConfig, ScoringConfig, resolveLlmConfig, resolveScoringConfig, isLlmConfiguredFor, isScoringConfiguredFor, ConfigSource, AiSettingsView, getAiSettingsView, applyAiSettings
 - lib/token.ts: generateInvitationToken, hashInvitationToken
 - lib/utils.ts: cn
+- lib/validations/audit.ts: AUDIT_ACTIONS, AuditActionValue, AUDIT_ENTITY_TYPES
+- lib/validations/calibration.ts: outcomeInputSchema, OutcomeInputBody, BAND_SUGGESTIONS, BandSuggestionValue
 - lib/validations/candidate.ts: IPIP_ITEM_COUNT, LIKERT_MIN, LIKERT_MAX, consentSchema, ConsentInput, responseSchema, ResponseInput, localeSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/invitation.ts: MAX_BATCH, INVITATION_STATUSES, InvitationStatusName, RecipientOutcome, RecipientResult, singleInvitationSchema, SingleInvitationInput, recipientSchema, RecipientInput, bulkInvitationSchema, BulkInvitationInput, ParsedRecipient, RecipientParse, parseRecipients
 - lib/validations/result.ts: DECISION_OUTCOMES, DecisionOutcomeValue, decisionInputSchema, DecisionInput, narrativeResponseSchema, NarrativeResponse
 - lib/validations/roleProfile.ts: bandDirectionSchema, competencyInputSchema, CompetencyInput, CompetencyValue, sjtItemInputSchema, SjtItemInput, SjtItemValue, createRoleProfileSchema, CreateRoleProfileInput, CreateRoleProfile, updateRoleProfileSchema, UpdateRoleProfileInput, UpdateRoleProfile, draftRoleProfileSchema, DraftRoleProfileInput, llmDraftResponseSchema, LlmDraftResponse
 - lib/validations/scoring.ts: NUM_ITEMS, big5Domains, scoreBandSchema, answerSchema, scoreRequestSchema, facetScoreSchema, domainScoreSchema, scoreResponseSchema, ScoreRequestInput, ScoreRequest, ScoreResponse, DomainScore, FacetScore, Big5Domain
+- lib/validations/settings.ts: aiSettingsSchema, AiSettingsInput, orgProfileSchema, OrgProfileInput, eraseCandidateSchema, EraseCandidateInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 
 ## components/
