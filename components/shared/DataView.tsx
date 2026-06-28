@@ -186,12 +186,13 @@ export function DataView<T extends object>({
                 onChange: setSelectedRowKeys,
                 preserveSelectedRowKeys: true,
                 // Per-row checkboxes are bare <input type=checkbox> with no
-                // label — give each an accessible name (axe `label` rule). AntD
-                // forwards aria-* to the input but omits it from the prop type.
-                getCheckboxProps: () =>
-                  ({ "aria-label": t("selectRow") }) as Partial<
-                    Omit<CheckboxProps, "checked" | "defaultChecked">
-                  >,
+                // label — give each a DISTINCT accessible name (axe `label` +
+                // WCAG 4.1.2) by appending the row key. AntD forwards aria-* to
+                // the input but omits it from the prop type.
+                getCheckboxProps: (record: T) =>
+                  ({
+                    "aria-label": `${t("selectRow")}: ${String(record[rowKey])}`,
+                  }) as Partial<Omit<CheckboxProps, "checked" | "defaultChecked">>,
               }
             : undefined
         }

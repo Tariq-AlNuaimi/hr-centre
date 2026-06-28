@@ -8,10 +8,11 @@
 // RSC passes serializable data down to this client component, which renders it.
 // This is the canonical RSC + client-island split (see docs/recipes/perf/1-rsc-list-reads.md).
 
-import { Card, Row, Col, Table, Tag } from "antd";
+import { Card, Row, Col, Table, Tag, theme } from "antd";
 import { UserOutlined, DeleteOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { Chart } from "@/components/shared/Chart";
+import { statusFill } from "@/components/layout/antd-theme";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { SectionCard } from "@/components/shared/SectionCard";
@@ -38,11 +39,14 @@ interface DashboardContentProps {
   data: DashboardData | null;
 }
 
-const actionColor: Record<string, string> = {
-  CREATE: "green",
-  UPDATE: "blue",
-  DELETE: "red",
-  RESTORE: "gold",
+// Action -> mode-invariant solid status fill (not an AntD preset): pastel preset
+// tags miss WCAG AA, so these render as solid AA fills with white text in both
+// modes (same as the audit log).
+const ACTION_FILL: Record<string, string> = {
+  CREATE: statusFill.success,
+  UPDATE: statusFill.info,
+  DELETE: statusFill.error,
+  RESTORE: statusFill.warning,
 };
 
 export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
@@ -50,6 +54,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
   const tCommon = useTranslations("common");
   const tAudit = useTranslations("auditLog");
   const tDash = useTranslations("dashboard");
+  const { token } = theme.useToken();
 
   // Non-admin (or no data): just the welcome card. Admin data is gated server-side.
   if (!isAdmin || !data) {
@@ -122,9 +127,23 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                   title: tAudit("action"),
                   dataIndex: "action",
                   key: "action",
-                  render: (val: string) => (
-                    <Tag color={actionColor[val] ?? "default"}>{val}</Tag>
-                  ),
+                  render: (val: string) => {
+                    const fill = ACTION_FILL[val];
+                    // Solid fill + white text (AntD's pastel tint misses AA).
+                    return fill ? (
+                      <Tag
+                        style={{
+                          backgroundColor: fill,
+                          color: token.colorTextLightSolid,
+                          borderColor: "transparent",
+                        }}
+                      >
+                        {val}
+                      </Tag>
+                    ) : (
+                      <Tag>{val}</Tag>
+                    );
+                  },
                 },
                 { title: tAudit("entity"), dataIndex: "entityType", key: "entityType" },
                 {

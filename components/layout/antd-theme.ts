@@ -24,12 +24,9 @@ export const brandTokens: NonNullable<ThemeConfig["token"]> = {
   // Brand color from brand.config.ts (forks rebrand it there, in one place).
   colorPrimary: brand.colors.primary,
   colorInfo: brand.colors.primary,
-  // Cohesive semantic set, darkened to clear WCAG AA *as text* on white
-  // (Typography success/warning/danger, Alerts) AND as a solid button fill with
-  // white text — stock AntD's brighter green/amber/red fail both directions.
-  colorSuccess: "#15803d",
-  colorWarning: "#b45309",
-  colorError: "#dc2626",
+  // Semantic colors are MODE-SPLIT in buildTheme() below: no single hue can be
+  // AA *as text* on both white and the dark canvas (the dark one must be light,
+  // the light one must be dark), and Typography/StatCard read these raw as text.
   // Softer corners read more premium; lockstep with --radius-base in tokens.css.
   borderRadius: brand.radius,
   fontSize: 14,
@@ -59,6 +56,21 @@ export const chartPalette = [
   "#ec4899", // pink
   "#14b8a6", // teal
 ];
+
+/**
+ * Mode-INVARIANT solid status fills for chips/Tags that render white text (e.g.
+ * the audit-log + dashboard action tags). AntD's pastel preset/tinted tags miss
+ * WCAG AA; these dark fills give white-on-color ≥4.5:1 in BOTH light and dark.
+ * Distinct from the per-mode `colorSuccess`/etc. tokens, which are tuned for
+ * *text on the page background* and therefore go light in dark mode. Imported by
+ * components so no raw hex lives in component files (the no-raw-hex-color rule).
+ */
+export const statusFill = {
+  success: "#15803d",
+  info: "#4f46e5",
+  warning: "#b45309",
+  error: "#dc2626",
+} as const;
 
 /**
  * The full AntD theme for a given mode. Neutral / background / elevation tokens
@@ -136,6 +148,12 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         shadowTertiary: "0 1px 2px rgba(16, 24, 40, 0.05)",
       };
 
+  // Semantic colors per mode: each must be AA *as text* on its own canvas, so
+  // the light set is dark (on white) and the dark set is light (on #0f1115).
+  const semantic = isDark
+    ? { success: "#22c55e", warning: "#fbbf24", error: "#f87171" }
+    : { success: "#15803d", warning: "#b45309", error: "#dc2626" };
+
   // On-brand focus ring shared by the input family (mirrors --ring in
   // tokens.css, softened for a premium, non-shouty highlight). Brand-tinted in
   // both modes so focus reads consistently.
@@ -144,6 +162,12 @@ export function buildTheme(isDark: boolean): ThemeConfig {
   return {
     token: {
       ...brandTokens,
+      colorSuccess: semantic.success,
+      colorWarning: semantic.warning,
+      colorError: semantic.error,
+      // Links are text on the page background: the brand indigo is AA on white
+      // but too dark on the dark canvas, so lift it to indigo-400 in dark mode.
+      colorLink: isDark ? "#818cf8" : brand.colors.primary,
       colorBgLayout: n.layout,
       colorBgContainer: n.surface,
       colorBgElevated: n.elevated,

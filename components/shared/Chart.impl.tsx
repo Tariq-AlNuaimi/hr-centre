@@ -62,10 +62,12 @@ export interface ChartProps<T extends Record<string, unknown>> {
   /**
    * Accessible name for the chart's SVG (WCAG: an `<svg role="img">` needs an
    * accessible name, or axe flags svg-img-alt). Rendered as the recharts
-   * `<title>` and mirrored onto an `aria-label`. Always pass a meaningful
-   * description of what the chart shows.
+   * `<title>` and mirrored onto an `aria-label`. REQUIRED — a chart with no
+   * accessible name is an axe violation; pass a meaningful description of what
+   * the chart shows (use a visually-hidden-friendly label even if a heading
+   * already names the card).
    */
-  title?: string;
+  title: string;
 }
 
 const DEFAULT_COLORS = chartPalette;

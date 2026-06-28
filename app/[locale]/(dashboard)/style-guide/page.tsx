@@ -48,6 +48,7 @@ import {
 } from "@/components/shared/Skeletons";
 import { brand } from "@/brand.config";
 import { OPEN_COMMAND_PALETTE } from "@/components/layout/CommandPalette";
+import { statusFill } from "@/components/layout/antd-theme";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -68,6 +69,14 @@ type GalleryRow = { id: string; name: string; role: string; status: string };
 export default function StyleGuidePage() {
   const { token } = theme.useToken();
   const [showSkeletons, setShowSkeletons] = useState(false);
+
+  // Solid AA-contrast tag fill (white text) for the low-contrast status hues —
+  // mode-invariant, the pattern the audit log + dashboard action tags use.
+  const solid = (bg: string) => ({
+    backgroundColor: bg,
+    color: token.colorTextLightSolid,
+    borderColor: "transparent",
+  });
 
   const sampleColumns = [
     { title: "Name", dataIndex: "name", key: "name" },
@@ -152,13 +161,12 @@ export default function StyleGuidePage() {
       <Section title="Status & feedback">
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <Space wrap>
-            <Tag color="blue">Default</Tag>
-            {/* Solid AA-contrast fills for the low-contrast hues: AntD's pastel
-                `green`/`gold` filled tags miss WCAG AA, so status tags use the
-                darkened semantic tokens (white text) instead. */}
-            <Tag color={token.colorSuccess}>Active</Tag>
-            <Tag color={token.colorWarning}>Pending</Tag>
-            <Tag color="red">Blocked</Tag>
+            {/* AntD's pastel preset tags miss WCAG AA, so status tags use solid
+                AA fills (white text) from the shared `statusFill` palette. */}
+            <Tag>Default</Tag>
+            <Tag style={solid(statusFill.success)}>Active</Tag>
+            <Tag style={solid(statusFill.warning)}>Pending</Tag>
+            <Tag style={solid(statusFill.error)}>Blocked</Tag>
           </Space>
           <Alert type="success" showIcon title="Saved successfully." />
           <Alert type="error" showIcon title="Something went wrong. Try again." />
@@ -262,7 +270,7 @@ export default function StyleGuidePage() {
             { key: "name", label: "Name", value: "Sara Al-Hinai" },
             { key: "role", label: "Role", value: <Tag color="blue">ADMIN</Tag> },
             { key: "email", label: "Email", value: "sara@example.com" },
-            { key: "status", label: "Status", value: <Tag color={token.colorSuccess}>Active</Tag> },
+            { key: "status", label: "Status", value: <Tag style={solid(statusFill.success)}>Active</Tag> },
           ]}
         />
       </Section>

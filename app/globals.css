@@ -43,7 +43,8 @@ body {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
-  color: var(--ant-color-text-tertiary, #646b78);
+  /* Fallback passes AA on both the light (#fff) and dark (#171a21) header. */
+  color: var(--ant-color-text-tertiary, #8b93a1);
 }
 @media (max-width: 575px) {
   .header-search-label,
