@@ -5,15 +5,23 @@ ARCHITECTURE.md + UI-SPEC.md, NOT in the repo — re-request before detail work)
 **Sub-goal now:** ALL 8 PHASES DONE + deployed; what's left is the deferred
 full a11y/RBAC QA matrix.
 
-**State:** branch `claude/rihal-phase-5-invitations-b2zaau`, tip `~a9f…` (push
-verified, `git rev-list --count @{u}..HEAD` = 0), tree CLEAN. `/ship` GREEN
-(typecheck+lint+182 tests+build+gitleaks+audit). **LIVE in production:**
-https://rihal-aptitude.ops-rihal.com — Vercel deploy `dpl_6hUtoGk6he8FZbpwN74mfQdNwtTD`
-state READY (built from the branch tip; `prisma migrate deploy` applied the Phase
-7/8 migrations to the Neon prod DB). Project `prj_jKdcMNnuGdkAlAyZXBKcPaGK8YJu`,
-team `team_Buc334YaFWzCtASZs9oWvcI5`, repoId `1241728413`.
+**State:** branch `claude/rihal-phases-7-8-qa-so8cim` — **fast-forwarded from
+`…-b2zaau`** (so8cim was a strict ancestor: the FF brought all 8 phases + deploy
+onto this branch non-destructively) and then carries the QA-matrix commit on top.
+**LIVE in production:** https://rihal-aptitude.ops-rihal.com — Vercel deploy
+`dpl_6hUtoGk6he8FZbpwN74mfQdNwtTD` READY (`prisma migrate deploy` applied the Phase
+7/8 migrations to Neon prod). Project `prj_jKdcMNnuGdkAlAyZXBKcPaGK8YJu`, team
+`team_Buc334YaFWzCtASZs9oWvcI5`, repoId `1241728413`.
 
-## Done this session (newest first)
+## Done this session — deferred QA matrix CLOSED (newest first)
+- **QA matrix GREEN (52/52, `npm run uat:full`).** Authored/restored the FULL-mode
+  specs the Rihal branch had dropped + fixed 3 inherited harness portability bugs.
+  Full write-up: `docs/qa-phase-7-8-matrix.md`; register: `docs/findings-register.md`
+  (Resolved 2026-06-28). a11y axe (8 dash + login + methodology), RBAC matrix
+  (HR_ADMIN×HIRING_MANAGER×8, server-gate-derived), invitation CRUD lifecycle,
+  UI/UX+RTL sweep + nav-vs-server check. Local-PG carbon-copy recipe in agent-memory.
+
+## Prior session — 8 phases + deploy (newest first)
 - All 8 ARCHITECTURE phases complete. This session landed Phases 7 + 8 + final QA:
 - `fix(phase-8)` — senior-review fixes: SSRF metadata-block on admin-settable AI URLs;
   PDPL erasure now also soft-deletes OutcomeRecord; dead `safeEqual` removed; UAT
@@ -47,14 +55,16 @@ team `team_Buc334YaFWzCtASZs9oWvcI5`, repoId `1241728413`.
   (settings/audit/user services) — use `import type` or a client-safe const file.
 
 ## Next steps
-1. **Confirm prod is healthy:** load https://rihal-aptitude.ops-rihal.com, check the
-   new nav (Calibration/Settings/Audit Log) renders + auth works.
-2. **Finish the deferred QA matrix** (honest gaps): automated **axe a11y** (this branch
-   has no a11y UAT project — wire `@axe-core/playwright` into a `*.uat.ts` or use
-   `/design-qa`), **full** `/uat` permission-matrix + CRUD journeys, `/manual-uat`
-   per-role RBAC. Use the local-PG recipe + `npm run uat`. (Already verified: lean UAT
-   green on all 11 screens; recharts radar/bars correct in dark + RTL.)
-3. Optional: with the operator, decide whether to FF this branch → `main`.
+1. **Confirm prod is healthy** from a direct-egress machine: load
+   https://rihal-aptitude.ops-rihal.com, check nav (Calibration/Settings/Audit) +
+   auth. The build container is proxy-blocked (403) from the live host, so this
+   session could NOT independently re-verify prod (deploy was READY per prior session).
+2. **Operator follow-ups** (documented scope, `docs/findings-register.md` 2026-06-28):
+   (a) re-verify prod; (b) optionally add candidate-runner `/a/[token]` to the
+   automated axe gate (mint a token fixture) — runner already passed a MANUAL axe
+   pass in Phase 4; (c) AI-wizard role CRUD stays unautomated until the LLM endpoint
+   is configured.
+3. Decide whether to FF this branch → `main` (so8cim now = b2zaau + QA matrix).
 
-Process for any new code: `/code-review` (high) → `/ship` GREEN → push to the b2zaau
-branch → `senior-code-reviewer`. Commit + push before the session ends.
+Process for any new code: `/code-review` (high) → `/ship` GREEN → push to
+`…-so8cim` → `senior-code-reviewer`. Commit + push before the session ends.

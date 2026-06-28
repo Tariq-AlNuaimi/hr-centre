@@ -39,6 +39,18 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-06-28 — **The inherited UAT `*.full.uat.ts` harness assumes BARE-TEMPLATE
+  conventions; a fork that diverges gets a vacuous/inverted matrix until adapted.**
+  Three couplings (all fixed for Rihal — see `docs/qa-phase-7-8-matrix.md`): (1)
+  `_discover.discoverSectionAccess` parsed `components/layout/AppSidebar.tsx` (absent
+  here → every section misclassified all-roles) — now derives admin-only from each
+  page's `requireAdmin` gate; (2) `roles.full`/`roles.setup` hardcoded the privileged
+  role `"ADMIN"` (this fork = `HR_ADMIN` → matrix expected the admin to be BLOCKED) —
+  now `discoverRoles()[0]`; (3) the per-role post-login wait was `/<locale>/?$` but
+  this fork lands on `/<locale>/app` → non-admin roles silently skipped. Also: run
+  `npm run uat:full` via `npm run` (the `npx playwright test` form emitted no output
+  in this env); kill orphan `next dev`/`next-server` before a run or the Playwright
+  webServer times out reusing a stuck port-3000.
 - 2026-06-27 — **Local PG carbon-copy when the harness denies `chown`/`rm -rf`/compound
   setup lines (supersedes the earlier runuser+chown recipe):** a plain `runuser -u
   postgres -- <cmd>` IS allowed (the compound/`chown` form is what's denied). We run as

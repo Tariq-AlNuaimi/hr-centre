@@ -28,7 +28,12 @@ import { discoverRoles, defaultLocale } from "./_discover";
 // A role whose login fails (e.g. creds missing on a deployed-URL run where we
 // can't reach the DB) is SKIPPED with a warning — it must not crash the suite.
 
-const ADMIN_ROLE = "ADMIN";
+// The privileged role is the FIRST member of the Role enum by convention (see
+// _discover.ts), NOT a hardcoded "ADMIN" — this fork names it HR_ADMIN. It reuses
+// admin.json from auth.setup.ts, so it must be excluded from the per-role
+// provisioning below; hardcoding "ADMIN" wrongly provisioned HR_ADMIN as a second
+// fixture user.
+const ADMIN_ROLE = discoverRoles()[0] ?? "ADMIN";
 
 // Against a deployed URL the test runner usually can't reach the DB to provision
 // fixtures — and a Prisma connect attempt HANGS the whole setup timeout. So only
@@ -136,7 +141,10 @@ for (const role of nonAdminRoles) {
       await page.locator("#email").fill(email);
       await page.locator("#password").fill(password);
       await page.locator('button[type="submit"]').click();
-      await page.waitForURL(new RegExp(`/${defaultLocale}/?$`), { timeout: 60_000 });
+      // This fork's authenticated landing is /<locale>/app (not the bare locale
+      // root), so accept either — else a manager who lands on /app is treated as a
+      // failed login and the whole role is skipped, emptying its matrix column.
+      await page.waitForURL(new RegExp(`/${defaultLocale}(/app)?/?$`), { timeout: 60_000 });
     } catch (e) {
       console.warn(
         `roles.setup — skipping ${role}: login did not land on the dashboard ` +

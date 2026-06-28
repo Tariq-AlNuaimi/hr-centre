@@ -20,6 +20,31 @@ the changed surface is still **open** (un-adjudicated).
 <!-- newest first -->
 - (none open)
 
+### Resolved 2026-06-28 — deferred QA matrix (a11y + RBAC + CRUD) closed GREEN
+Closed the Phase-7/8 deferred QA matrix; `npm run uat:full` is **52/52 GREEN** against a
+seeded local carbon-copy. Full write-up: `docs/qa-phase-7-8-matrix.md`. Authored/restored
+the FULL-mode specs that the Rihal branch had dropped: `a11y.full.uat.ts` (axe WCAG2 A/AA
+across 8 dashboard sections + public login/methodology), `roles.full.uat.ts` (HR_ADMIN ×
+HIRING_MANAGER × 8 sections RBAC matrix), `crud.full.uat.ts` (invitation lifecycle
+send→confirm→revoke), `uiux.full.uat.ts` (runtime/heading/RTL sweep + nav-vs-server check).
+Three **inherited harness** portability bugs were fixed (NOT app bugs): section admin-gating
+read a non-existent `AppSidebar.tsx` (→ derive from each page's `requireAdmin` gate);
+privileged role hardcoded `"ADMIN"` (→ derive `discoverRoles()[0]` = `HR_ADMIN`); per-role
+login wait didn't match `/app` landing. App design call confirmed (not a bug): role profiles
+are nav-hidden from managers yet `requireSession` (intentional read-only); recorded benign by
+the nav-consistency check. — owner: operator — status: fixed(pending-commit)
+Documented scope limits (NOT pillar violations — verification reach on a green matrix):
+- **Prod not re-verified from this container** — `rihal-aptitude.ops-rihal.com` is proxy-
+  blocked (403 CONNECT) here; deploy was `READY` per prior handoff. Re-verify from a
+  direct-egress machine. — owner: operator — status: open
+- **Candidate runner `/a/[token]` not in the automated axe gate** (needs a minted token);
+  it already passed a thorough MANUAL axe pass in Phase 4 (16 EN/AR×light/dark×mobile combos,
+  green — see the 2026-06-27 entry). Regression-protection enhancement, not a coverage gap.
+  — owner: operator — status: open
+- **Role-profile AI-wizard CRUD not automated** — drafting needs the LLM (`litellm.rihal.dev`,
+  unset locally → "not configured"); CRUD is covered via the invitation lifecycle instead.
+  — owner: operator — status: open
+
 ### Operator decision RESOLVED (Phase 4 audit scope — adjudicated 2026-06-27)
 - 2026-06-27 — [secure/scalable] **Audit ON for every candidate answer** (`ItemResponse`
   + `SjtResponse` writes audited with a NULL actor) — ~120 IPIP rows + SJT rows per sitting.
