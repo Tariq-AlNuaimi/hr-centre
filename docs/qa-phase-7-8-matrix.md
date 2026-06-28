@@ -53,6 +53,17 @@ call in `lib/authz` — the enforced server gate, not nav visibility.
 A blocked manager is server-redirected to `/app` (verified live as `redirected-away`),
 not merely nav-hidden — RBAC is enforced server-side per UI-SPEC Part E.
 
+**Avoiding a false green.** The matrix derives *expected* reach from each page's own
+`requireAdmin` call, so on its own it proves "the runtime enforces what the page
+declares" (catches middleware bypass, client-only hiding, partial enforcement) — but a
+*deleted* gate would flip expected and actual together and stay green. The `uiux`
+nav-consistency check closes that hole: `nav.ts`'s per-item `adminOnly` flag is an
+**independent** declaration of admin-only intent, so a nav-admin section whose page is
+no longer `requireAdmin` fails as **under-protected** (with an explicit, documented
+allowlist for the one intentional manager-readable section, `roles`). The two checks
+together catch both a broken-UX gate (nav-visible → bounce) and a removed gate
+(nav-admin → reachable).
+
 ## Harness bugs found & fixed (template-portability, surfaced by this QA)
 
 These were defects in the **inherited UAT harness**, not the app — the generic template

@@ -45,6 +45,20 @@ Documented scope limits (NOT pillar violations — verification reach on a green
   unset locally → "not configured"); CRUD is covered via the invitation lifecycle instead.
   — owner: operator — status: open
 
+Senior-review (2026-06-28, commit `b342a2a`) follow-ups:
+- **[MED — ADDRESSED] RBAC matrix was self-referential** (expected reach derived from the
+  same `requireAdmin` a regression would delete → gate removal could stay green). Closed by
+  the `uiux` nav-consistency hardening: `nav.ts` `adminOnly` is now an INDEPENDENT oracle —
+  a nav-admin section whose page drops `requireAdmin` fails as `underProtected` (allowlist:
+  `roles`). Belt-and-suspenders TODO: a `tests/contracts/` test pinning the `requireAdmin`
+  page set (runs in `/ship` phase A, no browser). — owner: operator — status: open
+- **[LOW] roles.full storageState ENOENT** — a missing per-role auth file ERRORs (fixture
+  resolved before `test.skip`) instead of skipping cleanly when the local DB is down; only
+  bites when provisioning fails. Fix: write a placeholder `{cookies:[],origins:[]}` state +
+  detect it. — owner: operator — status: open
+- **[NIT] roles.full 4s forbidden-grace** burns ~16s/run for a client-403 pattern this fork
+  (server `redirect()`) never hits; short-circuit the poll on URL change. — status: open
+
 ### Operator decision RESOLVED (Phase 4 audit scope — adjudicated 2026-06-27)
 - 2026-06-27 — [secure/scalable] **Audit ON for every candidate answer** (`ItemResponse`
   + `SjtResponse` writes audited with a NULL actor) — ~120 IPIP rows + SJT rows per sitting.

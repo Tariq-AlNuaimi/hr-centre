@@ -11,9 +11,12 @@ import { discoverMainSections, defaultLocale } from "./_discover";
 // — not just static markup. Matches the UI Definition of Done in
 // docs/uat-rubric.md and UI-SPEC A.7 ("axe clean of serious/critical").
 //
-// The candidate RUNNER (/a/[token]) is brand-critical too but needs a live
-// invitation token, so its a11y scan lives in the candidate journey
-// (crud.full.uat.ts) where a token is minted — not here, where no token exists.
+// The candidate RUNNER (/a/[token]) is brand-critical too but is EXCLUDED from
+// this automated gate: it needs a live invitation token, which the harness does
+// not mint. Its a11y coverage relies on the Phase-4 MANUAL axe pass (16 combos:
+// EN+AR × light/dark × mobile; see docs/findings-register.md). A future
+// improvement: mint a raw token via lib/token in a setup fixture so the runner
+// joins this gate.
 
 type Target = { name: string; path: string; public: boolean };
 

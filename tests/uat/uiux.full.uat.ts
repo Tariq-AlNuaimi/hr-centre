@@ -161,8 +161,18 @@ test("nav visibility is consistent with the server gate", () => {
     return rest === "" ? "dashboard" : rest;
   };
 
-  const dangerous: string[] = [];
-  const benign: string[] = [];
+  // Sections that nav HIDES from managers (adminOnly) yet are intentionally
+  // manager-READABLE by URL (requireSession). This is the explicit, documented
+  // exception list — nav.ts is otherwise the independent oracle for "admin-only
+  // intent", so any OTHER under-protected section is a real finding. Keeping the
+  // app's one intentional case here (role profiles: manager read-only) is what
+  // lets the check FAIL a genuine gate deletion instead of waving it through as
+  // "benign" (the false-green the page-derived matrix alone can't catch).
+  const INTENTIONAL_MANAGER_READABLE = new Set<string>(["roles"]);
+
+  const dangerous: string[] = []; // nav shows to managers, but page is requireAdmin
+  const underProtected: string[] = []; // nav marks admin-only, but page isn't gated
+  const benign: string[] = []; // the documented intentional exceptions
 
   for (const item of NAV_ITEMS) {
     const name = sectionNameForHref(item.href);
@@ -172,22 +182,28 @@ test("nav visibility is consistent with the server gate", () => {
     if (navAdminOnly === pageAdminOnly) continue;
 
     if (!navAdminOnly && pageAdminOnly) {
-      dangerous.push(`${name}: nav shows it to managers but page is requireAdmin`);
-    } else {
+      dangerous.push(`${name}: nav shows it to managers but page is requireAdmin (bounce)`);
+    } else if (INTENTIONAL_MANAGER_READABLE.has(name)) {
       benign.push(`${name}: nav hides it from managers but page is requireSession (read-only by URL)`);
+    } else {
+      underProtected.push(
+        `${name}: nav marks it admin-only but the page is NOT requireAdmin — ` +
+          `a manager can reach it by URL (gate missing / removed?)`,
+      );
     }
   }
 
   if (benign.length > 0) {
-    console.warn(
-      "nav-vs-server (benign, by design): " + benign.join("; "),
-    );
+    console.warn("nav-vs-server (benign, by design): " + benign.join("; "));
   }
 
+  // Both directions are real defects; nav.ts is the independent intent oracle so
+  // a deleted requireAdmin on a nav-admin section is caught here even though the
+  // page-derived matrix would (by construction) still pass it.
   expect(
-    dangerous,
-    "manager-visible nav link(s) point at admin-only pages (broken UX/RBAC):\n  " +
-      dangerous.join("\n  "),
+    [...dangerous, ...underProtected],
+    "nav/server RBAC gate inconsistency (broken UX or under-protected admin surface):\n  " +
+      [...dangerous, ...underProtected].join("\n  "),
   ).toEqual([]);
 });
 
