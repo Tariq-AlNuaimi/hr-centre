@@ -43,8 +43,9 @@ body {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
-  /* Fallback passes AA on both the light (#fff) and dark (#171a21) header. */
-  color: var(--ant-color-text-tertiary, #8b93a1);
+  /* Pre-hydration fallback (the AntD var wins once loaded). A single hex can't
+     be AA on both headers, so this is the light value; dark is overridden below. */
+  color: var(--ant-color-text-tertiary, #646b78);
 }
 @media (max-width: 575px) {
   .header-search-label,
@@ -103,6 +104,10 @@ body {
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.32);
   --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.44);
   --shadow-lg: 0 6px 16px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.36);
+}
+/* Dark-header kbd fallback (AA on #171a21 when the AntD var hasn't loaded). */
+[data-theme="dark"] .header-search-kbd {
+  color: var(--ant-color-text-tertiary, #8b93a1);
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #3a4150;

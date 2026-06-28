@@ -74,7 +74,8 @@ const data = [
   { month: "Feb", revenue: 5100 },
   { month: "Mar", revenue: 4800 },
 ];
-<Chart type="line" data={data} xKey="month" yKey="revenue" height={280} />
-<Chart type="bar"  data={data} xKey="month" yKey="revenue" />
-<Chart type="pie"  data={[{ name: "TODO", value: 12 }, { name: "DONE", value: 30 }]} nameKey="name" valueKey="value" />
+{/* `title` is REQUIRED — it names the chart's <svg> for screen readers (axe svg-img-alt). */}
+<Chart type="line" data={data} xKey="month" yKey="revenue" height={280} title="Revenue by month" />
+<Chart type="bar"  data={data} xKey="month" yKey="revenue" title="Revenue by month" />
+<Chart type="pie"  data={[{ name: "TODO", value: 12 }, { name: "DONE", value: 30 }]} nameKey="name" valueKey="value" title="Tasks by status" />
 ```
