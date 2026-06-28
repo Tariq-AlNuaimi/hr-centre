@@ -135,6 +135,7 @@ export default function StyleGuidePage() {
           <Input placeholder="Text input" />
           <Select
             placeholder="Select"
+            aria-label="Select"
             style={{ width: "100%" }}
             options={[
               { value: "admin", label: "Admin" },
@@ -143,7 +144,7 @@ export default function StyleGuidePage() {
             ]}
           />
           <Space>
-            <Switch defaultChecked /> <Text>Toggle</Text>
+            <Switch defaultChecked aria-label="Toggle" /> <Text>Toggle</Text>
           </Space>
         </Space>
       </Section>
@@ -152,8 +153,11 @@ export default function StyleGuidePage() {
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <Space wrap>
             <Tag color="blue">Default</Tag>
-            <Tag color="green">Active</Tag>
-            <Tag color="gold">Pending</Tag>
+            {/* Solid AA-contrast fills for the low-contrast hues: AntD's pastel
+                `green`/`gold` filled tags miss WCAG AA, so status tags use the
+                darkened semantic tokens (white text) instead. */}
+            <Tag color={token.colorSuccess}>Active</Tag>
+            <Tag color={token.colorWarning}>Pending</Tag>
             <Tag color="red">Blocked</Tag>
           </Space>
           <Alert type="success" showIcon title="Saved successfully." />
@@ -258,7 +262,7 @@ export default function StyleGuidePage() {
             { key: "name", label: "Name", value: "Sara Al-Hinai" },
             { key: "role", label: "Role", value: <Tag color="blue">ADMIN</Tag> },
             { key: "email", label: "Email", value: "sara@example.com" },
-            { key: "status", label: "Status", value: <Tag color="green">Active</Tag> },
+            { key: "status", label: "Status", value: <Tag color={token.colorSuccess}>Active</Tag> },
           ]}
         />
       </Section>
@@ -329,7 +333,11 @@ export default function StyleGuidePage() {
       <Section title="Loading skeletons (layout-matched)">
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Space>
-            <Switch checked={showSkeletons} onChange={setShowSkeletons} />
+            <Switch
+              checked={showSkeletons}
+              onChange={setShowSkeletons}
+              aria-label="Toggle skeletons"
+            />
             <Text>Toggle skeletons</Text>
           </Space>
           {showSkeletons ? (

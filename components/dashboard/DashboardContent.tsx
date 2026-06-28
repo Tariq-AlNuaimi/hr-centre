@@ -101,6 +101,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                 nameKey="name"
                 valueKey="value"
                 height={280}
+                title={tDash("usersByRole")}
               />
             ) : (
               <div style={{ textAlign: "center", padding: 48, opacity: 0.5 }}>

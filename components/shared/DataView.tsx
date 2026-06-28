@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Checkbox, Popover, Space, Typography, theme } from "antd";
+import type { CheckboxProps } from "antd";
 import type { ColumnType, ColumnsType } from "antd/es/table";
 import type { FilterValue } from "antd/es/table/interface";
 import { ControlOutlined } from "@ant-design/icons";
@@ -184,6 +185,13 @@ export function DataView<T extends object>({
                 selectedRowKeys,
                 onChange: setSelectedRowKeys,
                 preserveSelectedRowKeys: true,
+                // Per-row checkboxes are bare <input type=checkbox> with no
+                // label — give each an accessible name (axe `label` rule). AntD
+                // forwards aria-* to the input but omits it from the prop type.
+                getCheckboxProps: () =>
+                  ({ "aria-label": t("selectRow") }) as Partial<
+                    Omit<CheckboxProps, "checked" | "defaultChecked">
+                  >,
               }
             : undefined
         }

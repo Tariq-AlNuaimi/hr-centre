@@ -24,10 +24,12 @@ export const brandTokens: NonNullable<ThemeConfig["token"]> = {
   // Brand color from brand.config.ts (forks rebrand it there, in one place).
   colorPrimary: brand.colors.primary,
   colorInfo: brand.colors.primary,
-  // Cohesive, slightly desaturated semantic set (modern over stock AntD).
-  colorSuccess: "#16a34a",
-  colorWarning: "#f59e0b",
-  colorError: "#ef4444",
+  // Cohesive semantic set, darkened to clear WCAG AA *as text* on white
+  // (Typography success/warning/danger, Alerts) AND as a solid button fill with
+  // white text — stock AntD's brighter green/amber/red fail both directions.
+  colorSuccess: "#15803d",
+  colorWarning: "#b45309",
+  colorError: "#dc2626",
   // Softer corners read more premium; lockstep with --radius-base in tokens.css.
   borderRadius: brand.radius,
   fontSize: 14,
@@ -82,6 +84,14 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         rowHover: "#1f242c",
         border: "#272c35",
         borderSecondary: "#20242c",
+        // Muted text ramp — all ≥4.5:1 (WCAG AA) on the dark surfaces above, so
+        // secondary/tertiary/placeholder copy stays legible, not just present.
+        textSecondary: "#9aa3b2",
+        textTertiary: "#8b93a1",
+        textPlaceholder: "#828a98",
+        // Empty-state / disabled copy is real text to axe — keep it AA, not the
+        // near-invisible default. (Disabled *controls* are exempt regardless.)
+        textDisabled: "#828a98",
         // Darker, ready-to-interact border on input hover (one step up).
         controlBorderHover: "#3a414d",
         // Subtle tinted fill for ghost/secondary surfaces (segmented, fills).
@@ -105,6 +115,15 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         rowHover: "#f6f7f9",
         border: "#e8eaed",
         borderSecondary: "#eef0f3",
+        // Muted text ramp — all ≥4.5:1 (WCAG AA) on the light surfaces above
+        // (white through the #f7f8fa layout), replacing AntD's failing defaults
+        // (tertiary #8c8c8c ≈ 3.4:1, placeholder #bfbfbf ≈ 1.8:1).
+        textSecondary: "#4b5563",
+        textTertiary: "#646b78",
+        textPlaceholder: "#6b7280",
+        // Empty-state / disabled copy is real text to axe — keep it AA, not the
+        // near-invisible default. (Disabled *controls* are exempt regardless.)
+        textDisabled: "#6b7280",
         controlBorderHover: "#c5cad3",
         fillSubtle: "#f4f5f7",
         menuSelectedBg: "#eef2ff",
@@ -130,6 +149,15 @@ export function buildTheme(isDark: boolean): ThemeConfig {
       colorBgElevated: n.elevated,
       colorBorder: n.border,
       colorBorderSecondary: n.borderSecondary,
+      // Accessible text ramp (AA on every surface above) — see the `n` block.
+      colorTextSecondary: n.textSecondary,
+      colorTextTertiary: n.textTertiary,
+      colorTextPlaceholder: n.textPlaceholder,
+      colorTextDisabled: n.textDisabled,
+      // AntD dims loading buttons to 0.65, which drops white-on-primary text
+      // below AA mid-load; keep full opacity (the spinner is the cue) so a
+      // `loading` primary button stays legible.
+      opacityLoading: 1,
       boxShadow: n.shadow,
       boxShadowSecondary: n.shadowSecondary,
       boxShadowTertiary: n.shadowTertiary,
@@ -145,8 +173,12 @@ export function buildTheme(isDark: boolean): ThemeConfig {
       Table: {
         headerBg: n.tableHeader,
         rowHoverBg: n.rowHover,
+        // Selected rows share the calm indigo wash the nav + Select options use,
+        // so "selected" reads consistently across the app.
+        rowSelectedBg: n.menuSelectedBg,
+        rowSelectedHoverBg: n.menuSelectedBg,
         borderColor: n.border,
-        headerColor: isDark ? "#9aa3b2" : "#5b6472",
+        headerColor: n.textSecondary,
         cellPaddingBlock: 14,
         headerSplitColor: "transparent",
         headerBorderRadius: 8,
@@ -234,6 +266,18 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         borderRadiusSM: 6,
       },
       Segmented: { borderRadius: 8, itemSelectedColor: brand.colors.primary },
+      // Read-only data surfaces share the accessible muted ramp so labels and
+      // separators are uniform (and AA-legible) across breadcrumbs, descriptions
+      // and stat blocks — the small consistencies that read "enterprise".
+      Breadcrumb: {
+        itemColor: n.textTertiary,
+        lastItemColor: n.textSecondary,
+        linkColor: n.textTertiary,
+        linkHoverColor: brand.colors.primary,
+        separatorColor: n.textTertiary,
+      },
+      Descriptions: { labelColor: n.textSecondary, titleColor: n.textSecondary },
+      Statistic: { titleFontSize: 14 },
       Modal: { borderRadiusLG: 12 },
       Drawer: { borderRadiusLG: 12 },
       Popover: { borderRadiusLG: 12 },

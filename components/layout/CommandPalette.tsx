@@ -152,6 +152,7 @@ export function CommandPalette() {
           variant="borderless"
           prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
           placeholder={t("commandPlaceholder")}
+          aria-label={t("commandPlaceholder")}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
