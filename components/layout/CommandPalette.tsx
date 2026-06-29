@@ -97,6 +97,16 @@ export function CommandPalette() {
   // filtered list shrinks — no cascading-render setState.
   const activeIndex = Math.min(active, Math.max(0, filtered.length - 1));
 
+  // ARIA combobox/listbox wiring: focus stays in the Input (so type-ahead keeps
+  // working) while `aria-activedescendant` points at the highlighted option, the
+  // WAI-ARIA APG pattern for a command palette. Keep that option scrolled into
+  // view so the indicated item is always visible (WCAG 2.4.7 Focus Visible).
+  const activeId = filtered.length > 0 ? `command-palette-option-${activeIndex}` : undefined;
+  useEffect(() => {
+    if (!open || !activeId) return;
+    document.getElementById(activeId)?.scrollIntoView({ block: "nearest" });
+  }, [open, activeId]);
+
   // Global open shortcut + the header-button event.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -150,6 +160,11 @@ export function CommandPalette() {
           autoFocus
           size="large"
           variant="borderless"
+          role="combobox"
+          aria-expanded={filtered.length > 0}
+          aria-controls="command-palette-listbox"
+          aria-activedescendant={activeId}
+          aria-autocomplete="list"
           prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
           placeholder={t("commandPlaceholder")}
           aria-label={t("commandPlaceholder")}
@@ -161,7 +176,12 @@ export function CommandPalette() {
           style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, paddingBlock: 14 }}
         />
 
-        <div style={{ maxHeight: 360, overflowY: "auto", padding: token.paddingXS }}>
+        <div
+          id="command-palette-listbox"
+          role="listbox"
+          aria-label={t("commandPlaceholder")}
+          style={{ maxHeight: 360, overflowY: "auto", padding: token.paddingXS }}
+        >
           {filtered.length === 0 && (
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -193,6 +213,9 @@ export function CommandPalette() {
                   return (
                     <button
                       key={c.key}
+                      id={`command-palette-option-${idx}`}
+                      role="option"
+                      aria-selected={isActive}
                       type="button"
                       onMouseEnter={() => setActive(idx)}
                       onClick={() => c.run()}

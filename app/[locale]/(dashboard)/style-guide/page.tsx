@@ -268,7 +268,7 @@ export default function StyleGuidePage() {
         <DescriptionList
           items={[
             { key: "name", label: "Name", value: "Sara Al-Hinai" },
-            { key: "role", label: "Role", value: <Tag color="blue">ADMIN</Tag> },
+            { key: "role", label: "Role", value: <Tag style={solid(statusFill.info)}>ADMIN</Tag> },
             { key: "email", label: "Email", value: "sara@example.com" },
             { key: "status", label: "Status", value: <Tag style={solid(statusFill.success)}>Active</Tag> },
           ]}
