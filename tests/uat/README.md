@@ -24,11 +24,22 @@ order, so you usually don't need to do anything:
    (default `/opt/pw-browsers`) for a `chromium-*/chrome-linux/chrome` and uses
    the highest revision found. This directory doesn't exist on normal dev
    machines, so it's a no-op there.
+3. **`PW_PROXY_SERVER`** — when the environment only allows outbound traffic
+   through an HTTPS egress proxy (a web session's `$HTTPS_PROXY`), point the
+   browser at it so it can reach a deployed target. While a proxy is set the
+   config also accepts the proxy's TLS-MITM cert (scoped to that case only):
+   ```sh
+   PW_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
+   PW_PROXY_SERVER="$HTTPS_PROXY" \
+   UAT_BASE_URL="https://<your-app>.vercel.app" npm run uat
+   ```
 
 > Outbound egress to drive a *deployed* browser target may still be restricted
-> by the session's network policy — that's an environment limit, not a config
-> one. Run UAT against a deployed `UAT_BASE_URL` from a machine with egress, or
-> use the Playwright MCP browser for in-session walkthroughs.
+> by the session's network policy — and whether the proxy above is actually
+> browser-traversable is an environment property, not something the config can
+> guarantee. That's an environment limit, not a config one. Run UAT against a
+> deployed `UAT_BASE_URL` from a machine with egress, or use the Playwright MCP
+> browser for in-session walkthroughs.
 
 ## Run it
 ```sh

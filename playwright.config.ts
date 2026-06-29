@@ -39,6 +39,18 @@ function resolveChromiumPath(): string | undefined {
 
 const chromiumPath = resolveChromiumPath();
 
+// Optional egress proxy for the browser (issue #52, part 2).
+//
+// Some environments (e.g. a Claude Code web session) only allow outbound traffic
+// through an HTTPS egress proxy, so Chromium can't reach a deployed UAT target
+// directly. Set PW_PROXY_SERVER (e.g. the session's $HTTPS_PROXY) to route the
+// browser through it. This is OFF by default, so normal dev/CI is unchanged.
+// A TLS-intercepting proxy re-signs certs, so when a proxy IS configured we also
+// accept its MITM cert (ignoreHTTPSErrors) — scoped to the proxy case only, never
+// relaxed for ordinary runs. NOTE: whether the proxy is actually browser-traversable
+// is an environment property, not something this config can guarantee.
+const proxyServer = process.env.PW_PROXY_SERVER;
+
 // UAT (User Acceptance Testing) config — browser-driven walkthrough of the app.
 //
 // Two modes (selected by env flag UAT_MODE; default "lean"):
@@ -81,6 +93,10 @@ export default defineConfig({
     // Point Chromium at an explicit / auto-detected binary when one is resolved
     // (web-session envs); undefined elsewhere -> Playwright uses its bundled one.
     launchOptions: chromiumPath ? { executablePath: chromiumPath } : undefined,
+    // Route the browser through an egress proxy when one is configured (issue #52).
+    proxy: proxyServer ? { server: proxyServer } : undefined,
+    // Accept the proxy's TLS-MITM cert ONLY when proxying; never relaxed otherwise.
+    ignoreHTTPSErrors: proxyServer ? true : undefined,
   },
   projects: [
     // Logs in once as ADMIN and saves the session so flows don't re-authenticate.
