@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Table, Select, Space, Tag, theme } from "antd";
+import { Table, Select, Space, Tag } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { statusFill } from "@/components/layout/antd-theme";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
@@ -20,19 +19,15 @@ interface AuditEntry {
   timestamp: string;
 }
 
-// Map each action to a mode-invariant solid status fill (not an AntD preset
-// name): the pastel preset/tinted tags miss WCAG AA, so action tags render as
-// solid fills with white text, AA in both light and dark.
-const ACTION_FILL: Record<string, string> = {
-  CREATE: statusFill.success,
-  UPDATE: statusFill.info,
-  DELETE: statusFill.error,
-  RESTORE: statusFill.warning,
+const ACTION_COLORS: Record<string, string> = {
+  CREATE: "green",
+  UPDATE: "blue",
+  DELETE: "red",
+  RESTORE: "orange",
 };
 
 export default function AuditLogClient() {
   const t = useTranslations("auditLog");
-  const { token } = theme.useToken();
   const { error: showError } = useNotify();
 
   const [data, setData] = useState<AuditEntry[]>([]);
@@ -85,23 +80,9 @@ export default function AuditLogClient() {
         title: t("action"),
         dataIndex: "action",
         width: 100,
-        render: (v: string) => {
-          const fill = ACTION_FILL[v];
-          // Solid fill + white text (not AntD's pastel tint, which misses AA).
-          return fill ? (
-            <Tag
-              style={{
-                backgroundColor: fill,
-                color: token.colorTextLightSolid,
-                borderColor: "transparent",
-              }}
-            >
-              {v}
-            </Tag>
-          ) : (
-            <Tag>{v}</Tag>
-          );
-        },
+        render: (v: string) => (
+          <Tag color={ACTION_COLORS[v] ?? "default"}>{v}</Tag>
+        ),
       },
       {
         title: t("entity"),
@@ -131,7 +112,7 @@ export default function AuditLogClient() {
           changes ? Object.keys(changes).join(", ") : "-",
       },
     ],
-    [t, token]
+    [t]
   );
 
   return (
@@ -141,7 +122,6 @@ export default function AuditLogClient() {
       <Space style={{ marginBottom: 16 }}>
         <Select
           placeholder={t("filterEntity")}
-          aria-label={t("filterEntity")}
           allowClear
           style={{ width: 150 }}
           onChange={setEntityType}
@@ -149,7 +129,6 @@ export default function AuditLogClient() {
         />
         <Select
           placeholder={t("filterAction")}
-          aria-label={t("filterAction")}
           allowClear
           style={{ width: 150 }}
           onChange={setAction}

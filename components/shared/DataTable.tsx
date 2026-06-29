@@ -97,7 +97,6 @@ export function DataTable<T extends object>({
         <Input
           prefix={<SearchOutlined />}
           placeholder={t("search")}
-          aria-label={t("search")}
           value={searchValue}
           onChange={(e) => handleSearch(e.target.value)}
           allowClear

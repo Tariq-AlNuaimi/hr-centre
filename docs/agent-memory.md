@@ -39,17 +39,6 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
-- 2026-06-28 — a11y/theme: (1) Semantic color tokens (colorSuccess/Warning/Error)
-  AND colorLink are read RAW as TEXT (StatCard trend, Typography type=success,
-  links) — no single hue is AA on both #fff and the dark canvas, so they MUST be
-  mode-split inside buildTheme(isDark), never put in mode-agnostic brandTokens
-  (components/layout/antd-theme.ts). (2) AntD preset/custom-hex Tags render PASTEL
-  (tint bg + colored text) and miss WCAG AA — for status chips use a solid fill +
-  white text from the mode-invariant `statusFill` export (white-on-dark, AA in
-  both modes), not `color="green"`/`color={token.colorX}`. (3) The a11y UAT only
-  runs LIGHT mode + EMPTY tables — verify dark mode (set `theme-mode=dark` cookie)
-  and POPULATED tables (seed rows) manually or real gaps slip through. (4) recharts
-  stamps role="img" on pie sector <path>s → each <Cell> needs role="img"+aria-label.
 - 2026-06-26 — First-deploy env-var race (#50): BOTH scripts/deploy.mjs AND
   scripts/new-project.mjs must set all 6 env vars (incl CRON_SECRET) and
   poll-confirm them via `GET /v9/projects/:id/env` BEFORE triggering the first

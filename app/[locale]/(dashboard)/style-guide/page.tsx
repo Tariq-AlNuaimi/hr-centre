@@ -48,7 +48,6 @@ import {
 } from "@/components/shared/Skeletons";
 import { brand } from "@/brand.config";
 import { OPEN_COMMAND_PALETTE } from "@/components/layout/CommandPalette";
-import { statusFill } from "@/components/layout/antd-theme";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -69,14 +68,6 @@ type GalleryRow = { id: string; name: string; role: string; status: string };
 export default function StyleGuidePage() {
   const { token } = theme.useToken();
   const [showSkeletons, setShowSkeletons] = useState(false);
-
-  // Solid AA-contrast tag fill (white text) for the low-contrast status hues —
-  // mode-invariant, the pattern the audit log + dashboard action tags use.
-  const solid = (bg: string) => ({
-    backgroundColor: bg,
-    color: token.colorTextLightSolid,
-    borderColor: "transparent",
-  });
 
   const sampleColumns = [
     { title: "Name", dataIndex: "name", key: "name" },
@@ -144,7 +135,6 @@ export default function StyleGuidePage() {
           <Input placeholder="Text input" />
           <Select
             placeholder="Select"
-            aria-label="Select"
             style={{ width: "100%" }}
             options={[
               { value: "admin", label: "Admin" },
@@ -153,7 +143,7 @@ export default function StyleGuidePage() {
             ]}
           />
           <Space>
-            <Switch defaultChecked aria-label="Toggle" /> <Text>Toggle</Text>
+            <Switch defaultChecked /> <Text>Toggle</Text>
           </Space>
         </Space>
       </Section>
@@ -161,12 +151,10 @@ export default function StyleGuidePage() {
       <Section title="Status & feedback">
         <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
           <Space wrap>
-            {/* AntD's pastel preset tags miss WCAG AA, so status tags use solid
-                AA fills (white text) from the shared `statusFill` palette. */}
-            <Tag>Default</Tag>
-            <Tag style={solid(statusFill.success)}>Active</Tag>
-            <Tag style={solid(statusFill.warning)}>Pending</Tag>
-            <Tag style={solid(statusFill.error)}>Blocked</Tag>
+            <Tag color="blue">Default</Tag>
+            <Tag color="green">Active</Tag>
+            <Tag color="gold">Pending</Tag>
+            <Tag color="red">Blocked</Tag>
           </Space>
           <Alert type="success" showIcon title="Saved successfully." />
           <Alert type="error" showIcon title="Something went wrong. Try again." />
@@ -268,9 +256,9 @@ export default function StyleGuidePage() {
         <DescriptionList
           items={[
             { key: "name", label: "Name", value: "Sara Al-Hinai" },
-            { key: "role", label: "Role", value: <Tag style={solid(statusFill.info)}>ADMIN</Tag> },
+            { key: "role", label: "Role", value: <Tag color="blue">ADMIN</Tag> },
             { key: "email", label: "Email", value: "sara@example.com" },
-            { key: "status", label: "Status", value: <Tag style={solid(statusFill.success)}>Active</Tag> },
+            { key: "status", label: "Status", value: <Tag color="green">Active</Tag> },
           ]}
         />
       </Section>
@@ -341,11 +329,7 @@ export default function StyleGuidePage() {
       <Section title="Loading skeletons (layout-matched)">
         <Space orientation="vertical" size="large" style={{ width: "100%" }}>
           <Space>
-            <Switch
-              checked={showSkeletons}
-              onChange={setShowSkeletons}
-              aria-label="Toggle skeletons"
-            />
+            <Switch checked={showSkeletons} onChange={setShowSkeletons} />
             <Text>Toggle skeletons</Text>
           </Space>
           {showSkeletons ? (

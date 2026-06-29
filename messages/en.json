@@ -174,7 +174,6 @@
   "data": {
     "selected": "{count} selected",
     "clearSelection": "Clear",
-    "columns": "Columns",
-    "selectRow": "Select row"
+    "columns": "Columns"
   }
 }

@@ -59,15 +59,6 @@ export interface ChartProps<T extends Record<string, unknown>> {
   valueKey?: string;
   /** Override the default palette. */
   colors?: string[];
-  /**
-   * Accessible name for the chart's SVG (WCAG: an `<svg role="img">` needs an
-   * accessible name, or axe flags svg-img-alt). Rendered as the recharts
-   * `<title>` and mirrored onto an `aria-label`. REQUIRED — a chart with no
-   * accessible name is an axe violation; pass a meaningful description of what
-   * the chart shows (use a visually-hidden-friendly label even if a heading
-   * already names the card).
-   */
-  title: string;
 }
 
 const DEFAULT_COLORS = chartPalette;
@@ -81,20 +72,16 @@ export function Chart<T extends Record<string, unknown>>({
   nameKey = "name",
   valueKey = "value",
   colors = DEFAULT_COLORS,
-  title,
 }: ChartProps<T>) {
   const { isDark } = useTheme();
   // Read grid contrast from the active theme so the grid is visible on the dark
   // background instead of vanishing into it.
   const gridStroke = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
-  // recharts renders an `<svg role="img">`; without a name axe flags svg-img-alt.
-  // `title` becomes the recharts `<title>` element AND an aria-label fallback.
-  const a11y = { role: "img", "aria-label": title, title } as const;
 
   if (type === "line") {
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={data} {...a11y}>
+        <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
           <YAxis />
@@ -115,7 +102,7 @@ export function Chart<T extends Record<string, unknown>>({
   if (type === "bar") {
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={data} {...a11y}>
+        <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
           <YAxis />
@@ -130,7 +117,7 @@ export function Chart<T extends Record<string, unknown>>({
   if (type === "area") {
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <AreaChart data={data} {...a11y}>
+        <AreaChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
           <YAxis />
@@ -151,7 +138,7 @@ export function Chart<T extends Record<string, unknown>>({
   if (type === "pie") {
     return (
       <ResponsiveContainer width="100%" height={height}>
-        <PieChart {...a11y}>
+        <PieChart>
           <Tooltip />
           <Legend />
           <Pie
@@ -163,15 +150,8 @@ export function Chart<T extends Record<string, unknown>>({
             outerRadius="80%"
             label
           >
-            {data.map((d, i) => (
-              // recharts stamps role="img" on each sector <path>; give it an
-              // accessible name ("<slice>: <value>") so axe svg-img-alt passes.
-              <Cell
-                key={i}
-                fill={colors[i % colors.length]}
-                role="img"
-                aria-label={`${String(d[nameKey])}: ${String(d[valueKey])}`}
-              />
+            {data.map((_, i) => (
+              <Cell key={i} fill={colors[i % colors.length]} />
             ))}
           </Pie>
         </PieChart>

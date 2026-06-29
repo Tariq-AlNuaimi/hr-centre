@@ -24,9 +24,10 @@ export const brandTokens: NonNullable<ThemeConfig["token"]> = {
   // Brand color from brand.config.ts (forks rebrand it there, in one place).
   colorPrimary: brand.colors.primary,
   colorInfo: brand.colors.primary,
-  // Semantic colors are MODE-SPLIT in buildTheme() below: no single hue can be
-  // AA *as text* on both white and the dark canvas (the dark one must be light,
-  // the light one must be dark), and Typography/StatCard read these raw as text.
+  // Cohesive, slightly desaturated semantic set (modern over stock AntD).
+  colorSuccess: "#16a34a",
+  colorWarning: "#f59e0b",
+  colorError: "#ef4444",
   // Softer corners read more premium; lockstep with --radius-base in tokens.css.
   borderRadius: brand.radius,
   fontSize: 14,
@@ -58,21 +59,6 @@ export const chartPalette = [
 ];
 
 /**
- * Mode-INVARIANT solid status fills for chips/Tags that render white text (e.g.
- * the audit-log + dashboard action tags). AntD's pastel preset/tinted tags miss
- * WCAG AA; these dark fills give white-on-color ≥4.5:1 in BOTH light and dark.
- * Distinct from the per-mode `colorSuccess`/etc. tokens, which are tuned for
- * *text on the page background* and therefore go light in dark mode. Imported by
- * components so no raw hex lives in component files (the no-raw-hex-color rule).
- */
-export const statusFill = {
-  success: "#15803d",
-  info: "#4f46e5",
-  warning: "#b45309",
-  error: "#dc2626",
-} as const;
-
-/**
  * The full AntD theme for a given mode. Neutral / background / elevation tokens
  * MUST be set per-mode: hardcoding a light neutral onto brandTokens would bleed
  * into dark mode (the classic AntD trap), so they live here where `isDark` is
@@ -96,14 +82,6 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         rowHover: "#1f242c",
         border: "#272c35",
         borderSecondary: "#20242c",
-        // Muted text ramp — all ≥4.5:1 (WCAG AA) on the dark surfaces above, so
-        // secondary/tertiary/placeholder copy stays legible, not just present.
-        textSecondary: "#9aa3b2",
-        textTertiary: "#8b93a1",
-        textPlaceholder: "#828a98",
-        // Empty-state / disabled copy is real text to axe — keep it AA, not the
-        // near-invisible default. (Disabled *controls* are exempt regardless.)
-        textDisabled: "#828a98",
         // Darker, ready-to-interact border on input hover (one step up).
         controlBorderHover: "#3a414d",
         // Subtle tinted fill for ghost/secondary surfaces (segmented, fills).
@@ -127,15 +105,6 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         rowHover: "#f6f7f9",
         border: "#e8eaed",
         borderSecondary: "#eef0f3",
-        // Muted text ramp — all ≥4.5:1 (WCAG AA) on the light surfaces above
-        // (white through the #f7f8fa layout), replacing AntD's failing defaults
-        // (tertiary #8c8c8c ≈ 3.4:1, placeholder #bfbfbf ≈ 1.8:1).
-        textSecondary: "#4b5563",
-        textTertiary: "#646b78",
-        textPlaceholder: "#6b7280",
-        // Empty-state / disabled copy is real text to axe — keep it AA, not the
-        // near-invisible default. (Disabled *controls* are exempt regardless.)
-        textDisabled: "#6b7280",
         controlBorderHover: "#c5cad3",
         fillSubtle: "#f4f5f7",
         menuSelectedBg: "#eef2ff",
@@ -148,12 +117,6 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         shadowTertiary: "0 1px 2px rgba(16, 24, 40, 0.05)",
       };
 
-  // Semantic colors per mode: each must be AA *as text* on its own canvas, so
-  // the light set is dark (on white) and the dark set is light (on #0f1115).
-  const semantic = isDark
-    ? { success: "#22c55e", warning: "#fbbf24", error: "#f87171" }
-    : { success: "#15803d", warning: "#b45309", error: "#dc2626" };
-
   // On-brand focus ring shared by the input family (mirrors --ring in
   // tokens.css, softened for a premium, non-shouty highlight). Brand-tinted in
   // both modes so focus reads consistently.
@@ -162,26 +125,11 @@ export function buildTheme(isDark: boolean): ThemeConfig {
   return {
     token: {
       ...brandTokens,
-      colorSuccess: semantic.success,
-      colorWarning: semantic.warning,
-      colorError: semantic.error,
-      // Links are text on the page background: the brand indigo is AA on white
-      // but too dark on the dark canvas, so lift it to indigo-400 in dark mode.
-      colorLink: isDark ? "#818cf8" : brand.colors.primary,
       colorBgLayout: n.layout,
       colorBgContainer: n.surface,
       colorBgElevated: n.elevated,
       colorBorder: n.border,
       colorBorderSecondary: n.borderSecondary,
-      // Accessible text ramp (AA on every surface above) — see the `n` block.
-      colorTextSecondary: n.textSecondary,
-      colorTextTertiary: n.textTertiary,
-      colorTextPlaceholder: n.textPlaceholder,
-      colorTextDisabled: n.textDisabled,
-      // AntD dims loading buttons to 0.65, which drops white-on-primary text
-      // below AA mid-load; keep full opacity (the spinner is the cue) so a
-      // `loading` primary button stays legible.
-      opacityLoading: 1,
       boxShadow: n.shadow,
       boxShadowSecondary: n.shadowSecondary,
       boxShadowTertiary: n.shadowTertiary,
@@ -197,12 +145,8 @@ export function buildTheme(isDark: boolean): ThemeConfig {
       Table: {
         headerBg: n.tableHeader,
         rowHoverBg: n.rowHover,
-        // Selected rows share the calm indigo wash the nav + Select options use,
-        // so "selected" reads consistently across the app.
-        rowSelectedBg: n.menuSelectedBg,
-        rowSelectedHoverBg: n.menuSelectedBg,
         borderColor: n.border,
-        headerColor: n.textSecondary,
+        headerColor: isDark ? "#9aa3b2" : "#5b6472",
         cellPaddingBlock: 14,
         headerSplitColor: "transparent",
         headerBorderRadius: 8,
@@ -290,18 +234,6 @@ export function buildTheme(isDark: boolean): ThemeConfig {
         borderRadiusSM: 6,
       },
       Segmented: { borderRadius: 8, itemSelectedColor: brand.colors.primary },
-      // Read-only data surfaces share the accessible muted ramp so labels and
-      // separators are uniform (and AA-legible) across breadcrumbs, descriptions
-      // and stat blocks — the small consistencies that read "enterprise".
-      Breadcrumb: {
-        itemColor: n.textTertiary,
-        lastItemColor: n.textSecondary,
-        linkColor: n.textTertiary,
-        linkHoverColor: brand.colors.primary,
-        separatorColor: n.textTertiary,
-      },
-      Descriptions: { labelColor: n.textSecondary, titleColor: n.textSecondary },
-      Statistic: { titleFontSize: 14 },
       Modal: { borderRadiusLG: 12 },
       Drawer: { borderRadiusLG: 12 },
       Popover: { borderRadiusLG: 12 },
