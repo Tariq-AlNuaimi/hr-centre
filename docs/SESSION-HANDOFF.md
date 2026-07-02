@@ -63,6 +63,23 @@ A1 **B-gate** → `[x]`; A3 Speed-Insights/bundle-analyzer/react-scan → `[x]`
 - `new-project.mjs` pristine stamp makes one extra best-effort GitHub commit on
   the generated repo — untested against live GitHub API; smoke on next /new-project.
 
+## Senior-review outcome (post-push, resolved/scheduled this session)
+Two findings on `a61d3d7..HEAD` (reviewer ran a live Chromium render, not just static read):
+- **[High, conf 95] FIXED (`<pending commit>`):** the new `components/ui/button.tsx` showed
+  native `<button>` UA chrome (outset black border, `appearance:auto`) because Preflight is OFF
+  during the AntD coexistence slice and the cva base had no reset. It's the button
+  `EmptyState` (and `/scaffold-entity`'s generated empty-list page) renders — every fork's first
+  screen. Fixed by adding `appearance-none` to the cva base. **Deterministic CSS fix; visual
+  re-confirm is routed to the next `/design-qa` (the C3 per-screen exit gate) — not live-verified
+  this session (style-guide is auth-gated).** LESSON: every native-element `components/ui/*`
+  primitive must carry its own reset until C4 enables Preflight.
+- **[Medium, conf 84] SCHEDULED:** pristine-flag *clearing* in `new-project.mjs`/`deploy.mjs` is
+  best-effort (warn-only, no retry/ack) → a fork could keep `pristine:true` and ship green with no
+  domain models. Logged to findings-register, adjudicated → scheduled into **Workstream B item 4**
+  (which reopens those scripts anyway). Narrow risk; `/ship` stays green (status ≠ open).
+- Discarded (conf 60): `npm run scan`/`lhci` use `npx <pkg>@latest` (unpinned) — optional ad-hoc
+  dev tools, not in any gate; needs an operator ruling to promote.
+
 ## In flight / NEXT (parallelizable now, per operator directive 2)
 - **C2 follow-up (long pole):** the hard shared primitives — DataTable/DataView on
   shadcn Table + TanStack (sorting/pagination/column-controls/bulk parity), Chart

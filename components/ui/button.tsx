@@ -13,7 +13,12 @@ import { cn } from "@/lib/utils";
  * `<Button>` incrementally during the coexistence slice.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-50",
+  // `appearance-none` resets the native <button> UA chrome (outset border /
+  // system appearance). Tailwind Preflight is intentionally OFF during the
+  // AntD coexistence slice (C1), so its global border/appearance reset isn't
+  // applied — every native-element components/ui/* primitive must compensate
+  // locally until C4 enables Preflight. (senior-review 2026-07-02)
+  "appearance-none inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {

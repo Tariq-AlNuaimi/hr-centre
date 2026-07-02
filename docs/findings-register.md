@@ -18,6 +18,18 @@ the changed surface is still **open** (un-adjudicated).
 
 ## Register
 <!-- newest first -->
+- 2026-07-02 — [secure/maintainable] pristine-flag CLEARING is best-effort (warn-only, no
+  retry/ack): `new-project.mjs` reads back `project.config.json` via the GitHub Contents API
+  immediately after template-`generate` (which populates the file tree asynchronously) with no
+  poll/retry, and `deploy.mjs` rewrites the flag only in the local working copy and relies on the
+  operator to commit. If either clear silently fails, the fork keeps `"pristine": true` and — until
+  it runs `/scaffold-entity` — ships GREEN with zero domain models, narrowly reopening the bypass
+  the `fixed(34f1114)` change closed (senior-review 2026-07-02, confidence 84) — WHY deferred: the
+  robust fix (mirror new-project's existing env-propagation retry loop for the Contents read + a
+  `dbAck`-style breadcrumb so `scanDbStructure` refuses a stale `pristine:true` whose clear failed)
+  is Ask-before fork-script surgery, and Workstream B item 4 already reopens these three provisioning
+  scripts next session; risk is narrow (only a not-yet-scaffolded fork whose clear silently failed)
+  — owner: operator — status: adjudicated(2026-07-02) scheduled into Workstream B item 4
 - 2026-07-02 — [secure/maintainable] db-structure gate's pristine-template exemption keys
   only on `package.json.name === "fullstack-next-template"`, which only `/rebrand` rewrites —
   a fork created via `/new-project`/`/deploy` without `/rebrand` stays silently exempt from
