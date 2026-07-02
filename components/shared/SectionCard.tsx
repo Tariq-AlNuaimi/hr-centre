@@ -32,15 +32,15 @@ export function SectionCard({
   return (
     <div
       style={style}
-      className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+      className="rounded-md border border-border bg-card shadow-sm"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 px-6 py-3 dark:border-gray-800">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-3">
         <div className="min-w-0">
-          <h3 className="m-0 text-h5 font-semibold text-gray-900 dark:text-gray-50">
+          <h3 className="m-0 text-h5 font-semibold text-card-foreground">
             {title}
           </h3>
           {subtitle && (
-            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {subtitle}
             </p>
           )}

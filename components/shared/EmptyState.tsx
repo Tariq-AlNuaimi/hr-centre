@@ -27,7 +27,7 @@ export function EmptyState({
       <svg
         aria-hidden
         viewBox="0 0 64 64"
-        className="h-14 w-14 text-gray-300 dark:text-gray-600"
+        className="h-14 w-14 text-muted-foreground/40"
         fill="none"
         stroke="currentColor"
         strokeWidth={2}
@@ -36,7 +36,7 @@ export function EmptyState({
         <path d="M10 28h44" />
         <path d="M22 40h20" strokeLinecap="round" />
       </svg>
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-muted-foreground">
         {description ?? t("noData")}
       </p>
       {actionLabel && onAction && (

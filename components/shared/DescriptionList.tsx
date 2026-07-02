@@ -45,7 +45,7 @@ export function DescriptionList({
   return (
     <div>
       {title && (
-        <h3 className="mb-3 text-h5 font-semibold text-gray-900 dark:text-gray-50">
+        <h3 className="mb-3 text-h5 font-semibold text-foreground">
           {title}
         </h3>
       )}
@@ -64,14 +64,14 @@ export function DescriptionList({
             className={cn(
               pad,
               bordered
-                ? "bg-gray-50 outline outline-1 outline-gray-200 dark:bg-gray-950 dark:outline-gray-800"
+                ? "bg-muted outline outline-1 outline-border"
                 : "",
             )}
           >
-            <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">
+            <dt className="text-xs font-medium text-muted-foreground">
               {it.label}
             </dt>
-            <dd className="mt-0.5 m-0 text-sm text-gray-900 dark:text-gray-100">
+            <dd className="mt-0.5 m-0 text-sm text-foreground">
               {it.value}
             </dd>
           </div>

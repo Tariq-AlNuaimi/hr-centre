@@ -7,10 +7,11 @@ import { cn } from "@/lib/utils";
 /**
  * Button — shadcn/ui-style primitive (ADR-029, Workstream C2). Radix-free base
  * (a plain <button>) so it carries no extra dep; variants via cva. On-token:
- * brand utilities (`bg-primary`) + Tailwind's neutral palette with `dark:`
- * pairs, logical focus ring, RTL-safe (no physical margins). The low-level
- * button the rebuilt shared primitives and screens build on, replacing AntD
- * `<Button>` incrementally during the coexistence slice.
+ * the semantic surface utilities (`bg-primary`, `bg-muted`, `text-foreground`,
+ * `border-input`, `bg-destructive`) so dark mode follows the single
+ * [data-theme="dark"] variable swap — no per-class `dark:` pairs. Logical focus
+ * ring, RTL-safe (no physical margins). The low-level button the rebuilt shared
+ * primitives and screens build on, replacing AntD `<Button>` incrementally.
  */
 const buttonVariants = cva(
   // `appearance-none` resets the native <button> UA chrome (outset border /
@@ -18,18 +19,17 @@ const buttonVariants = cva(
   // AntD coexistence slice (C1), so its global border/appearance reset isn't
   // applied — every native-element components/ui/* primitive must compensate
   // locally until C4 enables Preflight. (senior-review 2026-07-02)
-  "appearance-none inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-gray-950 disabled:pointer-events-none disabled:opacity-50",
+  "appearance-none inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-white hover:opacity-90",
-        secondary:
-          "bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-50 dark:hover:bg-gray-700",
+        default: "bg-primary text-primary-foreground hover:opacity-90",
+        secondary: "bg-muted text-foreground hover:bg-muted/70",
         outline:
-          "border border-gray-300 bg-transparent text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-50 dark:hover:bg-gray-800",
-        ghost:
-          "bg-transparent text-gray-900 hover:bg-gray-100 dark:text-gray-50 dark:hover:bg-gray-800",
-        destructive: "bg-red-600 text-white hover:bg-red-700",
+          "border border-input bg-transparent text-foreground hover:bg-muted",
+        ghost: "bg-transparent text-foreground hover:bg-muted",
+        destructive:
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         link: "bg-transparent text-primary underline-offset-4 hover:underline",
       },
       size: {

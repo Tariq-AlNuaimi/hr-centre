@@ -27,7 +27,7 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
   const isGood = trendUp === positiveIsGood;
 
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="rounded-md border border-border bg-card p-6 shadow-sm">
       <div className="flex items-start gap-3">
         {icon && (
           <span
@@ -38,11 +38,11 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <span className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-sm text-muted-foreground">
             {title}
           </span>
           <div className="mt-0.5 flex items-baseline gap-3">
-            <span className="text-h2 font-bold leading-none tracking-tight text-gray-900 dark:text-gray-50">
+            <span className="text-h2 font-bold leading-none tracking-tight text-card-foreground">
               {value}
             </span>
             {trend && (
@@ -71,9 +71,7 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
             )}
           </div>
           {hint && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {hint}
-            </div>
+            <div className="text-xs text-muted-foreground">{hint}</div>
           )}
         </div>
       </div>
