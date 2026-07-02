@@ -1,73 +1,50 @@
-# Session handoff
-
-> New session: we are mid-stream on fullstack-vibe-template (enterprise design
-> overhaul + optional i18n). Read this, confirm the branch, then continue at
-> "Next steps". Don't re-explore what it answers.
+# Session handoff — 2026-07-02
 
 ## Goal
-Make the template look enterprise/sellable (operator: current UI "looks
-amateur") and make Arabic/RTL optional. Blueprint:
-`docs/blueprints/enterprise-design-system-and-i18n.md` (decisions signed off:
-1A config-flag English-only, 2A full overhaul Phases 0–4, 3A brand.config).
+Operator directives on the deep-comparison batch, program-planned in
+`docs/blueprints/2026-07-replatform-and-adoption-program.md`: (1) adopt all
+22-table recommendations, (2) Docker a standard build, (3) replace AntD with
+Tailwind fully, (4) RTL/ar fully optional, (5) every app has a structured DB.
+Current sub-goal: operator sign-off on the UI layer, then Phase 0 (ADR-029/030/031
++ ADOPT.md).
 
-## Branch
-- Working/integration branch: `claude/template-defects-deploy-seed-uat-0q7kb0`
-  — **in sync** with origin (`@{u}..HEAD` = 0). Each unit is built on its own
-  `feat/*` branch, /ship-green, pushed, then ff-merged into this branch.
-- Fresh-container setup before /ship: install gitleaks v8.21.2 → ~/.local/bin +
-  `export PATH="$HOME/.local/bin:$PATH"`. node_modules + generated/prisma were
-  present this session (no npm ci needed). Last /ship: GREEN.
+## State
+Branch `claude/claude-repos-comparison-0ddkul`, in sync with origin after this
+handoff's push. Tree clean. `/ship` NOT run this session (docs + screenshots only;
+pushes were `--no-verify` per operator batch instruction). Not deployed. Local PG
+:5433 + dev server were session-local (gone in a fresh container).
 
-## DONE this session (all /ship green, pushed + merged to working branch)
-1. **Part 1 — Arabic/RTL optional** (`feat/i18n-optional-rtl`, a8d6dc4).
-   `locales`/`defaultLocale` in project.config.json → `i18n/config.ts` (single
-   source: routing, `localePrefixRegex`, `localeDirection`/`directionForLocale`,
-   `hasMultipleLocales`, `nextLocale`). All 6 hardcoded `(en|ar)` regexes gone.
-   Switcher hides when 1 locale. ar.json inert. /code-review done.
-2. **i18n stragglers** (`fix/i18n-config-contract-stragglers`, f17c96e) — from
-   the Part 1 senior review: app/page.tsx + not-found href, recipe docs
-   (nonce-csp, mfa), UAT files (_discover exports defaultLocale/rtl*; uiux +
-   auth/guard/roles setup) all config-driven now.
-3. **Phase 0 — brand.config.ts + font** (`feat/design-phase-0-brand-font`,
-   12acaee). White-label single source (appName/colors/radius/density/font/
-   themeColor) → antd-theme + layout + AppHeader. Inter loaded via next/font
-   (verified live). no-raw-hex exempts brand.config.ts. /code-review done
-   (touched eslint-rules).
-4. **Phase 1 — component tokens** (`feat/design-phase-1-tokens`, c68c58d).
-   Input family focus ring, Tabs/Tooltip/Dropdown/Card/Form/Tag overrides,
-   per-mode neutrals. Verified live (Inter + primary render).
-5. **Phase 2 — product chrome** (`feat/design-phase-2-chrome`, 80391ad).
-   Branded split-screen auth (verified live, light+dark), ⌘K CommandPalette
-   (+global search), NotificationsMenu (honest empty), OrgSwitcher (honest
-   single-tenant), header search trigger, BrandedStatus primitive → 404/403/500/
-   maintenance + branded global-error. en/ar `chrome`+`status` keys in lockstep.
-   Senior review running post-push.
+## Done
+- `662f85d` docs: deep-comparison README index + adopt-per-category list.
+- `4db376e` docs: program blueprint for the 5 directives (the contract).
+- `0f5b1ad` chore: lockfile churn from SessionStart.
+- Published artifact (22 comparison tables): claude.ai/code/artifact/c873b8f9-20ef-4e12-99d0-b23a81c04cb8
+- Delivered 6 dashboard screenshots (ours-AntD live, shadcn, Tremor, HeroUI,
+  Catalyst, TailAdmin) for the UI-layer decision.
 
 ## In flight
-- **Phase 3 — branded HOCs + dashboard** (NEXT). KPI/StatCard, SectionCard,
-  DataView (bulk actions + row select + column controls), DescriptionList,
-  Toolbar; enrich the dashboard. Build on `components/shared/*` primitives.
-- Phase 4 — component gallery (light/dark/RTL states), update
-  docs/design-recipes.md, write ADR-028 extending ADR-027.
+- **UI-layer sign-off pending.** 3 of 4 open questions answered (Docker gate =
+  full-ship/deploy/handoff; RTL = keep inert; sequencing = A2+A4 now, A1 after C).
+  Q1 (component layer) awaiting confirm after screenshots; recommendation
+  **shadcn/ui + Tremor** (also ADR-027's own pick).
 
-## After all phases (per task)
-Re-`/deploy` a preview (seed auto-runs), then
-`UAT_BASE_URL=… SEED_ADMIN_* npm run uat` → `/design-qa` → `/manual-uat`.
-The authenticated chrome (palette/org/notifications/dashboard) gets its full
-browser design-qa there — login split-screen already validated locally.
+## Decisions
+- Program blueprint is the contract; governance first: ADR-029 (AntD->Tailwind,
+  supersedes ADR-027/028-p2), ADR-030 (Docker standard, supersedes ADR-023),
+  ADR-031 (mandatory DB). D4 (optional RTL) already shipped by ADR-028 p1.
+- Big-bang replatform on a branch; same-API rebuild of `components/shared/*`.
 
-## Landmines / notes
-- **Pre-existing hydration warning** (NOT mine): the CSP `nonce` on the inline
-  theme script mismatches on hydration (server has nonce, client sees "") —
-  baseline 4b6c1ee, Ask-before CSP/nonce path. Dev-only console noise; don't
-  "fix" without the operator (middleware/lib surface).
-- MCP Playwright wants chrome at /opt/google/chrome — BROKEN. Use the project's
-  `playwright` with `executablePath:/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-- `scaffold-entity.mjs` still seeds en+ar message files regardless of configured
-  locales — logged follow-up (low; works for shipped locales).
-- next/font needs a LITERAL `variable` value; layout's `variable:"--font-sans"`
-  is lockstepped to brand.font.cssVar by design-tokens.test.ts.
-- Don't re-fight: 13 moderate @changesets dev CVEs (SECURITY.md §13); AntD 6
-  Space `orientation`; the findUnique pre-check (ADR-029 §7).
-- AskUserQuestion was flaky in a prior session — decisions came pre-confirmed in
-  the task, so none needed this session.
+## Landmines
+- This container's MITM proxy: Chromium can't CONNECT (curl/Node fetch can).
+  Workaround that works: Playwright `context.route('**/*')` fulfilling every
+  request via `request.newContext({ proxy })` — see agent-memory entry.
+- Flowbite/Vercel demos bot-gate headless browsers ("Failed to verify browser").
+- preview.pro.ant.design chunks time out through the proxy — use our own app
+  (local PG recipe in agent-memory) as the AntD exhibit.
+- `docs/SESSION-HANDOFF.md` never merges to `main`.
+
+## Next steps
+1. Get operator confirm on shadcn/ui + Tremor (screenshots delivered).
+2. Phase 0: write ADR-029/030/031 + `docs/deep-comparison/ADOPT.md`; commit, push.
+3. Start Workstream A2 (security hooks) + A4 (process/skills) in parallel sessions;
+   Workstream C (replatform) kicks off per blueprint SS-C1 after ADR-029 signs.
