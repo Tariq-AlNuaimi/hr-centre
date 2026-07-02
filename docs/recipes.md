@@ -3,6 +3,12 @@
 Moved out of CLAUDE.md (token thrift, ADR-019): load this file only when actually
 sending email, exporting Excel, or building a kanban/chart screen.
 
+Performance measurement (Vercel Speed Insights, `@next/bundle-analyzer`,
+react-scan, Lighthouse-CI), load testing (k6), and live DB tuning
+(postgres-mcp, pghero) are **capability additions**, not shipped code — their
+recipes live in `/scale-up` (`.claude/skills/scale-up/SKILL.md` §12–15). MCP
+wiring (context7, chrome-devtools-mcp) is documented in `docs/mcp.md`.
+
 ## Sending email
 ```ts
 import { sendEmail } from "@/lib/email";

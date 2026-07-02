@@ -1,6 +1,6 @@
 ---
 name: scale-up
-description: Add a capability the prototype rail doesn't ship with -- file uploads, background jobs, cron, realtime, custom domain, bigger DB, feature flags, observability. Each item has a "when to add it" trigger and a recipe. Suggests; doesn't auto-install. Use when the user says "the project needs X", "we need to add file uploads / cron / background jobs / realtime / custom domain", "this is getting bigger", "scale-up", "/scale-up".
+description: Add a capability the prototype rail doesn't ship with -- file uploads, background jobs, cron, realtime, custom domain, bigger DB, feature flags, observability, live DB tuning, load testing, performance measurement. Each item has a "when to add it" trigger and a recipe. Suggests; doesn't auto-install. Use when the user says "the project needs X", "we need to add file uploads / cron / background jobs / realtime / custom domain", "this is getting bigger", "scale-up", "/scale-up".
 ---
 
 # /scale-up — Growth path for the prototype rail
@@ -308,6 +308,216 @@ stack. Vercel + Neon stays the default (ADR-006); this is additive, not a swap.
 
 **Cost:** none (infra you already host). Don't re-enable `output: "standalone"`
 unconditionally — it's gated so the Vercel build stays unchanged.
+
+---
+
+## 12. Live DB tuning — EXPLAIN + index advice (postgres-mcp)
+
+**Trigger:** a deployed fork has real traffic and queries are slowing down —
+you want EXPLAIN plans, index recommendations, or a live health check. The
+static `/ship` scalability scan proves list reads are *bounded in source*; it
+cannot see query plans, index usage, or N+1 as it actually executes
+(`docs/deep-comparison/07-scalability.md`). This is the agent-driven runtime
+complement.
+
+**Recipe:** register [crystaldba/postgres-mcp](https://github.com/crystaldba/postgres-mcp)
+as a session MCP server against the Neon URL, **always in restricted
+(read-only, safety-checked) mode**:
+
+```jsonc
+// .mcp.json -- ADD to "mcpServers" for the tuning session:
+"postgres": {
+  "command": "uvx",
+  "args": ["postgres-mcp", "--access-mode=restricted"],
+  "env": { "DATABASE_URI": "<Neon DATABASE_URL>" }
+}
+```
+
+The agent gets EXPLAIN-plan analysis (including hypothetical indexes via
+`hypopg`), index tuning, and database-health checks (bloat, vacuum, unused /
+duplicate indexes, connections). Rules:
+
+- Never use `--access-mode=unrestricted` against a shared/production DB — an
+  agent issuing writes would bypass Prisma, the audit extension, and
+  soft-delete (same reason mindsdb-style direct SQL is banned).
+- Land any recommended index as a Prisma migration (`@@index` in
+  `prisma/schema.prisma` + `prisma migrate dev`) — never hand-`CREATE INDEX`
+  on the live DB; the schema stays the source of truth.
+- Remove the server from `.mcp.json` when the tuning session is done
+  (`docs/mcp.md`; the token policy warns at >3 servers).
+
+**Cost:** free (OSS; runs locally via `uvx`, needs Python + uv).
+
+---
+
+## 13. Load testing (k6 + k6-mcp-server)
+
+**Trigger:** before sharing an app widely, or at `/handoff` — you want
+empirical evidence that the deployed URL holds p95 latency and error-rate
+under N concurrent users. `/ship`'s scan proves individual queries are
+paginated; only generated load proves the *system* handles growth.
+
+**Recipe:** install the [k6](https://k6.io) binary (single Go binary; no npm
+dep) and keep a smoke script in `tests/load/`:
+
+```js
+// tests/load/smoke.js
+import http from "k6/http";
+import { check } from "k6";
+
+export const options = {
+  stages: [
+    { duration: "1m", target: 20 },  // ramp to 20 VUs
+    { duration: "2m", target: 20 },  // hold
+    { duration: "30s", target: 0 },  // ramp down
+  ],
+  thresholds: {
+    http_req_duration: ["p(95)<500"], // ms
+    http_req_failed: ["rate<0.01"],
+  },
+};
+
+export default function () {
+  const res = http.get(`${__ENV.BASE_URL}/en`);
+  check(res, { "status 200": (r) => r.status === 200 });
+}
+```
+
+Run: `k6 run -e BASE_URL=https://<fork-preview>.vercel.app tests/load/smoke.js`.
+Target **preview** deployments, not production; authenticated routes need a
+session-cookie setup step. Mind the rate limiter: loading an authed API route
+past its limit is *supposed* to return 429 — assert on that, don't "fix" it.
+
+**Agent-driven (optional):** register
+[QAInsights/k6-mcp-server](https://github.com/qainsights/k6-mcp-server)
+(Python + uv + the local k6 binary) so Claude can launch runs and read
+results itself:
+
+```jsonc
+// .mcp.json -- after cloning the k6-mcp-server repo locally:
+"k6": {
+  "command": "uv",
+  "args": ["--directory", "/path/to/k6-mcp-server", "run", "k6_server.py"]
+}
+```
+
+Session-scoped like #12 — remove it when done.
+
+**Cost:** free (OSS binary; k6 Cloud/distributed runs are optional paid).
+
+---
+
+## 14. Postgres health dashboard (pghero)
+
+**Trigger:** a fork has sustained real traffic and you want a *standing* view
+of slow queries, missing/unused/duplicate indexes, table bloat, and
+connection counts — continuous symptom surfacing, where #12 is the on-demand,
+agent-driven diagnosis/fix path.
+
+**Recipe:** run the [ankane/pghero](https://github.com/ankane/pghero) Docker
+image against the Neon URL — zero app-code change:
+
+```sh
+docker run -p 8080:8080 -e DATABASE_URL="$DATABASE_URL" ankane/pghero
+# open http://localhost:8080
+```
+
+For slow-query stats, enable the extension once (available on Neon):
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+```
+
+Run it locally / on an internal box only. **Never deploy pghero publicly** —
+it reads the whole database (Restricted data class, SECURITY.md §1) and ships
+no auth of its own.
+
+**Cost:** free (OSS Docker image).
+
+---
+
+## 15. Performance measurement (CWV, bundle, renders)
+
+**Trigger:** you need Pillar-1 (Speed) *numbers* instead of reviewer
+judgement — Core Web Vitals from real users, what's actually in the client
+bundle, which components re-render wastefully. This is the template's biggest
+documented tooling gap (`docs/deep-comparison/12-performance.md`); everything
+below bolts onto the Vercel host without restructuring.
+
+Four layers, each independently opt-in:
+
+**(a) Vercel Speed Insights — field + lab CWV, near zero-config.** Vercel
+dashboard → project → Speed Insights → Enable, then:
+
+```sh
+npm install @vercel/speed-insights
+```
+
+```tsx
+// app/[locale]/layout.tsx — render once inside <body>:
+import { SpeedInsights } from "@vercel/speed-insights/next";
+// ... <SpeedInsights />
+```
+
+Real-user LCP/INP/CLS from the exact audience the template targets
+(stakeholders on shared `*.vercel.app` links), surfaced as a dashboard. Don't
+hand-wire `web-vitals` — this is the same RUM productized for this host.
+Cost: included on Hobby (bounded data points).
+
+**(b) `@next/bundle-analyzer` — bundle treemap behind an env flag.**
+
+```sh
+npm install -D @next/bundle-analyzer
+```
+
+```ts
+// next.config.ts
+import bundleAnalyzer from "@next/bundle-analyzer";
+const withBundleAnalyzer = bundleAnalyzer({ enabled: process.env.ANALYZE === "1" });
+export default withBundleAnalyzer(nextConfig);
+```
+
+`ANALYZE=1 npm run build` → interactive treemap. On-demand only, zero prod
+impact. Makes the "Ask before a >50 KB dep" rule *visible* (transitive bloat,
+duplicated deps, mis-imported AntD chunks).
+
+**(c) react-scan — dev-only re-render overlay.** No dependency needed:
+
+```sh
+npx react-scan@latest http://localhost:3000
+```
+
+Highlights components as they render and flags avoidable re-renders — aimed
+exactly at the client islands (AntD tables, dnd-kit boards, recharts). Prefer
+the CLI over installing it; if a fork wants it always-on in dev, add it as a
+devDependency with a `NODE_ENV`-gated import. (Chosen over
+`why-did-you-render` — same job, zero-config.)
+
+**(d) Lighthouse-CI — scored audit of a preview URL.**
+
+```sh
+npx @lhci/cli autorun \
+  --collect.url=https://<fork-preview>.vercel.app/en \
+  --assert.assertions.categories:performance=0.9
+```
+
+Reproducible lab Performance score + CWV per deploy. Runs ad-hoc from any
+machine today; wire it into the dormant CI as a per-PR assertion when Actions
+activate. For interactive trace-level digging from a session, use
+**chrome-devtools-mcp** instead (as-needed wiring: `docs/mcp.md`).
+
+**Status vs the adoption program** (`docs/deep-comparison/ADOPT.md` — the
+checklist of record; don't check items off from here):
+
+- This section is the *documentation layer* (Wave A3 docs subset). The actual
+  installs — the Speed Insights component, the bundle-analyzer wrapper in
+  `next.config.ts`, any react-scan devDependency — land in the **Wave A3 full
+  pass** (dependency changes are out of scope for docs-only rounds).
+- The **hard gates** built on these numbers are **Wave A1**, after the
+  Workstream C replatform: `size-limit` bundle *budget* and the coverage
+  floor land as `/ship` phases there, not via this recipe.
+
+**Cost:** all free (Speed Insights on Hobby; the rest OSS/dev-only).
 
 ---
 
