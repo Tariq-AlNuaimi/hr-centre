@@ -314,3 +314,31 @@ The recipes are kept out of the lean base by design — see **ADR-014**.
 
 `personal`-tier forks skip this checklist (there is no handoff and no sensitive-data
 mandate); the security floor still applies.
+
+---
+
+## 17. Agent-runtime hook layer (tool-time guards; Wave A2)
+
+The gates in §14 run at **push time** (gitleaks/ESLint via `/ship`) or **review time**.
+Four dependency-free Node hooks in `.claude/hooks/` (wired in `.claude/settings.json`)
+guard the **agent-runtime** boundary — what Claude reads, runs, and ingests mid-session.
+Blueprint: `docs/blueprints/wave-a2-security-hooks.md`; evidence:
+`docs/deep-comparison/04-hooks.md` + `10-security.md`.
+
+| Hook | Event | Mode | Guards |
+|---|---|---|---|
+| `protect-secrets.mjs` | PreToolUse (`Read\|Grep\|Bash`) | **deny** | Reading secret material into the transcript: `.env*` (only `.env.example` allowed), key files (`.pem`/`.key`/`.p12`/…), `~/.ssh` private keys, `.netrc`/`.pgpass`/AWS creds; printing Restricted env vars (`printenv AUTH_SECRET`, `echo $DATABASE_URL`, bare `env`). Closes the mid-session read boundary gitleaks (commit-time) structurally can't. |
+| `dangerous-commands.mjs` | PreToolUse (`Bash`) | **deny** | Semantic layer under the prefix-lexical permission deny-list: `rm -rf` on root/home/repo-root/system dirs (any flag order, compound commands), force pushes (flag or `+refspec`), `curl\|sh` piping, `chmod 777`, `mkfs`/`dd of=/dev/*`. |
+| `post-tool-scan.mjs` | PostToolUse (`Read\|Grep\|Bash\|WebFetch\|WebSearch\|Task\|mcp__.*`) | **warn** (advisory) | Tool RESULTS: likely secrets (known prefixes `AKIA`/`sk-`/`ghp_`/`napi_`/…, private-key blocks, Restricted env assignments — placeholder-filtered) and prompt-injection markers in external content. Warns via context injection; never prints a matched value (pattern name + line only). |
+| `pre-compact-refresh.mjs` | PreCompact | context re-inject | Re-injects the binding essentials the compaction-preservation rule requires: CLAUDE.md pointer, modified/unpushed file list (git), last `/ship` status, operator goal (`docs/SESSION-HANDOFF.md`), open findings-register wave-offs. |
+
+Design rules for this layer: deny hooks fail **open** (any internal error → silent
+allow; push-time gates remain the backstop, so a hook bug can't brick a session);
+the output-side scanner is **advisory-only** (heuristic — a false-positive block would
+dead-end legitimate work; the deterministic denies live at read time and push time);
+no override prefix on the deny hooks (an injected instruction could otherwise add it);
+hook output **never contains a secret value** — names/paths/pattern names only.
+
+Optional complement: `/audit` documents a **trufflehog `--only-verified`** pass
+(live-credential verification on top of gitleaks; external binary, skipped with a note
+when not installed).

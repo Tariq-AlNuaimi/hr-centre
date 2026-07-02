@@ -49,6 +49,23 @@ the operator dropped foreign code into.
      (swap `--config auto` for the explicit `p/*` rulesets above to mirror `sast.yml`).
    - Reports findings with `file:line` and rule id.
 
+4. **Live-verified secrets — trufflehog (OPTIONAL pass; Wave A2, ADOPT 10-security).**
+   - `trufflehog git file://<path> --only-verified --fail` (git history), and/or
+     `trufflehog filesystem <path> --only-verified --fail` (working tree).
+   - `--only-verified` calls the provider API to confirm a candidate credential is
+     **live right now** — near-zero false positives. It COMPLEMENTS gitleaks (step 1
+     tells you "this looks like a key"; this pass tells you "this key still works"),
+     so run gitleaks regardless.
+   - Any verified finding is a **rotate-now incident** (SECURITY.md §8), not just a
+     report line.
+   - **Not installed → skip WITH a note** (external binary, like gitleaks; never add
+     it as an npm dependency): report `trufflehog: NOT RUN (optional; brew install
+     trufflehog, or https://github.com/trufflesecurity/trufflehog/releases)`. Unlike
+     the three core scans, a missing trufflehog does **not** make the audit
+     incomplete — it is an optional verification layer on top of them.
+   - Needs egress to the credential providers' APIs to verify; if egress is blocked,
+     report `NOT RUN: egress blocked` rather than trusting an empty result.
+
 ## If a tool is not installed
 
 **Do NOT silently skip.** Report which scan could not run and how to enable it, and
@@ -69,6 +86,7 @@ A single report, grouped by scanner, each finding line-referenced and severity-t
   Secrets (gitleaks):   <n findings | clean | NOT RUN: install gitleaks>
   Dependencies (npm):   <n High+ CVEs | clean | NOT RUN: no lockfile / npm missing>
   SAST (semgrep):       <n findings | clean | NOT RUN: install semgrep>
+  Verified (trufflehog): <n LIVE creds — ROTATE | clean | NOT RUN (optional)>
 
   <per-finding: file:line — rule — one-line description>
 ```
@@ -79,5 +97,7 @@ Then a one-line verdict: **clean / findings to review / could not complete (tool
 
 - Do **not** fix anything. `/audit` is report-only. Fixes on foreign code go through
   `/conform`'s approval gate; fixes on this repo go through normal edits + `/ship`.
-- Do **not** mark a target "clean" if any scanner could not run — say "incomplete."
+- Do **not** mark a target "clean" if any of the three CORE scanners could not run —
+  say "incomplete." (A skipped optional trufflehog pass does not block "clean"; note
+  it as NOT RUN.)
 - Do **not** run foreign code to test it as part of auditing it.
