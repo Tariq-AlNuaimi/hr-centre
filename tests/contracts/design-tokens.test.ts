@@ -63,3 +63,56 @@ test("every --density-* semantic resolves to a --space-* step", () => {
 test("globals.css imports tokens.css so the scale is actually loaded", () => {
   assert.match(globalsCss, /@import\s+"\.\/tokens\.css";/);
 });
+
+// --- Semantic surface layer (ADR-029, Workstream C2) -----------------------
+// The shadcn primitive layer paints off ONE set of semantic vars, and dark mode
+// is a single variable swap. These assertions lock that contract: each var is
+// defined in :root, mapped to a --color-* utility, and overridden under
+// [data-theme="dark"] -- so a `dark:` pair can never silently creep back in.
+const SEMANTIC_VARS = [
+  "--background",
+  "--foreground",
+  "--card",
+  "--card-foreground",
+  "--muted",
+  "--muted-foreground",
+  "--border",
+  "--input",
+  "--destructive",
+];
+
+test("tokens.css defines every semantic surface var in :root", () => {
+  for (const v of SEMANTIC_VARS) {
+    assert.match(tokensCss, new RegExp(`${v}:\\s*[^;]+;`), `tokens.css defines ${v}`);
+  }
+});
+
+test("@theme maps each semantic var to a --color-* utility", () => {
+  for (const c of [
+    "--color-background",
+    "--color-foreground",
+    "--color-card",
+    "--color-muted",
+    "--color-muted-foreground",
+    "--color-border",
+    "--color-input",
+    "--color-ring",
+    "--color-destructive",
+  ]) {
+    assert.match(
+      tokensCss,
+      new RegExp(`${c}:\\s*var\\(`),
+      `@theme block maps ${c} to a var()`,
+    );
+  }
+});
+
+test("dark mode overrides the semantic surfaces in globals.css", () => {
+  for (const v of ["--background", "--foreground", "--card", "--muted", "--border", "--input"]) {
+    assert.match(
+      globalsCss,
+      new RegExp(`\\[data-theme="dark"\\][\\s\\S]*?${v}:\\s*[^;]+;`),
+      `globals.css dark block overrides ${v}`,
+    );
+  }
+});

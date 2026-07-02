@@ -62,6 +62,27 @@
   --motion-mid: 0.2s;
   --motion-slow: 0.3s;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);  /* refined deceleration curve  */
+
+  /* --- Semantic surface layer (ADR-029, Workstream C2 — shadcn tokens) ------
+   * ONE home for the primitive layer's surface / text / border colors, so
+   * `bg-card` / `text-foreground` / `border-border` etc. all resolve here and
+   * dark mode is a single variable swap (the [data-theme="dark"] overrides in
+   * globals.css), not a per-class `dark:` pair. Light values mirror the neutral
+   * gray scale the shipped primitives already used (gray-100/200/300/500/900)
+   * plus the brand vars <html> emits; the @theme inline block below exposes each
+   * as a `--color-*` utility. CSS is outside no-raw-hex-color by construction. */
+  --background: #ffffff;
+  --foreground: #111827;          /* gray-900 */
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --muted: #f3f4f6;               /* gray-100 */
+  --muted-foreground: #6b7280;    /* gray-500 */
+  --border: #e5e7eb;              /* gray-200 */
+  --input: #d1d5db;               /* gray-300 */
+  --ring: var(--brand-primary);
+  --primary-foreground: #ffffff;
+  --destructive: #dc2626;         /* red-600 */
+  --destructive-foreground: #ffffff;
 }
 
 /* ============================================================================
@@ -129,4 +150,22 @@
 
   /* --- Motion (ease-out) --------------------------------------------------- */
   --ease-out: var(--ease-out);
+
+  /* --- Semantic surface colors (ADR-029 C2) --------------------------------
+   * Utilities: bg-background/bg-card/bg-muted, text-foreground/text-muted-
+   * foreground/text-card-foreground, border-border, ring-ring, bg-destructive…
+   * Each references a :root var above (or a brand var), so the single dark swap
+   * in globals.css restyles all of them at once — exactly like the shadows. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
