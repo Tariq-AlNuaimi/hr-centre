@@ -8,7 +8,17 @@ import { directionForLocale } from "@/i18n/config";
 import { brand } from "@/brand.config";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "@/app/globals.css";
+
+// Vercel Speed Insights (real-user Core Web Vitals; ADOPT Wave A3). Mounted only
+// when the app is actually running on Vercel (`process.env.VERCEL` is set on
+// Vercel builds/runtime, unset locally and on non-Vercel hosts like the Docker
+// self-host rail). Guarding keeps it inert off-Vercel — no beacon script injected,
+// no requests to the `/_vercel/speed-insights` endpoint that only exists there —
+// so local dev and self-host builds are byte-for-byte unaffected. Enable data
+// collection in the Vercel dashboard → project → Speed Insights.
+const onVercel = Boolean(process.env.VERCEL);
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -121,6 +131,8 @@ export default async function LocaleLayout({
             </ThemeProvider>
           </AntdRegistry>
         </NextIntlClientProvider>
+        {/* Inert unless running on Vercel — see onVercel above. */}
+        {onVercel ? <SpeedInsights /> : null}
       </body>
     </html>
   );
