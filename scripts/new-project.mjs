@@ -278,6 +278,48 @@ const ghRepo = await api(
 created.repoFullName = ghRepo.full_name || `${owner}/${slug}`;
 ok(P, `GH repo: ${ghRepo.html_url} (id ${ghRepo.id})`);
 
+// 1b. Stamp out the pristine-template marker in the generated repo so its first
+// `npm run ship` is gated by the ADR-031 db-structure domain-model check instead
+// of staying silently exempt (findings-register 2026-07-02). The generate API
+// copies project.config.json verbatim -- including "pristine": true -- so we flip
+// it to false via a single contents commit. Best-effort: a failure here never
+// fails provisioning (the operator can /rebrand, which also clears it, or set it
+// manually before /ship).
+try {
+  const branch = ghRepo.default_branch || "main";
+  const ghHeaders = {
+    Authorization: `Bearer ${GH_TOKEN}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const cur = await apiTry(
+    "GitHub read project.config.json",
+    `https://api.github.com/repos/${created.repoFullName}/contents/project.config.json?ref=${encodeURIComponent(branch)}`,
+    { headers: ghHeaders }
+  );
+  const decoded = Buffer.from(cur.content || "", cur.encoding || "base64").toString("utf8");
+  if (/"pristine":\s*true/.test(decoded)) {
+    const updated = decoded.replace(/"pristine":\s*true/, '"pristine": false');
+    await apiTry(
+      "GitHub stamp pristine flag",
+      `https://api.github.com/repos/${created.repoFullName}/contents/project.config.json`,
+      {
+        method: "PUT",
+        headers: { ...ghHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "chore: clear pristine-template flag (fork gated by ADR-031 db-structure check)",
+          content: Buffer.from(updated, "utf8").toString("base64"),
+          sha: cur.sha,
+          branch,
+        }),
+      }
+    );
+    ok(P, "Cleared pristine-template flag in the new repo (ADR-031 db-structure gate now applies).");
+  }
+} catch (e) {
+  warn(P, `Could not clear pristine flag in the new repo: ${e.message}. Run /rebrand (clears it) or set "pristine": false in project.config.json before /ship.`);
+}
+
 // 2. Neon: create project, derive pooled connection string
 let neonOrgId = process.env.NEON_ORG_ID || "";
 if (!neonOrgId) {

@@ -233,19 +233,23 @@ function scanBlueprint() {
 //       schema when the diff CAN run fails red.
 // The PRISTINE TEMPLATE is exempt from (a): it deliberately ships baseline-only
 // (a fork's first /quickstart scaffolds the first domain model via
-// /scaffold-entity). The exemption keys on the pre-/rebrand package name, so
-// every rebranded fork is gated. Escape hatch for the rare genuinely stateless
-// fork (mirrors tierAck/blueprintAck; ADR-025 pattern; never silent):
-// "dbAck": "<reason>" in project.config.json PLUS an adjudicated ADR-031/dbAck
-// line in docs/findings-register.md.
+// /scaffold-entity). The exemption keys on an EXPLICIT `"pristine": true` flag
+// in project.config.json -- shipped only by the template, and cleared by every
+// fork-creation path (scripts/rebrand.mjs, scripts/deploy.mjs, and
+// scripts/new-project.mjs stamp it out). This replaces the earlier package-name
+// proxy (`name === "fullstack-next-template"`), which only /rebrand rewrote --
+// so a fork made via /new-project or /deploy WITHOUT /rebrand stayed silently
+// exempt (findings-register 2026-07-02). Any project without the flag is gated.
+// Escape hatch for the rare genuinely stateless fork (mirrors tierAck/
+// blueprintAck; ADR-025 pattern; never silent): "dbAck": "<reason>" in
+// project.config.json PLUS an adjudicated ADR-031/dbAck line in
+// docs/findings-register.md.
 
 // ADR-031 baseline allowlist: the Auth.js models (User/Account/Session/
 // VerificationToken) + the audit log (AuditLog). Keep in lockstep with
 // prisma/schema.prisma when the auth/audit baseline itself changes (ADR-031
 // "migration triggers"); any model NOT in this set counts as a domain model.
 const BASELINE_MODELS = new Set(["User", "Account", "Session", "VerificationToken", "AuditLog"]);
-// package.json name BEFORE scripts/rebrand.mjs runs -- the pristine-template marker.
-const TEMPLATE_PKG_NAME = "fullstack-next-template";
 
 async function checkMigrationsInSync() {
   // Returns { sync: "ok" } | { sync: "skip", why } | { sync: "red", detail }.
@@ -335,9 +339,11 @@ async function scanDbStructure() {
   const schema = readFileSync("prisma/schema.prisma", "utf8");
   const models = [...schema.matchAll(/^\s*model\s+([A-Za-z_]\w*)\s*\{/gm)].map((m) => m[1]);
   const domain = models.filter((m) => !BASELINE_MODELS.has(m));
-  let pkgName = "";
-  try { pkgName = JSON.parse(readFileSync("package.json", "utf8")).name ?? ""; } catch {}
-  const pristineTemplate = pkgName === TEMPLATE_PKG_NAME;
+  // Pristine-template exemption: an explicit `"pristine": true` in
+  // project.config.json (shipped only by the template; every fork-creation
+  // script clears it). Robust vs the old package-name proxy which /new-project
+  // and /deploy never rewrote -- see the block comment above.
+  const pristineTemplate = cfg.pristine === true;
   if (domain.length === 0 && !pristineTemplate) {
     return red(
       `prisma/schema.prisma has NO domain model beyond the auth/audit baseline (${[...BASELINE_MODELS].join(", ")}) -- ` +

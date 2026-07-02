@@ -54,6 +54,15 @@ const FILES = [
     ],
   },
   {
+    // Clear the pristine-template marker: a rebranded repo is a fork, so it must
+    // be gated by the ADR-031 db-structure check (scripts/ship.mjs). No-op if the
+    // flag is already false/absent (absence already means "gated"). See ADR-031.
+    path: 'project.config.json',
+    rules: [
+      { from: /"pristine":\s*true/, to: '"pristine": false' },
+    ],
+  },
+  {
     path: '.env.example',
     rules: [
       { from: /NEXT_PUBLIC_APP_NAME="My App"/g, to: `NEXT_PUBLIC_APP_NAME="${NAME}"` },

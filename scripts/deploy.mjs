@@ -30,6 +30,7 @@
 
 import { randomBytes } from "node:crypto";
 import { parseArgs } from "node:util";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { step, ok, warn, bail } from "./lib/log.mjs";
 
 const P = "deploy";
@@ -90,6 +91,24 @@ const teamQs = VERCEL_TEAM_ID ? `?teamId=${encodeURIComponent(VERCEL_TEAM_ID)}` 
 const customDomain = apex ? `${subdomain}.${apex}` : null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Clear the pristine-template marker locally (ADR-031 / findings-register
+// 2026-07-02): a deployed repo is a fork, so its next `npm run ship` must be
+// gated by the db-structure domain-model check rather than stay silently exempt
+// (the marker only mattered for the untouched template). Best-effort, idempotent
+// text edit (preserves comments/formatting); never blocks the deploy. Commit it
+// with your next push so the gate applies in CI too.
+try {
+  if (existsSync("project.config.json")) {
+    const raw = readFileSync("project.config.json", "utf8");
+    if (/"pristine":\s*true/.test(raw)) {
+      writeFileSync("project.config.json", raw.replace(/"pristine":\s*true/, '"pristine": false'));
+      ok(P, "Cleared pristine-template flag in project.config.json (ADR-031 db-structure gate now applies; commit it).");
+    }
+  }
+} catch (e) {
+  warn(P, `Could not clear pristine flag in project.config.json: ${e.message} (set "pristine": false manually before /ship).`);
+}
 
 // ---------------------------------------------------------------------------
 // Rollback bookkeeping.
