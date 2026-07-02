@@ -20,6 +20,16 @@ send a screenshot back, you iterate with Claude, repeat until approved.
 - `/first-fork` has been run (Vercel + Neon are connected).
 - The local repo is up to date with `main`.
 
+## Non-negotiable: structured DB (ADR-031)
+
+**/quickstart refuses to build a "no-DB" app.** Every idea gets a real Prisma
+data model via `/scaffold-entity` — no JSON-file stores, no in-memory state, no
+UI-only mockups. If the idea seems to have no entities, that's a requirements
+gap: go back to the blueprint round and find the domain object (what does the
+team CRUD, list, or track?), or stop and say so. `/ship` enforces this
+structurally — its db-structure gate fails red on a fork whose schema has no
+domain model beyond the auth/audit baseline.
+
 ## Steps
 
 ### 0. Blueprint (lightweight track) — required before scaffolding

@@ -91,7 +91,11 @@ half of that gate: enumerate every existing surface whose behavior changes, in
 the OpenSpec change-proposal style, so reviewers diff intent, not just code.)
 
 ## Architecture sketch
-- Entities + key fields (and which are Restricted — SECURITY.md §1)
+- Entities + key fields (and which are Restricted — SECURITY.md §1).
+  **Must be non-empty (ADR-031):** the schema is designed here, at the contract
+  stage — a full blueprint cannot be signed off with an empty data-model sketch.
+  If the feature "has no entities", name the existing model(s) it reads/writes;
+  a genuinely stateless fork needs the `dbAck` register path, not a blank.
 - Routes (method + path + auth wrapper) and the service/function each calls
 - Where state lives (DB / session / client) — and an explicit check that this
   does NOT duplicate an existing screen, setting, route, or service. Name the
@@ -124,6 +128,9 @@ the OpenSpec change-proposal style, so reviewers diff intent, not just code.)
 ## Open questions  (RESOLVE via AskUserQuestion before building)
 - [ ] <question> → <answer once resolved>
 ```
+
+Sign-off gate: a blueprint whose **Architecture sketch has no data model** is
+incomplete — do not present it for sign-off (ADR-031).
 
 Then: **present it, get explicit operator sign-off, commit it**
 (`git add docs/blueprints/<feature>.md && git commit -m "docs: blueprint <feature>"`),
