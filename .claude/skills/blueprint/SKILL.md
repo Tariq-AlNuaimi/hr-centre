@@ -40,6 +40,37 @@ surface** (auth, `lib/`, Prisma schema/migrations, API routes, `middleware.ts`,
 sign-off before code. This pairs with plan mode — the blueprint IS the plan's
 requirements half.
 
+## Grill against the docs first (the alignment interview)
+
+Before you resolve open questions from your own head, run an **interrogation
+pass** that pins the requirement against this repo's *authoritative* docs — the
+template's native version of mattpocock's `/grill-with-docs` (cat 02), built not
+imported per ADR-022. The point is to surface conflicts *as questions* before
+code, not to discover them at QA. Read (don't guess) the sources that govern this
+change and grill the requirement against each:
+
+- **`CLAUDE.md` Hard rules + Ask-before** — does the ask cross an auth wrapper,
+  add a public path, touch `lib/`/`middleware.ts`/`eslint-rules/`/migrations, or
+  need a Restricted column? Each hit is a question the operator must answer, not
+  an assumption you make.
+- **`SECURITY.md` §1 data classes** — is any field Restricted? Then the
+  `SCRUB_FIELDS` + export gates apply and belong in the blueprint up front.
+- **`prisma/schema.prisma`** — do the entities/relations already exist? Grill for
+  reuse (`docs/REPO-MAP.md` answers "where is X") so you don't spec a second
+  model for something already modeled.
+- **The relevant ADR(s)** — is there a locked decision (stack, deploy target,
+  audit EXCLUDE) the ask silently contradicts? Name it; a superseding ADR is its
+  own gate.
+- **`docs/design-recipes.md` / `docs/uat-rubric.md`** — the Five Pillars and the
+  UI DoD are contract terms, not afterthoughts.
+
+Every conflict the grill turns up becomes a row in **Open questions** below,
+resolved via `AskUserQuestion` — that's the linkage: grill → questions → answers
+→ contract. A requirement that survives the grill is aligned with the docs; one
+that doesn't is a guess waiting to become a rebuild. (Lightweight track: do the
+one-breath version — a single "does this cross a Hard rule / reuse an existing
+model?" check against `CLAUDE.md` + `docs/REPO-MAP.md` — not the full sweep.)
+
 ## Full blueprint — write `docs/blueprints/<feature>.md`
 
 Resolve the open questions FIRST (via `AskUserQuestion`) — a blueprint built on
@@ -90,12 +121,30 @@ change to an existing surface escapes it structurally. This table is the manual
 half of that gate: enumerate every existing surface whose behavior changes, in
 the OpenSpec change-proposal style, so reviewers diff intent, not just code.)
 
+## Domain model  (the `/domain-modeling` step — do this BEFORE routes)
+Model the *nouns and their relationships* before the plumbing (mattpocock's
+`/domain-modeling`, native per ADR-022). This is where the schema is designed;
+it feeds `/scaffold-entity` directly (entities → `--fields`/`--enums`,
+relationships → `--relations`, invariants → the writer-role + zod). Fill the
+grid — it maps one-to-one onto the scaffold flags:
+
+| Entity (PascalCase) | Key attributes (name:type, mark ? optional / ! indexed) | Restricted? (§1) | Enums (states) | Relationships (→ target, cardinality 1:1/1:N/N:1) |
+|---|---|---|---|---|
+| `<Entity>` | `title:string, dueAt:date?` | no | `status: TODO\|DOING\|DONE` | `project → Project (N:1)`, `assignee → User? (N:1)` |
+
+- **Invariants / lifecycle** — the rules the schema alone can't state: which
+  fields are immutable after create, valid state transitions (which `status`
+  moves are legal), uniqueness beyond the PK, who may write (`admin`/`editor`/
+  `any` → the auth wrapper). These become zod refinements + the `--writes` flag.
+- **Reuse check** — before adding an entity, name the existing model it might
+  extend instead (`prisma/schema.prisma` + `docs/REPO-MAP.md`). A new model that
+  duplicates an existing noun is the anti-pattern this step catches.
+- **Must be non-empty (ADR-031):** the schema is designed here, at the contract
+  stage — a full blueprint cannot be signed off with an empty data-model. If the
+  feature "has no entities", name the existing model(s) it reads/writes; a
+  genuinely stateless fork needs the `dbAck` register path, not a blank grid.
+
 ## Architecture sketch
-- Entities + key fields (and which are Restricted — SECURITY.md §1).
-  **Must be non-empty (ADR-031):** the schema is designed here, at the contract
-  stage — a full blueprint cannot be signed off with an empty data-model sketch.
-  If the feature "has no entities", name the existing model(s) it reads/writes;
-  a genuinely stateless fork needs the `dbAck` register path, not a blank.
 - Routes (method + path + auth wrapper) and the service/function each calls
 - Where state lives (DB / session / client) — and an explicit check that this
   does NOT duplicate an existing screen, setting, route, or service. Name the
@@ -196,6 +245,8 @@ blueprint, or set `"blueprintAck": "<reason>"` in `project.config.json`.
 | "This is a change, not a new feature — the `/ship` gate won't even fire." | That structural blind spot is why the **Delta (was → now)** section exists. Edits to existing behavior are *more* dangerous than additions: someone already depends on the old behavior. |
 | "I'll write the blueprint after, to match what I built." | A post-hoc blueprint is a changelog wearing a costume. It can't catch divergence because it *is* the divergence, and `/qa` traces coverage against fiction. |
 | "A diagram is ceremony — the sketch prose says the same thing." | The Mermaid block is where duplicate screens/services get caught (you can't draw the second settings page next to the first and not notice). Prose hides topology; the diagram is the anti-duplication check working. |
+| "I'll model the schema as I code — I know the entities already." | Then the domain-model grid costs you two minutes to write down what you "already know" — and its columns map straight onto the `/scaffold-entity` flags. The redo you avoid is the mid-scaffold "this needs another relation" migration. |
+| "I've read the docs before — I don't need to grill this ask against them." | You've read them; you haven't checked *this* requirement against them. The grill is where a silent collision with a Hard rule, a locked ADR, or an existing model becomes a question now instead of a `/code-review` block later. |
 
 ## Related
 - `/quickstart` and `/scaffold-entity` call the lightweight track as their step 0.

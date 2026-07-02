@@ -27,6 +27,13 @@ where you confirm this entity isn't duplicating an existing model/route and that
 its fields, relations, and writer-role match what the operator actually needs —
 cheaper than re-running a migration after the fact.
 
+Fill the blueprint's **Domain model** grid (the `/domain-modeling` step) before
+you run the scaffold — it maps one-to-one onto the flags below: entities +
+attributes → `--fields`, enum/state columns → `--enums`, relationships +
+cardinality → `--relations`, and the "who may write" invariant → `--writes`.
+Modeling the nouns and their relationships first is what stops a mid-scaffold
+"wait, this needs another relation" migration redo.
+
 ## Inputs to gather
 
 - **Entity name** (PascalCase, singular). Examples: `Project`, `Invoice`, `TimeEntry`.
