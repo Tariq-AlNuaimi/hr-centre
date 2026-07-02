@@ -59,15 +59,36 @@ rule), with the trade-off that justifies building vs. adopting>
 personal | shared  — and the one reason. (Sets ceremony; never the security
 floor. If `shared`, the SECURITY.md §9 obligations apply.)
 
-## User stories
-- As a <role>, I want <goal>, so that <value>.
-  - Acceptance: <observable, testable condition(s)>
-(one per role × goal; these become the QA/UAT coverage rows)
+## User stories  (stable IDs — the traceability spine)
+- **US1** — As a <role>, I want <goal>, so that <value>.
+  - **AC-1.1** — WHEN <trigger/condition> THE SYSTEM SHALL <observable behavior>.
+  - **AC-1.2** — IF <error/adversarial condition> THEN THE SYSTEM SHALL
+    <reject with the zod message / 403 / bounded result — name it>.
+- **US2** — …
+  - **AC-2.1** — WHEN … THE SYSTEM SHALL …
+(one story per role × goal. IDs are **stable**: never renumber; a dropped story's
+ID is retired, not reused. Acceptance criteria are **EARS-phrased** — the
+constrained "WHEN … THE SYSTEM SHALL …" / "IF … THEN THE SYSTEM SHALL …" form —
+so each is individually testable, and `/qa`/`/uat`/`/manual-uat` cite `US`/`AC`
+ids in their coverage rows one-to-one instead of re-deriving prose.)
 
-## Scenarios (per story)
-- Happy: <valid data, intended journey, expected result>
-- Worst: <invalid/boundary/adversarial input, unauthorized role, double-submit —
-  expected rejection/zod message/403, NOT a 500 or a silent success>
+## Scenarios (per story; Given/When/Then — worst path is mandatory)
+- **US1-happy** — Given <preconditions: role, seeded state>, When <the intended
+  journey with valid data>, Then <the expected result — tie it to an AC-1.x>.
+- **US1-worst** — Given <same or hostile preconditions>, When <invalid/boundary/
+  adversarial input, unauthorized role, double-submit>, Then <the expected
+  rejection — zod message / 403 / no-op — NOT a 500 or a silent success>.
+(GWT keeps scenarios checkable: a scenario with no Then is a wish, not a test.
+`/manual-uat` maps its walk 1:1 onto these named `USn-happy`/`USn-worst` cells.)
+
+## Delta — was → now  (REQUIRED when changing existing behavior; else "n/a — additive only")
+| Surface (route / screen / service) | Was | Now | Who notices the break? |
+|---|---|---|---|
+| `PATCH /api/…` | <current behavior> | <new behavior> | <consumer/role affected> |
+(`/ship`'s blueprint gate only fires on *added* routes/migrations — a behavior
+change to an existing surface escapes it structurally. This table is the manual
+half of that gate: enumerate every existing surface whose behavior changes, in
+the OpenSpec change-proposal style, so reviewers diff intent, not just code.)
 
 ## Architecture sketch
 - Entities + key fields (and which are Restricted — SECURITY.md §1)
@@ -76,6 +97,25 @@ floor. If `shared`, the SECURITY.md §9 obligations apply.)
   does NOT duplicate an existing screen, setting, route, or service. Name the
   existing thing you reuse (cite `docs/REPO-MAP.md` / a path).
 - Migrations (forward-compatible; never drop a column the running version reads)
+- **A Mermaid C4-style diagram (required in the full track).** Zero-dep,
+  renders on GitHub; container/component altitude, not class-level noise. Show
+  the touched routes → services → tables and where the new pieces attach:
+
+  ```mermaid
+  C4Component
+    title <Feature> — component view
+    Container_Boundary(app, "Next.js app") {
+      Component(page, "<screen>", "RSC page", "reads via service")
+      Component(route, "<METHOD /api/…>", "API route", "withEditorAuth + zod")
+      Component(svc, "<lib/services/…>", "service", "the only Prisma caller")
+    }
+    ContainerDb(db, "Postgres (Neon)", "table(s): <snake_case>")
+    Rel(page, route, "fetch")
+    Rel(route, svc, "calls")
+    Rel(svc, db, "Prisma")
+  ```
+  (Plain `flowchart` is an acceptable fallback if `C4Component` fights you —
+  the requirement is a committed diagram, not a specific dialect.)
 
 ## The five pillars (how this honors each — CLAUDE.md "Five Pillars")
 - Speed · Maintainable · Scalable · Secure · High-Quality — one line each, or
@@ -91,11 +131,29 @@ and only then build. The blueprint is the contract; if the build needs to diverg
 from it, update the blueprint and re-confirm — don't silently drift (that drift is
 complaint #9/#10).
 
+## After sign-off: decompose via `writing-plans` (don't improvise the plan)
+
+A signed blueprint is the *requirements* half; the *task* half is a decomposition,
+and that goes through the **Superpowers `writing-plans` skill when available**
+(CLAUDE.md already defers real multi-file features to Superpowers — this is where
+the handoff happens): bite-size tasks with exact file paths and verification
+steps, persisted as markdown so an ephemeral container can resume it. When
+Superpowers isn't installed, write the same shape by hand — an ordered `- [ ]`
+checklist committed next to the blueprint.
+
+Either way, **mark parallelizable steps with `[P]`** (spec-kit's convention): a
+step gets `[P]` only if it touches different files than, and has no dependency
+on, every other `[P]` step in its group. Un-marked steps run in blueprint order.
+Tasks cite the story they serve (`US1`, `AC-2.1`) so the plan inherits the
+blueprint's traceability instead of inventing its own.
+
 ## Why this exists (the contract is reused downstream)
 
 - `/qa` and `/manual-uat` build their coverage matrix from the **user stories** —
   every story × role × {happy, worst} must be exercised, no ad-hoc exploration
-  that misses cells (closes #1/#5/#6).
+  that misses cells (closes #1/#5/#6). The **stable `US`/`AC` ids** are what make
+  that matrix auditable: a coverage row cites `AC-1.2`, not a paraphrase, so a
+  skipped criterion is visible as a missing id, not lost in prose.
 - The **architecture sketch** is the anti-duplication / anti-divergence guard
   (#7): you can't build a second settings page if you wrote down where the first
   one lives.
@@ -120,6 +178,17 @@ blueprint, or set `"blueprintAck": "<reason>"` in `project.config.json`.
   (These are the same carve-outs as the CLAUDE.md Auto-plan rule — don't add
   ceremony to trivia.)
 - An up-to-date blueprint for this feature already exists — open it, don't rewrite.
+
+## Do not skip this because…
+
+| Rationalization | Rebuttal |
+|---|---|
+| "The prompt is clear enough — I can infer the rest." | Inference is exactly the failure this gate exists to stop. The clarifying round costs one message; guessing wrong costs a rebuilt feature and a QA pass with no contract to trace against. |
+| "It's just a prototype / it's throwaway." | Then use the **lightweight track** — one question round + two one-line reads. The tiering already priced in "throwaway"; skipping entirely is the only wrong answer. |
+| "The operator said do it fast." | Fast is the lightweight track, not zero track. A wrong guess is the slowest path there is; and if it touches the Ask-before surface, speed doesn't waive the full track. |
+| "This is a change, not a new feature — the `/ship` gate won't even fire." | That structural blind spot is why the **Delta (was → now)** section exists. Edits to existing behavior are *more* dangerous than additions: someone already depends on the old behavior. |
+| "I'll write the blueprint after, to match what I built." | A post-hoc blueprint is a changelog wearing a costume. It can't catch divergence because it *is* the divergence, and `/qa` traces coverage against fiction. |
+| "A diagram is ceremony — the sketch prose says the same thing." | The Mermaid block is where duplicate screens/services get caught (you can't draw the second settings page next to the first and not notice). Prose hides topology; the diagram is the anti-duplication check working. |
 
 ## Related
 - `/quickstart` and `/scaffold-entity` call the lightweight track as their step 0.
