@@ -1,6 +1,9 @@
 # ADR-023 — Docker as an opt-in self-host rail
 
-**Status:** Accepted
+**Status:** Superseded in part by ADR-030 (2026-07-02) — the **opt-in stance** is superseded
+(Docker is now a standard build artifact, gated at `/ship --full`/`/deploy`/`/handoff`/CI);
+the implementation this ADR shipped (DOCKER_BUILD gate, Dockerfile, compose, Make targets,
+docker-build.yml) is kept and remains authoritative.
 **Date:** 2026-06-24
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

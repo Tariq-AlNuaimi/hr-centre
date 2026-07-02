@@ -1,6 +1,7 @@
 # ADR-027 — UI library direction & standard app skeleton
 
-**Status:** Accepted
+**Status:** Part 1 (UI library — "keep AntD") **superseded by ADR-029** (2026-07-02: replatform
+to Tailwind v4 + shadcn/ui + Tremor). Part 2 (standard app skeleton) remains Accepted.
 **Date:** 2026-06-25
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

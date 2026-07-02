@@ -25,6 +25,11 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->
+- 2026-07-02 — Replatform program Phase 0 SIGNED: UI layer = **shadcn/ui + Tremor**
+  on Tailwind v4 (ADR-029, reverses ADR-027's "keep AntD" with rationale recorded);
+  Docker = standard build artifact gated at `/ship --full`/`/deploy`/`/handoff`/CI
+  (ADR-030); structured DB mandatory via `/ship` gate (ADR-031). Adoption backlog =
+  `docs/deep-comparison/ADOPT.md` (A2+A4 now, A1 after Workstream C). Don't relitigate.
 - 2026-06-25 — Harness-hardening sweep (15 operator complaints) is COMPLETE and the
   "tiered blocking gate · hard hooks" roadmap is implemented (ADR-025): pillars-as
   -gates + the `Stop` hook hard-BLOCKS unpushed commits + `/ship` blueprint & tier

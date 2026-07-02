@@ -1,6 +1,6 @@
 # Program blueprint — ecosystem adoption + replatform (5 operator directives)
 
-**Status:** DRAFT — awaiting operator sign-off (this document is the contract)
+**Status:** SIGNED OFF (operator, 2026-07-02 — all four open questions answered; see §Open questions)
 **Date:** 2026-07-02
 **Owner:** Tariq Al-Naaimi
 **Source:** operator directives on the deep-comparison batch (`docs/deep-comparison/01–22` + README)
@@ -28,9 +28,11 @@ Three superseding ADRs, each a one-session write + sign-off:
      `/design-system`+`/design-qa` methodology, tokens-as-single-source), what is discarded
      (`antd-theme.ts`, AntD component-token phases), and the migration triggers table from ADR-027
      as the formal basis.
-   - Target stack (per ADR-027's own head-to-head, where shadcn/ui was the recommended swap):
-     **Tailwind v4 (CSS-first `@theme`) + shadcn/ui (Radix primitives) + react-hook-form** (forms;
-     zod already at every boundary) + **recharts stays** (charts) + **dnd-kit stays** (kanban).
+   - Target stack (per ADR-027's own head-to-head, where shadcn/ui was the recommended swap;
+     **Tremor added at operator sign-off 2026-07-02** for charts/KPI/dashboard surfaces):
+     **Tailwind v4 (CSS-first `@theme`) + shadcn/ui (Radix primitives) + Tremor (dashboards;
+     wraps recharts) + react-hook-form** (forms; zod already at every boundary) + **recharts
+     stays** (chart engine under Tremor) + **dnd-kit stays** (kanban).
    - Side benefit to record: removes AntD's CSS-in-JS → the CSP `'unsafe-inline'` style exception
      (ADR-001 consequence) can finally be dropped.
 2. **ADR-030 — Docker as a standard build artifact** (supersedes ADR-023's opt-in stance).
@@ -194,12 +196,12 @@ Per CLAUDE.md, each session ends pushed; each wave/workstream sub-feature gets i
 4. **Adoption sprawl** — 45 items invite drift. Mitigation: ADOPT.md is the single checklist;
    waves land whole or the remainder is re-logged, never silently dropped (pillar rule).
 
-## Open questions (answer before Phase 0 sign-off)
+## Open questions — ALL ANSWERED (operator, 2026-07-02)
 
-1. **C-scope:** shadcn/ui confirmed as the component layer (ADR-027's own recommendation), or bare
-   Tailwind + headless primitives? *(Recommend shadcn/ui.)*
-2. **B-strictness:** docker-build in every local `/ship` (slow but literal "always"), or
-   `/ship --full`+CI+`/deploy`+`/handoff` (fast loop, still gated)? *(Recommend the latter.)*
-3. **D-depth:** keep ar/RTL inert-in-repo (ADR-028 stance) or add a strip option at `/rebrand`?
-   *(Recommend inert.)*
-4. **A-priority:** A1 gates before or interleaved with C? *(Recommend: A2+A4 now, A1 after C.)*
+1. **C-scope:** ✅ **shadcn/ui + Tremor** — signed off against the 6-screenshot side-by-side
+   (ours-AntD, shadcn/ui, Tremor, HeroUI, Catalyst, TailAdmin). Recorded in ADR-029.
+2. **B-strictness:** ✅ **`/ship --full` + CI + `/deploy` + `/handoff`** — the fast local `/ship`
+   loop stays image-free. Recorded in ADR-030.
+3. **D-depth:** ✅ **Keep ar/RTL inert-in-repo** (ADR-028 stance); no strip option at `/rebrand`.
+4. **A-priority:** ✅ **A2 + A4 start now; A1 after C lands.** Recorded in ADOPT.md's sequencing
+   rules.
