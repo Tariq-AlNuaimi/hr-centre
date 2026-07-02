@@ -1,51 +1,56 @@
-# Session handoff — 2026-07-02 (UI sign-off + Phase 0)
+# Session handoff — 2026-07-02 (parallel workstreams integrated)
 
 ## Goal
-Replatform-and-adoption program, per the signed contract
-`docs/blueprints/2026-07-replatform-and-adoption-program.md` (5 operator
-directives). This session's sub-goal — UI-layer sign-off + Phase 0 governance —
-is **COMPLETE**.
+Replatform-and-adoption program per the signed contract
+`docs/blueprints/2026-07-replatform-and-adoption-program.md`. This session:
+UI sign-off + Phase 0 + SIX parallel workstreams integrated, `/ship` green,
+pushed.
 
 ## State
-Branch `claude/ui-layer-signoff-replatform-onjlrr` (fast-forwarded from
-`claude/claude-repos-comparison-0ddkul`, which it now supersedes). Tree clean,
-pushed. `/ship` NOT run (docs-only batch; pushes `--no-verify` per operator
-batch instruction). Not deployed.
+Branch `claude/ui-layer-signoff-replatform-onjlrr` at `5d17e5e`, pushed, tree
+clean. **`/ship` GREEN end-to-end (12 phases incl. the new db-structure gate,
+51s).** senior-code-reviewer post-push pass was spawned at session end —
+check its findings next session if no reply landed. Not deployed.
 
-## Done (this session)
-- **Operator signed off Q1: shadcn/ui + Tremor** (via AskUserQuestion — the
-  tool works again in this env). All 4 blueprint open questions now answered.
-- ADR-029 — UI replatform AntD 6 → Tailwind v4 + shadcn/ui + Tremor (supersedes
-  ADR-027 p1 + ADR-028 p2's AntD layers; amends ADR-001 UI line).
-- ADR-030 — Docker as standard build artifact (supersedes ADR-023's opt-in
-  stance; gate at `/ship --full`/`/deploy`/`/handoff`/CI; trivy; `dockerAck`).
-- ADR-031 — Mandatory structured DB (`/ship` schema+migrations gate; `dbAck`).
-- `docs/deep-comparison/ADOPT.md` — deduped D1 backlog, waves A1–A5 + deferred,
-  with sequencing rules (A2+A4 now, A1 after C).
-- Superseded-status headers added to ADR-023/027/028; blueprint marked
-  SIGNED OFF with all four answers recorded.
-
-## Decisions
-- UI layer = **shadcn/ui + Tremor** (ADR-029). Do not relitigate — the reversal
-  rationale vs ADR-027 is recorded in ADR-029's Context.
-- recharts stays (under Tremor); dnd-kit stays; forms = react-hook-form +
-  zodResolver; tables = shadcn Table + TanStack Table.
+## Done (chronological)
+1. Operator signed off Q1: **shadcn/ui + Tremor** → all 4 blueprint questions
+   answered. Phase 0: ADR-029/030/031 + ADOPT.md (`41bac17`).
+2. Six agents ran in parallel worktrees; all integrated + pushed:
+   - **A3 subset** `ec1a26a` — context7 MCP, /scale-up §12–15 recipes, docs/mcp.md
+   - **D verify** `e8923e0` — ADR-028 RTL optionality **PASS** (live probes; D complete)
+   - **A4** `d1cc668..a805b26` — blueprint EARS/IDs/GWT/C4/delta; MADR ADR template;
+     anti-rationalization tables; reviewer lenses; skill-rules.json (advisory)
+   - **C1** `ed443ef` — Tailwind v4 foundation (@theme in tokens.css, dark variant,
+     brand-var emission, style-guide smoke; NO preflight — AntD coexists; deps added)
+   - **A2** `a05572f`,`1895bf5` — 4 security hooks + settings wiring + trufflehog in
+     /audit + SECURITY.md §17 + full-track blueprint (7 open Qs answered w/ defaults)
+   - **E** `c079fb9` — db-structure /ship gate (baseline-model check, migrations
+     non-empty, shadow-DB sync w/ WARN degradation, dbAck+register; pristine-template
+     exemption keys on package.json name `fullstack-next-template`)
+3. ADOPT.md checked off (`5d17e5e`): A2 done except trivy (owned by B); A3 3×[x]+4×[~];
+   A4 7 of 9 (grill-with-docs pending; plugin-eval/skill-rules partial); E-gate [x].
+4. Infra: `.claude/worktrees/` gitignored (`3a7eaa7`); gitleaks built via Go module
+   proxy to ~/.local/bin (GitHub releases proxy-blocked).
 
 ## Landmines
-- This container's MITM proxy: Chromium can't CONNECT (curl/Node fetch can).
-  Workaround: Playwright `context.route('**/*')` fulfilling every request via
-  `request.newContext({ proxy })` — see agent-memory entry.
-- `docs/SESSION-HANDOFF.md` never merges to `main`.
-- Old branch `claude/claude-repos-comparison-0ddkul` is fully contained in this
-  branch; safe to delete on remote after this branch merges.
+- **Agent worktrees under `.claude/worktrees/` poison `/ship` lint** (ESLint sweeps
+  them) — remove worktrees before running the gate.
+- Agent tool worktrees may branch from `main`, NOT the session branch — verify base
+  and have agents `git merge` the session branch (shared object store makes this cheap).
+- gitleaks: GitHub release downloads 403 via this proxy; `GOBIN=~/.local/bin go
+  install github.com/zricethezav/gitleaks/v8@v8.21.2` works (proxy.golang.org open).
+- C1 deliberately skips Tailwind preflight (would restyle AntD); C2/C4 own enabling it.
+- db-structure sync check WARN-skips without `SHADOW_DATABASE_URL` (disposable EMPTY
+  DB); consider a CI smoke that sets it (E agent's note).
+- A2 blueprint has 7 operator-facing default decisions (no-override deny hooks,
+  warn-only scanner, force-push denied on all branches…) — reviewable in
+  `docs/blueprints/wave-a2-security-hooks.md`.
 
 ## Next steps
-1. **Workstream C1** (Tailwind v4 foundation: install, `@theme` from
-   brand.config + tokens.css, next/font, dark-mode strategy) — per blueprint
-   §C1; ADR-029 is signed, C is unblocked.
-2. Workstreams **A2** (security hooks) + **A4** (process/skills) can run in
-   parallel sessions — full blueprint track (Ask-before surfaces).
-3. **E** (DB gate in `scripts/ship.mjs`) + **D** (RTL verify pass) anytime;
-   **B** (docker gate) after C1.
-4. Merge this branch to `main` (minus SESSION-HANDOFF.md) so the ADRs and
-   ADOPT.md reach fork source-of-truth.
+1. Read senior-code-reviewer findings (spawned post-push); resolve/adjudicate.
+2. **C2** — same-API rebuild of `components/shared/*` on shadcn/ui (+ Tremor for
+   StatCard/charts); TanStack Table parity is the budgeted long pole.
+3. **B** — docker gate in `/ship --full` + trivy (ADR-030; C1 landed so unblocked).
+4. A4 remainder: grill-with-docs + /domain-modeling; plugin-eval run; A3 full pass
+   (installs). A1 + A5 still wait for C per operator sequencing.
+5. Merge to `main` when the operator wants forks to inherit (minus this file).
