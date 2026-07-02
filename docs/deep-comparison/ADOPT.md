@@ -35,50 +35,54 @@ findings-register waiver wiring.
 - [ ] **size-limit** — bundle budget gate (cat 12)
 - [ ] **eslint-plugin-jsx-a11y** — static a11y in the lint gate (cat 22)
 - [ ] **complexity metric** — quantified complexity threshold (cat 09)
-- [ ] **E-gate** — DB-structure check (ADR-031; owned by Workstream E, listed
-      here because it lands in the same `ship.mjs` surface)
+- [x] **E-gate** — DB-structure check (ADR-031) — landed 2026-07-02 (`scanDbStructure` in
+      `scripts/ship.mjs`: baseline-model check, migrations non-empty, shadow-DB sync check with
+      graceful WARN degradation, `dbAck` + register adjudication)
 - [ ] **B-gate** — docker-build in `/ship --full` (ADR-030; owned by Workstream B)
 
 ## Wave A2 — security & trust boundaries (2 sessions; Ask-before, full blueprints)
 
-- [ ] **PostToolUse prompt-injection / secret-exposure scanner** (lasso
-      pattern, cat 04) — the output-side trust boundary push-time gitleaks
-      can't cover
-- [ ] **PreToolUse protect-secrets deny hook** (karanb192 pattern, cat 04)
-- [ ] **Dangerous-command deny hook** (disler pattern, cat 04)
-- [ ] **Agent-read secret hook** (mintmcp pattern, cat 10)
-- [ ] **trufflehog `--only-verified`** — high-signal live-credential pass in
-      `/audit` (cat 10)
+- [x] **PostToolUse prompt-injection / secret-exposure scanner** — landed 2026-07-02
+      (`.claude/hooks/post-tool-scan.mjs`; warn-only via additionalContext, 300KB cap,
+      session dedupe; blueprint: `docs/blueprints/wave-a2-security-hooks.md`)
+- [x] **PreToolUse protect-secrets deny hook** — landed 2026-07-02
+      (`.claude/hooks/protect-secrets.mjs`; denies `.env*`/key-material reads, allows `.env.example`)
+- [x] **Dangerous-command deny hook** — landed 2026-07-02 (`.claude/hooks/dangerous-commands.mjs`)
+- [x] **Agent-read secret hook** — landed 2026-07-02 (deduped into `protect-secrets.mjs`)
+- [x] **trufflehog `--only-verified`** — landed 2026-07-02 (optional pass in `/audit` SKILL.md;
+      external binary, skips-with-note when not installed)
 - [ ] **trivy** — image + config scan (cat 10; owned by Workstream B / ADR-030)
-- [ ] **PreCompact context-refresh hook** (cat 04)
+- [x] **PreCompact context-refresh hook** — landed 2026-07-02 (`.claude/hooks/pre-compact-refresh.mjs`)
 
 ## Wave A3 — measurement & runtime verification (2 sessions)
 
-- [ ] **Vercel Speed Insights** — zero-config CWV (cat 12)
-- [ ] **Lighthouse-CI vs preview URL** (cat 12)
-- [ ] **@next/bundle-analyzer** behind a flag (cat 12)
-- [ ] **react-scan** dev overlay (cat 12)
-- [ ] **context7 MCP** — read-only current-docs server for the stack (cat 05)
-- [ ] **postgres-mcp + k6/k6-mcp + pghero** as `/scale-up` recipes (cat 07)
-- [ ] **chrome-devtools-mcp** as-needed wiring (cats 05, 12)
+- [~] **Vercel Speed Insights** — recipe documented (`/scale-up` §15) 2026-07-02; install lands
+      in the full A3 pass
+- [~] **Lighthouse-CI vs preview URL** — recipe documented (`/scale-up` §15) 2026-07-02; wiring
+      lands in the full A3 pass
+- [~] **@next/bundle-analyzer** behind `ANALYZE=1` — recipe documented (`/scale-up` §15)
+      2026-07-02; install lands in the full A3 pass
+- [~] **react-scan** dev overlay — recipe documented (`/scale-up` §15, npx CLI) 2026-07-02
+- [x] **context7 MCP** — landed 2026-07-02 (`.mcp.json` + `docs/mcp.md`)
+- [x] **postgres-mcp + k6/k6-mcp + pghero** — landed 2026-07-02 (`/scale-up` §12–14)
+- [x] **chrome-devtools-mcp** as-needed wiring note — landed 2026-07-02 (`docs/mcp.md`)
 
 ## Wave A4 — process & skills upgrades (2–3 sessions; mostly markdown)
 
-- [ ] **Blueprint story IDs + EARS acceptance criteria** (`US1 → AC-1.1: WHEN …
-      THE SYSTEM SHALL …`) + OpenSpec-style `was→now` delta (cat 19)
-- [ ] **Superpowers `writing-plans` wiring** downstream of `/blueprint` +
-      spec-kit `[P]` parallelizable markers (cat 20)
-- [ ] **Anti-rationalization tables** on each gate skill's SKILL.md (cat 02)
+- [x] **Blueprint story IDs + EARS acceptance criteria + `was→now` delta** — landed 2026-07-02
+      (`.claude/skills/blueprint/SKILL.md`)
+- [x] **Superpowers `writing-plans` wiring + `[P]` markers** — landed 2026-07-02 (blueprint SKILL.md)
+- [x] **Anti-rationalization tables** — landed 2026-07-02 on `/ship`, `/qa`, `/design-qa`,
+      `/blueprint`
 - [ ] **grill-with-docs + `/domain-modeling`** skill borrows (cat 02)
-- [ ] **MADR schema in ADR-TEMPLATE** (decision drivers, per-option Good/Bad) +
-      Mermaid C4 sketch in `/blueprint` (cat 14)
-- [ ] **Reviewer lenses** — named blocking lenses in `senior-code-reviewer` +
-      logic-lens trace + confidence filter (cat 09)
-- [ ] **Skill auto-activation** — `skill-rules.json`-style keyword/path/intent
-      triggers (cat 01)
-- [ ] **plugin-eval** — static + LLM-semantic evaluator run over our own
-      skills/agents (cat 06)
-- [ ] **GWT scenario shape** (Given/When/Then) in test-case authoring (cat 17)
+- [x] **MADR schema in ADR-TEMPLATE + Mermaid C4 in `/blueprint`** — landed 2026-07-02
+- [x] **Reviewer lenses** — landed 2026-07-02 (five named lenses + execution-trace +
+      0–100 confidence filter in `.claude/agents/senior-code-reviewer.md`)
+- [~] **Skill auto-activation** — advisory `.claude/skill-rules.json` landed 2026-07-02;
+      hook wiring into settings.json is a proposed follow-up (`.claude/README.md`)
+- [~] **plugin-eval** — adopt-before-use note landed (`.claude/README.md`) 2026-07-02; an actual
+      evaluator run over our skills/agents remains
+- [x] **GWT scenario shape** — landed 2026-07-02 (blueprint SKILL.md happy/worst scenarios)
 
 ## Wave A5 — testing & design depth (2–3 sessions)
 
