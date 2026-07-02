@@ -77,3 +77,16 @@ gate beats speed.
 ## Skip when
 - You only touched docs, files under `.claude/`, or `messages/*.json` -- none of those affect the build. Run `npm run lint` + `gitleaks detect` (steps 2 and 5) instead; docs can still leak a secret.
 - You only touched `prisma/schema.prisma` -- run `npm run prisma:generate` first, then the full ship sequence (typecheck will catch the rest).
+
+## Do not skip this because…
+
+The "Skip when" list above is the ONLY sanctioned reduction. These are not:
+
+| Rationalization | Rebuttal |
+|---|---|
+| "It's a docs-only change." | Then you still owe steps 2 + 6 (see Skip when) — a doc can leak a secret, and gitleaks scans history, not intent. "Docs-only" reduces the gate; it never zeroes it. |
+| "It's just a prototype / personal tier." | Tier scales *ceremony*, never the security floor (CLAUDE.md "Project tiers"). `/ship` before every push IS the floor — it's the CI this repo doesn't have. |
+| "The operator is waiting / said be fast." | `npm run ship` is ~45s warm. A broken push costs a Vercel deploy cycle, a bisect, and the operator's trust — every one slower than 45 seconds. |
+| "I only changed one line — it can't break the build." | The stale-`.next/types` trap, a Prisma-generate drift, and a `messages/` key mismatch have each broken builds from one-line diffs. The gate exists because "can't break" is a prediction, not a check. |
+| "It was green ten minutes ago and I barely touched it since." | Green describes a commit, not a session. The gate is cached — a truly-unchanged re-run is nearly free, so run it. |
+| "gitleaks isn't installed, I'll skip that step just this once." | That's the explicitly-forbidden case in step 6: not-installed = **not green**. Install it or stop; a skipped secret scan is how a Restricted credential lands in permanent history. |

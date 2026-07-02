@@ -86,6 +86,17 @@ Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scala
 - A full from-scratch pass is still required before release sign-off and whenever shared
   layout/theme/token files changed (those invalidate every screen).
 
+## Do not skip this because…
+
+| Rationalization | Rebuttal |
+|---|---|
+| "The change is small — a full tiered pass is overkill." | That's what **re-run scoping** is for: unchanged screens carry forward, `/ship` runs in full because it's cheap. Small change → small scoped run, never no run. |
+| "It's just a prototype; the operator will eyeball it." | The operator eyeballing it IS tier 3 — and it's gated on tiers 1–2 so they aren't asked to sign off on a surface that's visually broken or failing regression. Skipping the pipeline doesn't save their time; it spends it. |
+| "Time pressure — run the tiers in parallel to go faster." | The order is the mechanism: functional QA on a visually-broken screen and UAT on a red regression both produce findings you must re-triage after the fix. Gated order is the fast path, not the slow one. |
+| "The browser/creds/DB won't come up — call it pass and move on." | "Could not run" ≠ pass is a named gating rule. A blocked run is reported as **blocked**; declaring it green is the one thing this orchestrator exists to make impossible. |
+| "There's no blueprint, so there's nothing to trace against." | Step 0 covers this: derive the story list from the changed routes/entities and say so. No-blueprint lowers the anchor quality; it never waives the anchoring. |
+| "That finding is a judgment call, so it's not a finding." | Judgment calls are **logged** and adjudicated by the operator, not buried. "Not-a-finding" is the silent wave-off the gating rules forbid (#12). |
+
 ## Boundaries
 - `/qa` orchestrates the **existing** tier skills; it doesn't replace them. Security
   *code* scanning is `/audit`; live-app pentest is the future `/vapt`.

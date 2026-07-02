@@ -74,6 +74,17 @@ Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md`
 violations, broken states, off-design primitives). A red gate **stops the line** and
 reports — functional QA shouldn't test flows on a visually-broken screen.
 
+## Do not skip this because…
+
+| Rationalization | Rebuttal |
+|---|---|
+| "axe passed and every route loaded — that's the screen covered." | axe + load checks are **blind** to duplicated widgets, wrong labels, broken layout, two stacked panels (step 6's lesson: a run said "all pass" while the dashboard rendered twice). If you didn't look at the pixels, you didn't do design QA. |
+| "It's a prototype — stakeholders won't mind rough UI." | The shared URL *is* the product for this audience; a sloppy screen is what a non-developer stakeholder judges. The Tier-0 anti-slop pass exists precisely for prototype-speed output. |
+| "Time pressure — skip the component states, screens are enough." | A broken disabled/empty/error state caught per-component is caught **once**; caught per-screen it's twelve findings later, at higher cost. The per-component pass is the shortcut, not the detour. |
+| "The change didn't touch UI files, so tier 1 is moot." | Shared layout/theme/token changes invalidate every screen without touching a page file. Check what the diff *imports into*, then scope — "moot" is a conclusion the diff has to earn. |
+| "Dark/RTL/mobile are edge cases for this audience." | They're rubric columns, not extras: `dir="rtl"` mirroring and dark hold are one screenshot each, and the `ar` locale is a first-class deploy target for this template's users. |
+| "The browser wouldn't launch — mark it green and move on." | "Could not run" is a **blocked** run, never a pass — that's a named boundary below. Fix the env (creds/DB/seed) or report the block. |
+
 ## Honest boundaries
 - Design QA is fidelity, **not** correctness (`/ship`) or acceptance (`/uat`).
 - ~80% of "good UI" is measurable here; the residual *taste* is anchored to named
