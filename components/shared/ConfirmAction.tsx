@@ -1,9 +1,27 @@
 "use client";
 
-import { Popconfirm } from "antd";
 import type { PopconfirmProps } from "antd";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
+/**
+ * ConfirmAction (ADR-029, Workstream C2 — Radix Dialog rebuild, same prop API).
+ * Wraps a trigger (its `children`) in a confirmation step before running a
+ * destructive action; the AntD `Popconfirm` replacement. Keeps the same prop
+ * surface (title + the Popconfirm callbacks/labels) so existing call sites —
+ * `<ConfirmAction title=… onConfirm=…><Button …/></ConfirmAction>` — compile and
+ * behave unchanged. AntD stays a type-only import during the coexistence slice.
+ */
 interface ConfirmActionProps extends Omit<PopconfirmProps, "title"> {
   title?: string;
   children: React.ReactNode;
@@ -11,19 +29,46 @@ interface ConfirmActionProps extends Omit<PopconfirmProps, "title"> {
 
 export function ConfirmAction({
   title,
+  description,
+  okText,
+  cancelText,
+  okType,
+  onConfirm,
   children,
-  ...props
 }: ConfirmActionProps) {
   const t = useTranslations("common");
+  const [open, setOpen] = useState(false);
 
   return (
-    <Popconfirm
-      title={title ?? t("confirm")}
-      okText={t("yes")}
-      cancelText={t("no")}
-      {...props}
-    >
-      {children}
-    </Popconfirm>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="max-w-sm" hideClose>
+        <DialogHeader>
+          <DialogTitle>{title ?? t("confirm")}</DialogTitle>
+        </DialogHeader>
+        {description ? (
+          <p className="text-sm text-muted-foreground">
+            {description as React.ReactNode}
+          </p>
+        ) : null}
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              {(cancelText as React.ReactNode) ?? t("no")}
+            </Button>
+          </DialogClose>
+          <Button
+            variant={okType === "danger" ? "destructive" : "default"}
+            size="sm"
+            onClick={() => {
+              onConfirm?.();
+              setOpen(false);
+            }}
+          >
+            {(okText as React.ReactNode) ?? t("yes")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,14 +1,16 @@
 "use client";
 
-import { Button, Checkbox, Popover, Space, Typography, theme } from "antd";
 import type { ColumnType, ColumnsType } from "antd/es/table";
-import type { FilterValue } from "antd/es/table/interface";
-import { ControlOutlined } from "@ant-design/icons";
+import type { FilterValue, Key } from "antd/es/table/interface";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { DataTable, type SortChange } from "./DataTable";
-
-const { Text } = Typography;
 
 /** Stable string key for a column (key, else dataIndex, else position). */
 function columnKey<T>(col: ColumnType<T>, index: number): string {
@@ -37,7 +39,7 @@ export interface DataViewProps<T> {
   // --- Selection + bulk actions -------------------------------------------
   /** Render the bulk-action controls; presence enables row selection. */
   bulkActions?: (ctx: {
-    selectedRowKeys: React.Key[];
+    selectedRowKeys: Key[];
     selectedRows: T[];
     clear: () => void;
   }) => React.ReactNode;
@@ -55,11 +57,12 @@ export interface DataViewProps<T> {
 }
 
 /**
- * The branded list view: a DataTable plus the chrome a "finished" admin list
- * needs — a toolbar (filters + actions), optional row selection with a bulk
- * action bar that appears on selection, and a column-visibility control. Builds
- * on the existing DataTable primitive (server pagination/search/sort) rather
- * than reimplementing it.
+ * DataView (ADR-029, Workstream C2 — shadcn/Tailwind rebuild, IDENTICAL prop
+ * API). The branded list view: a DataTable plus the chrome a "finished" admin
+ * list needs — a toolbar (filters + actions), optional row selection with a bulk
+ * action bar that appears on selection, and a column-visibility control (now a
+ * Radix popover). Builds on the rebuilt DataTable primitive (server
+ * pagination/search/sort/selection) rather than reimplementing it.
  */
 export function DataView<T extends object>({
   columns,
@@ -76,14 +79,13 @@ export function DataView<T extends object>({
   ...pagination
 }: DataViewProps<T>) {
   const t = useTranslations("data");
-  const { token } = theme.useToken();
 
   const allKeys = useMemo(
     () => columns.map((c, i) => columnKey(c as ColumnType<T>, i)),
     [columns],
   );
   const [visibleKeys, setVisibleKeys] = useState<string[]>(allKeys);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
 
   // Keep only configured-visible columns; always keep at least one.
   const visibleColumns = useMemo(() => {
@@ -94,7 +96,7 @@ export function DataView<T extends object>({
   const selectedRows = useMemo(
     () =>
       dataSource.filter((row) =>
-        selectedRowKeys.includes(row[rowKey] as React.Key),
+        selectedRowKeys.includes(row[rowKey] as Key),
       ),
     [dataSource, selectedRowKeys, rowKey],
   );
@@ -102,71 +104,81 @@ export function DataView<T extends object>({
   const clear = () => setSelectedRowKeys([]);
   const selectionActive = bulkActions != null && selectedRowKeys.length > 0;
 
+  const toggleColumn = (key: string, checked: boolean) => {
+    setVisibleKeys((prev) => {
+      const next = checked ? [...prev, key] : prev.filter((k) => k !== key);
+      // Never let the user hide every column.
+      return next.length > 0 ? next : prev;
+    });
+  };
+
   const columnToggle = !disableColumnToggle && (
-    <Popover
-      trigger="click"
-      placement="bottomRight"
-      content={
-        <Checkbox.Group
-          value={visibleKeys}
-          onChange={(vals) => {
-            // Never let the user hide every column.
-            if (vals.length > 0) setVisibleKeys(vals as string[]);
-          }}
-        >
-          <Space orientation="vertical">
-            {columns.map((c, i) => {
-              const key = columnKey(c as ColumnType<T>, i);
-              return (
-                <Checkbox key={key} value={key}>
-                  {(c as ColumnType<T>).title as React.ReactNode}
-                </Checkbox>
-              );
-            })}
-          </Space>
-        </Checkbox.Group>
-      }
-    >
-      <Button icon={<ControlOutlined />}>{t("columns")}</Button>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm">
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+          >
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+          {t("columns")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end">
+        <ul className="flex flex-col gap-0.5">
+          {columns.map((c, i) => {
+            const key = columnKey(c as ColumnType<T>, i);
+            const title = (c as ColumnType<T>).title as React.ReactNode;
+            return (
+              <li key={key}>
+                <label className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground hover:bg-muted">
+                  <input
+                    type="checkbox"
+                    checked={visibleKeys.includes(key)}
+                    onChange={(e) => toggleColumn(key, e.target.checked)}
+                    className="h-3.5 w-3.5 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  {title || <span className="text-muted-foreground">—</span>}
+                </label>
+              </li>
+            );
+          })}
+        </ul>
+      </PopoverContent>
     </Popover>
   );
 
   return (
-    <Space orientation="vertical" style={{ width: "100%" }} size="middle">
+    <div className="flex flex-col gap-4">
       {selectionActive ? (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: token.marginSM,
-            flexWrap: "wrap",
-            padding: `${token.paddingXS}px ${token.paddingSM}px`,
-            background: token.colorPrimaryBg,
-            border: `1px solid ${token.colorPrimaryBorder}`,
-            borderRadius: token.borderRadius,
-          }}
-        >
-          <Text strong>{t("selected", { count: selectedRowKeys.length })}</Text>
-          <Space wrap>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-4 py-2">
+          <span className="text-sm font-medium text-foreground">
+            {t("selected", { count: selectedRowKeys.length })}
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
             {bulkActions?.({ selectedRowKeys, selectedRows, clear })}
-            <Button type="text" size="small" onClick={clear}>
+            <Button variant="ghost" size="sm" onClick={clear}>
               {t("clearSelection")}
             </Button>
-          </Space>
+          </div>
         </div>
       ) : (
         (toolbarActions || toolbarFilters || columnToggle) && (
-          <Space
-            style={{ width: "100%", justifyContent: "space-between" }}
-            wrap
-          >
-            <Space wrap>{toolbarFilters}</Space>
-            <Space wrap>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {toolbarFilters}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
               {columnToggle}
               {toolbarActions}
-            </Space>
-          </Space>
+            </div>
+          </div>
         )
       )}
 
@@ -182,13 +194,13 @@ export function DataView<T extends object>({
           bulkActions
             ? {
                 selectedRowKeys,
-                onChange: setSelectedRowKeys,
+                onChange: (keys) => setSelectedRowKeys(keys),
                 preserveSelectedRowKeys: true,
               }
             : undefined
         }
         {...pagination}
       />
-    </Space>
+    </div>
   );
 }

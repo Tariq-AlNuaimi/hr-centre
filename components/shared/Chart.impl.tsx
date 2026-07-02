@@ -5,6 +5,14 @@
 // ~700KB plots+G2). Visual style is intentionally minimal -- override colors
 // per project if you need the Ant Design palette.
 //
+// ADR-029, Workstream C2: @tremor/react was evaluated as the charting layer but
+// DEFERRED — its latest release (3.18.7) declares a hard `react@^18` peer and
+// fails to resolve against this repo's React 19 (ERESOLVE). We do not force it
+// with --legacy-peer-deps (papering over a real incompat). recharts stays the
+// engine; the declarative `Chart` component below IS the Tremor-style surface
+// (one `<Chart type=… data=… />` per viz). Revisit Tremor when it ships a
+// React 19-compatible release.
+//
 // Example:
 //
 //   const data = [
