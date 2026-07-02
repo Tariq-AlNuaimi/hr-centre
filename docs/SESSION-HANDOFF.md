@@ -65,7 +65,7 @@ A1 **B-gate** → `[x]`; A3 Speed-Insights/bundle-analyzer/react-scan → `[x]`
 
 ## Senior-review outcome (post-push, resolved/scheduled this session)
 Two findings on `a61d3d7..HEAD` (reviewer ran a live Chromium render, not just static read):
-- **[High, conf 95] FIXED (`<pending commit>`):** the new `components/ui/button.tsx` showed
+- **[High, conf 95] FIXED (`46766c7`):** the new `components/ui/button.tsx` showed
   native `<button>` UA chrome (outset black border, `appearance:auto`) because Preflight is OFF
   during the AntD coexistence slice and the cva base had no reset. It's the button
   `EmptyState` (and `/scaffold-entity`'s generated empty-list page) renders — every fork's first
