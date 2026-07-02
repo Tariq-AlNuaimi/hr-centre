@@ -39,6 +39,13 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-07-02 — Headless-browser networking in this remote env: Chromium CANNOT
+  complete HTTPS CONNECT through the MITM proxy (ERR_CONNECTION_RESET; curl/Node
+  fetch work fine). Working recipe: Playwright `context.route('**/*')` fulfilling
+  every request via `request.newContext({proxy:{server:process.env.HTTPS_PROXY}})`
+  (strip content-encoding/length from fulfilled headers). Also: Vercel-hosted
+  demos may bot-gate ("Failed to verify your browser") — screenshot our own app
+  on localhost instead (local-PG recipe above).
 - 2026-06-26 — First-deploy env-var race (#50): BOTH scripts/deploy.mjs AND
   scripts/new-project.mjs must set all 6 env vars (incl CRON_SECRET) and
   poll-confirm them via `GET /v9/projects/:id/env` BEFORE triggering the first
