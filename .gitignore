@@ -78,3 +78,6 @@ plans/
 
 # Generated SBOM (run `npm run sbom` on demand / in CI)
 sbom.json
+
+# Transient agent worktrees (parallel-session isolation; never work product)
+.claude/worktrees/
