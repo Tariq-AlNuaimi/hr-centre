@@ -178,8 +178,8 @@ grid — it maps one-to-one onto the scaffold flags:
 - [ ] <question> → <answer once resolved>
 ```
 
-Sign-off gate: a blueprint whose **Architecture sketch has no data model** is
-incomplete — do not present it for sign-off (ADR-031).
+Sign-off gate: a blueprint whose **Domain model grid is empty** is incomplete —
+do not present it for sign-off (ADR-031).
 
 Then: **present it, get explicit operator sign-off, commit it**
 (`git add docs/blueprints/<feature>.md && git commit -m "docs: blueprint <feature>"`),
