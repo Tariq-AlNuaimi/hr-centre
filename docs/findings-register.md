@@ -24,8 +24,10 @@ the changed surface is still **open** (un-adjudicated).
   the ADR-031 domain-model check (`scripts/ship.mjs` `TEMPLATE_PKG_NAME`; senior-review
   2026-07-02, confidence 85) — WHY deferred: fix needs a coordinated stamp across all three
   fork-creation scripts (or a `project.config.json` pristine flag), too invasive at session
-  end; checks (b)+(c) still run everywhere — owner: operator — status: adjudicated(2026-07-02)
-  scheduled into Workstream B/next harness session
+  end; checks (b)+(c) still run everywhere — owner: operator — status: fixed(34f1114)
+  (replaced the package-name proxy with an explicit `"pristine": true` flag in
+  project.config.json read by `scanDbStructure`; every fork-creation path clears it —
+  rebrand.mjs, deploy.mjs, new-project.mjs)
 
 ## Standing wave-offs promoted to documented trade-offs
 <!--
