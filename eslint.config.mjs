@@ -62,6 +62,14 @@ const eslintConfig = defineConfig([
   // p/typescript) + gitleaks + the local rihal-template/* rules above, which
   // remain at error.
   {
+    // Scoped to the JS/TS file set so the referenced plugins (react-hooks,
+    // @typescript-eslint) are in scope. eslint-config-next registers those
+    // plugins inside a `files`-scoped object; a global (no-`files`) override
+    // object referencing their rules makes ESLint 9.x abort config validation
+    // ("could not find plugin react-hooks"). Matching the glob keeps these
+    // relaxations where the plugins are defined. (These rules only apply to
+    // JS/TS source anyway.)
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
       "react-hooks/set-state-in-effect": "warn",
