@@ -21,8 +21,10 @@ const ENV_NAMES = [
   "VERCEL_TOKEN", "CLOUDFLARE_API_TOKEN", "GH_AUTOMATION_TOKEN", "ANTHROPIC_API_KEY",
 ];
 // Placeholder markers: a match whose surrounding text contains one is example
-// data (.env.example, docs), not a live credential.
-const PLACEHOLDER = /changeme|example|generate-with|localhost|app_secret|your[-_]|<[a-z-]+>|\.\.\.|xxxx/i;
+// data (.env.example, docs), not a live credential. Angle-bracket placeholders
+// may be multi-word (`<real-looking value>`); a backtick in the window means
+// markdown-quoted example text (docs quoting the detector's own patterns).
+const PLACEHOLDER = /changeme|example|generate-with|localhost|app_secret|your[-_]|<[^>\n]{1,40}>|\.\.\.|xxxx|`/i;
 
 // Known-prefix / high-signal secret shapes (gitleaks-style; names only in output).
 const SECRET_PATTERNS = [
@@ -82,6 +84,10 @@ try {
     for (const [name, re] of INJECTION_PATTERNS) {
       const m = re.exec(text);
       if (!m) continue;
+      // quoted-as-example filter: a match immediately preceded by a quote or
+      // backtick is documentation QUOTING an injection pattern, not an
+      // injected instruction (e.g. this hook's own blueprint).
+      if (/[`"']$/.test(text.slice(Math.max(0, m.index - 2), m.index))) continue;
       findings.push({ kind: "injection", name, line: lineOf(text, m.index) });
       if (findings.length >= MAX_FINDINGS) break;
     }

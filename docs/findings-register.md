@@ -18,7 +18,14 @@ the changed surface is still **open** (un-adjudicated).
 
 ## Register
 <!-- newest first -->
-- (none yet)
+- 2026-07-02 — [secure/maintainable] db-structure gate's pristine-template exemption keys
+  only on `package.json.name === "fullstack-next-template"`, which only `/rebrand` rewrites —
+  a fork created via `/new-project`/`/deploy` without `/rebrand` stays silently exempt from
+  the ADR-031 domain-model check (`scripts/ship.mjs` `TEMPLATE_PKG_NAME`; senior-review
+  2026-07-02, confidence 85) — WHY deferred: fix needs a coordinated stamp across all three
+  fork-creation scripts (or a `project.config.json` pristine flag), too invasive at session
+  end; checks (b)+(c) still run everywhere — owner: operator — status: adjudicated(2026-07-02)
+  scheduled into Workstream B/next harness session
 
 ## Standing wave-offs promoted to documented trade-offs
 <!--

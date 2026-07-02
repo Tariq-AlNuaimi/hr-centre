@@ -75,9 +75,10 @@
  * overrides (dark-mode shadows in globals.css, the per-fork brand vars) keep
  * working; `reference` stops Tailwind re-emitting these names at :root, which
  * would otherwise shadow the canonical definitions above with circular
- * `--radius-sm: var(--radius-sm)` declarations. This block lives HERE because
- * tokens.css is the exempt token source for the no-raw-hex-color rule — never
- * move brand hex into it.
+ * `--radius-sm: var(--radius-sm)` declarations. This block lives HERE to keep
+ * all design tokens in one file; note the no-raw-hex-color ESLint rule only
+ * lints .ts/.tsx (CSS is outside its scope by construction) — its job is
+ * stopping ad-hoc hex in component code, not in this token source.
  * ========================================================================== */
 
 @theme inline reference {

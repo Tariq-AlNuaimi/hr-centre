@@ -46,11 +46,33 @@ check its findings next session if no reply landed. Not deployed.
   warn-only scanner, force-push denied on all branches…) — reviewable in
   `docs/blueprints/wave-a2-security-hooks.md`.
 
-## Next steps
-1. Read senior-code-reviewer findings (spawned post-push); resolve/adjudicate.
-2. **C2** — same-API rebuild of `components/shared/*` on shadcn/ui (+ Tremor for
-   StatCard/charts); TanStack Table parity is the budgeted long pole.
-3. **B** — docker gate in `/ship --full` + trivy (ADR-030; C1 landed so unblocked).
-4. A4 remainder: grill-with-docs + /domain-modeling; plugin-eval run; A3 full pass
-   (installs). A1 + A5 still wait for C per operator sequencing.
-5. Merge to `main` when the operator wants forks to inherit (minus this file).
+## Senior-review outcome (resolved this session)
+Three findings: (1) post-tool-scan false-positive on its own blueprint — FIXED
+(multi-word `<placeholder>` + backtick/quoted-as-example filters; 5/5 regression:
+blueprint+token-policy silent, real secret/injection still fire, no self-match);
+(2) db-structure pristine exemption only set by /rebrand → /new-project//deploy
+forks silently exempt — ADJUDICATED into findings-register, scheduled next
+harness session (fix: stamp pkg name in all 3 fork scripts or a config flag);
+(3) tokens.css stale comment — FIXED.
+
+## OPERATOR DIRECTIVES for the next session (binding)
+1. **FIRST: show the operator the GRAND PROGRESS TABLE** before doing anything
+   else — all 22 categories + 5 directives + workstreams (Phase0/C1–C4/B/E/D/
+   A1–A5), each row: item → status ([x]/[~]/[ ]) → commit/date. Build it from
+   `docs/deep-comparison/ADOPT.md` + the program blueprint + this file. The
+   operator tracks progress by this table every session.
+2. **Maximize parallel sessions** — spawn as many parallel agents (worktree
+   isolation) as dependencies allow, as this session did (6 at once). Currently
+   parallelizable: C2 (shared primitives on shadcn/Tremor — the long pole),
+   B (docker gate + trivy, ADR-030), A4 remainder (grill-with-docs,
+   /domain-modeling, plugin-eval run), A3 full pass (installs: Speed Insights,
+   bundle-analyzer, react-scan wiring), the db-structure exemption fix (register
+   line), + D2 strip-option decision docs if operator asks. A1/A5 still wait for
+   C per operator sequencing. LESSONS: verify each worktree's base branch
+   (they may branch from main — have agents merge the session branch first);
+   remove all worktrees BEFORE running /ship (they poison lint); agents must
+   not edit ADOPT.md/agent-memory/SESSION-HANDOFF (integrator owns those);
+   integrate via cherry-pick, one /ship, one push.
+
+## Merge-to-main
+Merge to `main` when the operator wants forks to inherit (minus this file).
