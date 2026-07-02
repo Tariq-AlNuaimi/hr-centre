@@ -1,9 +1,5 @@
-"use client";
-
-import { Card, Flex, Space, Typography, theme } from "antd";
 import type { ReactNode } from "react";
-
-const { Title, Text } = Typography;
+import { cn } from "@/lib/utils";
 
 export interface SectionCardProps {
   /** Section heading. */
@@ -19,10 +15,11 @@ export interface SectionCardProps {
 }
 
 /**
+ * SectionCard (ADR-029, Workstream C2 — shadcn/Tailwind rebuild, same prop API).
  * A titled content panel — heading + optional subtitle on the inline-start,
- * actions on the inline-end, a divider, then content. The one "card with a
- * header" pattern so sections read consistently (vs ad-hoc `Card title={}`
- * with no room for a subtitle or actions). Builds on AntD Card + the theme.
+ * actions on the inline-end, a divider, then content. On-token surface (card bg,
+ * border, radius, shadow) with `dark:` pairs; logical spacing so the header
+ * mirrors correctly under RTL.
  */
 export function SectionCard({
   title,
@@ -32,33 +29,27 @@ export function SectionCard({
   children,
   style,
 }: SectionCardProps) {
-  const { token } = theme.useToken();
-
   return (
-    <Card styles={{ body: { padding: 0 } }} style={style}>
-      <Flex
-        align="flex-start"
-        justify="space-between"
-        gap="middle"
-        wrap
-        style={{
-          padding: `${token.paddingSM}px ${token.paddingLG}px`,
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
-        <div>
-          <Title level={5} style={{ margin: 0 }}>
+    <div
+      style={style}
+      className="rounded-md border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 px-6 py-3 dark:border-gray-800">
+        <div className="min-w-0">
+          <h3 className="m-0 text-h5 font-semibold text-gray-900 dark:text-gray-50">
             {title}
-          </Title>
+          </h3>
           {subtitle && (
-            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+            <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
               {subtitle}
-            </Text>
+            </p>
           )}
         </div>
-        {actions && <Space wrap>{actions}</Space>}
-      </Flex>
-      <div style={{ padding: noBodyPadding ? 0 : token.paddingLG }}>{children}</div>
-    </Card>
+        {actions && (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        )}
+      </div>
+      <div className={cn(noBodyPadding ? "p-0" : "p-6")}>{children}</div>
+    </div>
   );
 }

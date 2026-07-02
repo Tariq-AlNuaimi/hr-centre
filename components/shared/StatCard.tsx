@@ -1,10 +1,5 @@
-"use client";
-
-import { Card, Typography, theme } from "antd";
-import { ArrowUpOutlined, ArrowDownOutlined } from "@ant-design/icons";
 import type { ReactNode } from "react";
-
-const { Text } = Typography;
+import { cn } from "@/lib/utils";
 
 export interface StatCardProps {
   /** Metric label (e.g. "Total users"). */
@@ -20,88 +15,68 @@ export interface StatCardProps {
 }
 
 /**
- * Branded KPI card — the one stat surface for the app. A tinted brand chip for
- * the icon, a large value, and an optional trend pill with semantic color.
- * Replaces the bare `Card + Statistic` so every metric reads consistently
- * (the /design-system "build on a shared primitive" rule).
+ * StatCard (ADR-029, Workstream C2 — shadcn/Tailwind rebuild, same prop API).
+ * Branded KPI card: a tinted brand chip for the icon, a large value, and an
+ * optional trend pill with semantic color. On-token surface + brand utilities
+ * with `dark:` pairs; logical gaps mirror correctly under RTL.
  */
 export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
-  const { token } = theme.useToken();
-
   const trendUp = trend?.direction === "up";
   const positiveIsGood = trend?.positiveIsGood ?? true;
   // "Good" = up when up is good, or down when down is good.
   const isGood = trendUp === positiveIsGood;
-  const trendColor = isGood ? token.colorSuccess : token.colorError;
 
   return (
-    <Card styles={{ body: { padding: token.paddingLG } }}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: token.marginSM }}>
+    <div className="rounded-md border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex items-start gap-3">
         {icon && (
           <span
             aria-hidden
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              inlineSize: 40,
-              blockSize: 40,
-              flex: "none",
-              borderRadius: token.borderRadius,
-              background: token.colorPrimaryBg,
-              color: token.colorPrimary,
-              fontSize: 18,
-            }}
+            className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-md bg-primary/10 text-lg text-primary"
           >
             {icon}
           </span>
         )}
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <Text type="secondary" style={{ fontSize: token.fontSize }}>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
             {title}
-          </Text>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: token.marginSM,
-              marginBlockStart: token.marginXXS,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 28,
-                fontWeight: 700,
-                lineHeight: 1.1,
-                letterSpacing: "-0.01em",
-                color: token.colorTextHeading,
-              }}
-            >
+          </span>
+          <div className="mt-0.5 flex items-baseline gap-3">
+            <span className="text-h2 font-bold leading-none tracking-tight text-gray-900 dark:text-gray-50">
               {value}
             </span>
             {trend && (
               <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 2,
-                  fontSize: token.fontSizeSM,
-                  fontWeight: 600,
-                  color: trendColor,
-                }}
+                className={cn(
+                  "inline-flex items-center gap-0.5 text-xs font-semibold",
+                  isGood
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-600 dark:text-red-400",
+                )}
               >
-                {trendUp ? <ArrowUpOutlined /> : <ArrowDownOutlined />}
+                <svg
+                  aria-hidden
+                  viewBox="0 0 12 12"
+                  className={cn("h-3 w-3", trendUp ? "" : "rotate-180")}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M6 10V2M3 5l3-3 3 3" />
+                </svg>
                 {Math.abs(trend.value)}%
               </span>
             )}
           </div>
           {hint && (
-            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
               {hint}
-            </Text>
+            </div>
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

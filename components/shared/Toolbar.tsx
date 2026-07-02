@@ -1,6 +1,3 @@
-"use client";
-
-import { Flex, Space } from "antd";
 import type { ReactNode } from "react";
 
 export interface ToolbarProps {
@@ -11,21 +8,16 @@ export interface ToolbarProps {
 }
 
 /**
+ * Toolbar (ADR-029, Workstream C2 — shadcn/Tailwind rebuild, same prop API).
  * A list/section action bar: filters/search on the inline-start, actions on the
- * inline-end, wrapping + RTL-correct. The one toolbar pattern so list screens
- * don't each hand-roll a flex row with ad-hoc spacing.
+ * inline-end, wrapping + RTL-correct (flex + logical order, no physical
+ * left/right).
  */
 export function Toolbar({ start, end }: ToolbarProps) {
   return (
-    <Flex
-      align="center"
-      justify="space-between"
-      gap="middle"
-      wrap
-      style={{ marginBottom: "var(--space-3)" }}
-    >
-      <Space wrap>{start}</Space>
-      {end && <Space wrap>{end}</Space>}
-    </Flex>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center gap-2">{start}</div>
+      {end && <div className="flex flex-wrap items-center gap-2">{end}</div>}
+    </div>
   );
 }
