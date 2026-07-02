@@ -63,3 +63,69 @@
   --motion-slow: 0.3s;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);  /* refined deceleration curve  */
 }
+
+/* ============================================================================
+ * Tailwind v4 theme (ADR-029, Workstream C1) — the SAME ruler, exposed as
+ * utility classes. Every entry references the custom properties above (or the
+ * brand vars app/[locale]/layout.tsx emits from brand.config.ts onto <html>),
+ * so there is still exactly ONE place each value lives:
+ *   - brand.config.ts   → --brand-primary / --brand-accent / --font-sans-fallback
+ *   - :root above       → spacing, type, radius, elevation, motion
+ * `inline` makes utilities embed the var() reference directly, so runtime
+ * overrides (dark-mode shadows in globals.css, the per-fork brand vars) keep
+ * working; `reference` stops Tailwind re-emitting these names at :root, which
+ * would otherwise shadow the canonical definitions above with circular
+ * `--radius-sm: var(--radius-sm)` declarations. This block lives HERE because
+ * tokens.css is the exempt token source for the no-raw-hex-color rule — never
+ * move brand hex into it.
+ * ========================================================================== */
+
+@theme inline reference {
+  /* --- Brand colors (utilities: bg-primary, text-accent, border-primary…) --
+   * Values arrive as CSS vars set on <html> by app/[locale]/layout.tsx from
+   * brand.config.ts — the white-label single source keeps owning the hex. */
+  --color-primary: var(--brand-primary);
+  --color-accent: var(--brand-accent);
+
+  /* --- Font (utility: font-sans) -------------------------------------------
+   * Chains the next/font Inter variable (--font-sans, bound on <html> by
+   * app/[locale]/layout.tsx per brand.font.cssVar) ahead of the brand fallback
+   * stack (--font-sans-fallback, emitted from brand.font.fallback). */
+  --font-sans: var(--font-sans), var(--font-sans-fallback);
+
+  /* --- Spacing (p-*, m-*, gap-*…) ------------------------------------------
+   * 4px multiplier = the --space-* ruler above (p-1 = 4px, p-4 = 16px), plus
+   * the density semantics as named steps (p-density-card, gap-density-section-gap). */
+  --spacing: var(--space-1);
+  --spacing-density-page: var(--density-page);
+  --spacing-density-card: var(--density-card);
+  --spacing-density-section-gap: var(--density-section-gap);
+  --spacing-density-control-gap: var(--density-control-gap);
+
+  /* --- Type scale (text-xs/base/lg + heading steps text-h5…text-h1) ------- */
+  --text-xs: var(--font-size-xs);
+  --text-base: var(--font-size-base);
+  --text-base--line-height: var(--line-height-base);
+  --text-lg: var(--font-size-lg);
+  --text-h5: var(--font-size-h5);
+  --text-h4: var(--font-size-h4);
+  --text-h3: var(--font-size-h3);
+  --text-h2: var(--font-size-h2);
+  --text-h1: var(--font-size-h1);
+  --leading-base: var(--line-height-base);
+
+  /* --- Radius (rounded-sm/md/lg — md is the 8px AntD-lockstep base) ------- */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-base);
+  --radius-lg: var(--radius-lg);
+
+  /* --- Elevation (shadow-sm/md/lg) -----------------------------------------
+   * References the vars above, so the [data-theme="dark"] overrides in
+   * globals.css restyle Tailwind shadows exactly like plain-CSS ones. */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* --- Motion (ease-out) --------------------------------------------------- */
+  --ease-out: var(--ease-out);
+}

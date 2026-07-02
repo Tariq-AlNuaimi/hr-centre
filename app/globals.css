@@ -1,4 +1,18 @@
+/* Tailwind v4 foundation (ADR-029, Workstream C1). Theme + utilities ONLY —
+   preflight is deliberately NOT imported while AntD coexists (C1–C3): its base
+   reset would restyle every AntD screen. C4 swaps these two lines for the full
+   `@import "tailwindcss";` once AntD is removed. The @theme block itself lives
+   in tokens.css (the exempt token source). */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 @import "./tokens.css";
+
+/* Tailwind's `dark:` variant follows the app's EXISTING toggle — the
+   data-theme attribute ThemeProvider + the pre-hydration THEME_INIT_SCRIPT set
+   on <html> — not prefers-color-scheme, so utilities and AntD's darkAlgorithm
+   always agree. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 html,
 body {

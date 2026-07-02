@@ -87,6 +87,16 @@ export default async function LocaleLayout({
       lang={locale}
       dir={direction}
       className={sans.variable}
+      // brand.config.ts → CSS custom properties. The Tailwind @theme block in
+      // app/tokens.css consumes these (ADR-029 C1), so the white-label config
+      // stays the single source of brand color + font-fallback values.
+      style={
+        {
+          "--brand-primary": brand.colors.primary,
+          "--brand-accent": brand.colors.accent,
+          "--font-sans-fallback": brand.font.fallback,
+        } as React.CSSProperties
+      }
       suppressHydrationWarning
     >
       <head>

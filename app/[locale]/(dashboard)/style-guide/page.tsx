@@ -343,6 +343,28 @@ export default function StyleGuidePage() {
           )}
         </Space>
       </Section>
+
+      <Section title="Tailwind foundation (ADR-029 C1)">
+        {/* Smoke surface for the Tailwind v4 layer: every swatch below is
+            styled ONLY with utilities riding the same tokens.css/@theme ruler
+            AntD uses — brand color, 4px spacing, radius, elevation, and the
+            data-theme–driven dark: variant. C2 rebuilds components/shared/*
+            on this layer. */}
+        <div className="flex flex-wrap items-center gap-density-control-gap font-sans">
+          <span className="rounded-md bg-primary px-4 py-2 text-base text-white shadow-sm">
+            bg-primary
+          </span>
+          <span className="rounded-lg border border-solid border-accent px-4 py-2 text-base text-accent">
+            border-accent
+          </span>
+          <span className="rounded-sm bg-slate-100 px-4 py-2 text-xs shadow-md dark:bg-slate-800 dark:text-slate-100">
+            dark: follows data-theme
+          </span>
+          <span className="p-density-card text-h5 shadow-lg rounded-lg">
+            density + type scale
+          </span>
+        </div>
+      </Section>
     </>
   );
 }
