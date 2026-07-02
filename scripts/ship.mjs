@@ -22,6 +22,14 @@ import { resolve } from "node:path";
 
 const CACHE = "node_modules/.cache";
 
+// --full loop (ADR-030): the docker image-build + trivy scan gate runs ONLY in
+// the full loop (`npm run ship -- --full`, or SHIP_FULL=1 for CI/deploy/handoff),
+// never in the day-to-day fast loop that the template exists to keep tight.
+const FULL =
+  process.argv.includes("--full") ||
+  process.env.SHIP_FULL === "1" ||
+  process.env.SHIP_FULL === "true";
+
 // -- scalability pillar gate (CLAUDE.md "Five Pillars") ----------------------
 // A list/read route that calls findMany WITHOUT a bound (take / skip / cursor /
 // parsePagination) loads the whole table -- the failure that only surfaces at
@@ -377,6 +385,98 @@ async function scanDbStructure() {
   return sync === "skip" ? ok(summary, { warn: why }) : ok(summary);
 }
 
+// -- Docker image-build gate (ADR-030 "Docker as a standard build artifact") --
+// Directive D2: the container image is a standard, mandatory build artifact --
+// every app must always be able to produce a bootable, scanned image. Scoped by
+// loop speed (ADR-030): the fast /ship loop stays image-free; this phase runs
+// ONLY under --full / SHIP_FULL=1 (and thus in /deploy, /handoff, and CI). It:
+//   (1) builds the standalone image (`DOCKER_BUILD=1 docker build` -- the same
+//       output `make docker-build` produces): a RED gate on failure; and
+//   (2) runs a trivy image + config scan (a standard artifact is a scanned
+//       artifact) -- optional external binary, skip-with-note when absent
+//       (mirrors the /audit trufflehog pass). Findings surface as a WARN to
+//       triage via docs/findings-register.md, NOT a hard red -- base-image CVE
+//       churn would otherwise make the full gate flaky.
+// Graceful degradation: when Docker is unavailable (no daemon / not on PATH) the
+// phase DEGRADES to a WARN and passes -- mirrors the db shadow-DB skip; a remote
+// container without a daemon leans on CI or the ack, never a hard crash.
+// Escape hatch (ADR-025 pattern; never silent): "dockerAck": "<reason>" in
+// project.config.json PLUS an adjudicated ADR-030/dockerAck line in
+// docs/findings-register.md.
+const DOCKER_IMAGE_TAG = "ship-full:local";
+async function scanDocker() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out, extra = {}) => ({ name: "docker", ok: true, out, secs: secs(), ...extra });
+  const red = (out) => ({ name: "docker", ok: false, out, secs: secs() });
+
+  // Escape hatch first (mirrors dbAck): explicit, recorded, never silent.
+  let cfg = {};
+  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); } catch {}
+  if (cfg.dockerAck) {
+    const ADJUDICATED = /^-\s*\d{4}-\d{2}-\d{2}\b.*\b(ADR-030|dockerAck)\b.*\bstatus:\s*adjudicated/i;
+    let reg = "";
+    try { reg = readFileSync("docs/findings-register.md", "utf8"); } catch {}
+    if (reg.split("\n").some((l) => ADJUDICATED.test(l))) {
+      return ok(`docker gate waived: ${cfg.dockerAck} (adjudicated ADR-030 line in docs/findings-register.md)`);
+    }
+    return red(
+      `"dockerAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED ADR-030/dockerAck line.\n` +
+        `  The escape hatch is never silent (ADR-030): add a register line\n` +
+        `  \`- YYYY-MM-DD — [maintainable/docker] dockerAck: <why this env can't build images> — <owner> — status: adjudicated(<date>)\`\n` +
+        `  (the operator adjudicates it), or remove "dockerAck" and make Docker available.`
+    );
+  }
+
+  // Docker available? A missing binary / unreachable daemon degrades to WARN.
+  const probe = await run("docker probe", "docker", ["version", "--format", "{{.Server.Version}}"]);
+  if (!probe.ok) {
+    return ok("docker unavailable -- image-build gate skipped", {
+      warn:
+        "docker image-build gate skipped: Docker is not available (binary not on PATH or daemon unreachable). " +
+        "ADR-030 degrades this to a WARN, never a false RED -- lean on CI (docker-build.yml) or set \"dockerAck\" for an\n" +
+        "  environment that genuinely can't build images. First line:\n    " +
+        (probe.out.split("\n").find((l) => l.trim()) || "").slice(0, 200),
+    });
+  }
+
+  // (1) Build the standalone image (RED gate). Same output as `make docker-build`.
+  const build = await run("docker build", "docker", ["build", "-t", DOCKER_IMAGE_TAG, "."], { DOCKER_BUILD: "1" });
+  if (!build.ok) {
+    return red(
+      "docker image build FAILED (ADR-030: the image is a mandatory build artifact at /ship --full):\n" +
+        build.out.split("\n").filter((l) => l.trim()).slice(-20).map((l) => `  ${l}`).join("\n") +
+        "\n  Fix the Dockerfile/build, or set \"dockerAck\" + an adjudicated register line for an env that can't build images."
+    );
+  }
+
+  // (2) trivy image + config scan (optional; skip-with-note when absent).
+  const trivyProbe = await run("trivy probe", "trivy", ["--version"]);
+  if (!trivyProbe.ok) {
+    return ok("image built; trivy scan skipped (not installed)", {
+      warn:
+        "trivy: NOT RUN (optional; brew install trivy, or https://github.com/aquasecurity/trivy/releases). " +
+        "A standard artifact should be a scanned artifact (ADR-030) -- install trivy to scan the image + Dockerfile.",
+    });
+  }
+  const img = await run("trivy image", "trivy", [
+    "image", "--quiet", "--exit-code", "1", "--scanners", "vuln", "--severity", "HIGH,CRITICAL", DOCKER_IMAGE_TAG,
+  ]);
+  const conf = await run("trivy config", "trivy", [
+    "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL", ".",
+  ]);
+  const notes = [];
+  if (!img.ok) notes.push("  trivy image (HIGH/CRITICAL):\n" + img.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
+  if (!conf.ok) notes.push("  trivy config (HIGH/CRITICAL):\n" + conf.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
+  if (notes.length === 0) return ok("image built + trivy clean (no HIGH/CRITICAL)");
+  return ok("image built; trivy findings to triage", {
+    warn:
+      "trivy found HIGH/CRITICAL issues in the image/config. ADR-030: triage via docs/findings-register.md\n" +
+      "  (fix, or log an adjudicated wave-off). Not a hard red -- base-image CVE churn would make the gate flaky:\n" +
+      notes.join("\n"),
+  });
+}
+
 // -- env: load .env for DATABASE_URL etc. (Prisma 7 does not auto-load it) --
 if (existsSync(".env")) {
   for (const line of readFileSync(".env", "utf8").split("\n")) {
@@ -526,6 +626,16 @@ report(audit);
 if (!audit.ok) fail(audit);
 if (audit.out.startsWith("clean (allowlisted")) console.log(`  note: npm audit ${audit.out}`);
 
+// Docker image-build + trivy scan gate (ADR-030) -- full loop only. Absent from
+// the fast /ship loop entirely; runs under --full / SHIP_FULL=1 (/deploy, /handoff, CI).
+if (FULL) {
+  console.log("ship: phase B (full) -- docker image build + trivy scan (ADR-030) ...");
+  const docker = await scanDocker();
+  report(docker);
+  if (docker.warn) console.warn(`  note: docker -- ${docker.warn}`);
+  if (!docker.ok) fail(docker);
+}
+
 console.log(
-  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + build + gitleaks + npm audit all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
+  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + build + gitleaks + npm audit${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
 );
