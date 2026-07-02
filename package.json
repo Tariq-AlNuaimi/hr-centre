@@ -38,6 +38,8 @@
     "changeset": "changeset",
     "changeset:version": "changeset version",
     "analyze": "ANALYZE=true next build",
+    "scan": "npx react-scan@latest http://localhost:3000",
+    "lhci": "npx @lhci/cli@latest autorun",
     "ship": "node scripts/ship.mjs",
     "sbom": "cyclonedx-npm --omit dev --output-format JSON --output-file sbom.json",
     "audit:warn": "npm audit --audit-level=moderate || true",

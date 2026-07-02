@@ -5,9 +5,14 @@ import withBundleAnalyzer from "@next/bundle-analyzer";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
-// `npm run analyze` (ANALYZE=true) emits an interactive bundle treemap so a fork
-// can see what ships to the client before optimizing. No-op on normal builds.
-const withAnalyzer = withBundleAnalyzer({ enabled: process.env.ANALYZE === "true" });
+// `npm run analyze` (ANALYZE=true) or `ANALYZE=1 npm run build` (the /scale-up §15
+// recipe form) emits an interactive bundle treemap so a fork can see what ships to
+// the client before optimizing. Accepts either flag value; a no-op on normal/Vercel
+// builds (env unset), so the default build behavior is byte-for-byte unchanged.
+const analyzeFlag = process.env.ANALYZE;
+const withAnalyzer = withBundleAnalyzer({
+  enabled: analyzeFlag === "true" || analyzeFlag === "1",
+});
 
 // Docker is an OPT-IN second rail (ADR-023). Vercel (ADR-006) stays the default:
 // `output: "standalone"` is emitted ONLY when DOCKER_BUILD is set, so the Vercel
