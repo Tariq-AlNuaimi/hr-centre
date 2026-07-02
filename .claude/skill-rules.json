@@ -1,0 +1,96 @@
+{
+  "$comment": "Advisory skill auto-activation map (Wave A4; pattern: ChrisWiles/claude-code-showcase, docs/deep-comparison/01-collections.md top adopt). Consulted by the agent at task start: if the operator's request matches `keywords` (intent) or the files about to change match `paths` (globs), SUGGEST the mapped skill before improvising. This file is data, not enforcement — it never overrides CLAUDE.md, the Ask-before list, or a skill's own Skip-when carve-outs. No hook consumes it yet; wiring one is a settings.json change (Ask-before surface).",
+  "version": 1,
+  "rules": [
+    {
+      "skill": "blueprint",
+      "keywords": ["build", "add a feature", "new feature", "implement", "spec this", "what are we building"],
+      "paths": ["app/api/**/route.ts", "prisma/migrations/**"],
+      "reason": "The pre-build gate: new feature surface needs a contract (lightweight or full track) before code."
+    },
+    {
+      "skill": "design-system",
+      "keywords": ["build the UI", "make this screen", "new page", "design this", "the design looks bad"],
+      "paths": ["app/**/*.tsx", "components/**/*.tsx"],
+      "reason": "Build UI right the first time from the vetted recipes instead of fixing it at design QA."
+    },
+    {
+      "skill": "scaffold-entity",
+      "keywords": ["new entity", "new model", "scaffold", "add a table", "CRUD for"],
+      "paths": ["prisma/schema.prisma"],
+      "reason": "End-to-end entity scaffold (model + zod + routes + pages + recycling bin) beats hand-wiring."
+    },
+    {
+      "skill": "ship",
+      "keywords": ["push", "commit and push", "ready to push", "is this green", "done, ship it"],
+      "paths": [],
+      "reason": "/ship before every push is a Hard rule — the active gate on the free plan."
+    },
+    {
+      "skill": "code-review",
+      "keywords": [],
+      "paths": ["lib/**", "app/api/**", "prisma/**", "middleware.ts", "eslint-rules/**"],
+      "reason": "Standing instruction: any push touching auth/schemas/API routes/lib gets the pre-push diff review."
+    },
+    {
+      "skill": "qa",
+      "keywords": ["test it", "is this ready", "release readiness", "quality gate", "audit the app"],
+      "paths": [],
+      "reason": "Route vague 'test it' asks through the gated orchestrator, not an ad-hoc mega-task."
+    },
+    {
+      "skill": "design-qa",
+      "keywords": ["does it match the design", "ui audit", "a11y", "accessibility", "visual regression"],
+      "paths": ["app/globals.css", "app/tokens.css", "antd-theme.ts"],
+      "reason": "Fidelity/a11y questions are Tier 1 of QA; theme/token edits invalidate every screen."
+    },
+    {
+      "skill": "adr",
+      "keywords": ["document this decision", "why did we choose", "lock this in", "supersede"],
+      "paths": ["docs/decisions/**"],
+      "reason": "Decisions go through the ADR template (MADR drivers + per-option trade-offs), not chat."
+    },
+    {
+      "skill": "audit",
+      "keywords": ["is this safe to share", "security scan", "scan for secrets", "foreign code"],
+      "paths": [],
+      "reason": "gitleaks + npm audit + Semgrep on demand; the first step of /conform."
+    },
+    {
+      "skill": "scale-up",
+      "keywords": ["file upload", "cron", "background job", "realtime", "custom domain", "feature flag", "observability", "sentry"],
+      "paths": [],
+      "reason": "Growth capabilities have vetted recipes with when-to-add triggers; don't install ad hoc."
+    },
+    {
+      "skill": "deploy",
+      "keywords": ["deploy", "live URL", "put it on vercel", "share with the team"],
+      "paths": [],
+      "reason": "A live URL is the default; run the provisioner preflight before claiming access problems."
+    },
+    {
+      "skill": "remember",
+      "keywords": ["remember that", "note for next time", "don't forget", "we keep relitigating"],
+      "paths": ["docs/agent-memory.md"],
+      "reason": "Durable cross-session knowledge goes to agent-memory via /remember, not chat scrollback."
+    },
+    {
+      "skill": "handoff-session",
+      "keywords": ["context is getting long", "wrap up this session", "continue in a fresh session"],
+      "paths": ["docs/SESSION-HANDOFF.md"],
+      "reason": "When the context watchdog warns, hand off at the next milestone instead of degrading."
+    },
+    {
+      "skill": "batch",
+      "keywords": ["for every file", "apply to all", "migrate all", "rename across"],
+      "paths": [],
+      "reason": "Repetitive N-file jobs run as capped headless passes, not one long interactive session."
+    },
+    {
+      "skill": "sync-from-template",
+      "keywords": ["template updates", "update from upstream", "fork is behind"],
+      "paths": [],
+      "reason": "Forks pull template layers via the path-scoped sync, never by cherry-picking blind."
+    }
+  ]
+}
