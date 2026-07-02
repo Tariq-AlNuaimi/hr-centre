@@ -30,10 +30,12 @@ db-seed:
 db-studio:
 	npx prisma studio
 
-# --- Docker self-host rail (opt-in; ADR-023) -------------------------------
-# Production is Vercel + Neon by default (ADR-006). These targets exist for forks
-# that need to self-host (on-prem / air-gapped / k8s). DOCKER_BUILD=1 makes
-# next.config.ts emit `output: "standalone"` for a small runtime image.
+# --- Docker: standard build artifact (ADR-030; supersedes ADR-023 opt-in) ---
+# Production is Vercel + Neon by default (ADR-006) -- unchanged. But the image is
+# now a mandatory build artifact: `/ship --full`, /deploy, /handoff, and CI build
+# it (docker-build below is the same image that gate produces). Self-host forks
+# (on-prem / air-gapped / k8s) run it too. DOCKER_BUILD=1 makes next.config.ts
+# emit `output: "standalone"` for a small runtime image.
 
 # Build the app image. Tag override: `make docker-build IMAGE=myrepo/app:1.2.3`
 IMAGE ?= app:local

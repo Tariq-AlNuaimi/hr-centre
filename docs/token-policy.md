@@ -17,6 +17,12 @@ operator's half of the contract.
    test/build output is the #1 in-session token sink (Anthropic's own example:
    10k-line log → hundreds of tokens). Never run the full suite raw when the
    gate script exists; never tail a dev server in foreground.
+   - **Reserve `--full` for the moments that need it.** `npm run ship -- --full`
+     adds the ADR-030 docker image-build + trivy scan phase (wall-time + a longer,
+     noisier log than the fast loop). It belongs at `/deploy`, `/handoff`, and CI —
+     not on every push. The default `npm run ship` stays image-free so the tight
+     iteration loop (and its token cost) is unchanged; a WARN-degrade when Docker
+     is unavailable keeps the full loop from failing on daemon-less machines.
 3. **Read-deny on bulk artifacts.** `.claude/settings.json` denies Read on
    `.next/`, `node_modules/`, `generated/` so a stray search can't pull a 600KB
    minified chunk or the generated Prisma client into context.

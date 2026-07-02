@@ -66,6 +66,23 @@ the operator dropped foreign code into.
    - Needs egress to the credential providers' APIs to verify; if egress is blocked,
      report `NOT RUN: egress blocked` rather than trusting an empty result.
 
+5. **Container image + config — trivy (OPTIONAL pass; Wave A2, ADOPT 10-security; ADR-030).**
+   - A standard build artifact is a **scanned** artifact (ADR-030): scan both the
+     image and the IaC/Dockerfile.
+   - **Image** (if a Docker image is available or buildable): `trivy image
+     --severity HIGH,CRITICAL <tag>` — scans OS + language dependency layers for
+     known CVEs. Build it first with `make docker-build` (tag `app:local`) if no
+     tag exists yet.
+   - **Config**: `trivy config --severity HIGH,CRITICAL <path>` — scans the
+     Dockerfile / compose / any IaC for misconfigurations (root user, missing
+     healthcheck, etc.).
+   - **Not installed → skip WITH a note** (external binary, like gitleaks/trufflehog;
+     never an npm dependency): report `trivy: NOT RUN (optional; brew install trivy,
+     or https://github.com/aquasecurity/trivy/releases)`. A missing trivy does **not**
+     make the audit incomplete — it is an optional layer on top of the three core scans.
+   - This is the SAME scan the `/ship --full` docker phase runs (ADR-030); running it
+     here lets you scan before an image is wired into the full gate.
+
 ## If a tool is not installed
 
 **Do NOT silently skip.** Report which scan could not run and how to enable it, and
@@ -87,6 +104,7 @@ A single report, grouped by scanner, each finding line-referenced and severity-t
   Dependencies (npm):   <n High+ CVEs | clean | NOT RUN: no lockfile / npm missing>
   SAST (semgrep):       <n findings | clean | NOT RUN: install semgrep>
   Verified (trufflehog): <n LIVE creds — ROTATE | clean | NOT RUN (optional)>
+  Container (trivy):    <n HIGH/CRITICAL image+config | clean | NOT RUN (optional)>
 
   <per-finding: file:line — rule — one-line description>
 ```

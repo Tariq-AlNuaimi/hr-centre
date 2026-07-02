@@ -14,8 +14,10 @@ const withAnalyzer = withBundleAnalyzer({
   enabled: analyzeFlag === "true" || analyzeFlag === "1",
 });
 
-// Docker is an OPT-IN second rail (ADR-023). Vercel (ADR-006) stays the default:
-// `output: "standalone"` is emitted ONLY when DOCKER_BUILD is set, so the Vercel
+// Docker is a STANDARD build artifact (ADR-030, supersedes ADR-023's opt-in
+// stance) -- the image is gated at `/ship --full`, /deploy, /handoff, and CI. The
+// gate MECHANISM here is unchanged: Vercel (ADR-006) stays the default deploy path,
+// and `output: "standalone"` is emitted ONLY when DOCKER_BUILD is set, so the Vercel
 // build is byte-for-byte unchanged and the self-host image stays small (it ships
 // just the traced runtime under .next/standalone). `make docker-build` sets it.
 const isDockerBuild =
