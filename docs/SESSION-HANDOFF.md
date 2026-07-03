@@ -116,6 +116,97 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 <!-- END:auto-status -->
 
+## Session 7 — C3.5 PLANNED + APPROVED (blueprint committed; build is the next session's job)
+**What happened:** Read the full handoff + ADOPT.md + agent-memory, shared both status
+tables, then fully scoped + planned **C3.5** (the runtime-AntD removal that blocks C4).
+Committed the contract: **`docs/blueprints/c3.5-runtime-antd-removal.md`** (full design,
+risks, file-by-file checklist, token map). Ran `/blueprint` + plan mode; plan approved.
+**Did NOT start the build** — hit ~91% context right after plan approval, so per the
+watchdog I handed off rather than crash mid-build. The next session EXECUTES the plan
+below verbatim (it is fully specified — do not re-derive).
+
+**Operator decisions (2026-07-03, via AskUserQuestion — it worked):**
+1. **Add all 4 new deps:** `lucide-react` (icons), `sonner` (toasts),
+   `@radix-ui/react-dropdown-menu`, `@radix-ui/react-avatar`. All shadcn-standard,
+   <50KB each, sanctioned under ADR-029.
+2. **Build with parallel worktree agents** (operator chose this over the one-agent
+   default, knowing the coupling risk). Structure below manages the risk.
+
+**APPROVED EXECUTION STRUCTURE (parallel worktrees over a serial foundation):**
+- **Phase 1 — foundation (integrator, serial, ONE local commit, do NOT push/ship alone;
+  knip reads the new primitives as unused-exports until the clusters consume them; note
+  its SHA):** add the 4 deps (`npm install`); build 4 new `components/ui/` primitives —
+  `dropdown-menu.tsx` (Radix), `avatar.tsx` (Radix), `sonner.tsx` (Toaster, theme-aware
+  via `useTheme().isDark`), `separator.tsx` (plain Tailwind, no dep); rewrite
+  `hooks/use-notify.ts` over sonner `toast.*` keeping the EXACT
+  `{success,error,info,warning,notify}` shape (all call sites untouched;
+  `QueryProvider`'s `QueryErrorBridge` keeps working); add tokens to `app/tokens.css`
+  (+ dark overrides in `app/globals.css`): `--popover`/`--popover-foreground` (elevated
+  overlay: light `#ffffff`, dark `#1d2129`) exposed as `--color-popover`, and
+  `--nav-active-foreground` (light `var(--brand-primary)`, dark `#a5b4fc`) so the
+  migrated sidebar's selected item is dark-correct by construction; mount `<Toaster/>`
+  inside `ThemeProvider` in `app/[locale]/layout.tsx`. Hover surfaces reuse existing
+  `hover:bg-muted` (the brand `--color-accent` name is already taken — do NOT add a
+  colliding `--accent`).
+- **Phase 2 — 3 parallel worktree agents, each based on the foundation commit** (its
+  SHA is in the shared git object DB, so step-0 for each agent is
+  `git checkout -B <cluster-branch> <foundation-sha>`; verify `git log`; migrate ONLY
+  its cluster; commit). Clusters touch DISJOINT files:
+  - **Agent A — chrome:** all `components/layout/*` (`AppShell`/`AppHeader`/`AppSidebar`/
+    `AppFooter`/`Breadcrumbs`/`CommandPalette`/`NotificationsMenu`/`OrgSwitcher`/
+    `ThemeProvider`). AntD `Layout/Sider/Header/Content/Footer`→Tailwind flex; `Menu`→a
+    plain `<nav>` of `<button>`/`<Link>` (NOT Radix — vertical nav; use
+    `--nav-active-foreground` for the active item); `Dropdown`→new DropdownMenu;
+    `Avatar`→new Avatar; `Popover`(Notifications)→existing `@radix-ui/react-popover`;
+    CommandPalette `Modal/Input/Empty`→existing `dialog.tsx`+`input.tsx`+plain empty
+    (it's ALREADY custom keyboard-driven — preserve every handler, the
+    `OPEN_COMMAND_PALETTE` event, close-unmount). `ThemeProvider`: drop
+    `ConfigProvider`+`App`, KEEP the `useTheme` context + `data-theme`/cookie/FOUC logic.
+    Move `Content` page padding onto the migrated element (`p-density-page`) + header
+    sticky shadow onto the migrated header (they currently come from globals `.ant-*`).
+    Do NOT touch `app/[locale]/layout.tsx` (integrator owns it).
+  - **Agent B — auth:** `(auth)/layout.tsx`, `(auth)/login/LoginForm.tsx`,
+    `(auth)/forgot-password/page.tsx`, `(auth)/reset-password/page.tsx`. Already ~80%
+    on C2 (Form/TextField/Button). Swap `Card`/`Typography`/`Divider`→`components/ui/card`
+    + semantic HTML + `separator`; `App.useApp().message`→`useNotify()`; `WindowsOutlined`
+    →a small inline Microsoft-square SVG (brand-recognizable); auth-layout gradient
+    `theme.useToken()`→`bg-primary`+token gradient (the `.auth-brand-panel` class exists).
+  - **Agent C — forms/screens + scaffold lockstep:** `settings/profile/page.tsx`
+    (`Card`/`Descriptions`/`Divider`→`ui/card`+`shared/DescriptionList`+`separator`),
+    `components/users/UserForm.tsx` (full rewrite AntD `Form/Input/Select/Button`→RHF+
+    zodResolver via the shipped `FormField`/`form`/`input`/`select`/`button`; CHECK the
+    callers pass `onSubmit`/`onCancel`), `components/shared/KanbanBoard.impl.tsx`
+    (`Card`→`ui/card`), `maintenance/page.tsx` (`ToolOutlined`→lucide `Wrench`), AND
+    **`scripts/scaffold-entity.mjs` `patchSidebar()` in LOCKSTEP** — it matches the OLD
+    `@ant-design/icons` import + `icon: <AppstoreOutlined/>` item shape; retarget it to
+    the migrated sidebar's lucide import (`LayoutGrid`) + new item shape, preserve the
+    marker comment.
+  - Agents do NOT edit `ADOPT.md`/`agent-memory`/`SESSION-HANDOFF`/`session-state.json`
+    (integrator owns), nor `app/[locale]/layout.tsx`/`app/globals.css` shared wiring.
+- **Phase 3 — integration (integrator, serial):** cherry-pick A+B+C (disjoint → clean)
+  → `git worktree remove --force` ALL → own shared wiring: `app/[locale]/layout.tsx`
+  DROP `AntdRegistry` (valid only after ALL AntD gone), `app/globals.css` remove the now-
+  dead `.ant-layout*` rules + repoint `.header-search-kbd` vars `--ant-color-border-
+  secondary`/`--ant-color-text-tertiary`→`var(--border)`/`var(--muted-foreground)` →
+  `npm ci` → one `/ship` → one push → `/deploy` (revert the `pristine:false` flip before
+  `/ship`) → re-axe via `tools/design-qa-bridge/` (LIGHT must stay serious/critical-clean;
+  dark→workstream D) → `senior-code-reviewer` (chrome+auth are its remit).
+
+**Token map (AntD `theme.useToken()`→Tailwind):** `colorBorderSecondary`→`border-border`,
+`colorText`→`text-foreground`, `colorTextSecondary`/`Tertiary`→`text-muted-foreground`,
+`colorBgContainer`→`bg-card`, `colorBgElevated`→`bg-popover`, `controlItemBgHover`/
+`rowHover`→`hover:bg-muted`, `colorPrimary`→`bg-primary`/`text-primary`,
+`colorTextLightSolid`→`text-primary-foreground`, spacing→4px-scale `p-*`/`gap-*`,
+`borderRadius`→`rounded-md`. 16 icons→lucide (Home/User/Settings/Trash2/ClipboardCheck/
+LogOut/Search/ChevronDown/Check/Sun/Moon/Globe/Bell/Lightbulb/Wrench; Windows→inline SVG;
+Appstore→LayoutGrid).
+
+**Do NOT in C3.5 (these are C4):** touch `middleware.ts` (CSP `'unsafe-inline'` style-src
+stays — harmless while unused), `components/layout/antd-theme.ts`, `eslint-rules/`, or the
+type-only `ColumnsType`/`TableProps`/`PopconfirmProps` bridges. Do NOT `npm uninstall antd`
+(reds the build until C4). The plan file (`/root/.claude/plans/quirky-snacking-whistle.md`)
+won't survive the container — everything needed is in the blueprint + this section.
+
 ## State
 Branch `claude/ui-replatform-auto-spawn-fix-8dee0o` (the program tip; the harness
 again mis-based the checkout on stale `032f643`, so step 0 was `git checkout -B
