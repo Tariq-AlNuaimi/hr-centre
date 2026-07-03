@@ -95,6 +95,11 @@ if (values.writes !== undefined) {
 }
 const writeWrap = WRITE_WRAPPERS[writesMode];
 
+// Import list for the API routes: GET uses withAuth (reads); write routes use
+// the resolved writeWrap. Both are wrapped with withRateLimit. writeWrap is
+// fixed for the run, so this is computed once and shared by both route files.
+const wrapImports = ['withAuth', ...(writeWrap !== 'withAuth' ? [writeWrap] : []), 'withRateLimit'].join(', ');
+
 const displayField = values['display-field'];
 const dryRun = values['dry-run'];
 
@@ -133,8 +138,12 @@ const FIELD_TYPES = {
   json: { prisma: 'Json', zod: 'z.any()', ts: 'unknown', input: 'TextArea' },
 };
 
+const FIELD_RE = /^(\w+):(\w+)(\??)(!?)$/;
+const ENUM_RE = /^([a-z]\w*):([A-Z0-9_|]+)(\??)$/;
+const RELATION_RE = /^(\w+):([A-Z]\w*)(\??)$/;
+
 function parseField(spec) {
-  const m = spec.match(/^(\w+):(\w+)(\??)(!?)$/);
+  const m = spec.match(FIELD_RE);
   if (!m) throw new Error(`Invalid field "${spec}" -- expected "name:type[?][!]".`);
   const [, name, type, opt, idx] = m;
   if (!FIELD_TYPES[type]) {
@@ -150,7 +159,7 @@ function parseField(spec) {
 }
 
 function parseEnum(spec) {
-  const m = spec.match(/^([a-z]\w*):([A-Z0-9_|]+)(\??)$/);
+  const m = spec.match(ENUM_RE);
   if (!m) throw new Error(`Invalid enum "${spec}" -- expected "name:VAL1|VAL2|...[?]".`);
   const [, name, valuesRaw, opt] = m;
   const enumValues = valuesRaw.split('|').filter(Boolean);
@@ -165,7 +174,7 @@ function parseEnum(spec) {
 }
 
 function parseRelation(spec) {
-  const m = spec.match(/^(\w+):([A-Z]\w*)(\??)$/);
+  const m = spec.match(RELATION_RE);
   if (!m) throw new Error(`Invalid relation "${spec}" -- expected "fieldName:TargetModel[?]".`);
   const [, name, target, opt] = m;
   return { kind: 'relation', name, target, optional: opt === '?' };
@@ -344,14 +353,6 @@ export type Update${Pascal}Input = z.infer<typeof update${Pascal}Schema>;
 }
 
 function apiListRouteFile() {
-  // GET uses withAuth (reads); write routes use the resolved writeWrap. Both
-  // read and write are wrapped with withRateLimit so an authenticated client
-  // can't hammer the list/detail endpoints either.
-  const wrapList = ['withAuth'];
-  if (writeWrap !== 'withAuth') wrapList.push(writeWrap);
-  wrapList.push('withRateLimit');
-  const wrapImports = wrapList.join(', ');
-
   // Search uses the first string/text field, optional or not (shared
   // `searchField`). If the model has no string-ish field, there's nothing to
   // search and the list page omits the search box (no `searchable`).
@@ -434,14 +435,6 @@ export const POST = withRateLimit(${writeWrap}(async (request: NextRequest) => {
 }
 
 function apiItemRouteFile() {
-  // GET uses withAuth (reads); write routes use the resolved writeWrap. Both
-  // read and write are wrapped with withRateLimit so an authenticated client
-  // can't hammer the list/detail endpoints either.
-  const wrapList = ['withAuth'];
-  if (writeWrap !== 'withAuth') wrapList.push(writeWrap);
-  wrapList.push('withRateLimit');
-  const wrapImports = wrapList.join(', ');
-
   const includeClause = relations.length === 0
     ? ''
     : ` include: {
@@ -1360,17 +1353,18 @@ try {
   const messageKeys = entityMessageKeys();
   const enPath = join(ROOT, 'messages/en.json');
   const arPath = join(ROOT, 'messages/ar.json');
-  const enWrite = { path: enPath, content: mergeMessages(await readFile(enPath, 'utf8'), i18nNs, messageKeys) };
-  const arWrite = { path: arPath, content: mergeMessages(await readFile(arPath, 'utf8'), i18nNs, messageKeys) };
+  // These five reads are mutually independent, so fetch them concurrently.
+  const [enSrc, arSrc, softDeletePatch, recyclingPatch, sidebarPatch] = await Promise.all([
+    readFile(enPath, 'utf8'),
+    readFile(arPath, 'utf8'),
+    patchSoftDeleteRegistry(),
+    patchRecyclingBin(),
+    patchSidebar(),
+  ]);
+  const enWrite = { path: enPath, content: mergeMessages(enSrc, i18nNs, messageKeys) };
+  const arWrite = { path: arPath, content: mergeMessages(arSrc, i18nNs, messageKeys) };
 
-  patches = [
-    schemaWrite,
-    enWrite,
-    arWrite,
-    await patchSoftDeleteRegistry(),
-    await patchRecyclingBin(),
-    await patchSidebar(),
-  ].filter(Boolean);
+  patches = [schemaWrite, enWrite, arWrite, softDeletePatch, recyclingPatch, sidebarPatch].filter(Boolean);
 } catch (e) {
   console.error(`ERROR: precondition failed -- ${e.message}`);
   console.error('Nothing was written. Restore the missing marker in the target file and re-run.');

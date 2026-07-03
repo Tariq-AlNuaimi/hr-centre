@@ -29,13 +29,10 @@ function discoverRoles() {
   const src = fs.readFileSync(schemaPath, "utf8");
   const block = src.match(/enum\s+Role\s*\{([^}]*)\}/);
   if (!block) return [];
-  const roles = [];
-  for (const rawLine of block[1].split("\n")) {
-    const line = rawLine.replace(/\/\/.*$/, "").trim();
-    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)/);
-    if (m) roles.push(m[1]);
-  }
-  return roles;
+  return block[1]
+    .split("\n")
+    .map((l) => l.replace(/\/\/.*$/, "").trim().match(/^([A-Za-z_][A-Za-z0-9_]*)/)?.[1])
+    .filter(Boolean);
 }
 
 function emailFor(role) {

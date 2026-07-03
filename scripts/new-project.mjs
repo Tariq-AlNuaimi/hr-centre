@@ -101,35 +101,26 @@ const created = { repoFullName: null, neonProjectId: null, vercelProjectId: null
 
 async function teardown() {
   const left = [];
+  // Best-effort DELETE of one provisioned resource; identical message shape for each.
+  const del = async (id, label, url, headers) => {
+    if (!id) return;
+    step(P, `Rolling back: deleting ${label} ${id}...`);
+    try {
+      const r = await fetch(url, { method: "DELETE", headers });
+      if (r.ok || r.status === 404) ok(P, `Rolled back ${label} ${id}.`);
+      else { left.push(`${label} ${id} (HTTP ${r.status})`); warn(P, `Could not delete ${label} ${id} (HTTP ${r.status}).`); }
+    } catch (e) {
+      left.push(`${label} ${id} (${e.message})`);
+      warn(P, `Could not delete ${label} ${id}: ${e.message}`);
+    }
+  };
   // Vercel (holds env vars + git link) -> Neon (the database) -> GitHub repo.
-  if (created.vercelProjectId) {
-    step(P, `Rolling back: deleting Vercel project ${created.vercelProjectId}...`);
-    try {
-      const r = await fetch(
-        `https://api.vercel.com/v9/projects/${created.vercelProjectId}${teamQs}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }
-      );
-      if (r.ok || r.status === 404) ok(P, `Rolled back Vercel project ${created.vercelProjectId}.`);
-      else { left.push(`Vercel project ${created.vercelProjectId} (HTTP ${r.status})`); warn(P, `Could not delete Vercel project ${created.vercelProjectId} (HTTP ${r.status}).`); }
-    } catch (e) {
-      left.push(`Vercel project ${created.vercelProjectId} (${e.message})`);
-      warn(P, `Could not delete Vercel project ${created.vercelProjectId}: ${e.message}`);
-    }
-  }
-  if (created.neonProjectId) {
-    step(P, `Rolling back: deleting Neon project ${created.neonProjectId}...`);
-    try {
-      const r = await fetch(
-        `https://console.neon.tech/api/v2/projects/${created.neonProjectId}`,
-        { method: "DELETE", headers: { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" } }
-      );
-      if (r.ok || r.status === 404) ok(P, `Rolled back Neon project ${created.neonProjectId}.`);
-      else { left.push(`Neon project ${created.neonProjectId} (HTTP ${r.status})`); warn(P, `Could not delete Neon project ${created.neonProjectId} (HTTP ${r.status}).`); }
-    } catch (e) {
-      left.push(`Neon project ${created.neonProjectId} (${e.message})`);
-      warn(P, `Could not delete Neon project ${created.neonProjectId}: ${e.message}`);
-    }
-  }
+  await del(created.vercelProjectId, "Vercel project",
+    `https://api.vercel.com/v9/projects/${created.vercelProjectId}${teamQs}`,
+    { Authorization: `Bearer ${VERCEL_TOKEN}` });
+  await del(created.neonProjectId, "Neon project",
+    `https://console.neon.tech/api/v2/projects/${created.neonProjectId}`,
+    { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" });
   if (created.repoFullName) {
     step(P, `Rolling back: deleting GitHub repo ${created.repoFullName}...`);
     try {
@@ -217,16 +208,19 @@ if (apex) egressHosts.push("https://api.cloudflare.com/client/v4/user");
 
 step(P, "Preflight: checking egress to provider APIs...");
 {
-  const blocked = [];
-  for (const url of egressHosts) {
-    const host = new URL(url).host;
-    try {
-      const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
-      if (r.headers.get("x-deny-reason")) blocked.push(host);
-    } catch {
-      blocked.push(host);
-    }
-  }
+  // Probe hosts concurrently (independent GETs); filter preserves egressHosts order.
+  const probes = await Promise.all(
+    egressHosts.map(async (url) => {
+      const host = new URL(url).host;
+      try {
+        const r = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
+        return r.headers.get("x-deny-reason") ? host : null;
+      } catch {
+        return host;
+      }
+    })
+  );
+  const blocked = probes.filter(Boolean);
   if (blocked.length) {
     const hosts = [
       "api.github.com",

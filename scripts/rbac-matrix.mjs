@@ -164,6 +164,8 @@ const KNOWN_WRAPPERS = [
   "withInternalAuth",
   "withAuth", // last: it is a substring-ish of the others by intent, check it after
 ];
+// Hoisted word-boundary matchers so parseRouteHandlers doesn't rebuild them per handler.
+const WRAPPER_PATTERNS = KNOWN_WRAPPERS.map((w) => [w, new RegExp(`\\b${w}\\b`)]);
 
 // For one route file, return [{ method, wrapper, capability, hasRateLimit }] across
 // BOTH export styles the template uses:
@@ -187,7 +189,7 @@ function parseRouteHandlers(src) {
     const m = src.match(constRe);
     if (m) {
       const rhs = m[1];
-      const wrapper = KNOWN_WRAPPERS.find((w) => new RegExp(`\\b${w}\\b`).test(rhs)) ?? null;
+      const wrapper = WRAPPER_PATTERNS.find(([, re]) => re.test(rhs))?.[0] ?? null;
       let capability = null;
       if (wrapper === "withCapabilityAuth") {
         capability = rhs.match(/withCapabilityAuth\(\s*["']([^"']+)["']/)?.[1] ?? "(dynamic)";

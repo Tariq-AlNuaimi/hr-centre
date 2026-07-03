@@ -25,9 +25,9 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const ROOT = process.env.CLAUDE_PROJECT_DIR
-  ? process.env.CLAUDE_PROJECT_DIR
-  : join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT =
+  process.env.CLAUDE_PROJECT_DIR ||
+  join(dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = join(ROOT, "docs", "session-state.json");
 const HANDOFF = join(ROOT, "docs", "SESSION-HANDOFF.md");
 const BEGIN = "<!-- BEGIN:auto-status (rendered by scripts/render-handoff.mjs from docs/session-state.json -- do not hand-edit) -->";

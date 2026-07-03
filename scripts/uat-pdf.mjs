@@ -21,7 +21,6 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { synthesizeRecommendations } from "./uat-recommend.mjs";
 import { loadBenchmark } from "./uat-benchmark.mjs";
 
@@ -41,8 +40,6 @@ const OUT_PDF = path.join(OUT_DIR, "uat-report.pdf");
 // PDF is rendered from.
 const OUT_HTML = path.join(OUT_DIR, "uat-report.html");
 
-const __filename = fileURLToPath(import.meta.url);
-
 /** Minimal HTML escaper for text injected into the report. */
 function esc(s) {
   return String(s ?? "")
@@ -50,6 +47,17 @@ function esc(s) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+/** Read a JSON file expected to hold a non-empty array; null on any miss. */
+function readJsonArray(file) {
+  try {
+    if (!fs.existsSync(file)) return null;
+    const j = JSON.parse(fs.readFileSync(file, "utf8"));
+    return Array.isArray(j) && j.length ? j : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -118,14 +126,8 @@ function imgDataUri(absOrRel) {
  * matrix) so the section is simply omitted.
  */
 function buildMatrixSection() {
-  let cells;
-  try {
-    if (!fs.existsSync(MATRIX_JSON)) return "";
-    cells = JSON.parse(fs.readFileSync(MATRIX_JSON, "utf8"));
-  } catch {
-    return "";
-  }
-  if (!Array.isArray(cells) || cells.length === 0) return "";
+  const cells = readJsonArray(MATRIX_JSON);
+  if (!cells) return "";
 
   // Stable axes derived from the data (never hardcoded).
   const roles = [...new Set(cells.map((c) => c.role))];
@@ -197,14 +199,8 @@ function buildMatrixSection() {
  * read-only fork) so the section is simply omitted.
  */
 function buildCrudSection() {
-  let journeys;
-  try {
-    if (!fs.existsSync(CRUD_JSON)) return "";
-    journeys = JSON.parse(fs.readFileSync(CRUD_JSON, "utf8"));
-  } catch {
-    return "";
-  }
-  if (!Array.isArray(journeys) || journeys.length === 0) return "";
+  const journeys = readJsonArray(CRUD_JSON);
+  if (!journeys) return "";
 
   const pill = (p) => {
     const cls =
@@ -250,14 +246,8 @@ function buildCrudSection() {
  * RTL / console-error signals. Returns "" when there are no findings.
  */
 function buildUiuxSection() {
-  let findings;
-  try {
-    if (!fs.existsSync(UIUX_JSON)) return "";
-    findings = JSON.parse(fs.readFileSync(UIUX_JSON, "utf8"));
-  } catch {
-    return "";
-  }
-  if (!Array.isArray(findings) || findings.length === 0) return "";
+  const findings = readJsonArray(UIUX_JSON);
+  if (!findings) return "";
 
   const yn = (ok) =>
     ok

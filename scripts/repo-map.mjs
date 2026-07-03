@@ -8,6 +8,8 @@ import { join, relative } from "node:path";
 
 const root = process.cwd();
 const out = ["# Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)", ""];
+// Precompiled once (not per route file): method -> its export-detector regex.
+const HTTP_METHOD_RES = "GET POST PUT PATCH DELETE".split(" ").map((m) => [m, new RegExp(`export const ${m}\\b`)]);
 
 function walk(dir, fn) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -26,8 +28,7 @@ walk(join(root, "app"), (p) => {
     let methods = "";
     if (rel.endsWith("route.ts")) {
       const src = readFileSync(p, "utf8");
-      methods = [..."GET POST PUT PATCH DELETE".split(" ")]
-        .filter((m) => new RegExp(`export const ${m}\\b`).test(src)).join(",");
+      methods = HTTP_METHOD_RES.filter(([, re]) => re.test(src)).map(([m]) => m).join(",");
     }
     routes.push(`- ${rel}${methods ? `  [${methods}]` : ""}`);
   }

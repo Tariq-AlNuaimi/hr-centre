@@ -244,8 +244,7 @@ if (values.check) {
   reportBehind();
   listChanges();
   // Exit 3 when behind so a hook/CI can branch on it; 0 when clean.
-  const behind = ownedChanged.length || reviewChanged.length;
-  process.exit(behind ? 3 : 0);
+  process.exit(anyDiff ? 3 : 0);
 }
 
 if (values["dry-run"]) {
@@ -259,7 +258,7 @@ if (values["dry-run"]) {
 // --- apply ------------------------------------------------------------------
 reportBehind();
 
-if (!ownedChanged.length && !reviewChanged.length) {
+if (!anyDiff) {
   ok(P, "Nothing to sync. Updating marker only.");
 }
 

@@ -72,7 +72,7 @@ function assertIdent(kind, value) {
 
 for (const t of map.tables) {
   assertIdent('source table', t.source);
-  if (typeof t.target !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(t.target)) {
+  if (typeof t.target !== 'string' || !IDENT_RE.test(t.target)) {
     bail('migrate-from', `invalid target model ${JSON.stringify(t.target)} for table ${JSON.stringify(t.source)}.`);
   }
   if (!t.columns || typeof t.columns !== 'object') {

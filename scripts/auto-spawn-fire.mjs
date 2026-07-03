@@ -26,9 +26,7 @@ import { execSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const ROOT = process.env.CLAUDE_PROJECT_DIR
-  ? process.env.CLAUDE_PROJECT_DIR
-  : join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = process.env.CLAUDE_PROJECT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = join(ROOT, "docs", "session-state.json");
 const GUARD = join(ROOT, "scripts", "auto-spawn-guard.mjs");
 

@@ -212,8 +212,7 @@ function scanBlueprint() {
   if (signals.length === 0) return ok("no new feature surface in diff");
   if (newBlueprints.length > 0) return ok(`new feature surface + blueprint present (${newBlueprints.join(", ")})`);
 
-  let cfg = {};
-  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); } catch {}
+  const cfg = readCfg();
   if (cfg.blueprintAck) return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck}`);
   const tierVal = cfg.tier ?? "personal";
   const detail =
@@ -326,8 +325,7 @@ async function scanDbStructure() {
   }
 
   // Escape hatch first (mirrors tierAck): explicit, recorded, never silent.
-  let cfg = {};
-  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); } catch {}
+  const cfg = readCfg();
   if (cfg.dbAck) {
     const ADJUDICATED = /^-\s*\d{4}-\d{2}-\d{2}\b.*\b(ADR-031|dbAck)\b.*\bstatus:\s*adjudicated/i;
     let reg = "";
@@ -598,8 +596,7 @@ async function scanDocker() {
   const red = (out) => ({ name: "docker", ok: false, out, secs: secs() });
 
   // Escape hatch first (mirrors dbAck): explicit, recorded, never silent.
-  let cfg = {};
-  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); } catch {}
+  const cfg = readCfg();
   if (cfg.dockerAck) {
     const ADJUDICATED = /^-\s*\d{4}-\d{2}-\d{2}\b.*\b(ADR-030|dockerAck)\b.*\bstatus:\s*adjudicated/i;
     let reg = "";
@@ -646,11 +643,14 @@ async function scanDocker() {
         "A standard artifact should be a scanned artifact (ADR-030) -- install trivy to scan the image + Dockerfile.",
     });
   }
-  const img = await run("trivy image", "trivy", [
-    "image", "--quiet", "--exit-code", "1", "--scanners", "vuln", "--severity", "HIGH,CRITICAL", DOCKER_IMAGE_TAG,
-  ]);
-  const conf = await run("trivy config", "trivy", [
-    "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL", ".",
+  // The image + config scans are independent; run them together.
+  const [img, conf] = await Promise.all([
+    run("trivy image", "trivy", [
+      "image", "--quiet", "--exit-code", "1", "--scanners", "vuln", "--severity", "HIGH,CRITICAL", DOCKER_IMAGE_TAG,
+    ]),
+    run("trivy config", "trivy", [
+      "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL", ".",
+    ]),
   ]);
   const notes = [];
   if (!img.ok) notes.push("  trivy image (HIGH/CRITICAL):\n" + img.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));

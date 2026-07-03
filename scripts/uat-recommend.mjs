@@ -62,6 +62,17 @@ const MARKERS = [
   },
 ];
 
+// One recommendation record. Positional so the ~12 push sites stay compact;
+// key ORDER here is load-bearing — it fixes the JSON output shape.
+const rec = (priority, category, title, detail, evidence, source = "uat") => ({
+  priority,
+  category,
+  title,
+  detail,
+  evidence,
+  source,
+});
+
 function readJson(file) {
   try {
     return JSON.parse(fs.readFileSync(file, "utf8"));
@@ -114,14 +125,12 @@ function staticFindings(base) {
           const key = `${rel}:${i + 1}`;
           if (seen.has(key)) return;
           seen.add(key);
-          recs.push({
-            priority: m.priority,
-            category: "code",
-            title: `${m.label} in ${path.basename(rel)}`,
-            detail: line.trim().slice(0, 160),
-            evidence: [`${rel}:${i + 1}`],
-            source: "static",
-          });
+          recs.push(rec(m.priority, "code",
+            `${m.label} in ${path.basename(rel)}`,
+            line.trim().slice(0, 160),
+            [`${rel}:${i + 1}`],
+            "static",
+          ));
           return;
         }
       }
@@ -137,14 +146,11 @@ function failedSpecFindings(results) {
   const visit = (suite) => {
     for (const spec of suite.specs ?? []) {
       if (spec.ok === false) {
-        recs.push({
-          priority: "P0",
-          category: "flow",
-          title: `Failing UAT flow: ${spec.title}`,
-          detail: "A browser-driven flow failed; the app does not behave as expected here.",
-          evidence: [spec.file ?? suite.file ?? "(unknown spec file)"],
-          source: "uat",
-        });
+        recs.push(rec("P0", "flow",
+          `Failing UAT flow: ${spec.title}`,
+          "A browser-driven flow failed; the app does not behave as expected here.",
+          [spec.file ?? suite.file ?? "(unknown spec file)"],
+        ));
       }
     }
     for (const child of suite.suites ?? []) visit(child);
@@ -160,16 +166,13 @@ function matrixFindings(matrix) {
   for (const c of matrix) {
     if (c.ok === false) {
       const reachedButShouldNot = c.reached && !c.expectedReach;
-      recs.push({
-        priority: "P0",
-        category: "authorization",
-        title: reachedButShouldNot
+      recs.push(rec("P0", "authorization",
+        reachedButShouldNot
           ? `Authorization gap: ${c.role} reached admin-only "${c.section}"`
           : `Access regression: ${c.role} was blocked from "${c.section}" it should reach`,
-        detail: `Expected ${c.expectedReach ? "reach" : "blocked"}, observed outcome "${c.outcome}". Derived from the app's own sidebar gating.`,
-        evidence: [`section ${c.section} (${c.sectionPath})`, `role ${c.role}`],
-        source: "uat",
-      });
+        `Expected ${c.expectedReach ? "reach" : "blocked"}, observed outcome "${c.outcome}". Derived from the app's own sidebar gating.`,
+        [`section ${c.section} (${c.sectionPath})`, `role ${c.role}`],
+      ));
     }
   }
   return recs;
@@ -182,46 +185,33 @@ function crudFindings(journeys) {
   for (const j of journeys) {
     for (const p of j.phases ?? []) {
       if (p.status === "failed") {
-        recs.push({
-          priority: "P0",
-          category: "crud",
-          title: `CRUD "${p.phase}" failed for ${j.entity}`,
-          detail: p.detail ?? "",
-          evidence: [`entity ${j.entity} (${j.listPath})`],
-          source: "uat",
-        });
+        recs.push(rec("P0", "crud",
+          `CRUD "${p.phase}" failed for ${j.entity}`,
+          p.detail ?? "",
+          [`entity ${j.entity} (${j.listPath})`],
+        ));
       } else if (p.status === "skipped") {
-        recs.push({
-          priority: "P1",
-          category: "crud",
-          title: `CRUD "${p.phase}" could not be exercised for ${j.entity}`,
-          detail:
-            (p.detail ?? "").slice(0, 160) ||
+        recs.push(rec("P1", "crud",
+          `CRUD "${p.phase}" could not be exercised for ${j.entity}`,
+          (p.detail ?? "").slice(0, 160) ||
             "The step was skipped — the form/flow may be non-standard.",
-          evidence: [`entity ${j.entity} (${j.listPath})`],
-          source: "uat",
-        });
+          [`entity ${j.entity} (${j.listPath})`],
+        ));
       }
     }
     for (const e of j.pageErrors ?? []) {
-      recs.push({
-        priority: "P0",
-        category: "runtime",
-        title: `Runtime error on the ${j.entity} create/edit form`,
-        detail: e.slice(0, 160),
-        evidence: [`entity ${j.entity} (${j.listPath})`],
-        source: "uat",
-      });
+      recs.push(rec("P0", "runtime",
+        `Runtime error on the ${j.entity} create/edit form`,
+        e.slice(0, 160),
+        [`entity ${j.entity} (${j.listPath})`],
+      ));
     }
     for (const e of j.consoleErrors ?? []) {
-      recs.push({
-        priority: "P2",
-        category: "console",
-        title: `Console error on the ${j.entity} form`,
-        detail: e.slice(0, 160),
-        evidence: [`entity ${j.entity} (${j.listPath})`],
-        source: "uat",
-      });
+      recs.push(rec("P2", "console",
+        `Console error on the ${j.entity} form`,
+        e.slice(0, 160),
+        [`entity ${j.entity} (${j.listPath})`],
+      ));
     }
   }
   return recs;
@@ -233,44 +223,32 @@ function uiuxFindings(findings) {
   if (!Array.isArray(findings)) return recs;
   for (const f of findings) {
     if (f.pageErrors > 0) {
-      recs.push({
-        priority: "P0",
-        category: "runtime",
-        title: `Uncaught runtime error on "${f.section}"`,
-        detail: `${f.pageErrors} uncaught error(s) while loading the screen.`,
-        evidence: [`${f.section} (${f.path})`],
-        source: "uat",
-      });
+      recs.push(rec("P0", "runtime",
+        `Uncaught runtime error on "${f.section}"`,
+        `${f.pageErrors} uncaught error(s) while loading the screen.`,
+        [`${f.section} (${f.path})`],
+      ));
     }
     if (f.headingOk === false) {
-      recs.push({
-        priority: "P1",
-        category: "ux",
-        title: `"${f.section}" renders no heading (possible blank shell)`,
-        detail: "The screen may be failing to render its content / hitting an error boundary.",
-        evidence: [`${f.section} (${f.path})`],
-        source: "uat",
-      });
+      recs.push(rec("P1", "ux",
+        `"${f.section}" renders no heading (possible blank shell)`,
+        "The screen may be failing to render its content / hitting an error boundary.",
+        [`${f.section} (${f.path})`],
+      ));
     }
     if (f.rtlOk === false) {
-      recs.push({
-        priority: "P1",
-        category: "i18n",
-        title: `RTL regression on "${f.section}" (ar variant did not flip dir)`,
-        detail: "The Arabic locale should render right-to-left; this screen did not.",
-        evidence: [`${f.section} (${f.path})`],
-        source: "uat",
-      });
+      recs.push(rec("P1", "i18n",
+        `RTL regression on "${f.section}" (ar variant did not flip dir)`,
+        "The Arabic locale should render right-to-left; this screen did not.",
+        [`${f.section} (${f.path})`],
+      ));
     }
     if (f.consoleErrors > 0) {
-      recs.push({
-        priority: "P2",
-        category: "console",
-        title: `Console error(s) on "${f.section}"`,
-        detail: `${f.consoleErrors} console error(s) — triage for library warnings vs real defects.`,
-        evidence: [`${f.section} (${f.path})`],
-        source: "uat",
-      });
+      recs.push(rec("P2", "console",
+        `Console error(s) on "${f.section}"`,
+        `${f.consoleErrors} console error(s) — triage for library warnings vs real defects.`,
+        [`${f.section} (${f.path})`],
+      ));
     }
   }
   return recs;
