@@ -69,30 +69,40 @@ async function copyCanonical(relPath) {
 
 async function upsertAgentsMandate() {
   const agentsPath = join(target, 'AGENTS.md');
-  let current = (await exists(agentsPath)) ? await readFile(agentsPath, 'utf8') : '';
+  const original = (await exists(agentsPath)) ? await readFile(agentsPath, 'utf8') : '';
+  let next;
 
-  if (current.includes(BEGIN) && current.includes(END)) {
+  if (original.includes(BEGIN) && original.includes(END)) {
     // Replace the managed block in place (idempotent update).
-    const before = current.slice(0, current.indexOf(BEGIN));
-    const after = current.slice(current.indexOf(END) + END.length);
-    current = `${before}${MANDATE}${after}`;
-    console.log('  updated AGENTS.md mandate block');
+    const before = original.slice(0, original.indexOf(BEGIN));
+    const after = original.slice(original.indexOf(END) + END.length);
+    next = `${before}${MANDATE}${after}`;
   } else {
-    const sep = current && !current.endsWith('\n') ? '\n\n' : current ? '\n' : '';
-    current = `${current}${sep}${MANDATE}\n`;
-    console.log('  appended mandate to AGENTS.md');
+    const sep = original && !original.endsWith('\n') ? '\n\n' : original ? '\n' : '';
+    next = `${original}${sep}${MANDATE}\n`;
   }
-  await writeFile(agentsPath, current);
+
+  // Write ONLY when the content actually changes, so a re-run against an
+  // already-current repo (e.g. the template itself) leaves the file — and the
+  // git working tree — untouched instead of churning bytes.
+  if (next === original) {
+    console.log('  AGENTS.md mandate already current (no change)');
+    return;
+  }
+  await writeFile(agentsPath, next);
+  console.log(original.includes(BEGIN) ? '  updated AGENTS.md mandate block' : '  appended mandate to AGENTS.md');
 }
 
 console.log(`Installing senior-code-reviewer into ${target}`);
 if (target === TEMPLATE_ROOT) {
-  console.log('  (target is the template itself -- artifacts already live here)');
+  // The template is where these artifacts are authored; installing "into itself"
+  // must be a read-only no-op (never touch AGENTS.md or the working tree).
+  console.log('  (target is the template itself -- artifacts already live here; nothing to install)');
 } else {
   await copyCanonical('.claude/agents/senior-code-reviewer.md');
   await copyCanonical('.github/workflows/senior-review.yml');
+  await upsertAgentsMandate();
 }
-await upsertAgentsMandate();
 console.log('\nDone. Next: set ANTHROPIC_API_KEY and restore triggers in');
 console.log('.github/workflows/senior-review.yml to activate the CI gate (see');
 console.log('the header of that file, and tools/senior-review/README.md).');

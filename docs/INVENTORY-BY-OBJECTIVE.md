@@ -22,18 +22,26 @@ missing) · ❌ FAIL · — not trialed standalone.
 |---|------------------|----------------|------:|
 | A | **Provision & Deploy** | Get a repo to a live shareable URL | 6 |
 | B | **Build Features** | Turn an idea into a working screen + data model | 19 |
-| C | **Quality Gates & Verification** | Prove a change is correct before it ships | 42 |
-| D | **Security & Secrets** | Keep credentials, auth, and the audit trail intact | 14 |
+| C | **Quality Gates & Verification** | Prove a change is correct before it ships | 38 |
+| D | **Security & Secrets** | Keep credentials, auth, and the audit trail intact | 15 |
 | E | **Session & Knowledge Continuity** | Survive the ephemeral container; carry state forward | 17 |
 | F | **Maintenance & Migration** | Keep forks current; move code and data between projects | 15 |
-| G | **Docs & Decisions** | Record why the system is the way it is | 40 |
+| G | **Docs & Decisions** | Record why the system is the way it is | 41 |
 | H | **Tooling & Meta-Agents** | The reusable infrastructure the other buckets run on | 12 |
+
+The **Items** count is the number of table rows in each bucket, except: **E**
+counts 17 (18 rows; `repo-map` appears as both a script and its npm wrapper —
+one item), **H** counts 12 (13 rows; `Replit` is listed but unauthorized), and
+**G** counts 41 (10 rows, but the single ADR-corpus row fans out to 31 numbered
+ADRs + 1 template = 32 files). A couple of rows elsewhere bundle two npm
+entrypoints (e.g. A's `deploy` / `new-project`).
 
 Cross-check against `REPO-INVENTORY.md`: 26 skills + 2 agents + 11 hooks + 10
 ESLint rules + 19 scripts (18 + `lib/log.mjs`) + 43 live npm actions
-(`package.json`; the inventory's headline "44" predates a script removal — the
-live count is 43) + documents (5 root + 13 `docs/` + 32 ADRs + 1 ADR template) +
-5 MCP servers. Every one is placed below exactly once.
+(`package.json`; the inventory's headline "44" doesn't match the live
+`package.json`, which has 43 — a miscount at authoring time, not a later change)
++ documents (5 root + 13 `docs/` + 31 ADRs + 1 ADR template) + 5 MCP servers.
+Every one is placed below exactly once.
 
 ---
 
@@ -118,6 +126,7 @@ guard *Maintainable*/*High-Quality*; the eight security rules live in bucket D.
 | `test:integration` | S6 | Integration tests | 🟡 | 0.6s; DB-bound cases skip without DB. |
 | `test:components` | S6 | React component tests (jsdom) | ✅ | 2.8s. |
 | `test:coverage` | S6 | Coverage run feeding the floor | ✅ | ~10s. |
+| `uat` | S6 | `npm run uat` — lean browser smoke | 🟡 | Same live-launch behavior as the `/uat` skill; needs creds + running app. |
 | `uat:full` | S6 | Full deep UAT audit | ⛔ | Needs full UAT inputs. |
 | `uat:headed` | S6 | Headed (visible) lean UAT | ⛔ | Needs creds + a display, like `uat`. |
 | `uat:report` | S6 | Open the last Playwright UAT report | ⛔ | Needs a prior report. |
@@ -246,10 +255,11 @@ trial "result" beyond present/current (TRIALS §7: no stale/missing docs found).
 | `docs/claude-ecosystem-comparison-part2.md` | S7 | Ecosystem comparison (part 2) | ✅ | Present/current (391 LOC). |
 | `docs/deferred-adoption-plan.md` | S7 | Deferred-work plan | ✅ | Present/current (184 LOC). |
 | `docs/plugin-eval-2026-07.md` | S7 | Plugin evaluation notes | ✅ | Present/current (142 LOC). |
-| ADR-001 … ADR-031 + `ADR-TEMPLATE.md` | S7 | 32 decision records + template (the "why" ledger) | ✅ | All present (TRIALS §7). Notable: ADR-001 stack lock, ADR-006 Vercel/Neon, ADR-010 audit completeness, ADR-015 design-taste, ADR-026/028/029 design system, ADR-023/030 Docker, ADR-031 structured-DB mandate. |
+| ADR-001 … ADR-031 + `ADR-TEMPLATE.md` | S7 | 31 numbered decision records + 1 template (the "why" ledger) | ✅ | All present (TRIALS §7). Notable: ADR-001 stack lock, ADR-006 Vercel/Neon, ADR-010 audit completeness, ADR-015 design-taste, ADR-026/028/029 design system, ADR-023/030 Docker, ADR-031 structured-DB mandate. |
 
 *(The ADR row is one line for the full numbered series, mirroring how
-`REPO-INVENTORY.md` §7 counts them as a group — 32 + template = 33 documents.)*
+`REPO-INVENTORY.md` §7 counts them as a group — ADR-001…ADR-031 = 31 records, +
+template = 32 ADR-corpus files.)*
 
 ---
 
@@ -271,7 +281,7 @@ power provisioning, browsing, and design.
 | `prepare` | S6 | Husky git-hook install on `npm install` | ✅ | Ran at SessionStart (deps install). |
 | `docs/mcp.md` | S7 | MCP server reference | ✅ | Present/current (35 LOC). |
 | `github` (MCP) | S8 | Full PR/issue/CI/repo API | ✅ | In scope, tools available. |
-| `playwright` (MCP) | S8 | Browser automation for QA tiers | 🟡 | MCP was Chrome-pinned; fixed to `--browser chromium` (§9 #3). |
+| `playwright` (MCP) | S8 | Browser automation for QA tiers | 🟡 | `--browser chromium` alone still demanded `chrome-for-testing`; now pinned to the pre-installed Chromium via a dynamic `--executable-path` glob in `.mcp.json` (takes effect next session). |
 | `Figma` (MCP) | S8 | Design ↔ code bridge | ✅ | Available; not exercised. |
 | `context7` (MCP) | S8 | Live library docs | ✅ | Available; not exercised. |
 | `Replit` (MCP) | S8 | (session-provided) | ⛔ | Requires OAuth; can't authorize non-interactively. |
@@ -292,7 +302,7 @@ one.)*
 | S4 ESLint rules | 10 | 10 | C D |
 | S5 Scripts (+lib) | 19 | 19 | A B C E F H |
 | S6 npm actions | 43 (inv. "44") | 43 | A B C D E F H |
-| S7 Documents | 5 root + 13 docs + 33 ADR corpus | all | B C D E G H |
+| S7 Documents | 5 root + 13 docs + 32 ADR corpus (31 + template) | all | B C D E G H |
 | S8 MCP tools | 5 | 5 | H |
 
 No item from any section is dropped; each appears under exactly one primary

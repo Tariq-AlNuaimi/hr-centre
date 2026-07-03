@@ -73,6 +73,11 @@ export default function AuditLogClient() {
   }, [page, pageSize, entityType, action, showError, t]);
 
   useEffect(() => {
+    // Load-on-dependency-change data fetch: fetchLogs() flips loading state
+    // synchronously (intended spinner UX), which react-hooks/set-state-in-effect
+    // flags. This is the documented fetch-in-effect pattern, not a cascading
+    // render bug — suppressed narrowly rather than restructured.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchLogs();
   }, [fetchLogs]);
 

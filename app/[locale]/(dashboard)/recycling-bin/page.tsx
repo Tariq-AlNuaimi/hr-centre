@@ -109,6 +109,10 @@ export default function RecyclingBinPage() {
   );
 
   useEffect(() => {
+    // Initial data load: fetchItems() sets loading state synchronously (intended
+    // spinner UX on mount), which react-hooks/set-state-in-effect flags — the
+    // documented fetch-in-effect pattern, not a cascading render bug.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchItems(page, pageSize);
     // Initial load only; subsequent loads go through handlers below.
     // eslint-disable-next-line react-hooks/exhaustive-deps

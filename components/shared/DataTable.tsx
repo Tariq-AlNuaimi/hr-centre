@@ -269,6 +269,10 @@ export function DataTable<T extends object>({
     });
   }, [columns]);
 
+  // TanStack Table's useReactTable returns non-memoizable functions, so the
+  // React Compiler cannot optimize this component (react-hooks/incompatible-library).
+  // There is no fix short of dropping TanStack; runtime behavior is correct.
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable<T>({
     data: rows,
     columns: tanstackColumns,
