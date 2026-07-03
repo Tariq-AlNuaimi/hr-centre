@@ -48,6 +48,11 @@ yarn-error.log*
 # prisma generated
 /generated
 
+# style-dictionary generated tokens (A5 / cat 21) -- run `npm run tokens:build`.
+# The source (tokens/design-tokens.json) + config are committed; the compiled
+# CSS is a reproducible build artifact, not work product.
+/tokens/build
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

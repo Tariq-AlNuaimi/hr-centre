@@ -85,6 +85,51 @@ run **axe** → diff against `tokens.css` + the `design/*` mockups. Baseline =
 the mockups on first pass; screenshots become the **visual-regression** baseline
 after. **Gate exit:** no fidelity/a11y **criticals**.
 
+### Tier 1a — Slop-gate checklist (explicit, traceable)
+The Tier-0 anti-slop defaults above are the *rules*; this is the *gate* — a flat
+checklist `/design-qa` traces item-by-item per surface, so "no slop" is provable,
+not vibes. Each **unchecked** box that isn't a brief-sanctioned exception is a
+Tier-1 finding citing the Tier-0 anchor. (An exception the brief explicitly asks
+for is checked with a one-line "brief sanctions: …" note, not silently skipped.)
+
+- [ ] **One accent** — only `colorPrimary` as accent; no per-screen hues, gradient panels, or glow shadows.
+- [ ] **One primary action per screen** — exactly one `type="primary"`; secondary actions are visually subordinate.
+- [ ] **No nested Cards** — grouping via spacing / `Divider` / plain sections, not Card-in-Card chrome.
+- [ ] **Icons from one family** — `@ant-design/icons` only; no emoji-as-icon; one weight.
+- [ ] **No label/eyebrow spam** — small uppercase labels used only where position doesn't already categorize.
+- [ ] **No gray-on-colored text** — every copy/background pair passes WCAG AA (see manual a11y below).
+- [ ] **Honest demo data** — no fake-precise numbers in seeds/empty copy unless real or marked "sample".
+- [ ] **No dead chrome** — every control does something; no decorative buttons/filler sections.
+- [ ] **Density picked once** — one `default`/`compact` choice app-wide, not per screen.
+- [ ] **On-token spacing/type/radius** — values off the 4px scale / `--density-*` / type scale; no ad-hoc px.
+- [ ] **Real state triad** — honest empty / loading / error states (no blank shell, spinner-forever, or raw error dump).
+
+### Tier 1b — Manual a11y criteria (WCAG 2.2 AA — what axe cannot see)
+axe (Tier 1 row) catches the machine-checkable slice (labels, roles, contrast on
+solid backgrounds). It **cannot** verify operability, focus behavior, or intent —
+those need a manual keyboard-and-screen pass, driven in `/design-qa` (and
+`/manual-uat` for live flows). Each item is pass/fail per surface; a fail on a
+**core interactive flow** (auth, forms, tables, modals) is a Tier-1 critical that
+stops the gate, same as an axe critical.
+
+- [ ] **Keyboard-only operable** — every action reachable and triggerable with Tab/Shift-Tab/Enter/Space/Esc/arrows; no mouse-only control (WCAG 2.1.1).
+- [ ] **Focus order is logical** — Tab order follows reading/DOM order; no jumps into or out of off-screen/hidden content (WCAG 2.4.3).
+- [ ] **Focus is always visible** — a clear focus ring on every focusable element (the `--ring` token); never `outline:none` without a replacement (WCAG 2.4.7 / 2.4.11 not-obscured).
+- [ ] **No keyboard trap** — focus can always leave a widget/modal; Esc closes overlays and returns focus to the trigger (WCAG 2.1.2).
+- [ ] **Modal/drawer focus management** — focus moves into the overlay on open, is contained while open, and restores to the opener on close.
+- [ ] **ARIA landmarks present** — one `main`, plus `nav` / `banner` / `contentinfo` as applicable, so screen-reader users can jump regions (WCAG 1.3.1).
+- [ ] **Live regions for async feedback** — toasts, inline validation, and async row/status changes announce via `aria-live` (or AntD's built-in `message`/`notification`, which do); a green toast over a failure is both a slop and an a11y fail.
+- [ ] **Accessible names on icon-only controls** — every icon-only button/link has an `aria-label` or visually-hidden text; no naked glyph.
+- [ ] **Manual contrast on the hard cases** — text over images/gradients, disabled text, placeholder text, and state colors (success/warning/error) meet AA (4.5:1 body / 3:1 large + UI components 1.4.11); these are the cases axe under-reports.
+- [ ] **Reduced-motion honored** — non-essential animation/transition is gated behind `@media (prefers-reduced-motion: reduce)`; nothing auto-animates for a user who opted out (WCAG 2.3.3).
+- [ ] **Target size ≥ 24×24 CSS px** — interactive targets meet the WCAG 2.2 minimum (2.5.8), with spacing where they're smaller.
+- [ ] **RTL + dark hold under keyboard** — focus ring, order, and landmarks stay correct in `dir="rtl"` (`ar`) and dark mode, not just LTR light.
+
+**Method (manual pass):** unplug the mouse — Tab through each surface; confirm the
+ring is visible and order is sane; open/close each modal and check focus in/out;
+trigger a validation error and a success and confirm each is announced; toggle OS
+reduced-motion + dark + RTL and re-walk one core flow. Cite the WCAG SC on any fail.
+
 ## Tier 2 — Functional QA (correctness): does it work, for all the cases?
 Owner: dev + QA (the agent). Folds into **`/ship`** + a **risk-based case matrix**.
 Gate: design-QA passed → regression green, no open criticals, high-risk covered.

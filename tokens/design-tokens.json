@@ -1,0 +1,61 @@
+{
+  "_comment": "Style Dictionary token SOURCE (A5 / cat 21 — token-pipeline seed). Mirrors the PRIMITIVE :root values in app/tokens.css + brand.config.ts. This is the machine-readable single source that `npm run tokens:build` compiles into tokens/build/tokens.generated.css (a PARALLEL artifact — app/tokens.css stays the hand-authored source of truth the app imports). The point is to prove a tokens.json -> platform-output pipeline exists and stays in step with the shipped ruler; if a fork later adopts more platforms (iOS/Android/JS), they hang off THIS file. Keep values in lockstep with app/tokens.css (the design-tokens contract test guards the AntD<->CSS overlap; this JSON tracks the CSS side).",
+
+  "space": {
+    "1": { "value": "4px" },
+    "2": { "value": "8px" },
+    "3": { "value": "12px" },
+    "4": { "value": "16px" },
+    "5": { "value": "20px" },
+    "6": { "value": "24px" },
+    "8": { "value": "32px" },
+    "10": { "value": "40px" },
+    "12": { "value": "48px" },
+    "16": { "value": "64px" }
+  },
+
+  "font-size": {
+    "xs": { "value": "12px" },
+    "base": { "value": "14px" },
+    "lg": { "value": "16px" },
+    "h5": { "value": "16px" },
+    "h4": { "value": "20px" },
+    "h3": { "value": "24px" },
+    "h2": { "value": "30px" },
+    "h1": { "value": "38px" }
+  },
+
+  "line-height": {
+    "base": { "value": "1.5714" }
+  },
+
+  "radius": {
+    "sm": { "value": "6px" },
+    "base": { "value": "8px" },
+    "lg": { "value": "12px" }
+  },
+
+  "motion": {
+    "fast": { "value": "0.1s" },
+    "mid": { "value": "0.2s" },
+    "slow": { "value": "0.3s" }
+  },
+
+  "brand": {
+    "primary": { "value": "#4f46e5" },
+    "accent": { "value": "#4f46e5" }
+  },
+
+  "surface": {
+    "background": { "value": "#ffffff" },
+    "foreground": { "value": "#111827" },
+    "card": { "value": "#ffffff" },
+    "card-foreground": { "value": "#111827" },
+    "muted": { "value": "#f3f4f6" },
+    "muted-foreground": { "value": "#6b7280" },
+    "border": { "value": "#e5e7eb" },
+    "input": { "value": "#d1d5db" },
+    "destructive": { "value": "#dc2626" },
+    "destructive-foreground": { "value": "#ffffff" }
+  }
+}
