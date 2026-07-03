@@ -24,7 +24,9 @@
     "@types/pg",
     "playwright",
     "@typescript-eslint/parser",
-    "jscpd"
+    "jscpd",
+    "@ant-design/icons",
+    "@ant-design/nextjs-registry"
   ],
   "ignoreBinaries": [
     "pg_dump",
