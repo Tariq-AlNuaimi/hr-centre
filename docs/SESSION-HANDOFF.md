@@ -19,7 +19,7 @@ deterministic file instead of reconstructing status from prose.
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (44954ce, 2026-07-03)._
+_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (b17a52d, 2026-07-03)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|

@@ -95,4 +95,16 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Conventions discovered
 <!-- patterns/idioms established in practice that are not yet written down elsewhere -->
-- (none yet — promote stable ones into CLAUDE.md / an ADR, then remove here)
+- 2026-07-03 — **Session status is DATA, not prose.** `docs/session-state.json` is the
+  single source; `SESSION-HANDOFF.md`'s two tables are RENDERED from it between
+  `<!-- BEGIN/END:auto-status -->` markers via `scripts/render-handoff.mjs` (`--check`
+  fails on drift, wired into `/ship` as a WARN). Edit the JSON, not the tables. Hooks
+  (SessionEnd `auto-handoff.mjs` + context-watchdog 80%) re-render automatically;
+  SessionStart surfaces it first. Never hand-edit inside the markers. (session-automation,
+  blueprint `docs/blueprints/session-automation-auto-handoff.md`.)
+- 2026-07-03 — **`/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`**
+  (written by `scripts/ship.mjs` for the exact tree it verified), NOT `session-state.json.lastShip`
+  (which is display-only and may lag HEAD). The auto-spawn guard (`scripts/auto-spawn-guard.mjs`)
+  reads the gitignored file and FAILS CLOSED. Auto-spawn ships DISABLED
+  (`autoSpawn.enabled=false`) and has no autonomous consumer yet — don't enable expecting
+  zero-touch spawning.
