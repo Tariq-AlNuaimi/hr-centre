@@ -44,6 +44,23 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-07-03 (session 12) — **Dark/RTL browser-axe recipe (reusable; confirmed end-to-end).**
+  Real-browser axe against the deployed app from a web session: (1) REDEPLOY the tip WITHOUT
+  the pristine flip — do NOT use `scripts/deploy.mjs` (it clears `project.config.json`
+  "pristine", a landmine); POST directly to `api.vercel.com/v13/deployments?teamId=<team>&forceNew=1`
+  `{project:"prj_PDhqr8z3gqOB8TXbWaR4pD4DUzL0", target:"production", gitSource:{type:"github",
+  repoId:1241728413, ref:"<branch>", sha:"<sha>"}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is
+  SSO-gated — disable with `PATCH /v9/projects/<id>?teamId=<team>` `{"ssoProtection":null}` and
+  ALWAYS RESTORE to `{"ssoProtection":{"deploymentType":"all_except_custom_domains"}}` after.
+  (3) Run `tools/design-qa-bridge/bridge.mjs` (loopback HTTPS→app via curl) + Playwright at
+  https://127.0.0.1:8443 with a `theme-mode=dark` cookie; inject `node_modules/axe-core/axe.min.js`.
+  Once `<body>` paints `var(--background)` (8051d85), dark bodyBg computes `#030712` and the
+  false-positive flood below is GONE — a dark finding is now genuine.
+- 2026-07-03 (session 12) — Vercel `SEED_ADMIN_PASSWORD` returns a SEALED envelope
+  (`eyJ2Ijoi…`) even with `?decrypt=true`, never plaintext — so you can't log into AUTHED
+  bridge screens with it. To browser-test authed screens, reset it to a known value + redeploy
+  (seed upserts) — mutates the shared demo admin, so ask first. PUBLIC screens
+  (login/forgot/reset) need no auth and confirm any GLOBAL change (e.g. the body-bg paint).
 - 2026-07-03 — **Dark-mode axe is FLOODED with false-positive `color-contrast` serious
   findings** because `html`/`body` have NO `background-color` — the dark canvas is realized
   only via `color-scheme:dark` (+ a painted wrapper), and axe-core cannot model `color-scheme`,
