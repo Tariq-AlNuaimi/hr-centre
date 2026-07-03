@@ -25,6 +25,15 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Paint the semantic surface tokens onto <body> (idiomatic shadcn
+     `bg-background text-foreground`). Visually this matches the prior
+     color-scheme-driven canvas, but making the background EXPLICIT is what lets
+     axe-core see the real dark canvas: axe can't model `color-scheme:dark`, so a
+     transparent body made it composite every token against assumed #ffffff and
+     report bogus serious color-contrast findings in dark mode (Workstream D
+     follow-up). With this, dark-mode axe is meaningful (tests/uat/design-a11y). */
+  background-color: var(--background);
+  color: var(--foreground);
   /* The brand font (next/font binds --font-sans on <html>; brand.config.ts owns
      it). Ensures plain CSS / pre-AntD paint use the same family as the AntD
      fontFamily token, with a graceful system fallback before the webfont loads. */

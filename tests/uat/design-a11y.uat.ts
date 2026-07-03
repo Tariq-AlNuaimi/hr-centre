@@ -41,7 +41,23 @@ const AUTHED_SCREENS: Screen[] = [
   { name: "status/not-found", path: `/${L}/__c3_not_found_probe` },
 ];
 
-async function auditScreen(page: Page, screen: Screen, expectLoginBounce = false) {
+async function auditScreen(
+  page: Page,
+  screen: Screen,
+  opts: { dark?: boolean; expectLoginBounce?: boolean } = {},
+) {
+  const { dark = false, expectLoginBounce = false } = opts;
+  if (dark) {
+    // Seed the theme-mode cookie so SSR + the pre-hydration script paint the dark
+    // canvas before axe runs. This dark pass is only MEANINGFUL because <body>
+    // now paints var(--background) (globals.css) — axe-core can't model
+    // color-scheme:dark, so a transparent body floods dark axe with bogus
+    // color-contrast findings (Workstream D follow-up, session 11).
+    await page.goto(`/${L}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+    await page
+      .context()
+      .addCookies([{ name: "theme-mode", value: "dark", url: page.url() }]);
+  }
   const res = await page.goto(screen.path, { waitUntil: "domcontentloaded" });
   // Let client chrome settle; don't hard-fail if a long-poll keeps the network busy.
   await page.waitForLoadState("networkidle").catch(() => {});
@@ -94,6 +110,28 @@ test.describe("C3 a11y — authenticated screens + status pages", () => {
   for (const screen of AUTHED_SCREENS) {
     test(`a11y: ${screen.name}`, async ({ page }) => {
       await auditScreen(page, screen);
+    });
+  }
+});
+
+// Dark-mode pass (Workstream D, session 11): now that <body> paints
+// var(--background), axe sees the real dark canvas and this is a genuine
+// regression check for the split brand/red-as-text tokens (--primary-emphasis /
+// --destructive-emphasis) and the dark surfaces. Same serious/critical bar.
+test.describe("C3 a11y — public auth forms (dark)", () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  for (const screen of PUBLIC_SCREENS) {
+    test(`a11y dark: ${screen.name}`, async ({ page }) => {
+      await auditScreen(page, screen, { dark: true });
+    });
+  }
+});
+
+test.describe("C3 a11y — authenticated screens + status pages (dark)", () => {
+  for (const screen of AUTHED_SCREENS) {
+    test(`a11y dark: ${screen.name}`, async ({ page }) => {
+      await auditScreen(page, screen, { dark: true });
     });
   }
 });
