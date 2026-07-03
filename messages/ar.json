@@ -168,7 +168,8 @@
     "noNotifications": "لا جديد لديك",
     "noNotificationsHint": "ستظهر الإشعارات الجديدة هنا.",
     "switchWorkspace": "تبديل مساحة العمل",
-    "singleWorkspaceHint": "أنت في مساحة العمل الوحيدة لديك."
+    "singleWorkspaceHint": "أنت في مساحة العمل الوحيدة لديك.",
+    "toggleSidebar": "تبديل الشريط الجانبي"
   },
   "status": {
     "forbiddenTitle": "تم رفض الوصول",

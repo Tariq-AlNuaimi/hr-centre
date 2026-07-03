@@ -27,9 +27,11 @@ export default function AuthLayout({
         </div>
 
         <div className="max-w-[440px]">
-          <h1 className="mb-3 text-h2 font-bold text-primary-foreground">
+          {/* h2, not h1: the form card's title (login/forgot/reset) is the page's
+              sole <h1>. This brand-panel heading is secondary chrome. */}
+          <h2 className="mb-3 text-h2 font-bold text-primary-foreground">
             {brand.appName}
-          </h1>
+          </h2>
           <p className="m-0 text-base text-primary-foreground/80">
             {brand.description}
           </p>

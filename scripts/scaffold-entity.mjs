@@ -751,6 +751,8 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
                 path="/api/${r.targetKebab}"
                 displayField="${r.displayField}"
                 placeholder={t("${r.name}")}
+                searchPlaceholder={t("searchRelation")}
+                emptyLabel={t("noRelationMatches")}
                 value={field.value ?? undefined}
                 onChange={field.onChange}
               />
@@ -801,40 +803,54 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
   const switchImport = hasSwitch ? 'import { Switch } from "@/components/ui/switch";\n' : '';
   const reactImport = relations.length === 0 ? '' : 'import { useEffect, useState } from "react";\n';
 
-  // Relation targets can exceed the page size. The Radix Select has no built-in
-  // server type-ahead, so this seeds an initial page (pageSize=50) on mount; a
-  // fork with a large target table should add a search box (see /scale-up). The
-  // `/api/<target>` fetch + displayField mapping are preserved.
+  // Relation targets can exceed one page, so this wires a debounced server-side
+  // search (mirrors the old AntD showSearch/onSearch): any target row stays
+  // reachable by typing, not just the first 50. The `/api/<target>` route honors
+  // ?search= when the target has a searchable string field (the param is ignored
+  // otherwise, so this is safe for every target). The debounced input lives in
+  // the SelectContent; Radix Select's typeahead is suppressed on it so it's
+  // typable. `/scale-up` still covers swapping to a full combobox if needed.
   const relationSelectComponent = relations.length === 0 ? '' : `
 function RelationSelect({
   path,
   displayField,
   placeholder,
+  searchPlaceholder,
+  emptyLabel,
   value,
   onChange,
 }: {
   path: string;
   displayField: string;
   placeholder?: string;
+  searchPlaceholder?: string;
+  emptyLabel?: string;
   value?: string;
   onChange?: (v: string) => void;
 }) {
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    const qs = new URLSearchParams({ pageSize: "50" });
-    fetch(path + "?" + qs.toString())
-      .then((r) => r.json())
-      .then((j: { data?: { data?: Array<{ id: string } & Record<string, unknown>> } }) => {
-        setOptions(
-          (j.data?.data ?? []).map((row) => ({
-            value: row.id,
-            label: (row[displayField] as string | undefined) ?? row.id,
-          })),
-        );
-      })
-      .catch(() => {});
-  }, [path, displayField]);
+    // Debounce so a keystroke doesn't fire a request per character. Empty query
+    // seeds the initial page on mount; a non-empty one narrows server-side.
+    const timer = setTimeout(() => {
+      const qs = new URLSearchParams({ pageSize: "50" });
+      if (search) qs.set("search", search);
+      fetch(path + "?" + qs.toString())
+        .then((r) => r.json())
+        .then((j: { data?: { data?: Array<{ id: string } & Record<string, unknown>> } }) => {
+          setOptions(
+            (j.data?.data ?? []).map((row) => ({
+              value: row.id,
+              label: (row[displayField] as string | undefined) ?? row.id,
+            })),
+          );
+        })
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [path, displayField, search]);
 
   return (
     <Select value={value ?? undefined} onValueChange={onChange}>
@@ -844,11 +860,28 @@ function RelationSelect({
         </SelectTrigger>
       </FormControl>
       <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={searchPlaceholder}
+          aria-label={searchPlaceholder}
+          // Stop Radix Select's typeahead from swallowing keystrokes so the box
+          // is typable; the effect above re-queries the server on change.
+          onKeyDown={(e) => e.stopPropagation()}
+          className="mb-1 w-full rounded-sm border border-border bg-transparent px-2 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        />
+        {options.length === 0 ? (
+          <div className="px-2 py-1.5 text-sm text-muted-foreground">
+            {emptyLabel}
+          </div>
+        ) : (
+          options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))
+        )}
       </SelectContent>
     </Select>
   );
@@ -1141,6 +1174,12 @@ function entityMessageKeys() {
   keys.createFailed = `Failed to create ${entityCamel}`;
   keys.updated = `${Pascal} updated`;
   keys.updateFailed = `Failed to update ${entityCamel}`;
+  // Relation-picker search box (RelationSelect) — only referenced when the entity
+  // has relations, but emitting them unconditionally keeps the namespace stable.
+  if (relations.length) {
+    keys.searchRelation = 'Search…';
+    keys.noRelationMatches = 'No matches';
+  }
   return keys;
 }
 

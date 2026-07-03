@@ -18,16 +18,17 @@ import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const t = useTranslations("nav");
+  const tChrome = useTranslations("chrome");
   const router = useRouter();
   const pathname = usePathname();
   const locale = useLocale();
   const { data: session } = useSession();
   const [collapsed, setCollapsed] = useState(false);
 
-  // Mirror AntD Sider `breakpoint="lg"`: auto-collapse to icons below the lg
-  // breakpoint, while still allowing a manual toggle above it.
+  // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
+  // the lg breakpoint, while still allowing a manual toggle above it.
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
+    const mq = window.matchMedia("(max-width: 991px)");
     const apply = (matches: boolean) => setCollapsed(matches);
     apply(mq.matches);
     const handler = (e: MediaQueryListEvent) => apply(e.matches);
@@ -122,10 +123,7 @@ export function AppSidebar() {
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          // TODO(i18n): no chrome key exists for this new collapse control and
-          // messages/* is outside this cluster — integrator should add e.g.
-          // chrome.toggleSidebar and swap this literal in.
-          aria-label="Toggle sidebar"
+          aria-label={tChrome("toggleSidebar")}
           aria-expanded={!collapsed}
           className={cn(
             "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",

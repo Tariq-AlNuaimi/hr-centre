@@ -168,7 +168,8 @@
     "noNotifications": "You're all caught up",
     "noNotificationsHint": "New notifications will appear here.",
     "switchWorkspace": "Switch workspace",
-    "singleWorkspaceHint": "You're in your only workspace."
+    "singleWorkspaceHint": "You're in your only workspace.",
+    "toggleSidebar": "Toggle sidebar"
   },
   "status": {
     "forbiddenTitle": "Access denied",
