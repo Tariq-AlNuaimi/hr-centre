@@ -7,6 +7,22 @@ grand table delivered first, then the **C2 long-pole primitive layer**, the
 **A4 skill-activation hook** (Ask-before, operator-confirmed), and **Workstream
 B item 4** integrated, `/ship` green, pushed.
 
+## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
+The full grand table is built from ADOPT.md + the blueprint; this is the compact
+"what's live vs left" cut so a fresh session gets the status in one glance.
+
+| State | Item | Blocked by | Next action |
+|-------|------|-----------|-------------|
+| 🟡 IN PROGRESS | **D3** Replace AntD w/ Tailwind | — | C1+C2 done; run **C3** next |
+| 🟡 IN PROGRESS | **D1** Adopt 22-table recs | — | A2/A4 done; do A1+A5 after C |
+| ⬜ REMAINING | **C3** Screen migration | *(unblocked)* | sweep `app/[locale]/**`, `/design-qa` per screen |
+| ⬜ REMAINING | **C4** Harness/guard | C3 | retarget no-raw-hex, drop AntD + CSP style exception |
+| ⬜ REMAINING | **A1** Deterministic gates (6 left) | *(unblocked)* | knip/jscpd/coverage/size-limit/jsx-a11y/complexity |
+| ⬜ REMAINING | **A5** Testing & design depth (9) | *(unblocked)* | fast-check, record-to-spec, Figma, style-dictionary… |
+| ⬜ REMAINING | **D** RTL verify pass | — | 0.5 session: default fork shows zero ar; flip restores |
+| ⬜ REMAINING | 2 senior-review Lows | — | lockstep-test coverage + FormField footguns (below) |
+| ✅ DONE | Phase0, C1, C2, B, E, A2, A3, A4, D2, D4, D5 | — | — |
+
 ## State
 Branch `claude/ui-layer-signoff-replatform-onjlrr` at HEAD after integration,
 pushed, tree clean. **`/ship` GREEN end-to-end (12 phases, ~46s).** Not deployed.
@@ -106,6 +122,14 @@ Discarded (conf <80): DataTable `aria-sort` on `<th>`, `<select>`/filter-checkbo
 native chrome, ConfirmAction narrower prop surface (no callers use the dropped props).
 
 ## In flight / NEXT (parallelizable now, per operator directive 2)
+- **★ RECOMMENDED FIRST — session-automation (auto-handoff + auto-start).** Operator
+  asked (2026-07-03) to automate the session boundary because manual handoffs lose
+  status/context. Full design + open questions in
+  `docs/blueprints/session-automation-auto-handoff.md`. Ask-before (hooks + settings.json);
+  answer its 4 open questions first, then build Part 1 (structured `session-state.json` +
+  rendered handoff tables) and Part 2 (auto-handoff hooks) — Part 3 (true auto-spawn)
+  behind guardrails after operator okay. Do this AHEAD of C3: it de-risks every
+  remaining session of this long program.
 - **C3 — screen migration** is now UNBLOCKED (C2 primitives complete). Sweep
   `app/[locale]/**` screen by screen: DashboardContent, AuditLogClient, profile,
   entity CRUD, settings/RBAC, auth, recycling bin still use AntD `Table`/`Form`/

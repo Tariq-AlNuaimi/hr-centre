@@ -205,3 +205,49 @@ Per CLAUDE.md, each session ends pushed; each wave/workstream sub-feature gets i
 3. **D-depth:** ✅ **Keep ar/RTL inert-in-repo** (ADR-028 stance); no strip option at `/rebrand`.
 4. **A-priority:** ✅ **A2 + A4 start now; A1 after C lands.** Recorded in ADOPT.md's sequencing
    rules.
+
+---
+
+## TODO — finalize deferred decisions (do LAST, before declaring the program done)
+
+Everything deferred anywhere in this program is consolidated here so nothing is
+silently dropped and every deferral gets an explicit **adopt / drop** ruling at the
+end. This is the program's closeout gate: the program is not "done" until every row
+below is adjudicated (moved to an ADR line or a findings-register `dropped` entry).
+Source of truth for the live status is `docs/deep-comparison/ADOPT.md`; this list
+mirrors it plus the in-flight deferrals that surfaced during the build.
+
+**Deferred during the build (decide when the trigger fires):**
+- [ ] **Tremor charts** — `@tremor/react@3.18.7` has a hard `react@^18` peer; deferred
+      (C2, 2026-07-03). Chart runs on recharts with a Tremor-style API. **Trigger:**
+      `@tremor/react` peer accepts React 19 → then adopt as a drop-in, or DROP Tremor
+      and keep recharts permanently (record which in ADR-029).
+- [ ] **Lighthouse-CI per-PR assertion** (A3) — config + `npm run lhci` shipped; the CI
+      gate stays dormant until Actions activate. **Trigger:** `/handoff` to a team with
+      Actions billing → wire `lighthouserc.cjs` into CI or DROP for ad-hoc only.
+
+**Deferred backlog (from ADOPT.md "Deferred / future"; re-promote via `/blueprint`):**
+- [ ] claude-task-master (fork outgrows single-session planning)
+- [ ] Backlog.md (same trigger)
+- [ ] fastmcp provider path (we ship our own MCP server)
+- [ ] keploy record-replay (API-level test-gen alternative)
+- [ ] Vitest migration (test-runner swap; needs its own ADR)
+- [ ] citus / read-replicas (scale trigger, cat 07)
+- [ ] sonarqube-mcp at `/handoff` (IT team runs SonarQube)
+- [ ] wasp declarative-CRUD ergonomics study over `/scaffold-entity` (cat 11)
+- [ ] specialist-agent seeds (`nextjs-pro`/`postgres-pro`/`prisma-expert`) as one
+      optional stack-aware review agent (cat 03)
+
+**Closeout rule:** when the program's active waves (C3/C4, A1, A5) are all `[x]`, walk
+this list top-to-bottom with the operator and give each row a final verdict — none may
+remain `[ ]` at program close. A row kept unbuilt is a *decision to drop* (logged), not
+an oversight.
+
+---
+
+## Follow-on program (separate blueprint) — session-automation
+
+The operator asked (2026-07-03) to automate the handoff→fresh-session loop (auto-handoff
++ auto-start) because manual session boundaries lose status/context. Designed separately
+in **`docs/blueprints/session-automation-auto-handoff.md`** — it is the recommended NEXT
+build (ahead of C3) since it de-risks every subsequent session of this long program.
