@@ -1,12 +1,15 @@
 "use client";
 
-import { Dropdown, Typography, theme } from "antd";
-import { DownOutlined, CheckOutlined } from "@ant-design/icons";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, Check } from "lucide-react";
 import { useTranslations } from "next-intl";
-import type { MenuProps } from "antd";
 import { brand } from "@/brand.config";
-
-const { Text } = Typography;
 
 /**
  * Workspace / org switcher (top-left chrome). The template is single-tenant, so
@@ -16,67 +19,37 @@ const { Text } = Typography;
  */
 export function OrgSwitcher() {
   const t = useTranslations("chrome");
-  const { token } = theme.useToken();
-
-  const items: MenuProps["items"] = [
-    {
-      key: "current",
-      icon: <CheckOutlined style={{ color: token.colorPrimary }} />,
-      label: brand.appName,
-    },
-    { type: "divider" },
-    {
-      key: "hint",
-      disabled: true,
-      label: (
-        <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-          {t("singleWorkspaceHint")}
-        </Text>
-      ),
-    },
-  ];
 
   return (
-    <Dropdown menu={{ items }} trigger={["click"]} placement="bottomLeft">
-      <button
-        type="button"
-        aria-label={t("switchWorkspace")}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 10,
-          padding: `4px 8px`,
-          border: "none",
-          background: "transparent",
-          borderRadius: token.borderRadius,
-          cursor: "pointer",
-          color: token.colorText,
-          fontFamily: "inherit",
-        }}
-      >
-        <span
-          aria-hidden
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            inlineSize: 28,
-            blockSize: 28,
-            borderRadius: token.borderRadius,
-            background: token.colorPrimary,
-            color: token.colorTextLightSolid,
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1,
-          }}
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={t("switchWorkspace")}
+          className="inline-flex items-center gap-2.5 rounded-md px-2 py-1 text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {brand.monogram}
-        </span>
-        <Text strong style={{ fontSize: 16, letterSpacing: "-0.01em" }}>
+          <span
+            aria-hidden
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[15px] font-bold leading-none text-primary-foreground"
+          >
+            {brand.monogram}
+          </span>
+          <span className="text-base font-semibold tracking-[-0.01em]">
+            {brand.appName}
+          </span>
+          <ChevronDown className="h-2.5 w-2.5 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem>
+          <Check className="text-primary" />
           {brand.appName}
-        </Text>
-        <DownOutlined style={{ fontSize: 10, color: token.colorTextTertiary }} />
-      </button>
-    </Dropdown>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">
+          {t("singleWorkspaceHint")}
+        </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

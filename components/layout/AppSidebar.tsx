@@ -1,20 +1,20 @@
 "use client";
 
-import { Layout, Menu, theme } from "antd";
 import {
-  HomeOutlined,
-  UserOutlined,
-  SettingOutlined,
-  DeleteOutlined,
-  AuditOutlined,
-} from "@ant-design/icons";
+  Home,
+  User,
+  Settings,
+  Trash2,
+  ClipboardCheck,
+  Menu as MenuIcon,
+  PanelLeftClose,
+} from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { localePrefixRegex } from "@/i18n/config";
-
-const { Sider } = Layout;
+import { cn } from "@/lib/utils";
 
 export function AppSidebar() {
   const t = useTranslations("nav");
@@ -22,8 +22,18 @@ export function AppSidebar() {
   const pathname = usePathname();
   const locale = useLocale();
   const { data: session } = useSession();
-  const { token } = theme.useToken();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Mirror AntD Sider `breakpoint="lg"`: auto-collapse to icons below the lg
+  // breakpoint, while still allowing a manual toggle above it.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const apply = (matches: boolean) => setCollapsed(matches);
+    apply(mq.matches);
+    const handler = (e: MediaQueryListEvent) => apply(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // types/index.ts augments next-auth's Session.user with role: Role,
   // so this access is typed -- no `as any` needed.
@@ -39,7 +49,7 @@ export function AppSidebar() {
   const menuItems = [
     {
       key: "home",
-      icon: <HomeOutlined />,
+      icon: <Home className="h-4 w-4" />,
       label: t("home"),
       onClick: () => router.push(`/${locale}`),
     },
@@ -47,13 +57,13 @@ export function AppSidebar() {
       ? [
           {
             key: "users",
-            icon: <UserOutlined />,
+            icon: <User className="h-4 w-4" />,
             label: t("users"),
             onClick: () => router.push(`/${locale}/users`),
           },
           {
             key: "audit-log",
-            icon: <AuditOutlined />,
+            icon: <ClipboardCheck className="h-4 w-4" />,
             label: t("auditLog"),
             onClick: () => router.push(`/${locale}/audit-log`),
           },
@@ -61,13 +71,13 @@ export function AppSidebar() {
       : []),
     {
       key: "recycling-bin",
-      icon: <DeleteOutlined />,
+      icon: <Trash2 className="h-4 w-4" />,
       label: t("recyclingBin"),
       onClick: () => router.push(`/${locale}/recycling-bin`),
     },
     {
       key: "settings",
-      icon: <SettingOutlined />,
+      icon: <Settings className="h-4 w-4" />,
       label: t("settings"),
       onClick: () => router.push(`/${locale}/settings`),
     },
@@ -77,21 +87,58 @@ export function AppSidebar() {
   ].filter((item) => item.key !== "recycling-bin" || isAdmin); // bin is admin-only (API is withAdminAuth)
 
   return (
-    <Sider
-      collapsible
-      collapsed={collapsed}
-      onCollapse={setCollapsed}
-      breakpoint="lg"
-      style={{ borderInlineEnd: `1px solid ${token.colorBorderSecondary}` }}
+    <aside
+      className={cn(
+        "flex shrink-0 flex-col border-e border-border bg-card pt-2 transition-[width] duration-200",
+        collapsed ? "w-16" : "w-56",
+      )}
     >
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", paddingBlockStart: token.paddingSM }}>
-        <Menu
-          mode="inline"
-          selectedKeys={[activeKey]}
-          items={menuItems}
-          style={{ flex: 1, borderRight: 0 }}
-        />
+      <nav className="flex flex-1 flex-col gap-1 px-2">
+        {menuItems.map((item) => {
+          const isActive = item.key === activeKey;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={item.onClick}
+              aria-current={isActive ? "page" : undefined}
+              title={collapsed ? item.label : undefined}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                collapsed && "justify-center",
+                isActive
+                  ? "bg-muted font-medium text-nav-active-foreground"
+                  : "text-foreground hover:bg-muted",
+              )}
+            >
+              <span className="inline-flex shrink-0">{item.icon}</span>
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="p-2">
+        <button
+          type="button"
+          onClick={() => setCollapsed((c) => !c)}
+          // TODO(i18n): no chrome key exists for this new collapse control and
+          // messages/* is outside this cluster — integrator should add e.g.
+          // chrome.toggleSidebar and swap this literal in.
+          aria-label="Toggle sidebar"
+          aria-expanded={!collapsed}
+          className={cn(
+            "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
+            collapsed && "justify-center",
+          )}
+        >
+          {collapsed ? (
+            <MenuIcon className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
+        </button>
       </div>
-    </Sider>
+    </aside>
   );
 }

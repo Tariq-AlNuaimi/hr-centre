@@ -1,7 +1,6 @@
 "use client";
 
-import { Breadcrumb } from "antd";
-import { HomeOutlined } from "@ant-design/icons";
+import { Home } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useBreadcrumb } from "./BreadcrumbProvider";
@@ -30,13 +29,21 @@ export function Breadcrumbs() {
     .split("/")
     .filter(Boolean);
 
-  const items = [
+  type Crumb = { key: string; node: React.ReactNode; isLast: boolean };
+
+  const items: Crumb[] = [
     {
-      title: (
-        <Link href={`/${locale}`}>
-          <HomeOutlined />
+      key: "__home",
+      node: (
+        <Link
+          href={`/${locale}`}
+          className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
+          aria-label={t("home")}
+        >
+          <Home className="h-4 w-4" />
         </Link>
       ),
+      isLast: segments.length === 0,
     },
     ...segments.map((segment, index) => {
       const path = `/${locale}/` + segments.slice(0, index + 1).join("/");
@@ -63,10 +70,40 @@ export function Breadcrumbs() {
       const isLast = index === segments.length - 1;
 
       return {
-        title: isLast ? label : <Link href={path}>{label}</Link>,
+        key: `${segment}-${index}`,
+        node: isLast ? (
+          <span className="text-foreground">{label}</span>
+        ) : (
+          <Link
+            href={path}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {label}
+          </Link>
+        ),
+        isLast,
       };
     }),
   ];
 
-  return <Breadcrumb items={items} style={{ marginBottom: 16 }} />;
+  return (
+    <nav aria-label="Breadcrumb" className="mb-4">
+      <ol className="flex flex-wrap items-center gap-2 text-sm">
+        {items.map((item, index) => (
+          <li key={item.key} className="inline-flex items-center gap-2">
+            {index > 0 && (
+              <span aria-hidden className="text-muted-foreground select-none">
+                /
+              </span>
+            )}
+            {item.isLast ? (
+              <span aria-current="page">{item.node}</span>
+            ) : (
+              item.node
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
 }

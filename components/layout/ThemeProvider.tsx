@@ -1,9 +1,6 @@
 "use client";
 
-import { ConfigProvider, theme, App } from "antd";
 import { createContext, useContext, useEffect, useState } from "react";
-import { buildTheme } from "./antd-theme";
-import { brand } from "@/brand.config";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -30,11 +27,14 @@ function getSystemDark() {
 
 export function ThemeProvider({
   children,
-  direction = "ltr",
   initialMode = "system",
   initialIsDark = false,
 }: {
   children: React.ReactNode;
+  /** Kept for call-compatibility with app/[locale]/layout.tsx, which passes the
+   * resolved <html dir>. AntD's ConfigProvider consumed it; the shadcn/Radix
+   * layer reads direction straight from the document, so it's accepted but
+   * unused here. */
   direction?: "ltr" | "rtl";
   /** Seeded from the `theme-mode` cookie on the server so SSR and the first
    * client paint agree — avoids the light→saved-theme flash (FOUC). */
@@ -72,31 +72,7 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider value={{ mode, setMode, isDark }}>
-      <ConfigProvider
-        direction={direction}
-        theme={{
-          // CSS-variables mode: component styles are generated once against
-          // var() references instead of per-token permutations, and dark/light
-          // switching swaps variable values instead of regenerating every
-          // component style. Measured on this template: ~5x smaller SSR-inlined
-          // style payload on dashboard pages.
-          cssVar: {},
-          // Brand density (brand.config.ts): layer AntD's compact algorithm on
-          // top of light/dark for data-dense tools; comfortable is the default.
-          algorithm:
-            brand.density === "compact"
-              ? [
-                  isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-                  theme.compactAlgorithm,
-                ]
-              : isDark
-                ? theme.darkAlgorithm
-                : theme.defaultAlgorithm,
-          ...buildTheme(isDark),
-        }}
-      >
-        <App>{children}</App>
-      </ConfigProvider>
+      {children}
     </ThemeContext.Provider>
   );
 }

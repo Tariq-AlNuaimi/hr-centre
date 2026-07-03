@@ -1,11 +1,14 @@
 "use client";
 
-import { Badge, Button, Popover, Empty, Typography, theme } from "antd";
-import { BellOutlined } from "@ant-design/icons";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-
-const { Text } = Typography;
 
 /**
  * Header notifications bell. The template ships no notifications backend, so the
@@ -15,58 +18,42 @@ const { Text } = Typography;
  */
 export function NotificationsMenu() {
   const t = useTranslations("chrome");
-  const { token } = theme.useToken();
   const [open, setOpen] = useState(false);
 
   // No feed yet — keep this empty (honest) until a real source is wired.
   const count = 0;
 
-  const content = (
-    <div style={{ inlineSize: 300 }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingBlockEnd: token.paddingXS,
-          marginBlockEnd: token.marginXS,
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
-        <Text strong>{t("notifications")}</Text>
-      </div>
-      <Empty
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-        description={
-          <span>
-            <div>{t("noNotifications")}</div>
-            <Text type="secondary" style={{ fontSize: token.fontSizeSM }}>
-              {t("noNotificationsHint")}
-            </Text>
-          </span>
-        }
-        style={{ paddingBlock: token.paddingLG, marginInline: 0 }}
-      />
-    </div>
-  );
-
   return (
-    <Popover
-      content={content}
-      trigger="click"
-      open={open}
-      onOpenChange={setOpen}
-      placement="bottomRight"
-      arrow={false}
-    >
-      <Badge count={count} size="small" offset={[-2, 2]}>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button
-          type="text"
-          shape="circle"
-          icon={<BellOutlined />}
+          variant="ghost"
+          size="icon"
+          className="relative rounded-full"
           aria-label={t("notifications")}
-        />
-      </Badge>
+        >
+          <Bell className="h-4 w-4" />
+          {count > 0 && (
+            <span className="absolute end-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium leading-none text-destructive-foreground">
+              {count}
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-72 p-0">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
+          <span className="text-sm font-semibold text-foreground">
+            {t("notifications")}
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1 px-3 py-8 text-center">
+          <Bell className="mb-1 h-6 w-6 text-muted-foreground/60" />
+          <div className="text-sm text-foreground">{t("noNotifications")}</div>
+          <div className="text-xs text-muted-foreground">
+            {t("noNotificationsHint")}
+          </div>
+        </div>
+      </PopoverContent>
     </Popover>
   );
 }

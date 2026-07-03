@@ -1,21 +1,23 @@
 "use client";
 
-import { Modal, Input, Empty, theme } from "antd";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
-  HomeOutlined,
-  UserOutlined,
-  AuditOutlined,
-  DeleteOutlined,
-  SettingOutlined,
-  BulbOutlined,
-  LogoutOutlined,
-  SearchOutlined,
-} from "@ant-design/icons";
+  Home,
+  User,
+  ClipboardCheck,
+  Trash2,
+  Settings,
+  Lightbulb,
+  LogOut,
+  Search,
+} from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTheme } from "./ThemeProvider";
+import { cn } from "@/lib/utils";
 
 // Custom event the header search button dispatches to open the palette without
 // a shared context (keeps the trigger decoupled from the modal mount point).
@@ -43,7 +45,6 @@ export function CommandPalette() {
   const router = useRouter();
   const { data: session } = useSession();
   const { isDark, setMode } = useTheme();
-  const { token } = theme.useToken();
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -67,20 +68,20 @@ export function CommandPalette() {
 
   const commands = useMemo<Command[]>(() => {
     const nav: Command[] = [
-      { key: "home", label: tNav("home"), group: "navigate", icon: <HomeOutlined />, run: () => go(`/${locale}`) },
+      { key: "home", label: tNav("home"), group: "navigate", icon: <Home className="h-4 w-4" />, run: () => go(`/${locale}`) },
       ...(isAdmin
         ? [
-            { key: "users", label: tNav("users"), group: "navigate" as const, icon: <UserOutlined />, run: () => go(`/${locale}/users`) },
-            { key: "audit-log", label: tNav("auditLog"), group: "navigate" as const, icon: <AuditOutlined />, run: () => go(`/${locale}/audit-log`) },
-            { key: "recycling-bin", label: tNav("recyclingBin"), group: "navigate" as const, icon: <DeleteOutlined />, run: () => go(`/${locale}/recycling-bin`) },
+            { key: "users", label: tNav("users"), group: "navigate" as const, icon: <User className="h-4 w-4" />, run: () => go(`/${locale}/users`) },
+            { key: "audit-log", label: tNav("auditLog"), group: "navigate" as const, icon: <ClipboardCheck className="h-4 w-4" />, run: () => go(`/${locale}/audit-log`) },
+            { key: "recycling-bin", label: tNav("recyclingBin"), group: "navigate" as const, icon: <Trash2 className="h-4 w-4" />, run: () => go(`/${locale}/recycling-bin`) },
           ]
         : []),
-      { key: "settings", label: tNav("settings"), group: "navigate", icon: <SettingOutlined />, run: () => go(`/${locale}/settings`) },
-      { key: "profile", label: tNav("profile"), group: "navigate", icon: <UserOutlined />, run: () => go(`/${locale}/settings/profile`) },
+      { key: "settings", label: tNav("settings"), group: "navigate", icon: <Settings className="h-4 w-4" />, run: () => go(`/${locale}/settings`) },
+      { key: "profile", label: tNav("profile"), group: "navigate", icon: <User className="h-4 w-4" />, run: () => go(`/${locale}/settings/profile`) },
     ];
     const actions: Command[] = [
-      { key: "toggle-theme", label: t("actionToggleTheme"), group: "actions", icon: <BulbOutlined />, run: () => { setMode(isDark ? "light" : "dark"); close(); } },
-      { key: "logout", label: t("actionLogout"), group: "actions", icon: <LogoutOutlined />, run: () => signOut({ callbackUrl: `/${locale}/login` }) },
+      { key: "toggle-theme", label: t("actionToggleTheme"), group: "actions", icon: <Lightbulb className="h-4 w-4" />, run: () => { setMode(isDark ? "light" : "dark"); close(); } },
+      { key: "logout", label: t("actionLogout"), group: "actions", icon: <LogOut className="h-4 w-4" />, run: () => signOut({ callbackUrl: `/${locale}/login` }) },
     ];
     return [...nav, ...actions];
   }, [tNav, t, locale, isAdmin, go, setMode, isDark, close]);
@@ -136,93 +137,75 @@ export function CommandPalette() {
   let runningIndex = -1;
 
   return (
-    <Modal
-      open={open}
-      onCancel={close}
-      footer={null}
-      closable={false}
-      destroyOnHidden
-      styles={{ body: { padding: 0 } }}
-      width={560}
-    >
-      <div onKeyDown={onListKeyDown}>
-        <Input
-          autoFocus
-          size="large"
-          variant="borderless"
-          prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
-          placeholder={t("commandPlaceholder")}
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setActive(0);
-          }}
-          style={{ borderBottom: `1px solid ${token.colorBorderSecondary}`, paddingBlock: 14 }}
-        />
+    <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
+      <DialogContent
+        hideClose
+        className="max-w-[560px] gap-0 overflow-hidden p-0"
+      >
+        {/* Radix requires a labelled title for the dialog; the palette is
+            visually title-less, so it's screen-reader-only. */}
+        <DialogTitle className="sr-only">
+          {t("commandPlaceholder")}
+        </DialogTitle>
 
-        <div style={{ maxHeight: 360, overflowY: "auto", padding: token.paddingXS }}>
-          {filtered.length === 0 && (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={t("noResults")}
-              style={{ paddingBlock: token.paddingLG }}
+        <div onKeyDown={onListKeyDown}>
+          <div className="flex items-center gap-2 border-b border-border px-3">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Input
+              autoFocus
+              placeholder={t("commandPlaceholder")}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActive(0);
+              }}
+              className="h-12 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
             />
-          )}
+          </div>
 
-          {groups.map((g) => {
-            const items = filtered.filter((c) => c.group === g.id);
-            if (items.length === 0) return null;
-            return (
-              <div key={g.id} style={{ marginBlockEnd: token.marginXS }}>
-                <div
-                  style={{
-                    padding: `${token.paddingXXS}px ${token.paddingSM}px`,
-                    fontSize: token.fontSizeSM,
-                    color: token.colorTextTertiary,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.04em",
-                  }}
-                >
-                  {g.label}
-                </div>
-                {items.map((c) => {
-                  runningIndex += 1;
-                  const idx = runningIndex;
-                  const isActive = idx === activeIndex;
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onMouseEnter={() => setActive(idx)}
-                      onClick={() => c.run()}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: token.marginSM,
-                        inlineSize: "100%",
-                        textAlign: "start",
-                        padding: `${token.paddingSM}px ${token.paddingSM}px`,
-                        borderRadius: token.borderRadius,
-                        border: "none",
-                        cursor: "pointer",
-                        background: isActive ? token.controlItemBgHover : "transparent",
-                        color: token.colorText,
-                        fontSize: token.fontSize,
-                        fontFamily: "inherit",
-                      }}
-                    >
-                      <span style={{ color: token.colorTextSecondary, display: "inline-flex" }}>
-                        {c.icon}
-                      </span>
-                      {c.label}
-                    </button>
-                  );
-                })}
+          <div className="max-h-90 overflow-y-auto p-2">
+            {filtered.length === 0 && (
+              <div className="py-6 text-center text-sm text-muted-foreground">
+                {t("noResults")}
               </div>
-            );
-          })}
+            )}
+
+            {groups.map((g) => {
+              const items = filtered.filter((c) => c.group === g.id);
+              if (items.length === 0) return null;
+              return (
+                <div key={g.id} className="mb-2">
+                  <div className="px-3 py-1 text-xs uppercase tracking-[0.04em] text-muted-foreground">
+                    {g.label}
+                  </div>
+                  {items.map((c) => {
+                    runningIndex += 1;
+                    const idx = runningIndex;
+                    const isActive = idx === activeIndex;
+                    return (
+                      <button
+                        key={c.key}
+                        type="button"
+                        onMouseEnter={() => setActive(idx)}
+                        onClick={() => c.run()}
+                        className={cn(
+                          "flex w-full appearance-none items-center gap-3 rounded-md px-3 py-3 text-start text-sm text-foreground outline-none",
+                          isActive ? "bg-muted" : "bg-transparent",
+                        )}
+                      >
+                        <span className="inline-flex text-muted-foreground">
+                          {c.icon}
+                        </span>
+                        {c.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </Modal>
+      </DialogContent>
+    </Dialog>
   );
 }
