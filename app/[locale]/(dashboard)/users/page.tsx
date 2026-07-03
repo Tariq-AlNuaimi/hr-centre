@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button } from "@/components/ui/button";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
@@ -75,11 +74,18 @@ export default function UsersPage() {
       <PageHeader
         title={t("title")}
         actions={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => router.push(`/${locale}/users/new`)}
-          >
+          <Button onClick={() => router.push(`/${locale}/users/new`)}>
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+            >
+              <path d="M12 5v14M5 12h14" />
+            </svg>
             {t("createUser")}
           </Button>
         }

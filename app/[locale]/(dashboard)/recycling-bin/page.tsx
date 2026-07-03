@@ -1,19 +1,53 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Button, Space, Tag, App } from "antd";
-import {
-  UndoOutlined,
-  DeleteOutlined,
-  ExclamationCircleOutlined,
-} from "@ant-design/icons";
 import { useTranslations } from "next-intl";
 import { useNotify } from "@/hooks/use-notify";
 import { useSession } from "next-auth/react";
+import { ConfirmAction } from "@/components/shared/ConfirmAction";
 import { DataTable } from "@/components/shared/DataTable";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
+
+function RestoreIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 7v6h6" />
+      <path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M6 6l1 14h10l1-14" />
+    </svg>
+  );
+}
 
 interface DeletedItem {
   entityType: string;
@@ -37,7 +71,6 @@ export default function RecyclingBinPage() {
   const t = useTranslations("recyclingBin");
   const tCommon = useTranslations("common");
   const { success, error: showError } = useNotify();
-  const { modal } = App.useApp();
   const { data: session } = useSession();
   // types/index.ts augments next-auth's Session.user with role: Role,
   // so this access is typed -- no `as any` needed.
@@ -98,25 +131,16 @@ export default function RecyclingBinPage() {
     }
   };
 
-  const handlePermanentDelete = (item: DeletedItem) => {
-    modal.confirm({
-      title: t("permanentDeleteConfirm"),
-      icon: <ExclamationCircleOutlined />,
-      okType: "danger",
-      okText: t("permanentDelete"),
-      cancelText: tCommon("cancel"),
-      async onOk() {
-        try {
-          await apiClient.delete(
-            `/api/recycling-bin/${item.entityType}/${item.id}`
-          );
-          success(t("permanentlyDeleted", { name: item.displayName }));
-          fetchItems(page, pageSize);
-        } catch {
-          showError(t("deleteFailed"));
-        }
-      },
-    });
+  const handlePermanentDelete = async (item: DeletedItem) => {
+    try {
+      await apiClient.delete(
+        `/api/recycling-bin/${item.entityType}/${item.id}`
+      );
+      success(t("permanentlyDeleted", { name: item.displayName }));
+      fetchItems(page, pageSize);
+    } catch {
+      showError(t("deleteFailed"));
+    }
   };
 
   const columns = [
@@ -124,7 +148,7 @@ export default function RecyclingBinPage() {
       title: t("entityType"),
       dataIndex: "entityType",
       key: "entityType",
-      render: (val: string) => <Tag>{val}</Tag>,
+      render: (val: string) => <Badge>{val}</Badge>,
     },
     {
       title: t("name"),
@@ -146,31 +170,38 @@ export default function RecyclingBinPage() {
     {
       title: tCommon("actions"),
       key: "actions",
-      render: (_: unknown, record: DeletedItem) => (
-        <Space>
-          {/* Restore + permanent delete are both ADMIN-only (POST/DELETE are
-              withAdminAuth); don't show buttons that would 403 for non-admins. */}
-          {isAdmin && (
+      render: (_: unknown, record: DeletedItem) =>
+        // Restore + permanent delete are both ADMIN-only (POST/DELETE are
+        // withAdminAuth); don't show buttons that would 403 for non-admins.
+        isAdmin ? (
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              icon={<UndoOutlined />}
+              variant="outline"
+              size="sm"
               aria-label={t("restoreAction")}
               onClick={() => handleRestore(record)}
             >
+              <RestoreIcon />
               {t("restore")}
             </Button>
-          )}
-          {isAdmin && (
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              aria-label={t("permanentDeleteAction")}
-              onClick={() => handlePermanentDelete(record)}
+            <ConfirmAction
+              title={t("permanentDeleteConfirm")}
+              okType="danger"
+              okText={t("permanentDelete")}
+              cancelText={tCommon("cancel")}
+              onConfirm={() => handlePermanentDelete(record)}
             >
-              {t("permanentDelete")}
-            </Button>
-          )}
-        </Space>
-      ),
+              <Button
+                variant="destructive"
+                size="sm"
+                aria-label={t("permanentDeleteAction")}
+              >
+                <TrashIcon />
+                {t("permanentDelete")}
+              </Button>
+            </ConfirmAction>
+          </div>
+        ) : null,
     },
   ];
 

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Table, Select, Space, Tag } from "antd";
+import { Select } from "antd";
 import type { ColumnsType } from "antd/es/table";
+import type { BadgeProps } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
+import { DataTable } from "@/components/shared/DataTable";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
@@ -19,11 +22,11 @@ interface AuditEntry {
   timestamp: string;
 }
 
-const ACTION_COLORS: Record<string, string> = {
-  CREATE: "green",
-  UPDATE: "blue",
-  DELETE: "red",
-  RESTORE: "orange",
+const ACTION_VARIANTS: Record<string, BadgeProps["variant"]> = {
+  CREATE: "success",
+  UPDATE: "brand",
+  DELETE: "danger",
+  RESTORE: "warning",
 };
 
 export default function AuditLogClient() {
@@ -66,7 +69,7 @@ export default function AuditLogClient() {
     fetchLogs();
   }, [fetchLogs]);
 
-  // Memoized so <Table> receives a stable columns reference across renders
+  // Memoized so <DataTable> receives a stable columns reference across renders
   // (rebuilt only when the translators change). Mirrors the users page pattern.
   const columns: ColumnsType<AuditEntry> = useMemo(
     () => [
@@ -81,7 +84,7 @@ export default function AuditLogClient() {
         dataIndex: "action",
         width: 100,
         render: (v: string) => (
-          <Tag color={ACTION_COLORS[v] ?? "default"}>{v}</Tag>
+          <Badge variant={ACTION_VARIANTS[v] ?? "default"}>{v}</Badge>
         ),
       },
       {
@@ -94,7 +97,7 @@ export default function AuditLogClient() {
         dataIndex: "entityId",
         width: 200,
         render: (v: string) => (
-          <span style={{ fontFamily: "monospace", fontSize: 12 }}>{v}</span>
+          <span className="font-mono text-xs">{v}</span>
         ),
       },
       {
@@ -119,7 +122,7 @@ export default function AuditLogClient() {
     <>
       <PageHeader title={t("title")} />
 
-      <Space style={{ marginBottom: 16 }}>
+      <div className="mb-4 flex flex-wrap gap-2">
         <Select
           placeholder={t("filterEntity")}
           allowClear
@@ -137,22 +140,19 @@ export default function AuditLogClient() {
             label: a,
           }))}
         />
-      </Space>
+      </div>
 
-      <Table<AuditEntry>
+      <DataTable<AuditEntry>
         columns={columns}
         dataSource={data}
         rowKey="id"
         loading={loading}
-        pagination={{
-          current: page,
-          pageSize,
-          total,
-          showSizeChanger: true,
-          onChange: (p, ps) => {
-            setPage(p);
-            setPageSize(ps);
-          },
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={(p, ps) => {
+          setPage(p);
+          setPageSize(ps);
         }}
         scroll={{ x: 900 }}
         size="small"
