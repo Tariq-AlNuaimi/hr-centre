@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   discoverMainSections,
+  discoverCrudEntities,
   defaultLocale,
   rtlLocale,
   rtlEnabled,
@@ -158,6 +159,128 @@ for (const section of SECTIONS as Screen[]) {
     expect(rtlOk, `${section.name} ar variant did not apply dir="rtl"`).toBe(true);
   });
 }
+
+// --- RTL overlay geometry (Workstream D) ------------------------------------
+//
+// The <html dir> flip (asserted per-section above) proves the DOCUMENT mirrors,
+// but Radix's portalled overlays (dropdown menu, popover) are positioned by JS
+// off the DirectionProvider dir — not by CSS — so a broken/missing
+// DirectionProvider dir="rtl" would leave <html dir="rtl"> correct while the
+// menus still open LTR-aligned. This block closes that gap: in the Arabic (ar)
+// locale it OPENS a dropdown menu AND a popover and asserts each opens MIRRORED
+// for RTL via getBoundingClientRect() geometry (Playwright boundingBox()).
+//
+// Guarded on the fork actually shipping an RTL locale, exactly like the per-
+// section RTL check above (English-only forks skip it).
+test("RTL overlay geometry — dropdown & popover mirror for ar", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !RTL_ENABLED,
+    "RTL not configured (no ar locale) — overlay geometry check skipped",
+  );
+  test.setTimeout(60_000);
+
+  const vp = page.viewportSize() ?? { width: 1280, height: 720 };
+  // An overlay edge that is "pinned" to a trigger edge may drift a few px
+  // (content padding, Radix collision nudge) yet still read as aligned to it.
+  // The WRONG (un-mirrored) edge is off by ~the content/trigger width — for the
+  // tiny filter icon vs. its 160px menu that's >100px — so this tolerance still
+  // cleanly separates a mirrored overlay from an LTR-positioned one.
+  const EDGE_TOL = 28;
+  // How far off the viewport edges an overlay may sit (sub-pixel rounding only).
+  const VIEWPORT_SLOP = 2;
+
+  // Discovery-driven target: a dashboard list that carries BOTH the header
+  // (present on every dashboard page) and a DataTable column-filter popover (a
+  // filterable column). The shipped `users` list has a role filter; a scaffolded
+  // entity with an enum column gets one for free. Navigate the ar variant of
+  // each CRUD list until one exposes a header filter toggle.
+  const lists = discoverCrudEntities(AR);
+  let listPath: string | null = null;
+  for (const e of lists) {
+    await page.goto(e.listPath, { waitUntil: "networkidle" });
+    if (await page.locator('thead [aria-haspopup="dialog"]').count()) {
+      listPath = e.listPath;
+      break;
+    }
+  }
+  test.skip(
+    listPath === null,
+    "no filterable list discovered — RTL popover geometry not applicable here",
+  );
+
+  // Sanity: the document itself must be RTL before overlay mirroring is meaningful.
+  const dir = await page.locator("html").getAttribute("dir");
+  expect(
+    dir,
+    "ar list must render <html dir='rtl'> before overlay geometry is asserted",
+  ).toBe("rtl");
+
+  // --- Dropdown menu: header user menu (align="end") ----------------------
+  // The user menu is the LAST aria-haspopup="menu" trigger in the header
+  // (components/layout/AppHeader.tsx — OrgSwitcher is the first menu trigger).
+  const menuTrigger = page.locator('header [aria-haspopup="menu"]').last();
+  await menuTrigger.click();
+  const menu = page.locator('[role="menu"]').first();
+  await menu.waitFor({ state: "visible" });
+  const mt = await menuTrigger.boundingBox();
+  const mc = await menu.boundingBox();
+  await testInfo.attach("rtl-dropdown-ar.png", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
+  expect(mt && mc, "dropdown trigger + content must be laid out").toBeTruthy();
+  if (mt && mc) {
+    // align="end" + dir="rtl": Radix flips the logical END edge from right (LTR)
+    // to left, so the menu MIRRORS to pin its LEFT edge to the trigger's LEFT
+    // edge. This left-edge alignment IS the align-end→physical-left RTL flip.
+    expect(
+      Math.abs(mc.x - mt.x),
+      "rtl dropdown: content left edge should align with the trigger's left edge",
+    ).toBeLessThan(EDGE_TOL);
+    // …and the mirrored menu is not clipped off either side of the viewport.
+    expect(mc.x, "rtl dropdown must not overflow off the left of the viewport").toBeGreaterThanOrEqual(-VIEWPORT_SLOP);
+    expect(
+      mc.x + mc.width,
+      "rtl dropdown must not overflow off the right of the viewport",
+    ).toBeLessThanOrEqual(vp.width + VIEWPORT_SLOP);
+  }
+  await page.keyboard.press("Escape");
+  await menu.waitFor({ state: "hidden" }).catch(() => {});
+
+  // --- Popover: DataTable column-filter toggle (align="start") ------------
+  // The filter toggle is a Radix Popover trigger in the table header
+  // (components/shared/DataTable.tsx — PopoverTrigger, aria-haspopup="dialog");
+  // its content is passed align="start".
+  const popTrigger = page.locator('thead [aria-haspopup="dialog"]').first();
+  await popTrigger.click();
+  const pop = page.locator('[role="dialog"]').first();
+  await pop.waitFor({ state: "visible" });
+  const pt = await popTrigger.boundingBox();
+  const pc = await pop.boundingBox();
+  await testInfo.attach("rtl-popover-ar.png", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
+  expect(pt && pc, "popover trigger + content must be laid out").toBeTruthy();
+  if (pt && pc) {
+    // align="start" + dir="rtl": Radix flips the logical START edge from left
+    // (LTR) to right, so the popover MIRRORS to pin its RIGHT edge to the
+    // trigger's RIGHT edge — the canonical "opens toward the RTL start" signal.
+    expect(
+      Math.abs(pc.x + pc.width - (pt.x + pt.width)),
+      "rtl popover: content right edge should align with the trigger's right edge",
+    ).toBeLessThan(EDGE_TOL);
+    // …and the popover, extending leftward from that right edge, does not spill
+    // off the left of the viewport.
+    expect(pc.x, "rtl popover must not overflow off the left of the viewport").toBeGreaterThanOrEqual(-VIEWPORT_SLOP);
+    expect(
+      pc.x + pc.width,
+      "rtl popover must not overflow off the right of the viewport",
+    ).toBeLessThanOrEqual(vp.width + VIEWPORT_SLOP);
+  }
+});
 
 // Loud guard so a broken discovery (empty section list) fails visibly.
 test("UI/UX discovery is non-empty", () => {

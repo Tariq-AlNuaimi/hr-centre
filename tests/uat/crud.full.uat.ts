@@ -34,6 +34,18 @@ const JOURNEY_FILE = path.join(
 // (template rule: min 8). Not a secret — a throwaway local fixture value.
 const FIXTURE_PASSWORD = "UatTest123!";
 
+// Row-action + confirm-dialog labels. The journey is locked to LOCALE = "en"
+// (above), so these are the English strings the Radix/shadcn DOM renders:
+//   - Each entity's row edit/delete icon buttons carry aria-label = the entity
+//     i18n namespace's editAction/deleteAction, which render as "Edit <x>" /
+//     "Delete <x>" in en (components/users/UserColumns.tsx:128,141 and the
+//     scaffold's generated columns). A prefix match keeps this entity-agnostic.
+//   - The delete confirmation is a Radix Dialog whose primary button shows
+//     common.yes = "Yes" (components/shared/ConfirmAction.tsx:65-73).
+const EDIT_LABEL_PREFIX = "Edit";
+const DELETE_LABEL_PREFIX = "Delete";
+const CONFIRM_LABEL = "Yes";
+
 type PhaseStatus = "passed" | "failed" | "skipped";
 type JourneyPhase = { phase: string; status: PhaseStatus; detail?: string };
 type Journey = {
@@ -83,7 +95,8 @@ async function fillFormGenerically(
   let searchValue = marker;
   let email: string | null = null;
 
-  // 1) Plain inputs + textareas (skip the ones antd uses inside Selects/search).
+  // 1) Plain inputs + textareas (the Radix Select trigger is a role="combobox"
+  //    button, not an input, so it's driven separately in step 2 below).
   const fields = form.locator(
     "input:visible, textarea:visible",
   );
@@ -123,14 +136,18 @@ async function fillFormGenerically(
     }
   }
 
-  // 2) Ant Selects — open each and pick the first option. Covers role/status/etc.
-  const selects = form.locator(".ant-select");
+  // 2) Selects (shadcn/Radix) — open each and pick the first option. Covers
+  //    role/status/relation pickers. The trigger is a Radix combobox button
+  //    (components/ui/select.tsx:21-49 → SelectPrimitive.Trigger, role="combobox");
+  //    options render in a portal as role="option" (select.tsx:88-119), so they
+  //    are queried page-wide rather than within the form.
+  const selects = form.locator('[role="combobox"]');
   const selectCount = await selects.count();
   for (let i = 0; i < selectCount; i++) {
     const select = selects.nth(i);
     try {
       await select.click();
-      const option = page.locator(".ant-select-item-option").first();
+      const option = page.locator('[role="option"]').first();
       await option.waitFor({ state: "visible", timeout: 3000 });
       await option.click();
     } catch {
@@ -151,7 +168,10 @@ async function submitForm(page: Page, leaveUrl: RegExp): Promise<void> {
 
 /** Type into the list's search box (if present) to narrow to our marker. */
 async function searchList(page: Page, value: string): Promise<void> {
-  const search = page.locator(".ant-input-affix-wrapper input").first();
+  // The DataTable search box is a shadcn Input rendered with type="search"
+  // (components/shared/DataTable.tsx:325-331 → <Input type="search" …/>), which
+  // exposes the implicit "searchbox" role; target it by that input type.
+  const search = page.locator('input[type="search"]').first();
   if (await search.count()) {
     await search.fill(value);
     // Debounce + refetch settle.
@@ -250,12 +270,15 @@ for (const entity of ENTITIES) {
     }
 
     // --- EDIT (best-effort) -------------------------------------------------
-    // Click the row's edit affordance (scaffold uses an EditOutlined icon),
-    // tweak the first text field, save, and re-confirm. Recorded but not fatal:
-    // a non-standard edit form in some fork shouldn't red the whole journey.
+    // Click the row's edit affordance (an icon button aria-labelled from the
+    // entity's editAction i18n key), tweak the first text field, save, and
+    // re-confirm. Recorded but not fatal: a non-standard edit form in some fork
+    // shouldn't red the whole journey.
     const editedValue = `${searchValue}-edited`;
     try {
-      const editBtn = rowWith(page, searchValue).locator(".anticon-edit").first();
+      const editBtn = rowWith(page, searchValue)
+        .locator(`button[aria-label^="${EDIT_LABEL_PREFIX}"]`)
+        .first();
       await editBtn.click();
       await page.waitForURL(new RegExp(`${entity.listPath}/[^/]+/?$`), {
         timeout: 10_000,
@@ -289,10 +312,19 @@ for (const entity of ENTITIES) {
       await page.goto(entity.listPath, { waitUntil: "networkidle" });
       await searchList(page, searchValue);
       const row = rowWith(page, searchValue);
-      await row.locator(".anticon-delete").first().click();
-      // Scaffold delete is an antd Popconfirm — confirm via its primary button.
+      // Row delete affordance: an icon button aria-labelled from the entity's
+      // deleteAction i18n key ("Delete <x>" in en). It is the trigger of a Radix
+      // Dialog (components/shared/ConfirmAction.tsx), not an inline popconfirm.
+      await row
+        .locator(`button[aria-label^="${DELETE_LABEL_PREFIX}"]`)
+        .first()
+        .click();
+      // Confirm via the dialog's primary button. The Radix DialogContent exposes
+      // role="dialog" (components/ui/dialog.tsx:33-72) and the confirm button's
+      // visible label is common.yes = "Yes" (ConfirmAction.tsx:65-73).
       const okBtn = page
-        .locator(".ant-popconfirm button.ant-btn-primary")
+        .getByRole("dialog")
+        .getByRole("button", { name: CONFIRM_LABEL, exact: true })
         .first();
       await okBtn.click();
       // Soft-deleted -> drops out of the (default, non-deleted) list.
