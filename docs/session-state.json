@@ -23,7 +23,7 @@
       "title": "Adopt all 22-table recommendations",
       "status": "done",
       "commit": "",
-      "note": "DONE (session 12): A1/A2/A3/A4 + A5 all landed. A5 remainder closed this session — /cover (qodo-cover-style AI test-gen), /manual-uat record-to-spec, token-thrift Playwright notes, Figma design-to-code sub-recipe, superdesign variants step. All scheduled 22-table recommendations adopted; the remaining catalog items are the tracked-not-scheduled DEFERRED set (re-promote via /blueprint on trigger), which is the intended terminal state, not a gap."
+      "note": "DONE (session 12): A1/A2/A3/A4 + A5 all landed. A5 remainder closed this session — /cover (qodo-cover-style AI test-gen), /manual-uat record-to-spec, token-thrift Playwright notes, Figma design-to-code sub-recipe, superdesign variants step. All SCHEDULED 22-table recommendations adopted. 21/22 categories are done/deferred; the ONE carve-out is cat 12 (performance) which remains 'partial' because its last piece — the lhci per-PR CI assertion — is dormant until Actions billing (tracked in the deferred set as lhci-ci), NOT an un-adopted recommendation. Every other remaining catalog item is the tracked-not-scheduled DEFERRED set (re-promote via /blueprint on trigger). That is the intended terminal state, not a gap."
     },
     {
       "id": "D2",
@@ -403,11 +403,11 @@
       "next": "DONE: C1+C2+C3+C3.5+C4 complete; antd deps uninstalled, git grep antd clean. Dark/RTL polish = workstream D (separate)."
     },
     {
-      "state": "in-progress",
+      "state": "done",
       "item": "D1",
       "title": "Adopt 22-table recs",
       "blockedBy": "",
-      "next": "A2/A3/A4 done; do A1+A5 after C"
+      "next": "DONE (session 12): A1-A5 all landed. 21/22 categories done; cat 12 (performance) stays 'partial' only because the lhci per-PR CI gate is dormant until Actions billing (tracked in deferred as lhci-ci) — the automatable perf work (Speed Insights/analyzer/react-scan/size-limit) is done."
     },
     {
       "state": "done",

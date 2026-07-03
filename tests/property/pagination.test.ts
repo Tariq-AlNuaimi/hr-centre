@@ -27,7 +27,7 @@ fc.configureGlobal({ numRuns: 300, seed: 20260703 });
 const paramValue = fc.oneof(
   fc.integer({ min: -100000, max: 100000 }).map(String),
   fc.integer({ min: -1000, max: 1000 }).map((n) => String(n / 7)), // floats
-  fc.constantFrom("", "NaN", "-0", "1e3", "abc", "  5  ", "1.5", "-42", "0", "99999999999", "Infinity", "1e309", "-Infinity"),
+  fc.constantFrom("", "NaN", "-0", "1e3", "abc", "  5  ", "1.5", "-42", "0", "99999999999", "1e20", "1e100", "Infinity", "1e309", "-Infinity"),
 );
 
 function makeParams(page: string, pageSize: string): URLSearchParams {
@@ -43,8 +43,9 @@ test("parsePagination clamps page >= 1 and pageSize to [1,100] for any input", (
       const p = parsePagination(makeParams(page, pageSize));
       assert.ok(Number.isFinite(p.page), "page is finite");
       assert.ok(Number.isFinite(p.pageSize), "pageSize is finite");
-      assert.ok(p.page >= 1, `page ${p.page} >= 1`);
+      assert.ok(p.page >= 1 && p.page <= 1_000_000, `page ${p.page} in [1,1e6]`);
       assert.ok(p.pageSize >= 1 && p.pageSize <= 100, `pageSize ${p.pageSize} in [1,100]`);
+      assert.ok(Number.isSafeInteger(p.skip), `skip ${p.skip} is a safe integer`);
     }),
   );
 });

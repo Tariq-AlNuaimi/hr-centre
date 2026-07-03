@@ -24,7 +24,7 @@ _Program: **replatform-and-adoption** · branch `claude/ui-replatform-dark-axe-v
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | ✅ DONE | **D3** Replace AntD w/ Tailwind | — | DONE: C1+C2+C3+C3.5+C4 complete; antd deps uninstalled, git grep antd clean. Dark/RTL polish = workstream D (separate). |
-| 🟡 IN PROGRESS | **D1** Adopt 22-table recs | — | A2/A3/A4 done; do A1+A5 after C |
+| ✅ DONE | **D1** Adopt 22-table recs | — | DONE (session 12): A1-A5 all landed. 21/22 categories done; cat 12 (performance) stays 'partial' only because the lhci per-PR CI gate is dormant until Actions billing (tracked in deferred as lhci-ci) — the automatable perf work (Speed Insights/analyzer/react-scan/size-limit) is done. |
 | ✅ DONE | **session-automation** auto-handoff + auto-start | — | Parts 1/2 on; Part 3 auto-spawn TESTED session 5 → hop broken (no working successor) → DISABLED + documented; prompt-checkout fix kept |
 | ✅ DONE | **C3** Screen migration | — | DONE (session 6): design-qa axe serious/critical CLEAN in light across all 14 migrated screens (via loopback browser bridge). Dark findings -> workstream D. |
 | ✅ DONE | **C3.5** Runtime-AntD removal | — | DONE (adb155e, /ship green): chrome+auth+forms off AntD onto shadcn/Radix via 3 parallel worktree agents. Closeout (deploy/re-axe/senior-review) in nextActions. |
@@ -42,7 +42,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 | Item | Status | Commit / note |
 |------|--------|---------------|
-| D1 — Adopt all 22-table recommendations | [x] | DONE (session 12): A1/A2/A3/A4 + A5 all landed. A5 remainder closed this session — /cover (qodo-cover-style AI test-gen), /manual-uat record-to-spec, token-thrift Playwright notes, Figma design-to-code sub-recipe, superdesign variants step. All scheduled 22-table recommendations adopted; the remaining catalog items are the tracked-not-scheduled DEFERRED set (re-promote via /blueprint on trigger), which is the intended terminal state, not a gap. |
+| D1 — Adopt all 22-table recommendations | [x] | DONE (session 12): A1/A2/A3/A4 + A5 all landed. A5 remainder closed this session — /cover (qodo-cover-style AI test-gen), /manual-uat record-to-spec, token-thrift Playwright notes, Figma design-to-code sub-recipe, superdesign variants step. All SCHEDULED 22-table recommendations adopted. 21/22 categories are done/deferred; the ONE carve-out is cat 12 (performance) which remains 'partial' because its last piece — the lhci per-PR CI assertion — is dormant until Actions billing (tracked in the deferred set as lhci-ci), NOT an un-adopted recommendation. Every other remaining catalog item is the tracked-not-scheduled DEFERRED set (re-promote via /blueprint on trigger). That is the intended terminal state, not a gap. |
 | D2 — Docker always built (standard artifact) | [x] | 8b50604 |
 | D3 — Replace AntD with Tailwind fully | [x] | c7f3a4c |
 | D4 — RTL + Arabic fully optional | [x] | ADR-028 Part 1 + workstream D done (session 11): DirectionProvider RTL wiring + dark a11y browser-verified |
