@@ -191,6 +191,11 @@ export function CommandPalette() {
                       <button
                         key={c.key}
                         type="button"
+                        // Roving focus stays on the input (combobox pattern): the
+                        // rows are pointer targets, not tab stops, so ↑/↓/Enter on
+                        // the focused input always drives selection. Without this,
+                        // a Tab into a row would strand arrow-key navigation.
+                        tabIndex={-1}
                         onMouseEnter={() => setActive(idx)}
                         onClick={() => c.run()}
                         className={cn(
