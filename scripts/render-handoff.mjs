@@ -50,8 +50,27 @@ const STATE_MARK = { done: "[x]", partial: "[~]", remaining: "[ ]", deferred: "[
 const STATE_ICON = { "in-progress": "IN PROGRESS", remaining: "REMAINING", done: "DONE" };
 
 function cell(v) {
-  // Escape pipes so free-text notes can't break the table grid.
-  return String(v ?? "").replace(/\|/g, "\\|").replace(/\n+/g, " ").trim();
+  // Neutralize anything in free-text data that could break the render:
+  //  - `|` would split a markdown table cell,
+  //  - `<`/`>` could smuggle an HTML comment (`<!-- ... -->`) into the output; if a
+  //    data field contained the literal END/BEGIN sentinel, the NEXT run's marker
+  //    search would latch onto the injected copy and corrupt the file. Escaping to
+  //    entities renders identically but can never form a comment marker.
+  return String(v ?? "")
+    .replace(/\|/g, "\\|")
+    // Neutralize ONLY the HTML-comment sentinels so a data field can never open or
+    // close an auto-status marker; normal '<', '>', and '->' arrows are preserved
+    // (they read cleaner in the raw table agents/humans skim).
+    .replace(/<!--/g, "&lt;!--")
+    .replace(/-->/g, "--&gt;")
+    .replace(/\n+/g, " ")
+    .trim();
+}
+
+function countSubstr(hay, needle) {
+  let n = 0, i = 0;
+  while ((i = hay.indexOf(needle, i)) !== -1) { n++; i += needle.length; }
+  return n;
 }
 
 function render(state) {
@@ -123,25 +142,46 @@ try {
 
 const block = render(state);
 
+// Self-check: the generated block must contain exactly one well-formed marker pair.
+// (render() adds them once and cell() can't emit them, so this only ever trips on a
+// code regression — fail loudly rather than write a self-corrupting file.)
+if (countSubstr(block, BEGIN) !== 1 || countSubstr(block, END) !== 1) {
+  fail("internal error: rendered block does not contain exactly one BEGIN/END pair", 1);
+}
+
 if (mode === "stdout") {
   process.stdout.write(block + "\n");
   process.exit(0);
 }
 
 let doc = existsSync(HANDOFF) ? readFileSync(HANDOFF, "utf8") : "";
-let next;
+const nBegin = countSubstr(doc, BEGIN);
+const nEnd = countSubstr(doc, END);
 const bi = doc.indexOf(BEGIN);
 const ei = doc.indexOf(END);
-if (bi !== -1 && ei !== -1 && ei > bi) {
+let next;
+if (nBegin === 1 && nEnd === 1 && ei > bi) {
+  // Exactly one well-formed pair: replace the region in place.
   next = doc.slice(0, bi) + block + doc.slice(ei + END.length);
-} else if (doc) {
-  // No markers yet: insert the block right after the first H1 title line.
+} else if (nBegin === 0 && nEnd === 0 && doc) {
+  // No markers yet (first render into an existing handoff): insert after the H1.
   const nl = doc.indexOf("\n");
   const head = nl === -1 ? doc : doc.slice(0, nl + 1);
   const rest = nl === -1 ? "" : doc.slice(nl + 1);
   next = head + "\n" + block + "\n" + rest;
-} else {
+} else if (!doc) {
+  // No file at all: create a minimal one.
   next = `# Session handoff — ${cell(state.updated)}\n\n${block}\n`;
+} else {
+  // Malformed markers (duplicated, reversed, or half-present) — REFUSE to write
+  // rather than silently insert a second block and permanently corrupt the file.
+  // This is the corruption the merge must never cause; a human fixes the markers.
+  fail(
+    `refusing to render: SESSION-HANDOFF.md has malformed auto-status markers ` +
+      `(${nBegin} BEGIN, ${nEnd} END${ei !== -1 && bi !== -1 && ei < bi ? ", END before BEGIN" : ""}). ` +
+      `Fix so there is exactly one BEGIN before one END, then re-run.`,
+    1,
+  );
 }
 
 if (mode === "check") {

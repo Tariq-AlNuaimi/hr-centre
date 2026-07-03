@@ -13,6 +13,7 @@
     "updated": { "type": "string", "description": "YYYY-MM-DD" },
     "lastShip": {
       "type": "object",
+      "description": "DISPLAY-ONLY: shown in the rendered handoff tables. The auto-spawn guard does NOT trust this — it reads the gitignored .claude/state/last-green-sha that /ship writes for the exact tree it verified. This value is session-maintained and may lag HEAD by the stamping commit; that's fine (cosmetic).",
       "required": ["status", "sha", "date"],
       "properties": {
         "status": { "enum": ["green", "red", "unknown"] },

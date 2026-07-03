@@ -16,7 +16,7 @@
  *
  * Usage: npm run ship
  */
-import { spawn, execSync } from "node:child_process";
+import { spawn, spawnSync, execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -636,27 +636,40 @@ if (FULL) {
   if (!docker.ok) fail(docker);
 }
 
-// Stamp lastShip in docs/session-state.json (session-automation Part 1): green is
-// asserted for THIS exact HEAD, so the auto-spawn guard's "green for current HEAD"
-// check is trustworthy. Only /ship earns green -- the SessionEnd auto-handoff hook
-// invalidates it to "unknown" whenever HEAD moves without a re-ship. Best-effort:
-// a stamp failure never turns a green ship red.
+// Record the green-for-HEAD signal the auto-spawn guard trusts (session-automation
+// Part 3). This is written to a GITIGNORED runtime file, NOT to committed
+// session-state.json -- so a green /ship (including the pre-push hook's /ship) never
+// dirties a tracked file. The guard permits a successor spawn only when this file's
+// sha equals the current HEAD, so only a tree that actually shipped green at HEAD can
+// spawn; a stray post-ship commit moves HEAD past the recorded sha and the guard
+// blocks. Not durable across containers by design -- a fresh container re-ships.
+// (session-state.json.lastShip is a separate, committed DISPLAY value for the tables.)
+// Best-effort: a write failure never turns a green ship red.
 try {
-  const statePath = "docs/session-state.json";
-  if (existsSync(statePath)) {
-    const state = JSON.parse(readFileSync(statePath, "utf8"));
-    const sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
-      .toString()
-      .trim();
-    const date = new Date().toISOString().slice(0, 10);
-    const next = { status: "green", sha, date };
-    const cur = state.lastShip || {};
-    if (cur.status !== next.status || cur.sha !== next.sha || cur.date !== next.date) {
-      state.lastShip = next;
-      writeFileSync(statePath, JSON.stringify(state, null, 2) + "\n");
+  const sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+    .toString()
+    .trim();
+  if (sha) {
+    mkdirSync(".claude/state", { recursive: true });
+    writeFileSync(".claude/state/last-green-sha", sha + "\n");
+  }
+} catch { /* signal is best-effort; never fail a green ship on it */ }
+
+// Handoff-sync surfacing (session-automation): if SESSION-HANDOFF.md's rendered
+// tables have drifted from docs/session-state.json (or the auto markers are
+// malformed), say so. Non-blocking on purpose -- the handoff is a doc, not a gate;
+// this just nudges a re-render so a fresh session never orients off a stale table.
+try {
+  if (existsSync("docs/session-state.json") && existsSync("docs/SESSION-HANDOFF.md")) {
+    const chk = spawnSync("node", ["scripts/render-handoff.mjs", "--check"], { encoding: "utf8" });
+    if (chk.status !== 0) {
+      console.warn(
+        `  note: SESSION-HANDOFF.md is out of sync with docs/session-state.json` +
+          ` — run: node scripts/render-handoff.mjs${chk.stderr ? `\n    (${chk.stderr.trim()})` : ""}`,
+      );
     }
   }
-} catch { /* stamping is best-effort; never fail a green ship on it */ }
+} catch { /* surfacing is best-effort */ }
 
 console.log(
   `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + build + gitleaks + npm audit${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`

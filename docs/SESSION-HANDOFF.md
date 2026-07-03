@@ -19,7 +19,7 @@ deterministic file instead of reconstructing status from prose.
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (15cab66, 2026-07-03)._
+_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (44954ce, 2026-07-03)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -127,14 +127,19 @@ guarded auto-spawn**, **adopt session-state.json as the rendered source**,
   (+ `docs/session-state.schema.json`) is the single source; `scripts/render-handoff.mjs`
   renders the two tables above into the marked region here. `--check` mode fails if the
   markdown drifts from the JSON; `--stdout` prints the block.
-- **Part 2 — auto-handoff hooks.** `.claude/hooks/auto-handoff.mjs` re-renders this
-  file from the JSON + stamps `lastShip` from the working tree; wired into **SessionEnd**
-  and the **context-watchdog at 80%**. Marked-region merge leaves this prose intact.
-- **Part 3 — auto-start (disabled by default).** `SessionStart` surfaces this handoff
-  FIRST (grand table + in-progress/remaining). `scripts/auto-spawn-guard.mjs` evaluates
-  the guardrails; auto-spawn stays **OFF** until the operator sets
-  `session-state.json.autoSpawn.enabled=true`. See that script's header + the blueprint
-  for the create_trigger firing boundary (hooks can't call MCP; the agent fires it).
+- **Part 2 — auto-handoff hooks.** `.claude/hooks/auto-handoff.mjs` re-renders this file
+  from the JSON (no-op when in sync — never gratuitously dirties the tree); wired into
+  **SessionEnd** and the **context-watchdog at 80%**. It does NOT mutate `lastShip`
+  (non-durable from SessionEnd; would only add drift). Marked-region merge leaves this
+  prose intact; `render-handoff.mjs` escapes comment sentinels in data and refuses to
+  write on malformed markers, so it can never duplicate/corrupt the block.
+- **Part 3 — auto-start (disabled by default; guard+signal, NOT zero-touch yet).**
+  `SessionStart` surfaces this handoff FIRST. `scripts/auto-spawn-guard.mjs` **fails closed**:
+  it PERMITS only when `autoSpawn.enabled=true` AND pushed AND the gitignored
+  `.claude/state/last-green-sha` (written by `/ship`) equals HEAD AND under the cap. Stays
+  **OFF** until the operator sets `autoSpawn.enabled=true`. There is **no background consumer**
+  that fires `create_trigger` yet — the guard prints a copy-pasteable step; true zero-touch
+  needs that consumer (see the blueprint's honest-scope note). `lastShip` is display-only.
 
 ## LESSONS (carry forward — from prior sessions + this one)
 - **Worktree base bug (bit us before):** harness `isolation:'worktree'` agents were
@@ -153,6 +158,27 @@ guarded auto-spawn**, **adopt session-state.json as the rendered source**,
   (module path is still `zricethezav` at v8.21.2). Binary doesn't survive a new container.
 - `AskUserQuestion` worked this session on the first call — the 4 open questions were
   posed as one multi-question call and answered.
+
+## Senior-review outcome — session-automation (post-push, all resolved this session)
+The `senior-code-reviewer` ran on the session-automation push (6a4a13c..15cab66) and
+reproduced its findings live. All addressed before session end:
+- **[High] `lastShip` sha-stamp defeated the guard's green-for-HEAD check** — FIXED by
+  moving the green signal to the gitignored `.claude/state/last-green-sha` (written by
+  `/ship`); the guard reads THAT and fails closed. `lastShip` is now display-only and the
+  SessionEnd hook no longer mutates it.
+- **[High] `render-handoff.mjs` marker corruption** (comment-sentinel injection in a data
+  field; malformed markers → duplicate block) — FIXED: `cell()` neutralizes `<!--`/`-->`,
+  and the merge validates exactly one well-formed BEGIN/END pair and REFUSES to write
+  otherwise (verified with injection + duplicate-marker tests). `render --check` wired into
+  `/ship` as a non-blocking drift WARN.
+- **[High] auto-spawn has no autonomous consumer** — ACKNOWLEDGED + reframed honestly in
+  the blueprint + hook/script headers: Part 3 ships the guard + safe signal + copy-pasteable
+  `create_trigger` step, not hands-off spawning. Stays disabled; don't enable expecting
+  zero-touch until a consumer exists.
+- **[Med] SessionEnd mutating tracked files isn't durable** — FIXED by removing the
+  lastShip write; the re-render is a no-op when in sync.
+- **[Low] `ahead=null` misreport; guard fail-open on empty sha; stale comment** — all FIXED
+  (explicit push-status branches; guard fails closed on missing signal; comments updated).
 
 ## Senior-review follow-ups — BOTH FIXED this session (were "do in C3 prep")
 1. **Lockstep-test coverage gap** — `tests/contracts/design-tokens.test.ts`: added `--ring`

@@ -19,8 +19,10 @@
 // Guardrails (all must hold):
 //   1. autoSpawn.enabled === true        (opt-in per program; default false)
 //   2. branch has an upstream AND @{u}..HEAD == 0   (pushed -> successor sees it)
-//   3. lastShip.status === "green" AND lastShip.sha === current short HEAD
-//        (the green must be for THIS HEAD, not a stale earlier one)
+//   3. .claude/state/last-green-sha exists AND equals the current short HEAD
+//        (the gitignored signal /ship writes for the exact tree it verified green;
+//        a stray post-ship commit moves HEAD past it -> BLOCK. Fails CLOSED: a
+//        missing/empty/mismatched signal is a block, never a silent pass.)
 //   4. autoSpawn.consecutiveCount < autoSpawn.cap
 //        (stop after N spawns with no human turn; reset by --reset on a human start)
 //
@@ -39,6 +41,7 @@ const ROOT = process.env.CLAUDE_PROJECT_DIR
   ? process.env.CLAUDE_PROJECT_DIR
   : join(dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = join(ROOT, "docs", "session-state.json");
+const GREEN_SHA_FILE = join(ROOT, ".claude", "state", "last-green-sha");
 
 function git(args) {
   try {
@@ -94,10 +97,14 @@ try {
   }
 
   const headShort = git("rev-parse --short HEAD");
-  const ship = s.lastShip || {};
-  if (ship.status !== "green") reasons.push(`last /ship is not green (status=${ship.status ?? "unknown"})`);
-  else if (ship.sha && headShort && ship.sha !== headShort)
-    reasons.push(`last green /ship (${ship.sha}) is not for current HEAD (${headShort}) — re-ship before spawning`);
+  // Fail CLOSED on the green-for-HEAD signal: read the gitignored file /ship writes.
+  let greenSha = "";
+  try {
+    if (existsSync(GREEN_SHA_FILE)) greenSha = readFileSync(GREEN_SHA_FILE, "utf8").trim();
+  } catch { /* treated as missing -> block */ }
+  if (!greenSha) reasons.push("no green-ship signal for this session (.claude/state/last-green-sha absent) — run /ship at HEAD before spawning");
+  else if (!headShort) reasons.push("cannot resolve current HEAD");
+  else if (greenSha !== headShort) reasons.push(`green ship (${greenSha}) is not for current HEAD (${headShort}) — a commit moved past the last /ship; re-ship before spawning`);
 
   const cap = Number.isInteger(a.cap) ? a.cap : 3;
   const count = a.consecutiveCount || 0;

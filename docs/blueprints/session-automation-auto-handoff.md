@@ -19,18 +19,31 @@ SessionEnd + watchdog-80% trigger; **4 →** template-wide scope.
   in `settings.json`) stamps `lastShip.sha` + re-renders the handoff + reports push
   durability. `context-watchdog.mjs` re-renders at the **80%** threshold. Both run the
   renderer with `RENDER_HANDOFF_SOFT=1` so a hook can never trap the session.
-- **Part 3 — auto-start.** `session-start.sh` surfaces the handoff FIRST (standing
-  directive + the auto-status block). `scripts/auto-spawn-guard.mjs` is the safety kernel:
-  it PERMITS a successor only when `autoSpawn.enabled=true` **and** the branch is pushed
-  **and** `lastShip` is green **for the current HEAD** **and** `consecutiveCount < cap`.
-  The SessionEnd hook writes `.claude/state/auto-spawn-request.json` (gitignored) + prints
-  the exact `create_trigger` params only when PERMITTED. Ships **disabled**
-  (`autoSpawn.enabled=false`) so nothing schedules a successor until the operator opts in;
-  `--record`/`--reset` manage the consecutive-spawn counter.
+- **Part 3 — auto-start (guard + signal; NOT yet zero-touch).** `session-start.sh` surfaces
+  the handoff FIRST (standing directive + the auto-status block). `scripts/auto-spawn-guard.mjs`
+  is the safety kernel: it PERMITS a successor only when `autoSpawn.enabled=true` **and** the
+  branch is pushed **and** the gitignored `.claude/state/last-green-sha` (written by `/ship`)
+  equals **the current HEAD** **and** `consecutiveCount < cap`. It **fails closed** — a missing/
+  stale signal blocks. The SessionEnd hook writes `.claude/state/auto-spawn-request.json`
+  (gitignored) + prints the exact `create_trigger` params only when PERMITTED. Ships **disabled**
+  (`autoSpawn.enabled=false`) so nothing is scheduled until the operator opts in.
 
-**Firing boundary (by design):** hooks/scripts cannot call the Claude Code Remote MCP, so
-the guard *decides* and the *agent* fires `create_trigger`. This keeps the safety logic
-pure + testable and the MCP call in the one place that has the tool.
+**Firing boundary + honest scope (from post-push senior review):** hooks/scripts cannot call the
+Claude Code Remote MCP, and `SessionEnd` is terminal (no further agent turn), so this is **not
+autonomous zero-touch spawning today** — the guard *decides* and prints a copy-pasteable
+`create_trigger` step for the operator (or for the agent to fire in its LAST turn before ending,
+which *can* call the MCP), followed by `auto-spawn-guard.mjs --record`. There is **no background
+consumer** of the request file yet; the consecutive-spawn cap therefore relies on `--record`/
+`--reset` being run at those steps. **Do not flip `enabled=true` expecting hands-off spawning
+until that consumer exists** (a small watcher/CI job that reads the request + fires the trigger +
+records). Parts 1 & 2 (auto-handoff/render) are fully autonomous and safe on their own; Part 3's
+value today is the *guarded, safe signal*, not the firing.
+
+**Green-for-HEAD is the gitignored signal, not `lastShip`:** `/ship` writes
+`.claude/state/last-green-sha` for the exact tree it verified; the guard trusts only that (fails
+closed if absent/stale). `session-state.json.lastShip` is a **display-only** value for the tables
+and may lag HEAD — it is never the safety input. This avoids the defect where restamping a sha
+onto a `green` status could mark an unverified commit "green for HEAD."
 **Why now:** this is a long, multi-session program. The operator is losing status and
 context at every manual session boundary — restarts are slow, partial context loads
 lose track of the real status, and work gets interrupted. Automating the handoff→start
