@@ -95,6 +95,9 @@ try {
     const ahead = Number(git("rev-list --count @{u}..HEAD") || "0");
     if (ahead > 0) reasons.push(`${ahead} commit(s) unpushed — a successor would not see them`);
   }
+  // A dirty working tree means uncommitted work a fresh container (or spawned session)
+  // would never see. "Pushed" is not enough — the tree must also be clean.
+  if (git("status --porcelain") !== "") reasons.push("uncommitted changes in the working tree — commit + push before spawning (a successor clones only pushed state)");
 
   const headShort = git("rev-parse --short HEAD");
   // Fail CLOSED on the green-for-HEAD signal: read the gitignored file /ship writes.

@@ -28,16 +28,17 @@ SessionEnd + watchdog-80% trigger; **4 →** template-wide scope.
   (gitignored) + prints the exact `create_trigger` params only when PERMITTED. Ships **disabled**
   (`autoSpawn.enabled=false`) so nothing is scheduled until the operator opts in.
 
-**Firing boundary + honest scope (from post-push senior review):** hooks/scripts cannot call the
-Claude Code Remote MCP, and `SessionEnd` is terminal (no further agent turn), so this is **not
-autonomous zero-touch spawning today** — the guard *decides* and prints a copy-pasteable
-`create_trigger` step for the operator (or for the agent to fire in its LAST turn before ending,
-which *can* call the MCP), followed by `auto-spawn-guard.mjs --record`. There is **no background
-consumer** of the request file yet; the consecutive-spawn cap therefore relies on `--record`/
-`--reset` being run at those steps. **Do not flip `enabled=true` expecting hands-off spawning
-until that consumer exists** (a small watcher/CI job that reads the request + fires the trigger +
-records). Parts 1 & 2 (auto-handoff/render) are fully autonomous and safe on their own; Part 3's
-value today is the *guarded, safe signal*, not the firing.
+**Firing boundary + consumer (built 2026-07-03):** hooks/scripts cannot call the Claude Code
+Remote MCP and `SessionEnd` is terminal, so the *one* component that can schedule a successor is
+the **agent, at closeout, in a live turn**. The consumer is `scripts/auto-spawn-fire.mjs`: it
+re-checks the guard and, when PERMITTED, prints the exact `create_trigger` payload for the agent to
+pass to `mcp__Claude_Code_Remote__create_trigger`, and records the spawn against the cap. Closeout
+contract: (1) push + `/ship` green, (2) `node scripts/auto-spawn-fire.mjs`, (3) if it prints a
+`CREATE_TRIGGER_PAYLOAD`, fire the MCP tool with it. **ENABLED for this program**
+(`autoSpawn.enabled=true`, operator 2026-07-03); the **template default stays `false`** so forks
+don't auto-spawn on inherit. Cap=3 backstops runaway; a human runs `auto-spawn-guard.mjs --reset`
+to re-arm. Parts 1 & 2 remain fully autonomous; Part 3 is now a guarded, cap-limited, agent-fired
+loop rather than just a printed hint.
 
 **Green-for-HEAD is the gitignored signal, not `lastShip`:** `/ship` writes
 `.claude/state/last-green-sha` for the exact tree it verified; the guard trusts only that (fails

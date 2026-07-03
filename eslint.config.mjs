@@ -127,6 +127,10 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "generated/**",
     "eslint-rules/**",
+    // Transient parallel-session worktrees (isolated copies of the repo under
+    // .claude/worktrees/); linting into them double-counts files and picks up
+    // other agents' in-flight code. Gitignored already; ignore for lint too.
+    ".claude/worktrees/**",
   ]),
 ]);
 

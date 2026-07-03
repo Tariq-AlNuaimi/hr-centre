@@ -10,11 +10,11 @@
     "date": "2026-07-03"
   },
   "autoSpawn": {
-    "enabled": false,
+    "enabled": true,
     "cap": 3,
     "consecutiveCount": 0,
     "lastSpawnSha": null,
-    "note": "Part 3 opt-in. Flip enabled=true only after trusting the guardrails. Guard: pushed + /ship green + consecutiveCount < cap; reset to 0 on a human-driven SessionStart."
+    "note": "ENABLED for this program (operator, 2026-07-03: build + turn on true auto-spawn). Consumer: scripts/auto-spawn-fire.mjs runs at agent closeout, and the agent fires mcp create_trigger with its payload. Guard (auto-spawn-guard.mjs) fails closed: enabled + pushed + .claude/state/last-green-sha == HEAD + consecutiveCount < cap. Cap=3 backstops runaway; a human runs `node scripts/auto-spawn-guard.mjs --reset` to re-arm. TEMPLATE DEFAULT stays false — this is this-program opt-in, not inherited-on by forks."
   },
   "directives": [
     {

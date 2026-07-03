@@ -93,11 +93,10 @@ try {
       writeFileSync(join(stateDir, "auto-spawn-request.json"), JSON.stringify(req, null, 2) + "\n");
       console.error(
         "[auto-handoff] auto-spawn PERMITTED (guardrails passed). Wrote .claude/state/auto-spawn-request.json.\n" +
-          "  This does NOT auto-spawn. To schedule the successor, fire create_trigger (Claude Code\n" +
-          "  Remote MCP) from a live turn (agent closeout or operator):\n" +
-          `    create_trigger({ name: "auto-continue ${req.program}", create_new_session_on_fire: true,\n` +
-          `      run_once_at: "<+2min RFC3339>", prompt: <request.prompt> })\n` +
-          "  Then run: node scripts/auto-spawn-guard.mjs --record  (increments the consecutive-spawn cap counter)."
+          "  CONSUMER: from a LIVE turn (agent closeout — SessionEnd itself cannot call MCP), run\n" +
+          "    node scripts/auto-spawn-fire.mjs\n" +
+          "  and pass its CREATE_TRIGGER_PAYLOAD to mcp__Claude_Code_Remote__create_trigger. That\n" +
+          "  script re-checks the guard, prints the exact payload, and records the spawn against the cap."
       );
     } catch { /* best-effort signal */ }
   }
