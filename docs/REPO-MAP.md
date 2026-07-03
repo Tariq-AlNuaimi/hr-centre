@@ -55,6 +55,7 @@
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
+- lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 
@@ -79,12 +80,27 @@
 - components/shared/DataView.tsx
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
+- components/shared/FormField.tsx
 - components/shared/KanbanBoard.impl.tsx
 - components/shared/KanbanBoard.tsx
+- components/shared/Modal.tsx
 - components/shared/PageHeader.tsx
 - components/shared/SectionCard.tsx
 - components/shared/Skeletons.tsx
 - components/shared/StatCard.tsx
 - components/shared/Toolbar.tsx
+- components/ui/badge.tsx
+- components/ui/button.tsx
+- components/ui/card.tsx
+- components/ui/description-list.tsx
+- components/ui/dialog.tsx
+- components/ui/form.tsx
+- components/ui/input.tsx
+- components/ui/label.tsx
+- components/ui/popover.tsx
+- components/ui/select.tsx
+- components/ui/skeleton.tsx
+- components/ui/switch.tsx
+- components/ui/table.tsx
 - components/users/UserColumns.tsx
 - components/users/UserForm.tsx
