@@ -192,7 +192,7 @@
       "id": "03",
       "title": "subagents",
       "status": "done",
-      "where": "reviewer lenses (A4); specialist-seeds deferred"
+      "where": "reviewer lenses (A4); specialist-seeds shipped as /stack-advisor build-time skill"
     },
     {
       "id": "04",
@@ -392,8 +392,8 @@
       "id": "specialist-agents",
       "title": "specialist stack-advisor (build-time)",
       "trigger": "operator directive (2026-07-03) — build-time advisor, not a reviewer",
-      "status": "scheduled",
-      "note": "DROP REVERSED by operator same day. Now ADOPT as a build-time ADVISOR (skill-first /stack-advisor, optional thin subagent), NOT a reviewer — different slot from senior-code-reviewer. Blueprinted: docs/blueprints/deferred-11-specialist-stack-advisor.md. Implement NEXT SESSION: write .claude/skills/stack-advisor/SKILL.md (positive Next16-RSC / Prisma7 / Postgres patterns pointing at design-recipes/recipes/ADRs/components-shared, with an explicit \"I advise, I do not review\" boundary), wire into skill-rules.json, /ship green, land on main."
+      "status": "done",
+      "note": "IMPLEMENTED (session 15, 2026-07-03) as the /stack-advisor skill: .claude/skills/stack-advisor/SKILL.md — one composed build-time advisor (Next 16 RSC + Prisma 7 + Postgres) emitting POSITIVE patterns pointing at docs/design-recipes.md / docs/recipes.md / ADRs / components/shared/* and lib/*, with an explicit 'I advise, I do not review' boundary (no lenses/severity/findings; never restates the 10 ESLint rules). Wired into .claude/skill-rules.json on app/api/**/route.ts + app/**/page.tsx. Optional thin stack-expert subagent NOT built (no offload need appeared; add later only if one does). Blueprint updated: docs/blueprints/deferred-11-specialist-stack-advisor.md."
     }
   ],
   "inProgress": [

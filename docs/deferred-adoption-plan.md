@@ -1,10 +1,11 @@
-# Deferred-adoption plan (the 11 tracked-not-scheduled items)
+# Deferred-adoption plan (the tracked-not-scheduled items)
 
 The replatform-and-adoption program is at terminal state: every **scheduled**
 directive (D1–D5) and workstream (Phase0, C1–C4, B, E, D, A1–A5) is done, merged
-to `main`, `/ship` green. What remains is the **tracked-deferred set** — 11 items
-that were consciously *not* scheduled, each gated behind a **trigger** that has not
-yet fired. Source of truth for live status: `docs/session-state.json` `deferred[]`
+to `main`, `/ship` green. Item **#11 (specialist-agents)** has since been
+**implemented** as the `/stack-advisor` skill (§11). What remains is the
+**tracked-deferred set** — 10 items that were consciously *not* scheduled, each
+gated behind a **trigger** that has not yet fired. Source of truth for live status: `docs/session-state.json` `deferred[]`
 and `docs/deep-comparison/ADOPT.md`. This doc is the forward-looking **plan**: for
 each item, the trigger, the adopt path, the drop alternative, and the effort — so
 when a trigger fires the item re-enters via `/blueprint` from a decision, not a
@@ -137,7 +138,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   improvement to `scripts/scaffold-entity.mjs`, not a wasp adoption.
 - **Effort:** S (study). 
 
-## 11. specialist-agents — stack-aware **build-time advisor** 📐 BLUEPRINTED (2026-07-03) → ADOPT
+## 11. specialist-agents — stack-aware **build-time advisor** ✅ IMPLEMENTED (2026-07-03)
 - **What:** A single composed stack-expert covering Next.js 16 RSC + Prisma 7 + Postgres,
   delivered as a **build-time advisor** (originally proposed as `nextjs-pro`/`postgres-pro`/
   `prisma-expert` review seeds; re-scoped away from review to avoid duplication).
@@ -145,11 +146,13 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   *reviewer* duplicates `senior-code-reviewer`. **Operator REVERSED the drop the same day** and
   redirected it to a build-time **advisor** — a different slot (guidance *while* building vs.
   review *after* push), which does not duplicate the review rail.
-- **Disposition:** **ADOPT — blueprinted, implement next session.** Full design + the
-  skill-vs-subagent mechanism analysis ("how to add it, and the benefit, without integrating
-  blindly") is pinned in `docs/blueprints/deferred-11-specialist-stack-advisor.md`. Recommendation:
-  **skill-first** (`/stack-advisor`) with an optional thin subagent only if an offloaded deep-dive
-  need appears; one composed seed, not a fleet.
+- **Disposition:** **ADOPT — DONE (session 15, 2026-07-03).** Shipped as the `/stack-advisor`
+  skill (`.claude/skills/stack-advisor/SKILL.md`): one composed seed across the three stack
+  layers, positive patterns pointing at this repo's recipes/primitives/ADRs, with an explicit
+  "I advise, I do not review" boundary (no lenses/severity; never restates the ESLint rules).
+  Wired into `.claude/skill-rules.json` on `app/api/**/route.ts` + `app/**/page.tsx`. The
+  optional thin `stack-expert` subagent was **not** built (no offloaded deep-dive need appeared;
+  add later only if one does). Design rationale: `docs/blueprints/deferred-11-specialist-stack-advisor.md`.
 - **Effort:** S–M. 
 
 ---
@@ -168,12 +171,11 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
 | 8 | citus | cat-07 scale trigger | WATCH | L | yes (infra) |
 | 9 | sonarqube-mcp | `/handoff` to SonarQube team | ON-HANDOFF | S | no |
 | 10 | wasp | `/scaffold-entity` ergonomics pass | WATCH/DROP (study) | S | no |
-| 11 | specialist-agents | operator directive → build-time advisor | **BLUEPRINTED (2026-07-03) → ADOPT next session** (build-time advisor, not a reviewer) | S–M | no |
+| 11 | specialist-agents | operator directive → build-time advisor | ✅ **IMPLEMENTED (2026-07-03)** — `/stack-advisor` skill; advisor, not a reviewer | S–M | no |
 
-**Session 14 update:** item **#11 (specialist-agents)** was first adjudicated DROPPED, then the
-**operator reversed it the same day** and redirected it to a **build-time advisor** — now
-**BLUEPRINTED for adoption** next session (`docs/blueprints/deferred-11-specialist-stack-advisor.md`).
-So **11 items remain tracked** (10 awaiting triggers + #11 scheduled to build). Of the 10 trigger-
+**Session 15 update:** item **#11 (specialist-agents)** is **IMPLEMENTED** — shipped as the
+`/stack-advisor` build-time advisor skill (see §11 above). So **10 items remain tracked**, all
+awaiting triggers. Of the 10 trigger-
 gated ones, **none are actionable today** — no trigger has fired. Nearest-term candidates are
 the two `/handoff`-gated items (#2 lhci-ci, #9 sonarqube-mcp), which activate the
 moment the fork is handed to a team with CI. When any trigger fires, re-promote that

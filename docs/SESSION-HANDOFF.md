@@ -58,7 +58,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 |-----|--------|-------|
 | 01 collections | [x] | skill auto-activation (A4·804f331) |
 | 02 skills | [x] | grill-with-docs + domain-modeling, anti-rationalization (A4) |
-| 03 subagents | [x] | reviewer lenses (A4); specialist-seeds deferred |
+| 03 subagents | [x] | reviewer lenses (A4); specialist-seeds shipped as /stack-advisor build-time skill |
 | 04 hooks | [x] | A2 (7 hooks) |
 | 05 mcp | [x] | context7 + chrome-devtools-mcp (A3) |
 | 06 frameworks | [-] | wasp study -> deferred backlog |

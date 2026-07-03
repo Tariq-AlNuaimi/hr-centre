@@ -1,8 +1,10 @@
 # Blueprint — deferred #11: specialist stack-advisor (build-time)
 
-**Status:** blueprinted (session 14, 2026-07-03) · **implementation deferred to next session** ·
-tier: template-harness (reaches all forks) · reverses the session-14 drop at the operator's
-direction (the item is now **ADOPT**, not dropped).
+**Status:** ✅ **IMPLEMENTED (session 15, 2026-07-03)** — shipped as the `/stack-advisor` skill
+(`.claude/skills/stack-advisor/SKILL.md`), wired into `.claude/skill-rules.json`; the optional
+thin `stack-expert` subagent was not built (no offload need yet). · tier: template-harness
+(reaches all forks) · reverses the session-14 drop at the operator's direction (the item is
+**ADOPT**, not dropped).
 
 ## Problem & outcome
 The review rail catches stack mistakes **after** they're written (`/code-review` diff gate,

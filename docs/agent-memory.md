@@ -25,6 +25,16 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->
+- 2026-07-03 — Deferred #11 IMPLEMENTED as `/stack-advisor` (skill, not agent):
+  a **build-time** advisor injecting Next 16 RSC + Prisma 7 + Postgres positive
+  patterns *while* code is written, pointing at this repo's recipes/primitives.
+  It is **NOT a reviewer** — the review rail (`/code-review` pre-push diff,
+  `senior-code-reviewer` post-push breadth) is deliberately separate; the advisor
+  ships no lenses/severity/findings and never restates the ESLint rules. One
+  composed seed across the three stack layers (not the 3 wshobson personas). Wired
+  in `skill-rules.json` on `app/api/**/route.ts` + `app/**/page.tsx`. Don't
+  relitigate skill-vs-agent or advisor-vs-reviewer — see the blueprint at
+  `docs/blueprints/deferred-11-specialist-stack-advisor.md`.
 - 2026-07-02 — Replatform program Phase 0 SIGNED: UI layer = **shadcn/ui + Tremor**
   on Tailwind v4 (ADR-029, reverses ADR-027's "keep AntD" with rationale recorded);
   Docker = standard build artifact gated at `/ship --full`/`/deploy`/`/handoff`/CI

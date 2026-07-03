@@ -15,6 +15,12 @@
       "reason": "Build UI right the first time from the vetted recipes instead of fixing it at design QA."
     },
     {
+      "skill": "stack-advisor",
+      "keywords": ["right way to build", "best rsc pattern", "how should I query", "am I fetching this right", "query shape", "index for this route", "stack-advisor"],
+      "paths": ["app/api/**/route.ts", "app/**/page.tsx"],
+      "reason": "Build-time stack expert: framework-correct RSC/Prisma/Postgres patterns pointing at this repo's primitives, before code lands."
+    },
+    {
       "skill": "scaffold-entity",
       "keywords": ["new entity", "new model", "scaffold", "add a table", "CRUD for"],
       "paths": ["prisma/schema.prisma"],

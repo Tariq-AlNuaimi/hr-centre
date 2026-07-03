@@ -23,8 +23,11 @@ the changed surface is still **open** (un-adjudicated).
   duplicate `senior-code-reviewer`. The operator redirected it: build it as a **build-time ADVISOR**
   (not a reviewer), which occupies a genuinely different slot (advice while building vs. review after
   push) and does not duplicate the review rail. Design + skill-vs-subagent mechanism analysis pinned
-  in `docs/blueprints/deferred-11-specialist-stack-advisor.md`; implementation scheduled next session
-  — owner: operator — status: adjudicated(2026-07-03) → scheduled (blueprinted, build next session)
+  in `docs/blueprints/deferred-11-specialist-stack-advisor.md`. **IMPLEMENTED session 15 (2026-07-03)**
+  as the `/stack-advisor` skill (`.claude/skills/stack-advisor/SKILL.md`, wired into
+  `.claude/skill-rules.json`) — one composed advisor, positive patterns only, explicit
+  "I advise, I do not review" boundary; the optional thin subagent was not built (no offload need yet).
+  — owner: operator — status: fixed(8d0aa61) (blueprinted → built → landing on main)
 - 2026-07-02 — [secure/maintainable] pristine-flag CLEARING is best-effort (warn-only, no
   retry/ack): `new-project.mjs` reads back `project.config.json` via the GitHub Contents API
   immediately after template-`generate` (which populates the file tree asynchronously) with no
