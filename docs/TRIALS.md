@@ -167,8 +167,8 @@ Carry this into every live project.
 | # | Item | Symptom | Root cause | Workaround / fix |
 |---|------|---------|-----------|------------------|
 | 1 | **`.mjs` scripts importing the Prisma client** | `ERR_MODULE_NOT_FOUND: generated/prisma/client` when run with bare `node` | These scripts (manual-uat-users, etc.) use TS-style extensionless imports resolved by **tsx**, not node ESM | **Not a bug — invoke via the npm wrapper** (`npm run manual-uat:users`, which uses `tsx`), never `node scripts/x.mjs` directly. |
-| 2 | prisma:generate | `PrismaConfigEnvError: Cannot resolve DATABASE_URL` | Prisma config resolves env at generate time | `DATABASE_URL="postgresql://u:p@localhost/db" npm run prisma:generate` (dummy is fine) |
-| 3 | Playwright MCP | `Chromium 'chrome' not found at /opt/google/chrome/chrome` | MCP pinned to Chrome channel; env ships Chromium at `/opt/pw-browsers` | Use project `npx playwright test`, or set MCP `executablePath: /opt/pw-browsers/chromium` |
+| 2 | prisma:generate | `PrismaConfigEnvError: Cannot resolve DATABASE_URL` | Prisma config used the throwing `env()` helper at generate time | ✅ **FIXED** — `prisma.config.ts` now falls back to a non-connecting placeholder via `process.env.DATABASE_URL ?? …`, so generate works standalone. |
+| 3 | Playwright MCP | `Chromium 'chrome' not found at /opt/google/chrome/chrome` | MCP defaulted to the system-Chrome channel; env ships Chromium at `/opt/pw-browsers` | ✅ **FIXED** — `.mcp.json` playwright server now passes `--browser chromium` (Playwright-managed, honors `PLAYWRIGHT_BROWSERS_PATH`; portable). |
 | 4 | uat (lean) | Fails at `auth.setup` before any screenshot | `auth.setup` is a blocking Playwright dependency even in lean | Set `UAT_EMAIL`/`UAT_PASSWORD` (or `SEED_ADMIN_EMAIL/PASSWORD`) to seeded admin |
 | 5 | deploy/new-project in a token-live env | Actually provisions cloud resources on a "test" run | Tokens present ⇒ not a dry run | Only use a real slug/owner; rely on built-in `teardown()` rollback (verified working); `--owner` must be a real GH user/org |
 | 6 | audit / conform | Semgrep step can't run | `semgrep` binary not installed | `pipx install semgrep` (or Docker fallback per SKILL.md); gitleaks+npm-audit still run |
@@ -182,12 +182,11 @@ Carry this into every live project.
 
 Ranked; each names the pillar it protects.
 
-1. **[Maintainable] Make `prisma:generate` self-sufficient** — document the dummy-`DATABASE_URL` requirement in README/CLAUDE.md, or give the prisma config an env-less default so `npm run prisma:generate` works standalone. Removes a first-hour stumble for every fork.
-2. **[High-Quality] Unpin the Playwright MCP browser** — ship an MCP config pointing at `/opt/pw-browsers` (or document the project-Playwright path), so `design-qa`/`manual-uat` work without the operator debugging a browser-not-found.
-3. **[Fast] A credential-less `uat --smoke`** that skips `auth.setup` to screenshot public/login screens. Today lean UAT can't capture anything without seeded creds — a fast "does it render" check is impossible on a fresh deploy.
-4. **[Secure] Bundle or bootstrap Semgrep** for `/audit` + `/conform` — an installer step (`pipx install semgrep`) in SessionStart or a documented Docker fallback, so the SAST layer isn't silently absent on the exact code paths that most need it.
-5. **[Maintainable] Document the "run via npm/tsx, not node" rule** (§9 #1) near the scripts, so the extensionless-import failure isn't rediscovered.
-6. **[Scalable] Preflight parallelization** already landed for `deploy`/`new-project` (this branch) — extend the same treatment to any remaining serial provider round-trips as more `/scale-up` recipes wire in.
+1. ✅ **DONE [Maintainable] `prisma:generate` is now self-sufficient** — `prisma.config.ts` falls back to a non-connecting placeholder, so it runs standalone without `DATABASE_URL`.
+2. ✅ **DONE [High-Quality] Playwright MCP browser unpinned** — `.mcp.json` passes `--browser chromium`, portable across dev machines and this container.
+3. **[Fast] A credential-less `uat --smoke`** (enhancement, not a defect) that skips `auth.setup` to screenshot public/login screens — a fast "does it render" check on a fresh deploy. Deferred: it reshapes the lean test flow and wasn't a malfunction.
+4. **[Secure] Bundle or bootstrap Semgrep** for `/audit` + `/conform` — environment gap, not a repo defect; document `pipx install semgrep` or a Docker fallback so the SAST layer isn't silently absent.
+5. **[Scalable] Preflight parallelization** already landed for `deploy`/`new-project` (earlier on this branch).
 
 ### Pillar scorecard (across all trialled items)
 - **Fast** ✅ — ship ~43s, all script trials <200ms, deploy preflight parallelized.
