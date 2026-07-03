@@ -160,6 +160,28 @@ build; these are the post-land browser/deploy verifications. Then C4.
 **Landmine avoided:** did NOT `npm uninstall antd` (reds the build via the type-only bridges
 until C4); did NOT touch `middleware.ts` CSP, `eslint-rules/`, or `antd-theme.ts` logic.
 
+**Senior-code-reviewer findings (post-push; not yet fixed — actioned next session):**
+1. **[High, DORMANT] RTL overlay positioning lost** — dropping AntD `ConfigProvider direction`
+   removed RTL mirroring for the Radix Dropdown/Popover overlays (AppHeader user menu,
+   OrgSwitcher, NotificationsMenu). Radix needs `@radix-ui/react-direction`'s
+   `DirectionProvider dir={direction}` (fed by `directionForLocale(locale)`) wrapped around the
+   app (ThemeProvider or layout.tsx) — never wired. **Dormant** (default fork is English-only;
+   `<html dir>` + logical CSS are intact), surfaces only when a fork flips on `ar`/`he`/`fa`/`ur`.
+   → **route to workstream D (RTL verify)**; also extend `tests/uat/uiux.full.uat.ts` to measure a
+   dropdown/popover's geometry vs its trigger in the `ar` variant (today it only asserts `<html dir>`).
+2. **[Medium] two competing `<h1>` on every auth page** — `AuthLayout` brand panel `<h1>` +
+   each auth card `<h1>` (was AntD `Title level={2}` panel / `level={3}` card). Demote the brand
+   panel to `<h2>` (or aria-hide) so the card title is the sole `<h1>`. → C3.5 closeout (cheap).
+3. **[Low] sidebar collapse toggle `aria-label="Toggle sidebar"` untranslated** —
+   `AppSidebar.tsx:125` has a `TODO(i18n)`; add `chrome.toggleSidebar` (en+ar) and use `t(...)`.
+   → C3.5 closeout (cheap).
+4. **[Nit] sidebar auto-collapse breakpoint 1024px (Tailwind lg) vs AntD's 992px** — comment
+   claims parity with AntD `breakpoint="lg"` (992px) but uses `max-width:1023px`. Use
+   `max-width:991px` or fix the comment. → C3.5 closeout.
+Verified CLEAN by the reviewer: CommandPalette parity (handlers/event/destroyOnHidden),
+use-notify/QueryErrorBridge (stable callbacks, no double/missing toast), UserForm contract,
+i18n key parity (except #3), token usage. Full report in the session log.
+
 ## Session 7 — C3.5 PLANNED + APPROVED (blueprint committed; build is the next session's job)
 **What happened:** Read the full handoff + ADOPT.md + agent-memory, shared both status
 tables, then fully scoped + planned **C3.5** (the runtime-AntD removal that blocks C4).
