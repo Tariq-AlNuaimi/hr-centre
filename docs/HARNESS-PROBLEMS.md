@@ -5,10 +5,12 @@ exercised end-to-end (see `docs/TRIALS.md` for the full run and
 `docs/INVENTORY-BY-OBJECTIVE.md` for the objective map). This is the committed
 "must-fix" register: each row has a stable ID, a root cause, and a status.
 
-**Status key:** ✅ FIXED (this repo) · 🌐 ENV-GAP (external prerequisite — cannot
-be fixed from the repo; documented so it isn't rediscovered) · 🧭 PROCESS (an
-agent/process error, corrected) · ⏸️ DEFERRED (needs an operator decision or a
-resource this container lacks) · ➖ NOT-A-DEFECT (works as designed).
+**Status key:** ✅ FIXED (this repo) · ✅→§F CLEARED at runtime via a local
+Postgres (see §F) · ⚙️wired enabling config wired in-repo, but still runtime-blocked
+by an env defect (see the row) · 🌐 ENV-GAP (external prerequisite — cannot be fixed
+from the repo; documented so it isn't rediscovered) · 🧭 PROCESS (an agent/process
+error, corrected) · ⏸️ DEFERRED (needs an operator decision or a resource this
+container lacks) · ➖ NOT-A-DEFECT (works as designed).
 
 _Trial + remediation date: 2026-07-03. Env: remote container, no local DB, live
 Neon/Vercel/GitHub tokens present, `ANTHROPIC_API_KEY` unset._
@@ -122,7 +124,10 @@ audited screen's own path is the login route. Re-run: **37 passed, 0 failed.**
 - **Process correction:** P-07.
 - **DB items cleared via a local PG cluster (§F):** P-08, P-10, P-15 (migrate/seed/integration/
   manual-uat/lean-uat all green).
-- **Env-gaps still logged (not repo-fixable):** P-09, P-11, P-12, P-13, P-14, P-16 — see §C /
+- **Enabling config wired in-repo (hybrid):** P-11 — the `/audit` semgrep bootstrap is fixed
+  in-repo; only the *runtime* is still blocked, and only in this base image (broken system
+  `cryptography`/pyo3). It self-heals on a healthy host/CI.
+- **Env-gaps still logged (not repo-fixable):** P-09, P-12, P-13, P-14, P-16 — see §C /
   the Handoff NA2 decision.
 - **Not defects:** P-17…P-19.
 - **Pending decision:** none (P-08 resolved).

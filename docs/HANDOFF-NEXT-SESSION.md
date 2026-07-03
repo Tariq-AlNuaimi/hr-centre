@@ -46,39 +46,36 @@ Commits land the remediation of `docs/HARNESS-PROBLEMS.md` P-01…P-06:
 
 ## Next actions (in order)
 
-### 1. Provision a DB and clear the DB-blocked items (P-08/P-10/P-15) — operator said YES
-There is NO reachable Postgres in the container (Docker daemon down, no local PG
-binary, `.env` `DATABASE_URL` is a `localhost:5432` placeholder). Provision a
-**live Neon branch** with `NEON_API_KEY` (present):
-1. Create a temporary Neon project/branch via the Neon API (reuse the patterns in
-   `scripts/deploy.mjs` / `scripts/new-project.mjs` — they already do Neon
-   create + `teardown()`/`bailWithRollback`). Capture its connection string into
-   the process env / a scratch `.env` **without printing the value**
-   (protect-secrets blocks echoing `DATABASE_URL`).
-2. `prisma migrate deploy` then `prisma db seed` (seeds `SEED_ADMIN_*` from
-   `.env`).
-3. Run and confirm: `npm run test:integration` (the **3 skips** should now
-   execute), `npm run manual-uat:users`, and lean `npm run uat`
-   (`UAT_EMAIL`/`UAT_PASSWORD` = the seeded `SEED_ADMIN_EMAIL`/`PASSWORD`).
-4. Optionally drive **design-qa**/**manual-uat** now that the Playwright MCP fix
-   (P-05) is live.
-5. **Tear the Neon branch down** and verify 0 orphan projects (the trials proved
-   `deploy.mjs` teardown works — reuse it; never leave a stray project).
+> **RESOLVED — see the "✅ DONE this session" block at the top of this file +
+> `HARNESS-PROBLEMS.md §F`.** NA1 (P-08/P-10/P-15) and NA2 (env-gap adjudication)
+> are both done and pushed; do NOT redo them. The original plan is kept below,
+> struck through, only as the historical record of what was executed.
 
-### 2. Adjudicate the remaining `HARNESS-PROBLEMS.md` items
-The operator asked to "implement everything." P-09 (`ANTHROPIC_API_KEY` unset),
-P-11 (semgrep absent), P-12 (docker daemon), P-13 (Replit OAuth), P-14 (running
-app), P-16 (two DBs) are **environment gaps — not repo-fixable**. Don't fake
-fixes: for each, either (a) document the exact external step in the register
-(already there) and mark it accepted, or (b) if the operator wants them
-enforced, wire the enabling config (e.g. add `ANTHROPIC_API_KEY` to CI secrets,
-add a `pipx install semgrep` bootstrap step to the audit skill / setup). Confirm
-which they want before doing (b). P-17/P-18/P-19 are not-defects — leave as-is.
+### 1. ~~Provision a DB and clear the DB-blocked items (P-08/P-10/P-15)~~ ✅ DONE
+~~Provision a live Neon branch~~ — **superseded:** Neon is unusable from this
+container (`:5432` egress blocked, §F). Cleared instead against the **local
+`postgresql-16` cluster** (`pg_ctlcluster 16 main start`): migrate + seed +
+`test:integration` (3 pass / 0 skip) + `manual-uat:users` + lean `uat` (37
+passed). The Neon probe project was created + torn down (0 orphans). The
+`design-a11y.uat.ts` login-guard bug found here was fixed. **Reuse the local PG
+cluster next time — it needs no egress; do NOT re-provision Neon for DB work.**
 
-### 3. Close out
-`/ship` green → commit → push → verify. Then update
-`docs/HARNESS-PROBLEMS.md` statuses (P-08/P-10/P-15 → FIXED once the DB run
-passes) and this file.
+### 2. ~~Adjudicate the remaining `HARNESS-PROBLEMS.md` items~~ ✅ DONE
+Operator chose **wire the semgrep bootstrap only** (P-11, now in the `/audit`
+skill). P-09 + the pure-env gaps (P-12/13/14/16) are **documented/accepted** —
+not repo-fixable. P-17/P-18/P-19 remain not-defects.
+
+### 3. Close out ✅ DONE
+`/ship` green → commit `ae0c22a` → pushed to `claude/inventory-by-objective-ir9zi8`
+→ verified (0 unpushed). Not merged to `main`. Registers updated (§C/§F + this file).
+
+### What actually remains for a future session
+- P-11 semgrep **runs** only on a host without this base image's broken
+  `cryptography`/pyo3 binding (the bootstrap self-installs it there); or use the
+  Docker fallback once a Docker daemon is available (P-12).
+- P-09 `ANTHROPIC_API_KEY`: operator sets it as a GitHub Actions / Vercel secret
+  to light up the dormant senior-review CI + `/cover`/`/batch` headless paths.
+- P-13/P-14/P-16 stay environment-gated (Replit OAuth / a running app / two DBs).
 
 ## Guardrails
 - Ask-before surface untouched so far. `.mcp.json`/`package.json overrides` are
