@@ -19,16 +19,15 @@ import {
 fc.configureGlobal({ numRuns: 300, seed: 20260703 });
 
 // Arbitrary query strings for page/pageSize: valid numbers, zero, negatives,
-// huge (but finite) values, floats, and non-numeric junk — the adversarial
-// surface a real query string can carry. Deliberately excludes the strings that
-// coerce to ±Infinity ("Infinity", "1e309"): parsePagination does NOT guard
-// against those (they flow through Math.max as a non-finite page). That gap,
-// which these properties surfaced, is pinned separately below as current
-// behaviour rather than silently folded into the generator.
+// huge (but finite) values, floats, non-numeric junk, AND the non-finite
+// coercions ("Infinity", "1e309") — the full adversarial surface a real query
+// string can carry. parsePagination now guards all of these (floor + finite +
+// >= 1 fallback), so they are folded into the generator rather than pinned as a
+// gap: the properties below must hold for every one of them.
 const paramValue = fc.oneof(
   fc.integer({ min: -100000, max: 100000 }).map(String),
   fc.integer({ min: -1000, max: 1000 }).map((n) => String(n / 7)), // floats
-  fc.constantFrom("", "NaN", "-0", "1e3", "abc", "  5  ", "1.5", "-42", "0", "99999999999"),
+  fc.constantFrom("", "NaN", "-0", "1e3", "abc", "  5  ", "1.5", "-42", "0", "99999999999", "Infinity", "1e309", "-Infinity"),
 );
 
 function makeParams(page: string, pageSize: string): URLSearchParams {
@@ -57,9 +56,12 @@ test("parsePagination keeps skip/take internally consistent", () => {
       assert.equal(p.take, p.pageSize, "take mirrors pageSize");
       assert.equal(p.skip, (p.page - 1) * p.pageSize, "skip = (page-1)*pageSize");
       assert.ok(p.skip >= 0, `skip ${p.skip} >= 0`);
-      // NB: integer-ness is deliberately NOT asserted — parsePagination does not
-      // floor the page, so `?page=1.5` produces a fractional page (and skip).
-      // That second robustness gap is pinned in the KNOWN GAP test below.
+      // page/pageSize/skip are always INTEGERS now — parsePagination floors and
+      // finite-guards, so `?page=1.5`/`?page=Infinity` can no longer leak a
+      // fractional or non-finite skip into Prisma.
+      assert.ok(Number.isInteger(p.page), `page ${p.page} is an integer`);
+      assert.ok(Number.isInteger(p.pageSize), `pageSize ${p.pageSize} is an integer`);
+      assert.ok(Number.isInteger(p.skip), `skip ${p.skip} is an integer`);
     }),
   );
 });
@@ -70,26 +72,25 @@ test("parsePagination defaults missing params to page 1 / pageSize 20", () => {
   assert.equal(p.pageSize, 20);
 });
 
-// KNOWN GAPS (pinned as current behaviour, not asserted-as-correct):
-// parsePagination coerces with `Number(x) || 1` and clamps with Math.max/
-// Math.min — neither rejects a non-finite coercion nor floors a fractional one.
-// So `?page=Infinity` → non-finite page, and `?page=1.5` → fractional page/skip.
-// Both are harmless today (Prisma rejects a non-integer/non-finite skip) but are
-// robustness nits the lib/pagination owner may close with a
-// `Math.floor` + `Number.isFinite` guard. These tests document CURRENT behaviour
-// so a future fix flips them visibly rather than passing silently. The property
-// tests above (A5 / cat-18) surfaced both.
-test("parsePagination — KNOWN GAP: non-finite string input is not clamped", () => {
+// CLOSED GAPS (session 12): the two robustness nits the property tests above
+// (A5 / cat-18) surfaced are now fixed by the `Math.floor` + `Number.isFinite`
+// guard in parsePagination (`toPositiveInt`). These tests assert the FIXED
+// behaviour so a regression flips them visibly.
+test("parsePagination — non-finite string input falls back to defaults", () => {
   const p = parsePagination(makeParams("Infinity", "Infinity"));
-  assert.equal(p.page, Infinity, "current behaviour: page is left non-finite");
-  // The pageSize path DOES stay upper-bounded because Math.min(100, …) caps it.
-  assert.equal(p.pageSize, 100, "Math.min still caps pageSize even for Infinity");
+  assert.equal(p.page, 1, "non-finite page falls back to 1");
+  assert.equal(p.pageSize, 20, "non-finite pageSize falls back to the default 20");
+  assert.equal(p.skip, 0, "skip is 0 for the fallback page");
 });
 
-test("parsePagination — KNOWN GAP: fractional page is not floored", () => {
+test("parsePagination — fractional page is floored to an integer", () => {
   const p = parsePagination(makeParams("1.5", "10"));
-  assert.equal(p.page, 1.5, "current behaviour: page keeps its fractional part");
-  assert.equal(p.skip, (1.5 - 1) * 10, "skip inherits the fraction");
+  assert.equal(p.page, 1, "1.5 is floored to 1");
+  assert.equal(p.skip, 0, "skip = (1-1)*10 = 0");
+  assert.ok(
+    Number.isInteger(p.page) && Number.isInteger(p.skip),
+    "page and skip are integers",
+  );
 });
 
 test("paginatedResponse.totalPages matches ceil(total / pageSize)", () => {
