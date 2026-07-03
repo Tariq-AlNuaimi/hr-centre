@@ -42,6 +42,19 @@ recipe is built on the shipped primitives — **reuse these, don't hand-roll**:
 | Chart | `Chart` (uses `chartPalette` from `components/shared/chart-palette.ts`) | raw recharts with hardcoded hex |
 | Kanban | `KanbanBoard` | a bespoke dnd surface |
 
+## Figma → on-token screen (design-to-code sub-recipe)
+
+When the design source is a **Figma frame** (a pasted `figma.com` link or a
+selection), don't paste what Figma emits — raw hex/px would trip `no-raw-hex-color`
+(ADR-015) and land off-system. Use the Figma MCP (`mcp__Figma__get_design_context`,
+`get_screenshot`, `get_variable_defs`, `get_metadata`; the `/figma-use` family) to
+*read* the frame, then **re-express** it on our primitives with Figma variables mapped
+to our tokens — the same discipline this skill already enforces, applied at the Figma
+seam. Figma is the design source; `components/shared/*` + `app/tokens.css` are the
+output ruler. The concrete step pattern (pull → map variables to tokens → rebuild on
+primitives → on-token/RTL/dark/a11y checks → `/design-qa`) is the **"Figma → on-token
+screen"** recipe in `docs/design-recipes.md`.
+
 ## 3. The non-negotiables (these are what make it look considered)
 
 Pulled from `docs/uat-rubric.md` Tier 0 + the recipes; violating any is a

@@ -282,6 +282,69 @@ NOT READY — 1 P0 privilege escalation.
 (Under-enforced P0 = reached something the reconciled matrix forbids; over-enforced
 P1 = blocked from something it grants. Cite role · route/capability · probe.)
 
+## Record-to-spec (exploratory walk → committed regression spec)
+
+By default this skill produces a **report**, and the exploratory coverage evaporates
+with it — the next release re-walks from scratch. Close that gap: a `/manual-uat` pass
+can **emit a committed `tests/uat/<flow>.uat.ts` Playwright regression spec** capturing
+the happy + worst paths you just walked. This is the missing `/manual-uat → /uat`
+bridge — one-off findings become permanent, re-runnable coverage in the `/uat` backbone.
+
+Since you drive the browser through the Playwright **MCP**, the "codegen session" is
+manual: as you perform each real action (`browser_navigate` / fill / `browser_click` /
+`browser_select_option`), note the **durable selector + action** for the steps worth
+regressing (a happy CRUD loop, the worst-path validation, one RBAC probe). At the end,
+synthesize the spec **re-expressed on our stable selectors** — never the raw MCP `ref`s
+or removed AntD DOM. Match the conventions in an existing spec (read
+`tests/uat/crud.full.uat.ts`): Radix Select is `[role="combobox"]` trigger →
+`[role="option"]`; the list search is `input[type="search"]`; row actions are
+`button[aria-label^="Edit"]` / `button[aria-label^="Delete"]`; the delete confirm is the
+ConfirmAction dialog — `getByRole("dialog").getByRole("button", { name: "Yes", exact: true })`;
+submit is `form button[type="submit"]`; rows are `tbody tr` matched by text.
+
+Keep it tight (~15–25 lines), stamp created rows `UAT-<ts>`, and commit it so it runs
+under `npm run uat`:
+
+```ts
+import { test, expect } from "@playwright/test";
+
+// Emitted by /manual-uat — happy create + worst-path validation on <entity>.
+test("<entity> — create (happy) then reject empty (worst)", async ({ page }) => {
+  const marker = `UAT-${Date.now()}`;
+  // happy: create with valid data
+  await page.goto("/en/<entity>/new", { waitUntil: "networkidle" });
+  await page.locator('form input:visible').first().fill(marker);
+  await page.locator('[role="combobox"]').first().click();
+  await page.locator('[role="option"]').first().click();
+  await page.locator('form button[type="submit"]').first().click();
+  await page.waitForURL(/\/en\/<entity>\/?($|\?)/);
+  await page.locator('input[type="search"]').first().fill(marker);
+  await expect(page.locator("tbody tr", { hasText: marker })).toBeVisible();
+
+  // worst: empty required field is rejected at the boundary (zod), no navigation
+  await page.goto("/en/<entity>/new", { waitUntil: "networkidle" });
+  await page.locator('form button[type="submit"]').first().click();
+  await expect(page).toHaveURL(/\/en\/<entity>\/new/);
+});
+```
+
+Emit the spec as a follow-up artifact (like the report) — it's the durable half of the
+run; the report is the judgment half. Note in Step 6 which flows you regressed vs. left
+report-only.
+
+## Token-thrift (ADR-019)
+
+The live-browser loop is the token sink in this skill — a full accessibility-tree dump
+per step blows the budget the token-thrift policy sets. Keep the walk lean:
+
+- Prefer **scoped `browser_snapshot` reads + specific `ref`-based interactions** over
+  full-page tree dumps; snapshot the region you're acting on, not the whole page.
+- **Screenshot to a file** (the `uat-results/` evidence), never inline giant base64.
+- When asserting, **query the one element/region** you need (the row, the field error,
+  the dialog) — don't dump the DOM to "check."
+- **Cap console/network reads** to the flow you're judging; pull detail only when a step
+  actually fails.
+
 ## Boundaries
 
 - **Runs and reports** — never edits app code in the same pass; fixes are a

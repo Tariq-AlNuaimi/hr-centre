@@ -31,7 +31,19 @@ tracker, 1–3 entities, no auth/schema/lib subtlety, easy to throw away. Do thi
      service path. This line is the guard against accidentally building a second
      settings page or a function that duplicates an existing one — say where it
      lives in the current structure (`docs/REPO-MAP.md` answers "where is X").
-3. Confirm the entity model (as `/quickstart` step 1 already does), then build.
+3. **Rough-variant sketch (OPTIONAL — greenfield screens only).** For a
+   *brand-new* screen with no established pattern, borrow superdesign's
+   iterate-before-commit idea (cat 21, "adopt the concept not the dep"): before
+   writing code, sketch **2–3 quick approaches** — layout / hierarchy /
+   interaction — in a line or two each, note the trade-off of each, then
+   **converge on one** and say why. It's a thinking step, not a tool: no canvas,
+   no dependency, no throwaway code — just diverge on paper, pick/merge the
+   winner, THEN hand it to `/design-system` to build on-token. **Skip it when an
+   existing recipe or `components/shared/*` pattern already fits** — diverging on
+   a settled pattern is slop, not exploration. Non-greenfield work goes straight
+   to step 4.
+4. Confirm the entity model (as `/quickstart` step 1 already does), then build
+   the converged design via `/design-system`.
 
 **Full track** — real multi-file features, or anything touching the **Ask-before
 surface** (auth, `lib/`, Prisma schema/migrations, API routes, `middleware.ts`,

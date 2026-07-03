@@ -60,6 +60,34 @@ screen is genuinely data-dense, real content over decoration.**
 
 ---
 
+## 1b. Figma → on-token screen (design-to-code sub-recipe)
+
+When the design source is a Figma frame, **read it, then re-express it on our
+primitives + tokens** — never paste the frame's raw hex/px (that's a `no-raw-hex-color`
+ESLint error, ADR-015). Figma is the design; `components/shared/*` + `app/tokens.css`
+are the output. Steps:
+
+1. **Pull the frame.** `mcp__Figma__get_design_context` (layout + styling, the
+   simplified context) + `mcp__Figma__get_screenshot` (the visual target to match) +
+   `mcp__Figma__get_variable_defs` (its variables/styles) + `mcp__Figma__get_metadata`
+   (structure). The `/figma-use` skill family wraps these.
+2. **Map variables → our tokens, never raw values.** Each Figma variable/style resolves
+   to a semantic token, not a literal: colors → `bg-primary`/`text-foreground`/
+   `border-border`… (`app/tokens.css` `@theme` + `brand.config.ts`); spacing/radius →
+   the 4px scale (`--space-*` / `p-*`, `--radius-*` / `rounded-*`); type → the type scale
+   (`--font-size-*` / `text-*`). No off-scale px, no hex outside the token source. If the
+   frame uses a value with no token, add it in `brand.config.ts`/`app/tokens.css` — don't
+   inline it.
+3. **Rebuild on primitives, not raw divs.** Match the frame's structure to the recipes
+   above — `PageHeader`, `DataTable`/`DataView`, the form primitives, `Modal`,
+   `StatCard`/`SectionCard` — reuse the pattern; don't reproduce Figma's absolute
+   positioning or bespoke boxes.
+4. **Run the normal checks.** On-token (no raw hex/off-scale spacing), the slop gate
+   (§0), RTL (`ar`, logical properties) + dark hold, and a11y (§8) — the same bar every
+   screen clears.
+5. **`/design-qa` audits the result** against the Figma screenshot as the fidelity
+   target — deviations are findings, same as any other surface.
+
 ## 2. Page header — `PageHeader`
 
 The one title pattern: heading + optional one-sentence subtitle on the inline-start,

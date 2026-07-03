@@ -85,6 +85,16 @@ reports — functional QA shouldn't test flows on a visually-broken screen.
 | "Dark/RTL/mobile are edge cases for this audience." | They're rubric columns, not extras: `dir="rtl"` mirroring and dark hold are one screenshot each, and the `ar` locale is a first-class deploy target for this template's users. |
 | "The browser wouldn't launch — mark it green and move on." | "Could not run" is a **blocked** run, never a pass — that's a named boundary below. Fix the env (creds/DB/seed) or report the block. |
 
+## Token-thrift (ADR-019)
+The captures are committed specs that screenshot to files — but the **ad-hoc MCP
+"look at this one screen"** exploration is the token sink. When driving the Playwright
+MCP live, prefer **scoped `browser_snapshot` reads + `ref`-based interactions** over
+full-page accessibility-tree dumps, **screenshot to a file** (never inline giant
+base64 — the screenshots ARE the design-QA evidence), scope axe/assertions to the
+**one component or region** under review rather than dumping the whole DOM, and **cap
+console/network reads**. The per-component pass keeps this cheap: capture the state,
+save the shot, move on.
+
 ## Honest boundaries
 - Design QA is fidelity, **not** correctness (`/ship`) or acceptance (`/uat`).
 - ~80% of "good UI" is measurable here; the residual *taste* is anchored to named

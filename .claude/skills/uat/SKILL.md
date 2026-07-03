@@ -194,6 +194,15 @@ For ad-hoc "walk through this with me now" (no committed test), the operator can
 wire the **Playwright MCP** server and drive the browser interactively. Use that
 for exploration; keep `tests/uat/` as the repeatable backbone.
 
+> **Token-thrift (ADR-019).** The committed specs are already lean — the token risk
+> is the **MCP exploration** above. When driving live, prefer **scoped
+> `browser_snapshot` reads + `ref`-based interactions** over full-page
+> accessibility-tree dumps, **screenshot to a file** rather than inlining giant
+> base64, assert against the **one element/region** you need instead of dumping the
+> DOM, and **cap console/network reads** to the flow in question. The specs
+> themselves attach screenshots as files and assert on targeted locators — keep
+> hand-driven exploration to the same budget.
+
 ## Boundaries
 
 - UAT exercises a **running app's flows** — it is **not** a security pentest.

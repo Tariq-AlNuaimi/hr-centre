@@ -95,14 +95,26 @@ findings-register waiver wiring.
 - [x] **fast-check** property tests for audit-scrub/zod invariants (cat 18) —
       landed 2026-07-03 (`2333c98`; `tests/property/*`, 15 props; surfaced + pinned
       2 latent `lib/pagination.ts` edges as KNOWN-GAP tests)
-- [ ] **qodo-cover-style AI test-gen** on changed files, feeding the A1
-      coverage floor (cat 16)
-- [ ] **`/manual-uat` record-to-spec** — codegen-session emitting committed
-      `*.uat.ts` regression specs (cat 17)
-- [ ] **Token-thrift trimmed Playwright responses** in browser-driven skills
-      (cat 17)
-- [ ] **Figma design-to-code sub-recipe** in `/design-system`, targeting the
-      post-C Tailwind tokens (cat 21; depends on C)
+- [x] **qodo-cover-style AI test-gen** on changed files, feeding the A1
+      coverage floor (cat 16) — landed 2026-07-03 (session 12; new
+      `.claude/skills/cover/SKILL.md` — Claude-driven test-gen with the
+      keep-only-if-passes-AND-raises-coverage discipline, targeting the
+      `node --test`/tsx runner + the `scanCoverage` floor; concept not dep, ADR-022)
+- [x] **`/manual-uat` record-to-spec** — codegen-session emitting committed
+      `*.uat.ts` regression specs (cat 17) — landed 2026-07-03 (session 12;
+      "Record-to-spec" section in `.claude/skills/manual-uat/SKILL.md` — a walk
+      emits a committed `tests/uat/<flow>.uat.ts` re-expressed on our stable
+      Radix/shadcn selectors, closing the `/manual-uat → /uat` bridge)
+- [x] **Token-thrift trimmed Playwright responses** in browser-driven skills
+      (cat 17) — landed 2026-07-03 (session 12; "Token-thrift (ADR-019)" notes in
+      `/manual-uat`, `/uat`, `/design-qa` — scoped `browser_snapshot` + `ref`
+      interactions over full-tree dumps, screenshot-to-file, capped log reads)
+- [x] **Figma design-to-code sub-recipe** in `/design-system`, targeting the
+      post-C Tailwind tokens (cat 21; depends on C) — landed 2026-07-03 (session
+      12; "Figma → on-token screen" subsection in `/design-system` SKILL + the
+      concrete recipe §1b in `docs/design-recipes.md` — read the frame via the
+      Figma MCP, map variables → `app/tokens.css` tokens (never raw hex), rebuild
+      on `components/shared/*`)
 - [x] **style-dictionary `tokens.json` → `@theme` compile** (cat 21; depends on C) —
       landed 2026-07-03 (`2333c98`; `tokens/` + `npm run tokens:build`, additive
       seed over `app/tokens.css`)
@@ -112,7 +124,10 @@ findings-register waiver wiring.
 - [x] **A11y manual criteria** (focus/ARIA/live-regions/keyboard, WCAG 2.2 AA)
       lifted into `/design-qa` (cat 22) — landed 2026-07-03 (`2333c98`; Tier-1b
       manual-a11y criteria in `docs/uat-rubric.md`)
-- [ ] **superdesign variants step** in the design flow (cat 21)
+- [x] **superdesign variants step** in the design flow (cat 21) — landed
+      2026-07-03 (session 12; optional greenfield-only "Rough-variant sketch" step
+      in `/blueprint`'s lightweight track — sketch 2-3 approaches, converge, then
+      build via `/design-system`; concept not dep, skipped when a recipe fits)
 
 ## Deferred / future (tracked, not scheduled)
 
