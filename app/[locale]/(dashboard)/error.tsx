@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button } from "antd";
+import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
 import * as Sentry from "@sentry/nextjs";
 import { BrandedStatus } from "@/components/shared/BrandedStatus";
@@ -39,9 +39,7 @@ export default function DashboardError({
       title={tStatus("errorTitle")}
       subtitle={tStatus("errorSubtitle")}
       actions={
-        <Button type="primary" onClick={reset}>
-          {t("tryAgain")}
-        </Button>
+        <Button onClick={reset}>{t("tryAgain")}</Button>
       }
     />
   );

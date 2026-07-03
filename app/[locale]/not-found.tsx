@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "antd";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { BrandedStatus } from "@/components/shared/BrandedStatus";
@@ -18,7 +18,7 @@ export default function NotFound() {
       subtitle={t("subtitle")}
       actions={
         <Link href="/">
-          <Button type="primary">{tCommon("backHome")}</Button>
+          <Button>{tCommon("backHome")}</Button>
         </Link>
       }
     />
