@@ -16,15 +16,24 @@ see `docs/deep-comparison/01-collections.md`). Our skills are otherwise
 invoke-only — this file closes the "agent improvises instead of using the
 skill" gap.
 
-How it's used today: **advisory, agent-consulted.** At the start of a task,
-match the request/changed files against the rules and *suggest* (or invoke) the
-mapped skill. It is data, not enforcement:
+How it's used today: **advisory, hook-injected.** `.claude/hooks/skill-activation.mjs`
+(wired in `settings.json`, operator-confirmed 2026-07-03) consumes this map on
+two events and injects any match as advisory `additionalContext`:
 
-- It never overrides CLAUDE.md, the Ask-before list, or a skill's own
-  "Skip when" carve-outs.
-- No hook consumes it yet. Wiring a `UserPromptSubmit` hook to inject matches
-  automatically is the natural next step, but that is a `settings.json` change
-  (Ask-before) — propose it, don't slip it in.
+- **UserPromptSubmit** — the prompt text is matched against each rule's
+  `keywords` (intent).
+- **PreToolUse** on `Edit|Write|MultiEdit` — the touched file is matched against
+  each rule's `paths` globs.
+
+It is data, not enforcement:
+
+- The hook only emits a suggestion (`additionalContext`); it **never blocks** and
+  never returns a `permissionDecision`, so it cannot override CLAUDE.md, the
+  Ask-before list, or a skill's own "Skip when" carve-outs.
+- It fires on **every** matching prompt/edit (no session dedupe) and suggests
+  **all** matched skills, deduped within a single fire.
+- Change behaviour by editing this map — no code change needed. On any internal
+  error the hook stays silent (a suggester must never brick a turn).
 - Keep rules honest: a rule earns its row by naming a real temptation to
   improvise. Don't mirror the whole skill list here.
 

@@ -1,5 +1,5 @@
 {
-  "$comment": "Advisory skill auto-activation map (Wave A4; pattern: ChrisWiles/claude-code-showcase, docs/deep-comparison/01-collections.md top adopt). Consulted by the agent at task start: if the operator's request matches `keywords` (intent) or the files about to change match `paths` (globs), SUGGEST the mapped skill before improvising. This file is data, not enforcement — it never overrides CLAUDE.md, the Ask-before list, or a skill's own Skip-when carve-outs. No hook consumes it yet; wiring one is a settings.json change (Ask-before surface).",
+  "$comment": "Advisory skill auto-activation map (Wave A4; pattern: ChrisWiles/claude-code-showcase, docs/deep-comparison/01-collections.md top adopt). Consumed by .claude/hooks/skill-activation.mjs, wired (operator-confirmed 2026-07-03) on UserPromptSubmit (prompt text -> `keywords`) and PreToolUse Edit|Write|MultiEdit (touched file -> `paths` globs): a match emits an advisory `additionalContext` suggesting the mapped skill before improvising. This file is data, not enforcement — the hook never blocks and never overrides CLAUDE.md, the Ask-before list, or a skill's own Skip-when carve-outs. Edit this map to change behaviour; no code change needed.",
   "version": 1,
   "rules": [
     {
