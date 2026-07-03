@@ -44,6 +44,24 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-07-03 — **Browser QA against a DEPLOYED app now works (proven): use the
+  loopback bridge `tools/design-qa-bridge/`.** Chromium can't traverse the MITM
+  egress proxy (ERR_CONNECTION_RESET; curl/fetch can) AND local dev can't reach the
+  Neon DB (:5432 egress blocked) — so authenticated screens were un-testable in a
+  browser, which is why `/design-qa` axe went un-run for the whole program. FIX
+  that carried a full authenticated axe sweep (session 6): a loopback HTTPS server
+  the browser hits directly and which forwards upstream to the deployed Vercel app
+  via `curl`. Serving HTTPS on loopback makes the app's `Secure __Host-` auth
+  cookies work, so login + authed screens render. Recipe + axe driver in
+  `tools/design-qa-bridge/README.md`. This unblocks the remaining dark/RTL/uat
+  browser passes too. (Supersedes the `context.route` note below, which never
+  carried a full authed pass in practice.)
+- 2026-07-03 — `scripts/deploy.mjs` (and new-project.mjs/rebrand.mjs) set
+  `project.config.json` `"pristine": false` in the LOCAL working tree as a side
+  effect. On the TEMPLATE repo that must stay `true` (a fork clears it) — `/ship`'s
+  ADR-031 E-gate goes RED on the baseline-only template if `pristine:false` is
+  committed. After running deploy from the template branch, REVERT the pristine
+  flip before committing (git file-restore is deny-listed → edit it back to true).
 - 2026-07-02 — Headless-browser networking in this remote env: Chromium CANNOT
   complete HTTPS CONNECT through the MITM proxy (ERR_CONNECTION_RESET; curl/Node
   fetch work fine). Working recipe: Playwright `context.route('**/*')` fulfilling

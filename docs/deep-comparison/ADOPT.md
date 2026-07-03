@@ -92,7 +92,9 @@ findings-register waiver wiring.
 
 ## Wave A5 — testing & design depth (2–3 sessions)
 
-- [ ] **fast-check** property tests for audit-scrub/zod invariants (cat 18)
+- [x] **fast-check** property tests for audit-scrub/zod invariants (cat 18) —
+      landed 2026-07-03 (`2333c98`; `tests/property/*`, 15 props; surfaced + pinned
+      2 latent `lib/pagination.ts` edges as KNOWN-GAP tests)
 - [ ] **qodo-cover-style AI test-gen** on changed files, feeding the A1
       coverage floor (cat 16)
 - [ ] **`/manual-uat` record-to-spec** — codegen-session emitting committed
@@ -101,11 +103,15 @@ findings-register waiver wiring.
       (cat 17)
 - [ ] **Figma design-to-code sub-recipe** in `/design-system`, targeting the
       post-C Tailwind tokens (cat 21; depends on C)
-- [ ] **style-dictionary `tokens.json` → `@theme` compile** (cat 21; depends on C)
-- [ ] **Slop-gate named anchors + taste tables + density knob** re-targeted to
-      Tailwind (cat 22; depends on C)
-- [ ] **A11y manual criteria** (focus/ARIA/live-regions/keyboard, WCAG 2.2 AA)
-      lifted into `/design-qa` (cat 22)
+- [x] **style-dictionary `tokens.json` → `@theme` compile** (cat 21; depends on C) —
+      landed 2026-07-03 (`2333c98`; `tokens/` + `npm run tokens:build`, additive
+      seed over `app/tokens.css`)
+- [x] **Slop-gate named anchors + taste tables + density knob** re-targeted to
+      Tailwind (cat 22; depends on C) — landed 2026-07-03 (`2333c98`; slop-gate
+      Tier-1a criteria in `docs/uat-rubric.md`)
+- [x] **A11y manual criteria** (focus/ARIA/live-regions/keyboard, WCAG 2.2 AA)
+      lifted into `/design-qa` (cat 22) — landed 2026-07-03 (`2333c98`; Tier-1b
+      manual-a11y criteria in `docs/uat-rubric.md`)
 - [ ] **superdesign variants step** in the design flow (cat 21)
 
 ## Deferred / future (tracked, not scheduled)

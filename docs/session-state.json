@@ -2,11 +2,11 @@
   "$schema": "./session-state.schema.json",
   "program": "replatform-and-adoption",
   "blueprint": "docs/blueprints/2026-07-replatform-and-adoption-program.md",
-  "branch": "claude/ui-layer-signoff-replatform-onjlrr",
+  "branch": "claude/ui-replatform-auto-spawn-fix-8dee0o",
   "updated": "2026-07-03",
   "lastShip": {
     "status": "green",
-    "sha": "2333c98",
+    "sha": "9264778",
     "date": "2026-07-03"
   },
   "autoSpawn": {
@@ -36,7 +36,7 @@
       "title": "Replace AntD with Tailwind fully",
       "status": "partial",
       "commit": "",
-      "note": "ADR-029; C1+C2 done; C3/C4 pending"
+      "note": "ADR-029; C1+C2 done; C3 design-qa exit bar MET (light axe-clean). NOT fully replaced: 16 files still import antd at runtime (chrome + auth + forms) — that removal (C3.5) is C4's prerequisite. See C3/C4 notes."
     },
     {
       "id": "D4",
@@ -81,11 +81,11 @@
     {
       "id": "C3",
       "title": "Screen migration (app/[locale]/**)",
-      "status": "partial",
-      "commit": "669c62b,e4e33b1,79fd6be,1057b79",
+      "status": "done",
+      "commit": "669c62b,e4e33b1,79fd6be,1057b79,9264778",
       "blockedBy": [],
       "date": "2026-07-03",
-      "note": "ALL identified screens now code-migrated off AntD runtime components (session 5 added: built select/switch/card/description-list primitives; migrated audit-log Select filters, settings Card+Descriptions, DashboardContent, style-guide, UserColumns, not-found/forbidden/error). Only TYPE-ONLY ColumnsType bridge imports remain in DataTable-consuming screens (sanctioned C2 pattern, erased at build; C4 drops it). REMAINING C3 EXIT GATE: per-screen /design-qa (axe serious/critical) — still NOT run (needs the app running in a browser); that is the sole open item before C3 = done."
+      "note": "EXIT GATE MET (session 6): per-screen /design-qa axe (WCAG 2.0/2.1 A+AA) serious/critical is CLEAN across all 14 migrated screens in LIGHT mode (auth forms, users, users/new, audit-log, recycling-bin, settings, settings/profile, dashboard, style-guide, forbidden/maintenance/not-found). This is the FIRST time the program ran a real-browser a11y pass: Chromium cannot traverse this env's MITM egress proxy (the wall that blocked every prior session's design-qa), so we bridged it — a loopback HTTPS server (scratchpad/bridge.mjs) that the browser hits directly and which forwards upstream to the deployed Vercel app via curl (curl DOES traverse the proxy). Fixed 9 serious findings (0 critical): --muted-foreground #6b7280->#5b6472 (table headers, dt), AntD colorTextSecondary/Tertiary + kbd -> #5b6472 light / #9aa3b2 dark, style-guide + StatCard semantic swatches -600->-700, recharts pie Cell role+aria-label (svg-img-alt + label-line prohibited-attr). Committed regression spec: tests/uat/design-a11y.uat.ts (+ auth.setup.ts selector fix). NOTE: C3 'done' = the design-qa/axe exit bar in LIGHT mode; DARK-mode axe surfaced separate pre-existing token findings (brand-primary-as-text on dark links/tags, destructive-foreground white-on-red) routed to workstream D. SCOPE CORRECTION for C4: 'all screens off AntD runtime' was overstated — 16 files still import antd at RUNTIME (all of components/layout/* chrome + auth screens + (auth)/layout + settings/profile + UserForm + KanbanBoard.impl; 8 also use @ant-design/icons). Only the DataTable-consuming files (DataTable/DataView/DashboardContent/AuditLogClient/style-guide) are genuinely type-only. That runtime-AntD removal is C4's hard prerequisite."
     },
     {
       "id": "C4",
@@ -93,9 +93,10 @@
       "status": "remaining",
       "commit": "",
       "blockedBy": [
-        "C3"
+        "runtime-antd-removal"
       ],
-      "date": ""
+      "date": "",
+      "note": "BLOCKED — NOT a small cleanup (session 6 correction). All four C4 items depend on AntD being GONE at runtime, but 16 files still import antd at runtime: components/layout/* (AppShell, AppHeader, AppSidebar, ThemeProvider, CommandPalette, NotificationsMenu, OrgSwitcher, Breadcrumbs, AppFooter), the auth screens (login/LoginForm, forgot-password, reset-password, (auth)/layout), settings/profile, components/users/UserForm, components/shared/KanbanBoard.impl; 8 also import @ant-design/icons. Consequences: (a) `drop antd + @ant-design/* deps` -> build breaks; (b) `drop CSP 'unsafe-inline' style-src` -> AntdRegistry's runtime <style> injection breaks (middleware.ts:47-55 keeps it EXPLICITLY for AntD 6); (c) `retarget no-raw-hex at @theme` -> antd-theme.ts still needs raw hex for the AntD theme so it can't be de-exempted; (d) `rewrite design-recipes.md` -> still references AntD because the chrome IS AntD. PREREQUISITE (new workstream, call it C3.5): migrate the app chrome + the remaining runtime-AntD screens/forms off AntD onto the shadcn/Radix primitives already built in C2. That is a multi-file effort (ConfigProvider/Layout/Menu/Dropdown/Avatar/Table-in-AntdRegistry -> shadcn), NOT the 'drop a type import' the earlier handoff implied. The type-only ColumnsType bridge CAN be dropped independently but is low-value alone."
     },
     {
       "id": "B",
@@ -119,7 +120,8 @@
       "status": "remaining",
       "commit": "",
       "blockedBy": [],
-      "date": ""
+      "date": "",
+      "note": "Now also carries the DARK-mode axe findings surfaced by session 6's first real-browser a11y pass (the design-qa bridge makes dark/RTL browser checks feasible — reuse scratchpad/bridge.mjs + axe-run.mjs with a theme-mode=dark cookie). Dark serious/critical color-contrast to fix here: (1) style-guide + auth links using brand-primary #4f46e5 as TEXT on dark surfaces (~2.3-3.0:1) — needs a lighter dark-mode primary-as-text token (bg-primary buttons must stay unaffected, so split fg/bg primary); (2) .text-destructive-foreground #fff on #ef4444 destructive = 3.76; (3) the dark kbd/secondary was already fixed this session (colorTextTertiary/Secondary #9aa3b2 dark). Light mode is fully clean."
     },
     {
       "id": "A1",
@@ -395,18 +397,18 @@
       "next": "Parts 1/2 on; Part 3 auto-spawn TESTED session 5 → hop broken (no working successor) → DISABLED + documented; prompt-checkout fix kept"
     },
     {
-      "state": "in-progress",
+      "state": "done",
       "item": "C3",
       "title": "Screen migration",
-      "blockedBy": "(unblocked)",
-      "next": "ALL screens code-migrated off AntD runtime (session 5); ONLY per-screen /design-qa (axe serious/critical) remains before C3 = done"
+      "blockedBy": "",
+      "next": "DONE (session 6): design-qa axe serious/critical CLEAN in light across all 14 migrated screens (via loopback browser bridge). Dark findings -> workstream D."
     },
     {
       "state": "remaining",
       "item": "C4",
       "title": "Harness/guard",
-      "blockedBy": "C3",
-      "next": "retarget no-raw-hex, drop AntD + CSP style exception"
+      "blockedBy": "C3.5 (runtime-AntD removal)",
+      "next": "BLOCKED: 16 files still import antd at RUNTIME (chrome+auth+forms). Migrate those off AntD FIRST, then drop deps/CSP/retarget-lint/rewrite-recipes. See C4 note."
     },
     {
       "state": "done",
@@ -438,9 +440,10 @@
     }
   ],
   "nextActions": [
-    "C3 EXIT GATE: run per-screen /design-qa (axe serious/critical) on the migrated screens — the only item left before C3 = done. Needs the app running (deploy a preview or npm run dev + Playwright).",
-    "C4 (now unblocked by C3 code-migration): retarget no-raw-hex to the @theme block, drop antd + @ant-design/* deps + the type-only ColumnsType bridge, drop the CSP 'unsafe-inline' style exception, rewrite docs/design-recipes.md.",
-    "A5 remaining: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page) the fast-check props pinned.",
-    "D RTL verify pass (0.5 session)"
+    "C3.5 (NEW, blocks C4): migrate the remaining 16 runtime-AntD files off AntD onto the C2 shadcn/Radix primitives — all of components/layout/* (AppShell/Header/Sidebar/ThemeProvider/CommandPalette/Notifications/OrgSwitcher/Breadcrumbs/Footer, i.e. ConfigProvider/Layout/Menu/Dropdown/Avatar/AntdRegistry), the auth screens (login/forgot/reset + (auth)/layout), settings/profile, components/users/UserForm, KanbanBoard.impl. This is the real remainder the earlier handoff mislabeled as done.",
+    "C4 (after C3.5): drop antd + @ant-design/* deps + the type-only ColumnsType bridge, drop the CSP 'unsafe-inline' style-src exception (middleware.ts:47-55), retarget no-raw-hex at the @theme block, rewrite docs/design-recipes.md.",
+    "D (dark/RTL verify): fix the dark-mode serious axe findings surfaced this session — brand-primary-as-text on dark (needs split fg/bg primary token), destructive-foreground white-on-red. Re-run scratchpad/axe-run.mjs via the bridge with a theme-mode=dark cookie + an ?ar RTL pass.",
+    "A5 remaining: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page).",
+    "Design-qa is now UNBLOCKED in this env: scratchpad/bridge.mjs (loopback HTTPS -> deployed app via curl) + axe-run.mjs. See agent-memory."
   ]
 }
