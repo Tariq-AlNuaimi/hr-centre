@@ -29,12 +29,12 @@ Highest leverage: each item turns a manual pillar affirmation into a
 deterministic gate. One consolidated `scripts/ship.mjs` extension +
 findings-register waiver wiring.
 
-- [ ] **knip** — dead-code/unused-export detection as a `/ship` phase (cats 08, 13)
-- [ ] **jscpd** — duplication threshold gate (cats 08, 13)
-- [ ] **coverage floor** — test-coverage threshold in `/ship` (cats 09, 16)
-- [ ] **size-limit** — bundle budget gate (cat 12)
-- [ ] **eslint-plugin-jsx-a11y** — static a11y in the lint gate (cat 22)
-- [ ] **complexity metric** — quantified complexity threshold (cat 09)
+- [x] **knip** — dead-code/unused-export detection as a `/ship` phase (cats 08, 13) — landed 2026-07-03 (`a0a9f61`; phase-A parallel, `knip.json` template-aware entry roots, `knipAck` waiver)
+- [x] **jscpd** — duplication threshold gate (cats 08, 13) — landed 2026-07-03 (`a0a9f61`; ≤3% over app/components/lib/hooks, baseline 0.40%, `jscpdAck`)
+- [x] **coverage floor** — test-coverage threshold in `/ship` (cats 09, 16) — landed 2026-07-03 (`a0a9f61`; node built-in `--test-coverage` over `lib/**`, lines65/funcs70/branch80, `coverageAck`)
+- [x] **size-limit** — bundle budget gate (cat 12) — landed 2026-07-03 (`a0a9f61`; 1.2MB gzip client JS, baseline 1.01MB, `sizeLimitAck`)
+- [x] **eslint-plugin-jsx-a11y** — static a11y in the lint gate (cat 22) — landed 2026-07-03 (`a0a9f61`; recommended set at error; 3 UI-layer rules held at warn w/ TODO(C4))
+- [x] **complexity metric** — quantified complexity threshold (cat 09) — landed 2026-07-03 (`a0a9f61`; cyclomatic ≤24 on product code, TODO tighten toward ~15 post-replatform)
 - [x] **E-gate** — DB-structure check (ADR-031) — landed 2026-07-02 (`scanDbStructure` in
       `scripts/ship.mjs`: baseline-model check, migrations non-empty, shadow-DB sync check with
       graceful WARN degradation, `dbAck` + register adjudication)

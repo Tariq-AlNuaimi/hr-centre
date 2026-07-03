@@ -22,7 +22,7 @@
       "title": "Adopt all 22-table recommendations",
       "status": "partial",
       "commit": "",
-      "note": "A2/A3/A4 done; A1 (6 left) + A5 (9) pending"
+      "note": "A2/A3/A4 + A1 done; A5 (9) remains"
     },
     {
       "id": "D2",
@@ -124,11 +124,11 @@
     {
       "id": "A1",
       "title": "Deterministic /ship gates (6 left)",
-      "status": "partial",
-      "commit": "",
+      "status": "done",
+      "commit": "a0a9f61",
       "blockedBy": [],
-      "date": "",
-      "note": "E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity IN PROGRESS (worktree agent a377a629 running this session); unblocked"
+      "date": "2026-07-03",
+      "note": "knip+jscpd+coverage+size-limit+jsx-a11y+complexity landed as /ship gates (+ E+B). All green (52s)."
     },
     {
       "id": "A2",
@@ -211,14 +211,14 @@
     {
       "id": "08",
       "title": "maintainability",
-      "status": "remaining",
-      "where": "knip + jscpd (A1)"
+      "status": "done",
+      "where": "knip + jscpd ship gates (A1·a0a9f61)"
     },
     {
       "id": "09",
       "title": "quality",
-      "status": "partial",
-      "where": "reviewer lenses done; coverage+complexity (A1)"
+      "status": "done",
+      "where": "reviewer lenses (A4) + coverage + complexity gates (A1)"
     },
     {
       "id": "10",
@@ -236,13 +236,13 @@
       "id": "12",
       "title": "performance",
       "status": "partial",
-      "where": "Speed Insights/analyzer/react-scan done; size-limit(A1), lhci(~)"
+      "where": "Speed Insights/analyzer/react-scan + size-limit done; lhci CI dormant"
     },
     {
       "id": "13",
       "title": "code-optimization",
-      "status": "remaining",
-      "where": "knip + jscpd (A1)"
+      "status": "done",
+      "where": "knip + jscpd ship gates (A1·a0a9f61)"
     },
     {
       "id": "14",
@@ -259,8 +259,8 @@
     {
       "id": "16",
       "title": "testing",
-      "status": "remaining",
-      "where": "coverage floor (A1) + qodo-cover (A5)"
+      "status": "partial",
+      "where": "coverage floor done (A1); qodo-cover AI test-gen (A5) remains"
     },
     {
       "id": "17",
@@ -295,8 +295,8 @@
     {
       "id": "22",
       "title": "uiux",
-      "status": "remaining",
-      "where": "jsx-a11y (A1) + slop-gate + a11y-manual (A5)"
+      "status": "partial",
+      "where": "jsx-a11y gate done (A1); slop-gate + a11y-manual (A5) remain"
     }
   ],
   "seniorReviewLows": [
@@ -409,11 +409,11 @@
       "next": "retarget no-raw-hex, drop AntD + CSP style exception"
     },
     {
-      "state": "remaining",
+      "state": "done",
       "item": "A1",
       "title": "Deterministic gates (6 left)",
       "blockedBy": "(unblocked)",
-      "next": "knip/jscpd/coverage/size-limit/jsx-a11y/complexity"
+      "next": "SHIPPED (a0a9f61): 6 deterministic gates green"
     },
     {
       "state": "remaining",

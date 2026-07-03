@@ -28,7 +28,7 @@ _Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatf
 | ✅ DONE | **session-automation** auto-handoff + auto-start | — | SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default |
 | 🟡 IN PROGRESS | **C3** Screen migration | (unblocked) | 7 screens migrated (forms+tables); remaining screens + per-screen /design-qa (axe exit bar) |
 | ⬜ REMAINING | **C4** Harness/guard | C3 | retarget no-raw-hex, drop AntD + CSP style exception |
-| ⬜ REMAINING | **A1** Deterministic gates (6 left) | (unblocked) | knip/jscpd/coverage/size-limit/jsx-a11y/complexity |
+| ✅ DONE | **A1** Deterministic gates (6 left) | (unblocked) | SHIPPED (a0a9f61): 6 deterministic gates green |
 | ⬜ REMAINING | **A5** Testing & design depth (9) | (unblocked) | fast-check, record-to-spec, Figma, style-dictionary |
 | ⬜ REMAINING | **D** RTL verify pass | — | 0.5 session: default fork zero-ar; flip restores |
 | ✅ DONE | **2 senior-review Lows** lockstep gap + FormField footguns | — | FIXED (this session): design-tokens lockstep + FormField footguns |
@@ -41,7 +41,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 | Item | Status | Commit / note |
 |------|--------|---------------|
-| D1 — Adopt all 22-table recommendations | [~] | A2/A3/A4 done; A1 (6 left) + A5 (9) pending |
+| D1 — Adopt all 22-table recommendations | [~] | A2/A3/A4 + A1 done; A5 (9) remains |
 | D2 — Docker always built (standard artifact) | [x] | 8b50604 |
 | D3 — Replace AntD with Tailwind fully | [~] | ADR-029; C1+C2 done; C3/C4 pending |
 | D4 — RTL + Arabic fully optional | [x] | ADR-028 Part 1 shipped; D-verify pending |
@@ -59,7 +59,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | B — Docker standard (gate + trivy + skills) | [x] | 4065f1a · 2026-07-03 |
 | E — Mandatory structured-DB /ship gate | [x] | b82c12d · 2026-07-02 |
 | D — RTL/Arabic verify pass | [ ] |  |
-| A1 — Deterministic /ship gates (6 left) | [~] | E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity IN PROGRESS (worktree agent a377a629 running this session); unblocked |
+| A1 — Deterministic /ship gates (6 left) | [x] | a0a9f61 · 2026-07-03 · knip+jscpd+coverage+size-limit+jsx-a11y+complexity landed as /ship gates (+ E+B). All green (52s). |
 | A2 — Security & trust-boundary hooks | [x] | 2026-07-02 |
 | A3 — Measurement & runtime verification | [x] | ac3eb4c · 2026-07-02 · lhci per-PR CI dormant until Actions |
 | A4 — Process & skills upgrades | [x] | 804f331 · 2026-07-03 |
@@ -76,21 +76,21 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | 05 mcp | [x] | context7 + chrome-devtools-mcp (A3) |
 | 06 frameworks | [-] | wasp study -> deferred backlog |
 | 07 scalability | [x] | postgres-mcp/k6/pghero (A3); citus deferred |
-| 08 maintainability | [ ] | knip + jscpd (A1) |
-| 09 quality | [~] | reviewer lenses done; coverage+complexity (A1) |
+| 08 maintainability | [x] | knip + jscpd ship gates (A1·a0a9f61) |
+| 09 quality | [x] | reviewer lenses (A4) + coverage + complexity gates (A1) |
 | 10 security | [x] | A2 + trivy + trufflehog |
 | 11 speed-of-dev | [-] | wasp CRUD study -> deferred |
-| 12 performance | [~] | Speed Insights/analyzer/react-scan done; size-limit(A1), lhci(~) |
-| 13 code-optimization | [ ] | knip + jscpd (A1) |
+| 12 performance | [~] | Speed Insights/analyzer/react-scan + size-limit done; lhci CI dormant |
+| 13 code-optimization | [x] | knip + jscpd ship gates (A1·a0a9f61) |
 | 14 architecture | [x] | MADR schema + Mermaid C4 (A4) |
 | 15 benchmarking | [x] | peer/enterprise benchmark in /uat (A3) |
-| 16 testing | [ ] | coverage floor (A1) + qodo-cover (A5) |
+| 16 testing | [~] | coverage floor done (A1); qodo-cover AI test-gen (A5) remains |
 | 17 functional-testing | [~] | GWT shape done; record-to-spec + token-thrift PW (A5) |
 | 18 logical-testing | [ ] | fast-check property tests (A5) |
 | 19 requirements | [x] | blueprint story IDs + EARS + was->now (A4) |
 | 20 planning | [x] | Superpowers writing-plans + [P] markers (A4) |
 | 21 design | [ ] | Figma + style-dictionary + superdesign (A5, dep C) |
-| 22 uiux | [ ] | jsx-a11y (A1) + slop-gate + a11y-manual (A5) |
+| 22 uiux | [~] | jsx-a11y gate done (A1); slop-gate + a11y-manual (A5) remain |
 
 **Deferred (tracked, not scheduled — see the program blueprint's closeout TODO)**
 
