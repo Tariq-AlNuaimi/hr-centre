@@ -139,6 +139,12 @@ Find the run in the workflow's run history. The run's **Summary** tab shows:
    /quickstart "describe your idea here"
    ```
    I'll scaffold the entities, push, and the URL updates with the new features.
+5. **Verify the Docker artifact** (ADR-030). Vercel + Neon stays the deploy
+   default, but Docker is a standard build artifact for self-host/handoff. Run
+   `make docker-build` once to confirm the fresh repo produces a valid image (it
+   is the same image `/ship --full`, `/deploy`, and CI gate + trivy-scan). If the
+   machine can't build images, record a `"dockerAck"` in `project.config.json`
+   with an adjudicated findings-register line — never skip it silently.
 
 > **Free-tier limits:** the Vercel project lands on the **Hobby** plan
 > (100 GB-hours of serverless function execution per month, non-commercial use).

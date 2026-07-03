@@ -103,6 +103,16 @@ Fold all of this into the generated `HANDOFF.md` "Open issues / known TODOs"
 section — an empty/clean result is fine, but it must be a deliberate "none open",
 not an omission.
 
+### 1c. Verify the Docker artifact builds (ADR-030)
+
+Docker is a standard, mandatory build artifact — the "Running locally" section
+below hands IT `make docker-up`, so that image must actually build. Run
+`make docker-build` (or `npm run ship -- --full`, which gates it) and confirm it
+succeeds before packaging. If the environment genuinely cannot build images,
+that is a `"dockerAck"` in `project.config.json` + an adjudicated findings-register
+line (never silent) — carry it into the `HANDOFF.md` "Open issues" section so IT
+knows the artifact is unverified.
+
 ### 2. Write `HANDOFF.md`
 
 Use this structure:
@@ -153,13 +163,34 @@ Use this structure:
 
 ## Running locally
 
+**Option A — Docker (the IT-team run path; recommended).** Docker is a standard
+build artifact (ADR-030), so the whole app + Postgres stack comes up with one
+command — no local Node/Postgres setup:
+
+```sh
+git clone <repo>
+cd <repo>
+cp .env.example .env
+# Fill in AUTH_SECRET and the SEED_ADMIN_* vars (DATABASE_URL is wired to the
+# bundled Postgres by the compose stack; override it to point at your own DB)
+make docker-up       # builds the image + starts app + Postgres (docker-compose)
+# App at http://localhost:3000 — migrations run on container start
+```
+
+`make docker-down` tears it down. The image holds no secrets (`.dockerignore`
+excludes `.env`; they are injected at runtime). This is the exact artifact the
+`/ship --full`, `/deploy`, and CI gates build and scan (trivy), so a green
+handoff means this image already builds.
+
+**Option B — native (dev loop):**
+
 ```sh
 git clone <repo>
 cd <repo>
 cp .env.example .env
 # Fill in DATABASE_URL (any local or hosted Postgres) and AUTH_SECRET
 npm install
-make db-up           # only if using the bundled docker-compose
+make db-up           # only if using the bundled docker-compose Postgres
 npx prisma migrate dev
 npx prisma db seed   # creates first admin user from SEED_ADMIN_* envs
 npm run dev

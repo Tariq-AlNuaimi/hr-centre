@@ -110,6 +110,12 @@ the ESLint security rules and the scalability gate run at ship time. Don't push 
 red build to Vercel (push = deploy). The `/ship` skip rule only exempts docs-only
 changes, which a scaffold is not.
 
+The fast `/ship` loop stays image-free by design (ADR-030) so the disposable
+idea→URL path stays quick. Docker is still a standard artifact: verify it once
+with `make docker-build` (or `npm run ship -- --full`) before sharing anything
+that will outlive the prototype, or at `/handoff`. No need to gate every
+quickstart push on it.
+
 ### 4. Push
 
 ```sh
