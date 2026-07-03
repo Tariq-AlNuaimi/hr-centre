@@ -500,7 +500,9 @@ function recordTypeFields() {
 
 function columnsFile() {
   const recordType = `{ id: string; ${recordTypeFields().join('; ')}; createdAt: string; }`;
-  const TAG_COLORS = ['blue', 'green', 'orange', 'red', 'purple', 'cyan', 'magenta', 'gold'];
+  // Round-robin over the shared Badge tones (was the AntD Tag color list). Since
+  // scaffolded enum values are arbitrary, we cycle rather than semantically map.
+  const BADGE_VARIANTS = ['brand', 'success', 'warning', 'danger', 'default'];
 
   // Date/datetime scalars render as locale dates; everything else uses the
   // default cell renderer. `sorter: true` is server-driven (see the GET route's
@@ -518,22 +520,18 @@ function columnsFile() {
     },`;
   });
 
-  const enumCols = enums.map((e) => {
-    const colorMap = e.values.map((v, i) => `"${v}": "${TAG_COLORS[i % TAG_COLORS.length]}"`).join(', ');
-    return `    {
+  const enumCols = enums.map((e) => `    {
       title: t("${e.name}"),
       dataIndex: "${e.name}",
       key: "${e.name}",
       sorter: true,
       render: (val: string | null) => {
         if (!val) return "-";
-        const colors: Record<string, string> = { ${colorMap} };
-        return <Tag color={colors[val] ?? "default"}>{val}</Tag>;
+        return <Badge variant={tone[val] ?? "default"}>{val}</Badge>;
       },
       filters: [${e.values.map((v) => `{ text: "${v}", value: "${v}" }`).join(', ')}],
       filterMultiple: false,
-    },`;
-  });
+    },`);
 
   const relationCols = relations.map((r) => `    {
       title: t("${r.name}"),
@@ -541,19 +539,73 @@ function columnsFile() {
       render: (_: unknown, record: ${Pascal}Record) => record.${r.name}?.${r.displayField} ?? "-",
     },`);
 
-  const usesTag = enums.length > 0;
-  const antdImports = ['Button', 'Space'];
-  if (usesTag) antdImports.push('Tag');
+  const usesBadge = enums.length > 0;
+  const badgeImports = usesBadge
+    ? `import { Badge } from "@/components/ui/badge";
+import type { BadgeProps } from "@/components/ui/badge";
+`
+    : '';
+
+  // Enum value -> Badge tone map, round-robin over the available variants.
+  const toneEntries = enums
+    .flatMap((e) => e.values)
+    .map((v, i) => `"${v}": "${BADGE_VARIANTS[i % BADGE_VARIANTS.length]}"`)
+    .join(', ');
+  const toneConst = usesBadge
+    ? `
+const tone: Record<string, BadgeProps["variant"]> = { ${toneEntries} };
+`
+    : '';
 
   return `"use client";
 
-import { ${antdImports.join(', ')} } from "antd";
-import type { ColumnsType } from "antd/es/table";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
-import { ConfirmAction } from "@/components/shared/ConfirmAction";
+import { Button } from "@/components/ui/button";
+${badgeImports}import { ConfirmAction } from "@/components/shared/ConfirmAction";
 
 export interface ${Pascal}Record ${recordType}
+${toneConst}
+function EditIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  );
+}
 
+function DeleteIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
+// The returned column objects are DataTable-shaped (title/dataIndex/render/
+// sorter/filters); the rebuilt DataTable consumes that shape at runtime and
+// converts it to tanstack ColumnDefs internally. The shape is left to inference
+// so this file carries no table-library import.
 export function get${Pascal}Columns({
   onEdit,
   onDelete,
@@ -562,7 +614,7 @@ export function get${Pascal}Columns({
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   t: (key: string) => string;
-}): ColumnsType<${Pascal}Record> {
+}) {
   return [
 ${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
     {
@@ -577,17 +629,26 @@ ${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
       key: "actions",
       width: 100,
       render: (_: unknown, record: ${Pascal}Record) => (
-        <Space>
+        <div className="flex items-center gap-1">
           <Button
-            type="text"
-            icon={<EditOutlined />}
+            variant="ghost"
+            size="icon"
             aria-label={t("editAction")}
             onClick={() => onEdit(record.id)}
-          />
+          >
+            <EditIcon />
+          </Button>
           <ConfirmAction title={t("deleteConfirm")} onConfirm={() => onDelete(record.id)}>
-            <Button type="text" danger icon={<DeleteOutlined />} aria-label={t("deleteAction")} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              aria-label={t("deleteAction")}
+            >
+              <DeleteIcon />
+            </Button>
           </ConfirmAction>
-        </Space>
+        </div>
       ),
     },
   ];
@@ -596,29 +657,111 @@ ${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
 }
 
 function formFile() {
+  // --- zod schema field expressions (mirror the API-boundary validation) ---
+  const scalarZod = (f) => {
+    let base;
+    switch (f.type) {
+      case 'int': base = 'z.coerce.number().int()'; break;
+      case 'float': base = 'z.coerce.number()'; break;
+      case 'boolean': base = 'z.boolean()'; break;
+      case 'date':
+      case 'datetime': base = f.optional ? 'z.string()' : 'z.string().min(1)'; break;
+      case 'json': base = 'z.any()'; break;
+      case 'text': base = 'z.string()'; break;
+      default: base = f.optional ? 'z.string()' : 'z.string().min(1)'; break; // string
+    }
+    // json is inherently optional in a zod object (z.any); don't double it up.
+    if (f.optional && f.type !== 'json') base += '.nullish()';
+    return `    ${f.name}: ${base},`;
+  };
+
+  const schemaLines = [
+    ...fields.map(scalarZod),
+    ...enums.map((e) => {
+      const en = `z.enum([${e.values.map((v) => `"${v}"`).join(', ')}])`;
+      return `    ${e.name}: ${en}${e.optional ? '.nullish()' : ''},`;
+    }),
+    ...relations.map((r) => `    ${r.name}Id: ${r.optional ? 'z.string().nullish()' : 'z.string().min(1)'},`),
+  ];
+
+  // --- defaultValues (coalesce nulls to controlled-input-friendly seeds) ---
+  const defaultLines = [
+    ...fields.map((f) => {
+      if (f.type === 'boolean') return `      ${f.name}: initialValues?.${f.name} ?? false,`;
+      if (f.type === 'int' || f.type === 'float') return `      ${f.name}: initialValues?.${f.name} ?? undefined,`;
+      return `      ${f.name}: initialValues?.${f.name} ?? "",`;
+    }),
+    ...enums.map((e) =>
+      e.optional
+        ? `      ${e.name}: initialValues?.${e.name} ?? undefined,`
+        : `      ${e.name}: initialValues?.${e.name} ?? "${e.values[0]}",`,
+    ),
+    ...relations.map((r) => `      ${r.name}Id: initialValues?.${r.name}Id ?? undefined,`),
+  ];
+
+  // --- field JSX ---
   const scalarItems = fields.map((f) => {
-    const widget =
-      f.type === 'boolean' ? '<Switch />'
-      : f.type === 'int' || f.type === 'float' ? '<InputNumber style={{ width: "100%" }} />'
-      : f.type === 'date' || f.type === 'datetime' ? '<DatePicker style={{ width: "100%" }} />'
-      : f.type === 'text' || f.type === 'json' ? '<Input.TextArea rows={4} />'
-      : '<Input />';
-    return `      <Form.Item name="${f.name}" label={t("${f.name}")} rules={[{ required: ${!f.optional} }]}>
-        ${widget}
-      </Form.Item>`;
+    if (f.type === 'boolean') {
+      return `        <FormField
+          name="${f.name}"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("${f.name}")}</FormLabel>
+              <FormControl>
+                <Switch checked={field.value} onCheckedChange={field.onChange} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />`;
+    }
+    const typeAttr =
+      f.type === 'int' || f.type === 'float' ? ' type="number"'
+      : f.type === 'date' || f.type === 'datetime' ? ' type="date"'
+      : '';
+    return `        <TextField name="${f.name}" label={t("${f.name}")}${typeAttr} />`;
   });
 
-  const enumItems = enums.map((e) => `      <Form.Item name="${e.name}" label={t("${e.name}")} rules={[{ required: ${!e.optional} }]}>
-        <Select options={[${e.values.map((v) => `{ value: "${v}", label: "${v}" }`).join(', ')}]} />
-      </Form.Item>`);
+  const enumItems = enums.map((e) => `        <FormField
+          name="${e.name}"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("${e.name}")}</FormLabel>
+              <Select value={field.value ?? undefined} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("${e.name}")} />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectItem>`).join('\n')}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />`);
 
-  const relationItems = relations.map((r) => `      <Form.Item name="${r.name}Id" label={t("${r.name}")} rules={[{ required: ${!r.optional} }]}>
-        <RelationSelect path="/api/${r.targetKebab}" displayField="${r.displayField}" />
-      </Form.Item>`);
+  const relationItems = relations.map((r) => `        <FormField
+          name="${r.name}Id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("${r.name}")}</FormLabel>
+              <RelationSelect
+                path="/api/${r.targetKebab}"
+                displayField="${r.displayField}"
+                placeholder={t("${r.name}")}
+                value={field.value ?? undefined}
+                onChange={field.onChange}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />`);
 
   // Form value type aligns with the Record type from columnsFile: optional
-  // scalars include `| null` so `<Form initialValues={record}>` accepts the
-  // Prisma row shape (where optional fields can be null) directly.
+  // scalars include `| null` so the edit page's Prisma row shape (where optional
+  // fields can be null) maps into the form's defaultValues directly.
   const valueTypeParts = [
     ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}${f.optional ? ' | null' : ''}`),
     ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}${e.optional ? ' | null' : ''}`),
@@ -626,78 +769,98 @@ function formFile() {
   ];
   const valueType = `{ ${valueTypeParts.join('; ')} }`;
 
-  const antdImports = ['Form', 'Input', 'Button', 'Space'];
-  if (fields.some((f) => ['int', 'float'].includes(f.type))) antdImports.push('InputNumber');
-  if (fields.some((f) => f.type === 'boolean')) antdImports.push('Switch');
-  if (fields.some((f) => ['date', 'datetime'].includes(f.type))) antdImports.push('DatePicker');
-  if (enums.length > 0 || relations.length > 0) antdImports.push('Select');
+  // --- imports (only what the emitted fields actually reference) ---
+  const hasTextField = fields.some((f) => f.type !== 'boolean');
+  const hasSwitch = fields.some((f) => f.type === 'boolean');
+  const hasFormPrimitives = hasSwitch || enums.length > 0 || relations.length > 0;
+  const hasSelect = enums.length > 0 || relations.length > 0;
 
-  // Relation targets can exceed the page size, so the select fetches
-  // server-side via the parent list route's `?search=` (debounced). It seeds
-  // an initial page on mount and re-queries as the operator types, so targets
-  // beyond the first page are still selectable.
+  const fieldFieldImport = hasTextField
+    ? 'import { useZodForm, Form, TextField } from "@/components/shared/FormField";'
+    : 'import { useZodForm, Form } from "@/components/shared/FormField";';
+  const formPrimitiveImport = hasFormPrimitives
+    ? `import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+`
+    : '';
+  const selectImport = hasSelect
+    ? `import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+`
+    : '';
+  const switchImport = hasSwitch ? 'import { Switch } from "@/components/ui/switch";\n' : '';
+  const reactImport = relations.length === 0 ? '' : 'import { useEffect, useState } from "react";\n';
+
+  // Relation targets can exceed the page size. The Radix Select has no built-in
+  // server type-ahead, so this seeds an initial page (pageSize=50) on mount; a
+  // fork with a large target table should add a search box (see /scale-up). The
+  // `/api/<target>` fetch + displayField mapping are preserved.
   const relationSelectComponent = relations.length === 0 ? '' : `
-function RelationSelect({ path, displayField, value, onChange }: {
+function RelationSelect({
+  path,
+  displayField,
+  placeholder,
+  value,
+  onChange,
+}: {
   path: string;
   displayField: string;
+  placeholder?: string;
   value?: string;
   onChange?: (v: string) => void;
 }) {
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
-  const [loading, setLoading] = useState(false);
 
-  const load = useCallback((search: string) => {
-    setLoading(true);
+  useEffect(() => {
     const qs = new URLSearchParams({ pageSize: "50" });
-    if (search) qs.set("search", search);
     fetch(path + "?" + qs.toString())
       .then((r) => r.json())
-      .then((j) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        setOptions((j.data?.data ?? []).map((r: any) => ({
-          value: r.id,
-          label: r[displayField] ?? r.id,
-        })));
+      .then((j: { data?: { data?: Array<{ id: string } & Record<string, unknown>> } }) => {
+        setOptions(
+          (j.data?.data ?? []).map((row) => ({
+            value: row.id,
+            label: (row[displayField] as string | undefined) ?? row.id,
+          })),
+        );
       })
-      .finally(() => setLoading(false));
+      .catch(() => {});
   }, [path, displayField]);
 
-  // Initial page on mount.
-  useEffect(() => { load(""); }, [load]);
-
-  // Debounce the type-ahead so a >100-row target stays searchable without a
-  // request per keystroke.
-  const onSearch = useMemo(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    return (search: string) => {
-      clearTimeout(timer);
-      timer = setTimeout(() => load(search), 300);
-    };
-  }, [load]);
-
   return (
-    <Select
-      loading={loading}
-      options={options}
-      value={value}
-      onChange={onChange}
-      showSearch
-      filterOption={false}
-      onSearch={onSearch}
-      optionFilterProp="label"
-    />
+    <Select value={value ?? undefined} onValueChange={onChange}>
+      <FormControl>
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+      </FormControl>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 `;
 
-  const reactImports = relations.length === 0
-    ? ''
-    : 'import { useCallback, useEffect, useMemo, useState } from "react";\n';
-
   return `"use client";
 
-${reactImports}import { ${antdImports.join(', ')} } from "antd";
+${reactImport}import { z } from "zod";
 import { useTranslations } from "next-intl";
+${fieldFieldImport}
+${formPrimitiveImport}${selectImport}${switchImport}import { Button } from "@/components/ui/button";
 
 interface ${Pascal}FormProps {
   initialValues?: Partial<${valueType}>;
@@ -708,15 +871,35 @@ interface ${Pascal}FormProps {
 ${relationSelectComponent}
 export function ${Pascal}Form({ initialValues, onSubmit, onCancel, loading = false }: ${Pascal}FormProps) {
   const t = useTranslations("${i18nNs}");
+
+  // The SAME shape guards the API route; client + server validation can't drift.
+  const schema = z.object({
+${schemaLines.join('\n')}
+  });
+
+  const form = useZodForm(schema, {
+    defaultValues: {
+${defaultLines.join('\n')}
+    },
+  });
+
   return (
-    <Form layout="vertical" initialValues={initialValues} onFinish={onSubmit} style={{ maxWidth: 500 }}>
-${[...scalarItems, ...enumItems, ...relationItems].join('\n')}
-      <Form.Item>
-        <Space>
-          <Button type="primary" htmlType="submit" loading={loading}>{t("save")}</Button>
-          <Button onClick={onCancel}>{t("cancel")}</Button>
-        </Space>
-      </Form.Item>
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex max-w-[500px] flex-col gap-4"
+      >
+${[...scalarItems, ...enumItems, ...relationItems].join('\n\n')}
+
+        <div className="flex gap-2">
+          <Button type="submit" disabled={loading}>
+            {t("save")}
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            {t("cancel")}
+          </Button>
+        </div>
+      </form>
     </Form>
   );
 }
@@ -738,8 +921,7 @@ function listPageFile() {
   return `"use client";
 
 import { useState } from "react";
-import { Button } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button } from "@/components/ui/button";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/shared/DataTable";
@@ -749,6 +931,23 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { get${Pascal}Columns, type ${Pascal}Record } from "@/components/${entityKebab}/${Pascal}Columns";
 import { useEntityList, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
+
+function PlusIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
 
 export default function ${Pascal}sPage() {
   const t = useTranslations("${i18nNs}");
@@ -795,7 +994,8 @@ export default function ${Pascal}sPage() {
       <PageHeader
         title={t("title")}
         actions={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => router.push(\`/\${locale}/${entityKebab}/new\`)}>
+          <Button onClick={() => router.push(\`/\${locale}/${entityKebab}/new\`)}>
+            <PlusIcon />
             {t("createNew")}
           </Button>
         }
