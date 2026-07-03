@@ -143,6 +143,7 @@
     "changes": "Changes",
     "filterEntity": "Filter by entity",
     "filterAction": "Filter by action",
+    "clearFilter": "Clear filter",
     "loadFailed": "Failed to load audit log"
   },
   "theme": {

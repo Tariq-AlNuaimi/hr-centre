@@ -2,19 +2,22 @@
 
 // Client island for the dashboard. The page itself is a React Server Component
 // (it does the auth gate + Prisma reads on the server), but the interactive
-// Ant Design pieces here -- the Chart (loaded via `next/dynamic { ssr:false }`)
-// and the Table with `render` callbacks -- CANNOT live in a Server Component
+// pieces here -- the Chart (loaded via `next/dynamic { ssr:false }`) and the
+// DataTable with `render` callbacks -- CANNOT live in a Server Component
 // (functions/ssr:false components can't cross the RSC->client boundary). So the
 // RSC passes serializable data down to this client component, which renders it.
 // This is the canonical RSC + client-island split (see docs/recipes/perf/1-rsc-list-reads.md).
 
-import { Card, Row, Col, Table, Tag } from "antd";
-import { UserOutlined, DeleteOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
 import { useTranslations } from "next-intl";
 import { Chart } from "@/components/shared/Chart";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { DataTable } from "@/components/shared/DataTable";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import type { BadgeProps } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
 
 export interface RecentAudit {
@@ -38,12 +41,65 @@ interface DashboardContentProps {
   data: DashboardData | null;
 }
 
-const actionColor: Record<string, string> = {
-  CREATE: "green",
-  UPDATE: "blue",
-  DELETE: "red",
-  RESTORE: "gold",
+const ACTION_VARIANTS: Record<string, BadgeProps["variant"]> = {
+  CREATE: "success",
+  UPDATE: "brand",
+  DELETE: "danger",
+  RESTORE: "warning",
 };
+
+function UserIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    </svg>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
 
 export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
   const t = useTranslations("nav");
@@ -56,43 +112,63 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
     return (
       <>
         <PageHeader title={t("home")} />
-        <Card>{tDash("welcome")}</Card>
+        <Card>
+          <CardContent className="p-6">{tDash("welcome")}</CardContent>
+        </Card>
       </>
     );
   }
 
   const { totalUsers, roleDistribution, softDeletedTotal, recentAudit } = data;
 
+  const recentColumns: ColumnsType<RecentAudit> = [
+    {
+      title: tAudit("action"),
+      dataIndex: "action",
+      key: "action",
+      render: (val: string) => (
+        <Badge variant={ACTION_VARIANTS[val] ?? "default"}>{val}</Badge>
+      ),
+    },
+    { title: tAudit("entity"), dataIndex: "entityType", key: "entityType" },
+    {
+      title: tAudit("user"),
+      dataIndex: "userName",
+      key: "userName",
+      render: (val: string | null) => val ?? "-",
+    },
+    {
+      title: tAudit("timestamp"),
+      dataIndex: "timestamp",
+      key: "timestamp",
+      render: (val: string) => formatDateTime(val),
+    },
+  ];
+
   return (
     <>
       <PageHeader title={t("home")} />
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={8}>
-          <StatCard
-            title={tDash("totalUsers")}
-            value={totalUsers}
-            icon={<UserOutlined />}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={8}>
-          <StatCard
-            title={tDash("deletedRecords")}
-            value={softDeletedTotal}
-            icon={<DeleteOutlined />}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={8}>
-          <StatCard
-            title={tDash("rolesInUse")}
-            value={roleDistribution.length}
-            icon={<SafetyCertificateOutlined />}
-          />
-        </Col>
-      </Row>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title={tDash("totalUsers")}
+          value={totalUsers}
+          icon={<UserIcon />}
+        />
+        <StatCard
+          title={tDash("deletedRecords")}
+          value={softDeletedTotal}
+          icon={<TrashIcon />}
+        />
+        <StatCard
+          title={tDash("rolesInUse")}
+          value={roleDistribution.length}
+          icon={<ShieldIcon />}
+        />
+      </div>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        <Col xs={24} lg={10}>
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-5">
           <SectionCard title={tDash("usersByRole")}>
             {roleDistribution.length > 0 ? (
               <Chart
@@ -103,46 +179,24 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                 height={280}
               />
             ) : (
-              <div style={{ textAlign: "center", padding: 48, opacity: 0.5 }}>
+              <div className="py-12 text-center text-muted-foreground">
                 {tCommon("noData")}
               </div>
             )}
           </SectionCard>
-        </Col>
-        <Col xs={24} lg={14}>
+        </div>
+        <div className="lg:col-span-7">
           <SectionCard title={tDash("recentActivity")} noBodyPadding>
-            <Table<RecentAudit>
+            <DataTable<RecentAudit>
+              columns={recentColumns}
               dataSource={recentAudit}
               rowKey="id"
-              pagination={false}
-              locale={{ emptyText: tCommon("noData") }}
-              columns={[
-                {
-                  title: tAudit("action"),
-                  dataIndex: "action",
-                  key: "action",
-                  render: (val: string) => (
-                    <Tag color={actionColor[val] ?? "default"}>{val}</Tag>
-                  ),
-                },
-                { title: tAudit("entity"), dataIndex: "entityType", key: "entityType" },
-                {
-                  title: tAudit("user"),
-                  dataIndex: "userName",
-                  key: "userName",
-                  render: (val: string | null) => val ?? "-",
-                },
-                {
-                  title: tAudit("timestamp"),
-                  dataIndex: "timestamp",
-                  key: "timestamp",
-                  render: (val: string) => formatDateTime(val),
-                },
-              ]}
+              emptyText={tCommon("noData")}
+              size="small"
             />
           </SectionCard>
-        </Col>
-      </Row>
+        </div>
+      </div>
     </>
   );
 }

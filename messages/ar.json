@@ -143,6 +143,7 @@
     "changes": "التغييرات",
     "filterEntity": "تصفية حسب الكيان",
     "filterAction": "تصفية حسب الإجراء",
+    "clearFilter": "مسح التصفية",
     "loadFailed": "فشل تحميل سجل التدقيق"
   },
   "theme": {
