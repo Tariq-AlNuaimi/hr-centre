@@ -83,8 +83,9 @@ findings-register waiver wiring.
 - [x] **MADR schema in ADR-TEMPLATE + Mermaid C4 in `/blueprint`** — landed 2026-07-02
 - [x] **Reviewer lenses** — landed 2026-07-02 (five named lenses + execution-trace +
       0–100 confidence filter in `.claude/agents/senior-code-reviewer.md`)
-- [~] **Skill auto-activation** — advisory `.claude/skill-rules.json` landed 2026-07-02;
-      hook wiring into settings.json is a proposed follow-up (`.claude/README.md`)
+- [x] **Skill auto-activation** — landed 2026-07-03 (`804f331`; `.claude/hooks/skill-activation.mjs`
+      consumes `skill-rules.json` on UserPromptSubmit [keywords] + PreToolUse Edit|Write|MultiEdit
+      [path globs], advisory `additionalContext` only, never blocks; operator-confirmed defaults)
 - [x] **plugin-eval** — evaluator run landed 2026-07-02 (`33ac56a`; `docs/plugin-eval-2026-07.md`
       scores all 24 skills + 2 agents on 4 dims — harness healthy, 5 one-line disambiguation findings)
 - [x] **GWT scenario shape** — landed 2026-07-02 (blueprint SKILL.md happy/worst scenarios)
@@ -121,6 +122,13 @@ Re-promote via `/blueprint` when a trigger fires; never adopt silently.
 - [ ] wasp declarative-CRUD ergonomics study over `/scaffold-entity` (cat 11)
 - [ ] specialist-agent seeds (`nextjs-pro`/`postgres-pro`/`prisma-expert`) as
       one optional stack-aware review agent (cat 03)
+- [ ] **Tremor charts (re-promote when Tremor ships React 19 support)** — ADR-029
+      named Tremor for charts/KPI, but `@tremor/react@3.18.7` declares a hard
+      `react@^18` peer and fails a clean install on this React 19 / Next 16 tree
+      (verified 2026-07-03, C2). Not forced. `components/shared/Chart` stays on
+      **recharts directly** (React-19-safe) with a Tremor-style declarative API, so
+      the swap is a drop-in when the peer clears. Trigger: `@tremor/react` peer
+      accepts React 19.
 
 ---
 
