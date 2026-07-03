@@ -40,7 +40,7 @@ jobs:
       # emit the standalone output. Build with layer caching; load into the local
       # daemon so the smoke test can run it.
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           load: true

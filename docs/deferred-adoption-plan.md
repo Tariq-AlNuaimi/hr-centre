@@ -137,17 +137,20 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   improvement to `scripts/scaffold-entity.mjs`, not a wasp adoption.
 - **Effort:** S (study). 
 
-## 11. specialist-agents — stack-aware review agent seeds
+## 11. specialist-agents — stack-aware review agent seeds ✅ DROPPED (2026-07-03)
 - **What:** Specialist subagent seeds (`nextjs-pro` / `postgres-pro` /
   `prisma-expert`) as one optional stack-aware review agent (cat 03).
 - **Why deferred:** The review rail (native `/code-review` diff gate +
   `senior-code-reviewer` breadth pass + the A4 reviewer lenses) covers the ground;
   a specialist agent is additive polish.
-- **Trigger:** we want one optional stack-aware review agent layered on the existing
-  reviewers.
-- **Disposition:** **WATCH.** Adopt as a single composed `.claude/agents/*` seed, not
-  a fleet; must not duplicate the existing reviewer lenses.
-- **Effort:** S–M. 
+- **Disposition:** **DROPPED (session 14).** Investigation confirmed the niche is
+  already fully covered: `senior-code-reviewer` reads CLAUDE.md/SECURITY.md/`docs/decisions`
+  and treats each `eslint-rules/*` rule at `error` as an enumerated Next.js/Prisma/Postgres
+  invariant — a specialist seed would duplicate those lenses by construction, violating this
+  item's own guardrail ("must not duplicate existing reviewer lenses"). Recorded as a `dropped`
+  line in `docs/findings-register.md`. Re-open only if a concrete non-duplicative review niche
+  appears.
+- **Effort:** S–M (not spent). 
 
 ---
 
@@ -165,9 +168,12 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
 | 8 | citus | cat-07 scale trigger | WATCH | L | yes (infra) |
 | 9 | sonarqube-mcp | `/handoff` to SonarQube team | ON-HANDOFF | S | no |
 | 10 | wasp | `/scaffold-entity` ergonomics pass | WATCH/DROP (study) | S | no |
-| 11 | specialist-agents | want 1 stack-aware reviewer | WATCH | S–M | no |
+| 11 | specialist-agents | ~~want 1 stack-aware reviewer~~ | **DROPPED (2026-07-03)** — niche filled by senior-code-reviewer | — | no |
 
-**None are actionable today** — no trigger has fired. Nearest-term candidates are
+**Session 14 update:** item **#11 (specialist-agents) was adjudicated and DROPPED**
+(niche already filled by `senior-code-reviewer` — see `docs/findings-register.md`),
+leaving **10** live tracked-deferred items. Of those 10, **none are actionable today** —
+no trigger has fired. Nearest-term candidates are
 the two `/handoff`-gated items (#2 lhci-ci, #9 sonarqube-mcp), which activate the
 moment the fork is handed to a team with CI. When any trigger fires, re-promote that
 single row via `/blueprint` and record the adopt/drop verdict as an ADR line or a
