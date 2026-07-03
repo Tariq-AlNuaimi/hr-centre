@@ -1,6 +1,5 @@
 "use client";
 
-import { Card, Typography, App } from "antd";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -9,14 +8,14 @@ import { z } from "zod";
 import { apiClient } from "@/lib/api-client";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { Button, buttonVariants } from "@/components/ui/button";
-
-const { Title, Paragraph } = Typography;
+import { Card, CardContent } from "@/components/ui/card";
+import { useNotify } from "@/hooks/use-notify";
 
 function ResetPasswordForm() {
   const t = useTranslations("auth");
   const router = useRouter();
   const locale = useLocale();
-  const { message } = App.useApp();
+  const notify = useNotify();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [loading, setLoading] = useState(false);
@@ -39,19 +38,21 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <Card style={{ width: 400, maxWidth: "100%" }}>
-        <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
-          {t("resetPassword")}
-        </Title>
-        <Paragraph style={{ textAlign: "center" }}>
-          {t("resetInvalidOrExpired")}
-        </Paragraph>
-        <Link
-          href={`/${locale}/forgot-password`}
-          className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
-        >
-          {t("requestNewLink")}
-        </Link>
+      <Card className="w-full max-w-[400px]">
+        <CardContent className="p-6">
+          <h1 className="mb-6 text-center text-h4 font-semibold text-card-foreground">
+            {t("resetPassword")}
+          </h1>
+          <p className="text-center text-card-foreground">
+            {t("resetInvalidOrExpired")}
+          </p>
+          <Link
+            href={`/${locale}/forgot-password`}
+            className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
+          >
+            {t("requestNewLink")}
+          </Link>
+        </CardContent>
       </Card>
     );
   }
@@ -66,42 +67,44 @@ function ResetPasswordForm() {
         token,
         newPassword: values.newPassword,
       });
-      message.success(t("resetSuccess"));
+      notify.success(t("resetSuccess"));
       router.push(`/${locale}/login`);
     } catch (e) {
-      message.error((e as Error).message || t("resetFailed"));
+      notify.error((e as Error).message || t("resetFailed"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <Card style={{ width: 400, maxWidth: "100%" }}>
-      <Title level={3} style={{ textAlign: "center", marginBottom: 24 }}>
-        {t("resetPassword")}
-      </Title>
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
-          <TextField
-            name="newPassword"
-            label={t("password")}
-            type="password"
-            autoComplete="new-password"
-          />
-          <TextField
-            name="confirmPassword"
-            label={t("confirmPassword")}
-            type="password"
-            autoComplete="new-password"
-          />
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
-            {t("resetPassword")}
-          </Button>
-        </form>
-      </Form>
+    <Card className="w-full max-w-[400px]">
+      <CardContent className="p-6">
+        <h1 className="mb-6 text-center text-h4 font-semibold text-card-foreground">
+          {t("resetPassword")}
+        </h1>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
+          >
+            <TextField
+              name="newPassword"
+              label={t("password")}
+              type="password"
+              autoComplete="new-password"
+            />
+            <TextField
+              name="confirmPassword"
+              label={t("confirmPassword")}
+              type="password"
+              autoComplete="new-password"
+            />
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {t("resetPassword")}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
     </Card>
   );
 }

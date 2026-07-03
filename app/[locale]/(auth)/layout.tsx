@@ -1,89 +1,46 @@
-"use client";
-
-import { Typography, theme } from "antd";
 import { brand } from "@/brand.config";
-
-const { Title, Paragraph, Text } = Typography;
 
 /**
  * Split-screen auth shell: a branded panel beside the form. The panel carries
  * the brand gradient + mark + value line (white-labelled from brand.config); it
  * collapses on small screens so the form stays front-and-centre on mobile.
- * Tokens only — gradient is colorPrimary → colorPrimaryActive (no raw hex).
+ * Tokens only — gradient is the primary token faded (no raw hex).
  */
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { token } = theme.useToken();
-
   return (
-    <div style={{ minHeight: "100vh", display: "flex" }}>
-      <aside
-        className="auth-brand-panel"
-        style={{
-          flex: "1 1 0",
-          background: `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryActive} 100%)`,
-          color: token.colorTextLightSolid,
-          padding: 48,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div className="flex min-h-screen">
+      <aside className="auth-brand-panel flex flex-1 flex-col justify-between bg-gradient-to-br from-primary to-primary/80 p-12 text-primary-foreground">
+        <div className="flex items-center gap-3">
           <span
             aria-hidden
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              inlineSize: 36,
-              blockSize: 36,
-              borderRadius: token.borderRadius,
-              background: "rgba(255, 255, 255, 0.16)",
-              color: token.colorTextLightSolid,
-              fontSize: 18,
-              fontWeight: 700,
-            }}
+            className="inline-flex size-9 items-center justify-center rounded-md bg-primary-foreground/15 text-lg font-bold text-primary-foreground"
           >
             {brand.monogram}
           </span>
-          <Text strong style={{ color: token.colorTextLightSolid, fontSize: 18 }}>
+          <span className="text-lg font-bold text-primary-foreground">
             {brand.appName}
-          </Text>
+          </span>
         </div>
 
-        <div style={{ maxWidth: 440 }}>
-          <Title
-            level={2}
-            style={{ color: token.colorTextLightSolid, marginBlockEnd: 12 }}
-          >
+        <div className="max-w-[440px]">
+          <h1 className="mb-3 text-h2 font-bold text-primary-foreground">
             {brand.appName}
-          </Title>
-          <Paragraph
-            style={{ color: "rgba(255, 255, 255, 0.82)", fontSize: 16, marginBlockEnd: 0 }}
-          >
+          </h1>
+          <p className="m-0 text-base text-primary-foreground/80">
             {brand.description}
-          </Paragraph>
+          </p>
         </div>
 
-        <Text style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: 13 }}>
+        <p className="m-0 text-sm text-primary-foreground/60">
           © {brand.appName}
-        </Text>
+        </p>
       </aside>
 
-      <main
-        style={{
-          flex: "1 1 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 24,
-          background: token.colorBgLayout,
-        }}
-      >
+      <main className="flex flex-1 items-center justify-center bg-background p-6">
         {children}
       </main>
     </div>
