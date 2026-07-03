@@ -41,7 +41,7 @@
     {
       "skill": "design-qa",
       "keywords": ["does it match the design", "ui audit", "a11y", "accessibility", "visual regression"],
-      "paths": ["app/globals.css", "app/tokens.css", "antd-theme.ts"],
+      "paths": ["app/globals.css", "app/tokens.css", "**/antd-theme.ts"],
       "reason": "Fidelity/a11y questions are Tier 1 of QA; theme/token edits invalidate every screen."
     },
     {

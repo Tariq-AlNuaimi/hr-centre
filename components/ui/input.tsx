@@ -16,7 +16,11 @@ export const Input = React.forwardRef<
     ref={ref}
     type={type ?? "text"}
     className={cn(
-      "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive",
+      // `appearance-none` (+ the search-cancel reset) strips native UA chrome:
+      // Preflight is OFF during the AntD coexistence slice, so every native-element
+      // components/ui/* primitive compensates locally until C4 (see button.tsx).
+      // type="search" is the worst case — WebKit's searchfield corners + cancel "×".
+      "appearance-none [&::-webkit-search-cancel-button]:appearance-none flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-destructive aria-[invalid=true]:focus-visible:ring-destructive",
       className,
     )}
     {...props}

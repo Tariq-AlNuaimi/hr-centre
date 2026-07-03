@@ -85,6 +85,26 @@ Two findings on `a61d3d7..HEAD` (reviewer ran a live Chromium render, not just s
 - Discarded (conf 60): `npm run scan`/`lhci` use `npx <pkg>@latest` (unpinned) — optional ad-hoc
   dev tools, not in any gate; needs an operator ruling to promote.
 
+## Senior-review outcome (post-push, session 3)
+Reviewer ran live: 127/127 tests, tsc + eslint clean, no new audit advisories; hook
+verified non-blocking + fail-silent against the real CLI schema. 5 findings, none
+blocking. **Fixed this session:** [Med] `input.tsx` native UA chrome → added
+`appearance-none` + search-cancel reset (the one live defect — DataTable search box
+uses `type="search"`); [Med] dead `design-qa` rule → `**/antd-theme.ts` glob; [Low]
+shadowed `--ring` in tokens.css → renamed the dead shadow token to `--shadow-ring`.
+**Scheduled (do in C3 prep — both Low, both in not-yet-consumed code):**
+1. **Lockstep-test coverage gap** — `tests/contracts/design-tokens.test.ts`
+   `SEMANTIC_VARS` + the dark-override loop omit `--card-foreground`,
+   `--muted-foreground`, `--destructive`, `--ring`; extend both so a dropped dark
+   override fails the suite (currently true-by-inspection, unguarded).
+2. **FormField footguns** — `components/shared/FormField.tsx` / `components/ui/form.tsx`
+   (zero callers today): (a) `TextFieldProps` must also omit `onChange|onBlur|value|ref`
+   (spread order lets a caller silently clobber RHF wiring); (b) `FormControl`
+   `aria-describedby` points at a non-existent id when no `<FormDescription>` renders
+   (axe fail) — gate it on a description actually being present.
+Discarded (conf <80): DataTable `aria-sort` on `<th>`, `<select>`/filter-checkbox
+native chrome, ConfirmAction narrower prop surface (no callers use the dropped props).
+
 ## In flight / NEXT (parallelizable now, per operator directive 2)
 - **C3 — screen migration** is now UNBLOCKED (C2 primitives complete). Sweep
   `app/[locale]/**` screen by screen: DashboardContent, AuditLogClient, profile,
