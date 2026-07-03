@@ -63,7 +63,11 @@ async function auditScreen(
   await page.waitForLoadState("networkidle").catch(() => {});
   expect(res, `${screen.name} should get a response`).toBeTruthy();
 
-  if (!expectLoginBounce) {
+  // The login screen legitimately lives AT /login, so the "did we bounce to
+  // login?" guard must not fire for it (it would always fail). Skip the guard
+  // when the audited screen's own path is the login route.
+  const isLoginScreen = /\/login(\?|$)/.test(screen.path);
+  if (!expectLoginBounce && !isLoginScreen) {
     await expect(
       page,
       `${screen.name} should not bounce to /login (auth/session problem, not a design finding)`,

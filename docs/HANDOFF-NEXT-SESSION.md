@@ -4,6 +4,30 @@
 all work below is **pushed** (verify: `git rev-list --count @{u}..HEAD` → 0).
 Do NOT merge to `main` unless the operator asks.
 
+## ✅ DONE this session (DB session, 2026-07-03) — NA1 + NA2
+
+**NA1 (DB items) — CLEARED, but via a LOCAL Postgres, not Neon.** Operator approved
+Neon provisioning; on execution the Neon *API* works (throwaway project created + torn
+down, **0 orphans**) but raw Postgres **:5432 egress is blocked** by this container's
+HTTPS-only proxy, so a Neon branch can be created but never connected to from here. A
+**local `postgresql-16` cluster** (already installed under `/usr/lib/postgresql/16`,
+cluster `16/main` — correcting P-08's "no local PG" claim) was used instead:
+- `prisma migrate deploy` ✅ · `prisma db seed` ✅ (admin@example.com)
+- `test:integration` ✅ **3 pass / 0 skip** (the 3 DB-gated cases now execute)
+- `manual-uat:users` ✅ · lean `uat` ✅ **37 passed**
+- Fixed a latent bug found by the first real `npm run uat`: `design-a11y.uat.ts`
+  wrongly applied the "did not bounce to /login" guard to the login screen itself.
+- Playwright **MCP** is still unusable in a harnessed session (harness-injected
+  `/tmp/mcp-config-*.json` overrides the repo `.mcp.json` P-05 fix); the **project
+  Playwright** is the working browser driver (drove all 37 specs). See HARNESS-PROBLEMS §F.
+
+**NA2 (env-gaps) — adjudicated.** Operator chose **wire the semgrep bootstrap only**
+(P-11): the `/audit` skill SAST step now self-installs semgrep (`pipx` → `pip --user`
+→ Docker). Install verified here; runtime still blocked by a broken system
+`cryptography`/pyo3 binding in this base image (documented, not repo-fixable). P-09 and
+the four pure-env gaps (P-12/13/14/16) stay **documented/accepted** — not repo-fixable.
+`rebrand` live stays skipped (P-17). See HARNESS-PROBLEMS.md §C/§F for the full record.
+
 ## Already done & pushed (do not redo)
 Commits land the remediation of `docs/HARNESS-PROBLEMS.md` P-01…P-06:
 - **P-01** lint: 3 React-Compiler warnings cleared via justified single-line

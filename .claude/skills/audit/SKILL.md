@@ -41,10 +41,21 @@ the operator dropped foreign code into.
      recommend `npm install` so the tree is resolvable, then it can be re-run.
 
 3. **SAST — Semgrep.**
+   - **Bootstrap first (P-11).** If `semgrep` isn't on `PATH`, self-install before
+     falling back to Docker — `pipx` is the cleanest (isolated venv, no global
+     pollution), with `pip --user` as a fallback:
+     `command -v semgrep >/dev/null || pipx install semgrep || pip install --user semgrep`
+     (pypi.org is reachable in the Claude Code web sandbox's egress allowlist, so the
+     *install* succeeds; `~/.local/bin` must be on `PATH`). This removes the "SAST leg
+     silently absent" gap the harness trials hit — only reach for the Docker image if the
+     install itself is blocked. **Known container caveat:** in some base images (incl. this
+     one) semgrep installs but crashes at runtime on a broken system `cryptography`/pyo3
+     binding (`_cffi_backend` missing → `PanicException`); that's a base-image defect a
+     `pip` bootstrap can't fix — fall back to the `semgrep/semgrep` Docker image there.
    - `semgrep --config p/javascript --config p/typescript --config p/nextjs --config p/react --config p/owasp-top-ten --config p/secrets <path>`
      (the exact rulesets `sast.yml` uses).
-   - **No local semgrep binary?** Run it via Docker — volume-mount the target path
-     and point `--config` at the mount, e.g.
+   - **Still no semgrep (install blocked)?** Run it via Docker — volume-mount the target
+     path and point `--config` at the mount, e.g.
      `docker run --rm -v "$PWD:/src" semgrep/semgrep semgrep --config auto /src`
      (swap `--config auto` for the explicit `p/*` rulesets above to mirror `sast.yml`).
    - Reports findings with `file:line` and rule id.
@@ -90,8 +101,9 @@ make clear the audit is **incomplete** until it can:
 
 - **gitleaks** — macOS: `brew install gitleaks`; else download from
   https://github.com/gitleaks/gitleaks/releases
-- **semgrep** — `pip install semgrep` or `brew install semgrep`, or run the
-  `semgrep/semgrep` Docker image
+- **semgrep** — `pipx install semgrep` (preferred; isolated venv), or
+  `pip install --user semgrep` / `brew install semgrep`, or run the
+  `semgrep/semgrep` Docker image (the SAST step above self-bootstraps via `pipx` first)
 - **npm** — ships with Node; if missing, install Node.
 
 ## Output
