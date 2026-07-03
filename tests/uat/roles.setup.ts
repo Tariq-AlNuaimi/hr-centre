@@ -121,8 +121,11 @@ for (const role of nonAdminRoles) {
     // 2) Log in through the UI (same flow as auth.setup.ts).
     try {
       await page.goto(`/${defaultLocale}/login`);
-      await page.locator("#email").fill(email);
-      await page.locator("#password").fill(password);
+      // Select by field name, not id — the shadcn FormControl id is a generated
+      // useId(), not "email" (mirrors auth.setup.ts post-C2/C3). Without this the
+      // per-role login silently times out and the whole permission matrix skips.
+      await page.locator('input[name="email"]').fill(email);
+      await page.locator('input[name="password"]').fill(password);
       await page.locator('button[type="submit"]').click();
       await page.waitForURL(new RegExp(`/${defaultLocale}/?$`), { timeout: 60_000 });
     } catch (e) {
