@@ -385,6 +385,193 @@ async function scanDbStructure() {
   return sync === "skip" ? ok(summary, { warn: why }) : ok(summary);
 }
 
+// -- ADR-025 waiver helper (shared by the A1 deterministic gates) -----------
+// Every A1 gate (knip / jscpd / coverage / size-limit) gets the SAME escape
+// hatch as the db/docker gates: an explicit `<gate>Ack` key in
+// project.config.json PLUS an ADJUDICATED line in docs/findings-register.md --
+// never a silent skip (ADR-025). Returns:
+//   null                   -> no ack; run the gate normally
+//   { ok: true,  reason }  -> ack + adjudicated register line; gate waived
+//   { ok: false, out }     -> ack set but NO adjudicated line; hard RED
+// The adjudicated line must carry the ack key (or ADR-025) + `status: adjudicated`.
+function ackWaiver(cfg, ackKey, area) {
+  const val = cfg[ackKey];
+  if (!val) return null;
+  const ADJ = new RegExp(
+    `^-\\s*\\d{4}-\\d{2}-\\d{2}\\b.*\\b(ADR-025|${ackKey})\\b.*\\bstatus:\\s*adjudicated`,
+    "i"
+  );
+  let reg = "";
+  try { reg = readFileSync("docs/findings-register.md", "utf8"); } catch {}
+  if (reg.split("\n").some((l) => ADJ.test(l))) return { ok: true, reason: String(val) };
+  return {
+    ok: false,
+    out:
+      `"${ackKey}" is set in project.config.json but docs/findings-register.md has no ADJUDICATED ${ackKey}/ADR-025 line.\n` +
+      `  The escape hatch is never silent (ADR-025): add a register line\n` +
+      `  \`- YYYY-MM-DD — [maintainable/${area}] ${ackKey}: <why waived> — <owner> — status: adjudicated(<date>)\`\n` +
+      `  (the operator adjudicates it), or remove "${ackKey}" and satisfy the ${area} gate.`,
+  };
+}
+function readCfg() {
+  try { return JSON.parse(readFileSync("project.config.json", "utf8")); } catch { return {}; }
+}
+
+// -- knip dead-code / unused-export gate (ADOPT.md A1; cats 08, 13) -----------
+// knip flags unused files, exports, and dependencies against knip.json (which
+// declares the fork-facing public API + harness as entry roots). Fast (~1.5s)
+// and cache-free, so it lives in the fast /ship loop. Degrades to a WARN when
+// knip is not installed (mirrors gitleaks/trivy). Waiver: knipAck + register.
+async function scanKnip() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out, extra = {}) => ({ name: "knip", ok: true, out, secs: secs(), ...extra });
+  const red = (out) => ({ name: "knip", ok: false, out, secs: secs() });
+  const w = ackWaiver(readCfg(), "knipAck", "knip");
+  if (w) return w.ok ? ok(`dead-code gate waived: ${w.reason}`) : red(w.out);
+  const bin = "node_modules/.bin/knip";
+  if (!existsSync(bin)) {
+    return ok("knip not installed -- dead-code gate skipped", {
+      warn: "knip: NOT RUN (npm i -D knip). Dead-code / unused-export detection is skipped until installed.",
+    });
+  }
+  // knip loads prisma.config.ts, which reads DATABASE_URL -- supply a throwaway
+  // value when the env has none so the load doesn't error the whole run.
+  const env = process.env.DATABASE_URL ? {} : { DATABASE_URL: "postgresql://unused:unused@localhost:5432/unused" };
+  const r = await run("knip", bin, ["--no-progress"], env);
+  if (r.ok) return ok("clean (no unused files / exports / deps)");
+  return red(
+    "knip found dead code / unused exports / unused dependencies (Five Pillars: Maintainable):\n" +
+      r.out.split("\n").filter((l) => l.trim()).slice(0, 25).map((l) => `  ${l}`).join("\n") +
+      "\n  Fix: delete the dead code, or refine knip.json entry/ignore for genuine fork-facing surface.\n" +
+      "  Waive with \"knipAck\" in project.config.json + an adjudicated ADR-025/knipAck line in docs/findings-register.md."
+  );
+}
+
+// -- jscpd duplication gate (ADOPT.md A1; cats 08, 13) -----------------------
+// Copy-paste detection over product code (app/components/lib/hooks). Fails when
+// duplicated lines exceed THRESHOLD %. Trivially fast (~0.1s). Baseline ~0.4%;
+// threshold set at 3% so refactors stay green while a copy-paste spree blocks.
+// Degrades to a WARN when jscpd is absent. Waiver: jscpdAck + register.
+const JSCPD_THRESHOLD = 3;
+async function scanDuplication() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out, extra = {}) => ({ name: "duplication", ok: true, out, secs: secs(), ...extra });
+  const red = (out) => ({ name: "duplication", ok: false, out, secs: secs() });
+  const w = ackWaiver(readCfg(), "jscpdAck", "duplication");
+  if (w) return w.ok ? ok(`duplication gate waived: ${w.reason}`) : red(w.out);
+  const bin = "node_modules/.bin/jscpd";
+  if (!existsSync(bin)) {
+    return ok("jscpd not installed -- duplication gate skipped", {
+      warn: "jscpd: NOT RUN (npm i -D jscpd). Copy-paste detection is skipped until installed.",
+    });
+  }
+  const targets = ["app", "components", "lib", "hooks"].filter((d) => existsSync(d));
+  const r = await run("duplication", bin, [
+    "--min-lines", "8", "--min-tokens", "60", "--threshold", String(JSCPD_THRESHOLD),
+    "--reporters", "consoleFull", "--silent", "true", ...targets,
+  ]);
+  if (r.ok) return ok(`clean (<= ${JSCPD_THRESHOLD}% duplicated lines)`);
+  return red(
+    `jscpd duplication exceeds ${JSCPD_THRESHOLD}% (Five Pillars: Maintainable):\n` +
+      r.out.split("\n").filter((l) => l.trim()).slice(-20).map((l) => `  ${l}`).join("\n") +
+      "\n  Fix: extract the duplicated block into a shared primitive/util.\n" +
+      "  Waive with \"jscpdAck\" in project.config.json + an adjudicated ADR-025/jscpdAck line in docs/findings-register.md."
+  );
+}
+
+// -- coverage-floor gate (ADOPT.md A1; cats 09, 16) --------------------------
+// Runs the contract suite under node's built-in V8 coverage (zero extra deps)
+// and lets node enforce the floor: it exits non-zero if lib/** coverage drops
+// below the thresholds. Scoped to lib/** (the business logic the contract suite
+// is designed to cover) so a new untested lib file drags the aggregate down.
+// Baseline: lines 73.7 / funcs 83.1 / branch 95.0 -> floors set with margin
+// below. Degrades to a WARN on Node < 22.13 (no --test-coverage-* flags).
+// Waiver: coverageAck + register. Runs in phase A (parallel; ~3.8s).
+const COVERAGE_FLOORS = { lines: 65, functions: 70, branches: 80 };
+function nodeSupportsCoverageThreshold() {
+  const m = /^v(\d+)\.(\d+)\./.exec(process.version);
+  if (!m) return false;
+  const [maj, min] = [Number(m[1]), Number(m[2])];
+  return maj > 22 || (maj === 22 && min >= 13);
+}
+async function scanCoverage() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out, extra = {}) => ({ name: "coverage", ok: true, out, secs: secs(), ...extra });
+  const red = (out) => ({ name: "coverage", ok: false, out, secs: secs() });
+  const w = ackWaiver(readCfg(), "coverageAck", "coverage");
+  if (w) return w.ok ? ok(`coverage floor waived: ${w.reason}`) : red(w.out);
+  if (!nodeSupportsCoverageThreshold()) {
+    return ok(`coverage floor skipped (Node ${process.version} < 22.13, no --test-coverage-* flags)`, {
+      warn: "coverage: NOT ENFORCED -- upgrade Node to >=22.13 for the built-in coverage-threshold flags.",
+    });
+  }
+  const r = await run("coverage", process.execPath, [
+    "--experimental-test-coverage",
+    "--test-coverage-include=lib/**",
+    `--test-coverage-lines=${COVERAGE_FLOORS.lines}`,
+    `--test-coverage-functions=${COVERAGE_FLOORS.functions}`,
+    `--test-coverage-branches=${COVERAGE_FLOORS.branches}`,
+    "--experimental-test-module-mocks",
+    "--import", "tsx",
+    "--test", "tests/contracts/*.test.ts",
+  ]);
+  if (r.ok) {
+    const summary = (r.out.split("\n").find((l) => /all files/.test(l)) || "").trim();
+    return ok(
+      `lib/** >= floor (lines ${COVERAGE_FLOORS.lines} / funcs ${COVERAGE_FLOORS.functions} / branch ${COVERAGE_FLOORS.branches})` +
+        (summary ? ` -- ${summary.replace(/^#\s*/, "")}` : "")
+    );
+  }
+  const threshLines = r.out.split("\n").filter((l) => /does not meet threshold/i.test(l));
+  const detail = threshLines.length
+    ? "lib/** coverage BELOW floor (Five Pillars: High-Quality / testing):\n" +
+      threshLines.map((l) => `  ${l.replace(/^#\s*/, "").trim()}`).join("\n") +
+      "\n  Fix: add tests for the uncovered lib/ code, or lower the floor with a justification.\n" +
+      "  Waive with \"coverageAck\" in project.config.json + an adjudicated ADR-025/coverageAck line in docs/findings-register.md."
+    : "the contract suite FAILED under the coverage run (see the contract-tests phase for detail):\n" +
+      r.out.split("\n").filter((l) => l.trim()).slice(-15).map((l) => `  ${l}`).join("\n");
+  return red(detail);
+}
+
+// -- size-limit bundle-budget gate (ADOPT.md A1; cat 12) ---------------------
+// Measures the gzipped size of the built client JS (.next/static/chunks, via
+// .size-limit.json) against a budget. Runs in PHASE B, AFTER the production
+// build, because it reads the build artifact. Fast (~0.2s). Degrades to a WARN
+// when size-limit is absent or .next is missing. Waiver: sizeLimitAck + register.
+async function scanSizeLimit() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out, extra = {}) => ({ name: "size-limit", ok: true, out, secs: secs(), ...extra });
+  const red = (out) => ({ name: "size-limit", ok: false, out, secs: secs() });
+  const w = ackWaiver(readCfg(), "sizeLimitAck", "size-limit");
+  if (w) return w.ok ? ok(`bundle-budget gate waived: ${w.reason}`) : red(w.out);
+  const bin = "node_modules/.bin/size-limit";
+  if (!existsSync(bin) || !existsSync(".size-limit.json")) {
+    return ok("size-limit not configured -- bundle-budget gate skipped", {
+      warn: "size-limit: NOT RUN (needs the size-limit dep + .size-limit.json). Bundle budget is not enforced.",
+    });
+  }
+  if (!existsSync(".next/static/chunks")) {
+    return ok("no .next build -- bundle-budget gate skipped", {
+      warn: "size-limit: NOT RUN (.next/static/chunks missing; the build did not emit client chunks).",
+    });
+  }
+  const r = await run("size-limit", bin, []);
+  if (r.ok) {
+    const size = (r.out.split("\n").find((l) => /Size:/.test(l)) || "").trim();
+    return ok(`within budget${size ? " -- " + size : ""}`);
+  }
+  return red(
+    "client bundle EXCEEDS the size budget (.size-limit.json) (Five Pillars: Speed / performance):\n" +
+      r.out.split("\n").filter((l) => l.trim()).slice(0, 15).map((l) => `  ${l}`).join("\n") +
+      "\n  Fix: trim the bundle (dynamic import, drop a heavy dep), or raise the budget with justification.\n" +
+      "  Waive with \"sizeLimitAck\" in project.config.json + an adjudicated ADR-025/sizeLimitAck line in docs/findings-register.md."
+  );
+}
+
 // -- Docker image-build gate (ADR-030 "Docker as a standard build artifact") --
 // Directive D2: the container image is a standard, mandatory build artifact --
 // every app must always be able to produce a bootable, scanned image. Scoped by
@@ -567,7 +754,7 @@ const fail = (r) => {
 };
 
 const t0 = Date.now();
-console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability | wave-offs | tier | blueprint | db-structure) ...");
+console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability | wave-offs | tier | blueprint | db-structure | knip | duplication | coverage) ...");
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
@@ -578,7 +765,7 @@ const blueprint = scanBlueprint();
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
 
-let [tsc, lint, contract, components, dbStructure] = await Promise.all([
+let [tsc, lint, contract, components, dbStructure, knip, duplication, coverage] = await Promise.all([
   typecheck(),
   // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
   // hash, NOT on the source of imported rule plugins. After editing a rule under
@@ -588,6 +775,12 @@ let [tsc, lint, contract, components, dbStructure] = await Promise.all([
   run("contract tests", "npm", ["test"]),
   run("component tests", "npm", ["run", "test:components"]),
   scanDbStructure(),
+  // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
+  // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
+  // when its tool is absent and carries an ADR-025 <gate>Ack + register waiver.
+  scanKnip(),
+  scanDuplication(),
+  scanCoverage(),
 ]);
 
 // stale .next/types trap: TS2307 pointing into .next means the build cache is
@@ -598,17 +791,27 @@ if (!tsc.ok && /TS2307/.test(tsc.out) && /\.next\/types/.test(tsc.out + " ") ) {
   tsc = await typecheck();
 }
 
-for (const r of [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, dbStructure]) report(r);
+for (const r of [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, dbStructure, knip, duplication, coverage]) report(r);
 if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
 if (dbStructure.warn) console.warn(`  note: db-structure — ${dbStructure.warn}`);
-const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, dbStructure].find((r) => !r.ok);
+if (knip.warn) console.warn(`  note: knip — ${knip.warn}`);
+if (duplication.warn) console.warn(`  note: duplication — ${duplication.warn}`);
+if (coverage.warn) console.warn(`  note: coverage — ${coverage.warn}`);
+const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, dbStructure, knip, duplication, coverage].find((r) => !r.ok);
 if (redA) fail(redA);
 
-console.log("ship: phase B (build -> gitleaks -> npm audit) ...");
+console.log("ship: phase B (build -> size-limit -> gitleaks -> npm audit) ...");
 
 const build = await run("build", "npm", ["run", "build"], { NODE_ENV: "production" });
 report(build);
 if (!build.ok) fail(build);
+
+// size-limit runs AFTER the build (it measures .next/static/chunks). A1 bundle-
+// budget gate (ADOPT.md; cat 12); degrades to a WARN when absent, sizeLimitAck waiver.
+const sizeLimit = await scanSizeLimit();
+report(sizeLimit);
+if (sizeLimit.warn) console.warn(`  note: size-limit — ${sizeLimit.warn}`);
+if (!sizeLimit.ok) fail(sizeLimit);
 
 const gitleaks = await run("gitleaks", "gitleaks", ["detect", "--no-banner", "--redact"]);
 if (!gitleaks.ok && /ENOENT/.test(gitleaks.out)) {
@@ -672,5 +875,5 @@ try {
 } catch { /* surfacing is best-effort */ }
 
 console.log(
-  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + build + gitleaks + npm audit${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
+  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
 );

@@ -23,7 +23,7 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html>
+    <html lang="en">
       <body
         style={{
           display: "flex",

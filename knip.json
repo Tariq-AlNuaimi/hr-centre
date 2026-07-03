@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "scripts/**/*.{mjs,ts}",
+    ".claude/hooks/**/*.mjs",
+    ".claude/statusline.mjs",
+    "eslint-rules/**/*.mjs",
+    "tests/**/*.{ts,tsx,mjs}",
+    "i18n/**/*.{ts,tsx}",
+    "lighthouserc.cjs",
+    "components/shared/**/*.{ts,tsx}",
+    "components/ui/**/*.{ts,tsx}",
+    "hooks/**/*.{ts,tsx}",
+    "lib/**/*.{ts,tsx}",
+    "types/**/*.{ts,tsx}",
+    "brand.config.ts"
+  ],
+  "ignoreDependencies": [
+    "pg",
+    "@types/pg",
+    "playwright",
+    "@typescript-eslint/parser",
+    "jscpd"
+  ],
+  "ignoreBinaries": [
+    "pg_dump",
+    "psql"
+  ]
+}

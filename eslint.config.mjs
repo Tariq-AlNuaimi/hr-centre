@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import jsxA11y from "eslint-plugin-jsx-a11y";
 import rihalTemplate from "./eslint-rules/index.mjs";
 
 const eslintConfig = defineConfig([
@@ -44,6 +45,61 @@ const eslintConfig = defineConfig([
       // for the raw client. (tests/** + scripts/** are exempt below.)
       "rihal-template/no-prisma-unfiltered-import": "error",
     },
+  },
+
+  // Static accessibility gate (ADOPT.md A1; cat 22). eslint-plugin-jsx-a11y's
+  // recommended set catches the mechanical a11y regressions (missing alt text,
+  // invalid ARIA, non-interactive elements with handlers, label-less controls)
+  // at lint time -- the static complement to the runtime axe pass in /design-qa.
+  // Scoped to JSX/TSX only. At error so a fork can't merge an inaccessible
+  // control; the escape is the standard single-line `// eslint-disable-next-line
+  // jsx-a11y/<rule>` (a genuine false positive), never a silent config removal.
+  // NOTE: eslint-config-next already REGISTERS the jsx-a11y plugin, so this block
+  // must NOT re-declare it (flat config forbids redefining a plugin) -- it only
+  // turns the recommended ruleset ON. The rule map is read from the plugin's own
+  // flatConfigs.recommended so it tracks the plugin version.
+  {
+    files: ["**/*.{jsx,tsx}"],
+    rules: { ...jsxA11y.flatConfigs.recommended.rules },
+  },
+  // Three recommended rules have PRE-EXISTING hits in the UI layer that Workstream
+  // C (the AntD->Tailwind replatform, ADR-029) is actively rewriting -- the
+  // interactive command-palette shell (components/layout/CommandPalette.tsx) and a
+  // shadcn label primitive (components/ui/label.tsx). Those files are owned by the
+  // UI-layer agents, so this A1 gate keeps the three rules at WARN (surfaced in
+  // /ship + review, non-blocking) rather than editing another workstream's files.
+  // Same precedent as the no-explicit-any / set-state-in-effect warns below. Every
+  // OTHER a11y rule stays at error and blocks new violations. TODO(C4): flip these
+  // back to error once the replatform lands accessible replacements.
+  {
+    files: ["**/*.{jsx,tsx}"],
+    rules: {
+      "jsx-a11y/no-static-element-interactions": "warn",
+      "jsx-a11y/no-autofocus": "warn",
+      "jsx-a11y/label-has-associated-control": "warn",
+    },
+  },
+
+  // Complexity metric gate (ADOPT.md A1; cat 09 quality). A quantified cyclomatic
+  // complexity ceiling turns "keep functions simple" from a vibe into a gate.
+  // Scoped to PRODUCT runtime code (app/components/lib/hooks/i18n/middleware) --
+  // not the build/CI tooling under scripts/ + .claude/hooks/, whose codegen and
+  // scanners are legitimately branchy. Set at 24: just above the current in-scope
+  // maximum (components/shared/DataTable.tsx at 23, a shared primitive owned by the
+  // UI-layer workstream), so the template ships green. TODO(maintainable): tighten
+  // toward ~15 as DataTable is decomposed by the replatform. Waiver: the standard
+  // single-line `// eslint-disable-next-line complexity`.
+  {
+    files: [
+      "app/**/*.{js,jsx,ts,tsx}",
+      "components/**/*.{js,jsx,ts,tsx}",
+      "lib/**/*.{js,ts}",
+      "hooks/**/*.{js,ts,tsx}",
+      "i18n/**/*.{js,ts}",
+      "middleware.ts",
+      "auth.ts",
+    ],
+    rules: { complexity: ["error", 24] },
   },
 
   // Template-level rule relaxations.
