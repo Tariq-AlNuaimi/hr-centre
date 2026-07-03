@@ -158,8 +158,14 @@ export function Chart<T extends Record<string, unknown>>({
             outerRadius="80%"
             label
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={colors[i % colors.length]} />
+            {data.map((d, i) => (
+              // a11y (C3 axe gate): recharts gives each sector role="img" with no
+              // accessible name (svg-img-alt). Label each slice by its name/value.
+              <Cell
+                key={i}
+                fill={colors[i % colors.length]}
+                aria-label={`${String(d[nameKey] ?? "")}: ${String(d[valueKey] ?? "")}`}
+              />
             ))}
           </Pie>
         </PieChart>

@@ -197,9 +197,9 @@ export default function StyleGuidePage() {
           Body text sits on the type scale in <code>app/tokens.css</code> /{" "}
           <code>antd-theme.ts</code>.{" "}
           <span className="text-muted-foreground">Secondary</span>,{" "}
-          <span className="text-emerald-600 dark:text-emerald-400">success</span>,{" "}
-          <span className="text-amber-600 dark:text-amber-400">warning</span>,{" "}
-          <span className="text-red-600 dark:text-red-400">danger</span>, and{" "}
+          <span className="text-emerald-700 dark:text-emerald-400">success</span>,{" "}
+          <span className="text-amber-700 dark:text-amber-400">warning</span>,{" "}
+          <span className="text-red-700 dark:text-red-400">danger</span>, and{" "}
           <span className="font-semibold">strong</span> variants.
         </p>
       </Section>

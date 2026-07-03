@@ -57,7 +57,7 @@ body {
   padding: 2px 6px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
-  color: var(--ant-color-text-tertiary, #8c8c8c);
+  color: var(--ant-color-text-tertiary, #5b6472);
 }
 @media (max-width: 575px) {
   .header-search-label,

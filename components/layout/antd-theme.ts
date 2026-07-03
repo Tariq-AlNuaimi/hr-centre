@@ -125,6 +125,11 @@ export function buildTheme(isDark: boolean): ThemeConfig {
   return {
     token: {
       ...brandTokens,
+      // A11y (C3 axe gate): darken secondary/tertiary text in LIGHT mode so 14px
+      // secondary text and the 12px ⌘K kbd clear WCAG AA (>=4.5:1) on the light
+      // layout (#f7f8fa) and white. Dark mode keeps AntD's derived light-on-dark
+      // defaults (already high-contrast on the dark surfaces).
+      ...(isDark ? {} : { colorTextSecondary: "#5b6472", colorTextTertiary: "#5b6472" }),
       colorBgLayout: n.layout,
       colorBgContainer: n.surface,
       colorBgElevated: n.elevated,

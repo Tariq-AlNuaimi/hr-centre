@@ -76,7 +76,7 @@
   --card: #ffffff;
   --card-foreground: #111827;
   --muted: #f3f4f6;               /* gray-100 */
-  --muted-foreground: #6b7280;    /* gray-500 */
+  --muted-foreground: #5b6472;    /* slate-600ish — WCAG AA (>=4.5:1) on muted surfaces (C3 axe gate) */
   --border: #e5e7eb;              /* gray-200 */
   --input: #d1d5db;               /* gray-300 */
   --ring: var(--brand-primary);

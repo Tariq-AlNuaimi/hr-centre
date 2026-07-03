@@ -21,9 +21,11 @@ setup("authenticate as admin", async ({ page }) => {
 
   await page.goto(`/${defaultLocale}/login`);
 
-  // Ant Design Form.Item name -> input id; these selectors are locale-independent.
-  await page.locator("#email").fill(email);
-  await page.locator("#password").fill(password);
+  // Select by the field `name` (spread from the react-hook-form binding onto the
+  // input) — locale-independent and stable across the C2/C3 migration off AntD,
+  // where the shadcn form control's `id` is a generated useId(), not "email".
+  await page.locator('input[name="email"]').fill(email);
+  await page.locator('input[name="password"]').fill(password);
   await page.locator('button[type="submit"]').click();
 
   // On success the app routes to the dashboard at /<defaultLocale>.
