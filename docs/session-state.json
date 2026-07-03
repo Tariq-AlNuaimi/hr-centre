@@ -6,7 +6,7 @@
   "updated": "2026-07-03",
   "lastShip": {
     "status": "green",
-    "sha": "b17a52d",
+    "sha": "2333c98",
     "date": "2026-07-03"
   },
   "autoSpawn": {
@@ -82,10 +82,10 @@
       "id": "C3",
       "title": "Screen migration (app/[locale]/**)",
       "status": "partial",
-      "commit": "669c62b,e4e33b1",
+      "commit": "669c62b,e4e33b1,79fd6be,1057b79",
       "blockedBy": [],
       "date": "2026-07-03",
-      "note": "7 screens code-migrated (4 forms: login/forgot/reset/profile; 3 tables: users/audit-log/recycling-bin) off AntD Table/Form onto shadcn primitives. REMAINING: components/users/UserColumns.tsx, audit-log filter Selects (no shadcn Select shipped yet), DashboardContent, settings/page, not-found/forbidden/error/style-guide; PER-SCREEN /design-qa (axe serious/critical exit bar) NOT yet run — that is C3’s remaining exit gate."
+      "note": "ALL identified screens now code-migrated off AntD runtime components (session 5 added: built select/switch/card/description-list primitives; migrated audit-log Select filters, settings Card+Descriptions, DashboardContent, style-guide, UserColumns, not-found/forbidden/error). Only TYPE-ONLY ColumnsType bridge imports remain in DataTable-consuming screens (sanctioned C2 pattern, erased at build; C4 drops it). REMAINING C3 EXIT GATE: per-screen /design-qa (axe serious/critical) — still NOT run (needs the app running in a browser); that is the sole open item before C3 = done."
     },
     {
       "id": "C4",
@@ -158,11 +158,11 @@
     {
       "id": "A5",
       "title": "Testing & design depth (9)",
-      "status": "remaining",
-      "commit": "",
+      "status": "partial",
+      "commit": "2333c98",
       "blockedBy": [],
-      "date": "",
-      "note": "unblocked; some items dep C4-tokens"
+      "date": "2026-07-03",
+      "note": "session 5 landed 3 items: fast-check property tests (tests/property/*, 15 props green; surfaced + pinned 2 latent lib/pagination edges as KNOWN-GAP tests), style-dictionary token pipeline seed (tokens/ + npm run tokens:build, additive to tokens.css), slop-gate + manual-a11y (WCAG 2.2 AA) criteria in docs/uat-rubric.md (Tier 1a/1b). REMAINING: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign."
     }
   ],
   "categories": [
@@ -271,8 +271,8 @@
     {
       "id": "18",
       "title": "logical-testing",
-      "status": "remaining",
-      "where": "fast-check property tests (A5)"
+      "status": "done",
+      "where": "fast-check property tests landed (A5·2333c98)"
     },
     {
       "id": "19",
@@ -289,14 +289,14 @@
     {
       "id": "21",
       "title": "design",
-      "status": "remaining",
-      "where": "Figma + style-dictionary + superdesign (A5, dep C)"
+      "status": "partial",
+      "where": "style-dictionary token pipeline seed landed (A5); Figma sub-recipe + superdesign remain"
     },
     {
       "id": "22",
       "title": "uiux",
-      "status": "partial",
-      "where": "jsx-a11y gate done (A1); slop-gate + a11y-manual (A5) remain"
+      "status": "done",
+      "where": "jsx-a11y gate (A1) + slop-gate + WCAG 2.2 AA manual-a11y criteria in uat-rubric (A5)"
     }
   ],
   "seniorReviewLows": [
@@ -392,14 +392,14 @@
       "item": "session-automation",
       "title": "auto-handoff + auto-start",
       "blockedBy": "",
-      "next": "SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default"
+      "next": "Parts 1/2 on; Part 3 auto-spawn TESTED session 5 → hop broken (no working successor) → DISABLED + documented; prompt-checkout fix kept"
     },
     {
       "state": "in-progress",
       "item": "C3",
       "title": "Screen migration",
       "blockedBy": "(unblocked)",
-      "next": "7 screens migrated (forms+tables); remaining screens + per-screen /design-qa (axe exit bar)"
+      "next": "ALL screens code-migrated off AntD runtime (session 5); ONLY per-screen /design-qa (axe serious/critical) remains before C3 = done"
     },
     {
       "state": "remaining",
@@ -416,11 +416,11 @@
       "next": "SHIPPED (a0a9f61): 6 deterministic gates green"
     },
     {
-      "state": "remaining",
+      "state": "in-progress",
       "item": "A5",
       "title": "Testing & design depth (9)",
       "blockedBy": "(unblocked)",
-      "next": "fast-check, record-to-spec, Figma, style-dictionary"
+      "next": "fast-check + style-dictionary + slop/a11y criteria landed (session 5); remaining: qodo-cover, record-to-spec, Figma, superdesign"
     },
     {
       "state": "remaining",
@@ -438,8 +438,9 @@
     }
   ],
   "nextActions": [
-    "C3 screen migration: sweep app/[locale]/** screen by screen; forms -> react-hook-form + zodResolver; /design-qa per screen (axe-clean serious/critical exit bar)",
-    "A1 deterministic gates + A5 testing/design depth (unblocked)",
+    "C3 EXIT GATE: run per-screen /design-qa (axe serious/critical) on the migrated screens — the only item left before C3 = done. Needs the app running (deploy a preview or npm run dev + Playwright).",
+    "C4 (now unblocked by C3 code-migration): retarget no-raw-hex to the @theme block, drop antd + @ant-design/* deps + the type-only ColumnsType bridge, drop the CSP 'unsafe-inline' style exception, rewrite docs/design-recipes.md.",
+    "A5 remaining: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page) the fast-check props pinned.",
     "D RTL verify pass (0.5 session)"
   ]
 }

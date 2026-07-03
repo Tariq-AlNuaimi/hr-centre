@@ -19,17 +19,17 @@ deterministic file instead of reconstructing status from prose.
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (b17a52d, 2026-07-03)._
+_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (2333c98, 2026-07-03)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | 🟡 IN PROGRESS | **D3** Replace AntD w/ Tailwind | — | C1+C2 done; run C3 next |
 | 🟡 IN PROGRESS | **D1** Adopt 22-table recs | — | A2/A3/A4 done; do A1+A5 after C |
-| ✅ DONE | **session-automation** auto-handoff + auto-start | — | SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default |
-| 🟡 IN PROGRESS | **C3** Screen migration | (unblocked) | 7 screens migrated (forms+tables); remaining screens + per-screen /design-qa (axe exit bar) |
+| ✅ DONE | **session-automation** auto-handoff + auto-start | — | Parts 1/2 on; Part 3 auto-spawn TESTED session 5 → hop broken (no working successor) → DISABLED + documented; prompt-checkout fix kept |
+| 🟡 IN PROGRESS | **C3** Screen migration | (unblocked) | ALL screens code-migrated off AntD runtime (session 5); ONLY per-screen /design-qa (axe serious/critical) remains before C3 = done |
 | ⬜ REMAINING | **C4** Harness/guard | C3 | retarget no-raw-hex, drop AntD + CSP style exception |
 | ✅ DONE | **A1** Deterministic gates (6 left) | (unblocked) | SHIPPED (a0a9f61): 6 deterministic gates green |
-| ⬜ REMAINING | **A5** Testing & design depth (9) | (unblocked) | fast-check, record-to-spec, Figma, style-dictionary |
+| 🟡 IN PROGRESS | **A5** Testing & design depth (9) | (unblocked) | fast-check + style-dictionary + slop/a11y criteria landed (session 5); remaining: qodo-cover, record-to-spec, Figma, superdesign |
 | ⬜ REMAINING | **D** RTL verify pass | — | 0.5 session: default fork zero-ar; flip restores |
 | ✅ DONE | **2 senior-review Lows** lockstep gap + FormField footguns | — | FIXED (this session): design-tokens lockstep + FormField footguns |
 
@@ -54,7 +54,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | Phase0 — Governance ADRs 029/030/031 + ADOPT.md | [x] | 2026-07-02 |
 | C1 — Tailwind foundation (@theme, tokens, font) | [x] | 0ec5e62 · 2026-07-02 |
 | C2 — Primitive layer (shadcn/Radix/TanStack, same APIs) | [x] | 365fa85 · 2026-07-03 |
-| C3 — Screen migration (app/[locale]/**) | [~] | 669c62b,e4e33b1 · 2026-07-03 · 7 screens code-migrated (4 forms: login/forgot/reset/profile; 3 tables: users/audit-log/recycling-bin) off AntD Table/Form onto shadcn primitives. REMAINING: components/users/UserColumns.tsx, audit-log filter Selects (no shadcn Select shipped yet), DashboardContent, settings/page, not-found/forbidden/error/style-guide; PER-SCREEN /design-qa (axe serious/critical exit bar) NOT yet run — that is C3’s remaining exit gate. |
+| C3 — Screen migration (app/[locale]/**) | [~] | 669c62b,e4e33b1,79fd6be,1057b79 · 2026-07-03 · ALL identified screens now code-migrated off AntD runtime components (session 5 added: built select/switch/card/description-list primitives; migrated audit-log Select filters, settings Card+Descriptions, DashboardContent, style-guide, UserColumns, not-found/forbidden/error). Only TYPE-ONLY ColumnsType bridge imports remain in DataTable-consuming screens (sanctioned C2 pattern, erased at build; C4 drops it). REMAINING C3 EXIT GATE: per-screen /design-qa (axe serious/critical) — still NOT run (needs the app running in a browser); that is the sole open item before C3 = done. |
 | C4 — Harness/guard (no-raw-hex, drop AntD+CSP, recipes) | [ ] |  |
 | B — Docker standard (gate + trivy + skills) | [x] | 4065f1a · 2026-07-03 |
 | E — Mandatory structured-DB /ship gate | [x] | b82c12d · 2026-07-02 |
@@ -63,7 +63,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | A2 — Security & trust-boundary hooks | [x] | 2026-07-02 |
 | A3 — Measurement & runtime verification | [x] | ac3eb4c · 2026-07-02 · lhci per-PR CI dormant until Actions |
 | A4 — Process & skills upgrades | [x] | 804f331 · 2026-07-03 |
-| A5 — Testing & design depth (9) | [ ] | unblocked; some items dep C4-tokens |
+| A5 — Testing & design depth (9) | [~] | 2333c98 · 2026-07-03 · session 5 landed 3 items: fast-check property tests (tests/property/*, 15 props green; surfaced + pinned 2 latent lib/pagination edges as KNOWN-GAP tests), style-dictionary token pipeline seed (tokens/ + npm run tokens:build, additive to tokens.css), slop-gate + manual-a11y (WCAG 2.2 AA) criteria in docs/uat-rubric.md (Tier 1a/1b). REMAINING: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. |
 
 **22 comparison categories (directive D1 coverage)**
 
@@ -86,11 +86,11 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | 15 benchmarking | [x] | peer/enterprise benchmark in /uat (A3) |
 | 16 testing | [~] | coverage floor done (A1); qodo-cover AI test-gen (A5) remains |
 | 17 functional-testing | [~] | GWT shape done; record-to-spec + token-thrift PW (A5) |
-| 18 logical-testing | [ ] | fast-check property tests (A5) |
+| 18 logical-testing | [x] | fast-check property tests landed (A5·2333c98) |
 | 19 requirements | [x] | blueprint story IDs + EARS + was->now (A4) |
 | 20 planning | [x] | Superpowers writing-plans + [P] markers (A4) |
-| 21 design | [ ] | Figma + style-dictionary + superdesign (A5, dep C) |
-| 22 uiux | [~] | jsx-a11y gate done (A1); slop-gate + a11y-manual (A5) remain |
+| 21 design | [~] | style-dictionary token pipeline seed landed (A5); Figma sub-recipe + superdesign remain |
+| 22 uiux | [x] | jsx-a11y gate (A1) + slop-gate + WCAG 2.2 AA manual-a11y criteria in uat-rubric (A5) |
 
 **Deferred (tracked, not scheduled — see the program blueprint's closeout TODO)**
 
@@ -108,15 +108,57 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. C3 screen migration: sweep app/[locale]/** screen by screen; forms -> react-hook-form + zodResolver; /design-qa per screen (axe-clean serious/critical exit bar)
-2. A1 deterministic gates + A5 testing/design depth (unblocked)
-3. D RTL verify pass (0.5 session)
+1. C3 EXIT GATE: run per-screen /design-qa (axe serious/critical) on the migrated screens — the only item left before C3 = done. Needs the app running (deploy a preview or npm run dev + Playwright).
+2. C4 (now unblocked by C3 code-migration): retarget no-raw-hex to the @theme block, drop antd + @ant-design/* deps + the type-only ColumnsType bridge, drop the CSP 'unsafe-inline' style exception, rewrite docs/design-recipes.md.
+3. A5 remaining: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page) the fast-check props pinned.
+4. D RTL verify pass (0.5 session)
 
 <!-- END:auto-status -->
 
 ## State
-Branch `claude/ui-layer-signoff-replatform-onjlrr`. Base for this session was
-`6a4a13c`. `/ship` status is tracked in `docs/session-state.json` `lastShip`.
+Branch `claude/ui-layer-signoff-replatform-onjlrr` (worked/pushed this session on the
+harness branch `claude/ui-replatform-auto-spawn-fix-8dee0o`, fast-forwarded onto the
+program tip `6d53f3f` at session start — the harness had mis-based it on stale `032f643`
+again). `/ship` status is tracked in `docs/session-state.json` `lastShip`.
+
+## Session 5 — auto-spawn FIX + C3 finish (code) + A5 (all /ship green, pushed)
+**PRIORITY 1 — auto-spawn diagnosed + resolved.** The true auto-spawn hop
+(`create_new_session_on_fire`) does NOT produce a working successor in this environment.
+Evidence: the enabled run (`trig_01VeDUPhfYLEz41fgMw8vEGa`) AND a clean minimal **probe**
+(`trig_01DJ5H5Rko2QkAX2QaTt7KNR`, prompt = fetch+checkout+empty-commit+push) both fired
+(`run_once_fired`) but neither spawned a visible session nor pushed a commit in 10+ min
+(origin unchanged, monitor `PROBE_SILENT @ 05:47Z`). Per the Claude Code web docs,
+`run_once_fired`/green means only "the schedule fired and the session exited without an
+**infrastructure** error" — NOT that the successor did work — and there is **no observable
+success signal** (no spawned session id returned) to gate on. Root cause is downstream
+platform provisioning, **not our code** (guard/consumer/hooks all worked). **Resolution:**
+`autoSpawn.enabled=false`; documented root cause + manual-continuation fallback in
+`docs/blueprints/session-automation-auto-handoff.md`. Reset the falsely-incremented cap
+counter. Also fixed a **real prompt defect** (kept for if/when the hop is verified): spawns
+boot on a fresh clone of `main`, so the generated successor prompt in `auto-spawn-fire.mjs`
++ `auto-handoff.mjs` now leads with `git fetch origin <branch> && git checkout -B <branch>
+origin/<branch>` (the handoff + state live only on the working branch). Commit `bf656d3`.
+**Do not re-enable without re-validating with the probe first.**
+
+**PRIORITY 2 — program continued (3 parallel worktree agents, all integrated via
+cherry-pick → remove worktrees → npm ci → one /ship → one push):**
+- **C3 code-migration FINISHED** (`79fd6be` primitives+dependent screens, `1057b79` leaf
+  screens). Built the 4 missing primitives — `components/ui/{select,switch,card,description-list}.tsx`
+  (Radix Select/Switch added, <50KB peers of already-present Radix) — and migrated every
+  remaining screen off AntD **runtime** components: audit-log Select filters, settings
+  Card+Descriptions, DashboardContent, style-guide (full sweep), UserColumns, not-found/
+  forbidden/error. **Only TYPE-ONLY `ColumnsType` bridge imports remain** (erased at build;
+  sanctioned C2 pattern; C4 drops them). **C3 is still `[~]` — the EXIT BAR is per-screen
+  `/design-qa` (axe serious/critical), which needs the app running in a browser and was NOT
+  run this session.** That is the one open C3 item.
+- **A5 (3 items landed)** (`2333c98`): fast-check property tests (`tests/property/*`, 15
+  props green; surfaced + pinned 2 latent `lib/pagination.ts` edges — `?page=Infinity` /
+  `?page=1.5` not clamped/floored — as KNOWN-GAP tests, did NOT edit `lib/`), a
+  style-dictionary token-pipeline seed (`tokens/` + `npm run tokens:build`, additive to
+  `app/tokens.css`), and slop-gate + WCAG 2.2 AA manual-a11y criteria in `docs/uat-rubric.md`
+  (Tier 1a/1b). Full suite 132/132.
+- **C4 is now unblocked** by the C3 code-migration (retarget no-raw-hex to @theme, drop antd
+  deps + the type-only bridge, drop the CSP style exception, rewrite design-recipes).
 
 ## Session 4b — auto-spawn consumer + 3 parallel worktree runs (all integrated, pushed, green)
 - **Auto-spawn consumer BUILT + ENABLED** (`d2a4244`). `scripts/auto-spawn-fire.mjs` is the
