@@ -19,15 +19,16 @@ deterministic file instead of reconstructing status from prose.
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **replatform-and-adoption** · branch `claude/ui-replatform-auto-spawn-fix-8dee0o` · updated 2026-07-03 · last /ship: **green** (9264778, 2026-07-03)._
+_Program: **replatform-and-adoption** · branch `claude/ui-replatform-auto-spawn-fix-8dee0o` · updated 2026-07-03 · last /ship: **green** (adb155e, 2026-07-03)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
-| 🟡 IN PROGRESS | **D3** Replace AntD w/ Tailwind | — | C1+C2 done; run C3 next |
+| 🟡 IN PROGRESS | **D3** Replace AntD w/ Tailwind | — | C1+C2+C3+C3.5 done (runtime AntD gone); C4 next (drop deps/CSP/lint/recipes). |
 | 🟡 IN PROGRESS | **D1** Adopt 22-table recs | — | A2/A3/A4 done; do A1+A5 after C |
 | ✅ DONE | **session-automation** auto-handoff + auto-start | — | Parts 1/2 on; Part 3 auto-spawn TESTED session 5 → hop broken (no working successor) → DISABLED + documented; prompt-checkout fix kept |
 | ✅ DONE | **C3** Screen migration | — | DONE (session 6): design-qa axe serious/critical CLEAN in light across all 14 migrated screens (via loopback browser bridge). Dark findings -> workstream D. |
-| ⬜ REMAINING | **C4** Harness/guard | C3.5 (runtime-AntD removal) | BLOCKED: 16 files still import antd at RUNTIME (chrome+auth+forms). Migrate those off AntD FIRST, then drop deps/CSP/retarget-lint/rewrite-recipes. See C4 note. |
+| ✅ DONE | **C3.5** Runtime-AntD removal | — | DONE (adb155e, /ship green): chrome+auth+forms off AntD onto shadcn/Radix via 3 parallel worktree agents. Closeout (deploy/re-axe/senior-review) in nextActions. |
+| ⬜ REMAINING | **C4** Harness/guard | — | UNBLOCKED by C3.5. Drop antd-family deps + type-only bridges + antd-theme.ts, drop CSP style-src exception (middleware.ts:47-55), retarget no-raw-hex to @theme, rewrite design-recipes.md. |
 | ✅ DONE | **A1** Deterministic gates (6 left) | (unblocked) | SHIPPED (a0a9f61): 6 deterministic gates green |
 | 🟡 IN PROGRESS | **A5** Testing & design depth (9) | (unblocked) | fast-check + style-dictionary + slop/a11y criteria landed (session 5); remaining: qodo-cover, record-to-spec, Figma, superdesign |
 | ⬜ REMAINING | **D** RTL verify pass | — | 0.5 session: default fork zero-ar; flip restores |
@@ -43,7 +44,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 |------|--------|---------------|
 | D1 — Adopt all 22-table recommendations | [~] | A2/A3/A4 + A1 done; A5 (9) remains |
 | D2 — Docker always built (standard artifact) | [x] | 8b50604 |
-| D3 — Replace AntD with Tailwind fully | [~] | ADR-029; C1+C2 done; C3 design-qa exit bar MET (light axe-clean). NOT fully replaced: 16 files still import antd at runtime (chrome + auth + forms) — that removal (C3.5) is C4's prerequisite. See C3/C4 notes. |
+| D3 — Replace AntD with Tailwind fully | [~] | ADR-029; C1+C2+C3 done; C3.5 DONE (adb155e) — runtime antd/@ant-design gone from app/**+components/** (only type-only ColumnsType/TableProps/PopconfirmProps bridges + antd-theme.ts type import remain). Still PARTIAL until C4 (drop the antd-family deps + CSP style-src exception + retarget no-raw-hex + rewrite design-recipes) and workstream D (dark/RTL). |
 | D4 — RTL + Arabic fully optional | [x] | ADR-028 Part 1 shipped; D-verify pending |
 | D5 — Every app has a structured DB | [x] | b82c12d |
 
@@ -55,7 +56,8 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | C1 — Tailwind foundation (@theme, tokens, font) | [x] | 0ec5e62 · 2026-07-02 |
 | C2 — Primitive layer (shadcn/Radix/TanStack, same APIs) | [x] | 365fa85 · 2026-07-03 |
 | C3 — Screen migration (app/[locale]/**) | [x] | 669c62b,e4e33b1,79fd6be,1057b79,9264778 · 2026-07-03 · EXIT GATE MET (session 6): per-screen /design-qa axe (WCAG 2.0/2.1 A+AA) serious/critical is CLEAN across all 14 migrated screens in LIGHT mode (auth forms, users, users/new, audit-log, recycling-bin, settings, settings/profile, dashboard, style-guide, forbidden/maintenance/not-found). This is the FIRST time the program ran a real-browser a11y pass: Chromium cannot traverse this env's MITM egress proxy (the wall that blocked every prior session's design-qa), so we bridged it — a loopback HTTPS server (scratchpad/bridge.mjs) that the browser hits directly and which forwards upstream to the deployed Vercel app via curl (curl DOES traverse the proxy). Fixed 9 serious findings (0 critical): --muted-foreground #6b7280->#5b6472 (table headers, dt), AntD colorTextSecondary/Tertiary + kbd -> #5b6472 light / #9aa3b2 dark, style-guide + StatCard semantic swatches -600->-700, recharts pie Cell role+aria-label (svg-img-alt + label-line prohibited-attr). Committed regression spec: tests/uat/design-a11y.uat.ts (+ auth.setup.ts selector fix). NOTE: C3 'done' = the design-qa/axe exit bar in LIGHT mode; DARK-mode axe surfaced separate pre-existing token findings (brand-primary-as-text on dark links/tags, destructive-foreground white-on-red) routed to workstream D. SCOPE CORRECTION for C4: 'all screens off AntD runtime' was overstated — 16 files still import antd at RUNTIME (all of components/layout/* chrome + auth screens + (auth)/layout + settings/profile + UserForm + KanbanBoard.impl; 8 also use @ant-design/icons). Only the DataTable-consuming files (DataTable/DataView/DashboardContent/AuditLogClient/style-guide) are genuinely type-only. That runtime-AntD removal is C4's hard prerequisite. |
-| C4 — Harness/guard (no-raw-hex, drop AntD+CSP, recipes) | [ ] | BLOCKED — NOT a small cleanup (session 6 correction). All four C4 items depend on AntD being GONE at runtime, but 16 files still import antd at runtime: components/layout/* (AppShell, AppHeader, AppSidebar, ThemeProvider, CommandPalette, NotificationsMenu, OrgSwitcher, Breadcrumbs, AppFooter), the auth screens (login/LoginForm, forgot-password, reset-password, (auth)/layout), settings/profile, components/users/UserForm, components/shared/KanbanBoard.impl; 8 also import @ant-design/icons. Consequences: (a) `drop antd + @ant-design/* deps` -> build breaks; (b) `drop CSP 'unsafe-inline' style-src` -> AntdRegistry's runtime <style> injection breaks (middleware.ts:47-55 keeps it EXPLICITLY for AntD 6); (c) `retarget no-raw-hex at @theme` -> antd-theme.ts still needs raw hex for the AntD theme so it can't be de-exempted; (d) `rewrite design-recipes.md` -> still references AntD because the chrome IS AntD. PREREQUISITE (new workstream, call it C3.5): migrate the app chrome + the remaining runtime-AntD screens/forms off AntD onto the shadcn/Radix primitives already built in C2. That is a multi-file effort (ConfigProvider/Layout/Menu/Dropdown/Avatar/Table-in-AntdRegistry -> shadcn), NOT the 'drop a type import' the earlier handoff implied. The type-only ColumnsType bridge CAN be dropped independently but is low-value alone. |
+| C3.5 — Runtime-AntD removal (chrome+auth+forms → shadcn/Radix) | [x] | adb155e · 2026-07-03 · DONE this session. 3 parallel worktree agents over a serial foundation (e7ca201): +deps lucide-react/sonner/@radix-ui/react-{dropdown-menu,avatar}; new components/ui/{dropdown-menu,avatar,sonner,separator}.tsx; use-notify rewritten over sonner (same {success,error,info,warning,notify} shape); tokens --popover/--popover-foreground/--nav-active-foreground (+dark). Cluster A=all components/layout/* chrome (Layout/Menu/Dropdown/Avatar/ConfigProvider/App→Tailwind+Radix, CommandPalette handlers preserved, ThemeProvider keeps useTheme+FOUC drops ConfigProvider/App); B=(auth)/* (Card/Typography/Divider/App.message→ui/card+semantic+separator+useNotify, WindowsOutlined→inline mono SVG); C=settings/profile+UserForm(RHF+zodResolver rewrite)+KanbanBoard+maintenance(Wrench)+scaffold patchSidebar() lockstep. Integrator wiring: layout.tsx drop AntdRegistry+mount Toaster; globals.css drop dead .ant-layout* + repoint .header-search-kbd vars→var(--border)/var(--muted-foreground); knip.json ignore antd-theme.ts + waive now-unused @ant-design/{icons,nextjs-registry} (C4 removes them). /ship GREEN (all 17 phases incl build, 45s). Post-land verification (deploy/re-axe/senior-review) tracked in nextActions. Did NOT uninstall antd/@ant-design (C4). CSP untouched (C4). |
+| C4 — Harness/guard (no-raw-hex, drop AntD+CSP, recipes) | [ ] | UNBLOCKED (C3.5 done adb155e removed all runtime AntD). Now a real cleanup: (a) npm uninstall antd + @ant-design/icons + @ant-design/nextjs-registry (+ remove them from knip ignoreDependencies) + drop the type-only ColumnsType/TableProps/PopconfirmProps bridges (DataTable/DataView/ConfirmAction/DashboardContent/AuditLogClient/style-guide) + delete components/layout/antd-theme.ts (remove its knip ignore too; relocate chartPalette/brandTokens to a non-antd home first — Chart.impl + design-tokens.test import them); (b) drop the CSP 'unsafe-inline' style-src exception at middleware.ts:47-55; (c) retarget no-raw-hex-color to the @theme block; (d) rewrite docs/design-recipes.md off AntD. Ask-before surface → blueprint + plan. |
 | B — Docker standard (gate + trivy + skills) | [x] | 4065f1a · 2026-07-03 |
 | E — Mandatory structured-DB /ship gate | [x] | b82c12d · 2026-07-02 |
 | D — RTL/Arabic verify pass | [ ] | Now also carries the DARK-mode axe findings surfaced by session 6's first real-browser a11y pass (the design-qa bridge makes dark/RTL browser checks feasible — reuse scratchpad/bridge.mjs + axe-run.mjs with a theme-mode=dark cookie). Dark serious/critical color-contrast to fix here: (1) style-guide + auth links using brand-primary #4f46e5 as TEXT on dark surfaces (~2.3-3.0:1) — needs a lighter dark-mode primary-as-text token (bg-primary buttons must stay unaffected, so split fg/bg primary); (2) .text-destructive-foreground #fff on #ef4444 destructive = 3.76; (3) the dark kbd/secondary was already fixed this session (colorTextTertiary/Secondary #9aa3b2 dark). Light mode is fully clean. Plus two senior-review a11y follow-ups (axe-invisible): (4) the recharts pie Cell role+aria-label double-announces each slice (sector + leader label-line) — prefer labelLine={false} or aria-hide the line; (5) WCAG 1.4.11 non-text contrast: DataTable icon-only filter toggle (text-muted-foreground/60 ~2.57:1) + other icon controls are below 3:1 (axe's color-contrast is text-only, so the 'axe clean' bar didn't cover them). |
@@ -108,13 +110,55 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. C3.5 (NEW, blocks C4): migrate the remaining 16 runtime-AntD files off AntD onto the C2 shadcn/Radix primitives — all of components/layout/* (AppShell/Header/Sidebar/ThemeProvider/CommandPalette/Notifications/OrgSwitcher/Breadcrumbs/Footer, i.e. ConfigProvider/Layout/Menu/Dropdown/Avatar/AntdRegistry), the auth screens (login/forgot/reset + (auth)/layout), settings/profile, components/users/UserForm, KanbanBoard.impl. This is the real remainder the earlier handoff mislabeled as done.
-2. C4 (after C3.5): drop antd + @ant-design/* deps + the type-only ColumnsType bridge, drop the CSP 'unsafe-inline' style-src exception (middleware.ts:47-55), retarget no-raw-hex at the @theme block, rewrite docs/design-recipes.md.
-3. D (dark/RTL verify): fix the dark-mode serious axe findings surfaced this session — brand-primary-as-text on dark (needs split fg/bg primary token), destructive-foreground white-on-red. Re-run scratchpad/axe-run.mjs via the bridge with a theme-mode=dark cookie + an ?ar RTL pass.
+1. C3.5 CLOSEOUT (this session's remaining verification; do FIRST if not yet done): /deploy a preview (revert the project.config.json pristine:false flip before /ship), then re-run the design-qa axe bridge (tools/design-qa-bridge/) — LIGHT must stay serious/critical-clean; dark→workstream D. senior-code-reviewer was spawned on the push (chrome+auth its remit) — action its findings.
+2. C4 (UNBLOCKED by C3.5): npm uninstall antd + @ant-design/icons + @ant-design/nextjs-registry (+ remove from knip ignoreDependencies), drop the type-only ColumnsType/TableProps/PopconfirmProps bridges + delete components/layout/antd-theme.ts (relocate chartPalette/brandTokens first; remove its knip ignore), drop the CSP 'unsafe-inline' style-src exception (middleware.ts:47-55), retarget no-raw-hex-color at the @theme block, rewrite docs/design-recipes.md. Ask-before → blueprint + plan.
+3. D (dark/RTL verify): fix dark-mode serious axe findings — brand-primary-as-text on dark (split fg/bg primary token), destructive-foreground white-on-red 3.76, DataTable icon-toggle non-text-contrast, recharts pie labelLine={false}. Re-run tools/design-qa-bridge with a theme-mode=dark cookie + an ?ar RTL pass. C3.5 already added --nav-active-foreground dark + --popover dark so the migrated chrome is dark-correct by construction.
 4. A5 remaining: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page).
-5. Design-qa is now UNBLOCKED in this env: scratchpad/bridge.mjs (loopback HTTPS -> deployed app via curl) + axe-run.mjs. See agent-memory.
+5. Design-qa bridge lives at tools/design-qa-bridge/ (loopback HTTPS -> deployed app via curl). See agent-memory.
 
 <!-- END:auto-status -->
+
+## Session 8 — C3.5 EXECUTED + /ship GREEN + pushed (runtime AntD removed; C4 unblocked)
+**What happened:** Built the approved C3.5 plan verbatim (runtime-AntD removal that
+blocked C4). 3-phase structure exactly as signed off:
+- **Phase 1 — foundation** (serial, one commit `e7ca201`): added the 4 approved deps
+  (lucide-react, sonner, @radix-ui/react-dropdown-menu, @radix-ui/react-avatar); built
+  `components/ui/{dropdown-menu,avatar,sonner,separator}.tsx`; rewrote `hooks/use-notify.ts`
+  over sonner (exact `{success,error,info,warning,notify}` shape — all call sites +
+  QueryProvider bridge untouched); added `--popover`/`--popover-foreground`/
+  `--nav-active-foreground` tokens (+ dark overrides); mounted `<Toaster/>` in ThemeProvider.
+- **Phase 2 — 3 parallel worktree agents** each based on `e7ca201` (base bug avoided —
+  all three worktrees verified at the foundation SHA): **A**=all `components/layout/*` chrome
+  (Layout/Menu/Dropdown/Avatar/ConfigProvider/App→Tailwind+Radix; CommandPalette every
+  handler + `OPEN_COMMAND_PALETTE` preserved; ThemeProvider keeps useTheme+FOUC, drops
+  ConfigProvider/App); **B**=the 4 `(auth)/*` screens (Card/Typography/Divider/App.message→
+  ui/card+semantic+separator+useNotify; WindowsOutlined→inline monochrome SVG); **C**=
+  settings/profile + UserForm (full RHF+zodResolver rewrite, caller prop-contract preserved)
+  + KanbanBoard + maintenance(Wrench) + `scaffold-entity.mjs patchSidebar()` lockstep.
+  All 3 pushed as backup branches `origin/claude/c3.5-cluster-{a,b,c}` before integration.
+- **Phase 3 — integration** (serial): cherry-picked A+B+C (disjoint → clean) → removed all
+  worktrees → owned the shared wiring: `layout.tsx` dropped `AntdRegistry` + mounts Toaster;
+  `globals.css` removed dead `.ant-layout*` rules + repointed `.header-search-kbd` vars to
+  `var(--border)`/`var(--muted-foreground)`; **reconciled `patchSidebar()`** to Agent A's
+  ACTUAL item shape (`{key, icon:<Icon className="h-4 w-4"/>, label, onClick:router.push}` —
+  Agent C had guessed `href`); `knip.json` ignores `antd-theme.ts` (buildTheme now unused,
+  C4 deletes the file) + waives now-unused `@ant-design/{icons,nextjs-registry}` (C4 drops
+  the deps). **`/ship` GREEN — all 17 phases incl. build (45s)**; pushed; `@{u}..HEAD == 0`;
+  all commits reset-author'd to noreply@anthropic.com (Verified). senior-code-reviewer
+  spawned on the push (chrome+auth its remit).
+
+**State now:** runtime `antd`/`@ant-design/*` GONE from `app/**`+`components/**` (only the
+type-only `ColumnsType`/`TableProps`/`PopconfirmProps` bridges + `antd-theme.ts` type import
+remain — all C4). D3 runtime-removal done; C4 UNBLOCKED.
+
+**C3.5 CLOSEOUT still open (do first next session):** `/deploy` a preview (revert the
+`project.config.json` `pristine:false` flip before `/ship` — agent-memory landmine) → re-run
+the design-qa axe bridge (`tools/design-qa-bridge/`; LIGHT must stay serious/critical-clean,
+dark→D) → action the senior-code-reviewer findings. The code is proven green by `/ship`'s
+build; these are the post-land browser/deploy verifications. Then C4.
+
+**Landmine avoided:** did NOT `npm uninstall antd` (reds the build via the type-only bridges
+until C4); did NOT touch `middleware.ts` CSP, `eslint-rules/`, or `antd-theme.ts` logic.
 
 ## Session 7 — C3.5 PLANNED + APPROVED (blueprint committed; build is the next session's job)
 **What happened:** Read the full handoff + ADOPT.md + agent-memory, shared both status
