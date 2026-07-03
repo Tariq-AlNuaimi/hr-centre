@@ -52,11 +52,25 @@ if (g.status !== 0) {
 let program = "the program";
 try { program = JSON.parse(readFileSync(STATE, "utf8")).program || program; } catch {}
 const branch = git("rev-parse --abbrev-ref HEAD") || "the working branch";
+// A spawned session (create_new_session_on_fire) boots on a FRESH clone of the
+// repo's DEFAULT branch (main), NOT this working branch — the successor must
+// explicitly fetch + checkout it before anything else, because the program's
+// handoff + state files live ONLY on the working branch (never merged to main).
+// Omitting this was the 2026-07-03 auto-spawn failure: the trigger fired, but the
+// successor (if it booted at all) landed on main with no program context and did
+// no work. See docs/blueprints/session-automation-auto-handoff.md "Auto-spawn
+// failure (2026-07-03) — root cause + fix".
 const prompt =
-  `Continue the ${program} program on branch ${branch}. Read docs/SESSION-HANDOFF.md ` +
-  `FIRST and show BOTH status tables (the compact IN PROGRESS/REMAINING table and the ` +
-  `full GRAND PROGRESS TABLE), then continue at Next actions. Follow the handoff's ` +
-  `LESSONS + OPERATOR DIRECTIVES. End with /ship green, pushed, and the handoff updated.`;
+  `You are an AUTO-SPAWNED successor session for the ${program} program. You boot on a ` +
+  `fresh clone of the DEFAULT branch, so your FIRST action MUST be to get onto this ` +
+  `program's working branch:\n` +
+  `  git fetch origin ${branch} && git checkout -B ${branch} origin/${branch}\n` +
+  `(the handoff + docs/session-state.json live only on that branch, never on main). ` +
+  `THEN read docs/SESSION-HANDOFF.md FIRST and show BOTH status tables (the compact ` +
+  `IN PROGRESS/REMAINING table and the full GRAND PROGRESS TABLE), then continue at ` +
+  `Next actions. Follow the handoff's LESSONS + OPERATOR DIRECTIVES. If a human ` +
+  `re-engages, run \`node scripts/auto-spawn-guard.mjs --reset\` to re-arm the cap. ` +
+  `End with /ship green, pushed, and the handoff updated.`;
 const payload = {
   name: `auto-continue: ${program}`,
   create_new_session_on_fire: true,

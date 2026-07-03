@@ -1,7 +1,8 @@
 # Blueprint — session automation: auto-handoff + auto-start
 
-**Status:** BUILT (2026-07-03, session 4) — all 4 open questions answered; Parts 1/2/3
-shipped (Part 3 auto-spawn ships **disabled by default**). See §What shipped.
+**Status:** BUILT (2026-07-03, session 4) — Parts 1/2/3 shipped. **Session 5 update:
+the Part-3 true auto-spawn hop was tested and FAILED (no working successor); it is now
+DISABLED. Parts 1 & 2 remain on. See §Auto-spawn failure (2026-07-03).**
 **Owner:** Tariq Al-Naaimi
 
 ## What shipped (2026-07-03, session 4)
@@ -49,6 +50,63 @@ onto a `green` status could mark an unverified commit "green for HEAD."
 context at every manual session boundary — restarts are slow, partial context loads
 lose track of the real status, and work gets interrupted. Automating the handoff→start
 loop de-risks every remaining session, so build this **before C3**.
+
+## Auto-spawn failure (2026-07-03, session 5) — root cause + fix + manual fallback
+
+**Verdict: the true auto-spawn hop does not produce a working successor in this
+environment; auto-spawn is now DISABLED (`autoSpawn.enabled=false`).** Parts 1 & 2
+(canonical state + auto-handoff re-render) are unaffected and remain on.
+
+**What was observed.** Session 4b enabled auto-spawn and fired
+`trig_01VeDUPhfYLEz41fgMw8vEGa` (`create_new_session_on_fire: true`). It reported
+`ended_reason: run_once_fired` with `last_fired_at` set — yet **no new session ever
+appeared in the operator's session list and no commit landed on the branch for 40+
+min**. Session 5 reproduced this with a clean **minimal probe**
+(`trig_01DJ5H5Rko2QkAX2QaTt7KNR`) whose entire prompt was "fetch+checkout the branch,
+make one empty commit, push, stop." The probe likewise fired but **pushed nothing in
+10+ min** (origin unchanged).
+
+**Root cause.** Two layers:
+1. **Platform (the blocking one, not ours).** Per the Claude Code web docs, a fired
+   trigger's `run_once_fired`/green state means only *"the schedule fired and the
+   session exited without an infrastructure error"* — **not that the spawned session
+   did any work**. There is **no observable success signal** (no spawned-session id
+   surfaced back through the MCP `create_trigger` response, no run record we can
+   query) to gate on. Empirically, `create_new_session_on_fire` in
+   `env_01HwPvehHH2gjaLjBdxR6uHL` produced no working session in two independent
+   trials. Our guard/consumer/hooks all functioned correctly (a valid, well-formed
+   trigger was created and fired); the break is downstream in platform session
+   provisioning, which we cannot verify or observe from here.
+2. **A real prompt defect we DID fix (necessary but not sufficient).** A spawned
+   session boots on a **fresh clone of the DEFAULT branch (`main`)**, then the prompt
+   must explicitly `git fetch`+`checkout` the working branch. The program's handoff +
+   `docs/session-state.json` live **only** on the working branch (never merged to
+   `main`), so a successor that lands on `main` has zero program context. The original
+   generated prompts said "Continue…on branch X. Read docs/SESSION-HANDOFF.md FIRST"
+   but never instructed the checkout. **Fixed** in `scripts/auto-spawn-fire.mjs` and
+   `.claude/hooks/auto-handoff.mjs`: the generated successor prompt now leads with
+   `git fetch origin <branch> && git checkout -B <branch> origin/<branch>`. This is
+   kept for if/when the platform hop is verified, and it also makes any *manual*
+   re-fire land on the right branch.
+
+**Decision.** Because the platform hop is unverifiable and empirically silent, we do
+**not** rely on it. `autoSpawn.enabled=false`. The falsely-incremented cap counter
+(`consecutiveCount` had been recorded as 1 for a spawn that never ran) was reset via
+`node scripts/auto-spawn-guard.mjs --reset`.
+
+**Manual-continuation fallback (the supported path).** At a clean, green, pushed
+session boundary:
+1. `/ship` green + push (verify `git rev-list --count @{u}..HEAD == 0`).
+2. The `SessionStart` hook already surfaces `docs/SESSION-HANDOFF.md` FIRST with the
+   standing directive (both status tables, rendered from `docs/session-state.json`) —
+   so a fresh session the **operator** starts orients instantly. This is the reliable
+   Part-3 value; it does not depend on the broken spawn hop.
+3. To continue, the operator opens a new session in the environment and types
+   "continue" (or pastes the standing prompt). Parts 1 & 2 guarantee the handoff and
+   state are already current.
+4. If the platform later exposes a verifiable spawn (a returned session id + a success
+   signal), re-enable by setting `autoSpawn.enabled=true` and re-validating with the
+   minimal probe above BEFORE trusting it in the loop.
 
 ## Problem (operator's words, 2026-07-03)
 > "I am tired from moving between sessions… I want this automated so the session

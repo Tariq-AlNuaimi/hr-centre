@@ -84,10 +84,16 @@ try {
         branch,
         head: git("rev-parse --short HEAD"),
         program: state.program,
-        // The standing prompt a successor session should start with.
+        // The standing prompt a successor session should start with. A spawned
+        // session boots on a fresh clone of the DEFAULT branch (main), so it MUST
+        // fetch + checkout this working branch first — the program handoff + state
+        // live only on it. Omitting this was the 2026-07-03 auto-spawn failure.
         prompt:
-          `Continue the ${state.program} program on branch ${branch}. ` +
-          `Read docs/SESSION-HANDOFF.md FIRST and show BOTH status tables ` +
+          `You are an AUTO-SPAWNED successor for the ${state.program} program. You boot on a ` +
+          `fresh clone of the DEFAULT branch, so FIRST run:\n` +
+          `  git fetch origin ${branch} && git checkout -B ${branch} origin/${branch}\n` +
+          `(the handoff + docs/session-state.json live only on that branch, never on main). ` +
+          `THEN read docs/SESSION-HANDOFF.md FIRST and show BOTH status tables ` +
           `(compact IN PROGRESS/REMAINING + the full GRAND PROGRESS TABLE), then continue at Next actions.`,
       };
       writeFileSync(join(stateDir, "auto-spawn-request.json"), JSON.stringify(req, null, 2) + "\n");

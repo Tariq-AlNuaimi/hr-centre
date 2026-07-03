@@ -10,11 +10,11 @@
     "date": "2026-07-03"
   },
   "autoSpawn": {
-    "enabled": true,
+    "enabled": false,
     "cap": 3,
-    "consecutiveCount": 1,
+    "consecutiveCount": 0,
     "lastSpawnSha": "eedfcc6",
-    "note": "ENABLED for this program (operator, 2026-07-03: build + turn on true auto-spawn). Consumer: scripts/auto-spawn-fire.mjs runs at agent closeout, and the agent fires mcp create_trigger with its payload. Guard (auto-spawn-guard.mjs) fails closed: enabled + pushed + .claude/state/last-green-sha == HEAD + consecutiveCount < cap. Cap=3 backstops runaway; a human runs `node scripts/auto-spawn-guard.mjs --reset` to re-arm. TEMPLATE DEFAULT stays false — this is this-program opt-in, not inherited-on by forks."
+    "note": "DISABLED 2026-07-03 (session 5) after the true auto-spawn hop FAILED to produce a working successor. Evidence: two independent create_new_session_on_fire triggers — the enabled-run trig_01VeDUPhfYLEz41fgMw8vEGa, and a clean minimal probe trig_01DJ5H5Rko2QkAX2QaTt7KNR whose prompt explicitly fetch+checkouts the branch — both reported ended_reason=run_once_fired but neither produced a visible session OR pushed any commit within 10+ min. Per the Claude Code web docs, run_once_fired/green means only 'the schedule fired and the session exited without an INFRASTRUCTURE error' — NOT that the successor did work — and there is no observable success signal to gate on. Root cause is NOT our code: guard/consumer/hooks worked (a valid trigger was created + fired); the failure is downstream platform session-provisioning we cannot verify or observe. Auto-spawn is OFF; the program uses the MANUAL-continuation fallback (see docs/blueprints/session-automation-auto-handoff.md 'Auto-spawn failure (2026-07-03)'). The prompt-checkout FIX (successor must git fetch+checkout the working branch — spawns boot on main) is kept in auto-spawn-fire.mjs + auto-handoff.mjs for if/when the platform hop is verified. Cap counter reset (the earlier consecutiveCount=1 was for a spawn that never ran). TEMPLATE DEFAULT was already false; this program is now false too."
   },
   "directives": [
     {
