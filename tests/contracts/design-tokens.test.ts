@@ -79,6 +79,7 @@ const SEMANTIC_VARS = [
   "--border",
   "--input",
   "--destructive",
+  "--ring",
 ];
 
 test("tokens.css defines every semantic surface var in :root", () => {
@@ -107,10 +108,30 @@ test("@theme maps each semantic var to a --color-* utility", () => {
   }
 });
 
-test("dark mode overrides the semantic surfaces in globals.css", () => {
-  for (const v of ["--background", "--foreground", "--card", "--muted", "--border", "--input"]) {
+// Every semantic surface that DIFFERS between light and dark must be re-declared
+// under [data-theme="dark"] — a single missing override is a silently-wrong dark
+// surface. This guards the full set so a dropped override fails the suite (the
+// coverage gap the senior review flagged: card-foreground/muted-foreground/
+// destructive were unguarded). `--ring` is deliberately excluded: it resolves to
+// var(--brand-primary), a mode-agnostic brand color that is NOT dark-swapped, so
+// asserting a dark override for it would be wrong.
+const DARK_OVERRIDDEN = [
+  "--background",
+  "--foreground",
+  "--card",
+  "--card-foreground",
+  "--muted",
+  "--muted-foreground",
+  "--border",
+  "--input",
+  "--destructive",
+];
+test("dark mode overrides every mode-varying semantic surface in globals.css", () => {
+  for (const v of DARK_OVERRIDDEN) {
     assert.match(
       globalsCss,
+      // The trailing colon in `${v}:` already disambiguates `--card` from
+      // `--card-foreground` (the latter has `-foreground`, not `:`, after `--card`).
       new RegExp(`\\[data-theme="dark"\\][\\s\\S]*?${v}:\\s*[^;]+;`),
       `globals.css dark block overrides ${v}`,
     );

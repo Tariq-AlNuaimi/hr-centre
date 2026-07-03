@@ -38,18 +38,20 @@ try {
   if (git("rev-parse --is-inside-work-tree") !== "true") process.exit(0);
   if (!existsSync(STATE)) process.exit(0);
 
-  // 1. Stamp lastShip sha/date (not status -- only /ship earns green).
+  // 1. Reconcile lastShip with the real HEAD. Only /ship earns green (it stamps
+  //    lastShip green for the exact sha it verified). If HEAD has moved PAST that
+  //    sha, the tree is no longer known-green, so INVALIDATE the status to
+  //    "unknown" while updating the sha. This is what keeps the auto-spawn guard's
+  //    "green for current HEAD" check honest: a stray commit after a green ship
+  //    can never masquerade as green and permit an unverified successor.
   const sha = git("rev-parse --short HEAD");
   if (sha) {
     try {
       const state = JSON.parse(readFileSync(STATE, "utf8"));
       state.lastShip = state.lastShip || {};
-      // Only rewrite when the sha actually moved, to avoid churn-on-every-end.
       if (state.lastShip.sha !== sha) {
         state.lastShip.sha = sha;
-        // Date is intentionally NOT stamped from Date.now() here (keeps the file
-        // deterministic + reviewable); the render script surfaces the sha, and
-        // /ship / the operator set the human date. Leave existing date in place.
+        state.lastShip.status = "unknown"; // HEAD moved without a re-ship
         writeFileSync(STATE, JSON.stringify(state, null, 2) + "\n");
       }
     } catch { /* leave the file untouched on any parse error */ }

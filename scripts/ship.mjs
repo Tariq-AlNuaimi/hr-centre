@@ -636,6 +636,28 @@ if (FULL) {
   if (!docker.ok) fail(docker);
 }
 
+// Stamp lastShip in docs/session-state.json (session-automation Part 1): green is
+// asserted for THIS exact HEAD, so the auto-spawn guard's "green for current HEAD"
+// check is trustworthy. Only /ship earns green -- the SessionEnd auto-handoff hook
+// invalidates it to "unknown" whenever HEAD moves without a re-ship. Best-effort:
+// a stamp failure never turns a green ship red.
+try {
+  const statePath = "docs/session-state.json";
+  if (existsSync(statePath)) {
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    const sha = execSync("git rev-parse --short HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+    const date = new Date().toISOString().slice(0, 10);
+    const next = { status: "green", sha, date };
+    const cur = state.lastShip || {};
+    if (cur.status !== next.status || cur.sha !== next.sha || cur.date !== next.date) {
+      state.lastShip = next;
+      writeFileSync(statePath, JSON.stringify(state, null, 2) + "\n");
+    }
+  }
+} catch { /* stamping is best-effort; never fail a green ship on it */ }
+
 console.log(
   `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + build + gitleaks + npm audit${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
 );

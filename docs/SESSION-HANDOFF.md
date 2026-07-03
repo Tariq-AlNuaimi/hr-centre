@@ -19,19 +19,19 @@ deterministic file instead of reconstructing status from prose.
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (6a4a13c, 2026-07-03)._
+_Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatform-onjlrr` · updated 2026-07-03 · last /ship: **green** (15cab66, 2026-07-03)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | 🟡 IN PROGRESS | **D3** Replace AntD w/ Tailwind | — | C1+C2 done; run C3 next |
 | 🟡 IN PROGRESS | **D1** Adopt 22-table recs | — | A2/A3/A4 done; do A1+A5 after C |
-| ⬜ REMAINING | **session-automation** auto-handoff + auto-start | operator Q x4 (answered) | BUILDING NOW — Parts 1/2/3 (Part 3 disabled-default) |
+| ✅ DONE | **session-automation** auto-handoff + auto-start | — | SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default |
 | ⬜ REMAINING | **C3** Screen migration | (unblocked) | sweep app/[locale]/**, /design-qa per screen |
 | ⬜ REMAINING | **C4** Harness/guard | C3 | retarget no-raw-hex, drop AntD + CSP style exception |
 | ⬜ REMAINING | **A1** Deterministic gates (6 left) | (unblocked) | knip/jscpd/coverage/size-limit/jsx-a11y/complexity |
 | ⬜ REMAINING | **A5** Testing & design depth (9) | (unblocked) | fast-check, record-to-spec, Figma, style-dictionary |
 | ⬜ REMAINING | **D** RTL verify pass | — | 0.5 session: default fork zero-ar; flip restores |
-| ⬜ REMAINING | **2 senior-review Lows** lockstep gap + FormField footguns | — | do in C3 prep |
+| ✅ DONE | **2 senior-review Lows** lockstep gap + FormField footguns | — | FIXED (this session): design-tokens lockstep + FormField footguns |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -108,11 +108,9 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. Ship session-automation (Parts 1/2/3, Part 3 disabled-default): /ship green + push
-2. C3 screen migration: sweep app/[locale]/** screen by screen; forms -> react-hook-form + zodResolver; /design-qa per screen (axe-clean serious/critical exit bar)
-3. 2 senior-review Lows in C3 prep: design-tokens lockstep coverage; FormField footguns
-4. A1 deterministic gates + A5 testing/design depth (unblocked)
-5. D RTL verify pass (0.5 session)
+1. C3 screen migration: sweep app/[locale]/** screen by screen; forms -> react-hook-form + zodResolver; /design-qa per screen (axe-clean serious/critical exit bar)
+2. A1 deterministic gates + A5 testing/design depth (unblocked)
+3. D RTL verify pass (0.5 session)
 
 <!-- END:auto-status -->
 
@@ -156,14 +154,19 @@ guarded auto-spawn**, **adopt session-state.json as the rendered source**,
 - `AskUserQuestion` worked this session on the first call — the 4 open questions were
   posed as one multi-question call and answered.
 
-## Senior-review follow-ups (scheduled — do in C3 prep)
-1. **Lockstep-test coverage gap** — `tests/contracts/design-tokens.test.ts`: `SEMANTIC_VARS`
-   + the dark-override loop omit `--card-foreground`, `--muted-foreground`, `--destructive`,
-   `--ring`; extend both so a dropped dark override fails the suite.
-2. **FormField footguns** — `components/shared/FormField.tsx` / `components/ui/form.tsx`
-   (zero callers today): (a) `TextFieldProps` must also omit `onChange|onBlur|value|ref`;
-   (b) `FormControl` `aria-describedby` points at a non-existent id when no
-   `<FormDescription>` renders — gate it on a description actually being present.
+## Senior-review follow-ups — BOTH FIXED this session (were "do in C3 prep")
+1. **Lockstep-test coverage gap** — `tests/contracts/design-tokens.test.ts`: added `--ring`
+   to `SEMANTIC_VARS` (:root guard) and extended the dark-override test to the full
+   mode-varying set (`--card-foreground`/`--muted-foreground`/`--destructive` were
+   unguarded). `--ring` is deliberately excluded from the dark loop — it's
+   `var(--brand-primary)`, mode-agnostic, not dark-swapped; asserting a dark override for
+   it would be wrong. 9/9 green.
+2. **FormField footguns** — `components/shared/FormField.tsx` / `components/ui/form.tsx`:
+   (a) `TextFieldProps` now omits `value|onChange|onBlur|ref` (plus `name|id`) and `Input`
+   spreads `{...inputProps}` BEFORE `{...field}` so the RHF wiring always wins; (b)
+   `FormControl` gates the description id in `aria-describedby` on a `<FormDescription>`
+   actually rendering (effect-based registration via `FormItem` context, SSR-safe), so it
+   never dangles at a non-existent node. Typecheck green.
 
 ## NEXT (per operator directive — parallelizable, dependencies allowing)
 - **C3 — screen migration** (UNBLOCKED; the next major build). Sweep `app/[locale]/**`

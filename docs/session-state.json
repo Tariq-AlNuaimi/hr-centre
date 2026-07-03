@@ -6,7 +6,7 @@
   "updated": "2026-07-03",
   "lastShip": {
     "status": "green",
-    "sha": "6a4a13c",
+    "sha": "15cab66",
     "date": "2026-07-03"
   },
   "autoSpawn": {
@@ -303,13 +303,13 @@
       "id": "design-tokens-lockstep",
       "file": "tests/contracts/design-tokens.test.ts",
       "note": "SEMANTIC_VARS + dark-override loop omit --card-foreground/--muted-foreground/--destructive/--ring; extend both so a dropped dark override fails the suite",
-      "status": "open"
+      "status": "fixed (this session)"
     },
     {
       "id": "formfield-footguns",
       "file": "components/shared/FormField.tsx + components/ui/form.tsx",
       "note": "(a) TextFieldProps must also omit onChange|onBlur|value|ref; (b) aria-describedby points at non-existent id when no FormDescription renders",
-      "status": "open"
+      "status": "fixed (this session)"
     }
   ],
   "deferred": [
@@ -387,11 +387,11 @@
       "next": "A2/A3/A4 done; do A1+A5 after C"
     },
     {
-      "state": "remaining",
+      "state": "done",
       "item": "session-automation",
       "title": "auto-handoff + auto-start",
-      "blockedBy": "operator Q x4 (answered)",
-      "next": "BUILDING NOW — Parts 1/2/3 (Part 3 disabled-default)"
+      "blockedBy": "",
+      "next": "SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default"
     },
     {
       "state": "remaining",
@@ -429,17 +429,15 @@
       "next": "0.5 session: default fork zero-ar; flip restores"
     },
     {
-      "state": "remaining",
+      "state": "done",
       "item": "2 senior-review Lows",
       "title": "lockstep gap + FormField footguns",
       "blockedBy": "",
-      "next": "do in C3 prep"
+      "next": "FIXED (this session): design-tokens lockstep + FormField footguns"
     }
   ],
   "nextActions": [
-    "Ship session-automation (Parts 1/2/3, Part 3 disabled-default): /ship green + push",
     "C3 screen migration: sweep app/[locale]/** screen by screen; forms -> react-hook-form + zodResolver; /design-qa per screen (axe-clean serious/critical exit bar)",
-    "2 senior-review Lows in C3 prep: design-tokens lockstep coverage; FormField footguns",
     "A1 deterministic gates + A5 testing/design depth (unblocked)",
     "D RTL verify pass (0.5 session)"
   ]

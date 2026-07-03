@@ -39,7 +39,14 @@ export function FormField<
   );
 }
 
-type FormItemContextValue = { id: string };
+type FormItemContextValue = {
+  id: string;
+  // Whether a <FormDescription> is actually rendered in this item. FormControl
+  // gates the description id in aria-describedby on this, so it never points at a
+  // non-existent element (an axe violation) when no description is supplied.
+  hasDescription: boolean;
+  setHasDescription: (v: boolean) => void;
+};
 const FormItemContext = React.createContext<FormItemContextValue | null>(null);
 
 /** Reads the field id + RHF error state for the enclosing FormField/FormItem. */
@@ -56,13 +63,15 @@ export function useFormField() {
   }
 
   const fieldState = getFieldState(fieldContext.name, formState);
-  const { id } = itemContext;
+  const { id, hasDescription, setHasDescription } = itemContext;
 
   return {
     name: fieldContext.name,
     formItemId: `${id}-control`,
     formDescriptionId: `${id}-description`,
     formMessageId: `${id}-message`,
+    hasDescription,
+    setHasDescription,
     ...fieldState,
   };
 }
@@ -72,8 +81,9 @@ export function FormItem({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   const id = React.useId();
+  const [hasDescription, setHasDescription] = React.useState(false);
   return (
-    <FormItemContext.Provider value={{ id }}>
+    <FormItemContext.Provider value={{ id, hasDescription, setHasDescription }}>
       <div className={cn("flex flex-col gap-1.5", className)} {...props} />
     </FormItemContext.Provider>
   );
@@ -102,16 +112,22 @@ export function FormControl({
 }: {
   children: React.ReactElement;
 }) {
-  const { error, formItemId, formDescriptionId, formMessageId } =
+  const { error, formItemId, formDescriptionId, formMessageId, hasDescription } =
     useFormField();
+  // Reference only ids whose elements actually render: the description id when a
+  // <FormDescription> is present, the message id when there's an error (FormMessage
+  // renders iff error). An empty list yields no attribute — never a dangling
+  // aria-describedby pointing at a non-existent node (axe: aria-valid-attr-value).
+  const describedBy = [
+    hasDescription ? formDescriptionId : null,
+    error ? formMessageId : null,
+  ].filter(Boolean);
   return React.cloneElement(
     children as React.ReactElement<Record<string, unknown>>,
     {
       id: formItemId,
       "aria-invalid": !!error,
-      "aria-describedby": error
-        ? `${formDescriptionId} ${formMessageId}`
-        : formDescriptionId,
+      "aria-describedby": describedBy.length ? describedBy.join(" ") : undefined,
     },
   );
 }
@@ -120,7 +136,14 @@ export function FormDescription({
   className,
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
-  const { formDescriptionId } = useFormField();
+  const { formDescriptionId, setHasDescription } = useFormField();
+  // Register presence so FormControl only points aria-describedby at this id while
+  // the element is mounted. Effect (not render) so it's SSR-safe: the reference is
+  // added post-mount, before which the element is simply unreferenced (never dangling).
+  React.useEffect(() => {
+    setHasDescription(true);
+    return () => setHasDescription(false);
+  }, [setHasDescription]);
   return (
     <p
       id={formDescriptionId}

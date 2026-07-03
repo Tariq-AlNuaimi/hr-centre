@@ -46,7 +46,14 @@ export function useZodForm<TSchema extends ZodType>(
 }
 
 export interface TextFieldProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "name" | "id"> {
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    // `name`/`id` are owned by the RHF binding + FormControl. `value`/`onChange`/
+    // `onBlur`/`ref` are the react-hook-form wiring — a caller passing any of them
+    // would fight the controlled field, so they're removed from the surface (and
+    // `field` also wins at runtime below, defence in depth).
+    "name" | "id" | "value" | "onChange" | "onBlur" | "ref"
+  > {
   /** RHF field name (a key of the form's schema). */
   name: string;
   /** Visible field label. */
@@ -69,7 +76,10 @@ export function TextField({
         <FormItem>
           <FormLabel>{label}</FormLabel>
           <FormControl>
-            <Input {...field} value={field.value ?? ""} {...inputProps} />
+            {/* inputProps FIRST so the RHF field (onChange/onBlur/value/ref/name)
+                and the controlled value always win — a stray wiring prop can't
+                clobber the binding even if it slips past the prop types. */}
+            <Input {...inputProps} {...field} value={field.value ?? ""} />
           </FormControl>
           {description && <FormDescription>{description}</FormDescription>}
           <FormMessage />
