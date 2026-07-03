@@ -1,8 +1,12 @@
 "use client";
 
-import type { TableProps } from "antd";
-import type { ColumnType, ColumnsType } from "antd/es/table";
-import type { FilterValue, Key } from "antd/es/table/interface";
+import type {
+  TableProps,
+  ColumnType,
+  ColumnsType,
+  FilterValue,
+  Key,
+} from "@/components/shared/table-types";
 import {
   flexRender,
   getCoreRowModel,

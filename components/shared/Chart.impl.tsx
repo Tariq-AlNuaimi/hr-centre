@@ -49,7 +49,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useTheme } from "@/components/layout/ThemeProvider";
-import { chartPalette } from "@/components/layout/antd-theme";
+import { chartPalette } from "@/components/shared/chart-palette";
 
 export type ChartType = "line" | "bar" | "area" | "pie";
 

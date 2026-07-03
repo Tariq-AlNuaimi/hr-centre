@@ -8,7 +8,7 @@
 // RSC passes serializable data down to this client component, which renders it.
 // This is the canonical RSC + client-island split (see docs/recipes/perf/1-rsc-list-reads.md).
 
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType } from "@/components/shared/table-types";
 import { useTranslations } from "next-intl";
 import { Chart } from "@/components/shared/Chart";
 import { PageHeader } from "@/components/shared/PageHeader";

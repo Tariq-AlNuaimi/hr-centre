@@ -2,12 +2,14 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { brandTokens } from "../../components/layout/antd-theme";
 import { brand } from "../../brand.config";
 
-// app/tokens.css (plain-CSS land) and components/layout/antd-theme.ts (AntD
-// land) describe the same ruler. These assertions keep them in lockstep --
-// the same pattern as SCRUB_FIELDS + its membership test.
+// app/tokens.css (plain-CSS land) is the ruler these assertions lock against.
+// The two overlapping numeric tokens the deleted AntD theme file once exported
+// (components/layout/antd-theme.ts, removed in C4/ADR-029) are inlined here so
+// the lockstep still bites: borderRadius derives from brand.radius and the base
+// fontSize is 14px. Same pattern as SCRUB_FIELDS + its membership test.
+const brandTokens = { borderRadius: brand.radius, fontSize: 14 };
 
 const root = join(import.meta.dirname, "..", "..");
 const tokensCss = readFileSync(join(root, "app", "tokens.css"), "utf8");

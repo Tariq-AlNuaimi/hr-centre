@@ -2,13 +2,15 @@
  * Render helper for component tests.
  *
  * Components in this template pull from two providers at runtime:
- *   - next-intl  (useTranslations) -> NextIntlClientProvider + a messages object
- *   - Ant Design (App / theme)      -> ConfigProvider + App so message/modal APIs
- *                                       and the React 19 wave effect don't warn
+ *   - next-intl    (useTranslations)  -> NextIntlClientProvider + a messages object
+ *   - React Query  (@tanstack)        -> QueryClientProvider (data hooks + the
+ *                                         QueryProvider error bridge)
  *
  * `renderWithProviders` wraps both so a component under test behaves like it does
- * inside the dashboard. Tests stay resilient by asserting on visible text / roles
- * rather than AntD's internal DOM structure.
+ * inside the dashboard. Tests stay resilient by asserting on visible text /
+ * roles. (The template migrated off Ant Design in ADR-029 — no ConfigProvider/App
+ * wrapper is needed; toasts now route through sonner, which no tested component
+ * mounts at render.)
  *
  * jsdom is registered globally by the test script (global-jsdom/register), so the
  * DOM is already present when this module loads.
@@ -16,7 +18,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { render } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
-import { App, ConfigProvider } from "antd";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // Mirrors messages/en.json closely enough for the shared components, which all
@@ -102,11 +103,7 @@ export function Providers({
   });
   return (
     <NextIntlClientProvider locale={locale} messages={msgs}>
-      <QueryClientProvider client={queryClient}>
-        <ConfigProvider>
-          <App>{children}</App>
-        </ConfigProvider>
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </NextIntlClientProvider>
   );
 }

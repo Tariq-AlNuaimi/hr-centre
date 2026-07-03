@@ -1,6 +1,5 @@
 "use client";
 
-import type { PopconfirmProps } from "antd";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -20,10 +19,16 @@ import {
  * destructive action; the AntD `Popconfirm` replacement. Keeps the same prop
  * surface (title + the Popconfirm callbacks/labels) so existing call sites —
  * `<ConfirmAction title=… onConfirm=…><Button …/></ConfirmAction>` — compile and
- * behave unchanged. AntD stays a type-only import during the coexistence slice.
+ * behave unchanged. The prop surface is now the local AntD-Popconfirm subset
+ * these call sites use (title + the confirm callbacks/labels) — no antd import.
  */
-interface ConfirmActionProps extends Omit<PopconfirmProps, "title"> {
+interface ConfirmActionProps {
   title?: string;
+  description?: React.ReactNode;
+  okText?: React.ReactNode;
+  cancelText?: React.ReactNode;
+  okType?: "primary" | "default" | "dashed" | "link" | "text" | "danger";
+  onConfirm?: () => void;
   children: React.ReactNode;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType } from "@/components/shared/table-types";
 import type { BadgeProps } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/shared/DataTable";

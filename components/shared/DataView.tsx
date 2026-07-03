@@ -1,7 +1,11 @@
 "use client";
 
-import type { ColumnType, ColumnsType } from "antd/es/table";
-import type { FilterValue, Key } from "antd/es/table/interface";
+import type {
+  ColumnType,
+  ColumnsType,
+  FilterValue,
+  Key,
+} from "@/components/shared/table-types";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";

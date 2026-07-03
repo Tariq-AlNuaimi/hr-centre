@@ -10,7 +10,7 @@
 // AntD onto the shadcn/Tailwind primitive layer.)
 
 import { useState } from "react";
-import type { ColumnsType } from "antd/es/table";
+import type { ColumnsType } from "@/components/shared/table-types";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatCard } from "@/components/shared/StatCard";
@@ -194,8 +194,7 @@ export default function StyleGuidePage() {
         <h3 className="m-0 text-h3 font-semibold text-foreground">Heading 3</h3>
         <h4 className="m-0 text-h4 font-semibold text-foreground">Heading 4</h4>
         <p className="mt-3 max-w-[65ch] text-sm text-foreground">
-          Body text sits on the type scale in <code>app/tokens.css</code> /{" "}
-          <code>antd-theme.ts</code>.{" "}
+          Body text sits on the type scale in <code>app/tokens.css</code>.{" "}
           <span className="text-muted-foreground">Secondary</span>,{" "}
           <span className="text-emerald-700 dark:text-emerald-400">success</span>,{" "}
           <span className="text-amber-700 dark:text-amber-400">warning</span>,{" "}

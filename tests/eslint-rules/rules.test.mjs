@@ -197,9 +197,9 @@ ruleTest(
 
 // --- no-raw-hex-color ------------------------------------------------------
 // Color must come from the theme tokens / CSS vars, not a raw hex in a
-// component. The token source file (antd-theme.ts) is exempt; comments aren't
+// component. The token source file (chart-palette.ts) is exempt; comments aren't
 // literals so example hexes in docs don't trip it.
-const THEME_SRC = "/repo/components/layout/antd-theme.ts";
+const THEME_SRC = "/repo/components/shared/chart-palette.ts";
 const BRAND_SRC = "/repo/brand.config.ts";
 const A_COMPONENT = "/repo/components/shared/Widget.tsx";
 ruleTest("no-raw-hex-color", noRawHexColor, {

@@ -1,8 +1,8 @@
 // Rule: no-raw-hex-color
 //
-// Design-token enforcement. Color must come from the theme tokens
-// (components/layout/antd-theme.ts) or the CSS custom properties in
-// app/tokens.css -- never a raw hex literal dropped into a component
+// Design-token enforcement. Color must come from the CSS custom properties in
+// app/tokens.css (the @theme block + semantic vars) -- never a raw hex literal
+// dropped into a component
 // (e.g. `style={{ color: "#3a3a3a" }}` or a one-off palette array). Raw
 // hexes are how a considered theme drifts back to generic: off-palette
 // hues, values that ignore dark mode, colors that can't be rebranded in
@@ -12,9 +12,9 @@
 // #rrggbb / #rrggbbaa) or that embeds a 6-/8-digit hex color. Comments are
 // not literals, so example hexes in docs/comments are fine.
 //
-// Exempt: the token SOURCE files -- antd-theme.ts (brand tokens + chart
-// palette) and brand.config.ts (the white-label brand-color contract). Those
-// are the legitimate homes for brand hex; everything else pulls from the tokens.
+// Exempt: the token SOURCE files -- chart-palette.ts (the chart series palette)
+// and brand.config.ts (the white-label brand-color contract). Those are the
+// legitimate homes for brand hex; everything else pulls from the tokens.
 // To use a justified literal elsewhere (rare), disable per line:
 //   // eslint-disable-next-line rihal-template/no-raw-hex-color
 //
@@ -26,7 +26,7 @@ const WHOLE_HEX = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 // bounded so it isn't part of a longer hex/word run.
 const EMBEDDED_HEX = /(?:^|[^0-9a-fA-F])#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?(?![0-9a-fA-F])/;
 
-const EXEMPT_FILE = /(?:antd-theme|brand\.config)\.ts$/;
+const EXEMPT_FILE = /(?:chart-palette|brand\.config)\.ts$/;
 
 function isHexColor(value) {
   if (typeof value !== "string") return false;
@@ -43,7 +43,7 @@ export default {
     },
     messages: {
       noRawHexColor:
-        "Raw hex color \"{{value}}\". Color must come from the theme tokens (components/layout/antd-theme.ts via theme.useToken()) or a CSS variable in app/tokens.css -- a hardcoded hex drifts off-palette and ignores dark mode. Move it to the token layer, or disable this line with a justification if it's genuinely one-off.",
+        "Raw hex color \"{{value}}\". Color must come from a CSS variable in app/tokens.css (the @theme block / semantic vars) or the sanctioned token sources (chart-palette.ts / brand.config.ts) -- a hardcoded hex drifts off-palette and ignores dark mode. Move it to the token layer, or disable this line with a justification if it's genuinely one-off.",
     },
     schema: [],
   },

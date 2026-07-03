@@ -1,6 +1,6 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import { Button } from "antd";
+import { Button } from "../../components/ui/button";
 import { PageHeader } from "../../components/shared/PageHeader";
 import { renderWithProviders, screen, cleanup } from "./_render.js";
 
@@ -26,7 +26,7 @@ test("renders the primary action in the actions slot", () => {
   renderWithProviders(
     <PageHeader
       title="Users"
-      actions={<Button type="primary">New user</Button>}
+      actions={<Button>New user</Button>}
     />,
   );
   assert.ok(screen.getByRole("button", { name: "New user" }));
