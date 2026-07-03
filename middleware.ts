@@ -44,10 +44,12 @@ function sentryConnectSrc(): string {
 // Per-request CSP (T-05 / recipe shared-security/3). script-src is nonce-based:
 // the inline bootstrap/theme scripts carry the nonce, scripts they load inherit
 // trust via 'strict-dynamic', and 'unsafe-inline' is IGNORED by browsers when a
-// nonce is present (so we omit it). style-src KEEPS 'unsafe-inline': Ant Design 6
-// + emotion emit inline style="..." attributes a nonce can't cover (revisit at
-// AntD 7, ADR-001). We do NOT nonce styles at all — the stock AntdRegistry's
-// <style> tags rely on that style-src 'unsafe-inline'; only scripts are nonced.
+// nonce is present (so we omit it). style-src KEEPS 'unsafe-inline': the UI stack
+// (ADR-029 — Radix overlay positioning on Popover/Dropdown/Select/Dialog/Tooltip,
+// recharts SVG + ResponsiveContainer, sonner toasts, dnd-kit drag transforms) all
+// emit dynamic inline style="..." attributes a nonce can't cover. We do NOT nonce
+// styles; only scripts are nonced. (A nonce-per-style migration would need every
+// one of those libraries to route styles through a nonced <style> — none do.)
 function buildCsp(nonce: string): string {
   const directives = [
     "default-src 'self'",
