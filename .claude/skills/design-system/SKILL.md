@@ -18,7 +18,7 @@ horrible" complaint).
 ## 1. Declare the design read (one line, mandatory — Tier 0)
 
 Before any markup, state it in the response (not a file):
-> Building **\<surface\>** for **\<audience\>**; tone **\<calm | dense-data | form-heavy | …\>**; density **\<default | compact\>**; the ONE primary action is **\<X\>**; accent = `colorPrimary`.
+> Building **\<surface\>** for **\<audience\>**; tone **\<calm | dense-data | form-heavy | …\>**; density **\<default | compact\>**; the ONE primary action is **\<X\>**; accent = `bg-primary` (`brand.primary`).
 
 This is the same declaration the blueprint lightweight track asks for — if you
 came from `/blueprint`, reuse it. Consistency comes from committing to a declared
@@ -35,11 +35,11 @@ recipe is built on the shipped primitives — **reuse these, don't hand-roll**:
 | Need | Use | Not |
 |------|-----|-----|
 | Page title + the one primary action | `PageHeader` (`components/shared/PageHeader.tsx`) | a hand-rolled `Space + Title + Button` with ad-hoc margins |
-| A list/table | `DataTable` (server pagination, debounced search, `emptyText`) | a bare AntD `Table` |
+| A list/table | `DataTable` (server pagination, debounced search, `emptyText`) | a bare `<table>` |
 | Nothing-here state | `EmptyState` (`description` + optional `actionLabel`/`onAction`) | a centered gray `<p>No data</p>` |
 | Loading | `PageSkeleton` / `TableSkeleton` / `FormSkeleton` (`Skeletons.tsx`) | a bare spinner, or worse, nothing |
-| Destructive confirm | `ConfirmAction` (Popconfirm wrapper) | a custom modal per delete |
-| Chart | `Chart` (uses `chartPalette` from the theme) | raw recharts with hardcoded hex |
+| Destructive confirm | `ConfirmAction` (Radix Dialog confirm) | a custom modal per delete |
+| Chart | `Chart` (uses `chartPalette` from `components/shared/chart-palette.ts`) | raw recharts with hardcoded hex |
 | Kanban | `KanbanBoard` | a bespoke dnd surface |
 
 ## 3. The non-negotiables (these are what make it look considered)
@@ -47,15 +47,16 @@ recipe is built on the shipped primitives — **reuse these, don't hand-roll**:
 Pulled from `docs/uat-rubric.md` Tier 0 + the recipes; violating any is a
 `/design-qa` finding, so honor them up front:
 - **Spacing** off the 4px scale (`--space-*`) or a `--density-*` semantic — never
-  `padding: 13px`. **Color** from the theme / CSS vars — never a raw hex (ESLint
-  blocks it).
-- **One accent** (`colorPrimary`), **one primary action per screen**, **no nested
-  Cards**, **no emoji-as-icons** (`@ant-design/icons` only), **no dead controls**,
+  `padding: 13px`. **Color** from the semantic utilities / CSS vars — never a raw hex
+  (ESLint blocks it).
+- **One accent** (`bg-primary`), **one primary action per screen**, **no nested
+  Cards**, **no emoji-as-icons** (`lucide-react` only), **no dead controls**,
   **density picked once**.
 - **Every screen ships its real empty, loading, AND error states** — not just the
   happy full-data view. This is the single biggest "looks unfinished" tell.
 - **RTL + dark hold:** test `ar` (`dir="rtl"`) and dark mode; use logical
-  properties / AntD `Flex` (mirrors automatically), never hardcoded left/right.
+  properties (Tailwind logical utilities: `ms-*`/`me-*`/`ps-*`/`pe-*`/`text-start`,
+  and flexbox, which mirrors automatically), never hardcoded left/right.
 - **Accessibility:** labels associated with inputs, visible focus, logical heading
   order (`PageHeader level`), AA contrast. See the a11y rules in the recipes.
 
@@ -72,4 +73,4 @@ its states.
 - `docs/design-recipes.md` — the copy-paste patterns (the heart of this skill).
 - `docs/uat-rubric.md` Tier 0 — the anti-slop rules this enforces.
 - `/design-qa` — the reactive audit; `/blueprint` — where the design read starts.
-- `app/tokens.css` + `components/layout/antd-theme.ts` — the ruler.
+- `app/tokens.css` (the `@theme` tokens + `[data-theme]` dark swap) — the ruler.

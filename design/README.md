@@ -9,9 +9,11 @@ product, so there is no per-screen visual baseline to diff against yet.
 Until a fork adds mockups here, the design source of truth is the **token layer**,
 which `/design-qa` reads directly:
 
-- **`app/tokens.css`** — spacing scale, density semantics, type scale, radii, colors.
-- **`components/layout/antd-theme.ts`** — the Ant Design `ConfigProvider` theme
-  (the same scale; kept in lockstep by `tests/contracts/design-tokens.test.ts`).
+- **`app/tokens.css`** — spacing scale, density semantics, type scale, radii, and the
+  semantic surface colors, exposed as Tailwind utilities via the `@theme` block.
+- **`app/globals.css`** — the `[data-theme="dark"]` variable swap (dark-mode colors +
+  shadows) that restyles every token utility at once.
+- **`components/shared/chart-palette.ts`** — the categorical chart-series palette.
 - **`docs/uat-rubric.md`** — the heuristics every finding cites a pillar + anchor against.
 
 With no mockups present, `/design-qa` falls back to **token-fidelity + heuristic**

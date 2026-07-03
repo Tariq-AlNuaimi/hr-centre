@@ -21,8 +21,8 @@ per-domain.
 ## The anchors (a finding cites at least one)
 **Objectives** (what this screen/feature is for) · **Scope** (in/out of bounds) ·
 **Benchmark** (how a named peer product does this exact thing) · **Knowledge Base**
-(the app's master data) · **Design handoff** (`design/*` mockups + `tokens.css` / the
-AntD theme). No anchor → it's an opinion; flag it as a *judgment call* for the
+(the app's master data) · **Design handoff** (`design/*` mockups + `tokens.css` — the
+`@theme` tokens + the `[data-theme]` dark swap). No anchor → it's an opinion; flag it as a *judgment call* for the
 operator, don't bury it as a finding.
 
 ---
@@ -31,7 +31,7 @@ operator, don't bury it as a finding.
 The gate below *catches* slop; this section *prevents* it. Before building a new
 screen or surface, the agent declares a **one-line design read** in the response
 (not a file): *"Building \<surface\> for \<audience\>; tone \<calm | dense-data |
-form-heavy | …\>; density \<default | compact\>; accent = `colorPrimary`."* Then
+form-heavy | …\>; density \<default | compact\>; accent = `bg-primary` (`brand.primary`)."* Then
 commit to it — consistency comes from the declared system, not restraint in the
 moment. **This is a required step, not optional** — `/blueprint` and
 `/design-system` both enforce it. Build from the vetted patterns in
@@ -39,20 +39,20 @@ moment. **This is a required step, not optional** — `/blueprint` and
 `components/shared/*` primitives; improvising the layout is what produces the
 findings the tiers below then have to catch.
 
-**The ruler:** `app/tokens.css` (spacing/type/density/radius scale) +
-`components/layout/antd-theme.ts` (the AntD side; lockstep-tested). Spacing comes
-off the 4px scale or a `--density-*` semantic; type comes off the type scale —
-ad-hoc values are Tier-1 findings.
+**The ruler:** `app/tokens.css` (spacing/type/density/radius scale + the semantic
+surface colors, exposed as Tailwind utilities via `@theme`; dark-swapped in
+`app/globals.css`). Spacing comes off the 4px scale or a `--density-*` semantic; type
+comes off the type scale — ad-hoc values are Tier-1 findings.
 
 **Anti-slop defaults** — the recognizable AI tells, banned unless the brief
 explicitly asks (each is a Tier-1 finding citing this section as anchor):
-- **One accent per app** — `colorPrimary` is the accent; no per-screen hues, no
+- **One accent per app** — `bg-primary` is the accent; no per-screen hues, no
   purple→blue gradient panels, no glow shadows.
-- **One primary action per screen** — a single `type="primary"` button; five
+- **One primary action per screen** — a single default-variant `<Button>`; five
   equal blue buttons is a hierarchy fail.
-- **No nested Cards** (Card inside Card) — group with spacing, `Divider`, or
+- **No nested Cards** (Card inside Card) — group with spacing, a `Separator`, or
   plain sections instead of stacking chrome.
-- **No emoji as icons** — `@ant-design/icons` only; one icon family, one weight.
+- **No emoji as icons** — `lucide-react` only; one icon family, one weight.
 - **No label/eyebrow spam** — not every heading needs a small uppercase label;
   the page position already categorizes a section.
 - **No gray-on-colored text** — copy passes WCAG AA against its actual background.
@@ -60,8 +60,8 @@ explicitly asks (each is a Tier-1 finding citing this section as anchor):
   empty-state copy unless real or marked as sample.
 - **No dead chrome** — every control does something; no decorative buttons,
   no filler sections to make a screen look "designed."
-- **Density picked once** — `default` or `compact` (AntD algorithm/`size`) per
-  app, not per screen.
+- **Density picked once** — `default` or `compact` (the `--density-*` semantics /
+  a component's `size` prop) per app, not per screen.
 
 ## Tier 1 — Design QA (fidelity): does it match the intended design?
 Owner: front-end (the agent). Gate: **before** functional QA. Tool: `/design-qa`.
@@ -92,10 +92,10 @@ not vibes. Each **unchecked** box that isn't a brief-sanctioned exception is a
 Tier-1 finding citing the Tier-0 anchor. (An exception the brief explicitly asks
 for is checked with a one-line "brief sanctions: …" note, not silently skipped.)
 
-- [ ] **One accent** — only `colorPrimary` as accent; no per-screen hues, gradient panels, or glow shadows.
-- [ ] **One primary action per screen** — exactly one `type="primary"`; secondary actions are visually subordinate.
-- [ ] **No nested Cards** — grouping via spacing / `Divider` / plain sections, not Card-in-Card chrome.
-- [ ] **Icons from one family** — `@ant-design/icons` only; no emoji-as-icon; one weight.
+- [ ] **One accent** — only `bg-primary` as accent; no per-screen hues, gradient panels, or glow shadows.
+- [ ] **One primary action per screen** — exactly one default-variant `<Button>`; secondary actions are visually subordinate.
+- [ ] **No nested Cards** — grouping via spacing / a `Separator` / plain sections, not Card-in-Card chrome.
+- [ ] **Icons from one family** — `lucide-react` only; no emoji-as-icon; one weight.
 - [ ] **No label/eyebrow spam** — small uppercase labels used only where position doesn't already categorize.
 - [ ] **No gray-on-colored text** — every copy/background pair passes WCAG AA (see manual a11y below).
 - [ ] **Honest demo data** — no fake-precise numbers in seeds/empty copy unless real or marked "sample".
@@ -118,7 +118,7 @@ stops the gate, same as an axe critical.
 - [ ] **No keyboard trap** — focus can always leave a widget/modal; Esc closes overlays and returns focus to the trigger (WCAG 2.1.2).
 - [ ] **Modal/drawer focus management** — focus moves into the overlay on open, is contained while open, and restores to the opener on close.
 - [ ] **ARIA landmarks present** — one `main`, plus `nav` / `banner` / `contentinfo` as applicable, so screen-reader users can jump regions (WCAG 1.3.1).
-- [ ] **Live regions for async feedback** — toasts, inline validation, and async row/status changes announce via `aria-live` (or AntD's built-in `message`/`notification`, which do); a green toast over a failure is both a slop and an a11y fail.
+- [ ] **Live regions for async feedback** — toasts, inline validation, and async row/status changes announce via `aria-live` (sonner's `useNotify()` toasts do; `FormMessage` renders `role="alert"`); a green toast over a failure is both a slop and an a11y fail.
 - [ ] **Accessible names on icon-only controls** — every icon-only button/link has an `aria-label` or visually-hidden text; no naked glyph.
 - [ ] **Manual contrast on the hard cases** — text over images/gradients, disabled text, placeholder text, and state colors (success/warning/error) meet AA (4.5:1 body / 3:1 large + UI components 1.4.11); these are the cases axe under-reports.
 - [ ] **Reduced-motion honored** — non-essential animation/transition is gated behind `@media (prefers-reduced-motion: reduce)`; nothing auto-animates for a user who opted out (WCAG 2.3.3).

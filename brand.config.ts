@@ -3,9 +3,8 @@
 // ONE place a fork (or a per-client build) sets its visual identity: app name,
 // brand colors, corner radius, density, and the UI font. Everything downstream
 // derives from here:
-//   - components/layout/antd-theme.ts  → AntD ConfigProvider tokens
-//   - components/layout/ThemeProvider   → density algorithm
-//   - app/[locale]/layout.tsx           → loads the font (next/font) + <html dir>
+//   - app/tokens.css (@theme)           → Tailwind color utilities (bg-primary/text-accent)
+//   - app/[locale]/layout.tsx           → emits --brand-* CSS vars on <html>, loads the font (next/font) + <html dir>
 //   - app/layout.tsx                    → <title>, theme-color, icons
 //   - components/layout/AppHeader.tsx   → logo monogram + wordmark
 //
@@ -16,9 +15,9 @@
 // file owns the family NAME + fallback stack that the token references, layout
 // owns the import. Keep the two in sync.
 //
-// NOTE: this file is exempt from the no-raw-hex-color ESLint rule (like
-// antd-theme.ts) — it is a token SOURCE, the one legitimate home for brand hex.
-// Don't scatter hex elsewhere; pull from the theme tokens instead.
+// NOTE: this file is exempt from the no-raw-hex-color ESLint rule — it is a token
+// SOURCE, the one legitimate home for brand hex. Don't scatter hex elsewhere;
+// pull from the semantic token utilities (bg-primary, text-accent…) instead.
 
 export type BrandDensity = "comfortable" | "compact";
 
@@ -37,7 +36,7 @@ export interface BrandConfig {
   };
   /** Base corner radius (px). Kept in lockstep with --radius-base in tokens.css. */
   radius: number;
-  /** `comfortable` = AntD default sizing; `compact` for data-dense tools. */
+  /** `comfortable` = default sizing; `compact` for data-dense tools. */
   density: BrandDensity;
   font: {
     /** CSS variable next/font binds in layout.tsx and the token chains first.
