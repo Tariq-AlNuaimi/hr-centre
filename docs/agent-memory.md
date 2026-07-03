@@ -44,6 +44,15 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-07-03 (session 14) — **Can't delete remote branches from a web session.** The local git
+  bridge returns HTTP 403 on ref-deletion (`git push origin --delete`), and the GitHub MCP exposes
+  no delete-branch tool. Branch pruning must be handed to the operator (commands, or the GitHub
+  Branches UI). `git branch -d/-D` and force-push are also deny-listed locally.
+- 2026-07-03 (session 14) — **Dependabot PRs can sit on ABANDONED history.** After a repo is rebuilt
+  from a pristine template, old Dependabot branches share NO merge-base with current `main` (`git
+  merge-base origin/main <branch>` prints empty) — merging one resurrects a whole dead project. Check
+  merge-base first; if disjoint, CLOSE the PR and hand-apply the version bump to the live files
+  (resolve pinned action SHAs via `git ls-remote https://github.com/<owner>/<action> refs/tags/<tag>`).
 - 2026-07-03 (session 12) — **Dark/RTL browser-axe recipe (reusable; confirmed end-to-end).**
   Real-browser axe against the deployed app from a web session: (1) REDEPLOY the tip WITHOUT
   the pristine flip — do NOT use `scripts/deploy.mjs` (it clears `project.config.json`
