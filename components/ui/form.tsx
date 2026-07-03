@@ -97,7 +97,7 @@ export function FormLabel({
   return (
     <Label
       htmlFor={formItemId}
-      className={cn(error && "text-destructive", className)}
+      className={cn(error && "text-destructive-emphasis", className)}
       {...props}
     />
   );
@@ -165,7 +165,7 @@ export function FormMessage({
     <p
       id={formMessageId}
       role="alert"
-      className={cn("text-xs font-medium text-destructive", className)}
+      className={cn("text-xs font-medium text-destructive-emphasis", className)}
       {...props}
     >
       {body}

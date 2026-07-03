@@ -42,7 +42,7 @@ export function OrgSwitcher() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         <DropdownMenuItem>
-          <Check className="text-primary" />
+          <Check className="text-primary-emphasis" />
           {brand.appName}
         </DropdownMenuItem>
         <DropdownMenuSeparator />

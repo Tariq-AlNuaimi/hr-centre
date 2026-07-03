@@ -157,12 +157,16 @@ export function Chart<T extends Record<string, unknown>>({
             cy="50%"
             outerRadius="80%"
             label
+            // No leader label-lines (Workstream D a11y): recharts forwards Cell
+            // props to BOTH the sector AND its leader line, so each slice was
+            // announced twice by AT. Dropping the line leaves one accessible
+            // sector per slice — the `label` text still renders at each arc.
+            labelLine={false}
           >
             {data.map((d, i) => (
-              // a11y (C3 axe gate): recharts gives each sector role="img" with no
-              // accessible name (svg-img-alt), and forwards Cell props to BOTH the
-              // sector AND its leader label-line — so set role + aria-label on both
-              // (a bare aria-label on the role-less label-line is aria-prohibited).
+              // a11y: recharts gives each sector role="img" with no accessible
+              // name (svg-img-alt), so set role + aria-label on the Cell. With
+              // labelLine={false} above there is no leader line to double-announce.
               <Cell
                 key={i}
                 fill={colors[i % colors.length]}

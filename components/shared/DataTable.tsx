@@ -103,7 +103,7 @@ function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
         viewBox="0 0 8 5"
         className={cn(
           "h-1.5 w-2",
-          dir === "asc" ? "text-primary" : "text-muted-foreground/40",
+          dir === "asc" ? "text-primary-emphasis" : "text-muted-foreground/40",
         )}
         fill="currentColor"
       >
@@ -113,7 +113,7 @@ function SortIcon({ dir }: { dir: false | "asc" | "desc" }) {
         viewBox="0 0 8 5"
         className={cn(
           "mt-0.5 h-1.5 w-2",
-          dir === "desc" ? "text-primary" : "text-muted-foreground/40",
+          dir === "desc" ? "text-primary-emphasis" : "text-muted-foreground/40",
         )}
         fill="currentColor"
       >
@@ -536,8 +536,12 @@ function ColumnFilter({
         className={cn(
           "inline-flex h-5 w-5 items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
           active
-            ? "text-primary"
-            : "text-muted-foreground/60 hover:text-foreground",
+            ? "text-primary-emphasis"
+            // Full muted-foreground (not /60): as the filter control's only visual
+            // affordance it must clear WCAG 1.4.11 non-text contrast (>=3:1) — /60
+            // is ~2.6:1 on light. (SortIcon's inactive arrows stay /40: aria-hidden
+            // decoration, the sort state is on aria-sort.)
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         <svg

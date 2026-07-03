@@ -102,7 +102,7 @@ export const SelectItem = React.forwardRef<
         <svg
           aria-hidden
           viewBox="0 0 24 24"
-          className="h-4 w-4 text-primary"
+          className="h-4 w-4 text-primary-emphasis"
           fill="none"
           stroke="currentColor"
           strokeWidth={2}

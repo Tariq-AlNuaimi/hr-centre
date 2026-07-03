@@ -32,7 +32,7 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
         {icon && (
           <span
             aria-hidden
-            className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-md bg-primary/10 text-lg text-primary"
+            className="inline-flex h-10 w-10 flex-none items-center justify-center rounded-md bg-primary/10 text-lg text-primary-emphasis"
           >
             {icon}
           </span>

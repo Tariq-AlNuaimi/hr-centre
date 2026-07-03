@@ -137,7 +137,7 @@ export function getUserColumns({
             <Button
               variant="ghost"
               size="icon"
-              className="text-destructive hover:text-destructive"
+              className="text-destructive-emphasis hover:text-destructive-emphasis"
               aria-label={t("deleteAction")}
             >
               <DeleteIcon />

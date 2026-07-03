@@ -119,8 +119,14 @@ body {
   --muted-foreground: #9ca3af;    /* gray-400 */
   --border: #1f2937;              /* gray-800 */
   --input: #374151;               /* gray-700 */
-  --destructive: #ef4444;         /* red-500 (lighter for dark) */
-  --popover: #1d2129;             /* AntD colorBgElevated (dark) — above cards */
+  /* Destructive SURFACE stays red-600 in dark too (NOT lightened to red-500):
+     white-on-red-500 is only 3.76:1, below AA — red-600 gives the bg-destructive
+     button/badge a 4.83:1 white foreground. Red-as-TEXT gets its own lighter
+     token below so error text still reads on the dark shell. */
+  --destructive: #dc2626;         /* red-600 — white foreground clears AA on dark */
+  --destructive-emphasis: #f87171; /* red-400 — red-as-text, AA on dark surfaces (>=5.3:1) */
+  --primary-emphasis: #a5b4fc;    /* indigo-300 — brand-as-text, AA on the dark shell (>=8:1) */
+  --popover: #1d2129;             /* elevated overlay surface (dark) — above cards */
   --popover-foreground: #f9fafb;  /* gray-50 (mirrors --card-foreground dark) */
   --nav-active-foreground: #a5b4fc; /* indigo-300 — AA on the dark shell */
 }

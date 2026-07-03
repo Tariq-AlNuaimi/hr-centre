@@ -81,6 +81,8 @@ const SEMANTIC_VARS = [
   "--border",
   "--input",
   "--destructive",
+  "--destructive-emphasis",
+  "--primary-emphasis",
   "--ring",
 ];
 
@@ -101,6 +103,8 @@ test("@theme maps each semantic var to a --color-* utility", () => {
     "--color-input",
     "--color-ring",
     "--color-destructive",
+    "--color-destructive-emphasis",
+    "--color-primary-emphasis",
   ]) {
     assert.match(
       tokensCss,
@@ -127,6 +131,12 @@ const DARK_OVERRIDDEN = [
   "--border",
   "--input",
   "--destructive",
+  // Split emphasis tokens (Workstream D): brand-as-text and red-as-text each get
+  // a lighter dark value so they clear AA on the dark shell, while the brand/red
+  // SURFACES (--ring stays brand, --destructive is the button bg) are unchanged.
+  // A dropped dark override here silently regresses text contrast in dark mode.
+  "--destructive-emphasis",
+  "--primary-emphasis",
 ];
 test("dark mode overrides every mode-varying semantic surface in globals.css", () => {
   for (const v of DARK_OVERRIDDEN) {

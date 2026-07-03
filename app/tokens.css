@@ -81,8 +81,19 @@
   --input: #d1d5db;               /* gray-300 */
   --ring: var(--brand-primary);
   --primary-foreground: #ffffff;
-  --destructive: #dc2626;         /* red-600 */
+  /* Brand used AS TEXT (links, active nav/sort/filter state, brand icons on
+   * neutral/tinted surfaces). Split from the brand SURFACE (bg-primary buttons,
+   * which keep --brand-primary): on light this IS the brand color (AA on white),
+   * but the dark override lightens it to indigo-300 so brand-as-text clears AA on
+   * dark surfaces (raw brand indigo is only ~3:1 there). bg-primary is untouched. */
+  --primary-emphasis: var(--brand-primary);
+  --destructive: #dc2626;         /* red-600 — the destructive SURFACE (bg-destructive); white foreground clears AA (4.83:1) */
   --destructive-foreground: #ffffff;
+  /* Red used AS TEXT (error messages, destructive menu item, delete link). Split
+   * from the destructive SURFACE above: the dark override lightens it to red-400
+   * so red-on-dark text clears AA, while the surface stays dark enough (red-600)
+   * for a white foreground. Light = same red-600 as the surface. */
+  --destructive-emphasis: #dc2626;
 
   /* Elevated overlay surface (ADR-029, Workstream C3.5) — dropdown/menu/popover
    * panels sit ABOVE cards, so they get their own elevated surface token.
@@ -178,8 +189,10 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-emphasis: var(--primary-emphasis);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-emphasis: var(--destructive-emphasis);
 
   /* Elevated overlay + active-nav utilities (ADR-029 C3.5): bg-popover /
    * text-popover-foreground for dropdown/menu panels, text-nav-active-foreground

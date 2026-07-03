@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { DirectionProvider } from "@radix-ui/react-direction";
 
 type ThemeMode = "light" | "dark" | "system";
 
@@ -27,14 +28,16 @@ function getSystemDark() {
 
 export function ThemeProvider({
   children,
+  direction = "ltr",
   initialMode = "system",
   initialIsDark = false,
 }: {
   children: React.ReactNode;
-  /** Kept for call-compatibility with app/[locale]/layout.tsx, which passes the
-   * resolved <html dir>. AntD's ConfigProvider consumed it; the shadcn/Radix
-   * layer reads direction straight from the document, so it's accepted but
-   * unused here. */
+  /** The resolved <html dir> from app/[locale]/layout.tsx (directionForLocale).
+   * Fed to Radix's DirectionProvider so portalled overlays (dropdown, popover,
+   * select) mirror their alignment/keyboard nav for RTL — a portalled surface
+   * can't inherit `dir` from an ancestor DOM node, so the context provider is
+   * the canonical wiring. Dormant for the default English-only fork (ltr). */
   direction?: "ltr" | "rtl";
   /** Seeded from the `theme-mode` cookie on the server so SSR and the first
    * client paint agree — avoids the light→saved-theme flash (FOUC). */
@@ -72,7 +75,8 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider value={{ mode, setMode, isDark }}>
-      {children}
+      {/* Radix reads text direction from this context for portalled overlays. */}
+      <DirectionProvider dir={direction}>{children}</DirectionProvider>
     </ThemeContext.Provider>
   );
 }
