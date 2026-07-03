@@ -1,7 +1,36 @@
 # Blueprint — session automation: auto-handoff + auto-start
 
-**Status:** DRAFT — operator-requested 2026-07-03; **open questions below need answers before build**
+**Status:** BUILT (2026-07-03, session 4) — all 4 open questions answered; Parts 1/2/3
+shipped (Part 3 auto-spawn ships **disabled by default**). See §What shipped.
 **Owner:** Tariq Al-Naaimi
+
+## What shipped (2026-07-03, session 4)
+
+Operator answered the 4 open questions: **1 → (b)** auto-start incl. guarded
+auto-spawn; **2 →** adopt `session-state.json` as the rendered source; **3 →**
+SessionEnd + watchdog-80% trigger; **4 →** template-wide scope.
+
+- **Part 1 — canonical status as DATA.** `docs/session-state.json`
+  (+ `docs/session-state.schema.json`); `scripts/render-handoff.mjs` renders the two
+  status tables into the marked `<!-- BEGIN/END:auto-status -->` region of
+  `docs/SESSION-HANDOFF.md`. `--stdout` prints the block; `--check` fails on drift;
+  marked-region merge leaves all operator prose untouched.
+- **Part 2 — auto-handoff.** `.claude/hooks/auto-handoff.mjs` (wired into **SessionEnd**
+  in `settings.json`) stamps `lastShip.sha` + re-renders the handoff + reports push
+  durability. `context-watchdog.mjs` re-renders at the **80%** threshold. Both run the
+  renderer with `RENDER_HANDOFF_SOFT=1` so a hook can never trap the session.
+- **Part 3 — auto-start.** `session-start.sh` surfaces the handoff FIRST (standing
+  directive + the auto-status block). `scripts/auto-spawn-guard.mjs` is the safety kernel:
+  it PERMITS a successor only when `autoSpawn.enabled=true` **and** the branch is pushed
+  **and** `lastShip` is green **for the current HEAD** **and** `consecutiveCount < cap`.
+  The SessionEnd hook writes `.claude/state/auto-spawn-request.json` (gitignored) + prints
+  the exact `create_trigger` params only when PERMITTED. Ships **disabled**
+  (`autoSpawn.enabled=false`) so nothing schedules a successor until the operator opts in;
+  `--record`/`--reset` manage the consecutive-spawn counter.
+
+**Firing boundary (by design):** hooks/scripts cannot call the Claude Code Remote MCP, so
+the guard *decides* and the *agent* fires `create_trigger`. This keeps the safety logic
+pure + testable and the MCP call in the one place that has the tool.
 **Why now:** this is a long, multi-session program. The operator is losing status and
 context at every manual session boundary — restarts are slow, partial context loads
 lose track of the real status, and work gets interrupted. Automating the handoff→start

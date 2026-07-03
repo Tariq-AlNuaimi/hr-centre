@@ -67,6 +67,19 @@ if [ ! -f docs/REPO-MAP.md ] || [ -n "$(find prisma/schema.prisma app lib -newer
   node scripts/repo-map.mjs >/dev/null 2>&1 && echo "[harness] repo-map refreshed (docs/REPO-MAP.md)"
 fi
 
+# --- session handoff surface (session-automation Part 3, auto-start) ---
+# Surface the program status handoff FIRST (higher priority than agent-memory) so
+# a fresh session orients instantly on the grand table + in-progress/remaining
+# cut instead of reconstructing status from prose. The tables are rendered from
+# docs/session-state.json (scripts/render-handoff.mjs); we re-render here so the
+# printed status is never stale, then print the standing directive + the
+# auto-status block. Fail-open: any failure just skips the surface.
+if [ -f docs/SESSION-HANDOFF.md ]; then
+  node scripts/render-handoff.mjs >/dev/null 2>&1 || true
+  echo "[harness] session handoff (docs/SESSION-HANDOFF.md) -- STANDING DIRECTIVE: show BOTH status tables (compact IN PROGRESS/REMAINING + full GRAND PROGRESS TABLE) before any work, then continue at Next actions:"
+  awk '/<!-- BEGIN:auto-status/{f=1} f{print} /<!-- END:auto-status/{f=0}' docs/SESSION-HANDOFF.md 2>/dev/null || true
+fi
+
 # --- agent memory (ADR-022) ---
 # Surface durable cross-session memory (decisions/gotchas/conventions) into the
 # session up front. Whole file when within the context budget; otherwise the head

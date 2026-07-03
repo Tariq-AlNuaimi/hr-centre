@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rihal.template/session-state.schema.json",
+  "title": "session-state",
+  "description": "Canonical machine-readable program status. SESSION-HANDOFF.md's tables are RENDERED from this file (scripts/render-handoff.mjs) so they can never drift or partially load. Update this file as work lands; the markdown is a view.",
+  "type": "object",
+  "required": ["program", "branch", "updated", "lastShip", "directives", "workstreams", "categories"],
+  "additionalProperties": true,
+  "properties": {
+    "program": { "type": "string" },
+    "blueprint": { "type": "string" },
+    "branch": { "type": "string" },
+    "updated": { "type": "string", "description": "YYYY-MM-DD" },
+    "lastShip": {
+      "type": "object",
+      "required": ["status", "sha", "date"],
+      "properties": {
+        "status": { "enum": ["green", "red", "unknown"] },
+        "sha": { "type": "string" },
+        "date": { "type": "string" }
+      }
+    },
+    "autoSpawn": {
+      "type": "object",
+      "description": "Part 3 opt-in guardrails. enabled=false means no successor session is ever scheduled.",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "cap": { "type": "integer", "minimum": 0 },
+        "consecutiveCount": { "type": "integer", "minimum": 0 },
+        "lastSpawnSha": { "type": ["string", "null"] },
+        "note": { "type": "string" }
+      }
+    },
+    "directives": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "workstreams": { "type": "array", "items": { "$ref": "#/$defs/item" } },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "status": { "$ref": "#/$defs/status" },
+          "where": { "type": "string" }
+        }
+      }
+    },
+    "seniorReviewLows": { "type": "array" },
+    "deferred": { "type": "array" },
+    "inProgress": { "type": "array" },
+    "nextActions": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "status": { "enum": ["done", "partial", "remaining", "deferred", "dropped"] },
+    "item": {
+      "type": "object",
+      "required": ["id", "title", "status"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "commit": { "type": "string" },
+        "date": { "type": "string" },
+        "blockedBy": { "type": "array", "items": { "type": "string" } },
+        "note": { "type": "string" }
+      }
+    }
+  }
+}

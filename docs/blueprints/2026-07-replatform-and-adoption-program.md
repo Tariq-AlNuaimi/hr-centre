@@ -249,5 +249,12 @@ an oversight.
 
 The operator asked (2026-07-03) to automate the handoff→fresh-session loop (auto-handoff
 + auto-start) because manual session boundaries lose status/context. Designed separately
-in **`docs/blueprints/session-automation-auto-handoff.md`** — it is the recommended NEXT
+in **`docs/blueprints/session-automation-auto-handoff.md`** — it was the recommended NEXT
 build (ahead of C3) since it de-risks every subsequent session of this long program.
+
+**BUILT 2026-07-03 (session 4).** All 4 open questions answered; Parts 1/2/3 shipped
+(Part 3 guarded auto-spawn ships **disabled by default**). `docs/session-state.json` is now
+the single source the two status tables render from (`scripts/render-handoff.mjs`); the
+SessionEnd + watchdog-80% hooks keep `SESSION-HANDOFF.md` always-current; SessionStart
+surfaces it first. Template-wide (forks inherit). See the follow-on blueprint's §What
+shipped.

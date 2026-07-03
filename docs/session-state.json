@@ -1,0 +1,446 @@
+{
+  "$schema": "./session-state.schema.json",
+  "program": "replatform-and-adoption",
+  "blueprint": "docs/blueprints/2026-07-replatform-and-adoption-program.md",
+  "branch": "claude/ui-layer-signoff-replatform-onjlrr",
+  "updated": "2026-07-03",
+  "lastShip": {
+    "status": "green",
+    "sha": "6a4a13c",
+    "date": "2026-07-03"
+  },
+  "autoSpawn": {
+    "enabled": false,
+    "cap": 3,
+    "consecutiveCount": 0,
+    "lastSpawnSha": null,
+    "note": "Part 3 opt-in. Flip enabled=true only after trusting the guardrails. Guard: pushed + /ship green + consecutiveCount < cap; reset to 0 on a human-driven SessionStart."
+  },
+  "directives": [
+    {
+      "id": "D1",
+      "title": "Adopt all 22-table recommendations",
+      "status": "partial",
+      "commit": "",
+      "note": "A2/A3/A4 done; A1 (6 left) + A5 (9) pending"
+    },
+    {
+      "id": "D2",
+      "title": "Docker always built (standard artifact)",
+      "status": "done",
+      "commit": "8b50604",
+      "note": "ADR-030"
+    },
+    {
+      "id": "D3",
+      "title": "Replace AntD with Tailwind fully",
+      "status": "partial",
+      "commit": "",
+      "note": "ADR-029; C1+C2 done; C3/C4 pending"
+    },
+    {
+      "id": "D4",
+      "title": "RTL + Arabic fully optional",
+      "status": "done",
+      "commit": "",
+      "note": "ADR-028 Part 1 shipped; D-verify pending"
+    },
+    {
+      "id": "D5",
+      "title": "Every app has a structured DB",
+      "status": "done",
+      "commit": "b82c12d",
+      "note": "ADR-031 E-gate"
+    }
+  ],
+  "workstreams": [
+    {
+      "id": "Phase0",
+      "title": "Governance ADRs 029/030/031 + ADOPT.md",
+      "status": "done",
+      "commit": "",
+      "blockedBy": [],
+      "date": "2026-07-02"
+    },
+    {
+      "id": "C1",
+      "title": "Tailwind foundation (@theme, tokens, font)",
+      "status": "done",
+      "commit": "0ec5e62",
+      "blockedBy": [],
+      "date": "2026-07-02"
+    },
+    {
+      "id": "C2",
+      "title": "Primitive layer (shadcn/Radix/TanStack, same APIs)",
+      "status": "done",
+      "commit": "365fa85",
+      "blockedBy": [],
+      "date": "2026-07-03"
+    },
+    {
+      "id": "C3",
+      "title": "Screen migration (app/[locale]/**)",
+      "status": "remaining",
+      "commit": "",
+      "blockedBy": [],
+      "date": ""
+    },
+    {
+      "id": "C4",
+      "title": "Harness/guard (no-raw-hex, drop AntD+CSP, recipes)",
+      "status": "remaining",
+      "commit": "",
+      "blockedBy": [
+        "C3"
+      ],
+      "date": ""
+    },
+    {
+      "id": "B",
+      "title": "Docker standard (gate + trivy + skills)",
+      "status": "done",
+      "commit": "4065f1a",
+      "blockedBy": [],
+      "date": "2026-07-03"
+    },
+    {
+      "id": "E",
+      "title": "Mandatory structured-DB /ship gate",
+      "status": "done",
+      "commit": "b82c12d",
+      "blockedBy": [],
+      "date": "2026-07-02"
+    },
+    {
+      "id": "D",
+      "title": "RTL/Arabic verify pass",
+      "status": "remaining",
+      "commit": "",
+      "blockedBy": [],
+      "date": ""
+    },
+    {
+      "id": "A1",
+      "title": "Deterministic /ship gates (6 left)",
+      "status": "partial",
+      "commit": "",
+      "blockedBy": [],
+      "date": "",
+      "note": "E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity pending; unblocked"
+    },
+    {
+      "id": "A2",
+      "title": "Security & trust-boundary hooks",
+      "status": "done",
+      "commit": "",
+      "blockedBy": [],
+      "date": "2026-07-02"
+    },
+    {
+      "id": "A3",
+      "title": "Measurement & runtime verification",
+      "status": "done",
+      "commit": "ac3eb4c",
+      "blockedBy": [],
+      "date": "2026-07-02",
+      "note": "lhci per-PR CI dormant until Actions"
+    },
+    {
+      "id": "A4",
+      "title": "Process & skills upgrades",
+      "status": "done",
+      "commit": "804f331",
+      "blockedBy": [],
+      "date": "2026-07-03"
+    },
+    {
+      "id": "A5",
+      "title": "Testing & design depth (9)",
+      "status": "remaining",
+      "commit": "",
+      "blockedBy": [],
+      "date": "",
+      "note": "unblocked; some items dep C4-tokens"
+    }
+  ],
+  "categories": [
+    {
+      "id": "01",
+      "title": "collections",
+      "status": "done",
+      "where": "skill auto-activation (A4·804f331)"
+    },
+    {
+      "id": "02",
+      "title": "skills",
+      "status": "done",
+      "where": "grill-with-docs + domain-modeling, anti-rationalization (A4)"
+    },
+    {
+      "id": "03",
+      "title": "subagents",
+      "status": "done",
+      "where": "reviewer lenses (A4); specialist-seeds deferred"
+    },
+    {
+      "id": "04",
+      "title": "hooks",
+      "status": "done",
+      "where": "A2 (7 hooks)"
+    },
+    {
+      "id": "05",
+      "title": "mcp",
+      "status": "done",
+      "where": "context7 + chrome-devtools-mcp (A3)"
+    },
+    {
+      "id": "06",
+      "title": "frameworks",
+      "status": "deferred",
+      "where": "wasp study -> deferred backlog"
+    },
+    {
+      "id": "07",
+      "title": "scalability",
+      "status": "done",
+      "where": "postgres-mcp/k6/pghero (A3); citus deferred"
+    },
+    {
+      "id": "08",
+      "title": "maintainability",
+      "status": "remaining",
+      "where": "knip + jscpd (A1)"
+    },
+    {
+      "id": "09",
+      "title": "quality",
+      "status": "partial",
+      "where": "reviewer lenses done; coverage+complexity (A1)"
+    },
+    {
+      "id": "10",
+      "title": "security",
+      "status": "done",
+      "where": "A2 + trivy + trufflehog"
+    },
+    {
+      "id": "11",
+      "title": "speed-of-dev",
+      "status": "deferred",
+      "where": "wasp CRUD study -> deferred"
+    },
+    {
+      "id": "12",
+      "title": "performance",
+      "status": "partial",
+      "where": "Speed Insights/analyzer/react-scan done; size-limit(A1), lhci(~)"
+    },
+    {
+      "id": "13",
+      "title": "code-optimization",
+      "status": "remaining",
+      "where": "knip + jscpd (A1)"
+    },
+    {
+      "id": "14",
+      "title": "architecture",
+      "status": "done",
+      "where": "MADR schema + Mermaid C4 (A4)"
+    },
+    {
+      "id": "15",
+      "title": "benchmarking",
+      "status": "done",
+      "where": "peer/enterprise benchmark in /uat (A3)"
+    },
+    {
+      "id": "16",
+      "title": "testing",
+      "status": "remaining",
+      "where": "coverage floor (A1) + qodo-cover (A5)"
+    },
+    {
+      "id": "17",
+      "title": "functional-testing",
+      "status": "partial",
+      "where": "GWT shape done; record-to-spec + token-thrift PW (A5)"
+    },
+    {
+      "id": "18",
+      "title": "logical-testing",
+      "status": "remaining",
+      "where": "fast-check property tests (A5)"
+    },
+    {
+      "id": "19",
+      "title": "requirements",
+      "status": "done",
+      "where": "blueprint story IDs + EARS + was->now (A4)"
+    },
+    {
+      "id": "20",
+      "title": "planning",
+      "status": "done",
+      "where": "Superpowers writing-plans + [P] markers (A4)"
+    },
+    {
+      "id": "21",
+      "title": "design",
+      "status": "remaining",
+      "where": "Figma + style-dictionary + superdesign (A5, dep C)"
+    },
+    {
+      "id": "22",
+      "title": "uiux",
+      "status": "remaining",
+      "where": "jsx-a11y (A1) + slop-gate + a11y-manual (A5)"
+    }
+  ],
+  "seniorReviewLows": [
+    {
+      "id": "design-tokens-lockstep",
+      "file": "tests/contracts/design-tokens.test.ts",
+      "note": "SEMANTIC_VARS + dark-override loop omit --card-foreground/--muted-foreground/--destructive/--ring; extend both so a dropped dark override fails the suite",
+      "status": "open"
+    },
+    {
+      "id": "formfield-footguns",
+      "file": "components/shared/FormField.tsx + components/ui/form.tsx",
+      "note": "(a) TextFieldProps must also omit onChange|onBlur|value|ref; (b) aria-describedby points at non-existent id when no FormDescription renders",
+      "status": "open"
+    }
+  ],
+  "deferred": [
+    {
+      "id": "tremor",
+      "title": "Tremor charts",
+      "trigger": "@tremor/react peer accepts React 19",
+      "note": "Chart runs on recharts with Tremor-style API; adopt drop-in or DROP + record in ADR-029"
+    },
+    {
+      "id": "lhci-ci",
+      "title": "Lighthouse-CI per-PR assertion",
+      "trigger": "/handoff to a team with Actions billing",
+      "note": "config + npm run lhci shipped; CI gate dormant"
+    },
+    {
+      "id": "claude-task-master",
+      "title": "claude-task-master",
+      "trigger": "fork outgrows single-session planning"
+    },
+    {
+      "id": "backlog-md",
+      "title": "Backlog.md",
+      "trigger": "same as claude-task-master"
+    },
+    {
+      "id": "fastmcp",
+      "title": "fastmcp provider path",
+      "trigger": "we ship our own MCP server"
+    },
+    {
+      "id": "keploy",
+      "title": "keploy record-replay",
+      "trigger": "API-level test-gen alternative"
+    },
+    {
+      "id": "vitest",
+      "title": "Vitest migration",
+      "trigger": "test-runner swap; needs its own ADR"
+    },
+    {
+      "id": "citus",
+      "title": "citus / read-replicas",
+      "trigger": "scale trigger (cat 07)"
+    },
+    {
+      "id": "sonarqube-mcp",
+      "title": "sonarqube-mcp at /handoff",
+      "trigger": "IT team runs SonarQube"
+    },
+    {
+      "id": "wasp",
+      "title": "wasp declarative-CRUD ergonomics study",
+      "trigger": "over /scaffold-entity (cat 11)"
+    },
+    {
+      "id": "specialist-agents",
+      "title": "specialist-agent seeds",
+      "trigger": "one optional stack-aware review agent (cat 03)"
+    }
+  ],
+  "inProgress": [
+    {
+      "state": "in-progress",
+      "item": "D3",
+      "title": "Replace AntD w/ Tailwind",
+      "blockedBy": "",
+      "next": "C1+C2 done; run C3 next"
+    },
+    {
+      "state": "in-progress",
+      "item": "D1",
+      "title": "Adopt 22-table recs",
+      "blockedBy": "",
+      "next": "A2/A3/A4 done; do A1+A5 after C"
+    },
+    {
+      "state": "remaining",
+      "item": "session-automation",
+      "title": "auto-handoff + auto-start",
+      "blockedBy": "operator Q x4 (answered)",
+      "next": "BUILDING NOW — Parts 1/2/3 (Part 3 disabled-default)"
+    },
+    {
+      "state": "remaining",
+      "item": "C3",
+      "title": "Screen migration",
+      "blockedBy": "(unblocked)",
+      "next": "sweep app/[locale]/**, /design-qa per screen"
+    },
+    {
+      "state": "remaining",
+      "item": "C4",
+      "title": "Harness/guard",
+      "blockedBy": "C3",
+      "next": "retarget no-raw-hex, drop AntD + CSP style exception"
+    },
+    {
+      "state": "remaining",
+      "item": "A1",
+      "title": "Deterministic gates (6 left)",
+      "blockedBy": "(unblocked)",
+      "next": "knip/jscpd/coverage/size-limit/jsx-a11y/complexity"
+    },
+    {
+      "state": "remaining",
+      "item": "A5",
+      "title": "Testing & design depth (9)",
+      "blockedBy": "(unblocked)",
+      "next": "fast-check, record-to-spec, Figma, style-dictionary"
+    },
+    {
+      "state": "remaining",
+      "item": "D",
+      "title": "RTL verify pass",
+      "blockedBy": "",
+      "next": "0.5 session: default fork zero-ar; flip restores"
+    },
+    {
+      "state": "remaining",
+      "item": "2 senior-review Lows",
+      "title": "lockstep gap + FormField footguns",
+      "blockedBy": "",
+      "next": "do in C3 prep"
+    }
+  ],
+  "nextActions": [
+    "Ship session-automation (Parts 1/2/3, Part 3 disabled-default): /ship green + push",
+    "C3 screen migration: sweep app/[locale]/** screen by screen; forms -> react-hook-form + zodResolver; /design-qa per screen (axe-clean serious/critical exit bar)",
+    "2 senior-review Lows in C3 prep: design-tokens lockstep coverage; FormField footguns",
+    "A1 deterministic gates + A5 testing/design depth (unblocked)",
+    "D RTL verify pass (0.5 session)"
+  ]
+}

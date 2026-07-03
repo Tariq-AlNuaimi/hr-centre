@@ -81,3 +81,8 @@ sbom.json
 
 # Transient agent worktrees (parallel-session isolation; never work product)
 .claude/worktrees/
+
+# session-automation Part 3: the auto-spawn request is a per-session signal the
+# SessionEnd hook writes when the guard permits scheduling a successor; the agent
+# consumes it to fire create_trigger. Transient, machine-local, never work product.
+.claude/state/

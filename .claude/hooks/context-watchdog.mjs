@@ -4,6 +4,8 @@
 // assistant message's usage block, and warns ONCE per threshold so the operator
 // (and Claude) know when to /handoff-session + /clear instead of degrading.
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
 
 // Effective window. Override via CLAUDE_CTX_LIMIT for [1m] models so the warnings
 // fire at the right fraction instead of harmlessly late.
@@ -39,6 +41,19 @@ try {
     if (frac >= th && !fired.includes(`${th}`)) {
       writeFileSync(stateFile, `${fired} ${th}`);
       console.log(`[token-watchdog] ${msg.replace("{pct}", Math.round(frac * 100))}`);
+      // Auto-handoff trigger (session-automation Part 2): at 80%+, re-render the
+      // SESSION-HANDOFF status tables from docs/session-state.json so a mid-session
+      // compaction can never lose the thread (operator's Q3: SessionEnd + watchdog-80%).
+      // Soft + best-effort: the render can never trap the prompt.
+      if (th >= 0.8) {
+        try {
+          const root = process.env.CLAUDE_PROJECT_DIR || ".";
+          spawnSync("node", [join(root, "scripts", "render-handoff.mjs")], {
+            env: { ...process.env, RENDER_HANDOFF_SOFT: "1" },
+            stdio: "ignore",
+          });
+        } catch { /* best-effort */ }
+      }
       break;
     }
   }
