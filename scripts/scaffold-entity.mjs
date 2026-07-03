@@ -775,7 +775,8 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
   const hasTextField = fields.some((f) => f.type !== 'boolean');
   const hasSwitch = fields.some((f) => f.type === 'boolean');
   const hasFormPrimitives = hasSwitch || enums.length > 0 || relations.length > 0;
-  const hasSelect = enums.length > 0 || relations.length > 0;
+  const hasSelect = enums.length > 0; // enums use Select; relations use a Popover combobox
+  const hasPopover = relations.length > 0;
 
   const fieldFieldImport = hasTextField
     ? 'import { useZodForm, Form, TextField } from "@/components/shared/FormField";'
@@ -801,15 +802,25 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
 `
     : '';
   const switchImport = hasSwitch ? 'import { Switch } from "@/components/ui/switch";\n' : '';
-  const reactImport = relations.length === 0 ? '' : 'import { useEffect, useState } from "react";\n';
+  const popoverImport = hasPopover
+    ? `import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+`
+    : '';
+  const reactImport = relations.length === 0 ? '' : 'import { useEffect, useRef, useState } from "react";\n';
 
-  // Relation targets can exceed one page, so this wires a debounced server-side
-  // search (mirrors the old AntD showSearch/onSearch): any target row stays
-  // reachable by typing, not just the first 50. The `/api/<target>` route honors
-  // ?search= when the target has a searchable string field (the param is ignored
-  // otherwise, so this is safe for every target). The debounced input lives in
-  // the SelectContent; Radix Select's typeahead is suppressed on it so it's
-  // typable. `/scale-up` still covers swapping to a full combobox if needed.
+  // Relation targets can exceed one page, so RelationSelect is a searchable
+  // combobox: a Popover holding a debounced server-side search box + the matching
+  // rows as plain <button>s, so any target row is reachable by typing (not just the
+  // first 50). Deliberately NOT a Radix Select-with-search: a Select's content is a
+  // role="listbox" that only permits option children (a raw <input> trips axe
+  // aria-required-children) and traps Tab + auto-focuses an item, leaving a search
+  // box keyboard-unreachable. Plain buttons in a Popover are focusable + valid;
+  // Radix owns focus/Escape/positioning. /api/<target> honors ?search= when the
+  // target is searchable (ignored otherwise, so it's safe for every target).
   const relationSelectComponent = relations.length === 0 ? '' : `
 function RelationSelect({
   path,
@@ -828,62 +839,105 @@ function RelationSelect({
   value?: string;
   onChange?: (v: string) => void;
 }) {
-  const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedLabel, setSelectedLabel] = useState<string | undefined>(undefined);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Debounce so a keystroke doesn't fire a request per character. Empty query
-    // seeds the initial page on mount; a non-empty one narrows server-side.
+    // seeds the initial page; a non-empty one narrows server-side.
     const timer = setTimeout(() => {
       const qs = new URLSearchParams({ pageSize: "50" });
       if (search) qs.set("search", search);
       fetch(path + "?" + qs.toString())
         .then((r) => r.json())
         .then((j: { data?: { data?: Array<{ id: string } & Record<string, unknown>> } }) => {
-          setOptions(
-            (j.data?.data ?? []).map((row) => ({
-              value: row.id,
-              label: (row[displayField] as string | undefined) ?? row.id,
-            })),
-          );
+          const opts = (j.data?.data ?? []).map((row) => ({
+            value: row.id,
+            label: (row[displayField] as string | undefined) ?? row.id,
+          }));
+          setOptions(opts);
+          // Keep the trigger label resolvable even after the list is filtered.
+          const match = opts.find((o) => o.value === value);
+          if (match) setSelectedLabel(match.label);
         })
         .catch(() => {});
     }, 250);
     return () => clearTimeout(timer);
-  }, [path, displayField, search]);
+  }, [path, displayField, search, value]);
 
   return (
-    <Select value={value ?? undefined} onValueChange={onChange}>
+    <Popover open={open} onOpenChange={setOpen}>
       <FormControl>
-        <SelectTrigger>
-          <SelectValue placeholder={placeholder} />
-        </SelectTrigger>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-between font-normal"
+          >
+            <span className={value ? "" : "text-muted-foreground"}>
+              {selectedLabel ?? placeholder}
+            </span>
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="h-4 w-4 flex-none opacity-60"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m7 15 5 5 5-5M7 9l5-5 5 5" />
+            </svg>
+          </Button>
+        </PopoverTrigger>
       </FormControl>
-      <SelectContent>
+      <PopoverContent
+        align="start"
+        // Focus the search box (not an option) when the popover opens.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }}
+        className="w-[var(--radix-popover-trigger-width)] p-1"
+      >
         <input
-          type="text"
+          ref={inputRef}
+          type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}
-          // Stop Radix Select's typeahead from swallowing keystrokes so the box
-          // is typable; the effect above re-queries the server on change.
-          onKeyDown={(e) => e.stopPropagation()}
           className="mb-1 w-full rounded-sm border border-border bg-transparent px-2 py-1.5 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
         />
-        {options.length === 0 ? (
-          <div className="px-2 py-1.5 text-sm text-muted-foreground">
-            {emptyLabel}
-          </div>
-        ) : (
-          options.map((o) => (
-            <SelectItem key={o.value} value={o.value}>
-              {o.label}
-            </SelectItem>
-          ))
-        )}
-      </SelectContent>
-    </Select>
+        <div className="max-h-56 overflow-auto">
+          {options.length === 0 ? (
+            <p className="px-2 py-1.5 text-sm text-muted-foreground">{emptyLabel}</p>
+          ) : (
+            options.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => {
+                  onChange?.(o.value);
+                  setSelectedLabel(o.label);
+                  setOpen(false);
+                }}
+                className={
+                  "flex w-full items-center rounded-sm px-2 py-1.5 text-start text-sm outline-none hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-ring " +
+                  (o.value === value ? "font-medium text-primary-emphasis" : "text-foreground")
+                }
+              >
+                {o.label}
+              </button>
+            ))
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 `;
@@ -893,7 +947,7 @@ function RelationSelect({
 ${reactImport}import { z } from "zod";
 import { useTranslations } from "next-intl";
 ${fieldFieldImport}
-${formPrimitiveImport}${selectImport}${switchImport}import { Button } from "@/components/ui/button";
+${formPrimitiveImport}${selectImport}${popoverImport}${switchImport}import { Button } from "@/components/ui/button";
 
 interface ${Pascal}FormProps {
   initialValues?: Partial<${valueType}>;
