@@ -26,7 +26,7 @@ _Program: **replatform-and-adoption** · branch `claude/ui-layer-signoff-replatf
 | 🟡 IN PROGRESS | **D3** Replace AntD w/ Tailwind | — | C1+C2 done; run C3 next |
 | 🟡 IN PROGRESS | **D1** Adopt 22-table recs | — | A2/A3/A4 done; do A1+A5 after C |
 | ✅ DONE | **session-automation** auto-handoff + auto-start | — | SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default |
-| ⬜ REMAINING | **C3** Screen migration | (unblocked) | sweep app/[locale]/**, /design-qa per screen |
+| 🟡 IN PROGRESS | **C3** Screen migration | (unblocked) | 7 screens migrated (forms+tables); remaining screens + per-screen /design-qa (axe exit bar) |
 | ⬜ REMAINING | **C4** Harness/guard | C3 | retarget no-raw-hex, drop AntD + CSP style exception |
 | ⬜ REMAINING | **A1** Deterministic gates (6 left) | (unblocked) | knip/jscpd/coverage/size-limit/jsx-a11y/complexity |
 | ⬜ REMAINING | **A5** Testing & design depth (9) | (unblocked) | fast-check, record-to-spec, Figma, style-dictionary |
@@ -54,12 +54,12 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | Phase0 — Governance ADRs 029/030/031 + ADOPT.md | [x] | 2026-07-02 |
 | C1 — Tailwind foundation (@theme, tokens, font) | [x] | 0ec5e62 · 2026-07-02 |
 | C2 — Primitive layer (shadcn/Radix/TanStack, same APIs) | [x] | 365fa85 · 2026-07-03 |
-| C3 — Screen migration (app/[locale]/**) | [ ] |  |
+| C3 — Screen migration (app/[locale]/**) | [~] | 669c62b,e4e33b1 · 2026-07-03 · 7 screens code-migrated (4 forms: login/forgot/reset/profile; 3 tables: users/audit-log/recycling-bin) off AntD Table/Form onto shadcn primitives. REMAINING: components/users/UserColumns.tsx, audit-log filter Selects (no shadcn Select shipped yet), DashboardContent, settings/page, not-found/forbidden/error/style-guide; PER-SCREEN /design-qa (axe serious/critical exit bar) NOT yet run — that is C3’s remaining exit gate. |
 | C4 — Harness/guard (no-raw-hex, drop AntD+CSP, recipes) | [ ] |  |
 | B — Docker standard (gate + trivy + skills) | [x] | 4065f1a · 2026-07-03 |
 | E — Mandatory structured-DB /ship gate | [x] | b82c12d · 2026-07-02 |
 | D — RTL/Arabic verify pass | [ ] |  |
-| A1 — Deterministic /ship gates (6 left) | [~] | E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity pending; unblocked |
+| A1 — Deterministic /ship gates (6 left) | [~] | E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity IN PROGRESS (worktree agent a377a629 running this session); unblocked |
 | A2 — Security & trust-boundary hooks | [x] | 2026-07-02 |
 | A3 — Measurement & runtime verification | [x] | ac3eb4c · 2026-07-02 · lhci per-PR CI dormant until Actions |
 | A4 — Process & skills upgrades | [x] | 804f331 · 2026-07-03 |

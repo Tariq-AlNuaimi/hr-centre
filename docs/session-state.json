@@ -81,10 +81,11 @@
     {
       "id": "C3",
       "title": "Screen migration (app/[locale]/**)",
-      "status": "remaining",
-      "commit": "",
+      "status": "partial",
+      "commit": "669c62b,e4e33b1",
       "blockedBy": [],
-      "date": ""
+      "date": "2026-07-03",
+      "note": "7 screens code-migrated (4 forms: login/forgot/reset/profile; 3 tables: users/audit-log/recycling-bin) off AntD Table/Form onto shadcn primitives. REMAINING: components/users/UserColumns.tsx, audit-log filter Selects (no shadcn Select shipped yet), DashboardContent, settings/page, not-found/forbidden/error/style-guide; PER-SCREEN /design-qa (axe serious/critical exit bar) NOT yet run — that is C3’s remaining exit gate."
     },
     {
       "id": "C4",
@@ -127,7 +128,7 @@
       "commit": "",
       "blockedBy": [],
       "date": "",
-      "note": "E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity pending; unblocked"
+      "note": "E+B gates landed; knip/jscpd/coverage/size-limit/jsx-a11y/complexity IN PROGRESS (worktree agent a377a629 running this session); unblocked"
     },
     {
       "id": "A2",
@@ -394,11 +395,11 @@
       "next": "SHIPPED (15cab66) — Parts 1/2/3, Part 3 disabled-default"
     },
     {
-      "state": "remaining",
+      "state": "in-progress",
       "item": "C3",
       "title": "Screen migration",
       "blockedBy": "(unblocked)",
-      "next": "sweep app/[locale]/**, /design-qa per screen"
+      "next": "7 screens migrated (forms+tables); remaining screens + per-screen /design-qa (axe exit bar)"
     },
     {
       "state": "remaining",
