@@ -148,10 +148,15 @@ export function CommandPalette() {
           {t("commandPlaceholder")}
         </DialogTitle>
 
-        <div onKeyDown={onListKeyDown}>
+        <div>
           <div className="flex items-center gap-2 border-b border-border px-3">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
             <Input
+              // Keydown lives on the native input (which always holds focus in
+              // this search-first palette) rather than a static wrapper div, so
+              // ↑/↓/Enter navigation carries no non-interactive-element handler.
+              onKeyDown={onListKeyDown}
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- command palette is a search-first modal; the APG dialog pattern moves focus to the search input on open
               autoFocus
               placeholder={t("commandPlaceholder")}
               value={query}

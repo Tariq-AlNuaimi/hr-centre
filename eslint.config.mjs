@@ -62,21 +62,20 @@ const eslintConfig = defineConfig([
     files: ["**/*.{jsx,tsx}"],
     rules: { ...jsxA11y.flatConfigs.recommended.rules },
   },
-  // Three recommended rules have PRE-EXISTING hits in the UI layer that Workstream
-  // C (the AntD->Tailwind replatform, ADR-029) is actively rewriting -- the
-  // interactive command-palette shell (components/layout/CommandPalette.tsx) and a
-  // shadcn label primitive (components/ui/label.tsx). Those files are owned by the
-  // UI-layer agents, so this A1 gate keeps the three rules at WARN (surfaced in
-  // /ship + review, non-blocking) rather than editing another workstream's files.
-  // Same precedent as the no-explicit-any / set-state-in-effect warns below. Every
-  // OTHER a11y rule stays at error and blocks new violations. TODO(C4): flip these
-  // back to error once the replatform lands accessible replacements.
+  // These three rules had PRE-EXISTING hits during Workstream C (the AntD->Tailwind
+  // replatform, ADR-029) in the command-palette shell and the shadcn label
+  // primitive, so the A1 gate held them at WARN while those files were mid-rewrite.
+  // C4 landed the accessible replacements: the palette keydown now rides the native
+  // <Input> (no static-element handler), the palette autofocus + the label-primitive
+  // association carry justified single-line disables at their call sites. With zero
+  // residual violations the rules are back at ERROR and block any regression --
+  // closing TODO(C4). Every jsx-a11y rule is now error.
   {
     files: ["**/*.{jsx,tsx}"],
     rules: {
-      "jsx-a11y/no-static-element-interactions": "warn",
-      "jsx-a11y/no-autofocus": "warn",
-      "jsx-a11y/label-has-associated-control": "warn",
+      "jsx-a11y/no-static-element-interactions": "error",
+      "jsx-a11y/no-autofocus": "error",
+      "jsx-a11y/label-has-associated-control": "error",
     },
   },
 
