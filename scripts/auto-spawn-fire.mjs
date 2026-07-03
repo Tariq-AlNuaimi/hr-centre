@@ -21,7 +21,7 @@
 // Safety: this only prints a payload when auto-spawn-guard.mjs PERMITS (enabled +
 // pushed + green-for-HEAD + under cap). Ships inert because autoSpawn.enabled=false by
 // default. Idempotency is the agent's responsibility -- run it once at closeout.
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { execSync, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        uses: github/codeql-action/init@8533807ff379ac610d2b2c389c47e7c629d31d13 # v4.36.3
         with:
           languages: javascript-typescript
           # 'security-and-quality' is broader than the default 'security-extended';
@@ -46,9 +46,9 @@ jobs:
 
       # JS/TS needs no compiled build for CodeQL; autobuild is a no-op safety net.
       - name: Autobuild
-        uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        uses: github/codeql-action/autobuild@8533807ff379ac610d2b2c389c47e7c629d31d13 # v4.36.3
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        uses: github/codeql-action/analyze@8533807ff379ac610d2b2c389c47e7c629d31d13 # v4.36.3
         with:
           category: "/language:javascript-typescript"

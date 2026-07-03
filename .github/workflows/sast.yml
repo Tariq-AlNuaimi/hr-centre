@@ -57,7 +57,7 @@ jobs:
       # report, and `!cancelled()` lets it run even after the scan step failed.
       - name: Upload Semgrep SARIF
         if: ${{ !cancelled() && hashFiles('semgrep.sarif') != '' }}
-        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
+        uses: github/codeql-action/upload-sarif@8533807ff379ac610d2b2c389c47e7c629d31d13 # v4.36.3
         with:
           sarif_file: semgrep.sarif
           category: semgrep

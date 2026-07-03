@@ -484,7 +484,11 @@ export default function StyleGuidePage() {
           <span className="rounded-md bg-primary px-4 py-2 text-base text-white shadow-sm">
             bg-primary
           </span>
-          <span className="rounded-lg border border-solid border-accent px-4 py-2 text-base text-accent">
+          {/* Label rides text-primary-emphasis (the dark-safe brand-as-text token,
+              indigo-300 on the dark shell) rather than raw text-accent, which is
+              brand indigo and only clears ~3.2:1 on #030712. The border still
+              demonstrates border-accent. */}
+          <span className="rounded-lg border border-solid border-accent px-4 py-2 text-base text-primary-emphasis">
             border-accent
           </span>
           <span className="rounded-sm bg-slate-100 px-4 py-2 text-xs shadow-md dark:bg-slate-800 dark:text-slate-100">

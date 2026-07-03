@@ -56,6 +56,20 @@ recurring context tax — same discipline as CLAUDE.md.
   https://127.0.0.1:8443 with a `theme-mode=dark` cookie; inject `node_modules/axe-core/axe.min.js`.
   Once `<body>` paints `var(--background)` (8051d85), dark bodyBg computes `#030712` and the
   false-positive flood below is GONE — a dark finding is now genuine.
+- 2026-07-03 (session 13) — **CORRECTION to the "seed upserts" note below: it does NOT.**
+  `prisma/seed.ts` only CREATES the admin when it doesn't already exist (findUnique → skip if
+  present); it never updates an existing admin's password. So resetting `SEED_ADMIN_PASSWORD`
+  + redeploying does nothing to the existing `admin@example.com`. The clean way to browser-test
+  AUTHED screens is a DISTINCT throwaway probe admin: PATCH `SEED_ADMIN_EMAIL` to a new email
+  (e.g. `axe-probe@example.com`) + `SEED_ADMIN_PASSWORD` to a known value → redeploy → seed
+  CREATES that probe ADMIN, leaving the real demo credential untouched. Restore `SEED_ADMIN_EMAIL`
+  after; the probe admin persists in the DB (soft-delete via user mgmt to clean up). Session 13
+  ran this: all 11 authed dark screens axe-CLEAN (0 serious/critical, bodyBg #030712) on dd15554.
+  Bridge login gate: wait ~2.5s for hydration before submit (else the form does a native GET and
+  leaks creds to the query string), and gate strictly on `__Secure-authjs.session-token` (NOT a
+  loose `authjs` match — that hits the CSRF cookie and every authed nav still bounces to /login).
+  Do NOT `pkill -f bridge.mjs` in a shell command that also contains that path — pkill matches
+  your own cmdline and SIGTERMs the call (exit 144); stop the bridge with `fuser -k 8443/tcp`.
 - 2026-07-03 (session 12) — Vercel `SEED_ADMIN_PASSWORD` returns a SEALED envelope
   (`eyJ2Ijoi…`) even with `?decrypt=true`, never plaintext — so you can't log into AUTHED
   bridge screens with it. To browser-test authed screens, reset it to a known value + redeploy
