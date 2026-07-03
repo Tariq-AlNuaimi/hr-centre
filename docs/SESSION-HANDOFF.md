@@ -119,6 +119,64 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 <!-- END:auto-status -->
 
+## Session 9 — C4 BLUEPRINT written + APPROVED (build is the next session's job)
+**What happened:** Read the full handoff + status tables (shared both) + ADOPT.md
+C4 items + agent-memory. Re-based off stale `032f643` → program tip
+`ac68619` (`git checkout -B claude/ui-replatform-auto-spawn-fix-8dee0o
+origin/…` — harness mis-based again). Setup: gitleaks via `go install`, `npm ci`,
+`prisma generate` (all green). Then fully investigated + scoped **C4** (Ask-before →
+`/blueprint` full track + plan mode, approved). **Committed contract:
+`docs/blueprints/c4-harness-guard-antd-cleanup.md`** (US1–US6, EARS ACs, delta table,
+mermaid, 8-phase plan). Ran out of context (~104%) right after plan approval, so
+handed off BEFORE building. **Next session EXECUTES the blueprint's 8 phases verbatim
+— it is fully specified; do not re-derive.**
+
+**3 operator decisions (2026-07-03, via AskUserQuestion — it worked):**
+1. **CSP `style-src 'unsafe-inline'`** (item 4): **empirically verify, then decide** —
+   deploy branch with it removed, load via `tools/design-qa-bridge/`, watch console for
+   "Refused to apply inline style". Radix/recharts/dnd-kit/sonner emit dynamic inline
+   `style` attrs a nonce can't cover, so the likely outcome is KEEP + rewrite the stale
+   AntD comment. Drop only if genuinely zero violations. (NOT a blind drop.)
+2. **`scripts/scaffold-entity.mjs` still generates AntD** (columns/form/page fns
+   ~545-741 emit `from "antd"`+`@ant-design/icons`+`ColumnsType`): **migrate now, in C4**
+   onto shadcn/RHF/DataView (mirror the migrated `UserColumns.tsx`+`UserForm.tsx`). Last
+   runtime-antd emitter; leaving it = broken `/scaffold-entity` after uninstall.
+3. **`chartPalette` home**: **dedicated `components/shared/chart-palette.ts`** token
+   module, added to `no-raw-hex-color` EXEMPT (inherits antd-theme's role). NOT inlined
+   into Chart.impl (raw hex in a .tsx trips the rule). `brandTokens` → inline minimal
+   `{borderRadius: brand.radius, fontSize: 14}` into `design-tokens.test.ts`; delete dead
+   `buildTheme`.
+
+**KEY findings the operator's 6-item scope MISSED (must-do for /ship green):**
+- **`tests/components/_render.tsx`** (`import {App,ConfigProvider} from "antd"`) +
+  **`PageHeader.test.tsx`** (`import {Button} from "antd"`) are **runtime** antd imports
+  → `/ship` typecheck + `test:components` blockers. Drop ConfigProvider/App (keep
+  next-intl+react-query); swap the Button fixture to shadcn `<Button>`.
+- **`tests/eslint-rules/rules.test.mjs:200-202`** tests no-raw-hex using `antd-theme.ts`
+  as the exempt file → update to `chart-palette.ts` when the rule retargets.
+- `/ship` phase A runs `tsc --noEmit` + `npm run test:components`, so EVERY antd import
+  (runtime AND type-only) must be gone BEFORE `npm uninstall antd` or /ship reds.
+- Type surface the local `table-types.ts` must model (from consumers): `Key`,
+  `FilterValue=(Key|boolean)[]`, `ColumnType<T>`{key,dataIndex,title,render,sorter,
+  filters,filterMultiple,width,align,ellipsis}, `ColumnsType<T>`, `TableProps<T>`{columns,
+  dataSource,rowKey,loading,rowSelection,scroll,size}. `ConfirmAction` needs inline props
+  (title,description,okText,cancelText,okType,onConfirm,children).
+
+**8-phase plan (in the blueprint):** P1 local `table-types.ts` + repoint 5 consumers +
+ConfirmAction inline props · P2 delete antd-theme.ts (→ chart-palette.ts + brandTokens
+inline + delete buildTheme) + retarget no-raw-hex + update rules.test.mjs + drop knip
+"ignore" · P3 fix the 2 test-provider files · P4 [P] scaffold generators → shadcn/RHF ·
+P5 [P] rewrite design-recipes.md + live-doc sweep (ADRs immutable) · P6 `npm uninstall
+antd @ant-design/icons @ant-design/nextjs-registry` + drop from knip ignoreDependencies
++ /ship green · P7 CSP empirical verify (revert `project.config.json` pristine flip after
+any deploy) · P8 final /ship + push (`@{u}..HEAD==0`, Verified) + senior-code-reviewer +
+flip C4→done in session-state.json + re-render + push.
+
+**Landmines:** all antd imports gone before uninstall (else typecheck reds); pristine
+flip after any deploy; commits Verified (`git config user.email noreply@anthropic.com`);
+gitleaks reinstall in a fresh container (`go install …zricethezav/gitleaks/v8@v8.21.2`).
+Branch base MUST be program tip (`ac68619`), NOT stale `032f643`.
+
 ## Session 8 — C3.5 EXECUTED + /ship GREEN + pushed (runtime AntD removed; C4 unblocked)
 **What happened:** Built the approved C3.5 plan verbatim (runtime-AntD removal that
 blocked C4). 3-phase structure exactly as signed off:
