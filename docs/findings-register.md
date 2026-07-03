@@ -18,14 +18,13 @@ the changed surface is still **open** (un-adjudicated).
 
 ## Register
 <!-- newest first -->
-- 2026-07-03 — [maintainable] deferred-adoption #11 (specialist-agents: a stack-aware
-  `nextjs-pro`/`postgres-pro`/`prisma-expert` review seed) **DROPPED** — WHY: its niche is
-  already fully covered by `senior-code-reviewer` (which reads CLAUDE.md/SECURITY.md/`docs/decisions`
-  and treats each `eslint-rules/*` rule at `error` as an enumerated Next.js/Prisma/Postgres invariant
-  to check) plus the native `/code-review` diff gate; a specialist seed would duplicate those lenses
-  by construction, violating the item's own guardrail ("must not duplicate existing reviewer lenses").
-  Removed from the tracked-deferred set — re-open only if a concrete non-duplicative review niche
-  appears — owner: operator — status: adjudicated(2026-07-03) dropped (session 14)
+- 2026-07-03 — [maintainable] deferred-adoption #11 (specialist-agents) — **drop REVERSED by
+  operator same day; now ADOPT.** The earlier drop reasoned that a stack-aware *review* seed would
+  duplicate `senior-code-reviewer`. The operator redirected it: build it as a **build-time ADVISOR**
+  (not a reviewer), which occupies a genuinely different slot (advice while building vs. review after
+  push) and does not duplicate the review rail. Design + skill-vs-subagent mechanism analysis pinned
+  in `docs/blueprints/deferred-11-specialist-stack-advisor.md`; implementation scheduled next session
+  — owner: operator — status: adjudicated(2026-07-03) → scheduled (blueprinted, build next session)
 - 2026-07-02 — [secure/maintainable] pristine-flag CLEARING is best-effort (warn-only, no
   retry/ack): `new-project.mjs` reads back `project.config.json` via the GitHub Contents API
   immediately after template-`generate` (which populates the file tree asynchronously) with no

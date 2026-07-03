@@ -137,20 +137,20 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   improvement to `scripts/scaffold-entity.mjs`, not a wasp adoption.
 - **Effort:** S (study). 
 
-## 11. specialist-agents — stack-aware review agent seeds ✅ DROPPED (2026-07-03)
-- **What:** Specialist subagent seeds (`nextjs-pro` / `postgres-pro` /
-  `prisma-expert`) as one optional stack-aware review agent (cat 03).
-- **Why deferred:** The review rail (native `/code-review` diff gate +
-  `senior-code-reviewer` breadth pass + the A4 reviewer lenses) covers the ground;
-  a specialist agent is additive polish.
-- **Disposition:** **DROPPED (session 14).** Investigation confirmed the niche is
-  already fully covered: `senior-code-reviewer` reads CLAUDE.md/SECURITY.md/`docs/decisions`
-  and treats each `eslint-rules/*` rule at `error` as an enumerated Next.js/Prisma/Postgres
-  invariant — a specialist seed would duplicate those lenses by construction, violating this
-  item's own guardrail ("must not duplicate existing reviewer lenses"). Recorded as a `dropped`
-  line in `docs/findings-register.md`. Re-open only if a concrete non-duplicative review niche
-  appears.
-- **Effort:** S–M (not spent). 
+## 11. specialist-agents — stack-aware **build-time advisor** 📐 BLUEPRINTED (2026-07-03) → ADOPT
+- **What:** A single composed stack-expert covering Next.js 16 RSC + Prisma 7 + Postgres,
+  delivered as a **build-time advisor** (originally proposed as `nextjs-pro`/`postgres-pro`/
+  `prisma-expert` review seeds; re-scoped away from review to avoid duplication).
+- **History:** first adjudicated DROPPED (session 14) on the reasoning that a stack-aware
+  *reviewer* duplicates `senior-code-reviewer`. **Operator REVERSED the drop the same day** and
+  redirected it to a build-time **advisor** — a different slot (guidance *while* building vs.
+  review *after* push), which does not duplicate the review rail.
+- **Disposition:** **ADOPT — blueprinted, implement next session.** Full design + the
+  skill-vs-subagent mechanism analysis ("how to add it, and the benefit, without integrating
+  blindly") is pinned in `docs/blueprints/deferred-11-specialist-stack-advisor.md`. Recommendation:
+  **skill-first** (`/stack-advisor`) with an optional thin subagent only if an offloaded deep-dive
+  need appears; one composed seed, not a fleet.
+- **Effort:** S–M. 
 
 ---
 
@@ -168,12 +168,13 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
 | 8 | citus | cat-07 scale trigger | WATCH | L | yes (infra) |
 | 9 | sonarqube-mcp | `/handoff` to SonarQube team | ON-HANDOFF | S | no |
 | 10 | wasp | `/scaffold-entity` ergonomics pass | WATCH/DROP (study) | S | no |
-| 11 | specialist-agents | ~~want 1 stack-aware reviewer~~ | **DROPPED (2026-07-03)** — niche filled by senior-code-reviewer | — | no |
+| 11 | specialist-agents | operator directive → build-time advisor | **BLUEPRINTED (2026-07-03) → ADOPT next session** (build-time advisor, not a reviewer) | S–M | no |
 
-**Session 14 update:** item **#11 (specialist-agents) was adjudicated and DROPPED**
-(niche already filled by `senior-code-reviewer` — see `docs/findings-register.md`),
-leaving **10** live tracked-deferred items. Of those 10, **none are actionable today** —
-no trigger has fired. Nearest-term candidates are
+**Session 14 update:** item **#11 (specialist-agents)** was first adjudicated DROPPED, then the
+**operator reversed it the same day** and redirected it to a **build-time advisor** — now
+**BLUEPRINTED for adoption** next session (`docs/blueprints/deferred-11-specialist-stack-advisor.md`).
+So **11 items remain tracked** (10 awaiting triggers + #11 scheduled to build). Of the 10 trigger-
+gated ones, **none are actionable today** — no trigger has fired. Nearest-term candidates are
 the two `/handoff`-gated items (#2 lhci-ci, #9 sonarqube-mcp), which activate the
 moment the fork is handed to a team with CI. When any trigger fires, re-promote that
 single row via `/blueprint` and record the adopt/drop verdict as an ADR line or a
