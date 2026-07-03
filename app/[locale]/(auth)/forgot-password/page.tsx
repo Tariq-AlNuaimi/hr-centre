@@ -1,12 +1,18 @@
 "use client";
 
-import { Card, Form, Input, Button, Typography, App } from "antd";
-import { MailOutlined } from "@ant-design/icons";
+import { Card, Typography, App } from "antd";
 import { useTranslations, useLocale } from "next-intl";
 import Link from "next/link";
 import { useState } from "react";
+import { z } from "zod";
+import { useZodForm, Form, TextField } from "@/components/shared/FormField";
+import { Button, buttonVariants } from "@/components/ui/button";
 
 const { Title, Paragraph } = Typography;
+
+// Mirrors the /api/auth/forgot-password route contract (a single email field).
+const forgotSchema = z.object({ email: z.string().email() });
+type ForgotValues = z.infer<typeof forgotSchema>;
 
 export default function ForgotPasswordPage() {
   const t = useTranslations("auth");
@@ -15,7 +21,9 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  async function onFinish(values: { email: string }) {
+  const form = useZodForm(forgotSchema, { defaultValues: { email: "" } });
+
+  async function onSubmit(values: ForgotValues) {
     setLoading(true);
     try {
       await fetch("/api/auth/forgot-password", {
@@ -44,38 +52,32 @@ export default function ForgotPasswordPage() {
           <Paragraph style={{ textAlign: "center" }}>
             {t("resetLinkSent")}
           </Paragraph>
-          <Button block size="large">
-            <Link href={`/${locale}/login`}>{t("login")}</Link>
-          </Button>
+          <Link
+            href={`/${locale}/login`}
+            className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
+          >
+            {t("login")}
+          </Link>
         </>
       ) : (
-        <Form layout="vertical" onFinish={onFinish}>
-          <Form.Item
-            name="email"
-            label={t("email")}
-            rules={[{ required: true, type: "email" }]}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
           >
-            <Input
-              prefix={<MailOutlined />}
-              size="large"
+            <TextField
+              name="email"
+              label={t("email")}
               type="email"
               autoComplete="email"
             />
-          </Form.Item>
-          <Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={loading}
-              block
-              size="large"
-            >
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
               {t("sendResetLink")}
             </Button>
-          </Form.Item>
-          <div style={{ textAlign: "center" }}>
-            <Link href={`/${locale}/login`}>{t("login")}</Link>
-          </div>
+            <div className="text-center">
+              <Link href={`/${locale}/login`}>{t("login")}</Link>
+            </div>
+          </form>
         </Form>
       )}
     </Card>

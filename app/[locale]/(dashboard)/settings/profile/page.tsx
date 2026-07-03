@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Descriptions, Form, Input, Button, Divider } from "antd";
-import { LockOutlined } from "@ant-design/icons";
+import { Card, Descriptions, Divider } from "antd";
+import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageSkeleton } from "@/components/shared/Skeletons";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
+import { useZodForm, Form, TextField } from "@/components/shared/FormField";
+import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
   const t = useTranslations("settings");
@@ -16,21 +18,36 @@ export default function ProfilePage() {
   const { data: session, status } = useSession();
   const { success, error: showError } = useNotify();
   const [loading, setLoading] = useState(false);
-  const [form] = Form.useForm();
 
-  if (status === "loading") return <PageSkeleton rows={6} />;
+  // Mirrors the /api/users/[id]/password contract (currentPassword required,
+  // newPassword 8..128) plus a client-only confirm field whose cross-field
+  // match keeps its i18n message.
+  const changePasswordSchema = z
+    .object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(8).max(128),
+      confirmPassword: z.string().min(1),
+    })
+    .refine((d) => d.newPassword === d.confirmPassword, {
+      message: t("passwordMismatch"),
+      path: ["confirmPassword"],
+    });
+
+  const form = useZodForm(changePasswordSchema, {
+    defaultValues: { currentPassword: "", newPassword: "", confirmPassword: "" },
+  });
 
   const user = session?.user;
 
-  async function onChangePassword(values: {
-    currentPassword: string;
-    newPassword: string;
-  }) {
+  async function onChangePassword(values: z.infer<typeof changePasswordSchema>) {
     setLoading(true);
     try {
-      await apiClient.put(`/api/users/${user?.id}/password`, values);
+      await apiClient.put(`/api/users/${user?.id}/password`, {
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword,
+      });
       success(t("passwordChanged"));
-      form.resetFields();
+      form.reset();
     } catch (e) {
       // Surface the server's reason (carried by ApiError) on a non-2xx; fall
       // back to the generic copy for a network/parse failure.
@@ -39,6 +56,8 @@ export default function ProfilePage() {
       setLoading(false);
     }
   }
+
+  if (status === "loading") return <PageSkeleton rows={6} />;
 
   return (
     <>
@@ -60,49 +79,35 @@ export default function ProfilePage() {
       <Divider />
 
       <Card title={t("changePassword")}>
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={onChangePassword}
-          style={{ maxWidth: 400 }}
-        >
-          <Form.Item
-            name="currentPassword"
-            label={t("currentPassword")}
-            rules={[{ required: true }]}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onChangePassword)}
+            className="flex max-w-[400px] flex-col gap-4"
           >
-            <Input.Password prefix={<LockOutlined />} />
-          </Form.Item>
-          <Form.Item
-            name="newPassword"
-            label={t("newPassword")}
-            rules={[{ required: true, min: 8 }]}
-          >
-            <Input.Password prefix={<LockOutlined />} />
-          </Form.Item>
-          <Form.Item
-            name="confirmPassword"
-            label={t("confirmPassword")}
-            dependencies={["newPassword"]}
-            rules={[
-              { required: true },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue("newPassword") === value) {
-                    return Promise.resolve();
-                  }
-                  return Promise.reject(new Error(t("passwordMismatch")));
-                },
-              }),
-            ]}
-          >
-            <Input.Password prefix={<LockOutlined />} />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              {tCommon("save")}
-            </Button>
-          </Form.Item>
+            <TextField
+              name="currentPassword"
+              label={t("currentPassword")}
+              type="password"
+              autoComplete="current-password"
+            />
+            <TextField
+              name="newPassword"
+              label={t("newPassword")}
+              type="password"
+              autoComplete="new-password"
+            />
+            <TextField
+              name="confirmPassword"
+              label={t("confirmPassword")}
+              type="password"
+              autoComplete="new-password"
+            />
+            <div>
+              <Button type="submit" disabled={loading}>
+                {tCommon("save")}
+              </Button>
+            </div>
+          </form>
         </Form>
       </Card>
     </>
