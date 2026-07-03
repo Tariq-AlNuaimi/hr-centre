@@ -50,8 +50,8 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
                 className={cn(
                   "inline-flex items-center gap-0.5 text-xs font-semibold",
                   isGood
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-600 dark:text-red-400",
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-red-700 dark:text-red-400",
                 )}
               >
                 <svg

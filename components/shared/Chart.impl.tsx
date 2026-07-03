@@ -160,10 +160,13 @@ export function Chart<T extends Record<string, unknown>>({
           >
             {data.map((d, i) => (
               // a11y (C3 axe gate): recharts gives each sector role="img" with no
-              // accessible name (svg-img-alt). Label each slice by its name/value.
+              // accessible name (svg-img-alt), and forwards Cell props to BOTH the
+              // sector AND its leader label-line — so set role + aria-label on both
+              // (a bare aria-label on the role-less label-line is aria-prohibited).
               <Cell
                 key={i}
                 fill={colors[i % colors.length]}
+                role="img"
                 aria-label={`${String(d[nameKey] ?? "")}: ${String(d[valueKey] ?? "")}`}
               />
             ))}
