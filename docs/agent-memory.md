@@ -44,6 +44,15 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-07-03 — **Worktree subagents (`isolation:"worktree"`) keep booting on the STALE
+  base 032f643, not the program tip — even when the main checkout is on the tip.** The
+  agent then reads the pre-migration (AntD-era) tree and can't do the task. Same
+  mis-basing the main-checkout landmine warns about. FIX that worked (session 10):
+  run the agent in the MAIN checkout (already on the tip) scoped to a DISJOINT file
+  set — explicitly forbid it from touching your in-flight files; the harness serializes
+  tool calls so disjoint edits don't collide. Only use a worktree when agents truly
+  mutate the SAME files in parallel, and reset its base to the tip (`git rev-parse HEAD`
+  check) before letting it work.
 - 2026-07-03 — **Browser QA against a DEPLOYED app now works (proven): use the
   loopback bridge `tools/design-qa-bridge/`.** Chromium can't traverse the MITM
   egress proxy (ERR_CONNECTION_RESET; curl/fetch can) AND local dev can't reach the

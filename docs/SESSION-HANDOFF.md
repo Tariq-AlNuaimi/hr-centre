@@ -1,4 +1,4 @@
-# Session handoff — 2026-07-03 (session 6: C3 design-qa exit bar MET — first real-browser a11y pass)
+# Session handoff — 2026-07-03 (session 11: Workstream D dark-mode + RTL a11y landed + pushed)
 
 ## Goal
 Replatform-and-adoption program per the signed contract
@@ -19,7 +19,7 @@ deterministic file instead of reconstructing status from prose.
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **replatform-and-adoption** · branch `claude/ui-replatform-auto-spawn-fix-8dee0o` · updated 2026-07-03 · last /ship: **green** (c7f3a4c, 2026-07-03)._
+_Program: **replatform-and-adoption** · branch `claude/ui-replatform-auto-spawn-fix-8dee0o` · updated 2026-07-03 · last /ship: **green** (58bd870, 2026-07-03)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -31,7 +31,7 @@ _Program: **replatform-and-adoption** · branch `claude/ui-replatform-auto-spawn
 | ✅ DONE | **C4** Harness/guard | — | DONE (session 10, /ship green): local table-types + chart-palette, antd uninstalled, no-raw-hex retargeted, CSP style-src KEPT+recommented (Radix/recharts/sonner/dnd-kit inline styles), scaffold generators + design-recipes migrated. git grep antd clean. |
 | ✅ DONE | **A1** Deterministic gates (6 left) | (unblocked) | SHIPPED (a0a9f61): 6 deterministic gates green |
 | 🟡 IN PROGRESS | **A5** Testing & design depth (9) | (unblocked) | fast-check + style-dictionary + slop/a11y criteria landed (session 5); remaining: qodo-cover, record-to-spec, Figma, superdesign |
-| ⬜ REMAINING | **D** RTL verify pass | — | 0.5 session: default fork zero-ar; flip restores |
+| 🟡 IN PROGRESS | **D** dark-mode + RTL a11y | — | Session 11: dark AA token split (--primary-emphasis/--destructive-emphasis) + DataTable icon 1.4.11 + pie labelLine + DirectionProvider RTL + ar uiux geometry test — LANDED + pushed (a035399, /ship green). Closeout: real-browser dark+ar axe via design-qa-bridge to flip to done. |
 | ✅ DONE | **2 senior-review Lows** lockstep gap + FormField footguns | — | FIXED (this session): design-tokens lockstep + FormField footguns |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
@@ -60,7 +60,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | C4 — Harness/guard (no-raw-hex, drop AntD+CSP, recipes) | [x] | c7f3a4c · 2026-07-03 · DONE (session 10, /ship green, pushed). Built the approved blueprint's 8 phases: P1 new components/shared/table-types.ts (Key/FilterValue/ColumnType/ColumnsType/TableProps/TableRowSelection modeling the AntD Table subset the consumers use) + repoint DataTable/DataView/DashboardContent/AuditLogClient/style-guide off antd/es/table + ConfirmAction inline Popconfirm-subset props. P2 delete components/layout/antd-theme.ts -> chartPalette to new components/shared/chart-palette.ts (byte-identical, no-raw-hex EXEMPT retargeted chart-palette<-antd-theme) + brandTokens inlined into design-tokens.test.ts + dead buildTheme deleted + rules.test.mjs THEME_SRC retargeted + antd-theme dropped from knip ignore. P3 tests/components/_render.tsx drops antd ConfigProvider/App (next-intl+react-query only) + PageHeader.test.tsx antd Button->shadcn. P4 scripts/scaffold-entity.mjs columns/form/list generators emit shadcn/RHF/DataView/Badge/lucide (no antd; emitted code tsc-verified by the P4 agent). P5 docs/design-recipes.md rewritten off AntD + live-doc sweep (recipes/skill-rules/design-system SKILL/design README/uat-rubric/tokens.css+brand.config comments; ADRs immutable). P6 npm uninstall antd @ant-design/icons @ant-design/nextjs-registry + drop @ant-design/* from knip ignoreDependencies. P7 CSP style-src 'unsafe-inline' KEPT (operator: empirically verify then decide; KEPT is the anticipated non-breaking outcome) with comment corrected AntD/emotion -> Radix/recharts/sonner/dnd-kit inline styles (a nonce can't cover them; dropping is the only risky action and was not taken without positive zero-violation evidence) + SECURITY.md updated. git grep antd is clean across shipped code+config. Two focused reviewers: table-types faithfulness CLEAN (empty). Built via 2 parallel worktree agents (P4 scaffold + P5 docs, both based on program tip f12760c not stale 032f643) over serial P1-P3/P6-P7 integrator work. D3 (replace AntD fully) now TRUE. |
 | B — Docker standard (gate + trivy + skills) | [x] | 4065f1a · 2026-07-03 |
 | E — Mandatory structured-DB /ship gate | [x] | b82c12d · 2026-07-02 |
-| D — RTL/Arabic verify pass | [ ] | Now also carries the DARK-mode axe findings surfaced by session 6's first real-browser a11y pass (the design-qa bridge makes dark/RTL browser checks feasible — reuse scratchpad/bridge.mjs + axe-run.mjs with a theme-mode=dark cookie). Dark serious/critical color-contrast to fix here: (1) style-guide + auth links using brand-primary #4f46e5 as TEXT on dark surfaces (~2.3-3.0:1) — needs a lighter dark-mode primary-as-text token (bg-primary buttons must stay unaffected, so split fg/bg primary); (2) .text-destructive-foreground #fff on #ef4444 destructive = 3.76; (3) the dark kbd/secondary was already fixed this session (colorTextTertiary/Secondary #9aa3b2 dark). Light mode is fully clean. Plus two senior-review a11y follow-ups (axe-invisible): (4) the recharts pie Cell role+aria-label double-announces each slice (sector + leader label-line) — prefer labelLine={false} or aria-hide the line; (5) WCAG 1.4.11 non-text contrast: DataTable icon-only filter toggle (text-muted-foreground/60 ~2.57:1) + other icon controls are below 3:1 (axe's color-contrast is text-only, so the 'axe clean' bar didn't cover them). |
+| D — RTL/Arabic verify pass | [~] | 34168c2,6516bf6 · 2026-07-03 · SESSION 11: dark-mode + RTL a11y fixes LANDED + pushed (/ship green, a035399). (1) Split fg/bg brand+red tokens for dark AA: new --primary-emphasis (brand-as-text; light=brand, dark=indigo-300 #a5b4fc; bg-primary buttons UNAFFECTED) + --destructive-emphasis (red-as-text; dark=red-400 #f87171), and darkened the dark destructive SURFACE red-500->red-600 #dc2626 so white-on-red clears 4.83:1 (was 3.76). Repointed all text-primary/text-destructive call sites (button/badge/select/form/dropdown-menu/OrgSwitcher/StatCard/DataTable/UserColumns) to the -emphasis utilities. (2) DataTable filter-toggle icon -> full muted-foreground (WCAG 1.4.11 non-text >=3:1; /60 was ~2.6:1 light). (3) recharts pie labelLine={false}. (4) design-tokens lockstep extended to guard both new mode-varying tokens. (5) RTL: @radix-ui/react-direction DirectionProvider dir={direction} wired in ThemeProvider so portalled Radix overlays mirror for ar/he/fa/ur; tests/uat/uiux.full.uat.ts extended with a guarded ar dropdown+popover boundingBox geometry test. Contrast ratios computed exactly (not guessed) + design-tokens contract green. REMAINING closeout: real-browser dark+ar axe confirmation via tools/design-qa-bridge (deploy a035399 -> bridge -> axe with theme-mode=dark cookie + /ar) was running at session end — flip to done once it confirms serious/critical clean in dark. Original session-6 dark findings this addresses: brand-as-text on dark (~2.3-3.0:1), destructive white-on-red 3.76, DataTable icon 1.4.11, pie double-announce.  [ORIG NOTE] Carries the DARK-mode axe findings surfaced by session 6's first real-browser a11y pass (the design-qa bridge makes dark/RTL browser checks feasible — reuse scratchpad/bridge.mjs + axe-run.mjs with a theme-mode=dark cookie). Dark serious/critical color-contrast to fix here: (1) style-guide + auth links using brand-primary #4f46e5 as TEXT on dark surfaces (~2.3-3.0:1) — needs a lighter dark-mode primary-as-text token (bg-primary buttons must stay unaffected, so split fg/bg primary); (2) .text-destructive-foreground #fff on #ef4444 destructive = 3.76; (3) the dark kbd/secondary was already fixed this session (colorTextTertiary/Secondary #9aa3b2 dark). Light mode is fully clean. Plus two senior-review a11y follow-ups (axe-invisible): (4) the recharts pie Cell role+aria-label double-announces each slice (sector + leader label-line) — prefer labelLine={false} or aria-hide the line; (5) WCAG 1.4.11 non-text contrast: DataTable icon-only filter toggle (text-muted-foreground/60 ~2.57:1) + other icon controls are below 3:1 (axe's color-contrast is text-only, so the 'axe clean' bar didn't cover them). |
 | A1 — Deterministic /ship gates (6 left) | [x] | a0a9f61 · 2026-07-03 · knip+jscpd+coverage+size-limit+jsx-a11y+complexity landed as /ship gates (+ E+B). All green (52s). |
 | A2 — Security & trust-boundary hooks | [x] | 2026-07-02 |
 | A3 — Measurement & runtime verification | [x] | ac3eb4c · 2026-07-02 · lhci per-PR CI dormant until Actions |
@@ -110,14 +110,81 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. C3.5 closeout DONE (deploy https://fullstack-vibe-template.vercel.app + LIGHT axe clean + senior review). Remaining cheap senior fixes (optional, or fold into C4/D): [Med] demote auth brand-panel <h1>→<h2> so the card title is sole <h1> (4 files: (auth)/layout.tsx + login/forgot/reset); [Low] add chrome.toggleSidebar i18n key (en+ar) for AppSidebar.tsx:125 aria-label; [Nit] sidebar breakpoint 1024→991px to match AntD lg.
-2. C4 (UNBLOCKED by C3.5): npm uninstall antd + @ant-design/icons + @ant-design/nextjs-registry (+ remove from knip ignoreDependencies), drop the type-only ColumnsType/TableProps/PopconfirmProps bridges + delete components/layout/antd-theme.ts (relocate chartPalette/brandTokens first; remove its knip ignore), drop the CSP 'unsafe-inline' style-src exception (middleware.ts:47-55), retarget no-raw-hex-color at the @theme block, rewrite docs/design-recipes.md. Ask-before → blueprint + plan.
-3. D (dark/RTL verify): fix dark-mode serious axe findings — brand-primary-as-text on dark (split fg/bg primary token), destructive-foreground white-on-red 3.76, DataTable icon-toggle non-text-contrast, recharts pie labelLine={false}. Re-run tools/design-qa-bridge with a theme-mode=dark cookie + an ?ar RTL pass. C3.5 already added --nav-active-foreground dark + --popover dark so the migrated chrome is dark-correct by construction.
-4. D (dark/RTL) now ALSO carries: (a) the senior [High-DORMANT] RTL-overlay finding — wire @radix-ui/react-direction DirectionProvider dir={direction} around the app (only bites when a fork enables ar/he/fa/ur; <html dir>+logical CSS intact today) + extend tests/uat/uiux.full.uat.ts to measure dropdown/popover geometry in ar; (b) the dark-mode color-contrast findings the closeout axe surfaced on every authed screen (muted-foreground/table/footer tokens fail AA on dark).
-5. A5 remaining: qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page).
-6. Design-qa bridge lives at tools/design-qa-bridge/ (loopback HTTPS -> deployed app via curl). See agent-memory.
+1. D CLOSEOUT (verify): confirm the dark-mode fixes hold in a REAL browser — deploy 58bd870, run tools/design-qa-bridge + axe with a theme-mode=dark cookie (and /ar if the deployment ships ar) across style-guide + login + users/audit-log/a form. When serious/critical are clean in dark, flip workstream D + directive D4 verify to done. If it surfaced a residual token miss, fix that token (split-token pattern in tokens.css/globals.css; contrast helper at scratchpad/contrast.mjs). NOTE: session-11's deploy+browser-axe agent was still running at session end — check its result; a partial (public-screens-only) axe may be all it got if it couldn't get seeded creds.
+2. D senior-code-reviewer (e3e9491..a035399): DONE + integrated. Core (contrast math, token repoint completeness, DirectionProvider, lockstep) verified CLEAN; the only finding was [High] on the FIRST RelationSelect fix (input-in-Select a11y) -> re-fixed as a Popover combobox (58bd870). No open D review items.
+3. A5 remaining (D1 not fully closed): qodo-cover AI test-gen, /manual-uat record-to-spec, Figma sub-recipe, superdesign. Optional: fix the 2 KNOWN-GAP lib/pagination edges (Infinity/fractional page) in tests/property/*.
+4. Design-qa bridge lives at tools/design-qa-bridge/ (loopback HTTPS -> deployed app via curl). See agent-memory. Worktree subagents mis-base on stale 032f643 in this env — run agents in the MAIN checkout scoped to disjoint files (agent-memory gotcha).
 
 <!-- END:auto-status -->
+
+## Session 11 — Workstream D (dark-mode + RTL a11y) LANDED + pushed + C4 deferred senior review actioned
+**What happened:** Re-based off stale `032f643` → program tip `e3e9491` (harness mis-based
+again). Setup: gitleaks via `go install`, `npm ci`, `prisma generate`. Shared both status
+tables first. Then ran the deferred **C4 post-push senior-code-reviewer** (task 1) and built
+**Workstream D** (task 2) + the 3 C3.5 cheap fixes (task 3). Three commits `34168c2`,
+`6516bf6`, `a035399`; `/ship` GREEN; pushed; `@{u}..HEAD == 0`; committer noreply@anthropic.com.
+
+**Task 1 — C4 deferred senior review (DONE, actioned):** The C4 diff itself was **CLEAN**
+(no-raw-hex retarget, CSP KEPT reasoning, table-types faithfulness, scaffold output all verified,
+incl. a live throwaway-scaffold tsc/eslint). It surfaced 2 out-of-diff AntD-removal fallout items:
+- **[High] `tests/uat/crud.full.uat.ts` still targeted AntD DOM** (`.ant-select`/`.anticon-*`/
+  `.ant-popconfirm`/`.ant-input-affix`) removed in C3.5+C4 → `uat:full` hard-failed on the shipped
+  `users` entity + any scaffold. **FIXED**: retargeted Radix/shadcn DOM (role=combobox/option,
+  input[type=search], button[aria-label^="Edit"/"Delete"], ConfirmAction dialog). Every selector
+  cited to a real component file:line.
+- **[Low] scaffold `RelationSelect` 50-row cap** (no server search → 51st+ target row unselectable).
+  **Operator chose FIX NOW** (via AskUserQuestion — it worked). First fix (`a035399`) put a search
+  `<input>` inside Radix Select's `SelectContent` — the **post-push senior D review flagged that
+  [High]** (input keyboard-unreachable: Radix focuses a SelectItem + swallows Tab; invalid ARIA
+  listbox child → axe `aria-required-children`; propagates to every scaffolded relation entity).
+  **RE-FIXED (`58bd870`) as a Popover combobox**: debounced `?search=` input + option `<button>`s
+  (no listbox/option roles), focused via `onOpenAutoFocus`; enums keep Radix Select, relations
+  import Popover + `searchRelation`/`noRelationMatches` i18n keys. Re-verified via throwaway
+  scaffold → tsc + eslint(jsx-a11y) clean, then restored.
+
+**Task 2 — Workstream D (dark-mode + RTL):**
+- **Dark AA token split** (the core fix): brand + red were single tokens used as BOTH surface and
+  text; on dark, brand-as-text was ~2.8-3.2:1 and white-on-red-500 was 3.76 — both fail AA. Split:
+  new `--primary-emphasis` (brand-as-TEXT: light=brand `#4f46e5`, dark=indigo-300 `#a5b4fc` → 8-10:1)
+  and `--destructive-emphasis` (red-as-TEXT: dark=red-400 `#f87171` → ≥5.3:1); darkened the dark
+  destructive SURFACE red-500→red-600 `#dc2626` so white-on-red clears 4.83:1. **bg-primary buttons
+  UNCHANGED.** Repointed every `text-primary`/`text-destructive` call site (button/badge/select/form/
+  dropdown-menu/OrgSwitcher/StatCard/DataTable/UserColumns) to the `-emphasis` utilities. Ratios were
+  COMPUTED exactly (`scratchpad/contrast.mjs`), not guessed.
+- **DataTable filter-toggle icon** → full `muted-foreground` (WCAG 1.4.11 non-text ≥3:1; `/60` was
+  ~2.57:1 on light). SortIcon inactive arrows stay `/40` (aria-hidden decoration; state on aria-sort).
+- **recharts pie** `labelLine={false}` (kills the leader-line double-announce).
+- **design-tokens lockstep** extended: both new mode-varying tokens added to SEMANTIC_VARS/@theme/
+  DARK_OVERRIDDEN so a dropped dark override fails the suite. Contract 9/9 green.
+- **RTL:** `@radix-ui/react-direction` `DirectionProvider dir={direction}` wired in `ThemeProvider`
+  (the previously accepted-but-unused prop) so portalled Radix overlays mirror for ar/he/fa/ur (a
+  portalled surface can't inherit `dir` from the DOM). `tests/uat/uiux.full.uat.ts` extended with a
+  guarded `ar` block asserting a dropdown + popover mirror via `boundingBox()` geometry + no viewport
+  overflow. This resolves the dormant [High] RTL senior finding from C3.5.
+
+**Task 3 — 3 C3.5 cheap senior fixes:** [Med] auth brand-panel `<h1>`→`<h2>` (`(auth)/layout.tsx`) so
+each form-card title is the sole `<h1>`; [Low] `chrome.toggleSidebar` i18n key (en+ar) + drop the
+hardcoded `AppSidebar` aria-label; [Nit] sidebar auto-collapse breakpoint 1023→991px (AntD lg = 992px).
+
+**Senior-code-reviewer on the D diff (`e3e9491..a035399`) — DONE + integrated.** Core verified
+**CLEAN**: contrast math re-derived (white/`#dc2626`=4.83, `#f87171` on dark ≥6.4, `#a5b4fc` on dark
+≥8.9), token repoint completeness (zero surviving `text-primary`/`text-destructive` tree-wide), no
+surface wrongly touched, DirectionProvider mount point correct + covers all portals, lockstep genuinely
+bites, all 3 cheap fixes + UAT selector migration accurate. Its ONE real finding was the [High] on the
+first RelationSelect fix (above) → re-fixed as the Popover combobox (`58bd870`). No open D-review items.
+
+**Still in flight at session end (NEXT session integrate):** the deploy+bridge **real-browser dark+ar
+axe** confirmation (deploy `58bd870` → `tools/design-qa-bridge/` → axe with a `theme-mode=dark` cookie
++ `/ar`). D is `[~]` until that browser axe confirms serious/critical clean in dark — the token fixes
+are mathematically proven (senior re-derived them) + contract-green, but the real-browser pass is the
+closeout bar. The agent may only have reached public screens if it couldn't obtain seeded admin creds;
+check its result. If it surfaces a residual token miss, fix it (split-token pattern in `app/tokens.css`
++ `app/globals.css`; contrast helper `scratchpad/contrast.mjs`) then flip workstream D + D4-verify to done.
+
+**Landmines carried:** worktree subagents STILL mis-base on stale `032f643` here (agent-memory
+gotcha) — ran the test-migration agent in the MAIN checkout scoped to disjoint files instead; commits
+Verified (`git config user.email noreply@anthropic.com`); gitleaks reinstall per fresh container; no
+`scripts/deploy.mjs` ran so `project.config.json` `pristine:true` is untouched.
 
 ## Session 10 — C4 EXECUTED + /ship GREEN + pushed (AntD fully removed; D3 TRUE)
 **What happened:** Built the approved C4 blueprint's 8 phases verbatim (no re-plan).
