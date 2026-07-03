@@ -118,6 +118,27 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 Branch `claude/ui-layer-signoff-replatform-onjlrr`. Base for this session was
 `6a4a13c`. `/ship` status is tracked in `docs/session-state.json` `lastShip`.
 
+## Session 4b — auto-spawn consumer + 3 parallel worktree runs (all integrated, pushed, green)
+- **Auto-spawn consumer BUILT + ENABLED** (`d2a4244`). `scripts/auto-spawn-fire.mjs` is the
+  closeout step: re-checks the guard, prints the exact `create_trigger` payload for the agent to
+  fire, records against the cap. `autoSpawn.enabled=true` for THIS program (template default stays
+  false). Guard hardened to also require a CLEAN working tree. To continue zero-touch: at a clean
+  green+pushed boundary run `node scripts/auto-spawn-fire.mjs` and fire the printed payload via
+  `mcp__Claude_Code_Remote__create_trigger`; `--reset` re-arms the cap after a human turn.
+- **C3 forms + tables** (`669c62b`,`e4e33b1`) — 7 screens migrated off AntD onto shadcn primitives.
+  **C3 is `[~]` partial**: remaining = `components/users/UserColumns.tsx`, audit-log `Select`
+  filters (no shadcn Select shipped — build one or use Radix), DashboardContent, settings/page,
+  not-found/forbidden/error/style-guide, **and per-screen `/design-qa` (axe serious/critical exit
+  bar) — the C3 exit gate, not yet run**.
+- **A1 deterministic gates DONE** (`a0a9f61`) — knip/jscpd/coverage/size-limit/jsx-a11y/complexity,
+  all green (16-phase /ship, 52s). The 3 jsx-a11y rules + complexity ceiling (24) are held at
+  warn with TODO(C4) to tighten post-replatform.
+- **eslint now ignores `.claude/worktrees/**`** so parallel worktrees don't pollute `/ship`.
+- **Integration recipe that worked:** cherry-pick each agent's commit → `git worktree remove
+  --force` ALL → `npm ci` → one `/ship` → one push. Both C3 agents hit the stale-`032f643` base
+  bug and self-corrected (FF to HEAD) per the step-0 instruction — keep giving worktree agents that
+  explicit base check.
+
 ## Session-automation — what shipped (this session)
 Operator confirmed the 4 open questions (2026-07-03): **(b) auto-start incl.
 guarded auto-spawn**, **adopt session-state.json as the rendered source**,
