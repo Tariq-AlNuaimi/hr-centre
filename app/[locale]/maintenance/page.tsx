@@ -1,6 +1,6 @@
 "use client";
 
-import { ToolOutlined } from "@ant-design/icons";
+import { Wrench } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { BrandedStatus } from "@/components/shared/BrandedStatus";
 
@@ -14,7 +14,7 @@ export default function MaintenancePage() {
   return (
     <BrandedStatus
       minHeight="100vh"
-      icon={<ToolOutlined />}
+      icon={<Wrench />}
       title={tStatus("maintenanceTitle")}
       subtitle={tStatus("maintenanceSubtitle")}
     />

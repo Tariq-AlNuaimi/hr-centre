@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Descriptions, Divider } from "antd";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { PageSkeleton } from "@/components/shared/Skeletons";
+import { DescriptionList } from "@/components/shared/DescriptionList";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 
 export default function ProfilePage() {
@@ -63,22 +65,26 @@ export default function ProfilePage() {
     <>
       <PageHeader title={t("profile")} />
       <Card>
-        <Descriptions column={1} bordered>
-          <Descriptions.Item label={t("name")}>
-            {user?.name ?? "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label={t("email")}>
-            {user?.email ?? "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label={t("role")}>
-            {user?.role ?? "-"}
-          </Descriptions.Item>
-        </Descriptions>
+        <CardContent className="p-6">
+          <DescriptionList
+            columns={1}
+            bordered
+            items={[
+              { key: "name", label: t("name"), value: user?.name ?? "-" },
+              { key: "email", label: t("email"), value: user?.email ?? "-" },
+              { key: "role", label: t("role"), value: user?.role ?? "-" },
+            ]}
+          />
+        </CardContent>
       </Card>
 
-      <Divider />
+      <Separator className="my-6" />
 
-      <Card title={t("changePassword")}>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("changePassword")}</CardTitle>
+        </CardHeader>
+        <CardContent>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onChangePassword)}
@@ -109,6 +115,7 @@ export default function ProfilePage() {
             </div>
           </form>
         </Form>
+        </CardContent>
       </Card>
     </>
   );

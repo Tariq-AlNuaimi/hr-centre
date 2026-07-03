@@ -993,28 +993,35 @@ async function patchSidebar() {
   const src = await readFile(path, 'utf8');
   if (src.includes(`key: "${entityKebab}"`)) return null;
 
-  // Check whether AppstoreOutlined is already in the @ant-design/icons import
-  // block. We have to do this BEFORE inserting the menu entry, because the
-  // menu entry contains `<AppstoreOutlined />` and would otherwise pollute a
-  // file-wide search for the identifier.
-  const importMatch = src.match(/import\s+\{([^}]*)\}\s+from\s+"@ant-design\/icons";/);
-  const alreadyImported = importMatch && /\bAppstoreOutlined\b/.test(importMatch[1]);
+  // The migrated AppSidebar (ADR-029) renders a plain <nav> of <Link> nav-items
+  // with lucide icons and a `--nav-active-foreground` active state; each entry is
+  // a `{ key, href, icon, label }` object. Insert the scaffolded entity's entry
+  // immediately before the recycling-bin nav item (admin-gated, always present),
+  // matching that object's indentation so the array stays well-formed.
+  //
+  // Check whether LayoutGrid is already in the lucide-react import block BEFORE
+  // inserting the entry, because the entry itself contains `<LayoutGrid />` and
+  // would otherwise pollute a file-wide search for the identifier.
+  const importMatch = src.match(/import\s+\{([^}]*)\}\s+from\s+"lucide-react";/);
+  const alreadyImported = importMatch && /\bLayoutGrid\b/.test(importMatch[1]);
 
-  const marker = '    {\n      key: "recycling-bin",';
-  if (!src.includes(marker)) throw new Error('Could not locate recycling-bin nav entry.');
-  const insertion = `    {
-      key: "${entityKebab}",
-      icon: <AppstoreOutlined />,
-      label: "${Pascal}s",
-      onClick: () => router.push(\`/\${locale}/${entityKebab}\`),
-    },
-`;
-  let out = src.replace(marker, insertion + marker);
+  const anchor = src.match(/([ \t]*)\{[ \t]*\n[ \t]*key: "recycling-bin",/);
+  if (!anchor) throw new Error('Could not locate recycling-bin nav entry.');
+  const indent = anchor[1];
+  const inner = indent + '  ';
+  const insertion =
+    `${indent}{\n` +
+    `${inner}key: "${entityKebab}",\n` +
+    `${inner}href: \`/\${locale}/${entityKebab}\`,\n` +
+    `${inner}icon: <LayoutGrid />,\n` +
+    `${inner}label: "${Pascal}s",\n` +
+    `${indent}},\n`;
+  let out = src.replace(anchor[0], insertion + anchor[0]);
 
   if (!alreadyImported) {
     out = out.replace(
-      /(\}\s*from "@ant-design\/icons";)/,
-      '  AppstoreOutlined,\n$1'
+      /(\}\s*from "lucide-react";)/,
+      '  LayoutGrid,\n$1'
     );
   }
   return { path, content: out };

@@ -46,8 +46,8 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Card } from "antd";
 import { type CSSProperties, type ReactNode, useState } from "react";
+import { Card } from "@/components/ui/card";
 
 export interface KanbanColumn {
   id: string;
@@ -115,7 +115,7 @@ export function KanbanBoard<T extends KanbanItem>({
         ))}
       </div>
       <DragOverlay>
-        {activeItem ? <Card size="small">{renderCard(activeItem)}</Card> : null}
+        {activeItem ? <Card className="p-3">{renderCard(activeItem)}</Card> : null}
       </DragOverlay>
     </DndContext>
   );
@@ -181,7 +181,7 @@ function BoardCard<T extends KanbanItem>({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <Card size="small">{children}</Card>
+      <Card className="p-3">{children}</Card>
     </div>
   );
 }
