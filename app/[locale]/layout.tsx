@@ -8,6 +8,7 @@ import { directionForLocale } from "@/i18n/config";
 import { brand } from "@/brand.config";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { Toaster } from "@/components/ui/sonner";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "@/app/globals.css";
 
@@ -125,9 +126,12 @@ export default async function LocaleLayout({
               initialMode={initialMode}
               initialIsDark={initialIsDark}
             >
-              {/* QueryProvider sits inside ThemeProvider so its error-toast
-                  bridge can reach AntD's App context (useNotify). ADR-021. */}
+              {/* QueryProvider sits inside ThemeProvider; its error-toast bridge
+                  fires sonner toasts (useNotify → sonner, ADR-029 C3.5). ADR-021. */}
               <QueryProvider>{children}</QueryProvider>
+              {/* sonner toast host — inside ThemeProvider so it reads useTheme()
+                  for the light/dark toast theme (replaces AntD App.message). */}
+              <Toaster />
             </ThemeProvider>
           </AntdRegistry>
         </NextIntlClientProvider>

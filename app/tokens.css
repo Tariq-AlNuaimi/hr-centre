@@ -83,6 +83,18 @@
   --primary-foreground: #ffffff;
   --destructive: #dc2626;         /* red-600 */
   --destructive-foreground: #ffffff;
+
+  /* Elevated overlay surface (ADR-029, Workstream C3.5) — dropdown/menu/popover
+   * panels sit ABOVE cards, so they get their own surface token (was AntD
+   * `colorBgElevated`). Dark override in globals.css. */
+  --popover: #ffffff;
+  --popover-foreground: #111827; /* mirrors --card-foreground */
+
+  /* Active-nav foreground (ADR-029, Workstream C3.5) — the sidebar's selected
+   * item. Light = brand primary; dark needs a lighter indigo for AA contrast on
+   * the dark shell (override in globals.css), so the migrated sidebar is
+   * dark-correct by construction. */
+  --nav-active-foreground: var(--brand-primary);
 }
 
 /* ============================================================================
@@ -168,4 +180,12 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Elevated overlay + active-nav utilities (ADR-029 C3.5): bg-popover /
+   * text-popover-foreground for dropdown/menu panels, text-nav-active-foreground
+   * for the sidebar's selected item. Each references a :root var (dark-swapped in
+   * globals.css), so the single dark override restyles them too. */
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-nav-active-foreground: var(--nav-active-foreground);
 }

@@ -130,6 +130,9 @@ body {
   --border: #1f2937;              /* gray-800 */
   --input: #374151;               /* gray-700 */
   --destructive: #ef4444;         /* red-500 (lighter for dark) */
+  --popover: #1d2129;             /* AntD colorBgElevated (dark) — above cards */
+  --popover-foreground: #f9fafb;  /* gray-50 (mirrors --card-foreground dark) */
+  --nav-active-foreground: #a5b4fc; /* indigo-300 — AA on the dark shell */
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #3a4150;
