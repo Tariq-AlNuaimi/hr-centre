@@ -2,7 +2,6 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { Inter } from "next/font/google";
-import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { routing } from "@/i18n/routing";
 import { directionForLocale } from "@/i18n/config";
 import { brand } from "@/brand.config";
@@ -116,24 +115,22 @@ export default async function LocaleLayout({
       </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
-          {/* AntD's SSR <style> tags fall under style-src 'unsafe-inline' (kept for
-              AntD 6 emotion inline-style attributes), so the stock registry is fine —
-              only SCRIPT needs the nonce, handled on the inline script above and by
-              Next's automatic nonce propagation (CSP set on the request in middleware). */}
-          <AntdRegistry>
-            <ThemeProvider
-              direction={direction}
-              initialMode={initialMode}
-              initialIsDark={initialIsDark}
-            >
-              {/* QueryProvider sits inside ThemeProvider; its error-toast bridge
-                  fires sonner toasts (useNotify → sonner, ADR-029 C3.5). ADR-021. */}
-              <QueryProvider>{children}</QueryProvider>
-              {/* sonner toast host — inside ThemeProvider so it reads useTheme()
-                  for the light/dark toast theme (replaces AntD App.message). */}
-              <Toaster />
-            </ThemeProvider>
-          </AntdRegistry>
+          {/* AntdRegistry removed (C3.5): the chrome no longer renders AntD, so
+              there are no AntD SSR <style> tags to extract. The CSP style-src
+              'unsafe-inline' exception in middleware.ts goes unused until C4
+              removes it (do NOT touch middleware here — C4). */}
+          <ThemeProvider
+            direction={direction}
+            initialMode={initialMode}
+            initialIsDark={initialIsDark}
+          >
+            {/* QueryProvider sits inside ThemeProvider; its error-toast bridge
+                fires sonner toasts (useNotify → sonner, ADR-029 C3.5). ADR-021. */}
+            <QueryProvider>{children}</QueryProvider>
+            {/* sonner toast host — inside ThemeProvider so it reads useTheme()
+                for the light/dark toast theme (replaces AntD App.message). */}
+            <Toaster />
+          </ThemeProvider>
         </NextIntlClientProvider>
         {/* Inert unless running on Vercel — see onVercel above. */}
         {onVercel ? <SpeedInsights /> : null}

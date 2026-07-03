@@ -56,8 +56,8 @@ body {
   line-height: 1;
   padding: 2px 6px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--ant-color-border-secondary, rgba(0, 0, 0, 0.08));
-  color: var(--ant-color-text-tertiary, #5b6472);
+  border: 1px solid var(--border);
+  color: var(--muted-foreground);
 }
 @media (max-width: 575px) {
   .header-search-label,
@@ -74,20 +74,10 @@ body {
   }
 }
 
-/* Ant Design layout overrides */
-.ant-layout {
-  min-height: 100vh;
-}
-
-.ant-layout-content {
-  padding: var(--density-page);
-}
-
-/* A hairline shadow under the sticky header lifts it off the content as the
-   page scrolls — subtle depth, on-token elevation. */
-.ant-layout-header {
-  box-shadow: var(--shadow-sm);
-}
+/* AntD layout overrides removed (C3.5): the migrated chrome carries its own
+   Tailwind layout — page padding is `p-density-page` on <main> (AppShell) and
+   the sticky-header hairline is `shadow-sm` on the migrated <header> (AppHeader),
+   so the old `.ant-layout*` rules no longer match any element. */
 
 /* --- Refined scrollbars (both modes) -------------------------------------
    Thin, unobtrusive, theme-aware — the kind of detail that reads "considered".

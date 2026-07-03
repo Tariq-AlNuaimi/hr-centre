@@ -16,6 +16,9 @@
     "types/**/*.{ts,tsx}",
     "brand.config.ts"
   ],
+  "ignore": [
+    "components/layout/antd-theme.ts"
+  ],
   "ignoreDependencies": [
     "pg",
     "@types/pg",

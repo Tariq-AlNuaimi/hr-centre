@@ -993,11 +993,13 @@ async function patchSidebar() {
   const src = await readFile(path, 'utf8');
   if (src.includes(`key: "${entityKebab}"`)) return null;
 
-  // The migrated AppSidebar (ADR-029) renders a plain <nav> of <Link> nav-items
-  // with lucide icons and a `--nav-active-foreground` active state; each entry is
-  // a `{ key, href, icon, label }` object. Insert the scaffolded entity's entry
-  // immediately before the recycling-bin nav item (admin-gated, always present),
-  // matching that object's indentation so the array stays well-formed.
+  // The migrated AppSidebar (ADR-029) renders a plain <nav> of nav-items with
+  // lucide icons and a `--nav-active-foreground` active state; each entry is a
+  // `{ key, icon, label, onClick }` object (icon is a sized lucide element;
+  // navigation is `router.push`, matching the recycling-bin item). Insert the
+  // scaffolded entity's entry immediately before the recycling-bin nav item
+  // (admin-gated, always present), matching that object's indentation so the
+  // array stays well-formed.
   //
   // Check whether LayoutGrid is already in the lucide-react import block BEFORE
   // inserting the entry, because the entry itself contains `<LayoutGrid />` and
@@ -1012,9 +1014,9 @@ async function patchSidebar() {
   const insertion =
     `${indent}{\n` +
     `${inner}key: "${entityKebab}",\n` +
-    `${inner}href: \`/\${locale}/${entityKebab}\`,\n` +
-    `${inner}icon: <LayoutGrid />,\n` +
+    `${inner}icon: <LayoutGrid className="h-4 w-4" />,\n` +
     `${inner}label: "${Pascal}s",\n` +
+    `${inner}onClick: () => router.push(\`/\${locale}/${entityKebab}\`),\n` +
     `${indent}},\n`;
   let out = src.replace(anchor[0], insertion + anchor[0]);
 
