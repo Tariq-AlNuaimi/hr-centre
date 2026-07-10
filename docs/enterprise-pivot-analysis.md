@@ -87,9 +87,18 @@ Deep, multi-agent (the `deep-research` skill + parallel scouts + market-scan per
 
 Each answer → a superseding ADR + a build-vs-buy ledger entry. Then `/blueprint` the v1 baseline before any code.
 
-## Open questions for the operator (resolve before building)
-- **Orchestration target:** docker-compose only, or Helm/k8s for real enterprise?
-- **Multi-tenancy:** in-app (row-level) or stay one-deploy-per-tenant (ADR-011)?
-- **Does the disposable/prototype mode survive** as a fast-path mode, or is everything enterprise now?
-- **Self-hosted Postgres vs. Neon** as the default DB (dockerized DB implies self-hosted; is Neon still an option)?
-- **Which agent runtime** — thin Anthropic-SDK wrapper we own, or adopt a framework?
+## Resolved decisions (operator, this session — binding for the research)
+1. **Multi-tenancy: DEPLOY-PER-TENANT — keep ADR-011.** No in-app row-level tenancy. **Removes** the tenant-column / row-level Prisma extension from the L2 scope; isolation stays at the deployment boundary. Simplifies the pivot materially.
+2. **Agent runtime: RESEARCH DECIDES.** The deep-research market scan compares own-thin-SDK-wrapper vs. framework and recommends; record the choice as an ADR + build-vs-buy ledger entry before building `lib/ai/*`.
+3. **Orchestration: COMPOSE NOW, K8s-READY.** Ship `docker-compose.prod.yml` (app + Postgres + Redis + object store + proxy) as the baseline; structure images/config so Helm/k8s can layer on later. No k8s in v1.
+4. **Prototype/disposable rail: DROP IT — ENTERPRISE ONLY.** Retire the prototype/personal-tier framing entirely; enterprise-grade is the default and only target. **Reframes the tier model** (personal/shared → likely a single enterprise floor) across CLAUDE.md, ADR-007, the `/ship` tier gate, and the lifecycle skills.
+5. **DB default (assumed, unobjected): self-hosted dockerized Postgres is the default; Neon an option.**
+
+### Knock-on effects of these decisions
+- Deploy-per-tenant **keeps ADR-011** (only 006/007/030 get superseded/reframed, not 011) and deletes the biggest L2 build (row-level isolation).
+- Enterprise-only **kills the two-rails problem** — one standard, so the tier gate, `/quickstart` disposability, and "personal tier skips ceremony" all collapse into one enterprise floor. Big CLAUDE.md/skills rewrite, but simpler end state.
+- Agent-runtime-TBD means axis 2 starts with the market-scan research, not code.
+
+## Still open for the fresh session
+- Which agent runtime wins the build-vs-buy scan (decision #2 defers this to research).
+- Exact enterprise-floor scope for v1 (SSO/SCIM depth, encryption, OTel, CI) vs. later.
