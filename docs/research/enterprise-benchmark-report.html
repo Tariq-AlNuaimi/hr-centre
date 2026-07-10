@@ -1,0 +1,1145 @@
+<title>Enterprise Factory — Stack Benchmark</title>
+<style>
+  :root {
+    --ground: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #fbfcfd;
+    --ink: #12161f;
+    --muted: #5b6472;
+    --hair: #e3e6ea;
+    --accent: #2f6feb;
+    --accent-soft: rgba(47,111,235,0.10);
+    --adopt: #1a7f5a;
+    --later: #b7791f;
+    --reject: #c0392b;
+    --keep: #64748b;
+    --adopt-bg: rgba(26,127,90,0.12);
+    --later-bg: rgba(183,121,31,0.12);
+    --reject-bg: rgba(192,57,43,0.12);
+    --keep-bg: rgba(100,116,139,0.12);
+    --serif: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    --maxw: 1100px;
+    --measure: 68ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0d1017;
+      --surface: #151a23;
+      --surface-2: #10141c;
+      --ink: #e8ebf0;
+      --muted: #9aa3b2;
+      --hair: #242b36;
+      --accent: #5b8cf5;
+      --accent-soft: rgba(91,140,245,0.14);
+      --adopt: #35b783;
+      --later: #d99a3a;
+      --reject: #e06457;
+      --keep: #8b98ab;
+      --adopt-bg: rgba(53,183,131,0.14);
+      --later-bg: rgba(217,154,58,0.14);
+      --reject-bg: rgba(224,100,87,0.14);
+      --keep-bg: rgba(139,152,171,0.14);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1017; --surface: #151a23; --surface-2: #10141c; --ink: #e8ebf0;
+    --muted: #9aa3b2; --hair: #242b36; --accent: #5b8cf5; --accent-soft: rgba(91,140,245,0.14);
+    --adopt: #35b783; --later: #d99a3a; --reject: #e06457; --keep: #8b98ab;
+    --adopt-bg: rgba(53,183,131,0.14); --later-bg: rgba(217,154,58,0.14);
+    --reject-bg: rgba(224,100,87,0.14); --keep-bg: rgba(139,152,171,0.14);
+  }
+  :root[data-theme="light"] {
+    --ground: #f6f7f9; --surface: #ffffff; --surface-2: #fbfcfd; --ink: #12161f;
+    --muted: #5b6472; --hair: #e3e6ea; --accent: #2f6feb; --accent-soft: rgba(47,111,235,0.10);
+    --adopt: #1a7f5a; --later: #b7791f; --reject: #c0392b; --keep: #64748b;
+    --adopt-bg: rgba(26,127,90,0.12); --later-bg: rgba(183,121,31,0.12);
+    --reject-bg: rgba(192,57,43,0.12); --keep-bg: rgba(100,116,139,0.12);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .wrap {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: var(--maxw); margin: 0 auto; padding: 0 24px 80px; }
+
+  h1, h2, h3, h4 { font-family: var(--serif); text-wrap: balance; line-height: 1.22; font-weight: 600; }
+  h1 { font-size: 2.15rem; margin: 0 0 .35rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.5rem; margin: 0 0 .5rem; }
+  h3 { font-size: 1.16rem; margin: 1.6rem 0 .5rem; }
+  h4 { font-size: 1.02rem; margin: 1.2rem 0 .4rem; }
+  p { margin: .5rem 0; }
+  .prose { max-width: var(--measure); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-size: .70rem;
+    color: var(--muted);
+    margin: 0 0 .5rem;
+  }
+
+  header.masthead {
+    padding: 40px 0 24px;
+    border-bottom: 1px solid var(--hair);
+    margin-bottom: 8px;
+  }
+  .subtitle { color: var(--muted); font-size: 1.02rem; max-width: var(--measure); margin: .3rem 0 1rem; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+
+  /* Nav */
+  nav.toc {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--ground) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--hair);
+    padding: 10px 0;
+    margin-bottom: 28px;
+  }
+  nav.toc .navinner { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+  nav.toc a {
+    font-family: var(--mono); font-size: .74rem; color: var(--muted);
+    padding: 4px 9px; border: 1px solid var(--hair); border-radius: 999px; background: var(--surface);
+    white-space: nowrap;
+  }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); text-decoration: none; }
+  .theme-btn {
+    margin-left: auto; cursor: pointer; font-family: var(--mono); font-size: .8rem;
+    background: var(--surface); color: var(--ink); border: 1px solid var(--hair);
+    border-radius: 999px; padding: 4px 11px;
+  }
+  .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  section { margin: 46px 0; scroll-margin-top: 64px; }
+  .sec-mark { color: var(--accent); font-family: var(--mono); font-size: .78rem; margin-right: 8px; }
+
+  /* Pills */
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: .66rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 5px;
+    border: 1px solid; white-space: nowrap; line-height: 1.5;
+  }
+  .pill.adopt   { color: var(--adopt);  background: var(--adopt-bg);  border-color: var(--adopt); }
+  .pill.later   { color: var(--later);  background: var(--later-bg);  border-color: var(--later); }
+  .pill.reject  { color: var(--reject); background: var(--reject-bg); border-color: var(--reject); }
+  .pill.keep    { color: var(--keep);   background: var(--keep-bg);   border-color: var(--keep); }
+  .pill.research{ color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; align-items: center; }
+  .legend .item { display: flex; align-items: center; gap: 7px; font-size: .82rem; color: var(--muted); }
+
+  /* Fit badge + dot meter */
+  .fit { font-family: var(--mono); font-size: .72rem; font-weight: 600; color: var(--ink);
+    background: var(--accent-soft); border: 1px solid var(--hair); border-radius: 4px; padding: 1px 6px; }
+  .dots { display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 5px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--hair); display: inline-block; }
+  .dots i.on { background: var(--accent); }
+
+  /* Tables */
+  .scroll { overflow-x: auto; border: 1px solid var(--hair); border-radius: 10px; background: var(--surface); margin: 14px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .84rem; min-width: 640px; }
+  table.wide { min-width: 900px; }
+  table.matrix { min-width: 860px; }
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: var(--surface-2); text-align: left; font-family: var(--sans); font-weight: 600;
+    color: var(--ink); padding: 9px 12px; border-bottom: 2px solid var(--accent);
+    vertical-align: bottom; white-space: nowrap;
+  }
+  tbody td { padding: 9px 12px; border-bottom: 1px solid var(--hair); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.cap { font-weight: 600; }
+  .tnum { font-variant-numeric: tabular-nums; font-family: var(--mono); }
+  code, .mono { font-family: var(--mono); font-size: .82em; }
+  td .rec { font-weight: 600; color: var(--ink); }
+  .notes { font-size: .82rem; color: var(--muted); max-width: var(--measure); margin: 6px 0 2px; }
+  .notes-inline { display:block; color: var(--muted); font-size:.9em; margin-top:3px; }
+
+  /* Cards / callouts */
+  .band {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 12px;
+    margin: 18px 0;
+  }
+  .stat { border: 1px solid var(--hair); border-radius: 10px; padding: 14px 16px; background: var(--surface); }
+  .stat .n { font-family: var(--mono); font-size: 1.7rem; font-weight: 700; line-height: 1; }
+  .stat .l { font-size: .74rem; color: var(--muted); margin-top: 6px; text-transform: uppercase; letter-spacing: .05em; }
+  .stat.adopt .n { color: var(--adopt); }
+  .stat.later .n { color: var(--later); }
+  .stat.keep .n { color: var(--keep); }
+  .stat.reject .n { color: var(--reject); }
+  .stat.research .n { color: var(--accent); }
+
+  .callout {
+    border-left: 3px solid var(--accent); background: var(--surface); border-radius: 0 8px 8px 0;
+    padding: 12px 16px; margin: 16px 0; font-size: .9rem;
+  }
+  .callout.warn { border-left-color: var(--later); }
+  ul.calls { max-width: var(--measure); padding-left: 1.1rem; }
+  ul.calls li { margin: .45rem 0; }
+  ul.calls li b { color: var(--ink); }
+
+  .domain-summary { max-width: var(--measure); }
+  .seq {
+    border: 1px dashed var(--hair); border-radius: 10px; padding: 4px 18px 12px; margin: 16px 0; background: var(--surface-2);
+  }
+  .seq h4 { margin-top: 12px; }
+  .seq ol, .seq ul { max-width: var(--measure); padding-left: 1.2rem; }
+  .seq li { margin: .3rem 0; font-size: .9rem; }
+
+  ol.foot { font-size: .78rem; color: var(--muted); max-width: 100%; padding-left: 1.4rem; }
+  ol.foot li { margin: .35rem 0; word-break: break-word; }
+  ol.foot a { word-break: break-all; }
+
+  .eff { font-family: var(--mono); font-size: .68rem; font-weight:600; border:1px solid var(--hair); border-radius:4px; padding:1px 5px; }
+  .prio { font-family: var(--mono); font-size:.68rem; font-weight:700; padding:1px 6px; border-radius:4px; border:1px solid; }
+  .prio.p0 { color: var(--reject); border-color: var(--reject); background: var(--reject-bg); }
+  .prio.p1 { color: var(--later); border-color: var(--later); background: var(--later-bg); }
+  .prio.p2 { color: var(--keep); border-color: var(--keep); background: var(--keep-bg); }
+  .dtag { font-family: var(--mono); font-size:.68rem; color: var(--muted); border:1px solid var(--hair); border-radius:4px; padding:1px 5px; }
+
+  footer.foot {
+    border-top: 1px solid var(--hair); margin-top: 60px; padding-top: 22px;
+    color: var(--muted); font-size: .84rem; max-width: var(--measure);
+  }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+  @media (max-width: 640px) {
+    h1 { font-size: 1.7rem; }
+    .page { padding: 0 14px 60px; }
+  }
+</style>
+
+<div class="wrap">
+<div class="page">
+
+<header class="masthead">
+  <p class="eyebrow">Enterprise Pivot · Decision-grade market benchmark</p>
+  <h1>Enterprise Factory — Stack Benchmark</h1>
+  <p class="subtitle">Benchmarking a fixed Next.js 16 / Prisma 7 / Auth.js v5 stack against an enterprise-factory pivot.</p>
+  <div class="meta-row">
+    <span>Generated 2026-07-10</span>
+    <span>Sources: 5 research dossiers · 60+ cited references</span>
+    <span>Constraints: deploy-per-tenant (ADR-011 kept) · self-hosted dockerized default · enterprise-only</span>
+  </div>
+  <div class="legend" aria-label="Verdict legend">
+    <span class="item"><span class="pill adopt">ADOPT-v1</span> ships in the baseline</span>
+    <span class="item"><span class="pill later">ADOPT-LATER</span> v1.1 / k8s-ready fast-follow</span>
+    <span class="item"><span class="pill keep">KEEP-AS-OPTION</span> supported, not default</span>
+    <span class="item"><span class="pill research">RESEARCH-DECIDES → resolved</span> deferred call now made</span>
+    <span class="item"><span class="pill reject">REJECT</span> ruled out (or replaced)</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Section navigation">
+  <div class="navinner">
+    <a href="#summary">Executive summary</a>
+    <a href="#docker">1 · Docker delivery</a>
+    <a href="#ai">2 · AI &amp; agents</a>
+    <a href="#identity">3 · Identity &amp; data</a>
+    <a href="#ops">4 · Observability / CI</a>
+    <a href="#arch">5 · Architects &amp; AI-era</a>
+    <a href="#matrix">Seed matrix</a>
+    <a href="#actions">Action list</a>
+    <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light/dark theme">☾ / ☀</button>
+  </div>
+</nav>
+
+<!-- ============ EXECUTIVE SUMMARY ============ -->
+<section id="summary">
+  <p class="eyebrow"><span class="sec-mark">§0</span>Executive summary</p>
+  <h2>The pivot, and the calls it forces</h2>
+  <p class="prose">The template inverts its delivery unit — from <b>Vercel + Neon <span class="mono">git push</span></b> (a disposable prototype rail) to a <b>dockerized Next.js app + dockerized Postgres as the fork-and-ship unit</b>, production-grade from day one. Four operator decisions bind the research: <b>deploy-per-tenant</b> (no in-app row-level tenancy — ADR-011 kept), <b>enterprise-only</b> (the personal/shared tier split collapses into one enterprise floor), <b>compose-now / k8s-ready</b>, and <b>self-hosted dockerized Postgres as the default</b> (Neon an option). The unchanged constant is the Claude harness — the <em>standard it enforces</em> rises. Across five domains, 43 seed items were benchmarked against 4 lenses each (battle-tested / highest-star / enterprise-grade / best pure-OSS) and scored for fit against the fixed stack.</p>
+
+  <h3>Verdict tally — 43 seeds across five domains</h3>
+  <div class="band" role="group" aria-label="Verdict tally">
+    <div class="stat adopt"><div class="n tnum">35</div><div class="l">ADOPT-v1</div></div>
+    <div class="stat later"><div class="n tnum">2</div><div class="l">ADOPT-LATER (lead)</div></div>
+    <div class="stat keep"><div class="n tnum">2</div><div class="l">Keep-as-option</div></div>
+    <div class="stat research"><div class="n tnum">2</div><div class="l">Research-resolved</div></div>
+    <div class="stat reject"><div class="n tnum">2</div><div class="l">Reject / replaced</div></div>
+  </div>
+  <p class="notes">Counted by each row's leading verdict. Many ADOPT-v1 rows carry an ADOPT-LATER tail (e.g. Promptfoo now → Langfuse later; SSO now → SCIM v1.1; entrypoint migrate now → one-shot unit at multi-replica). "Reject" includes the two replacements (Inngest → Trigger.dev) and the operator's kept-out in-app multi-tenancy.</p>
+
+  <h3>Ten load-bearing calls</h3>
+  <ul class="calls">
+    <li><b>Docker — Caddy + compose is the shape.</b> Ship <code>docker-compose.prod.yml</code> (app + <code>postgres:17</code>/pgvector + Redis + Caddy auto-TLS proxy + object store), health-checked, compose <code>secrets:</code>; single-node Postgres is correct for deploy-per-tenant v1. HA (Patroni/CloudNativePG) is a k8s-later anti-pattern in compose.</li>
+    <li><b>AI runtime — BUILD, don't buy.</b> The deferred "agent runtime" call resolves to a <b>thin wrapper on the Anthropic SDK's native <code>toolRunner()</code></b> + <code>betaZodTool</code> — zero deps, zero lock-in — <em>not</em> a framework (Mastra/LangGraph = keep-as-option).</li>
+    <li><b>Vectors stay in the box.</b> <code>pgvector</code> (HNSW) on the existing dockerized Postgres; <code>pgvectorscale</code> is the in-place upgrade past ~10M vectors. Pinecone rejected (managed SaaS breaks self-containment).</li>
+    <li><b>Identity — self-hosted bridge, not per-connection SaaS.</b> Keep Auth.js; add an <b>Ory Polis / BoxyHQ SAML→OIDC + SCIM bridge</b> container (Auth.js ships the <code>boxyhq-saml</code> provider). WorkOS's ~$125/connection model is structurally wrong for one-org-per-deploy.</li>
+    <li><b>AuthZ — Cerbos sidecar.</b> A stateless YAML-policy PDP wired into the existing <code>with*Auth</code> seam takes RBAC beyond the 3-role enum without exploding it.</li>
+    <li><b>Distributed rate limit is a correctness fix, not a nicety.</b> The in-memory limiter gives an attacker <code>N × limit</code> across replicas. Swap internals to <code>@upstash/ratelimit</code> on the compose Redis, keep the <code>withRateLimit</code> API.</li>
+    <li><b>Observability — one pane.</b> OTel via <code>@vercel/otel</code> (no <code>next.config</code> change) → <b>SigNoz</b> self-hosted for traces + metrics + logs; the OTLP endpoint is a config swap to Grafana Cloud / Datadog.</li>
+    <li><b>MinIO is no longer the default.</b> <span class="pill later" style="font-size:.6rem">catch</span> MinIO community edition went <b>maintenance-mode (Dec 2025)</b> — build to the S3 API, default OSS backend = <b>Garage v2</b>; cloud S3 stays the option.</li>
+    <li><b>Supply chain — SHA-pin everything.</b> <span class="pill reject" style="font-size:.6rem">catch</span> the <b>March 2026 Trivy supply-chain compromise</b> (75 poisoned action tags) means every third-party GitHub Action pins by commit SHA and scanner images by digest. Trivy the tool is still the pick.</li>
+    <li><b>Governance — clone the model onto AI.</b> The harness already <em>is</em> an app-factory (scaffold = golden path, ESLint/pillars = policy-as-code + fitness functions). The pivot duplicates spec → judge → gate → guardrail from code onto model outputs (new <code>ai-eval</code> agent + AI-eval gate + a 6th "AI-Quality" pillar).</li>
+  </ul>
+
+  <div class="callout warn">
+    <b>Current-events catches that moved the defaults:</b> MinIO CE maintenance-mode (Dec 2025) → Garage; pgBackRest 2026 maintenance scare (archived → "will continue" 2026-05-18) → WAL-G default; Trivy March-2026 supply-chain compromise → SHA-pin actions + digest-pin scanners; Inngest's orchestration engine <em>cannot self-host</em> → Trigger.dev; the agent runtime is a <em>thin wrapper on Anthropic's native tool-runner</em>, not a framework.
+  </div>
+</section>
+
+<!-- ============ 1. DOCKER ============ -->
+<section id="docker">
+  <p class="eyebrow"><span class="sec-mark">§1</span>Docker-first delivery &amp; infrastructure</p>
+  <h2>Docker delivery &amp; the self-hosted data plane</h2>
+  <p class="domain-summary">The pivot inverts the delivery unit to a <b>dockerized Next.js app + dockerized Postgres</b>, deploy-per-tenant, compose-now / k8s-ready. The good news: the repo already ships a correct multi-stage standalone Dockerfile (non-root, <code>output:"standalone"</code> gated behind <code>DOCKER_BUILD=1</code>, <code>prisma migrate deploy</code> at entrypoint). The pivot is mostly <b>promoting existing scaffolding to default + adding the production compose topology + the operational data-plane layer</b> (pooling, backup, object store, proxy) — not a from-scratch build. The single hard constraint: <code>output:"standalone"</code> stays env-gated so a Vercel fallback build is byte-identical (ADR-030 §1). Two "obvious" 2025–26 defaults moved: <b>MinIO CE → maintenance-mode</b> and <b>pgBackRest → maintenance scare</b> — both reshape the recommendation below.</p>
+
+  <h3>Capability picks (4-lens)</h3>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr>
+      <th>Capability</th><th>Battle-tested</th><th>Highest-star</th><th>Enterprise-grade</th><th>Best pure-OSS</th><th>Recommendation (our stack)</th><th>Fit</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <td class="cap">1 · Production Dockerfile</td>
+        <td><code>node:22-alpine</code> multi-stage + standalone</td>
+        <td>Alpine standalone (Vercel pattern)</td>
+        <td><code>distroless/nodejs22</code> runner</td>
+        <td>Alpine standalone</td>
+        <td class="rec">Keep alpine standalone now; distroless runner as a <code>/harden</code> opt-in. Add <code>HEALTHCHECK</code>, pin base by digest. <span class="notes-inline">Realistic runtime image 200–450&nbsp;MB [8]; distroless has no shell → breaks the migrate-at-start <code>sh -c</code> (Cap 8).</span></td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">2 · Prod orchestration</td>
+        <td>Docker Compose v2</td>
+        <td>Docker Compose</td>
+        <td>Compose now → k8s-ready manifests</td>
+        <td>Compose (all OSS)</td>
+        <td class="rec">Ship <code>docker-compose.prod.yml</code>: app + postgres + redis + object-store + reverse-proxy, health-checked, named volumes, compose <code>secrets:</code>; one Deployment-per-service so Helm maps 1:1 later.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">3 · Self-hosted Postgres</td>
+        <td><code>postgres:17</code> + named volume</td>
+        <td>Official <code>postgres</code> image</td>
+        <td>Patroni / CloudNativePG (k8s)</td>
+        <td><code>postgres:17</code> + pgvector</td>
+        <td class="rec"><code>pgvector/pgvector:pg17</code> + named volume, tuned config, <code>pg_isready</code>; <b>single-node in v1</b>. HA needs a 3-node DCS quorum → contradicts compose-now; defer to k8s-later.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">4 · Connection pooling</td>
+        <td><b>PgBouncer</b> (~2&nbsp;MB/1k)</td>
+        <td>PgBouncer</td>
+        <td>PgBouncer / pgcat (read-split)</td>
+        <td>PgBouncer / pgcat (Rust)</td>
+        <td class="rec">PgBouncer sidecar, transaction mode + Prisma <code>?pgbouncer=true</code>. pgcat = upgrade if read replicas appear; Supavisor overkill (reject as default).</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">5 · Object storage</td>
+        <td>MinIO <span class="pill later" style="font-size:.58rem">maint-mode</span></td>
+        <td>MinIO (highest-star S3-compat)</td>
+        <td>Cloud S3 / Garage on-prem</td>
+        <td><b>Garage v2</b> / SeaweedFS</td>
+        <td class="rec">Interface to the S3 API (<code>@aws-sdk/client-s3</code>); default self-host = <b>Garage v2</b>; MinIO allowed but frozen; cloud S3 the drop-in. <span class="notes-inline">MinIO CE maintenance-mode Dec 2025 [2] — don't enshrine as strategic default.</span></td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">6 · Reverse proxy / TLS</td>
+        <td>Nginx</td>
+        <td>Nginx</td>
+        <td>Nginx / Traefik</td>
+        <td><b>Caddy</b> / Traefik</td>
+        <td class="rec"><b>Caddy</b> default (automatic Let's Encrypt, 3-line config, no Docker-socket dep); Traefik for label/k8s; Nginx for regulated tenants. Set <code>AUTH_URL</code> explicitly.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">7 · Container registry</td>
+        <td>Docker Hub / <b>GHCR</b></td>
+        <td>Docker Hub</td>
+        <td><b>Harbor</b> (~30.5k★) / ECR</td>
+        <td>Harbor / GHCR</td>
+        <td class="rec"><b>GHCR</b> default (GitHub-native, Actions publish — promote the dormant <code>docker-build.yml</code> push); <b>Harbor</b> for air-gapped/on-prem enterprises.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">8 · Migrate-at-start</td>
+        <td>entrypoint <code>migrate deploy</code></td>
+        <td>Prisma default pattern</td>
+        <td>Dedicated migration step / init-container</td>
+        <td>Prisma migrate</td>
+        <td class="rec">Keep entrypoint <code>migrate deploy</code> at single-replica v1; move to a one-shot <code>migrate</code> service the moment &gt;1 replica exists (advisory-lock deadlock race [5]). Structure compose so the split is a config change.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">9 · Zero-downtime deploy</td>
+        <td>Rolling behind proxy</td>
+        <td>Blue-green via proxy</td>
+        <td>Blue-green → k8s RollingUpdate</td>
+        <td>Compose + proxy + healthchecks</td>
+        <td class="rec">Blue-green via Caddy/Traefik + healthchecks + <code>stop_grace_period</code> + forward-compatible migrations; maps to k8s RollingUpdate. Requires the <code>HEALTHCHECK</code> from Cap 1.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">10 · Backup / DR</td>
+        <td>pgBackRest <span class="pill later" style="font-size:.58rem">scare</span></td>
+        <td>pgBackRest</td>
+        <td>pgBackRest / <b>WAL-G</b></td>
+        <td>pgBackRest / WAL-G</td>
+        <td class="rec"><b>WAL-G</b> for container-native PITR (reuses the object store); nightly <code>pg_dump</code> the simple floor; pgBackRest allowed but watch its status. <span class="notes-inline">pgBackRest "No Longer Maintained" (Apr) → "Will Continue!" (May 18 2026) [11].</span></td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">11 · Runtime secrets</td>
+        <td>compose <code>secrets:</code> (file-backed)</td>
+        <td>Env vars (weaker)</td>
+        <td>Vault / cloud KMS → mounted</td>
+        <td>compose secrets, SOPS+age</td>
+        <td class="rec">Compose file-backed <code>secrets:</code> (<code>/run/secrets/*</code>), never <code>environment:</code> for Restricted values; a Vault/KMS seam is coordinated with the identity domain, ADOPT-LATER.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="notes">No hard REJECTs in this domain. Closest: Supavisor as pooler (PgBouncer wins for deploy-per-tenant) and Patroni/CloudNativePG HA-in-compose (split-brain anti-pattern without a real DCS). MinIO-as-strategic-default is effectively rejected in favor of the S3-API abstraction with Garage as the OSS default.</p>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Seed item</th><th>Verdict</th><th>Rationale (one line)</th><th>ADR / gate impact</th></tr></thead>
+    <tbody>
+      <tr><td class="cap">Dockerfile multi-stage / standalone default-on</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Make Docker the default <em>delivery target</em> but keep <code>DOCKER_BUILD=1</code> gating so a Vercel build stays byte-identical.</td><td>Reframes ADR-030; supersedes ADR-006 deploy default</td></tr>
+      <tr><td class="cap"><code>docker-compose.prod.yml</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>The core new artifact; health-checked, secrets-backed, k8s-mappable. Redis baseline (in-memory limiter breaks multi-container).</td><td>New ADR (compose prod topology)</td></tr>
+      <tr><td class="cap">Self-hosted dockerized Postgres (default)</td><td><span class="pill adopt">ADOPT-v1</span></td><td><code>pgvector/pgvector:pg17</code> + named volume, single-node. Honors operator decision #5.</td><td>Reframes ADR-006/031</td></tr>
+      <tr><td class="cap">Neon (as option)</td><td><span class="pill keep">KEEP-AS-OPTION</span></td><td>Managed PITR/branching for cloud tenants; a <code>DATABASE_URL</code> swap. Not the default anymore.</td><td>ADR-006 demoted to optional</td></tr>
+      <tr><td class="cap">PgBouncer</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Battle-tested + OSS, explicit Prisma support, tiny footprint; bounds backend connections.</td><td>New ADR (data-plane)</td></tr>
+      <tr><td class="cap">Object store (MinIO / S3)</td><td><span class="pill research">RESEARCH → Garage</span></td><td>MinIO CE maintenance-mode Dec 2025; build to the S3 API, default OSS backend = Garage v2, cloud S3 the option.</td><td>New ADR + build-vs-buy (<code>@aws-sdk/client-s3</code>)</td></tr>
+      <tr><td class="cap">Reverse proxy</td><td><span class="pill adopt">ADOPT-v1 → Caddy</span></td><td>Auto-HTTPS + minimal config fits single-app-per-deploy; Traefik = k8s option, Nginx = regulated option.</td><td>New ADR</td></tr>
+      <tr><td class="cap">Container registry</td><td><span class="pill adopt">ADOPT-v1 → GHCR</span></td><td>GitHub-native Actions publish; Harbor for air-gapped enterprise.</td><td>Reframes ADR-030 migration trigger</td></tr>
+      <tr><td class="cap">Helm / k8s</td><td><span class="pill later">ADOPT-LATER</span></td><td>Compose now, k8s-ready. Structure images/config/secrets for 1:1 Helm mapping; ship no k8s in v1.</td><td>Documented migration target</td></tr>
+      <tr><td class="cap">Migration-at-startup</td><td><span class="pill adopt">ADOPT-v1</span> <span class="pill later">+ LATER</span></td><td>Entrypoint <code>migrate deploy</code> safe at single-replica v1; extract to one-shot unit before any multi-replica tenant.</td><td>New ADR (migration lifecycle)</td></tr>
+      <tr><td class="cap">Backup / DR</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Nightly <code>pg_dump</code> → object store floor; WAL-G for container-native PITR (pgBackRest scare, "will continue").</td><td>New ADR (DR posture)</td></tr>
+      <tr><td class="cap">Zero-downtime deploy</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Blue-green via proxy + healthchecks + graceful shutdown + forward-compatible migrations.</td><td>New ADR (deploy strategy)</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="seq">
+    <h4>Sequencing</h4>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>v1 (the dockerized fork-and-ship unit, ships together):</b></p>
+    <ol>
+      <li>Dockerfile upgrades: add <code>HEALTHCHECK</code>, pin base by digest.</li>
+      <li><code>docker-compose.prod.yml</code>: app + <code>postgres:17</code>(pgvector) + <code>redis:7</code> + proxy, health-checked, compose <code>secrets:</code>.</li>
+      <li>Caddy reverse proxy + auto-TLS (set <code>AUTH_URL</code> explicitly).</li>
+      <li>PgBouncer sidecar + Prisma <code>?pgbouncer=true</code>.</li>
+      <li>Keep entrypoint <code>migrate deploy</code>; shape compose so a one-shot unit is a config lift.</li>
+      <li>GHCR publish (promote dormant <code>docker-build.yml</code>).</li>
+      <li>Backup floor: nightly <code>pg_dump</code> → object store, documented restore.</li>
+      <li>Runtime secrets via compose <code>secrets:</code>.</li>
+    </ol>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>Later (k8s-ready seams):</b> Garage vs cloud S3 per tenant · WAL-G continuous PITR · blue-green scripting · one-shot migration service · distroless runner · Vault/KMS · Traefik/Nginx variants · Harbor · Patroni/CloudNativePG HA.</p>
+    <p class="notes">Redis is a v1 baseline (unblocks the distributed rate limiter). The pgvector image choice is near-free and unblocks Axis-2 AI work. <code>HEALTHCHECK</code> is a prerequisite for zero-downtime. WAL-G reuses the object store — sequence object store first.</p>
+  </div>
+
+  <h4>Sources — Docker delivery</h4>
+  <ol class="foot">
+    <li>PgBouncer vs pgcat vs Supavisor — <a href="https://www.pkgpulse.com/blog/pgbouncer-vs-pgcat-vs-supavisor-postgresql-connection-2026" target="_blank" rel="noopener">pkgpulse</a> · <a href="https://legacy.tembo.io/blog/postgres-connection-poolers/" target="_blank" rel="noopener">Tembo benchmark</a> · <a href="https://www.prisma.io/docs/orm/prisma-client/setup-and-configuration/databases-connections/pgbouncer" target="_blank" rel="noopener">Prisma+PgBouncer</a></li>
+    <li>MinIO maintenance mode &amp; alternatives — <a href="https://www.infoq.com/news/2025/12/minio-s3-api-alternatives/" target="_blank" rel="noopener">InfoQ</a> · <a href="https://blog.elest.io/minio-is-in-maintenance-mode-your-guide-to-s3-compatible-storage-alternatives/" target="_blank" rel="noopener">elest.io</a> · <a href="https://bizety.com/2025/12/06/minio-in-maintenance-mode-open-source-alternatives/" target="_blank" rel="noopener">Garage v2 / SeaweedFS</a></li>
+    <li>Reverse proxy comparison 2026 — <a href="https://www.virtua.cloud/learn/en/concepts/traefik-caddy-nginx-docker-reverse-proxy" target="_blank" rel="noopener">virtua.cloud</a> · <a href="https://hostim.dev/blog/reverse-proxy-showdown/" target="_blank" rel="noopener">hostim.dev</a> · <a href="https://instadevops.com/blog/nginx-vs-traefik-vs-caddy-reverse-proxy-comparison/" target="_blank" rel="noopener">instadevops</a></li>
+    <li>Harbor (~30.5k★, CNCF graduated) — <a href="https://github.com/goharbor/harbor" target="_blank" rel="noopener">goharbor/harbor</a> · <a href="https://www.gecko.security/blog/ghcr-github-container-registry-guide" target="_blank" rel="noopener">GHCR guide</a> · <a href="https://shipyard.build/blog/container-registries/" target="_blank" rel="noopener">registry comparison</a></li>
+    <li>Prisma migrate advisory-lock race — <a href="https://github.com/prisma/prisma-engines/issues/5755" target="_blank" rel="noopener">prisma-engines #5755</a> · <a href="https://github.com/prisma/prisma/issues/14454" target="_blank" rel="noopener">prisma #14454</a> · <a href="https://oneuptime.com/blog/post/2026-01-30-kubernetes-init-container-patterns/view" target="_blank" rel="noopener">init-container pattern</a></li>
+    <li>Zero-downtime compose — <a href="https://oneuptime.com/blog/post/2026-01-06-docker-update-without-downtime/view" target="_blank" rel="noopener">oneuptime</a> · <a href="https://sergeyku9nov.medium.com/zero-downtime-orchestration-with-docker-compose-rolling-blue-green-and-canary-deployments-b56ece457d9d" target="_blank" rel="noopener">Medium</a> · <a href="https://jmh.me/blog/zero-downtime-docker-compose-deploy" target="_blank" rel="noopener">jmh.me</a></li>
+    <li>Patroni HA — <a href="https://github.com/patroni/patroni" target="_blank" rel="noopener">patroni/patroni</a> · <a href="https://oneuptime.com/blog/post/2026-02-09-postgresql-cloudnativepg-ha/view" target="_blank" rel="noopener">CloudNativePG</a></li>
+    <li>Next.js standalone Dockerfile / alpine vs distroless — <a href="https://www.buildwithmatija.com/blog/nextjs-standalone-dockerfile-guide" target="_blank" rel="noopener">buildwithmatija</a> · <a href="https://github.com/coffeedome/distroless-nextjs" target="_blank" rel="noopener">distroless-nextjs</a> · <a href="https://oneuptime.com/blog/post/2026-01-16-docker-reduce-image-size/view" target="_blank" rel="noopener">image size</a></li>
+    <li>Zero-downtime with Compose (graceful shutdown) — <a href="https://www.maxcountryman.com/articles/zero-downtime-deployments-with-docker-compose" target="_blank" rel="noopener">maxcountryman</a></li>
+    <li>PostgreSQL backup tools (WAL-G vs pgBackRest vs Barman) — <a href="https://dblog.co.kr/en/posts/postgresql-part-5" target="_blank" rel="noopener">dblog</a> · <a href="https://www.bytebase.com/blog/top-open-source-postgres-backup-solution/" target="_blank" rel="noopener">Bytebase</a></li>
+    <li>pgBackRest repo status (2026 scare → "will continue", v2.58.0) — <a href="https://github.com/pgbackrest/pgbackrest" target="_blank" rel="noopener">pgbackrest/pgbackrest</a></li>
+    <li>MinIO CE maintenance-mode analysis — <a href="https://www.futuriom.com/articles/news/minio-faces-fallout-for-stripping-features-from-web-gui/2025/06" target="_blank" rel="noopener">Futuriom</a> · <a href="https://pepitedata.com/2025/12/15/minio-community-edition-end-agpl/" target="_blank" rel="noopener">pepitedata</a></li>
+  </ol>
+</section>
+
+<!-- ============ 2. AI ============ -->
+<section id="ai">
+  <p class="eyebrow"><span class="sec-mark">§2</span>AI &amp; agent application stack (Axis 2)</p>
+  <h2>The <code>lib/ai/*</code> layer the template has zero primitives for</h2>
+  <p class="domain-summary">This resolves the largest gap in the pivot: the repo is a CRUD/RBAC/audit template with <b>no AI runtime</b> (the <code>claude-api</code> skill is guidance, not shipped code). The headline call — the one operator decision explicitly deferred to research — is <b>BUILD a thin wrapper on the Anthropic SDK's native tool-runner; do NOT adopt an agent framework</b> for v1. Native <code>client.beta.messages.toolRunner()</code> gives a production agent loop (retries, streaming, <code>AbortSignal</code> cancellation, zod-typed tools) for zero extra deps and zero lock-in. Everything else stays inside the dockerized box: <b>pgvector</b> for vectors, <b>Voyage</b> for embeddings (Anthropic's own recommendation — it ships no first-party embedding endpoint), <b>native SSE</b> streaming, <b>Promptfoo</b> as the zero-infra eval gate (Langfuse later), and <b>Trigger.dev over Inngest</b> because Inngest's engine cannot be self-hosted.</p>
+
+  <h3>Capability picks (4-lens)</h3>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr><th>Capability</th><th>Battle-tested</th><th>Highest-star</th><th>Enterprise-grade</th><th>Best pure-OSS</th><th>Recommendation (our stack)</th><th>Fit</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cap">1 · Provider SDK</td>
+        <td><code>@anthropic-ai/sdk</code> (native)</td>
+        <td>Vercel AI SDK (<code>ai</code>)</td>
+        <td>Native + Bedrock/Vertex variants</td>
+        <td><code>@anthropic-ai/sdk</code> (MIT)</td>
+        <td class="rec">Native, thin <code>lib/ai/client.ts</code> wrapper (base URL, key, retries, timeout, default model). Add an abstraction only if a 2nd provider becomes real — YAGNI in a Claude-first shop.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">2 · Agent / tool-calling <span class="pill research" style="font-size:.55rem">centerpiece</span></td>
+        <td>SDK <code>toolRunner()</code></td>
+        <td>Mastra (~21–22k★)</td>
+        <td>Anthropic Managed Agents (self-hosted sandbox)</td>
+        <td>Mastra (Apache/Elastic)</td>
+        <td class="rec"><b>Native <code>toolRunner</code> + <code>betaZodTool</code> + thin <code>lib/ai/agent.ts</code>.</b> Mastra = KEEP-AS-OPTION for real graph workflows; Managed Agents = ADOPT-LATER for code-exec/computer-use; LangGraph JS trails Python (poor Next fit).</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">3 · Streaming (Next 16)</td>
+        <td>Native SSE from Node-runtime route</td>
+        <td>Vercel AI SDK <code>streamText</code>+<code>useChat</code></td>
+        <td>Native SSE (full auth/header control)</td>
+        <td>Native SSE</td>
+        <td class="rec">Native SSE route + <code>lib/ai/stream.ts</code>, wrapped in <code>withAuth</code>/<code>withRateLimit</code> on the Node runtime; keeps auth/zod/cost on the secured path. Vercel AI SDK KEEP-AS-OPTION for rich client chat.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">4 · Vector store</td>
+        <td><b>pgvector</b> (HNSW)</td>
+        <td>pgvector</td>
+        <td>Qdrant / pgvectorscale</td>
+        <td>pgvector / Qdrant</td>
+        <td class="rec">pgvector on the existing Postgres; pgvectorscale in-place at scale (471 QPS@99% on 50M, 11.4× Qdrant, ~4× cheaper than Pinecone). Pinecone rejected (managed SaaS).</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">5 · Embeddings + retrieval</td>
+        <td>OpenAI <code>text-embedding-3-large</code></td>
+        <td>OpenAI <code>3-small</code></td>
+        <td><b>Voyage <code>voyage-3-large</code></b></td>
+        <td>Ollama open models (in-box)</td>
+        <td class="rec"><code>lib/ai/retrieval.ts</code>: chunk + hybrid (pgvector ⊕ Postgres FTS, RRF) + optional Cohere/Voyage rerank; provider-swappable <code>lib/ai/embed.ts</code> defaulting to Voyage (Anthropic's recommendation; no first-party endpoint).</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">6 · Evals / LLM-as-judge</td>
+        <td>Braintrust (eval-first)</td>
+        <td><b>Langfuse</b> (~28k★, MIT)</td>
+        <td>Langfuse / Braintrust (self-host)</td>
+        <td>Langfuse (MIT)</td>
+        <td class="rec">Two tiers: <b>Promptfoo</b> = zero-infra in-CI eval gate (v1, the "AI-eval gate"); <b>Langfuse</b> self-hosted = online trace + prompt registry + cost substrate (ADOPT-LATER; heavy PG+ClickHouse+Redis+S3 footprint). Arize Phoenix if OTel-native mandatory.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">7 · Background execution</td>
+        <td>BullMQ (Redis)</td>
+        <td>Inngest / Trigger.dev</td>
+        <td>Temporal</td>
+        <td><b>Trigger.dev</b> (Apache 2.0) / BullMQ</td>
+        <td class="rec"><b>Trigger.dev self-hosted</b> for agent runs (Apache 2.0, warm 100–300ms); BullMQ for simple Redis queues. <span class="notes-inline">Inngest's orchestration engine <b>cannot self-host</b> — hard conflict with docker-first [12].</span></td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">8 · Prompt / version mgmt</td>
+        <td>In-repo TS modules + git</td>
+        <td>Langfuse prompt management</td>
+        <td>Langfuse registry (runtime edits)</td>
+        <td>In-repo (git)</td>
+        <td class="rec">In-repo <code>lib/ai/prompts/*</code> (git-versioned, <code>/ship</code>-gated) for v1; Langfuse registry ADOPT-LATER when non-dev live edits are a real need. Cache the stable system-prompt prefix.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">9 · Guardrails / safety</td>
+        <td>Anthropic-native + zod</td>
+        <td>Guardrails AI (Py+JS)</td>
+        <td>NeMo Guardrails (Python-only)</td>
+        <td>Guardrails AI (JS-capable)</td>
+        <td class="rec">Anthropic-native + zod baseline (reuses the boundary invariant) + a small <code>lib/ai/guardrails.ts</code> (PII scrub / injection heuristics). Guardrails AI opt-in; <b>NeMo REJECT</b> (Python-only).</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">10 · Cost / token metering</td>
+        <td>Helicone (gateway)</td>
+        <td>Langfuse cost tracking</td>
+        <td>OpenMeter / Langfuse</td>
+        <td>In-repo meter → Postgres, OTel GenAI</td>
+        <td class="rec"><code>lib/ai/usage.ts</code>: record <em>provider-reported</em> token counts to Postgres, tag tenant/user/feature, emit OTel GenAI spans, enforce ceilings. Versioned price table (&gt;30-day-stale = lint smell). Langfuse/OpenMeter later.</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">11 · <code>/scaffold-ai-endpoint</code></td>
+        <td colspan="4" style="color:var(--muted)">New golden-path generator (mirrors <code>/scaffold-entity</code>)</td>
+        <td class="rec">Generates a secured streaming AI route + zod + prompt + Promptfoo eval + metering + audit; enforces blueprint + build-vs-buy gates.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">12 · <code>/scaffold-agent</code></td>
+        <td colspan="4" style="color:var(--muted)">New golden-path generator (native tool-runner)</td>
+        <td class="rec">Generates a <code>toolRunner()</code> agent + zod tools (handlers behind the auth wrapper) + guardrails + metering + eval; blueprint/build-vs-buy/complexity gates applied.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout">
+    <b>Build-vs-buy verdict — agent runtime (resolves operator decision #2):</b> BUILD a thin wrapper on the native Anthropic tool-runner. The native runner already <em>is</em> the agent loop — it calls Claude, routes tool calls to <code>betaZodTool</code> handlers, streams intermediate messages, and cancels via <code>AbortSignal</code>, with SDK retries/timeouts underneath — at zero deps and zero lock-in. A framework buys graph orchestration + a playground we don't need for deploy-per-tenant tools, at the cost of a large dep, its own state model, and lock-in (a poor Maintainable-pillar trade). Tool handlers are ordinary server functions behind <code>withAuth</code>, so audit/zod/RBAC invariants hold unchanged.
+  </div>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Seed item</th><th>Verdict</th><th>Rationale (one line)</th><th>ADR / gate impact</th></tr></thead>
+    <tbody>
+      <tr><td class="cap"><code>@anthropic-ai/sdk</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Native Anthropic-first client; streaming, retries, tool-runner, prompt caching built in. Foundation of <code>lib/ai/*</code>.</td><td>New "AI provider layer" ADR; base dep</td></tr>
+      <tr><td class="cap">tool-runner vs framework</td><td><span class="pill research">RESEARCH → BUILD native</span></td><td>Native <code>toolRunner</code>+<code>betaZodTool</code> is the loop with zero deps/lock-in; Mastra = keep-as-option, Managed Agents = later.</td><td>New "Agent runtime = native tool-runner" ADR; resolves ADR-032 open Q</td></tr>
+      <tr><td class="cap">streaming (RSC + SSE)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Native SSE from a Node-runtime <code>withAuth</code> route keeps auth/zod/cost secured. Vercel AI SDK = keep-as-option.</td><td>Streaming ADR; <code>lib/ai/stream.ts</code></td></tr>
+      <tr><td class="cap"><code>pgvector</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>In-box, one ops story, good &lt;~10M vectors; pgvectorscale the in-place upgrade. Pinecone rejected.</td><td>Vector-store ADR; Prisma <code>vector</code> migration</td></tr>
+      <tr><td class="cap">embeddings + retrieval</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Voyage default (Anthropic-recommended); hybrid pgvector ⊕ FTS + optional rerank.</td><td>Retrieval ADR; <code>embed.ts</code> + <code>retrieval.ts</code></td></tr>
+      <tr><td class="cap">evals / LLM-as-judge</td><td><span class="pill adopt">Promptfoo v1</span> <span class="pill later">Langfuse later</span></td><td>Promptfoo = zero-infra CI eval gate; Langfuse (28k★, MIT) = online substrate but heavy self-host.</td><td>AI-eval-gate ADR (L3); Langfuse ADR later</td></tr>
+      <tr><td class="cap">Inngest (agent bg execution)</td><td><span class="pill reject">REJECT → Trigger.dev</span></td><td>Inngest engine can't self-host — conflict with docker-first. Trigger.dev (Apache 2.0) self-hosts; BullMQ for simple queues.</td><td>Background-exec ADR; overrides brief's Inngest placeholder</td></tr>
+      <tr><td class="cap">prompt / version mgmt</td><td><span class="pill adopt">in-repo v1</span> <span class="pill later">registry later</span></td><td>Git gives versioning/review/rollback free; registry only when live non-dev edits needed.</td><td>Prompt-management ADR; <code>lib/ai/prompts/</code></td></tr>
+      <tr><td class="cap">guardrails / safety</td><td><span class="pill adopt">ADOPT-v1</span> <span class="pill keep">GAI option</span> <span class="pill reject">NeMo reject</span></td><td>Reuse zod-at-boundary + native refusals; Guardrails AI opt-in; NeMo Python-only.</td><td>Safety ADR; <code>lib/ai/guardrails.ts</code></td></tr>
+      <tr><td class="cap">per-tenant cost accounting</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Provider token counts → Postgres, tag tenant/user/feature, OTel GenAI, versioned price table.</td><td>Cost-metering ADR; <code>usage.ts</code> + Prisma model</td></tr>
+      <tr><td class="cap"><code>/scaffold-ai-endpoint</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Secured streaming route + zod + prompt + eval + metering; blueprint/build-vs-buy enforced.</td><td>New skill + <code>scripts/scaffold-ai-endpoint.mjs</code></td></tr>
+      <tr><td class="cap"><code>/scaffold-agent</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Native-tool-runner agent + zod tools + guardrails + metering + eval; gate-enforced.</td><td>New skill + <code>scripts/scaffold-agent.mjs</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="seq">
+    <h4>Sequencing</h4>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>v1 baseline <code>lib/ai/*</code>:</b> <code>client.ts</code> → (<code>stream.ts</code>, <code>agent.ts</code>+<code>tools/**</code>) in parallel → <code>embed.ts</code>+<code>retrieval.ts</code> (Prisma <code>vector</code> migration) → <code>guardrails.ts</code>+<code>usage.ts</code> (cross-cut) → <code>prompts/**</code> → Promptfoo eval gate wired into <code>/ship</code> → <code>/scaffold-ai-endpoint</code> + <code>/scaffold-agent</code>.</p>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>Later:</b> Trigger.dev self-hosted (first long agent; Redis/BullMQ may precede) · Langfuse (live observability / non-dev prompt edits) · pgvectorscale (&gt;~10M vectors) / Qdrant · rerank stage · Guardrails AI hub · Managed Agents (code-exec/computer-use) · Mastra (real graph workflow).</p>
+  </div>
+
+  <h4>Sources — AI &amp; agent stack</h4>
+  <ol class="foot">
+    <li><a href="https://www.npmjs.com/package/@anthropic-ai/sdk" target="_blank" rel="noopener"><code>@anthropic-ai/sdk</code> npm (v0.110.0, 2026-07)</a></li>
+    <li><a href="https://github.com/anthropics/anthropic-sdk-typescript/blob/main/helpers.md" target="_blank" rel="noopener">anthropic-sdk-typescript helpers.md (toolRunner, betaZodTool, AbortSignal)</a></li>
+    <li><a href="https://particula.tech/blog/mastra-vs-langgraph-vs-vercel-ai-sdk-typescript-agents" target="_blank" rel="noopener">Mastra vs LangGraph vs Vercel AI SDK — TypeScript Agents 2026</a></li>
+    <li><a href="https://github.com/vercel/ai" target="_blank" rel="noopener">vercel/ai (AI SDK ~23.7k★, 11.5M weekly dl)</a></li>
+    <li><a href="https://www.digitalapplied.com/blog/nextjs-16-ai-integration-patterns-guide" target="_blank" rel="noopener">Next.js 16 AI integration / streaming patterns</a></li>
+    <li><a href="https://www.firecrawl.dev/blog/best-llm-observability-tools" target="_blank" rel="noopener">Best LLM observability tools 2026 (Langfuse 28k★ MIT; Phoenix; Braintrust)</a></li>
+    <li><a href="https://platform.claude.com/docs/en/cli-sdks-libraries/sdks/typescript" target="_blank" rel="noopener">TypeScript SDK — Claude Platform Docs (tool-runner)</a></li>
+    <li><a href="https://vecstore.app/blog/vector-database-performance-compared" target="_blank" rel="noopener">pgvector vs Pinecone vs Qdrant 2026 benchmarks</a></li>
+    <li><a href="https://www.kalviumlabs.ai/blog/vector-databases-compared-pgvector-pinecone-qdrant-weaviate/" target="_blank" rel="noopener">Vector databases compared 2026 (&lt;10M → pgvector)</a></li>
+    <li><a href="https://www.index.dev/skill-vs-skill/ai-openai-embed-vs-cohere-vs-voyage" target="_blank" rel="noopener">OpenAI vs Cohere vs Voyage embeddings 2026 (Anthropic recommends Voyage)</a></li>
+    <li><a href="https://langfuse.com/docs/observability/features/token-and-cost-tracking" target="_blank" rel="noopener">Token &amp; cost tracking / prompt management — Langfuse docs</a></li>
+    <li><a href="https://www.buildmvpfast.com/blog/inngest-vs-trigger-dev-vs-bullmq-background-jobs-nextjs-2026" target="_blank" rel="noopener">Inngest vs Trigger.dev vs BullMQ 2026 (Inngest engine not self-hostable)</a></li>
+    <li><a href="https://medium.com/@matthieumordrel/the-ultimate-guide-to-typescript-orchestration-temporal-vs-trigger-dev-vs-inngest-and-beyond-29e1147c8f2d" target="_blank" rel="noopener">TypeScript orchestration: Temporal vs Trigger.dev vs Inngest</a></li>
+    <li><a href="https://www.anthropic.com/engineering/managed-agents" target="_blank" rel="noopener">Scaling Managed Agents — Anthropic Engineering</a></li>
+    <li><a href="https://ai-sdk.dev/providers/ai-sdk-providers/anthropic" target="_blank" rel="noopener">AI SDK providers: Anthropic / Bedrock + Vertex variants</a></li>
+    <li><a href="https://platform.claude.com/docs/en/managed-agents/self-hosted-sandboxes" target="_blank" rel="noopener">Self-hosted sandboxes — Claude Platform Docs</a></li>
+    <li><a href="https://is4.ai/blog/our-blog-1/guardrails-ai-vs-nemo-guardrails-comparison-2026-352" target="_blank" rel="noopener">Guardrails AI vs NeMo Guardrails 2026</a></li>
+    <li><a href="https://particula.tech/blog/per-tenant-llm-cost-attribution-multi-tenant-saas" target="_blank" rel="noopener">Per-tenant LLM cost attribution (OTel GenAI conventions)</a></li>
+    <li><a href="https://www.tldl.io/resources/anthropic-api-pricing" target="_blank" rel="noopener">Anthropic API pricing July 2026 (Opus 4.8 $5/$25; Sonnet 5 $2/$10→$3/$15; Haiku 4.5 $1/$5)</a></li>
+  </ol>
+</section>
+
+<!-- ============ 3. IDENTITY ============ -->
+<section id="identity">
+  <p class="eyebrow"><span class="sec-mark">§3</span>Enterprise identity &amp; data protection (Axis 3)</p>
+  <h2>Raising the identity floor without breaking deploy-per-tenant</h2>
+  <p class="domain-summary">The floor must rise from "opt-in single-provider Entra ID (ADR-024)" to a real enterprise floor: multi-IdP SSO (SAML+OIDC) + SCIM + fine-grained authZ + field encryption + secrets management + tamper-evident audit. The decisive constraint is <b>deploy-per-tenant + self-hosted</b>: one deployment = one org = one connection, so per-connection SaaS pricing (WorkOS ~$125/SSO-connection/mo + $125 for SCIM) is structurally wrong here. The clean architecture keeps <b>Auth.js v5 as the session/RBAC layer</b> and adds a <b>self-hostable SAML/OIDC + SCIM bridge container</b> (Ory Polis / BoxyHQ Jackson) that Auth.js already ships a first-party <code>boxyhq-saml</code> provider for. Everything else is a Prisma-extension or sidecar pattern mirroring invariants the repo already owns.</p>
+
+  <h3>Capability picks (4-lens, condensed)</h3>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr><th>Capability</th><th>Battle-tested</th><th>Highest-star</th><th>Best pure-OSS</th><th>Recommendation (our stack)</th><th>Fit</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cap">1 · Enterprise SSO (SAML+OIDC)</td>
+        <td>Keycloak (~26k★)</td>
+        <td>Keycloak / Authentik (~20.7k★)</td>
+        <td><b>Ory Polis / BoxyHQ Jackson</b></td>
+        <td class="rec">Keep Auth.js; add <b>Ory Polis SAML→OIDC + SCIM bridge</b> in its own container via the native <code>boxyhq-saml</code> provider. Keycloak = documented heavier alternative; Zitadel/Authentik/Hydra/WorkOS misfit deploy-per-tenant.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">2 · SCIM 2.0 provisioning</td>
+        <td>Ory Polis / BoxyHQ</td>
+        <td>Keycloak 26.x</td>
+        <td>Ory Polis</td>
+        <td class="rec">Rides the <b>same bridge container</b> as SSO — no second vendor. Auto de-provisioning closes the leaver/SOC2 gap. Build-your-own <code>/api/scim/v2</code> rejected (filter/patch swamp); WorkOS per-connection rejected.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">3 · Fine-grained authZ (ABAC/ReBAC)</td>
+        <td><b>Cerbos</b></td>
+        <td>Casbin (~20k★)</td>
+        <td>Cerbos (~4.3k★) / OpenFGA (CNCF)</td>
+        <td class="rec"><b>Cerbos</b> self-hosted PDP sidecar (YAML policy, TS SDK) wired into the <code>with*Auth</code> seam. Casbin = zero-infra fallback; SpiceDB/OpenFGA only for true relationship graphs; Permit.io/Oso Cloud rejected (SaaS).</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">4 · Column-level encryption</td>
+        <td>AES-256-GCM envelope (KEK/DEK)</td>
+        <td>—</td>
+        <td>roll-in <code>lib/prisma/</code></td>
+        <td class="rec"><b>App-layer AES-256-GCM envelope</b> as a Prisma extension (<code>crypto-extension.ts</code>) mirroring <code>audit-extension.ts</code>; keys outside the DB. pgcrypto <b>REJECT</b> (keys + plaintext on the server); CipherStash the escape hatch if ciphertext must be queried.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">5 · Secrets management</td>
+        <td>HashiCorp Vault</td>
+        <td>Infisical</td>
+        <td><b>SOPS + age</b> / Infisical</td>
+        <td class="rec"><b>SOPS+age</b> always-on baseline (encrypted-in-repo, no server); <b>Infisical</b> the ADOPT-v1 upgrade for central rotation/audit. Vault optional (BSL caveat); sealed-secrets = k8s-later; Doppler rejected (cloud-only).</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">6 · Tamper-evident audit + export</td>
+        <td>HMAC-SHA256 hash chain</td>
+        <td>—</td>
+        <td>roll-in <code>audit-extension.ts</code></td>
+        <td class="rec">Extend the existing audit extension to a <b>HMAC-SHA256 <code>prevHash</code>→<code>hash</code> chain + storage-layer append-only</b> (RLS/trigger deny UPDATE/DELETE) + <code>verifyChain()</code>; signed SOC2 export as the fast-follow. pgAudit complementary (DB ops).</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">7 · Data residency / PII</td>
+        <td colspan="3" style="color:var(--muted)">Deploy-per-tenant is itself the residency story</td>
+        <td class="rec">Each customer's data lives in its own dockerized Postgres in its own region — residency = "pick the region you deploy in." No in-app work beyond Caps 4/6 + existing <code>SCRUB_FIELDS</code> / export allow-lists / purge cron.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Seed item</th><th>Verdict</th><th>Rationale (one line)</th><th>ADR / gate impact</th></tr></thead>
+    <tbody>
+      <tr><td class="cap">SSO / SAML / OIDC (default)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Keep Auth.js; add self-hosted Ory Polis/BoxyHQ SAML→OIDC bridge (native <code>boxyhq-saml</code> provider).</td><td>New "Enterprise SSO floor" ADR; supersedes/extends ADR-024</td></tr>
+      <tr><td class="cap">SCIM provisioning</td><td><span class="pill later">ADOPT-LATER (v1.1)</span></td><td>Rides the same bridge; auto de-provisioning closes the leaver/SOC2 gap. SSO unblocks access first.</td><td>Same ADR + de-provisioning path (soft-delete on <code>active:false</code>)</td></tr>
+      <tr><td class="cap">Entra ID (existing ADR-024)</td><td><span class="pill keep">KEEP-AS-OPTION</span></td><td>Still valid as a concrete OIDC IdP; the bridge generalizes it to any SAML/OIDC IdP.</td><td>ADR-024 reframed: "the mechanism" → "one supported IdP"</td></tr>
+      <tr><td class="cap">Fine-grained RBAC/ABAC</td><td><span class="pill adopt">ADOPT-v1</span></td><td>3-role enum insufficient; Cerbos sidecar (YAML, TS SDK) wired into <code>with*Auth</code>.</td><td>New "Fine-grained authZ via Cerbos" ADR + build-vs-buy entry</td></tr>
+      <tr><td class="cap">Column-level encryption</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Restricted rows are plaintext today; app-layer AES-256-GCM envelope Prisma extension, keys outside DB. Reject pgcrypto.</td><td>New "Field-level encryption" ADR; extends <code>SCRUB_FIELDS</code> invariant set</td></tr>
+      <tr><td class="cap">Secrets management</td><td><span class="pill adopt">ADOPT-v1</span></td><td>SOPS+age baseline, Infisical upgrade; Vault optional (BSL); sealed-secrets k8s-later; Doppler rejected.</td><td>New "Runtime secrets" ADR; supersedes Vercel-dashboard assumption</td></tr>
+      <tr><td class="cap">Audit retention + compliance export</td><td><span class="pill adopt">chain v1</span> <span class="pill later">export v1.1</span></td><td>HMAC-SHA256 hash chain + append-only; signed SOC2 export as v1.1.</td><td>New "Tamper-evident audit" ADR; extends <code>audit-extension.ts</code> + contract test</td></tr>
+      <tr><td class="cap">In-app multi-tenancy (row-level)</td><td><span class="pill reject">REJECTED</span></td><td>Operator decision, not a recommendation: deploy-per-tenant; separate DBs stronger than RLS. Do NOT add a tenant-column extension.</td><td>ADR-011 KEPT — recorded so no downstream work reintroduces it</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="seq">
+    <h4>Sequencing</h4>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>v1 identity/data floor (ship together):</b> (1) SSO via self-hosted SAML/OIDC bridge + Auth.js provider · (2) Cerbos authZ sidecar in the <code>with*Auth</code> wrappers · (3) field-level envelope encryption Prisma extension · (4) tamper-evident audit (hash chain + append-only) · (5) secrets baseline SOPS+age (feeds the encryption KEK).</p>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>v1.1 (closes the SOC2 evidence loop):</b> SCIM de-provisioning on the same bridge · signed compliance export (chain proof) · Infisical if central rotation/audit needed.</p>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>Later / conditional:</b> SpiceDB/OpenFGA (relationship-graph authZ) · CipherStash (queryable ciphertext) · Keycloak (shops already running it) · sealed-secrets + pgAudit (k8s / DB-ops maturity).</p>
+  </div>
+
+  <h4>Sources — identity &amp; data</h4>
+  <ol class="foot">
+    <li><a href="https://www.youngju.dev/blog/culture/2026-05-16-keycloak-authentik-zitadel-ory-sso-oidc-saml-fapi-2026-deep-dive.en" target="_blank" rel="noopener">Keycloak vs Authentik vs Zitadel vs Ory vs Auth0 vs WorkOS vs Okta — 2026 deep dive</a></li>
+    <li><a href="https://skycloak.io/blog/keycloak-vs-workos-comparison/" target="_blank" rel="noopener">Keycloak vs WorkOS / Keycloak 26 SCIM</a> · <a href="https://guptadeepak.com/ciam-compass/guides/scim-provisioning/" target="_blank" rel="noopener">SCIM provisioning guide</a></li>
+    <li><a href="https://sph.sh/en/posts/external-authorization-management-systems/" target="_blank" rel="noopener">External authorization systems (Cerbos/OpenFGA/SpiceDB/Casbin)</a> · <a href="https://www.pkgpulse.com/guides/openfga-vs-permify-vs-spicedb-zanzibar-authorization-2026" target="_blank" rel="noopener">Zanzibar authZ 2026</a></li>
+    <li>GitHub stars 2026 — <a href="https://github.com/cerbos/cerbos" target="_blank" rel="noopener">Cerbos ~4.3k</a> · <a href="https://github.com/openfga/openfga" target="_blank" rel="noopener">OpenFGA ~6.5k</a> · <a href="https://github.com/authzed/spicedb" target="_blank" rel="noopener">SpiceDB ~5.7k</a> · <a href="https://github.com/apache/casbin" target="_blank" rel="noopener">Casbin ~20k</a> · <a href="https://cipherstash.com/docs/stack/cipherstash/encryption/storing-data" target="_blank" rel="noopener">CipherStash+Prisma</a></li>
+    <li><a href="https://wz-it.com/en/blog/authentik-vs-zitadel-identity-provider-comparison/" target="_blank" rel="noopener">Authentik vs Zitadel</a> · <a href="https://blog.houseoffoss.com/post/keycloak-vs-authentik-vs-zitadel-2026-which-open-source-login-tool-should-you-use" target="_blank" rel="noopener">Keycloak vs Authentik vs Zitadel 2026</a></li>
+    <li><a href="https://authjs.dev/getting-started/providers/boxyhq-saml" target="_blank" rel="noopener">Auth.js BoxyHQ SAML provider</a> · <a href="https://github.com/ory/polis" target="_blank" rel="noopener">Ory Polis</a></li>
+    <li><a href="https://next-auth.js.org/providers/boxyhq-saml" target="_blank" rel="noopener">next-auth BoxyHQ SAML provider docs</a></li>
+    <li><a href="https://workos.com/pricing" target="_blank" rel="noopener">WorkOS pricing (SSO/SCIM ~$125/connection/mo)</a> · <a href="https://guptadeepak.com/startup-offers/programs/workos-startups" target="_blank" rel="noopener">WorkOS startups</a></li>
+    <li><a href="https://www.postgresql.org/docs/current/encryption-options.html" target="_blank" rel="noopener">PostgreSQL encryption options</a> · <a href="https://www.postgresql.org/docs/current/pgcrypto.html" target="_blank" rel="noopener">pgcrypto</a> · <a href="https://cipherstash.com/blog/postgresql-security" target="_blank" rel="noopener">CipherStash PostgreSQL security</a></li>
+    <li><a href="https://guptadeepak.com/top-5-secrets-management-tools-hashicorp-vault-aws-doppler-infisical-and-azure-key-vault-compared/" target="_blank" rel="noopener">Secrets-management comparison (Vault BSL, Infisical, SOPS+age, Doppler)</a> · <a href="https://www.pkgpulse.com/guides/infisical-vs-doppler-vs-hashicorp-vault-secrets-2026" target="_blank" rel="noopener">Infisical vs Doppler vs Vault 2026</a></li>
+    <li><a href="https://tracehold.ai/blog/immutable-audit-log-hmac-hash-chain/" target="_blank" rel="noopener">Immutable audit log with HMAC hash chaining</a> · <a href="https://dev.to/veritaschain/building-a-tamper-evident-audit-log-with-sha-256-hash-chains-zero-dependencies-h0b" target="_blank" rel="noopener">SHA-256 hash chains</a></li>
+    <li><a href="https://appmaster.io/blog/tamper-evident-audit-trails-postgresql" target="_blank" rel="noopener">Tamper-evident audit trails in PostgreSQL (append-only + HMAC)</a></li>
+    <li><a href="https://www.jusdb.com/blog/pgaudit-postgresql-audit-logging-compliance" target="_blank" rel="noopener">pgAudit for SOC2/PCI-DSS/HIPAA</a></li>
+  </ol>
+</section>
+
+<!-- ============ 4. OBSERVABILITY ============ -->
+<section id="ops">
+  <p class="eyebrow"><span class="sec-mark">§4</span>Observability, supply chain &amp; CI/CD</p>
+  <h2>The enforcement &amp; operations half of "production-grade from day one"</h2>
+  <p class="domain-summary">The founding premise — "free plan, CI dormant, <code>/ship</code> is the gate" — <b>inverts</b>. Enterprise means <b>live CI/CD from day one</b>: the dormant Actions workflows activate, and today's skip-if-absent gates (knip, jscpd, coverage, size-limit) plus the <code>--full</code>-only container scan and SBOM step become <b>hard CI fails</b>. The other structural change is the <b>distributed floor</b>: the in-memory <code>lib/rate-limit.ts</code> is silently wrong across replicas (an attacker gets <code>N × limit</code>), so a Redis-backed limiter is a v1 correctness requirement. A recurring 2026 lesson threads every verdict: the <b>March 2026 Trivy supply-chain compromise</b> (75 poisoned action tags) → <b>pin every third-party Action by commit SHA, digest-pin scanner images</b>.</p>
+
+  <h3>Capability picks (4-lens, condensed)</h3>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr><th>Capability</th><th>Battle-tested</th><th>Highest-star</th><th>Best pure-OSS</th><th>Recommendation (our stack)</th><th>Fit</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="cap">1 · Tracing / APM</td>
+        <td>Grafana Tempo / Datadog</td>
+        <td>Grafana 75.5k★ / Jaeger 23.0k★</td>
+        <td><b>SigNoz</b> 28.8k★</td>
+        <td class="rec">OTel via <code>@vercel/otel</code> in <code>instrumentation.ts</code> → OTLP → <b>SigNoz self-hosted</b> default; swap the OTLP endpoint for Grafana Cloud/Datadog. No <code>next.config</code> change on Next 15/16.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">2 · Error tracking</td>
+        <td>Sentry SaaS (44.3k★)</td>
+        <td>Sentry 44.3k★</td>
+        <td>GlitchTip</td>
+        <td class="rec">Standardize on the <code>@sentry/nextjs</code> SDK; default DSN → self-hosted <b>GlitchTip</b> (4 containers vs Sentry's 40+), Sentry SaaS when replay/deep tracing wanted. Self-hosted Sentry rejected (16 GB floor).</td>
+        <td class="tnum"><span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">3 · Metrics + dashboards</td>
+        <td>Prometheus 65.1k★ + Grafana 75.5k★</td>
+        <td>Grafana 75.5k★</td>
+        <td>SigNoz (all-in-one)</td>
+        <td class="rec">If SigNoz is adopted for tracing, take its metrics too (one pane). Prometheus+Grafana the alternative recipe for forks with existing Grafana. Expose <code>/metrics</code> regardless.</td>
+        <td class="tnum"><span class="fit">5</span> / <span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">4 · Log aggregation</td>
+        <td>ELK / OpenSearch</td>
+        <td>Grafana Loki 28.5k★</td>
+        <td>Loki + Vector 22.2k★</td>
+        <td class="rec">SigNoz logs by default (already there if adopted). Standalone: Loki (store) + Vector (shipper); OpenSearch only for genuine full-text search. ELK cost unjustified at deploy-per-tenant volume.</td>
+        <td class="tnum"><span class="fit">5</span> / <span class="fit">4</span></td>
+      </tr>
+      <tr>
+        <td class="cap">5 · Distributed rate limiting</td>
+        <td><code>@upstash/ratelimit</code> (2.0k★)</td>
+        <td><code>@upstash/ratelimit</code></td>
+        <td>Self-hosted Redis + adapter</td>
+        <td class="rec">Replace <code>lib/rate-limit.ts</code> internals with <code>@upstash/ratelimit</code> pointed at the compose Redis; Upstash SaaS optional. Keep the <code>withRateLimit</code> API so <code>no-rate-limit-inside-auth</code> + call sites are unchanged.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">6 · SBOM generation</td>
+        <td>Syft 9.2k★ (Anchore)</td>
+        <td>Syft via <code>anchore/sbom-action</code></td>
+        <td>CycloneDX / Syft</td>
+        <td class="rec">Generate a CycloneDX SBOM in CI; Syft against the built image (SHA-pinned) as source of truth — image-level catches the full runtime closure (OS + base packages). Attach to the release; later feed Dependency-Track.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">7 · Container + dep scanning</td>
+        <td><b>Trivy</b> 36.9k★</td>
+        <td>Trivy 36.9k★</td>
+        <td>Grype 12.5k★</td>
+        <td class="rec">Promote Trivy from <code>/ship --full</code> to a core CI gate (image+fs+secret+misconfig); Grype-on-SBOM as a second opinion. <b>SHA-pin the Actions + digest-pin scanner images</b> — the March-2026 tag-poisoning attack is exactly why.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">8 · SAST / secret scanning</td>
+        <td>CodeQL + gitleaks 28.1k★</td>
+        <td>gitleaks / TruffleHog 27.0k★ / Semgrep 15.8k★</td>
+        <td>Semgrep + gitleaks</td>
+        <td class="rec">Layered: Semgrep on every PR (fast, custom rules for our <code>no-*</code> invariants) + CodeQL nightly (deep). Secrets: gitleaks pre-commit+CI (wired) + TruffleHog scheduled full-history. Activate dormant <code>sast.yml</code>/<code>codeql.yml</code>.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">9 · CI/CD pipeline shape</td>
+        <td>Actions → GHCR → deploy</td>
+        <td>GitHub Actions</td>
+        <td>All OSS / GitHub-native</td>
+        <td class="rec">Stages: verify → hardened gates (knip/jscpd/coverage/size-limit) → build (SHA-tagged) → SBOM → scan (Trivy+Grype) → SAST/secrets → push GHCR by digest → deploy (compose now / Helm later) → lhci. Keep the fast <code>/ship</code> loop image-free locally.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+      <tr>
+        <td class="cap">10 · Uptime / health probes</td>
+        <td><code>/api/health</code> + Docker/compose healthcheck</td>
+        <td>Uptime Kuma</td>
+        <td>App probes + Prometheus blackbox</td>
+        <td class="rec">Ship <code>/api/health/live</code> (liveness) + <code>/api/health/ready</code> (readiness — checks Postgres+Redis, returns <b>503</b> when a dep is down). Wire compose <code>healthcheck</code> now; maps to k8s probes later. Add Uptime Kuma for external pinging.</td>
+        <td class="tnum"><span class="fit">5</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="notes">Critical correctness rule (Cap 10): a readiness probe must return 503 when it can't serve, not <code>200 {ok:false}</code> — a 200-always check "lies" to the orchestrator and traffic keeps routing to a broken pod. Split live vs ready so a slow DB drains traffic (readiness) rather than triggering restarts (liveness).</p>
+
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Seed item</th><th>Verdict</th><th>Rationale (one line)</th><th>ADR / <code>/ship</code>-gate impact</th></tr></thead>
+    <tbody>
+      <tr><td class="cap">OpenTelemetry tracing</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Stack-native via <code>@vercel/otel</code>, no <code>next.config</code> change; backend-agnostic OTLP. Enterprise floor names it.</td><td>New "Observability (OTel + SigNoz)" ADR; <code>instrumentation.ts</code></td></tr>
+      <tr><td class="cap">Sentry (errors)</td><td><span class="pill adopt">ADOPT-v1 SDK</span> <span class="pill keep">backend option</span></td><td>Adopt <code>@sentry/nextjs</code> SDK; default DSN → self-hosted GlitchTip, Sentry SaaS optional. Self-hosted Sentry rejected.</td><td>Same observability ADR; may defer to v1.1 if SigNoz covers errors</td></tr>
+      <tr><td class="cap">SBOM (CycloneDX)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Docker-first ⇒ image-level SBOM is a natural artifact; Syft→CycloneDX.</td><td>New CI stage; hard gate (fail if SBOM absent)</td></tr>
+      <tr><td class="cap">Trivy container/dep scanning</td><td><span class="pill adopt">ADOPT-v1 (hardened)</span></td><td>Promote to core CI gate; mandate SHA-pinned actions + digest-pinned images post-March-2026; add Grype-on-SBOM.</td><td>Hard CI fail on HIGH/CRITICAL; supply-chain ADR encodes SHA-pinning</td></tr>
+      <tr><td class="cap">Distributed rate limit (Redis)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Fixes a real correctness bug (in-memory = <code>N × limit</code>); <code>@upstash/ratelimit</code> on self-hosted Redis.</td><td>Rewrite <code>lib/rate-limit.ts</code> internals (Ask-before file → ADR); keep API + rule</td></tr>
+      <tr><td class="cap">Redis client</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Prerequisite for distributed rate limiting; compose already needs Redis. Future session/cache/queue.</td><td>Add Redis to compose + readiness check; build-vs-buy entry</td></tr>
+      <tr><td class="cap">Live CI/CD activation</td><td><span class="pill adopt">ADOPT-v1</span></td><td>The core of the pivot: "CI dormant" premise inverts. Activate verify/secrets/sast/codeql/uat; GHCR.</td><td>Reframes ADR-007; removes "CI dormant" from CLAUDE.md</td></tr>
+      <tr><td class="cap">size-limit / lhci perf gates</td><td><span class="pill adopt">ADOPT-v1</span></td><td>size-limit = bundle budget hard fail; lhci = CWV regression guard (report → blocking once calibrated).</td><td>size-limit hard fail; lhci reporting → blocking</td></tr>
+      <tr><td class="cap">knip / jscpd / coverage hardening</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Turn the three skip-if-absent <code>/ship</code> gates into hard CI fails (dead-code, duplication, coverage floor).</td><td>Hard CI fails; absence ≠ skip in CI mode</td></tr>
+      <tr><td class="cap">Semgrep / CodeQL SAST</td><td><span class="pill adopt">ADOPT-v1 (layered)</span></td><td>Semgrep on PR (custom rules for our invariants) + CodeQL nightly (deep). Dormant workflows exist.</td><td>Activate <code>sast.yml</code> + <code>codeql.yml</code> as hard fails on new HIGH</td></tr>
+      <tr><td class="cap">gitleaks secret scan</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Already gates <code>/ship</code>; add TruffleHog for verified full-history live-credential scans.</td><td>gitleaks stays hard fail; add scheduled TruffleHog report</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="seq">
+    <h4>Sequencing</h4>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>v1 baseline:</b> (1) distributed floor — Redis + <code>@upstash/ratelimit</code> rewrite + live/ready probes (503-when-unhealthy) · (2) live CI/CD — activate workflows, GHCR digest-pinned, all third-party actions SHA-pinned · (3) hard-gate knip/jscpd/coverage/size-limit · (4) supply chain — Syft→CycloneDX + Trivy (core, pinned) + Grype-on-SBOM, fail on HIGH/CRITICAL · (5) SAST/secrets — Semgrep+gitleaks blocking, CodeQL+TruffleHog layered · (6) OTel → SigNoz (one compose service).</p>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>v1.1:</b> error-backend decision (defer GlitchTip if SigNoz suffices) · lhci report → blocking · Uptime Kuma + alerting · SBOM → Dependency-Track · new <code>/ship</code> lint rejecting tag-referenced third-party actions.</p>
+    <p style="margin:.3rem 0;font-size:.9rem"><b>Later / k8s-ready:</b> Helm/ArgoCD · gateway (Envoy) rate limiting · multi-region synthetic (SaaS) · Grafana LGTM alternative to SigNoz.</p>
+  </div>
+
+  <h4>Sources — observability / supply chain / CI</h4>
+  <ol class="foot">
+    <li><a href="https://signoz.io/blog/opentelemetry-nextjs/" target="_blank" rel="noopener">SigNoz — instrument Next.js with OpenTelemetry (<code>@vercel/otel</code>, no config change)</a></li>
+    <li><a href="https://signoz.io/docs/instrumentation/javascript/opentelemetry-nextjs/" target="_blank" rel="noopener">SigNoz docs — Next.js OpenTelemetry instrumentation</a></li>
+    <li><a href="https://signoz.io/blog/opentelemetry-nextjs-production/" target="_blank" rel="noopener">SigNoz — deploying &amp; scaling OTel in production Next.js</a></li>
+    <li><a href="https://signoz.io/grafana-alternative/" target="_blank" rel="noopener">SigNoz — Grafana alternative / all-in-one (replaces LGTM)</a></li>
+    <li><a href="https://github.com/getsentry/sentry" target="_blank" rel="noopener">getsentry/sentry (44,264★, 2026-07-10)</a></li>
+    <li><a href="https://danubedata.ro/blog/self-host-sentry-glitchtip-error-tracking-2026" target="_blank" rel="noopener">Self-host Sentry or GlitchTip 2026 (container counts, RAM floor)</a></li>
+    <li><a href="https://signoz.io/comparisons/sentry-alternatives/" target="_blank" rel="noopener">SigNoz — Sentry alternatives 2026</a></li>
+    <li>Star counts via GitHub API 2026-07-10 — grafana 75,490; prometheus 65,123; loki 28,533; SigNoz 28,803; jaeger 22,987; vector 22,164; tempo 5,362; otel-collector 7,235.</li>
+    <li><a href="https://signoz.io/blog/loki-vs-elasticsearch/" target="_blank" rel="noopener">SigNoz — Loki vs Elasticsearch 2026</a></li>
+    <li><a href="https://blog.canadianwebhosting.com/self-hosted-logging-comparison-2026/" target="_blank" rel="noopener">Self-hosted logging 2026 (Loki vs ELK vs Vector)</a></li>
+    <li><a href="https://upstash.com/blog/nextjs-ratelimiting" target="_blank" rel="noopener">Upstash — rate limiting Next.js API routes</a></li>
+    <li><a href="https://www.herodevs.com/blog-posts/spdx-vs-cyclonedx-choosing-the-right-sbom-format-for-your-software-supply-chain" target="_blank" rel="noopener">SPDX vs CycloneDX (choosing an SBOM format)</a></li>
+    <li><a href="https://sbomify.com/2026/01/26/sbom-generation-tools-comparison/" target="_blank" rel="noopener">Syft vs Trivy vs CycloneDX CLI 2026 (<code>anchore/sbom-action</code>)</a></li>
+    <li><a href="https://github.com/upstash/ratelimit-js" target="_blank" rel="noopener">upstash/ratelimit-js (2,040★; works against any Redis)</a></li>
+    <li><a href="https://devopsboys.com/blog/trivy-vs-grype-vs-snyk-container-scanning-2026" target="_blank" rel="noopener">Trivy vs Grype vs Snyk vs Docker Scout 2026</a></li>
+    <li><a href="https://www.microsoft.com/en-us/security/blog/2026/03/24/detecting-investigating-defending-against-trivy-supply-chain-compromise/" target="_blank" rel="noopener">Microsoft Security — Trivy supply-chain compromise (2026-03-24)</a></li>
+    <li><a href="https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23" target="_blank" rel="noopener">Aqua advisory GHSA-69fq-xp46-6x23 (tag-poisoning)</a></li>
+    <li><a href="https://konvu.com/compare/semgrep-vs-codeql" target="_blank" rel="noopener">Semgrep vs CodeQL 2026 (OWASP F1 74.4% vs 69.4%)</a></li>
+    <li><a href="https://devsecops.ae/secrets-scanners-comparison-2026/" target="_blank" rel="noopener">Gitleaks vs TruffleHog 2026</a></li>
+    <li><a href="https://www.gecko.security/blog/ghcr-github-container-registry-guide" target="_blank" rel="noopener">GHCR guide 2026 (no pull limits; dockerized Next.js CI/CD; LHCI; Knip in CI)</a></li>
+    <li><a href="https://dev.to/ohyeah_d04cd4c2cd46a1ad2c/your-nextjs-health-check-is-lying-to-you-and-how-to-fix-it-1ho4" target="_blank" rel="noopener">"Your Next.js health check is lying to you" (503 vs 200; live vs ready)</a></li>
+    <li><a href="https://oneuptime.com/blog/post/2026-02-08-how-to-containerize-a-nextjs-14-application-with-docker-app-router/view" target="_blank" rel="noopener">oneuptime — containerizing Next.js with Docker (compose healthcheck)</a></li>
+  </ol>
+</section>
+
+<!-- ============ 5. ARCHITECTS ============ -->
+<section id="arch">
+  <p class="eyebrow"><span class="sec-mark">§5</span>Enterprise architects &amp; AI-era patterns</p>
+  <h2>The industry already built this — twice over</h2>
+  <p class="domain-summary">The harness is a <b>single-repo, single-operator instance of the enterprise app-factory stack</b>: <code>/scaffold-entity</code> is a golden-path software template, the ESLint rules + <code>/ship</code> gates are policy-as-code, and the five pillars are architecture fitness functions. It lacks only a <em>catalog</em> (multi-app inventory) and an <em>externalized policy layer</em> for the infra/config surface. Separately, the harness has independently reinvented most AI-era patterns — and for two (enforced spec-driven development via <code>/blueprint</code>, and LLM-as-judge via <code>senior-code-reviewer</code>) is arguably <em>ahead</em> of the named OSS tools because ours are enforced gates, not opt-in tooling. The pivot's payoff: don't invent a new governance model — <b>clone the existing one onto the AI surface</b> (spec → judge → gate → guardrail).</p>
+
+  <h3>Part A — How enterprise orgs structure an "app factory"</h3>
+  <p class="prose">The organizing discipline is <b>platform engineering + golden paths</b> (Spotify's "golden path", Netflix's "paved road"): make the supported, secure-by-default path the path of least resistance. Four building blocks recur — an IDP/service catalog (Backstage), scaffolding/generators (Nx, Plop, Yeoman, Cookiecutter), policy-as-code (OPA/Conftest), and architecture fitness functions (<em>Building Evolutionary Architectures</em>). Our template is precisely this thesis at repo scale.</p>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr><th>Capability</th><th>Battle-tested</th><th>Highest-star / momentum</th><th>Enterprise-grade</th><th>Recommendation for the pivot</th></tr></thead>
+    <tbody>
+      <tr><td class="cap">IDP / catalog</td><td>Backstage (Spotify→CNCF, 13.5k orgs)</td><td>Backstage (~36k★)</td><td>Port, Humanitec, Cortex (managed, SSO, scorecards)</td><td class="rec"><b>Don't adopt Backstage now</b> (6-mo build, &gt;50-dev break-even). Build a lightweight <code>docs/app-catalog.md</code> / <code>fleet.json</code> enumerating every forked app + its conformance status. Backstage is the later graduation.</td></tr>
+      <tr><td class="cap">Scaffolding / generators</td><td>Yeoman, Cookiecutter, Plop</td><td>Nx generators (~28k★)</td><td>Nx (AST + codemod + migrations)</td><td class="rec"><b>Keep our own scaffolder.</b> Steal Nx's codemod/migration idea for <code>/sync-from-template</code> and Yeoman's generate-tests-with-code idea for <code>/scaffold-agent</code>.</td></tr>
+      <tr><td class="cap">Policy-as-code</td><td>OPA/Conftest (cloud-native standard)</td><td>OPA (~10–12k★)</td><td>OPA + Gatekeeper + Checkov layered</td><td class="rec"><b>Externalize a slice</b> from hardcoded TS into Conftest/Rego for the config surface (<code>docker-compose.prod.yml</code>, k8s manifests, <code>project.config.json</code>, Dockerfile) the ESLint rules can't reach. Keep the 10 ESLint rules for source.</td></tr>
+      <tr><td class="cap">Architecture fitness functions</td><td><em>Building Evolutionary Architectures</em></td><td>(concept, not a repo)</td><td>ArchUnit, dependency-cruiser, custom CI</td><td class="rec"><b>Formalize the 5 pillars</b> as named fitness functions in <code>docs/fitness-functions.md</code> (pillar → executable check → <code>/ship</code> gate). Add <code>dependency-cruiser</code> for the UI→API→service→Prisma layering.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="notes">Takeaway: the harness is a repo-scoped app-factory missing only a fleet catalog and an externalized infra-policy layer — both cheap, and both what enterprise auditors actually ask to see. Do <b>not</b> bolt on Backstage; produce the two artifacts it would generate (a catalog + Rego policies).</p>
+
+  <h3>Part B — AI-era engineering patterns (HAVE / THIN / MISSING)</h3>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr><th>Pattern</th><th>What it is</th><th>Our harness today</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td class="cap">Spec-driven development</td><td>Spec is the source of truth, written first (GitHub Spec Kit ~90–120k★ in ~10 mo; Kiro; Tessl)</td><td><code>/blueprint</code> (ADR-033): stories + happy/worst scenarios + <code>Scope:</code> glob, PreToolUse deny hook — enforced, not just tooling</td><td><span class="pill adopt">HAVE (strong)</span></td></tr>
+      <tr><td class="cap">Eval-driven development</td><td>Write evals before/alongside the feature; the eval is the regression net for non-deterministic code</td><td>Nothing — no eval harness for model outputs (no AI surface yet)</td><td><span class="pill reject">MISSING</span> (biggest gap)</td></tr>
+      <tr><td class="cap">LLM-as-judge / agent-as-judge</td><td>An LLM scores another's output on a rubric in CI; classifier cascade; locked judge versions</td><td><code>senior-code-reviewer</code> <b>is</b> an LLM-as-judge over code diffs (5 lenses, ≥80 confidence)</td><td><span class="pill adopt">HAVE (code)</span> <span class="pill reject">MISSING (model)</span></td></tr>
+      <tr><td class="cap">Evals as CI gates</td><td>Eval score → pass/fail gate on every PR; regression detection</td><td><code>/ship</code>'s 18 gates are fitness-functions for code; no eval gate</td><td><span class="pill later">THIN → MISSING</span></td></tr>
+      <tr><td class="cap">Sub-agent orchestration</td><td>Orchestrator-workers; route by task type; "start simple, add complexity only when needed"</td><td><code>scout</code> (haiku) + <code>senior-code-reviewer</code> (sonnet) + built-ins; main session orchestrates</td><td><span class="pill adopt">HAVE (mature)</span></td></tr>
+      <tr><td class="cap">Context engineering</td><td>Curate the context window; durable cross-session memory; handoff artifacts</td><td><code>agent-memory.md</code> + <code>SESSION-HANDOFF.md</code> + <code>/handoff-session</code> + pre-compact hook + <code>REPO-MAP.md</code></td><td><span class="pill adopt">HAVE (strength)</span></td></tr>
+      <tr><td class="cap">Memory / handoff durability</td><td>State that survives container churn; "pushed-or-it-didn't-happen"</td><td>Stop hook hard-blocks on unpushed commits; branch-scoped vs <code>main</code>-reaching state</td><td><span class="pill adopt">HAVE (rigorous)</span></td></tr>
+      <tr><td class="cap">Model-tier routing</td><td>Route easy/common → Haiku, hard → Sonnet/Opus</td><td>ADR-022 tier table (haiku scouts / sonnet build+review / opus architecture)</td><td><span class="pill later">HAVE (cost-tuned, not security-tuned)</span></td></tr>
+      <tr><td class="cap">Harness / scaffold thinking</td><td>The harness (loop + tools + context + sub-agents) is the product</td><td>The entire <code>.claude/</code> + <code>scripts/</code> + <code>docs/</code> layer <b>is</b> a harness — the repo's second product</td><td><span class="pill adopt">HAVE (identity)</span> <span class="pill reject">no AI-runtime primitives</span></td></tr>
+      <tr><td class="cap">Guardrails / safety for AI output</td><td>Input/output guardrails, injection defense, PII-egress on model I/O</td><td><code>post-tool-scan</code> + <code>protect-secrets</code> guard the dev-time transcript, not a product endpoint</td><td><span class="pill reject">MISSING (product surface)</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="notes">Takeaway: everything the harness does for <em>code</em> (spec, judge, gate, guardrail) must be duplicated for <em>model outputs</em>. That symmetry is the design principle for Part C.</p>
+
+  <h3>Part C — Concrete harness tweaks (Change · Why · Where · Effort · Priority)</h3>
+  <div class="scroll">
+  <table class="wide">
+    <thead><tr><th>Change</th><th>Why</th><th>Where</th><th>Effort</th><th>Priority</th></tr></thead>
+    <tbody>
+      <tr><td class="cap">Add <code>ai-eval</code> judge agent</td><td>The pivot ships AIs; model correctness is non-deterministic → needs a judge, not <code>tsc</code>. Mirrors <code>senior-code-reviewer</code></td><td>new <code>.claude/agents/ai-eval.md</code> (sonnet→opus cascade); consumes <code>evals/</code></td><td><span class="eff">M</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">Add <code>threat-model</code> security-architect agent</td><td>Enterprise floor makes a missed auth/tenancy/injection flaw a breach; security is diffuse today</td><td>new <code>.claude/agents/threat-model.md</code> (opus); invoked by <code>/harden</code> + pre-push on Ask-before surface</td><td><span class="eff">M</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">Add <code>sre</code> / deploy agent</td><td>Deploy inverts to docker-first; no agent owns the operational lens</td><td>new <code>.claude/agents/sre.md</code> (sonnet); invoked by reworked <code>/deploy</code></td><td><span class="eff">M</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">Route security &amp; architecture reviews to opus</td><td>Cost-thrift is the wrong optimization on the security surface; frontier judgment worth the tokens</td><td>ADR-022 tier table + superseding ADR; <code>senior-code-reviewer.md</code> model split</td><td><span class="eff">S</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">Judge-cascade for <code>ai-eval</code> + pin judge model versions</td><td>"Cheap, fast, significant — pick two"; an unpinned judge silently changes scores</td><td><code>ai-eval.md</code> routing + <code>evals/config.json</code> + agent-memory note</td><td><span class="eff">S</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">AI-eval gate</td><td>Symmetric to blueprint-before-build: no shipped AI without an eval. Closes the biggest AI-era gap</td><td>new <code>.claude/hooks/ai-eval-gate.mjs</code> + <code>/ship</code> phase-A + <code>evals/</code> + <code>aiEvalAck</code></td><td><span class="eff">L</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">Container-scan gate (promote Trivy to hard-fail)</td><td>Docker-first means the image <b>is</b> the product; an unscanned image is an unscanned deploy</td><td><code>scripts/ship.mjs</code> + <code>container-audit-allowlist.json</code></td><td><span class="eff">M</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">SBOM gate</td><td>Enterprise/regulated buyers require an SBOM as a delivery artifact (CycloneDX)</td><td><code>scripts/ship.mjs --full</code> + Makefile <code>sbom</code> + <code>/handoff</code> package</td><td><span class="eff">M</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">Secrets-in-image scan</td><td>A baked-in secret in an image layer is invisible to source-tree gitleaks</td><td><code>scripts/ship.mjs --full</code> (image-layer scan)</td><td><span class="eff">S</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">OTel-coverage check</td><td>Make observability a fitness function — RED on an unspanned route (mirrors unbounded-query scan)</td><td>new <code>/ship</code> phase-A scan + <code>otelAck</code></td><td><span class="eff">M</span></td><td><span class="prio p2">P2</span></td></tr>
+      <tr><td class="cap">Make the 5 fail-open guard hooks fail-closed</td><td>A gate that silently allows because the script threw isn't a gate</td><td>all 5 <code>.claude/hooks/*.mjs</code> (try/catch → deny on error)</td><td><span class="eff">S</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">Extend gate trio added-files → full diff</td><td>The most common real sprawl is an Edit growing an existing route/module; all three gates miss it</td><td>build-vs-buy / blueprint / complexity hook + ship scopes</td><td><span class="eff">M</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">Externalize infra policy to Conftest/Rego</td><td>The pivot adds an infra/config surface TS ESLint can't reach; policy-as-code is the standard mechanism</td><td>new <code>policy/*.rego</code> + <code>conftest</code> in <code>scripts/ship.mjs</code></td><td><span class="eff">M</span></td><td><span class="prio p2">P2</span></td></tr>
+      <tr><td class="cap"><code>/scaffold-agent</code></td><td>Axis-2's biggest gap: zero AI primitives; a golden-path generator makes agents born-conforming</td><td>new <code>.claude/skills/scaffold-agent/</code> + <code>scripts/scaffold-agent.mjs</code></td><td><span class="eff">L</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap"><code>/scaffold-ai-endpoint</code></td><td>Ensures the security floor (auth wrapper, zod, guardrails) applies to AI endpoints too</td><td>new <code>.claude/skills/scaffold-ai-endpoint/</code></td><td><span class="eff">M</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap"><code>/harden</code> (enterprise-readiness)</td><td>The floor rose but nothing checks readiness as a unit — the enterprise analog of <code>/qa</code></td><td>new <code>.claude/skills/harden/</code>; consumes C.1 agents + C.3 gates</td><td><span class="eff">L</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">Rework <code>/deploy</code>, <code>/new-project</code>, <code>/first-fork</code> → docker-first</td><td>Deploy inverts (Axis 1); Vercel-centric skills become the fallback</td><td><code>.claude/skills/{deploy,new-project,first-fork}/</code>; promote <code>/docker</code></td><td><span class="eff">L</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">Add a 6th pillar: "AI-Quality / Eval"</td><td>The 5 pillars are code-shaped; none captures non-deterministic model correctness. Folding into High-Quality buries it</td><td><code>docs/uat-rubric.md</code> + CLAUDE.md Five→Six Pillars + <code>/ship</code> AI-eval gate</td><td><span class="eff">M</span></td><td><span class="prio p0">P0</span></td></tr>
+      <tr><td class="cap">Extend Secure pillar to AI I/O guardrails</td><td>The AI surface adds a new trust boundary the current Secure pillar predates</td><td><code>docs/uat-rubric.md</code> Secure pillar + <code>lib/ai/*</code> guardrails</td><td><span class="eff">M</span></td><td><span class="prio p1">P1</span></td></tr>
+      <tr><td class="cap">Extend Scalable pillar to cost/rate on model calls</td><td>An unbounded agent loop is the AI analog of an unbounded query</td><td><code>docs/uat-rubric.md</code> Scalable pillar + cost-accounting in <code>lib/ai/*</code></td><td><span class="eff">S</span></td><td><span class="prio p2">P2</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="notes">The payoff: the pivot doesn't require a new governance model — it requires cloning the existing gate + committed-adjudication-artifact pattern (ADR-032/033/034) onto model outputs, while hardening the existing harness for the raised floor (fail-closed hooks, full-diff scope, opus on security, container/SBOM scans).</p>
+
+  <h4>Sources — architects &amp; AI-era patterns</h4>
+  <ol class="foot">
+    <li><a href="https://medium.com/@rameshavutu/how-to-build-golden-paths-in-backstage-idp-with-software-templates-170adce436fe" target="_blank" rel="noopener">Backstage Software Templates / golden paths</a></li>
+    <li><a href="https://www.redhat.com/en/topics/platform-engineering/golden-paths" target="_blank" rel="noopener">What is a golden path? (Red Hat)</a></li>
+    <li><a href="https://kodekloud.com/blog/backstage-the-open-source-developer-portal-transforming-how-engineering-teams-ship-software/" target="_blank" rel="noopener">Backstage adoption &amp; market share</a> · <a href="https://backstage.io/" target="_blank" rel="noopener">backstage.io</a> · <a href="https://github.com/backstage/backstage/blob/master/ADOPTERS.md" target="_blank" rel="noopener">ADOPTERS.md</a></li>
+    <li><a href="https://www.200oksolutions.com/blog/humanitec-vs-port-io-vs-backstage-best-idp-in-2026/" target="_blank" rel="noopener">Humanitec vs Port vs Backstage — best IDP 2026</a></li>
+    <li><a href="https://encore.dev/articles/platform-engineering-tools" target="_blank" rel="noopener">Platform engineering tools compared (Backstage, Port, Cortex, OpsLevel, Humanitec)</a></li>
+    <li><a href="https://nx.dev/docs/features/generate-code" target="_blank" rel="noopener">Nx generators</a> · <a href="https://turborepo.dev/docs/guides/generating-code" target="_blank" rel="noopener">Turborepo gen</a> · <a href="https://www.cookiecutter.io/article-post/compare-cookiecutter-to-yeoman" target="_blank" rel="noopener">Cookiecutter vs Yeoman</a></li>
+    <li><a href="https://github.com/open-policy-agent/opa" target="_blank" rel="noopener">Open Policy Agent</a></li>
+    <li><a href="https://www.openpolicyagent.org/docs/cicd" target="_blank" rel="noopener">Using OPA in CI/CD pipelines</a></li>
+    <li><a href="https://policyascode.dev/guides/opa-terraform-policy-guide/" target="_blank" rel="noopener">OPA &amp; Terraform policy-as-code 2025</a> · <a href="https://notes.kodekloud.com/docs/DevSecOps-Kubernetes-DevOps-Security/DevSecOps-Pipeline/OPA-Conftest-Basics/page" target="_blank" rel="noopener">Conftest basics</a></li>
+    <li><a href="https://www.cio.com/article/4184567/architecture-as-code-is-the-next-frontier-for-enterprise-governance.html" target="_blank" rel="noopener">Architecture-as-code / fitness functions (CIO.com)</a></li>
+    <li><a href="https://github.blog/ai-and-ml/generative-ai/spec-driven-development-with-ai-get-started-with-a-new-open-source-toolkit/" target="_blank" rel="noopener">Spec-driven development with AI — Spec Kit (GitHub Blog)</a></li>
+    <li><a href="https://github.com/github/spec-kit" target="_blank" rel="noopener">GitHub Spec Kit repo</a> · <a href="https://github.github.com/spec-kit/" target="_blank" rel="noopener">docs</a></li>
+    <li><a href="https://martinfowler.com/articles/exploring-gen-ai/sdd-3-tools.html" target="_blank" rel="noopener">Understanding SDD: Kiro, spec-kit, Tessl (Martin Fowler)</a></li>
+    <li><a href="https://www.braintrust.dev/articles/best-ai-evals-tools-cicd-2025" target="_blank" rel="noopener">Best AI eval tools for CI/CD 2026 (Braintrust)</a> · <a href="https://futureagi.com/blog/ci-cd-llm-eval-github-actions-2026/" target="_blank" rel="noopener">CI/CD LLM eval with GitHub Actions</a></li>
+    <li><a href="https://deepeval.com/guides/guides-llm-as-a-judge" target="_blank" rel="noopener">LLM-as-a-Judge 2026 (DeepEval)</a> · <a href="https://arxiv.org/pdf/2508.02994" target="_blank" rel="noopener">Agent-as-a-Judge (arXiv)</a></li>
+    <li><a href="https://www.anthropic.com/engineering/building-effective-agents" target="_blank" rel="noopener">Building Effective Agents (Anthropic Engineering)</a></li>
+    <li><a href="https://claude.com/blog/building-with-claude-managed-agents" target="_blank" rel="noopener">Building with Claude Managed Agents / Claude Agent SDK</a></li>
+    <li><a href="https://trivy.dev/docs/latest/supply-chain/sbom/" target="_blank" rel="noopener">Trivy SBOM &amp; container scanning</a> · <a href="https://www.docker.com/blog/what-is-an-sbom/" target="_blank" rel="noopener">What is an SBOM (Docker)</a></li>
+    <li><a href="https://www.wiz.io/academy/application-security/top-open-source-sbom-tools" target="_blank" rel="noopener">SBOM tools for enterprise (Wiz)</a> · <a href="https://vucense.com/dev-corner/container-vulnerability-scanning-2026/" target="_blank" rel="noopener">Container vulnerability scanning 2026</a></li>
+  </ol>
+</section>
+
+<!-- ============ SEED MATRIX ============ -->
+<section id="matrix">
+  <p class="eyebrow"><span class="sec-mark">§6</span>Master matrix</p>
+  <h2>Seed-verdict master matrix — all 43 items</h2>
+  <p class="prose">Every seed-list item from the four domain seed tables, aggregated. (The architects domain contributes patterns and harness tweaks rather than seed-list items — its calls land in the action list, §7.)</p>
+  <div class="scroll">
+  <table class="matrix">
+    <thead><tr><th>Domain</th><th>Seed item</th><th>Verdict</th><th>Rationale (one line)</th><th>ADR / gate impact</th></tr></thead>
+    <tbody>
+      <tr><td class="dtag">Docker</td><td class="cap">Dockerfile multi-stage / standalone default-on</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Docker the default delivery target; keep <code>DOCKER_BUILD=1</code> so Vercel builds stay byte-identical</td><td>Reframes ADR-030; supersedes ADR-006 default</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap"><code>docker-compose.prod.yml</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Core new artifact; app+pg+redis+objstore+proxy, health-checked, k8s-mappable</td><td>New ADR (compose prod topology)</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Self-hosted dockerized Postgres (default)</td><td><span class="pill adopt">ADOPT-v1</span></td><td><code>pgvector/pgvector:pg17</code>, single-node; honors decision #5</td><td>Reframes ADR-006/031</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Neon (as option)</td><td><span class="pill keep">KEEP-AS-OPTION</span></td><td>Managed PITR/branching for cloud tenants; a <code>DATABASE_URL</code> swap</td><td>ADR-006 demoted to optional</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">PgBouncer</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Battle-tested + OSS, explicit Prisma support, tiny; bounds backend connections</td><td>New ADR (data-plane)</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Object store (MinIO / S3)</td><td><span class="pill research">RESEARCH → Garage</span></td><td>MinIO CE maintenance-mode; build to S3 API, default Garage v2, cloud S3 the option</td><td>New ADR + build-vs-buy (<code>@aws-sdk/client-s3</code>)</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Reverse proxy (Nginx/Caddy/Traefik)</td><td><span class="pill adopt">ADOPT-v1 → Caddy</span></td><td>Auto-HTTPS + minimal config fits single-app-per-deploy</td><td>New ADR</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Container registry (GHCR/ECR)</td><td><span class="pill adopt">ADOPT-v1 → GHCR</span></td><td>GitHub-native Actions publish; Harbor for air-gapped</td><td>Reframes ADR-030 migration trigger</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Helm / k8s</td><td><span class="pill later">ADOPT-LATER</span></td><td>Compose now, k8s-ready; 1:1 Helm mapping; no k8s in v1</td><td>Documented migration target</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Migration-at-startup</td><td><span class="pill adopt">ADOPT-v1</span> <span class="pill later">+ LATER</span></td><td>Entrypoint safe at single-replica; one-shot unit before multi-replica (advisory-lock race)</td><td>New ADR (migration lifecycle)</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Backup / DR</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Nightly <code>pg_dump</code> floor; WAL-G container-native PITR (pgBackRest scare)</td><td>New ADR (DR posture)</td></tr>
+      <tr><td class="dtag">Docker</td><td class="cap">Zero-downtime deploy</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Blue-green via proxy + healthchecks + graceful shutdown + forward-compat migrations</td><td>New ADR (deploy strategy)</td></tr>
+
+      <tr><td class="dtag">AI</td><td class="cap"><code>@anthropic-ai/sdk</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Native Anthropic-first client; streaming, retries, tool-runner, caching built in</td><td>New "AI provider layer" ADR</td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">tool-runner / Managed Agents vs framework</td><td><span class="pill research">RESEARCH → BUILD native</span></td><td>Native <code>toolRunner</code>+<code>betaZodTool</code> = the loop, zero deps/lock-in; frameworks = keep-as-option</td><td>New "Agent runtime" ADR; resolves ADR-032 open Q</td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">streaming (RSC + SSE)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Native SSE from a Node-runtime <code>withAuth</code> route keeps auth/zod/cost secured</td><td>Streaming ADR; <code>lib/ai/stream.ts</code></td></tr>
+      <tr><td class="dtag">AI</td><td class="cap"><code>pgvector</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>In-box, one ops story, good &lt;~10M vectors; pgvectorscale in-place upgrade; Pinecone rejected</td><td>Vector-store ADR; Prisma <code>vector</code> migration</td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">embeddings + retrieval</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Voyage default (Anthropic-recommended); hybrid pgvector ⊕ FTS + optional rerank</td><td>Retrieval ADR; <code>embed.ts</code> + <code>retrieval.ts</code></td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">evals / LLM-as-judge lib</td><td><span class="pill adopt">Promptfoo v1</span> <span class="pill later">Langfuse later</span></td><td>Promptfoo = zero-infra CI eval gate; Langfuse = online substrate, heavy self-host</td><td>AI-eval-gate ADR (L3); Langfuse ADR later</td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">Inngest (agent background execution)</td><td><span class="pill reject">REJECT → Trigger.dev</span></td><td>Inngest engine can't self-host; Trigger.dev (Apache 2.0) self-hosts; BullMQ for simple queues</td><td>Background-exec ADR; overrides brief's placeholder</td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">prompt / version management</td><td><span class="pill adopt">in-repo v1</span> <span class="pill later">registry later</span></td><td>Git gives versioning/review/rollback free; registry only when live non-dev edits needed</td><td>Prompt-management ADR; <code>lib/ai/prompts/</code></td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">guardrails / safety</td><td><span class="pill adopt">ADOPT-v1</span> <span class="pill keep">GAI option</span> <span class="pill reject">NeMo reject</span></td><td>Reuse zod-at-boundary + native refusals; Guardrails AI opt-in; NeMo Python-only</td><td>Safety ADR; <code>lib/ai/guardrails.ts</code></td></tr>
+      <tr><td class="dtag">AI</td><td class="cap">per-tenant cost accounting</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Provider token counts → Postgres, tag tenant/user/feature, OTel GenAI, versioned prices</td><td>Cost-metering ADR; <code>usage.ts</code> + Prisma model</td></tr>
+      <tr><td class="dtag">AI</td><td class="cap"><code>/scaffold-ai-endpoint</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Secured streaming route + zod + prompt + eval + metering; gates enforced</td><td>New skill + <code>scripts/scaffold-ai-endpoint.mjs</code></td></tr>
+      <tr><td class="dtag">AI</td><td class="cap"><code>/scaffold-agent</code></td><td><span class="pill adopt">ADOPT-v1</span></td><td>Native-tool-runner agent + zod tools + guardrails + metering + eval; gate-enforced</td><td>New skill + <code>scripts/scaffold-agent.mjs</code></td></tr>
+
+      <tr><td class="dtag">Identity</td><td class="cap">SSO / SAML / OIDC (default)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Keep Auth.js; add self-hosted Ory Polis/BoxyHQ SAML→OIDC bridge</td><td>New "Enterprise SSO floor" ADR; supersedes/extends ADR-024</td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">SCIM provisioning</td><td><span class="pill later">ADOPT-LATER (v1.1)</span></td><td>Rides the same bridge; auto de-provisioning closes the leaver/SOC2 gap</td><td>Same ADR + de-provisioning path</td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">Entra ID (existing ADR-024)</td><td><span class="pill keep">KEEP-AS-OPTION</span></td><td>Still valid as a concrete OIDC IdP; the bridge generalizes it</td><td>ADR-024 reframed: mechanism → one IdP</td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">Fine-grained RBAC/ABAC</td><td><span class="pill adopt">ADOPT-v1</span></td><td>3-role enum insufficient; Cerbos sidecar wired into <code>with*Auth</code></td><td>New "Cerbos authZ" ADR + build-vs-buy entry</td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">Column-level encryption</td><td><span class="pill adopt">ADOPT-v1</span></td><td>App-layer AES-256-GCM envelope Prisma extension, keys outside DB; pgcrypto rejected</td><td>New "Field-level encryption" ADR; extends <code>SCRUB_FIELDS</code></td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">Secrets management</td><td><span class="pill adopt">ADOPT-v1</span></td><td>SOPS+age baseline, Infisical upgrade; Vault optional (BSL); Doppler rejected</td><td>New "Runtime secrets" ADR; supersedes Vercel-dashboard</td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">Audit retention + compliance export</td><td><span class="pill adopt">chain v1</span> <span class="pill later">export v1.1</span></td><td>HMAC-SHA256 hash chain + append-only; signed SOC2 export as v1.1</td><td>New "Tamper-evident audit" ADR; extends <code>audit-extension.ts</code></td></tr>
+      <tr><td class="dtag">Identity</td><td class="cap">In-app multi-tenancy (row-level)</td><td><span class="pill reject">REJECTED</span></td><td>Operator decision: deploy-per-tenant; separate DBs stronger than RLS</td><td>ADR-011 KEPT — recorded so nothing reintroduces it</td></tr>
+
+      <tr><td class="dtag">Ops</td><td class="cap">OpenTelemetry tracing</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Stack-native via <code>@vercel/otel</code>, no config change; backend-agnostic OTLP</td><td>New "Observability (OTel + SigNoz)" ADR</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">Sentry (errors)</td><td><span class="pill adopt">ADOPT-v1 SDK</span> <span class="pill keep">backend option</span></td><td>Adopt SDK; default DSN → GlitchTip, Sentry SaaS optional; self-hosted Sentry rejected</td><td>Same observability ADR; may defer backend to v1.1</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">SBOM (CycloneDX)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Docker-first ⇒ image-level SBOM natural; Syft→CycloneDX</td><td>New CI stage; hard gate (fail if absent)</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">Trivy container/dep scanning</td><td><span class="pill adopt">ADOPT-v1 (hardened)</span></td><td>Promote to core gate; SHA-pin actions + digest-pin images post-March-2026; Grype 2nd opinion</td><td>Hard CI fail on HIGH/CRITICAL; supply-chain ADR</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">Distributed rate limit (Redis/Upstash)</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Fixes real bug (<code>N × limit</code>); <code>@upstash/ratelimit</code> on self-hosted Redis</td><td>Rewrite <code>lib/rate-limit.ts</code> (Ask-before → ADR); keep API</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">Redis client</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Prerequisite for distributed rate limiting; compose already needs Redis</td><td>Add to compose + readiness check; build-vs-buy entry</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">Live CI/CD activation</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Core of the pivot: "CI dormant" premise inverts; activate workflows, GHCR</td><td>Reframes ADR-007; removes "CI dormant" language</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">size-limit / lhci perf gates</td><td><span class="pill adopt">ADOPT-v1</span></td><td>size-limit bundle budget hard fail; lhci CWV guard (report → blocking)</td><td>size-limit hard fail; lhci reporting → blocking</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">knip / jscpd / coverage hardening</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Turn three skip-if-absent gates into hard CI fails</td><td>Hard CI fails; absence ≠ skip in CI mode</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">Semgrep / CodeQL SAST</td><td><span class="pill adopt">ADOPT-v1 (layered)</span></td><td>Semgrep on PR (custom rules) + CodeQL nightly (deep); dormant workflows exist</td><td>Activate <code>sast.yml</code>+<code>codeql.yml</code> as hard fails</td></tr>
+      <tr><td class="dtag">Ops</td><td class="cap">gitleaks secret scan</td><td><span class="pill adopt">ADOPT-v1</span></td><td>Already gates <code>/ship</code>; add TruffleHog scheduled full-history</td><td>gitleaks stays hard fail; add TruffleHog report</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ============ ACTION LIST ============ -->
+<section id="actions">
+  <p class="eyebrow"><span class="sec-mark">§7</span>Prioritized action list</p>
+  <h2>Cross-domain P0 / P1 / P2 program</h2>
+  <p class="prose">Synthesized from every domain's sequencing + Part C. <b>P0</b> = v1 baseline prerequisites (the dockerized enterprise fork-and-ship unit); <b>P1</b> = v1.1 fast-follow; <b>P2</b> = later / k8s-ready. Each item is tagged with its domain and rough effort (S/M/L).</p>
+
+  <h3><span class="prio p0">P0</span> &nbsp;v1 baseline prerequisites</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Action</th><th>Domain</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td>Ship <code>docker-compose.prod.yml</code> (app + <code>postgres:17</code>/pgvector + Redis + Caddy + object store), health-checked, compose <code>secrets:</code></td><td class="dtag">Docker</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Dockerfile upgrades: add <code>HEALTHCHECK</code>, pin base by digest (keep <code>DOCKER_BUILD=1</code> gating)</td><td class="dtag">Docker</td><td><span class="eff">S</span></td></tr>
+      <tr><td>PgBouncer sidecar + Prisma <code>?pgbouncer=true</code>; entrypoint <code>migrate deploy</code> (single-replica)</td><td class="dtag">Docker</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Backup floor: nightly <code>pg_dump</code> → object store (S3-API abstraction, default Garage)</td><td class="dtag">Docker</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Distributed rate limit: rewrite <code>lib/rate-limit.ts</code> internals to <code>@upstash/ratelimit</code> on compose Redis (keep <code>withRateLimit</code> API)</td><td class="dtag">Ops</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Health probes: <code>/api/health/live</code> + <code>/api/health/ready</code> (503-when-unhealthy, checks Postgres+Redis)</td><td class="dtag">Ops</td><td><span class="eff">S</span></td></tr>
+      <tr><td>Activate live CI/CD → GHCR (digest-pinned); <b>SHA-pin every third-party Action</b> (March-2026 Trivy lesson)</td><td class="dtag">Ops</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Hard-gate skip-if-absent checks (knip, jscpd, coverage, size-limit) in CI</td><td class="dtag">Ops</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Supply chain: Syft→CycloneDX SBOM + Trivy core (digest-pinned) + Grype-on-SBOM; fail on HIGH/CRITICAL</td><td class="dtag">Ops</td><td><span class="eff">M</span></td></tr>
+      <tr><td>SAST/secrets: Semgrep (PR) + gitleaks blocking; CodeQL + TruffleHog layered</td><td class="dtag">Ops</td><td><span class="eff">M</span></td></tr>
+      <tr><td>OTel via <code>@vercel/otel</code> (<code>instrumentation.ts</code>) → SigNoz self-hosted (traces+metrics+logs)</td><td class="dtag">Ops</td><td><span class="eff">M</span></td></tr>
+      <tr><td>SSO via self-hosted SAML/OIDC bridge (Ory Polis/BoxyHQ) + Auth.js <code>boxyhq-saml</code> provider</td><td class="dtag">Identity</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Cerbos authZ sidecar wired into the <code>with*Auth</code> wrappers</td><td class="dtag">Identity</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Field-level AES-256-GCM envelope encryption Prisma extension (<code>crypto-extension.ts</code>)</td><td class="dtag">Identity</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Tamper-evident audit: HMAC-SHA256 hash chain + storage-layer append-only</td><td class="dtag">Identity</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Secrets baseline: SOPS+age (feeds the encryption KEK + all runtime secrets)</td><td class="dtag">Identity</td><td><span class="eff">S</span></td></tr>
+      <tr><td>v1 <code>lib/ai/*</code>: <code>client.ts</code>, <code>stream.ts</code>, <code>agent.ts</code>+<code>tools/**</code> (native tool-runner), <code>embed.ts</code>+<code>retrieval.ts</code>, <code>guardrails.ts</code>, <code>usage.ts</code>, <code>prompts/**</code></td><td class="dtag">AI</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Promptfoo eval gate wired into <code>/ship</code>; <code>/scaffold-agent</code> + <code>/scaffold-ai-endpoint</code> generators</td><td class="dtag">AI</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Add <code>ai-eval</code> judge agent + AI-eval gate (mirror <code>senior-code-reviewer</code>/blueprint-gate)</td><td class="dtag">Harness</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Add <code>threat-model</code> security-architect agent (opus); route security/architecture reviews to opus</td><td class="dtag">Harness</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Promote Trivy to hard-fail container-scan gate in <code>/ship</code>; make the 5 fail-open guard hooks fail-closed</td><td class="dtag">Harness</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Add the 6th "AI-Quality / Eval" pillar (<code>uat-rubric.md</code> + CLAUDE.md)</td><td class="dtag">Harness</td><td><span class="eff">M</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3><span class="prio p1">P1</span> &nbsp;v1.1 fast-follow</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Action</th><th>Domain</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td>SCIM de-provisioning on the same SSO bridge (soft-delete on <code>active:false</code>)</td><td class="dtag">Identity</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Signed SOC2 compliance export (audit-chain proof); Infisical if central rotation/audit needed</td><td class="dtag">Identity</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Error-tracking backend decision: GlitchTip (Sentry SDK) if SigNoz's error views don't suffice</td><td class="dtag">Ops</td><td><span class="eff">S</span></td></tr>
+      <tr><td>lhci promoted report → blocking once perf budgets calibrated; Uptime Kuma + alerting</td><td class="dtag">Ops</td><td><span class="eff">S</span></td></tr>
+      <tr><td>New <code>/ship</code> lint: reject tag-referenced third-party GitHub Actions (encode the March-2026 lesson)</td><td class="dtag">Ops</td><td><span class="eff">S</span></td></tr>
+      <tr><td>SBOM + secrets-in-image scan in <code>/ship --full</code> and the <code>/handoff</code> package</td><td class="dtag">Harness</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Extend build-vs-buy / blueprint / complexity gates from added-files → full diff</td><td class="dtag">Harness</td><td><span class="eff">M</span></td></tr>
+      <tr><td>Add <code>sre</code>/deploy agent; rework <code>/deploy</code>, <code>/new-project</code>, <code>/first-fork</code> → docker-first; add <code>/harden</code></td><td class="dtag">Harness</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Judge-cascade + pinned judge model versions for <code>ai-eval</code>; extend Secure pillar to AI I/O guardrails</td><td class="dtag">AI</td><td><span class="eff">S</span></td></tr>
+      <tr><td>Trigger.dev self-hosted (first long-running agent); BullMQ for simple Redis queues</td><td class="dtag">AI</td><td><span class="eff">M</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3><span class="prio p2">P2</span> &nbsp;Later / k8s-ready</h3>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Action</th><th>Domain</th><th>Effort</th></tr></thead>
+    <tbody>
+      <tr><td>Object-store hardening (Garage vs cloud S3 per tenant); WAL-G continuous PITR; blue-green scripting; one-shot migration service; distroless runner; Vault/KMS; Harbor; Patroni/CloudNativePG HA</td><td class="dtag">Docker</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Helm/ArgoCD; gateway (Envoy) rate limiting; multi-region synthetic (SaaS); Grafana LGTM alternative; SBOM → Dependency-Track</td><td class="dtag">Ops</td><td><span class="eff">L</span></td></tr>
+      <tr><td>SpiceDB/OpenFGA (relationship-graph authZ); CipherStash (queryable ciphertext); Keycloak; sealed-secrets + pgAudit</td><td class="dtag">Identity</td><td><span class="eff">L</span></td></tr>
+      <tr><td>Langfuse self-hosted (online trace/eval/registry/cost); pgvectorscale (&gt;~10M vectors) / Qdrant; rerank stage; Guardrails AI hub; Managed Agents; Mastra (real graph workflow)</td><td class="dtag">AI</td><td><span class="eff">L</span></td></tr>
+      <tr><td>OTel-coverage fitness function (<code>otelAck</code>); externalize infra policy to Conftest/Rego; extend Scalable pillar to model cost/rate; <code>dependency-cruiser</code> layering; <code>docs/app-catalog.md</code> fleet inventory + <code>docs/fitness-functions.md</code></td><td class="dtag">Harness</td><td><span class="eff">M</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<footer class="foot">
+  <p><b>Research output — to be revised.</b> This report was synthesized from five research dossiers under <code>docs/research/*.md</code> (<code>docker-delivery.md</code>, <code>ai-agent-stack.md</code>, <code>enterprise-identity-data.md</code>, <code>observability-supplychain-cicd.md</code>, <code>architects-and-ai-era-patterns.md</code>) and the pivot brief <code>docs/enterprise-pivot-analysis.md</code>. Sources are cited inline per section as numbered footnotes with links to the original 2026 references. Star counts, versions, and pricing are point-in-time (2026-07-10) and should be re-verified at build time. Verdicts reflect the operator's binding decisions (deploy-per-tenant / ADR-011 kept, enterprise-only, compose-now / k8s-ready, self-hosted dockerized Postgres default). Each ADOPT verdict maps to a superseding ADR + a build-vs-buy ledger entry; <code>/blueprint</code> the v1 baseline before any code.</p>
+  <p style="margin-top:10px;color:var(--muted)">Generated 2026-07-10 · Enterprise Factory stack benchmark · 5 domains · 43 seed items · 4 lenses each.</p>
+</footer>
+
+</div>
+</div>
+
+<script>
+(function () {
+  try {
+    var btn = document.getElementById('themeToggle');
+    if (!btn) return;
+    var root = document.documentElement;
+    function current() {
+      var t = root.getAttribute('data-theme');
+      if (t) return t;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    btn.addEventListener('click', function () {
+      var next = current() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+    });
+  } catch (e) { /* progressive enhancement only */ }
+})();
+</script>
