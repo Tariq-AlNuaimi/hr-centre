@@ -83,6 +83,13 @@ that doesn't is a guess waiting to become a rebuild. (Lightweight track: do the
 one-breath version — a single "does this cross a Hard rule / reuse an existing
 model?" check against `CLAUDE.md` + `docs/REPO-MAP.md` — not the full sweep.)
 
+**Both tracks write a committed `docs/blueprints/<feature>.md` carrying a `Scope:`
+line** — the full track the complete doc below, the lightweight track a minimal stub
+(title + `Scope:` + a one-line design + the resolved clarifying question). This is not
+ceremony for its own sake: `blueprint-gate.mjs` (ADR-033) **denies** new feature routes/
+pages until a blueprint's `Scope:` glob covers them, so the stub is what lets disposable
+`/quickstart` work flow through the gate instead of being blocked.
+
 ## Full blueprint — write `docs/blueprints/<feature>.md`
 
 Resolve the open questions FIRST (via `AskUserQuestion`) — a blueprint built on
@@ -90,6 +97,8 @@ guessed answers is the very failure this gate exists to prevent. Then write:
 
 ```md
 # Blueprint — <Feature>
+
+Scope: <file globs this blueprint authorizes — e.g. app/api/<feature>/**, app/**/<feature>/**, lib/<feature>/**. The `blueprint-gate.mjs` PreToolUse hook (ADR-033) matches new route/page files against this line, so keep it accurate. Comma-separated; `*` = one segment, `**` = any depth.>
 
 ## Problem & outcome
 <the need; what changes for whom when this ships; why now>
