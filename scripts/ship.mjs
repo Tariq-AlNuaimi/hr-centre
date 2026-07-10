@@ -479,6 +479,58 @@ async function scanDuplication() {
   );
 }
 
+// -- complexity-budget gate (ADR-034; Five Pillars: Maintainable/High-Quality) --
+// Over-engineering guard. Flags NEW product files in the diff (vs origin/main) that
+// blow a size/branching budget -- the "a simple feature became a sprawling file"
+// smell that the path-based deny-gates (ADR-032 build-vs-buy, ADR-033 blueprint)
+// cannot see. Diff-scoped (only files THIS change adds) and dependency-free (git +
+// node, no analyzer lib). Thresholds are conservative so a genuinely large-but-
+// necessary file is a WAIVE (complexityAck + adjudicated register line, same pattern
+// as every other /ship gate), not a false red. v1 covers ADDED files; per-function
+// complexity of MODIFIED files is a documented v2 extension (ADR-034).
+const CX_FILE_LOC = 350;   // code lines in a single new file
+const CX_BRANCHES = 40;    // branch tokens in a single new file (cyclomatic proxy)
+const CX_DIRS = /^(app|lib|components|hooks)\//;
+function scanComplexity() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out) => ({ name: "complexity", ok: true, out, secs: secs() });
+  const red = (out) => ({ name: "complexity", ok: false, out, secs: secs() });
+  const w = ackWaiver(readCfg(), "complexityAck", "complexity");
+  if (w) return w.ok ? ok(`complexity budget waived: ${w.reason}`) : red(w.out);
+  let base = "";
+  try { base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
+  catch { return ok("no origin/main base (skipped)"); }
+  if (!/^[0-9a-f]{40}$/.test(base)) return ok("no valid diff base (skipped)");
+  let names = "";
+  try { names = execSync(`git diff --name-status --diff-filter=A ${base}`, { stdio: ["ignore", "pipe", "ignore"] }).toString(); }
+  catch { return ok("diff failed (skipped)"); }
+  const added = names.split("\n").map((l) => l.split("\t")[1]).filter(Boolean)
+    .filter((p) => CX_DIRS.test(p) && /\.(ts|tsx)$/.test(p) && !/\.(test|spec)\.tsx?$/.test(p) && !/\.d\.ts$/.test(p));
+  const offenders = [];
+  for (const p of added) {
+    let src = "";
+    try { src = readFileSync(p, "utf8"); } catch { continue; }
+    const loc = src.split("\n").filter((l) => {
+      const t = l.trim();
+      return t && !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
+    }).length;
+    // Cyclomatic proxy: robust branch tokens only. Deliberately excludes bare `?`
+    // and `?.` -- TS optional params/props (`x?: T`) would inflate the count.
+    const branches = (src.match(/\b(if|for|while|case|catch)\b|&&|\|\||\?\?/g) || []).length;
+    const hits = [];
+    if (loc > CX_FILE_LOC) hits.push(`${loc} code lines (> ${CX_FILE_LOC})`);
+    if (branches > CX_BRANCHES) hits.push(`${branches} branch tokens (> ${CX_BRANCHES}, cyclomatic proxy)`);
+    if (hits.length) offenders.push(`  ${p}: ${hits.join("; ")}`);
+  }
+  if (offenders.length === 0) return ok("clean (new files within budget)");
+  return red(
+    `${offenders.length} new file(s) exceed the complexity budget (Five Pillars: Maintainable/High-Quality) — split, simplify, or reuse a primitive:\n` +
+      offenders.join("\n") +
+      `\n  If the size is genuinely warranted, waive with "complexityAck" in project.config.json + an adjudicated ADR-025/complexityAck line in docs/findings-register.md.`
+  );
+}
+
 // -- coverage-floor gate (ADOPT.md A1; cats 09, 16) --------------------------
 // Runs the contract suite under node's built-in V8 coverage (zero extra deps)
 // and lets node enforce the floor: it exits non-zero if lib/** coverage drops
@@ -754,13 +806,14 @@ const fail = (r) => {
 };
 
 const t0 = Date.now();
-console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability | wave-offs | tier | blueprint | db-structure | knip | duplication | coverage) ...");
+console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability | wave-offs | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...");
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
 const waveoffs = scanWaveOffs();
 const tier = scanTier();
 const blueprint = scanBlueprint();
+const complexity = scanComplexity();
 
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
@@ -791,13 +844,13 @@ if (!tsc.ok && /TS2307/.test(tsc.out) && /\.next\/types/.test(tsc.out + " ") ) {
   tsc = await typecheck();
 }
 
-for (const r of [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, dbStructure, knip, duplication, coverage]) report(r);
+for (const r of [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, complexity, dbStructure, knip, duplication, coverage]) report(r);
 if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
 if (dbStructure.warn) console.warn(`  note: db-structure — ${dbStructure.warn}`);
 if (knip.warn) console.warn(`  note: knip — ${knip.warn}`);
 if (duplication.warn) console.warn(`  note: duplication — ${duplication.warn}`);
 if (coverage.warn) console.warn(`  note: coverage — ${coverage.warn}`);
-const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, dbStructure, knip, duplication, coverage].find((r) => !r.ok);
+const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, complexity, dbStructure, knip, duplication, coverage].find((r) => !r.ok);
 if (redA) fail(redA);
 
 console.log("ship: phase B (build -> size-limit -> gitleaks -> npm audit) ...");
