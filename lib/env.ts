@@ -51,6 +51,19 @@ const envSchema = z.object({
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().default("development"),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+
+  // OpenTelemetry (optional; ADR-040). The OTel SDK is registered in
+  // instrumentation.ts ONLY when OTEL_EXPORTER_OTLP_ENDPOINT is set -- an
+  // unconfigured deploy pays zero overhead (AC-5.1). The endpoint points at an
+  // OTel Collector (the swappable-backend seam) or directly at a SigNoz/OTLP
+  // sink; protocol defaults to http/protobuf. Declared here for the env
+  // contract; the runtime gate lives in lib/observability/config.ts, which
+  // reads process.env directly so it works on the Edge runtime too.
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_PROTOCOL: z
+    .enum(["http/protobuf", "http/json", "grpc"])
+    .optional(),
+  OTEL_SERVICE_NAME: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

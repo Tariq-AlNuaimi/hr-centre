@@ -1,0 +1,59 @@
+# OpenTelemetry Collector config (ADR-040) — the swappable-backend SEAM.
+#
+# The app (instrumentation.ts → @vercel/otel) exports OTLP to this Collector;
+# the Collector fans out to whichever backend the tenant runs. Swapping the
+# backend (SigNoz → a managed APM → the tenant's own stack) is an edit HERE, not
+# an app-code change — that is the whole point of the OTLP seam.
+#
+# The default pipeline exports to `debug` only, so a bare `--profile
+# observability` bring-up works with ZERO extra services (traces/metrics/logs
+# print to the Collector's stdout). To send to SigNoz, run SigNoz's own compose
+# and add `otlp/backend` to each pipeline's `exporters` list below.
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  # Batch before export — the standard efficiency processor; bounds egress.
+  batch:
+    timeout: 5s
+
+exporters:
+  # Always-on local visibility; never fails, needs no backend.
+  debug:
+    verbosity: normal
+
+  # --- SigNoz (or any OTLP sink): opt-in backend. -----------------------------
+  # UNCOMMENT the exporter below AND add `otlp/backend` to each pipeline's
+  # `exporters` list to activate. Endpoint is env-driven so the backend is a
+  # deploy-time config choice (ADR-040), never an app diff. Keep it commented
+  # until SigNoz is running: the Collector refuses to start with a
+  # configured-but-unused exporter, and an unset endpoint would be invalid.
+  #
+  # otlp/backend:
+  #   endpoint: ${env:OTEL_BACKEND_OTLP_ENDPOINT}
+  #   tls:
+  #     insecure: true
+
+service:
+  pipelines:
+    # Default: export to `debug` only, so a bare `--profile observability`
+    # bring-up is valid with zero backend services. Add `otlp/backend` here once
+    # the exporter above is uncommented and SigNoz is up.
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
