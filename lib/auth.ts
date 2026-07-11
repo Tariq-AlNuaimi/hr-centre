@@ -4,9 +4,9 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import type { Provider } from "next-auth/providers";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
-import bcrypt from "bcryptjs";
 import type { Role } from "../generated/prisma/client";
 import { prismaUnfiltered } from "./prisma";
+import { verifyPassword, needsRehash, hashPassword } from "./password";
 
 /**
  * SSO SEAM (ADR-013 / ADR-024): map an IdP's claims to our Role enum. Default is
@@ -78,16 +78,27 @@ const credentialsProvider = Credentials({
 
     if (!user?.passwordHash) return null;
 
-    const valid = await bcrypt.compare(
+    const valid = await verifyPassword(
       credentials.password as string,
       user.passwordHash
     );
     if (!valid) return null;
 
-    // Update last login
+    // Update last login; and silently upgrade a legacy (bcrypt) hash to Argon2id
+    // on successful auth (ADR-039). The rehash rides the same write, so there is
+    // no extra round-trip, and it does NOT bump passwordChangedAt — the password
+    // itself did not change, so existing sessions must not be revoked.
+    const loginUpdate: { lastLoginAt: Date; passwordHash?: string } = {
+      lastLoginAt: new Date(),
+    };
+    if (needsRehash(user.passwordHash)) {
+      loginUpdate.passwordHash = await hashPassword(
+        credentials.password as string
+      );
+    }
     await prismaUnfiltered.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: loginUpdate,
     });
 
     return {

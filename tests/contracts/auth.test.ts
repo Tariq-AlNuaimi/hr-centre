@@ -1,7 +1,7 @@
 // Contract tests for lib/auth.ts — the Credentials `authorize` flow and the
 // jwt/session callbacks (role propagation). These live inside the NextAuth({...})
 // config object and aren't individually exported, so we mock `next-auth` (and the
-// provider/adapter/prisma/bcrypt graph) to CAPTURE the config object lib/auth.ts
+// provider/adapter/prisma/password graph) to CAPTURE the config object lib/auth.ts
 // passes to NextAuth, then invoke the real closures. No change to lib/auth.ts.
 //
 // Runs DB-free under node:test's module mocks (requires --experimental-test-
@@ -27,6 +27,7 @@ let findUniqueArgs: unknown = null;
 let findUniqueResult: Record<string, unknown> | null = null;
 let updateCalls: unknown[] = [];
 let compareResult = false;
+let rehashNeeded = false;
 
 // The NextAuth config lib/auth.ts builds (captured by the mocked NextAuth).
 let config: {
@@ -63,9 +64,14 @@ before(async () => {
   mockApi.module!("@auth/prisma-adapter", {
     namedExports: { PrismaAdapter: () => ({}) },
   });
-  // bcryptjs default export object with a controllable compare().
-  mockApi.module!("bcryptjs", {
-    defaultExport: { compare: async () => compareResult },
+  // lib/password is the verify/hash/rehash seam auth.ts now depends on (ADR-039).
+  // verifyPassword's boolean and needsRehash's flag are controllable per-test.
+  mockApi.module!(import.meta.resolve("../../lib/password.ts"), {
+    namedExports: {
+      verifyPassword: async () => compareResult,
+      needsRehash: () => rehashNeeded,
+      hashPassword: async () => "$argon2id$rehashed",
+    },
   });
   // prismaUnfiltered stub: record findUnique args + update calls.
   mockApi.module!(import.meta.resolve("../../lib/prisma.ts"), {
@@ -105,6 +111,7 @@ beforeEach(() => {
   findUniqueResult = null;
   updateCalls = [];
   compareResult = false;
+  rehashNeeded = false;
 });
 
 const VALID_USER = {
@@ -174,8 +181,31 @@ test("authorize: valid login returns the user (with role) and stamps lastLoginAt
   // index a key it intentionally must NOT carry.)
   assert.equal((out as Record<string, unknown>).passwordHash, undefined, "must NOT leak passwordHash to the session");
   assert.equal(updateCalls.length, 1, "should stamp lastLoginAt exactly once");
-  const data = (updateCalls[0] as { data: { lastLoginAt: unknown } }).data;
+  const data = (updateCalls[0] as { data: { lastLoginAt: unknown; passwordHash?: string } }).data;
   assert.ok(data.lastLoginAt instanceof Date, "lastLoginAt should be a Date");
+  assert.equal(data.passwordHash, undefined, "current-hash login must not rewrite passwordHash");
+});
+
+test("authorize: silently rehashes a legacy hash to Argon2id on successful login (ADR-039)", { skip: !canMock }, async () => {
+  findUniqueResult = { ...VALID_USER, passwordHash: "$2b$12$legacybcrypthash" };
+  compareResult = true;
+  rehashNeeded = true;
+  const out = await config.providers[0].authorize({
+    email: "user@example.com",
+    password: "correct",
+  });
+  assert.ok(out, "login should still succeed");
+  assert.equal(updateCalls.length, 1, "rehash rides the single lastLoginAt write");
+  const data = (updateCalls[0] as { data: { lastLoginAt: unknown; passwordHash?: string } }).data;
+  assert.ok(data.lastLoginAt instanceof Date);
+  assert.equal(data.passwordHash, "$argon2id$rehashed", "legacy hash upgraded to Argon2id on login");
+  // A silent rehash is NOT a password change — it must not stamp passwordChangedAt
+  // (that would revoke the user's other live sessions).
+  assert.equal(
+    (data as Record<string, unknown>).passwordChangedAt,
+    undefined,
+    "rehash must not bump passwordChangedAt"
+  );
 });
 
 test("authorize: looks the user up by normalized (lowercased, trimmed) email + deletedAt:null", { skip: !canMock }, async () => {

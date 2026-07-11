@@ -1,21 +1,56 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BCRYPT_COST, hashPassword } from "../../lib/password";
+import bcrypt from "bcryptjs";
+import {
+  ARGON2_OPTIONS,
+  hashPassword,
+  verifyPassword,
+  needsRehash,
+} from "../../lib/password";
 
-// The bcrypt work factor is a security parameter, not a tuning preference: too
-// low and stolen hashes are cheap to crack. Pin the floor so a future edit that
-// lowers it fails the gate (SR-N4). 12 is the 2026 minimum (SECURITY.md §2/§4).
-test("BCRYPT_COST meets the minimum work factor", () => {
+// The Argon2id parameters are a security floor, not a tuning preference: too low
+// and stolen hashes are cheap to crack. Pin the OWASP 2026 minimums so a future
+// edit that weakens them fails the gate (SR-N4; ADR-039; SECURITY.md §2/§4).
+test("ARGON2_OPTIONS meet the OWASP minimum parameters", () => {
   assert.ok(
-    BCRYPT_COST >= 12,
-    `BCRYPT_COST must be >= 12, got ${BCRYPT_COST}`
+    ARGON2_OPTIONS.memoryCost >= 19456,
+    `memoryCost must be >= 19456 KiB, got ${ARGON2_OPTIONS.memoryCost}`
   );
+  assert.ok(
+    ARGON2_OPTIONS.timeCost >= 2,
+    `timeCost must be >= 2, got ${ARGON2_OPTIONS.timeCost}`
+  );
+  assert.ok(ARGON2_OPTIONS.parallelism >= 1);
 });
 
-test("hashPassword emits a bcrypt hash at the configured cost", async () => {
+test("hashPassword emits an Argon2id hash", async () => {
   const hash = await hashPassword("correct horse battery staple");
-  // bcrypt format: $2<a|b|y>$<two-digit cost>$<22 salt><31 hash>
-  const m = hash.match(/^\$2[aby]\$(\d{2})\$/);
-  assert.ok(m, `not a bcrypt hash: ${hash}`);
-  assert.equal(Number(m![1]), BCRYPT_COST);
+  assert.ok(hash.startsWith("$argon2id$"), `not an Argon2id hash: ${hash}`);
+});
+
+test("verifyPassword round-trips an Argon2id hash", async () => {
+  const hash = await hashPassword("s3cret-passphrase");
+  assert.equal(await verifyPassword("s3cret-passphrase", hash), true);
+  assert.equal(await verifyPassword("wrong", hash), false);
+});
+
+test("verifyPassword still accepts a legacy bcrypt hash (silent migration)", async () => {
+  // A hash produced the OLD way must keep verifying, so existing users log in
+  // without a reset (ADR-039 legacy-verify window).
+  const legacy = await bcrypt.hash("old-password", 12);
+  assert.ok(legacy.startsWith("$2"), "sanity: bcrypt hash prefix");
+  assert.equal(await verifyPassword("old-password", legacy), true);
+  assert.equal(await verifyPassword("nope", legacy), false);
+});
+
+test("needsRehash flags legacy hashes and clears for Argon2id", async () => {
+  const legacy = await bcrypt.hash("x", 12);
+  assert.equal(needsRehash(legacy), true, "bcrypt hash must be upgraded");
+  const modern = await hashPassword("x");
+  assert.equal(needsRehash(modern), false, "argon2 hash is current");
+});
+
+test("verifyPassword returns false (never throws) on a malformed hash", async () => {
+  assert.equal(await verifyPassword("anything", "not-a-real-hash"), false);
+  assert.equal(await verifyPassword("anything", ""), false);
 });

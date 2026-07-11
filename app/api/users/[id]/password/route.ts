@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
-import bcrypt from "bcryptjs";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, err, forbidden } from "@/lib/api-response";
@@ -11,8 +10,9 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters").max(128),
 });
 
-// Rate-limited: this route verifies currentPassword with bcrypt, so throttle it
-// per-IP to blunt online password-guessing even though it's self-scoped.
+// Rate-limited: this route verifies currentPassword (Argon2id, or legacy bcrypt
+// via verifyPassword), so throttle it per-IP to blunt online password-guessing
+// even though it's self-scoped.
 export const PUT = withRateLimit(
   withAuth(async (
   request: NextRequest,
@@ -38,7 +38,7 @@ export const PUT = withRateLimit(
     return err("Password change not available for OAuth accounts");
   }
 
-  const valid = await bcrypt.compare(
+  const valid = await verifyPassword(
     parsed.data.currentPassword,
     user.passwordHash
   );
