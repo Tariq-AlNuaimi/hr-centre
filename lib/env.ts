@@ -204,7 +204,9 @@ const envSchema = z.object({
   // SCIM_WEBHOOK_SECRET, when set, additionally verifies the BoxyHQ dsync HMAC
   // signature on the raw body (the native Polis Directory-Sync contract).
   SCIM_INTERNAL_SECRET: z.string().min(32).optional(),
-  SCIM_WEBHOOK_SECRET: z.string().optional(),
+  // Strength floor on the HMAC secret too — it is defense-in-depth, but a weak
+  // value undermines the exact protection it adds (senior-review 2026-07-11).
+  SCIM_WEBHOOK_SECRET: z.string().min(16).optional(),
 });
 
 export const env = envSchema.parse(process.env);

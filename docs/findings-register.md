@@ -40,6 +40,17 @@ the changed surface is still **open** (un-adjudicated).
   pgvector DB, set EMBEDDINGS_PROVIDER + EMBEDDINGS_API_KEY, and exercise ragUpsert/ragQuery. —
   owner: operator — status: adjudicated(2026-07-11) (accepted: infra-unavailable in-session;
   verification delegated to a pgvector-capable fork/CI, same posture as the WS-1 image wave-off)
+- 2026-07-11 — [quality] WS-6 Ory Polis SSO/SCIM seam (ADR-045) is UNVERIFIED in-session —
+  lib/sso/* + app/api/internal/scim + the generic OIDC provider in lib/auth.ts + the `sso` compose
+  profile were authored to the documented Ory Polis / BoxyHQ dsync contract, but **no live Polis
+  sidecar was booted**, so the OIDC handshake params (`checks:["state"]`, client_secret_post) and
+  the SCIM webhook shape ran no real round-trip. ADR-045 + the blueprint promised this line; it is
+  now recorded (senior-review 2026-07-11 flagged the promised-but-missing entry as a governance gate
+  hole). Verification delegated to a fork/CI with a real IdP, same posture as the WS-1 image + WS-5
+  RAG wave-offs. Fix at activation: `--profile sso` up, create a Polis SSO connection, complete a
+  SAML→OIDC login + a dsync provisioning event end-to-end. — owner: operator —
+  status: adjudicated(2026-07-11) (accepted: infra-unavailable in-session; verification delegated to
+  a Polis-capable fork/CI)
 - 2026-07-11 — [secure] ADR-041 P0 item (c) — **SAST-as-a-hard-CI-gate + `zizmor` action-pin
   audit are DEFERRED to CI activation, not landed in WS-2.** ADR-041 and the enterprise-P0
   blueprint (AC-4.3) list "promote `sast.yml` from dormant to a hard blocking gate" + add `zizmor`
