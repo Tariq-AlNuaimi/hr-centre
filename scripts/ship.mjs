@@ -695,6 +695,23 @@ async function scanDocker() {
         "A standard artifact should be a scanned artifact (ADR-030) -- install trivy to scan the image + Dockerfile.",
     });
   }
+  // Trivy supply-chain pin (ADR-041 / CVE-2026-33634). Trivy was compromised
+  // 2026-03-19: v0.69.4/.5/.6 + `latest` were repointed to a credential stealer
+  // and trivy-action was poisoned. Refuse to RUN a weaponized version -- a scanner
+  // is a privileged process, so a bad one is worse than none. Pin <= 0.69.3 until a
+  // clean post-incident release line is verified (the ADR-041 migration trigger).
+  const TRIVY_COMPROMISED = new Set(["0.69.4", "0.69.5", "0.69.6"]);
+  const trivyVer = (trivyProbe.out.match(/Version:\s*([0-9]+\.[0-9]+\.[0-9]+)/) || [])[1];
+  if (trivyVer && TRIVY_COMPROMISED.has(trivyVer)) {
+    return red(
+      `trivy ${trivyVer} is a COMPROMISED release (CVE-2026-33634, 2026-03-19) -- a credential\n` +
+        "  stealer, NOT a scanner. Refusing to run it. Pin trivy <= 0.69.3 (trivy-action v0.35.0 /\n" +
+        "  setup-trivy v0.2.6) per ADR-041 -- reinstall a safe version and re-run /ship --full."
+    );
+  }
+  const verWarn = trivyVer
+    ? ""
+    : "\n  note: could not parse trivy version to verify it against the CVE-2026-33634 pin (ADR-041).";
   // The image + config scans are independent; run them together.
   const [img, conf] = await Promise.all([
     run("trivy image", "trivy", [
@@ -707,12 +724,16 @@ async function scanDocker() {
   const notes = [];
   if (!img.ok) notes.push("  trivy image (HIGH/CRITICAL):\n" + img.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
   if (!conf.ok) notes.push("  trivy config (HIGH/CRITICAL):\n" + conf.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
-  if (notes.length === 0) return ok("image built + trivy clean (no HIGH/CRITICAL)");
+  if (notes.length === 0) {
+    return verWarn
+      ? ok("image built + trivy clean (no HIGH/CRITICAL)", { warn: verWarn.trim() })
+      : ok("image built + trivy clean (no HIGH/CRITICAL)");
+  }
   return ok("image built; trivy findings to triage", {
     warn:
       "trivy found HIGH/CRITICAL issues in the image/config. ADR-030: triage via docs/findings-register.md\n" +
       "  (fix, or log an adjudicated wave-off). Not a hard red -- base-image CVE churn would make the gate flaky:\n" +
-      notes.join("\n"),
+      notes.join("\n") + verWarn,
   });
 }
 
