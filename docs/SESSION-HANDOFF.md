@@ -104,59 +104,54 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 <!-- END:auto-status -->
 
-**Goal (operator, verbatim):** "implement the Deferred-adoption plan, clean the
-repo (6 PRs + 17 branches), and do as much parallel work as we can."
-Sub-goal: adjudicate the 11 deferred items (don't blind-adopt), triage the
-Dependabot PRs, prune stale branches — parallelized.
+---
 
-**State:** branch `claude/fullstack-vibe-replatform-complete-lqfalj` @ `5052aef`,
-in sync with origin (0 unpushed). `git status` CLEAN. Last `/ship`: **green**
-(5052aef). Live prod = `dd15554` (fullstack-vibe-template.vercel.app), authed
-dark-axe browser-CLEAN (11/11 screens, 0 serious/critical). Remote `main` =
-`200bc02` (program terminal state); this branch is ahead with session-13 work.
+# ENTERPRISE PIVOT — session handoff (2026-07-11)
 
-**Done this session (200bc02 → 5052aef):**
-- `62e44ef` docs: `docs/deferred-adoption-plan.md` (11 items, per-item trigger+disposition)
-- `770ae35`+`1d78eb5` fix(a11y): closed TODO(C4) — 3 jsx-a11y rules warn→error (palette keydown→native Input + `tabIndex=-1` rows; justified disables for autofocus + label primitive)
-- `dd15554` fix(a11y): style-guide dark swatch text-accent→text-primary-emphasis (the one dark finding the authed run caught)
-- `5052aef` docs: session-13 state + agent-memory seed-behavior correction
+> This free-form section supersedes older content below the auto-status block.
+> Active program is the **enterprise pivot**, NOT the replatform program the
+> auto-status table above still reflects.
 
-**In flight:** none — clean stopping point. New scope not yet started.
+## Goal
+Execute the enterprise-pivot plan autonomously, P0→P1→P2. Source of truth:
+`docs/research/v2/enterprise-benchmark-v2.html` (P0/P1/P2 action plan) +
+`docs/research/v2/PHASE-2-BACKLOG.md` (WS-1..WS-8). Each increment: blueprint →
+build → `/ship` green → `/code-review` → push → `senior-code-reviewer`.
+Sub-goal now: **P0 (WS-1/2/3) is DONE + pushed. Next = P1/P2 (WS-4..WS-8).**
 
-**Decisions:** (1) authed dark run used a THROWAWAY probe admin, NOT a demo-cred
-overwrite (operator approved the run; probe path is less destructive). (2) C4
-a11y flip + style-guide fix landed green.
+## State
+- Branch `claude/enterprise-pivot-research-6t7euo`, **in sync with origin (0 unpushed, tree clean)**.
+- Last `/ship`: **green** (d84c061). Not deployed (no Docker daemon in-session; Vercel path unchanged).
+- `gitleaks` install in a fresh container: `GOBIN=$HOME/.local/bin go install github.com/zricethezav/gitleaks/v8@v8.21.2` then export PATH (github.com release download is proxy-BLOCKED; the Go module proxy works).
 
-**Landmines:**
-- **Do NOT blind-implement all 11 deferred** — most are trigger/ADR/study/DROP-gated
-  (vitest+citus need ADRs; fastmcp/keploy/citus need their trigger; claude-task-master/
-  backlog-md are external planners; wasp is study-only; sonarqube/lhci are ON-HANDOFF).
-  Only ~2-3 are safely buildable now (see Next). Adjudicate each to an ADR line or a
-  findings-register `dropped` entry — that closes the program blueprint's closeout gate.
-- Destructive git (branch delete, reset) is deny-listed locally → prune remote branches
-  via GitHub MCP (`delete`) or hand to operator; never force-push shared.
-- Worktree subagents mis-base on stale `032f643` → run agents in MAIN checkout, disjoint files.
-- `pkill -f bridge.mjs` matches your own cmdline → SIGTERM (exit 144); stop bridge via `fuser -k 8443/tcp`.
-- Seed only CREATES a missing admin (never updates) — see agent-memory 2026-07-03 (session 13).
-- Residuals in prod: probe admin `axe-probe@example.com` persists (soft-delete to remove);
-  `SEED_ADMIN_PASSWORD` env holds probe value (real `admin@example.com` login unaffected).
-- Local `main` pointer is stale `247eca4` (remote main is `200bc02`) — reset with
-  `git checkout -B main origin/main` if you need a correct local main.
+## Done (this session, all pushed)
+- 7bc98c7 remember gotchas; agent-memory curated.
+- 7ffd4ee Phase 0: ADR-035..041 (Docker-first, AI stack, enterprise floor, Node24, Argon2id, OTel, supply-chain) + build-vs-buy ledger entries.
+- 15a5e4e Phase 1: blueprint `docs/blueprints/enterprise-p0-baseline.md` (operator Q's resolved: Additive flip / bundled-default DB / lib-ai skeleton-only).
+- 36b8dc1 WS-2a supply-chain: SHA-pin actions + Trivy CVE-2026-33634 guard.
+- 1035b82 WS-2b Argon2id (@node-rs/argon2) + legacy-verify + rehash-on-login.
+- 4a801a7 WS-3 Valkey + rate-limiter-flexible shared-state limiter (closes T-01).
+- 01de332 senior-review remediation (see Landmines — the trivy-env CRITICAL etc.).
+- d84c061 WS-1 Docker distroless(Node24) + compose.prod.yaml + Caddy + entrypoint.
 
-**Next steps (parallel-first):**
-1. Fan out 3 READ-ONLY investigators in the MAIN checkout (disjoint scopes), then
-   present to operator via AskUserQuestion before any mutation:
-   - **A · PR triage:** read diffs of #59–#64; classify (Actions-bumps-on-dormant-CI =
-     safe merge/close; #64 npm minor-patch = review+/ship+merge). Recommend per-PR.
-   - **B · Deferred adjudication:** for each of the 11, verdict = build-now / ADR-then /
-     drop / defer-on-trigger. Flag the ~2-3 safe now: `specialist-agents` (one review-agent
-     seed, additive), `tremor` (check if `@tremor/react` peer now accepts React 19 → adopt
-     or DROP in ADR-029), `wasp` (study note only). Draft the ADR/drop lines.
-   - **C · Branch inventory:** list 17 remote branches; mark merged-into-main (safe delete)
-     vs unmerged; flag `worktree-agent-*` garbage.
-2. Operator confirms scope (which deferred to actually build, which PRs to merge,
-   which branches to delete).
-3. Execute in parallel: build the confirmed deferred items (disjoint-file agents) +
-   merge/close PRs (GitHub MCP) + delete confirmed branches (GitHub MCP). `/ship`
-   green + `/code-review` before any push touching auth/lib/schemas; senior-review after.
-4. Land green on this branch; update session-state.
+## In flight
+- **`senior-code-reviewer` for WS-1 + remediation (01de332+d84c061) is RUNNING in background** (agent a61b9c02). Its output file is under this session's tasks dir; the NEXT session should re-run a senior review on `git diff 4a801a7..HEAD` (a background agent does not carry across sessions) and address any findings before P1.
+
+## Decisions (operator-confirmed via AskUserQuestion 2026-07-11)
+- Additive default-flip (keep personal/Vercel default; enterprise rail opt-in this phase).
+- Docker DB: both compose profiles, **bundled pgvector:pg18 default**, external-db profile available.
+- lib/ai: **skeleton-only** this phase; /scaffold-ai-endpoint + ai-eval gate + AI-Quality pillar deferred to a WS-5 increment.
+
+## Landmines
+- `npm run ship` must run WITHOUT `NODE_ENV=production` (false component-test failures).
+- Trivy runs only in `/ship --full` (needs a Docker daemon — absent here). The compromise-guard scopes trivy to a secret-free env; keep that if editing ship.mjs.
+- WS-1 image is **UNVERIFIED** (no daemon) — `docker-build.yml` CI must build+boot it; highest risk = Prisma 7 client/migration-engine inside distroless. Logged as an open findings-register wave-off.
+- SAST-as-hard-gate + zizmor (ADR-041 P0 item c) are **deferred to CI activation** (free-plan dormancy) — open wave-off in the register, not dropped.
+- The auto-status block above is rendered from `session-state.json`; edit the JSON, never between the markers.
+
+## Next steps
+1. **Re-run `senior-code-reviewer` on `git diff 4a801a7..HEAD`** (WS-1 + remediation) — the in-flight background review does not survive into the next session; act on any findings first.
+2. **P1 — WS-4 Observability**: `@vercel/otel` in `instrumentation.ts` → OTel Collector → SigNoz (ADR-040). New `lib/observability/**` is pre-authorized in the blueprint Scope + ledger.
+3. **P1 — WS-5 AI layer**: `lib/ai/*` provider + thin native Tool-Runner wrapper on `@anthropic-ai/sdk` (skeleton-only per decision); pgvector; evals; then /scaffold-ai-endpoint + ai-eval gate as a follow-on.
+4. **P1 — WS-6 Identity** (Ory Polis SAML/SCIM sidecar), **WS-7 stack bumps** (Node22→24 in package/engines, zod v4, Prettier gate), **WS-8 harness** (fail-open→fail-closed hooks, gate-quartet, security-architect+sre agents).
+5. Each WS: `/blueprint` (Scope already partly covers) → build → `/ship` (install gitleaks first) → `/code-review` → push → `senior-code-reviewer`. Land green; never end with unpushed commits.
