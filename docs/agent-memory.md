@@ -263,3 +263,19 @@ repoId:1241728413, ref:"<branch>", sha:"<sha>"}}` (Bearer $VERCEL_TOKEN). (2) `.
   reads the gitignored file and FAILS CLOSED. Auto-spawn ships DISABLED
   (`autoSpawn.enabled=false`) and has no autonomous consumer yet — don't enable expecting
   zero-touch spawning.
+
+## 2026-07-11 — Operator working-style directive: DESIGN BEFORE EXECUTION (binding)
+
+Operator's self-diagnosed top-2 failure modes when building apps with this harness, to actively counter EVERY time:
+
+1. **Poor architecture of functions/workflow + no design before execution.** The recurring failure
+   is jumping to code without first architecting the functions and the workflow. COUNTER: always run
+   the design/architecture pass FIRST — `/blueprint` (architecture sketch: entities/routes/services +
+   where state lives + data/control flow) and `EnterPlanMode` for anything multi-file, BEFORE writing
+   code. Do not "go without thinking." This is the operator's #1 ask.
+2. **Poor frontend implementation.** Frontend quality is a repeat weak spot. COUNTER: use
+   `/design-system` proactively (declare the design read, build from `docs/design-recipes.md` vetted
+   patterns on the shipped `components/shared/*` primitives), and gate with `/design-qa` — don't
+   improvise UI and fix at QA. Consider the frontend-design tooling in PHASE-2-BACKLOG §A.6.
+
+Standing rule: think/architect/design first, implement second — for every app-building task.

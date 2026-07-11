@@ -174,3 +174,39 @@ least privilege. Polis owns the protocol complexity; the app just consumes OIDC 
 a provisioning webhook — the smallest maintained surface, fully OSS/self-hostable,
 silent no-op until POLIS__/SCIM__ env is set. See ADR-045;
 blueprint docs/blueprints/enterprise-ws6-identity.md.
+
+### 2026-07-11 — Excel export (exceljs → SheetJS track)
+
+Scope: lib/export.ts, lib/export/**
+Considered: exceljs (current, stalled), SheetJS/xlsx (community-CDN distribution caveat), write-excel-file (small).
+Decision: build-thin-wrapper; track migration off stalled exceljs. See ADR-051.
+
+### 2026-07-11 — OpenAPI contract seam
+
+Scope: lib/openapi/**
+Considered: zod-openapi (chosen — reuses existing zod), @asteasolutions/zod-to-openapi, hand-written spec, tRPC.
+Decision: adopt zod-openapi + Scalar + Schemathesis (thin generation layer). See ADR-052 + blueprint.
+
+### 2026-07-11 — Docs site
+
+Scope: lib/docs/**
+Considered: Fumadocs (chosen — RSC-native, in-app), Nextra, Astro Starlight, Mintlify (SaaS), plain markdown.
+Decision: adopt Fumadocs (mounts in the existing Next app — one image). See ADR-053 + blueprint.
+
+### 2026-07-11 — Background job queue
+
+Scope: lib/queue/**, lib/jobs/**
+Considered: pg-boss (chosen — Postgres-backed, no new infra), BullMQ (needs Redis/Valkey), Inngest/Trigger.dev (SaaS), Temporal (heavy).
+Decision: adopt pg-boss — reuses the existing Postgres, no extra service for v1. See PHASE-2-BACKLOG WS-3.
+
+### 2026-07-11 — OpenTelemetry SDK
+
+Scope: lib/otel/**, lib/observability/**, instrumentation.ts
+Considered: @opentelemetry/sdk-node + @vercel/otel (chosen), Sentry-only, none.
+Decision: adopt the OTel sdk-node set behind lib/otel — instrument-once, swap backend (SigNoz/GlitchTip). See ADR-040 / PHASE-2-BACKLOG WS-4.
+
+### 2026-07-11 — Seed data factories
+
+Scope: prisma/factories.ts, lib/factories/**
+Considered: @faker-js/faker (chosen, dev-dep), hand-written seeds (current), snaplet (shut down), neosync (archived).
+Decision: adopt @faker-js/faker for FK-valid seed graphs (dev-dep only). See 20-remaining-sweep.md.

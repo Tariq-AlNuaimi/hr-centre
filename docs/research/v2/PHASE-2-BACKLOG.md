@@ -54,3 +54,50 @@ questions via AskUserQuestion. The blueprint gate requires this before new route
 
 > Reminder: the operator's "below list" (referenced but never pasted) still needs folding into the v2
 > benchmark categories and the report before/at the start of implementation.
+
+## A.6 — Operator repo/tool shortlist to evaluate against Section A (2026-07-11, operator request)
+
+DEFERRED to a later stage. Revise each against the Section-A files (16-skills, 17-agents, 18-mcps,
+19-libraries-deep, 20-remaining-sweep) + the merged action plan; decide KEEP-current / ADOPT /
+ADD-AS-OPTION / DEFER with a build-vs-buy note. Two operator pain points frame the lens (see
+agent-memory 2026-07-11): (a) architecture/design-before-execution, (b) frontend quality — so weight
+the design/frontend/skill tools heavily.
+
+**Frontend / design skills & MCPs** (directly target pain point (b)):
+
+- frontend-design plugin (`/plugin install frontend-design`)
+- shadcn MCP — https://ui.shadcn.com/docs/mcp (we already wire shadcn MCP — confirm parity)
+- 21st.dev Magic MCP — https://github.com/21st-dev/magic-mcp + `claude mcp add --transport http 21st https://21st.dev/api/mcp --header "x-api-key: $API_KEY_21ST"`
+- ui-ux-pro-max skill — https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+- claude-design-skill — https://github.com/jiji262/claude-design-skill
+- impeccable — https://github.com/pbakaus/impeccable
+- taste-skill — https://github.com/Leonxlnx/taste-skill (`npx skills add Leonxlnx/taste-skill`)
+- Vercel MCP — https://vercel.com/docs/mcp
+- chrome-devtools MCP — https://github.com/ChromeDevTools/chrome-devtools-mcp (already wired — confirm)
+
+**Agent/AI platforms & runtimes** (vs 17-agents / 07-ai-agent-stack):
+
+- OpenHands — https://github.com/OpenHands/openhands
+- Dify — https://github.com/langgenius/dify
+- Langflow — https://github.com/langflow-ai/langflow
+- Open WebUI — https://github.com/open-webui/open-webui
+- claudecodeui — https://github.com/siteboon/claudecodeui
+- headroom — https://github.com/headroomlabs-ai/headroom
+- free-llm-api-resources — https://github.com/cheahjs/free-llm-api-resources
+- free LLM API list — https://ui.shadcn.com (n/a) ; note free-llm-api-resources above
+
+**Data / backend / infra** (vs 02-data / 09-infra / 14-runtime):
+
+- Supabase — https://github.com/supabase/supabase
+- Coolify — https://github.com/coollabsio/coolify (self-host PaaS; cross-ref 09-infra PaaS row)
+- Maxun (no-code web-data extraction) — https://github.com/getmaxun/maxun
+
+**Document / OCR / scraping capabilities** (likely net-new /scale-up recipes):
+
+- Stirling-PDF — https://github.com/Stirling-Tools/stirling-pdf (PDF ops — note our no-PDF-export stance, ADR-006)
+- Unlimited-OCR — https://github.com/baidu/Unlimited-OCR
+- crawl4AI — https://github.com/unclecode/crawl4AI
+- browser-use — https://github.com/browser-use/browser-use (vs playwright/chrome-devtools MCP)
+
+Deliverable: a short verdict table (Tool | Category | vs our current | Recommendation | Priority) +
+build-vs-buy notes; fold ADOPT/ADD-AS-OPTION picks into the merged action plan.
