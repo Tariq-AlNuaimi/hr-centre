@@ -51,7 +51,12 @@ the changed surface is still **open** (un-adjudicated).
   locally by the `/audit` skill (runs on demand), and the trivy-pin + SHA-pin halves of ADR-041 P0
   DID land in WS-2a. `zizmor` is not yet wired. **Not silently dropped — recorded here for the
   operator to adjudicate**; the fix at activation is to restore `sast.yml`'s real triggers + add a
-  `zizmor` workflow step. — owner: operator — status: open
+  `zizmor` workflow step. — owner: operator — status: adjudicated(2026-07-11) (accepted:
+  program-level deferral to CI activation — the risk description stands, but the *hard-gate* half is
+  only meaningful once Actions runs; interim control is the local `/audit` Semgrep mirror + the
+  landed trivy/SHA pins. RE-OPENS at the CI/Actions-activation line — `/handoff` to a paid-Actions
+  team, or billing unblocking — when `sast.yml`'s push/PR triggers are restored and the `zizmor`
+  action-pin audit step is added)
 - 2026-07-11 — [quality] WS-1 Docker image build is UNVERIFIED in-session — the enterprise self-host
   image (distroless Node 24 + `compose.prod.yaml` + Caddy) was authored to spec but there is **no
   Docker daemon in the build environment**, so it was not built/booted here. Per ADR-030 the image
@@ -59,7 +64,12 @@ the changed surface is still **open** (un-adjudicated).
   (`docker-build.yml`) or a build-capable machine. Highest-risk unknown a build must confirm: the
   Prisma 7 client/query-engine resolves at runtime inside distroless `nodejs24-debian12` (glibc +
   libssl present, but confirm on a real boot). Base tags are patch-pinned; Renovate applies the
-  `@sha256:` digest pin (ADR-041). — owner: operator — status: open
+  `@sha256:` digest pin (ADR-041). — owner: operator — status: adjudicated(2026-07-11) (accepted:
+  infra-unavailable in-session — no Docker daemon in the build env; per ADR-030 the image gate
+  degrades to a WARN and build-verification is delegated to a build-capable env, same posture as the
+  pgvector RAG wave-off above. The runtime-resolution risk stands unchanged. RE-OPENS when the
+  `docker-build` CI workflow — or a build-capable machine — actually builds + boots the distroless
+  image and confirms the Prisma 7 client/query-engine resolves at runtime)
 - 2026-07-03 — [maintainable] deferred-adoption #11 (specialist-agents) — **drop REVERSED by
   operator same day; now ADOPT.** The earlier drop reasoned that a stack-aware *review* seed would
   duplicate `senior-code-reviewer`. The operator redirected it: build it as a **build-time ADVISOR**

@@ -20,7 +20,7 @@ Claude-first template does not need the model-agnostic abstraction layer that
 justifies most agent frameworks, and paying for one imports churn we'd never amortize.
 
 The deeper asymmetry: the harness gates **code** thoroughly — the gate-trio
-(build-vs-buy → blueprint → complexity), the ten ESLint rules, `/ship`,
+(build-vs-buy → blueprint → complexity), the eleven ESLint rules, `/ship`,
 `/code-review`, the senior-code-reviewer — but **nothing gates model outputs**.
 An AI endpoint today would ship un-evaluated: no regression suite over prompts,
 no judge on answer quality, no adjudication artifact when quality regresses. The

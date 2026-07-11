@@ -86,10 +86,16 @@ function scanScalability() {
 // silent shrug (complaint #12). An entry is OPEN until then. Block on any open
 // wave-off, the same way a security or scalability finding blocks.
 //
-// Matches only real entries: a line beginning with a dash + an ISO date and
-// carrying `status: open`. The format-documentation line ("- Format: `YYYY-MM-DD
-// ... status: open | adjudicated(...)`") is NOT matched -- its date is the literal
-// "YYYY-MM-DD" (no digits) and its "open" is immediately followed by " |".
+// ENTRY-AWARE detection: register entries are MULTI-LINE (an entry's `status:`
+// almost always lands on a continuation line, not the opening `- YYYY-MM-DD`
+// line), so a single-physical-line regex silently misses every real open
+// wave-off. Instead, split the register into entry BLOCKS on the
+// `\n- YYYY-MM-DD` boundary and flag any block that carries `status: open`
+// ANYWHERE within it. The preamble block (blocks[0] — the file header + the
+// `- Format: ...` template line, whose "status: open | adjudicated(...)" is an
+// example, not a real wave-off) is skipped: it does not begin with a dash + a
+// real ISO date. So is the "promoted to documented trade-offs" trailer, whose
+// bullets are not dated entries.
 function scanWaveOffs() {
   const t0 = Date.now();
   const file = "docs/findings-register.md";
@@ -97,8 +103,18 @@ function scanWaveOffs() {
   if (!existsSync(file)) return { name: "wave-offs", ok: true, out: "no register", secs: secs() };
   let src;
   try { src = readFileSync(file, "utf8"); } catch { return { name: "wave-offs", ok: true, out: "unreadable register (skipped)", secs: secs() }; }
-  const OPEN = /^-\s*\d{4}-\d{2}-\d{2}\b.*\bstatus:\s*open\b(?!\s*\|)/i;
-  const open = src.split("\n").filter((l) => OPEN.test(l)).map((l) => l.trim());
+  // Split on the start-of-entry boundary: a newline followed by a dash + an ISO
+  // date. Continuation lines (indented, or bullets without a leading date) stay
+  // attached to their entry block.
+  const ENTRY_START = /^-\s*\d{4}-\d{2}-\d{2}\b/;
+  const OPEN = /\bstatus:\s*open\b/i;
+  const blocks = src.split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/);
+  const open = blocks
+    // Keep only real dated entries (drops the preamble/Format block and any
+    // non-entry trailer that isn't a dated bullet).
+    .filter((b) => ENTRY_START.test(b.trimStart()) && OPEN.test(b))
+    // Report the opening line of each offending entry.
+    .map((b) => b.trimStart().split("\n")[0].trim());
   if (open.length === 0) return { name: "wave-offs", ok: true, out: "clean (no open wave-offs)", secs: secs() };
   return {
     name: "wave-offs",

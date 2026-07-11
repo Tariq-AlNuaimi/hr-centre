@@ -43,8 +43,9 @@ no finding, no checklist item, no `/ship` effect — where it doesn't.
   blocking checklist `/qa`/`/uat` must affirm, mirroring the other pillars' structure.
 - It must be **inert on non-AI forks** — zero findings, zero `/ship` effect — reusing the
   established dormancy pattern so the default template stays green with no new config.
-- It must **compose with, not duplicate,** the `/ai-eval` gate (ADR-036) and the ten
-  ESLint rules that already hard-gate AI code.
+- It must **compose with, not duplicate,** the `/ai-eval` gate (ADR-036) and the eleven
+  ESLint rules that already hard-gate AI code (notably `no-direct-anthropic-sdk`, which
+  makes "model access only via `@/lib/ai`" a real gate, not a claim).
 
 ## Considered options
 
@@ -53,7 +54,7 @@ no finding, no checklist item, no `/ship` effect — where it doesn't.
 Add **AI-Quality** as pillar 6 in `docs/uat-rubric.md` and `CLAUDE.md`, governing AI
 endpoints only and **inert** on any fork with no `lib/ai` usage / no `AI_API_KEY`. It is
 framed identically to the other pillars — an **automatable slice** (the `/ai-eval` gate +
-the ten ESLint rules) and a **blocking checklist** (`/qa`/`/uat` affirm): eval pass-rate,
+the eleven ESLint rules, incl. `no-direct-anthropic-sdk`) and a **blocking checklist** (`/qa`/`/uat` affirm): eval pass-rate,
 prompt-injection resistance at the boundary, honest AI failure states (503 when
 unconfigured; no hallucinated success), grounding/citation for RAG, bounded cost/tokens,
 and no Restricted/PII in prompts or logs. A concern not fixed is a wave-off in
@@ -85,7 +86,8 @@ non-automatable half, so those checks stay vibes. Rejected in favor of a pillar 
 
 Adopt Option 1. AI-Quality becomes the **conditional sixth pillar**. It applies to a
 fork's AI endpoints and is **inert everywhere else**. Its automatable slice is the
-`/ai-eval` gate (ADR-036) plus the ten ESLint rules; its blocking checklist —
+`/ai-eval` gate (ADR-036) plus the eleven ESLint rules (`no-direct-anthropic-sdk` forces
+model access through `@/lib/ai`); its blocking checklist —
 injection resistance, honest failure states, grounding, cost/token bounds, prompt/log
 hygiene — is affirmed by `/qa`/`/uat`, with unfixed concerns adjudicated as wave-offs in
 `docs/findings-register.md`. It lives beside the five in `docs/uat-rubric.md` (new pillar
@@ -116,8 +118,8 @@ slice of it. Precisely:
   endpoints"; a fork with none has zero AI routes, so it raises zero AI-Quality findings
   and its Tier-2a subsection and release-readiness line are explicitly *skipped*.
 - **The automatable slice is already dormant-by-design.** `/ai-eval` exits 0 (SKIP) until
-  `AI_API_KEY` + fixtures exist (ADR-036); the ten ESLint rules only fire on code that
-  imports `@/lib/ai` or logs secrets — a non-AI fork has neither. So `/ship` is
+  `AI_API_KEY` + fixtures exist (ADR-036); the eleven ESLint rules only fire on code that
+  imports `@/lib/ai` / `@anthropic-ai/sdk` or logs secrets — a non-AI fork has neither. So `/ship` is
   byte-for-byte unaffected on this repo.
 - **No new `/ship` phase, no new config default.** The pillar adds documentation and a
   QA-tier checklist; it introduces **no** new `scripts/ship.mjs` check — the automatable

@@ -44,6 +44,13 @@ const eslintConfig = defineConfig([
       // an ordinary feature route can't silently drop those invariants by reaching
       // for the raw client. (tests/** + scripts/** are exempt below.)
       "rihal-template/no-prisma-unfiltered-import": "error",
+      // AI-Quality automatable slice (ADR-042): model access must go through the
+      // @/lib/ai barrel, never a raw @anthropic-ai/sdk import. Only lib/ai/** owns
+      // the SDK seam (provider + Tool-Runner wrapper); a route reaching for the SDK
+      // directly bypasses the isAiConfigured() gate, the endpoint-agnostic client,
+      // the default model/max_tokens, and the GenAI tracing. At error so the
+      // "model access only via @/lib/ai" promise can't silently regress.
+      "rihal-template/no-direct-anthropic-sdk": "error",
     },
   },
 

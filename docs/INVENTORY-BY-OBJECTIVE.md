@@ -153,7 +153,7 @@ alongside this bucket.)*
 
 **Objective:** the *Secure* pillar's floor — credentials never leak, auth
 wrappers are always present, the audit trail is complete, and no unparameterized
-SQL or unaudited bulk write slips through. Eight of the ten ESLint rules live
+SQL or unaudited bulk write slips through. Eight of the eleven ESLint rules live
 here (their primary objective is a security invariant); all are enforced by
 `lint`/`ship` (bucket C's mechanism), so the *mechanism* is shared but the
 *objective* is security.

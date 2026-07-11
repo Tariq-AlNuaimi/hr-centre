@@ -11,7 +11,9 @@
 //     OUTERMOST (no-rate-limit-inside-auth rule; the model call is the expensive part)
 //   - zod safeParse at the boundary -> 400 on invalid input
 //   - the model reached ONLY through @/lib/ai (never `new Anthropic(...)`)
-//   - the model call wrapped in withSpan() (WS-4 observability; no-op when OTel is off)
+//   - the model call wrapped in withAiSpan() via withAiRoute (GenAI-semconv trace,
+//     ADR-044): request attrs set by withAiRoute, response attrs (usage/finish
+//     reason) set on the handed span via setAiResponseAttributes; no-op when OTel off
 //   - an eval fixture so the deferred ai-eval gate (WS-5 part b) has something to score
 //
 // The generator writes via fs (a plain Node process), so the PreToolUse blueprint /
@@ -128,18 +130,22 @@ function routeTs() {
 // array below turns this single-shot completion into an agentic loop for free.
 //
 // The cross-cutting guard/parse/trace preamble (isAiConfigured() -> 503, zod
-// safeParse -> 400, withSpan) lives ONCE in withAiRoute (@/lib/ai); auth +
+// safeParse -> 400, withAiSpan) lives ONCE in withAiRoute (@/lib/ai); auth +
 // rate-limiting stay EXPLICIT here so the --writes wrapper is visible and
 // withRateLimit stays OUTERMOST (no-rate-limit-inside-auth; the model call is the
-// expensive downstream).
+// expensive downstream). withAiRoute sets the request-side GenAI attributes
+// (gen_ai.system / .request.model / .request.max_tokens) and hands the handler the
+// span; setAiResponseAttributes lands the response-side ones (token usage, finish
+// reason) so an OTLP sink (Langfuse; ADR-044) renders this span as a generation.
+// METADATA ONLY -- no prompt/completion text (opt-in via AI_TRACE_CONTENT).
 import { ${authWrapper}, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
-import { runAgent, withAiRoute } from "@/lib/ai";
+import { runAgent, withAiRoute, setAiResponseAttributes } from "@/lib/ai";
 import { ${schemaConst} } from "${validationImportPath}";
 
 export const POST = withRateLimit(
   ${authWrapper}(
-    withAiRoute({ span: "ai.${kebab}", schema: ${schemaConst} }, async (input) => {
+    withAiRoute({ span: "ai.${kebab}", schema: ${schemaConst} }, async (input, _request, span) => {
       // TODO: craft the real prompt / system message from the validated input.
       const userMessage = input.${primary.name};
 
@@ -148,6 +154,11 @@ export const POST = withRateLimit(
         // TODO: add \`tools: [...]\` to make this an agentic loop (native Tool Runner).
         tools: [],
       });
+
+      // Response-side GenAI attributes (gen_ai.response.model / .usage.* /
+      // .finish_reasons) on the active AI span -- METADATA ONLY (no prompt or
+      // completion text; that is opt-in via AI_TRACE_CONTENT, default OFF).
+      setAiResponseAttributes(span, finalMessage);
 
       const text = finalMessage.content
         .map((block) => (block.type === "text" ? block.text : ""))
@@ -244,7 +255,7 @@ function blueprintMd() {
     "- `isAiConfigured()` → 503 when the AI layer is unconfigured.",
     `- \`withRateLimit(${authWrapper}(...))\` — rate-limit OUTSIDE auth (limit ${rateLimit}/min).`,
     "- zod `safeParse` at the boundary → 400 on invalid input.",
-    "- Model reached only via `@/lib/ai` (`runAgent`); call traced with `withSpan`.",
+    "- Model reached only via `@/lib/ai` (`runAgent`); call traced as a GenAI-semconv span via `withAiRoute`/`withAiSpan` (ADR-044).",
     ``,
     `## Evals`,
     `- Fixtures: \`tests/ai-evals/${kebab}.eval.ts\` (dormant until the ai-eval gate, WS-5 part b).`,

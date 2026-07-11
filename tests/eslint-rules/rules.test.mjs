@@ -1,4 +1,4 @@
-// RuleTester coverage for the ten local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the eleven local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -23,6 +23,7 @@ import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
 import noRateLimitInsideAuth from "../../eslint-rules/rules/no-rate-limit-inside-auth.mjs";
 import noRestrictedExportColumn from "../../eslint-rules/rules/no-restricted-export-column.mjs";
 import noPrismaUnfilteredImport from "../../eslint-rules/rules/no-prisma-unfiltered-import.mjs";
+import noDirectAnthropicSdk from "../../eslint-rules/rules/no-direct-anthropic-sdk.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -587,6 +588,78 @@ ruleTest(
         filename: "/repo/lib/auth.tsx",
         code: `import { prismaUnfiltered } from "./prisma";`,
         errors: [{ messageId: "unfilteredImport" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" }
+);
+
+// --- no-direct-anthropic-sdk -----------------------------------------------
+// The @anthropic-ai/sdk package may only be imported inside lib/ai/** (the seam
+// that owns the client + Tool-Runner wrapper); everywhere else, model access
+// goes through the @/lib/ai barrel (ADR-042 AI-Quality pillar). The filename is
+// load-bearing, so each case sets an absolute path.
+const AI_PROVIDER = "/repo/lib/ai/provider.ts";
+const AI_TOOL_RUNNER = "/repo/lib/ai/tool-runner.ts";
+const AI_ROUTE = "/repo/app/api/ai/summarize/route.ts";
+const NON_AI_LIB = "/repo/lib/report.ts";
+ruleTest(
+  "no-direct-anthropic-sdk",
+  noDirectAnthropicSdk,
+  {
+    valid: [
+      // lib/ai/** legitimately owns the SDK seam (provider constructs the client).
+      {
+        filename: AI_PROVIDER,
+        code: `import Anthropic from "@anthropic-ai/sdk";`,
+      },
+      // tool-runner.ts types off the beta Tool-Runner API (type import, allowed here).
+      {
+        filename: AI_TOOL_RUNNER,
+        code: `import type Anthropic from "@anthropic-ai/sdk";`,
+      },
+      // Feature code reaching the model through the barrel is the sanctioned path.
+      {
+        filename: AI_ROUTE,
+        code: `import { runAgent } from "@/lib/ai";`,
+      },
+      // A package whose name merely CONTAINS the SDK name as a prefix substring
+      // (not the package or a sub-path) must not trip.
+      {
+        filename: AI_ROUTE,
+        code: `import x from "@anthropic-ai/sdk-helpers";`,
+      },
+    ],
+    invalid: [
+      {
+        // An app route importing the SDK directly bypasses the @/lib/ai seam.
+        filename: AI_ROUTE,
+        code: `import Anthropic from "@anthropic-ai/sdk";`,
+        errors: [{ messageId: "directSdkImport" }],
+      },
+      {
+        // An ordinary lib file (outside lib/ai) is not allowlisted either.
+        filename: NON_AI_LIB,
+        code: `import Anthropic from "@anthropic-ai/sdk";`,
+        errors: [{ messageId: "directSdkImport" }],
+      },
+      {
+        // Deep sub-path import is caught too.
+        filename: AI_ROUTE,
+        code: `import { Message } from "@anthropic-ai/sdk/resources";`,
+        errors: [{ messageId: "directSdkImport" }],
+      },
+      {
+        // Dynamic import() form does not escape the gate.
+        filename: AI_ROUTE,
+        code: `const sdk = await import("@anthropic-ai/sdk");`,
+        errors: [{ messageId: "directSdkImport" }],
+      },
+      {
+        // Re-export form is caught (ExportNamedDeclaration with a source).
+        filename: NON_AI_LIB,
+        code: `export { default as Anthropic } from "@anthropic-ai/sdk";`,
+        errors: [{ messageId: "directSdkImport" }],
       },
     ],
   },

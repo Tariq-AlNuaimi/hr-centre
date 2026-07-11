@@ -13,19 +13,30 @@
 // the expensive downstream). Compose them AROUND the handler this returns:
 //
 //   export const POST = withRateLimit(
-//     withEditorAuth(withAiRoute({ span: "ai.foo", schema: fooSchema }, async (input, request) => {
+//     withEditorAuth(withAiRoute({ span: "ai.foo", schema: fooSchema }, async (input, request, span) => {
 //       const final = await runAgent({ messages: [{ role: "user", content: input.prompt }], tools: [] });
+//       setAiResponseAttributes(span, final); // token usage + finish reason (metadata only)
 //       return ok({ text: extractText(final) });
 //     })),
 //     { id: "ai-foo", limit: 20, windowMs: 60_000 },
 //   );
+//
+// The trace is a GenAI-semconv span (ADR-044): withAiRoute runs the handler inside
+// withAiSpan, which sets the REQUEST-side attributes (gen_ai.system,
+// gen_ai.request.model from aiConfig(), gen_ai.request.max_tokens) before the call.
+// The RESPONSE-side attributes (token usage, finish reason) come from the handler
+// calling setAiResponseAttributes(span, final) on the span it is handed — METADATA
+// ONLY (prompt/completion text is opt-in via AI_TRACE_CONTENT, default OFF). Point
+// OTEL_EXPORTER_OTLP_ENDPOINT at Langfuse and these spans render as generations.
 
+import type { Span } from "@opentelemetry/api";
 import type { NextRequest, NextResponse } from "next/server";
 import type { ZodType } from "zod";
 
 import { err } from "@/lib/api-response";
-import { withSpan } from "@/lib/observability";
-import { isAiConfigured } from "@/lib/ai/config";
+import { aiConfig, isAiConfigured } from "@/lib/ai/config";
+import { AI_DEFAULT_MAX_TOKENS } from "@/lib/ai/tool-runner";
+import { withAiSpan } from "@/lib/ai/tracing";
 
 /** Options for {@link withAiRoute}. */
 export interface WithAiRouteOptions<T> {
@@ -42,12 +53,14 @@ export interface WithAiRouteOptions<T> {
  *   1. isAiConfigured() gate -> 503 err() when the AI layer is unconfigured;
  *   2. body parse (`await request.json().catch(() => null)`) + `opts.schema.safeParse`
  *      -> 400 err() with the joined zod issue messages on failure;
- *   3. `run(parsedData, request)` executed inside `withSpan(opts.span, ...)`.
+ *   3. `run(parsedData, request, span)` executed inside `withAiSpan(opts.span, ...)`,
+ *      which sets the request-side GenAI attributes; the handler sets the
+ *      response-side ones off the model result via `setAiResponseAttributes(span, …)`.
  * Auth and rate-limiting are intentionally left to the caller (see the module note).
  */
 export function withAiRoute<T>(
   opts: WithAiRouteOptions<T>,
-  run: (input: T, request: NextRequest) => Promise<NextResponse>,
+  run: (input: T, request: NextRequest, span: Span) => Promise<NextResponse>,
 ): (request: NextRequest) => Promise<NextResponse> {
   return async (request: NextRequest) => {
     // Honest failure: the AI layer is opt-in (silent no-op until AI_API_KEY is set).
@@ -61,6 +74,15 @@ export function withAiRoute<T>(
       return err(parsed.error.issues.map((i) => i.message).join(", "));
     }
 
-    return withSpan(opts.span, () => run(parsed.data, request));
+    // GenAI-semconv span (ADR-044): request-side attributes (gen_ai.system,
+    // gen_ai.request.model, gen_ai.request.max_tokens) are set here from the
+    // resolved config — past the isAiConfigured() guard, so aiConfig() is safe.
+    // The handler receives the span and sets the response-side attributes
+    // (token usage / finish reason) off the model result. METADATA ONLY.
+    return withAiSpan(
+      opts.span,
+      { model: aiConfig().model, maxTokens: AI_DEFAULT_MAX_TOKENS },
+      (span) => run(parsed.data, request, span),
+    );
   };
 }

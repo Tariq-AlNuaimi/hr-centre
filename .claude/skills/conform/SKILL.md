@@ -15,7 +15,7 @@ into line, and pushed to a fresh repo created from the template.
 **Report-and-approve only. NEVER silently auto-fix foreign code.**
 
 Foreign code does not know this template's invariants (auth wrappers, audit extension,
-soft-delete, the ten ESLint rules, zod-at-boundary). A silent edit could mask a real
+soft-delete, the eleven ESLint rules, zod-at-boundary). A silent edit could mask a real
 security gap or introduce one. Every change is proposed, line-referenced, and applied
 **only after the operator approves it**. When in doubt, report — do not edit.
 
@@ -44,7 +44,7 @@ Check the code against this template's hard-rules (from `CLAUDE.md` / `SECURITY.
 - `session` never cast to `any`.
 - Audit + soft-delete posture for new entities (or a noted reason they're absent).
 
-Also check the **ten local ESLint rules** (`eslint-rules/`, all at `error`) — the
+Also check the **eleven local ESLint rules** (`eslint-rules/`, all at `error`) — the
 template's enforcement layer the hard-rules sit on top of:
 
 - `no-prisma-in-client` — no Prisma import in a client component.
