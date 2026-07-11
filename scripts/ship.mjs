@@ -1217,9 +1217,12 @@ report(audit);
 if (!audit.ok) fail(audit);
 if (audit.out.startsWith("clean (allowlisted")) console.log(`  note: npm audit ${audit.out}`);
 
-// AI-eval gate (ADR-036 WS-5 part b). Dormant/exit-0 (SKIP) until a fork sets
-// AI_API_KEY AND writes tests/ai-evals/*.eval.ts fixtures -- so this template
-// always passes and /ship stays green with no AI key (parallels lhci dormancy).
+// AI-eval gate (ADR-036 WS-5 part b). The 4th governance gate -- completing the
+// gate-quartet (build-vs-buy -> blueprint -> complexity -> ai-eval): the first
+// three govern code shape, this one governs AI-endpoint output quality.
+// Dormant/exit-0 (SKIP) until a fork sets AI_API_KEY AND writes
+// tests/ai-evals/*.eval.ts fixtures -- so this template always passes and /ship
+// stays green with no AI key (parallels lhci dormancy).
 const aiEval = await scanAiEval();
 report(aiEval);
 if (!aiEval.ok) fail(aiEval);

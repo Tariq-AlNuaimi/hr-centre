@@ -83,6 +83,20 @@ Pass `--apex <zone>` (a domain you control in Cloudflare) and optionally
 to the Vercel project. Without `--apex`, the project is reachable at
 `<slug>.vercel.app` only. Requires `CLOUDFLARE_API_TOKEN`.
 
+## Docker-first readiness (ADR-030/035)
+
+Docker is a **mandatory build artifact**, and the image build is a gate at `/deploy`
+(CLAUDE.md "Known traps"; ADR-030 supersedes ADR-023's opt-in stance). So deploy
+readiness includes **building and verifying the image**, even though **Vercel + Neon
+stays the default deploy target** (ADR-006) and the Vercel build is byte-for-byte
+untouched (`output: "standalone"` is emitted only under `DOCKER_BUILD=1`, so it does
+nothing on Vercel). Concretely: run `/ship --full` (or `make docker-build`) as part
+of readiness so the image build + trivy scan pass before provisioning — a repo that
+can't build its image is not deploy-ready. Escape hatch for an environment that
+genuinely can't build images: `"dockerAck"` in `project.config.json` + an adjudicated
+ADR-030 line in `docs/findings-register.md`. This adds no new Vercel behavior — it is
+the same image gate `/handoff` and CI already enforce, run here at deploy time.
+
 ## Steps
 
 1. **Confirm inputs.** Read `project.config.json` and `package.json` for the slug

@@ -102,6 +102,7 @@ try {
     }),
   );
 } catch {
+  // fail-open RETAINED (WS-8 audit): governance gate, not a security guard — a hook error must not block all writes; only the security guards (protect-secrets, dangerous-commands) fail closed.
   /* fail-open: never brick the session */
 }
 process.exit(0);

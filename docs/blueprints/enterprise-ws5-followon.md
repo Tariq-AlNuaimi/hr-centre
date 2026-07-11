@@ -19,8 +19,9 @@ the `isAiConfigured()` 503 guard, an auth wrapper, `withRateLimit` **outside** a
 are the expensive downstream — a flood must be throttled before the model is hit), zod at the
 boundary, a `withSpan` trace (WS-4), the correct import of `runAgent`/`getAiClient` (never
 `new Anthropic(...)`), and — the piece hand-rolling always skips — an **eval fixture** so the
-endpoint's output quality is checkable. That drift is exactly what the enforcement trio
-(build-vs-buy → blueprint → complexity) exists to prevent.
+endpoint's output quality is checkable. That drift is exactly what the enforcement quartet
+(build-vs-buy → blueprint → complexity → ai-eval) exists to prevent — and the eval fixture this
+generator emits is what the fourth gate, `ai-eval`, scores.
 
 This increment lands **`/scaffold-ai-endpoint`** — a generator that parallels `/scaffold-entity`:
 one command emits a correct, gated, traced, rate-limited AI route + its zod input + an eval

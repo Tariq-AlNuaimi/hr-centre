@@ -154,6 +154,17 @@ try {
     );
   }
 } catch {
-  /* a guard hook must never brick the session */
+  // fail-CLOSED (WS-8/ADR-047): a secret-guard that can't evaluate must BLOCK, not allow.
+  console.log(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason:
+          "protect-secrets hook errored; DENYING by fail-closed policy (WS-8/ADR-047) " +
+          "— a secret-guard that can't evaluate must block, not allow. Fix the hook if this is a bug.",
+      },
+    }),
+  );
 }
 process.exit(0);
