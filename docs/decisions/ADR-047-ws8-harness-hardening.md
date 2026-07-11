@@ -94,6 +94,18 @@ new mechanism:
 - Fail-closed guards can block a legitimate action if the guard itself is buggy —
   mitigated by scoping fail-closed to the two _security_ guards only (governance
   gates stay fail-open) and by the guards being simple, well-tested deny logic.
+  **Scope correction (senior-review, 2026-07-11):** the accurate blast radius of a
+  _persistent_ (input-independent) fault is NOT "a single action" — because
+  `protect-secrets` matches `Read|Grep|Bash` and `dangerous-commands` matches
+  `Bash`, such a fault denies the agent's entire Read/Grep/Bash surface for the rest
+  of the session, and the guards' "no override by design" policy means it cannot be
+  repaired from inside the session (Read/Grep/Bash are exactly what's denied).
+  Recovery requires an operator to remove the offending hook's entry from
+  `.claude/settings.json` `PreToolUse` (or restart with hooks disabled). This is an
+  accepted trade-off — fail-open would silently disable a security guard, which is
+  worse — and the crash-path `permissionDecisionReason` now names this exact recovery
+  so a fault is self-documenting rather than an opaque brick. A transient
+  (input-dependent) fault only blocks the offending call, as before.
 - Two more agents to keep lane-correct; mitigated by explicit "not X's lane"
   boundaries in each agent's prompt.
 - The quartet prose must stay in sync with the wired gates; mitigated by the

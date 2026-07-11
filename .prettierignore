@@ -6,3 +6,8 @@ coverage
 package-lock.json
 sbom.json
 messages/*.json
+# Generator-owned docs (auto-refreshed each session — Prettier must not fight the
+# generators): REPO-MAP by the SessionStart hook, SESSION-HANDOFF's auto-status
+# block by scripts/render-handoff.mjs.
+docs/REPO-MAP.md
+docs/SESSION-HANDOFF.md

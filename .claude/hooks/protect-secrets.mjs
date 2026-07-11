@@ -162,7 +162,11 @@ try {
         permissionDecision: "deny",
         permissionDecisionReason:
           "protect-secrets hook errored; DENYING by fail-closed policy (WS-8/ADR-047) " +
-          "— a secret-guard that can't evaluate must block, not allow. Fix the hook if this is a bug.",
+          "— a secret-guard that can't evaluate must block, not allow. NOTE: this hook " +
+          "matches Read|Grep|Bash, so a PERSISTENT (input-independent) fault denies all " +
+          "three for the rest of the session and cannot be repaired from inside it. " +
+          "RECOVERY: an operator removes the protect-secrets entry from " +
+          ".claude/settings.json PreToolUse (or restarts with hooks disabled), then fixes the hook.",
       },
     }),
   );

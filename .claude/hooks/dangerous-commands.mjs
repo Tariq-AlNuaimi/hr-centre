@@ -113,7 +113,11 @@ try {
         permissionDecision: "deny",
         permissionDecisionReason:
           "dangerous-commands hook errored; DENYING by fail-closed policy (WS-8/ADR-047) " +
-          "— a destructive-command guard that can't evaluate must block, not allow. Fix the hook if this is a bug.",
+          "— a destructive-command guard that can't evaluate must block, not allow. NOTE: " +
+          "this hook matches Bash, so a PERSISTENT (input-independent) fault denies ALL Bash " +
+          "for the rest of the session and cannot be repaired from inside it. RECOVERY: an " +
+          "operator removes the dangerous-commands entry from .claude/settings.json PreToolUse " +
+          "(or restarts with hooks disabled), then fixes the hook.",
       },
     }),
   );
