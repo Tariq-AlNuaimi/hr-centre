@@ -361,6 +361,12 @@ test("signIn: denies an OAuth sign-in when the user row is soft-deleted", { skip
   assert.equal(ok, false, "off-boarded SSO user must not be able to re-authenticate");
 });
 
+test("signIn: denies an OIDC sign-in when the user row is soft-deleted (Entra/Polis are 'oidc')", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: new Date() };
+  const ok = await config.callbacks.signIn({ user: { id: "u1" }, account: { type: "oidc" } });
+  assert.equal(ok, false, "an off-boarded OIDC (Polis SCIM soft-delete) user must not re-authenticate");
+});
+
 test("signIn: allows an OAuth sign-in for a live user", { skip: !canMock }, async () => {
   findUniqueResult = { deletedAt: null };
   const ok = await config.callbacks.signIn({ user: { id: "u1" }, account: { type: "oauth" } });

@@ -56,10 +56,15 @@ async function handle(req: NextRequest) {
   return ok({ action: result.action });
 }
 
+// Rate-limit sized for a bulk initial directory sync: a large org's first dsync
+// POSTs one event per user in a burst. The limit is generous so provisioning is
+// not silently dropped (429s a legitimate onboarding batch), while still capping a
+// flood ahead of auth. NB the limiter is in-memory per-instance (ADR: Upstash via
+// /scale-up when multi-instance); tune `limit` up for very large directories.
 export const POST = withRateLimit(
   withInternalAuth("SCIM_INTERNAL_SECRET", handle, {
     bearer: true,
     skipWhenUnconfigured: true,
   }),
-  { id: "scim-provision", limit: 120, windowMs: 60_000 },
+  { id: "scim-provision", limit: 1000, windowMs: 60_000 },
 );

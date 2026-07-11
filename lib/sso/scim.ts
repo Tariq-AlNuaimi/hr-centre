@@ -84,7 +84,13 @@ export function normalizeDirectoryEvent(raw: unknown): NormalizedScimEvent | nul
 
   // A delete event is always a deactivation; otherwise honor `active` (default
   // true — a created/updated event with no active flag means the user is active).
-  const active = event === "user.deleted" ? false : data.active !== false;
+  // Treat a string "false" as false too: some directories/proxies serialize the
+  // SCIM boolean as a string, and a naive `!== false` would misread that as active
+  // and miss the off-board.
+  const active =
+    event === "user.deleted"
+      ? false
+      : data.active !== false && data.active !== "false";
 
   return { type: event as ScimEventType, email, name, active };
 }

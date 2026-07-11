@@ -188,6 +188,11 @@ test("normalizeDirectoryEvent: active:false on an update is a deactivation", { s
   assert.equal(evt?.active, false);
 });
 
+test("normalizeDirectoryEvent: a string 'false' active is also a deactivation", { skip: !canMock }, () => {
+  const evt = scimMod.normalizeDirectoryEvent({ event: "user.updated", data: { email: "x@y.com", active: "false" } });
+  assert.equal(evt?.active, false, "string-serialized active must not be misread as active");
+});
+
 test("provision: user.created for a new email creates a VIEWER", { skip: !canMock }, async () => {
   findUniqueResult = null;
   const out = await scimMod.provisionDirectoryEvent({ type: "user.created", email: "new@x.com", name: "New", active: true });

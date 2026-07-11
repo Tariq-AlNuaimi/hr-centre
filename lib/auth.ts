@@ -218,11 +218,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // The Credentials authorize() filters deletedAt:null, but the OAuth path goes
     // through PrismaAdapter (prismaUnfiltered), which does NOT — so without this a
     // soft-deleted (off-boarded) SSO user could keep signing in indefinitely.
-    // Deny OAuth sign-in when the linked user row is soft-deleted. (Existing JWTs
-    // persist until maxAge, same accepted gap as credentials; rotate AUTH_SECRET to
-    // revoke immediately — SECURITY.md §2.)
+    // Deny federated sign-in when the linked user row is soft-deleted. (Existing
+    // JWTs persist until maxAge, same accepted gap as credentials; rotate
+    // AUTH_SECRET to revoke immediately — SECURITY.md §2.) Match BOTH "oauth" and
+    // "oidc" account types: Entra and Polis are OIDC providers, and Auth.js labels
+    // an OIDC account's type "oidc" — keying on "oauth" alone would let a
+    // SCIM-off-boarded Polis user re-authenticate (ADR-045 US-3). Only the
+    // credentials path (type "credentials") is skipped — it already filters
+    // deletedAt in authorize().
     async signIn({ user, account }) {
-      if (account?.type === "oauth" && user?.id) {
+      if ((account?.type === "oauth" || account?.type === "oidc") && user?.id) {
         const row = await prismaUnfiltered.user.findUnique({
           where: { id: user.id },
           select: { deletedAt: true },
