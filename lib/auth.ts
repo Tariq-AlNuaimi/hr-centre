@@ -5,7 +5,7 @@ import type { Provider } from "next-auth/providers";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import type { Role } from "../generated/prisma/client";
-import { prismaUnfiltered } from "./prisma";
+import { prisma, prismaUnfiltered } from "./prisma";
 import { verifyPassword, needsRehash, hashPassword } from "./password";
 
 /**
@@ -84,22 +84,27 @@ const credentialsProvider = Credentials({
     );
     if (!valid) return null;
 
-    // Update last login; and silently upgrade a legacy (bcrypt) hash to Argon2id
-    // on successful auth (ADR-039). The rehash rides the same write, so there is
-    // no extra round-trip, and it does NOT bump passwordChangedAt — the password
-    // itself did not change, so existing sessions must not be revoked.
-    const loginUpdate: { lastLoginAt: Date; passwordHash?: string } = {
-      lastLoginAt: new Date(),
-    };
-    if (needsRehash(user.passwordHash)) {
-      loginUpdate.passwordHash = await hashPassword(
-        credentials.password as string
-      );
-    }
+    // Update last login. lastLoginAt churns on every login, so keep it on the
+    // unaudited client to avoid flooding the audit log with a row per sign-in.
     await prismaUnfiltered.user.update({
       where: { id: user.id },
-      data: loginUpdate,
+      data: { lastLoginAt: new Date() },
     });
+
+    // Silently upgrade a legacy (bcrypt) hash to Argon2id on successful auth
+    // (ADR-039). Route THIS write through the AUDITED client so the passwordHash
+    // mutation is recorded (value scrubbed via SCRUB_FIELDS), consistent with
+    // every other password-touching path (SECURITY.md §5). No audit context is
+    // set during authorize(), so the row is attributed to the system actor
+    // (userId null) — the honest record for a login-triggered rehash. It does NOT
+    // bump passwordChangedAt: the password itself did not change, so the user's
+    // existing sessions must not be revoked.
+    if (needsRehash(user.passwordHash)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordHash: await hashPassword(credentials.password as string) },
+      });
+    }
 
     return {
       id: user.id,

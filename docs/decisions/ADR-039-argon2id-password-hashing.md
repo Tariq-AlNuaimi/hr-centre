@@ -48,14 +48,20 @@ Prebuilt napi module (Rust-backed) — no node-gyp at install or deploy. Keep
 `bcryptjs.compare` for legacy hashes and **rehash-on-successful-login**: on a
 successful credential check, if the stored hash is bcrypt, re-hash the plaintext
 with Argon2id and persist it, so the user's next login verifies against
-Argon2id. `hash-wasm` (pure WASM) is the fallback for any environment where the
-napi binary cannot load. Default params to OWASP guidance as the **starting
-point**, tuned per deployment: memory 19456 KiB, iterations 2, parallelism 1.
+Argon2id. For any environment where the native napi binary cannot load,
+`@node-rs/argon2` **already bundles its own pure-WASM fallback**
+(`@node-rs/argon2-wasm32-wasi`, pulled as an optional dependency) and its loader
+selects it automatically — so no separate `hash-wasm` dependency is required
+(this corrects an earlier draft that named `hash-wasm`; the resilience it wanted
+holds via the library's own WASI variant, as long as `npm ci` installs optional
+deps — true on both the Vercel and Docker build paths). Default params to OWASP
+guidance as the **starting point**, tuned per deployment: memory 19456 KiB,
+iterations 2, parallelism 1.
 
 - **Good:** OWASP-preferred default; silent per-login migration; clean in
   Docker; prebuilt napi means no build toolchain.
 - **Bad:** introduces a native dependency (mitigated by the prebuilt napi
-  binary + the Docker-first rail + the `hash-wasm` fallback).
+  binary + the Docker-first rail + `@node-rs/argon2`'s bundled WASM fallback).
 
 ### Option 2 — Keep bcryptjs
 
@@ -98,7 +104,8 @@ portability) to argon2 that ever justified staying on pure-JS bcrypt.
   small SPEED cost, by design).
 
 ### Mitigations
-- `hash-wasm` fallback covers environments where the napi binary won't load.
+- `@node-rs/argon2`'s bundled WASM (WASI) variant covers environments where the
+  napi binary won't load — no separate `hash-wasm` dependency needed.
 - Params live in one place (as `BCRYPT_COST` did) so they tune per deployment
   without touching call sites.
 - **SECURITY.md must record** the algorithm change (§ password hashing + the

@@ -58,7 +58,10 @@ itself is held to shared-tier ceremony (SECURITY.md updates, findings-register d
   - **AC-2.1** — WHEN >1 app replica runs with `VALKEY_URL` set THE SYSTEM SHALL enforce one
     shared quota via Valkey (not N×configured).
   - **AC-2.2** — IF `VALKEY_URL` is unset THEN THE SYSTEM SHALL fall back to the in-memory limiter
-    (single-container correctness preserved) and the public `rateLimit()` API SHALL be unchanged.
+    (single-container correctness preserved) with identical bucket semantics. NOTE (as-built): the
+    public `rateLimit()` signature necessarily became `async` (returns `Promise<RateLimitResult>`) —
+    a shared-state Valkey check is a network round-trip and cannot stay synchronous — so all callers
+    now `await` it. This supersedes the pre-build expectation that the API would be unchanged.
 - **US3** — As a **security owner**, I want Argon2id password hashing with silent legacy
   migration, so that no user is disrupted and no bcrypt hash is trusted forever.
   - **AC-3.1** — WHEN a new password is hashed THE SYSTEM SHALL emit an Argon2id hash

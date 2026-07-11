@@ -26,6 +26,7 @@ const canMock = typeof mockApi.module === "function";
 let findUniqueArgs: unknown = null;
 let findUniqueResult: Record<string, unknown> | null = null;
 let updateCalls: unknown[] = [];
+let auditedUpdateCalls: unknown[] = [];
 let compareResult = false;
 let rehashNeeded = false;
 
@@ -76,7 +77,16 @@ before(async () => {
   // prismaUnfiltered stub: record findUnique args + update calls.
   mockApi.module!(import.meta.resolve("../../lib/prisma.ts"), {
     namedExports: {
-      prisma: {},
+      // Audited client: the login-time argon2 rehash writes through this one so
+      // the passwordHash change is recorded (ADR-039 / senior-review fix).
+      prisma: {
+        user: {
+          update: async (args: unknown) => {
+            auditedUpdateCalls.push(args);
+            return {};
+          },
+        },
+      },
       prismaUnfiltered: {
         user: {
           findUnique: async (args: unknown) => {
@@ -110,6 +120,7 @@ beforeEach(() => {
   findUniqueArgs = null;
   findUniqueResult = null;
   updateCalls = [];
+  auditedUpdateCalls = [];
   compareResult = false;
   rehashNeeded = false;
 });
@@ -183,7 +194,8 @@ test("authorize: valid login returns the user (with role) and stamps lastLoginAt
   assert.equal(updateCalls.length, 1, "should stamp lastLoginAt exactly once");
   const data = (updateCalls[0] as { data: { lastLoginAt: unknown; passwordHash?: string } }).data;
   assert.ok(data.lastLoginAt instanceof Date, "lastLoginAt should be a Date");
-  assert.equal(data.passwordHash, undefined, "current-hash login must not rewrite passwordHash");
+  assert.equal(data.passwordHash, undefined, "lastLoginAt write must not carry passwordHash");
+  assert.equal(auditedUpdateCalls.length, 0, "no rehash write when the hash is already current");
 });
 
 test("authorize: silently rehashes a legacy hash to Argon2id on successful login (ADR-039)", { skip: !canMock }, async () => {
@@ -195,10 +207,13 @@ test("authorize: silently rehashes a legacy hash to Argon2id on successful login
     password: "correct",
   });
   assert.ok(out, "login should still succeed");
-  assert.equal(updateCalls.length, 1, "rehash rides the single lastLoginAt write");
-  const data = (updateCalls[0] as { data: { lastLoginAt: unknown; passwordHash?: string } }).data;
-  assert.ok(data.lastLoginAt instanceof Date);
+  assert.equal(updateCalls.length, 1, "lastLoginAt still written on the unaudited client");
+  // The rehash goes through the AUDITED client (separate write) so the passwordHash
+  // change is recorded (scrubbed) — senior-review fix.
+  assert.equal(auditedUpdateCalls.length, 1, "rehash writes via the audited prisma client");
+  const data = (auditedUpdateCalls[0] as { data: { passwordHash?: string; lastLoginAt?: unknown } }).data;
   assert.equal(data.passwordHash, "$argon2id$rehashed", "legacy hash upgraded to Argon2id on login");
+  assert.equal(data.lastLoginAt, undefined, "the rehash write is passwordHash-only");
   // A silent rehash is NOT a password change — it must not stamp passwordChangedAt
   // (that would revoke the user's other live sessions).
   assert.equal(

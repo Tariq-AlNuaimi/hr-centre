@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
+import { hash as argon2Hash } from "@node-rs/argon2";
 import {
   ARGON2_OPTIONS,
   hashPassword,
@@ -48,6 +49,15 @@ test("needsRehash flags legacy hashes and clears for Argon2id", async () => {
   assert.equal(needsRehash(legacy), true, "bcrypt hash must be upgraded");
   const modern = await hashPassword("x");
   assert.equal(needsRehash(modern), false, "argon2 hash is current");
+});
+
+test("needsRehash flags an Argon2id hash weaker than the current params", async () => {
+  // A hash made at weaker params than ARGON2_OPTIONS must be re-hashed on login,
+  // so raising the params over time actually upgrades already-migrated users.
+  const weak = await argon2Hash("x", { memoryCost: 4096, timeCost: 1, parallelism: 1 });
+  assert.ok(weak.startsWith("$argon2id$"), "sanity: argon2id prefix");
+  assert.equal(needsRehash(weak), true, "weaker embedded params must trigger a rehash");
+  assert.equal(needsRehash(await hashPassword("x")), false, "current-params hash is fine");
 });
 
 test("verifyPassword returns false (never throws) on a malformed hash", async () => {

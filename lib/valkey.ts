@@ -24,6 +24,13 @@ export function getValkey(): RedisClient | null {
     // requests forever when Valkey is unreachable.
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
+    // Bound EVERY command. Without this, a connected-but-unresponsive Valkey
+    // (network partition after connect, overloaded server, half-open socket
+    // during a rolling restart) never rejects, so the limiter's insuranceLimiter
+    // never engages and the auth path hangs indefinitely -- a self-inflicted DoS
+    // that is worse than failing open. A prompt rejection lets the fail-safe
+    // in-memory fallback take over (senior-review fix).
+    commandTimeout: 2000,
   });
   // Keep an outage from raising an unhandled 'error' and killing the process.
   c.on("error", () => {});

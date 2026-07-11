@@ -687,7 +687,12 @@ async function scanDocker() {
   }
 
   // (2) trivy image + config scan (optional; skip-with-note when absent).
-  const trivyProbe = await run("trivy probe", "trivy", ["--version"]);
+  // Trivy is a privileged process compromised on 2026-03-19 (CVE-2026-33634), so
+  // it runs with a MINIMAL env (no inherited secrets) on EVERY invocation incl.
+  // the version probe -- a weaponized binary's stealer fires on execution, not on
+  // a specific subcommand. HOME is kept only so trivy can find its DB cache.
+  const TRIVY_ENV = { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "" };
+  const trivyProbe = await run("trivy probe", "trivy", ["--version"], TRIVY_ENV, true);
   if (!trivyProbe.ok) {
     return ok("image built; trivy scan skipped (not installed)", {
       warn:
@@ -709,17 +714,23 @@ async function scanDocker() {
         "  setup-trivy v0.2.6) per ADR-041 -- reinstall a safe version and re-run /ship --full."
     );
   }
-  const verWarn = trivyVer
-    ? ""
-    : "\n  note: could not parse trivy version to verify it against the CVE-2026-33634 pin (ADR-041).";
-  // The image + config scans are independent; run them together.
+  if (!trivyVer) {
+    // Fail CLOSED: an unparseable --version is exactly the case a compromise might
+    // produce (altered output), so we must NOT fall through and run the full scan.
+    return red(
+      "could not parse the trivy version from `trivy --version`, so it cannot be verified\n" +
+        "  against the CVE-2026-33634 pin (ADR-041). Refusing to run an unverifiable scanner.\n" +
+        "  Reinstall a known-good trivy <= 0.69.3 and re-run /ship --full."
+    );
+  }
+  // The image + config scans are independent; run them together. Same minimal env.
   const [img, conf] = await Promise.all([
     run("trivy image", "trivy", [
       "image", "--quiet", "--exit-code", "1", "--scanners", "vuln", "--severity", "HIGH,CRITICAL", DOCKER_IMAGE_TAG,
-    ]),
+    ], TRIVY_ENV, true),
     run("trivy config", "trivy", [
       "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL", ".",
-    ]),
+    ], TRIVY_ENV, true),
   ]);
   const notes = [];
   if (!img.ok) notes.push("  trivy image (HIGH/CRITICAL):\n" + img.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
@@ -745,11 +756,14 @@ if (existsSync(".env")) {
   }
 }
 
-function run(name, cmd, args, env = {}) {
+function run(name, cmd, args, env = {}, replaceEnv = false) {
   const t0 = Date.now();
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
-      env: { ...process.env, ...env },
+      // replaceEnv=true passes ONLY `env` (no inherited process.env). Used for
+      // trivy so a compromised scanner binary (CVE-2026-33634) is never handed
+      // the parent's secret env vars, even on a `--version` probe.
+      env: replaceEnv ? env : { ...process.env, ...env },
       shell: false,
     });
     let out = "";

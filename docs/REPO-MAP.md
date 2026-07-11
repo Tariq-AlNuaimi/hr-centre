@@ -47,7 +47,8 @@
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
-- lib/password.ts: BCRYPT_COST, hashPassword
+- lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash (Argon2id; legacy bcrypt verify; ADR-039)
+- lib/valkey.ts: getValkey (lazy Valkey/Redis client for shared-state rate limiting; ADR-035)
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel

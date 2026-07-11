@@ -18,6 +18,26 @@ the changed surface is still **open** (un-adjudicated).
 
 ## Register
 <!-- newest first -->
+- 2026-07-11 — [secure] ADR-041 P0 item (c) — **SAST-as-a-hard-CI-gate + `zizmor` action-pin
+  audit are DEFERRED to CI activation, not landed in WS-2.** ADR-041 and the enterprise-P0
+  blueprint (AC-4.3) list "promote `sast.yml` from dormant to a hard blocking gate" + add `zizmor`
+  as P0. On the current free GitHub plan Actions billing is blocked, so every CI workflow —
+  `sast.yml` included — is intentionally dormant (`on: workflow_dispatch` only; ADR-007/037): flipping
+  the push/PR triggers now would fail-in-2s, not gate anything. So the *hard-gate* half is only
+  meaningful once CI activates (at `/handoff` to a paid-Actions team, or when billing unblocks) — the
+  same activation line ADR-037 already defines. **Interim control:** the Semgrep ruleset is mirrored
+  locally by the `/audit` skill (runs on demand), and the trivy-pin + SHA-pin halves of ADR-041 P0
+  DID land in WS-2a. `zizmor` is not yet wired. **Not silently dropped — recorded here for the
+  operator to adjudicate**; the fix at activation is to restore `sast.yml`'s real triggers + add a
+  `zizmor` workflow step. — owner: operator — status: open
+- 2026-07-11 — [quality] WS-1 Docker image build is UNVERIFIED in-session — the enterprise self-host
+  image (distroless Node 24 + `compose.prod.yaml` + Caddy) was authored to spec but there is **no
+  Docker daemon in the build environment**, so it was not built/booted here. Per ADR-030 the image
+  gate degrades to a WARN when no daemon is present and build-verification is delegated to CI
+  (`docker-build.yml`) or a build-capable machine. Highest-risk unknown a build must confirm: the
+  Prisma 7 client/query-engine resolves at runtime inside distroless `nodejs24-debian12` (glibc +
+  libssl present, but confirm on a real boot). Base tags are patch-pinned; Renovate applies the
+  `@sha256:` digest pin (ADR-041). — owner: operator — status: open
 - 2026-07-03 — [maintainable] deferred-adoption #11 (specialist-agents) — **drop REVERSED by
   operator same day; now ADOPT.** The earlier drop reasoned that a stack-aware *review* seed would
   duplicate `senior-code-reviewer`. The operator redirected it: build it as a **build-time ADVISOR**

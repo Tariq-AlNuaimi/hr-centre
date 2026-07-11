@@ -227,7 +227,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       });
     }
   } else {
-    const result = rateLimit(req, { id: "auth", limit: 10, windowMs: 60_000 });
+    const result = await rateLimit(req, { id: "auth", limit: 10, windowMs: 60_000 });
     if (!result.ok) {
       return new Response(JSON.stringify({ error: "Too many requests" }), {
         status: 429,

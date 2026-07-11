@@ -36,11 +36,22 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
 }
 
 /**
- * True when a stored hash is a legacy (non-Argon2id) hash that should be
- * re-hashed to Argon2id after the user authenticates successfully. This is the
- * silent-migration hook: verify with verifyPassword(), then if needsRehash()
- * write a fresh hashPassword() value for that user.
+ * True when a stored hash should be re-hashed after a successful login. Two
+ * cases: (1) a legacy non-Argon2id hash (e.g. bcrypt), and (2) an Argon2id hash
+ * whose embedded parameters are WEAKER than the current ARGON2_OPTIONS — so when
+ * the params are raised over time (as the module comment invites), already-
+ * migrated hashes get upgraded to the new floor on next login instead of being
+ * frozen at the old strength. This is the silent-migration hook: verify with
+ * verifyPassword(), then if needsRehash() write a fresh hashPassword() value.
  */
 export function needsRehash(hash: string): boolean {
-  return !hash.startsWith("$argon2");
+  if (!hash.startsWith("$argon2")) return true;
+  // Argon2 encodes its params as `...$m=<KiB>,t=<iters>,p=<lanes>$...`.
+  const m = hash.match(/\$m=(\d+),t=(\d+),p=(\d+)\$/);
+  if (!m) return true; // unparseable argon2 header -> re-hash defensively
+  return (
+    Number(m[1]) < ARGON2_OPTIONS.memoryCost ||
+    Number(m[2]) < ARGON2_OPTIONS.timeCost ||
+    Number(m[3]) < ARGON2_OPTIONS.parallelism
+  );
 }
