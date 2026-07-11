@@ -27,6 +27,12 @@
       "reason": "End-to-end entity scaffold (model + zod + routes + pages + recycling bin) beats hand-wiring."
     },
     {
+      "skill": "scaffold-ai-endpoint",
+      "keywords": ["ai endpoint", "ai route", "llm route", "llm endpoint", "scaffold ai", "new ai route"],
+      "paths": ["lib/ai/**"],
+      "reason": "End-to-end AI endpoint scaffold (config-guarded, auth+rate-limited, zod, traced route + eval fixtures) consuming lib/ai beats hand-wiring the guardrails."
+    },
+    {
       "skill": "ship",
       "keywords": ["push", "commit and push", "ready to push", "is this green", "done, ship it"],
       "paths": [],

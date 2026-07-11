@@ -85,6 +85,18 @@ backed by **Valkey** (Redis fork, BSD — Redis itself relicensed off OSS). Deci
 limiter kept as the single-container fallback; thin `lib/valkey.ts` client. Replaces the
 per-instance bucket that load-balancing bypasses. See ADR-035 (self-host topology); blueprint WS-3.
 
+### 2026-07-11 — AI endpoint scaffolder (`/scaffold-ai-endpoint`)
+Scope: scripts/scaffold-ai-endpoint.mjs
+Considered: Plop / Hygen / Yeoman (generic code-generators — a new dep + template DSL to learn,
+and none know this repo's `lib/ai` barrel, auth wrappers, or Five-Pillars floor), hand-writing
+each AI route per fork (the drift this gate exists to stop), **extending the existing in-repo
+`scripts/scaffold-entity.mjs` generator pattern** (same `parseArgs` + inline-template + idempotency
+mechanics, zero new deps). Decision: **build** — mirror our own scaffold rail so a generated AI
+endpoint bakes in the exact wiring (`isAiConfigured()` 503 guard, `withRateLimit` outside auth,
+zod boundary, `withSpan` trace, `lib/ai` import) that a generic generator could not enforce. This
+entry is informational (the gate matches only `lib/` files; the generator lives in `scripts/`).
+See ADR-036; blueprint `docs/blueprints/enterprise-ws5-followon.md`.
+
 ### 2026-07-11 — Background job queue (pg-boss) — P1, entry ahead of build
 Scope: lib/queue/**
 Considered: Inngest (SaaS/hosted — a /scale-up recipe), BullMQ (needs Redis/Valkey +
