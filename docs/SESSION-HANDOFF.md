@@ -135,7 +135,7 @@ Sub-goal now: **P0 (WS-1/2/3) is DONE + pushed. Next = P1/P2 (WS-4..WS-8).**
 - d84c061 WS-1 Docker distroless(Node24) + compose.prod.yaml + Caddy + entrypoint.
 
 ## In flight
-- **`senior-code-reviewer` for WS-1 + remediation (01de332+d84c061) is RUNNING in background** (agent a61b9c02). Its output file is under this session's tasks dir; the NEXT session should re-run a senior review on `git diff 4a801a7..HEAD` (a background agent does not carry across sessions) and address any findings before P1.
+- **NONE.** The WS-1+remediation senior review COMPLETED; it found 2 CRITICALs (ship.mjs `verWarn` ReferenceError crashing `/ship --full`; compose `POSTGRES_PASSWORD:?` breaking external-db) + 1 MEDIUM — **all fixed + pushed in 4aabb9a, /ship green.** Only residual is the Prisma-in-distroless build-verification (already an open register wave-off; needs a real `docker build`, no daemon here). No re-review needed.
 
 ## Decisions (operator-confirmed via AskUserQuestion 2026-07-11)
 - Additive default-flip (keep personal/Vercel default; enterprise rail opt-in this phase).
@@ -150,8 +150,7 @@ Sub-goal now: **P0 (WS-1/2/3) is DONE + pushed. Next = P1/P2 (WS-4..WS-8).**
 - The auto-status block above is rendered from `session-state.json`; edit the JSON, never between the markers.
 
 ## Next steps
-1. **Re-run `senior-code-reviewer` on `git diff 4a801a7..HEAD`** (WS-1 + remediation) — the in-flight background review does not survive into the next session; act on any findings first.
-2. **P1 — WS-4 Observability**: `@vercel/otel` in `instrumentation.ts` → OTel Collector → SigNoz (ADR-040). New `lib/observability/**` is pre-authorized in the blueprint Scope + ledger.
+1. **P1 — WS-4 Observability** (start here; P0 is fully reviewed + green): `@vercel/otel` in `instrumentation.ts` → OTel Collector → SigNoz (ADR-040). New `lib/observability/**` is pre-authorized in the blueprint Scope + ledger.
 3. **P1 — WS-5 AI layer**: `lib/ai/*` provider + thin native Tool-Runner wrapper on `@anthropic-ai/sdk` (skeleton-only per decision); pgvector; evals; then /scaffold-ai-endpoint + ai-eval gate as a follow-on.
 4. **P1 — WS-6 Identity** (Ory Polis SAML/SCIM sidecar), **WS-7 stack bumps** (Node22→24 in package/engines, zod v4, Prettier gate), **WS-8 harness** (fail-open→fail-closed hooks, gate-quartet, security-architect+sre agents).
 5. Each WS: `/blueprint` (Scope already partly covers) → build → `/ship` (install gitleaks first) → `/code-review` → push → `senior-code-reviewer`. Land green; never end with unpushed commits.
