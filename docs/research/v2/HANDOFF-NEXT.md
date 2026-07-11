@@ -27,6 +27,18 @@ Spec on disk (pushed): `docs/research/v2/METHODOLOGY.md` (binding output format 
 **MISSING: 13-cicd-tooling.md** (first C13 agent failed to write; a re-run was in flight).
 
 ## NEXT ACTIONS (in order)
+0. **Add the operator's 5-Principles trace (NEW — operator request).** The operator wants the
+   deliverable to explicitly show each recommendation against their 5 principles (= the repo's
+   Five Pillars): **Scalability, Maintainability, Security, Quality, Speed-of-Delivery** (defs:
+   scalable-to-complexity not complex-from-day-1; single-responsibility, ≤1-file-per-behavior-change,
+   typed end-to-end; hostile-input + least-privilege + authz on every route; explicit edge/empty/error
+   states + validate-vs-requirements; small shippable increments, proven libs, no gold-plating — never
+   trading the other four for speed). The v2 files scored fit-vs-stack + honored the pivot but did NOT
+   add an explicit per-recommendation 5-principle column. Add: (a) a short "how each principle shaped
+   the verdicts" note in the exec summary; (b) a principle tag on each P0/P1/P2 action-plan row (which
+   principle it most serves) — flagging where a pick trades one principle for another (e.g. Argon2id =
+   Security up, tiny Speed cost). Then **re-publish to the SAME Artifact URL** (pass
+   `url=https://claude.ai/code/artifact/4c9aa672-d04e-4646-b9dc-faa97a3bfe78`).
 1. **Glob `docs/research/v2/13-cicd-tooling.md`.** If absent, re-run one general-purpose agent:
    "read METHODOLOGY.md; benchmark C13 (linter/formatter/CI-platform/dead-code/dup/bundle-budget/
    release/git-hooks/design-tokens) with 4-lens top-10 per item; WRITE the file." Seed with the
