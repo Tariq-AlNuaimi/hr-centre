@@ -135,6 +135,15 @@ const eslintConfig = defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
       "react-hooks/set-state-in-effect": "warn",
+      // React Compiler visibility (ADR-048 follow-on). This diagnostic fires when
+      // the compiler CANNOT memoize a component (a Rules-of-React violation / an
+      // incompatible library), so it silently skips it — the auto-memoization win
+      // is then quietly incomplete. At `error` (not the eslint-config-next default
+      // `warn`, which `/ship`'s lint phase doesn't fail on) a newly-skipped
+      // component BLOCKS: fix the violation, or add a justified single-line
+      // `eslint-disable-next-line` as `components/shared/DataTable.tsx` does for
+      // TanStack Table's known-incompatible `useReactTable`.
+      "react-hooks/incompatible-library": "error",
       // Honor the `_`-prefix convention for intentionally-unused parameters
       // (e.g. `_req` in API route wrappers that require the param shape).
       "@typescript-eslint/no-unused-vars": [

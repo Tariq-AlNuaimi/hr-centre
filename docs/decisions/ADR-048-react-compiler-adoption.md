@@ -79,9 +79,10 @@ paragraph is the recorded reasoning.
   justified `eslint-disable-next-line react-hooks/incompatible-library` for TanStack
   Table's `useReactTable`). The real gap is that it fires at `warn`, and `/ship`'s lint
   phase does not fail on warnings, so a newly-added component the compiler silently skips
-  produces no `/ship`-visible signal. **Follow-on (tracked, not in this increment):**
-  promote that rule to `error` (or add `--max-warnings 0` to the lint phase) so a skipped
-  component blocks — a one-line change, deferred only to keep this increment scoped.
+  produces no `/ship`-visible signal. **Resolved:** `react-hooks/incompatible-library` is
+  now promoted to `error` in `eslint.config.mjs`, so a newly compiler-skipped component
+  blocks `/ship`; the existing justified `eslint-disable` in `DataTable.tsx` (TanStack
+  Table) keeps the one known-incompatible call green.
 
 ## Revisit trigger
 
