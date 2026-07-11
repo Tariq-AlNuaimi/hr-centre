@@ -33,6 +33,14 @@ recurring context tax — same discipline as CLAUDE.md.
   pushed there). Source-of-truth plan = `docs/research/v2/enterprise-benchmark-v2.html`
   (P0/P1/P2 action plan) + `docs/research/v2/PHASE-2-BACKLOG.md` (WS-1..WS-8). Sequence:
   Phase 0 ADRs → Phase 1 blueprint → Phase 2 workstreams (P0 = WS-1/2/3 first).
+- 2026-07-11 — **Next feature-bump trigger (ADR-048) has NOT fired.** The React
+  Compiler Rust port + Turbopack persistent PRODUCTION build cache are **16.3-only**,
+  and 16.3 is still `preview`/`canary` (npm `latest` = 16.2.10); the Rust compiler is
+  experimental and Vercel explicitly discourages it on production apps. So we took the
+  safe in-range patch — `next 16.2.9 → 16.2.10` (ADR-017) — and KEPT the Babel React
+  Compiler path (ADR-048). Do NOT pin a 16.3 pre-release or flip experimental flags to
+  chase those features; revisit ONLY when 16.3 ships **stable** and the Rust compiler is
+  no longer production-discouraged. Don't re-investigate the version status each session.
 - 2026-07-03 — Deferred #11 IMPLEMENTED as `/stack-advisor` (skill, not agent):
   a **build-time** advisor injecting Next 16 RSC + Prisma 7 + Postgres positive
   patterns _while_ code is written, pointing at this repo's recipes/primitives.
