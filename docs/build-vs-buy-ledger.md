@@ -104,3 +104,37 @@ workers), **pg-boss** (Postgres-backed queue — no new datastore, rides the man
 Decision: **adopt pg-boss** when a fork needs durable background jobs — reuses the existing
 Postgres, no new infrastructure. Deferred to P1; entry recorded now so the gate is ready.
 See ADR-014 (/scale-up recipe library); blueprint WS-4/WS-5 follow-on.
+
+### 2026-07-11 — AI eval runner + gate (`ai-eval`, LLM-as-judge)
+Scope: scripts/ai-eval.mjs
+Considered: Promptfoo (YAML-config eval framework — a new dep + config DSL that doesn't know
+this repo's auth-wrapped routes, the `lib/ai` barrel, or the `{ data: { text } }` response
+shape), keploy (record/replay API testing — built for deterministic API mocks, not
+LLM-as-judge quality scoring), a hand-run per-fork eval script (rots + drifts, no gate),
+**building a thin (~200-line) runner** on the existing `lib/ai` (`runAgent` as the judge) +
+tsx's programmatic loader + `fetch`. Decision: **build** — the runner reuses the shipped model
+seam and the scaffold's fixture contract with zero new deps, and its LLM-judge is one
+`runAgent` call; a config-DSL framework buys less than it costs here. Re-evaluate Promptfoo at
+P2 if eval needs outgrow the in-house judge (ADR-036 migration trigger). This entry is
+informational (the ADR-032 gate matches only `lib/` files; the runner lives in `scripts/`).
+See ADR-036; blueprint `docs/blueprints/enterprise-ws5-ai-eval.md`.
+
+### 2026-07-11 — Embeddings + pgvector RAG seam
+Scope: lib/ai/embeddings.ts, lib/ai/rag.ts
+Considered: Voyage/Cohere Node SDKs (each >50KB — the Ask-before dep line — for what
+is a two-field REST POST), a dedicated vector DB (Pinecone/Weaviate/Qdrant — new
+infrastructure to run), a RAG framework (LangChain/LlamaIndex — heavy, opinionated
+chunking + store abstractions a seam doesn't need), vs. **building a thin
+fetch()-based embeddings seam + a raw pgvector table on the existing Neon Postgres**.
+Decision: **build the thin seam** — dep-free, endpoint-configurable providers (same
+wire-native / endpoint-is-config stance as the Claude provider, ADR-036), and
+pgvector rides the mandatory Postgres (no new datastore — the same reasoning that
+put the queue on pg-boss and the rate limiter on Postgres/Valkey). Silent no-op
+until EMBEDDINGS_API_KEY is set. Files land under the existing `Scope: lib/ai/**`
+AI-runtime ledger entry; this entry is the explicit embeddings/RAG adjudication.
+See ADR-043; blueprint docs/blueprints/enterprise-ws5-rag.md.
+
+### 2026-07-11 — GenAI tracing over the OTel backbone
+Scope: lib/ai/tracing.ts
+Considered: Langfuse SDK / its OTel exporter (first-party generation+score model, prompt linkage — but a new runtime dep + a SECOND telemetry path parallel to the OTel backbone, the coherence cost ADR-040 warned of, + vendor coupling that breaks the swap-backend invariant), the OpenTelemetry GenAI semantic convention `gen_ai.*` (vendor-neutral attribute standard that Langfuse/SigNoz/Collectors all ingest via OTLP — emitted by hand as a few setAttribute calls, so NO instrumentation dep either), raw withSpan with ad-hoc attribute names (works but drifts from semconv so backends wouldn't recognize generations).
+Decision: build-thin-wrapper-around-the-WS4-OTel-backbone (withAiSpan over lib/observability withSpan, emitting gen_ai.* semconv) because Langfuse ingests OTLP, so reusing OTEL_EXPORTER_OTLP_ENDPOINT yields Langfuse (or any OTLP LLM backend) with ZERO new dependency and ONE telemetry path — preserving the ADR-040 instrument-once/swap-backend invariant. See ADR-044 / docs/blueprints/enterprise-ws5-tracing.md.

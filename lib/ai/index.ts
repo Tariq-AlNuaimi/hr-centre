@@ -12,3 +12,25 @@ export type { AiAuthStyle, AiConfig } from "./config";
 export { getAiClient } from "./provider";
 export { runAgent, AI_DEFAULT_MAX_TOKENS } from "./tool-runner";
 export type { RunAgentParams } from "./tool-runner";
+
+// Shared AI-route combinator (guard/parse/trace preamble; ADR-036 follow-on).
+export { withAiRoute } from "./route";
+export type { WithAiRouteOptions } from "./route";
+
+// Embeddings + pgvector RAG seam (ADR-043, WS-5).
+export { getEmbeddings, isEmbeddingsConfigured, EmbeddingsNotConfiguredError } from "./embeddings";
+export type { EmbeddingsProvider, EmbeddingsProviderName } from "./embeddings";
+export { ragUpsert, ragQuery } from "./rag";
+export type { RagHit, RagMetadata } from "./rag";
+
+// GenAI-semconv tracing over the OTel backbone (ADR-044, WS-5).
+export {
+  withAiSpan,
+  aiTraceContentEnabled,
+  recordAiContent,
+  setAiRequestAttributes,
+  setAiResponseAttributes,
+  GEN_AI_ATTR,
+  GEN_AI_SYSTEM_ANTHROPIC,
+} from "./tracing";
+export type { AiSpanOptions, AiResultLike } from "./tracing";

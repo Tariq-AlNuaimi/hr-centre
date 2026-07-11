@@ -758,6 +758,39 @@ async function scanDocker() {
   });
 }
 
+// -- AI-eval gate (ADR-036 WS-5 part b; ADR-020 dormancy, parallels lhci) ----
+// Runs the LLM-as-judge eval runner (scripts/ai-eval.mjs) over the AI endpoints'
+// tests/ai-evals/*.eval.ts fixtures. The runner is DORMANT -- it exits 0 with a
+// `SKIP` note -- until a fork BOTH sets AI_API_KEY and has >=1 fixture, so this
+// template (no key, no fixtures) always passes and /ship stays green with no AI
+// key. When a fork turns AI on + writes fixtures, it POSTs each case to a
+// running/deployed app (AI_EVAL_BASE_URL, default http://localhost:3000) and
+// scores contains/not-contains + llm-judge (via @/lib/ai). Any non-zero exit (a
+// failing case, an unreachable app) is RED. Fork/CI-activated; recorded as a
+// dormancy wave-off in docs/findings-register.md.
+async function scanAiEval() {
+  const r = await run("ai-eval", process.execPath, ["scripts/ai-eval.mjs"]);
+  const skipped = /(^|\n)ai-eval:\s*SKIP\b/.test(r.out);
+  if (r.ok) {
+    return {
+      name: "ai-eval",
+      ok: true,
+      secs: r.secs,
+      out: skipped ? "dormant (no AI_API_KEY / no fixtures -- skipped)" : "all eval cases passed",
+    };
+  }
+  return {
+    name: "ai-eval",
+    ok: false,
+    secs: r.secs,
+    out:
+      "AI eval cases failed (Five Pillars: High-Quality):\n" +
+      r.out.split("\n").filter((l) => l.trim()).slice(-20).map((l) => `  ${l}`).join("\n") +
+      "\n  Fix the endpoint/prompt or the fixture, or point AI_EVAL_BASE_URL at a running app.\n" +
+      "  Dormant until AI_API_KEY + fixtures exist (fork/CI-activated); see docs/findings-register.md.",
+  };
+}
+
 // -- env: load .env for DATABASE_URL etc. (Prisma 7 does not auto-load it) --
 if (existsSync(".env")) {
   for (const line of readFileSync(".env", "utf8").split("\n")) {
@@ -898,7 +931,7 @@ if (coverage.warn) console.warn(`  note: coverage — ${coverage.warn}`);
 const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, complexity, dbStructure, knip, duplication, coverage].find((r) => !r.ok);
 if (redA) fail(redA);
 
-console.log("ship: phase B (build -> size-limit -> gitleaks -> npm audit) ...");
+console.log("ship: phase B (build -> size-limit -> gitleaks -> npm audit -> ai-eval) ...");
 
 const build = await run("build", "npm", ["run", "build"], { NODE_ENV: "production" });
 report(build);
@@ -926,6 +959,13 @@ const audit = { name: "npm audit", secs: auditRaw.secs, ...evaluateAudit(auditRa
 report(audit);
 if (!audit.ok) fail(audit);
 if (audit.out.startsWith("clean (allowlisted")) console.log(`  note: npm audit ${audit.out}`);
+
+// AI-eval gate (ADR-036 WS-5 part b). Dormant/exit-0 (SKIP) until a fork sets
+// AI_API_KEY AND writes tests/ai-evals/*.eval.ts fixtures -- so this template
+// always passes and /ship stays green with no AI key (parallels lhci dormancy).
+const aiEval = await scanAiEval();
+report(aiEval);
+if (!aiEval.ok) fail(aiEval);
 
 // Docker image-build + trivy scan gate (ADR-030) -- full loop only. Absent from
 // the fast /ship loop entirely; runs under --full / SHIP_FULL=1 (/deploy, /handoff, CI).
@@ -973,5 +1013,5 @@ try {
 } catch { /* surfacing is best-effort */ }
 
 console.log(
-  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
+  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
 );

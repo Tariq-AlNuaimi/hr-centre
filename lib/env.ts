@@ -129,6 +129,42 @@ const envSchema = z.object({
     .optional(),
   AI_AUTH_STYLE: z.enum(["x-api-key", "bearer"]).optional(),
   AI_MODEL: z.string().optional(),
+
+  // Optional: capture LLM prompt/completion TEXT as GenAI span attributes
+  // (ADR-044). Restricted/PII (SECURITY.md §1) -- default OFF; enable only for a
+  // trusted debug session against a private OTLP sink. lib/ai/tracing.ts reads
+  // this at call time (like the OTel/AI gates); declared here for the env
+  // contract. Any non-empty truthy value ("1"/"true") enables it.
+  AI_TRACE_CONTENT: z.string().optional(),
+
+  // Embeddings / RAG (optional; ADR-043, WS-5). Silent no-op unless a provider +
+  // key are set: isEmbeddingsConfigured() is false and getEmbeddings() throws
+  // EmbeddingsNotConfiguredError (mirrors the AI_* no-op). The runtime gate lives
+  // in lib/ai/embeddings.ts (reads process.env at call time, like the AI_* gate);
+  // declared here for the env contract + boot-time validation of the provider enum
+  // + base URL. EMBEDDINGS_DIMENSIONS must match the pgvector column (vector(1536)).
+  EMBEDDINGS_PROVIDER: z.enum(["voyage", "cohere", "none"]).optional(),
+  EMBEDDINGS_API_KEY: z.string().optional(),
+  EMBEDDINGS_MODEL: z.string().optional(),
+  EMBEDDINGS_DIMENSIONS: z.coerce.number().int().positive().optional(),
+  EMBEDDINGS_BASE_URL: z
+    .string()
+    .url()
+    .refine(
+      (v) => {
+        try {
+          const u = new URL(v);
+          return (
+            (u.protocol === "http:" || u.protocol === "https:") &&
+            u.hostname.length > 0
+          );
+        } catch {
+          return false;
+        }
+      },
+      { message: "must be an absolute http(s) URL with a host, e.g. https://api.voyageai.com/v1/embeddings" },
+    )
+    .optional(),
 });
 
 export const env = envSchema.parse(process.env);

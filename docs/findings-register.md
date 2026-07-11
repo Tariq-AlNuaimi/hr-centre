@@ -18,6 +18,28 @@ the changed surface is still **open** (un-adjudicated).
 
 ## Register
 <!-- newest first -->
+- 2026-07-11 — [quality/ai] ai-eval /ship gate is DORMANT — the LLM-as-judge eval gate
+  (`scripts/ai-eval.mjs`, wired into /ship phase B) is a no-op that exits 0 (SKIP) until a fork
+  BOTH sets AI_API_KEY and writes >=1 tests/ai-evals/*.eval.ts fixture (and points AI_EVAL_BASE_URL
+  at a running/deployed app). The pristine template has neither, so it always SKIPs green — AI
+  output-quality scoring is unenforced here BY DESIGN, mirroring the dormant lhci gate (ADR-020
+  dormancy pattern). Not silently dropped: it self-activates the moment a fork turns AI on + writes
+  fixtures, and a CI variant (ai-eval.yml against a preview URL) is scheduled to land at the
+  ADR-007/037 Actions-activation line. — owner: operator — status: adjudicated(2026-07-11)
+  (accepted: dormant-by-design gate on the ADR-020 pattern; self-activates per-fork)
+- 2026-07-11 — [quality] WS-5 pgvector RAG seam (ADR-043) is UNVERIFIED in-session —
+  lib/ai/embeddings.ts + lib/ai/rag.ts + prisma/migrations/20260711120000_pgvector_rag were authored
+  to spec, but there is **no pgvector-enabled Postgres and no embeddings egress** in the build
+  environment, so the migration is **UNAPPLIED** and no provider round-trip or vector query ran here.
+  Like the WS-1 distroless image wave-off, verification is delegated to a fork/CI with the
+  infrastructure. Highest-risk unknowns a fork must confirm: the `vector` extension + `<=>` cosine
+  operator + HNSW index resolve on the target Postgres (Neon supports `vector`), and the chosen
+  model's dimension matches `vector(1536)` (voyage-3 / embed-english-v3.0 emit 1024 — ALTER the
+  column + set EMBEDDINGS_DIMENSIONS in lockstep, else INSERT fails loud). **Not silently dropped —
+  recorded for the operator to adjudicate**; the fix at activation: apply the migration against a
+  pgvector DB, set EMBEDDINGS_PROVIDER + EMBEDDINGS_API_KEY, and exercise ragUpsert/ragQuery. —
+  owner: operator — status: adjudicated(2026-07-11) (accepted: infra-unavailable in-session;
+  verification delegated to a pgvector-capable fork/CI, same posture as the WS-1 image wave-off)
 - 2026-07-11 — [secure] ADR-041 P0 item (c) — **SAST-as-a-hard-CI-gate + `zizmor` action-pin
   audit are DEFERRED to CI activation, not landed in WS-2.** ADR-041 and the enterprise-P0
   blueprint (AC-4.3) list "promote `sast.yml` from dormant to a hard blocking gate" + add `zizmor`

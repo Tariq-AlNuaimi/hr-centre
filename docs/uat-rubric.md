@@ -11,12 +11,15 @@ per-domain.
 
 ---
 
-## The 5 governing pillars (every finding justifies against these)
+## The governing pillars (every finding justifies against these)
+Five apply to every fork; a **conditional sixth (AI-Quality)** applies only when the
+fork ships AI endpoints (ADR-042).
 1. **Speed** — RSC reads, no needless round-trips, debounced inputs, bounded payloads. *(Formerly "Fast".)*
 2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage.
 3. **Maintainable** — reuses existing primitives/services; typed; no dead code; small, forward-compatible migrations.
 4. **Scalable** — handles growth (bulk paths not N×1; pagination; rate-limit-aware; no N+1).
 5. **High-Quality** — the polish pillar a finding cites when it isn't one of the four above: correctness + UX fidelity, automated gates (CI / pre-push / axe / coverage), honest empty/loading/error states, and no deprecation drift.
+6. **AI-Quality** *(conditional — governs AI endpoints only; **INERT** on forks with no `lib/ai` usage / no `AI_API_KEY`, ADR-042)* — an AI route must earn its output, judged as a **gate not a vibe** like the five above. A finding cites this pillar for: **eval pass-rate** at threshold (the `/ai-eval` LLM-as-judge gate, ADR-036 / WS-5); **prompt-injection resistance** at the boundary (untrusted input can't exfiltrate the system prompt, escalate the tool set, or override instructions); **honest AI failure states** (503 when `isAiConfigured()` is false, a real error surface on model failure — never a hallucinated success or a green toast over an empty completion); **grounding/citation** for any RAG answer (claims trace to retrieved context, not model memory); **bounded cost/tokens** (`AI_DEFAULT_MAX_TOKENS`, no unbounded loops/context); and **no Restricted/PII in prompts or logs** (SECURITY.md §1 — prompts and completions may carry Restricted input; log metadata only). *Automatable slice:* the `/ai-eval` gate (dormant → scored once `AI_API_KEY` + fixtures land) plus the ten ESLint rules that hard-gate it — model reached only via `@/lib/ai` (never `new Anthropic`), no secret/PII in `console`, zod at the boundary. *Blocking checklist ( `/qa` / `/uat` must affirm on every AI surface):* injection resistance, honest failure states, grounding, and prompt/log hygiene — the judgment calls the eval runner can't express. A concern you don't fix is a **wave-off** in `docs/findings-register.md`, adjudicated like any other pillar. On a non-AI fork this pillar has no surface to bind to, so it raises no findings and blocks nothing.
 
 ## The anchors (a finding cites at least one)
 **Objectives** (what this screen/feature is for) · **Scope** (in/out of bounds) ·
@@ -148,6 +151,31 @@ Gate: design-QA passed → regression green, no open criticals, high-risk covere
 - **Exploratory** alongside scripted: scripted confirms the expected; exploratory finds
   the unscripted. **Gate exit:** regression suite green; no open criticals; high-risk covered.
 
+### Tier 2a — AI-Quality QA (conditional; AI endpoints only)
+**Applies only when the fork ships AI endpoints** (`lib/ai` used + `AI_API_KEY` set);
+**INERT** otherwise — a non-AI fork skips this whole subsection, cites no AI-Quality
+findings, and its release bar is unchanged (ADR-042). Owner: dev + QA. Folds into
+**`/ship`** (the `/ai-eval` phase) + the checklist below. Gate: functional-QA passed →
+eval threshold met → no open AI-Quality wave-off.
+
+- **Automatable slice — the `/ai-eval` gate (ADR-036).** `scripts/ai-eval.mjs` POSTs each
+  `tests/ai-evals/*.eval.ts` case to its `POST /api/ai/<kebab>` route and scores the
+  completion (`contains` / `not-contains` / `llm-judge`). Dormant (exit 0) until
+  `AI_API_KEY` + fixtures exist; RED on any failing case once live. This is the eval
+  pass-rate half of the pillar. The ten ESLint rules cover the rest of the automatable
+  slice (model only via `@/lib/ai`, no secret/PII logging, zod at the boundary).
+- **Blocking checklist** (pass/fail per AI surface; a fail on a core AI flow is a critical
+  that stops the gate, same as an axe or security critical):
+  - [ ] **Injection resistance** — a `not-contains` eval case proves untrusted input can't leak the system prompt, override instructions, or widen the tool set at the boundary.
+  - [ ] **Honest failure states** — 503 when `isAiConfigured()` is false; a real error surface on model failure/timeout; no hallucinated success, no green toast over an empty/partial completion.
+  - [ ] **Grounding / citation (RAG)** — answers cite retrieved context; an `llm-judge` rubric case rejects unsupported claims (ungrounded → fail).
+  - [ ] **Bounded cost/tokens** — `max_tokens` capped (`AI_DEFAULT_MAX_TOKENS`); no unbounded tool loops or unbounded context growth.
+  - [ ] **No Restricted/PII in prompts or logs** — prompts/completions treated as Restricted (SECURITY.md §1); the runner and routes log metadata only, never the key/raw prompt/full completion.
+- **Case matrix (AI):** derive cases from the endpoint's blueprint + benchmark; weight
+  adversarial/injection and Restricted-input cases as **exhaustive** (high impact),
+  happy-path summarize/extract as smoke. **Gate exit:** `/ai-eval` green (or a recorded
+  dormant skip); the checklist affirmed on every AI route; no open AI-Quality wave-off.
+
 ## Tier 3 — UAT (acceptance): does it meet the business need?
 Owner: **the operator** (business). Agent produces the evidence pack; operator accepts.
 Tool: **`/uat`** (FULL). Gate: functional-QA passed → acceptance threshold met → go-live.
@@ -184,12 +212,14 @@ Ship only when **all** hold:
 - [ ] **Functional QA:** `/ship` green; risk-based case matrix passed; high-risk exhaustive.
 - [ ] **UAT:** acceptance scenarios traced + passed at threshold; operator sign-off.
 - [ ] **4 pillars** upheld; **security floor** intact (auth/zod/audit/no leakage).
+- [ ] **AI-Quality** *(only if the fork ships AI endpoints)* — `/ai-eval` green (or a recorded dormant skip); the Tier-2a checklist affirmed; no open AI-Quality wave-off. **Skipped entirely on a non-AI fork** (ADR-042).
 
 ## Scorecard template (one per screen / feature; `/qa` collects these)
 ```
 Screen: <name>   Anchors: <objectives|scope|benchmark:<peer>|kb|design>
 Design QA   spacing _/5 align _/5 hierarchy _/5 color _/5 density _/5 states _/5 consistency _/5 responsive+rtl+dark _/5 a11y _/5
 Functional  matrix: <n> cases, <n> pass; criticals: <n>; high-risk covered: y/n
+AI-Quality  (AI routes only) ai-eval: <pass>/<n> or SKIP; injection: pass/fail; failure-states: pass/fail; grounding: n/a|pass/fail; prompt/log-hygiene: pass/fail
 UAT         reqs traced: <n>/<n>; scenarios pass: <n>/<n>; sign-off: pending/accepted
 Findings    [pillar][anchor] severity — description — file:line / screenshot
 Verdict     ship / fix-first (list blockers)

@@ -25,11 +25,26 @@
 //       --writes editor --rate-limit 10
 //   npm run scaffold-ai-endpoint -- --name Summarize --dry-run
 
-import { writeFile, mkdir, stat } from "node:fs/promises";
+import { writeFile, mkdir, stat, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
 
 const ROOT = process.cwd();
+
+// The blueprint's Tier section must reflect THIS repo's tier at generation time,
+// not a hardcoded value (a personal fork should not emit a `shared` stub). Read it
+// from project.config.json; fall back to `personal` (the config default) if the
+// file is missing or unreadable.
+async function readProjectTier() {
+  try {
+    const raw = await readFile(join(ROOT, "project.config.json"), "utf8");
+    const tier = JSON.parse(raw).tier;
+    return tier === "shared" ? "shared" : "personal";
+  } catch {
+    return "personal";
+  }
+}
+const projectTier = await readProjectTier();
 
 // --- args -------------------------------------------------------------------
 
@@ -110,47 +125,37 @@ function routeTs() {
 //
 // Reaches the model ONLY through the lib/ai barrel (never \`new Anthropic(...)\`):
 // runAgent() delegates to Anthropic's native beta Tool Runner, so adding a \`tools\`
-// array below turns this single-shot completion into an agentic loop for free. The
-// whole route is a no-op-safe 503 until AI_API_KEY is set (isAiConfigured()),
-// rate-limited OUTSIDE auth (the model call is the expensive downstream), zod-guarded
-// at the boundary, and traced via WS-4 (withSpan is a no-op when OTel is off).
-import { NextRequest } from "next/server";
+// array below turns this single-shot completion into an agentic loop for free.
+//
+// The cross-cutting guard/parse/trace preamble (isAiConfigured() -> 503, zod
+// safeParse -> 400, withSpan) lives ONCE in withAiRoute (@/lib/ai); auth +
+// rate-limiting stay EXPLICIT here so the --writes wrapper is visible and
+// withRateLimit stays OUTERMOST (no-rate-limit-inside-auth; the model call is the
+// expensive downstream).
 import { ${authWrapper}, withRateLimit } from "@/lib/api-helpers";
-import { ok, err } from "@/lib/api-response";
-import { withSpan } from "@/lib/observability";
-import { isAiConfigured, runAgent } from "@/lib/ai";
+import { ok } from "@/lib/api-response";
+import { runAgent, withAiRoute } from "@/lib/ai";
 import { ${schemaConst} } from "${validationImportPath}";
 
 export const POST = withRateLimit(
-  ${authWrapper}(async (request: NextRequest) => {
-    // Honest failure: the AI layer is opt-in (silent no-op until AI_API_KEY is set).
-    if (!isAiConfigured()) {
-      return err("AI is not configured on this deployment", 503);
-    }
+  ${authWrapper}(
+    withAiRoute({ span: "ai.${kebab}", schema: ${schemaConst} }, async (input) => {
+      // TODO: craft the real prompt / system message from the validated input.
+      const userMessage = input.${primary.name};
 
-    const body = await request.json().catch(() => null);
-    const parsed = ${schemaConst}.safeParse(body);
-    if (!parsed.success) {
-      return err(parsed.error.issues.map((i) => i.message).join(", "));
-    }
-
-    // TODO: craft the real prompt / system message from the validated input.
-    const userMessage = parsed.data.${primary.name};
-
-    const finalMessage = await withSpan("ai.${kebab}", () =>
-      runAgent({
+      const finalMessage = await runAgent({
         messages: [{ role: "user", content: userMessage }],
         // TODO: add \`tools: [...]\` to make this an agentic loop (native Tool Runner).
         tools: [],
-      }),
-    );
+      });
 
-    const text = finalMessage.content
-      .map((block) => (block.type === "text" ? block.text : ""))
-      .join("");
+      const text = finalMessage.content
+        .map((block) => (block.type === "text" ? block.text : ""))
+        .join("");
 
-    return ok({ text });
-  }),
+      return ok({ text });
+    }),
+  ),
   { id: "${rateLimitId}", limit: ${rateLimit}, windowMs: 60_000 },
 );
 `;
@@ -245,7 +250,7 @@ function blueprintMd() {
     `- Fixtures: \`tests/ai-evals/${kebab}.eval.ts\` (dormant until the ai-eval gate, WS-5 part b).`,
     ``,
     `## Tier`,
-    "`shared`.",
+    `\`${projectTier}\`.`,
     ``,
   ].join("\n");
 }
