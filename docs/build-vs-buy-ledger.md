@@ -47,3 +47,48 @@ PDF-export gap without embedding a fragile serverless dependency. See ADR-032; a
 <!-- This seed entry is illustrative — lib/pdf/ is not yet built. Remove or supersede
      it when the real PDF recipe lands. It exists so the gate has a worked example and
      so `Scope: lib/pdf/**` demonstrates the match format. -->
+
+### 2026-07-11 — AI runtime (Claude-native)
+Scope: lib/ai/**
+Considered: Mastra / LangGraph (full agent frameworks — heavy deps, lock-in, high churn;
+most features unused for a Claude-first template), Vercel AI SDK as the runtime (great
+streaming DX but not built for server-side tool-loops / evals / governance), building a
+thin wrapper on Anthropic's native Tool Runner (`@anthropic-ai/sdk` beta `messages.tool_runner`).
+Decision: **build a thin (~100-line) provider + tool-runner wrapper** in `lib/ai/` on the
+native Anthropic Tool Runner; use the Vercel AI SDK ONLY as the RSC/SSE streaming-UI seam;
+defer frameworks. Smallest maintained surface, Claude-first, no framework lock-in. See
+ADR-036; blueprint `docs/blueprints/enterprise-p0-baseline.md` (WS-5).
+
+### 2026-07-11 — Authorization policy seam
+Scope: lib/authz/**
+Considered: Cerbos (self-host PDP — the deferred default engine, P2), OpenFGA (ReBAC —
+deferred hatch, P2), Oso OSS (deprecated 2025 — rejected), a hand-built in-repo seam.
+Decision: **build a minimal `authorize(session, action, resource)` seam** over the existing
+3-role enum (no external engine in v1); it becomes the single integration point a future
+Cerbos/OpenFGA adoption plugs into, and pairs with a `no-inline-role-check` ESLint rule.
+Adopting an engine is a later, ADR-recorded departure. See ADR-037.
+
+### 2026-07-11 — Observability client (OpenTelemetry)
+Scope: lib/observability/**, lib/otel/**
+Considered: Sentry SaaS SDK only (ADR-002 — lock-in), Grafana Faro / LGTM client (AGPL
+redistribution concern), the vendor-neutral OpenTelemetry SDK (`@vercel/otel` + OTLP).
+Decision: **adopt OpenTelemetry** as the instrument-once client (thin helpers in
+`lib/observability/`, wired from root `instrumentation.ts`), exporting OTLP to a swappable
+Collector → SigNoz backend; not a hand-built tracer. See ADR-040; blueprint WS-4.
+
+### 2026-07-11 — Distributed rate limiter (Valkey)
+Scope: lib/rate-limit/**, lib/valkey.ts
+Considered: keep the in-memory token bucket (correctness bug under >1 replica — SECURITY.md
+T-01), `@upstash/ratelimit` (SaaS/Upstash-oriented; the old swap note), `rate-limiter-flexible`
+backed by **Valkey** (Redis fork, BSD — Redis itself relicensed off OSS). Decision: **adopt
+`rate-limiter-flexible` on Valkey** for the shared-state limiter, with the existing in-memory
+limiter kept as the single-container fallback; thin `lib/valkey.ts` client. Replaces the
+per-instance bucket that load-balancing bypasses. See ADR-035 (self-host topology); blueprint WS-3.
+
+### 2026-07-11 — Background job queue (pg-boss) — P1, entry ahead of build
+Scope: lib/queue/**
+Considered: Inngest (SaaS/hosted — a /scale-up recipe), BullMQ (needs Redis/Valkey +
+workers), **pg-boss** (Postgres-backed queue — no new datastore, rides the mandatory DB).
+Decision: **adopt pg-boss** when a fork needs durable background jobs — reuses the existing
+Postgres, no new infrastructure. Deferred to P1; entry recorded now so the gate is ready.
+See ADR-014 (/scale-up recipe library); blueprint WS-4/WS-5 follow-on.
