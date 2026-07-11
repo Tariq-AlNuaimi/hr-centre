@@ -117,25 +117,22 @@ Execute the enterprise-pivot plan autonomously, P0→P1→P2. Source of truth:
 `docs/research/v2/enterprise-benchmark-v2.html` (P0/P1/P2 action plan) +
 `docs/research/v2/PHASE-2-BACKLOG.md` (WS-1..WS-8). Each increment: blueprint →
 build → `/ship` green → `/code-review` → push → `senior-code-reviewer`.
-Sub-goal now: **P0 (WS-1/2/3) is DONE + pushed. Next = P1/P2 (WS-4..WS-8).**
+Sub-goal now: **P0 (WS-1/2/3) + P1 WS-4 (Observability) DONE + pushed. Next = P1 WS-5 (AI layer), then WS-6/7/8.**
 
 ## State
-- Branch `claude/enterprise-pivot-research-6t7euo`, **in sync with origin (0 unpushed, tree clean)**.
-- Last `/ship`: **green** (d84c061). Not deployed (no Docker daemon in-session; Vercel path unchanged).
+- Branch `claude/enterprise-pivot-research-kiaozb` @ `d24ad39`, **in sync with origin (0 unpushed, tree clean)**.
+- Last `/ship`: **green** (d24ad39). Not deployed (no Docker daemon in-session; Vercel path unchanged).
+- **BRANCH NOTE (session 15):** the active line moved to `kiaozb`. It started == `main` (research docs only), was **fast-forwarded** onto the P0 tip of `6t7euo` (main is a direct ancestor, zero divergence), then WS-4 was built on top. `6t7euo` and `kiaozb` share identical history through `50c116b`; `kiaozb` is now ahead by the two WS-4 commits. `6t7euo` is stale — continue on `kiaozb`.
 - `gitleaks` install in a fresh container: `GOBIN=$HOME/.local/bin go install github.com/zricethezav/gitleaks/v8@v8.21.2` then export PATH (github.com release download is proxy-BLOCKED; the Go module proxy works).
 
-## Done (this session, all pushed)
-- 7bc98c7 remember gotchas; agent-memory curated.
-- 7ffd4ee Phase 0: ADR-035..041 (Docker-first, AI stack, enterprise floor, Node24, Argon2id, OTel, supply-chain) + build-vs-buy ledger entries.
-- 15a5e4e Phase 1: blueprint `docs/blueprints/enterprise-p0-baseline.md` (operator Q's resolved: Additive flip / bundled-default DB / lib-ai skeleton-only).
-- 36b8dc1 WS-2a supply-chain: SHA-pin actions + Trivy CVE-2026-33634 guard.
-- 1035b82 WS-2b Argon2id (@node-rs/argon2) + legacy-verify + rehash-on-login.
-- 4a801a7 WS-3 Valkey + rate-limiter-flexible shared-state limiter (closes T-01).
-- 01de332 senior-review remediation (see Landmines — the trivy-env CRITICAL etc.).
-- d84c061 WS-1 Docker distroless(Node24) + compose.prod.yaml + Caddy + entrypoint.
+## Done (all pushed)
+- **P0 (sessions ≤14, on 6t7euo, now in kiaozb history):** 7ffd4ee ADR-035..041 + ledger · 15a5e4e blueprint enterprise-p0-baseline · 36b8dc1 WS-2a supply-chain · 1035b82 WS-2b Argon2id · 4a801a7 WS-3 Valkey limiter · d84c061 WS-1 Docker distroless · 4aabb9a P0 senior-review criticals fixed.
+- **P1 WS-4 Observability (session 15, this session):**
+  - `16390ef` OpenTelemetry backbone seam (ADR-040): `instrumentation.ts` registers `@vercel/otel` only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (silent zero-overhead no-op otherwise — AC-5.1); `lib/observability/` config gate (Edge-safe) + `withSpan()` no-op-tracer wrapper + 10-test contract suite; `lib/env.ts`/`.env.example` OTEL_* contract; optional `observability` compose profile with an OTel Collector + `docker/otel-collector-config.yaml` (debug-only default pipeline; SigNoz opt-in). Deps `@vercel/otel`+`@opentelemetry/api` (ADR-040 + ledger). `/ship` green; `/code-review` fixed a collector unused-exporter start failure.
+  - `d24ad39` senior-review fixes: **[High]** Sentry's Node SDK is OTel-based and was silently losing the global TracerProvider to registerOTel — now Sentry runs errors-only (`skipOpenTelemetrySetup` + tracesSampleRate 0) when the backbone is on, so one provider owns traces (SigNoz), matching ADR-040's division of labor. **[Med]** tightened OTLP endpoint zod to reject bare `host:port` (was silently exporting nowhere).
 
 ## In flight
-- **NONE.** The WS-1+remediation senior review COMPLETED; it found 2 CRITICALs (ship.mjs `verWarn` ReferenceError crashing `/ship --full`; compose `POSTGRES_PASSWORD:?` breaking external-db) + 1 MEDIUM — **all fixed + pushed in 4aabb9a, /ship green.** Only residual is the Prisma-in-distroless build-verification (already an open register wave-off; needs a real `docker build`, no daemon here). No re-review needed.
+- **NONE.** WS-4 senior-code-reviewer breadth pass COMPLETED; High+Medium fixed + pushed (d24ad39, /ship green). One **Low** left as a documented latent gap (Edge-runtime OTLP-endpoint validation — template pins middleware to nodejs + ships no edge routes; only bites a fork that adds one). No re-review needed.
 
 ## Decisions (operator-confirmed via AskUserQuestion 2026-07-11)
 - Additive default-flip (keep personal/Vercel default; enterprise rail opt-in this phase).
@@ -150,7 +147,7 @@ Sub-goal now: **P0 (WS-1/2/3) is DONE + pushed. Next = P1/P2 (WS-4..WS-8).**
 - The auto-status block above is rendered from `session-state.json`; edit the JSON, never between the markers.
 
 ## Next steps
-1. **P1 — WS-4 Observability** (start here; P0 is fully reviewed + green): `@vercel/otel` in `instrumentation.ts` → OTel Collector → SigNoz (ADR-040). New `lib/observability/**` is pre-authorized in the blueprint Scope + ledger.
-3. **P1 — WS-5 AI layer**: `lib/ai/*` provider + thin native Tool-Runner wrapper on `@anthropic-ai/sdk` (skeleton-only per decision); pgvector; evals; then /scaffold-ai-endpoint + ai-eval gate as a follow-on.
-4. **P1 — WS-6 Identity** (Ory Polis SAML/SCIM sidecar), **WS-7 stack bumps** (Node22→24 in package/engines, zod v4, Prettier gate), **WS-8 harness** (fail-open→fail-closed hooks, gate-quartet, security-architect+sre agents).
-5. Each WS: `/blueprint` (Scope already partly covers) → build → `/ship` (install gitleaks first) → `/code-review` → push → `senior-code-reviewer`. Land green; never end with unpushed commits.
+1. **P1 — WS-4 Observability: DONE** (session 15, d24ad39; /ship green, code-review + senior-review clean). ADR-040 seam shipped.
+2. **P1 — WS-5 AI layer (START HERE):** `lib/ai/*` provider + thin native Tool-Runner wrapper on `@anthropic-ai/sdk` (skeleton-only per operator decision); pgvector; evals; then /scaffold-ai-endpoint + ai-eval gate as a follow-on. Ledger entry for `lib/ai/**` already exists (Scope covered). Load the `/claude-api` skill before writing the Anthropic-SDK wrapper.
+3. **P1 — WS-6 Identity** (Ory Polis SAML/SCIM sidecar), **WS-7 stack bumps** (Node22→24 in package/engines, zod v4, Prettier gate), **WS-8 harness** (fail-open→fail-closed hooks, gate-quartet, security-architect+sre agents).
+4. Each WS: `/blueprint` (Scope already partly covers) → build → `/ship` (install gitleaks first, see State) → `/code-review` → push (`git push -u origin claude/enterprise-pivot-research-kiaozb`) → `senior-code-reviewer`. Land green; never end with unpushed commits.
