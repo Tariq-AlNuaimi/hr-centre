@@ -1,7 +1,23 @@
+import { readFileSync } from "node:fs";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withSentryConfig } from "@sentry/nextjs";
 import withBundleAnalyzer from "@next/bundle-analyzer";
+
+// React Compiler (ADR-048) is default-ON so every fork inherits auto-memoization,
+// but the Babel transform adds ~35% to build time — a fleet-wide cost. A fork that
+// doesn't want that pays nothing by setting `"reactCompiler": false` in
+// project.config.json (the config-driven lever pattern used for locales/tier, and
+// the opt-out precedent set by dockerAck/complexityAck). Read defensively at
+// build-config eval: a missing key or unparseable file leaves it ON.
+function reactCompilerEnabled(): boolean {
+  try {
+    const cfg = JSON.parse(readFileSync("project.config.json", "utf8"));
+    return cfg.reactCompiler !== false;
+  } catch {
+    return true;
+  }
+}
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
 
@@ -47,6 +63,17 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // React Compiler (ADR-048) — stable in Next 16; auto-memoizes client components to
+  // cut needless re-renders (client-runtime responsiveness, a High-Quality/UX-perf
+  // concern) with zero hand-written useMemo/useCallback. Default-ON via the
+  // project.config.json lever above; a fork opts out with `"reactCompiler": false`.
+  // Uses the stable Babel transform (babel-plugin-react-compiler, a build-time
+  // devDep). The faster native `experimental.turbopackRustReactCompiler` Rust port
+  // is NOT in next@16.2.9's config type yet (canary-only) — revisit at the next
+  // pinned-Next bump (ADR-048). The Babel pass adds ~35% to build time; the runtime
+  // win is the trade. The compiler bails out safely on any component that violates
+  // the Rules of React, so adoption is additive.
+  reactCompiler: reactCompilerEnabled(),
   // Opt-in only -- see isDockerBuild above (ADR-023). `undefined` on Vercel.
   output: isDockerBuild ? "standalone" : undefined,
   async headers() {
