@@ -194,3 +194,48 @@ Senior-code-reviewer ran on `git diff origin/main...HEAD` and returned 2 High + 
 3. **WS-8 harness:** fail-open→fail-closed hooks, gate-trio→gate-quartet (add ai-eval), security-architect + sre role-agents, enforce ADR-022 tier routing, docker-first `/deploy`.
 4. **P1 WS-4 Observability + WS-5 AI layer: DONE (session 17, `317320f`).** `npm run scaffold-ai-endpoint -- --name <Pascal>` scaffolds an AI route; `npm run ai-eval` (dormant until AI_API_KEY + fixture). Load `/claude-api` before new Anthropic-SDK code.
 5. **PER-WS LOOP:** `/blueprint` (full track, committed docs/blueprints/*.md with Scope: line + AskUserQuestion on open questions — it CAN fail with a closed-permission-stream error in non-interactive runs; if so, resolve to recommended defaults, record them in the blueprint, proceed) → build (seam pattern: no-op until configured, mirror lib/ai + lib/observability) → install gitleaks (`GOBIN=$HOME/.local/bin go install github.com/zricethezav/gitleaks/v8@v8.21.2`; export PATH — github release proxy-blocked, go proxy works) → `npm run ship` (NOT NODE_ENV=production) to GREEN → `/code-review` (resolve findings) → push (`git push -u origin <this session's assigned branch>`) → `senior-code-reviewer` (fix-forward — do NOT skip). New lib/ files need a build-vs-buy ledger Scope entry BEFORE the write (hook denies otherwise); new API routes/pages need a blueprint Scope. The /ship wave-off gate works — un-adjudicated `status: open` in findings-register turns it RED. A fresh session's assigned branch differs each time — FF onto the prev tip if it's a strict ancestor, else branch from origin/main.
+
+---
+
+# SECTION-A EXECUTION — GOVERNANCE WAVE LANDED (2026-07-11)
+
+> Prose section = current truth (the auto-status JSON block above is stale). Branch
+> `claude/next-patch-bump-main-1i0qvr`, reconciled with origin/main, **0 unpushed**, last /ship GREEN (e638d5c).
+
+## Operator goal
+"Do the entire Section-A action plan in parallel, one sweep." Scoped (AskUserQuestion) to **governance-first**:
+the plan can't run as a blind sweep (two hard gates — blueprint + build-vs-buy — would deny files; Ask-before
+surface all over P1; plan's own "do NOT batch-generate in one pass"; 40 P2 rows are DEFER/opt-in). So this
+session fanned out the *governance layer* that unblocks the code wave.
+
+## DONE this session (all pushed green)
+- **Section-A research (5 files) + HTML report.** Artifact: https://claude.ai/code/artifact/3fe18d1a-6e95-4448-a2e8-82a7164a63e0
+- **Governance wave (8 parallel agents):**
+  - ADRs 049-056 (all Status: **Proposed** — operator must review/accept before build): 049 MCP trust policy · 050 CI blast-radius hardening · 051 supply-chain P1 · 052 OpenAPI seam · 053 docs-site Fumadocs · 054 harness-as-plugin+agent-eval · 055 ops runbooks+DR · 056 auth beta-freeze+Better-Auth eval.
+  - Blueprints (pre-authorize the code wave through the blueprint gate): `docs/blueprints/openapi-contract-seam.md`, `docs/blueprints/docs-site-fumadocs.md`.
+  - Runbooks: `docs/runbooks/` (README, restore-drill, deploy-rollback, incident-response, database-operations).
+  - Ledger: 6 build-vs-buy entries appended (SheetJS, OpenAPI, docs-site, pg-boss, OTel, faker).
+  - Backlog `PHASE-2-BACKLOG.md §A.6` — operator repo/tool shortlist to evaluate.
+  - `agent-memory.md` 2026-07-11 — **design-first directive (BINDING).**
+
+## BINDING operator directive (agent-memory 2026-07-11) — honor EVERY app-building task
+1. **Design/architect BEFORE execution.** Operator's #1 pain: jumping to code w/o architecting functions+workflow.
+   → Always `/blueprint` + `EnterPlanMode` first for multi-file work. Do not "go without thinking."
+2. **Frontend quality is a repeat weak spot.** → `/design-system` proactively + `/design-qa` gate; don't improvise UI.
+
+## NEXT SESSION — the CODE WAVE (each: blueprint→plan-mode sign-off→implement→/ship green→/code-review→push→senior-code-reviewer; independents as parallel worktree agents)
+0. **First: operator reviews/accepts the 8 ADRs** (they're Proposed). Acceptance is the operator's call, not auto.
+1. **.mcp.json version pins (P0)** — web-verify current versions first (chrome-devtools, context7, shadcn); fix chrome-devtools executablePath (dir→binary). ADR-049 records the policy. Small, do early.
+2. **OpenAPI seam** — blueprint exists; resolve its open questions, then build (lib/openapi/**, /api/openapi, Scalar page, Schemathesis CI).
+3. **Docs site (Fumadocs)** — blueprint exists but has 2 OPEN QUESTIONS (content source: existing docs/ vs curated content/docs/**; access posture: internal-only vs public) → resolve via AskUserQuestion BEFORE build.
+4. **CI hardening (ADR-050)** + **supply-chain P1 (ADR-051)** — .github/workflows (dormant CI) + /ship license-allowlist gate + Renovate/osv-scanner. Ask-before (.github, /ship).
+5. **Runtime libs** — pg-boss + OTel (ledger entries exist) — each is an Ask-before >50KB dep; confirm before install.
+6. **exceljs→SheetJS (ADR-051)** + **auth beta-freeze pin (ADR-056)** — both Ask-before (lib/export.ts, lib/auth.ts, package.json).
+7. **Harness-as-plugin + agent-eval (ADR-054)** — .claude/ work.
+8. **Backlog A.6** — evaluate operator's repo/tool shortlist (weight frontend/design skills+MCPs per pain point #2).
+
+## LANDMINES
+- `npm run ship` WITHOUT `export NODE_ENV=production` (false component-test fail).
+- Reinstall gitleaks each session (NOT preinstalled): `GOBIN=$HOME/.local/bin go install github.com/zricethezav/gitleaks/v8@v8.21.2` + `export PATH="$HOME/.local/bin:$PATH"`. github.com release DL blocked → Go module proxy.
+- ADR-055 wire-ups (reference from /handoff, /deploy, 20-remaining-sweep.md) pending — out of scope this session.
+- All ADRs Status: Proposed; only 3 of the merged action-plan P0 items are governance-recorded, the rest is code-wave.
