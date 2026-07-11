@@ -20,11 +20,7 @@ import { DataView } from "@/components/shared/DataView";
 import { DataTable } from "@/components/shared/DataTable";
 import { Toolbar } from "@/components/shared/Toolbar";
 import { BrandedStatus } from "@/components/shared/BrandedStatus";
-import {
-  PageSkeleton,
-  TableSkeleton,
-  FormSkeleton,
-} from "@/components/shared/Skeletons";
+import { PageSkeleton, TableSkeleton, FormSkeleton } from "@/components/shared/Skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -59,14 +55,9 @@ function Icon({ path, className }: { path: string } & IconProps) {
   );
 }
 const PlusIcon = (p: IconProps) => <Icon path="M12 5v14M5 12h14" {...p} />;
-const DownloadIcon = (p: IconProps) => (
-  <Icon path="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16" {...p} />
-);
+const DownloadIcon = (p: IconProps) => <Icon path="M12 3v12m0 0 4-4m-4 4-4-4M4 21h16" {...p} />;
 const UserIcon = (p: IconProps) => (
-  <Icon
-    path="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"
-    {...p}
-  />
+  <Icon path="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" {...p} />
 );
 const TrashIcon = (p: IconProps) => (
   <Icon
@@ -77,12 +68,7 @@ const TrashIcon = (p: IconProps) => (
 const ShieldIcon = (p: IconProps) => (
   <Icon path="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Zm-3-10 2 2 4-4" {...p} />
 );
-const LockIcon = (p: IconProps) => (
-  <Icon
-    path="M5 11h14v10H5V11Zm2 0V7a5 5 0 0 1 10 0v4"
-    {...p}
-  />
-);
+const LockIcon = (p: IconProps) => <Icon path="M5 11h14v10H5V11Zm2 0V7a5 5 0 0 1 10 0v4" {...p} />;
 const ToolIcon = (p: IconProps) => (
   <Icon
     path="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2.7-.7-.7-2.7 2.4-2.2Z"
@@ -91,13 +77,7 @@ const ToolIcon = (p: IconProps) => (
 );
 
 /* --- Inline alert (token-tinted; replaces AntD Alert) ---------------------- */
-function InlineAlert({
-  tone,
-  children,
-}: {
-  tone: "success" | "error";
-  children: React.ReactNode;
-}) {
+function InlineAlert({ tone, children }: { tone: "success" | "error"; children: React.ReactNode }) {
   const success = tone === "success";
   return (
     <div
@@ -130,13 +110,7 @@ function InlineAlert({
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
       <h2 className="m-0 text-h4 font-semibold text-foreground">{title}</h2>
@@ -255,26 +229,16 @@ export default function StyleGuidePage() {
             <Badge variant="danger">Blocked</Badge>
           </div>
           <InlineAlert tone="success">Saved successfully.</InlineAlert>
-          <InlineAlert tone="error">
-            Something went wrong. Try again.
-          </InlineAlert>
+          <InlineAlert tone="error">Something went wrong. Try again.</InlineAlert>
         </div>
       </Section>
 
       <Section title="Table">
-        <DataTable<GalleryRow>
-          columns={sampleColumns}
-          dataSource={sampleData}
-          rowKey="id"
-        />
+        <DataTable<GalleryRow> columns={sampleColumns} dataSource={sampleData} rowKey="id" />
       </Section>
 
       <Section title="Empty state">
-        <EmptyState
-          description="No records yet"
-          actionLabel="Create one"
-          onAction={() => {}}
-        />
+        <EmptyState description="No records yet" actionLabel="Create one" onAction={() => {}} />
       </Section>
 
       <Section title="Brand identity (brand.config.ts)">
@@ -286,9 +250,7 @@ export default function StyleGuidePage() {
             {brand.monogram}
           </span>
           <div>
-            <div className="text-lg font-semibold text-foreground">
-              {brand.appName}
-            </div>
+            <div className="text-lg font-semibold text-foreground">{brand.appName}</div>
             <p className="m-0 text-sm text-muted-foreground">
               Font: {brand.font.family} · density: {brand.density}
             </p>
@@ -297,12 +259,7 @@ export default function StyleGuidePage() {
         <div className="mt-4 flex flex-wrap gap-4">
           {swatches.map((s) => (
             <div key={s.name} className="text-center">
-              <div
-                className={cn(
-                  "h-14 w-14 rounded-md border border-border",
-                  s.className,
-                )}
-              />
+              <div className={cn("h-14 w-14 rounded-md border border-border", s.className)} />
               <span className="text-xs text-muted-foreground">{s.name}</span>
             </div>
           ))}
@@ -343,11 +300,7 @@ export default function StyleGuidePage() {
             </Button>
           }
         >
-          <DataTable<GalleryRow>
-            columns={sampleColumns}
-            dataSource={sampleData}
-            rowKey="id"
-          />
+          <DataTable<GalleryRow> columns={sampleColumns} dataSource={sampleData} rowKey="id" />
         </SectionCard>
       </Section>
 
@@ -419,16 +372,8 @@ export default function StyleGuidePage() {
               icon: <ToolIcon />,
             },
           ].map((s, i) => (
-            <div
-              key={i}
-              className="overflow-hidden rounded-lg border border-border"
-            >
-              <BrandedStatus
-                minHeight={220}
-                code={s.code}
-                icon={s.icon}
-                title={s.title}
-              />
+            <div key={i} className="overflow-hidden rounded-lg border border-border">
+              <BrandedStatus minHeight={220} code={s.code} icon={s.icon} title={s.title} />
             </div>
           ))}
         </div>
@@ -438,9 +383,7 @@ export default function StyleGuidePage() {
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="outline"
-            onClick={() =>
-              window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE))
-            }
+            onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE))}
           >
             Open command palette (⌘K)
           </Button>
@@ -494,9 +437,7 @@ export default function StyleGuidePage() {
           <span className="rounded-sm bg-slate-100 px-4 py-2 text-xs shadow-md dark:bg-slate-800 dark:text-slate-100">
             dark: follows data-theme
           </span>
-          <span className="p-density-card text-h5 shadow-lg rounded-lg">
-            density + type scale
-          </span>
+          <span className="p-density-card text-h5 shadow-lg rounded-lg">density + type scale</span>
         </div>
       </Section>
     </>

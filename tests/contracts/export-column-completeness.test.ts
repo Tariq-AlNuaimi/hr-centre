@@ -29,6 +29,6 @@ test("every SCRUB_FIELDS name is covered by the export-column denylist", () => {
       `eslint-rules/rules/no-restricted-export-column.mjs: ${missing.join(", ")}. ` +
       `Any field redacted from the audit trail must also be banned as an export ` +
       `column key -- add each missing name to RESTRICTED_EXPORT_KEYS. See ` +
-      `SECURITY.md §1 (export egress).`
+      `SECURITY.md §1 (export egress).`,
   );
 });

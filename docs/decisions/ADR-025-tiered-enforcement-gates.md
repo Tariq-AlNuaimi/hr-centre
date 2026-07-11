@@ -7,11 +7,11 @@
 
 ## Context
 
-The harness shipped a set of *aspirational* controls that did not actually
+The harness shipped a set of _aspirational_ controls that did not actually
 enforce themselves (operator complaints #9–#14):
 
 - The **Five Pillars** (Speed/Secure/Maintainable/Scalable/High-Quality) were a
-  rubric `/ship` and `/qa` were *supposed* to affirm, but nothing failed when a
+  rubric `/ship` and `/qa` were _supposed_ to affirm, but nothing failed when a
   pillar concern was waved off and never adjudicated — "acceptable" was a silent
   shrug, not a recorded, reviewed decision (#12).
 - `/blueprint` produced a pre-build contract, but only by convention — a real
@@ -21,7 +21,7 @@ enforce themselves (operator complaints #9–#14):
   forever, silently skipping the shared-tier ceremony (`/handoff`, SECURITY.md §9
   compliance, formal findings register, CI activation) even after a tool had
   clearly become a shared, multi-contributor company project (#11).
-- The `Stop` hook only *warned* about committed-but-unpushed work. Because a
+- The `Stop` hook only _warned_ about committed-but-unpushed work. Because a
   fresh remote container clones only what is pushed, unpushed commits are silent
   data loss — exactly the "I built it last session but this session has no record
   of it" failure (#14).
@@ -37,8 +37,8 @@ deliberate blast-radius limit and an explicit escape hatch:
 
 1. **Pillars-as-gates (wave-off gate).** `/ship` (`scripts/ship.mjs`, phase A)
    hard-fails on any `status: open` wave-off in `docs/findings-register.md`. A
-   pillar concern you choose not to fix must be *logged* and then *adjudicated*
-   (operator accepts/schedules → `adjudicated(<date>)`) or *fixed*
+   pillar concern you choose not to fix must be _logged_ and then _adjudicated_
+   (operator accepts/schedules → `adjudicated(<date>)`) or _fixed_
    (`fixed(<commit>)`) before green. The automatable pillars (Secure via ESLint,
    Scalable via the unbounded-`findMany` scan) already block; this closes the
    loop on the non-automatable ones.
@@ -51,9 +51,9 @@ deliberate blast-radius limit and an explicit escape hatch:
    block there would trap the agent mid-conversation before it can even commit).
 
 3. **Blueprint structural gate.** `/ship` detects a **new feature surface** in the
-   diff vs the `origin/main` merge-base — a newly-*added* `app/api/**/route.ts`
+   diff vs the `origin/main` merge-base — a newly-_added_ `app/api/**/route.ts`
    file or a new `prisma/migrations/` directory — and requires a committed
-   `docs/blueprints/<feature>.md`. It keys on *added* surface only, so edits to
+   `docs/blueprints/<feature>.md`. It keys on _added_ surface only, so edits to
    existing files (fixes, refactors, dependency bumps) never trip it. **Tiered:**
    `shared` blocks, `personal` only warns.
 
@@ -71,19 +71,22 @@ blueprint, or an adjudicated register line — never a silent flag.
 ## Consequences
 
 ### Positive
-- The controls are now self-enforcing; a green `/ship` *means* the pillars,
+
+- The controls are now self-enforcing; a green `/ship` _means_ the pillars,
   blueprint, and tier invariants hold, not just that someone remembered them.
 - Unpushed work can no longer silently evaporate between remote sessions.
 - Escapes are auditable (a config key or a register line), so "we skipped this"
   is always a recorded decision.
 
 ### Negative
+
 - More ways for `/ship` to go red, and the Stop hook can interrupt an attempt to
   end a turn. New gate code is harness surface that must itself stay correct.
 - The contributor-count and added-feature-surface signals are heuristics; they
   can misfire (e.g. a genuinely-personal repo with a second contributor).
 
 ### Mitigations
+
 - Every gate is narrow by construction (added surface only; bots excluded;
   `status: open` real-entry regex that ignores the format-doc line) and has a
   one-line escape hatch, so a misfire is a 30-second `*Ack` away.
@@ -92,6 +95,7 @@ blueprint, or an adjudicated register line — never a silent flag.
   same stop-the-line semantics as the existing `/ship` steps.
 
 ## Alternatives considered
+
 1. **Keep them advisory (status quo).** Rejected — the complaints were precisely
    that advice the harness doesn't enforce gets skipped under time pressure.
 2. **Block unconditionally, no tiering.** Rejected — would strangle the
@@ -104,6 +108,7 @@ blueprint, or an adjudicated register line — never a silent flag.
    per-tool-call check is noisier and harder to scope.
 
 ## Known limitations (recorded so they aren't re-discovered)
+
 - **Stop hook is a one-shot, not a persistent barrier.** The `stop_hook_active`
   guard means it blocks at most once per stop attempt; on the second attempt the
   turn ends even if the push failed. Acceptable trade-off (the alternative is an
@@ -121,6 +126,7 @@ blueprint, or an adjudicated register line — never a silent flag.
   full AST parse would be needed to eliminate it.
 
 ## Migration triggers
+
 - If a gate's false-positive rate makes operators reach for the escape hatch
   routinely, tighten the signal or downgrade that gate to a warning.
 - If plan-mode leaves a durable artifact, fold a "plan trace" into the blueprint
@@ -129,6 +135,7 @@ blueprint, or an adjudicated register line — never a silent flag.
   all operator work routes through a single bot identity).
 
 ## Related
+
 - CLAUDE.md "Five Pillars", "Hard rules", "Project tiers"
 - `.claude/skills/ship/SKILL.md` (steps 4c/4d/4e), `scripts/ship.mjs`
 - `.claude/skills/blueprint/SKILL.md`, `docs/blueprints/README.md`

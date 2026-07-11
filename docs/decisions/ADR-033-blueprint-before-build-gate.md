@@ -10,7 +10,7 @@
 The second load-bearing complaint behind ADR-032: in build sessions the agent jumps
 straight to feature code — skipping planning, user stories, worst-path scenarios, and
 the clarifying questions that pin down requirements — then fills the gaps with guesses
-that turn into rebuilds. The template already *states* the fix ("Blueprint before
+that turn into rebuilds. The template already _states_ the fix ("Blueprint before
 building (the pre-build gate)", "Auto-plan high blast-radius / ambiguous work", the
 `/blueprint` skill), but as advisory prose and non-blocking `[skill-activation]` hints
 it is skipped under load, exactly as the build-vs-buy guidance was before ADR-032.
@@ -34,23 +34,28 @@ operator (build-vs-buy ✓, blueprint-before-build, complexity budget).
 ## Considered options
 
 ### Option 1 — PreToolUse deny gate on new route/page files, keyed to a blueprint `Scope:` (chosen)
+
 `blueprint-gate.mjs` denies a new `app/api/**/route.ts` or `app/**/page.tsx` unless a
 `docs/blueprints/*.md` carries a `Scope:` glob covering it. `/blueprint` (both tracks)
 now emits that `Scope:` line.
+
 - Good, because it makes a blueprint a hard precondition at the exact feature-build
   moment, reusing the proven ADR-032 mechanism.
 - Good, because the lightweight-stub path keeps `/quickstart` flowing through the gate.
 - Bad, because it depends on `/blueprint` emitting a `Scope:` line (a small skill change).
 
 ### Option 2 — Gate on Prisma model additions instead of routes/pages
+
 Trigger when `schema.prisma` gains a model.
+
 - Good, because a new model is a strong feature signal.
-- Bad, because that is an *edit* to an existing file (not a new-file create), needing
+- Bad, because that is an _edit_ to an existing file (not a new-file create), needing
   content-diffing the schema — more complex and outside the clean new-file trigger; and
   schema changes are already Ask-before. Rejected for v1 (routes/pages are the cleaner
   signal).
 
 ### Option 3 — Keep it advisory (a stronger `skill-rules.json` nudge)
+
 - Good, because zero false-block risk.
 - Bad, because it is the non-blocking hint the model already skips — no behavior change
   (the ADR-032 finding).
@@ -63,7 +68,7 @@ blueprint `Scope:` match. Update `.claude/skills/blueprint/SKILL.md` so both tra
 a `Scope:`-bearing `docs/blueprints/<feature>.md` (full doc or minimal stub). Gate is
 **fail-open**, per ADR-032.
 
-The gate enforces that a blueprint *exists and scopes the feature* — it does not (cannot)
+The gate enforces that a blueprint _exists and scopes the feature_ — it does not (cannot)
 verify the blueprint's substance or that `AskUserQuestion` ran. That substance is owned
 by the `/blueprint` skill and by review, the same division of labor as ADR-032: the gate
 forces the artifact; the skill and the human own its quality.
@@ -71,6 +76,7 @@ forces the artifact; the skill and the human own its quality.
 ## Consequences
 
 ### Positive
+
 - Planning-first, user stories, worst-path scenarios, and clarifying questions become a
   hard precondition for feature code — the operator stops supplying that pushback by hand.
 - Every feature gets a committed, `Scope:`-anchored blueprint — the contract `/qa` and
@@ -79,29 +85,34 @@ forces the artifact; the skill and the human own its quality.
   is next on the same pattern.
 
 ### Negative
+
 - Depends on `/blueprint` emitting `Scope:`; a blueprint without it won't satisfy the gate.
 - Fail-open means a broken blueprints dir silently disables the gate.
 - New pages that are pure UI (no real feature) still need a blueprint/stub — a minor
   speed bump, mitigated by the lightweight stub.
 
 ### Mitigations
+
 - The skill change + this ADR document the `Scope:` requirement; the deny message tells
   the agent the exact `Scope:` line to add.
 - The hook is small and covered by the ADR verification steps; blueprints are reviewed.
 - Lightweight stub keeps the quickstart path a few lines, not a ceremony.
 
 ## Alternatives considered
+
 1. **Gate on Prisma model additions** — rejected: needs schema content-diffing; not a
    clean new-file trigger; schema is already Ask-before.
 2. **Advisory-only nudge** — rejected: non-blocking, no behavior change.
 
 ## Migration triggers
+
 - Revisit if new-page false positives cause friction (scope the trigger to routes only,
   or add a `Tier: lightweight` fast-path).
 - Fold into a unified enforcement artifact if gate #3 (complexity budget) makes three
   separate hooks redundant.
 
 ## Related
+
 - ADR-032 (build-vs-buy gate — the enforcement pattern this reuses).
 - `.claude/hooks/blueprint-gate.mjs`; `.claude/skills/blueprint/SKILL.md`.
 - CLAUDE.md — "Blueprint before building"; "Auto-plan high blast-radius / ambiguous work".

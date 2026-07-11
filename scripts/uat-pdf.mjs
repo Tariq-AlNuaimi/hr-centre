@@ -164,11 +164,12 @@ function buildMatrixSection() {
           const glyph = reached ? "✓" : "—";
           const cls = reached ? "reach" : "block";
           const mismatch = c.ok === false;
-          const title = `expected ${expected ? "reach" : "blocked"}, ` +
-            `actual ${c.outcome}`;
-          return `<td class="cell ${cls}${mismatch ? " bad" : ""}" title="${esc(title)}">` +
+          const title = `expected ${expected ? "reach" : "blocked"}, ` + `actual ${c.outcome}`;
+          return (
+            `<td class="cell ${cls}${mismatch ? " bad" : ""}" title="${esc(title)}">` +
             `${glyph}${mismatch ? '<span class="flag">!</span>' : ""}` +
-            `<div class="oc">${esc(c.outcome)}</div></td>`;
+            `<div class="oc">${esc(c.outcome)}</div></td>`
+          );
         })
         .join("");
       return `<tr>
@@ -203,8 +204,7 @@ function buildCrudSection() {
   if (!journeys) return "";
 
   const pill = (p) => {
-    const cls =
-      p.status === "passed" ? "pass" : p.status === "skipped" ? "skip" : "fail";
+    const cls = p.status === "passed" ? "pass" : p.status === "skipped" ? "skip" : "fail";
     return `<span class="phase ${cls}" title="${esc(p.detail ?? "")}">${esc(p.phase)}</span>`;
   };
 
@@ -249,10 +249,7 @@ function buildUiuxSection() {
   const findings = readJsonArray(UIUX_JSON);
   if (!findings) return "";
 
-  const yn = (ok) =>
-    ok
-      ? '<span class="chip ok">✓</span>'
-      : '<span class="chip bad">✗</span>';
+  const yn = (ok) => (ok ? '<span class="chip ok">✓</span>' : '<span class="chip bad">✗</span>');
   const num = (n, badWhenPositive) =>
     `<span class="chip ${badWhenPositive && n > 0 ? "bad" : n > 0 ? "warn" : "ok"}">${n}</span>`;
 
@@ -307,12 +304,8 @@ function buildRecommendationsSection() {
       if (items.length === 0) return "";
       const lis = items
         .map((it) => {
-          const ev = (it.evidence ?? [])
-            .map((e) => `<code>${esc(e)}</code>`)
-            .join(" · ");
-          const detail = it.detail
-            ? `<div class="rec-detail">${esc(it.detail)}</div>`
-            : "";
+          const ev = (it.evidence ?? []).map((e) => `<code>${esc(e)}</code>`).join(" · ");
+          const detail = it.detail ? `<div class="rec-detail">${esc(it.detail)}</div>` : "";
           return `<li>
             <div class="rec-title"><span class="src ${it.source}">${esc(it.source)}</span> ${esc(it.title)}</div>
             ${detail}
@@ -353,8 +346,7 @@ function buildBenchmarkSection(mode) {
 
   const d = loaded.data;
   const statusChip = (s) => {
-    const cls =
-      s === "present" ? "ok" : s === "partial" ? "warn" : s === "absent" ? "bad" : "na";
+    const cls = s === "present" ? "ok" : s === "partial" ? "warn" : s === "absent" ? "bad" : "na";
     return `<span class="chip ${cls}">${esc(s ?? "—")}</span>`;
   };
 
@@ -373,9 +365,7 @@ function buildBenchmarkSection(mode) {
   const peers = (d.peers ?? [])
     .map((p) => {
       const better = (p.betterAtThanUs ?? []).map((x) => esc(x)).join(" · ");
-      const name = p.url
-        ? `<a href="${esc(p.url)}">${esc(p.name)}</a>`
-        : `<b>${esc(p.name)}</b>`;
+      const name = p.url ? `<a href="${esc(p.url)}">${esc(p.name)}</a>` : `<b>${esc(p.name)}</b>`;
       return `<tr>
         <td>${name}</td>
         <td>${esc(p.positioning ?? "—")}</td>
@@ -407,17 +397,14 @@ function buildBenchmarkSection(mode) {
 }
 
 function buildHtml(report, rows) {
-  const startTime =
-    report.stats?.startTime ?? report.config?.metadata?.startTime ?? null;
+  const startTime = report.stats?.startTime ?? report.config?.metadata?.startTime ?? null;
   const total = rows.length;
   const passed = rows.filter((r) => r.status === "passed").length;
   const failed = rows.filter((r) => r.status === "failed").length;
   const other = total - passed - failed;
   const mode = process.env.UAT_MODE ?? "lean";
   const baseURL =
-    report.config?.projects?.[0]?.use?.baseURL ??
-    process.env.UAT_BASE_URL ??
-    "(local)";
+    report.config?.projects?.[0]?.use?.baseURL ?? process.env.UAT_BASE_URL ?? "(local)";
 
   const summaryRows = rows
     .map((r) => {

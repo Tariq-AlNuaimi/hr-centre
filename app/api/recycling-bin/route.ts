@@ -62,13 +62,11 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
         deletedAt: record.deletedAt as Date,
         deletedBy: record.deletedBy as string | null,
       }));
-    })
+    }),
   );
   const merged = perType.flat();
 
-  merged.sort(
-    (a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime()
-  );
+  merged.sort((a, b) => new Date(b.deletedAt).getTime() - new Date(a.deletedAt).getTime());
 
   // Cap the merged total AFTER the global sort so the retained rows are the most
   // recently deleted across every type, then paginate within that ceiling.

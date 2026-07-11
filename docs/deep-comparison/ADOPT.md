@@ -7,6 +7,7 @@ comparison tables"), scoped by the signed program blueprint
 below plus a deferred list.
 
 **Rules (from the blueprint, binding):**
+
 - This file is the **single checklist**; adoption survives sessions by being
   checked off here, not remembered.
 - Each wave lands via its own `/blueprint` + `/ship`-green push. Ask-before
@@ -62,7 +63,7 @@ findings-register waiver wiring.
 - [x] **Vercel Speed Insights** — landed 2026-07-02 (`cc353d6`; `@vercel/speed-insights` mounted in
       `app/[locale]/layout.tsx`, guarded by `process.env.VERCEL` — inert in local/Docker)
 - [~] **Lighthouse-CI vs preview URL** — config + `npm run lhci` landed 2026-07-02 (`ac3eb4c`;
-      `lighthouserc.cjs`, runnable ad-hoc); per-PR CI assertion stays dormant until Actions activate
+  `lighthouserc.cjs`, runnable ad-hoc); per-PR CI assertion stays dormant until Actions activate
 - [x] **@next/bundle-analyzer** behind `ANALYZE=1` — landed 2026-07-02 (`ac3eb4c`; gate broadened to
       honor `ANALYZE=1`, no-op default/Vercel build)
 - [x] **react-scan** dev overlay — landed 2026-07-02 (`ac3eb4c`; `npm run scan` CLI, dev-only)

@@ -5,7 +5,7 @@
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
 **Supersedes:** ADR-023's **opt-in stance** ("Docker is an opt-in self-host
-rail"). ADR-023's *implementation* (the `DOCKER_BUILD` gate in
+rail"). ADR-023's _implementation_ (the `DOCKER_BUILD` gate in
 `next.config.ts`, the multi-stage Dockerfile, compose files, Make targets,
 dormant `docker-build.yml`) is kept as-is; what changes is the policy layer on
 top. ADR-006 (Vercel + Neon as the **deploy** default) is unchanged.
@@ -17,8 +17,8 @@ ADR-023 (2026-06-24) made Docker a maintained but opt-in second rail. On
 program: **"Docker is always built — a standard, mandatory part of the stack."**
 
 The distinction that keeps both directives coherent: Vercel + Neon remains the
-*deploy* path (nothing about `git push` → URL changes), while the Docker image
-becomes a *mandatory build gate and handoff artifact* — every app must always
+_deploy_ path (nothing about `git push` → URL changes), while the Docker image
+becomes a _mandatory build gate and handoff artifact_ — every app must always
 be able to produce a bootable, scanned container image, and the harness
 verifies this rather than hoping.
 
@@ -56,17 +56,20 @@ The open strictness question (blueprint Q2) was answered by the operator on
 ## Consequences
 
 ### Positive
+
 - "Can IT run this?" is verified continuously, not discovered at `/handoff`.
 - Self-host/on-prem forks get a guaranteed-green image at any commit that
   passed the full gate.
 - Image scanning (trivy) extends the security floor to the container layer.
 
 ### Negative
+
 - `/ship --full`, `/deploy`, and `/handoff` get slower (image build).
 - Docker (or a compatible builder) becomes an environment prerequisite for the
   full gate — remote containers without a daemon must lean on CI or the ack.
 
 ### Mitigations
+
 - Multi-stage, cache-friendly Dockerfile keeps warm rebuilds cheap.
 - The fast `/ship` loop is untouched — day-to-day iteration speed is preserved.
 - `"dockerAck"` + findings-register adjudication covers environments that
@@ -74,6 +77,7 @@ The open strictness question (blueprint Q2) was answered by the operator on
 - CI ownership of the always-on build once Actions activate.
 
 ## Alternatives considered
+
 1. **Image build in every local `/ship`** (the literal "always"). Rejected by
    the operator (blueprint Q2): it taxes the tight loop the template exists to
    protect, for no additional guarantee beyond the full-gate placement.
@@ -84,6 +88,7 @@ The open strictness question (blueprint Q2) was answered by the operator on
    touches infrastructure.
 
 ## Migration triggers
+
 - Revisit gate placement if image-build time in `/ship --full` exceeds ~2× the
   rest of the gate combined (candidate: CI-only with a local ack default).
 - Revisit if self-host becomes the common deploy case (then consider registry
@@ -92,6 +97,7 @@ The open strictness question (blueprint Q2) was answered by the operator on
   must track it; unchanged from ADR-023).
 
 ## Related
+
 - ADR-023 — the rail this promotes (implementation kept, stance superseded).
 - ADR-006 — Vercel + Neon deploy default (unchanged).
 - ADR-025 — tiered enforcement gates (the ack/register escape pattern).

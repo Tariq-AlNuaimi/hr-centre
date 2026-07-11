@@ -18,21 +18,21 @@ async function reload(buf: Uint8Array) {
 
 test("toExcel produces a non-empty xlsx Uint8Array", async () => {
   const buf = await toExcel(
-    [{ name: "Alice", n: 1 }, { name: "Bob", n: 2 }],
+    [
+      { name: "Alice", n: 1 },
+      { name: "Bob", n: 2 },
+    ],
     [
       { header: "Name", key: "name" },
       { header: "N", key: "n" },
-    ]
+    ],
   );
   assert.ok(buf instanceof Uint8Array, "expected Uint8Array");
   assert.ok(buf.length > 100, `expected meaningful xlsx, got ${buf.length} bytes`);
 });
 
 test("toExcel header row is bold", async () => {
-  const buf = await toExcel(
-    [{ a: 1 }],
-    [{ header: "A", key: "a" }]
-  );
+  const buf = await toExcel([{ a: 1 }], [{ header: "A", key: "a" }]);
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
   const header = sheet.getRow(1);
@@ -42,7 +42,7 @@ test("toExcel header row is bold", async () => {
 test("toExcel format callback shapes the cell value", async () => {
   const buf = await toExcel(
     [{ price: 100 }, { price: 50 }],
-    [{ header: "Price", key: "price", format: (v) => `$${v}` }]
+    [{ header: "Price", key: "price", format: (v) => `$${v}` }],
   );
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
@@ -51,21 +51,13 @@ test("toExcel format callback shapes the cell value", async () => {
 });
 
 test("toExcel respects sheetName option", async () => {
-  const buf = await toExcel(
-    [{ a: 1 }],
-    [{ header: "A", key: "a" }],
-    { sheetName: "Custom" }
-  );
+  const buf = await toExcel([{ a: 1 }], [{ header: "A", key: "a" }], { sheetName: "Custom" });
   const wb = await reload(buf);
   assert.equal(wb.worksheets[0].name, "Custom");
 });
 
 test("toExcel inserts title row and shifts headers when title is set", async () => {
-  const buf = await toExcel(
-    [{ a: 1 }],
-    [{ header: "A", key: "a" }],
-    { title: "My Report" }
-  );
+  const buf = await toExcel([{ a: 1 }], [{ header: "A", key: "a" }], { title: "My Report" });
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
   assert.equal(sheet.getCell("A1").value, "My Report");
@@ -76,7 +68,7 @@ test("toExcel inserts title row and shifts headers when title is set", async () 
 test("toExcel handles nullish values via the default (empty-string) coercion", async () => {
   const buf = await toExcel(
     [{ a: null }, { a: undefined }, { a: "" }],
-    [{ header: "A", key: "a" as never }]
+    [{ header: "A", key: "a" as never }],
   );
   const wb = await reload(buf);
   const sheet = wb.worksheets[0];
@@ -85,7 +77,7 @@ test("toExcel handles nullish values via the default (empty-string) coercion", a
 
 test("neutralizeFormula prefixes formula-trigger strings, leaves the rest", () => {
   // CWE-1236: leading = + - @ (and tab/CR) would execute as a formula.
-  assert.equal(neutralizeFormula("=HYPERLINK(\"http://evil\")"), "'=HYPERLINK(\"http://evil\")");
+  assert.equal(neutralizeFormula('=HYPERLINK("http://evil")'), '\'=HYPERLINK("http://evil")');
   assert.equal(neutralizeFormula("+1+1"), "'+1+1");
   assert.equal(neutralizeFormula("-2"), "'-2");
   assert.equal(neutralizeFormula("@SUM(A1)"), "'@SUM(A1)");
@@ -99,11 +91,8 @@ test("neutralizeFormula prefixes formula-trigger strings, leaves the rest", () =
 });
 
 test("toExcel neutralizes a formula-injection cell so it round-trips as inert text", async () => {
-  const payload = "=HYPERLINK(\"http://evil.example\",\"click\")";
-  const buf = await toExcel(
-    [{ note: payload }],
-    [{ header: "Note", key: "note" }]
-  );
+  const payload = '=HYPERLINK("http://evil.example","click")';
+  const buf = await toExcel([{ note: payload }], [{ header: "Note", key: "note" }]);
   const wb = await reload(buf);
   const cell = wb.worksheets[0].getCell("A2");
   // Stored as a plain string (apostrophe-guarded), NOT an Excel formula object.
@@ -115,11 +104,11 @@ test("excelDownloadHeaders builds correct content-type + disposition", () => {
   const h = excelDownloadHeaders("projects-2026.xlsx");
   assert.equal(
     h["content-type"],
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   );
   assert.equal(
     h["content-disposition"],
-    `attachment; filename="projects-2026.xlsx"; filename*=UTF-8''projects-2026.xlsx`
+    `attachment; filename="projects-2026.xlsx"; filename*=UTF-8''projects-2026.xlsx`,
   );
 });
 
@@ -127,7 +116,7 @@ test("excelDownloadHeaders appends .xlsx when missing", () => {
   const h = excelDownloadHeaders("report");
   assert.equal(
     h["content-disposition"],
-    `attachment; filename="report.xlsx"; filename*=UTF-8''report.xlsx`
+    `attachment; filename="report.xlsx"; filename*=UTF-8''report.xlsx`,
   );
 });
 
@@ -135,14 +124,14 @@ test("excelDownloadHeaders strips embedded quotes from the filename", () => {
   const h = excelDownloadHeaders('a"b.xlsx');
   assert.equal(
     h["content-disposition"],
-    `attachment; filename="ab.xlsx"; filename*=UTF-8''a%22b.xlsx`
+    `attachment; filename="ab.xlsx"; filename*=UTF-8''a%22b.xlsx`,
   );
 });
 
 test("excelDownloadHeaders neutralizes CRLF / semicolon header injection", () => {
   // A filename built from user data must not be able to inject headers or forge
   // Content-Disposition params. CR/LF/";"/"\" are stripped from the ASCII name.
-  const h = excelDownloadHeaders('evil\r\nSet-Cookie: x=1;name.xlsx');
+  const h = excelDownloadHeaders("evil\r\nSet-Cookie: x=1;name.xlsx");
   const cd = h["content-disposition"];
   assert.ok(!/[\r\n]/.test(cd), "no raw CR/LF in the header value");
   assert.equal(cd.split('"')[1], "evilSet-Cookie: x=1name.xlsx");
@@ -152,6 +141,6 @@ test("excelDownloadHeaders maps non-ASCII to _ in filename and keeps UTF-8 in fi
   const h = excelDownloadHeaders("rapport-café.xlsx");
   assert.equal(
     h["content-disposition"],
-    `attachment; filename="rapport-caf_.xlsx"; filename*=UTF-8''rapport-caf%C3%A9.xlsx`
+    `attachment; filename="rapport-caf_.xlsx"; filename*=UTF-8''rapport-caf%C3%A9.xlsx`,
   );
 });

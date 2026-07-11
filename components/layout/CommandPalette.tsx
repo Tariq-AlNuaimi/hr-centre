@@ -68,20 +68,71 @@ export function CommandPalette() {
 
   const commands = useMemo<Command[]>(() => {
     const nav: Command[] = [
-      { key: "home", label: tNav("home"), group: "navigate", icon: <Home className="h-4 w-4" />, run: () => go(`/${locale}`) },
+      {
+        key: "home",
+        label: tNav("home"),
+        group: "navigate",
+        icon: <Home className="h-4 w-4" />,
+        run: () => go(`/${locale}`),
+      },
       ...(isAdmin
         ? [
-            { key: "users", label: tNav("users"), group: "navigate" as const, icon: <User className="h-4 w-4" />, run: () => go(`/${locale}/users`) },
-            { key: "audit-log", label: tNav("auditLog"), group: "navigate" as const, icon: <ClipboardCheck className="h-4 w-4" />, run: () => go(`/${locale}/audit-log`) },
-            { key: "recycling-bin", label: tNav("recyclingBin"), group: "navigate" as const, icon: <Trash2 className="h-4 w-4" />, run: () => go(`/${locale}/recycling-bin`) },
+            {
+              key: "users",
+              label: tNav("users"),
+              group: "navigate" as const,
+              icon: <User className="h-4 w-4" />,
+              run: () => go(`/${locale}/users`),
+            },
+            {
+              key: "audit-log",
+              label: tNav("auditLog"),
+              group: "navigate" as const,
+              icon: <ClipboardCheck className="h-4 w-4" />,
+              run: () => go(`/${locale}/audit-log`),
+            },
+            {
+              key: "recycling-bin",
+              label: tNav("recyclingBin"),
+              group: "navigate" as const,
+              icon: <Trash2 className="h-4 w-4" />,
+              run: () => go(`/${locale}/recycling-bin`),
+            },
           ]
         : []),
-      { key: "settings", label: tNav("settings"), group: "navigate", icon: <Settings className="h-4 w-4" />, run: () => go(`/${locale}/settings`) },
-      { key: "profile", label: tNav("profile"), group: "navigate", icon: <User className="h-4 w-4" />, run: () => go(`/${locale}/settings/profile`) },
+      {
+        key: "settings",
+        label: tNav("settings"),
+        group: "navigate",
+        icon: <Settings className="h-4 w-4" />,
+        run: () => go(`/${locale}/settings`),
+      },
+      {
+        key: "profile",
+        label: tNav("profile"),
+        group: "navigate",
+        icon: <User className="h-4 w-4" />,
+        run: () => go(`/${locale}/settings/profile`),
+      },
     ];
     const actions: Command[] = [
-      { key: "toggle-theme", label: t("actionToggleTheme"), group: "actions", icon: <Lightbulb className="h-4 w-4" />, run: () => { setMode(isDark ? "light" : "dark"); close(); } },
-      { key: "logout", label: t("actionLogout"), group: "actions", icon: <LogOut className="h-4 w-4" />, run: () => signOut({ callbackUrl: `/${locale}/login` }) },
+      {
+        key: "toggle-theme",
+        label: t("actionToggleTheme"),
+        group: "actions",
+        icon: <Lightbulb className="h-4 w-4" />,
+        run: () => {
+          setMode(isDark ? "light" : "dark");
+          close();
+        },
+      },
+      {
+        key: "logout",
+        label: t("actionLogout"),
+        group: "actions",
+        icon: <LogOut className="h-4 w-4" />,
+        run: () => signOut({ callbackUrl: `/${locale}/login` }),
+      },
     ];
     return [...nav, ...actions];
   }, [tNav, t, locale, isAdmin, go, setMode, isDark, close]);
@@ -138,15 +189,10 @@ export function CommandPalette() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : close())}>
-      <DialogContent
-        hideClose
-        className="max-w-[560px] gap-0 overflow-hidden p-0"
-      >
+      <DialogContent hideClose className="max-w-[560px] gap-0 overflow-hidden p-0">
         {/* Radix requires a labelled title for the dialog; the palette is
             visually title-less, so it's screen-reader-only. */}
-        <DialogTitle className="sr-only">
-          {t("commandPlaceholder")}
-        </DialogTitle>
+        <DialogTitle className="sr-only">{t("commandPlaceholder")}</DialogTitle>
 
         <div>
           <div className="flex items-center gap-2 border-b border-border px-3">
@@ -170,9 +216,7 @@ export function CommandPalette() {
 
           <div className="max-h-90 overflow-y-auto p-2">
             {filtered.length === 0 && (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                {t("noResults")}
-              </div>
+              <div className="py-6 text-center text-sm text-muted-foreground">{t("noResults")}</div>
             )}
 
             {groups.map((g) => {
@@ -203,9 +247,7 @@ export function CommandPalette() {
                           isActive ? "bg-muted" : "bg-transparent",
                         )}
                       >
-                        <span className="inline-flex text-muted-foreground">
-                          {c.icon}
-                        </span>
+                        <span className="inline-flex text-muted-foreground">{c.icon}</span>
                         {c.label}
                       </button>
                     );

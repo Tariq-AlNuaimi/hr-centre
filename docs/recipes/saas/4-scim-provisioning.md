@@ -10,7 +10,7 @@ This recipe is **opt-in** and almost always a **large-org `shared`-tier handoff*
 Most prototypes never need it. Add it only when an IT team mandates IdP-driven provisioning.
 
 It pairs naturally with the **SSO** recipe (`docs/recipes/saas/1-sso-oidc-saml.md`): SSO
-handles *authentication* (who's logging in), SCIM handles *provisioning* (which accounts
+handles _authentication_ (who's logging in), SCIM handles _provisioning_ (which accounts
 exist and are active). They map roles through the same `Role` enum but are independent — you
 can run either alone.
 
@@ -23,8 +23,8 @@ Add this when **all** of these tend to hold:
 - Manual user management in the admin UI doesn't scale / isn't allowed.
 
 If you only need login, use the **SSO** recipe with **JIT provisioning** — that creates users
-on first login for free and is enough for small teams. SCIM adds *deactivation* and
-*pre-provisioning* (account exists before first login), which JIT can't do.
+on first login for free and is enough for small teams. SCIM adds _deactivation_ and
+_pre-provisioning_ (account exists before first login), which JIT can't do.
 
 ## Deps
 
@@ -43,7 +43,7 @@ token, with constant-time comparison.
 > SCIM bodies do not carry an Auth.js session — `withApiAuth` is the correct wrapper (not
 > `withAuth`). Audit writes inside these handlers attribute to `userId: null` (no session),
 > which is the right record: "provisioned by the IdP". Query the audit log by `entityType =
-> "User"` + time window.
+"User"` + time window.
 
 ### Env vars
 
@@ -71,15 +71,15 @@ the real protection, middleware just lets it through):
 
 ## Mapping SCIM ↔ the `User` model
 
-| SCIM attribute | `User` field | Note |
-|---|---|---|
-| `userName` | `email` | The IdP's unique key. Lowercased on write (matches Credentials lookup). |
-| `name.givenName` + `name.familyName` | `name` | Joined with a space. |
-| `emails[primary].value` | `email` | Falls back to `userName` if absent. |
-| `active: false` | `deletedAt` set | **Soft-delete, never hard-delete** (audit + recovery). |
-| `active: true` | `deletedAt = null` | Re-activation restores a soft-deleted user. |
-| SCIM `id` | `User.id` (cuid) | We return our cuid as the SCIM resource id. |
-| role (via `Groups` or SSO) | `User.role` | SCIM core doesn't set roles; default new users to `VIEWER` (least privilege). Wire group→role through `mapSsoRole` if the IdP pushes groups. |
+| SCIM attribute                       | `User` field       | Note                                                                                                                                         |
+| ------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `userName`                           | `email`            | The IdP's unique key. Lowercased on write (matches Credentials lookup).                                                                      |
+| `name.givenName` + `name.familyName` | `name`             | Joined with a space.                                                                                                                         |
+| `emails[primary].value`              | `email`            | Falls back to `userName` if absent.                                                                                                          |
+| `active: false`                      | `deletedAt` set    | **Soft-delete, never hard-delete** (audit + recovery).                                                                                       |
+| `active: true`                       | `deletedAt = null` | Re-activation restores a soft-deleted user.                                                                                                  |
+| SCIM `id`                            | `User.id` (cuid)   | We return our cuid as the SCIM resource id.                                                                                                  |
+| role (via `Groups` or SSO)           | `User.role`        | SCIM core doesn't set roles; default new users to `VIEWER` (least privilege). Wire group→role through `mapSsoRole` if the IdP pushes groups. |
 
 > Deprovisioning is `active: false` → soft-delete (sets `deletedAt`), **not** `DELETE` of the
 > row. Use `prismaUnfiltered` for SCIM reads/writes so the handler can see and re-activate
@@ -114,7 +114,9 @@ export function toScimUser(u: User) {
 
 /** A SCIM create/replace body → the fields we persist. */
 export function fromScimUser(body: Record<string, unknown>) {
-  const userName = String(body.userName ?? "").toLowerCase().trim();
+  const userName = String(body.userName ?? "")
+    .toLowerCase()
+    .trim();
   const name = body.name as { givenName?: string; familyName?: string } | undefined;
   const emails = body.emails as Array<{ value: string; primary?: boolean }> | undefined;
   const email = (emails?.find((e) => e.primary)?.value ?? userName).toLowerCase().trim();
@@ -212,12 +214,15 @@ export const PUT = withApiAuth("SCIM_TOKEN", async (req, { params }) => {
 // PATCH — the deprovision path (Entra/Okta send { Operations: [{ op:"replace", value:{ active:false }}] })
 export const PATCH = withApiAuth("SCIM_TOKEN", async (req, { params }) => {
   const { id } = await params;
-  const body = (await req.json()) as { Operations?: Array<{ op: string; value?: Record<string, unknown> }> };
+  const body = (await req.json()) as {
+    Operations?: Array<{ op: string; value?: Record<string, unknown> }>;
+  };
   let active: boolean | undefined;
   for (const op of body.Operations ?? []) {
     if (op.value && "active" in op.value) active = Boolean(op.value.active);
   }
-  if (active === undefined) return scimError(400, "Unsupported PATCH (only active toggle is handled)");
+  if (active === undefined)
+    return scimError(400, "Unsupported PATCH (only active toggle is handled)");
 
   const user = await prismaUnfiltered.user.update({
     where: { id },
@@ -284,8 +289,8 @@ export const GET = withApiAuth("SCIM_TOKEN", async () => {
 
 Add to **§1 Data classification**:
 
-| Field | Class | Note |
-|---|---|---|
+| Field        | Class          | Note                                                                                                                                                    |
+| ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SCIM_TOKEN` | **Restricted** | Bearer token the IdP uses to drive provisioning. Full read/create/deactivate over the user directory — secret-equivalent. Never logged, gitleaks-gated. |
 
 Note in **§2 Authentication / §3 Authorization**: `/api/scim/v2/*` is a public path gated by

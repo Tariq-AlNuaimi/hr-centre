@@ -15,9 +15,7 @@ for (const screen of screens) {
   test(`a11y: ${screen.name} has no serious/critical axe violations`, async ({ page }) => {
     const res = await page.goto(screen.path, { waitUntil: "networkidle" });
     expect(res?.status(), `${screen.name} should respond < 400`).toBeLessThan(400);
-    await expect(page, `${screen.name} should not bounce to login`).not.toHaveURL(
-      /\/login/,
-    );
+    await expect(page, `${screen.name} should not bounce to login`).not.toHaveURL(/\/login/);
 
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])

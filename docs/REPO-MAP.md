@@ -1,6 +1,7 @@
 # Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)
 
 ## Routes (app/)
+
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
@@ -15,20 +16,21 @@
 - app/[locale]/(dashboard)/users/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
-- app/api/audit-log/route.ts  [GET]
-- app/api/auth/[...nextauth]/route.ts  [GET]
+- app/api/audit-log/route.ts [GET]
+- app/api/auth/[...nextauth]/route.ts [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
 - app/api/health/route.ts
-- app/api/internal/audit-purge/route.ts  [GET,POST]
-- app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
-- app/api/recycling-bin/route.ts  [GET,POST]
-- app/api/users/[id]/password/route.ts  [PUT]
-- app/api/users/[id]/route.ts  [GET,PUT,DELETE]
-- app/api/users/route.ts  [GET,POST]
+- app/api/internal/audit-purge/route.ts [GET,POST]
+- app/api/recycling-bin/[entityType]/[id]/route.ts [DELETE]
+- app/api/recycling-bin/route.ts [GET,POST]
+- app/api/users/[id]/password/route.ts [PUT]
+- app/api/users/[id]/route.ts [GET,PUT,DELETE]
+- app/api/users/route.ts [GET,POST]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
+
 - User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
@@ -36,6 +38,7 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 
 ## lib/ exports
+
 - lib/ai/config.ts: AiAuthStyle, AiConfig, isAiConfigured, aiConfig, AiNotConfiguredError
 - lib/ai/embeddings.ts: EmbeddingsProviderName, EmbeddingsProvider, isEmbeddingsConfigured, getEmbeddings, EmbeddingsNotConfiguredError
 - lib/ai/provider.ts: getAiClient
@@ -70,6 +73,7 @@
 - lib/valkey.ts: getValkey
 
 ## components/
+
 - components/dashboard/DashboardContent.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx

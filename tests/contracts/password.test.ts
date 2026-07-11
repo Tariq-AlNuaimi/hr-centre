@@ -2,12 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import bcrypt from "bcryptjs";
 import { hash as argon2Hash } from "@node-rs/argon2";
-import {
-  ARGON2_OPTIONS,
-  hashPassword,
-  verifyPassword,
-  needsRehash,
-} from "../../lib/password";
+import { ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash } from "../../lib/password";
 
 // The Argon2id parameters are a security floor, not a tuning preference: too low
 // and stolen hashes are cheap to crack. Pin the OWASP 2026 minimums so a future
@@ -15,12 +10,9 @@ import {
 test("ARGON2_OPTIONS meet the OWASP minimum parameters", () => {
   assert.ok(
     ARGON2_OPTIONS.memoryCost >= 19456,
-    `memoryCost must be >= 19456 KiB, got ${ARGON2_OPTIONS.memoryCost}`
+    `memoryCost must be >= 19456 KiB, got ${ARGON2_OPTIONS.memoryCost}`,
   );
-  assert.ok(
-    ARGON2_OPTIONS.timeCost >= 2,
-    `timeCost must be >= 2, got ${ARGON2_OPTIONS.timeCost}`
-  );
+  assert.ok(ARGON2_OPTIONS.timeCost >= 2, `timeCost must be >= 2, got ${ARGON2_OPTIONS.timeCost}`);
   assert.ok(ARGON2_OPTIONS.parallelism >= 1);
 });
 

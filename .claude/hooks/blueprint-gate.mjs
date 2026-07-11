@@ -36,14 +36,15 @@ function relPath(fp) {
 /** Is this new file a "feature is being built" surface? */
 function isFeatureFile(rel) {
   if (!rel || rel.startsWith("..")) return false;
-  if (/^app\/api\/.+\/route\.ts$/.test(rel)) return true;      // new API route
-  if (/^app\/.+\/page\.tsx$/.test(rel)) return true;           // new page/screen
+  if (/^app\/api\/.+\/route\.ts$/.test(rel)) return true; // new API route
+  if (/^app\/.+\/page\.tsx$/.test(rel)) return true; // new page/screen
   return false;
 }
 
 /** Minimal glob -> RegExp: ** = any depth, * = within a segment. */
 function globToRe(glob) {
-  const esc = glob.trim()
+  const esc = glob
+    .trim()
     .replace(/[.+^${}()|[\]\\]/g, "\\$&")
     .replace(/\*\*/g, " ")
     .replace(/\*/g, "[^/]*")
@@ -57,7 +58,11 @@ function blueprintCovers(rel) {
   for (const name of readdirSync(BLUEPRINTS)) {
     if (!name.endsWith(".md")) continue;
     let text = "";
-    try { text = readFileSync(join(BLUEPRINTS, name), "utf8"); } catch { continue; }
+    try {
+      text = readFileSync(join(BLUEPRINTS, name), "utf8");
+    } catch {
+      continue;
+    }
     for (const line of text.split("\n")) {
       const m = /^\s*Scope:\s*(.+?)\s*$/i.exec(line);
       if (!m) continue;
@@ -75,24 +80,28 @@ try {
   if ((input.tool_name ?? "") !== "Write") process.exit(0);
   const fp = input.tool_input?.file_path ?? "";
   const rel = relPath(fp);
-  if (existsSync(resolve(ROOT, fp))) process.exit(0);         // overwrite = continuation
+  if (existsSync(resolve(ROOT, fp))) process.exit(0); // overwrite = continuation
   if (!isFeatureFile(rel)) process.exit(0);
   if (blueprintCovers(rel)) process.exit(0);
 
-  console.log(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: "PreToolUse",
-      permissionDecision: "deny",
-      permissionDecisionReason:
-        `[blueprint-gate] Denied: '${rel}' is new feature code with no blueprint ` +
-        `covering it (ADR-033; CLAUDE.md "Blueprint before building"). Run /blueprint ` +
-        `FIRST: pin down user stories, happy + worst-path scenarios, and resolve open ` +
-        `questions with AskUserQuestion (don't guess the requirements). Then ensure the ` +
-        `blueprint carries a "Scope:" line covering this file — e.g. ` +
-        `"Scope: ${rel.replace(/[^/]+$/, "**")}". Lightweight/quickstart work still writes ` +
-        `a minimal Scope'd stub under docs/blueprints/. The blueprint is the contract ` +
-        `/qa and /uat trace against; building without it is the rebuild this gate prevents.`,
-    },
-  }));
-} catch { /* fail-open: never brick the session */ }
+  console.log(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason:
+          `[blueprint-gate] Denied: '${rel}' is new feature code with no blueprint ` +
+          `covering it (ADR-033; CLAUDE.md "Blueprint before building"). Run /blueprint ` +
+          `FIRST: pin down user stories, happy + worst-path scenarios, and resolve open ` +
+          `questions with AskUserQuestion (don't guess the requirements). Then ensure the ` +
+          `blueprint carries a "Scope:" line covering this file — e.g. ` +
+          `"Scope: ${rel.replace(/[^/]+$/, "**")}". Lightweight/quickstart work still writes ` +
+          `a minimal Scope'd stub under docs/blueprints/. The blueprint is the contract ` +
+          `/qa and /uat trace against; building without it is the rebuild this gate prevents.`,
+      },
+    }),
+  );
+} catch {
+  /* fail-open: never brick the session */
+}
 process.exit(0);

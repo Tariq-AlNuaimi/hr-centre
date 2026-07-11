@@ -17,7 +17,7 @@ described — a lone operator iterating toward a shared preview URL — and it s
 prototype and personal forks.
 
 The enterprise pivot (source of truth: `docs/research/v2/enterprise-benchmark-v2.html`) changes
-the audience the *template itself* targets. Enterprise customers do not accept a gate that lives
+the audience the _template itself_ targets. Enterprise customers do not accept a gate that lives
 only on the operator's laptop and can be skipped; they require hard, **blocking** CI checks on
 every change. They require **SSO + SCIM** for identity, not a single email/password login. And
 they require a **least-privilege authorization seam** — a place where "can this actor do this
@@ -54,7 +54,7 @@ lighter tiers remain first-class:
   Prettier owns formatting, ESLint owns the invariants. (CI security-gate specifics land in
   ADR-041.)
 - **(b) An authorization policy seam.** Introduce `lib/authz/authorize(session, action,
-  resource)` as the single decision point, plus a `no-inline-role-check` ESLint rule that denies
+resource)` as the single decision point, plus a `no-inline-role-check` ESLint rule that denies
   ad-hoc `session.user.role === "ADMIN"` comparisons outside the seam. **KEEP the 3-role enum** —
   the behavior is unchanged today — but route every check through the seam so a future policy
   engine has exactly one integration point. Engine choice (Cerbos as the default, OpenFGA as the
@@ -66,7 +66,7 @@ lighter tiers remain first-class:
   Enterprise **SSO + SCIM** is delivered via a dockerized **Ory Polis** sidecar (SAML→OIDC
   bridge + SCIM user provisioning), **P1**.
 - **(d) Tiers retained.** The `personal` / `shared` tiers (ADR-025) stay exactly as they are;
-  `enterprise` becomes the *default* posture for the template's stated audience, layered on top
+  `enterprise` becomes the _default_ posture for the template's stated audience, layered on top
   of them.
 
 **Good:** no rewrite; incremental; each seam is a single, testable integration point; the solo
@@ -79,14 +79,14 @@ opt back down to the ADR-007 posture.
 Re-architect the data layer for row-level security so one deployment serves many tenants.
 **Bad — rejected:** ADR-011 deploy-isolation already gives per-tenant isolation for free (one
 deployment, one database, one tenant), now dockerized per tenant under ADR-035. RLS is an
-explicit, opt-in *per-fork departure* when a customer genuinely needs pooled multi-tenancy — it
+explicit, opt-in _per-fork departure_ when a customer genuinely needs pooled multi-tenancy — it
 is not the default and does not belong in the floor.
 
 ### Option 3 — Drop the solo tier
 
 Make `enterprise` the only posture and delete the low-ceremony rail. **Bad — rejected:**
-prototype and personal forks still use the solo rail every day, and ADR-007 remains valid *for
-them*. The pivot raises the floor; it does not demolish the ground floor.
+prototype and personal forks still use the solo rail every day, and ADR-007 remains valid _for
+them_. The pivot raises the floor; it does not demolish the ground floor.
 
 ## Decision
 
@@ -102,6 +102,7 @@ default posture; `personal`/`shared` (ADR-025) remain available for lighter fork
 ## Consequences
 
 ### Positive
+
 - Enterprise-grade gates (blocking CI, SSO/SCIM, least-privilege authZ) are met without touching
   the working role model or tenancy model.
 - Every authorization decision funnels through one seam, so a future policy engine (Cerbos/
@@ -112,6 +113,7 @@ default posture; `personal`/`shared` (ADR-025) remain available for lighter fork
   forks.
 
 ### Negative
+
 - Small forks inherit more ceremony by default (blocking CI, format gate, the authZ seam).
 - New moving parts to operate: the Ory Polis sidecar and the authZ seam add surface a personal
   fork does not need.
@@ -119,6 +121,7 @@ default posture; `personal`/`shared` (ADR-025) remain available for lighter fork
   resolves.
 
 ### Mitigations
+
 - The tier switch (ADR-025) lets a genuinely personal fork opt down to the ADR-007 posture, so
   the ceremony is default-on but not mandatory.
 - The authZ engine is DEFERRED (P2): only the seam + rule ship now, so the added surface is one
@@ -128,6 +131,7 @@ default posture; `personal`/`shared` (ADR-025) remain available for lighter fork
 - Auth.js risk is tracked as a P1 eval with an advisory watch, not left implicit.
 
 ## Alternatives considered
+
 1. **Full multi-tenant RLS refactor** — rejected; ADR-011 deploy-isolation already isolates
    tenants, RLS is a per-fork departure, not a default.
 2. **Drop the solo tier** — rejected; prototype/personal forks still run on it and ADR-007 stays
@@ -136,6 +140,7 @@ default posture; `personal`/`shared` (ADR-025) remain available for lighter fork
    a skippable gate is exactly what enterprise buyers reject.
 
 ## Migration triggers
+
 - **Role strings scatter beyond the seam, or a customer needs ABAC/relationship-based access** —
   stand up the deferred authZ engine (Cerbos default, OpenFGA for relationship/ABAC), integrating
   at the single `lib/authz/authorize()` point (P2).
@@ -145,6 +150,7 @@ default posture; `personal`/`shared` (ADR-025) remain available for lighter fork
   explicit per-fork departure from deploy-isolation (ADR-011), not a default.
 
 ## Related
+
 - ADR-007 — solo-rail optimization (the posture this reframes; still valid for prototype/personal forks).
 - ADR-011 — tenancy-by-deployment (reaffirmed; per-tenant isolation without RLS).
 - ADR-024 — Entra ID identity (generalized here to one-OIDC-provider-per-deployment).

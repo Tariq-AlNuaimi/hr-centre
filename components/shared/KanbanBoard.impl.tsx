@@ -83,9 +83,7 @@ export function KanbanBoard<T extends KanbanItem>({
 
   // Require a small pointer movement before a drag starts so click-throughs on
   // cards (edit, delete, link) keep working.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
   function handleDragStart(event: DragStartEvent) {
     const item = items.find((i) => i.id === event.active.id);
@@ -145,8 +143,7 @@ function BoardColumn<T extends KanbanItem>({
       }}
     >
       <div style={{ fontWeight: 600, marginBottom: 12, color: column.color }}>
-        {column.title}{" "}
-        <span style={{ opacity: 0.5, fontWeight: 400 }}>({items.length})</span>
+        {column.title} <span style={{ opacity: 0.5, fontWeight: 400 }}>({items.length})</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {items.map((item) => (
@@ -159,21 +156,13 @@ function BoardColumn<T extends KanbanItem>({
   );
 }
 
-function BoardCard<T extends KanbanItem>({
-  item,
-  children,
-}: {
-  item: T;
-  children: ReactNode;
-}) {
+function BoardCard<T extends KanbanItem>({ item, children }: { item: T; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
   });
 
   const style: CSSProperties = {
-    transform: transform
-      ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-      : undefined,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     opacity: isDragging ? 0.4 : 1,
     cursor: isDragging ? "grabbing" : "grab",
     touchAction: "none",

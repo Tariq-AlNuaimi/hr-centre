@@ -17,6 +17,7 @@ re-fetch. `useCrud` even grew its own `AbortController` dedup to stop a stale
 list response from overwriting a fresher one (CHANGELOG, race fix).
 
 That is a cache/state-management problem solved per page, by hand:
+
 - **No caching or dedup across pages** — navigating back to a list refetches
   from scratch; two components wanting the same data fetch it twice.
 - **Manual invalidation** — after a write, each page re-fetches explicitly; miss
@@ -52,12 +53,13 @@ data-fetch boilerplate is the actual pain, that is the right call.
 
 ## Decision
 
-**Adopt TanStack Query v5 as the client data layer.** It sits *on top of* the
+**Adopt TanStack Query v5 as the client data layer.** It sits _on top of_ the
 existing typed `apiClient` — the transport, the `ApiResponse`/`PaginatedResponse`
 envelope, and the REST routes are unchanged. Server components keep hitting
 Prisma directly; this is for the client CRUD pages only.
 
 Pieces:
+
 - **`components/providers/QueryProvider.tsx`** — a `QueryClientProvider` with one
   `QueryClient` per browser session (created in `useState`, never a module
   singleton, so SSR can't leak one user's cache into another). Defaults tuned for

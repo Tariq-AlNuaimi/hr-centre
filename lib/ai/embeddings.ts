@@ -136,9 +136,7 @@ function voyageProvider(cfg: EmbeddingsConfig): EmbeddingsProvider {
       };
       const rows = json.data ?? [];
       // Order by the returned index so row order matches the input order.
-      return [...rows]
-        .sort((a, b) => a.index - b.index)
-        .map((r) => r.embedding);
+      return [...rows].sort((a, b) => a.index - b.index).map((r) => r.embedding);
     },
   };
 }

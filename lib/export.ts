@@ -37,7 +37,7 @@ import ExcelJS from "exceljs";
 // never formulas and pass through untouched.
 const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
 export function neutralizeFormula(
-  value: string | number | Date | null
+  value: string | number | Date | null,
 ): string | number | Date | null {
   if (typeof value === "string" && FORMULA_TRIGGER.test(value)) {
     return `'${value}`;
@@ -61,7 +61,7 @@ export interface ToExcelOptions {
 export async function toExcel<T extends Record<string, unknown>>(
   data: T[],
   columns: ExportColumn<T>[],
-  options: ToExcelOptions = {}
+  options: ToExcelOptions = {},
 ): Promise<Uint8Array> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = options.creator ?? "Rihal Ops";
@@ -111,9 +111,7 @@ export async function toExcel<T extends Record<string, unknown>>(
   // @types/node versions. Normalize to Uint8Array (the runtime is always a
   // typed-array view either way).
   const result = await workbook.xlsx.writeBuffer();
-  return result instanceof Uint8Array
-    ? result
-    : new Uint8Array(result as ArrayBuffer);
+  return result instanceof Uint8Array ? result : new Uint8Array(result as ArrayBuffer);
 }
 
 /**
@@ -128,13 +126,10 @@ export function excelDownloadHeaders(filename: string): Record<string, string> {
   // `filename=`. Map any remaining non-printable/non-ASCII byte to `_` so the
   // quoted value is pure ASCII, and carry the full UTF-8 name in the RFC 6266
   // `filename*` parameter (which browsers prefer when present).
-  const asciiSafe = withExtension
-    .replace(/[\r\n";\\]/g, "")
-    .replace(/[^\x20-\x7E]/g, "_");
+  const asciiSafe = withExtension.replace(/[\r\n";\\]/g, "").replace(/[^\x20-\x7E]/g, "_");
   const encoded = encodeURIComponent(withExtension);
   return {
-    "content-type":
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "content-type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "content-disposition": `attachment; filename="${asciiSafe}"; filename*=UTF-8''${encoded}`,
   };
 }

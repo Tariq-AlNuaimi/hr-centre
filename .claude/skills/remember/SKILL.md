@@ -38,10 +38,10 @@ for the former.
    - **A costly gotcha** with a canonical fix → if the fix is architectural, write
      an ADR and point **Gotchas & landmines** at it; otherwise keep the dated line
      in **Gotchas & landmines** with a `file:line`.
-   Memory is for the in-between — facts not yet stable enough for CLAUDE.md/an ADR.
+     Memory is for the in-between — facts not yet stable enough for CLAUDE.md/an ADR.
 5. **Commit on the working branch** (this file is meant to land on `main` via the
    normal merge): `git add docs/agent-memory.md && git commit -m "chore: remember <short summary>"`.
-   You needn't push *solely* for this — it can ride with the session's next
+   You needn't push _solely_ for this — it can ride with the session's next
    push/`/ship` — **but the commit MUST reach the remote before the session ends.**
    An unpushed memory commit is invisible to the next container, which is the whole
    failure this skill exists to prevent (#14). If you're not confident another push
@@ -57,12 +57,15 @@ Each fact lands under the section its kind maps to (the three section headers in
 
 ```markdown
 ## Durable decisions
+
 2026-06-24 — Rate limiter stays in-memory until multi-instance; revisit via Upstash (see ADR-007).
 
 ## Gotchas & landmines
+
 2026-06-24 — Adding a locale also needs the regex in middleware.ts updated (next-intl strips the prefix).
 
 ## Conventions discovered
+
 2026-06-24 — New audited Restricted columns extend SCRUB_FIELDS + its assertion in the same commit.
 ```
 
@@ -71,6 +74,7 @@ pointer), the third a convention now in CLAUDE.md (so this would be a
 cross-reference line, not a fresh fact — see step 0).
 
 ## Rules
+
 - One fact per line; dated; newest-first within a section.
 - This file is surfaced at every SessionStart — treat every line as a recurring
   context tax, same as CLAUDE.md. When in doubt, promote-and-prune over append.

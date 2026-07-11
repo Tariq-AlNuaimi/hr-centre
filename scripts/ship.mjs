@@ -17,7 +17,15 @@
  * Usage: npm run ship
  */
 import { spawn, spawnSync, execSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync, statSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  rmSync,
+  writeFileSync,
+  mkdirSync,
+} from "node:fs";
 import { resolve } from "node:path";
 
 const CACHE = "node_modules/.cache";
@@ -41,7 +49,11 @@ function walkRoutes(dir, acc = []) {
   for (const name of readdirSync(dir)) {
     const p = `${dir}/${name}`;
     let stat;
-    try { stat = statSync(p); } catch { continue; } // skip broken symlinks etc.
+    try {
+      stat = statSync(p);
+    } catch {
+      continue;
+    } // skip broken symlinks etc.
     if (stat.isDirectory()) walkRoutes(p, acc);
     else if (p.endsWith("route.ts")) acc.push(p);
   }
@@ -57,7 +69,11 @@ function scanScalability() {
   const offenders = [];
   for (const file of walkRoutes("app/api")) {
     let src;
-    try { src = readFileSync(file, "utf8"); } catch { continue; }
+    try {
+      src = readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
     if (ESCAPE.test(src)) continue;
     const parts = src.split(".findMany(");
     // parts[0] is the text before the first call; each later part begins with a
@@ -102,7 +118,11 @@ function scanWaveOffs() {
   const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
   if (!existsSync(file)) return { name: "wave-offs", ok: true, out: "no register", secs: secs() };
   let src;
-  try { src = readFileSync(file, "utf8"); } catch { return { name: "wave-offs", ok: true, out: "unreadable register (skipped)", secs: secs() }; }
+  try {
+    src = readFileSync(file, "utf8");
+  } catch {
+    return { name: "wave-offs", ok: true, out: "unreadable register (skipped)", secs: secs() };
+  }
   // Split on the start-of-entry boundary: a newline followed by a dash + an ISO
   // date. Continuation lines (indented, or bullets without a leading date) stay
   // attached to their entry block.
@@ -115,7 +135,8 @@ function scanWaveOffs() {
     .filter((b) => ENTRY_START.test(b.trimStart()) && OPEN.test(b))
     // Report the opening line of each offending entry.
     .map((b) => b.trimStart().split("\n")[0].trim());
-  if (open.length === 0) return { name: "wave-offs", ok: true, out: "clean (no open wave-offs)", secs: secs() };
+  if (open.length === 0)
+    return { name: "wave-offs", ok: true, out: "clean (no open wave-offs)", secs: secs() };
   return {
     name: "wave-offs",
     ok: false,
@@ -153,8 +174,11 @@ function scanTier() {
   const ok = (out) => ({ name: "tier", ok: true, out, secs: secs() });
   if (!existsSync("project.config.json")) return ok("no project.config.json (skipped)");
   let cfg;
-  try { cfg = JSON.parse(readFileSync("project.config.json", "utf8")); }
-  catch { return ok("project.config.json unparseable (skipped)"); }
+  try {
+    cfg = JSON.parse(readFileSync("project.config.json", "utf8"));
+  } catch {
+    return ok("project.config.json unparseable (skipped)");
+  }
   const tier = cfg.tier ?? "personal";
   if (tier !== "personal") return ok(`tier=${tier} (no escalation check needed)`);
   if (cfg.tierAck === "personal") return ok("tier=personal (acknowledged despite contributors)");
@@ -164,8 +188,12 @@ function scanTier() {
   try {
     // %x09 (tab) as the field separator -- a literal `|` would be parsed by the
     // shell execSync runs under (`/bin/sh -c`) and split the command in two.
-    raw = execSync("git log --format=%ae%x09%an", { stdio: ["ignore", "pipe", "ignore"] }).toString();
-  } catch { return ok("no git history (skipped)"); }
+    raw = execSync("git log --format=%ae%x09%an", {
+      stdio: ["ignore", "pipe", "ignore"],
+    }).toString();
+  } catch {
+    return ok("no git history (skipped)");
+  }
   const humans = new Set();
   for (const line of raw.split("\n")) {
     if (!line.trim()) continue;
@@ -208,25 +236,44 @@ function scanBlueprint() {
   const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
   const ok = (out, extra = {}) => ({ name: "blueprint", ok: true, out, secs: secs(), ...extra });
   let base = "";
-  try { base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
-  catch { return ok("no origin/main base (skipped)"); }
+  try {
+    base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return ok("no origin/main base (skipped)");
+  }
   // git merge-base always returns a 40-char hex SHA; validate before interpolating
   // into the diff command so a corrupted repo state can't surprise us.
   if (!/^[0-9a-f]{40}$/.test(base)) return ok("no valid diff base (skipped)");
   let names = "";
   try {
     // Added files across committed (base..HEAD) AND the working tree.
-    names = execSync(`git diff --name-status --diff-filter=A ${base}`, { stdio: ["ignore", "pipe", "ignore"] }).toString();
-  } catch { return ok("diff failed (skipped)"); }
-  const added = names.split("\n").map((l) => l.split("\t")[1]).filter(Boolean);
+    names = execSync(`git diff --name-status --diff-filter=A ${base}`, {
+      stdio: ["ignore", "pipe", "ignore"],
+    }).toString();
+  } catch {
+    return ok("diff failed (skipped)");
+  }
+  const added = names
+    .split("\n")
+    .map((l) => l.split("\t")[1])
+    .filter(Boolean);
   const newRoutes = added.filter((p) => /^app\/api\/.*route\.ts$/.test(p));
   const newMigrationDirs = [
-    ...new Set(added.filter((p) => /^prisma\/migrations\/.+/.test(p)).map((p) => p.split("/").slice(0, 3).join("/"))),
+    ...new Set(
+      added
+        .filter((p) => /^prisma\/migrations\/.+/.test(p))
+        .map((p) => p.split("/").slice(0, 3).join("/")),
+    ),
   ];
-  const newBlueprints = added.filter((p) => /^docs\/blueprints\/.+\.md$/.test(p) && !/README\.md$/.test(p));
+  const newBlueprints = added.filter(
+    (p) => /^docs\/blueprints\/.+\.md$/.test(p) && !/README\.md$/.test(p),
+  );
   const signals = [...newRoutes, ...newMigrationDirs];
   if (signals.length === 0) return ok("no new feature surface in diff");
-  if (newBlueprints.length > 0) return ok(`new feature surface + blueprint present (${newBlueprints.join(", ")})`);
+  if (newBlueprints.length > 0)
+    return ok(`new feature surface + blueprint present (${newBlueprints.join(", ")})`);
 
   const cfg = readCfg();
   if (cfg.blueprintAck) return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck}`);
@@ -238,7 +285,9 @@ function scanBlueprint() {
     `  Add docs/blueprints/<feature>.md, or set "blueprintAck": "<reason>" in project.config.json.`;
   if (tierVal === "shared") return { name: "blueprint", ok: false, secs: secs(), out: detail };
   // personal tier: ceremony stays light -- warn, don't block.
-  return ok(`new feature surface, no blueprint (personal tier — recommended, not blocking)`, { warn: detail });
+  return ok(`new feature surface, no blueprint (personal tier — recommended, not blocking)`, {
+    warn: detail,
+  });
 }
 
 // -- DB-structure gate (ADR-031 "mandatory structured database") -------------
@@ -297,13 +346,18 @@ async function checkMigrationsInSync() {
       `    url: process.env.DATABASE_URL ?? "postgresql://unused:unused@localhost:5432/unused",\n` +
       `    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,\n` +
       `  },\n` +
-      `};\n`
+      `};\n`,
   );
   const r = await run("migrate diff", "npx", [
-    "prisma", "migrate", "diff",
-    "--config", cfgPath,
-    "--from-migrations", "prisma/migrations",
-    "--to-schema", "prisma/schema.prisma",
+    "prisma",
+    "migrate",
+    "diff",
+    "--config",
+    cfgPath,
+    "--from-migrations",
+    "prisma/migrations",
+    "--to-schema",
+    "prisma/schema.prisma",
     "--exit-code",
   ]);
   if (r.ok) return { sync: "ok" };
@@ -315,14 +369,24 @@ async function checkMigrationsInSync() {
       sync: "skip",
       why:
         "in-sync check skipped: shadow DB unavailable/errored -- an unreachable DB is a WARN, not a false RED (ADR-031). First lines:\n" +
-        r.out.split("\n").filter((l) => l.trim()).slice(0, 5).map((l) => `    ${l}`).join("\n"),
+        r.out
+          .split("\n")
+          .filter((l) => l.trim())
+          .slice(0, 5)
+          .map((l) => `    ${l}`)
+          .join("\n"),
     };
   }
   return {
     sync: "red",
     detail:
       "prisma/migrations is OUT OF SYNC with prisma/schema.prisma (`prisma migrate diff` is non-empty):\n" +
-      r.out.split("\n").filter((l) => l.trim()).slice(0, 15).map((l) => `  ${l}`).join("\n") +
+      r.out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(0, 15)
+        .map((l) => `  ${l}`)
+        .join("\n") +
       "\n  Fix: `npx prisma migrate dev --name <change>` to realize the schema edit as a migration.",
   };
 }
@@ -336,7 +400,7 @@ async function scanDbStructure() {
   if (!existsSync("prisma/schema.prisma")) {
     return red(
       "prisma/schema.prisma is missing -- a structured, migrated Postgres schema is mandatory (ADR-031).\n" +
-        "  Restore the schema; this rail has no schema-less path."
+        "  Restore the schema; this rail has no schema-less path.",
     );
   }
 
@@ -345,15 +409,19 @@ async function scanDbStructure() {
   if (cfg.dbAck) {
     const ADJUDICATED = /^-\s*\d{4}-\d{2}-\d{2}\b.*\b(ADR-031|dbAck)\b.*\bstatus:\s*adjudicated/i;
     let reg = "";
-    try { reg = readFileSync("docs/findings-register.md", "utf8"); } catch {}
+    try {
+      reg = readFileSync("docs/findings-register.md", "utf8");
+    } catch {}
     if (reg.split("\n").some((l) => ADJUDICATED.test(l))) {
-      return ok(`db-structure waived: ${cfg.dbAck} (adjudicated ADR-031 line in docs/findings-register.md)`);
+      return ok(
+        `db-structure waived: ${cfg.dbAck} (adjudicated ADR-031 line in docs/findings-register.md)`,
+      );
     }
     return red(
       `"dbAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED ADR-031/dbAck line.\n` +
         `  The escape hatch is never silent (ADR-031): add a register line\n` +
         `  \`- YYYY-MM-DD — [maintainable/db] dbAck: <why this fork is stateless> — <owner> — status: adjudicated(<date>)\`\n` +
-        `  (the operator adjudicates it), or remove "dbAck" and scaffold a domain model.`
+        `  (the operator adjudicates it), or remove "dbAck" and scaffold a domain model.`,
     );
   }
 
@@ -371,19 +439,21 @@ async function scanDbStructure() {
       `prisma/schema.prisma has NO domain model beyond the auth/audit baseline (${[...BASELINE_MODELS].join(", ")}) -- ` +
         `a structured DB is mandatory (ADR-031).\n` +
         `  Scaffold the data model: npm run scaffold -- --name <Entity> --fields '<spec>' (/scaffold-entity).\n` +
-        `  Rare stateless fork? Set "dbAck": "<reason>" in project.config.json + an adjudicated line in docs/findings-register.md.`
+        `  Rare stateless fork? Set "dbAck": "<reason>" in project.config.json + an adjudicated line in docs/findings-register.md.`,
     );
   }
 
   // (b) migrations are non-empty (>=1 directory carrying a migration.sql).
   let migrations = [];
   try {
-    migrations = readdirSync("prisma/migrations").filter((d) => existsSync(`prisma/migrations/${d}/migration.sql`));
+    migrations = readdirSync("prisma/migrations").filter((d) =>
+      existsSync(`prisma/migrations/${d}/migration.sql`),
+    );
   } catch {}
   if (migrations.length === 0) {
     return red(
       "prisma/migrations/ is empty -- the schema is not realized as migrations (ADR-031; `vercel.json` runs `prisma migrate deploy` every build).\n" +
-        "  Fix: `npx prisma migrate dev --name init` against a local DB (`make db-up`)."
+        "  Fix: `npx prisma migrate dev --name init` against a local DB (`make db-up`).",
     );
   }
 
@@ -413,10 +483,12 @@ function ackWaiver(cfg, ackKey, area) {
   if (!val) return null;
   const ADJ = new RegExp(
     `^-\\s*\\d{4}-\\d{2}-\\d{2}\\b.*\\b(ADR-025|${ackKey})\\b.*\\bstatus:\\s*adjudicated`,
-    "i"
+    "i",
   );
   let reg = "";
-  try { reg = readFileSync("docs/findings-register.md", "utf8"); } catch {}
+  try {
+    reg = readFileSync("docs/findings-register.md", "utf8");
+  } catch {}
   if (reg.split("\n").some((l) => ADJ.test(l))) return { ok: true, reason: String(val) };
   return {
     ok: false,
@@ -428,7 +500,11 @@ function ackWaiver(cfg, ackKey, area) {
   };
 }
 function readCfg() {
-  try { return JSON.parse(readFileSync("project.config.json", "utf8")); } catch { return {}; }
+  try {
+    return JSON.parse(readFileSync("project.config.json", "utf8"));
+  } catch {
+    return {};
+  }
 }
 
 // -- knip dead-code / unused-export gate (ADOPT.md A1; cats 08, 13) -----------
@@ -451,14 +527,21 @@ async function scanKnip() {
   }
   // knip loads prisma.config.ts, which reads DATABASE_URL -- supply a throwaway
   // value when the env has none so the load doesn't error the whole run.
-  const env = process.env.DATABASE_URL ? {} : { DATABASE_URL: "postgresql://unused:unused@localhost:5432/unused" };
+  const env = process.env.DATABASE_URL
+    ? {}
+    : { DATABASE_URL: "postgresql://unused:unused@localhost:5432/unused" };
   const r = await run("knip", bin, ["--no-progress"], env);
   if (r.ok) return ok("clean (no unused files / exports / deps)");
   return red(
     "knip found dead code / unused exports / unused dependencies (Five Pillars: Maintainable):\n" +
-      r.out.split("\n").filter((l) => l.trim()).slice(0, 25).map((l) => `  ${l}`).join("\n") +
+      r.out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(0, 25)
+        .map((l) => `  ${l}`)
+        .join("\n") +
       "\n  Fix: delete the dead code, or refine knip.json entry/ignore for genuine fork-facing surface.\n" +
-      "  Waive with \"knipAck\" in project.config.json + an adjudicated ADR-025/knipAck line in docs/findings-register.md."
+      '  Waive with "knipAck" in project.config.json + an adjudicated ADR-025/knipAck line in docs/findings-register.md.',
   );
 }
 
@@ -483,15 +566,29 @@ async function scanDuplication() {
   }
   const targets = ["app", "components", "lib", "hooks"].filter((d) => existsSync(d));
   const r = await run("duplication", bin, [
-    "--min-lines", "8", "--min-tokens", "60", "--threshold", String(JSCPD_THRESHOLD),
-    "--reporters", "consoleFull", "--silent", "true", ...targets,
+    "--min-lines",
+    "8",
+    "--min-tokens",
+    "60",
+    "--threshold",
+    String(JSCPD_THRESHOLD),
+    "--reporters",
+    "consoleFull",
+    "--silent",
+    "true",
+    ...targets,
   ]);
   if (r.ok) return ok(`clean (<= ${JSCPD_THRESHOLD}% duplicated lines)`);
   return red(
     `jscpd duplication exceeds ${JSCPD_THRESHOLD}% (Five Pillars: Maintainable):\n` +
-      r.out.split("\n").filter((l) => l.trim()).slice(-20).map((l) => `  ${l}`).join("\n") +
+      r.out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(-20)
+        .map((l) => `  ${l}`)
+        .join("\n") +
       "\n  Fix: extract the duplicated block into a shared primitive/util.\n" +
-      "  Waive with \"jscpdAck\" in project.config.json + an adjudicated ADR-025/jscpdAck line in docs/findings-register.md."
+      '  Waive with "jscpdAck" in project.config.json + an adjudicated ADR-025/jscpdAck line in docs/findings-register.md.',
   );
 }
 
@@ -504,8 +601,8 @@ async function scanDuplication() {
 // necessary file is a WAIVE (complexityAck + adjudicated register line, same pattern
 // as every other /ship gate), not a false red. v1 covers ADDED files; per-function
 // complexity of MODIFIED files is a documented v2 extension (ADR-034).
-const CX_FILE_LOC = 350;   // code lines in a single new file
-const CX_BRANCHES = 40;    // branch tokens in a single new file (cyclomatic proxy)
+const CX_FILE_LOC = 350; // code lines in a single new file
+const CX_BRANCHES = 40; // branch tokens in a single new file (cyclomatic proxy)
 const CX_DIRS = /^(app|lib|components|hooks)\//;
 function scanComplexity() {
   const t0 = Date.now();
@@ -515,18 +612,41 @@ function scanComplexity() {
   const w = ackWaiver(readCfg(), "complexityAck", "complexity");
   if (w) return w.ok ? ok(`complexity budget waived: ${w.reason}`) : red(w.out);
   let base = "";
-  try { base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] }).toString().trim(); }
-  catch { return ok("no origin/main base (skipped)"); }
+  try {
+    base = execSync("git merge-base origin/main HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
+  } catch {
+    return ok("no origin/main base (skipped)");
+  }
   if (!/^[0-9a-f]{40}$/.test(base)) return ok("no valid diff base (skipped)");
   let names = "";
-  try { names = execSync(`git diff --name-status --diff-filter=A ${base}`, { stdio: ["ignore", "pipe", "ignore"] }).toString(); }
-  catch { return ok("diff failed (skipped)"); }
-  const added = names.split("\n").map((l) => l.split("\t")[1]).filter(Boolean)
-    .filter((p) => CX_DIRS.test(p) && /\.(ts|tsx)$/.test(p) && !/\.(test|spec)\.tsx?$/.test(p) && !/\.d\.ts$/.test(p));
+  try {
+    names = execSync(`git diff --name-status --diff-filter=A ${base}`, {
+      stdio: ["ignore", "pipe", "ignore"],
+    }).toString();
+  } catch {
+    return ok("diff failed (skipped)");
+  }
+  const added = names
+    .split("\n")
+    .map((l) => l.split("\t")[1])
+    .filter(Boolean)
+    .filter(
+      (p) =>
+        CX_DIRS.test(p) &&
+        /\.(ts|tsx)$/.test(p) &&
+        !/\.(test|spec)\.tsx?$/.test(p) &&
+        !/\.d\.ts$/.test(p),
+    );
   const offenders = [];
   for (const p of added) {
     let src = "";
-    try { src = readFileSync(p, "utf8"); } catch { continue; }
+    try {
+      src = readFileSync(p, "utf8");
+    } catch {
+      continue;
+    }
     const loc = src.split("\n").filter((l) => {
       const t = l.trim();
       return t && !t.startsWith("//") && !t.startsWith("*") && !t.startsWith("/*");
@@ -536,14 +656,15 @@ function scanComplexity() {
     const branches = (src.match(/\b(if|for|while|case|catch)\b|&&|\|\||\?\?/g) || []).length;
     const hits = [];
     if (loc > CX_FILE_LOC) hits.push(`${loc} code lines (> ${CX_FILE_LOC})`);
-    if (branches > CX_BRANCHES) hits.push(`${branches} branch tokens (> ${CX_BRANCHES}, cyclomatic proxy)`);
+    if (branches > CX_BRANCHES)
+      hits.push(`${branches} branch tokens (> ${CX_BRANCHES}, cyclomatic proxy)`);
     if (hits.length) offenders.push(`  ${p}: ${hits.join("; ")}`);
   }
   if (offenders.length === 0) return ok("clean (new files within budget)");
   return red(
     `${offenders.length} new file(s) exceed the complexity budget (Five Pillars: Maintainable/High-Quality) — split, simplify, or reuse a primitive:\n` +
       offenders.join("\n") +
-      `\n  If the size is genuinely warranted, waive with "complexityAck" in project.config.json + an adjudicated ADR-025/complexityAck line in docs/findings-register.md.`
+      `\n  If the size is genuinely warranted, waive with "complexityAck" in project.config.json + an adjudicated ADR-025/complexityAck line in docs/findings-register.md.`,
   );
 }
 
@@ -570,9 +691,12 @@ async function scanCoverage() {
   const w = ackWaiver(readCfg(), "coverageAck", "coverage");
   if (w) return w.ok ? ok(`coverage floor waived: ${w.reason}`) : red(w.out);
   if (!nodeSupportsCoverageThreshold()) {
-    return ok(`coverage floor skipped (Node ${process.version} < 22.13, no --test-coverage-* flags)`, {
-      warn: "coverage: NOT ENFORCED -- upgrade Node to >=22.13 for the built-in coverage-threshold flags.",
-    });
+    return ok(
+      `coverage floor skipped (Node ${process.version} < 22.13, no --test-coverage-* flags)`,
+      {
+        warn: "coverage: NOT ENFORCED -- upgrade Node to >=22.13 for the built-in coverage-threshold flags.",
+      },
+    );
   }
   const r = await run("coverage", process.execPath, [
     "--experimental-test-coverage",
@@ -581,14 +705,16 @@ async function scanCoverage() {
     `--test-coverage-functions=${COVERAGE_FLOORS.functions}`,
     `--test-coverage-branches=${COVERAGE_FLOORS.branches}`,
     "--experimental-test-module-mocks",
-    "--import", "tsx",
-    "--test", "tests/contracts/*.test.ts",
+    "--import",
+    "tsx",
+    "--test",
+    "tests/contracts/*.test.ts",
   ]);
   if (r.ok) {
     const summary = (r.out.split("\n").find((l) => /all files/.test(l)) || "").trim();
     return ok(
       `lib/** >= floor (lines ${COVERAGE_FLOORS.lines} / funcs ${COVERAGE_FLOORS.functions} / branch ${COVERAGE_FLOORS.branches})` +
-        (summary ? ` -- ${summary.replace(/^#\s*/, "")}` : "")
+        (summary ? ` -- ${summary.replace(/^#\s*/, "")}` : ""),
     );
   }
   const threshLines = r.out.split("\n").filter((l) => /does not meet threshold/i.test(l));
@@ -596,9 +722,14 @@ async function scanCoverage() {
     ? "lib/** coverage BELOW floor (Five Pillars: High-Quality / testing):\n" +
       threshLines.map((l) => `  ${l.replace(/^#\s*/, "").trim()}`).join("\n") +
       "\n  Fix: add tests for the uncovered lib/ code, or lower the floor with a justification.\n" +
-      "  Waive with \"coverageAck\" in project.config.json + an adjudicated ADR-025/coverageAck line in docs/findings-register.md."
+      '  Waive with "coverageAck" in project.config.json + an adjudicated ADR-025/coverageAck line in docs/findings-register.md.'
     : "the contract suite FAILED under the coverage run (see the contract-tests phase for detail):\n" +
-      r.out.split("\n").filter((l) => l.trim()).slice(-15).map((l) => `  ${l}`).join("\n");
+      r.out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(-15)
+        .map((l) => `  ${l}`)
+        .join("\n");
   return red(detail);
 }
 
@@ -632,9 +763,14 @@ async function scanSizeLimit() {
   }
   return red(
     "client bundle EXCEEDS the size budget (.size-limit.json) (Five Pillars: Speed / performance):\n" +
-      r.out.split("\n").filter((l) => l.trim()).slice(0, 15).map((l) => `  ${l}`).join("\n") +
+      r.out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(0, 15)
+        .map((l) => `  ${l}`)
+        .join("\n") +
       "\n  Fix: trim the bundle (dynamic import, drop a heavy dep), or raise the budget with justification.\n" +
-      "  Waive with \"sizeLimitAck\" in project.config.json + an adjudicated ADR-025/sizeLimitAck line in docs/findings-register.md."
+      '  Waive with "sizeLimitAck" in project.config.json + an adjudicated ADR-025/sizeLimitAck line in docs/findings-register.md.',
   );
 }
 
@@ -666,17 +802,22 @@ async function scanDocker() {
   // Escape hatch first (mirrors dbAck): explicit, recorded, never silent.
   const cfg = readCfg();
   if (cfg.dockerAck) {
-    const ADJUDICATED = /^-\s*\d{4}-\d{2}-\d{2}\b.*\b(ADR-030|dockerAck)\b.*\bstatus:\s*adjudicated/i;
+    const ADJUDICATED =
+      /^-\s*\d{4}-\d{2}-\d{2}\b.*\b(ADR-030|dockerAck)\b.*\bstatus:\s*adjudicated/i;
     let reg = "";
-    try { reg = readFileSync("docs/findings-register.md", "utf8"); } catch {}
+    try {
+      reg = readFileSync("docs/findings-register.md", "utf8");
+    } catch {}
     if (reg.split("\n").some((l) => ADJUDICATED.test(l))) {
-      return ok(`docker gate waived: ${cfg.dockerAck} (adjudicated ADR-030 line in docs/findings-register.md)`);
+      return ok(
+        `docker gate waived: ${cfg.dockerAck} (adjudicated ADR-030 line in docs/findings-register.md)`,
+      );
     }
     return red(
       `"dockerAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED ADR-030/dockerAck line.\n` +
         `  The escape hatch is never silent (ADR-030): add a register line\n` +
         `  \`- YYYY-MM-DD — [maintainable/docker] dockerAck: <why this env can't build images> — <owner> — status: adjudicated(<date>)\`\n` +
-        `  (the operator adjudicates it), or remove "dockerAck" and make Docker available.`
+        `  (the operator adjudicates it), or remove "dockerAck" and make Docker available.`,
     );
   }
 
@@ -686,19 +827,26 @@ async function scanDocker() {
     return ok("docker unavailable -- image-build gate skipped", {
       warn:
         "docker image-build gate skipped: Docker is not available (binary not on PATH or daemon unreachable). " +
-        "ADR-030 degrades this to a WARN, never a false RED -- lean on CI (docker-build.yml) or set \"dockerAck\" for an\n" +
+        'ADR-030 degrades this to a WARN, never a false RED -- lean on CI (docker-build.yml) or set "dockerAck" for an\n' +
         "  environment that genuinely can't build images. First line:\n    " +
         (probe.out.split("\n").find((l) => l.trim()) || "").slice(0, 200),
     });
   }
 
   // (1) Build the standalone image (RED gate). Same output as `make docker-build`.
-  const build = await run("docker build", "docker", ["build", "-t", DOCKER_IMAGE_TAG, "."], { DOCKER_BUILD: "1" });
+  const build = await run("docker build", "docker", ["build", "-t", DOCKER_IMAGE_TAG, "."], {
+    DOCKER_BUILD: "1",
+  });
   if (!build.ok) {
     return red(
       "docker image build FAILED (ADR-030: the image is a mandatory build artifact at /ship --full):\n" +
-        build.out.split("\n").filter((l) => l.trim()).slice(-20).map((l) => `  ${l}`).join("\n") +
-        "\n  Fix the Dockerfile/build, or set \"dockerAck\" + an adjudicated register line for an env that can't build images."
+        build.out
+          .split("\n")
+          .filter((l) => l.trim())
+          .slice(-20)
+          .map((l) => `  ${l}`)
+          .join("\n") +
+        '\n  Fix the Dockerfile/build, or set "dockerAck" + an adjudicated register line for an env that can\'t build images.',
     );
   }
 
@@ -738,7 +886,7 @@ async function scanDocker() {
     return red(
       `trivy ${trivyVer} is a COMPROMISED release (CVE-2026-33634, 2026-03-19) -- a credential\n` +
         "  stealer, NOT a scanner. Refusing to run it. Pin trivy <= 0.69.3 (trivy-action v0.35.0 /\n" +
-        "  setup-trivy v0.2.6) per ADR-041 -- reinstall a safe version and re-run /ship --full."
+        "  setup-trivy v0.2.6) per ADR-041 -- reinstall a safe version and re-run /ship --full.",
     );
   }
   if (!trivyVer) {
@@ -747,21 +895,57 @@ async function scanDocker() {
     return red(
       "could not parse the trivy version from `trivy --version`, so it cannot be verified\n" +
         "  against the CVE-2026-33634 pin (ADR-041). Refusing to run an unverifiable scanner.\n" +
-        "  Reinstall a known-good trivy <= 0.69.3 and re-run /ship --full."
+        "  Reinstall a known-good trivy <= 0.69.3 and re-run /ship --full.",
     );
   }
   // The image + config scans are independent; run them together. Same minimal env.
   const [img, conf] = await Promise.all([
-    run("trivy image", "trivy", [
-      "image", "--quiet", "--exit-code", "1", "--scanners", "vuln", "--severity", "HIGH,CRITICAL", DOCKER_IMAGE_TAG,
-    ], TRIVY_ENV, true),
-    run("trivy config", "trivy", [
-      "config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL", ".",
-    ], TRIVY_ENV, true),
+    run(
+      "trivy image",
+      "trivy",
+      [
+        "image",
+        "--quiet",
+        "--exit-code",
+        "1",
+        "--scanners",
+        "vuln",
+        "--severity",
+        "HIGH,CRITICAL",
+        DOCKER_IMAGE_TAG,
+      ],
+      TRIVY_ENV,
+      true,
+    ),
+    run(
+      "trivy config",
+      "trivy",
+      ["config", "--quiet", "--exit-code", "1", "--severity", "HIGH,CRITICAL", "."],
+      TRIVY_ENV,
+      true,
+    ),
   ]);
   const notes = [];
-  if (!img.ok) notes.push("  trivy image (HIGH/CRITICAL):\n" + img.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
-  if (!conf.ok) notes.push("  trivy config (HIGH/CRITICAL):\n" + conf.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
+  if (!img.ok)
+    notes.push(
+      "  trivy image (HIGH/CRITICAL):\n" +
+        img.out
+          .split("\n")
+          .filter((l) => l.trim())
+          .slice(0, 12)
+          .map((l) => `    ${l}`)
+          .join("\n"),
+    );
+  if (!conf.ok)
+    notes.push(
+      "  trivy config (HIGH/CRITICAL):\n" +
+        conf.out
+          .split("\n")
+          .filter((l) => l.trim())
+          .slice(0, 12)
+          .map((l) => `    ${l}`)
+          .join("\n"),
+    );
   // trivyVer is guaranteed valid + uncompromised here (the not-installed and
   // unparseable-version cases already returned above), so there is no version
   // caveat to append -- the old `verWarn` was removed with the fail-closed change.
@@ -801,7 +985,12 @@ async function scanAiEval() {
     secs: r.secs,
     out:
       "AI eval cases failed (Five Pillars: High-Quality):\n" +
-      r.out.split("\n").filter((l) => l.trim()).slice(-20).map((l) => `  ${l}`).join("\n") +
+      r.out
+        .split("\n")
+        .filter((l) => l.trim())
+        .slice(-20)
+        .map((l) => `  ${l}`)
+        .join("\n") +
       "\n  Fix the endpoint/prompt or the fixture, or point AI_EVAL_BASE_URL at a running app.\n" +
       "  Dormant until AI_API_KEY + fixtures exist (fork/CI-activated); see docs/findings-register.md.",
   };
@@ -830,7 +1019,7 @@ function run(name, cmd, args, env = {}, replaceEnv = false) {
     child.stderr.on("data", (d) => (out += d));
     child.on("error", (err) => resolve({ name, ok: false, out: String(err), secs: 0 }));
     child.on("close", (code) =>
-      resolve({ name, ok: code === 0, out, secs: ((Date.now() - t0) / 1000).toFixed(1) })
+      resolve({ name, ok: code === 0, out, secs: ((Date.now() - t0) / 1000).toFixed(1) }),
     );
   });
 }
@@ -852,7 +1041,7 @@ function loadAuditAllowlist() {
     // Safe-fail: an empty allowlist makes every High+ advisory fail /ship. Warn
     // loudly so the cause is the malformed file, not a confusing "new advisory".
     console.warn(
-      `  warn: audit-allowlist.json is malformed -- treating as empty (every High+ advisory will fail /ship): ${err.message}`
+      `  warn: audit-allowlist.json is malformed -- treating as empty (every High+ advisory will fail /ship): ${err.message}`,
     );
     return new Set();
   }
@@ -863,7 +1052,10 @@ function evaluateAudit(out) {
   try {
     j = JSON.parse(out);
   } catch {
-    return { ok: false, out: `npm audit did not return JSON (registry/network error?):\n${out.slice(0, 800)}` };
+    return {
+      ok: false,
+      out: `npm audit did not return JSON (registry/network error?):\n${out.slice(0, 800)}`,
+    };
   }
   // A successful `npm audit --json` always carries `vulnerabilities` + `metadata`.
   // A registry/network failure returns `{ "error": {...} }` (valid JSON, no vuln
@@ -883,9 +1075,14 @@ function evaluateAudit(out) {
     }
   }
   if (offenders.size === 0) {
-    return { ok: true, out: allow.size ? `clean (allowlisted: ${[...allow].join(", ")})` : "clean" };
+    return {
+      ok: true,
+      out: allow.size ? `clean (allowlisted: ${[...allow].join(", ")})` : "clean",
+    };
   }
-  const lines = [...offenders.entries()].map(([id, x]) => `  - ${id} (${x.severity}) ${x.title || ""}`);
+  const lines = [...offenders.entries()].map(
+    ([id, x]) => `  - ${id} (${x.severity}) ${x.title || ""}`,
+  );
   return {
     ok: false,
     out:
@@ -900,7 +1097,9 @@ const fail = (r) => {
 };
 
 const t0 = Date.now();
-console.log("ship: phase A (typecheck | lint | contract tests | component tests | scalability | wave-offs | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...");
+console.log(
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | scalability | wave-offs | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...",
+);
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
@@ -912,39 +1111,76 @@ const complexity = scanComplexity();
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
 
-let [tsc, lint, contract, components, dbStructure, knip, duplication, coverage] = await Promise.all([
-  typecheck(),
-  // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
-  // hash, NOT on the source of imported rule plugins. After editing a rule under
-  // eslint-rules/, clear `node_modules/.cache/eslint/` or the cache can serve a
-  // STALE result (a fixed rule looks green; a newly-strict rule looks clean).
-  run("lint", "npx", ["eslint", "--cache", "--cache-location", `${CACHE}/eslint/`]),
-  run("contract tests", "npm", ["test"]),
-  run("component tests", "npm", ["run", "test:components"]),
-  scanDbStructure(),
-  // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
-  // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
-  // when its tool is absent and carries an ADR-025 <gate>Ack + register waiver.
-  scanKnip(),
-  scanDuplication(),
-  scanCoverage(),
-]);
+let [tsc, lint, format, contract, components, dbStructure, knip, duplication, coverage] =
+  await Promise.all([
+    typecheck(),
+    // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
+    // hash, NOT on the source of imported rule plugins. After editing a rule under
+    // eslint-rules/, clear `node_modules/.cache/eslint/` or the cache can serve a
+    // STALE result (a fixed rule looks green; a newly-strict rule looks clean).
+    run("lint", "npx", ["eslint", "--cache", "--cache-location", `${CACHE}/eslint/`]),
+    // Prettier formatting gate (WS-7): `prettier --check .` respects .prettierignore
+    // and fails RED on any file not in Prettier style. The repo was normalized once
+    // (`prettier --write .`) at adoption, so this stays green unless a new/edited
+    // file drifts. Fix with `npm run format`.
+    run("format", "npx", ["prettier", "--check", "."]),
+    run("contract tests", "npm", ["test"]),
+    run("component tests", "npm", ["run", "test:components"]),
+    scanDbStructure(),
+    // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
+    // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
+    // when its tool is absent and carries an ADR-025 <gate>Ack + register waiver.
+    scanKnip(),
+    scanDuplication(),
+    scanCoverage(),
+  ]);
 
 // stale .next/types trap: TS2307 pointing into .next means the build cache is
 // from a tree with routes that no longer exist -- clear and retry once.
-if (!tsc.ok && /TS2307/.test(tsc.out) && /\.next\/types/.test(tsc.out + " ") ) {
+if (!tsc.ok && /TS2307/.test(tsc.out) && /\.next\/types/.test(tsc.out + " ")) {
   console.log("  typecheck hit the stale-.next/types trap; clearing .next and retrying ...");
   rmSync(".next", { recursive: true, force: true });
   tsc = await typecheck();
 }
 
-for (const r of [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, complexity, dbStructure, knip, duplication, coverage]) report(r);
+for (const r of [
+  tsc,
+  lint,
+  format,
+  contract,
+  components,
+  scalability,
+  waveoffs,
+  tier,
+  blueprint,
+  complexity,
+  dbStructure,
+  knip,
+  duplication,
+  coverage,
+])
+  report(r);
 if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
 if (dbStructure.warn) console.warn(`  note: db-structure — ${dbStructure.warn}`);
 if (knip.warn) console.warn(`  note: knip — ${knip.warn}`);
 if (duplication.warn) console.warn(`  note: duplication — ${duplication.warn}`);
 if (coverage.warn) console.warn(`  note: coverage — ${coverage.warn}`);
-const redA = [tsc, lint, contract, components, scalability, waveoffs, tier, blueprint, complexity, dbStructure, knip, duplication, coverage].find((r) => !r.ok);
+const redA = [
+  tsc,
+  lint,
+  format,
+  contract,
+  components,
+  scalability,
+  waveoffs,
+  tier,
+  blueprint,
+  complexity,
+  dbStructure,
+  knip,
+  duplication,
+  coverage,
+].find((r) => !r.ok);
 if (redA) fail(redA);
 
 console.log("ship: phase B (build -> size-limit -> gitleaks -> npm audit -> ai-eval) ...");
@@ -970,7 +1206,12 @@ if (!gitleaks.ok && /ENOENT/.test(gitleaks.out)) {
 report(gitleaks);
 if (!gitleaks.ok) fail(gitleaks);
 
-const auditRaw = await run("npm audit", "npm", ["audit", "--json", "--audit-level=high", "--omit=dev"]);
+const auditRaw = await run("npm audit", "npm", [
+  "audit",
+  "--json",
+  "--audit-level=high",
+  "--omit=dev",
+]);
 const audit = { name: "npm audit", secs: auditRaw.secs, ...evaluateAudit(auditRaw.out) };
 report(audit);
 if (!audit.ok) fail(audit);
@@ -1010,7 +1251,9 @@ try {
     mkdirSync(".claude/state", { recursive: true });
     writeFileSync(".claude/state/last-green-sha", sha + "\n");
   }
-} catch { /* signal is best-effort; never fail a green ship on it */ }
+} catch {
+  /* signal is best-effort; never fail a green ship on it */
+}
 
 // Handoff-sync surfacing (session-automation): if SESSION-HANDOFF.md's rendered
 // tables have drifted from docs/session-state.json (or the auto markers are
@@ -1026,8 +1269,10 @@ try {
       );
     }
   }
-} catch { /* surfacing is best-effort */ }
+} catch {
+  /* surfacing is best-effort */
+}
 
 console.log(
-  `\nship: green -- typecheck + lint + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`
+  `\nship: green -- typecheck + lint + format + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`,
 );

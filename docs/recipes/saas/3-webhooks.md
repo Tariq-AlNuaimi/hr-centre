@@ -15,8 +15,8 @@ Add this when **any** is true:
 - You're replacing polling (a consumer hitting `GET /api/v1/...` on a timer) with push.
 - You need a delivery **audit trail** (who got notified, did it succeed, retries).
 
-If only *your own* UI needs live updates, use the **Pusher** realtime `/scale-up` item
-instead — webhooks are for *external* consumers.
+If only _your own_ UI needs live updates, use the **Pusher** realtime `/scale-up` item
+instead — webhooks are for _external_ consumers.
 
 ## Deps
 
@@ -185,7 +185,12 @@ export async function emitEvent(event: string, payload: Record<string, unknown>)
 }
 
 /** Attempt delivery with bounded retries + backoff, updating the delivery row each time. */
-export async function deliver(deliveryId: string, url: string, secret: string, rawBody: string): Promise<void> {
+export async function deliver(
+  deliveryId: string,
+  url: string,
+  secret: string,
+  rawBody: string,
+): Promise<void> {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const status = await postOnce(url, secret, rawBody);
@@ -216,7 +221,8 @@ export async function deliver(deliveryId: string, url: string, secret: string, r
     // function will be KILLED at its timeout mid-retry, silently truncating
     // delivery. In production, deliver via the Inngest seam below (one attempt
     // per step, Inngest owns the backoff) -- do NOT ship this synchronous loop.
-    if (attempt < MAX_ATTEMPTS) await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt] ?? 30_000));
+    if (attempt < MAX_ATTEMPTS)
+      await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt] ?? 30_000));
   }
 }
 ```
@@ -313,7 +319,7 @@ function verify(rawBody: string, signatureHeader: string, secret: string): boole
 ## Env vars
 
 None on this app's side — secrets live per-`Webhook` row in the DB. The **receiver** holds
-its copy of the secret in *its* env.
+its copy of the secret in _its_ env.
 
 ---
 
@@ -321,11 +327,11 @@ its copy of the secret in *its* env.
 
 Add to **§1 Data classification**:
 
-| Field | Class | Note |
-|---|---|---|
-| `webhooks.secret` | **Restricted** | HMAC-SHA256 signing key. Secret-equivalent — never selected by any API, never logged. Already covered by `SCRUB_FIELDS` (`"secret"`), so audit snapshots redact it. |
-| `webhooks.url` | Internal | Receiver endpoint. |
-| `webhook_deliveries.payload` | inherits | Snapshots the triggering entity — same class as that entity. Keep payloads minimal. |
+| Field                        | Class          | Note                                                                                                                                                                |
+| ---------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `webhooks.secret`            | **Restricted** | HMAC-SHA256 signing key. Secret-equivalent — never selected by any API, never logged. Already covered by `SCRUB_FIELDS` (`"secret"`), so audit snapshots redact it. |
+| `webhooks.url`               | Internal       | Receiver endpoint.                                                                                                                                                  |
+| `webhook_deliveries.payload` | inherits       | Snapshots the triggering entity — same class as that entity. Keep payloads minimal.                                                                                 |
 
 Note in **§8 (outbound network)** / threat model: this app now makes **outbound HTTPS
 requests** to operator-configured URLs. Validate `url` is `https://` on create, and consider

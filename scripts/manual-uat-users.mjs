@@ -31,7 +31,13 @@ function discoverRoles() {
   if (!block) return [];
   return block[1]
     .split("\n")
-    .map((l) => l.replace(/\/\/.*$/, "").trim().match(/^([A-Za-z_][A-Za-z0-9_]*)/)?.[1])
+    .map(
+      (l) =>
+        l
+          .replace(/\/\/.*$/, "")
+          .trim()
+          .match(/^([A-Za-z_][A-Za-z0-9_]*)/)?.[1],
+    )
     .filter(Boolean);
 }
 
@@ -97,7 +103,11 @@ async function main() {
       const pwEnv = passwordEnvFor(role);
       const password = passwordFor(role);
       if (!password) {
-        summary.push({ role, email, status: "SKIPPED — set UAT_" + role + "_PASSWORD or SEED_ADMIN_PASSWORD" });
+        summary.push({
+          role,
+          email,
+          status: "SKIPPED — set UAT_" + role + "_PASSWORD or SEED_ADMIN_PASSWORD",
+        });
         continue;
       }
       const passwordHash = await hashPassword(password);

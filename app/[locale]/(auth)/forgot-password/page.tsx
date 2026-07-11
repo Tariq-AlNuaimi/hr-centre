@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useNotify } from "@/hooks/use-notify";
 
 // Mirrors the /api/auth/forgot-password route contract (a single email field).
-const forgotSchema = z.object({ email: z.string().email() });
+const forgotSchema = z.object({ email: z.email() });
 type ForgotValues = z.infer<typeof forgotSchema>;
 
 export default function ForgotPasswordPage() {
@@ -49,9 +49,7 @@ export default function ForgotPasswordPage() {
 
         {submitted ? (
           <>
-            <p className="text-center text-card-foreground">
-              {t("resetLinkSent")}
-            </p>
+            <p className="text-center text-card-foreground">{t("resetLinkSent")}</p>
             <Link
               href={`/${locale}/login`}
               className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
@@ -61,16 +59,8 @@ export default function ForgotPasswordPage() {
           </>
         ) : (
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
-              <TextField
-                name="email"
-                label={t("email")}
-                type="email"
-                autoComplete="email"
-              />
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              <TextField name="email" label={t("email")} type="email" autoComplete="email" />
               <Button type="submit" size="lg" className="w-full" disabled={loading}>
                 {t("sendResetLink")}
               </Button>

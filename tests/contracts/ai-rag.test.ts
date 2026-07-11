@@ -10,10 +10,7 @@ import assert from "node:assert/strict";
 // without any network or Postgres.
 
 const mockApi = mock as unknown as {
-  module?: (
-    specifier: string,
-    options: { namedExports: Record<string, unknown> },
-  ) => unknown;
+  module?: (specifier: string, options: { namedExports: Record<string, unknown> }) => unknown;
 };
 const canMock = typeof mockApi.module === "function";
 

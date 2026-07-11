@@ -18,15 +18,6 @@
     "brand.config.ts"
   ],
   "ignore": [],
-  "ignoreDependencies": [
-    "pg",
-    "@types/pg",
-    "playwright",
-    "@typescript-eslint/parser",
-    "jscpd"
-  ],
-  "ignoreBinaries": [
-    "pg_dump",
-    "psql"
-  ]
+  "ignoreDependencies": ["pg", "@types/pg", "playwright", "@typescript-eslint/parser", "jscpd"],
+  "ignoreBinaries": ["pg_dump", "psql"]
 }

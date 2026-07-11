@@ -22,9 +22,7 @@ export const AI_DEFAULT_MAX_TOKENS = 16000;
 
 // Typed off the SDK method itself (not a restated shape) so the wrapper tracks
 // the beta Tool-Runner API across SDK versions without drifting.
-type ToolRunnerParams = Parameters<
-  Anthropic["beta"]["messages"]["toolRunner"]
->[0];
+type ToolRunnerParams = Parameters<Anthropic["beta"]["messages"]["toolRunner"]>[0];
 type ToolRunnerReturn = ReturnType<Anthropic["beta"]["messages"]["toolRunner"]>;
 
 /** runAgent params: everything the native Tool Runner takes, but model + max_tokens are optional (defaulted). */

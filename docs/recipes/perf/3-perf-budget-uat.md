@@ -18,7 +18,7 @@ Add this when **performance is a thing the team cares about and could regress**:
 **Keep it opt-in.** Lighthouse pulls in a heavy dependency tree (`lighthouse` +
 `chrome-launcher`); per the lean-base principle (ADR-014) it does **not** belong in
 the base `package.json`. Add it only to a fork that needs it. If you only want to
-catch *bundle* regressions (the most common cause of slowdowns) the **bundle-size
+catch _bundle_ regressions (the most common cause of slowdowns) the **bundle-size
 assertion (Option B)** needs **no new dependency at all** — prefer it unless you
 specifically need real Lighthouse field metrics.
 
@@ -131,8 +131,7 @@ so it shows up exactly like a failed smoke step. The HTML reports land in
 `tests/uat/.lighthouse/` — add that dir to `.gitignore`.
 
 > **Caveat:** Lighthouse scores are noisy, especially against a cold serverless
-> deployment or a busy local machine. Set thresholds with headroom (e.g. 80, not
-> 95) and treat a *single* dip as a re-run candidate, not an instant red. Audit a
+> deployment or a busy local machine. Set thresholds with headroom (e.g. 80, not 95) and treat a _single_ dip as a re-run candidate, not an instant red. Audit a
 > **deployed** URL for stable numbers; local dev includes HMR/dev overhead and will
 > score lower. This is a regression tripwire, not a benchmark of record.
 
@@ -176,7 +175,7 @@ test.describe(enabled ? "bundle budget" : "bundle budget (skipped)", () => {
       const kb = Math.round(jsBytes / 1024);
       console.log(`[bundle] ${path}: ${kb} KB JS`);
       expect(kb, `${path} shipped ${kb} KB JS (budget ${MAX_JS_KB} KB)`).toBeLessThanOrEqual(
-        MAX_JS_KB
+        MAX_JS_KB,
       );
     });
   }
@@ -188,18 +187,18 @@ test.describe(enabled ? "bundle budget" : "bundle budget (skipped)", () => {
 > (`UAT_BASE_URL` pointed at a Vercel deploy, or `npm run build && npm start`
 > locally) — dev-mode JS is unminified and will dwarf the budget. The base already
 > ships `npm run analyze` (`next.config.ts`'s bundle-analyzer, `ANALYZE=true`) for
-> the interactive treemap when a budget trips and you need to see *what* grew.
+> the interactive treemap when a budget trips and you need to see _what_ grew.
 
 ---
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `tests/uat/perf-budget.uat.ts` **or** `tests/uat/bundle-size.uat.ts` | **New** — the budget spec |
-| `tests/uat/lighthouse-budget.json` | **New** — optional (Option A hard budgets) |
-| `package.json` | Option A only: add `playwright-lighthouse` + `lighthouse` + `chrome-launcher` as **devDependencies** |
-| `.gitignore` | add `tests/uat/.lighthouse/` (Option A reports) |
+| File                                                                 | Change                                                                                               |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `tests/uat/perf-budget.uat.ts` **or** `tests/uat/bundle-size.uat.ts` | **New** — the budget spec                                                                            |
+| `tests/uat/lighthouse-budget.json`                                   | **New** — optional (Option A hard budgets)                                                           |
+| `package.json`                                                       | Option A only: add `playwright-lighthouse` + `lighthouse` + `chrome-launcher` as **devDependencies** |
+| `.gitignore`                                                         | add `tests/uat/.lighthouse/` (Option A reports)                                                      |
 
 The spec auto-joins the existing chromium `testMatch: /\.uat\.ts$/`, so no
 `playwright.config.ts` change is needed. It's gated behind `PERF_BUDGET=1` so a

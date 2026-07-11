@@ -24,11 +24,7 @@ import { discoverCrudEntities } from "./_discover";
 
 const LOCALE = "en";
 const ENTITIES = discoverCrudEntities(LOCALE);
-const JOURNEY_FILE = path.join(
-  process.cwd(),
-  "uat-results",
-  "crud-journeys.json",
-);
+const JOURNEY_FILE = path.join(process.cwd(), "uat-results", "crud-journeys.json");
 
 // A valid-by-default password for any create form that has a password field
 // (template rule: min 8). Not a secret — a throwaway local fixture value.
@@ -97,9 +93,7 @@ async function fillFormGenerically(
 
   // 1) Plain inputs + textareas (the Radix Select trigger is a role="combobox"
   //    button, not an input, so it's driven separately in step 2 below).
-  const fields = form.locator(
-    "input:visible, textarea:visible",
-  );
+  const fields = form.locator("input:visible, textarea:visible");
   const count = await fields.count();
   let firstTextDone = false;
 
@@ -202,8 +196,7 @@ for (const entity of ENTITIES) {
     const consoleErrors = new Set<string>();
     const pageErrors = new Set<string>();
     page.on("console", (msg) => {
-      if (msg.type() === "error" && consoleErrors.size < 25)
-        consoleErrors.add(msg.text());
+      if (msg.type() === "error" && consoleErrors.size < 25) consoleErrors.add(msg.text());
     });
     page.on("pageerror", (err) => {
       if (pageErrors.size < 25) pageErrors.add(err.message);
@@ -283,9 +276,7 @@ for (const entity of ENTITIES) {
       await page.waitForURL(new RegExp(`${entity.listPath}/[^/]+/?$`), {
         timeout: 10_000,
       });
-      const firstText = page
-        .locator('form input:visible:not([type="password"])')
-        .first();
+      const firstText = page.locator('form input:visible:not([type="password"])').first();
       await firstText.fill(editedValue);
       await shot("edit-filled");
       await submitForm(page, new RegExp(`${entity.listPath}/?($|\\?)`));
@@ -315,10 +306,7 @@ for (const entity of ENTITIES) {
       // Row delete affordance: an icon button aria-labelled from the entity's
       // deleteAction i18n key ("Delete <x>" in en). It is the trigger of a Radix
       // Dialog (components/shared/ConfirmAction.tsx), not an inline popconfirm.
-      await row
-        .locator(`button[aria-label^="${DELETE_LABEL_PREFIX}"]`)
-        .first()
-        .click();
+      await row.locator(`button[aria-label^="${DELETE_LABEL_PREFIX}"]`).first().click();
       // Confirm via the dialog's primary button. The Radix DialogContent exposes
       // role="dialog" (components/ui/dialog.tsx:33-72) and the confirm button's
       // visible label is common.yes = "Yes" (ConfirmAction.tsx:65-73).
@@ -351,10 +339,9 @@ for (const entity of ENTITIES) {
     // defects (the forms are exercised here, not in the main-section sweep).
     // Console errors are recorded as notes but not gated (often library warnings
     // or handled i18n fallbacks) — they show in the P3 report for triage.
-    expect(
-      [...pageErrors],
-      `${entity.name} journey threw uncaught runtime error(s)`,
-    ).toHaveLength(0);
+    expect([...pageErrors], `${entity.name} journey threw uncaught runtime error(s)`).toHaveLength(
+      0,
+    );
   });
 }
 

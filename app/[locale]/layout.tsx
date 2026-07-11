@@ -81,9 +81,7 @@ export default async function LocaleLayout({
   const cookieStore = await cookies();
   const savedMode = cookieStore.get("theme-mode")?.value;
   const initialMode: ThemeMode =
-    savedMode === "light" || savedMode === "dark" || savedMode === "system"
-      ? savedMode
-      : "system";
+    savedMode === "light" || savedMode === "dark" || savedMode === "system" ? savedMode : "system";
   // The server can resolve explicit modes; `system` defers to the client effect.
   const initialIsDark = initialMode === "dark";
 

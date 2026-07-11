@@ -85,36 +85,36 @@ export default function ProfilePage() {
           <CardTitle>{t("changePassword")}</CardTitle>
         </CardHeader>
         <CardContent>
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onChangePassword)}
-            className="flex max-w-[400px] flex-col gap-4"
-          >
-            <TextField
-              name="currentPassword"
-              label={t("currentPassword")}
-              type="password"
-              autoComplete="current-password"
-            />
-            <TextField
-              name="newPassword"
-              label={t("newPassword")}
-              type="password"
-              autoComplete="new-password"
-            />
-            <TextField
-              name="confirmPassword"
-              label={t("confirmPassword")}
-              type="password"
-              autoComplete="new-password"
-            />
-            <div>
-              <Button type="submit" disabled={loading}>
-                {tCommon("save")}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onChangePassword)}
+              className="flex max-w-[400px] flex-col gap-4"
+            >
+              <TextField
+                name="currentPassword"
+                label={t("currentPassword")}
+                type="password"
+                autoComplete="current-password"
+              />
+              <TextField
+                name="newPassword"
+                label={t("newPassword")}
+                type="password"
+                autoComplete="new-password"
+              />
+              <TextField
+                name="confirmPassword"
+                label={t("confirmPassword")}
+                type="password"
+                autoComplete="new-password"
+              />
+              <div>
+                <Button type="submit" disabled={loading}>
+                  {tCommon("save")}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </>

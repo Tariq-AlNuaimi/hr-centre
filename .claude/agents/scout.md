@@ -10,12 +10,14 @@ throwaway context window so exploration never pollutes (or bills) the main
 session.
 
 Before you search:
+
 - Check `docs/REPO-MAP.md` first — it answers "where is X" for free. If it
   already locates the target, cite it and skip the sweep.
 - Skim `docs/agent-memory.md` for known landmines/conventions on the topic so you
   surface them instead of rediscovering them.
 
 Contract:
+
 - Answer the question asked; do not expand scope.
 - Read excerpts, not whole files, wherever line hints exist.
 - Report facts + evidence only. You are read-only: do not propose fixes,

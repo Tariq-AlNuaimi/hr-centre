@@ -45,7 +45,7 @@ All built on AntD + the shipped `components/shared/*` primitives (ADR-027's "ele
   notifications bell (honest empty state); a workspace/org switcher (honest single-tenant); branded status
   pages (404/403/500/maintenance) via one `BrandedStatus` primitive.
 - **Phase 3 — Branded HOCs.** `StatCard` (KPI), `SectionCard`, `DataView` (DataTable + toolbar + bulk actions
-  + row selection + column controls), `DescriptionList`, `Toolbar`; the dashboard rebuilt on them.
+  - row selection + column controls), `DescriptionList`, `Toolbar`; the dashboard rebuilt on them.
 - **Phase 4 — Proof & docs.** The `style-guide` page extended into the living gallery (all primitives across
   light/dark/RTL); `docs/design-recipes.md` updated (recipes 9–13); this ADR.
 

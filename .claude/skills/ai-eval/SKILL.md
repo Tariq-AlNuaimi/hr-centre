@@ -43,15 +43,15 @@ emits):
 
 ```ts
 export interface AiEvalCase {
-  name: string;                     // shows in the report
-  input: Record<string, unknown>;   // must satisfy the route's zod schema
+  name: string; // shows in the report
+  input: Record<string, unknown>; // must satisfy the route's zod schema
   asserts: Array<
-    | { type: "contains";     value: string }
+    | { type: "contains"; value: string }
     | { type: "not-contains"; value: string }
-    | { type: "llm-judge";    rubric: string }
+    | { type: "llm-judge"; rubric: string }
   >;
 }
-export const cases: AiEvalCase[] = [ /* ... */ ];
+export const cases: AiEvalCase[] = [/* ... */];
 ```
 
 The filename maps to the endpoint: `summarize.eval.ts` → `POST /api/ai/summarize`

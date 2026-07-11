@@ -23,12 +23,7 @@ test("renders a subtitle when provided", () => {
 });
 
 test("renders the primary action in the actions slot", () => {
-  renderWithProviders(
-    <PageHeader
-      title="Users"
-      actions={<Button>New user</Button>}
-    />,
-  );
+  renderWithProviders(<PageHeader title="Users" actions={<Button>New user</Button>} />);
   assert.ok(screen.getByRole("button", { name: "New user" }));
 });
 

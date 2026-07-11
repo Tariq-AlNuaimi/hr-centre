@@ -13,7 +13,7 @@ Recurring operator complaint: improvised UI lands ugly and only gets fixed at QA
 anti-slop rubric (`docs/uat-rubric.md` Tier 0) — and shipped the **reactive** half
 (`/design-qa`, which screenshots every screen/state, runs axe, and scores against
 the rubric). What was missing was the **proactive** half: a repeatable way to
-produce a good screen on the *first* pass, so `/design-qa` has little to flag.
+produce a good screen on the _first_ pass, so `/design-qa` has little to flag.
 
 The obvious shortcut was to import an external, off-the-shelf design skill/pack
 (several exist as Claude Code plugins). But the template already made the
@@ -44,40 +44,46 @@ track already asks for, so the layers compose instead of duplicating.
 ## Consequences
 
 ### Positive
+
 - One internally-consistent system: the proactive recipes, the reactive audit,
   and the locked tokens/rules all reference the same ruler and primitives.
 - No new third-party dependency, supply-chain surface, or off-Anthropic egress
   (consistent with ADR-022's reasoning).
-- The recipes are tuned to *this* stack (AntD 6 + next-intl RTL + dark hold +
+- The recipes are tuned to _this_ stack (AntD 6 + next-intl RTL + dark hold +
   the shipped shared components), not a generic design pack that would fight it.
 
 ### Negative
+
 - We own and maintain the recipes; they can drift from AntD/library updates and
   must be refreshed as the design language evolves.
 - We forgo whatever breadth a large external design pack might offer.
 
 ### Mitigations
+
 - The recipes are built on the shipped primitives, so a primitive change updates
   every recipe at once; the market-scan note records what to re-check on refresh.
 - `/design-qa` is the backstop — anything the recipes miss is caught reactively
   and fed back into the recipes.
 
 ## Alternatives considered
+
 1. **Import an external design skill/plugin.** Rejected — inconsistent with
    ADR-022's native-over-imported stance; adds supply-chain/egress surface; a
    generic pack would not be tuned to AntD + RTL + the shipped primitives.
 2. **Rely on `/design-qa` alone (reactive only).** Rejected — fixing slop at QA
    is the exact loop this set out to break; prevention is cheaper than rework.
-3. **Tokens + rules only, no recipes.** Rejected — a ruler tells you *when*
-   you're off, not *how* to build it right the first time.
+3. **Tokens + rules only, no recipes.** Rejected — a ruler tells you _when_
+   you're off, not _how_ to build it right the first time.
 
 ## Migration triggers
+
 - A major AntD/design-library version or a token-system overhaul → refresh the
   recipes against the new guidelines.
 - If a high-quality, vetted external design system with acceptable egress/supply
   -chain posture emerges and our recipes become a maintenance burden, revisit.
 
 ## Related
+
 - `.claude/skills/design-system/SKILL.md`, `docs/design-recipes.md`
 - `.claude/skills/design-qa/SKILL.md`, `docs/uat-rubric.md` (Tier 0 anti-slop)
 - `app/tokens.css`, `antd-theme.ts`, the `no-raw-hex-color` rule (ADR-015)

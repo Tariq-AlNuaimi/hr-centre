@@ -27,7 +27,9 @@ import { SCRUB_FIELDS } from "./prisma/audit-extension";
  */
 type SentryLike = {
   captureException: (err: unknown) => unknown;
-  withScope: (fn: (scope: { setContext: (key: string, value: Record<string, unknown>) => void }) => void) => void;
+  withScope: (
+    fn: (scope: { setContext: (key: string, value: Record<string, unknown>) => void }) => void,
+  ) => void;
   setUser: (user: { id: string } | null) => void;
 };
 
@@ -38,7 +40,7 @@ let sentryImpl: SentryLike = DefaultSentry as unknown as SentryLike;
  * this. Restore to default by calling without an argument.
  */
 export function _setSentryForTesting(impl?: SentryLike): void {
-  sentryImpl = (impl ?? (DefaultSentry as unknown as SentryLike));
+  sentryImpl = impl ?? (DefaultSentry as unknown as SentryLike);
 }
 
 /**
@@ -46,7 +48,9 @@ export function _setSentryForTesting(impl?: SentryLike): void {
  * Exported so the contract test can assert it directly without mocking the
  * Sentry SDK (see tests/contracts/sentry-scrub.test.ts).
  */
-export function scrubContext(input: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+export function scrubContext(
+  input: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
   if (!input) return input;
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(input)) {

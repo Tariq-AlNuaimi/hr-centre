@@ -41,30 +41,36 @@ things the agent could merge without an ADR.
 ## Consequences
 
 ### Positive
+
 - Security patches arrive continuously instead of batching up behind fear of majors.
 - Major drift is bounded at ~one quarter, so each refresh is a small, documented step.
 - Dependabot output becomes 100% actionable; no perpetual "won't fix" branches.
 
 ### Negative
+
 - Quarterly refresh is a calendar obligation with no automated reminder on the free
   plan (no CI cron). It relies on the operator/agent noticing the date.
 
 ### Mitigations
+
 - The session-start drift check + `npm outdated` in any maintenance session surface
   staleness organically even if a quarter slips.
 
 ## Alternatives considered
+
 1. **Track latest everything, always** — churn and breakage risk outweigh benefit for a
    prototype rail; majors like zod 4 change APIs used at every boundary.
 2. **Freeze until forced by a CVE** — the status quo that produced 5 held majors and 17
    stale branches; reactive upgrades under CVE pressure are the worst time to do them.
 
 ## Migration triggers
+
 - CI activation at `/handoff`: revisit whether Dependabot + required checks can replace
   the manual in-range track.
 - A held major reaching end-of-security-support flips it from "quarterly candidate" to
   "immediate ADR".
 
 ## Related
+
 - ADR-001 — the lock this policy adds a cadence to.
 - `.github/dependabot.yml` — the ignore list implementing track 2's noise control.

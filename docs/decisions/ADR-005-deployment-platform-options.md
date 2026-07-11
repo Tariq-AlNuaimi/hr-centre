@@ -18,6 +18,7 @@ Phases 1–4b of the simplify-deployment work added: preflight validator, snapsh
 Phase 5b restructured `/deploy` so `redeploy` is the default action and `provision-and-deploy` is an explicit opt-in (with `force_reprovision` for advanced overrides). This effectively makes destructive provisioning a one-time setup; recurring deploys can never re-touch infrastructure by accident.
 
 But the residual cost is still real:
+
 - Eight integration boundaries to learn.
 - ~14 secrets/variables in `/first-fork` for full prod (~7 for staging-only).
 - Initial setup time even with snapshot: ~30–60 min, including running `/build-snapshot`, `/preflight`, then first `/deploy`.
@@ -28,6 +29,7 @@ For operators who **just want a Next.js app live with a custom domain**, this is
 ## Decision
 
 **Keep the droplet-based architecture as the template's primary path.** It remains the right choice for projects that need:
+
 - Self-hosted infrastructure (data residency, ops-portal-class internal tools).
 - Deep customization of the reverse proxy (custom Caddy plugins, multi-domain stacks on one host).
 - MinIO-specific S3 operations (object lifecycle, vendor-agnostic backups, future migration to other S3 stores).
@@ -35,6 +37,7 @@ For operators who **just want a Next.js app live with a custom domain**, this is
 - Predictable monthly cost (~$17/mo for a single-env stack: $12 droplet + $5 Spaces, $0 CF + $0 GHCR + $0 LE).
 
 **Document DigitalOcean App Platform as the recommended alternative** for projects where:
+
 - The above don't apply.
 - Operator time is the primary constraint.
 - Project is short-lived (a sprint, a demo) or low-traffic (UAT, internal dashboard).
@@ -44,22 +47,25 @@ Do **not** migrate `support-case` (or any existing droplet-based project) to a P
 ## Consequences
 
 ### Positive
+
 - New operators have a documented "I just want it live in 5 minutes" path that doesn't require learning the template's eight integration boundaries.
 - The template stays focused on its niche (self-hosted, customizable, predictable cost) without trying to be a PaaS replacement.
 - Future template forks for "PaaS-class" projects can reference this ADR as the architectural rationale.
 
 ### Negative
+
 - Two paths to document and maintain in `/first-fork` guidance.
 - Operators new to both paths face a choice they may not have context to make.
 - The template can't unify the two paths in a single `gh workflow run`; each platform has its own deploy mechanics.
 
 ### Mitigations
+
 - Add a chooser to `/first-fork`'s preconditions: "Which path are you on?" with three-question flowchart (data residency? custom proxy needs? backup encryption?). Default route: droplet path for "yes to any" and DO App Platform for "no to all".
 - Create a separate `fullstack-paas-template` repo if PaaS-style projects accumulate enough demand to justify a divergent baseline (Prisma-friendly Dockerfile, App-Platform-aware lib/storage.ts that talks to Spaces directly, no MinIO sidecar). Do not preemptively fork — wait for the second PaaS project to materialize.
 
 ## Alternatives considered
 
-1. **Migrate the template to DO App Platform as the new default.** Rejected: existing operators have ops-portal-class projects that need self-hosted control. Forced migration of the support-case generation of projects would erase the encrypted backup story (App Platform doesn't expose host-level encrypted volume management) and complicate Caddy customization. Status-quo bias is correct here — the template's *current* baseline serves its current operators well.
+1. **Migrate the template to DO App Platform as the new default.** Rejected: existing operators have ops-portal-class projects that need self-hosted control. Forced migration of the support-case generation of projects would erase the encrypted backup story (App Platform doesn't expose host-level encrypted volume management) and complicate Caddy customization. Status-quo bias is correct here — the template's _current_ baseline serves its current operators well.
 
 2. **Build a "Phase 1 PaaS, Phase 2 lift-and-shift to droplet" template.** Rejected: doubles the cognitive load. Operators would have to learn both architectures + the migration cost between them. The migration itself is a separate skill from app development.
 
@@ -69,16 +75,16 @@ Do **not** migrate `support-case` (or any existing droplet-based project) to a P
 
 ## Quick comparison
 
-| Dimension | Droplet (template default) | DO App Platform | Vercel + Neon |
-|---|---|---|---|
-| Initial setup time | 30–60 min (one-time, with /first-fork + /preflight + /build-snapshot + first /deploy) | 10–15 min (connect repo, set env vars, deploy) | 5–10 min (connect repo, add Neon URL) |
-| Recurring deploy time | 60–90s (action=redeploy or git push) | ~3–5 min (DO rebuilds Docker on every push) | ~2 min (Vercel build) |
-| Monthly cost (single env, low traffic) | ~$17 (Droplet + Spaces) | ~$25 ($5 app + $15 managed Postgres + $5 Spaces) | $0–20 (free tier + Neon free + traffic) |
-| Custom domain + LE cert | manual via CF + Caddy (auto) | auto (DO manages DNS + cert) | auto (Vercel manages) |
-| SSH access to runtime | yes | no | no |
-| Encrypted off-host backups | yes (age + rclone sidecar) | manual setup required | manual setup required |
-| Failure modes operator must understand | ~8 (this template) | ~3 (build, DNS, env-var) | ~2 (build, env-var) |
-| Time-to-debug when something breaks | high (deep stack visibility but lots of layers) | medium (DO build logs, no SSH) | low (Vercel logs + Neon dashboard) |
+| Dimension                              | Droplet (template default)                                                            | DO App Platform                                  | Vercel + Neon                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------- |
+| Initial setup time                     | 30–60 min (one-time, with /first-fork + /preflight + /build-snapshot + first /deploy) | 10–15 min (connect repo, set env vars, deploy)   | 5–10 min (connect repo, add Neon URL)   |
+| Recurring deploy time                  | 60–90s (action=redeploy or git push)                                                  | ~3–5 min (DO rebuilds Docker on every push)      | ~2 min (Vercel build)                   |
+| Monthly cost (single env, low traffic) | ~$17 (Droplet + Spaces)                                                               | ~$25 ($5 app + $15 managed Postgres + $5 Spaces) | $0–20 (free tier + Neon free + traffic) |
+| Custom domain + LE cert                | manual via CF + Caddy (auto)                                                          | auto (DO manages DNS + cert)                     | auto (Vercel manages)                   |
+| SSH access to runtime                  | yes                                                                                   | no                                               | no                                      |
+| Encrypted off-host backups             | yes (age + rclone sidecar)                                                            | manual setup required                            | manual setup required                   |
+| Failure modes operator must understand | ~8 (this template)                                                                    | ~3 (build, DNS, env-var)                         | ~2 (build, env-var)                     |
+| Time-to-debug when something breaks    | high (deep stack visibility but lots of layers)                                       | medium (DO build logs, no SSH)                   | low (Vercel logs + Neon dashboard)      |
 
 ## Migration triggers
 

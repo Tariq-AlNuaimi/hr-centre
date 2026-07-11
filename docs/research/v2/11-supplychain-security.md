@@ -13,19 +13,19 @@
 
 **One line:** Pre-commit/CI secret detection. **Current: gitleaks** (MIT, phase-B hard-fail in `/ship`; `/audit` also runs a trufflehog pass per `ship.mjs:634`).
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **gitleaks** | BT·HS·OSS | ~26k [1] | MIT | 2018, stable | Fast regex/entropy, single Go binary, ideal pre-commit + CI gate; MIT (no copyleft trap) |
-| 2 | **TruffleHog v3** | BT·HS·OSS | ~25.7k [1] | AGPL-3.0 | mature | **Credential *verification*** (live-tests the key) + 800+ detectors, scans S3/Docker/Slack; ~94% active-cred detection vs gitleaks 71%/86% tuned [1] |
-| 3 | **GitHub secret scanning + push protection** | ENT·BT | n/a (SaaS) | GitHub (GHAS) | GA | Blocks the push server-side, partner-verified providers, org-wide dashboards; needs GHAS/paid or public repo |
-| 4 | **Semgrep Secrets** | ENT | (part of Semgrep) | commercial | 2023+ | Validation + entropy in the same platform as SAST; paid |
-| 5 | **detect-secrets (Yelp)** | OSS | ~4k | Apache-2.0 | mature | Baseline-file workflow, plugin arch; weaker verification |
-| 6 | **Aikido / Socket / Puaro (SaaS)** | ENT | n/a | commercial | 2024+ | Managed secret+SCA; lower FP claims; lock-in |
-| 7 | **git-secrets (AWS)** | BT·OSS | ~12k | Apache-2.0 | legacy | AWS-key-focused, minimal, largely superseded |
+| #   | Candidate                                    | Lens      | Stars (2026-07)   | License       | Maturity     | Why it ranks                                                                                                                                         |
+| --- | -------------------------------------------- | --------- | ----------------- | ------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **gitleaks**                                 | BT·HS·OSS | ~26k [1]          | MIT           | 2018, stable | Fast regex/entropy, single Go binary, ideal pre-commit + CI gate; MIT (no copyleft trap)                                                             |
+| 2   | **TruffleHog v3**                            | BT·HS·OSS | ~25.7k [1]        | AGPL-3.0      | mature       | **Credential _verification_** (live-tests the key) + 800+ detectors, scans S3/Docker/Slack; ~94% active-cred detection vs gitleaks 71%/86% tuned [1] |
+| 3   | **GitHub secret scanning + push protection** | ENT·BT    | n/a (SaaS)        | GitHub (GHAS) | GA           | Blocks the push server-side, partner-verified providers, org-wide dashboards; needs GHAS/paid or public repo                                         |
+| 4   | **Semgrep Secrets**                          | ENT       | (part of Semgrep) | commercial    | 2023+        | Validation + entropy in the same platform as SAST; paid                                                                                              |
+| 5   | **detect-secrets (Yelp)**                    | OSS       | ~4k               | Apache-2.0    | mature       | Baseline-file workflow, plugin arch; weaker verification                                                                                             |
+| 6   | **Aikido / Socket / Puaro (SaaS)**           | ENT       | n/a               | commercial    | 2024+        | Managed secret+SCA; lower FP claims; lock-in                                                                                                         |
+| 7   | **git-secrets (AWS)**                        | BT·OSS    | ~12k              | Apache-2.0    | legacy       | AWS-key-focused, minimal, largely superseded                                                                                                         |
 
-**Head-to-head:** gitleaks wins the **pre-commit gate** — millisecond regex scan, MIT, zero infra — which is precisely how this repo uses it. TruffleHog wins **depth**: it *verifies* whether a leaked key is still live (the 94% vs 71% gap) and scans non-git surfaces, but its **AGPL-3.0** license is a distribution/embedding consideration for an enterprise product (fine to run as an external CLI, riskier to vendor into shipped code). GitHub secret-scanning **push-protection** is the only one that stops the secret *before it reaches the remote* — but it's server-side GHAS and this repo's CI is dormant on the free plan. The mature pattern (and what appsec teams do) is **both**: gitleaks pre-commit for speed, trufflehog in CI for verified depth.
+**Head-to-head:** gitleaks wins the **pre-commit gate** — millisecond regex scan, MIT, zero infra — which is precisely how this repo uses it. TruffleHog wins **depth**: it _verifies_ whether a leaked key is still live (the 94% vs 71% gap) and scans non-git surfaces, but its **AGPL-3.0** license is a distribution/embedding consideration for an enterprise product (fine to run as an external CLI, riskier to vendor into shipped code). GitHub secret-scanning **push-protection** is the only one that stops the secret _before it reaches the remote_ — but it's server-side GHAS and this repo's CI is dormant on the free plan. The mature pattern (and what appsec teams do) is **both**: gitleaks pre-commit for speed, trufflehog in CI for verified depth.
 
-**Recommendation: KEEP+HARDEN.** Keep gitleaks as the `/ship` hard gate. **Add trufflehog's *verified* scan as a CI step** (already the `/audit` tool — promote it to a gate on push/PR) so a leaked key is caught *and* confirmed-live before it spreads. At `/handoff` to a GHAS-enabled org, **turn on GitHub push protection** (server-side, org-wide). **Fit 5/5.** ADR impact: extend the security-workflow ADR to name trufflehog-verify as the CI depth layer + push-protection at handoff.
+**Recommendation: KEEP+HARDEN.** Keep gitleaks as the `/ship` hard gate. **Add trufflehog's _verified_ scan as a CI step** (already the `/audit` tool — promote it to a gate on push/PR) so a leaked key is caught _and_ confirmed-live before it spreads. At `/handoff` to a GHAS-enabled org, **turn on GitHub push protection** (server-side, org-wide). **Fit 5/5.** ADR impact: extend the security-workflow ADR to name trufflehog-verify as the CI depth layer + push-protection at handoff.
 
 ---
 
@@ -33,14 +33,14 @@
 
 **One line:** Machine-readable bill-of-materials for the dependency tree. **Current: `@cyclonedx/cyclonedx-npm` v5** (`npm run sbom` → CycloneDX JSON, `--omit dev`).
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **@cyclonedx/cyclonedx-npm** | BT·OSS | (OWASP org) | Apache-2.0 | stable | Reads the npm resolver directly → **most accurate JS dep graph**; CycloneDX is the appsec-native format (VEX, npm metadata) [2] |
-| 2 | **Syft (Anchore)** | BT·HS·OSS | ~8.4k [2] | Apache-2.0 | mature | Single binary, 40+ ecosystems, emits **both** CycloneDX + SPDX; scans image/dir/repo — pairs with Grype |
-| 3 | **Trivy SBOM** | BT·OSS | ~28k | Apache-2.0 | mature | `trivy sbom` from image/fs; one-tool story — **but see Trivy compromise** |
-| 4 | **cdxgen (CycloneDX)** | OSS | ~2.5k | Apache-2.0 | mature | Deepest multi-lang CycloneDX, build-time resolution; heavier |
-| 5 | **SPDX (spdx-sbom-generator / tools)** | ENT·BT | n/a | Apache-2.0 | ISO/IEC 5962 | The **ISO standard**, license/NTIA-compliance native; procurement/gov preference |
-| 6 | **FOSSA / Snyk SBOM** | ENT | n/a | commercial | GA | Managed SBOM + license governance + continuous VEX; paid |
+| #   | Candidate                              | Lens      | Stars (2026-07) | License    | Maturity     | Why it ranks                                                                                                                    |
+| --- | -------------------------------------- | --------- | --------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **@cyclonedx/cyclonedx-npm**           | BT·OSS    | (OWASP org)     | Apache-2.0 | stable       | Reads the npm resolver directly → **most accurate JS dep graph**; CycloneDX is the appsec-native format (VEX, npm metadata) [2] |
+| 2   | **Syft (Anchore)**                     | BT·HS·OSS | ~8.4k [2]       | Apache-2.0 | mature       | Single binary, 40+ ecosystems, emits **both** CycloneDX + SPDX; scans image/dir/repo — pairs with Grype                         |
+| 3   | **Trivy SBOM**                         | BT·OSS    | ~28k            | Apache-2.0 | mature       | `trivy sbom` from image/fs; one-tool story — **but see Trivy compromise**                                                       |
+| 4   | **cdxgen (CycloneDX)**                 | OSS       | ~2.5k           | Apache-2.0 | mature       | Deepest multi-lang CycloneDX, build-time resolution; heavier                                                                    |
+| 5   | **SPDX (spdx-sbom-generator / tools)** | ENT·BT    | n/a             | Apache-2.0 | ISO/IEC 5962 | The **ISO standard**, license/NTIA-compliance native; procurement/gov preference                                                |
+| 6   | **FOSSA / Snyk SBOM**                  | ENT       | n/a             | commercial | GA           | Managed SBOM + license governance + continuous VEX; paid                                                                        |
 
 **Head-to-head:** For a **pure-npm app**, `cyclonedx-npm` produces the most faithful graph because it reads npm's own resolution rather than inferring from a lockfile, and CycloneDX carries the security-oriented fields (VEX, provenance refs) that feed Dependency-Track. **Syft** is the better pick the moment you also want to SBOM the **Docker image** (this repo is Docker-first) and want **SPDX** output for compliance — one binary, both formats, and it feeds Grype natively. **SPDX** matters only where a customer/government contract demands it (ISO 5962). Trivy can also emit SBOMs but you would not add Trivy purely for that today.
 
@@ -52,17 +52,18 @@
 
 **One line:** CVE + misconfig scanning of the image and IaC/Dockerfile. **Current: Trivy** (`/ship --full`: `trivy image` + `trivy config`, HIGH/CRITICAL, triage-to-register).
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **Trivy (Aqua)** | BT·HS·OSS | ~28k | Apache-2.0 | mature | Broadest (image+fs+repo+K8s+IaC+SBOM+secrets), 0.1–0.3s, no daemon — **but 2026-03 supply-chain compromise (see below)** |
-| 2 | **Grype + Syft (Anchore)** | BT·OSS | ~11k | Apache-2.0 | mature | Purpose-built image/SBOM CVE scanner; SBOM-driven (scan the Syft SBOM, not the image); clean Trivy alternative |
-| 3 | **Snyk (Container + IaC)** | ENT·HS | n/a | commercial | GA | Curated SnykVulnDB (~47d ahead of NVD), base-image fix advice, IDE/PR/Slack; per-dev pricing, lock-in |
-| 4 | **Docker Scout** | ENT | n/a | commercial (free tier) | GA | Docker-native, zero learning curve; no proprietary advisory research |
-| 5 | **Clair (Quay/RH)** | BT·ENT·OSS | ~10k | Apache-2.0 | mature | Registry-integrated (Quay), API-first; heavier to self-host, image-only |
-| 6 | **Checkov (Bridgecrew/Prisma)** | BT·OSS | ~7k | Apache-2.0 | mature | **IaC-focused** (Dockerfile/K8s/Terraform), 1000s of policies; pair with a CVE scanner |
-| 7 | **Wiz / Prisma Cloud / Aikido** | ENT | n/a | commercial | GA | Full CNAPP incl. registry+runtime; enterprise budget |
+| #   | Candidate                       | Lens       | Stars (2026-07) | License                | Maturity | Why it ranks                                                                                                             |
+| --- | ------------------------------- | ---------- | --------------- | ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Trivy (Aqua)**                | BT·HS·OSS  | ~28k            | Apache-2.0             | mature   | Broadest (image+fs+repo+K8s+IaC+SBOM+secrets), 0.1–0.3s, no daemon — **but 2026-03 supply-chain compromise (see below)** |
+| 2   | **Grype + Syft (Anchore)**      | BT·OSS     | ~11k            | Apache-2.0             | mature   | Purpose-built image/SBOM CVE scanner; SBOM-driven (scan the Syft SBOM, not the image); clean Trivy alternative           |
+| 3   | **Snyk (Container + IaC)**      | ENT·HS     | n/a             | commercial             | GA       | Curated SnykVulnDB (~47d ahead of NVD), base-image fix advice, IDE/PR/Slack; per-dev pricing, lock-in                    |
+| 4   | **Docker Scout**                | ENT        | n/a             | commercial (free tier) | GA       | Docker-native, zero learning curve; no proprietary advisory research                                                     |
+| 5   | **Clair (Quay/RH)**             | BT·ENT·OSS | ~10k            | Apache-2.0             | mature   | Registry-integrated (Quay), API-first; heavier to self-host, image-only                                                  |
+| 6   | **Checkov (Bridgecrew/Prisma)** | BT·OSS     | ~7k             | Apache-2.0             | mature   | **IaC-focused** (Dockerfile/K8s/Terraform), 1000s of policies; pair with a CVE scanner                                   |
+| 7   | **Wiz / Prisma Cloud / Aikido** | ENT        | n/a             | commercial             | GA       | Full CNAPP incl. registry+runtime; enterprise budget                                                                     |
 
 **⚠ Trivy supply-chain compromise (CVE-2026-33634, verified across Microsoft/Palo Alto/CrowdStrike/Aqua/InfoQ [3]):**
+
 - **2026-03-19:** actor "TeamPCP" published weaponized `trivy` **v0.69.4** across every channel (GH Releases, GHCR, Docker Hub, ECR Public, deb/rpm, `get.trivy.dev`) + poisoned `trivy-action`; **76/77 release tags git-repointed** to a multi-stage credential stealer. **2026-03-22:** further malicious Docker images **v0.69.5/.6/latest** via separately-stolen Docker Hub creds. Exposure windows 3–12h per component.
 - **Payload:** exfiltrates CI/CD secrets — API tokens, AWS/GCP/Azure creds, SSH keys, K8s tokens, Docker config, git creds. **Root cause:** a misconfigured `pull_request_target` workflow leaked a PAT (via bot "hackerbot-claw") ~3 weeks earlier; credential rotation was incomplete. Later entered an **extortion phase** (Vect ransomware).
 - **Safe versions:** `trivy` binary **≤ v0.69.3**; `trivy-action` **v0.35.0** (commit `57a97c7`); `setup-trivy` **v0.2.6** (commit `3fb12ec`). DB updates were suspended during remediation — verify current status before relying on freshness.
@@ -79,19 +80,19 @@
 
 **One line:** Find known-vulnerable / malicious dependencies. **Current: `npm audit`** (`/ship` phase-B hard-fail, High+ with `audit-allowlist.json`).
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **npm audit** | BT·HS | (bundled) | Artistic-2.0 | mature | Zero-install, <5s, GitHub Advisory DB (same as Dependabot); the right default gate [5] |
-| 2 | **OSV-Scanner (Google)** | BT·OSS | ~7k | Apache-2.0 | mature | OSV DB, reads lockfiles, **SARIF** output, free/fast; CVE-only (no supply-chain behavior) [5] |
-| 3 | **Socket** | ENT·HS | n/a (SaaS) | commercial | 2022+ | **Behavioral supply-chain** — flags install scripts, network/fs access, obfuscation, typosquats; catches *malicious* pkgs npm audit can't [5] |
-| 4 | **Dependabot** | BT·HS·ENT | (GitHub) | GitHub | GA | Auto-opens fix PRs, GH Advisory DB, zero infra; no reachability, treats all CVEs equal (noise) [5] |
-| 5 | **Renovate** | BT·HS·OSS | ~19k | AGPL-3.0 (self-host) / free app | mature | Most configurable **update automation** (grouping, schedules, all platforms) — *updater, not scanner* [5] |
-| 6 | **Snyk Open Source** | ENT·HS | n/a | commercial | GA | Curated DB + **reachability** + fix PRs + license policy; per-dev pricing |
-| 7 | **OWASP Dependency-Check** | BT·OSS | ~6.7k | Apache-2.0 | mature | NVD-based, multi-lang, offline-capable; slower, noisier |
+| #   | Candidate                  | Lens      | Stars (2026-07) | License                         | Maturity | Why it ranks                                                                                                                                  |
+| --- | -------------------------- | --------- | --------------- | ------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **npm audit**              | BT·HS     | (bundled)       | Artistic-2.0                    | mature   | Zero-install, <5s, GitHub Advisory DB (same as Dependabot); the right default gate [5]                                                        |
+| 2   | **OSV-Scanner (Google)**   | BT·OSS    | ~7k             | Apache-2.0                      | mature   | OSV DB, reads lockfiles, **SARIF** output, free/fast; CVE-only (no supply-chain behavior) [5]                                                 |
+| 3   | **Socket**                 | ENT·HS    | n/a (SaaS)      | commercial                      | 2022+    | **Behavioral supply-chain** — flags install scripts, network/fs access, obfuscation, typosquats; catches _malicious_ pkgs npm audit can't [5] |
+| 4   | **Dependabot**             | BT·HS·ENT | (GitHub)        | GitHub                          | GA       | Auto-opens fix PRs, GH Advisory DB, zero infra; no reachability, treats all CVEs equal (noise) [5]                                            |
+| 5   | **Renovate**               | BT·HS·OSS | ~19k            | AGPL-3.0 (self-host) / free app | mature   | Most configurable **update automation** (grouping, schedules, all platforms) — _updater, not scanner_ [5]                                     |
+| 6   | **Snyk Open Source**       | ENT·HS    | n/a             | commercial                      | GA       | Curated DB + **reachability** + fix PRs + license policy; per-dev pricing                                                                     |
+| 7   | **OWASP Dependency-Check** | BT·OSS    | ~6.7k           | Apache-2.0                      | mature   | NVD-based, multi-lang, offline-capable; slower, noisier                                                                                       |
 
-**Head-to-head:** These split into three jobs. **npm audit / OSV-scanner** answer *"do I depend on a known-CVE version?"* — npm audit is the zero-install default; OSV-scanner adds SARIF + a broader DB and is the better **CI-artifact** producer. **Socket** answers a *different, higher-value* question for 2026: *"is this package **malicious** (install-script exfiltration, typosquat, sudden behavior change)?"* — the actual shape of recent npm attacks, which CVE scanners miss entirely. **Renovate vs Dependabot** is the **update** axis: Dependabot is zero-config GitHub-native; Renovate is vastly more configurable (grouping, scheduling, auto-merge policy, self-hostable) and platform-agnostic — the enterprise pick, aligning with this repo's ADR-017 in-range-continuously cadence.
+**Head-to-head:** These split into three jobs. **npm audit / OSV-scanner** answer _"do I depend on a known-CVE version?"_ — npm audit is the zero-install default; OSV-scanner adds SARIF + a broader DB and is the better **CI-artifact** producer. **Socket** answers a _different, higher-value_ question for 2026: _"is this package **malicious** (install-script exfiltration, typosquat, sudden behavior change)?"_ — the actual shape of recent npm attacks, which CVE scanners miss entirely. **Renovate vs Dependabot** is the **update** axis: Dependabot is zero-config GitHub-native; Renovate is vastly more configurable (grouping, scheduling, auto-merge policy, self-hostable) and platform-agnostic — the enterprise pick, aligning with this repo's ADR-017 in-range-continuously cadence.
 
-**Recommendation: KEEP npm audit + ADD Socket + ADD Renovate.** Keep npm audit as the `/ship` CVE gate. **Add Socket** as a PR gate — it's the layer that catches *malicious* dependencies (the Trivy/tj-actions/npm-worm threat class), which no CVE database covers. **Adopt Renovate** for update automation (grouped, scheduled PRs) over Dependabot for its configurability + self-host + non-GitHub portability; optionally add **OSV-scanner** for SARIF in CI. **Fit 5/5.** ADR impact: dependency-hygiene ADR — npm audit (CVE gate) + Socket (behavioral gate) + Renovate (update cadence).
+**Recommendation: KEEP npm audit + ADD Socket + ADD Renovate.** Keep npm audit as the `/ship` CVE gate. **Add Socket** as a PR gate — it's the layer that catches _malicious_ dependencies (the Trivy/tj-actions/npm-worm threat class), which no CVE database covers. **Adopt Renovate** for update automation (grouped, scheduled PRs) over Dependabot for its configurability + self-host + non-GitHub portability; optionally add **OSV-scanner** for SARIF in CI. **Fit 5/5.** ADR impact: dependency-hygiene ADR — npm audit (CVE gate) + Socket (behavioral gate) + Renovate (update cadence).
 
 ---
 
@@ -99,16 +100,16 @@
 
 **One line:** Static application security testing of first-party code. **NET-NEW — none yet** (the repo has 10 local ESLint security rules but no dataflow/taint SAST).
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **Semgrep (CE)** | BT·HS·OSS | ~12k | LGPL-2.1 (CE) / commercial Pro | mature | Rules look like code, seconds-fast, 30+ langs; free Pro Engine ≤10 devs/50 repos; CI-native [6] |
-| 2 | **CodeQL (GitHub)** | BT·HS·ENT | (GitHub) | free public / GHAS private | GA | Deepest semantic/taint analysis (highest OWASP-Benchmark F1); GitHub-native; steeper query lang [6] |
-| 3 | **Opengrep** | OSS·HS | (2025 fork) | LGPL-2.1 | 2025 | Community fork of Semgrep CE that **restores cross-file taint** removed from CE; backed by 10+ appsec vendors (Aikido/Endor/Jit/Orca) — no single-vendor takeback [6] |
-| 4 | **SonarQube** | BT·ENT·HS | ~9k (server) | LGPL-3.0 (CE) / commercial | mature | 35+ langs, 6000+ rules, **quality-gate** enforcement + code quality; heavier server [6] |
-| 5 | **Snyk Code** | ENT | n/a | commercial | GA | AI/DeepCode SAST, fast, IDE+PR; per-dev, lock-in |
-| 6 | **Joern** | OSS | ~2.5k | Apache-2.0 | research | Code-property-graph, powerful/manual; niche |
+| #   | Candidate           | Lens      | Stars (2026-07) | License                        | Maturity | Why it ranks                                                                                                                                                          |
+| --- | ------------------- | --------- | --------------- | ------------------------------ | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Semgrep (CE)**    | BT·HS·OSS | ~12k            | LGPL-2.1 (CE) / commercial Pro | mature   | Rules look like code, seconds-fast, 30+ langs; free Pro Engine ≤10 devs/50 repos; CI-native [6]                                                                       |
+| 2   | **CodeQL (GitHub)** | BT·HS·ENT | (GitHub)        | free public / GHAS private     | GA       | Deepest semantic/taint analysis (highest OWASP-Benchmark F1); GitHub-native; steeper query lang [6]                                                                   |
+| 3   | **Opengrep**        | OSS·HS    | (2025 fork)     | LGPL-2.1                       | 2025     | Community fork of Semgrep CE that **restores cross-file taint** removed from CE; backed by 10+ appsec vendors (Aikido/Endor/Jit/Orca) — no single-vendor takeback [6] |
+| 4   | **SonarQube**       | BT·ENT·HS | ~9k (server)    | LGPL-3.0 (CE) / commercial     | mature   | 35+ langs, 6000+ rules, **quality-gate** enforcement + code quality; heavier server [6]                                                                               |
+| 5   | **Snyk Code**       | ENT       | n/a             | commercial                     | GA       | AI/DeepCode SAST, fast, IDE+PR; per-dev, lock-in                                                                                                                      |
+| 6   | **Joern**           | OSS       | ~2.5k           | Apache-2.0                     | research | Code-property-graph, powerful/manual; niche                                                                                                                           |
 
-**Head-to-head:** **CodeQL** is the depth leader (best benchmark accuracy, real taint) and is **free for the private-repo path only via GHAS** — natural at `/handoff` to a GitHub-Actions org, but it's slow and GitHub-coupled. **Semgrep CE** is the fast, writable-rules, CI-native option and is what a solo operator can run *today* for free — but Stripe-style **cross-file taint moved to the paid Pro Engine**, which is the exact gap **Opengrep** (the 2025 LGPL fork, multi-vendor governed) exists to close, making Opengrep the strongest *pure-OSS, no-takeback* pick for an enterprise that wants to self-host without a per-dev bill. **SonarQube** bundles security into code-quality quality-gates — attractive if you also want maintainability metrics, but it's a heavier self-hosted server.
+**Head-to-head:** **CodeQL** is the depth leader (best benchmark accuracy, real taint) and is **free for the private-repo path only via GHAS** — natural at `/handoff` to a GitHub-Actions org, but it's slow and GitHub-coupled. **Semgrep CE** is the fast, writable-rules, CI-native option and is what a solo operator can run _today_ for free — but Stripe-style **cross-file taint moved to the paid Pro Engine**, which is the exact gap **Opengrep** (the 2025 LGPL fork, multi-vendor governed) exists to close, making Opengrep the strongest _pure-OSS, no-takeback_ pick for an enterprise that wants to self-host without a per-dev bill. **SonarQube** bundles security into code-quality quality-gates — attractive if you also want maintainability metrics, but it's a heavier self-hosted server.
 
 **Recommendation: ADOPT (net-new) — Semgrep/Opengrep now, CodeQL at handoff.** Add **Semgrep** (or **Opengrep** for the fully-OSS, cross-file-taint, vendor-neutral path) as a CI SAST gate for JS/TS + custom rules encoding this repo's invariants (the auth-wrapper/zod/no-raw-SQL rules the ESLint plugin already asserts — Semgrep catches the dataflow cases ESLint can't). At `/handoff` to a GHAS org, **layer CodeQL** for deep taint. **Fit 5/5** (CI-native, no runtime dep). ADR impact: **new ADR — adopt SAST**; decide Semgrep-CE vs Opengrep on the copyleft/vendor-neutrality axis; wire the custom ruleset as a HARD gate.
 
@@ -118,13 +119,13 @@
 
 **One line:** Run gates (lint/format/gitleaks) on commit/push. **Current: husky v9** (`prepare: husky`).
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **husky** | BT·HS·OSS | ~28k [7] | MIT | mature | De-facto Node standard, ~5M wk downloads, tiny `.husky/` shell hooks; pairs with lint-staged [7] |
-| 2 | **lefthook (Evil Martians)** | BT·HS·OSS | ~5k [7] | MIT | mature | Go binary, **parallel** hooks (~10× faster, 45s→15s), monorepo-aware, no Node needed; single YAML [7] |
-| 3 | **pre-commit (Python)** | BT·HS·OSS | ~14k | MIT | mature | Huge pre-built hook ecosystem + **language/env isolation** (runs hooks in langs not installed locally); Python dependency [7] |
-| 4 | **lint-staged** | BT·HS | ~14k | MIT | mature | Not a hook manager — the *staged-files runner* husky/lefthook invoke |
-| 5 | **simple-git-hooks** | OSS | ~2k | MIT | mature | Ultra-minimal husky alt; fewer features |
+| #   | Candidate                    | Lens      | Stars (2026-07) | License | Maturity | Why it ranks                                                                                                                  |
+| --- | ---------------------------- | --------- | --------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **husky**                    | BT·HS·OSS | ~28k [7]        | MIT     | mature   | De-facto Node standard, ~5M wk downloads, tiny `.husky/` shell hooks; pairs with lint-staged [7]                              |
+| 2   | **lefthook (Evil Martians)** | BT·HS·OSS | ~5k [7]         | MIT     | mature   | Go binary, **parallel** hooks (~10× faster, 45s→15s), monorepo-aware, no Node needed; single YAML [7]                         |
+| 3   | **pre-commit (Python)**      | BT·HS·OSS | ~14k            | MIT     | mature   | Huge pre-built hook ecosystem + **language/env isolation** (runs hooks in langs not installed locally); Python dependency [7] |
+| 4   | **lint-staged**              | BT·HS     | ~14k            | MIT     | mature   | Not a hook manager — the _staged-files runner_ husky/lefthook invoke                                                          |
+| 5   | **simple-git-hooks**         | OSS       | ~2k             | MIT     | mature   | Ultra-minimal husky alt; fewer features                                                                                       |
 
 **Head-to-head:** husky is the safe incumbent — everyone knows `.husky/`, MIT, JS-ecosystem-native — but hooks run **serially** and it needs Node. **lefthook** is the enterprise-scale upgrade: a Go binary with **parallel** execution (the ~10× win matters as the pre-commit chain grows to gitleaks + lint + typecheck + tests), monorepo-aware, single declarative YAML, and no Node bootstrap — attractive for a **Docker-first** repo where not every context has Node. **pre-commit** wins only if you need its pre-built-hook catalogue + cross-language env isolation, at the cost of a Python runtime dependency (odd in an npm project).
 
@@ -134,18 +135,18 @@
 
 ### Signing / provenance (NET-NEW) — Sigstore/cosign, SLSA, npm provenance
 
-**One line:** Cryptographically attest *what was built, from what source, by which pipeline* — and let consumers verify it. **NET-NEW — none yet.**
+**One line:** Cryptographically attest _what was built, from what source, by which pipeline_ — and let consumers verify it. **NET-NEW — none yet.**
 
-| # | Candidate | Lens | Stars (2026-07) | License | Maturity | Why it ranks |
-|---|-----------|------|-----------------|---------|----------|--------------|
-| 1 | **Sigstore / cosign** | BT·HS·OSS·ENT | ~5k (cosign) | Apache-2.0 | GA | **Keyless** signing via short-lived OIDC certs (no long-lived keys); signs container images + artifacts; verifies npm/GH provenance [8] |
-| 2 | **SLSA + slsa-github-generator** | BT·ENT·OSS | ~1.5k | Apache-2.0 | GA (L3) | Tamper-proof **build provenance** (source→workflow→artifact); the framework enterprises/gov target (L3) [8] |
-| 3 | **GitHub Artifact Attestations** | BT·ENT·HS | (GitHub) | GitHub | GA | `actions/attest-build-provenance` — SLSA provenance + Sigstore signing in one action, GH-native [8] |
-| 4 | **npm provenance** | BT·HS·OSS | (npm) | npm | GA | `npm publish --provenance` → public transparency-log attestation linking pkg→repo→CI; cosign-verifiable [8] |
-| 5 | **in-toto** | ENT·OSS | ~1k | Apache-2.0 | mature | The attestation spec underneath SLSA; low-level |
-| 6 | **Notary v2 / Notation (CNCF)** | ENT·OSS | ~1k | Apache-2.0 | GA | Registry-native image signing; OCI-focused, key-based alt to cosign |
+| #   | Candidate                        | Lens          | Stars (2026-07) | License    | Maturity | Why it ranks                                                                                                                            |
+| --- | -------------------------------- | ------------- | --------------- | ---------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Sigstore / cosign**            | BT·HS·OSS·ENT | ~5k (cosign)    | Apache-2.0 | GA       | **Keyless** signing via short-lived OIDC certs (no long-lived keys); signs container images + artifacts; verifies npm/GH provenance [8] |
+| 2   | **SLSA + slsa-github-generator** | BT·ENT·OSS    | ~1.5k           | Apache-2.0 | GA (L3)  | Tamper-proof **build provenance** (source→workflow→artifact); the framework enterprises/gov target (L3) [8]                             |
+| 3   | **GitHub Artifact Attestations** | BT·ENT·HS     | (GitHub)        | GitHub     | GA       | `actions/attest-build-provenance` — SLSA provenance + Sigstore signing in one action, GH-native [8]                                     |
+| 4   | **npm provenance**               | BT·HS·OSS     | (npm)           | npm        | GA       | `npm publish --provenance` → public transparency-log attestation linking pkg→repo→CI; cosign-verifiable [8]                             |
+| 5   | **in-toto**                      | ENT·OSS       | ~1k             | Apache-2.0 | mature   | The attestation spec underneath SLSA; low-level                                                                                         |
+| 6   | **Notary v2 / Notation (CNCF)**  | ENT·OSS       | ~1k             | Apache-2.0 | GA       | Registry-native image signing; OCI-focused, key-based alt to cosign                                                                     |
 
-**Head-to-head:** These compose rather than compete. **SLSA** is the *goal* (build-integrity levels — L3 = non-falsifiable provenance); **Sigstore/cosign** is the *mechanism* (keyless signing + verification, no key-management burden — the historical blocker); **GitHub Artifact Attestations** is the *easy button* that emits SLSA provenance signed via Sigstore from one pinned action; **npm provenance** is the *registry-surfaced* form for anything published to npm. Key framing from the sources: **provenance doesn't *prevent* supply-chain attacks — it makes them *detectable***, which is exactly the missing control the Trivy incident exposes (a signed, verifiable build would have made the poisoned binaries fail verification).
+**Head-to-head:** These compose rather than compete. **SLSA** is the _goal_ (build-integrity levels — L3 = non-falsifiable provenance); **Sigstore/cosign** is the _mechanism_ (keyless signing + verification, no key-management burden — the historical blocker); **GitHub Artifact Attestations** is the _easy button_ that emits SLSA provenance signed via Sigstore from one pinned action; **npm provenance** is the _registry-surfaced_ form for anything published to npm. Key framing from the sources: **provenance doesn't _prevent_ supply-chain attacks — it makes them _detectable_**, which is exactly the missing control the Trivy incident exposes (a signed, verifiable build would have made the poisoned binaries fail verification).
 
 **Recommendation: ADOPT (net-new) — this is the strategic gap.** For a **Docker-first** enterprise delivery: **sign the release image with cosign (keyless)** and **generate SLSA build provenance** via GitHub Artifact Attestations (both from **SHA-pinned** actions), then **verify signatures at deploy/pull time** so an unsigned/mismatched image is rejected. This is the direct structural defense against the C11 threat class the Trivy compromise demonstrated. **Fit 5/5** (CI + registry, no runtime dep). ADR impact: **new ADR — artifact signing & provenance** (cosign + SLSA L3 target + verify-on-deploy); pairs with the SBOM ADR (sign the SBOM too).
 
@@ -153,20 +154,21 @@
 
 ## Category verdict table
 
-| Item | Current | Recommendation | Net-new deps/tools | ADR impact | Priority |
-|------|---------|----------------|--------------------|-----------|----------|
-| Secret scanning | gitleaks (gate) | **KEEP+HARDEN** — add trufflehog *verify* in CI; GH push-protection at handoff | trufflehog (CLI, already in `/audit`) | extend security-workflow ADR | **P1** |
-| SBOM | cyclonedx-npm | **KEEP + ADD Syft** for image SBOM + SPDX; → Dependency-Track | syft | SBOM-policy ADR | P1 |
-| Container/IaC scan | trivy (`--full`) | **KEEP+HARDEN + ADD Grype**; pin to safe SHAs; second scanner; scope secrets | grype (+syft) | supersede/extend ADR-030; SECURITY.md §12 | **P0** |
-| Actions pinning | (tags/`@v`) | **PIN ALL actions to full commit SHA + zizmor in CI** | zizmor / pinact | hardening ADR | **P0** |
-| Dependency audit | npm audit (gate) | **KEEP + ADD Socket (behavioral) + Renovate (updates)** | socket, renovate; opt. osv-scanner | dependency-hygiene ADR | **P1** |
-| SAST | none (ESLint rules only) | **ADOPT** Semgrep/Opengrep now; CodeQL at handoff | semgrep or opengrep | **new SAST ADR** | **P1** |
-| Git hooks | husky | **KEEP** (lefthook = option at scale) | — (lefthook if migrating) | none / 1-line | P2 |
-| Signing/provenance | none | **ADOPT** cosign + SLSA + verify-on-deploy; npm provenance if publishing | cosign, slsa-github-generator/attest-build-provenance | **new signing ADR** | **P1** |
+| Item               | Current                  | Recommendation                                                                 | Net-new deps/tools                                    | ADR impact                                | Priority |
+| ------------------ | ------------------------ | ------------------------------------------------------------------------------ | ----------------------------------------------------- | ----------------------------------------- | -------- |
+| Secret scanning    | gitleaks (gate)          | **KEEP+HARDEN** — add trufflehog _verify_ in CI; GH push-protection at handoff | trufflehog (CLI, already in `/audit`)                 | extend security-workflow ADR              | **P1**   |
+| SBOM               | cyclonedx-npm            | **KEEP + ADD Syft** for image SBOM + SPDX; → Dependency-Track                  | syft                                                  | SBOM-policy ADR                           | P1       |
+| Container/IaC scan | trivy (`--full`)         | **KEEP+HARDEN + ADD Grype**; pin to safe SHAs; second scanner; scope secrets   | grype (+syft)                                         | supersede/extend ADR-030; SECURITY.md §12 | **P0**   |
+| Actions pinning    | (tags/`@v`)              | **PIN ALL actions to full commit SHA + zizmor in CI**                          | zizmor / pinact                                       | hardening ADR                             | **P0**   |
+| Dependency audit   | npm audit (gate)         | **KEEP + ADD Socket (behavioral) + Renovate (updates)**                        | socket, renovate; opt. osv-scanner                    | dependency-hygiene ADR                    | **P1**   |
+| SAST               | none (ESLint rules only) | **ADOPT** Semgrep/Opengrep now; CodeQL at handoff                              | semgrep or opengrep                                   | **new SAST ADR**                          | **P1**   |
+| Git hooks          | husky                    | **KEEP** (lefthook = option at scale)                                          | — (lefthook if migrating)                             | none / 1-line                             | P2       |
+| Signing/provenance | none                     | **ADOPT** cosign + SLSA + verify-on-deploy; npm provenance if publishing       | cosign, slsa-github-generator/attest-build-provenance | **new signing ADR**                       | **P1**   |
 
 ## Which become HARD CI gates for enterprise
 
 **Blocking gates (fail the build / block merge):**
+
 1. **gitleaks** secret scan — keep (already hard).
 2. **npm audit** High+ (with adjudicated allowlist) — keep (already hard).
 3. **Trivy image + config**, HIGH/CRITICAL — **promote from `/ship --full`-only to a blocking PR gate**, running a **pinned, verified** trivy; **add Grype** as the diversified second CVE gate.
@@ -175,6 +177,7 @@
 6. **Cosign signature + SLSA provenance verification at deploy/pull** — **new hard gate**: an unsigned or mismatched image is rejected.
 
 **Non-blocking / advisory (report, don't fail):**
+
 - **Socket** behavioral review (block only on confirmed-malicious, warn otherwise — FP-sensitive), **trufflehog-verify** (warn + triage), **SBOM generation** (build artifact), **Renovate/Dependabot** PRs (automation, not a gate), **husky/lefthook** local hooks (fast feedback, not authoritative).
 
 **Cross-cutting P0 the Trivy incident forces:** pin every third-party action to a full 40-char SHA, run scanners from pinned digests with verified DBs, and **scope CI secrets** so no scanner holds standing cloud/K8s credentials — a scanner compromise must not equal a credential breach.
@@ -182,11 +185,12 @@
 ---
 
 ## Sources
-1. AppSecSanta — *Gitleaks vs TruffleHog 2026*; DevSecOps.ae; Secrails — *TruffleHog vs Gitleaks vs GitHub Secret Scanning*; Jit; Aikido — *Gitleaks Alternatives 2026*. (star ~26k/25.7k; 94% vs 71%/86% detection; MIT vs AGPL-3.0)
-2. Sbomify — *SBOM Generation Tools Compared (2026-01)*; AppSecSanta — *Syft vs Trivy*; HeroDevs — *SPDX vs CycloneDX*; OpenSSF — *Choosing an SBOM Generation Tool*. (Syft ~8.4k, Apache-2.0)
-3. Microsoft Security Blog (2026-03-24); Palo Alto Networks (Unit 42); CrowdStrike — *trivy-action Supply Chain Compromise*; Aqua Security advisory; InfoQ (2026-04); `aquasecurity/trivy` GHSA-69fq-xp46-6x23 / Discussion #10425; Halcyon (extortion phase). (CVE-2026-33634; safe: trivy ≤v0.69.3, trivy-action v0.35.0 `57a97c7`, setup-trivy v0.2.6 `3fb12ec`)
-4. GitHub Changelog (2025-08-15, SHA-pinning policy); StepSecurity — *Pinning GitHub Actions*; Lullabot ADR (2026-05); tj-actions/changed-files incident (2025-03, 350+ tags / 23,000+ repos); zizmor / pinact.
-5. Tomoda Hinata — *Dependabot vs Snyk vs Trivy vs npm audit (2026)*; AppSecSanta — *Best SCA Tools for Node.js (2026)*; Rafter — *Snyk vs Dependabot vs Renovate*; shattered.io — *npm audit (2026)*; nesbitt.io — *Package Management Landscape (2026-01)*. (Renovate ~19k)
-6. Rafter — *Semgrep vs SonarQube vs CodeQL (2026)*; Konvu — *Semgrep vs CodeQL*; AppSecSanta — *Semgrep Alternatives 2026* (Opengrep fork, LGPL-2.1, 10+ vendor consortium); OWASP Benchmark v1.2 study (CodeQL top F1); pricing convergence ~$30/mo/committer.
-7. Andy Madge — *Git Hook Frameworks Comparison (2026-03)*; PkgPulse — *husky vs lefthook vs lint-staged (2026)*; Edopedia; DEV — *Saying Goodbye to Husky*. (husky ~28k / ~5M wk dl; lefthook Go, ~10× parallel)
-8. Sigstore Blog — *cosign Verification of npm Provenance / GitHub Artifact Attestations*; DecryptionDigest — *Sigstore & Cosign 2026*; Pavan Rangani — *SLSA + Sigstore Guide 2026*; AquilaX — *Beyond SBOMs: Sigstore, SLSA, Build Provenance*. (keyless OIDC signing; SLSA L3; npm `--provenance`)
+
+1. AppSecSanta — _Gitleaks vs TruffleHog 2026_; DevSecOps.ae; Secrails — _TruffleHog vs Gitleaks vs GitHub Secret Scanning_; Jit; Aikido — _Gitleaks Alternatives 2026_. (star ~26k/25.7k; 94% vs 71%/86% detection; MIT vs AGPL-3.0)
+2. Sbomify — _SBOM Generation Tools Compared (2026-01)_; AppSecSanta — _Syft vs Trivy_; HeroDevs — _SPDX vs CycloneDX_; OpenSSF — _Choosing an SBOM Generation Tool_. (Syft ~8.4k, Apache-2.0)
+3. Microsoft Security Blog (2026-03-24); Palo Alto Networks (Unit 42); CrowdStrike — _trivy-action Supply Chain Compromise_; Aqua Security advisory; InfoQ (2026-04); `aquasecurity/trivy` GHSA-69fq-xp46-6x23 / Discussion #10425; Halcyon (extortion phase). (CVE-2026-33634; safe: trivy ≤v0.69.3, trivy-action v0.35.0 `57a97c7`, setup-trivy v0.2.6 `3fb12ec`)
+4. GitHub Changelog (2025-08-15, SHA-pinning policy); StepSecurity — _Pinning GitHub Actions_; Lullabot ADR (2026-05); tj-actions/changed-files incident (2025-03, 350+ tags / 23,000+ repos); zizmor / pinact.
+5. Tomoda Hinata — _Dependabot vs Snyk vs Trivy vs npm audit (2026)_; AppSecSanta — _Best SCA Tools for Node.js (2026)_; Rafter — _Snyk vs Dependabot vs Renovate_; shattered.io — _npm audit (2026)_; nesbitt.io — _Package Management Landscape (2026-01)_. (Renovate ~19k)
+6. Rafter — _Semgrep vs SonarQube vs CodeQL (2026)_; Konvu — _Semgrep vs CodeQL_; AppSecSanta — _Semgrep Alternatives 2026_ (Opengrep fork, LGPL-2.1, 10+ vendor consortium); OWASP Benchmark v1.2 study (CodeQL top F1); pricing convergence ~$30/mo/committer.
+7. Andy Madge — _Git Hook Frameworks Comparison (2026-03)_; PkgPulse — _husky vs lefthook vs lint-staged (2026)_; Edopedia; DEV — _Saying Goodbye to Husky_. (husky ~28k / ~5M wk dl; lefthook Go, ~10× parallel)
+8. Sigstore Blog — _cosign Verification of npm Provenance / GitHub Artifact Attestations_; DecryptionDigest — _Sigstore & Cosign 2026_; Pavan Rangani — _SLSA + Sigstore Guide 2026_; AquilaX — _Beyond SBOMs: Sigstore, SLSA, Build Provenance_. (keyless OIDC signing; SLSA L3; npm `--provenance`)

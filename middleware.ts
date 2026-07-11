@@ -21,9 +21,7 @@ const publicPaths = [
 function isPublicPath(pathname: string): boolean {
   // Strip locale prefix for matching (regex derived from configured locales)
   const stripped = pathname.replace(localePrefixRegex, "") || "/";
-  return publicPaths.some(
-    (p) => stripped === p || stripped.startsWith(p + "/")
-  );
+  return publicPaths.some((p) => stripped === p || stripped.startsWith(p + "/"));
 }
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -92,8 +90,7 @@ export default auth((req) => {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
-  const pass = () =>
-    withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
+  const pass = () => withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
 
   // Let API routes and static files pass through (still nonced for consistency).
   // /api/internal is gated by withInternalAuth (shared-secret header), not session.

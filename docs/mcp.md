@@ -7,10 +7,10 @@ tool schemas are a per-session context tax. Evidence layer for these choices:
 
 ## Wired by default
 
-| Server | Purpose | Access |
-|---|---|---|
-| `playwright` (`@playwright/mcp`) | Browser engine for `/uat`, `/design-qa`, `/manual-uat` | Drives a sandboxed browser |
-| `context7` (`@upstash/context7-mcp`) | Current library docs for the locked stack | **Read-only** (docs lookup only) |
+| Server                               | Purpose                                                | Access                           |
+| ------------------------------------ | ------------------------------------------------------ | -------------------------------- |
+| `playwright` (`@playwright/mcp`)     | Browser engine for `/uat`, `/design-qa`, `/manual-uat` | Drives a sandboxed browser       |
+| `context7` (`@upstash/context7-mcp`) | Current library docs for the locked stack              | **Read-only** (docs lookup only) |
 
 **context7** injects up-to-date, version-correct library documentation into the
 session via two tools (`resolve-library-id`, `get-library-docs`). The locked

@@ -15,9 +15,7 @@ function mentionsSession(node) {
   }
   if (node.type === "MemberExpression") {
     // Only flag if the member chain actually mentions "session" somewhere.
-    return (
-      memberChainMentionsSession(node) || mentionsSession(node.object)
-    );
+    return memberChainMentionsSession(node) || mentionsSession(node.object);
   }
   if (node.type === "ChainExpression") {
     return mentionsSession(node.expression);
@@ -32,11 +30,8 @@ function memberChainMentionsSession(node) {
   if (!node) return false;
   if (node.type === "Identifier" && node.name === "session") return true;
   if (node.type === "MemberExpression") {
-    if (
-      node.property &&
-      node.property.type === "Identifier" &&
-      node.property.name === "session"
-    ) return true;
+    if (node.property && node.property.type === "Identifier" && node.property.name === "session")
+      return true;
     return memberChainMentionsSession(node.object);
   }
   if (node.type === "ChainExpression") return memberChainMentionsSession(node.expression);

@@ -10,8 +10,8 @@
 The third load-bearing complaint behind ADR-032/033: the agent **over-complicates —
 sprawling files, needless branching, over-engineered features** — and the operator has
 to catch it by hand. The two path-based deny-gates already shipped (ADR-032 build-vs-buy,
-ADR-033 blueprint-before-build) fire *before* code is written and cannot see complexity
-that accretes *inside* the code. "Maintainable" and "High-Quality" are Five-Pillar gates
+ADR-033 blueprint-before-build) fire _before_ code is written and cannot see complexity
+that accretes _inside_ the code. "Maintainable" and "High-Quality" are Five-Pillar gates
 in prose, but nothing automatable enforced a size/branching budget.
 
 This is the third of the three enforcement gates diagnosed with the operator. Unlike #1/#2
@@ -32,9 +32,11 @@ adjudicated through the same findings-register wave-off path every other gate us
 ## Considered options
 
 ### Option 1 — Diff-scoped static gate in `scripts/ship.mjs`, dependency-free (chosen)
+
 `scanComplexity()` flags NEW product files (`app|lib|components|hooks`, `.ts/.tsx`) in the
 diff vs `origin/main` that exceed a code-line budget (350) or a branch-token cyclomatic
 proxy (40). Breach → RED unless `complexityAck` + an adjudicated register line.
+
 - Good, because it catches the over-engineering the path-based gates can't, at the same
   adjudication path the operator already knows.
 - Good, because zero new deps — it dogfoods the build-vs-buy gate.
@@ -42,12 +44,14 @@ proxy (40). Breach → RED unless `complexityAck` + an adjudicated register line
   only covers ADDED files (see below).
 
 ### Option 2 — ESLint built-in `complexity` + `max-lines-per-function`
+
 - Good, because it is a real per-function metric with no bespoke code.
 - Bad, because it is per-file always-on (not diff-scoped): it would flag pre-existing
   files across the repo, forcing a noisy baseline cleanup or a wall of disables, and it
   fails the "judge only this change" driver. Rejected for v1; reconsider for v2.
 
 ### Option 3 — A complexity-analyzer library (`code-complexity`, `plato`)
+
 - Good, because accurate AST metrics.
 - Bad, because it adds a runtime/dev dep (>50 KB Ask-before) to do what a proxy does for
   an MVP — and the build-vs-buy gate (ADR-032) would (correctly) demand this ADR justify
@@ -70,6 +74,7 @@ than shipped half-done. This limitation is stated so a future session re-promote
 ## Consequences
 
 ### Positive
+
 - A "simple feature became a sprawling file" now blocks `/ship` (RED) instead of shipping
   — the over-complication pushback the operator supplied by hand is automated.
 - Completes the enforcement trio (build-vs-buy → blueprint → complexity) on one coherent
@@ -77,24 +82,28 @@ than shipped half-done. This limitation is stated so a future session re-promote
 - Zero new deps; the gate itself passes the build-vs-buy gate.
 
 ### Negative
+
 - Token/line proxy is coarser than an AST metric; a very dense-but-legitimate new file
   can false-red (mitigated by the waiver).
 - v1 misses complexity growth inside modified files.
 - Another threshold pair to tune.
 
 ### Mitigations
+
 - Thresholds are conservative (baseline: no current new-file offenders) and waivable via
   the standard adjudicated path; the RED message names the exact file + metric.
 - v2 scope is documented here, not silently dropped.
 - Thresholds live as named constants in `ship.mjs`, easy to tune with a register note.
 
 ## Alternatives considered
+
 1. **ESLint `complexity`/`max-lines-per-function`** — rejected for v1: per-file not
    diff-scoped; noisy on the existing tree.
 2. **Complexity-analyzer library** — rejected: a new dep for what a proxy does at MVP;
    the build-vs-buy gate would demand this ADR justify it.
 
 ## Migration triggers
+
 - Add v2 (modified-file per-function complexity) when over-engineering slips through
   edits to existing files — via ESLint once a baseline is clean, or an AST pass.
 - Tune thresholds if false reds recur (adjust the constants + a register note).
@@ -102,6 +111,7 @@ than shipped half-done. This limitation is stated so a future session re-promote
   becomes friction.
 
 ## Related
+
 - ADR-032 (build-vs-buy) + ADR-033 (blueprint) — the enforcement trio this completes.
 - `scripts/ship.mjs` `scanComplexity()`; the `ackWaiver` + `docs/findings-register.md` path.
 - CLAUDE.md — Five Pillars (Maintainable, High-Quality); Hard rules.

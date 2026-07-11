@@ -1,16 +1,9 @@
 "use client";
 
 import { useState, useEffect, type ReactNode } from "react";
-import {
-  QueryClient,
-  QueryClientProvider,
-  QueryCache,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-query";
 import { useNotify } from "@/hooks/use-notify";
-import {
-  notifyQueryError,
-  registerQueryErrorNotifier,
-} from "@/lib/query-error-notifier";
+import { notifyQueryError, registerQueryErrorNotifier } from "@/lib/query-error-notifier";
 
 // Client-side data layer (ADR-021). One QueryClient per browser session: created
 // in useState so it survives re-renders but is NOT shared across requests/users

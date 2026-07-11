@@ -66,13 +66,14 @@ this is a generation row; with OTLP unset, it is a zero-overhead no-op.
 ## Architecture sketch
 
 `lib/ai/tracing.ts` (new; covered by the `lib/ai/**` build-vs-buy ledger entry):
+
 - `withAiSpan(name, opts, fn)` → wraps `withSpan`; sets request attrs before `fn`,
   response attrs from `fn`'s result after.
 - `setAiRequestAttributes` / `setAiResponseAttributes` — the metadata mappers
   (duck-typed `AiResultLike`, never SDK-coupled).
 - `GEN_AI_ATTR` — the semconv key registry (one place to track a semconv update).
 - `aiTraceContentEnabled()` + `recordAiContent()` — the OFF-by-default content gate.
-No new dep. No Prisma, no auth surface, no route. Reuses `../observability`.
+  No new dep. No Prisma, no auth surface, no route. Reuses `../observability`.
 
 ## Tier & gates
 

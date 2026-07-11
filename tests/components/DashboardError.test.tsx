@@ -6,9 +6,7 @@ import DashboardError from "../../app/[locale]/(dashboard)/error";
 afterEach(cleanup);
 
 test("DashboardError renders a generic message and never leaks error.message", () => {
-  renderWithProviders(
-    <DashboardError error={new Error("Boom happened")} reset={() => {}} />,
-  );
+  renderWithProviders(<DashboardError error={new Error("Boom happened")} reset={() => {}} />);
   assert.ok(screen.getByText("Something went wrong"));
   assert.ok(screen.getByText("An unexpected error occurred. Please try again."));
   // Security: the raw error text must NOT reach the DOM.

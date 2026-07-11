@@ -17,7 +17,9 @@ the changed surface is still **open** (un-adjudicated).
   it) or it's fixed. Don't mark something adjudicated on the operator's behalf.
 
 ## Register
+
 <!-- newest first -->
+
 - 2026-07-11 — [quality/ai] ai-eval /ship gate is DORMANT — the LLM-as-judge eval gate
   (`scripts/ai-eval.mjs`, wired into /ship phase B) is a no-op that exits 0 (SKIP) until a fork
   BOTH sets AI_API_KEY and writes >=1 tests/ai-evals/*.eval.ts fixture (and points AI_EVAL_BASE_URL
@@ -56,14 +58,14 @@ the changed surface is still **open** (un-adjudicated).
   blueprint (AC-4.3) list "promote `sast.yml` from dormant to a hard blocking gate" + add `zizmor`
   as P0. On the current free GitHub plan Actions billing is blocked, so every CI workflow —
   `sast.yml` included — is intentionally dormant (`on: workflow_dispatch` only; ADR-007/037): flipping
-  the push/PR triggers now would fail-in-2s, not gate anything. So the *hard-gate* half is only
+  the push/PR triggers now would fail-in-2s, not gate anything. So the _hard-gate_ half is only
   meaningful once CI activates (at `/handoff` to a paid-Actions team, or when billing unblocks) — the
   same activation line ADR-037 already defines. **Interim control:** the Semgrep ruleset is mirrored
   locally by the `/audit` skill (runs on demand), and the trivy-pin + SHA-pin halves of ADR-041 P0
   DID land in WS-2a. `zizmor` is not yet wired. **Not silently dropped — recorded here for the
   operator to adjudicate**; the fix at activation is to restore `sast.yml`'s real triggers + add a
   `zizmor` workflow step. — owner: operator — status: adjudicated(2026-07-11) (accepted:
-  program-level deferral to CI activation — the risk description stands, but the *hard-gate* half is
+  program-level deferral to CI activation — the risk description stands, but the _hard-gate_ half is
   only meaningful once Actions runs; interim control is the local `/audit` Semgrep mirror + the
   landed trivy/SHA pins. RE-OPENS at the CI/Actions-activation line — `/handoff` to a paid-Actions
   team, or billing unblocking — when `sast.yml`'s push/PR triggers are restored and the `zizmor`
@@ -82,7 +84,7 @@ the changed surface is still **open** (un-adjudicated).
   `docker-build` CI workflow — or a build-capable machine — actually builds + boots the distroless
   image and confirms the Prisma 7 client/query-engine resolves at runtime)
 - 2026-07-03 — [maintainable] deferred-adoption #11 (specialist-agents) — **drop REVERSED by
-  operator same day; now ADOPT.** The earlier drop reasoned that a stack-aware *review* seed would
+  operator same day; now ADOPT.** The earlier drop reasoned that a stack-aware _review_ seed would
   duplicate `senior-code-reviewer`. The operator redirected it: build it as a **build-time ADVISOR**
   (not a reviewer), which occupies a genuinely different slot (advice while building vs. review after
   push) and does not duplicate the review rail. Design + skill-vs-subagent mechanism analysis pinned
@@ -115,12 +117,14 @@ the changed surface is still **open** (un-adjudicated).
   rebrand.mjs, deploy.mjs, new-project.mjs)
 
 ## Standing wave-offs promoted to documented trade-offs
+
 <!--
 When a wave-off is a permanent, intentional design choice (not a deferral), it
 graduates out of the live register into a documented "known trap" in CLAUDE.md or
 an ADR — then delete its line above. These are the already-documented ones, kept
 here as pointers so they aren't re-litigated as new findings:
 -->
+
 - File uploads not wired; PDF export intentionally absent from `lib/export.ts` (ADR-006).
 - Rate limiter is in-memory per-instance (fine single-instance; Upstash via `/scale-up`).
 - CSP allows `'unsafe-inline'` script+style (AntD SSR + Next bootstrap).

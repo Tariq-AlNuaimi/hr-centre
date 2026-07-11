@@ -83,11 +83,7 @@ export async function ragUpsert(
  * any DB read when embeddings are unconfigured. `k` is clamped to [1,100] so a
  * caller can't request an unbounded result set (Scalable pillar).
  */
-export async function ragQuery(
-  namespace: string,
-  queryText: string,
-  k = 5,
-): Promise<RagHit[]> {
+export async function ragQuery(namespace: string, queryText: string, k = 5): Promise<RagHit[]> {
   const limit = Math.min(Math.max(Math.trunc(k) || 1, 1), 100);
   const [embedding] = await embed([queryText]);
   const vec = toVectorLiteral(embedding);

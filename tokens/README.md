@@ -7,6 +7,7 @@ fork that later needs multi-platform tokens (JS objects, iOS/Android, a Figma
 sync) extends **one** source instead of hand-maintaining N copies of the ruler.
 
 ## Files
+
 - `tokens/design-tokens.json` — the token **source**. Mirrors the primitive
   `:root` values in `app/tokens.css` + `brand.config.ts` (spacing, type, radius,
   motion, brand + semantic-surface colors).
@@ -17,13 +18,16 @@ sync) extends **one** source instead of hand-maintaining N copies of the ruler.
   reproduce with the command below).
 
 ## Usage
+
 ```bash
 npm run tokens:build   # -> tokens/build/tokens.generated.css
 ```
+
 The generated file emits the same `--space-*` / `--font-size-*` / `--radius-*` /
 `--surface-*` custom properties as `app/tokens.css`'s primitive block.
 
 ## Keeping it in step
+
 `app/tokens.css` remains canonical. When a primitive value changes there, update
 `tokens/design-tokens.json` to match (the design-tokens contract test guards the
 AntD↔CSS overlap; this JSON tracks the CSS side). When a fork is ready to make

@@ -48,18 +48,22 @@ Wire retention by default, dormant until a secret is set (operator approved 2026
 ## Consequences
 
 ### Positive
+
 - Every fork gets bounded audit growth by setting ONE env var — no code, no workflow.
 - The internal-auth wrapper now works with any Bearer-only scheduler, not just Vercel.
 
 ### Negative
+
 - A second accepted credential presentation on the routes that opt in (same secret
   strength, but two header forms to reason about there).
 
 ### Mitigations
+
 - Constant-time comparison for both forms; precedence rule tested; ESLint
   `no-bare-internal-route` still forces the wrapper on every internal route.
 
 ## Alternatives considered
+
 1. **Keep dormant per ADR-006** — acceptable for `shared` tier (IT owns retention), but
    `personal` forks never hand off, so "later" meant "never".
 2. **Neon-side retention (pg_cron / scheduled query)** — couples retention to the DB
@@ -68,9 +72,11 @@ Wire retention by default, dormant until a secret is set (operator approved 2026
    the security floor (`no-bare-internal-route`).
 
 ## Migration triggers
+
 - If Vercel Cron limits change or a fork moves off Vercel, fall back to the POST path
   from any scheduler that can send custom headers.
 
 ## Related
+
 - `lib/api-helpers.ts` (`withInternalAuth`), `app/api/internal/audit-purge/route.ts`,
   `vercel.json`, `tests/contracts/api-auth.test.ts`.

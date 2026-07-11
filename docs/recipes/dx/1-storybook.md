@@ -18,7 +18,7 @@ activity:
 - You want a seam for visual-regression snapshots later (Storybook + Chromatic /
   Playwright).
 
-**Don't** add it to a throwaway one-entity prototype — the shipped pages *are* the
+**Don't** add it to a throwaway one-entity prototype — the shipped pages _are_ the
 review surface there. This is for forks where the component library itself is being
 grown.
 
@@ -206,7 +206,10 @@ export const Bar: Story = {
 export const Pie: Story = {
   args: {
     type: "pie",
-    data: [{ name: "TODO", value: 12 }, { name: "DONE", value: 30 }],
+    data: [
+      { name: "TODO", value: 12 },
+      { name: "DONE", value: 30 },
+    ],
     nameKey: "name",
     valueKey: "value",
     height: 280,
@@ -220,7 +223,11 @@ export const Pie: Story = {
 import type { Meta, StoryObj } from "@storybook/react";
 import { DataTable } from "./DataTable";
 
-interface Row { id: string; name: string; role: string }
+interface Row {
+  id: string;
+  name: string;
+  role: string;
+}
 
 const meta: Meta<typeof DataTable<Row>> = {
   title: "Shared/DataTable",
@@ -278,14 +285,14 @@ Add to `package.json` (dev-only):
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `.storybook/main.ts` | **New** — framework + story glob |
-| `.storybook/preview.tsx` | **New** — global decorator + theme/locale toolbar |
-| `.storybook/decorators.tsx` | **New** — AntD `ConfigProvider` + `next-intl` provider |
-| `components/shared/*.stories.tsx` | **New** — one per shared component |
-| `package.json` | add Storybook **devDependencies** + `storybook` / `build-storybook` scripts |
-| `.gitignore` | add `storybook-static/` (the `build-storybook` output) |
+| File                              | Change                                                                      |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| `.storybook/main.ts`              | **New** — framework + story glob                                            |
+| `.storybook/preview.tsx`          | **New** — global decorator + theme/locale toolbar                           |
+| `.storybook/decorators.tsx`       | **New** — AntD `ConfigProvider` + `next-intl` provider                      |
+| `components/shared/*.stories.tsx` | **New** — one per shared component                                          |
+| `package.json`                    | add Storybook **devDependencies** + `storybook` / `build-storybook` scripts |
+| `.gitignore`                      | add `storybook-static/` (the `build-storybook` output)                      |
 
 No base source/config change — `next.config.ts`, `lib/`, the components themselves
 are untouched. Storybook reads them; it doesn't modify them.

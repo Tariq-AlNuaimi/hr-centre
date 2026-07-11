@@ -1,11 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  isOtelEnabled,
-  otelServiceName,
-  withSpan,
-} from "../../lib/observability";
+import { isOtelEnabled, otelServiceName, withSpan } from "../../lib/observability";
 
 // The OTel backbone (ADR-040) is a no-op unless OTEL_EXPORTER_OTLP_ENDPOINT is
 // set (AC-5.1). config helpers read process.env at CALL time, so each test

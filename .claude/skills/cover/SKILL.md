@@ -71,6 +71,7 @@ throw it away and try a different uncovered path.
   numbers themselves needs the same justification.
 
 ## Skip when
+
 - The diff only touched docs, `.claude/`, or `messages/*.json` — no `lib/**`
   surface, nothing for the floor to score.
 - `/ship`'s coverage step is already green on the touched files — don't add tests

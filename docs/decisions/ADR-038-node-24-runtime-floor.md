@@ -29,6 +29,7 @@ verbatim; the Migration triggers below say when to re-check them.
 
 Bump the Docker base image and `@types/node` to Node 24; pin the base image to
 a **digest** (not a floating tag) so the image is reproducible.
+
 - Good: on Active LTS through ~2027; cheap drop-in.
 - Bad: requires a re-verify pass (native deps rebuild in the image).
 
@@ -52,24 +53,29 @@ drop-in cost, with no expected application code changes.
 ## Consequences
 
 ### Positive
+
 - The runtime floor sits on Active LTS through ~2027; the 2027 EOL cliff is gone.
 - A digest-pinned base image makes the Docker-first rail reproducible.
 
 ### Negative
+
 - Native deps must be rebuilt against Node 24; a re-verify pass is required
   before the bump is green.
 
 ### Mitigations
+
 - The Docker-first rail rebuilds native deps against 24 in-image, so
   `@node-rs/argon2` and friends are compiled clean rather than relying on a
   host prebuild — see ADR-039.
 
 ## Alternatives considered
+
 - **Stay on Node 22** — rejected: EOL Apr 2027 is a self-inflicted cliff.
 - **Bun as primary runtime** — deferred: napi/Prisma compat risk; allowed as a
   dev/test runner only.
 
 ## Migration triggers
+
 - Revisit when Node 24 enters Maintenance-LTS and Node 26 becomes the Active
   line (Node 24 is expected to enter Maintenance ~2026-10) — then bump the floor
   to the next Active LTS on the same drop-in playbook.
@@ -77,6 +83,7 @@ drop-in cost, with no expected application code changes.
   matures.
 
 ## Related
+
 - ADR-001 — locked stack (Node version amended here).
 - ADR-035 — Docker base image (pinned to a Node 24 digest here).
 - ADR-039 — native-dep rebuild in-image against Node 24.

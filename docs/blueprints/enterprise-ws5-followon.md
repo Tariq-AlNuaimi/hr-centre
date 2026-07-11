@@ -12,6 +12,7 @@ Scope: scripts/scaffold-ai-endpoint.mjs, .claude/skills/scaffold-ai-endpoint/**,
 > `docs/build-vs-buy-ledger.md` (2026-07-11 — AI endpoint scaffolder).
 
 ## Problem & outcome
+
 The WS-5 skeleton (`lib/ai/*`) shipped the provider seam + native Tool-Runner wrapper, but
 building an actual AI endpoint by hand still means re-deriving the same wiring every time:
 the `isAiConfigured()` 503 guard, an auth wrapper, `withRateLimit` **outside** auth (AI calls
@@ -28,6 +29,7 @@ developer runs `npm run scaffold-ai-endpoint -- --name Summarize` and gets a rou
 `/ship`-green and `senior-review`-shaped on the first pass instead of at QA.
 
 ## Users & stories (EARS; worst path mandatory)
+
 - **US1** — As a **developer**, I want one command to emit a complete AI endpoint, so that the
   cross-cutting wiring (config guard, auth, rate-limit, zod, tracing, provider import) is
   correct by construction and not re-derived per route.
@@ -58,6 +60,7 @@ developer runs `npm run scaffold-ai-endpoint -- --name Summarize` and gets a rou
     is documented as the contract the future `ai-eval` `/ship` gate consumes.
 
 ## Scenarios (Given/When/Then)
+
 - **US1-happy** — Given a clean tree, When `--name Summarize --input text:string --writes any`,
   Then the four files are written under `ai/summarize` / `ai-summarize`, the route imports
   `runAgent`, and the blueprint stub carries `Scope: app/api/ai/summarize/**`.
@@ -71,6 +74,7 @@ developer runs `npm run scaffold-ai-endpoint -- --name Summarize` and gets a rou
   `AiEvalCase[]` and imports nothing external (self-contained until the gate lands).
 
 ## Architecture sketch
+
 - `scripts/scaffold-ai-endpoint.mjs` — Node generator (mirrors `scripts/scaffold-entity.mjs`:
   `parseArgs`, PascalCase validation, name helpers, idempotency guard, `--dry-run`, inline
   string templates, final "next steps" summary). No live route/UI in the template repo — like
@@ -86,6 +90,7 @@ developer runs `npm run scaffold-ai-endpoint -- --name Summarize` and gets a rou
   `skill-rules.json` (auto-activation) — the harness wiring.
 
 ## The five pillars
+
 - **Speed** — generated route short-circuits with 503 when unconfigured; single model round-trip;
   `withSpan` is a no-op when OTel is off.
 - **Secure** — the generator BAKES the floor in (auth wrapper + zod + rate-limit-outside-auth +
@@ -98,9 +103,11 @@ developer runs `npm run scaffold-ai-endpoint -- --name Summarize` and gets a rou
   generating a sample + typechecking the emitted output before the generator is called done.
 
 ## Tier
+
 `shared` (enterprise pivot). The generator writes the security floor; nothing in it lowers it.
 
 ## Explicitly deferred (remaining WS-5 follow-on — ADR-036)
+
 - `ai-eval` agent + the AI-eval `/ship` gate (Promptfoo / LLM-as-judge; ADR-020 pattern) that
   **runs** the `tests/ai-evals/*.eval.ts` fixtures this increment emits.
 - The conditional 6th **AI-Quality** pillar (inert on non-AI forks).
@@ -109,10 +116,11 @@ developer runs `npm run scaffold-ai-endpoint -- --name Summarize` and gets a rou
 - An OpenAI-compatible provider path / cascade router (ADR-036 P2 migration trigger).
 
 ## Open questions
+
 - [x] Does the generator ship a live demo endpoint? → **No** — mirrors `/scaffold-entity`
-  (ships the generator, not a demo entity); a live `app/api/ai/*` route would be a per-fork
-  choice, and a committed demo would need its own permanent blueprint + broaden the template
-  surface. Verification uses a throwaway generated sample that is typechecked then removed.
+      (ships the generator, not a demo entity); a live `app/api/ai/*` route would be a per-fork
+      choice, and a committed demo would need its own permanent blueprint + broaden the template
+      surface. Verification uses a throwaway generated sample that is typechecked then removed.
 - [x] Which auth default? → `--writes any` (`withAuth`) default; `editor`/`admin` opt-in. AI
-  endpoints are authenticated-by-default (never public — a public model call is a cost/abuse
-  vector), and rate-limited regardless.
+      endpoints are authenticated-by-default (never public — a public model call is a cost/abuse
+      vector), and rate-limited regardless.

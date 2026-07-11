@@ -105,9 +105,11 @@ try {
     `Ask-before list, or a skill's Skip-when.`;
 
   const eventName = typeof input.prompt === "string" ? "UserPromptSubmit" : "PreToolUse";
-  console.log(JSON.stringify({
-    hookSpecificOutput: { hookEventName: eventName, additionalContext: context },
-  }));
+  console.log(
+    JSON.stringify({
+      hookSpecificOutput: { hookEventName: eventName, additionalContext: context },
+    }),
+  );
 } catch {
   /* a suggester must never brick a turn */
 }

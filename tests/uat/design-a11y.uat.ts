@@ -54,9 +54,7 @@ async function auditScreen(
     // color-scheme:dark, so a transparent body floods dark axe with bogus
     // color-contrast findings (Workstream D follow-up, session 11).
     await page.goto(`/${L}`, { waitUntil: "domcontentloaded" }).catch(() => {});
-    await page
-      .context()
-      .addCookies([{ name: "theme-mode", value: "dark", url: page.url() }]);
+    await page.context().addCookies([{ name: "theme-mode", value: "dark", url: page.url() }]);
   }
   const res = await page.goto(screen.path, { waitUntil: "domcontentloaded" });
   // Let client chrome settle; don't hard-fail if a long-poll keeps the network busy.
@@ -88,7 +86,10 @@ async function auditScreen(
         `  - ${v.id} (${v.impact}): ${v.help}\n` +
         v.nodes
           .slice(0, 8)
-          .map((n) => `      @ ${n.target.join(" ")}\n        ${n.failureSummary?.replace(/\n/g, "\n        ")}`)
+          .map(
+            (n) =>
+              `      @ ${n.target.join(" ")}\n        ${n.failureSummary?.replace(/\n/g, "\n        ")}`,
+          )
           .join("\n"),
     )
     .join("\n");

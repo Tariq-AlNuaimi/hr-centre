@@ -57,8 +57,7 @@ export function loadBenchmark(root = ROOT) {
   }
 
   const errors = [];
-  if (!data || typeof data !== "object")
-    errors.push("benchmark.json must be a JSON object");
+  if (!data || typeof data !== "object") errors.push("benchmark.json must be a JSON object");
   if (!data?.domain || typeof data.domain !== "string")
     errors.push('benchmark.json needs a "domain" string');
 

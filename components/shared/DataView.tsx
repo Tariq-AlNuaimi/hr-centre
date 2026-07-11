@@ -1,19 +1,10 @@
 "use client";
 
-import type {
-  ColumnType,
-  ColumnsType,
-  FilterValue,
-  Key,
-} from "@/components/shared/table-types";
+import type { ColumnType, ColumnsType, FilterValue, Key } from "@/components/shared/table-types";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { DataTable, type SortChange } from "./DataTable";
 
 /** Stable string key for a column (key, else dataIndex, else position). */
@@ -84,10 +75,7 @@ export function DataView<T extends object>({
 }: DataViewProps<T>) {
   const t = useTranslations("data");
 
-  const allKeys = useMemo(
-    () => columns.map((c, i) => columnKey(c as ColumnType<T>, i)),
-    [columns],
-  );
+  const allKeys = useMemo(() => columns.map((c, i) => columnKey(c as ColumnType<T>, i)), [columns]);
   const [visibleKeys, setVisibleKeys] = useState<string[]>(allKeys);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Key[]>([]);
 
@@ -98,10 +86,7 @@ export function DataView<T extends object>({
   }, [columns, visibleKeys, allKeys]);
 
   const selectedRows = useMemo(
-    () =>
-      dataSource.filter((row) =>
-        selectedRowKeys.includes(row[rowKey] as Key),
-      ),
+    () => dataSource.filter((row) => selectedRowKeys.includes(row[rowKey] as Key)),
     [dataSource, selectedRowKeys, rowKey],
   );
 
@@ -175,9 +160,7 @@ export function DataView<T extends object>({
       ) : (
         (toolbarActions || toolbarFilters || columnToggle) && (
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {toolbarFilters}
-            </div>
+            <div className="flex flex-wrap items-center gap-2">{toolbarFilters}</div>
             <div className="flex flex-wrap items-center gap-2">
               {columnToggle}
               {toolbarActions}

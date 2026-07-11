@@ -4,7 +4,15 @@
   "title": "session-state",
   "description": "Canonical machine-readable program status. SESSION-HANDOFF.md's tables are RENDERED from this file (scripts/render-handoff.mjs) so they can never drift or partially load. Update this file as work lands; the markdown is a view.",
   "type": "object",
-  "required": ["program", "branch", "updated", "lastShip", "directives", "workstreams", "categories"],
+  "required": [
+    "program",
+    "branch",
+    "updated",
+    "lastShip",
+    "directives",
+    "workstreams",
+    "categories"
+  ],
   "additionalProperties": true,
   "properties": {
     "program": { "type": "string" },

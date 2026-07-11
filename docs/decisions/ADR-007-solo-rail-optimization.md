@@ -71,6 +71,7 @@ reusable standard:
 ## Consequences
 
 ### Positive
+
 - Security is enforced where the operator actually works (local `/ship` / `/audit`), on every
   machine, with no CI and no `.git/hooks`.
 - `SECURITY.md` is trustworthy again — it describes the system that actually ships.
@@ -80,6 +81,7 @@ reusable standard:
   `/quickstart`'s fast build.
 
 ### Negative
+
 - Enforcement depends on the operator (and Claude Code) actually running `/ship` / `/audit` /
   `/code-review` — there is no server-side gate until handoff.
 - `gitleaks` and `semgrep` are not always installed; the skills must (and do) report that loudly
@@ -87,6 +89,7 @@ reusable standard:
 - The CI workflows sit dormant and could rot; they are labeled and revisited at handoff.
 
 ### Mitigations
+
 - Hard rules in `CLAUDE.md` ("Run `/ship` before every push"; "run `/code-review` before
   security-sensitive pushes") make the local gate the documented default Claude Code follows.
 - `/ship` and `/audit` print exact install instructions when a scanner is missing and never mark
@@ -94,6 +97,7 @@ reusable standard:
 - CI re-activates at `/handoff`, where a paid plan and branch protection take over.
 
 ## Alternatives considered
+
 1. **Keep enforcement in CI only** — rejected: CI cannot run on the free plan, so the gate would
    be absent during the entire prototype phase, which is exactly when the non-dev operator needs it.
 2. **`.git/hooks` for local enforcement** — rejected: not machine-independent; hooks don't travel
@@ -106,6 +110,7 @@ reusable standard:
    principles already live in the hard-rules and "known traps"; the weight isn't justified.
 
 ## Migration triggers
+
 - **GitHub Actions billing restored / IT handoff:** re-activate the dormant CI workflows by
   restoring their real triggers (uncomment the `pull_request:` / `push:` lines under `on:` in
   `verify.yml`, `secrets-scan.yml`, `sast.yml` — they are set to `workflow_dispatch`-only so they
@@ -119,11 +124,13 @@ reusable standard:
 - **Horizontal scale on Vercel:** swap the in-memory rate limiter for Upstash (per `/scale-up`).
 
 ## Future
+
 - **UAT via Chrome (browser-driven acceptance testing):** deferred — needs browser automation.
   A later phase can wire a headless-browser review loop so the operator's screenshot/sketch
   feedback can be checked against the live preview automatically.
 
 ## Related
+
 - ADR-006 — Pivot to Vercel + Neon (the rail this optimizes).
 - ADR-001 — Template baseline (locked stack + invariants, kept).
 - ADR-002 — Observability stack (Sentry).

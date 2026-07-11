@@ -17,6 +17,7 @@ standard app skeleton / information architecture that every fork should follow.
 ## Part A — UI library benchmark
 
 ### What AntD gives us today (the bar to beat)
+
 Batteries-included: large component set, integrated `Table` (sort/filter/paginate), ProComponents,
 built-in RTL via `direction="rtl"`, i18n. Weaknesses: (a) heavier "enterprise admin" visual style that
 reads dated vs modern products; (b) historically weaker ARIA than Radix/MUI stacks (improving in v6);
@@ -26,33 +27,34 @@ low migration risk.**
 
 ### Top repos / libraries (2025–2026)
 
-| Option | Stars | License | Type | RSC / App Router | RTL | a11y | Attractiveness vs AntD | Migration from AntD |
-|---|---|---|---|---|---|---|---|---|
-| **shadcn/ui** (Radix + Tailwind) | ~75k | MIT | Copy-in (you own the code) | Excellent | Yes (`--rtl`, Radix `DirectionProvider`) | Excellent | Much higher | Moderate effort, low risk; needs Tailwind; assemble Table via TanStack |
-| **MUI (Material UI)** | ~96k | MIT (+paid X) | Batteries-included | OK (client/Emotion) | Mature (stylis-plugin-rtl) | Excellent | Slightly higher | Easiest concept map; best data grid; heavy; X license tiers |
-| **Mantine** | ~28k | MIT | Batteries-included | Strong (CSS Modules, no runtime) | Yes | Good | Higher | Lowest-friction batteries swap |
-| **Chakra UI v3** | ~39k | MIT | Batteries-included | Full RSC (rewritten on Ark UI) | Yes | Good | Higher | Moderate; no first-party data grid |
-| **HeroUI** (ex-NextUI) | ~28k | MIT | Component lib (React Aria) | Yes (Next template) | Yes (Aria) | Excellent | Highest | Moderate; v3 still beta (risk) |
-| **Refine** | ~35k | MIT | Headless internal-tools framework | Yes | via UI kit | via UI kit | n/a (skin-dependent) | Large architectural change |
-| **Tremor** | ~16.5k | MIT | Dashboard/chart blocks (Radix+Tailwind) | Yes | Tailwind | Good | Higher (charts/KPIs) | Complement, not replacement |
-| **Radix Primitives** | — | MIT | Headless engine under shadcn | Excellent | Yes | Excellent | n/a | Choose via shadcn |
-| **Tailwind Plus / Catalyst** | paid | Commercial | Copy-in (paid) | Yes | Tailwind | Good | Higher | Supplement; no data grid |
-| **Aceternity / Magic UI** | ~28k | MIT | Marketing animations | Yes | n/a | n/a | Flashy (marketing only) | Not applicable — skip for internal tools |
+| Option                           | Stars  | License       | Type                                    | RSC / App Router                 | RTL                                      | a11y       | Attractiveness vs AntD  | Migration from AntD                                                    |
+| -------------------------------- | ------ | ------------- | --------------------------------------- | -------------------------------- | ---------------------------------------- | ---------- | ----------------------- | ---------------------------------------------------------------------- |
+| **shadcn/ui** (Radix + Tailwind) | ~75k   | MIT           | Copy-in (you own the code)              | Excellent                        | Yes (`--rtl`, Radix `DirectionProvider`) | Excellent  | Much higher             | Moderate effort, low risk; needs Tailwind; assemble Table via TanStack |
+| **MUI (Material UI)**            | ~96k   | MIT (+paid X) | Batteries-included                      | OK (client/Emotion)              | Mature (stylis-plugin-rtl)               | Excellent  | Slightly higher         | Easiest concept map; best data grid; heavy; X license tiers            |
+| **Mantine**                      | ~28k   | MIT           | Batteries-included                      | Strong (CSS Modules, no runtime) | Yes                                      | Good       | Higher                  | Lowest-friction batteries swap                                         |
+| **Chakra UI v3**                 | ~39k   | MIT           | Batteries-included                      | Full RSC (rewritten on Ark UI)   | Yes                                      | Good       | Higher                  | Moderate; no first-party data grid                                     |
+| **HeroUI** (ex-NextUI)           | ~28k   | MIT           | Component lib (React Aria)              | Yes (Next template)              | Yes (Aria)                               | Excellent  | Highest                 | Moderate; v3 still beta (risk)                                         |
+| **Refine**                       | ~35k   | MIT           | Headless internal-tools framework       | Yes                              | via UI kit                               | via UI kit | n/a (skin-dependent)    | Large architectural change                                             |
+| **Tremor**                       | ~16.5k | MIT           | Dashboard/chart blocks (Radix+Tailwind) | Yes                              | Tailwind                                 | Good       | Higher (charts/KPIs)    | Complement, not replacement                                            |
+| **Radix Primitives**             | —      | MIT           | Headless engine under shadcn            | Excellent                        | Yes                                      | Excellent  | n/a                     | Choose via shadcn                                                      |
+| **Tailwind Plus / Catalyst**     | paid   | Commercial    | Copy-in (paid)                          | Yes                              | Tailwind                                 | Good       | Higher                  | Supplement; no data grid                                               |
+| **Aceternity / Magic UI**        | ~28k   | MIT           | Marketing animations                    | Yes                              | n/a                                      | n/a        | Flashy (marketing only) | Not applicable — skip for internal tools                               |
 
 Reference scaffolds to mine for layout (not libraries): `Kiranism/next-shadcn-dashboard-starter`,
 `arhamkhnz/next-shadcn-admin-dashboard` (both Next 16 + shadcn + Tailwind v4, MIT). Honorable mentions:
 Ant Design Pro (~38k — doubles down on the AntD look), Saas-ui (Chakra-based), Park UI (Ark + Panda).
 
 ### Recommendation
-**Primary: shadcn/ui (Radix + Tailwind), + Tremor for dashboards.** Best fit for *attractive + enterprise +
-RSC + RTL + axe-clean*: most modern default aesthetic, best App-Router/RSC integration, native RTL for our
-`ar` requirement, Radix-grade a11y (directly serves our axe gate and *improves* on AntD's ARIA), MIT with
+
+**Primary: shadcn/ui (Radix + Tailwind), + Tremor for dashboards.** Best fit for _attractive + enterprise +
+RSC + RTL + axe-clean_: most modern default aesthetic, best App-Router/RSC integration, native RTL for our
+`ar` requirement, Radix-grade a11y (directly serves our axe gate and _improves_ on AntD's ARIA), MIT with
 **no vendor lock-in — you own the component source**, which suits a forkable, handed-off template. It also
 lets us **drop `'unsafe-inline'` from the CSP** over time (no CSS-in-JS), tightening ADR-001's known CSP
 compromise. Enterprise tables come from the well-trodden **TanStack Table + shadcn** pattern; **Tremor**
 gives on-brand KPI/chart blocks that pair with our existing recharts usage.
 
-*Honest trade-offs:* shadcn is *copy-in components you maintain*, not batteries-included — you assemble
+_Honest trade-offs:_ shadcn is _copy-in components you maintain_, not batteries-included — you assemble
 Table/DatePicker/Form rather than inheriting AntD's integrated ones, and it **requires adopting Tailwind**,
 which touches our token policy (`no-raw-hex-color`, `antd-theme.ts`, `app/tokens.css`) and
 `docs/design-recipes.md` + the `/design-system` skill.
@@ -65,7 +67,8 @@ as the lighter, more modern middle path that keeps AntD-style "everything includ
 drop-in that preserves the integrated-component workflow + enterprise grid → **MUI**, with **Mantine** as
 the lighter compromise.
 
-### AntD migration surface in *this* repo (measured)
+### AntD migration surface in _this_ repo (measured)
+
 ~30 source files import `antd`/`@ant-design`, plus the design harness is coupled to it: `antd-theme.ts`,
 the `no-raw-hex-color` ESLint rule, `docs/design-recipes.md`, the `/design-system` skill, and
 `scripts/scaffold-entity.mjs` page templates. The shared primitives that would be re-skinned:
@@ -82,30 +85,31 @@ Synthesized from the navigation/IA of **Linear, Stripe, Vercel, Notion, Salesfor
 top admin-starter repos. The convergent patterns below are the proposed benchmark for every fork.
 
 ### Convergent patterns (what every serious app does)
+
 1. **Two-tier (often three-tier) settings split.** Universal: **personal** settings (Linear "Account",
    Stripe "Personal details", Vercel "Personal Account", Salesforce "My Settings", Jira "Personal settings")
    are kept strictly separate from **org/workspace** settings (members, billing, security, audit). Jira is
-   the most explicit with **personal → product → org** tiers. *The #1 pitfall is mixing personal profile
-   with org settings — don't.*
+   the most explicit with **personal → product → org** tiers. _The #1 pitfall is mixing personal profile
+   with org settings — don't._
 2. **Command palette + global search are table stakes.** Linear, Vercel, Jira, Notion all ship **⌘K**;
    all six ship a persistent global search. (Stripe/Salesforce lean on search rather than ⌘K.)
 3. **Audit log lives under org → Security**, ~90-day retention is the common bar (Linear 90d, Vercel 90d,
    Stripe 180d view), all streamable to SIEM at the top tier.
 4. **Role spine = Owner / Admin / Member(Editor) / Viewer(Guest).** Stripe and Vercel add dedicated
-   **Billing-scoped** and **Developer-scoped** roles; Salesforce splits *role-based visibility* (Roles)
-   from *permission grants* (Profiles + Permission Sets); Jira splits org-admin / product-admin /
+   **Billing-scoped** and **Developer-scoped** roles; Salesforce splits _role-based visibility_ (Roles)
+   from _permission grants_ (Profiles + Permission Sets); Jira splits org-admin / product-admin /
    user-access-admin. Member management lives under org → Members/People/Users.
 5. **Member off-ramps are deactivate/suspend, not delete** (Salesforce Deactivate/Freeze, Jira
    Remove/Suspend/Deactivate) — preserves records & audit trail. Matches our soft-delete invariant.
 6. **Notifications**: either a centralized **Inbox** (Linear/Notion) or surfaced on **home/activity**
-   (Stripe/Vercel), with per-user notification preferences living in *personal* settings.
+   (Stripe/Vercel), with per-user notification preferences living in _personal_ settings.
 7. **Impersonation** ("log in as user") is rare and admin-gated — only Salesforce documents it. Treat as an
    opt-in, heavily-audited admin feature, not a default. Guardrails if built: a **new isolated session**
    (never reuse tokens), a **visible "impersonating" banner**, an **audit entry attributed to both** admin
    and target user, and a **hierarchy bound** (can't impersonate a more-privileged user).
 8. **Keep ≥2 Owners** (GitHub ownership-continuity guidance) and enforce a **role hierarchy on invites** — a
    user may only assign roles at or below their own level (prevents privilege escalation via the invite UI).
-9. **Hide vs disable.** *Hide* a control a role can **never** use; *disable + explain* one they could use but
+9. **Hide vs disable.** _Hide_ a control a role can **never** use; _disable + explain_ one they could use but
    a prerequisite is missing. Never silently fail; an unauthorized view is an honest "you don't have
    permission" state, optionally with a "request access" CTA.
 10. **Three distinct "activity" surfaces — don't conflate them.** Notifications (per-**user**, top-bar
@@ -152,21 +156,23 @@ top admin-starter repos. The convergent patterns below are the proposed benchmar
 ```
 
 ### Canonical Settings sub-structure (resolves the common confusion)
+
 - **Profile** = who you are (name, avatar, email) — personal.
 - **Account & Security** = your credentials & sessions (password, 2FA, personal tokens) — personal.
 - **Organization** = the tenant (name, branding, members, billing, integrations, SSO, audit) — admin.
-- Rule of thumb mirrored from Linear/Salesforce/Jira: *if it affects only you → Personal; if it affects
-  everyone in the org → Organization.* Members/Roles/Billing/Audit are **always** org-level.
+- Rule of thumb mirrored from Linear/Salesforce/Jira: _if it affects only you → Personal; if it affects
+  everyone in the org → Organization._ Members/Roles/Billing/Audit are **always** org-level.
 
 ### RBAC — mapping to this template
+
 Current model is `ADMIN | EDITOR | VIEWER` (enforced by `withAdminAuth` / `withEditorAuth` / `withAuth` in
 `lib/api-helpers.ts`). That maps cleanly onto the benchmark spine:
 
-| Benchmark role | This template | Manages |
-|---|---|---|
-| Owner / Admin | `ADMIN` | org settings, members, roles, billing, audit, security |
-| Member / Editor | `EDITOR` | create/update entity data; no org admin |
-| Viewer / Guest | `VIEWER` | read-only |
+| Benchmark role  | This template | Manages                                                |
+| --------------- | ------------- | ------------------------------------------------------ |
+| Owner / Admin   | `ADMIN`       | org settings, members, roles, billing, audit, security |
+| Member / Editor | `EDITOR`      | create/update entity data; no org admin                |
+| Viewer / Guest  | `VIEWER`      | read-only                                              |
 
 Roles are **managed under Admin → Users & Members** (assign on invite / edit). A future **Roles &
 Permissions** page would surface the permission matrix read-only first. Billing/Developer-scoped roles
@@ -175,32 +181,33 @@ not needed at the floor.
 
 ### Gap analysis — current template vs the standard
 
-| Standard section | Status in template | Action |
-|---|---|---|
-| Dashboard/Home | ✅ `(dashboard)/page.tsx` | Enrich: KPIs + recent activity + quick actions |
-| Entity lists/detail/new | ✅ `users/*` as the pattern | Reuse via `/scaffold-entity` |
-| Users & Members (admin) | ✅ `users/*` | Add invite flow + deactivate UX (soft-delete exists) |
-| Roles & Permissions page | ❌ none | **Add** read-only permission matrix |
-| Audit Log | ✅ `audit-log/*` | Move conceptually under a Security/Admin group |
-| Recycling Bin | ✅ `recycling-bin/*` | Keep under Admin |
-| Settings — Personal/Profile | ✅ `settings/profile` | Split into Profile / Security / Notifications / Appearance |
-| Settings — Account & Security | ⚠️ partial | **Add** sessions / 2FA / personal API keys (scale-up) |
-| Settings — Notifications | ❌ none | **Add** preferences page |
-| Settings — Organization | ❌ none | **Add** General / Integrations / API Keys / Security |
-| Command palette (⌘K) | ❌ none | **Add** — table-stakes finder |
-| Global search | ❌ none | **Add** (can start scoped per-entity) |
-| Notifications (bell/inbox) | ❌ none | **Add** bell in top bar |
-| Onboarding / empty states | ✅ `EmptyState` primitive | Apply consistently per the design rubric |
-| Help/Docs in footer | ✅ `AppFooter` | Add help (?) entry point |
+| Standard section              | Status in template          | Action                                                     |
+| ----------------------------- | --------------------------- | ---------------------------------------------------------- |
+| Dashboard/Home                | ✅ `(dashboard)/page.tsx`   | Enrich: KPIs + recent activity + quick actions             |
+| Entity lists/detail/new       | ✅ `users/*` as the pattern | Reuse via `/scaffold-entity`                               |
+| Users & Members (admin)       | ✅ `users/*`                | Add invite flow + deactivate UX (soft-delete exists)       |
+| Roles & Permissions page      | ❌ none                     | **Add** read-only permission matrix                        |
+| Audit Log                     | ✅ `audit-log/*`            | Move conceptually under a Security/Admin group             |
+| Recycling Bin                 | ✅ `recycling-bin/*`        | Keep under Admin                                           |
+| Settings — Personal/Profile   | ✅ `settings/profile`       | Split into Profile / Security / Notifications / Appearance |
+| Settings — Account & Security | ⚠️ partial                  | **Add** sessions / 2FA / personal API keys (scale-up)      |
+| Settings — Notifications      | ❌ none                     | **Add** preferences page                                   |
+| Settings — Organization       | ❌ none                     | **Add** General / Integrations / API Keys / Security       |
+| Command palette (⌘K)          | ❌ none                     | **Add** — table-stakes finder                              |
+| Global search                 | ❌ none                     | **Add** (can start scoped per-entity)                      |
+| Notifications (bell/inbox)    | ❌ none                     | **Add** bell in top bar                                    |
+| Onboarding / empty states     | ✅ `EmptyState` primitive   | Apply consistently per the design rubric                   |
+| Help/Docs in footer           | ✅ `AppFooter`              | Add help (?) entry point                                   |
 
 ---
 
 ## §5 — Open decisions for the operator
+
 1. **UI library direction** — (a) **shadcn/ui + Tremor** (recommended; adopt Tailwind, own components,
    improves CSP/a11y), (b) **MUI** (near drop-in, best grid, heavier), (c) **Mantine** (lighter
    batteries-included), or (d) **stay on AntD** and only do the skeleton work. Anything but (d) needs a
    superseding ADR + sign-off.
-2. **Skeleton scope now** — adopt this sitemap as the documented standard only, *or* also scaffold the
+2. **Skeleton scope now** — adopt this sitemap as the documented standard only, _or_ also scaffold the
    missing shells (Roles & Permissions, Org settings, ⌘K, notifications) into the template.
 3. **Sequencing** — if swapping UI, do skeleton-on-AntD first then migrate, or migrate the shell first then
    build new sections in the new library.
@@ -208,6 +215,7 @@ not needed at the floor.
 ---
 
 ## Sources
+
 **UI:** github.com/shadcn-ui/ui · ui.shadcn.com/docs/rtl/next · github.com/mui/material-ui ·
 mui.com/material-ui/customization/right-to-left · mantine.dev · github.com/chakra-ui/chakra-ui ·
 github.com/heroui-inc/heroui · github.com/refinedev/refine · github.com/tremorlabs/tremor ·

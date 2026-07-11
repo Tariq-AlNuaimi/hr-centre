@@ -24,7 +24,7 @@ category C11:
   not tag-pinned. A tag is a movable pointer; a commit SHA is not.
 
 The template's security floor already scans (ADR-007 gitleaks + npm audit,
-ADR-030 trivy). What it does not yet defend is the *toolchain itself* — the
+ADR-030 trivy). What it does not yet defend is the _toolchain itself_ — the
 scanners and Actions the CI supply chain pulls at build time. When a scanner
 the repo already runs is the thing that gets compromised, "we scan" is not
 enough; the tools must be pinned, immutable, and cross-checked.
@@ -75,7 +75,7 @@ Rejected in favor of a second scanner (Grype).
 Adopt Option 1. The deciding driver is the **active Trivy compromise**: a
 scanner the repo already runs was weaponized, which forces immediate pinning to
 the last clean line (trivy ≤ 0.69.3 / trivy-action v0.35.0 / setup-trivy
-v0.2.6). The *same class of failure* — trusting a mutable ref — is what
+v0.2.6). The _same class of failure_ — trusting a mutable ref — is what
 compromised tj-actions, so the response generalizes: SHA-pin every Action to a
 full commit SHA (zizmor enforces it) and stop trusting any single tool by adding
 a second, independent scanner. Immediate (P0): the trivy pin, Action SHA-pinning,

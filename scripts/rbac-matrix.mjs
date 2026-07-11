@@ -183,9 +183,7 @@ function parseRouteHandlers(src) {
   // and an unguarded export adjacent to a wrapped one is mis-classified.
   const NEXT_EXPORT = `(?=\\s*export\\s+(?:const|(?:async\\s+)?function)\\s|$)`;
   for (const method of HTTP_METHODS) {
-    const constRe = new RegExp(
-      `export\\s+const\\s+${method}\\s*=\\s*([\\s\\S]*?)${NEXT_EXPORT}`,
-    );
+    const constRe = new RegExp(`export\\s+const\\s+${method}\\s*=\\s*([\\s\\S]*?)${NEXT_EXPORT}`);
     const m = src.match(constRe);
     if (m) {
       const rhs = m[1];
@@ -210,7 +208,8 @@ function scanApiRoutes(roles, ctx) {
   const apiDir = path.join(ROOT, "app", "api");
   const routes = [];
   const anomalies = [];
-  const editorRoles = writeRoles ?? roles.filter((r) => r === admin || r.toLowerCase() === "editor");
+  const editorRoles =
+    writeRoles ?? roles.filter((r) => r === admin || r.toLowerCase() === "editor");
 
   for (const file of findRouteFiles(apiDir)) {
     const url = urlForRouteFile(file);
@@ -231,13 +230,19 @@ function scanApiRoutes(roles, ctx) {
             allowedRoles = catalog.map.get(h.capability);
           } else if (h.capability === "(dynamic)") {
             anomalies.push({
-              type: "dynamic-capability", url, method: h.method, file: relFile,
+              type: "dynamic-capability",
+              url,
+              method: h.method,
+              file: relFile,
               detail: `${h.method} ${url} computes its capability at runtime — static matrix can't resolve it; verify live.`,
             });
             allowedRoles = [admin];
           } else {
             anomalies.push({
-              type: "unknown-capability", url, method: h.method, file: relFile,
+              type: "unknown-capability",
+              url,
+              method: h.method,
+              file: relFile,
               detail: `${h.method} ${url} gates on capability "${h.capability}" not found in the catalog — typo or stale catalog?`,
             });
             allowedRoles = [admin];
@@ -245,26 +250,45 @@ function scanApiRoutes(roles, ctx) {
           break;
         }
         case "withAdminAuth":
-          kind = "role"; allowedRoles = [admin]; break;
+          kind = "role";
+          allowedRoles = [admin];
+          break;
         case "withEditorAuth":
-          kind = "role"; allowedRoles = [...editorRoles]; break;
+          kind = "role";
+          allowedRoles = [...editorRoles];
+          break;
         case "withAuth":
-          kind = "role"; allowedRoles = [...roles]; break;
+          kind = "role";
+          allowedRoles = [...roles];
+          break;
         case "withApiAuth":
         case "withInternalAuth":
-          kind = "machine"; break;
+          kind = "machine";
+          break;
         default:
-          kind = "public"; detail = "(public)";
+          kind = "public";
+          detail = "(public)";
           if (!PUBLIC_ROUTE_ALLOWLIST.has(url)) {
             anomalies.push({
-              type: "unguarded-route", url, method: h.method, file: relFile,
+              type: "unguarded-route",
+              url,
+              method: h.method,
+              file: relFile,
               detail: `${h.method} ${url} has no recognized auth wrapper and is not on the public allowlist.`,
             });
           }
       }
       routes.push({
-        url, method: h.method, wrapper: h.wrapper, kind, capability: h.capability,
-        allowedRoles, source, hasRateLimit: h.hasRateLimit, detail, file: relFile,
+        url,
+        method: h.method,
+        wrapper: h.wrapper,
+        kind,
+        capability: h.capability,
+        allowedRoles,
+        source,
+        hasRateLimit: h.hasRateLimit,
+        detail,
+        file: relFile,
       });
     }
   }
@@ -316,7 +340,7 @@ function discoverSectionAccess(roles, admin, locale = "en") {
   }
 
   return sections.map((s) => {
-    const segment = s.name === "dashboard" ? "" : s.name.split("/").pop() ?? "";
+    const segment = s.name === "dashboard" ? "" : (s.name.split("/").pop() ?? "");
     const adminOnly = segment !== "" && adminSegments.has(segment);
     return {
       name: s.name,
@@ -358,14 +382,18 @@ function printMatrix(model) {
   }
 
   console.log("\nAPI ROUTES (auth wrapper gating)");
-  console.log(pad("method route", 40) + pad("gate", 22) + roles.map((r) => pad(shortRole(r), w)).join(""));
+  console.log(
+    pad("method route", 40) + pad("gate", 22) + roles.map((r) => pad(shortRole(r), w)).join(""),
+  );
   for (const rt of routes) {
     const label = `${rt.method} ${rt.url}`;
     const cells =
       rt.allowedRoles === null
         ? pad(rt.kind === "machine" ? "machine-only" : "—", roles.length * w)
         : roles.map((r) => pad(rt.allowedRoles.includes(r) ? "✓" : "·", w)).join("");
-    console.log(pad(label.length > 39 ? label.slice(0, 38) + "…" : label, 40) + pad(rt.detail, 22) + cells);
+    console.log(
+      pad(label.length > 39 ? label.slice(0, 38) + "…" : label, 40) + pad(rt.detail, 22) + cells,
+    );
   }
 
   if (anomalies.length) {
@@ -404,7 +432,8 @@ function main() {
       withAdminAuth: `${admin} only`,
       withEditorAuth: writeRoles ? `WRITE_ROLES: ${writeRoles.join(", ")}` : `${admin}, EDITOR`,
       withAuth: "any authenticated role",
-      withCapabilityAuth: "roles the capability catalog grants (+ admin) — CANONICAL, reconcile vs live",
+      withCapabilityAuth:
+        "roles the capability catalog grants (+ admin) — CANONICAL, reconcile vs live",
       withApiAuth: "machine (Bearer) — not a session role",
       withInternalAuth: "machine (shared secret / cron) — not a session role",
     },

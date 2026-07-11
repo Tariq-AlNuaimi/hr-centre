@@ -31,10 +31,12 @@ The product **must live in its own repository**. It was extracted on 2026-06-12:
 ## Consequences
 
 ### Positive
+
 - Forks of the template are born lean again; the template stays a reusable starter.
 - The product iterates freely in its own repo (own Vercel project, own ADRs from here on).
 
 ### Negative
+
 - The template repo's original Vercel production URL no longer serves Vibe Inspector —
   the product repo needs its own `/deploy` (new Vercel project + Neon DB, then re-enter
   the AI-provider/Browserbase settings, which are env- and DB-stored).

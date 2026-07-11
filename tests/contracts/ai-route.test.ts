@@ -11,11 +11,7 @@ import { withAiRoute } from "../../lib/ai";
 // exercised here). AI_API_KEY is mutated + restored per test; withSpan is the
 // no-op tracer (no OTLP endpoint), so no network/infra is touched.
 
-function withEnv(
-  key: string,
-  value: string | undefined,
-  fn: () => Promise<void>,
-): Promise<void> {
+function withEnv(key: string, value: string | undefined, fn: () => Promise<void>): Promise<void> {
   const prev = process.env[key];
   if (value === undefined) delete process.env[key];
   else process.env[key] = value;

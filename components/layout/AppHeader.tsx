@@ -9,14 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  User,
-  LogOut,
-  Sun,
-  Moon,
-  Globe,
-  Search,
-} from "lucide-react";
+import { User, LogOut, Sun, Moon, Globe, Search } from "lucide-react";
 import { OrgSwitcher } from "./OrgSwitcher";
 import { NotificationsMenu } from "./NotificationsMenu";
 import { OPEN_COMMAND_PALETTE } from "./CommandPalette";
@@ -24,11 +17,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter, usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "./ThemeProvider";
-import {
-  hasMultipleLocales,
-  localePrefixRegex,
-  nextLocale,
-} from "@/i18n/config";
+import { hasMultipleLocales, localePrefixRegex, nextLocale } from "@/i18n/config";
 
 // Native names for the locales we ship; falls back to the uppercased code so an
 // unmapped locale still gets a sensible switcher label.
@@ -103,10 +92,7 @@ export function AppHeader() {
             >
               <Avatar>
                 {session?.user?.image && (
-                  <AvatarImage
-                    src={session.user.image}
-                    alt={displayName ?? ""}
-                  />
+                  <AvatarImage src={session.user.image} alt={displayName ?? ""} />
                 )}
                 <AvatarFallback>
                   <User className="h-4 w-4" />
@@ -116,20 +102,12 @@ export function AppHeader() {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() =>
-                router.push(`/${currentLocale}/settings/profile`)
-              }
-            >
+            <DropdownMenuItem onSelect={() => router.push(`/${currentLocale}/settings/profile`)}>
               <User />
               {t("profile")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={() =>
-                signOut({ callbackUrl: `/${currentLocale}/login` })
-              }
-            >
+            <DropdownMenuItem onSelect={() => signOut({ callbackUrl: `/${currentLocale}/login` })}>
               <LogOut />
               {t("logout")}
             </DropdownMenuItem>

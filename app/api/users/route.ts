@@ -8,13 +8,7 @@ import { createUserSchema } from "@/lib/validations/user";
 import type { Prisma } from "@/generated/prisma/client";
 
 // Allowlist of sortable columns — prevents raw column injection via ?sort=.
-const SORTABLE_COLUMNS = [
-  "name",
-  "email",
-  "role",
-  "createdAt",
-  "lastLoginAt",
-] as const;
+const SORTABLE_COLUMNS = ["name", "email", "role", "createdAt", "lastLoginAt"] as const;
 type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
 const VALID_ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
@@ -31,14 +25,11 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
     sortParam && (SORTABLE_COLUMNS as readonly string[]).includes(sortParam)
       ? (sortParam as SortableColumn)
       : "createdAt";
-  const order: "asc" | "desc" =
-    searchParams.get("order") === "asc" ? "asc" : "desc";
+  const order: "asc" | "desc" = searchParams.get("order") === "asc" ? "asc" : "desc";
 
   const roleParam = searchParams.get("role");
   const role =
-    roleParam && (VALID_ROLES as readonly string[]).includes(roleParam)
-      ? roleParam
-      : undefined;
+    roleParam && (VALID_ROLES as readonly string[]).includes(roleParam) ? roleParam : undefined;
 
   const where: Prisma.UserWhereInput = {
     ...(search

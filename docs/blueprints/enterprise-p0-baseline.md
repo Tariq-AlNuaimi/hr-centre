@@ -11,6 +11,7 @@ lib/password.ts, lib/auth.ts, app/api/users/**/route.ts, app/api/auth/**/route.t
 > pre-authorize the increments this blueprint governs (incl. the argon2 edits to existing routes).
 
 ## Problem & outcome
+
 The template was built as a **prototype rail** (ADR-006/007: Vercel + Neon, solo operator, CI
 dormant, in-memory everything). The enterprise pivot (source of truth:
 `docs/research/v2/enterprise-benchmark-v2.html` P0 action plan + `PHASE-2-BACKLOG.md`) requires an
@@ -23,6 +24,7 @@ chain, an observability seam, and a Claude-native AI runtime skeleton — withou
 breaking the existing reviewer-URL loop.
 
 ## Market scan
+
 - **Delivery**: distroless + multi-stage (Google `distroless/nodejs` vs `node:slim`) — distroless
   chosen for a smaller attack surface (no shell/pkg-mgr). Caddy vs Traefik vs nginx for TLS —
   Caddy for automatic HTTPS with the least config. Verdict recorded in ADR-035.
@@ -37,13 +39,15 @@ breaking the existing reviewer-URL loop.
   Build-thin chosen (ADR-036, ledger 2026-07-11).
 
 ## Tier
+
 **shared** — this is enterprise-facing infrastructure touching the Ask-before surface (`lib/`,
-`lib/auth.ts`, workflows, `middleware`-adjacent). It is landed additively, so the *template's*
+`lib/auth.ts`, workflows, `middleware`-adjacent). It is landed additively, so the _template's_
 default `project.config.json` tier stays `personal` (operator decision: Additive) — but the work
 itself is held to shared-tier ceremony (SECURITY.md updates, findings-register discipline, full
 `/ship` + `/code-review` + `senior-code-reviewer` per increment).
 
-## User stories  (stable IDs — the traceability spine)
+## User stories (stable IDs — the traceability spine)
+
 - **US1** — As a **platform operator**, I want a distroless, non-root, digest-pinned container
   image + a `compose.prod.yaml`, so that I can self-host a tenant outside Vercel.
   - **AC-1.1** — WHEN `make docker-build` runs on a green tree THE SYSTEM SHALL produce a bootable
@@ -89,8 +93,9 @@ itself is held to shared-tier ceremony (SECURITY.md updates, findings-register d
     (skeleton-only — operator decision).
 
 ## Scenarios (per story; Given/When/Then — worst path mandatory)
+
 - **US1-happy** — Given a green tree, When `make docker-build && docker compose -f
-  compose.prod.yaml up`, Then app boots non-root, migrations apply, Caddy serves TLS (AC-1.1/1.2).
+compose.prod.yaml up`, Then app boots non-root, migrations apply, Caddy serves TLS (AC-1.1/1.2).
 - **US1-worst** — Given a migration that would drop a column the running version reads, When
   startup migration runs, Then it is rejected by the forward-compatible-only rule (documented;
   migrations are additive) — not a half-migrated DB (AC-1.2).
@@ -112,23 +117,25 @@ itself is held to shared-tier ceremony (SECURITY.md updates, findings-register d
   (AC-6.1).
 
 ## Delta — was → now
-| Surface | Was | Now | Who notices the break? |
-|---|---|---|---|
-| `lib/password.ts` `hashPassword` | bcrypt hash (cost 12) | Argon2id hash; new `verifyPassword`/`needsRehash` | callers of `hashPassword` (unchanged sig) + `password.test.ts` (asserts `$2…` → must assert `$argon2id$`) |
-| `lib/auth.ts:81` credentials verify | `bcrypt.compare` | `verifyPassword` (bcrypt-legacy + argon2) + rehash-on-login | `auth.test.ts` (mocks `bcryptjs` → must mock verify path) |
-| `app/api/users/[id]/password/route.ts` | `bcrypt.compare` for currentPassword | `verifyPassword` | that route's test path |
-| `lib/rate-limit.ts` | in-memory only | Valkey-backed when `VALKEY_URL` set, in-memory fallback | horizontally-scaled deployments (fixes SECURITY.md T-01) |
-| `.github/workflows/*` | tag-pinned actions, trivy `latest`, `sast.yml` dormant | SHA-pinned, trivy pinned, SAST as a hard gate | CI once Actions activate |
-| `instrumentation.ts` | (absent) | OTel bootstrap, no-op when unconfigured | n/a — additive |
-| `next.config.ts` / base image | Node 22 | Node 24 (Docker base + `@types/node`) | native deps rebuild in-image |
+
+| Surface                                | Was                                                    | Now                                                         | Who notices the break?                                                                                    |
+| -------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `lib/password.ts` `hashPassword`       | bcrypt hash (cost 12)                                  | Argon2id hash; new `verifyPassword`/`needsRehash`           | callers of `hashPassword` (unchanged sig) + `password.test.ts` (asserts `$2…` → must assert `$argon2id$`) |
+| `lib/auth.ts:81` credentials verify    | `bcrypt.compare`                                       | `verifyPassword` (bcrypt-legacy + argon2) + rehash-on-login | `auth.test.ts` (mocks `bcryptjs` → must mock verify path)                                                 |
+| `app/api/users/[id]/password/route.ts` | `bcrypt.compare` for currentPassword                   | `verifyPassword`                                            | that route's test path                                                                                    |
+| `lib/rate-limit.ts`                    | in-memory only                                         | Valkey-backed when `VALKEY_URL` set, in-memory fallback     | horizontally-scaled deployments (fixes SECURITY.md T-01)                                                  |
+| `.github/workflows/*`                  | tag-pinned actions, trivy `latest`, `sast.yml` dormant | SHA-pinned, trivy pinned, SAST as a hard gate               | CI once Actions activate                                                                                  |
+| `instrumentation.ts`                   | (absent)                                               | OTel bootstrap, no-op when unconfigured                     | n/a — additive                                                                                            |
+| `next.config.ts` / base image          | Node 22                                                | Node 24 (Docker base + `@types/node`)                       | native deps rebuild in-image                                                                              |
 
 ## Domain model
+
 No **new** entities in P0 (infra/security baseline). The only data touched is the existing
 **User** model's Restricted `passwordHash` field (hash-format change, same column).
 
-| Entity | Key attributes | Restricted? (§1) | Enums | Relationships |
-|---|---|---|---|---|
-| `User` (existing) | `passwordHash:string` (algorithm changes bcrypt→argon2, same column), `passwordChangedAt:date` | **yes** (`passwordHash`) | `role: USER\|ADMIN` (unchanged) | existing |
+| Entity            | Key attributes                                                                                 | Restricted? (§1)         | Enums                           | Relationships |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------- | ------------- |
+| `User` (existing) | `passwordHash:string` (algorithm changes bcrypt→argon2, same column), `passwordChangedAt:date` | **yes** (`passwordHash`) | `role: USER\|ADMIN` (unchanged) | existing      |
 
 - **Invariants**: `passwordHash` stays in `SCRUB_FIELDS` (`lib/prisma/audit-extension.ts`) — no
   change needed (already scrubbed). No new migration (no schema change; the hash string format
@@ -138,6 +145,7 @@ No **new** entities in P0 (infra/security baseline). The only data touched is th
   model, so the grid is non-empty per the "name the existing model" rule — no `dbAck` needed.
 
 ## Architecture sketch
+
 - **Delivery**: `Dockerfile` (multi-stage: deps → build → distroless runtime, non-root UID,
   `output: "standalone"` under `DOCKER_BUILD=1` per ADR-023/030) → `compose.prod.yaml` (profiles:
   `bundled-db` default = app+Caddy+pgvector-pg18+volume; `external-db` = app+Caddy) → `Caddyfile`
@@ -177,6 +185,7 @@ flowchart TB
 ```
 
 ## The five pillars
+
 - **Speed** — OTel no-op when unconfigured; Valkey client pooled; argon2 params tuned not maxed;
   fast `/ship` loop stays image-free (ADR-030).
 - **Maintainable** — thin wrappers over vetted libs (rate-limiter-flexible, @node-rs/argon2,
@@ -189,12 +198,13 @@ flowchart TB
   constructs without a key); every increment lands `/ship` green + `/code-review` +
   `senior-code-reviewer`; SECURITY.md updated for the argon2 window.
 
-## Open questions  (resolved via AskUserQuestion 2026-07-11)
+## Open questions (resolved via AskUserQuestion 2026-07-11)
+
 - [x] How far to flip template defaults this phase? → **Additive** — keep personal/Vercel default,
-  add the enterprise rail alongside as opt-in.
+      add the enterprise rail alongside as opt-in.
 - [x] Default Docker DB topology? → **Both profiles, bundled Postgres (pgvector:pg18) as the
-  default**, external-DB-URL profile available.
+      default**, external-DB-URL profile available.
 - [x] lib/ai scope for P0? → **Skeleton only** — provider + tool-runner wrapper + tests, no live
-  route; `/scaffold-ai-endpoint` + ai-eval gate + AI-Quality pillar deferred to a WS-5 increment.
+      route; `/scaffold-ai-endpoint` + ai-eval gate + AI-Quality pillar deferred to a WS-5 increment.
 - [x] Rate-limiter behavior when `VALKEY_URL` set but Valkey unreachable? → **fail-safe with
-  documented policy + log** (worst-path AC-2.2); resolved as a design rule, not an operator ask.
+      documented policy + log** (worst-path AC-2.2); resolved as a design rule, not an operator ask.

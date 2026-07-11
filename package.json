@@ -3,11 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "node --experimental-test-module-mocks --import tsx --test tests/contracts/*.test.ts tests/property/*.test.ts && npm run test:lint-rules",
     "test:property": "node --import tsx --test tests/property/*.test.ts",
     "tokens:build": "node scripts/build-tokens.mjs",
@@ -101,7 +106,7 @@
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -127,6 +132,7 @@
     "jscpd": "^5.0.11",
     "jsdom": "^25.0.1",
     "knip": "^6.24.0",
+    "prettier": "3.9.5",
     "size-limit": "^12.1.0",
     "style-dictionary": "^5.5.0",
     "tailwindcss": "^4.3.2",

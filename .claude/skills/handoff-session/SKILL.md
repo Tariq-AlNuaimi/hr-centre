@@ -10,6 +10,7 @@ degrades quality. This skill freezes session state so the next session loads it
 for ~1k tokens instead.
 
 ## CRITICAL — how state survives depends on the environment
+
 - **Remote / web (this template's default): a new session is a FRESH CONTAINER
   cloned from git.** A gitignored or uncommitted file does NOT exist there. So
   the handoff must travel by ONE of: (a) committed + pushed to the working
@@ -39,12 +40,12 @@ the branch AND prints the full content for the operator to paste.
    in-flight state (dirty tree, started-but-unfinished work, "next steps") that is
    stale the moment the task ships and is meaningless to a fork that never had this
    session. It lives only on working branches and the next session overwrites or
-   deletes it. The *durable* slice (decisions, landmines, conventions) is what
+   deletes it. The _durable_ slice (decisions, landmines, conventions) is what
    reaches `main` — but via `docs/agent-memory.md` in step 3, not this file.
 
 3. **Promote durable items to agent memory (ADR-022), then push.** Scan the
    **Decisions** and **Landmines** sections you just built: anything that will
-   still matter *after this task ships* (a choice not to relitigate, a trap that
+   still matter _after this task ships_ (a choice not to relitigate, a trap that
    cost time, a convention established) belongs in `docs/agent-memory.md`, not
    just the transient handoff. Append those as dated one-liners to the right
    section there (same rules as `/remember`), honoring its ~150-line curation
@@ -54,8 +55,8 @@ the branch AND prints the full content for the operator to paste.
    `main`, and is inherited by forks. Recognize a Restricted value by
    `SECURITY.md` §1 (auth/DB/SMTP credentials, tokens, salaries, national IDs,
    etc.); if a landmine can only be stated by quoting one, generalize it instead.
-   Concrete promotion: a landmine like *"forgot the middleware regex when adding
-   `fr`"* becomes a **Gotchas & landmines** line —
+   Concrete promotion: a landmine like _"forgot the middleware regex when adding
+   `fr`"_ becomes a **Gotchas & landmines** line —
    `2026-06-24 — Adding a locale also needs the regex in middleware.ts updated (next-intl strips the prefix).`
    Commit memory as its OWN commit (so it can
    land on `main` independently of the handoff scratch), then push both:
@@ -87,6 +88,7 @@ the branch AND prints the full content for the operator to paste.
    there; otherwise paste the block from step 4.
 
 ## Rules
+
 - Tracked file on the working branch is the durable carrier; the printed block is
   the zero-dependency fallback. Always produce both.
 - `docs/SESSION-HANDOFF.md` is working-branch scratch — keep it off `main`.

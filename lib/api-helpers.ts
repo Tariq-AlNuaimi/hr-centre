@@ -23,13 +23,10 @@ type RouteContext = { params: Promise<Record<string, string>> };
 
 type AuthedHandler = (
   req: NextRequest,
-  ctx: RouteContext & { session: Session }
+  ctx: RouteContext & { session: Session },
 ) => Promise<NextResponse>;
 
-type InternalHandler = (
-  req: NextRequest,
-  ctx: RouteContext
-) => Promise<NextResponse>;
+type InternalHandler = (req: NextRequest, ctx: RouteContext) => Promise<NextResponse>;
 
 // A fully-wrapped route handler (the shape withAuth/withAdminAuth return).
 type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<NextResponse>;
@@ -58,7 +55,7 @@ export function withAuth(handler: AuthedHandler) {
     const userAgent = req.headers.get("user-agent") ?? undefined;
 
     return withAuditContext({ userId: session.user.id, ipAddress, userAgent }, () =>
-      handler(req, { ...ctx, session })
+      handler(req, { ...ctx, session }),
     );
   };
 }
@@ -139,7 +136,7 @@ type InternalAuthOptions = {
 export function withInternalAuth(
   tokenEnv: string,
   handler: InternalHandler,
-  opts: InternalAuthOptions = {}
+  opts: InternalAuthOptions = {},
 ) {
   return async (req: NextRequest, ctx: RouteContext) => {
     const expected = process.env[tokenEnv];
@@ -149,8 +146,7 @@ export function withInternalAuth(
         : err("Endpoint not configured", 503);
     }
 
-    const provided =
-      req.headers.get("x-internal-token") ?? (opts.bearer ? bearerToken(req) : null);
+    const provided = req.headers.get("x-internal-token") ?? (opts.bearer ? bearerToken(req) : null);
     if (!provided || !safeEqual(provided, expected)) return err("Unauthorized", 401);
 
     return handler(req, ctx);
@@ -172,7 +168,7 @@ export function withRateLimit(handler: RouteHandler, opts: RateLimitOptions): Ro
     if (!result.ok) {
       return NextResponse.json(
         { error: "Too many requests" },
-        { status: 429, headers: { "retry-after": String(result.retryAfter) } }
+        { status: 429, headers: { "retry-after": String(result.retryAfter) } },
       );
     }
     return handler(req, ctx);

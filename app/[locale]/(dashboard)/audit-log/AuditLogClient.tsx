@@ -61,7 +61,7 @@ export default function AuditLogClient() {
       // The audit-log GET wraps a paginated payload in the envelope, so the
       // unwrapped `data` is itself `{ data: AuditEntry[]; total: number }`.
       const res = await apiClient.get<{ data: AuditEntry[]; total: number }>(
-        `/api/audit-log?${params}`
+        `/api/audit-log?${params}`,
       );
       setData(res.data);
       setTotal(res.total);
@@ -95,9 +95,7 @@ export default function AuditLogClient() {
         title: t("action"),
         dataIndex: "action",
         width: 100,
-        render: (v: string) => (
-          <Badge variant={ACTION_VARIANTS[v] ?? "default"}>{v}</Badge>
-        ),
+        render: (v: string) => <Badge variant={ACTION_VARIANTS[v] ?? "default"}>{v}</Badge>,
       },
       {
         title: t("entity"),
@@ -108,16 +106,13 @@ export default function AuditLogClient() {
         title: t("entityId"),
         dataIndex: "entityId",
         width: 200,
-        render: (v: string) => (
-          <span className="font-mono text-xs">{v}</span>
-        ),
+        render: (v: string) => <span className="font-mono text-xs">{v}</span>,
       },
       {
         title: t("user"),
         dataIndex: "user",
         width: 180,
-        render: (user: AuditEntry["user"]) =>
-          user ? user.name ?? user.email : "-",
+        render: (user: AuditEntry["user"]) => (user ? (user.name ?? user.email) : "-"),
       },
       {
         title: t("changes"),
@@ -127,7 +122,7 @@ export default function AuditLogClient() {
           changes ? Object.keys(changes).join(", ") : "-",
       },
     ],
-    [t]
+    [t],
   );
 
   return (

@@ -41,8 +41,7 @@ function isAllowedFile(filename) {
 
 function isSdkSource(value) {
   return (
-    typeof value === "string" &&
-    (value === SDK_PACKAGE || value.startsWith(`${SDK_PACKAGE}/`))
+    typeof value === "string" && (value === SDK_PACKAGE || value.startsWith(`${SDK_PACKAGE}/`))
   );
 }
 

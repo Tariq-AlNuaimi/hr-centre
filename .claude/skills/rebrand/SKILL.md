@@ -13,12 +13,14 @@ Replace the template's defaults with the fork's project identity. **Run this imm
 > template-specific identity and are left untouched.
 
 ## Inputs to gather
+
 - **Project slug** (kebab-case): e.g. `acme-portal`. Becomes the `package.json` name.
 - **Display name**: human-readable, e.g. `"Acme Portal"`. Becomes `NEXT_PUBLIC_APP_NAME` and the CLAUDE.md / README headers.
 - **Owner** (`--owner`): the GitHub org/user that owns the repo. Defaults to the current repo's owner.
 - **Owner display name** (optional, `--owner-name`): the human owner in CLAUDE.md's first paragraph. Defaults to the git user.name.
 
 ## Steps
+
 1. Confirm inputs with the user. Show what will change (use `--dry-run` first).
 2. Run:
    ```
@@ -29,11 +31,13 @@ Replace the template's defaults with the fork's project identity. **Run this imm
    - `.env.example`: `NEXT_PUBLIC_APP_NAME="My App"` -> `"<Display Name>"`
    - `CLAUDE.md`: the H1 + tagline line (name, stack, owner)
    - `README.md`: the H1 title
-4. Report the diff to the user (filenames + rule counts). If the script reports **no changes**, say *why* — usually the fork is already rebranded, or the slug/display name drifted from the defaults the script matches on — rather than reporting a silent success.
+4. Report the diff to the user (filenames + rule counts). If the script reports **no changes**, say _why_ — usually the fork is already rebranded, or the slug/display name drifted from the defaults the script matches on — rather than reporting a silent success.
 5. Suggest: commit + push, then `/first-fork` for the rest of the bootstrap.
 
 ## Hard rule preserved
+
 The script never touches:
+
 - `.claude/` (harness is project-name-agnostic)
 - `docs/decisions/` (ADRs are stable references)
 - `prisma/schema.prisma` (data model)
@@ -42,4 +46,5 @@ The script never touches:
 - `SECURITY.md` (project owner gets filled in via the first project ADR, not by rebrand)
 
 ## Dry-run
+
 Pass `--dry-run` to preview the changes without writing. Useful when the operator is unsure about the slug.

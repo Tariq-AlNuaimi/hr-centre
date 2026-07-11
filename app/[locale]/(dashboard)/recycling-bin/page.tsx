@@ -92,9 +92,7 @@ export default function RecyclingBinPage() {
         }).toString();
         // apiClient unwraps the `ApiResponse` envelope, so this is the inner
         // paginated payload (`{ data, total, page, pageSize }`).
-        const res = await apiClient.get<RecyclingBinResponse>(
-          `/api/recycling-bin?${qs}`
-        );
+        const res = await apiClient.get<RecyclingBinResponse>(`/api/recycling-bin?${qs}`);
         setItems(res.data ?? []);
         setTotal(res.total ?? 0);
         setPage(res.page ?? nextPage);
@@ -105,7 +103,7 @@ export default function RecyclingBinPage() {
         setLoading(false);
       }
     },
-    [showError, t]
+    [showError, t],
   );
 
   useEffect(() => {
@@ -137,9 +135,7 @@ export default function RecyclingBinPage() {
 
   const handlePermanentDelete = async (item: DeletedItem) => {
     try {
-      await apiClient.delete(
-        `/api/recycling-bin/${item.entityType}/${item.id}`
-      );
+      await apiClient.delete(`/api/recycling-bin/${item.entityType}/${item.id}`);
       success(t("permanentlyDeleted", { name: item.displayName }));
       fetchItems(page, pageSize);
     } catch {
@@ -195,11 +191,7 @@ export default function RecyclingBinPage() {
               cancelText={tCommon("cancel")}
               onConfirm={() => handlePermanentDelete(record)}
             >
-              <Button
-                variant="destructive"
-                size="sm"
-                aria-label={t("permanentDeleteAction")}
-              >
+              <Button variant="destructive" size="sm" aria-label={t("permanentDeleteAction")}>
                 <TrashIcon />
                 {t("permanentDelete")}
               </Button>

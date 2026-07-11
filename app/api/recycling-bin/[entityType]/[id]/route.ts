@@ -2,18 +2,11 @@ import { NextRequest } from "next/server";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
-import {
-  recyclableAccessor,
-  recyclableClient,
-  permanentlyDelete,
-} from "@/lib/prisma/recyclable";
+import { recyclableAccessor, recyclableClient, permanentlyDelete } from "@/lib/prisma/recyclable";
 
 const recyclable = recyclableClient(prismaUnfiltered);
 
-export const DELETE = withAdminAuth(async (
-  _request: NextRequest,
-  { params }
-) => {
+export const DELETE = withAdminAuth(async (_request: NextRequest, { params }) => {
   const { entityType, id } = await params;
 
   // Validate against the allowlist BEFORE indexing prismaUnfiltered -- the

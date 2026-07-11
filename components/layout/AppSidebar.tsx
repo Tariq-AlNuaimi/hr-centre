@@ -41,11 +41,7 @@ export function AppSidebar() {
   const isAdmin = session?.user?.role === "ADMIN";
 
   // Strip locale prefix for active key matching
-  const activeKey =
-    pathname
-      .replace(localePrefixRegex, "")
-      .split("/")
-      .filter(Boolean)[0] ?? "home";
+  const activeKey = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean)[0] ?? "home";
 
   const menuItems = [
     {
@@ -130,11 +126,7 @@ export function AppSidebar() {
             collapsed && "justify-center",
           )}
         >
-          {collapsed ? (
-            <MenuIcon className="h-4 w-4" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4" />
-          )}
+          {collapsed ? <MenuIcon className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
       </div>
     </aside>

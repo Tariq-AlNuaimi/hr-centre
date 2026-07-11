@@ -28,10 +28,7 @@ const TRACER_NAME = "app";
  *
  *   const rows = await withSpan("users.list", () => userService.list(args));
  */
-export async function withSpan<T>(
-  name: string,
-  fn: (span: Span) => T | Promise<T>,
-): Promise<T> {
+export async function withSpan<T>(name: string, fn: (span: Span) => T | Promise<T>): Promise<T> {
   const tracer = trace.getTracer(TRACER_NAME);
   return tracer.startActiveSpan(name, async (span) => {
     try {

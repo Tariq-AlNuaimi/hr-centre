@@ -46,13 +46,14 @@ re-scaffolding the wrong model costs more.
 
 Read the user's prompt and propose a short entity model. Examples:
 
-| Prompt | Proposed entities |
-|---|---|
-| "Track support cases" | `Case { title, description, status, assignee, dueDate }` |
+| Prompt                  | Proposed entities                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| "Track support cases"   | `Case { title, description, status, assignee, dueDate }`                                               |
 | "Asset register for IT" | `Asset { name, serial, owner, location, status }`, `MaintenanceLog { asset, date, note, performedBy }` |
-| "Vacation requests" | `VacationRequest { requester, startDate, endDate, reason, status, approver }` |
+| "Vacation requests"     | `VacationRequest { requester, startDate, endDate, reason, status, approver }`                          |
 
 **Confirm with the user before scaffolding.** Show:
+
 - Entity list with a 1-line purpose each.
 - Field list per entity with types.
 - Any enums or relations.
@@ -82,6 +83,7 @@ npx prisma migrate dev --name add_<entity>
 (Local Postgres must be up: `make db-up` if not.)
 
 **Things the scaffold wires for you (don't fight them):**
+
 - **i18n:** until you merge the emitted `messages/_scaffold-<kebab>.json` into
   `messages/en.json` + `messages/ar.json`, the UI shows the **raw key strings**
   (e.g. `title`, `save`) instead of labels. Merge before sharing the URL.
@@ -144,13 +146,13 @@ prompts you can suggest to the operator:
 
 ## Common follow-up patterns
 
-| User says | What to do |
-|---|---|
-| Pastes a screenshot with a red circle on a button | Find the component, change the label / styling, commit, push |
-| "Add a status field with these values: …" | Add to the Prisma enum, run `prisma migrate dev`, push |
-| "This page is missing the assignee" | Add the field + relation, scaffold a select on the form, push |
-| "The team wants Excel export" | Use `lib/export.ts` -- `toExcel(rows, columns)` already wired; add a route + button |
-| "It's slow" | Check `lib/prisma/*` for missing indexes; add `@@index` to the model |
+| User says                                         | What to do                                                                          |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Pastes a screenshot with a red circle on a button | Find the component, change the label / styling, commit, push                        |
+| "Add a status field with these values: …"         | Add to the Prisma enum, run `prisma migrate dev`, push                              |
+| "This page is missing the assignee"               | Add the field + relation, scaffold a select on the form, push                       |
+| "The team wants Excel export"                     | Use `lib/export.ts` -- `toExcel(rows, columns)` already wired; add a route + button |
+| "It's slow"                                       | Check `lib/prisma/*` for missing indexes; add `@@index` to the model                |
 
 ## Skip when
 

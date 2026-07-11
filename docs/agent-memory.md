@@ -10,6 +10,7 @@ The `SessionStart` hook surfaces this file into the session, so every line is a
 recurring context tax — same discipline as CLAUDE.md.
 
 ## How to use it
+
 - Append a one-line, **dated** entry to the right section (newest at top of each
   section). Use `/remember "<entry>"`, or it accrues automatically when
   `/handoff-session` promotes its "Decisions".
@@ -24,7 +25,9 @@ recurring context tax — same discipline as CLAUDE.md.
   every session at startup — treat it like CLAUDE.md, not like `.env`.
 
 ## Durable decisions
+
 <!-- choices made with the operator, so they are not relitigated -->
+
 - 2026-07-11 — **Enterprise-pivot execution** lives on branch
   `claude/enterprise-pivot-research-6t7euo` (v2 benchmark + all pivot ADRs/blueprints/code
   pushed there). Source-of-truth plan = `docs/research/v2/enterprise-benchmark-v2.html`
@@ -32,7 +35,7 @@ recurring context tax — same discipline as CLAUDE.md.
   Phase 0 ADRs → Phase 1 blueprint → Phase 2 workstreams (P0 = WS-1/2/3 first).
 - 2026-07-03 — Deferred #11 IMPLEMENTED as `/stack-advisor` (skill, not agent):
   a **build-time** advisor injecting Next 16 RSC + Prisma 7 + Postgres positive
-  patterns *while* code is written, pointing at this repo's recipes/primitives.
+  patterns _while_ code is written, pointing at this repo's recipes/primitives.
   It is **NOT a reviewer** — the review rail (`/code-review` pre-push diff,
   `senior-code-reviewer` post-push breadth) is deliberately separate; the advisor
   ships no lenses/severity/findings and never restates the ESLint rules. One
@@ -58,12 +61,14 @@ recurring context tax — same discipline as CLAUDE.md.
   `--dangerously-skip-permissions`). (ADR-022)
 
 ## Gotchas & landmines
+
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+
 - 2026-07-11 — **Run `npm run ship` WITHOUT `NODE_ENV=production` exported.** That flag
   loads production react-dom into jsdom and falsely fails the component tests — the gate
   goes red for a bogus reason. Leave NODE_ENV unset/development for the gate.
 - 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
-  trusting it — agents sometimes return the report as the completion *message* instead of
+  trusting it — agents sometimes return the report as the completion _message_ instead of
   writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
 - 2026-07-11 — **CLAUDE.md's stack text ("Ant Design 6") is STALE** — the repo migrated
   off AntD to Tailwind v4 + Radix/shadcn (ADR-029). Treat Tailwind/shadcn as the real UI
@@ -74,7 +79,7 @@ recurring context tax — same discipline as CLAUDE.md.
   Branches UI). `git branch -d/-D` and force-push are also deny-listed locally.
 - 2026-07-03 (session 14) — **Dependabot PRs can sit on ABANDONED history.** After a repo is rebuilt
   from a pristine template, old Dependabot branches share NO merge-base with current `main` (`git
-  merge-base origin/main <branch>` prints empty) — merging one resurrects a whole dead project. Check
+merge-base origin/main <branch>` prints empty) — merging one resurrects a whole dead project. Check
   merge-base first; if disjoint, CLOSE the PR and hand-apply the version bump to the live files
   (resolve pinned action SHAs via `git ls-remote https://github.com/<owner>/<action> refs/tags/<tag>`).
 - 2026-07-03 (session 12) — **Dark/RTL browser-axe recipe (reusable; confirmed end-to-end).**
@@ -82,7 +87,7 @@ recurring context tax — same discipline as CLAUDE.md.
   the pristine flip — do NOT use `scripts/deploy.mjs` (it clears `project.config.json`
   "pristine", a landmine); POST directly to `api.vercel.com/v13/deployments?teamId=<team>&forceNew=1`
   `{project:"prj_PDhqr8z3gqOB8TXbWaR4pD4DUzL0", target:"production", gitSource:{type:"github",
-  repoId:1241728413, ref:"<branch>", sha:"<sha>"}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is
+repoId:1241728413, ref:"<branch>", sha:"<sha>"}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is
   SSO-gated — disable with `PATCH /v9/projects/<id>?teamId=<team>` `{"ssoProtection":null}` and
   ALWAYS RESTORE to `{"ssoProtection":{"deploymentType":"all_except_custom_domains"}}` after.
   (3) Run `tools/design-qa-bridge/bridge.mjs` (loopback HTTPS→app via curl) + Playwright at
@@ -92,17 +97,17 @@ recurring context tax — same discipline as CLAUDE.md.
 - 2026-07-03 (session 13) — **CORRECTION to the "seed upserts" note below: it does NOT.**
   `prisma/seed.ts` only CREATES the admin when it doesn't already exist (findUnique → skip if
   present); it never updates an existing admin's password. So resetting `SEED_ADMIN_PASSWORD`
-  + redeploying does nothing to the existing `admin@example.com`. The clean way to browser-test
-  AUTHED screens is a DISTINCT throwaway probe admin: PATCH `SEED_ADMIN_EMAIL` to a new email
-  (e.g. `axe-probe@example.com`) + `SEED_ADMIN_PASSWORD` to a known value → redeploy → seed
-  CREATES that probe ADMIN, leaving the real demo credential untouched. Restore `SEED_ADMIN_EMAIL`
-  after; the probe admin persists in the DB (soft-delete via user mgmt to clean up). Session 13
-  ran this: all 11 authed dark screens axe-CLEAN (0 serious/critical, bodyBg #030712) on dd15554.
-  Bridge login gate: wait ~2.5s for hydration before submit (else the form does a native GET and
-  leaks creds to the query string), and gate strictly on `__Secure-authjs.session-token` (NOT a
-  loose `authjs` match — that hits the CSRF cookie and every authed nav still bounces to /login).
-  Do NOT `pkill -f bridge.mjs` in a shell command that also contains that path — pkill matches
-  your own cmdline and SIGTERMs the call (exit 144); stop the bridge with `fuser -k 8443/tcp`.
+  - redeploying does nothing to the existing `admin@example.com`. The clean way to browser-test
+    AUTHED screens is a DISTINCT throwaway probe admin: PATCH `SEED_ADMIN_EMAIL` to a new email
+    (e.g. `axe-probe@example.com`) + `SEED_ADMIN_PASSWORD` to a known value → redeploy → seed
+    CREATES that probe ADMIN, leaving the real demo credential untouched. Restore `SEED_ADMIN_EMAIL`
+    after; the probe admin persists in the DB (soft-delete via user mgmt to clean up). Session 13
+    ran this: all 11 authed dark screens axe-CLEAN (0 serious/critical, bodyBg #030712) on dd15554.
+    Bridge login gate: wait ~2.5s for hydration before submit (else the form does a native GET and
+    leaks creds to the query string), and gate strictly on `__Secure-authjs.session-token` (NOT a
+    loose `authjs` match — that hits the CSRF cookie and every authed nav still bounces to /login).
+    Do NOT `pkill -f bridge.mjs` in a shell command that also contains that path — pkill matches
+    your own cmdline and SIGTERMs the call (exit 144); stop the bridge with `fuser -k 8443/tcp`.
 - 2026-07-03 — **Dark-mode axe is FLOODED with false-positive `color-contrast` serious
   findings** because `html`/`body` have NO `background-color` — the dark canvas is realized
   only via `color-scheme:dark` (+ a painted wrapper), and axe-core cannot model `color-scheme`,
@@ -156,13 +161,13 @@ recurring context tax — same discipline as CLAUDE.md.
 - 2026-06-25 — **STOP claiming "I can't run build/browser/deploy" — VERIFY first.**
   Probed this env: `next build` works (exit 0; `@next/swc-linux-x64-gnu` loads,
   glibc 2.39). Playwright MCP + Chromium present at `/opt/pw-browsers`. `VERCEL_TOKEN`
-  + `NEON_API_KEY` are SET; egress to api.vercel.com (403 unauth) + console.neon.tech
-  (401 unauth) is OPEN (real auth-level responses, not proxy blocks). The mid-session
-  `next build` failure was TRANSIENT: SessionStart had just reinstalled 183 pkgs and
-  the gnu SWC binary wasn't installed yet — it resolves once deps settle. So `/ship`
-  -> `/deploy` -> live URL -> Playwright screenshot is a CLOSED loop here. Don't push
-  `--no-verify` by default; run the real gate. The only true prerequisite for a
-  screenshot is a running URL (`npm run dev` localhost, or a deployed preview).
+  - `NEON_API_KEY` are SET; egress to api.vercel.com (403 unauth) + console.neon.tech
+    (401 unauth) is OPEN (real auth-level responses, not proxy blocks). The mid-session
+    `next build` failure was TRANSIENT: SessionStart had just reinstalled 183 pkgs and
+    the gnu SWC binary wasn't installed yet — it resolves once deps settle. So `/ship`
+    -> `/deploy` -> live URL -> Playwright screenshot is a CLOSED loop here. Don't push
+    `--no-verify` by default; run the real gate. The only true prerequisite for a
+    screenshot is a running URL (`npm run dev` localhost, or a deployed preview).
 - 2026-06-25 — `/ship` scalability scan (`scripts/ship.mjs` `scanScalability`)
   tests bound tokens (take/skip/cursor/paginat) against each `.findMany(` CALL
   SITE (~250 chars after the call), NOT file-wide — a comment word "take"/"skip"
@@ -193,7 +198,9 @@ recurring context tax — same discipline as CLAUDE.md.
   so the FF doesn't strand remote commits.
 
 ## Conventions discovered
+
 <!-- patterns/idioms established in practice that are not yet written down elsewhere -->
+
 - 2026-07-03 — **Session status is DATA, not prose.** `docs/session-state.json` is the
   single source; `SESSION-HANDOFF.md`'s two tables are RENDERED from it between
   `<!-- BEGIN/END:auto-status -->` markers via `scripts/render-handoff.mjs` (`--check`

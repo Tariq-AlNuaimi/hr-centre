@@ -94,10 +94,9 @@ export function decryptField(envelope: string): string {
   if (version !== VERSION) throw new Error(`Unknown field-encryption version: ${version}`);
   const decipher = createDecipheriv(ALGO, keyFor(keyId), Buffer.from(ivB64, "base64"));
   decipher.setAuthTag(Buffer.from(tagB64, "base64"));
-  return Buffer.concat([
-    decipher.update(Buffer.from(ctB64, "base64")),
-    decipher.final(),
-  ]).toString("utf8");
+  return Buffer.concat([decipher.update(Buffer.from(ctB64, "base64")), decipher.final()]).toString(
+    "utf8",
+  );
 }
 
 /** True if a stored value looks like our envelope (lets reads tolerate legacy plaintext). */
@@ -202,7 +201,7 @@ export const encryptionExtension = Prisma.defineExtension((client) =>
         },
       },
     },
-  })
+  }),
 );
 ```
 
@@ -217,7 +216,7 @@ import { encryptionExtension } from "./prisma/encryption-extension";
 function createExtendedClient() {
   const base = createBaseClient();
   return base
-    .$extends(encryptionExtension)   // innermost: encrypt before audit sees it
+    .$extends(encryptionExtension) // innermost: encrypt before audit sees it
     .$extends(softDeleteExtension)
     .$extends(auditExtension);
 }
@@ -226,7 +225,7 @@ function createExtendedClient() {
 > **Ordering note + interaction with audit:** with encryption innermost, the audit
 > extension's `before` snapshot (a separate `findUnique`) and `after` (the op result)
 > both pass through the decrypt path on read — meaning `audit_logs` could capture
-> *plaintext* in `after`/`changes` for an encrypted field. To prevent that, add the
+> _plaintext_ in `after`/`changes` for an encrypted field. To prevent that, add the
 > encrypted field names to `SCRUB_FIELDS` too (they're Restricted anyway), OR
 > exclude them from the model in `ENCRYPTED_FIELDS`'s decrypt-on-read for the audit
 > path. The simplest correct choice: **add each encrypted field name to
@@ -243,17 +242,17 @@ column list that includes an encrypted field will emit **plaintext**. Audit your
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `lib/crypto-field.ts` | **New** — AES-256-GCM primitives |
-| `lib/prisma/encryption-extension.ts` | **New** — transparent encrypt/decrypt |
-| `lib/prisma.ts` | Add `encryptionExtension` innermost; **Ask-before file** |
-| `lib/prisma/audit-extension.ts` | Add encrypted field names to `SCRUB_FIELDS`; **Ask-before file** |
-| `tests/contracts/audit-scrub.test.ts` | Add those names to the membership assertion |
-| `prisma/schema.prisma` + migration | The encrypted `String?` column(s) |
-| `docs/decisions/ADR-0XX-*.md` | **New** — run `/adr` (ADR-001 migration trigger) |
-| `.env.example` | `FIELD_ENCRYPTION_KEY` (+ `FIELD_ENCRYPTION_KEY_PREV` for rotation) |
-| `SECURITY.md` | §1 + §4 rows below |
+| File                                  | Change                                                              |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `lib/crypto-field.ts`                 | **New** — AES-256-GCM primitives                                    |
+| `lib/prisma/encryption-extension.ts`  | **New** — transparent encrypt/decrypt                               |
+| `lib/prisma.ts`                       | Add `encryptionExtension` innermost; **Ask-before file**            |
+| `lib/prisma/audit-extension.ts`       | Add encrypted field names to `SCRUB_FIELDS`; **Ask-before file**    |
+| `tests/contracts/audit-scrub.test.ts` | Add those names to the membership assertion                         |
+| `prisma/schema.prisma` + migration    | The encrypted `String?` column(s)                                   |
+| `docs/decisions/ADR-0XX-*.md`         | **New** — run `/adr` (ADR-001 migration trigger)                    |
+| `.env.example`                        | `FIELD_ENCRYPTION_KEY` (+ `FIELD_ENCRYPTION_KEY_PREV` for rotation) |
+| `SECURITY.md`                         | §1 + §4 rows below                                                  |
 
 > Touches `lib/prisma/*` and an "Ask before" boundary — run `/code-review`, `/ship`.
 
@@ -264,8 +263,8 @@ The envelope carries a `keyId`, so rotation is gradual:
 1. Generate a new key. Move the current `FIELD_ENCRYPTION_KEY` value to
    `FIELD_ENCRYPTION_KEY_PREV` and add it to `KEYS` under id `"prev"` (the loader
    already does this); set the new key as `FIELD_ENCRYPTION_KEY` (id `"0"`).
-   *(Adjust `PRIMARY_KEY_ID`/key-id mapping so new writes use the new key while old
-   ciphertext with the prior `keyId` still decrypts.)*
+   _(Adjust `PRIMARY_KEY_ID`/key-id mapping so new writes use the new key while old
+   ciphertext with the prior `keyId` still decrypts.)_
 2. Run a one-off re-encrypt job: `findMany` each model with encrypted fields (decrypts
    via `prev`), then `update` each row (re-encrypts via the primary) — the extension
    handles both directions transparently.

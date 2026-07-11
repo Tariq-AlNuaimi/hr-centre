@@ -37,6 +37,7 @@ If anything here conflicts with `CLAUDE.md` / `SECURITY.md`, those files win.
   build → gitleaks → npm audit). Do not push on a red `/ship`.
 
 <!-- BEGIN senior-code-review (managed) -->
+
 ## Mandatory: senior code review (post-push)
 
 Every push of code MUST be followed by a senior-code-reviewer pass. It is the

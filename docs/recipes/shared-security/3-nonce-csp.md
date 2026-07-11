@@ -39,7 +39,7 @@ No new dependency to install.
 ## Change 1 — `next.config.ts`: stop emitting the script CSP statically
 
 The static header can't hold a nonce, so move the **script** directive out of
-`next.config.ts` and let middleware own the whole CSP. Keep the *other* security
+`next.config.ts` and let middleware own the whole CSP. Keep the _other_ security
 headers in `next.config.ts` (they're static and fine). Edit the `csp` array — delete
 the `script-src` line (middleware will set the full policy):
 
@@ -127,8 +127,7 @@ export default auth((req) => {
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", csp);
-  const pass = () =>
-    withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
+  const pass = () => withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
 
   if (
     pathname.startsWith("/api/auth") ||
@@ -186,7 +185,10 @@ tag. **Leave `AntdRegistry` exactly as it is** — its SSR `<style>` is allowed 
 import { headers } from "next/headers";
 // AntdRegistry import stays unchanged.
 
-export default async function LocaleLayout({ children, params }: {
+export default async function LocaleLayout({
+  children,
+  params,
+}: {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }) {
@@ -228,12 +230,12 @@ export default async function LocaleLayout({ children, params }: {
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `next.config.ts` | Remove the static `Content-Security-Policy` header; update T-05 comment |
-| `middleware.ts` | Per-request nonce + CSP on **request and response** headers; **Ask-before file** |
-| `app/[locale]/layout.tsx` | Read nonce, nonce the inline theme script (registry untouched) |
-| `SECURITY.md` | Update §4 + T-05 (script nonce-d; style caveat remains) |
+| File                      | Change                                                                           |
+| ------------------------- | -------------------------------------------------------------------------------- |
+| `next.config.ts`          | Remove the static `Content-Security-Policy` header; update T-05 comment          |
+| `middleware.ts`           | Per-request nonce + CSP on **request and response** headers; **Ask-before file** |
+| `app/[locale]/layout.tsx` | Read nonce, nonce the inline theme script (registry untouched)                   |
+| `SECURITY.md`             | Update §4 + T-05 (script nonce-d; style caveat remains)                          |
 
 > `middleware.ts` is an "Ask before" file. Run `/code-review` then `/ship`.
 

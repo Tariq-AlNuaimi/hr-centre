@@ -63,7 +63,7 @@ commit"):
 export const SCRUB_FIELDS = new Set([
   "passwordHash",
   "password",
-  "mfaSecret",          // <-- add
+  "mfaSecret", // <-- add
   "refresh_token",
   "access_token",
   // ...rest unchanged
@@ -204,7 +204,7 @@ export const POST = withAuth(async (req, { session }) => {
 The JWT-session strategy (this template) carries the step-up state on the token.
 Add `mfaEnabled` + `mfaVerified` in `lib/auth.ts`. The `authorize()` callback does
 **not** change — it still validates the password. The second factor is enforced
-*after* the session exists, by middleware (below).
+_after_ the session exists, by middleware (below).
 
 ```ts
 // lib/auth.ts callbacks — replace the jwt/session callbacks:
@@ -250,14 +250,14 @@ Have `authorize()` return the `mfaEnabled` flag so the first `jwt` pass sees it.
 Add to the returned object in `lib/auth.ts` `authorize()`:
 
 ```ts
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-          mfaEnabled: user.mfaEnabled,   // <-- add
-        };
+return {
+  id: user.id,
+  email: user.email,
+  name: user.name,
+  image: user.image,
+  role: user.role,
+  mfaEnabled: user.mfaEnabled, // <-- add
+};
 ```
 
 Augment the types (`types/index.ts`) so `session.user.mfaEnabled/mfaVerified` and the
@@ -266,14 +266,29 @@ JWT token fields are typed (mirrors the existing `role` augmentation — keeps t
 
 ```ts
 declare module "next-auth" {
-  interface User { role: Role; mfaEnabled?: boolean }
-  interface Session { user: { id: string; role: Role; mfaEnabled: boolean; mfaVerified: boolean } & DefaultSession["user"] }
+  interface User {
+    role: Role;
+    mfaEnabled?: boolean;
+  }
+  interface Session {
+    user: {
+      id: string;
+      role: Role;
+      mfaEnabled: boolean;
+      mfaVerified: boolean;
+    } & DefaultSession["user"];
+  }
 }
 // NOTE: augment `@auth/core/jwt` (NOT `next-auth/jwt`) — this template's JWT
 // augmentation lives there (see types/index.ts + the duplicate-@auth/core note
 // in lib/auth.ts). Using `next-auth/jwt` leaves token.mfa* untyped → /ship fails.
 declare module "@auth/core/jwt" {
-  interface JWT { id: string; role: Role; mfaEnabled?: boolean; mfaVerified?: boolean }
+  interface JWT {
+    id: string;
+    role: Role;
+    mfaEnabled?: boolean;
+    mfaVerified?: boolean;
+  }
 }
 ```
 
@@ -290,18 +305,16 @@ whose session is `mfaEnabled && !mfaVerified` is sent to a `/mfa` challenge page
 after the existing unauthenticated redirect, in the non-API branch:
 
 ```ts
-    // Step-up: password verified but second factor still pending → force /mfa.
-    const sess = req.auth as
-      | { user?: { mfaEnabled?: boolean; mfaVerified?: boolean } }
-      | null;
-    const needsMfa = !!sess?.user?.mfaEnabled && !sess.user.mfaVerified;
-    // localePrefixRegex (import from "./i18n/config") strips the config-driven
-    // /<locale> prefix — don't hardcode (en|ar); it rots when locales change.
-    const onMfaPage = pathname.replace(localePrefixRegex, "").startsWith("/mfa");
-    if (isAuth && needsMfa && !onMfaPage) {
-      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
-      return NextResponse.redirect(new URL(`/${locale}/mfa`, req.url));
-    }
+// Step-up: password verified but second factor still pending → force /mfa.
+const sess = req.auth as { user?: { mfaEnabled?: boolean; mfaVerified?: boolean } } | null;
+const needsMfa = !!sess?.user?.mfaEnabled && !sess.user.mfaVerified;
+// localePrefixRegex (import from "./i18n/config") strips the config-driven
+// /<locale> prefix — don't hardcode (en|ar); it rots when locales change.
+const onMfaPage = pathname.replace(localePrefixRegex, "").startsWith("/mfa");
+if (isAuth && needsMfa && !onMfaPage) {
+  const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
+  return NextResponse.redirect(new URL(`/${locale}/mfa`, req.url));
+}
 ```
 
 Add `/mfa` and `/api/mfa/challenge` to the half-authenticated allowance — they must
@@ -316,19 +329,19 @@ use `withAuth`, so they're protected by a normal session regardless.
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `prisma/schema.prisma` | Add `mfaSecret` + `mfaEnabled` to `User`; migrate |
-| `lib/prisma/audit-extension.ts` | Add `mfaSecret` to `SCRUB_FIELDS` |
-| `tests/contracts/audit-scrub.test.ts` | Add `mfaSecret` to the membership assertion |
-| `lib/mfa.ts` | **New** — TOTP helpers |
-| `app/api/mfa/enroll/route.ts` | **New** — enroll + activate |
-| `app/api/mfa/challenge/route.ts` | **New** — login second factor |
-| `lib/auth.ts` | jwt/session callbacks + `authorize` return; **Ask-before file** |
-| `middleware.ts` | Step-up redirect; **Ask-before file** |
-| `types/index.ts` | Augment `mfaEnabled` / `mfaVerified` |
-| `app/[locale]/mfa/page.tsx` | **New** — the challenge form (client) |
-| `.env.example` | `MFA_ISSUER` |
+| File                                  | Change                                                          |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `prisma/schema.prisma`                | Add `mfaSecret` + `mfaEnabled` to `User`; migrate               |
+| `lib/prisma/audit-extension.ts`       | Add `mfaSecret` to `SCRUB_FIELDS`                               |
+| `tests/contracts/audit-scrub.test.ts` | Add `mfaSecret` to the membership assertion                     |
+| `lib/mfa.ts`                          | **New** — TOTP helpers                                          |
+| `app/api/mfa/enroll/route.ts`         | **New** — enroll + activate                                     |
+| `app/api/mfa/challenge/route.ts`      | **New** — login second factor                                   |
+| `lib/auth.ts`                         | jwt/session callbacks + `authorize` return; **Ask-before file** |
+| `middleware.ts`                       | Step-up redirect; **Ask-before file**                           |
+| `types/index.ts`                      | Augment `mfaEnabled` / `mfaVerified`                            |
+| `app/[locale]/mfa/page.tsx`           | **New** — the challenge form (client)                           |
+| `.env.example`                        | `MFA_ISSUER`                                                    |
 
 > Touches `lib/auth.ts` + `middleware.ts` (both CLAUDE.md "Ask before") and the
 > auth boundary — run `/code-review` on the diff before pushing, then `/ship`.

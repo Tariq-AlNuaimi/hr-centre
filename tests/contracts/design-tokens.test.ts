@@ -14,10 +14,7 @@ const brandTokens = { borderRadius: brand.radius, fontSize: 14 };
 const root = join(import.meta.dirname, "..", "..");
 const tokensCss = readFileSync(join(root, "app", "tokens.css"), "utf8");
 const globalsCss = readFileSync(join(root, "app", "globals.css"), "utf8");
-const localeLayout = readFileSync(
-  join(root, "app", "[locale]", "layout.tsx"),
-  "utf8",
-);
+const localeLayout = readFileSync(join(root, "app", "[locale]", "layout.tsx"), "utf8");
 
 function cssVar(name: string): string {
   const m = tokensCss.match(new RegExp(`${name}:\\s*([^;]+);`));
@@ -106,11 +103,7 @@ test("@theme maps each semantic var to a --color-* utility", () => {
     "--color-destructive-emphasis",
     "--color-primary-emphasis",
   ]) {
-    assert.match(
-      tokensCss,
-      new RegExp(`${c}:\\s*var\\(`),
-      `@theme block maps ${c} to a var()`,
-    );
+    assert.match(tokensCss, new RegExp(`${c}:\\s*var\\(`), `@theme block maps ${c} to a var()`);
   }
 });
 

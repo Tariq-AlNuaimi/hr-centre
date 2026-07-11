@@ -11,4 +11,4 @@ export const idParamSchema = z.object({
   id: z.string().min(1),
 });
 
-export const emailSchema = z.string().email().toLowerCase().trim();
+export const emailSchema = z.email().toLowerCase().trim();

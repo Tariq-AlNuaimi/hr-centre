@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  useForm,
-  type FieldValues,
-  type Resolver,
-  type UseFormProps,
-} from "react-hook-form";
+import { useForm, type FieldValues, type Resolver, type UseFormProps } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ZodType, infer as zInfer } from "zod";
 import {
@@ -32,28 +27,30 @@ import { Input } from "@/components/ui/input";
  */
 
 /** useForm pre-wired with a zod resolver — infers the form's value type from the schema. */
-export function useZodForm<TSchema extends ZodType>(
+export function useZodForm<TSchema extends ZodType<FieldValues>>(
   schema: TSchema,
   props?: Omit<UseFormProps<zInfer<TSchema>>, "resolver">,
 ) {
-  // `schema as never` sidesteps the zod-v3 <-> @hookform/resolvers-v5 generic
-  // skew (the resolver's overloads probe for a zod-v4 shape); the runtime value
-  // is the schema unchanged, and the resolver is re-typed to the inferred form.
+  // zod v4 + @hookform/resolvers v5 is the intended pairing (WS-7, ADR-046).
+  // TSchema is constrained to an object schema (output extends FieldValues) so
+  // the form value type infers correctly; `schema as never` sidesteps zodResolver's
+  // overload probe for the concrete zod-v4 brand on the generic parameter (the
+  // runtime value is the schema unchanged), and the resolver is re-typed to the
+  // inferred form values.
   return useForm<zInfer<TSchema>>({
     ...props,
-    resolver: zodResolver(schema as never) as Resolver<zInfer<TSchema>>,
+    resolver: zodResolver(schema as never) as unknown as Resolver<zInfer<TSchema>>,
   });
 }
 
-export interface TextFieldProps
-  extends Omit<
-    React.InputHTMLAttributes<HTMLInputElement>,
-    // `name`/`id` are owned by the RHF binding + FormControl. `value`/`onChange`/
-    // `onBlur`/`ref` are the react-hook-form wiring — a caller passing any of them
-    // would fight the controlled field, so they're removed from the surface (and
-    // `field` also wins at runtime below, defence in depth).
-    "name" | "id" | "value" | "onChange" | "onBlur" | "ref"
-  > {
+export interface TextFieldProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  // `name`/`id` are owned by the RHF binding + FormControl. `value`/`onChange`/
+  // `onBlur`/`ref` are the react-hook-form wiring — a caller passing any of them
+  // would fight the controlled field, so they're removed from the surface (and
+  // `field` also wins at runtime below, defence in depth).
+  "name" | "id" | "value" | "onChange" | "onBlur" | "ref"
+> {
   /** RHF field name (a key of the form's schema). */
   name: string;
   /** Visible field label. */
@@ -63,12 +60,7 @@ export interface TextFieldProps
 }
 
 /** A labelled text input bound to the enclosing <Form> by `name`. */
-export function TextField({
-  name,
-  label,
-  description,
-  ...inputProps
-}: TextFieldProps) {
+export function TextField({ name, label, description, ...inputProps }: TextFieldProps) {
   return (
     <FormFieldPrimitive<FieldValues>
       name={name}

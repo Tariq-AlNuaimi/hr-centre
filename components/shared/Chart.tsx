@@ -12,38 +12,28 @@ import type { ChartProps, ChartType } from "./Chart.impl";
 export type { ChartProps, ChartType };
 
 // `dynamic` erases the generic signature, so re-assert it on the exported binding.
-export const Chart = dynamic(
-  () => import("./Chart.impl").then((m) => m.Chart),
-  { ssr: false }
-) as <T extends Record<string, unknown>>(props: ChartProps<T>) => React.ReactElement;
+export const Chart = dynamic(() => import("./Chart.impl").then((m) => m.Chart), { ssr: false }) as <
+  T extends Record<string, unknown>,
+>(
+  props: ChartProps<T>,
+) => React.ReactElement;
 
 // --- Tremor-style named surface (ADR-029, Workstream C2) --------------------
 // @tremor/react was deferred (hard react@^18 peer, incompatible with React 19 —
 // see Chart.impl header). recharts stays the engine; these thin named wrappers
 // give the ergonomic Tremor-like surface (`<LineChart data=… />`) on top of the
 // single declarative `Chart`, so callers can pick either style.
-type NamedChartProps<T extends Record<string, unknown>> = Omit<
-  ChartProps<T>,
-  "type"
->;
+type NamedChartProps<T extends Record<string, unknown>> = Omit<ChartProps<T>, "type">;
 
-export function LineChart<T extends Record<string, unknown>>(
-  props: NamedChartProps<T>,
-) {
+export function LineChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="line" {...props} />;
 }
-export function BarChart<T extends Record<string, unknown>>(
-  props: NamedChartProps<T>,
-) {
+export function BarChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="bar" {...props} />;
 }
-export function AreaChart<T extends Record<string, unknown>>(
-  props: NamedChartProps<T>,
-) {
+export function AreaChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="area" {...props} />;
 }
-export function PieChart<T extends Record<string, unknown>>(
-  props: NamedChartProps<T>,
-) {
+export function PieChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="pie" {...props} />;
 }

@@ -20,8 +20,7 @@ const withAnalyzer = withBundleAnalyzer({
 // and `output: "standalone"` is emitted ONLY when DOCKER_BUILD is set, so the Vercel
 // build is byte-for-byte unchanged and the self-host image stays small (it ships
 // just the traced runtime under .next/standalone). `make docker-build` sets it.
-const isDockerBuild =
-  process.env.DOCKER_BUILD === "1" || process.env.DOCKER_BUILD === "true";
+const isDockerBuild = process.env.DOCKER_BUILD === "1" || process.env.DOCKER_BUILD === "true";
 
 // NOTE (T-05 / recipe shared-security/3): Content-Security-Policy is intentionally
 // NOT set here. A static next.config header can't carry a per-request nonce, so

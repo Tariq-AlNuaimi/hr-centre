@@ -6,15 +6,8 @@ import { cn } from "@/lib/utils";
  * variable swap). The layout-matched Skeletons in components/shared/Skeletons
  * compose these into page/table/form silhouettes, replacing AntD `<Skeleton>`.
  */
-export function Skeleton({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div
-      aria-hidden
-      className={cn("animate-pulse rounded-md bg-muted", className)}
-      {...props}
-    />
+    <div aria-hidden className={cn("animate-pulse rounded-md bg-muted", className)} {...props} />
   );
 }

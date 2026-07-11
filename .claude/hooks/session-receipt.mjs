@@ -13,13 +13,22 @@ try {
   // natural collection point -- the markers are written on warn/threshold paths
   // and would otherwise accumulate one-per-session on a persistent dev machine.
   if (input.session_id) {
-    for (const f of [`/tmp/ctx-watchdog-${input.session_id}`, `/tmp/session-guard-${input.session_id}`]) {
-      try { if (existsSync(f)) unlinkSync(f); } catch { /* best-effort */ }
+    for (const f of [
+      `/tmp/ctx-watchdog-${input.session_id}`,
+      `/tmp/session-guard-${input.session_id}`,
+    ]) {
+      try {
+        if (existsSync(f)) unlinkSync(f);
+      } catch {
+        /* best-effort */
+      }
     }
   }
   const t = input.transcript_path;
   if (!t || !existsSync(t)) process.exit(0);
-  let msgs = 0, out = 0, lastCtx = 0;
+  let msgs = 0,
+    out = 0,
+    lastCtx = 0;
   for (const line of readFileSync(t, "utf8").trim().split("\n")) {
     try {
       const e = JSON.parse(line);
@@ -27,10 +36,15 @@ try {
       if (e.type === "assistant" && u) {
         msgs++;
         out += u.output_tokens ?? 0;
-        lastCtx = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) +
-                  (u.cache_creation_input_tokens ?? 0) + (u.output_tokens ?? 0);
+        lastCtx =
+          (u.input_tokens ?? 0) +
+          (u.cache_read_input_tokens ?? 0) +
+          (u.cache_creation_input_tokens ?? 0) +
+          (u.output_tokens ?? 0);
       }
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
   const row = {
     ts: new Date().toISOString(),
@@ -46,6 +60,10 @@ try {
   try {
     const all = readFileSync(logUrl, "utf8").trim().split("\n");
     if (all.length > MAX_ROWS) writeFileSync(logUrl, all.slice(-MAX_ROWS).join("\n") + "\n");
-  } catch { /* rotation is best-effort */ }
-} catch { /* never fail session end */ }
+  } catch {
+    /* rotation is best-effort */
+  }
+} catch {
+  /* never fail session end */
+}
 process.exit(0);

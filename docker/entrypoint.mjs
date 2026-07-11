@@ -24,9 +24,7 @@ const appRoot = fileURLToPath(new URL("..", import.meta.url));
 // DATABASE_URL (and any auth/SMTP secrets) come from the runtime env, never the
 // image. Migrations must stay forward-compatible (CLAUDE.md / ADR-035): never
 // drop a column the running version still reads.
-const prismaCli = fileURLToPath(
-  new URL("../node_modules/prisma/build/index.js", import.meta.url),
-);
+const prismaCli = fileURLToPath(new URL("../node_modules/prisma/build/index.js", import.meta.url));
 
 const migrate = spawnSync(process.execPath, [prismaCli, "migrate", "deploy"], {
   stdio: "inherit",
@@ -34,16 +32,11 @@ const migrate = spawnSync(process.execPath, [prismaCli, "migrate", "deploy"], {
 });
 
 if (migrate.error) {
-  console.error(
-    `[entrypoint] failed to spawn prisma migrate deploy: ${migrate.error.message}`,
-  );
+  console.error(`[entrypoint] failed to spawn prisma migrate deploy: ${migrate.error.message}`);
   process.exit(1);
 }
 if (migrate.status !== 0) {
-  const reason =
-    migrate.status !== null
-      ? `exit ${migrate.status}`
-      : `signal ${migrate.signal}`;
+  const reason = migrate.status !== null ? `exit ${migrate.status}` : `signal ${migrate.signal}`;
   console.error(
     `[entrypoint] prisma migrate deploy failed (${reason}); refusing to start the server`,
   );

@@ -4,13 +4,7 @@ import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { emailSchema } from "@/lib/validations/common";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
   Select,
   SelectContent,
@@ -26,12 +20,7 @@ interface UserFormProps {
     name?: string;
     role?: string;
   };
-  onSubmit: (values: {
-    email: string;
-    name: string;
-    password?: string;
-    role: string;
-  }) => void;
+  onSubmit: (values: { email: string; name: string; password?: string; role: string }) => void;
   onCancel: () => void;
   loading?: boolean;
   isEdit?: boolean;
@@ -74,10 +63,7 @@ export function UserForm({
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="flex max-w-[500px] flex-col gap-4"
-      >
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex max-w-[500px] flex-col gap-4">
         <TextField name="name" label={t("name")} />
 
         <TextField name="email" label={t("email")} type="email" />

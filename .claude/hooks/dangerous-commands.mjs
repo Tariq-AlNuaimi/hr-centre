@@ -11,8 +11,23 @@ import { readFileSync } from "node:fs";
 
 // Targets where `rm -rf` means catastrophe (root/home/repo-root/system dirs).
 const RM_FATAL_TARGETS = new Set([
-  "/", "/*", "~", "~/", "~/*", "$HOME", "${HOME}", "$HOME/", "$HOME/*",
-  ".", "./", "./*", "..", "../", "../*", "*", ".git",
+  "/",
+  "/*",
+  "~",
+  "~/",
+  "~/*",
+  "$HOME",
+  "${HOME}",
+  "$HOME/",
+  "$HOME/*",
+  ".",
+  "./",
+  "./*",
+  "..",
+  "../",
+  "../*",
+  "*",
+  ".git",
 ]);
 const SYSTEM_DIR = /^\/(bin|boot|dev|etc|home|lib|lib64|opt|root|sbin|srv|sys|usr|var)\/?\*?$/;
 
@@ -32,8 +47,9 @@ function checkSegment(seg) {
     const force = /(^|[^-\w])-[a-zA-Z]*f/.test(" " + flags) || flags.includes("--force");
     if (recursive && force) {
       const bad = args.find(
-        (a) => !a.startsWith("-") &&
-          (RM_FATAL_TARGETS.has(a.replace(/["']/g, "")) || SYSTEM_DIR.test(a.replace(/["']/g, "")))
+        (a) =>
+          !a.startsWith("-") &&
+          (RM_FATAL_TARGETS.has(a.replace(/["']/g, "")) || SYSTEM_DIR.test(a.replace(/["']/g, ""))),
       );
       if (bad) return `\`rm -rf ${bad}\` destroys the repo root / home / a system dir`;
     }
@@ -63,11 +79,12 @@ try {
   // patterns (they span segments by nature).
   if (/\b(curl|wget)\b[^|;&]*\|\s*(sudo\s+)?(ba|z|da|k)?sh\b/.test(command))
     why = "piping a download straight into a shell executes unreviewed remote code";
-  else if (/\b(ba|z|da|k)?sh\s+<\(\s*(curl|wget)\b/.test(command) ||
-           /\b(ba|z|da|k)?sh\s+-c\s+["']?\$\(\s*(curl|wget)\b/.test(command))
+  else if (
+    /\b(ba|z|da|k)?sh\s+<\(\s*(curl|wget)\b/.test(command) ||
+    /\b(ba|z|da|k)?sh\s+-c\s+["']?\$\(\s*(curl|wget)\b/.test(command)
+  )
     why = "executing a downloaded script without review runs unreviewed remote code";
-  else if (/:\(\)\s*\{\s*:\|:&\s*\}\s*;\s*:/.test(command))
-    why = "fork bomb";
+  else if (/:\(\)\s*\{\s*:\|:&\s*\}\s*;\s*:/.test(command)) why = "fork bomb";
   else {
     for (const seg of command.split(/(?:\|\||&&|;|\||\n)/)) {
       why = checkSegment(seg);
@@ -75,15 +92,19 @@ try {
     }
   }
   if (why) {
-    console.log(JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason:
-          `[dangerous-command] Denied: ${why}. If this is genuinely needed, ask the ` +
-          `operator or use a narrowly scoped alternative (SECURITY.md §17).`,
-      },
-    }));
+    console.log(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason:
+            `[dangerous-command] Denied: ${why}. If this is genuinely needed, ask the ` +
+            `operator or use a narrowly scoped alternative (SECURITY.md §17).`,
+        },
+      }),
+    );
   }
-} catch { /* a guard hook must never brick the session */ }
+} catch {
+  /* a guard hook must never brick the session */
+}
 process.exit(0);

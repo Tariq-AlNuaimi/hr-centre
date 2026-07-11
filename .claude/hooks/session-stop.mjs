@@ -48,8 +48,7 @@ try {
     blockers.push(`'${branch}' has no upstream — nothing on this branch is pushed`);
   // WARN tier: uncommitted working-tree changes.
   const warnings = [];
-  if (dirty)
-    warnings.push(`${dirty.split("\n").length} uncommitted change(s) in the working tree`);
+  if (dirty) warnings.push(`${dirty.split("\n").length} uncommitted change(s) in the working tree`);
 
   const fix = `git add -A && git commit -m "<msg>" && git push -u origin ${branch}`;
 
@@ -73,7 +72,9 @@ try {
   if (problems.length === 0) {
     // clean — say nothing, and GC the per-session dedup marker so /tmp doesn't
     // accumulate stale markers across sessions.
-    try { if (existsSync(stateFile)) unlinkSync(stateFile); } catch {}
+    try {
+      if (existsSync(stateFile)) unlinkSync(stateFile);
+    } catch {}
     process.exit(0);
   }
 
@@ -87,7 +88,7 @@ try {
   console.error(
     `[session-guard] Work is only safe once PUSHED — a fresh container clones nothing else (#14):\n` +
       problems.map((p) => `  - ${p}`).join("\n") +
-      `\n  Commit + push completed work (or run /handoff-session) before this session ends:\n    ${fix}`
+      `\n  Commit + push completed work (or run /handoff-session) before this session ends:\n    ${fix}`,
   );
 } catch {
   /* a hook must never trap the agent */

@@ -9,7 +9,9 @@ import { join, relative } from "node:path";
 const root = process.cwd();
 const out = ["# Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)", ""];
 // Precompiled once (not per route file): method -> its export-detector regex.
-const HTTP_METHOD_RES = "GET POST PUT PATCH DELETE".split(" ").map((m) => [m, new RegExp(`export const ${m}\\b`)]);
+const HTTP_METHOD_RES = "GET POST PUT PATCH DELETE"
+  .split(" ")
+  .map((m) => [m, new RegExp(`export const ${m}\\b`)]);
 
 function walk(dir, fn) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -28,7 +30,9 @@ walk(join(root, "app"), (p) => {
     let methods = "";
     if (rel.endsWith("route.ts")) {
       const src = readFileSync(p, "utf8");
-      methods = HTTP_METHOD_RES.filter(([, re]) => re.test(src)).map(([m]) => m).join(",");
+      methods = HTTP_METHOD_RES.filter(([, re]) => re.test(src))
+        .map(([m]) => m)
+        .join(",");
     }
     routes.push(`- ${rel}${methods ? `  [${methods}]` : ""}`);
   }
@@ -40,7 +44,8 @@ out.push("## Models (prisma/schema.prisma)");
 const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
 for (const m of schema.matchAll(/^model (\w+) \{([^}]*)\}/gms)) {
   const fields = [...m[2].matchAll(/^\s{2}(\w+)\s+(\S+)/gm)]
-    .map((f) => f[1]).filter((f) => !f.startsWith("@@"));
+    .map((f) => f[1])
+    .filter((f) => !f.startsWith("@@"));
   out.push(`- ${m[1]}: ${fields.join(", ")}`);
 }
 out.push("");
@@ -49,9 +54,11 @@ out.push("");
 out.push("## lib/ exports");
 walk(join(root, "lib"), (p) => {
   if (!p.endsWith(".ts")) return;
-  const names = [...readFileSync(p, "utf8")
-    .matchAll(/^export (?:async )?(?:function|const|class|type|interface) (\w+)/gm)]
-    .map((m) => m[1]);
+  const names = [
+    ...readFileSync(p, "utf8").matchAll(
+      /^export (?:async )?(?:function|const|class|type|interface) (\w+)/gm,
+    ),
+  ].map((m) => m[1]);
   if (names.length) out.push(`- ${relative(root, p)}: ${names.join(", ")}`);
 });
 out.push("");

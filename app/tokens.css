@@ -27,14 +27,14 @@
   /* --- Density semantics (what the rubric's --density-* check means) -------
    * Use these, not raw --space-*, for the recurring layout decisions, so a
    * fork can retune the whole app's density by editing four lines. */
-  --density-page: var(--space-6);        /* page/content padding              */
-  --density-card: var(--space-4);        /* inside cards/panels               */
+  --density-page: var(--space-6); /* page/content padding              */
+  --density-card: var(--space-4); /* inside cards/panels               */
   --density-section-gap: var(--space-6); /* between sections/cards on a page  */
   --density-control-gap: var(--space-2); /* between adjacent controls/chips   */
 
   /* --- Type scale (14px body base; h-sizes are the heading steps) --------- */
   --font-size-xs: 12px;
-  --font-size-base: 14px;   /* body base size                               */
+  --font-size-base: 14px; /* body base size                               */
   --font-size-lg: 16px;
   --font-size-h5: 16px;
   --font-size-h4: 20px;
@@ -42,11 +42,11 @@
   --font-size-h2: 30px;
   --font-size-h1: 38px;
   --line-height-base: 1.5714;
-  --measure-body: 65ch;     /* max readable body-text width                  */
+  --measure-body: 65ch; /* max readable body-text width                  */
 
   /* --- Radius (one scale per app — no mixed corner systems) --------------- */
   --radius-sm: 6px;
-  --radius-base: 8px;       /* the base corner radius (rounded-md)          */
+  --radius-base: 8px; /* the base corner radius (rounded-md)          */
   --radius-lg: 12px;
 
   /* --- Elevation (shadow scale for the primitives + plain CSS) ------------
@@ -61,7 +61,7 @@
   --motion-fast: 0.1s;
   --motion-mid: 0.2s;
   --motion-slow: 0.3s;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);  /* refined deceleration curve  */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); /* refined deceleration curve  */
 
   /* --- Semantic surface layer (ADR-029, Workstream C2 — shadcn tokens) ------
    * ONE home for the primitive layer's surface / text / border colors, so
@@ -72,13 +72,13 @@
    * plus the brand vars <html> emits; the @theme inline block below exposes each
    * as a `--color-*` utility. CSS is outside no-raw-hex-color by construction. */
   --background: #ffffff;
-  --foreground: #111827;          /* gray-900 */
+  --foreground: #111827; /* gray-900 */
   --card: #ffffff;
   --card-foreground: #111827;
-  --muted: #f3f4f6;               /* gray-100 */
-  --muted-foreground: #5b6472;    /* slate-600ish — WCAG AA (>=4.5:1) on muted surfaces (C3 axe gate) */
-  --border: #e5e7eb;              /* gray-200 */
-  --input: #d1d5db;               /* gray-300 */
+  --muted: #f3f4f6; /* gray-100 */
+  --muted-foreground: #5b6472; /* slate-600ish — WCAG AA (>=4.5:1) on muted surfaces (C3 axe gate) */
+  --border: #e5e7eb; /* gray-200 */
+  --input: #d1d5db; /* gray-300 */
   --ring: var(--brand-primary);
   --primary-foreground: #ffffff;
   /* Brand used AS TEXT (links, active nav/sort/filter state, brand icons on
@@ -87,7 +87,7 @@
    * but the dark override lightens it to indigo-300 so brand-as-text clears AA on
    * dark surfaces (raw brand indigo is only ~3:1 there). bg-primary is untouched. */
   --primary-emphasis: var(--brand-primary);
-  --destructive: #dc2626;         /* red-600 — the destructive SURFACE (bg-destructive); white foreground clears AA (4.83:1) */
+  --destructive: #dc2626; /* red-600 — the destructive SURFACE (bg-destructive); white foreground clears AA (4.83:1) */
   --destructive-foreground: #ffffff;
   /* Red used AS TEXT (error messages, destructive menu item, delete link). Split
    * from the destructive SURFACE above: the dark override lightens it to red-400

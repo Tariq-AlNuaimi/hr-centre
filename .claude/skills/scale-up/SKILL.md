@@ -20,6 +20,7 @@ ADR-014). When a graduating project needs one, open the recipe and apply it
 (then `/code-review` + `/ship`):
 
 **Shared-tier security** (`docs/recipes/shared-security/`, mirrors SECURITY.md §16):
+
 - `1-account-lockout.md` — per-account lockout + cross-instance limiter (Upstash); closes the rest of T-01
 - `2-mfa-totp.md` — TOTP 2FA (otplib + qrcode); closes T-02
 - `3-nonce-csp.md` — nonce-based CSP (drops `'unsafe-inline'` script-src; AntD cssinjs nonce wiring)
@@ -28,15 +29,18 @@ ADR-014). When a graduating project needs one, open the recipe and apply it
 - `6-can-helper.md` (O12) — `can(user, action, resource)` per-resource / row-level authorization on top of the role wrappers (e.g. EDITOR edits only their own records); SECURITY.md §3
 
 **Performance** (`docs/recipes/perf/`):
+
 - `1-rsc-list-reads.md` (O1) — convert a client-fetch list page to a React Server Component reading Prisma from `searchParams`, with a client island for the interactive DataTable
 - `2-search-trigram.md` (O4) — `pg_trgm` GIN indexes so `ILIKE`/`contains` search uses an index instead of a seq scan at volume
 - `3-perf-budget-uat.md` (O9) — opt-in Lighthouse / bundle-size budget in the `/uat` flow that fails the run on regression
 - **List virtualization** (CP-PO7) — `DataTable` paginates server-side by default, so this is only needed if a fork renders very large client-side `pageSize`s (e.g. an in-page export preview). Add `virtual` + a fixed `scroll.y` to the AntD `Table` (AntD 6 ships row virtualization), or drop in `@tanstack/react-virtual`. A per-page change, not a base dependency.
 
 **Developer experience** (`docs/recipes/dx/`):
+
 - `1-storybook.md` (O7) — Storybook 8 for the shared component library (DataTable / Chart / KanbanBoard / EmptyState / ConfirmAction) with the AntD `ConfigProvider` + `next-intl` decorator; dev-only, kept out of the base (ADR-014)
 
 **SaaS features** (`docs/recipes/saas/`):
+
 - `1-sso-oidc-saml.md` — enterprise SSO via the `mapSsoRole` seam (OIDC + SAML/jackson), JIT provisioning
 - `2-api-keys-openapi.md` — per-consumer API keys (hashed, scoped) on the `/api/v1` + `withApiAuth` seam, + OpenAPI/Swagger
 - `3-webhooks.md` — outbound HMAC-signed webhooks + delivery log
@@ -145,7 +149,7 @@ and compose `withRateLimit` outside it (copy the pattern from
 `app/api/internal/audit-purge/route.ts`).
 
 > **`withRateLimit` MUST compose OUTSIDE `withInternalAuth`** (OWASP A04) — so a
-> flood is throttled *before* any auth/handler work runs, not after. The correct
+> flood is throttled _before_ any auth/handler work runs, not after. The correct
 > pattern is `withRateLimit(withInternalAuth(..., handler), { ... })`. See
 > `app/api/internal/audit-purge/route.ts` for the reference order; the
 > `no-rate-limit-inside-auth` ESLint rule enforces this.
@@ -196,6 +200,7 @@ or response times are growing.
 **Recipe:** Neon dashboard → Billing → upgrade to **Launch** ($19/mo).
 
 What you get:
+
 - 10 GB storage (vs. 0.5 GB free).
 - PITR (point-in-time recovery) up to 7 days.
 - Larger compute autoscaling ceiling.
@@ -315,7 +320,7 @@ unconditionally — it's gated so the Vercel build stays unchanged.
 
 **Trigger:** a deployed fork has real traffic and queries are slowing down —
 you want EXPLAIN plans, index recommendations, or a live health check. The
-static `/ship` scalability scan proves list reads are *bounded in source*; it
+static `/ship` scalability scan proves list reads are _bounded in source_; it
 cannot see query plans, index usage, or N+1 as it actually executes
 (`docs/deep-comparison/07-scalability.md`). This is the agent-driven runtime
 complement.
@@ -355,7 +360,7 @@ duplicate indexes, connections). Rules:
 **Trigger:** before sharing an app widely, or at `/handoff` — you want
 empirical evidence that the deployed URL holds p95 latency and error-rate
 under N concurrent users. `/ship`'s scan proves individual queries are
-paginated; only generated load proves the *system* handles growth.
+paginated; only generated load proves the _system_ handles growth.
 
 **Recipe:** install the [k6](https://k6.io) binary (single Go binary; no npm
 dep) and keep a smoke script in `tests/load/`:
@@ -367,9 +372,9 @@ import { check } from "k6";
 
 export const options = {
   stages: [
-    { duration: "1m", target: 20 },  // ramp to 20 VUs
-    { duration: "2m", target: 20 },  // hold
-    { duration: "30s", target: 0 },  // ramp down
+    { duration: "1m", target: 20 }, // ramp to 20 VUs
+    { duration: "2m", target: 20 }, // hold
+    { duration: "30s", target: 0 }, // ramp down
   ],
   thresholds: {
     http_req_duration: ["p(95)<500"], // ms
@@ -386,7 +391,7 @@ export default function () {
 Run: `k6 run -e BASE_URL=https://<fork-preview>.vercel.app tests/load/smoke.js`.
 Target **preview** deployments, not production; authenticated routes need a
 session-cookie setup step. Mind the rate limiter: loading an authed API route
-past its limit is *supposed* to return 429 — assert on that, don't "fix" it.
+past its limit is _supposed_ to return 429 — assert on that, don't "fix" it.
 
 **Agent-driven (optional):** register
 [QAInsights/k6-mcp-server](https://github.com/qainsights/k6-mcp-server)
@@ -409,7 +414,7 @@ Session-scoped like #12 — remove it when done.
 
 ## 14. Postgres health dashboard (pghero)
 
-**Trigger:** a fork has sustained real traffic and you want a *standing* view
+**Trigger:** a fork has sustained real traffic and you want a _standing_ view
 of slow queries, missing/unused/duplicate indexes, table bloat, and
 connection counts — continuous symptom surfacing, where #12 is the on-demand,
 agent-driven diagnosis/fix path.
@@ -438,7 +443,7 @@ no auth of its own.
 
 ## 15. Performance measurement (CWV, bundle, renders)
 
-**Trigger:** you need Pillar-1 (Speed) *numbers* instead of reviewer
+**Trigger:** you need Pillar-1 (Speed) _numbers_ instead of reviewer
 judgement — Core Web Vitals from real users, what's actually in the client
 bundle, which components re-render wastefully. This is the template's biggest
 documented tooling gap (`docs/deep-comparison/12-performance.md`); everything
@@ -478,7 +483,7 @@ export default withBundleAnalyzer(nextConfig);
 ```
 
 `ANALYZE=1 npm run build` → interactive treemap. On-demand only, zero prod
-impact. Makes the "Ask before a >50 KB dep" rule *visible* (transitive bloat,
+impact. Makes the "Ask before a >50 KB dep" rule _visible_ (transitive bloat,
 duplicated deps, mis-imported AntD chunks).
 
 **(c) react-scan — dev-only re-render overlay.** No dependency needed:
@@ -509,12 +514,12 @@ activate. For interactive trace-level digging from a session, use
 **Status vs the adoption program** (`docs/deep-comparison/ADOPT.md` — the
 checklist of record; don't check items off from here):
 
-- This section is the *documentation layer* (Wave A3 docs subset). The actual
+- This section is the _documentation layer_ (Wave A3 docs subset). The actual
   installs — the Speed Insights component, the bundle-analyzer wrapper in
   `next.config.ts`, any react-scan devDependency — land in the **Wave A3 full
   pass** (dependency changes are out of scope for docs-only rounds).
 - The **hard gates** built on these numbers are **Wave A1**, after the
-  Workstream C replatform: `size-limit` bundle *budget* and the coverage
+  Workstream C replatform: `size-limit` bundle _budget_ and the coverage
   floor land as `/ship` phases there, not via this recipe.
 
 **Cost:** all free (Speed Insights on Hobby; the rest OSS/dev-only).

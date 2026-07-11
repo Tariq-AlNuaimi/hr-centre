@@ -6,10 +6,7 @@ import { ok, err, notFound } from "@/lib/api-response";
 import { updateUserSchema } from "@/lib/validations/user";
 
 // Admin-only (matches the list route + admin-gated users nav). See SECURITY.md §3.
-export const GET = withAdminAuth(async (
-  _request: NextRequest,
-  { params }
-) => {
+export const GET = withAdminAuth(async (_request: NextRequest, { params }) => {
   const { id } = await params;
   const user = await prisma.user.findUnique({
     where: { id },
@@ -29,10 +26,7 @@ export const GET = withAdminAuth(async (
   return ok(user);
 });
 
-export const PUT = withAdminAuth(async (
-  request: NextRequest,
-  { params, session }
-) => {
+export const PUT = withAdminAuth(async (request: NextRequest, { params, session }) => {
   const { id } = await params;
   const body = await request.json();
   const parsed = updateUserSchema.safeParse(body);
@@ -74,10 +68,7 @@ export const PUT = withAdminAuth(async (
   return ok(user);
 });
 
-export const DELETE = withAdminAuth(async (
-  _request: NextRequest,
-  { params, session }
-) => {
+export const DELETE = withAdminAuth(async (_request: NextRequest, { params, session }) => {
   const { id } = await params;
 
   if (id === session.user.id) {

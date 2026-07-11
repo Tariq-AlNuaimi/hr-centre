@@ -5,16 +5,19 @@ produce double as the artifact you share with stakeholders. See ADR-008 and the
 `/uat` skill.
 
 ## One-time per machine
+
 ```sh
 npm run uat:install   # downloads the Chromium binary
 ```
 
 ### Running in a Claude Code web session (issue #52)
+
 Web-session environments ship a pre-installed Chromium under `/opt/pw-browsers`,
 but its revision can lag the one the installed Playwright version expects (e.g.
 PW 1.61 wants rev 1228; the env ships 1194), so the default launch fails with
 `Executable doesn't exist`. `playwright.config.ts` resolves the binary in this
 order, so you usually don't need to do anything:
+
 1. **`PW_EXECUTABLE_PATH`** — explicit override, always wins:
    ```sh
    PW_EXECUTABLE_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
@@ -34,7 +37,7 @@ order, so you usually don't need to do anything:
    UAT_BASE_URL="https://<your-app>.vercel.app" npm run uat
    ```
 
-> Outbound egress to drive a *deployed* browser target may still be restricted
+> Outbound egress to drive a _deployed_ browser target may still be restricted
 > by the session's network policy — and whether the proxy above is actually
 > browser-traversable is an environment property, not something the config can
 > guarantee. That's an environment limit, not a config one. Run UAT against a
@@ -42,6 +45,7 @@ order, so you usually don't need to do anything:
 > browser for in-session walkthroughs.
 
 ## Run it
+
 ```sh
 # Against a deployed URL (preferred — your Vercel preview / prod):
 UAT_BASE_URL="https://<your-app>.vercel.app" \
@@ -56,11 +60,13 @@ npm run uat:report    # open the HTML report with screenshots
 ```
 
 ## Credentials
+
 Come from env only — never hardcoded:
 `UAT_EMAIL`/`UAT_PASSWORD` (preferred, a dedicated UAT account) or
 `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD` (the seeded admin).
 
 ## Files
+
 - `auth.setup.ts` — logs in once, saves the session.
 - `smoke.uat.ts` — authenticated walkthrough of the shipped screens (add yours here).
 - `guard.uat.ts` — unauthenticated visitors are bounced to login.

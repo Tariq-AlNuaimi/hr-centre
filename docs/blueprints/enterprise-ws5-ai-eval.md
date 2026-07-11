@@ -14,6 +14,7 @@ Scope: scripts/ai-eval.mjs, .claude/skills/ai-eval/**
 > in `docs/build-vs-buy-ledger.md` (2026-07-11 — AI eval runner).
 
 ## Problem & outcome
+
 The WS-5 skeleton reaches the model, and `/scaffold-ai-endpoint` births every AI route
 with a typed eval fixture — but nothing **runs** those fixtures, so an endpoint's output
 quality is unmeasured. Deterministic tests (the contract suite) cannot assert "the summary
@@ -29,6 +30,7 @@ into `/ship` as a **fork-conditional** phase that mirrors the dormant `lhci` gat
 scored quality gate. The pristine template — no key, no fixtures — always skips green.
 
 ## Users & stories (EARS; worst path mandatory)
+
 - **US1** — As a **developer**, I want one command to score my AI endpoints against their
   fixtures, so output quality is measured, not assumed.
   - **AC-1.1** — WHEN `npm run ai-eval` runs with `AI_API_KEY` set AND ≥1
@@ -54,6 +56,7 @@ scored quality gate. The pristine template — no key, no fixtures — always sk
     `docs/findings-register.md`, not dropped.
 
 ## Scenarios (Given/When/Then)
+
 - **US1-happy** — Given `AI_API_KEY` set + `tests/ai-evals/summarize.eval.ts` + the app on
   `:3000`, When `npm run ai-eval`, Then each case POSTs to `/api/ai/summarize`, asserts
   score, and the run exits 0 iff all pass.
@@ -65,6 +68,7 @@ scored quality gate. The pristine template — no key, no fixtures — always sk
   fails with a 401/403 note pointing at `AI_EVAL_AUTH`/`AI_EVAL_COOKIE`.
 
 ## Architecture sketch
+
 - `scripts/ai-eval.mjs` — Node runner. Dormancy check (`AI_API_KEY` + fixture discovery) →
   early exit 0; else register tsx's ESM loader programmatically (so the npm script stays a
   plain `node scripts/ai-eval.mjs`) to import the `.ts` fixtures and the `lib/ai` source;
@@ -79,6 +83,7 @@ scored quality gate. The pristine template — no key, no fixtures — always sk
   (`AI_EVAL_BASE_URL`) + `docs/findings-register.md` (dormancy wave-off) — harness wiring.
 
 ## The five pillars
+
 - **Speed** — one POST + at most one judge call per assert; the whole gate short-circuits to
   exit 0 when dormant, adding ~0s to `/ship` in the template.
 - **Secure** — judge goes only through `@/lib/ai`; no key/PII logging; auth-wrapped routes
@@ -91,9 +96,11 @@ scored quality gate. The pristine template — no key, no fixtures — always sk
   green over a failure); the increment that makes output quality measurable at all.
 
 ## Tier
+
 `shared` (enterprise pivot). The gate never lowers the floor; dormancy is recorded, not silent.
 
 ## Explicitly deferred (remaining WS-5 follow-on — ADR-036)
+
 - The conditional 6th **AI-Quality** pillar surfaced in `docs/uat-rubric.md` (inert on
   non-AI forks) — this runner is its automatable slice; the rubric prose is the next step.
 - A CI workflow (`ai-eval.yml`, dormant like `sast.yml`/`lhci`) that runs the gate against a
@@ -103,10 +110,11 @@ scored quality gate. The pristine template — no key, no fixtures — always sk
 - pgvector RAG eval fixtures (retrieval-quality scoring) once the RAG substrate lands.
 
 ## Open questions
+
 - [x] A new dep (Promptfoo) or in-house? → **in-house** — a ~200-line runner on the existing
-  `lib/ai` + tsx + `fetch` beats a config-DSL dep that doesn't know this repo's auth wrappers
-  or `{ data: { text } }` response shape. Re-evaluate at P2 (ledger entry).
+      `lib/ai` + tsx + `fetch` beats a config-DSL dep that doesn't know this repo's auth wrappers
+      or `{ data: { text } }` response shape. Re-evaluate at P2 (ledger entry).
 - [x] How does the gate stay green in the pristine template? → **dormancy**: exit 0 when
-  `AI_API_KEY` is unset OR no fixtures exist (the `lhci` pattern), recorded as a wave-off.
+      `AI_API_KEY` is unset OR no fixtures exist (the `lhci` pattern), recorded as a wave-off.
 - [x] How are auth-wrapped endpoints reached? → optional `AI_EVAL_AUTH` (Authorization) /
-  `AI_EVAL_COOKIE` (Cookie); the runner supplies a session, never bypasses the wrapper.
+      `AI_EVAL_COOKIE` (Cookie); the runner supplies a session, never bypasses the wrapper.

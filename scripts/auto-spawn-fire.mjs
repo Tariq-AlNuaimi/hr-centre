@@ -32,7 +32,9 @@ const GUARD = join(ROOT, "scripts", "auto-spawn-guard.mjs");
 
 function git(args) {
   try {
-    return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
   } catch {
     return "";
   }
@@ -48,7 +50,9 @@ if (g.status !== 0) {
 
 // 2. Build the create_trigger payload.
 let program = "the program";
-try { program = JSON.parse(readFileSync(STATE, "utf8")).program || program; } catch {}
+try {
+  program = JSON.parse(readFileSync(STATE, "utf8")).program || program;
+} catch {}
 const branch = git("rev-parse --abbrev-ref HEAD") || "the working branch";
 // A spawned session (create_new_session_on_fire) boots on a FRESH clone of the
 // repo's DEFAULT branch (main), NOT this working branch — the successor must

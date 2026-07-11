@@ -34,9 +34,7 @@ export function OrgSwitcher() {
           >
             {brand.monogram}
           </span>
-          <span className="text-base font-semibold tracking-[-0.01em]">
-            {brand.appName}
-          </span>
+          <span className="text-base font-semibold tracking-[-0.01em]">{brand.appName}</span>
           <ChevronDown className="h-2.5 w-2.5 text-muted-foreground" />
         </button>
       </DropdownMenuTrigger>
@@ -46,9 +44,7 @@ export function OrgSwitcher() {
           {brand.appName}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <div className="px-2 py-1.5 text-xs text-muted-foreground">
-          {t("singleWorkspaceHint")}
-        </div>
+        <div className="px-2 py-1.5 text-xs text-muted-foreground">{t("singleWorkspaceHint")}</div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

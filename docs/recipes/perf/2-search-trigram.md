@@ -2,7 +2,7 @@
 
 > `/scale-up` → perf optimization **O4**.
 > Makes the substring search the template already does (`{ contains, mode:
-> "insensitive" }`) fast at volume by adding `pg_trgm` GIN trigram indexes on the
+"insensitive" }`) fast at volume by adding `pg_trgm` GIN trigram indexes on the
 > searched columns.
 
 ## The problem this fixes
@@ -33,7 +33,7 @@ instead of scanning — turning the seq scan into an index scan.
 Add this when **both** are true:
 
 - A list page's search is over a table that has grown past ~50k rows (or `EXPLAIN
-  ANALYZE` on the search query shows `Seq Scan` + a climbing execution time).
+ANALYZE` on the search query shows `Seq Scan` + a climbing execution time).
 - The searched columns are free-text the user types fragments of (names, emails,
   titles, descriptions) — not enum/FK columns (those should be exact-match filters
   with ordinary indexes, like the `role` filter already is).
@@ -56,6 +56,7 @@ it's whatever columns its API route ORs together in search. **One GIN index per
 searched column.**
 
 Do **not** trigram-index:
+
 - Enum / boolean / FK columns (use ordinary B-tree; they're exact-match).
 - Restricted columns you would never search (no need to widen their index surface).
 
@@ -111,7 +112,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS users_name_trgm_idx
 
 `CREATE INDEX CONCURRENTLY` **cannot run inside a transaction**, and Prisma wraps
 each migration in one. If you need `CONCURRENTLY`, run that statement by hand
-against the DB (psql) *outside* the migration, or split it into its own migration
+against the DB (psql) _outside_ the migration, or split it into its own migration
 and disable the wrapping transaction by putting the statement alone in the file and
 applying it via `prisma db execute` rather than `migrate`. For a prototype the
 plain (locking) `CREATE INDEX` during a low-traffic deploy is almost always fine.
@@ -122,12 +123,12 @@ plain (locking) `CREATE INDEX` during a low-traffic deploy is almost always fine
   `CREATE EXTENSION pg_trgm;` succeeds without a support ticket.
 - `vercel.json` runs `prisma migrate deploy` on every build, so the extension +
   indexes are created automatically on the next deploy. The `CREATE EXTENSION IF
-  NOT EXISTS` is idempotent — safe to re-run.
-- On Neon's **autoscaling free tier** the compute may be cold; the *first* search
+NOT EXISTS` is idempotent — safe to re-run.
+- On Neon's **autoscaling free tier** the compute may be cold; the _first_ search
   after a scale-to-zero pays a cold-start regardless of the index. The index helps
   warm steady-state latency, not cold start.
 - Neon branches inherit extensions from their parent at branch-creation time; a
-  branch created *before* this migration won't have the extension until the
+  branch created _before_ this migration won't have the extension until the
   migration runs on it.
 
 ## No app-code change
@@ -151,7 +152,7 @@ risk to the route logic, the sort allowlist, or the auth wrapper.
    `Seq Scan on users`.
 2. Apply the migration (`npm run prisma:migrate`).
 3. **After:** re-run the same `EXPLAIN ANALYZE` → expect a `Bitmap Index Scan on
-   users_name_trgm_idx` (Postgres only switches to the index when the table is big
+users_name_trgm_idx` (Postgres only switches to the index when the table is big
    enough to make it cheaper — on a tiny seed table it may still choose a seq scan,
    which is correct; test against realistic volume, e.g. seed 100k rows).
 4. The app's search returns the **same results** as before (this only changes the
@@ -172,9 +173,9 @@ revert — the `where` builder never changed.
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `prisma/migrations/<ts>_trgm_search_indexes/migration.sql` | **New** — the SQL above; **Ask-before** (touches `prisma/migrations`) |
-| `prisma/schema.prisma` | (optional) a comment near each searched model pointing at the migration |
+| File                                                       | Change                                                                  |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `prisma/migrations/<ts>_trgm_search_indexes/migration.sql` | **New** — the SQL above; **Ask-before** (touches `prisma/migrations`)   |
+| `prisma/schema.prisma`                                     | (optional) a comment near each searched model pointing at the migration |
 
 Nothing under `lib/`, no route change, no new dependency.

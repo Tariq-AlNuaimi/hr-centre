@@ -7,11 +7,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import AuditLogClient from "./AuditLogClient";
 
-export default async function AuditLogPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
+export default async function AuditLogPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   const session = await auth();
   if (session?.user?.role !== "ADMIN") {

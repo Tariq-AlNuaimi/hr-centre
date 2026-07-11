@@ -43,9 +43,9 @@ function authFileFor(role: string): string {
 }
 
 function emailFor(role: string): string {
-  return (
-    process.env[`UAT_${role}_EMAIL`] ?? `${role.toLowerCase()}@example.com`
-  ).toLowerCase().trim();
+  return (process.env[`UAT_${role}_EMAIL`] ?? `${role.toLowerCase()}@example.com`)
+    .toLowerCase()
+    .trim();
 }
 
 function passwordFor(role: string): string | undefined {
@@ -61,11 +61,7 @@ setup("discovers non-admin roles", async () => {
   // Start each FULL run with clean report sinks so stale rows from a previous run
   // never leak into this run's PDF. roles.full.uat.ts and crud.full.uat.ts append
   // to these (the permission matrix and the per-entity CRUD journeys).
-  for (const sink of [
-    "role-matrix.json",
-    "crud-journeys.json",
-    "uiux-findings.json",
-  ]) {
+  for (const sink of ["role-matrix.json", "crud-journeys.json", "uiux-findings.json"]) {
     try {
       fs.rmSync(path.join(process.cwd(), "uat-results", sink), { force: true });
     } catch {

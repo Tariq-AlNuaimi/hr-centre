@@ -38,9 +38,7 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <span className="text-sm text-muted-foreground">
-            {title}
-          </span>
+          <span className="text-sm text-muted-foreground">{title}</span>
           <div className="mt-0.5 flex items-baseline gap-3">
             <span className="text-h2 font-bold leading-none tracking-tight text-card-foreground">
               {value}
@@ -70,9 +68,7 @@ export function StatCard({ title, value, icon, trend, hint }: StatCardProps) {
               </span>
             )}
           </div>
-          {hint && (
-            <div className="text-xs text-muted-foreground">{hint}</div>
-          )}
+          {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
         </div>
       </div>
     </div>

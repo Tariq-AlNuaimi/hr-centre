@@ -92,9 +92,7 @@ export function getUserColumns({
       title: t("role"),
       dataIndex: "role",
       key: "role",
-      render: (role: string) => (
-        <Badge variant={roleTone[role] ?? "default"}>{role}</Badge>
-      ),
+      render: (role: string) => <Badge variant={roleTone[role] ?? "default"}>{role}</Badge>,
       filters: [
         { text: t("roleAdmin"), value: "ADMIN" },
         { text: t("roleEditor"), value: "EDITOR" },
@@ -130,10 +128,7 @@ export function getUserColumns({
           >
             <EditIcon />
           </Button>
-          <ConfirmAction
-            title={t("deleteConfirm")}
-            onConfirm={() => onDelete(record.id)}
-          >
+          <ConfirmAction title={t("deleteConfirm")} onConfirm={() => onDelete(record.id)}>
             <Button
               variant="ghost"
               size="icon"

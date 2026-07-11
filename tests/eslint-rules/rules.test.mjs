@@ -30,9 +30,7 @@ import noDirectAnthropicSdk from "../../eslint-rules/rules/no-direct-anthropic-s
 function ruleTest(name, rule, cases, parserOptions) {
   test(name, () => {
     const tester = new RuleTester(
-      parserOptions
-        ? { languageOptions: { parser: tsParser, parserOptions } }
-        : undefined
+      parserOptions ? { languageOptions: { parser: tsParser, parserOptions } } : undefined,
     );
     tester.run(name, rule, cases);
   });
@@ -110,7 +108,7 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-secret-env-in-console ----------------------------------------------
@@ -193,7 +191,7 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-raw-hex-color ------------------------------------------------------
@@ -245,10 +243,7 @@ ruleTest("no-raw-hex-color", noRawHexColor, {
       // A one-off palette array in a component (belongs in the token layer).
       filename: A_COMPONENT,
       code: `const palette = ["#1677ff", "#52c41a"];`,
-      errors: [
-        { messageId: "noRawHexColor" },
-        { messageId: "noRawHexColor" },
-      ],
+      errors: [{ messageId: "noRawHexColor" }, { messageId: "noRawHexColor" }],
     },
   ],
 });
@@ -347,7 +342,7 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-raw-sql-unsafe -----------------------------------------------------
@@ -392,7 +387,7 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-rate-limit-inside-auth ---------------------------------------------
@@ -407,9 +402,13 @@ ruleTest(
     valid: [
       // Correct: throttle is outermost, auth wrapper is its first argument.
       { code: `export const POST = withRateLimit(withAdminAuth(handler), opts);` },
-      { code: `export const PUT = withRateLimit(withAuth(handler), { id: "x", limit: 5, windowMs: 60000 });` },
+      {
+        code: `export const PUT = withRateLimit(withAuth(handler), { id: "x", limit: 5, windowMs: 60000 });`,
+      },
       // Token wrapper nested inside the throttle is the sanctioned shape too.
-      { code: `export const GET = withRateLimit(withInternalAuth("CRON_SECRET", purge, { bearer: true }), opts);` },
+      {
+        code: `export const GET = withRateLimit(withInternalAuth("CRON_SECRET", purge, { bearer: true }), opts);`,
+      },
       // Auth wrapper alone (no rate limiting) is fine.
       { code: `export const GET = withAdminAuth(handler);` },
       // An arrow/identifier handler -- not a withRateLimit call -- is fine.
@@ -448,7 +447,7 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-restricted-export-column -------------------------------------------
@@ -462,9 +461,13 @@ ruleTest(
   {
     valid: [
       // Ordinary, non-secret columns.
-      { code: `toExcel(rows, [{ header: "Name", key: "name" }, { header: "Created", key: "createdAt" }]);` },
+      {
+        code: `toExcel(rows, [{ header: "Name", key: "name" }, { header: "Created", key: "createdAt" }]);`,
+      },
       // A secret value projected through `format` (not exported as a raw key).
-      { code: `toExcel(rows, [{ header: "Has key", key: "id", format: (v, row) => (row.apiKey ? "yes" : "no") }]);` },
+      {
+        code: `toExcel(rows, [{ header: "Has key", key: "id", format: (v, row) => (row.apiKey ? "yes" : "no") }]);`,
+      },
       // Not a toExcel call -- unrelated function with a "key" prop.
       { code: `defineColumns([{ header: "Token", key: "token" }]);` },
       // Columns built in a variable are out of the inline-literal scope.
@@ -496,14 +499,11 @@ ruleTest(
       {
         // Two restricted columns in one call -> one report each.
         code: `toExcel(rows, [{ key: "apiKey" }, { key: "name" }, { key: "privateKey" }]);`,
-        errors: [
-          { messageId: "restrictedExportColumn" },
-          { messageId: "restrictedExportColumn" },
-        ],
+        errors: [{ messageId: "restrictedExportColumn" }, { messageId: "restrictedExportColumn" }],
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-prisma-unfiltered-import -------------------------------------------
@@ -591,7 +591,7 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );
 
 // --- no-direct-anthropic-sdk -----------------------------------------------
@@ -663,5 +663,5 @@ ruleTest(
       },
     ],
   },
-  { ecmaVersion: 2022, sourceType: "module" }
+  { ecmaVersion: 2022, sourceType: "module" },
 );

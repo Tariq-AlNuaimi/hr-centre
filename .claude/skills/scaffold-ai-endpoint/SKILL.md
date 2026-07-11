@@ -49,11 +49,13 @@ behaviour first is what stops a "the model does the wrong thing" rebuild after t
 ## Examples
 
 Minimal (default `prompt:string`, any authenticated caller, 20/min):
+
 ```
 npm run scaffold-ai-endpoint -- --name Summarize
 ```
 
 Custom input, editor-only, tighter limit:
+
 ```
 npm run scaffold-ai-endpoint -- --name Classify \
   --input 'text:string,verbose:boolean' \
@@ -62,6 +64,7 @@ npm run scaffold-ai-endpoint -- --name Classify \
 ```
 
 Preview only:
+
 ```
 npm run scaffold-ai-endpoint -- --name Extract --dry-run
 ```
@@ -85,7 +88,7 @@ npm run scaffold-ai-endpoint -- --name Extract --dry-run
   - `isAiConfigured()` guard → **503** when the AI layer is unconfigured (honest failure,
     mirrors the skeleton's degradation; never reaches the SDK's `AiNotConfiguredError`).
   - `withRateLimit(<withAuth|withEditorAuth|withAdminAuth>(handler), { id: "ai-<kebab>",
-    limit: <n>, windowMs: 60000 })` — the write wrapper is chosen by `--writes`, rate-limit
+limit: <n>, windowMs: 60000 })` — the write wrapper is chosen by `--writes`, rate-limit
     **outermost**.
   - `safeParse` of the body with the emitted zod schema → **400** with the zod messages.
   - the model call via `runAgent({ messages, tools: [] })`, wrapped in

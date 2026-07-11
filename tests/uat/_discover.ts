@@ -85,8 +85,7 @@ function isRedirectOnlyPage(pageFile: string): boolean {
   } catch {
     return false;
   }
-  const callsRedirect =
-    /from\s+["']next\/navigation["']/.test(src) && /\bredirect\s*\(/.test(src);
+  const callsRedirect = /from\s+["']next\/navigation["']/.test(src) && /\bredirect\s*\(/.test(src);
   // A renderable page returns JSX; a redirect stub has none. Detect any JSX tag.
   const hasJsx = /<[A-Za-z>]/.test(src);
   return callsRedirect && !hasJsx;
@@ -111,16 +110,12 @@ export function discoverAllScreens(locale = "en", root = process.cwd()): Screen[
 
     // A page.tsx in this folder makes it a navigable screen — unless one of its
     // URL segments is dynamic or a skipped folder ("new").
-    const hasPage = entries.some(
-      (e) => e.isFile() && e.name === "page.tsx",
-    );
+    const hasPage = entries.some((e) => e.isFile() && e.name === "page.tsx");
     // A redirect-only stub (back-compat URL forwarder) is not a navigable screen.
-    const isRedirectStub =
-      hasPage && isRedirectOnlyPage(path.join(dir, "page.tsx"));
+    const isRedirectStub = hasPage && isRedirectOnlyPage(path.join(dir, "page.tsx"));
     if (hasPage && !isRedirectStub && !segments.some(isSkippedSegment)) {
       const name = segments.length === 0 ? "dashboard" : segments.join("/");
-      const urlPath =
-        segments.length === 0 ? `/${locale}` : `/${locale}/${segments.join("/")}`;
+      const urlPath = segments.length === 0 ? `/${locale}` : `/${locale}/${segments.join("/")}`;
       screens.push({ name, path: urlPath, depth: segments.length });
     }
 
@@ -214,29 +209,17 @@ export type SectionAccess = { name: string; path: string; adminOnly: boolean };
  * @param locale  URL locale prefix (default "en").
  * @param root    Repo root to scan from (default process.cwd()); injectable for tests.
  */
-export function discoverSectionAccess(
-  locale = "en",
-  root = process.cwd(),
-): SectionAccess[] {
+export function discoverSectionAccess(locale = "en", root = process.cwd()): SectionAccess[] {
   const sections = discoverMainSections(locale, root);
-  const sidebarPath = path.join(
-    root,
-    "components",
-    "layout",
-    "AppSidebar.tsx",
-  );
-  const src = fs.existsSync(sidebarPath)
-    ? fs.readFileSync(sidebarPath, "utf8")
-    : "";
+  const sidebarPath = path.join(root, "components", "layout", "AppSidebar.tsx");
+  const src = fs.existsSync(sidebarPath) ? fs.readFileSync(sidebarPath, "utf8") : "";
 
   // 1) Collect the route segments that live INSIDE the `isAdmin ? [ ... ] : []`
   //    block — those nav items are admin-only.
   const adminSegments = new Set<string>();
   const adminBlock = src.match(/isAdmin\s*\?\s*\[([\s\S]*?)\]\s*:\s*\[\]/);
   if (adminBlock) {
-    for (const m of adminBlock[1].matchAll(
-      /router\.push\(`\/\$\{locale\}\/([A-Za-z0-9_-]+)`\)/g,
-    )) {
+    for (const m of adminBlock[1].matchAll(/router\.push\(`\/\$\{locale\}\/([A-Za-z0-9_-]+)`\)/g)) {
       adminSegments.add(m[1]);
     }
   }
@@ -244,16 +227,14 @@ export function discoverSectionAccess(
   // 2) Any nav item whose key/route is removed unless isAdmin via a trailing
   //    `.filter(... isAdmin)` is also admin-gated. The template does this for
   //    recycling-bin: `.filter((item) => item.key !== "recycling-bin" || isAdmin)`.
-  for (const m of src.matchAll(
-    /item\.key\s*!==\s*"([A-Za-z0-9_-]+)"\s*\|\|\s*isAdmin/g,
-  )) {
+  for (const m of src.matchAll(/item\.key\s*!==\s*"([A-Za-z0-9_-]+)"\s*\|\|\s*isAdmin/g)) {
     adminSegments.add(m[1]);
   }
 
   return sections.map((s) => {
     // The section's matching nav segment is its last URL path segment; the
     // dashboard root (depth 0) has no segment and is never admin-gated.
-    const segment = s.name === "dashboard" ? "" : s.name.split("/").pop() ?? "";
+    const segment = s.name === "dashboard" ? "" : (s.name.split("/").pop() ?? "");
     const adminOnly = segment !== "" && adminSegments.has(segment);
     return { name: s.name, path: s.path, adminOnly };
   });
@@ -275,10 +256,7 @@ export type CrudEntity = {
   createPath: string; // "/<locale>/users/new"
 };
 
-export function discoverCrudEntities(
-  locale = "en",
-  root = process.cwd(),
-): CrudEntity[] {
+export function discoverCrudEntities(locale = "en", root = process.cwd()): CrudEntity[] {
   const base = path.join(root, DASHBOARD_GLOB);
   if (!fs.existsSync(base)) return [];
 

@@ -30,7 +30,7 @@ SessionEnd + watchdog-80% trigger; **4 →** template-wide scope.
   (`autoSpawn.enabled=false`) so nothing is scheduled until the operator opts in.
 
 **Firing boundary + consumer (built 2026-07-03):** hooks/scripts cannot call the Claude Code
-Remote MCP and `SessionEnd` is terminal, so the *one* component that can schedule a successor is
+Remote MCP and `SessionEnd` is terminal, so the _one_ component that can schedule a successor is
 the **agent, at closeout, in a live turn**. The consumer is `scripts/auto-spawn-fire.mjs`: it
 re-checks the guard and, when PERMITTED, prints the exact `create_trigger` payload for the agent to
 pass to `mcp__Claude_Code_Remote__create_trigger`, and records the spawn against the cap. Closeout
@@ -67,9 +67,10 @@ make one empty commit, push, stop." The probe likewise fired but **pushed nothin
 10+ min** (origin unchanged).
 
 **Root cause.** Two layers:
+
 1. **Platform (the blocking one, not ours).** Per the Claude Code web docs, a fired
-   trigger's `run_once_fired`/green state means only *"the schedule fired and the
-   session exited without an infrastructure error"* — **not that the spawned session
+   trigger's `run_once_fired`/green state means only _"the schedule fired and the
+   session exited without an infrastructure error"_ — **not that the spawned session
    did any work**. There is **no observable success signal** (no spawned-session id
    surfaced back through the MCP `create_trigger` response, no run record we can
    query) to gate on. Empirically, `create_new_session_on_fire` in
@@ -86,7 +87,7 @@ make one empty commit, push, stop." The probe likewise fired but **pushed nothin
    but never instructed the checkout. **Fixed** in `scripts/auto-spawn-fire.mjs` and
    `.claude/hooks/auto-handoff.mjs`: the generated successor prompt now leads with
    `git fetch origin <branch> && git checkout -B <branch> origin/<branch>`. This is
-   kept for if/when the platform hop is verified, and it also makes any *manual*
+   kept for if/when the platform hop is verified, and it also makes any _manual_
    re-fire land on the right branch.
 
 **Decision.** Because the platform hop is unverifiable and empirically silent, we do
@@ -96,6 +97,7 @@ make one empty commit, push, stop." The probe likewise fired but **pushed nothin
 
 **Manual-continuation fallback (the supported path).** At a clean, green, pushed
 session boundary:
+
 1. `/ship` green + push (verify `git rev-list --count @{u}..HEAD == 0`).
 2. The `SessionStart` hook already surfaces `docs/SESSION-HANDOFF.md` FIRST with the
    standing directive (both status tables, rendered from `docs/session-state.json`) —
@@ -109,6 +111,7 @@ session boundary:
    minimal probe above BEFORE trusting it in the loop.
 
 ## Problem (operator's words, 2026-07-03)
+
 > "I am tired from moving between sessions… I want this automated so the session
 > auto-handoffs and auto-starts, because in many cases we lose some info, work gets
 > interrupted and needs me to restart, and sometimes it takes time to load previous
@@ -116,18 +119,21 @@ session boundary:
 > and loses track of the actual status."
 
 Three distinct failure modes, three fixes:
-1. **Lost info at the boundary** → handoff must be *always current*, not a manual step
+
+1. **Lost info at the boundary** → handoff must be _always current_, not a manual step
    the session might skip. → **auto-handoff**.
-2. **Slow / partial reload of "where are we"** → status must be *compact + canonical +
-   machine-readable*, not reconstructed from prose each time. → **structured state file**.
-3. **Manual restart friction** → the next session should *start itself* (or one click)
+2. **Slow / partial reload of "where are we"** → status must be _compact + canonical +
+   machine-readable_, not reconstructed from prose each time. → **structured state file**.
+3. **Manual restart friction** → the next session should _start itself_ (or one click)
    already pointed at the handoff. → **auto-start**.
 
 ## Design — three parts (each independently shippable)
 
 ### Part 1 — canonical status as DATA (`docs/session-state.json`)
+
 The grand table + the "in progress / remaining" cut become a single small JSON file the
 agent updates incrementally as work lands (not regenerated from memory). Shape (sketch):
+
 ```json
 {
   "program": "replatform-and-adoption",
@@ -137,38 +143,41 @@ agent updates incrementally as work lands (not regenerated from memory). Shape (
     { "id": "C2", "title": "primitive layer", "status": "done", "commit": "194637c" },
     { "id": "C3", "title": "screen migration", "status": "remaining", "blockedBy": [] }
   ],
-  "deferred": [ { "id": "tremor", "trigger": "react19 peer" } ],
+  "deferred": [{ "id": "tremor", "trigger": "react19 peer" }],
   "nextActions": ["run C3 …"]
 }
 ```
-- `SESSION-HANDOFF.md`'s grand table + in-progress/remaining table are *rendered from*
+
+- `SESSION-HANDOFF.md`'s grand table + in-progress/remaining table are _rendered from_
   this file (a tiny `scripts/render-handoff.mjs`), so they can never drift or partially
   load — the JSON is the source, the markdown is a view.
 - Solves failure mode #2: a fresh session reads one small deterministic file to know the
   exact status, instead of parsing long prose that may load partially.
 
 ### Part 2 — auto-handoff (hooks; Ask-before)
+
 - **`Stop` + `SessionEnd` hooks** (extend the existing `session-stop.mjs` /
   `session-receipt.mjs`): before the turn/session ends, (a) re-render `SESSION-HANDOFF.md`
   from `session-state.json`, (b) verify `git rev-list --count @{u}..HEAD == 0` (already
-  hard-blocked for unpushed commits), (c) stamp `lastShip`. Handoff is now a *guaranteed
-  artifact*, not a skill the session must remember to run.
+  hard-blocked for unpushed commits), (c) stamp `lastShip`. Handoff is now a _guaranteed
+  artifact_, not a skill the session must remember to run.
 - **`PreCompact` hook** (already exists — `pre-compact-refresh.mjs`): also re-inject the
   compact status table so a mid-session compaction never loses the thread.
-- Keep `/handoff-session` as the *manual, richer* path (operator narrative notes); the
-  hook guarantees the *baseline* is always current even if the session dies abruptly.
+- Keep `/handoff-session` as the _manual, richer_ path (operator narrative notes); the
+  hook guarantees the _baseline_ is always current even if the session dies abruptly.
 - **Never auto-overwrite the operator's prose notes** — the hook regenerates only the
   machine sections (tables, state), leaving hand-written landmines/lessons intact
   (marked-region merge, e.g. between `<!-- auto:start -->…<!-- auto:end -->`).
 
 ### Part 3 — auto-start (SessionStart hook + optional scheduled trigger)
+
 - **`SessionStart` hook** (extend `session-start.sh`): load `SESSION-HANDOFF.md` FIRST
   and print the standing prompt verbatim — "show the grand table + in-progress/remaining,
   then continue at Next actions." Today it surfaces `agent-memory.md`; add the handoff at
   higher priority so the agent orients instantly.
 - **Optional true auto-start** via the Claude Code Remote MCP (`create_trigger` with
   `create_new_session_on_fire: true`): when a session ends near the context limit, it
-  schedules the *next* session in the same environment, whose prompt is the standing
+  schedules the _next_ session in the same environment, whose prompt is the standing
   directive. This is the "I don't restart it myself" piece.
   - **Guardrails (mandatory):** cap consecutive auto-spawns (e.g. stop after N with no
     human turn), require the branch to be pushed + `/ship` green before spawning, and
@@ -176,25 +185,28 @@ agent updates incrementally as work lands (not regenerated from memory). Shape (
     burn tokens unattended.
 
 ## Open questions (operator — answer before build)
+
 1. **Auto-start depth:** (a) SessionStart hook only (fast manual restart, you type
    "continue"), or (b) also the scheduled-trigger true auto-spawn (zero-touch, but needs
-   the runaway guardrails)? *Recommend (a) first, add (b) behind a flag once trusted.*
+   the runaway guardrails)? _Recommend (a) first, add (b) behind a flag once trusted._
 2. **State file vs prose:** adopt `session-state.json` as the rendered source (Part 1),
-   or keep hand-maintained markdown tables? *Recommend the JSON — it's the actual fix for
-   the "partial load / lost status" complaint.*
+   or keep hand-maintained markdown tables? _Recommend the JSON — it's the actual fix for
+   the "partial load / lost status" complaint._
 3. **Auto-handoff trigger:** on every `Stop`, only on `SessionEnd`, or only when the
-   context-watchdog crosses 80%? *Recommend SessionEnd + watchdog-80%, not every Stop
-   (too chatty).*
+   context-watchdog crosses 80%? _Recommend SessionEnd + watchdog-80%, not every Stop
+   (too chatty)._
 4. **Scope:** template-wide (all forks inherit) or just this program's branch?
-   *Recommend template-wide — every fork benefits.*
+   _Recommend template-wide — every fork benefits._
 
 ## Effort / risk
+
 ~1–2 sessions. Ask-before (hooks + `settings.json`). Main risk is the auto-spawn runaway
 / cost — fully mitigated by the Part-3 guardrails (cap + push-green precondition + opt-in
 flag). Part 1 + Part 2 are safe and high-value on their own; ship them first, Part 3 after
 the operator okays the guardrails.
 
 ## Acceptance (EARS)
+
 - **AC-1:** WHEN a session ends, THE SYSTEM SHALL leave `SESSION-HANDOFF.md` reflecting the
   current `session-state.json` with `@{u}..HEAD == 0`, with zero manual steps.
 - **AC-2:** WHEN a new session starts, THE SYSTEM SHALL surface the grand table +

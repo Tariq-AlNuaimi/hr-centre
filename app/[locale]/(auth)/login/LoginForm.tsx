@@ -16,7 +16,7 @@ import { useNotify } from "@/hooks/use-notify";
 // a >=8-char password). Login has no API-route schema of its own (sign-in goes
 // through next-auth), so this local schema is the client-side contract.
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
 });
 type LoginValues = z.infer<typeof loginSchema>;
@@ -28,12 +28,7 @@ type LoginValues = z.infer<typeof loginSchema>;
  */
 function MicrosoftMark() {
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 20 20"
-      className="size-4"
-      fill="currentColor"
-    >
+    <svg aria-hidden viewBox="0 0 20 20" className="size-4" fill="currentColor">
       <rect x="1" y="1" width="8" height="8" />
       <rect x="11" y="1" width="8" height="8" />
       <rect x="1" y="11" width="8" height="8" />
@@ -101,16 +96,8 @@ export function LoginForm({
 
         {showCredentials && (
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="flex flex-col gap-4"
-            >
-              <TextField
-                name="email"
-                label={t("email")}
-                type="email"
-                autoComplete="email"
-              />
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              <TextField name="email" label={t("email")} type="email" autoComplete="email" />
               <TextField
                 name="password"
                 label={t("password")}
@@ -118,9 +105,7 @@ export function LoginForm({
                 autoComplete="current-password"
               />
               <div className="-mt-1 text-end">
-                <Link href={`/${locale}/forgot-password`}>
-                  {t("forgotPasswordLink")}
-                </Link>
+                <Link href={`/${locale}/forgot-password`}>{t("forgotPasswordLink")}</Link>
               </div>
               <Button type="submit" size="lg" className="w-full" disabled={loading}>
                 {t("signIn")}
@@ -151,9 +136,7 @@ export function LoginForm({
               {t("signInWithMicrosoft")}
             </Button>
             {!showCredentials && (
-              <p className="mb-0 mt-4 text-center text-muted-foreground">
-                {t("ssoOnlyHint")}
-              </p>
+              <p className="mb-0 mt-4 text-center text-muted-foreground">{t("ssoOnlyHint")}</p>
             )}
           </>
         )}

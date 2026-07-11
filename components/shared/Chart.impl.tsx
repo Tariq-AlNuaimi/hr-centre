@@ -95,13 +95,7 @@ export function Chart<T extends Record<string, unknown>>({
           <YAxis />
           <Tooltip />
           <Legend />
-          <Line
-            type="monotone"
-            dataKey={yKey}
-            stroke={colors[0]}
-            strokeWidth={2}
-            dot={{ r: 3 }}
-          />
+          <Line type="monotone" dataKey={yKey} stroke={colors[0]} strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
     );

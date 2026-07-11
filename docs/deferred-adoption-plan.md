@@ -4,7 +4,7 @@ The replatform-and-adoption program is at terminal state: every **scheduled**
 directive (D1–D5) and workstream (Phase0, C1–C4, B, E, D, A1–A5) is done, merged
 to `main`, `/ship` green. Item **#11 (specialist-agents)** has since been
 **implemented** as the `/stack-advisor` skill (§11). What remains is the
-**tracked-deferred set** — 10 items that were consciously *not* scheduled, each
+**tracked-deferred set** — 10 items that were consciously _not_ scheduled, each
 gated behind a **trigger** that has not yet fired. Source of truth for live status: `docs/session-state.json` `deferred[]`
 and `docs/deep-comparison/ADOPT.md`. This doc is the forward-looking **plan**: for
 each item, the trigger, the adopt path, the drop alternative, and the effort — so
@@ -12,10 +12,10 @@ when a trigger fires the item re-enters via `/blueprint` from a decision, not a
 cold start.
 
 **Binding rule (from the program blueprint's closeout gate, line 211):** none of
-these may be adopted *silently*. Each re-promotion is a `/blueprint` pass (full
+these may be adopted _silently_. Each re-promotion is a `/blueprint` pass (full
 track for anything touching `lib/`, deps, or CI; lightweight otherwise), and the
 outcome is recorded as an ADR line or a `docs/findings-register.md` `dropped`
-entry. A row kept unbuilt is a *decision to drop* (logged), not an oversight.
+entry. A row kept unbuilt is a _decision to drop_ (logged), not an oversight.
 
 Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DROP`
 = re-evaluate adopt-vs-drop when trigger fires · `ON-HANDOFF` = decide at `/handoff`.
@@ -23,6 +23,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
 ---
 
 ## 1. tremor — Tremor-style charts
+
 - **What:** `@tremor/react` chart components (Tremor-style API). The program built
   charting on **recharts `^2.15.4`** with a Tremor-style wrapper API instead.
 - **Why deferred:** `@tremor/react@3.18.7` pins a hard `react@^18` peer; this repo
@@ -39,6 +40,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   > 50 KB → needs the ADR/scale-up path).
 
 ## 2. lhci-ci — Lighthouse-CI per-PR assertion
+
 - **What:** Per-PR Lighthouse performance/a11y/SEO assertion in CI.
 - **Already shipped:** `lighthouserc.cjs` config + `npm run lhci` script — runnable
   ad-hoc today. Only the **CI gate** is dormant.
@@ -53,10 +55,11 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
 - **Effort:** S (~½ session, config exists). **Gate:** CI activation (`/handoff`).
 
 ## 3. claude-task-master — multi-session task orchestration
+
 - **What:** External task-master tooling for planning across many sessions.
 - **Why deferred:** The template's native rail (`/blueprint` + `docs/session-state.json`
-  + `SESSION-HANDOFF.md` + the render-handoff status tables) covers single-session
-  and short multi-session planning. Adopting an external planner now is premature.
+  - `SESSION-HANDOFF.md` + the render-handoff status tables) covers single-session
+    and short multi-session planning. Adopting an external planner now is premature.
 - **Trigger:** a fork outgrows single-session planning (sustained multi-week backlog
   the native handoff docs can't hold).
 - **Disposition:** **WATCH/DROP.** Concept-over-dependency bias (ADR-022): prefer
@@ -65,6 +68,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   only the delta that the native docs can't express. **Effort:** M.
 
 ## 4. backlog-md — Markdown backlog tool
+
 - **What:** `Backlog.md`-style committed-Markdown backlog management.
 - **Why deferred:** Same space as #3; native `session-state.json` + blueprints
   already carry the backlog.
@@ -73,6 +77,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
 - **Effort:** S–M.
 
 ## 5. fastmcp — MCP server framework
+
 - **What:** `fastmcp` provider path for authoring an MCP server.
 - **Why deferred:** The template **consumes** MCP servers (context7, github,
   playwright, figma) but does not **ship** one.
@@ -84,10 +89,11 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   official MCP SDK — compare at that point). **Effort:** M–L.
 
 ## 6. keploy — record-replay API test generation
+
 - **What:** `keploy` captures real API traffic and replays it as generated tests.
 - **Why deferred:** The repo's test rail is the node:test contract suite + `/cover`
   AI test-gen + Playwright UAT + fast-check property tests — API-level record-replay
-  is an *alternative*, not a gap.
+  is an _alternative_, not a gap.
 - **Trigger:** we want an API-level test-gen alternative (contract suite proves
   insufficient for a data-heavy route surface).
 - **Disposition:** **WATCH/DROP.** Likely DROP unless a concrete API-coverage gap
@@ -96,6 +102,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   data-handling review).
 
 ## 7. vitest — test-runner migration
+
 - **What:** Migrate the test runner from `node:test` to Vitest.
 - **Why deferred:** `node:test` is the shipped runner (`/cover`, contract suite,
   property tests all target it). A runner swap is a large, cross-cutting change with
@@ -108,6 +115,7 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   gate wiring + `/cover` retarget. **Effort:** L.
 
 ## 8. citus — Postgres sharding / read-replicas
+
 - **What:** `citus` (or Neon read-replicas) for horizontal DB scale.
 - **Why deferred:** Comparison cat 07 (scalability) is covered by
   postgres-mcp/k6/pghero; sharding is unwarranted at prototype scale.
@@ -119,33 +127,36 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   `Ask before` (infra change).
 
 ## 9. sonarqube-mcp — SonarQube integration
+
 - **What:** `sonarqube-mcp` to surface SonarQube findings to the agent.
 - **Why deferred:** Static-analysis is covered natively (the 10 ESLint rules,
   knip, jscpd, complexity + coverage gates, Semgrep in `/audit`). SonarQube is an
   IT-team tool, not a solo-operator one.
 - **Trigger:** `/handoff` to an IT team that runs SonarQube.
 - **Disposition:** **ON-HANDOFF.** Wire only if the receiving team already uses it.
-- **Effort:** S (integration only). 
+- **Effort:** S (integration only).
 
 ## 10. wasp — declarative-CRUD ergonomics study
+
 - **What:** Study `wasp`'s declarative CRUD DSL for ergonomics ideas.
 - **Why deferred:** This is a **study**, not an adoption — wasp is a different
   framework (violates the ADR-001 locked stack). Comparison cats 06 (frameworks)
   and 11 (speed-of-dev) are marked `[-]` deferred for this reason.
 - **Trigger:** a `/scaffold-entity` ergonomics pass (cat 11) where we want to mine
-  wasp's DSL for improvements to *our* scaffolder.
+  wasp's DSL for improvements to _our_ scaffolder.
 - **Disposition:** **WATCH/DROP — study only, never a dependency.** Any output is an
   improvement to `scripts/scaffold-entity.mjs`, not a wasp adoption.
-- **Effort:** S (study). 
+- **Effort:** S (study).
 
 ## 11. specialist-agents — stack-aware **build-time advisor** ✅ IMPLEMENTED (2026-07-03)
+
 - **What:** A single composed stack-expert covering Next.js 16 RSC + Prisma 7 + Postgres,
   delivered as a **build-time advisor** (originally proposed as `nextjs-pro`/`postgres-pro`/
   `prisma-expert` review seeds; re-scoped away from review to avoid duplication).
 - **History:** first adjudicated DROPPED (session 14) on the reasoning that a stack-aware
-  *reviewer* duplicates `senior-code-reviewer`. **Operator REVERSED the drop the same day** and
-  redirected it to a build-time **advisor** — a different slot (guidance *while* building vs.
-  review *after* push), which does not duplicate the review rail.
+  _reviewer_ duplicates `senior-code-reviewer`. **Operator REVERSED the drop the same day** and
+  redirected it to a build-time **advisor** — a different slot (guidance _while_ building vs.
+  review _after_ push), which does not duplicate the review rail.
 - **Disposition:** **ADOPT — DONE (session 15, 2026-07-03).** Shipped as the `/stack-advisor`
   skill (`.claude/skills/stack-advisor/SKILL.md`): one composed seed across the three stack
   layers, positive patterns pointing at this repo's recipes/primitives/ADRs, with an explicit
@@ -153,25 +164,25 @@ Legend for **Disposition**: `WATCH` = wait for trigger, then adopt · `WATCH/DRO
   Wired into `.claude/skill-rules.json` on `app/api/**/route.ts` + `app/**/page.tsx`. The
   optional thin `stack-expert` subagent was **not** built (no offloaded deep-dive need appeared;
   add later only if one does). Design rationale: `docs/blueprints/deferred-11-specialist-stack-advisor.md`.
-- **Effort:** S–M. 
+- **Effort:** S–M.
 
 ---
 
 ## Summary matrix
 
-| # | Item | Trigger | Disposition | Effort | Ask-before? |
-|---|------|---------|-------------|--------|-------------|
-| 1 | tremor | peer accepts React 19 | WATCH/DROP | S–M | yes (dep) |
-| 2 | lhci-ci | `/handoff` + Actions billing | ON-HANDOFF | S | CI |
-| 3 | claude-task-master | fork outgrows 1-session planning | WATCH/DROP | M | no |
-| 4 | backlog-md | same as #3 (pick ≤1 of 3/4) | WATCH/DROP | S–M | no |
-| 5 | fastmcp | we ship an MCP server | WATCH | M–L | no |
-| 6 | keploy | want API-level test-gen | WATCH/DROP | M | yes (tooling) |
-| 7 | vitest | runner swap | WATCH/DROP (ADR first) | L | ADR |
-| 8 | citus | cat-07 scale trigger | WATCH | L | yes (infra) |
-| 9 | sonarqube-mcp | `/handoff` to SonarQube team | ON-HANDOFF | S | no |
-| 10 | wasp | `/scaffold-entity` ergonomics pass | WATCH/DROP (study) | S | no |
-| 11 | specialist-agents | operator directive → build-time advisor | ✅ **IMPLEMENTED (2026-07-03)** — `/stack-advisor` skill; advisor, not a reviewer | S–M | no |
+| #   | Item               | Trigger                                 | Disposition                                                                       | Effort | Ask-before?   |
+| --- | ------------------ | --------------------------------------- | --------------------------------------------------------------------------------- | ------ | ------------- |
+| 1   | tremor             | peer accepts React 19                   | WATCH/DROP                                                                        | S–M    | yes (dep)     |
+| 2   | lhci-ci            | `/handoff` + Actions billing            | ON-HANDOFF                                                                        | S      | CI            |
+| 3   | claude-task-master | fork outgrows 1-session planning        | WATCH/DROP                                                                        | M      | no            |
+| 4   | backlog-md         | same as #3 (pick ≤1 of 3/4)             | WATCH/DROP                                                                        | S–M    | no            |
+| 5   | fastmcp            | we ship an MCP server                   | WATCH                                                                             | M–L    | no            |
+| 6   | keploy             | want API-level test-gen                 | WATCH/DROP                                                                        | M      | yes (tooling) |
+| 7   | vitest             | runner swap                             | WATCH/DROP (ADR first)                                                            | L      | ADR           |
+| 8   | citus              | cat-07 scale trigger                    | WATCH                                                                             | L      | yes (infra)   |
+| 9   | sonarqube-mcp      | `/handoff` to SonarQube team            | ON-HANDOFF                                                                        | S      | no            |
+| 10  | wasp               | `/scaffold-entity` ergonomics pass      | WATCH/DROP (study)                                                                | S      | no            |
+| 11  | specialist-agents  | operator directive → build-time advisor | ✅ **IMPLEMENTED (2026-07-03)** — `/stack-advisor` skill; advisor, not a reviewer | S–M    | no            |
 
 **Session 15 update:** item **#11 (specialist-agents)** is **IMPLEMENTED** — shipped as the
 `/stack-advisor` build-time advisor skill (see §11 above). So **10 items remain tracked**, all

@@ -9,7 +9,7 @@
 ## Context
 
 The template's routes live at `app/api/**/route.ts` and serve `/api/<path>`.
-That path is the *internal* layout of the App Router. When a fork grows an
+That path is the _internal_ layout of the App Router. When a fork grows an
 **external consumer** — another service, a partner integration, a programmatic
 client — exposing it directly at `/api/<path>` couples that consumer to the
 internal route structure: any reorganization is a breaking change for them, and
@@ -17,7 +17,8 @@ there is no agreed-upon path under which to ship a v2 without churning every
 route folder.
 
 Two further "SaaS-readiness" gaps recur:
-- **Programmatic (non-session) auth.** `withAuth` resolves an Auth.js *session*
+
+- **Programmatic (non-session) auth.** `withAuth` resolves an Auth.js _session_
   (cookie/JWT) — correct for the browser UI, but a machine consumer needs a
   Bearer-token path.
 - **SSO role mapping.** When a fork fronts auth with an SSO/OIDC provider, the
@@ -43,6 +44,7 @@ rewrite) with zero churn to existing `v1` routes.
 
 Two **library seams** are recorded for when a fork needs them (they are seams,
 not day-zero features):
+
 - **`withApiAuth` (Bearer).** A sibling wrapper to `withAuth` that authenticates
   a machine consumer via a `Authorization: Bearer <token>` header (a hashed API
   key / personal access token), resolving to the same context shape the audit
@@ -60,6 +62,7 @@ consumers depend on.
 ## Consequences
 
 ### Positive
+
 - **Stable external contract.** Consumers depend on `/api/v1/*`, decoupled from
   the internal `app/api/**` layout; routes can be refactored without breaking
   them.
@@ -71,6 +74,7 @@ consumers depend on.
   to add machine auth and SSO without re-litigating the auth model.
 
 ### Negative
+
 - The rewrite is config-level indirection: a reader must know `/api/v1/*` maps to
   `app/api/**`. Documented here and in `CLAUDE.md`.
 - `withApiAuth` and SSO mapping are seams, not shipped implementations; a fork
@@ -78,6 +82,7 @@ consumers depend on.
   store hashed keys, etc.).
 
 ### Mitigations
+
 - Keep the rewrite a simple `:path*` passthrough so the mental model is "strip
   `/v1`"; reserve `/v2` for genuinely breaking changes.
 - `withApiAuth` gates by `Authorization: Bearer <token>` only — it does **not**
@@ -88,6 +93,7 @@ consumers depend on.
   `SECURITY.md` §1.
 
 ## Alternatives considered
+
 1. **Serve routes directly at `/api/<path>` (no version prefix).** Rejected:
    couples external consumers to the internal route layout; no clean path to ship
    a v2.
@@ -101,7 +107,9 @@ consumers depend on.
    stories; a dedicated `withApiAuth` keeps each path's threat model clear.
 
 ## Migration triggers
+
 Revisit when:
+
 - A backward-incompatible change is needed → introduce `/api/v2/*` (second
   rewrite) and deprecate `v1` on a timeline.
 - A fork onboards a machine/external consumer → implement `withApiAuth` against
@@ -110,6 +118,7 @@ Revisit when:
   are checked (an ADR-001 "ask before" item).
 
 ## Related
+
 - `docs/decisions/ADR-012-rest-zod-not-trpc.md` — REST + zod + the OpenAPI seam
 - `docs/decisions/ADR-001-template-baseline.md` — auth wrappers, `Role` enum, zod boundary
 - `docs/decisions/ADR-006-pivot-to-vercel-neon.md` — handoff model

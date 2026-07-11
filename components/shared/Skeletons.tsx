@@ -16,9 +16,7 @@ function HeaderSkeleton({ withAction = false }: { withAction?: boolean }) {
   return (
     <div className="mb-4 flex items-start justify-between gap-4">
       <Skeleton data-slot="skeleton-title" className="h-8 w-44" />
-      {withAction ? (
-        <Skeleton data-slot="skeleton-button" className="h-9 w-28" />
-      ) : null}
+      {withAction ? <Skeleton data-slot="skeleton-button" className="h-9 w-28" /> : null}
     </div>
   );
 }
@@ -54,17 +52,10 @@ export function TableSkeleton({ rows = 8 }: { rows?: number }) {
     <div>
       <HeaderSkeleton withAction />
       <div className="overflow-hidden rounded-md border border-border">
-        <Skeleton
-          data-slot="skeleton-row"
-          className="h-11 rounded-none bg-muted/70"
-        />
+        <Skeleton data-slot="skeleton-row" className="h-11 rounded-none bg-muted/70" />
         <div className="flex flex-col gap-px">
           {Array.from({ length: rows }).map((_, i) => (
-            <Skeleton
-              key={i}
-              data-slot="skeleton-row"
-              className="h-12 rounded-none"
-            />
+            <Skeleton key={i} data-slot="skeleton-row" className="h-12 rounded-none" />
           ))}
         </div>
       </div>

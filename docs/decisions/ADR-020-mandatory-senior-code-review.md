@@ -24,7 +24,7 @@ cannot see by construction:
 1. **Cross-cutting invariant completeness** — an invariant covered on the changed
    path but not all paths (#33, #28). The files involved hadn't changed in many
    commits, so a diff review never re-opened them.
-2. **Adversarial / output-side trust boundaries** — injection on the way *out*
+2. **Adversarial / output-side trust boundaries** — injection on the way _out_
    and at non-obvious boundaries (#30 formula injection, #29 Host trust, #31
    shell). Input validation was strong; output encoding and trust-boundary
    reasoning were not.
@@ -33,7 +33,7 @@ cannot see by construction:
 4. **Architecture / maintainability** (#34).
 
 The gap is **scope and stance** (whole-change + adversarial), not a missing
-tool. Notably, these issues *were* caught — by a deliberate whole-repo review.
+tool. Notably, these issues _were_ caught — by a deliberate whole-repo review.
 
 ## Decision
 

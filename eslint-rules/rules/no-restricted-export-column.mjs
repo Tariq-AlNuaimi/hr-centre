@@ -50,8 +50,7 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
 // Forward-safe name pattern: a column key matching this is treated as Restricted
 // even if it isn't in the explicit set above (e.g. `stripeSecret`, `webhookToken`,
 // `privateKey`). Mirrors SECRET_NAME in tests/contracts/scrub-completeness.test.ts.
-const SECRET_NAME =
-  /(password|passwd|secret|token|api_?key|private_?key|credential)/i;
+const SECRET_NAME = /(password|passwd|secret|token|api_?key|private_?key|credential)/i;
 
 function isRestrictedKey(name) {
   return RESTRICTED_EXPORT_KEYS.has(name) || SECRET_NAME.test(name);

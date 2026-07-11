@@ -25,20 +25,19 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const ROOT =
-  process.env.CLAUDE_PROJECT_DIR ||
-  join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = process.env.CLAUDE_PROJECT_DIR || join(dirname(fileURLToPath(import.meta.url)), "..");
 const STATE = join(ROOT, "docs", "session-state.json");
 const HANDOFF = join(ROOT, "docs", "SESSION-HANDOFF.md");
-const BEGIN = "<!-- BEGIN:auto-status (rendered by scripts/render-handoff.mjs from docs/session-state.json -- do not hand-edit) -->";
+const BEGIN =
+  "<!-- BEGIN:auto-status (rendered by scripts/render-handoff.mjs from docs/session-state.json -- do not hand-edit) -->";
 const END = "<!-- END:auto-status -->";
 
 const soft = process.env.RENDER_HANDOFF_SOFT === "1";
 const mode = process.argv.includes("--stdout")
   ? "stdout"
   : process.argv.includes("--check")
-  ? "check"
-  : "write";
+    ? "check"
+    : "write";
 
 function fail(msg, code = 1) {
   if (soft && mode === "write") process.exit(0); // hooks must never trap the agent
@@ -46,7 +45,13 @@ function fail(msg, code = 1) {
   process.exit(code);
 }
 
-const STATE_MARK = { done: "[x]", partial: "[~]", remaining: "[ ]", deferred: "[-]", dropped: "[-]" };
+const STATE_MARK = {
+  done: "[x]",
+  partial: "[~]",
+  remaining: "[ ]",
+  deferred: "[-]",
+  dropped: "[-]",
+};
 const STATE_ICON = { "in-progress": "IN PROGRESS", remaining: "REMAINING", done: "DONE" };
 
 function cell(v) {
@@ -56,20 +61,26 @@ function cell(v) {
   //    data field contained the literal END/BEGIN sentinel, the NEXT run's marker
   //    search would latch onto the injected copy and corrupt the file. Escaping to
   //    entities renders identically but can never form a comment marker.
-  return String(v ?? "")
-    .replace(/\|/g, "\\|")
-    // Neutralize ONLY the HTML-comment sentinels so a data field can never open or
-    // close an auto-status marker; normal '<', '>', and '->' arrows are preserved
-    // (they read cleaner in the raw table agents/humans skim).
-    .replace(/<!--/g, "&lt;!--")
-    .replace(/-->/g, "--&gt;")
-    .replace(/\n+/g, " ")
-    .trim();
+  return (
+    String(v ?? "")
+      .replace(/\|/g, "\\|")
+      // Neutralize ONLY the HTML-comment sentinels so a data field can never open or
+      // close an auto-status marker; normal '<', '>', and '->' arrows are preserved
+      // (they read cleaner in the raw table agents/humans skim).
+      .replace(/<!--/g, "&lt;!--")
+      .replace(/-->/g, "--&gt;")
+      .replace(/\n+/g, " ")
+      .trim()
+  );
 }
 
 function countSubstr(hay, needle) {
-  let n = 0, i = 0;
-  while ((i = hay.indexOf(needle, i)) !== -1) { n++; i += needle.length; }
+  let n = 0,
+    i = 0;
+  while ((i = hay.indexOf(needle, i)) !== -1) {
+    n++;
+    i += needle.length;
+  }
   return n;
 }
 
@@ -79,14 +90,18 @@ function render(state) {
   L.push("");
   L.push("## At-a-glance — IN PROGRESS / REMAINING (the fast status read)");
   L.push("");
-  L.push(`_Program: **${cell(state.program)}** · branch \`${cell(state.branch)}\` · updated ${cell(state.updated)} · last /ship: **${cell(state.lastShip?.status)}** (${cell(state.lastShip?.sha)}, ${cell(state.lastShip?.date)})._`);
+  L.push(
+    `_Program: **${cell(state.program)}** · branch \`${cell(state.branch)}\` · updated ${cell(state.updated)} · last /ship: **${cell(state.lastShip?.status)}** (${cell(state.lastShip?.sha)}, ${cell(state.lastShip?.date)})._`,
+  );
   L.push("");
   L.push("| State | Item | Blocked by | Next action |");
   L.push("|-------|------|-----------|-------------|");
   for (const r of state.inProgress ?? []) {
     const icon = r.state === "in-progress" ? "🟡" : r.state === "done" ? "✅" : "⬜";
     const label = STATE_ICON[r.state] ?? r.state.toUpperCase();
-    L.push(`| ${icon} ${label} | **${cell(r.item)}** ${cell(r.title)} | ${cell(r.blockedBy) || "—"} | ${cell(r.next)} |`);
+    L.push(
+      `| ${icon} ${label} | **${cell(r.item)}** ${cell(r.title)} | ${cell(r.blockedBy) || "—"} | ${cell(r.next)} |`,
+    );
   }
   L.push("");
   L.push("## GRAND PROGRESS TABLE (built from docs/session-state.json)");
@@ -98,7 +113,9 @@ function render(state) {
   L.push("| Item | Status | Commit / note |");
   L.push("|------|--------|---------------|");
   for (const d of state.directives ?? [])
-    L.push(`| ${cell(d.id)} — ${cell(d.title)} | ${STATE_MARK[d.status] ?? d.status} | ${cell(d.commit || d.note || d.date)} |`);
+    L.push(
+      `| ${cell(d.id)} — ${cell(d.title)} | ${STATE_MARK[d.status] ?? d.status} | ${cell(d.commit || d.note || d.date)} |`,
+    );
   L.push("");
   L.push("**Workstreams (Phase0 / C1–C4 / B / E / D / A1–A5)**");
   L.push("");
@@ -106,7 +123,9 @@ function render(state) {
   L.push("|------|--------|---------------|");
   for (const w of state.workstreams ?? []) {
     const meta = [w.commit, w.date, w.note].filter(Boolean).join(" · ");
-    L.push(`| ${cell(w.id)} — ${cell(w.title)} | ${STATE_MARK[w.status] ?? w.status} | ${cell(meta)} |`);
+    L.push(
+      `| ${cell(w.id)} — ${cell(w.title)} | ${STATE_MARK[w.status] ?? w.status} | ${cell(meta)} |`,
+    );
   }
   L.push("");
   L.push("**22 comparison categories (directive D1 coverage)**");
@@ -114,13 +133,17 @@ function render(state) {
   L.push("| Cat | Status | Where |");
   L.push("|-----|--------|-------|");
   for (const c of state.categories ?? [])
-    L.push(`| ${cell(c.id)} ${cell(c.title)} | ${STATE_MARK[c.status] ?? c.status} | ${cell(c.where)} |`);
+    L.push(
+      `| ${cell(c.id)} ${cell(c.title)} | ${STATE_MARK[c.status] ?? c.status} | ${cell(c.where)} |`,
+    );
   if ((state.deferred ?? []).length) {
     L.push("");
     L.push("**Deferred (tracked, not scheduled — see the program blueprint's closeout TODO)**");
     L.push("");
     for (const df of state.deferred)
-      L.push(`- \`${cell(df.id)}\` — ${cell(df.title)}${df.trigger ? ` — trigger: ${cell(df.trigger)}` : ""}`);
+      L.push(
+        `- \`${cell(df.id)}\` — ${cell(df.title)}${df.trigger ? ` — trigger: ${cell(df.trigger)}` : ""}`,
+      );
   }
   if ((state.nextActions ?? []).length) {
     L.push("");
@@ -185,13 +208,19 @@ if (nBegin === 1 && nEnd === 1 && ei > bi) {
 }
 
 if (mode === "check") {
-  if (next !== doc) fail("SESSION-HANDOFF.md is stale vs docs/session-state.json — run: node scripts/render-handoff.mjs", 1);
+  if (next !== doc)
+    fail(
+      "SESSION-HANDOFF.md is stale vs docs/session-state.json — run: node scripts/render-handoff.mjs",
+      1,
+    );
   process.stdout.write("[render-handoff] handoff is in sync with session-state.json\n");
   process.exit(0);
 }
 
 if (next !== doc) {
   writeFileSync(HANDOFF, next);
-  process.stderr.write("[render-handoff] SESSION-HANDOFF.md re-rendered from docs/session-state.json\n");
+  process.stderr.write(
+    "[render-handoff] SESSION-HANDOFF.md re-rendered from docs/session-state.json\n",
+  );
 }
 process.exit(0);

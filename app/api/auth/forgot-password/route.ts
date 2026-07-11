@@ -18,7 +18,7 @@ import { env } from "@/lib/env";
 // not the account exists. after() runs the work post-response on Vercel, so no
 // timing oracle remains. (A reset email is inherently async anyway.)
 
-const schema = z.object({ email: z.string().email() });
+const schema = z.object({ email: z.email() });
 const TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export async function POST(req: NextRequest): Promise<Response> {

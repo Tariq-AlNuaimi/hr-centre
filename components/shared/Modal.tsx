@@ -53,9 +53,7 @@ export function Modal({
         {(title || description) && (
           <DialogHeader>
             {title && <DialogTitle>{title}</DialogTitle>}
-            {description && (
-              <DialogDescription>{description}</DialogDescription>
-            )}
+            {description && <DialogDescription>{description}</DialogDescription>}
           </DialogHeader>
         )}
         {children}

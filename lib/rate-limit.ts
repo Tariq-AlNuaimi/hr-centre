@@ -119,7 +119,11 @@ export async function rateLimit(req: Request, opts: RateLimitOptions): Promise<R
     // rate-limiter-flexible rejects with a RateLimiterRes when the limit is hit.
     if (e && typeof e === "object" && "msBeforeNext" in e) {
       const res = e as RateLimiterRes;
-      return { ok: false, remaining: 0, retryAfter: Math.max(1, Math.ceil(res.msBeforeNext / 1000)) };
+      return {
+        ok: false,
+        remaining: 0,
+        retryAfter: Math.max(1, Math.ceil(res.msBeforeNext / 1000)),
+      };
     }
     // Genuine backend failure the insuranceLimiter didn't absorb: fail safe to
     // the in-memory limiter rather than letting the request through unthrottled.

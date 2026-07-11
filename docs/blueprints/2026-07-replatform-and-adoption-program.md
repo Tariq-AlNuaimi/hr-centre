@@ -7,13 +7,13 @@
 
 The five directives, restated as scoped goals:
 
-| # | Directive | Reality check | Verdict |
-|---|-----------|---------------|---------|
-| D1 | Adopt all recommendations across the 22 comparison tables | ~45 distinct items after dedup; a program, not a task | Plan in waves (Workstream A) |
-| D2 | Docker is always built — a standard, mandatory part of the stack | Today opt-in (ADR-023, `DOCKER_BUILD=1` gate) | Supersede ADR-023 (Workstream B) |
-| D3 | Replace AntD with Tailwind, fully | **Reverses ADR-027** ("keep AntD, do NOT swap", 2026-06-25) and discards ADR-028 Part 2's AntD token system | Needs superseding ADR + explicit re-confirmation (Workstream C) |
-| D4 | RTL + Arabic fully optional | **Already shipped** — ADR-028 Part 1: config flag, default `["en"]`, code inert | Verify + optional deepening only (Workstream D) |
-| D5 | Every app has a DB with a structured schema | Already core (Prisma+Postgres+Neon, scaffold, migrations) | Formalize as a `/ship` gate (Workstream E) |
+| #   | Directive                                                        | Reality check                                                                                               | Verdict                                                         |
+| --- | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| D1  | Adopt all recommendations across the 22 comparison tables        | ~45 distinct items after dedup; a program, not a task                                                       | Plan in waves (Workstream A)                                    |
+| D2  | Docker is always built — a standard, mandatory part of the stack | Today opt-in (ADR-023, `DOCKER_BUILD=1` gate)                                                               | Supersede ADR-023 (Workstream B)                                |
+| D3  | Replace AntD with Tailwind, fully                                | **Reverses ADR-027** ("keep AntD, do NOT swap", 2026-06-25) and discards ADR-028 Part 2's AntD token system | Needs superseding ADR + explicit re-confirmation (Workstream C) |
+| D4  | RTL + Arabic fully optional                                      | **Already shipped** — ADR-028 Part 1: config flag, default `["en"]`, code inert                             | Verify + optional deepening only (Workstream D)                 |
+| D5  | Every app has a DB with a structured schema                      | Already core (Prisma+Postgres+Neon, scaffold, migrations)                                                   | Formalize as a `/ship` gate (Workstream E)                      |
 
 ---
 
@@ -23,7 +23,7 @@ Three superseding ADRs, each a one-session write + sign-off:
 
 1. **ADR-029 — UI replatform: AntD 6 → Tailwind v4 + shadcn/ui** (supersedes ADR-027 Part 1 and
    ADR-028 Part 2's AntD-specific layers; amends ADR-001's UI line).
-   - Must record: *why the 7-day-old "keep AntD" decision is reversed* (operator directive), what
+   - Must record: _why the 7-day-old "keep AntD" decision is reversed_ (operator directive), what
      survives (brand.config concept, `components/shared/*` API surface, design-recipes patterns,
      `/design-system`+`/design-qa` methodology, tokens-as-single-source), what is discarded
      (`antd-theme.ts`, AntD component-token phases), and the migration triggers table from ADR-027
@@ -36,8 +36,8 @@ Three superseding ADRs, each a one-session write + sign-off:
    - Side benefit to record: removes AntD's CSS-in-JS → the CSP `'unsafe-inline'` style exception
      (ADR-001 consequence) can finally be dropped.
 2. **ADR-030 — Docker as a standard build artifact** (supersedes ADR-023's opt-in stance).
-   - Vercel+Neon remains the *deploy* default; Docker becomes a *mandatory build gate + handoff
-     artifact*, not the deploy path.
+   - Vercel+Neon remains the _deploy_ default; Docker becomes a _mandatory build gate + handoff
+     artifact_, not the deploy path.
 3. **ADR-031 — Mandatory structured DB** (formalizes D5; small).
 
 Also in Phase 0: commit `docs/deep-comparison/ADOPT.md` — the deduped D1 backlog (the wave tables
@@ -67,6 +67,7 @@ react-hook-form + zodResolver (validation messages already zod-shaped). Run `/de
 screen; axe-clean serious/critical is the per-screen exit bar.
 
 **C4. Harness & guard updates (1–2 sessions).**
+
 - `eslint-rules/no-raw-hex-color`: retarget — token source becomes the `@theme` block; forbid
   arbitrary-value colors (`bg-[#…]`) outside it.
 - Rewrite `docs/design-recipes.md` patterns as Tailwind/shadcn markup; update `/design-system`,
@@ -90,7 +91,7 @@ flip (shadcn/ui, tweakcn, shadcn MCP servers become in-scope; AntD-specific borr
 ## Workstream B — Docker standard (after C1, parallel with C2+)
 
 1. **Keep `DOCKER_BUILD=1` in `next.config.ts`** (standalone output stays env-scoped so the Vercel
-   build is untouched — ADR-023's one true constraint), but make the *gate* unconditional:
+   build is untouched — ADR-023's one true constraint), but make the _gate_ unconditional:
 2. `/ship` gains a **phase: `make docker-build` must succeed** (image builds from the current
    tree). On slow local machines: cache-friendly multi-stage build; CI runs it always once Actions
    activate. Escape hatch: `"dockerAck"` in `project.config.json` logged to the findings register —
@@ -107,6 +108,7 @@ flip (shadcn/ui, tweakcn, shadcn MCP servers become in-scope; AntD-specific borr
 
 ADR-028 Part 1 delivered exactly D4: `project.config.json` `locales` drives routing, `<html dir>`,
 prefix regex, switcher; default `["en"]`; `ar` + RTL code inert until enabled. Remaining work:
+
 1. One verification pass: fresh default fork shows zero RTL/ar surface; flipping
    `["en","ar"]` restores it (UAT already config-driven). **0.5 session.**
 2. Optional deepening (operator call, default NO): physically strip `messages/ar.json`/RTL code at
@@ -118,6 +120,7 @@ prefix regex, switcher; default `["en"]`; `ar` + RTL code inert until enabled. R
 
 Already true by construction (Prisma schema is the source of truth; Neon provisioned by
 `/deploy`/`/new-project`; migrations run every Vercel build). Make it a gate:
+
 1. `/ship` check: `prisma/schema.prisma` has ≥1 domain model beyond the auth/audit baseline, and
    `prisma/migrations/` is non-empty and in sync (`prisma migrate diff` clean). Fails red otherwise.
 2. `/quickstart` refuses to scaffold a "no-DB" app: every idea passes through `/scaffold-entity`
@@ -218,6 +221,7 @@ Source of truth for the live status is `docs/deep-comparison/ADOPT.md`; this lis
 mirrors it plus the in-flight deferrals that surfaced during the build.
 
 **Deferred during the build (decide when the trigger fires):**
+
 - [ ] **Tremor charts** — `@tremor/react@3.18.7` has a hard `react@^18` peer; deferred
       (C2, 2026-07-03). Chart runs on recharts with a Tremor-style API. **Trigger:**
       `@tremor/react` peer accepts React 19 → then adopt as a drop-in, or DROP Tremor
@@ -227,6 +231,7 @@ mirrors it plus the in-flight deferrals that surfaced during the build.
       Actions billing → wire `lighthouserc.cjs` into CI or DROP for ad-hoc only.
 
 **Deferred backlog (from ADOPT.md "Deferred / future"; re-promote via `/blueprint`):**
+
 - [ ] claude-task-master (fork outgrows single-session planning)
 - [ ] Backlog.md (same trigger)
 - [ ] fastmcp provider path (we ship our own MCP server)
@@ -240,7 +245,7 @@ mirrors it plus the in-flight deferrals that surfaced during the build.
 
 **Closeout rule:** when the program's active waves (C3/C4, A1, A5) are all `[x]`, walk
 this list top-to-bottom with the operator and give each row a final verdict — none may
-remain `[ ]` at program close. A row kept unbuilt is a *decision to drop* (logged), not
+remain `[ ]` at program close. A row kept unbuilt is a _decision to drop_ (logged), not
 an oversight.
 
 ---
@@ -248,9 +253,10 @@ an oversight.
 ## Follow-on program (separate blueprint) — session-automation
 
 The operator asked (2026-07-03) to automate the handoff→fresh-session loop (auto-handoff
-+ auto-start) because manual session boundaries lose status/context. Designed separately
-in **`docs/blueprints/session-automation-auto-handoff.md`** — it was the recommended NEXT
-build (ahead of C3) since it de-risks every subsequent session of this long program.
+
+- auto-start) because manual session boundaries lose status/context. Designed separately
+  in **`docs/blueprints/session-automation-auto-handoff.md`** — it was the recommended NEXT
+  build (ahead of C3) since it de-risks every subsequent session of this long program.
 
 **BUILT 2026-07-03 (session 4).** All 4 open questions answered; Parts 1/2/3 shipped
 (Part 3 guarded auto-spawn ships **disabled by default**). `docs/session-state.json` is now

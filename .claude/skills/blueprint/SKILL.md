@@ -18,7 +18,7 @@ honestly; don't full-blueprint a throwaway, don't lightweight a real feature.
 
 **Lightweight track** — disposable, single-surface `/quickstart` work: a small
 tracker, 1–3 entities, no auth/schema/lib subtlety, easy to throw away. Do this
-*inline in the chat*, no file:
+_inline in the chat_, no file:
 
 1. **One clarifying-question round (mandatory).** Use `AskUserQuestion` to close
    the highest-leverage unknowns BEFORE scaffolding — never assume them. The
@@ -26,13 +26,13 @@ tracker, 1–3 entities, no auth/schema/lib subtlety, easy to throw away. Do thi
    actually needed (vs. nice-to-have), and what "done" looks like. If the prompt
    already answers one, skip it; ask the rest. One round, then proceed.
 2. **Declare the design + architecture read (one line each).**
-   - *Design read:* surface · audience · tone · density · the single primary action.
-   - *Architecture read:* the entity/entities, where state lives, the one route/
+   - _Design read:_ surface · audience · tone · density · the single primary action.
+   - _Architecture read:_ the entity/entities, where state lives, the one route/
      service path. This line is the guard against accidentally building a second
      settings page or a function that duplicates an existing one — say where it
      lives in the current structure (`docs/REPO-MAP.md` answers "where is X").
 3. **Rough-variant sketch (OPTIONAL — greenfield screens only).** For a
-   *brand-new* screen with no established pattern, borrow superdesign's
+   _brand-new_ screen with no established pattern, borrow superdesign's
    iterate-before-commit idea (cat 21, "adopt the concept not the dep"): before
    writing code, sketch **2–3 quick approaches** — layout / hierarchy /
    interaction — in a line or two each, note the trade-off of each, then
@@ -55,9 +55,9 @@ requirements half.
 ## Grill against the docs first (the alignment interview)
 
 Before you resolve open questions from your own head, run an **interrogation
-pass** that pins the requirement against this repo's *authoritative* docs — the
+pass** that pins the requirement against this repo's _authoritative_ docs — the
 template's native version of mattpocock's `/grill-with-docs` (cat 02), built not
-imported per ADR-022. The point is to surface conflicts *as questions* before
+imported per ADR-022. The point is to surface conflicts _as questions_ before
 code, not to discover them at QA. Read (don't guess) the sources that govern this
 change and grill the requirement against each:
 
@@ -95,63 +95,70 @@ pages until a blueprint's `Scope:` glob covers them, so the stub is what lets di
 Resolve the open questions FIRST (via `AskUserQuestion`) — a blueprint built on
 guessed answers is the very failure this gate exists to prevent. Then write:
 
-```md
+````md
 # Blueprint — <Feature>
 
 Scope: <file globs this blueprint authorizes — e.g. app/api/<feature>/**, app/**/<feature>/**, lib/<feature>/**. The `blueprint-gate.mjs` PreToolUse hook (ADR-033) matches new route/page files against this line, so keep it accurate. Comma-separated; `*` = one segment, `**` = any depth.>
 
 ## Problem & outcome
+
 <the need; what changes for whom when this ships; why now>
 
 ## Market scan
+
 <1–3 existing products/libraries/starters checked (CLAUDE.md market-benchmark
 rule), with the trade-off that justifies building vs. adopting>
 
 ## Tier
-personal | shared  — and the one reason. (Sets ceremony; never the security
+
+personal | shared — and the one reason. (Sets ceremony; never the security
 floor. If `shared`, the SECURITY.md §9 obligations apply.)
 
-## User stories  (stable IDs — the traceability spine)
+## User stories (stable IDs — the traceability spine)
+
 - **US1** — As a <role>, I want <goal>, so that <value>.
   - **AC-1.1** — WHEN <trigger/condition> THE SYSTEM SHALL <observable behavior>.
   - **AC-1.2** — IF <error/adversarial condition> THEN THE SYSTEM SHALL
     <reject with the zod message / 403 / bounded result — name it>.
 - **US2** — …
   - **AC-2.1** — WHEN … THE SYSTEM SHALL …
-(one story per role × goal. IDs are **stable**: never renumber; a dropped story's
-ID is retired, not reused. Acceptance criteria are **EARS-phrased** — the
-constrained "WHEN … THE SYSTEM SHALL …" / "IF … THEN THE SYSTEM SHALL …" form —
-so each is individually testable, and `/qa`/`/uat`/`/manual-uat` cite `US`/`AC`
-ids in their coverage rows one-to-one instead of re-deriving prose.)
+    (one story per role × goal. IDs are **stable**: never renumber; a dropped story's
+    ID is retired, not reused. Acceptance criteria are **EARS-phrased** — the
+    constrained "WHEN … THE SYSTEM SHALL …" / "IF … THEN THE SYSTEM SHALL …" form —
+    so each is individually testable, and `/qa`/`/uat`/`/manual-uat` cite `US`/`AC`
+    ids in their coverage rows one-to-one instead of re-deriving prose.)
 
 ## Scenarios (per story; Given/When/Then — worst path is mandatory)
+
 - **US1-happy** — Given <preconditions: role, seeded state>, When <the intended
   journey with valid data>, Then <the expected result — tie it to an AC-1.x>.
 - **US1-worst** — Given <same or hostile preconditions>, When <invalid/boundary/
   adversarial input, unauthorized role, double-submit>, Then <the expected
   rejection — zod message / 403 / no-op — NOT a 500 or a silent success>.
-(GWT keeps scenarios checkable: a scenario with no Then is a wish, not a test.
-`/manual-uat` maps its walk 1:1 onto these named `USn-happy`/`USn-worst` cells.)
+  (GWT keeps scenarios checkable: a scenario with no Then is a wish, not a test.
+  `/manual-uat` maps its walk 1:1 onto these named `USn-happy`/`USn-worst` cells.)
 
-## Delta — was → now  (REQUIRED when changing existing behavior; else "n/a — additive only")
-| Surface (route / screen / service) | Was | Now | Who notices the break? |
-|---|---|---|---|
-| `PATCH /api/…` | <current behavior> | <new behavior> | <consumer/role affected> |
-(`/ship`'s blueprint gate only fires on *added* routes/migrations — a behavior
-change to an existing surface escapes it structurally. This table is the manual
-half of that gate: enumerate every existing surface whose behavior changes, in
-the OpenSpec change-proposal style, so reviewers diff intent, not just code.)
+## Delta — was → now (REQUIRED when changing existing behavior; else "n/a — additive only")
 
-## Domain model  (the `/domain-modeling` step — do this BEFORE routes)
-Model the *nouns and their relationships* before the plumbing (mattpocock's
+| Surface (route / screen / service)                                              | Was                | Now            | Who notices the break?   |
+| ------------------------------------------------------------------------------- | ------------------ | -------------- | ------------------------ |
+| `PATCH /api/…`                                                                  | <current behavior> | <new behavior> | <consumer/role affected> |
+| (`/ship`'s blueprint gate only fires on _added_ routes/migrations — a behavior  |
+| change to an existing surface escapes it structurally. This table is the manual |
+| half of that gate: enumerate every existing surface whose behavior changes, in  |
+| the OpenSpec change-proposal style, so reviewers diff intent, not just code.)   |
+
+## Domain model (the `/domain-modeling` step — do this BEFORE routes)
+
+Model the _nouns and their relationships_ before the plumbing (mattpocock's
 `/domain-modeling`, native per ADR-022). This is where the schema is designed;
 it feeds `/scaffold-entity` directly (entities → `--fields`/`--enums`,
 relationships → `--relations`, invariants → the writer-role + zod). Fill the
 grid — it maps one-to-one onto the scaffold flags:
 
-| Entity (PascalCase) | Key attributes (name:type, mark ? optional / ! indexed) | Restricted? (§1) | Enums (states) | Relationships (→ target, cardinality 1:1/1:N/N:1) |
-|---|---|---|---|---|
-| `<Entity>` | `title:string, dueAt:date?` | no | `status: TODO\|DOING\|DONE` | `project → Project (N:1)`, `assignee → User? (N:1)` |
+| Entity (PascalCase) | Key attributes (name:type, mark ? optional / ! indexed) | Restricted? (§1) | Enums (states)              | Relationships (→ target, cardinality 1:1/1:N/N:1)   |
+| ------------------- | ------------------------------------------------------- | ---------------- | --------------------------- | --------------------------------------------------- |
+| `<Entity>`          | `title:string, dueAt:date?`                             | no               | `status: TODO\|DOING\|DONE` | `project → Project (N:1)`, `assignee → User? (N:1)` |
 
 - **Invariants / lifecycle** — the rules the schema alone can't state: which
   fields are immutable after create, valid state transitions (which `status`
@@ -166,6 +173,7 @@ grid — it maps one-to-one onto the scaffold flags:
   genuinely stateless fork needs the `dbAck` register path, not a blank grid.
 
 ## Architecture sketch
+
 - Routes (method + path + auth wrapper) and the service/function each calls
 - Where state lives (DB / session / client) — and an explicit check that this
   does NOT duplicate an existing screen, setting, route, or service. Name the
@@ -188,15 +196,20 @@ grid — it maps one-to-one onto the scaffold flags:
     Rel(route, svc, "calls")
     Rel(svc, db, "Prisma")
   ```
-  (Plain `flowchart` is an acceptable fallback if `C4Component` fights you —
-  the requirement is a committed diagram, not a specific dialect.)
+````
+
+(Plain `flowchart` is an acceptable fallback if `C4Component` fights you —
+the requirement is a committed diagram, not a specific dialect.)
 
 ## The five pillars (how this honors each — CLAUDE.md "Five Pillars")
+
 - Speed · Maintainable · Scalable · Secure · High-Quality — one line each, or
   "n/a + why". Anything that can't be answered is an open question, not a skip.
 
-## Open questions  (RESOLVE via AskUserQuestion before building)
+## Open questions (RESOLVE via AskUserQuestion before building)
+
 - [ ] <question> → <answer once resolved>
+
 ```
 
 Sign-off gate: a blueprint whose **Domain model grid is empty** is incomplete —
@@ -273,3 +286,4 @@ blueprint, or set `"blueprintAck": "<reason>"` in `project.config.json`.
 - `/quickstart` and `/scaffold-entity` call the lightweight track as their step 0.
 - Plan mode / `EnterPlanMode` — the blueprint is the requirements half of a plan.
 - `/qa`, `/uat`, `/manual-uat` — consume the user stories as the coverage source.
+```

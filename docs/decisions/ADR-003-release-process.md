@@ -27,16 +27,19 @@ The bar is low — a CHANGELOG entry + a GitHub release per prod deploy. The cos
 ## Consequences
 
 ### Positive
+
 - `CHANGELOG.md` grows in the repo, auditable in PR diffs, accessible offline.
 - The GitHub releases page becomes the canonical "what's in prod" timeline.
 - Each release is tied to its `prod-*` tag, so the rollback target is always one click away (`/rollback --to sha-<prev>`).
 
 ### Negative
+
 - ~30 seconds per promotion of operator time.
 - A second command to remember (mitigated: `/promote` skill explicitly recommends `/release` as the follow-up).
 - Operators who don't use Conventional Commits get a flat "Other" section. Still readable, just less categorized.
 
 ### Mitigations
+
 - `/release --auto` picks the newest `prod-*` tag with no flags — minimal friction.
 - `/release --dry-run` lets the operator inspect the draft before writing / committing.
 - The script is idempotent on the GH side: re-running with the same tag warns and skips instead of erroring.
@@ -49,12 +52,14 @@ The bar is low — a CHANGELOG entry + a GitHub release per prod deploy. The cos
 4. **GitHub auto-generated release notes only (no CHANGELOG.md).** Rejected: the in-repo file is grepable from a terminal during an incident; the GH page requires browser auth.
 
 ## Migration triggers
+
 - If the team starts cutting release candidates / RC tags before prod, revisit the tag-discovery logic (it currently filters `prod-*` strictly).
 - If multiple `/promote` runs land per day, consider grouping by date instead of per-tag (UI-side noise).
 - If the template starts shipping as a published package (today it doesn't), revisit semantic-release.
 - If a project requires PDPL / regulatory release-note disclosure (data handling changes), formalize the bucket list to include a "Security & compliance" section.
 
 ## Related
+
 - `scripts/release.mjs` — implementation
 - `.claude/skills/release/SKILL.md` — skill walkthrough
 - `.claude/skills/promote/SKILL.md` — upstream trigger (mentions `/release` as follow-up)

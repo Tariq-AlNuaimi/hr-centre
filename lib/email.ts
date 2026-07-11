@@ -87,14 +87,18 @@ export function buildMailOptions(opts: SendEmailOptions): SendMailOptions {
 export async function sendEmail(opts: SendEmailOptions): Promise<SendEmailResult> {
   const t = getTransporter();
   if (!t) {
-    console.warn(`[email] SMTP_HOST not set; skipping send to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
+    console.warn(
+      `[email] SMTP_HOST not set; skipping send to=${recipientLabel(opts.to)} subject="${opts.subject}"`,
+    );
     return { sent: false };
   }
 
   const info = await t.sendMail(buildMailOptions(opts));
 
   // Metadata-only log line. Never the body, never the raw recipient address.
-  console.log(`[email] sent messageId=${info.messageId} to=${recipientLabel(opts.to)} subject="${opts.subject}"`);
+  console.log(
+    `[email] sent messageId=${info.messageId} to=${recipientLabel(opts.to)} subject="${opts.subject}"`,
+  );
 
   return { sent: true, messageId: info.messageId };
 }

@@ -33,11 +33,7 @@ const EN = defaultLocale;
 const AR = rtlLocale ?? "ar";
 const SECTIONS = discoverMainSections(EN);
 const RTL_ENABLED = rtlEnabled;
-const FINDINGS_FILE = path.join(
-  process.cwd(),
-  "uat-results",
-  "uiux-findings.json",
-);
+const FINDINGS_FILE = path.join(process.cwd(), "uat-results", "uiux-findings.json");
 
 type Finding = {
   section: string;
@@ -121,9 +117,7 @@ for (const section of SECTIONS as Screen[]) {
           contentType: "image/png",
         });
       } catch (e) {
-        notes.push(
-          `ar variant failed to load: ${e instanceof Error ? e.message : String(e)}`,
-        );
+        notes.push(`ar variant failed to load: ${e instanceof Error ? e.message : String(e)}`);
       }
     } else {
       notes.push("RTL not configured (no ar locale) — RTL assertion skipped");
@@ -152,9 +146,7 @@ for (const section of SECTIONS as Screen[]) {
       pageErrors,
       `${section.name} threw uncaught runtime error(s): ${pageErrors.join(" | ")}`,
     ).toHaveLength(0);
-    expect(headingOk, `${section.name} rendered no heading (blank shell?)`).toBe(
-      true,
-    );
+    expect(headingOk, `${section.name} rendered no heading (blank shell?)`).toBe(true);
     // Only a gate when RTL is configured; English-only forks pass vacuously.
     expect(rtlOk, `${section.name} ar variant did not apply dir="rtl"`).toBe(true);
   });
@@ -172,13 +164,8 @@ for (const section of SECTIONS as Screen[]) {
 //
 // Guarded on the fork actually shipping an RTL locale, exactly like the per-
 // section RTL check above (English-only forks skip it).
-test("RTL overlay geometry — dropdown & popover mirror for ar", async ({
-  page,
-}, testInfo) => {
-  test.skip(
-    !RTL_ENABLED,
-    "RTL not configured (no ar locale) — overlay geometry check skipped",
-  );
+test("RTL overlay geometry — dropdown & popover mirror for ar", async ({ page }, testInfo) => {
+  test.skip(!RTL_ENABLED, "RTL not configured (no ar locale) — overlay geometry check skipped");
   test.setTimeout(60_000);
 
   const vp = page.viewportSize() ?? { width: 1280, height: 720 };
@@ -212,10 +199,9 @@ test("RTL overlay geometry — dropdown & popover mirror for ar", async ({
 
   // Sanity: the document itself must be RTL before overlay mirroring is meaningful.
   const dir = await page.locator("html").getAttribute("dir");
-  expect(
-    dir,
-    "ar list must render <html dir='rtl'> before overlay geometry is asserted",
-  ).toBe("rtl");
+  expect(dir, "ar list must render <html dir='rtl'> before overlay geometry is asserted").toBe(
+    "rtl",
+  );
 
   // --- Dropdown menu: header user menu (align="end") ----------------------
   // The user menu is the LAST aria-haspopup="menu" trigger in the header
@@ -240,7 +226,10 @@ test("RTL overlay geometry — dropdown & popover mirror for ar", async ({
       "rtl dropdown: content left edge should align with the trigger's left edge",
     ).toBeLessThan(EDGE_TOL);
     // …and the mirrored menu is not clipped off either side of the viewport.
-    expect(mc.x, "rtl dropdown must not overflow off the left of the viewport").toBeGreaterThanOrEqual(-VIEWPORT_SLOP);
+    expect(
+      mc.x,
+      "rtl dropdown must not overflow off the left of the viewport",
+    ).toBeGreaterThanOrEqual(-VIEWPORT_SLOP);
     expect(
       mc.x + mc.width,
       "rtl dropdown must not overflow off the right of the viewport",
@@ -274,7 +263,10 @@ test("RTL overlay geometry — dropdown & popover mirror for ar", async ({
     ).toBeLessThan(EDGE_TOL);
     // …and the popover, extending leftward from that right edge, does not spill
     // off the left of the viewport.
-    expect(pc.x, "rtl popover must not overflow off the left of the viewport").toBeGreaterThanOrEqual(-VIEWPORT_SLOP);
+    expect(
+      pc.x,
+      "rtl popover must not overflow off the left of the viewport",
+    ).toBeGreaterThanOrEqual(-VIEWPORT_SLOP);
     expect(
       pc.x + pc.width,
       "rtl popover must not overflow off the right of the viewport",

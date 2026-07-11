@@ -7,18 +7,11 @@
 // existing imports from "@/components/shared/KanbanBoard" keep working.
 
 import dynamic from "next/dynamic";
-import type {
-  KanbanBoardProps,
-  KanbanColumn,
-  KanbanItem,
-} from "./KanbanBoard.impl";
+import type { KanbanBoardProps, KanbanColumn, KanbanItem } from "./KanbanBoard.impl";
 
 export type { KanbanBoardProps, KanbanColumn, KanbanItem };
 
 // `dynamic` erases the generic signature, so re-assert it on the exported binding.
-export const KanbanBoard = dynamic(
-  () => import("./KanbanBoard.impl").then((m) => m.KanbanBoard),
-  { ssr: false }
-) as <T extends KanbanItem>(
-  props: KanbanBoardProps<T>
-) => React.ReactElement;
+export const KanbanBoard = dynamic(() => import("./KanbanBoard.impl").then((m) => m.KanbanBoard), {
+  ssr: false,
+}) as <T extends KanbanItem>(props: KanbanBoardProps<T>) => React.ReactElement;

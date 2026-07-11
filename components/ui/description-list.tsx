@@ -17,8 +17,7 @@ export interface DescriptionListItem {
   value: React.ReactNode;
 }
 
-export interface DescriptionListProps
-  extends React.HTMLAttributes<HTMLDListElement> {
+export interface DescriptionListProps extends React.HTMLAttributes<HTMLDListElement> {
   items: DescriptionListItem[];
   /** Columns at md+ breakpoint (collapses to 1 on narrow screens). Default 1. */
   columns?: number;
@@ -54,14 +53,9 @@ export function DescriptionList({
       {items.map((it, i) => (
         <div
           key={it.key ?? i}
-          className={cn(
-            "px-4 py-3",
-            bordered && "bg-muted outline outline-1 outline-border",
-          )}
+          className={cn("px-4 py-3", bordered && "bg-muted outline outline-1 outline-border")}
         >
-          <dt className="text-xs font-medium text-muted-foreground">
-            {it.label}
-          </dt>
+          <dt className="text-xs font-medium text-muted-foreground">{it.label}</dt>
           <dd className="m-0 mt-0.5 text-sm text-foreground">{it.value}</dd>
         </div>
       ))}

@@ -95,15 +95,22 @@ if (!Number.isInteger(rateLimit) || rateLimit < 1) {
 const kebab = Pascal.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 const camel = Pascal.charAt(0).toLowerCase() + Pascal.slice(1);
 
-const ZOD = { string: "z.string().min(1).max(10000)", number: "z.number()", boolean: "z.boolean()" };
+const ZOD = {
+  string: "z.string().min(1).max(10000)",
+  number: "z.number()",
+  boolean: "z.boolean()",
+};
 const SAMPLE = { string: JSON.stringify("example input"), number: "1", boolean: "true" };
 
 const fields = values.input.split(",").map((raw) => {
   const [fname, ftype] = raw.split(":").map((s) => s.trim());
   if (!fname || !/^[a-z][A-Za-z0-9]*$/.test(fname)) {
-    die(`invalid input field "${raw}" -- expected camelCase name:type (type = string|number|boolean).`);
+    die(
+      `invalid input field "${raw}" -- expected camelCase name:type (type = string|number|boolean).`,
+    );
   }
-  if (!ZOD[ftype]) die(`invalid type for "${fname}": "${ftype}" -- one of: string | number | boolean.`);
+  if (!ZOD[ftype])
+    die(`invalid type for "${fname}": "${ftype}" -- one of: string | number | boolean.`);
   return { name: fname, type: ftype };
 });
 
@@ -308,9 +315,17 @@ for (const o of outputs) {
 // --- summary ----------------------------------------------------------------
 
 console.log("");
-console.log(`Scaffolded AI endpoint POST /api/ai/${kebab} (${authWrapper}, ${rateLimit}/min). Next steps:`);
-console.log(`  1. Fill in docs/blueprints/ai-${kebab}.md (real stories + worst path + prompt design).`);
+console.log(
+  `Scaffolded AI endpoint POST /api/ai/${kebab} (${authWrapper}, ${rateLimit}/min). Next steps:`,
+);
+console.log(
+  `  1. Fill in docs/blueprints/ai-${kebab}.md (real stories + worst path + prompt design).`,
+);
 console.log(`  2. Shape the prompt in app/api/ai/${kebab}/route.ts (search for the TODOs).`);
-console.log(`  3. Add real cases to tests/ai-evals/${kebab}.eval.ts (dormant until the ai-eval gate).`);
-console.log(`  4. Set AI_API_KEY (+ optional AI_BASE_URL/AI_AUTH_STYLE/AI_MODEL) to exercise it live.`);
+console.log(
+  `  3. Add real cases to tests/ai-evals/${kebab}.eval.ts (dormant until the ai-eval gate).`,
+);
+console.log(
+  `  4. Set AI_API_KEY (+ optional AI_BASE_URL/AI_AUTH_STYLE/AI_MODEL) to exercise it live.`,
+);
 console.log(`  5. Run: npm run ship`);

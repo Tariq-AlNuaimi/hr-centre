@@ -13,10 +13,7 @@ export const Label = React.forwardRef<
   // eslint-disable-next-line jsx-a11y/label-has-associated-control -- reusable primitive; the association is made at the call site (FormField supplies htmlFor), which this rule cannot see from the primitive definition
   <label
     ref={ref}
-    className={cn(
-      "text-sm font-medium text-foreground peer-disabled:opacity-70",
-      className,
-    )}
+    className={cn("text-sm font-medium text-foreground peer-disabled:opacity-70", className)}
     {...props}
   />
 ));

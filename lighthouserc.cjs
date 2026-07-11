@@ -23,9 +23,7 @@ module.exports = {
       numberOfRuns: 3,
       // Only boot a local server when auditing localhost; when LHCI_URL points at
       // a deployed preview, collect against it directly (no local server).
-      ...(isLocal
-        ? { startServerCommand: "npm run start", startServerReadyPattern: "Ready" }
-        : {}),
+      ...(isLocal ? { startServerCommand: "npm run start", startServerReadyPattern: "Ready" } : {}),
     },
     assert: {
       assertions: {

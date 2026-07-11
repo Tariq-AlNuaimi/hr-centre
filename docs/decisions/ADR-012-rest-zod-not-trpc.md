@@ -18,7 +18,7 @@ handlers wrapped with `withAuth` / `withAdminAuth` / `withInternalAuth`, with
 **zod** validating every request at the boundary (`lib/validations/`). This is
 the ADR-001 invariant ("Validate at the API boundary with zod").
 
-The decisive constraint is **ADR-006's handoff model**: the prototype is *not*
+The decisive constraint is **ADR-006's handoff model**: the prototype is _not_
 the artifact that ships to production. A **different IT team**, working in a
 **different repo** with their **own** stack, takes over at `/handoff`. The API
 surface is the thing they inherit and re-implement or wrap. Whatever the
@@ -39,6 +39,7 @@ external consumption — see ADR-013.
 ## Consequences
 
 ### Positive
+
 - **Handoff-friendly.** REST + zod is universally legible: the IT team reads
   `route.ts` + the zod schema and knows the contract, with no tRPC runtime,
   client, or React-Query coupling to port.
@@ -52,12 +53,14 @@ external consumption — see ADR-013.
   rewrite.
 
 ### Negative
+
 - No automatic end-to-end type inference from server to client — the frontend
   restates response types (or derives them from the zod schemas). For an
   internal-tool prototype with a small surface this is a minor cost.
 - Slightly more boilerplate per route than a tRPC procedure.
 
 ### Mitigations
+
 - zod schemas are the single source of truth: the client can `z.infer` the same
   schemas the server validates with, recovering most of the type safety without
   the framework.
@@ -65,6 +68,7 @@ external consumption — see ADR-013.
   per-route boilerplate is automated.
 
 ## Alternatives considered
+
 1. **tRPC.** Rejected: ties the API to a TypeScript-client-specific RPC runtime
    and would force a cross-app refactor of every route + the client; hostile to
    the IT handoff, where the consumer is a different team on a different stack.
@@ -74,7 +78,9 @@ external consumption — see ADR-013.
    boundary invariant and removes the basis for the OpenAPI seam.
 
 ## Migration triggers
+
 Revisit when:
+
 - A fork becomes a single long-lived TypeScript-only product (no IT handoff, one
   team owns client + server) where end-to-end inference pays for itself — that
   fork may adopt tRPC via its own superseding ADR.
@@ -83,6 +89,7 @@ Revisit when:
   than switching frameworks.
 
 ## Related
+
 - `docs/decisions/ADR-001-template-baseline.md` — zod-at-the-boundary invariant
 - `docs/decisions/ADR-006-pivot-to-vercel-neon.md` — prototype → IT handoff model
 - `docs/decisions/ADR-013-api-versioning-and-seams.md` — `/api/v1/*` + auth seams

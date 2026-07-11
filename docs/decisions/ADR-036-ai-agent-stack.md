@@ -110,6 +110,7 @@ new routing policy; the AI layer consumes the existing haiku/sonnet/opus table.
 ## Consequences
 
 ### Positive
+
 - Claude-native from day one; no framework compatibility layer to maintain.
 - Model outputs are gated the same way code is — quality regressions block `/ship`,
   with a committed adjudication trail, closing the "code is gated, outputs aren't" gap.
@@ -118,6 +119,7 @@ new routing policy; the AI layer consumes the existing haiku/sonnet/opus table.
 - Non-AI forks pay nothing: the 6th pillar and the AI-eval gate stay inert.
 
 ### Negative
+
 - We own the wrapper and track a **beta** API (`messages.tool_runner`) — churn risk
   sits with us, not a vendor's framework.
 - Two eval tools (Langfuse + Promptfoo) plus Managed Agents add operational moving
@@ -125,6 +127,7 @@ new routing policy; the AI layer consumes the existing haiku/sonnet/opus table.
 - Embeddings deferred to P1 means the first RAG cut is not yet provider-flexible.
 
 ### Mitigations
+
 - The wrapper is deliberately thin and seam-shaped: if `tool_runner` graduates or
   breaks, the blast radius is `lib/ai/`, not scattered call sites.
 - The AI-eval gate is fork-conditional — the tooling cost lands only where AI ships.
@@ -132,18 +135,21 @@ new routing policy; the AI layer consumes the existing haiku/sonnet/opus table.
   later without touching call sites.
 
 ## Alternatives considered
+
 1. **Agent framework (Mastra / LangGraph).** Rejected — lock-in + churn for a
    surface a Claude-first template mostly never calls.
 2. **Vercel AI SDK as the runtime.** Rejected as runtime — not built for
    server-side tool-loops / evals / governance; retained only as the UI streaming seam.
 
 ## Migration triggers
+
 - Revisit if multi-step orchestration outgrows the Tool Runner loop (durable
   branching workflows, human-in-the-loop checkpoints) → reconsider a framework then, not now.
 - Revisit if non-Anthropic models become a hard requirement → introduce a cascade
   router behind `lib/ai/` (P2), not a rewrite.
 
 ## Related
+
 - ADR-020 — senior-code-reviewer LLM-as-judge pattern (mirrored by the ai-eval gate).
 - ADR-022 — model-tier routing + agent memory (the routing this layer consumes).
 - ADR-025 — tiered gate + ack/register escape pattern (how the AI-eval gate waives).

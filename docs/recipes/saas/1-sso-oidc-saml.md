@@ -85,7 +85,12 @@ export function mapSsoRole(claims: Record<string, unknown> | undefined): Role {
 }
 
 function csv(v: string | undefined): Set<string> {
-  return new Set((v ?? "").split(",").map((s) => s.trim()).filter(Boolean));
+  return new Set(
+    (v ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
 }
 
 // IdPs disagree on the claim name; check the common ones.
@@ -181,7 +186,7 @@ callbacks: {
 
 > **Account linking note.** By default Auth.js does **not** auto-link an OIDC login to an
 > existing Credentials user with the same email (anti-takeover). If your IdP owns the
-> email namespace and you *want* linking, add `allowDangerousEmailAccountLinking: true`
+> email namespace and you _want_ linking, add `allowDangerousEmailAccountLinking: true`
 > to the provider — only when the IdP's emails are verified and trusted. Document the
 > choice in SECURITY.md.
 
@@ -247,7 +252,10 @@ SAML_JACKSON_API_KEY="<random 32+ char>"  # gates the Jackson admin/SSO-config A
 **`lib/jackson.ts`** — singleton controllers:
 
 ```ts
-import jackson, { type IConnectionAPIController, type IOAuthController } from "@boxyhq/saml-jackson";
+import jackson, {
+  type IConnectionAPIController,
+  type IOAuthController,
+} from "@boxyhq/saml-jackson";
 
 const opts = {
   externalUrl: process.env.SAML_AUDIENCE!,

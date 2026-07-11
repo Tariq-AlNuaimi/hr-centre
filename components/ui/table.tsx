@@ -11,16 +11,15 @@ import { cn } from "@/lib/utils";
  * (wrap in an `overflow-x-auto` container) so wide tables never overflow the page.
  */
 
-export const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <table
-    ref={ref}
-    className={cn("w-full caption-bottom border-collapse text-sm", className)}
-    {...props}
-  />
-));
+export const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
+  ({ className, ...props }, ref) => (
+    <table
+      ref={ref}
+      className={cn("w-full caption-bottom border-collapse text-sm", className)}
+      {...props}
+    />
+  ),
+);
 Table.displayName = "Table";
 
 export const TableHeader = React.forwardRef<
@@ -34,9 +33,7 @@ TableHeader.displayName = "TableHeader";
 export const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
-  <tbody ref={ref} className={className} {...props} />
-));
+>(({ className, ...props }, ref) => <tbody ref={ref} className={className} {...props} />);
 TableBody.displayName = "TableBody";
 
 export const TableRow = React.forwardRef<
@@ -73,10 +70,6 @@ export const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => (
-  <td
-    ref={ref}
-    className={cn("px-4 py-3.5 align-middle text-foreground", className)}
-    {...props}
-  />
+  <td ref={ref} className={cn("px-4 py-3.5 align-middle text-foreground", className)} {...props} />
 ));
 TableCell.displayName = "TableCell";

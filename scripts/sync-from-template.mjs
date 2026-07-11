@@ -51,8 +51,7 @@ const { values } = parseArgs({
   },
 });
 
-const TEMPLATE_DEFAULT =
-  "https://github.com/Tariq-AlNuaimi/fullstack-vibe-template.git";
+const TEMPLATE_DEFAULT = "https://github.com/Tariq-AlNuaimi/fullstack-vibe-template.git";
 const MARKER = ".template-sync.json";
 const REVIEW_DIFF = ".template-sync-review.diff";
 
@@ -127,7 +126,7 @@ if (willModify) {
           .split("\n")
           .slice(0, 10)
           .map((l) => `    ${l}`)
-          .join("\n")
+          .join("\n"),
     );
   }
 }
@@ -144,8 +143,7 @@ if (existsSync(MARKER)) {
     warn(P, `${MARKER} is present but not valid JSON; ignoring it.`);
   }
 }
-const templateUrl =
-  values.template || markerData?.template || TEMPLATE_DEFAULT;
+const templateUrl = values.template || markerData?.template || TEMPLATE_DEFAULT;
 const remote = values.remote;
 const ref = values.ref;
 
@@ -167,7 +165,7 @@ try {
   bail(
     P,
     `git fetch ${remote} ${ref} failed. If the template repo is private, ensure ` +
-      `your git credentials can read ${templateUrl}.\n  ${String(e.message).slice(0, 300)}`
+      `your git credentials can read ${templateUrl}.\n  ${String(e.message).slice(0, 300)}`,
   );
 }
 
@@ -203,7 +201,7 @@ function reportBehind() {
     warn(
       P,
       `Recorded baseline ${baseline.slice(0, 7)} is not in the fetched template ` +
-        `history (template may have been rebased). Treating all diffs as candidates.`
+        `history (template may have been rebased). Treating all diffs as candidates.`,
     );
   } else if (behindCount === 0 && !anyDiff) {
     ok(P, `Up to date with template ${templateShort} (${ref}).`);
@@ -214,12 +212,12 @@ function reportBehind() {
     warn(
       P,
       `Marker matches template ${templateShort}, but tracked files differ ` +
-        `(local divergence, or a prior sync not yet committed).`
+        `(local divergence, or a prior sync not yet committed).`,
     );
   } else {
     warn(
       P,
-      `Behind by ${behindCount} template commit(s): baseline ${baseline.slice(0, 7)} -> ${templateShort}.`
+      `Behind by ${behindCount} template commit(s): baseline ${baseline.slice(0, 7)} -> ${templateShort}.`,
     );
   }
 }
@@ -289,7 +287,7 @@ if (reviewChanged.length) {
   warn(
     P,
     `${reviewChanged.length} mixed file(s) need manual review -- wrote the diff to ` +
-      `${REVIEW_DIFF} (gitignored). These include Ask-before files; reconcile by hand:`
+      `${REVIEW_DIFF} (gitignored). These include Ask-before files; reconcile by hand:`,
   );
   for (const f of reviewChanged) console.log(`    ? ${f}`);
 }
@@ -331,6 +329,6 @@ console.log(
     "3. If anything under auth/`lib`/schemas/API routes changed: run `/code-review`.",
     "4. `npm run ship` until green, then commit (include `.template-sync.json`).",
     "",
-  ].join("\n")
+  ].join("\n"),
 );
 ok(P, "Done.");

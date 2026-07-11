@@ -3,7 +3,7 @@
 > `/scale-up` → shared-tier security checklist supplement **O12**.
 > Adds a fine-grained permission helper **on top of** the role wrappers
 > (`withAuth` / `withEditorAuth` / `withAdminAuth`) for rules the role gate can't
-> express — e.g. *"an EDITOR may edit only the records they own."*
+> express — e.g. _"an EDITOR may edit only the records they own."_
 
 ## The gap this fills
 
@@ -13,15 +13,15 @@ The shipped wrappers in `lib/api-helpers.ts` answer **"what role is this user?"*
 - `withEditorAuth` — ADMIN or EDITOR (rejects VIEWER).
 - `withAdminAuth` — ADMIN only.
 
-They do **not** answer **"may this specific user act on *this specific* row?"** —
+They do **not** answer **"may this specific user act on _this specific_ row?"** —
 that's per-resource / row-level authorization. `SECURITY.md` §3 already names this
-as project-specific: *"Row-level scoping (e.g. 'users only see their own records')
-is project-specific. Add an explicit `WHERE` clause in every list/get query"* and
-*"Finer-grained, per-resource permissions (a `can()` helper) remain a project-specific
-addition."* This recipe is that helper.
+as project-specific: _"Row-level scoping (e.g. 'users only see their own records')
+is project-specific. Add an explicit `WHERE` clause in every list/get query"_ and
+_"Finer-grained, per-resource permissions (a `can()` helper) remain a project-specific
+addition."_ This recipe is that helper.
 
 The wrappers and `can()` **compose**: the wrapper is the coarse gate (role), `can()`
-is the fine gate (this row). You run `can()` *inside* an already-role-gated handler —
+is the fine gate (this row). You run `can()` _inside_ an already-role-gated handler —
 it never replaces the wrapper.
 
 ## When to add it
@@ -33,7 +33,7 @@ don't capture:
 - "A user sees only projects they're a member of."
 - "Only the assignee or an ADMIN can close a ticket."
 
-**Don't** add it for a flat model where the role *is* the whole authorization story
+**Don't** add it for a flat model where the role _is_ the whole authorization story
 (the shipped template: ADMIN manages users, everyone else reads). Adding a policy
 map there is ceremony with no rule to express.
 
@@ -76,8 +76,7 @@ type Policy<R extends Ownable> = (actor: Actor, resource?: R) => boolean;
 
 // Reusable predicates.
 const isAdmin = (a: Actor) => a.role === "ADMIN";
-const isOwner = <R extends Ownable>(a: Actor, r?: R) =>
-  !!r && !!r.ownerId && r.ownerId === a.id;
+const isOwner = <R extends Ownable>(a: Actor, r?: R) => !!r && !!r.ownerId && r.ownerId === a.id;
 
 // Policy map keyed by resource type, then action. ADMIN is the escape hatch on most
 // actions; EDITOR is constrained to their own rows; VIEWER reads only.
@@ -105,7 +104,7 @@ export function can<R extends Ownable>(
   actor: Actor,
   action: Action,
   type: string,
-  resource?: R
+  resource?: R,
 ): boolean {
   const policy = policies[type]?.[action];
   if (!policy) return false; // default-deny
@@ -114,13 +113,13 @@ export function can<R extends Ownable>(
 ```
 
 > **Default-deny is deliberate.** If a resource type or action isn't in the map,
-> `can()` returns `false` — the safe failure mode. A new audited entity is *denied*
+> `can()` returns `false` — the safe failure mode. A new audited entity is _denied_
 > until you add its policy, which is the behavior you want for a security gate.
 
 ## Using it inside a route (after the wrapper)
 
 `can()` runs **inside** an already-role-gated handler. The wrapper rejects the wrong
-*role* (cheap, no DB hit); `can()` then rejects the wrong *row* after you've fetched
+_role_ (cheap, no DB hit); `can()` then rejects the wrong _row_ after you've fetched
 it. The acting user comes from `ctx.session.user` — already typed as `{ id, role:
 Role }` via the augmentation in `types/index.ts` (never cast `session` to `any`).
 
@@ -157,7 +156,7 @@ export const PUT = withEditorAuth(async (req: NextRequest, { params, session }) 
 
 ### Row-level scoping on **list** queries (the other half)
 
-`can()` gates a *single fetched row*. For **lists**, you can't fetch-then-check every
+`can()` gates a _single fetched row_. For **lists**, you can't fetch-then-check every
 row — push the same rule into the Prisma `where` so the DB never returns rows the
 user may not see (this is the explicit `WHERE` §3 calls for). Keep the two consistent:
 
@@ -165,8 +164,7 @@ user may not see (this is the explicit `WHERE` §3 calls for). Keep the two cons
 export const GET = withAuth(async (req, { session }) => {
   const { role, id } = session.user;
   // ADMIN sees all; EDITOR/VIEWER see only their own. Mirrors the can() update rule.
-  const where =
-    role === "ADMIN" ? {} : { ownerId: id };
+  const where = role === "ADMIN" ? {} : { ownerId: id };
   const data = await prisma.project.findMany({ where /* + pagination, sort */ });
   return ok(data);
 });
@@ -180,27 +178,27 @@ export const GET = withAuth(async (req, { session }) => {
 
 ## How it composes with the existing wrappers
 
-| Layer | Question | Where | Cost |
-|---|---|---|---|
-| `withAuth` / `withEditorAuth` / `withAdminAuth` | What **role** is this user? | wraps the handler | no DB hit |
-| `can(user, action, type, row)` | May this user act on **this row**? | inside the handler, after fetch | needs the row |
-| Prisma `where` scoping | Which rows may this user **see at all**? | the list/get query | in the query |
+| Layer                                           | Question                                 | Where                           | Cost          |
+| ----------------------------------------------- | ---------------------------------------- | ------------------------------- | ------------- |
+| `withAuth` / `withEditorAuth` / `withAdminAuth` | What **role** is this user?              | wraps the handler               | no DB hit     |
+| `can(user, action, type, row)`                  | May this user act on **this row**?       | inside the handler, after fetch | needs the row |
+| Prisma `where` scoping                          | Which rows may this user **see at all**? | the list/get query              | in the query  |
 
 Order: **wrapper first** (rejects wrong role before any work), **`can()` after the
 fetch** (needs the row), **`where` scoping** on lists (so unauthorized rows never
 leave the DB). `can()` does **not** bypass or replace any wrapper — a route with no
 wrapper is still a CLAUDE.md violation (the `no-bare-internal-route` rule, the
-ask-before list). Always pick the tightest wrapper that fits, *then* add `can()`.
+ask-before list). Always pick the tightest wrapper that fits, _then_ add `can()`.
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `lib/permissions.ts` | **New** — the `Actor` / `Ownable` types, `policies` map, `can()`. (New file under `lib/` — **Ask-before** per CLAUDE.md, and run `/code-review` since it touches authorization.) |
-| `app/api/<entity>/[id]/route.ts` | Add the `can(...)` check after the fetch on write handlers |
-| `app/api/<entity>/route.ts` | Add the ownership `where` scope to the list query |
-| `tests/contracts/permissions.test.ts` | **New** — see below |
-| `SECURITY.md` §3 | Note that `can()` is now wired + which resources have row-level rules |
+| File                                  | Change                                                                                                                                                                           |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/permissions.ts`                  | **New** — the `Actor` / `Ownable` types, `policies` map, `can()`. (New file under `lib/` — **Ask-before** per CLAUDE.md, and run `/code-review` since it touches authorization.) |
+| `app/api/<entity>/[id]/route.ts`      | Add the `can(...)` check after the fetch on write handlers                                                                                                                       |
+| `app/api/<entity>/route.ts`           | Add the ownership `where` scope to the list query                                                                                                                                |
+| `tests/contracts/permissions.test.ts` | **New** — see below                                                                                                                                                              |
+| `SECURITY.md` §3                      | Note that `can()` is now wired + which resources have row-level rules                                                                                                            |
 
 No schema change unless a resource lacks an `ownerId` (add the column + a migration
 if so — that's an audited-model change, scaffold it the normal way).
@@ -238,6 +236,7 @@ test("default-deny on unknown resource", () => {
 ```
 
 Then:
+
 1. `npm test` → the new contract passes.
 2. **Integration:** sign in as EDITOR-A, create a project; sign in as EDITOR-B and
    `PUT /api/projects/<A's id>` → **403** (the `can()` row check fires after

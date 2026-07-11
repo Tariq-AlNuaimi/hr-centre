@@ -44,11 +44,7 @@ export function DescriptionList({
 
   return (
     <div>
-      {title && (
-        <h3 className="mb-3 text-h5 font-semibold text-foreground">
-          {title}
-        </h3>
-      )}
+      {title && <h3 className="mb-3 text-h5 font-semibold text-foreground">{title}</h3>}
       <dl
         className="grid grid-cols-1 gap-px overflow-hidden rounded-md md:grid-cols-[var(--dl-cols)]"
         style={{ "--dl-cols": `repeat(${columns}, minmax(0, 1fr))` } as CSSProperties}
@@ -56,24 +52,11 @@ export function DescriptionList({
         {items.map((it) => (
           <div
             key={it.key}
-            style={
-              it.span
-                ? ({ gridColumn: `span ${it.span}` } as CSSProperties)
-                : undefined
-            }
-            className={cn(
-              pad,
-              bordered
-                ? "bg-muted outline outline-1 outline-border"
-                : "",
-            )}
+            style={it.span ? ({ gridColumn: `span ${it.span}` } as CSSProperties) : undefined}
+            className={cn(pad, bordered ? "bg-muted outline outline-1 outline-border" : "")}
           >
-            <dt className="text-xs font-medium text-muted-foreground">
-              {it.label}
-            </dt>
-            <dd className="mt-0.5 m-0 text-sm text-foreground">
-              {it.value}
-            </dd>
+            <dt className="text-xs font-medium text-muted-foreground">{it.label}</dt>
+            <dd className="mt-0.5 m-0 text-sm text-foreground">{it.value}</dd>
           </div>
         ))}
       </dl>

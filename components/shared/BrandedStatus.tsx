@@ -27,10 +27,7 @@ export function BrandedStatus({
   minHeight?: string | number;
 }) {
   return (
-    <div
-      className="flex items-center justify-center p-density-page"
-      style={{ minHeight }}
-    >
+    <div className="flex items-center justify-center p-density-page" style={{ minHeight }}>
       <div className="max-w-[460px] text-center">
         <span
           aria-hidden
@@ -47,14 +44,10 @@ export function BrandedStatus({
 
         <h3 className="mb-1 text-h4 font-semibold text-foreground">{title}</h3>
 
-        {subtitle && (
-          <p className="mb-6 text-sm text-muted-foreground">{subtitle}</p>
-        )}
+        {subtitle && <p className="mb-6 text-sm text-muted-foreground">{subtitle}</p>}
 
         {actions && (
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {actions}
-          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">{actions}</div>
         )}
       </div>
     </div>

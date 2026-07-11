@@ -8,11 +8,11 @@ architecture rot. (See ADR-020 for the why, and the analysis that motivated it.)
 It is **stack-agnostic** by design — the three artifacts work unchanged in a
 Next.js, Go, Python, Rails, or any other repo:
 
-| Artifact | What it is |
-|---|---|
-| `.claude/agents/senior-code-reviewer.md` | The reviewer agent (the prompt + protocol). |
-| `.github/workflows/senior-review.yml` | Async CI gate: reviews PRs, posts findings, **never blocks the push**. |
-| `AGENTS.md` mandate block | The standing instruction making the review mandatory. |
+| Artifact                                 | What it is                                                             |
+| ---------------------------------------- | ---------------------------------------------------------------------- |
+| `.claude/agents/senior-code-reviewer.md` | The reviewer agent (the prompt + protocol).                            |
+| `.github/workflows/senior-review.yml`    | Async CI gate: reviews PRs, posts findings, **never blocks the push**. |
+| `AGENTS.md` mandate block                | The standing instruction making the review mandatory.                  |
 
 ## Where it sits in the review ladder (no redundancy, no delay)
 
@@ -26,7 +26,7 @@ edit ─▶ /ship (build·lint·test·secrets·audit)  ─▶ /code-review (fast
 ```
 
 - **`/ship`** and **`/code-review`** stay the pre-push gates (fast, blocking, diff-scoped).
-- **senior-code-reviewer** runs *after* push, asynchronously, and only *comments*
+- **senior-code-reviewer** runs _after_ push, asynchronously, and only _comments_
   — so it adds zero latency to the dev loop. It owns breadth + invariants +
   threat-model, which the diff gates don't.
 

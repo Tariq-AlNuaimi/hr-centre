@@ -33,7 +33,7 @@ needs make that too thin:
    reference Dockerfile + compose is the artifact they want.
 
 The operator asked to "standardize Docker for the apps." Making Docker the
-*primary* rail would re-import the 8 integration boundaries and 14 secrets
+_primary_ rail would re-import the 8 integration boundaries and 14 secrets
 ADR-006 deleted, for an audience that never sees infrastructure — a regression.
 The standardization that fits is a **maintained, opt-in second rail** that leaves
 the default untouched.
@@ -67,6 +67,7 @@ ESLint rules, and `/ship` all apply identically regardless of deploy rail.
 ## Consequences
 
 ### Positive
+
 - Self-host forks get a tested image, not a manual escape hatch.
 - `/handoff` produces a real container artifact for the IT team.
 - Default rail (Vercel + Neon) is provably untouched — the standalone output is
@@ -74,12 +75,14 @@ ESLint rules, and `/ship` all apply identically regardless of deploy rail.
 - Full local parity for forks that want to exercise the production-like server.
 
 ### Negative
+
 - More surface to maintain: a Dockerfile + compose + CI that can rot if Next's
   standalone contract changes (static/public copy paths, Prisma engine location).
 - Two deploy rails means two places a "how do I ship this" answer can live;
   docs must keep pointing at Vercel as the default to avoid confusing operators.
 
 ### Mitigations
+
 - The dormant `docker-build.yml` smoke test (boot + HTTP probe) is the guard
   against silent standalone-output rot; activate it at `/handoff`.
 - Every Docker artifact's header states "opt-in; Vercel is the default (ADR-006)"
@@ -88,6 +91,7 @@ ESLint rules, and `/ship` all apply identically regardless of deploy rail.
   zero on the default path.
 
 ## Alternatives considered
+
 1. **Make Docker the primary rail (replace Vercel).** Rejected: re-imports the
    ops burden ADR-006 deleted for an audience that never touches infrastructure.
 2. **Leave the prose-only escape hatch as-is.** Rejected: untested and
@@ -97,7 +101,8 @@ ESLint rules, and `/ship` all apply identically regardless of deploy rail.
    self-host demand actually materializes.
 
 ## Migration triggers
-- Revisit if self-host becomes the *common* case (then promote Docker nearer to
+
+- Revisit if self-host becomes the _common_ case (then promote Docker nearer to
   parity and reconsider the default).
 - Revisit if Next.js changes the standalone output contract in a way the
   Dockerfile copy steps must track (pin + update here).
@@ -105,6 +110,7 @@ ESLint rules, and `/ship` all apply identically regardless of deploy rail.
   GHCR push in `docker-build.yml` into the active path).
 
 ## Related
+
 - ADR-006 — Pivot to Vercel + Neon (the default rail this extends).
 - ADR-001 — Template baseline (original Docker baseline, superseded by ADR-006).
 - ADR-005 — Deployment platform options (PaaS-vs-droplet history).

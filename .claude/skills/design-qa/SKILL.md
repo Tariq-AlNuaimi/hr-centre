@@ -6,7 +6,7 @@ description: Design-fidelity QA (Tier 1 of the QA system). Drives Chromium (Play
 # /design-qa — design fidelity, before functional QA
 
 Tier 1 of the QA system (see `docs/uat-rubric.md`). Answers **"does it match the
-intended design?"** — *not* "does it work" (that's `/ship` / functional QA) and *not*
+intended design?"** — _not_ "does it work" (that's `/ship` / functional QA) and _not_
 "does it meet the business need" (that's `/uat`). Runs and **reports**; it doesn't
 change app code. Owned by the front-end (the agent); it gates the next tier.
 
@@ -20,6 +20,7 @@ violation, axe rule, or "Greenhouse does X here and we don't." No anchor → mar
 **judgment call** for the operator, don't bury it as a finding.
 
 ## What it checks (per the rubric's Tier-1 heuristics)
+
 Score each screen **0–5** on: spacing & rhythm · alignment & grid · visual hierarchy
 · color & token adherence · density & whitespace · **state coverage**
 (hover/focus/disabled/loading/empty/error) · consistency · responsive + RTL + dark ·
@@ -29,6 +30,7 @@ Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md`
 `docs/uat-rubric.md` Tier-0 as its anchor.
 
 ## Method — per-component first, then per-screen
+
 1. **Discover the surface** (app-agnostic, never hardcoded): reuse `/uat`'s
    `tests/uat/_discover.ts` (`discoverAllScreens()`) for routes; for a foreign/deployed
    target, DOM-crawl the nav. Discover the design source: `design/**/*` mockups +
@@ -49,6 +51,7 @@ Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md`
 > separate auth path. This is the one pattern: committed specs over the `/uat` backbone.
 > The Playwright **MCP** is for ad-hoc "look at this one screen with me now" exploration
 > only — keep the repeatable captures in `tests/uat/`.
+
 4. **Run axe** on each screen (`@axe-core/playwright`); record serious/critical
    violations (unlabeled inputs, contrast, focus order, keyboard traps).
 5. **Diff against the design source** — spacing on the token scale? palette colors?
@@ -56,8 +59,8 @@ Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md`
    on the first pass; thereafter the screenshots are the **visual-regression** baseline,
    so unintended drift is caught on every run.
 6. **EYEBALL every screenshot — mandatory, never skip.** axe + load checks catch
-   crashes + a11y; they are **blind** to *duplicated widgets, a wrong field label, a
-   broken layout, a cramped/empty screen, two stacked AI panels.* So **open each
+   crashes + a11y; they are **blind** to _duplicated widgets, a wrong field label, a
+   broken layout, a cramped/empty screen, two stacked AI panels._ So **open each
    screenshot and actually look at it** against the heuristics + the mockup. (Lesson:
    a run once reported "all screens pass" while the dashboard showed its KPI strip and
    funnel twice — only the visual pass caught it.) If you didn't look at the pixels,
@@ -70,22 +73,24 @@ Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md`
    next to ours where look-and-feel is contested.
 
 ## Gate
+
 **Entry:** the build is green. **Exit:** no fidelity or a11y **criticals** (serious axe
 violations, broken states, off-design primitives). A red gate **stops the line** and
 reports — functional QA shouldn't test flows on a visually-broken screen.
 
 ## Do not skip this because…
 
-| Rationalization | Rebuttal |
-|---|---|
+| Rationalization                                                  | Rebuttal                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | "axe passed and every route loaded — that's the screen covered." | axe + load checks are **blind** to duplicated widgets, wrong labels, broken layout, two stacked panels (step 6's lesson: a run said "all pass" while the dashboard rendered twice). If you didn't look at the pixels, you didn't do design QA. |
-| "It's a prototype — stakeholders won't mind rough UI." | The shared URL *is* the product for this audience; a sloppy screen is what a non-developer stakeholder judges. The Tier-0 anti-slop pass exists precisely for prototype-speed output. |
-| "Time pressure — skip the component states, screens are enough." | A broken disabled/empty/error state caught per-component is caught **once**; caught per-screen it's twelve findings later, at higher cost. The per-component pass is the shortcut, not the detour. |
-| "The change didn't touch UI files, so tier 1 is moot." | Shared layout/theme/token changes invalidate every screen without touching a page file. Check what the diff *imports into*, then scope — "moot" is a conclusion the diff has to earn. |
-| "Dark/RTL/mobile are edge cases for this audience." | They're rubric columns, not extras: `dir="rtl"` mirroring and dark hold are one screenshot each, and the `ar` locale is a first-class deploy target for this template's users. |
-| "The browser wouldn't launch — mark it green and move on." | "Could not run" is a **blocked** run, never a pass — that's a named boundary below. Fix the env (creds/DB/seed) or report the block. |
+| "It's a prototype — stakeholders won't mind rough UI."           | The shared URL _is_ the product for this audience; a sloppy screen is what a non-developer stakeholder judges. The Tier-0 anti-slop pass exists precisely for prototype-speed output.                                                          |
+| "Time pressure — skip the component states, screens are enough." | A broken disabled/empty/error state caught per-component is caught **once**; caught per-screen it's twelve findings later, at higher cost. The per-component pass is the shortcut, not the detour.                                             |
+| "The change didn't touch UI files, so tier 1 is moot."           | Shared layout/theme/token changes invalidate every screen without touching a page file. Check what the diff _imports into_, then scope — "moot" is a conclusion the diff has to earn.                                                          |
+| "Dark/RTL/mobile are edge cases for this audience."              | They're rubric columns, not extras: `dir="rtl"` mirroring and dark hold are one screenshot each, and the `ar` locale is a first-class deploy target for this template's users.                                                                 |
+| "The browser wouldn't launch — mark it green and move on."       | "Could not run" is a **blocked** run, never a pass — that's a named boundary below. Fix the env (creds/DB/seed) or report the block.                                                                                                           |
 
 ## Token-thrift (ADR-019)
+
 The captures are committed specs that screenshot to files — but the **ad-hoc MCP
 "look at this one screen"** exploration is the token sink. When driving the Playwright
 MCP live, prefer **scoped `browser_snapshot` reads + `ref`-based interactions** over
@@ -96,8 +101,9 @@ console/network reads**. The per-component pass keeps this cheap: capture the st
 save the shot, move on.
 
 ## Honest boundaries
+
 - Design QA is fidelity, **not** correctness (`/ship`) or acceptance (`/uat`).
-- ~80% of "good UI" is measurable here; the residual *taste* is anchored to named
+- ~80% of "good UI" is measurable here; the residual _taste_ is anchored to named
   **benchmarks** and flagged as judgment calls — the agent does the exhaustive
   evidence pass; the operator adjudicates the close ones.
 - Don't call a run green if the browser/creds couldn't launch — that's "could not run."

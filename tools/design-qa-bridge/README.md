@@ -54,4 +54,4 @@ RTL: use the `/ar` locale (only meaningful when the fork ships `["en","ar"]`).
 
 The committed regression spec `tests/uat/design-a11y.uat.ts` is the durable form
 (run against a real URL where no bridge is needed — e.g. a CI runner with open
-egress); the bridge is only for driving a browser from *inside* a web session.
+egress); the bridge is only for driving a browser from _inside_ a web session.

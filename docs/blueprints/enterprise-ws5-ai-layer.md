@@ -10,6 +10,7 @@ Scope: lib/ai/**
 > runtime, Claude-native). Decision of record: **ADR-036**.
 
 ## Problem & outcome
+
 The AI layer is the single largest net-new gap in the stack (ADR-036): the template ships **no**
 provider wrapper, no agent loop, no RAG, no evals. This increment lands the **provider seam +
 thin native Tool-Runner wrapper** — the smallest maintained surface that a later increment
@@ -33,6 +34,7 @@ throws a clear, actionable error rather than half-initializing), mirroring how o
 (ADR-040) and email (`lib/email.ts`) degrade.
 
 ## Users & stories (EARS; worst path mandatory)
+
 - **US1** — As a **developer**, I want a typed Claude client factory, so that AI code shares one
   configured, endpoint-agnostic provider instead of newing up SDK clients ad hoc.
   - **AC-1.1** — WHEN `lib/ai` is imported and `AI_API_KEY` is set THE SYSTEM SHALL expose
@@ -60,6 +62,7 @@ throws a clear, actionable error rather than half-initializing), mirroring how o
     scheme-less typo fails loud at boot rather than silently targeting nowhere.
 
 ## Scenarios (Given/When/Then)
+
 - **US1-happy** — Given `AI_API_KEY` set and no other AI vars, When `getAiClient()`, Then a client
   is returned whose `baseURL` is Anthropic's default and whose model default is `claude-opus-4-8`.
 - **US1-worst** — Given `AI_API_KEY` unset, When `getAiClient()`, Then it throws
@@ -75,11 +78,12 @@ throws a clear, actionable error rather than half-initializing), mirroring how o
   validation rejects it with a clear message — no silent misroute.
 
 ## Architecture sketch
+
 - `lib/ai/config.ts` — the runtime gate + typed config reader. `isAiConfigured()` and
   `aiConfig()` read from `lib/env` (server-only; the AI layer never runs on the Edge). Single
   source of truth for "is AI on and how".
 - `lib/ai/provider.ts` — `getAiClient()` factory constructing `new Anthropic({ apiKey|authToken,
-  baseURL })` from the config; `AiNotConfiguredError`. Endpoint-agnostic (AC-1.1/3.1).
+baseURL })` from the config; `AiNotConfiguredError`. Endpoint-agnostic (AC-1.1/3.1).
 - `lib/ai/tool-runner.ts` — `runAgent(params)`: thin pass-through to
   `client.beta.messages.toolRunner` with model/max_tokens defaults injected (AC-2.1). Typed via
   `Parameters<>`/`ReturnType<>` off the SDK method so it tracks the beta API without restating it.
@@ -90,7 +94,7 @@ throws a clear, actionable error rather than half-initializing), mirroring how o
 
 `AI_MODEL` is the operator-configured default tier; per-call overrides pass through `runAgent`.
 There is **no automatic product-facing model-routing policy this phase** (a later WS-5 increment
-may add one). This is distinct from ADR-022, which governs the *coding harness's* dev-session
+may add one). This is distinct from ADR-022, which governs the _coding harness's_ dev-session
 model tiering — not a shipped product's runtime model selection.
 
 ```mermaid
@@ -106,6 +110,7 @@ flowchart LR
 ```
 
 ## The five pillars
+
 - **Speed** — zero cost when unconfigured (factory short-circuits); no client constructed at import.
 - **Secure** — `AI_API_KEY` is Restricted, never logged; the factory never leaks a partial config;
   env validation fails loud on a bad `AI_BASE_URL`.
@@ -118,10 +123,12 @@ flowchart LR
   `/ship` green + `/code-review` + `senior-code-reviewer` before done.
 
 ## Tier
+
 `shared` (enterprise pivot). Skeleton-only; no live route, so no auth-wrapper/zod surface this
 phase — those arrive with `/scaffold-ai-endpoint` in a follow-on WS-5 increment.
 
 ## Explicitly deferred (follow-on WS-5 increments — ADR-036)
+
 - `/scaffold-ai-endpoint` generator (AI route + eval fixtures + tracing + blueprint stub).
 - `ai-eval` agent + the AI-eval `/ship` gate (Promptfoo suite; LLM-as-judge; ADR-020 pattern).
 - The conditional 6th **AI-Quality** pillar (inert on non-AI forks).
@@ -130,9 +137,10 @@ phase — those arrive with `/scaffold-ai-endpoint` in a follow-on WS-5 incremen
 - An OpenAI-compatible provider path / cascade router (ADR-036 P2 migration trigger).
 
 ## Open questions (resolved via AskUserQuestion 2026-07-11)
+
 - [x] Self-hosted endpoint wire format / how to switch? → **Maximum switchability**: configurable
-  `AI_BASE_URL` + `AI_API_KEY`, code stays Anthropic-wire-native (ADR-036); OpenAI-only backends
-  sit behind a gateway (deploy-time) or map to the P2 cascade-router trigger.
+      `AI_BASE_URL` + `AI_API_KEY`, code stays Anthropic-wire-native (ADR-036); OpenAI-only backends
+      sit behind a gateway (deploy-time) or map to the P2 cascade-router trigger.
 - [x] Auth header? → **Env-switchable** `AI_AUTH_STYLE` (`x-api-key` default | `bearer`).
 - [x] lib/ai scope this phase? → **Skeleton only** (provider + tool-runner + tests); everything in
-  "Explicitly deferred" above lands in follow-on increments (operator decision, session 15).
+      "Explicitly deferred" above lands in follow-on increments (operator decision, session 15).

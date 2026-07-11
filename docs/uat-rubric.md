@@ -5,36 +5,40 @@ tiers. It exists so QA findings are **grounded in evidence, not opinion** — ev
 finding cites a **pillar** and an **anchor**, never "I think it's dull."
 
 `/qa` (the orchestrator) runs the tiers against this rubric; `/design-qa`,
-`/ship` (functional), and `/uat` each own one tier. Use it the same way for *any*
+`/ship` (functional), and `/uat` each own one tier. Use it the same way for _any_
 fork — the heuristics are app-agnostic; the benchmark set + acceptance criteria are
 per-domain.
 
 ---
 
 ## The governing pillars (every finding justifies against these)
+
 Five apply to every fork; a **conditional sixth (AI-Quality)** applies only when the
 fork ships AI endpoints (ADR-042).
-1. **Speed** — RSC reads, no needless round-trips, debounced inputs, bounded payloads. *(Formerly "Fast".)*
+
+1. **Speed** — RSC reads, no needless round-trips, debounced inputs, bounded payloads. _(Formerly "Fast".)_
 2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage.
 3. **Maintainable** — reuses existing primitives/services; typed; no dead code; small, forward-compatible migrations.
 4. **Scalable** — handles growth (bulk paths not N×1; pagination; rate-limit-aware; no N+1).
 5. **High-Quality** — the polish pillar a finding cites when it isn't one of the four above: correctness + UX fidelity, automated gates (CI / pre-push / axe / coverage), honest empty/loading/error states, and no deprecation drift.
-6. **AI-Quality** *(conditional — governs AI endpoints only; **INERT** on forks with no `lib/ai` usage / no `AI_API_KEY`, ADR-042)* — an AI route must earn its output, judged as a **gate not a vibe** like the five above. A finding cites this pillar for: **eval pass-rate** at threshold (the `/ai-eval` LLM-as-judge gate, ADR-036 / WS-5); **prompt-injection resistance** at the boundary (untrusted input can't exfiltrate the system prompt, escalate the tool set, or override instructions); **honest AI failure states** (503 when `isAiConfigured()` is false, a real error surface on model failure — never a hallucinated success or a green toast over an empty completion); **grounding/citation** for any RAG answer (claims trace to retrieved context, not model memory); **bounded cost/tokens** (`AI_DEFAULT_MAX_TOKENS`, no unbounded loops/context); and **no Restricted/PII in prompts or logs** (SECURITY.md §1 — prompts and completions may carry Restricted input; log metadata only). *Automatable slice:* the `/ai-eval` gate (dormant → scored once `AI_API_KEY` + fixtures land) plus the eleven ESLint rules that hard-gate it — `no-direct-anthropic-sdk` enforces model access only via `@/lib/ai` (never `new Anthropic`), `no-secret-env-in-console` blocks secret/PII in `console`, zod at the boundary. *Blocking checklist ( `/qa` / `/uat` must affirm on every AI surface):* injection resistance, honest failure states, grounding, and prompt/log hygiene — the judgment calls the eval runner can't express. A concern you don't fix is a **wave-off** in `docs/findings-register.md`, adjudicated like any other pillar. On a non-AI fork this pillar has no surface to bind to, so it raises no findings and blocks nothing.
+6. **AI-Quality** _(conditional — governs AI endpoints only; **INERT** on forks with no `lib/ai` usage / no `AI_API_KEY`, ADR-042)_ — an AI route must earn its output, judged as a **gate not a vibe** like the five above. A finding cites this pillar for: **eval pass-rate** at threshold (the `/ai-eval` LLM-as-judge gate, ADR-036 / WS-5); **prompt-injection resistance** at the boundary (untrusted input can't exfiltrate the system prompt, escalate the tool set, or override instructions); **honest AI failure states** (503 when `isAiConfigured()` is false, a real error surface on model failure — never a hallucinated success or a green toast over an empty completion); **grounding/citation** for any RAG answer (claims trace to retrieved context, not model memory); **bounded cost/tokens** (`AI_DEFAULT_MAX_TOKENS`, no unbounded loops/context); and **no Restricted/PII in prompts or logs** (SECURITY.md §1 — prompts and completions may carry Restricted input; log metadata only). _Automatable slice:_ the `/ai-eval` gate (dormant → scored once `AI_API_KEY` + fixtures land) plus the eleven ESLint rules that hard-gate it — `no-direct-anthropic-sdk` enforces model access only via `@/lib/ai` (never `new Anthropic`), `no-secret-env-in-console` blocks secret/PII in `console`, zod at the boundary. _Blocking checklist ( `/qa` / `/uat` must affirm on every AI surface):_ injection resistance, honest failure states, grounding, and prompt/log hygiene — the judgment calls the eval runner can't express. A concern you don't fix is a **wave-off** in `docs/findings-register.md`, adjudicated like any other pillar. On a non-AI fork this pillar has no surface to bind to, so it raises no findings and blocks nothing.
 
 ## The anchors (a finding cites at least one)
+
 **Objectives** (what this screen/feature is for) · **Scope** (in/out of bounds) ·
 **Benchmark** (how a named peer product does this exact thing) · **Knowledge Base**
 (the app's master data) · **Design handoff** (`design/*` mockups + `tokens.css` — the
-`@theme` tokens + the `[data-theme]` dark swap). No anchor → it's an opinion; flag it as a *judgment call* for the
+`@theme` tokens + the `[data-theme]` dark swap). No anchor → it's an opinion; flag it as a _judgment call_ for the
 operator, don't bury it as a finding.
 
 ---
 
 ## Tier 0 — Design direction (generation-time; before code is written)
-The gate below *catches* slop; this section *prevents* it. Before building a new
+
+The gate below _catches_ slop; this section _prevents_ it. Before building a new
 screen or surface, the agent declares a **one-line design read** in the response
-(not a file): *"Building \<surface\> for \<audience\>; tone \<calm | dense-data |
-form-heavy | …\>; density \<default | compact\>; accent = `bg-primary` (`brand.primary`)."* Then
+(not a file): _"Building \<surface\> for \<audience\>; tone \<calm | dense-data |
+form-heavy | …\>; density \<default | compact\>; accent = `bg-primary` (`brand.primary`)."_ Then
 commit to it — consistency comes from the declared system, not restraint in the
 moment. **This is a required step, not optional** — `/blueprint` and
 `/design-system` both enforce it. Build from the vetted patterns in
@@ -49,6 +53,7 @@ comes off the type scale — ad-hoc values are Tier-1 findings.
 
 **Anti-slop defaults** — the recognizable AI tells, banned unless the brief
 explicitly asks (each is a Tier-1 finding citing this section as anchor):
+
 - **One accent per app** — `bg-primary` is the accent; no per-screen hues, no
   purple→blue gradient panels, no glow shadows.
 - **One primary action per screen** — a single default-variant `<Button>`; five
@@ -67,21 +72,23 @@ explicitly asks (each is a Tier-1 finding citing this section as anchor):
   a component's `size` prop) per app, not per screen.
 
 ## Tier 1 — Design QA (fidelity): does it match the intended design?
+
 Owner: front-end (the agent). Gate: **before** functional QA. Tool: `/design-qa`.
 Per-**component** first (catch a broken variant once), then per-**screen**.
 
 Score each screen **0–5** on these heuristics (cite the anchor):
-| Heuristic | What "5" looks like | Common "fail" |
-|---|---|---|
-| **Spacing & rhythm** | gaps on the token scale (4/8px, `--density-*`) | ad-hoc margins; cramped or huge dead space |
-| **Alignment & grid** | a consistent column grid | fields floating at random widths |
-| **Visual hierarchy** | eye lands on the one primary action first | five equal blue buttons |
-| **Color & token adherence** | palette colors only; contrast ≥ WCAG AA | off-palette hues; low contrast |
-| **Density & whitespace** | balanced content-to-chrome | sparse/cramped |
-| **State coverage** | hover / focus / disabled / **loading** / **empty** / **error** all designed | blank shell; spinner-forever; raw error |
-| **Consistency** | same card/chip/badge/empty-state everywhere | one-off components |
-| **Responsive + RTL + dark** | reflows; `dir="rtl"` mirrors; dark tokens hold | breaks at breakpoints; LTR-only |
-| **A11y (axe)** | 0 serious/critical violations; labels; focus order; keyboard nav | unlabeled inputs; no focus ring |
+
+| Heuristic                   | What "5" looks like                                                         | Common "fail"                              |
+| --------------------------- | --------------------------------------------------------------------------- | ------------------------------------------ |
+| **Spacing & rhythm**        | gaps on the token scale (4/8px, `--density-*`)                              | ad-hoc margins; cramped or huge dead space |
+| **Alignment & grid**        | a consistent column grid                                                    | fields floating at random widths           |
+| **Visual hierarchy**        | eye lands on the one primary action first                                   | five equal blue buttons                    |
+| **Color & token adherence** | palette colors only; contrast ≥ WCAG AA                                     | off-palette hues; low contrast             |
+| **Density & whitespace**    | balanced content-to-chrome                                                  | sparse/cramped                             |
+| **State coverage**          | hover / focus / disabled / **loading** / **empty** / **error** all designed | blank shell; spinner-forever; raw error    |
+| **Consistency**             | same card/chip/badge/empty-state everywhere                                 | one-off components                         |
+| **Responsive + RTL + dark** | reflows; `dir="rtl"` mirrors; dark tokens hold                              | breaks at breakpoints; LTR-only            |
+| **A11y (axe)**              | 0 serious/critical violations; labels; focus order; keyboard nav            | unlabeled inputs; no focus ring            |
 
 **Method:** drive Playwright → screenshot each route **and each component state** →
 run **axe** → diff against `tokens.css` + the `design/*` mockups. Baseline =
@@ -89,7 +96,8 @@ the mockups on first pass; screenshots become the **visual-regression** baseline
 after. **Gate exit:** no fidelity/a11y **criticals**.
 
 ### Tier 1a — Slop-gate checklist (explicit, traceable)
-The Tier-0 anti-slop defaults above are the *rules*; this is the *gate* — a flat
+
+The Tier-0 anti-slop defaults above are the _rules_; this is the _gate_ — a flat
 checklist `/design-qa` traces item-by-item per surface, so "no slop" is provable,
 not vibes. Each **unchecked** box that isn't a brief-sanctioned exception is a
 Tier-1 finding citing the Tier-0 anchor. (An exception the brief explicitly asks
@@ -108,6 +116,7 @@ for is checked with a one-line "brief sanctions: …" note, not silently skipped
 - [ ] **Real state triad** — honest empty / loading / error states (no blank shell, spinner-forever, or raw error dump).
 
 ### Tier 1b — Manual a11y criteria (WCAG 2.2 AA — what axe cannot see)
+
 axe (Tier 1 row) catches the machine-checkable slice (labels, roles, contrast on
 solid backgrounds). It **cannot** verify operability, focus behavior, or intent —
 those need a manual keyboard-and-screen pass, driven in `/design-qa` (and
@@ -134,24 +143,26 @@ trigger a validation error and a success and confirm each is announced; toggle O
 reduced-motion + dark + RTL and re-walk one core flow. Cite the WCAG SC on any fail.
 
 ## Tier 2 — Functional QA (correctness): does it work, for all the cases?
+
 Owner: dev + QA (the agent). Folds into **`/ship`** + a **risk-based case matrix**.
 Gate: design-QA passed → regression green, no open criticals, high-risk covered.
 
-- **Test pyramid:** many `node:test` contract/unit tests → fewer integration → a *thin*
+- **Test pyramid:** many `node:test` contract/unit tests → fewer integration → a _thin_
   Playwright E2E top. Heavy-E2E is a smell that the lower layers are missing.
-- **Risk-based:** weight effort by *likelihood × business impact*. **Auth, data-integrity,
+- **Risk-based:** weight effort by _likelihood × business impact_. **Auth, data-integrity,
   Restricted/comp, money/approvals = exhaustive**; a settings toggle = smoke.
 - **Case matrix per function** (don't say "works 100%" without enumerating the cases).
   Derive cases from the spec **+ the benchmark's behavior**. Template:
 
-  | Function | Input / case | Expected | Result | Evidence |
-  |---|---|---|---|---|
+  | Function  | Input / case                                       | Expected                | Result    | Evidence          |
+  | --------- | -------------------------------------------------- | ----------------------- | --------- | ----------------- |
   | CV upload | clean PDF / scanned PDF / .docx / corrupt / 0-byte | parse or graceful error | pass/fail | screenshot / test |
 
 - **Exploratory** alongside scripted: scripted confirms the expected; exploratory finds
   the unscripted. **Gate exit:** regression suite green; no open criticals; high-risk covered.
 
 ### Tier 2a — AI-Quality QA (conditional; AI endpoints only)
+
 **Applies only when the fork ships AI endpoints** (`lib/ai` used + `AI_API_KEY` set);
 **INERT** otherwise — a non-AI fork skips this whole subsection, cites no AI-Quality
 findings, and its release bar is unchanged (ADR-042). Owner: dev + QA. Folds into
@@ -178,6 +189,7 @@ eval threshold met → no open AI-Quality wave-off.
   dormant skip); the checklist affirmed on every AI route; no open AI-Quality wave-off.
 
 ## Tier 3 — UAT (acceptance): does it meet the business need?
+
 Owner: **the operator** (business). Agent produces the evidence pack; operator accepts.
 Tool: **`/uat`** (FULL). Gate: functional-QA passed → acceptance threshold met → go-live.
 
@@ -185,7 +197,7 @@ Tool: **`/uat`** (FULL). Gate: functional-QA passed → acceptance threshold met
   (every requirement → ≥1 scenario → pass/fail, so coverage is provable). Template:
 
   | Req ID | Acceptance criterion | Scenario | Pass/Fail | Defect (sev) |
-  |---|---|---|---|---|
+  | ------ | -------------------- | -------- | --------- | ------------ |
 
 - **Prod-like env + realistic seed data** (not dev junk). Real users / delegates run
   scripted scenarios **+ free-form** use.
@@ -196,8 +208,9 @@ Tool: **`/uat`** (FULL). Gate: functional-QA passed → acceptance threshold met
 ---
 
 ## Benchmark set (the "data" behind look-and-feel + journey findings)
+
 Pick the set for the fork's **domain** (infer from entities + schema), web-search how
-each does the *same* screen/flow, capture a shot/note, and compare. Don't reinvent a
+each does the _same_ screen/flow, capture a shot/note, and compare. Don't reinvent a
 solved pattern unless there's a breakthrough reason.
 
 - **ATS / recruitment:** Greenhouse, Lever, Ashby, Workday Recruiting, SmartRecruiters.
@@ -208,14 +221,17 @@ solved pattern unless there's a breakthrough reason.
 ---
 
 ## Release-readiness definition (one bar across all three tiers)
+
 Ship only when **all** hold:
+
 - [ ] **Design QA:** no fidelity/a11y criticals; states covered; on-token.
 - [ ] **Functional QA:** `/ship` green; risk-based case matrix passed; high-risk exhaustive.
 - [ ] **UAT:** acceptance scenarios traced + passed at threshold; operator sign-off.
 - [ ] **4 pillars** upheld; **security floor** intact (auth/zod/audit/no leakage).
-- [ ] **AI-Quality** *(only if the fork ships AI endpoints)* — `/ai-eval` green (or a recorded dormant skip); the Tier-2a checklist affirmed; no open AI-Quality wave-off. **Skipped entirely on a non-AI fork** (ADR-042).
+- [ ] **AI-Quality** _(only if the fork ships AI endpoints)_ — `/ai-eval` green (or a recorded dormant skip); the Tier-2a checklist affirmed; no open AI-Quality wave-off. **Skipped entirely on a non-AI fork** (ADR-042).
 
 ## Scorecard template (one per screen / feature; `/qa` collects these)
+
 ```
 Screen: <name>   Anchors: <objectives|scope|benchmark:<peer>|kb|design>
 Design QA   spacing _/5 align _/5 hierarchy _/5 color _/5 density _/5 states _/5 consistency _/5 responsive+rtl+dark _/5 a11y _/5

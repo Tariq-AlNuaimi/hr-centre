@@ -6,6 +6,7 @@ description: One-prompt provisioner for a brand-new prototype. Creates a GitHub 
 # /new-project — Idea → live URL on a custom domain, in one workflow run
 
 > **Two ways to run the same `scripts/new-project.mjs`:**
+>
 > 1. **Headless from a Claude Code web session (or any machine)** — the **PRIMARY path**.
 >    `npm run new-project -- ...` with the tokens set as env vars and egress allowed.
 >    No GitHub Actions needed. See **"Run headlessly"** below.
@@ -24,7 +25,7 @@ optional Cloudflare custom domain, and the first deploy, in one command.
 > environment can provision: it prints either `Egress OK.` or the exact blocked
 > hosts, and the env-check names any missing token. Do not tell the operator you
 > lack access or pivot to local setup before the command has actually run and
-> failed — and when it does, report the *specific* cause (missing token vs.
+> failed — and when it does, report the _specific_ cause (missing token vs.
 > blocked egress), which the script distinguishes for you.
 
 ## Run headlessly (Claude Code web session or any machine)
@@ -67,16 +68,16 @@ above is the primary one until then.
 Set on `Tariq-AlNuaimi/fullstack-vibe-template` → Settings → Secrets and
 variables → Actions:
 
-| Type | Name | What it is | Where to mint |
-|---|---|---|---|
-| Secret | `GH_AUTOMATION_TOKEN` | GitHub classic PAT with `repo` + `workflow` + `delete_repo` | https://github.com/settings/tokens |
-| Secret | `NEON_API_KEY` | Neon account API key | https://console.neon.tech/app/settings/api-keys |
-| Secret | `VERCEL_TOKEN` | Vercel account token | https://vercel.com/account/tokens |
-| Secret | `CLOUDFLARE_API_TOKEN` | CF custom token, scoped `Zone.DNS:Edit` on the apex zone | https://dash.cloudflare.com/profile/api-tokens |
-| Variable | `APEX_DOMAIN` | e.g. `ops-rihal.com` (default if unset) | repo Variables tab |
-| Variable | `GH_OWNER` | GitHub user/org that holds new repos (defaults to template's owner) | repo Variables tab |
-| Variable | `NEON_REGION` | Neon region id, e.g. `aws-eu-central-1` (default) | repo Variables tab |
-| Variable | `VERCEL_TEAM_ID` | Optional. Only set if you create projects under a Vercel Team rather than personal. | repo Variables tab |
+| Type     | Name                   | What it is                                                                          | Where to mint                                   |
+| -------- | ---------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Secret   | `GH_AUTOMATION_TOKEN`  | GitHub classic PAT with `repo` + `workflow` + `delete_repo`                         | https://github.com/settings/tokens              |
+| Secret   | `NEON_API_KEY`         | Neon account API key                                                                | https://console.neon.tech/app/settings/api-keys |
+| Secret   | `VERCEL_TOKEN`         | Vercel account token                                                                | https://vercel.com/account/tokens               |
+| Secret   | `CLOUDFLARE_API_TOKEN` | CF custom token, scoped `Zone.DNS:Edit` on the apex zone                            | https://dash.cloudflare.com/profile/api-tokens  |
+| Variable | `APEX_DOMAIN`          | e.g. `ops-rihal.com` (default if unset)                                             | repo Variables tab                              |
+| Variable | `GH_OWNER`             | GitHub user/org that holds new repos (defaults to template's owner)                 | repo Variables tab                              |
+| Variable | `NEON_REGION`          | Neon region id, e.g. `aws-eu-central-1` (default)                                   | repo Variables tab                              |
+| Variable | `VERCEL_TEAM_ID`       | Optional. Only set if you create projects under a Vercel Team rather than personal. | repo Variables tab                              |
 
 The 2 secrets you likely already have from the old `/first-fork` droplet
 flow are `GH_AUTOMATION_TOKEN` + `CLOUDFLARE_API_TOKEN`. `NEON_API_KEY` +
@@ -132,8 +133,8 @@ Find the run in the workflow's run history. The run's **Summary** tab shows:
 2. Open `https://<slug>.<apex>` and log in with the seeded credentials.
 3. **Set the project tier** right after provisioning (mirrors `/first-fork`): edit
    `project.config.json` `"tier"` to `personal` (default) or `shared`, then commit
-   + push. The security floor is identical either way; the tier only scales the
-   ceremony (see `CLAUDE.md` "Project tiers").
+   - push. The security floor is identical either way; the tier only scales the
+     ceremony (see `CLAUDE.md` "Project tiers").
 4. Start a Claude Code session on `Tariq-AlNuaimi/<slug>` and type:
    ```
    /quickstart "describe your idea here"

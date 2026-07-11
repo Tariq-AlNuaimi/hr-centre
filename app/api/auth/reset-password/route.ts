@@ -39,7 +39,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   });
   if (!user) {
     // Token referenced a now-missing user -- burn it and fail closed.
-    await prismaUnfiltered.verificationToken.deleteMany({ where: { identifier: record.identifier } });
+    await prismaUnfiltered.verificationToken.deleteMany({
+      where: { identifier: record.identifier },
+    });
     return err("This reset link is invalid or has expired.", 400);
   }
 

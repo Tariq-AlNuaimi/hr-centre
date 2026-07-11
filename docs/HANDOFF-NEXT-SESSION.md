@@ -7,11 +7,12 @@ Do NOT merge to `main` unless the operator asks.
 ## ✅ DONE this session (DB session, 2026-07-03) — NA1 + NA2
 
 **NA1 (DB items) — CLEARED, but via a LOCAL Postgres, not Neon.** Operator approved
-Neon provisioning; on execution the Neon *API* works (throwaway project created + torn
+Neon provisioning; on execution the Neon _API_ works (throwaway project created + torn
 down, **0 orphans**) but raw Postgres **:5432 egress is blocked** by this container's
 HTTPS-only proxy, so a Neon branch can be created but never connected to from here. A
 **local `postgresql-16` cluster** (already installed under `/usr/lib/postgresql/16`,
 cluster `16/main` — correcting P-08's "no local PG" claim) was used instead:
+
 - `prisma migrate deploy` ✅ · `prisma db seed` ✅ (admin@example.com)
 - `test:integration` ✅ **3 pass / 0 skip** (the 3 DB-gated cases now execute)
 - `manual-uat:users` ✅ · lean `uat` ✅ **37 passed**
@@ -29,7 +30,9 @@ the four pure-env gaps (P-12/13/14/16) stay **documented/accepted** — not repo
 `rebrand` live stays skipped (P-17). See HARNESS-PROBLEMS.md §C/§F for the full record.
 
 ## Already done & pushed (do not redo)
+
 Commits land the remediation of `docs/HARNESS-PROBLEMS.md` P-01…P-06:
+
 - **P-01** lint: 3 React-Compiler warnings cleared via justified single-line
   `eslint-disable` (`AuditLogClient.tsx:76`, `recycling-bin/page.tsx:112`,
   `DataTable.tsx:272`). `npm run lint` clean.
@@ -52,6 +55,7 @@ Commits land the remediation of `docs/HARNESS-PROBLEMS.md` P-01…P-06:
 > struck through, only as the historical record of what was executed.
 
 ### 1. ~~Provision a DB and clear the DB-blocked items (P-08/P-10/P-15)~~ ✅ DONE
+
 ~~Provision a live Neon branch~~ — **superseded:** Neon is unusable from this
 container (`:5432` egress blocked, §F). Cleared instead against the **local
 `postgresql-16` cluster** (`pg_ctlcluster 16 main start`): migrate + seed +
@@ -61,15 +65,18 @@ passed). The Neon probe project was created + torn down (0 orphans). The
 cluster next time — it needs no egress; do NOT re-provision Neon for DB work.**
 
 ### 2. ~~Adjudicate the remaining `HARNESS-PROBLEMS.md` items~~ ✅ DONE
+
 Operator chose **wire the semgrep bootstrap only** (P-11, now in the `/audit`
 skill). P-09 + the pure-env gaps (P-12/13/14/16) are **documented/accepted** —
 not repo-fixable. P-17/P-18/P-19 remain not-defects.
 
 ### 3. Close out ✅ DONE
+
 `/ship` green → commit `ae0c22a` → pushed to `claude/inventory-by-objective-ir9zi8`
 → verified (0 unpushed). Not merged to `main`. Registers updated (§C/§F + this file).
 
 ### What actually remains for a future session
+
 - P-11 semgrep **runs** only on a host without this base image's broken
   `cryptography`/pyo3 binding (the bootstrap self-installs it there); or use the
   Docker fallback once a Docker daemon is available (P-12).
@@ -78,6 +85,7 @@ not repo-fixable. P-17/P-18/P-19 remain not-defects.
 - P-13/P-14/P-16 stay environment-gated (Replit OAuth / a running app / two DBs).
 
 ## Guardrails
+
 - Ask-before surface untouched so far. `.mcp.json`/`package.json overrides` are
   not Ask-before; a **Neon provision** is operator-approved (done).
 - `rebrand` live is **skipped by decision** (P-17) — do not run it on the template.

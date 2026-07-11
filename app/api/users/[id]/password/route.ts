@@ -14,45 +14,39 @@ const changePasswordSchema = z.object({
 // via verifyPassword), so throttle it per-IP to blunt online password-guessing
 // even though it's self-scoped.
 export const PUT = withRateLimit(
-  withAuth(async (
-  request: NextRequest,
-  { params, session }
-) => {
-  const { id } = await params;
+  withAuth(async (request: NextRequest, { params, session }) => {
+    const { id } = await params;
 
-  // Users can only change their own password
-  if (id !== session.user.id) return forbidden();
+    // Users can only change their own password
+    if (id !== session.user.id) return forbidden();
 
-  const body = await request.json();
-  const parsed = changePasswordSchema.safeParse(body);
-  if (!parsed.success) {
-    return err(parsed.error.issues.map((i) => i.message).join(", "));
-  }
+    const body = await request.json();
+    const parsed = changePasswordSchema.safeParse(body);
+    if (!parsed.success) {
+      return err(parsed.error.issues.map((i) => i.message).join(", "));
+    }
 
-  const user = await prisma.user.findUnique({
-    where: { id },
-    select: { passwordHash: true },
-  });
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { passwordHash: true },
+    });
 
-  if (!user?.passwordHash) {
-    return err("Password change not available for OAuth accounts");
-  }
+    if (!user?.passwordHash) {
+      return err("Password change not available for OAuth accounts");
+    }
 
-  const valid = await verifyPassword(
-    parsed.data.currentPassword,
-    user.passwordHash
-  );
-  if (!valid) return err("Current password is incorrect", 403);
+    const valid = await verifyPassword(parsed.data.currentPassword, user.passwordHash);
+    if (!valid) return err("Current password is incorrect", 403);
 
-  const passwordHash = await hashPassword(parsed.data.newPassword);
-  // Stamp passwordChangedAt so the jwt callback revokes every existing session
-  // for this user (lib/auth.ts) -- a password change must end other sessions.
-  await prisma.user.update({
-    where: { id },
-    data: { passwordHash, passwordChangedAt: new Date() },
-  });
+    const passwordHash = await hashPassword(parsed.data.newPassword);
+    // Stamp passwordChangedAt so the jwt callback revokes every existing session
+    // for this user (lib/auth.ts) -- a password change must end other sessions.
+    await prisma.user.update({
+      where: { id },
+      data: { passwordHash, passwordChangedAt: new Date() },
+    });
 
-  return ok({ changed: true });
-}),
-  { id: "password-change", limit: 5, windowMs: 60_000 }
+    return ok({ changed: true });
+  }),
+  { id: "password-change", limit: 5, windowMs: 60_000 },
 );

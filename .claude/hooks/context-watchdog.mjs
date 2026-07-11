@@ -11,9 +11,18 @@ import { join } from "node:path";
 // fire at the right fraction instead of harmlessly late.
 const LIMIT = Number(process.env.CLAUDE_CTX_LIMIT) || 200_000;
 const THRESHOLDS = [
-  [0.9, "context ~{pct}% -- STOP: /handoff-session THIS turn before quality drops; you are near the hard limit"],
-  [0.8, "context ~{pct}% -- run /handoff-session NOW and continue in a fresh session (quality + cost degrade from here)"],
-  [0.6, "context ~{pct}% -- plan to /handoff-session at the next natural milestone (green ship / landed commit)"],
+  [
+    0.9,
+    "context ~{pct}% -- STOP: /handoff-session THIS turn before quality drops; you are near the hard limit",
+  ],
+  [
+    0.8,
+    "context ~{pct}% -- run /handoff-session NOW and continue in a fresh session (quality + cost degrade from here)",
+  ],
+  [
+    0.6,
+    "context ~{pct}% -- plan to /handoff-session at the next natural milestone (green ship / landed commit)",
+  ],
 ];
 
 try {
@@ -26,7 +35,9 @@ try {
     try {
       const e = JSON.parse(lines[i]);
       if (e.type === "assistant" && e.message?.usage) usage = e.message.usage;
-    } catch { /* skip malformed line */ }
+    } catch {
+      /* skip malformed line */
+    }
   }
   if (!usage) process.exit(0);
   const ctx =
@@ -52,10 +63,14 @@ try {
             env: { ...process.env, RENDER_HANDOFF_SOFT: "1" },
             stdio: "ignore",
           });
-        } catch { /* best-effort */ }
+        } catch {
+          /* best-effort */
+        }
       }
       break;
     }
   }
-} catch { /* never block the prompt */ }
+} catch {
+  /* never block the prompt */
+}
 process.exit(0);

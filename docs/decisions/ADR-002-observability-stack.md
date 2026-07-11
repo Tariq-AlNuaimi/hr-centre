@@ -23,7 +23,7 @@ Two real failure modes set the bar:
 1. A 500 in a server component goes unreported. The operator notices only when a user mentions it the next day. Repro requires reading container logs, which Portainer rotates after a few days.
 2. A Droplet OOMs and Caddy can't reach the app. No monitor pages anyone. The on-call effectively starts when a customer calls.
 
-Per-project Sentry SaaS + Better Uptime SaaS was chosen over self-hosted GlitchTip + Uptime Kuma after weighing operational burden, alert deliverability, and the failure mode where the same Droplet hosts the app *and* its monitor.
+Per-project Sentry SaaS + Better Uptime SaaS was chosen over self-hosted GlitchTip + Uptime Kuma after weighing operational burden, alert deliverability, and the failure mode where the same Droplet hosts the app _and_ its monitor.
 
 ## Decision
 
@@ -38,16 +38,19 @@ Per-project Sentry SaaS + Better Uptime SaaS was chosen over self-hosted GlitchT
 ## Consequences
 
 ### Positive
+
 - First prod incident becomes a routine signal, not a learning opportunity.
 - Sentry DSN, user-id scope, scrub list, and instrumentation conventions are inherited by every fork — no per-project plumbing.
 - Better Uptime monitor lifecycle is tied to `/deploy` state file, so teardown is automatic.
 
 ### Negative
+
 - Two more external accounts per fork (operator-side; both free tiers cover the expected scale).
 - Two new Restricted secrets: `SENTRY_AUTH_TOKEN` (CI source-map upload) and `BETTER_UPTIME_API_KEY` (per-deploy registration). `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are **not** Restricted — DSNs are public-by-design per Sentry's own docs and ship in the JS bundle by intention.
 - One more dep in `package.json` (`@sentry/nextjs` 10.x, ~2 MB minified + sourcemap upload tooling). Pin exact version to avoid surprise major bumps.
 
 ### Mitigations
+
 - Source-map upload in `docker-build.yml` is `continue-on-error: true` and gated on both the auth token secret AND the org/project repo vars being set. Early forks deploy before configuring Sentry; upload step skips silently.
 - `lib/sentry.ts` imports `SCRUB_FIELDS` from the audit extension rather than duplicating, so a future Restricted field added to the audit set is automatically scrubbed from Sentry contexts too. The contract test `tests/contracts/sentry-scrub.test.ts` asserts this on every push.
 - `setUserContext` ships only the user id. Email / name / role would be Confidential per SECURITY.md §1; a future Sentry breach cannot leak operator PII via this path.
@@ -61,12 +64,14 @@ Per-project Sentry SaaS + Better Uptime SaaS was chosen over self-hosted GlitchT
 5. **Self-host Loki / Promtail for logs.** Out of scope for this ADR (log aggregation is a separate gap; this one closes error tracking + uptime).
 
 ## Migration triggers
+
 - If a project hits 5k errors/mo (Sentry free tier ceiling), revisit pricing tier or self-host.
 - If Better Uptime free tier (10 monitors) is exhausted across forks, revisit.
 - If a Tier-3 data class lands in a fork and a "Sentry could see user-namespaced PII" risk emerges, tighten `captureError` further (e.g. allowlist context keys instead of denylist).
 - If `@sentry/nextjs` drops Next.js 16 support before the template upgrades Next, pin Sentry to the highest version that still lists Next 16 in `peerDependencies` and document here.
 
 ## Related
+
 - `lib/sentry.ts` — wrapper + scrub
 - `instrumentation.ts`, `instrumentation-client.ts`, `next.config.ts` — wiring
 - `lib/prisma/audit-extension.ts` `SCRUB_FIELDS` — shared scrub set

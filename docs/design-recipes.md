@@ -1,6 +1,6 @@
 # Design recipes — build good UI on the first pass
 
-The **proactive** companion to `docs/uat-rubric.md` (which scores UI *after* it's
+The **proactive** companion to `docs/uat-rubric.md` (which scores UI _after_ it's
 built). `/design-system` drives this doc; `/design-qa` checks the result. Each
 recipe is on-token (4px scale + theme tokens), RTL- and dark-correct, and built on
 the shipped `components/shared/*` + `components/ui/*` primitives — copy the pattern,
@@ -48,7 +48,7 @@ screen is genuinely data-dense, real content over decoration.**
   Tailwind `p-*`/`gap-*`) or a `--density-*` semantic. Group siblings with `gap`
   (flex/grid), never bare margins between inline blocks.
 - **Type:** off the type scale (`--font-size-*` / `text-xs…text-h1`); body 14px /
-  line-height 1.57 (the base, already set). Make heading→body jumps *large*
+  line-height 1.57 (the base, already set). Make heading→body jumps _large_
   (`text-h3` 24px over body 14px), not timid. `text-wrap: balance` on headings,
   `pretty` on body where supported.
 - **Color:** from the semantic utilities (`bg-primary`, `text-foreground`,
@@ -100,14 +100,14 @@ import { Plus } from "lucide-react";
 
 <PageHeader
   title={t("cases.title")}
-  subtitle={t("cases.subtitle")}            // one sentence: what this screen is for
+  subtitle={t("cases.subtitle")} // one sentence: what this screen is for
   actions={
     <Button onClick={openNew}>
       <Plus className="h-4 w-4" />
       {t("cases.new")}
     </Button>
   }
-/>
+/>;
 ```
 
 Rules: exactly one default-variant (primary) `<Button>` in `actions` — extra actions
@@ -136,18 +136,21 @@ const columns = [
   columns={columns}
   dataSource={rows}
   rowKey="id"
-  total={total} page={page} pageSize={pageSize}
+  total={total}
+  page={page}
+  pageSize={pageSize}
   onPageChange={setPage}
-  searchable onSearch={setQuery}
-  loading={isLoading}                        // renders the in-table loading overlay
+  searchable
+  onSearch={setQuery}
+  loading={isLoading} // renders the in-table loading overlay
   emptyText={
     <EmptyState
-      description={t("cases.empty")}         // WHY it's empty, not just "No data"
-      actionLabel={t("cases.new")}           // the recommended next action
+      description={t("cases.empty")} // WHY it's empty, not just "No data"
+      actionLabel={t("cases.new")} // the recommended next action
       onAction={openNew}
     />
   }
-/>
+/>;
 ```
 
 Rules: columns emit real `<th>` header cells (scope handled by the table markup); keep
@@ -167,11 +170,13 @@ richer (a `Select`, a switch, a custom control).
 ```tsx
 import { z } from "zod";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
-  FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 
@@ -187,7 +192,7 @@ const form = useZodForm(schema, { defaultValues: { title: "", status: "OPEN" } }
     <TextField
       name="title"
       label={t("cases.fields.title")}
-      description={t("cases.fields.titleHelp")}   // ONE help line; the error replaces it
+      description={t("cases.fields.titleHelp")} // ONE help line; the error replaces it
       maxLength={120}
     />
 
@@ -198,7 +203,9 @@ const form = useZodForm(schema, { defaultValues: { title: "", status: "OPEN" } }
           <FormLabel>{t("cases.fields.status")}</FormLabel>
           <Select value={field.value} onValueChange={field.onChange}>
             <FormControl>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
             </FormControl>
             <SelectContent>
               <SelectItem value="OPEN">{t("status.open")}</SelectItem>
@@ -212,16 +219,20 @@ const form = useZodForm(schema, { defaultValues: { title: "", status: "OPEN" } }
 
     {/* primary action inline-start; cancel is secondary/low-emphasis */}
     <div className="flex gap-2">
-      <Button type="submit" disabled={submitting}>{t("common.save")}</Button>
-      <Button type="button" variant="ghost" onClick={onCancel}>{t("common.cancel")}</Button>
+      <Button type="submit" disabled={submitting}>
+        {t("common.save")}
+      </Button>
+      <Button type="button" variant="ghost" onClick={onCancel}>
+        {t("common.cancel")}
+      </Button>
     </div>
   </form>
-</Form>
+</Form>;
 ```
 
 Rules: label→field gap stays on the 4–8px step (`FormItem` uses `gap-1.5`); **don't
 stack help text and an error** — `FormMessage` replaces the `FormDescription` line on a
-zod error. Required state is conveyed by the mark *and* the message, never color alone.
+zod error. Required state is conveyed by the mark _and_ the message, never color alone.
 One primary submit (`type="submit"`, default variant).
 
 ## 5. Filter bar (over a table)
@@ -235,7 +246,13 @@ empty-string value with a small ghost clear button for the "allow clear" afforda
 (the pattern the audit-log filter ships).
 
 ```tsx
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -246,17 +263,26 @@ import { Button } from "@/components/ui/button";
     </SelectTrigger>
     <SelectContent>
       {statusOptions.map((o) => (
-        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+        <SelectItem key={o.value} value={o.value}>
+          {o.label}
+        </SelectItem>
       ))}
     </SelectContent>
   </Select>
 
-  <Input type="date" aria-label={t("filters.from")} className="w-40" onChange={(e) => setFrom(e.target.value)} />
+  <Input
+    type="date"
+    aria-label={t("filters.from")}
+    className="w-40"
+    onChange={(e) => setFrom(e.target.value)}
+  />
 
   {hasActiveFilters && (
-    <Button variant="ghost" onClick={clearFilters}>{t("filters.clear")}</Button>
+    <Button variant="ghost" onClick={clearFilters}>
+      {t("filters.clear")}
+    </Button>
   )}
-</div>
+</div>;
 ```
 
 ## 6. Modal / dialog — focus-correct, one primary action
@@ -275,13 +301,17 @@ import { Button } from "@/components/ui/button";
   title={t("cases.editTitle")}
   footer={
     <>
-      <Button variant="outline" onClick={() => setOpen(false)}>{t("common.cancel")}</Button>
-      <Button type="submit" form="case-form" disabled={submitting}>{t("common.save")}</Button>
+      <Button variant="outline" onClick={() => setOpen(false)}>
+        {t("common.cancel")}
+      </Button>
+      <Button type="submit" form="case-form" disabled={submitting}>
+        {t("common.save")}
+      </Button>
     </>
   }
 >
   {/* form body — give the <form> an id and point the footer submit at it via form="…" */}
-</Modal>
+</Modal>;
 ```
 
 Radix already traps focus, closes on Esc, and returns focus to the trigger —
@@ -293,15 +323,11 @@ import { ConfirmAction } from "@/components/shared/ConfirmAction";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 
-<ConfirmAction
-  title={t("cases.deleteConfirm")}
-  okType="danger"
-  onConfirm={() => remove(row.id)}
->
+<ConfirmAction title={t("cases.deleteConfirm")} okType="danger" onConfirm={() => remove(row.id)}>
   <Button variant="ghost" size="icon" aria-label={t("common.delete")}>
     <Trash2 className="h-4 w-4" />
   </Button>
-</ConfirmAction>
+</ConfirmAction>;
 ```
 
 ## 7. The state triad — every data surface ships all three
@@ -313,9 +339,19 @@ biggest "looks unfinished" fix.
 import { PageSkeleton, TableSkeleton, FormSkeleton } from "@/components/shared/Skeletons";
 import { EmptyState } from "@/components/shared/EmptyState";
 
-if (isLoading) return <TableSkeleton rows={8} />;     // skeleton, not a bare spinner
-if (error)     return <EmptyState description={t("common.loadError")} actionLabel={t("common.retry")} onAction={refetch} />;
-if (!rows.length) return <EmptyState description={t("cases.empty")} actionLabel={t("cases.new")} onAction={openNew} />;
+if (isLoading) return <TableSkeleton rows={8} />; // skeleton, not a bare spinner
+if (error)
+  return (
+    <EmptyState
+      description={t("common.loadError")}
+      actionLabel={t("common.retry")}
+      onAction={refetch}
+    />
+  );
+if (!rows.length)
+  return (
+    <EmptyState description={t("cases.empty")} actionLabel={t("cases.new")} onAction={openNew} />
+  );
 // ...the table
 ```
 
@@ -376,25 +412,42 @@ Build list/detail screens from these, not raw primitives — they carry the bran
 state chrome a "finished" app needs (all in `components/shared/*`):
 
 ```tsx
-import { StatCard } from "@/components/shared/StatCard";        // KPI: chip + value + trend
-import { SectionCard } from "@/components/shared/SectionCard";  // titled panel + subtitle + actions
-import { DataView } from "@/components/shared/DataView";        // DataTable + toolbar + bulk + columns
+import { StatCard } from "@/components/shared/StatCard"; // KPI: chip + value + trend
+import { SectionCard } from "@/components/shared/SectionCard"; // titled panel + subtitle + actions
+import { DataView } from "@/components/shared/DataView"; // DataTable + toolbar + bulk + columns
 import { DescriptionList } from "@/components/shared/DescriptionList"; // key/value detail
-import { Toolbar } from "@/components/shared/Toolbar";          // filters (start) + actions (end)
+import { Toolbar } from "@/components/shared/Toolbar"; // filters (start) + actions (end)
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 
 <DataView<Case>
-  columns={columns} dataSource={rows} rowKey="id"
-  searchable onSearch={setQuery}
-  total={total} page={page} pageSize={pageSize} onPageChange={setPage}
-  toolbarActions={<Button onClick={openNew}><Plus className="h-4 w-4" />{t("new")}</Button>}
+  columns={columns}
+  dataSource={rows}
+  rowKey="id"
+  searchable
+  onSearch={setQuery}
+  total={total}
+  page={page}
+  pageSize={pageSize}
+  onPageChange={setPage}
+  toolbarActions={
+    <Button onClick={openNew}>
+      <Plus className="h-4 w-4" />
+      {t("new")}
+    </Button>
+  }
   bulkActions={({ selectedRowKeys, clear }) => (
-    <Button variant="destructive" onClick={() => { bulkDelete(selectedRowKeys); clear(); }}>
+    <Button
+      variant="destructive"
+      onClick={() => {
+        bulkDelete(selectedRowKeys);
+        clear();
+      }}
+    >
       {t("delete")} {selectedRowKeys.length}
     </Button>
   )}
-/>
+/>;
 ```
 
 `DataView` composes `DataTable` (server pagination/search/sort) and adds a toolbar,

@@ -58,6 +58,7 @@ security recipes directly.
   prescribes `/code-review` + an ADR per the existing hard rules.
 
 ## Alternatives considered
+
 1. **Bake all capabilities into the base (opt-in via env flags).** Rejected:
    ~10 deps + 3 models + dead-until-configured code in every fork; breaks ADR-006.
 2. **A separate "enterprise" template variant/branch.** Rejected: doubles the
@@ -66,6 +67,7 @@ security recipes directly.
    that left the actual design+code to each fork; the recipes remove that cost.
 
 ## Related
+
 - `SECURITY.md` §16 — shared-tier security checklist (links the security recipes)
 - `docs/decisions/ADR-013-api-versioning-and-seams.md` — the API/SSO seams the recipes build on
 - `.claude/skills/scale-up/SKILL.md` — indexes the recipe library

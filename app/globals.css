@@ -37,8 +37,16 @@ body {
   /* The brand font (next/font binds --font-sans on <html>; brand.config.ts owns
      it). Ensures plain CSS / pre-AntD paint use the same family as the AntD
      fontFamily token, with a graceful system fallback before the webfont loads. */
-  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-family:
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    sans-serif;
   /* Premium type rendering — crisper glyphs on macOS/iOS and Firefox. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -120,23 +128,23 @@ body {
      shadcn primitive layer to dark. Counterpart to the light values in
      tokens.css; aligned with the neutral gray scale the primitives used
      (gray-950/900/800/700/400/50) so `dark:` pairs were removable. */
-  --background: #030712;          /* gray-950 */
-  --foreground: #f9fafb;          /* gray-50  */
-  --card: #111827;                /* gray-900 */
+  --background: #030712; /* gray-950 */
+  --foreground: #f9fafb; /* gray-50  */
+  --card: #111827; /* gray-900 */
   --card-foreground: #f9fafb;
-  --muted: #1f2937;               /* gray-800 */
-  --muted-foreground: #9ca3af;    /* gray-400 */
-  --border: #1f2937;              /* gray-800 */
-  --input: #374151;               /* gray-700 */
+  --muted: #1f2937; /* gray-800 */
+  --muted-foreground: #9ca3af; /* gray-400 */
+  --border: #1f2937; /* gray-800 */
+  --input: #374151; /* gray-700 */
   /* Destructive SURFACE stays red-600 in dark too (NOT lightened to red-500):
      white-on-red-500 is only 3.76:1, below AA — red-600 gives the bg-destructive
      button/badge a 4.83:1 white foreground. Red-as-TEXT gets its own lighter
      token below so error text still reads on the dark shell. */
-  --destructive: #dc2626;         /* red-600 — white foreground clears AA on dark */
+  --destructive: #dc2626; /* red-600 — white foreground clears AA on dark */
   --destructive-emphasis: #f87171; /* red-400 — red-as-text, AA on dark surfaces (>=5.3:1) */
-  --primary-emphasis: #a5b4fc;    /* indigo-300 — brand-as-text, AA on the dark shell (>=8:1) */
-  --popover: #1d2129;             /* elevated overlay surface (dark) — above cards */
-  --popover-foreground: #f9fafb;  /* gray-50 (mirrors --card-foreground dark) */
+  --primary-emphasis: #a5b4fc; /* indigo-300 — brand-as-text, AA on the dark shell (>=8:1) */
+  --popover: #1d2129; /* elevated overlay surface (dark) — above cards */
+  --popover-foreground: #f9fafb; /* gray-50 (mirrors --card-foreground dark) */
   --nav-active-foreground: #a5b4fc; /* indigo-300 — AA on the dark shell */
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb {

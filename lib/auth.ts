@@ -53,8 +53,8 @@ export function ssoProviderPlan(env: NodeJS.ProcessEnv = process.env): {
   // restriction is set explicitly (a fork wanting multi-tenant sets issuer=common).
   const entraEnabled = Boolean(
     env.AUTH_MICROSOFT_ENTRA_ID_ID &&
-      env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
-      env.AUTH_MICROSOFT_ENTRA_ID_ISSUER
+    env.AUTH_MICROSOFT_ENTRA_ID_SECRET &&
+    env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
   );
   // Polis requires issuer+id+secret together for the same no-broken-button reason
   // (gate defined once in lib/sso/config.ts).
@@ -97,10 +97,7 @@ const credentialsProvider = Credentials({
 
     if (!user?.passwordHash) return null;
 
-    const valid = await verifyPassword(
-      credentials.password as string,
-      user.passwordHash
-    );
+    const valid = await verifyPassword(credentials.password as string, user.passwordHash);
     if (!valid) return null;
 
     // Update last login. lastLoginAt churns on every login, so keep it on the
@@ -197,7 +194,7 @@ function buildProviders(): Provider[] {
         clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
         clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
         issuer: process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER,
-      })
+      }),
     );
   }
   // Ory Polis SAML→OIDC bridge (ADR-045). Independent of Entra: a deployment can

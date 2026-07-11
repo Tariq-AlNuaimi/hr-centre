@@ -63,12 +63,16 @@ function discoverFixtures() {
 }
 
 if (!aiConfigured()) {
-  console.log("ai-eval: SKIP — AI layer is unconfigured (AI_API_KEY unset). Dormant, like lhci/coverage; exiting green.");
+  console.log(
+    "ai-eval: SKIP — AI layer is unconfigured (AI_API_KEY unset). Dormant, like lhci/coverage; exiting green.",
+  );
   process.exit(0);
 }
 const fixtures = discoverFixtures();
 if (fixtures.length === 0) {
-  console.log(`ai-eval: SKIP — no fixtures under ${FIXTURE_DIR}/ (*.eval.ts). Scaffold an endpoint to emit some; exiting green.`);
+  console.log(
+    `ai-eval: SKIP — no fixtures under ${FIXTURE_DIR}/ (*.eval.ts). Scaffold an endpoint to emit some; exiting green.`,
+  );
   process.exit(0);
 }
 
@@ -80,7 +84,9 @@ try {
   const tsx = await import("tsx/esm/api");
   unregister = tsx.register();
 } catch (err) {
-  console.error("ai-eval: FAIL — could not load the tsx loader (needed to import .ts fixtures + lib/ai).");
+  console.error(
+    "ai-eval: FAIL — could not load the tsx loader (needed to import .ts fixtures + lib/ai).",
+  );
   console.error(`  ${err instanceof Error ? err.message : String(err)}`);
   console.error("  Fix: npm i -D tsx (already a devDependency in this template).");
   process.exit(1);
@@ -122,7 +128,10 @@ async function llmJudge(rubric, completion) {
     .trim();
   const pass = /^\s*pass\b/i.test(verdict);
   // Keep the reason short; never echo the full completion (may carry PII).
-  const reason = verdict.replace(/^\s*(pass|fail)\b[:\s-]*/i, "").split("\n")[0].slice(0, 160);
+  const reason = verdict
+    .replace(/^\s*(pass|fail)\b[:\s-]*/i, "")
+    .split("\n")[0]
+    .slice(0, 160);
   return { pass, reason: reason || (pass ? "meets rubric" : "does not meet rubric") };
 }
 
@@ -159,7 +168,9 @@ for (const { file, kebab } of fixtures) {
   try {
     mod = await import(pathToFileURL(resolve(file)).href);
   } catch (err) {
-    console.error(`  FAIL  ${file} — could not import: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(
+      `  FAIL  ${file} — could not import: ${err instanceof Error ? err.message : String(err)}`,
+    );
     failed++;
     continue;
   }
@@ -185,7 +196,9 @@ for (const { file, kebab } of fixtures) {
       if (!res.ok) {
         console.error(`  FAIL  ${kebab} :: ${c.name} — POST ${endpoint} -> HTTP ${res.status}`);
         if (res.status === 401 || res.status === 403) {
-          console.error("        (endpoint is auth-wrapped; pass a session via AI_EVAL_AUTH or AI_EVAL_COOKIE)");
+          console.error(
+            "        (endpoint is auth-wrapped; pass a session via AI_EVAL_AUTH or AI_EVAL_COOKIE)",
+          );
         }
         failed++;
         continue;
@@ -193,8 +206,12 @@ for (const { file, kebab } of fixtures) {
       body = await res.json().catch(() => null);
     } catch (err) {
       // Connection refused etc. — the app under test isn't reachable. Real failure.
-      console.error(`  FAIL  ${kebab} :: ${c.name} — request error: ${err instanceof Error ? err.message : String(err)}`);
-      console.error(`        (is the app running at ${BASE_URL}? set AI_EVAL_BASE_URL for a deployed URL)`);
+      console.error(
+        `  FAIL  ${kebab} :: ${c.name} — request error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      console.error(
+        `        (is the app running at ${BASE_URL}? set AI_EVAL_BASE_URL for a deployed URL)`,
+      );
       failed++;
       continue;
     }

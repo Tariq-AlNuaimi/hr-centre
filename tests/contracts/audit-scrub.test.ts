@@ -60,10 +60,7 @@ test("computeChanges returns null when nothing differs", () => {
 });
 
 test("computeChanges captures unscrubbed value changes verbatim", () => {
-  const changes = computeChanges(
-    { name: "Old", count: 1 },
-    { name: "New", count: 2 }
-  );
+  const changes = computeChanges({ name: "Old", count: 1 }, { name: "New", count: 2 });
   assert.ok(changes);
   assert.deepEqual(changes!.name, { from: "Old", to: "New" });
   assert.deepEqual(changes!.count, { from: 1, to: 2 });
@@ -83,9 +80,6 @@ test("SCRUB_FIELDS includes all critical Restricted-class field names", () => {
     "apiKey",
     "api_key",
   ]) {
-    assert.ok(
-      SCRUB_FIELDS.has(expected),
-      `SCRUB_FIELDS must include "${expected}"`
-    );
+    assert.ok(SCRUB_FIELDS.has(expected), `SCRUB_FIELDS must include "${expected}"`);
   }
 });

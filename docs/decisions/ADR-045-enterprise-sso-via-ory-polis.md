@@ -68,8 +68,8 @@ seam (`lib/sso/**`) that is a silent no-op until configured.** Concretely:
    - unknown/group events → `{ skipped: true }` (no crash),
    - a create colliding with a soft-deleted email (rehire) → `noop` (documented v1
      limitation; manual restore via the recycling bin).
-   `withRateLimit` composes OUTSIDE `withInternalAuth` (OWASP A04); the handler is
-   traced via `withSpan("sso.scim.provision")` (reusing the WS-4 backbone).
+     `withRateLimit` composes OUTSIDE `withInternalAuth` (OWASP A04); the handler is
+     traced via `withSpan("sso.scim.provision")` (reusing the WS-4 backbone).
 
 3. **Sidecar = the OSS `boxyhq/jackson` image (Apache-2.0), pinned, behind an `sso`
    compose profile** in `compose.prod.yaml`. Ory's enterprise Polis image is a
@@ -136,14 +136,14 @@ is inert until this is fixed.
 provider ONLY** (Entra keeps the default OFF), **paired with a
 `passwordHash === null` guard** in the `signIn` callback:
 
-- The Polis provider is *willing* to email-link, so a SCIM-created **passwordless**
+- The Polis provider is _willing_ to email-link, so a SCIM-created **passwordless**
   row is claimable on first SSO login (US-1/US-2 works).
 - The guard (`isFederatedSignInAllowed`, `lib/sso/config.ts`) **denies** the
   federated sign-in when the matched row has a **non-null `passwordHash`** — a real
   password user with a colliding email is NOT silently taken over by a spoofable
   SSO email claim. This preserves the exact protection `allowDangerousEmailAccountLinking:false`
   gave, narrowed to the one safe case (passwordless SCIM rows).
-- A SCIM/Polis user never has a password, so a *returning* linked user (passwordHash
+- A SCIM/Polis user never has a password, so a _returning_ linked user (passwordHash
   null) always passes; only a password-user email collision is blocked.
 
 Rationale for this over an adapter wrap: the guard is a pure, unit-testable function
@@ -180,7 +180,7 @@ rows stay null; multiple NULLs are allowed under a Postgres unique index).
 (BoxyHQ dsync `data.id`), falling back to email for events without one and for
 pre-`externalId` rows (which get the id backfilled on their next update). A rename
 then matches by id and updates the email **in place** — no orphan row. The email
-fallback means an unverified `data.id` shape can only degrade to the *previous*
+fallback means an unverified `data.id` shape can only degrade to the _previous_
 behavior, never regress (consistent with the ADR-045 infra-unverified wave-off).
 Chosen over documenting the gap as a v1 non-goal because the fix is additive,
 low-risk, and actually closes US-3's rename hole.

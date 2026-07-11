@@ -56,7 +56,7 @@ export type RecyclableDelegate = {
 // centralize, so the recycling-bin routes, the audit-purge GC, and the
 // dashboard stats widget stop re-deriving it.
 export function recyclableClient(
-  client: Parameters<typeof recordAudit>[0]
+  client: Parameters<typeof recordAudit>[0],
 ): Record<string, RecyclableDelegate> {
   return client as unknown as Record<string, RecyclableDelegate>;
 }
@@ -72,7 +72,7 @@ export async function permanentlyDelete(
   client: Parameters<typeof recordAudit>[0],
   accessor: string,
   entityType: string,
-  record: RecyclableRecord
+  record: RecyclableRecord,
 ): Promise<void> {
   await recyclableClient(client)[accessor].delete({ where: { id: record.id } });
   await recordAudit(client, {

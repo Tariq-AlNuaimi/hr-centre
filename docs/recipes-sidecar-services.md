@@ -18,6 +18,7 @@ dep. Running it as a container the Next route calls over HTTP is the correct ser
 answer (and dodges the fragile-pdfkit problem entirely).
 
 **Shape:**
+
 1. Deploy the container (Railway/Fly/any Docker host), private to the app's network:
    `docker run -p 8080:8080 stirlingtools/stirling-pdf:latest`
 2. Add `STIRLING_URL` + a shared secret to env (Restricted; SECURITY.md §1).
@@ -31,7 +32,11 @@ export async function htmlToPdf(html: string): Promise<Buffer> {
   const res = await fetch(`${process.env.STIRLING_URL}/api/v1/convert/html/pdf`, {
     method: "POST",
     headers: { "X-API-Key": process.env.STIRLING_SECRET! },
-    body: (() => { const f = new FormData(); f.append("fileInput", new Blob([html]), "in.html"); return f; })(),
+    body: (() => {
+      const f = new FormData();
+      f.append("fileInput", new Blob([html]), "in.html");
+      return f;
+    })(),
   });
   if (!res.ok) throw new Error(`stirling ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
@@ -54,6 +59,7 @@ in the engine dir you won't use).
 Node dep. Run its Dockerized FastAPI service and call it over HTTP.
 
 **Shape:**
+
 1. `docker run -p 11235:11235 unclecode/crawl4ai:latest` (private network; it ships JWT auth
    — enable it).
 2. A Next route (behind an auth wrapper **+ `withRateLimit` composed OUTSIDE the auth
@@ -64,7 +70,10 @@ Node dep. Run its Dockerized FastAPI service and call it over HTTP.
 export async function crawlToMarkdown(url: string): Promise<string> {
   const res = await fetch(`${process.env.CRAWL4AI_URL}/crawl`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.CRAWL4AI_TOKEN}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.CRAWL4AI_TOKEN}`,
+    },
     body: JSON.stringify({ urls: [url] }),
   });
   if (!res.ok) throw new Error(`crawl4ai ${res.status}`);

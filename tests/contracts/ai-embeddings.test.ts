@@ -1,11 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  getEmbeddings,
-  isEmbeddingsConfigured,
-  EmbeddingsNotConfiguredError,
-} from "../../lib/ai";
+import { getEmbeddings, isEmbeddingsConfigured, EmbeddingsNotConfiguredError } from "../../lib/ai";
 
 // The embeddings seam (ADR-043) mirrors the AI_* gate: a silent no-op until
 // EMBEDDINGS_PROVIDER + EMBEDDINGS_API_KEY are set. Config reads process.env at
@@ -119,20 +115,17 @@ test("getEmbeddings falls back to 1536 for a non-positive dimension", () => {
 // --- voyage provider round-trip (stubbed fetch) ---
 
 test("voyage embed() returns [] for empty input without calling fetch", async () => {
-  await withEnv(
-    { EMBEDDINGS_PROVIDER: "voyage", EMBEDDINGS_API_KEY: "k" },
-    async () => {
-      await withFetch(
-        () => {
-          throw new Error("fetch should not be called for empty input");
-        },
-        async () => {
-          const out = await getEmbeddings().embed([]);
-          assert.deepEqual(out, []);
-        },
-      );
-    },
-  );
+  await withEnv({ EMBEDDINGS_PROVIDER: "voyage", EMBEDDINGS_API_KEY: "k" }, async () => {
+    await withFetch(
+      () => {
+        throw new Error("fetch should not be called for empty input");
+      },
+      async () => {
+        const out = await getEmbeddings().embed([]);
+        assert.deepEqual(out, []);
+      },
+    );
+  });
 });
 
 test("voyage embed() orders rows by returned index", async () => {
@@ -163,24 +156,25 @@ test("voyage embed() orders rows by returned index", async () => {
 });
 
 test("voyage embed() throws on a non-ok response", async () => {
-  await withEnv(
-    { EMBEDDINGS_PROVIDER: "voyage", EMBEDDINGS_API_KEY: "k" },
-    async () => {
-      await withFetch(
-        () => new Response("nope", { status: 500 }),
-        async () => {
-          await assert.rejects(() => getEmbeddings().embed(["a"]), /voyage request failed \(500\)/);
-        },
-      );
-    },
-  );
+  await withEnv({ EMBEDDINGS_PROVIDER: "voyage", EMBEDDINGS_API_KEY: "k" }, async () => {
+    await withFetch(
+      () => new Response("nope", { status: 500 }),
+      async () => {
+        await assert.rejects(() => getEmbeddings().embed(["a"]), /voyage request failed \(500\)/);
+      },
+    );
+  });
 });
 
 // --- cohere provider round-trip (stubbed fetch) ---
 
 test("cohere embed() returns the embeddings array from the response", async () => {
   await withEnv(
-    { EMBEDDINGS_PROVIDER: "cohere", EMBEDDINGS_API_KEY: "k", EMBEDDINGS_MODEL: "embed-english-v3.0" },
+    {
+      EMBEDDINGS_PROVIDER: "cohere",
+      EMBEDDINGS_API_KEY: "k",
+      EMBEDDINGS_MODEL: "embed-english-v3.0",
+    },
     async () => {
       await withFetch(
         (url, init) => {
@@ -199,15 +193,12 @@ test("cohere embed() returns the embeddings array from the response", async () =
 });
 
 test("cohere embed() throws on a non-ok response", async () => {
-  await withEnv(
-    { EMBEDDINGS_PROVIDER: "cohere", EMBEDDINGS_API_KEY: "k" },
-    async () => {
-      await withFetch(
-        () => new Response("bad", { status: 429 }),
-        async () => {
-          await assert.rejects(() => getEmbeddings().embed(["a"]), /cohere request failed \(429\)/);
-        },
-      );
-    },
-  );
+  await withEnv({ EMBEDDINGS_PROVIDER: "cohere", EMBEDDINGS_API_KEY: "k" }, async () => {
+    await withFetch(
+      () => new Response("bad", { status: 429 }),
+      async () => {
+        await assert.rejects(() => getEmbeddings().embed(["a"]), /cohere request failed \(429\)/);
+      },
+    );
+  });
 });

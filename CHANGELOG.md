@@ -15,6 +15,7 @@ when the IT team's paid plan runs Actions.
 ## [Unreleased]
 
 ### Added
+
 - Husky `pre-push` hook (BM-1) running `npm run ship` — the gate is now enforced by structure, not memory, on every push (the active enforcement while CI is dormant on the free plan; bypass with `git push --no-verify`).
 - Automated accessibility gate: `tests/uat/a11y.full.uat.ts` runs `@axe-core/playwright` against every main dashboard section and fails on serious/critical WCAG 2.0/2.1 A+AA violations (DQ-3).
 - `npm run sbom` (CycloneDX production SBOM) and `npm run audit:warn` (non-gating moderate+ audit incl. dev deps) for supply-chain visibility (BM-7); `npm run test:coverage` (node test-runner coverage on the contract suite).
@@ -35,6 +36,7 @@ when the IT team's paid plan runs Actions.
 - Changesets release tooling (dormant): `@changesets/cli`, `.changeset/` config, `npm run changeset` / `changeset:version` scripts, and a dormant `release.yml` workflow that activates at `/handoff` for versioned releases + auto CHANGELOG.
 
 ### Changed
+
 - Charts and Kanban board are now lazy-loaded (dynamic import) to cut the initial bundle.
 - Recycling bin is paginated.
 - Scaffold parity with the User reference: generated entities now get server-side sort (`SORTABLE_COLUMNS` allowlist + `?sort=&order=`), server-side search (`?search=` when a string/text field exists), i18n companion file (merge into `en.json`/`ar.json`), `@@index` for indexed fields + relation FKs, a debounced searchable `RelationSelect`, and per-route rate limiting on writes.
@@ -43,9 +45,11 @@ when the IT team's paid plan runs Actions.
 - DataTable search is debounced (one query per pause, not per keystroke); table date cells use hoisted `Intl.DateTimeFormat` formatters (`lib/format.ts`); the recycling-bin list queries every type in parallel; the dashboard aggregate is short-TTL cached.
 
 ### Removed
+
 - `hooks/use-crud.ts` — the deprecated imperative CRUD hook, superseded by the TanStack Query layer (`hooks/use-entity-queries.ts`, ADR-021). No remaining consumers.
 
 ### Security
+
 - Token comparisons in `withInternalAuth` / `withApiAuth` now use constant-time `timingSafeEqual` to close a timing side-channel on the shared-secret / Bearer-token checks.
 - `rihal-template/no-raw-sql-unsafe` ESLint rule (at `error`): bans `$queryRawUnsafe` / `$executeRawUnsafe` — unparameterized raw SQL is a direct injection vector (OWASP A03). Parameterized `$queryRaw` / `$executeRaw` tagged templates remain allowed. Brings the local plugin to seven rules.
 - `rihal-template/no-rate-limit-inside-auth` ESLint rule (at `error`): enforces the ordering invariant that `withRateLimit` composes OUTSIDE the auth wrapper, so abusive/unauthenticated floods are throttled before any auth work (session lookup / bcrypt / secret compare) runs (OWASP A04). Brings the local plugin to eight rules.
@@ -53,6 +57,7 @@ when the IT team's paid plan runs Actions.
 - `rihal-template/no-prisma-unfiltered-import` ESLint rule (at `error`): restricts the raw `prismaUnfiltered` client (which bypasses the soft-delete filter and audit guarantees) to an allowlist of files that legitimately need it — `lib/auth.ts`, the prisma lib, and the `auth` / `recycling-bin` / `audit-log` / `internal` / `health` route groups. An ordinary feature route importing it now fails `/ship`, so the soft-delete + audit invariants can't be silently dropped; adding a new caller is a deliberate (Ask-before) allowlist edit. `tests/**` + `scripts/**` are exempt. Brings the local plugin to ten rules.
 
 ### Fixed
+
 - `useCrud`: abort in-flight requests and resolve the race where a stale response could overwrite newer state.
 - Audit extension: correctly handle `update`/`delete` with a non-`id` `where` clause.
 - Soft-delete: `@@index([deletedAt])` migration so the per-read `deletedAt: null` filter is indexed.

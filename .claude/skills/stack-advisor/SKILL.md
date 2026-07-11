@@ -7,8 +7,8 @@ description: Build-time stack expert for this template's locked stack (Next.js 1
 
 The review rail catches stack mistakes **after** they're written (`/code-review`
 diff gate → `senior-code-reviewer` breadth pass). This skill is the **front** of
-that rail: injected, framework-correct guidance the main session pulls in *while
-building* a route/query/component, so the code lands right the first time instead
+that rail: injected, framework-correct guidance the main session pulls in _while
+building_ a route/query/component, so the code lands right the first time instead
 of getting flagged at QA.
 
 The stack is locked (ADR-001): **Next.js 16 (App Router, RSC) + Prisma 7 +
@@ -18,12 +18,13 @@ not three personas.
 
 ## Boundary (read this first — it's why this skill exists separately)
 
-**I advise; I do not review.** This skill emits *positive patterns* for the code
+**I advise; I do not review.** This skill emits _positive patterns_ for the code
 you're about to write. It does **not**:
+
 - produce a severity-ranked review, lenses, or a findings list → that's
   `senior-code-reviewer` (post-push breadth) and `/code-review` (pre-push diff).
 - restate the eleven ESLint rules → they're enforced automatically at `error`; the
-  lint output is the authority. This skill carries the *positive* patterns the
+  lint output is the authority. This skill carries the _positive_ patterns the
   rules can't teach ("prefer an RSC read over a client fetch — here's the shape").
 - re-document primitives → it **points at** `components/shared/*`, `lib/*`,
   `docs/design-recipes.md`, `docs/recipes.md`, and the ADRs.
@@ -46,7 +47,7 @@ client gets HTML, not a round-trip.
   POST to a `withAuth`-wrapped route (`lib/api-helpers.ts`). Don't reach for a
   client fetch to render first paint — that's the client `useEffect` anti-pattern
   the RSC read replaces.
-- **When you *do* need client state** (mutations, optimistic UI, polling), the
+- **When you _do_ need client state** (mutations, optimistic UI, polling), the
   client data layer is TanStack Query (ADR-021), wired via `lib/api-client.ts` /
   `lib/query-error-notifier.ts` — not a hand-rolled `fetch` + `useState`.
 - **Keep payloads bounded** at the RSC seam too: `select` only the columns the
@@ -54,7 +55,7 @@ client gets HTML, not a round-trip.
 - **UI comes from the vetted recipes**, built on the shipped primitives
   (`PageHeader`, `DataTable`, `EmptyState`, `Skeletons`, `ConfirmAction`,
   `Chart`, …). Load `/design-system` + `docs/design-recipes.md` for the markup;
-  this skill covers the *data* shape behind it. Every data surface ships its real
+  this skill covers the _data_ shape behind it. Every data surface ships its real
   empty/loading/error states — that's Pillar 5, not optional.
 
 ## Layer 2 — Prisma 7 query shape (Pillar 4: Scalable)
@@ -66,7 +67,7 @@ The reference shape is `app/api/users/route.ts` — copy its structure:
   `pageSize` so a huge `?page=` can't produce an OFFSET that 500s. Never return an
   unbounded `findMany()` — the `/ship` scalability scan fails on it.
 - **Count + page in one round-trip:** `await Promise.all([findMany(...),
-  count({ where })])`, sharing the same `where`. Don't fetch-all-then-slice.
+count({ where })])`, sharing the same `where`. Don't fetch-all-then-slice.
 - **`select` explicit columns — never `SELECT *`** (Hard rule). It bounds the
   payload and keeps Restricted columns out unless intended.
 - **No N+1.** Pull relations with `include`/nested `select` in the single query,
@@ -105,12 +106,13 @@ Every route: an auth wrapper (`withAuth`/`withAdminAuth`/`withEditorAuth`/
 (`lib/validations/*`, `.safeParse`). Compose `withRateLimit` **outside** the auth
 wrapper (`no-rate-limit-inside-auth`). Never cast `session` to `any`. A Restricted
 column extends `SCRUB_FIELDS` (audit) and is never an Excel export column key
-(`no-restricted-export-column`). This skill *teaches* the floor as part of the
+(`no-restricted-export-column`). This skill _teaches_ the floor as part of the
 right pattern — it doesn't route around it.
 
 ## Related
+
 - `docs/recipes.md` / `docs/design-recipes.md` — the copy-paste code + design patterns.
 - `app/api/users/route.ts` — the reference list-route shape (paginate + select + allowlist).
 - `lib/pagination.ts`, `lib/api-helpers.ts`, `lib/validations/*` — the primitives to reuse.
 - ADR-001 (locked stack), ADR-012 (REST+zod), ADR-021 (client data layer), ADR-010 (audit).
-- `/code-review` (pre-push diff) · `senior-code-reviewer` (post-push breadth) — the **review** rail this skill is deliberately *not*.
+- `/code-review` (pre-push diff) · `senior-code-reviewer` (post-push breadth) — the **review** rail this skill is deliberately _not_.

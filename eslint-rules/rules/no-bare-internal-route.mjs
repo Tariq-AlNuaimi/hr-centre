@@ -30,8 +30,7 @@ export default {
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Handlers under app/api/internal/ must wrap with withInternalAuth.",
+      description: "Handlers under app/api/internal/ must wrap with withInternalAuth.",
     },
     messages: {
       noBareInternalRoute:

@@ -30,24 +30,13 @@ export function SectionCard({
   style,
 }: SectionCardProps) {
   return (
-    <div
-      style={style}
-      className="rounded-md border border-border bg-card shadow-sm"
-    >
+    <div style={style} className="rounded-md border border-border bg-card shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-3">
         <div className="min-w-0">
-          <h3 className="m-0 text-h5 font-semibold text-card-foreground">
-            {title}
-          </h3>
-          {subtitle && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {subtitle}
-            </p>
-          )}
+          <h3 className="m-0 text-h5 font-semibold text-card-foreground">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
         </div>
-        {actions && (
-          <div className="flex flex-wrap items-center gap-2">{actions}</div>
-        )}
+        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
       </div>
       <div className={cn(noBodyPadding ? "p-0" : "p-6")}>{children}</div>
     </div>

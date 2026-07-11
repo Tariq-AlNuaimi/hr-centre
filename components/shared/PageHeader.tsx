@@ -31,12 +31,7 @@ const HEADING_SIZE: Record<number, string> = {
  * One primary action per header (Tier-0 anti-slop rule): pass a single primary
  * button in `actions`; additional buttons stay secondary/ghost.
  */
-export function PageHeader({
-  title,
-  subtitle,
-  actions,
-  level = 2,
-}: PageHeaderProps) {
+export function PageHeader({ title, subtitle, actions, level = 2 }: PageHeaderProps) {
   const Heading = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5";
   return (
     <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
@@ -46,13 +41,9 @@ export function PageHeader({
         >
           {title}
         </Heading>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-        ) : null}
+        {subtitle ? <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p> : null}
       </div>
-      {actions ? (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
-      ) : null}
+      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </div>
   );
 }

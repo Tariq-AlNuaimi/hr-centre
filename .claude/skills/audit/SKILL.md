@@ -10,6 +10,7 @@ The CI security workflows (`secrets-scan.yml` = gitleaks, `sast.yml` = Semgrep, 
 runs the same three scans locally, on any machine, against a target path.
 
 Two uses:
+
 1. **Manual** — run it before sharing a project externally or before a handoff.
 2. **Inside `/conform`** — it is the mandatory FIRST step on incoming foreign code.
    **Never trust foreign code; scan it before reading or running anything.**
@@ -46,7 +47,7 @@ the operator dropped foreign code into.
      pollution), with `pip --user` as a fallback:
      `command -v semgrep >/dev/null || pipx install semgrep || pip install --user semgrep`
      (pypi.org is reachable in the Claude Code web sandbox's egress allowlist, so the
-     *install* succeeds; `~/.local/bin` must be on `PATH`). This removes the "SAST leg
+     _install_ succeeds; `~/.local/bin` must be on `PATH`). This removes the "SAST leg
      silently absent" gap the harness trials hit — only reach for the Docker image if the
      install itself is blocked. **Known container caveat:** in some base images (incl. this
      one) semgrep installs but crashes at runtime on a broken system `cryptography`/pyo3
@@ -71,7 +72,7 @@ the operator dropped foreign code into.
      report line.
    - **Not installed → skip WITH a note** (external binary, like gitleaks; never add
      it as an npm dependency): report `trufflehog: NOT RUN (optional; brew install
-     trufflehog, or https://github.com/trufflesecurity/trufflehog/releases)`. Unlike
+trufflehog, or https://github.com/trufflesecurity/trufflehog/releases)`. Unlike
      the three core scans, a missing trufflehog does **not** make the audit
      incomplete — it is an optional verification layer on top of them.
    - Needs egress to the credential providers' APIs to verify; if egress is blocked,
@@ -81,7 +82,7 @@ the operator dropped foreign code into.
    - A standard build artifact is a **scanned** artifact (ADR-030): scan both the
      image and the IaC/Dockerfile.
    - **Image** (if a Docker image is available or buildable): `trivy image
-     --severity HIGH,CRITICAL <tag>` — scans OS + language dependency layers for
+--severity HIGH,CRITICAL <tag>` — scans OS + language dependency layers for
      known CVEs. Build it first with `make docker-build` (tag `app:local`) if no
      tag exists yet.
    - **Config**: `trivy config --severity HIGH,CRITICAL <path>` — scans the
@@ -89,7 +90,7 @@ the operator dropped foreign code into.
      healthcheck, etc.).
    - **Not installed → skip WITH a note** (external binary, like gitleaks/trufflehog;
      never an npm dependency): report `trivy: NOT RUN (optional; brew install trivy,
-     or https://github.com/aquasecurity/trivy/releases)`. A missing trivy does **not**
+or https://github.com/aquasecurity/trivy/releases)`. A missing trivy does **not**
      make the audit incomplete — it is an optional layer on top of the three core scans.
    - This is the SAME scan the `/ship --full` docker phase runs (ADR-030); running it
      here lets you scan before an image is wired into the full gate.

@@ -54,11 +54,7 @@ export type RowSelectMethod = "all" | "none" | "invert" | "single" | "multiple";
 /** Row-selection config. Mirrors the AntD `rowSelection` subset used here. */
 export interface TableRowSelection<T> {
   selectedRowKeys?: Key[];
-  onChange?: (
-    selectedRowKeys: Key[],
-    selectedRows: T[],
-    info: { type: RowSelectMethod },
-  ) => void;
+  onChange?: (selectedRowKeys: Key[], selectedRows: T[], info: { type: RowSelectMethod }) => void;
   preserveSelectedRowKeys?: boolean;
   type?: "checkbox" | "radio";
 }

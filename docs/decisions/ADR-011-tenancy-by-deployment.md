@@ -32,11 +32,12 @@ project per tool.** Postgres RLS and an app-level `organizationId` /
 multi-tenant refactor are intentionally **NOT** part of the baseline.
 
 Concretely:
+
 - Each fork is a single-tenant application. Its data belongs to one team / one
   organizational context, enforced by the fact that no other tenant's data is
   in that Neon database at all.
 - Auth scopes to that fork (Auth.js realm + the `User` table in that database).
-  The `Role` enum (USER / ADMIN) handles *intra*-tenant authorization; it is
+  The `Role` enum (USER / ADMIN) handles _intra_-tenant authorization; it is
   not a tenant discriminator.
 - A fork only adopts a multi-tenant model (tenant column + RLS + tenant-aware
   client) if it **explicitly** needs to serve multiple organizations from a
@@ -46,16 +47,18 @@ Concretely:
 ## Consequences
 
 ### Positive
+
 - Zero tenancy ceremony on day zero: no tenant column to thread through every
   query, no RLS policies to write and test, no class of "forgot the
   `WHERE tenantId = …`" data-leak bugs (the highest-severity multi-tenant
   failure mode is structurally absent).
 - The strongest possible isolation: separate databases cannot leak into each
-  other through an application bug. This is *stronger* than RLS, not weaker.
+  other through an application bug. This is _stronger_ than RLS, not weaker.
 - The audit / soft-delete / scaffolder invariants stay simple — they never have
   to reason about a tenant boundary.
 
 ### Negative
+
 - Many small tools = many Vercel + Neon projects to manage. Acceptable: the rail
   is built for exactly this (`/new-project`, `/deploy` provision a fresh
   project per tool in minutes), and prototypes are short-lived or handed off.
@@ -63,12 +66,14 @@ Concretely:
   refactor. That is by design — such a product has outgrown the prototype rail.
 
 ### Mitigations
+
 - `/new-project` and `/deploy` make spinning up a per-tool deployment cheap, so
   "one project per tool" is not operationally painful.
 - The migration trigger below names the one signal that should make a fork
   reconsider, so the decision is revisited deliberately rather than drifted into.
 
 ## Alternatives considered
+
 1. **App-level `organizationId` on every model + tenant-aware Prisma client.**
    Rejected for the baseline: invasive across the entire schema and query
    surface, and it trades the deployment-level isolation we already have for a
@@ -83,7 +88,9 @@ Concretely:
    separate databases.
 
 ## Migration triggers
+
 Revisit this decision for a specific fork when:
+
 - The fork must serve **multiple distinct organizations from a single
   deployment** (e.g. an external multi-org product, not an internal tool) — at
   that point, raise a fork-specific ADR choosing RLS or an `organizationId`
@@ -93,6 +100,7 @@ Revisit this decision for a specific fork when:
   dominant pain and the tools genuinely share a tenant population.
 
 ## Related
+
 - `docs/decisions/ADR-006-pivot-to-vercel-neon.md` — the one-project-per-tool rail
 - `docs/decisions/ADR-001-template-baseline.md` — `Role` enum + auth invariants
 - `CLAUDE.md` — project tiers (`personal` vs `shared`); operations model

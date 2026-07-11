@@ -45,11 +45,11 @@ export interface PolisSsoConfig {
  * mirrors the Entra three-var gate in lib/auth.ts (ADR-024). This is the single
  * gate that decides whether the OIDC provider registers.
  */
-export function isPolisSsoConfigured(env: Record<string, string | undefined> = process.env): boolean {
+export function isPolisSsoConfigured(
+  env: Record<string, string | undefined> = process.env,
+): boolean {
   return Boolean(
-    env.POLIS_ISSUER?.trim() &&
-      env.POLIS_CLIENT_ID?.trim() &&
-      env.POLIS_CLIENT_SECRET?.trim(),
+    env.POLIS_ISSUER?.trim() && env.POLIS_CLIENT_ID?.trim() && env.POLIS_CLIENT_SECRET?.trim(),
   );
 }
 
@@ -59,7 +59,9 @@ export function isPolisSsoConfigured(env: Record<string, string | undefined> = p
  * throwing. issuer/id/secret/tenant/product all come from env, so wiring a new
  * tenant IdP is a deploy-time change, never an app-code diff.
  */
-export function polisSsoConfig(env: Record<string, string | undefined> = process.env): PolisSsoConfig {
+export function polisSsoConfig(
+  env: Record<string, string | undefined> = process.env,
+): PolisSsoConfig {
   if (!isPolisSsoConfigured(env)) throw new SsoNotConfiguredError();
   return {
     issuer: env.POLIS_ISSUER!.trim(),
@@ -76,7 +78,9 @@ export function polisSsoConfig(env: Record<string, string | undefined> = process
  * (defense in depth + the real Polis Directory Sync contract). Undefined => HMAC
  * verification is skipped (the withInternalAuth shared secret is the sole gate).
  */
-export function scimWebhookSecret(env: Record<string, string | undefined> = process.env): string | undefined {
+export function scimWebhookSecret(
+  env: Record<string, string | undefined> = process.env,
+): string | undefined {
   const s = env.SCIM_WEBHOOK_SECRET?.trim();
   return s && s.length > 0 ? s : undefined;
 }
@@ -96,7 +100,7 @@ export function verifyScimSignature(
   // BoxyHQ historically prefixed the digest (e.g. "t=..,s=<hex>"); accept a bare
   // hex digest or the `s=`/last-token form so a fork isn't wedged by a format bump.
   const provided = signature.includes("=")
-    ? (signature.split(",").pop() ?? "").split("=").pop() ?? ""
+    ? ((signature.split(",").pop() ?? "").split("=").pop() ?? "")
     : signature.trim();
   const expected = createHmac("sha256", secret).update(rawBody).digest("hex");
   const a = Buffer.from(provided, "hex");
@@ -152,11 +156,7 @@ export function isFederatedSignInAllowed(
 ): boolean {
   if (!row) return true;
   if (row.deletedAt) return false;
-  if (
-    provider === POLIS_PROVIDER_ID &&
-    !hasLinkedProviderAccount &&
-    row.passwordHash !== null
-  ) {
+  if (provider === POLIS_PROVIDER_ID && !hasLinkedProviderAccount && row.passwordHash !== null) {
     return false;
   }
   return true;

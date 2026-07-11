@@ -43,7 +43,7 @@ export default {
     },
     messages: {
       noRawHexColor:
-        "Raw hex color \"{{value}}\". Color must come from a CSS variable in app/tokens.css (the @theme block / semantic vars) or the sanctioned token sources (chart-palette.ts / brand.config.ts) -- a hardcoded hex drifts off-palette and ignores dark mode. Move it to the token layer, or disable this line with a justification if it's genuinely one-off.",
+        'Raw hex color "{{value}}". Color must come from a CSS variable in app/tokens.css (the @theme block / semantic vars) or the sanctioned token sources (chart-palette.ts / brand.config.ts) -- a hardcoded hex drifts off-palette and ignores dark mode. Move it to the token layer, or disable this line with a justification if it\'s genuinely one-off.',
     },
     schema: [],
   },

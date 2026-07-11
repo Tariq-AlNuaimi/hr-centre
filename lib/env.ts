@@ -2,20 +2,18 @@ import { z } from "zod";
 
 const envSchema = z.object({
   // Database
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
 
   // Auth
   AUTH_SECRET: z.string().min(32), // matches `openssl rand -base64 32`; rejects a weak JWT signing key
-  AUTH_URL: z.string().url().optional(),
+  AUTH_URL: z.url().optional(),
 
   // App
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   NEXT_PUBLIC_APP_NAME: z.string().default("My App"),
 
   // Seeding
-  SEED_ADMIN_EMAIL: z.string().email().default("admin@example.com"),
+  SEED_ADMIN_EMAIL: z.email().default("admin@example.com"),
   SEED_ADMIN_PASSWORD: z.string().min(8).default("changeme"),
 
   // Recycling bin -- soft-deleted records are permanently GC'd past this many
@@ -44,13 +42,13 @@ const envSchema = z.object({
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
-  SMTP_FROM: z.string().email().optional(),
+  SMTP_FROM: z.email().optional(),
 
   // Sentry (optional; observability is opt-in per project -- see ADR-002).
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: z.url().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().default("development"),
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: z.url().optional(),
 
   // OpenTelemetry (optional; ADR-040). The OTel SDK is registered in
   // instrumentation.ts ONLY when OTEL_EXPORTER_OTLP_ENDPOINT is set -- an
@@ -59,22 +57,18 @@ const envSchema = z.object({
   // sink; protocol defaults to http/protobuf. Declared here for the env
   // contract; the runtime gate lives in lib/observability/config.ts, which
   // reads process.env directly so it works on the Edge runtime too.
-  // z.string().url() alone is too loose: the WHATWG URL parser reads a bare
+  // z.url() alone is too loose: the WHATWG URL parser reads a bare
   // "otel-collector:4318" as scheme `otel-collector:` with an empty host, so a
   // scheme-less typo would validate yet export nowhere (silent telemetry loss).
   // Require an absolute http(s) URL with a real host so a misconfig fails LOUD
   // at boot, like every other required env here.
   OTEL_EXPORTER_OTLP_ENDPOINT: z
-    .string()
     .url()
     .refine(
       (v) => {
         try {
           const u = new URL(v);
-          return (
-            (u.protocol === "http:" || u.protocol === "https:") &&
-            u.hostname.length > 0
-          );
+          return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.length > 0;
         } catch {
           return false;
         }
@@ -82,9 +76,7 @@ const envSchema = z.object({
       { message: "must be an absolute http(s) URL with a host, e.g. http://otel-collector:4318" },
     )
     .optional(),
-  OTEL_EXPORTER_OTLP_PROTOCOL: z
-    .enum(["http/protobuf", "http/json", "grpc"])
-    .optional(),
+  OTEL_EXPORTER_OTLP_PROTOCOL: z.enum(["http/protobuf", "http/json", "grpc"]).optional(),
   OTEL_SERVICE_NAME: z.string().optional(),
 
   // AI runtime (optional; ADR-036, WS-5). The Claude-native AI layer (lib/ai/*)
@@ -110,21 +102,20 @@ const envSchema = z.object({
   // defaulted in lib/observability/config.ts.
   AI_API_KEY: z.string().optional(),
   AI_BASE_URL: z
-    .string()
     .url()
     .refine(
       (v) => {
         try {
           const u = new URL(v);
-          return (
-            (u.protocol === "http:" || u.protocol === "https:") &&
-            u.hostname.length > 0
-          );
+          return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.length > 0;
         } catch {
           return false;
         }
       },
-      { message: "must be an absolute http(s) URL with a host, e.g. https://gateway.internal/anthropic" },
+      {
+        message:
+          "must be an absolute http(s) URL with a host, e.g. https://gateway.internal/anthropic",
+      },
     )
     .optional(),
   AI_AUTH_STYLE: z.enum(["x-api-key", "bearer"]).optional(),
@@ -148,21 +139,20 @@ const envSchema = z.object({
   EMBEDDINGS_MODEL: z.string().optional(),
   EMBEDDINGS_DIMENSIONS: z.coerce.number().int().positive().optional(),
   EMBEDDINGS_BASE_URL: z
-    .string()
     .url()
     .refine(
       (v) => {
         try {
           const u = new URL(v);
-          return (
-            (u.protocol === "http:" || u.protocol === "https:") &&
-            u.hostname.length > 0
-          );
+          return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.length > 0;
         } catch {
           return false;
         }
       },
-      { message: "must be an absolute http(s) URL with a host, e.g. https://api.voyageai.com/v1/embeddings" },
+      {
+        message:
+          "must be an absolute http(s) URL with a host, e.g. https://api.voyageai.com/v1/embeddings",
+      },
     )
     .optional(),
 
@@ -175,16 +165,12 @@ const envSchema = z.object({
   // real host, so a scheme-less typo fails LOUD at boot rather than silently never
   // discovering (same reasoning as OTEL_EXPORTER_OTLP_ENDPOINT / EMBEDDINGS_BASE_URL).
   POLIS_ISSUER: z
-    .string()
     .url()
     .refine(
       (v) => {
         try {
           const u = new URL(v);
-          return (
-            (u.protocol === "http:" || u.protocol === "https:") &&
-            u.hostname.length > 0
-          );
+          return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.length > 0;
         } catch {
           return false;
         }

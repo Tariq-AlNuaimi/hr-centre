@@ -15,11 +15,7 @@ interface EmptyStateProps {
  * primary action. On-token neutral palette with `dark:` pairs; RTL-safe
  * (centered, no physical spacing).
  */
-export function EmptyState({
-  description,
-  actionLabel,
-  onAction,
-}: EmptyStateProps) {
+export function EmptyState({ description, actionLabel, onAction }: EmptyStateProps) {
   const t = useTranslations("common");
 
   return (
@@ -36,12 +32,8 @@ export function EmptyState({
         <path d="M10 28h44" />
         <path d="M22 40h20" strokeLinecap="round" />
       </svg>
-      <p className="text-sm text-muted-foreground">
-        {description ?? t("noData")}
-      </p>
-      {actionLabel && onAction && (
-        <Button onClick={onAction}>{actionLabel}</Button>
-      )}
+      <p className="text-sm text-muted-foreground">{description ?? t("noData")}</p>
+      {actionLabel && onAction && <Button onClick={onAction}>{actionLabel}</Button>}
     </div>
   );
 }

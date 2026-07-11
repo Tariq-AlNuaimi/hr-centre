@@ -6,7 +6,7 @@ capability file is hand-built under `lib/`, the gate requires a decision here wh
 "Market benchmark before building" + "reuse existing primitives" rules — it converts
 them from prose the model skips under load into a hard checkpoint.
 
-Recording an entry is **not a bypass** — it *is* the gate working: you did the reuse
+Recording an entry is **not a bypass** — it _is_ the gate working: you did the reuse
 scan, named what you considered, and chose build-vs-adopt on the record. The ledger
 doubles as a durable, reviewable audit trail of every build-vs-buy call.
 
@@ -36,6 +36,7 @@ Decision: <build | adopt | build-thin-wrapper-around-X> because <reason>. See <b
 ## Decisions
 
 ### 2026-07-10 — PDF export (seed example)
+
 Scope: lib/pdf/**
 Considered: pdfkit (in-process; intentionally absent from lib/export.ts — fragile in
 serverless per ADR-006), @react-pdf/renderer (heavy, >50 KB, own layout engine),
@@ -49,6 +50,7 @@ PDF-export gap without embedding a fragile serverless dependency. See ADR-032; a
      so `Scope: lib/pdf/**` demonstrates the match format. -->
 
 ### 2026-07-11 — AI runtime (Claude-native)
+
 Scope: lib/ai/**
 Considered: Mastra / LangGraph (full agent frameworks — heavy deps, lock-in, high churn;
 most features unused for a Claude-first template), Vercel AI SDK as the runtime (great
@@ -60,6 +62,7 @@ defer frameworks. Smallest maintained surface, Claude-first, no framework lock-i
 ADR-036; blueprint `docs/blueprints/enterprise-p0-baseline.md` (WS-5).
 
 ### 2026-07-11 — Authorization policy seam
+
 Scope: lib/authz/**
 Considered: Cerbos (self-host PDP — the deferred default engine, P2), OpenFGA (ReBAC —
 deferred hatch, P2), Oso OSS (deprecated 2025 — rejected), a hand-built in-repo seam.
@@ -69,6 +72,7 @@ Cerbos/OpenFGA adoption plugs into, and pairs with a `no-inline-role-check` ESLi
 Adopting an engine is a later, ADR-recorded departure. See ADR-037.
 
 ### 2026-07-11 — Observability client (OpenTelemetry)
+
 Scope: lib/observability/**, lib/otel/**
 Considered: Sentry SaaS SDK only (ADR-002 — lock-in), Grafana Faro / LGTM client (AGPL
 redistribution concern), the vendor-neutral OpenTelemetry SDK (`@vercel/otel` + OTLP).
@@ -77,6 +81,7 @@ Decision: **adopt OpenTelemetry** as the instrument-once client (thin helpers in
 Collector → SigNoz backend; not a hand-built tracer. See ADR-040; blueprint WS-4.
 
 ### 2026-07-11 — Distributed rate limiter (Valkey)
+
 Scope: lib/rate-limit/**, lib/valkey.ts
 Considered: keep the in-memory token bucket (correctness bug under >1 replica — SECURITY.md
 T-01), `@upstash/ratelimit` (SaaS/Upstash-oriented; the old swap note), `rate-limiter-flexible`
@@ -86,6 +91,7 @@ limiter kept as the single-container fallback; thin `lib/valkey.ts` client. Repl
 per-instance bucket that load-balancing bypasses. See ADR-035 (self-host topology); blueprint WS-3.
 
 ### 2026-07-11 — AI endpoint scaffolder (`/scaffold-ai-endpoint`)
+
 Scope: scripts/scaffold-ai-endpoint.mjs
 Considered: Plop / Hygen / Yeoman (generic code-generators — a new dep + template DSL to learn,
 and none know this repo's `lib/ai` barrel, auth wrappers, or Five-Pillars floor), hand-writing
@@ -98,6 +104,7 @@ entry is informational (the gate matches only `lib/` files; the generator lives 
 See ADR-036; blueprint `docs/blueprints/enterprise-ws5-followon.md`.
 
 ### 2026-07-11 — Background job queue (pg-boss) — P1, entry ahead of build
+
 Scope: lib/queue/**
 Considered: Inngest (SaaS/hosted — a /scale-up recipe), BullMQ (needs Redis/Valkey +
 workers), **pg-boss** (Postgres-backed queue — no new datastore, rides the mandatory DB).
@@ -106,6 +113,7 @@ Postgres, no new infrastructure. Deferred to P1; entry recorded now so the gate 
 See ADR-014 (/scale-up recipe library); blueprint WS-4/WS-5 follow-on.
 
 ### 2026-07-11 — AI eval runner + gate (`ai-eval`, LLM-as-judge)
+
 Scope: scripts/ai-eval.mjs
 Considered: Promptfoo (YAML-config eval framework — a new dep + config DSL that doesn't know
 this repo's auth-wrapped routes, the `lib/ai` barrel, or the `{ data: { text } }` response
@@ -120,6 +128,7 @@ informational (the ADR-032 gate matches only `lib/` files; the runner lives in `
 See ADR-036; blueprint `docs/blueprints/enterprise-ws5-ai-eval.md`.
 
 ### 2026-07-11 — Embeddings + pgvector RAG seam
+
 Scope: lib/ai/embeddings.ts, lib/ai/rag.ts
 Considered: Voyage/Cohere Node SDKs (each >50KB — the Ask-before dep line — for what
 is a two-field REST POST), a dedicated vector DB (Pinecone/Weaviate/Qdrant — new
@@ -135,11 +144,13 @@ AI-runtime ledger entry; this entry is the explicit embeddings/RAG adjudication.
 See ADR-043; blueprint docs/blueprints/enterprise-ws5-rag.md.
 
 ### 2026-07-11 — GenAI tracing over the OTel backbone
+
 Scope: lib/ai/tracing.ts
 Considered: Langfuse SDK / its OTel exporter (first-party generation+score model, prompt linkage — but a new runtime dep + a SECOND telemetry path parallel to the OTel backbone, the coherence cost ADR-040 warned of, + vendor coupling that breaks the swap-backend invariant), the OpenTelemetry GenAI semantic convention `gen_ai.*` (vendor-neutral attribute standard that Langfuse/SigNoz/Collectors all ingest via OTLP — emitted by hand as a few setAttribute calls, so NO instrumentation dep either), raw withSpan with ad-hoc attribute names (works but drifts from semconv so backends wouldn't recognize generations).
 Decision: build-thin-wrapper-around-the-WS4-OTel-backbone (withAiSpan over lib/observability withSpan, emitting gen_ai.* semconv) because Langfuse ingests OTLP, so reusing OTEL_EXPORTER_OTLP_ENDPOINT yields Langfuse (or any OTLP LLM backend) with ZERO new dependency and ONE telemetry path — preserving the ADR-040 instrument-once/swap-backend invariant. See ADR-044 / docs/blueprints/enterprise-ws5-tracing.md.
 
 ### 2026-07-11 — Enterprise SSO + SCIM identity seam (Ory Polis)
+
 Scope: lib/sso/**
 Considered: **Ory Polis / BoxyHQ SAML Jackson** (Apache-2.0 sidecar — bridges any
 tenant's SAML into a standard OIDC endpoint Auth.js already consumes AND speaks
@@ -161,5 +172,5 @@ dep, mirrors the Entra OIDC wiring / ADR-024) and a small SCIM provisioning hand
 existing User model reusing the soft-delete + audit invariants, VIEWER-default
 least privilege. Polis owns the protocol complexity; the app just consumes OIDC +
 a provisioning webhook — the smallest maintained surface, fully OSS/self-hostable,
-silent no-op until POLIS_*/SCIM_* env is set. See ADR-045;
+silent no-op until POLIS__/SCIM__ env is set. See ADR-045;
 blueprint docs/blueprints/enterprise-ws6-identity.md.

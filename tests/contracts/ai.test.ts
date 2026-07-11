@@ -129,14 +129,11 @@ test("getAiClient throws AiNotConfiguredError when unconfigured", () => {
 });
 
 test("getAiClient wires x-api-key onto apiKey (default)", () => {
-  withEnv(
-    { AI_API_KEY: "sk-test", AI_AUTH_STYLE: undefined, AI_BASE_URL: undefined },
-    () => {
-      const client = getAiClient();
-      assert.equal(client.apiKey, "sk-test");
-      assert.equal(client.authToken, null);
-    },
-  );
+  withEnv({ AI_API_KEY: "sk-test", AI_AUTH_STYLE: undefined, AI_BASE_URL: undefined }, () => {
+    const client = getAiClient();
+    assert.equal(client.apiKey, "sk-test");
+    assert.equal(client.authToken, null);
+  });
 });
 
 test("getAiClient wires bearer onto authToken (not apiKey)", () => {
@@ -180,12 +177,9 @@ test("getAiClient ignores ambient ANTHROPIC_AUTH_TOKEN in x-api-key mode", () =>
 });
 
 test("getAiClient targets AI_BASE_URL when set", () => {
-  withEnv(
-    { AI_API_KEY: "sk-test", AI_BASE_URL: "https://gateway.internal/anthropic" },
-    () => {
-      assert.equal(getAiClient().baseURL, "https://gateway.internal/anthropic");
-    },
-  );
+  withEnv({ AI_API_KEY: "sk-test", AI_BASE_URL: "https://gateway.internal/anthropic" }, () => {
+    assert.equal(getAiClient().baseURL, "https://gateway.internal/anthropic");
+  });
 });
 
 // --- runAgent: pre-network guard + native runner pass-through (AC-2.1 / 2.2) ---

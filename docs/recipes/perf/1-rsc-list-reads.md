@@ -11,8 +11,8 @@
 Add this when a list page is the first thing the team waits on and the network
 waterfall is visible:
 
-- The page mounts, *then* the browser fetches `/api/<resource>` (a second
-  round-trip after the HTML), *then* the table fills in — a client waterfall that
+- The page mounts, _then_ the browser fetches `/api/<resource>` (a second
+  round-trip after the HTML), _then_ the table fills in — a client waterfall that
   shows a spinner on every navigation.
 - You want less JavaScript shipped (no `use-crud` fetch loop, no client-side data
   state for the initial render).
@@ -22,11 +22,11 @@ waterfall is visible:
 **Don't bother** for a tiny admin-only list that loads instantly, or a page whose
 data is intrinsically client-driven (live polling, optimistic-heavy editing). The
 template's shipped `users` page is deliberately the client-fetch pattern so both
-styles have a reference — this recipe is the *opt-in* alternative, not a mandate.
+styles have a reference — this recipe is the _opt-in_ alternative, not a mandate.
 
 The dashboard (`app/[locale]/(dashboard)/page.tsx`) is already the canonical RSC
 read example (it imports `@/lib/prisma` directly and queries on the server). This
-recipe extends that pattern to a *paginated, sortable, searchable* list.
+recipe extends that pattern to a _paginated, sortable, searchable_ list.
 
 ## Deps
 
@@ -44,7 +44,7 @@ AntD `DataTable`) already ships in the base.
   interactive `DataTable` and, on sort/page/search/filter change, **pushes the new
   URL** via `useRouter().replace(...)`. Changing the URL re-runs the server
   component with new `searchParams`, which re-queries and re-renders. The island
-  holds *no* data state — the URL is the single source of truth.
+  holds _no_ data state — the URL is the single source of truth.
 
 ## The code
 
@@ -103,9 +103,7 @@ export default async function UsersPage({
 
   const roleParam = typeof sp.role === "string" ? sp.role : undefined;
   const role =
-    roleParam && (VALID_ROLES as readonly string[]).includes(roleParam)
-      ? roleParam
-      : undefined;
+    roleParam && (VALID_ROLES as readonly string[]).includes(roleParam) ? roleParam : undefined;
 
   const where: Prisma.UserWhereInput = {
     ...(search
@@ -146,9 +144,7 @@ export default async function UsersPage({
 
   return (
     <>
-      <Space
-        style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}
-      >
+      <Space style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Title level={2} style={{ margin: 0 }}>
           {t("title")}
         </Title>
@@ -295,8 +291,7 @@ export function UsersTableClient({
       onFilterChange={(filters) => {
         const roleFilter = filters.role;
         pushParams({
-          role:
-            roleFilter && roleFilter.length > 0 ? String(roleFilter[0]) : undefined,
+          role: roleFilter && roleFilter.length > 0 ? String(roleFilter[0]) : undefined,
           page: "1",
         });
       }}
@@ -322,6 +317,7 @@ export function UsersTableClient({
 ## The perf win (and the trade-off)
 
 **Win:**
+
 - **No client waterfall.** The HTML arrives with the first page of rows already
   rendered — no mount-then-fetch spinner on navigation.
 - **Less JavaScript.** The data-fetch loop (`useEffect` + `useCrud` list + the
@@ -331,6 +327,7 @@ export function UsersTableClient({
   the link and see the same filtered list.
 
 **Trade-off:**
+
 - **Interactivity moves to URL params.** Every sort/page/search is a server
   round-trip (mitigated by `startTransition` keeping old rows visible). For a
   rapid-fire, type-to-filter experience over a small dataset, the client-fetch
@@ -342,12 +339,12 @@ export function UsersTableClient({
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `app/[locale]/(dashboard)/<entity>/page.tsx` | Replace the client list page with the server page above |
-| `components/<entity>/<Entity>TableClient.tsx` | **New** — the client island |
-| (keep) `components/<entity>/<Entity>Columns.tsx` | unchanged — reused by the island |
-| (keep) `app/api/<entity>/route.ts` | unchanged — still serves mutations + any non-RSC consumers |
+| File                                             | Change                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------- |
+| `app/[locale]/(dashboard)/<entity>/page.tsx`     | Replace the client list page with the server page above    |
+| `components/<entity>/<Entity>TableClient.tsx`    | **New** — the client island                                |
+| (keep) `components/<entity>/<Entity>Columns.tsx` | unchanged — reused by the island                           |
+| (keep) `app/api/<entity>/route.ts`               | unchanged — still serves mutations + any non-RSC consumers |
 
 Nothing under `lib/`, no config, no schema change.
 

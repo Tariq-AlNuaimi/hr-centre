@@ -30,11 +30,10 @@ export const dynamic = "force-dynamic";
 // are GLOBAL (not per-user) and the dashboard tolerates ~30s staleness, so every
 // admin page-load no longer recomputes them. unstable_cache reads no
 // cookies/headers (the auth gate runs in the page, outside this function).
-const getDashboardData = unstable_cache(
-  getDashboardDataUncached,
-  ["dashboard-data"],
-  { revalidate: 30, tags: ["dashboard-data"] }
-);
+const getDashboardData = unstable_cache(getDashboardDataUncached, ["dashboard-data"], {
+  revalidate: 30,
+  tags: ["dashboard-data"],
+});
 
 async function getDashboardDataUncached(): Promise<DashboardData> {
   // total users + per-role breakdown (soft-delete filtered via `prisma`)
@@ -62,7 +61,7 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
       // come from RECYCLABLE_ENTITY_TYPES, so the accessor is always non-null.
       const accessor = recyclableAccessor(entityType)!;
       return recyclable[accessor].count({ where: { deletedAt: { not: null } } });
-    })
+    }),
   );
   const softDeletedTotal = deletedCounts.reduce((a, b) => a + b, 0);
 

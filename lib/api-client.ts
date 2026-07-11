@@ -44,7 +44,7 @@ interface RequestInternalOptions extends ApiClientOptions {
 
 async function request<T>(
   path: string,
-  { method, body, signal, headers }: RequestInternalOptions
+  { method, body, signal, headers }: RequestInternalOptions,
 ): Promise<T> {
   const init: RequestInit = {
     method,

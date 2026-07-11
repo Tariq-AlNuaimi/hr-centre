@@ -26,7 +26,7 @@ traces cannot leave our VPC." The backbone must be **self-hostable per tenant**
 and its backend must be a **deployment choice, not a code change**.
 
 There is also a **licensing** constraint that only bites once the template is
-*redistributed* to tenants (which ADR-035 makes routine). Several otherwise
+_redistributed_ to tenants (which ADR-035 makes routine). Several otherwise
 strong self-host observability stacks — **Grafana LGTM**, **OpenObserve**, and
 **Uptrace** — are **AGPL-3.0**, whose network-copyleft terms are a redistribution
 concern for a template shipped into tenant environments. **SigNoz core is MIT**,

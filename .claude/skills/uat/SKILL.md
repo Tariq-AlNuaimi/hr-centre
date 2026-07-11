@@ -14,7 +14,7 @@ stakeholders. See ADR-008.
 shows you the screenshot + step so you (or a follow-up edit) can fix it.
 
 > **Tier 3 of the QA system** (`docs/uat-rubric.md`). UAT validates **acceptance** —
-> *does it meet the business need?* — judged by the **operator** against acceptance
+> _does it meet the business need?_ — judged by the **operator** against acceptance
 > criteria, with a **traceability matrix** (every requirement → ≥1 scenario → pass/fail).
 > It runs **after** design QA (`/design-qa`) and functional QA (`/ship`) have passed (the
 > `/qa` orchestrator enforces that order). UAT is **not** a second bug-hunt — the agent
@@ -28,16 +28,16 @@ Every run produces **both** a navigable **HTML report** (`uat-report/`, open wit
 
 `/uat` has two modes, selected by the `UAT_MODE` env flag:
 
-| Mode | Command | What runs | When |
-|---|---|---|---|
-| **Lean** (default) | `npm run uat` (`UAT_MODE=lean`) | the **MAIN sections only** (top-level nav, depth ≤ 1) — discovered, not hardcoded — each loads + screenshot, + the auth guard | the everyday "does it still load" pass before sharing |
-| **Full** | `npm run uat:full` (`UAT_MODE=full`) | the **full journey** — every screen + sub-page + every button + per-entity CRUD + the per-role matrix (the `*.full.uat.ts` phases), all discovered; video recorded for every test | a thorough audit before a milestone / handoff / external share |
+| Mode               | Command                              | What runs                                                                                                                                                                         | When                                                           |
+| ------------------ | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Lean** (default) | `npm run uat` (`UAT_MODE=lean`)      | the **MAIN sections only** (top-level nav, depth ≤ 1) — discovered, not hardcoded — each loads + screenshot, + the auth guard                                                     | the everyday "does it still load" pass before sharing          |
+| **Full**           | `npm run uat:full` (`UAT_MODE=full`) | the **full journey** — every screen + sub-page + every button + per-entity CRUD + the per-role matrix (the `*.full.uat.ts` phases), all discovered; video recorded for every test | a thorough audit before a milestone / handoff / external share |
 
 > **Both modes are fully discovery-driven — NEVER hardcode an app's screens,
-> entities, roles, or buttons.** Lean derives the *main sections*
-> (`discoverMainSections()` — depth ≤ 1); Full derives the *whole surface*
+> entities, roles, or buttons.** Lean derives the _main sections_
+> (`discoverMainSections()` — depth ≤ 1); Full derives the _whole surface_
 > (`discoverAllScreens()` + the Prisma schema for entities/roles + a DOM crawl for
-> buttons). This is what lets the same skill audit *any* app the template produces,
+> buttons). This is what lets the same skill audit _any_ app the template produces,
 > however far the builds diverge.
 
 > **Standing instruction — ASK every time.** On every `/uat` invocation, **ask the
@@ -54,15 +54,15 @@ run in lean. Full mode also flips video from `retain-on-failure` to `on`.
 Full mode is a phased deep audit. **All seven phases are delivered** (lean always
 runs the smoke + guard; the rest are full-only):
 
-| Phase | Name | What it does | Status |
-|---|---|---|---|
-| **P1** | Discover | Scan `app/[locale]/(dashboard)/**/page.tsx` (+ the Prisma schema) to enumerate every screen/entity; this drives the smoke breadth pass. | **Delivered** — `tests/uat/_discover.ts` + `smoke.uat.ts` |
-| **P2** | Permission matrix | Log in as each `Role`; assert each role reaches its allowed screens and is blocked from the rest. | **Delivered (Build B)** — `roles.setup.ts` + `roles.full.uat.ts` |
-| **P3** | CRUD journeys | A data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete (+ restore where applicable). Exercise **each enum variant** and **at least one populated relation** per entity (not just the happy default), and one **boundary/invalid** submit per writable field so validation is proven, not assumed. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts` |
-| **P4** | UI/UX sweep | Per-section checks: visible heading (not a blank shell), no uncaught runtime errors, RTL (`ar`) flips `dir="rtl"`, console-error tally. | **Delivered (Build C)** — `uiux.full.uat.ts` |
-| **P5** | Logic + UX recommendations | Synthesize the run's outcomes (failing flows, authz mismatches, runtime/console errors) + a static stub-marker scan into a prioritized P0/P1/P2 list with `file:line` evidence. | **Delivered (Build D)** — `scripts/uat-recommend.mjs` |
-| **P6** | Peer + enterprise benchmark | **Needs web search. Required in Full.** Compare the app against enterprise norms + 3–5 peer products for its domain (the agent runs the searches and writes `uat-results/benchmark.json`). If web access is unavailable the Full run is reported **INCOMPLETE** (loud WARN + logged operator decision), not a silent pass. | **Delivered (Build E)** — `scripts/uat-benchmark.mjs` (loader/validator) + PDF renderer |
-| **P7** | PDF report | Assemble P1–P6 into `uat-report/uat-report.pdf` (+ a self-contained `uat-report.html` twin). | **Delivered** — `scripts/uat-pdf.mjs` |
+| Phase  | Name                        | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                               | Status                                                                                  |
+| ------ | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **P1** | Discover                    | Scan `app/[locale]/(dashboard)/**/page.tsx` (+ the Prisma schema) to enumerate every screen/entity; this drives the smoke breadth pass.                                                                                                                                                                                                                                                                                                                    | **Delivered** — `tests/uat/_discover.ts` + `smoke.uat.ts`                               |
+| **P2** | Permission matrix           | Log in as each `Role`; assert each role reaches its allowed screens and is blocked from the rest.                                                                                                                                                                                                                                                                                                                                                          | **Delivered (Build B)** — `roles.setup.ts` + `roles.full.uat.ts`                        |
+| **P3** | CRUD journeys               | A data-writing journey per scaffolded entity: create → confirm in list → edit → (soft-)delete (+ restore where applicable). Exercise **each enum variant** and **at least one populated relation** per entity (not just the happy default), and one **boundary/invalid** submit per writable field so validation is proven, not assumed. Covers the dynamic + `new` routes P1 skips; captures console/runtime errors on the forms the sweep doesn't visit. | **Delivered (Build C)** — `crud.full.uat.ts`                                            |
+| **P4** | UI/UX sweep                 | Per-section checks: visible heading (not a blank shell), no uncaught runtime errors, RTL (`ar`) flips `dir="rtl"`, console-error tally.                                                                                                                                                                                                                                                                                                                    | **Delivered (Build C)** — `uiux.full.uat.ts`                                            |
+| **P5** | Logic + UX recommendations  | Synthesize the run's outcomes (failing flows, authz mismatches, runtime/console errors) + a static stub-marker scan into a prioritized P0/P1/P2 list with `file:line` evidence.                                                                                                                                                                                                                                                                            | **Delivered (Build D)** — `scripts/uat-recommend.mjs`                                   |
+| **P6** | Peer + enterprise benchmark | **Needs web search. Required in Full.** Compare the app against enterprise norms + 3–5 peer products for its domain (the agent runs the searches and writes `uat-results/benchmark.json`). If web access is unavailable the Full run is reported **INCOMPLETE** (loud WARN + logged operator decision), not a silent pass.                                                                                                                                 | **Delivered (Build E)** — `scripts/uat-benchmark.mjs` (loader/validator) + PDF renderer |
+| **P7** | PDF report                  | Assemble P1–P6 into `uat-report/uat-report.pdf` (+ a self-contained `uat-report.html` twin).                                                                                                                                                                                                                                                                                                                                                               | **Delivered** — `scripts/uat-pdf.mjs`                                                   |
 
 Each future phase ships as `*.full.uat.ts` specs (lean ignores them) and injects a
 report section at the corresponding `TODO(P#)` anchor in `scripts/uat-pdf.mjs`.
@@ -91,6 +91,7 @@ source decides it: source present → routes-first; deployed-only → DOM-crawl.
 ## Backbone — what ships in `tests/uat/`
 
 Driven by `playwright.config.ts`:
+
 - `auth.setup.ts` — logs in once from `UAT_EMAIL`/`UAT_PASSWORD` (or the seeded
   `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`) and saves one storage state.
 - `_discover.ts` — `discoverMainSections()` (lean) / `discoverAllScreens()` (full), the runtime route scanner (P1).
@@ -99,6 +100,7 @@ Driven by `playwright.config.ts`:
 - `guard.uat.ts` — unauthenticated visitors are bounced to login.
 
 **Full-mode specs** (as `*.full.uat.ts`, ignored by lean):
+
 - `roles.setup.ts` — per-role auth setup (one storage state per role, env creds).
 - `roles.full.uat.ts` — P2 permission matrix.
 - `crud.full.uat.ts` — P3 CRUD journeys, one per discovered entity (create →
@@ -132,12 +134,12 @@ into the report. The sinks are reset at the start of every full run by
    **Do NOT report a pass when the browser could not launch** — that's a "could not
    run," not a green.
 
-> **"Could not run" vs "red" — the boundary that gates the `/qa` tiers.** *Could not
-> run* = the **Chromium binary is still missing after `uat:install`**, OR **login /
+> **"Could not run" vs "red" — the boundary that gates the `/qa` tiers.** _Could not
+> run_ = the **Chromium binary is still missing after `uat:install`**, OR **login /
 > credentials failed** (auth.setup couldn't authenticate). Everything else — a broken
 > flow, a failed assertion, a console/runtime error, a 4xx/5xx on the wire — is **red
-> (a real failure)**, never "could not run." `/qa` treats could-not-run as *blocked*
-> (re-run after fixing the env) and red as a *failing gate that stops the line*.
+> (a real failure)**, never "could not run." `/qa` treats could-not-run as _blocked_
+> (re-run after fixing the env) and red as a _failing gate that stops the line_.
 
 4. **Check credentials — env only.** The shipped `auth.setup.ts` logs in from
    `UAT_EMAIL`/`UAT_PASSWORD`, falling back to `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`.

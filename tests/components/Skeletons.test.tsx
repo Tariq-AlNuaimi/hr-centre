@@ -1,10 +1,6 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
-import {
-  PageSkeleton,
-  TableSkeleton,
-  FormSkeleton,
-} from "../../components/shared/Skeletons";
+import { PageSkeleton, TableSkeleton, FormSkeleton } from "../../components/shared/Skeletons";
 import { renderWithProviders, cleanup } from "./_render.js";
 
 afterEach(cleanup);
@@ -20,10 +16,7 @@ test("PageSkeleton renders an animated skeleton silhouette", () => {
     "renders at least one pulsing skeleton block",
   );
   // No action button by default.
-  assert.equal(
-    container.querySelector('[data-slot="skeleton-button"]'),
-    null,
-  );
+  assert.equal(container.querySelector('[data-slot="skeleton-button"]'), null);
 });
 
 test("PageSkeleton can show a header action", () => {
@@ -38,12 +31,6 @@ test("TableSkeleton always renders a header action (list screens have one)", () 
 
 test("FormSkeleton renders one input silhouette per field plus a submit", () => {
   const { container } = renderWithProviders(<FormSkeleton fields={3} />);
-  assert.equal(
-    container.querySelectorAll('[data-slot="skeleton-input"]').length,
-    3,
-  );
-  assert.ok(
-    container.querySelector('[data-slot="skeleton-button"]'),
-    "submit button",
-  );
+  assert.equal(container.querySelectorAll('[data-slot="skeleton-input"]').length, 3);
+  assert.ok(container.querySelector('[data-slot="skeleton-button"]'), "submit button");
 });

@@ -6,6 +6,7 @@
 > replace / what-to-change) aimed at "the perfect enterprise repo."
 
 ## The fixed stack you score against (ground truth — from `package.json`, NOT the stale CLAUDE.md)
+
 - **Framework/runtime:** Next.js 16.2.9 (App Router, RSC, Node-runtime middleware) · React 19.2 · TypeScript 5 · Node 22 · build `output:"standalone"` (gated `DOCKER_BUILD=1`).
 - **Data:** Prisma 7.7 + `@prisma/adapter-pg` + `pg` 8 · PostgreSQL 17. No vector store yet.
 - **Auth:** Auth.js v5 (`next-auth@5.0.0-beta.31`) + `@auth/prisma-adapter` + `bcryptjs`; JWT sessions; 3-role enum; Entra ID opt-in (ADR-024).
@@ -16,9 +17,11 @@
 - **Tooling/gates:** ESLint 9 (+ 10 local security rules) · `knip` · `jscpd` · `size-limit` · `@next/bundle-analyzer` · `react-scan` · `@lhci/cli` · `husky` · `@changesets/cli` · `@cyclonedx/cyclonedx-npm` (SBOM) · gitleaks + trivy (in `/ship`).
 
 ## The pivot (binding operator decisions — honor them, don't relitigate)
+
 Enterprise-only (drop the prototype/personal tier); **deploy-per-tenant** (NO in-app row-level multi-tenancy); **Docker-first delivery**, self-hosted dockerized Postgres default (Neon optional); **compose now, k8s-ready later** (no k8s in v1); Claude-first for AI (default Opus 4.8 / Sonnet 5 / Haiku 4.5); agent runtime = research decides.
 
 ## Per-item output structure (MANDATORY — repeat for every catalogue item)
+
 For each item, emit a `### <Item name>` block with:
 
 1. **One line:** what the item is + our current choice (or "NET-NEW — none yet").
@@ -30,9 +33,11 @@ For each item, emit a `### <Item name>` block with:
 4. **Recommendation (the payoff column):** one of `KEEP` / `KEEP+HARDEN` / `ADOPT (net-new)` / `REPLACE → <x>` / `ADD-AS-OPTION` / `DEFER`, plus **what we take or change** to reach the perfect enterprise repo, plus **Fit 1–5** vs the fixed stack and any **ADR impact**.
 
 ## Cross-item comparison (per category, once)
+
 End the file with a **category verdict table**: `Item | Current | Recommendation | Net-new deps to add | ADR impact | Priority P0/P1/P2` — so items can be compared against each other at a glance.
 
 ## Rules
+
 - **Cite everything non-obvious** — numbered `Sources` list at the file end; inline `[n]`. Prefer official docs, GitHub repos (with star counts + date), reputable 2025–2026 comparisons. Star counts are point-in-time — always date them.
 - Tables over prose. Be decision-grade and terse; a top-10 row is one line.
 - Honor the pivot decisions above (e.g. never recommend in-app multi-tenancy).

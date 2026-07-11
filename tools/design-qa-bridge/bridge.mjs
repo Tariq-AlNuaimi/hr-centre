@@ -33,7 +33,10 @@ import { readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 
 const UPSTREAM = process.env.BRIDGE_UPSTREAM;
-if (!UPSTREAM) { console.error("Set BRIDGE_UPSTREAM=https://<app>.vercel.app"); process.exit(1); }
+if (!UPSTREAM) {
+  console.error("Set BRIDGE_UPSTREAM=https://<app>.vercel.app");
+  process.exit(1);
+}
 const UP_ORIGIN = new URL(UPSTREAM).origin;
 const CA = process.env.BRIDGE_CA || "/root/.ccr/ca-bundle.crt";
 const PROXY = process.env.HTTPS_PROXY;
@@ -42,21 +45,48 @@ const CERT = process.env.BRIDGE_CERT || "bridge-cert.pem";
 const KEY = process.env.BRIDGE_KEY || "bridge-key.pem";
 
 const HOP = new Set([
-  "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
-  "te", "trailer", "transfer-encoding", "upgrade", "host", "accept-encoding",
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "host",
+  "accept-encoding",
   "content-length",
 ]);
 
 function curlFetch(method, path, reqHeaders, bodyBuf) {
   return new Promise((resolve) => {
-    const args = ["-sS", "-i", "--http1.1", "--compressed", "--proxy", PROXY, "--cacert", CA, "-X", method, "--max-time", "45"];
+    const args = [
+      "-sS",
+      "-i",
+      "--http1.1",
+      "--compressed",
+      "--proxy",
+      PROXY,
+      "--cacert",
+      CA,
+      "-X",
+      method,
+      "--max-time",
+      "45",
+    ];
     for (const [k, v] of Object.entries(reqHeaders)) {
       const kl = k.toLowerCase();
       if (HOP.has(kl)) continue;
       // Force upstream origin/referer so Auth.js CSRF/origin checks see a
       // consistent trusted host, not the loopback bridge.
-      if (kl === "origin") { args.push("-H", `Origin: ${UP_ORIGIN}`); continue; }
-      if (kl === "referer") { args.push("-H", `Referer: ${UP_ORIGIN}${new URL(v, UP_ORIGIN).pathname}`); continue; }
+      if (kl === "origin") {
+        args.push("-H", `Origin: ${UP_ORIGIN}`);
+        continue;
+      }
+      if (kl === "referer") {
+        args.push("-H", `Referer: ${UP_ORIGIN}${new URL(v, UP_ORIGIN).pathname}`);
+        continue;
+      }
       args.push("-H", `${k}: ${v}`);
     }
     if (bodyBuf && bodyBuf.length) args.push("--data-binary", "@-");
@@ -77,7 +107,9 @@ function parseResponse(buf) {
   while (sep !== -1) {
     const firstLine = buf.subarray(cursor, buf.indexOf("\r\n", cursor)).toString("latin1");
     if (/connection established/i.test(firstLine) || /^HTTP\/\d\.\d\s+1\d\d/.test(firstLine)) {
-      cursor = sep + 4; sep = buf.indexOf("\r\n\r\n", cursor); continue;
+      cursor = sep + 4;
+      sep = buf.indexOf("\r\n\r\n", cursor);
+      continue;
     }
     break;
   }
@@ -100,18 +132,22 @@ function parseResponse(buf) {
   return { status, headers, body };
 }
 
-https.createServer({ key: readFileSync(KEY), cert: readFileSync(CERT) }, async (req, res) => {
-  const bodyChunks = [];
-  req.on("data", (c) => bodyChunks.push(c));
-  req.on("end", async () => {
-    try {
-      const raw = await curlFetch(req.method, req.url, req.headers, Buffer.concat(bodyChunks));
-      const { status, headers, body } = parseResponse(raw);
-      res.writeHead(status, headers);
-      res.end(body);
-    } catch (e) {
-      res.writeHead(502);
-      res.end("bridge error: " + e.message);
-    }
-  });
-}).listen(PORT, "127.0.0.1", () => console.log(`bridge up on https://127.0.0.1:${PORT} -> ${UPSTREAM}`));
+https
+  .createServer({ key: readFileSync(KEY), cert: readFileSync(CERT) }, async (req, res) => {
+    const bodyChunks = [];
+    req.on("data", (c) => bodyChunks.push(c));
+    req.on("end", async () => {
+      try {
+        const raw = await curlFetch(req.method, req.url, req.headers, Buffer.concat(bodyChunks));
+        const { status, headers, body } = parseResponse(raw);
+        res.writeHead(status, headers);
+        res.end(body);
+      } catch (e) {
+        res.writeHead(502);
+        res.end("bridge error: " + e.message);
+      }
+    });
+  })
+  .listen(PORT, "127.0.0.1", () =>
+    console.log(`bridge up on https://127.0.0.1:${PORT} -> ${UPSTREAM}`),
+  );

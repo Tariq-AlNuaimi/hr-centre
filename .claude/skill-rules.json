@@ -4,19 +4,40 @@
   "rules": [
     {
       "skill": "blueprint",
-      "keywords": ["build", "add a feature", "new feature", "implement", "spec this", "what are we building"],
+      "keywords": [
+        "build",
+        "add a feature",
+        "new feature",
+        "implement",
+        "spec this",
+        "what are we building"
+      ],
       "paths": ["app/api/**/route.ts", "prisma/migrations/**"],
       "reason": "The pre-build gate: new feature surface needs a contract (lightweight or full track) before code."
     },
     {
       "skill": "design-system",
-      "keywords": ["build the UI", "make this screen", "new page", "design this", "the design looks bad"],
+      "keywords": [
+        "build the UI",
+        "make this screen",
+        "new page",
+        "design this",
+        "the design looks bad"
+      ],
       "paths": ["app/**/*.tsx", "components/**/*.tsx"],
       "reason": "Build UI right the first time from the vetted recipes instead of fixing it at design QA."
     },
     {
       "skill": "stack-advisor",
-      "keywords": ["right way to build", "best rsc pattern", "how should I query", "am I fetching this right", "query shape", "index for this route", "stack-advisor"],
+      "keywords": [
+        "right way to build",
+        "best rsc pattern",
+        "how should I query",
+        "am I fetching this right",
+        "query shape",
+        "index for this route",
+        "stack-advisor"
+      ],
       "paths": ["app/api/**/route.ts", "app/**/page.tsx"],
       "reason": "Build-time stack expert: framework-correct RSC/Prisma/Postgres patterns pointing at this repo's primitives, before code lands."
     },
@@ -28,7 +49,14 @@
     },
     {
       "skill": "scaffold-ai-endpoint",
-      "keywords": ["ai endpoint", "ai route", "llm route", "llm endpoint", "scaffold ai", "new ai route"],
+      "keywords": [
+        "ai endpoint",
+        "ai route",
+        "llm route",
+        "llm endpoint",
+        "scaffold ai",
+        "new ai route"
+      ],
       "paths": ["lib/ai/**"],
       "reason": "End-to-end AI endpoint scaffold (config-guarded, auth+rate-limited, zod, traced route + eval fixtures) consuming lib/ai beats hand-wiring the guardrails."
     },
@@ -46,13 +74,25 @@
     },
     {
       "skill": "qa",
-      "keywords": ["test it", "is this ready", "release readiness", "quality gate", "audit the app"],
+      "keywords": [
+        "test it",
+        "is this ready",
+        "release readiness",
+        "quality gate",
+        "audit the app"
+      ],
       "paths": [],
       "reason": "Route vague 'test it' asks through the gated orchestrator, not an ad-hoc mega-task."
     },
     {
       "skill": "design-qa",
-      "keywords": ["does it match the design", "ui audit", "a11y", "accessibility", "visual regression"],
+      "keywords": [
+        "does it match the design",
+        "ui audit",
+        "a11y",
+        "accessibility",
+        "visual regression"
+      ],
       "paths": ["app/globals.css", "app/tokens.css", "**/chart-palette.ts"],
       "reason": "Fidelity/a11y questions are Tier 1 of QA; theme/token edits invalidate every screen."
     },
@@ -70,7 +110,16 @@
     },
     {
       "skill": "scale-up",
-      "keywords": ["file upload", "cron", "background job", "realtime", "custom domain", "feature flag", "observability", "sentry"],
+      "keywords": [
+        "file upload",
+        "cron",
+        "background job",
+        "realtime",
+        "custom domain",
+        "feature flag",
+        "observability",
+        "sentry"
+      ],
       "paths": [],
       "reason": "Growth capabilities have vetted recipes with when-to-add triggers; don't install ad hoc."
     },
@@ -88,7 +137,11 @@
     },
     {
       "skill": "handoff-session",
-      "keywords": ["context is getting long", "wrap up this session", "continue in a fresh session"],
+      "keywords": [
+        "context is getting long",
+        "wrap up this session",
+        "continue in a fresh session"
+      ],
       "paths": ["docs/SESSION-HANDOFF.md"],
       "reason": "When the context watchdog warns, hand off at the next milestone instead of degrading."
     },

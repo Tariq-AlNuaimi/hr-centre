@@ -23,7 +23,7 @@ async function main() {
     console.warn(
       "Skipping admin seed: SEED_ADMIN_PASSWORD is unset in production " +
         "(would create admin@example.com / 'changeme'). Set SEED_ADMIN_EMAIL + " +
-        "SEED_ADMIN_PASSWORD and redeploy to create the admin user."
+        "SEED_ADMIN_PASSWORD and redeploy to create the admin user.",
     );
     await prisma.$disconnect();
     return;

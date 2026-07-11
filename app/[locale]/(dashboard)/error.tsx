@@ -38,9 +38,7 @@ export default function DashboardError({
     <BrandedStatus
       title={tStatus("errorTitle")}
       subtitle={tStatus("errorSubtitle")}
-      actions={
-        <Button onClick={reset}>{t("tryAgain")}</Button>
-      }
+      actions={<Button onClick={reset}>{t("tryAgain")}</Button>}
     />
   );
 }

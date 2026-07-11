@@ -23,15 +23,12 @@ import { SCRUB_FIELDS } from "../../lib/prisma/audit-extension";
 // covered by the explicit SCRUB_FIELDS membership assertion in
 // audit-scrub.test.ts. The two tests are complementary, not redundant.
 
-const SCHEMA_PATH = fileURLToPath(
-  new URL("../../prisma/schema.prisma", import.meta.url)
-);
+const SCHEMA_PATH = fileURLToPath(new URL("../../prisma/schema.prisma", import.meta.url));
 
 // Field-name fragments that signal a Restricted, value-bearing secret column.
 // Intentionally broad: a false positive is cheap (add the field to SCRUB_FIELDS
 // or rename), a false negative leaks a secret into the audit trail.
-const SECRET_NAME =
-  /(password|passwd|secret|token|api_?key|private_?key|credential)/i;
+const SECRET_NAME = /(password|passwd|secret|token|api_?key|private_?key|credential)/i;
 
 // Field names that match the pattern but are NOT secret VALUES and so are
 // correctly absent from SCRUB_FIELDS. Keep this list tiny and justified.
@@ -68,9 +65,7 @@ test("every secret-looking String column in the schema is in SCRUB_FIELDS", () =
 
   const unscrubbed = fields.filter(
     ({ field }) =>
-      SECRET_NAME.test(field) &&
-      !SCRUB_FIELDS.has(field) &&
-      !NON_SECRET_EXCEPTIONS.has(field)
+      SECRET_NAME.test(field) && !SCRUB_FIELDS.has(field) && !NON_SECRET_EXCEPTIONS.has(field),
   );
 
   assert.deepEqual(
@@ -81,6 +76,6 @@ test("every secret-looking String column in the schema is in SCRUB_FIELDS", () =
         .map((f) => `${f.model}.${f.field}`)
         .join(", ")}. Add each to SCRUB_FIELDS (and the membership assertion in ` +
       `audit-scrub.test.ts), or, if it is genuinely not a secret value, add it ` +
-      `to NON_SECRET_EXCEPTIONS here with a justification. See SECURITY.md §5.`
+      `to NON_SECRET_EXCEPTIONS here with a justification. See SECURITY.md §5.`,
   );
 });

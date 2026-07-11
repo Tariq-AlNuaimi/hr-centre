@@ -24,14 +24,14 @@ Two facts constrain the shape of that pillar:
   boundary, hallucinate a success over an empty completion, answer from model memory
   instead of retrieved context (ungrounded RAG), burn unbounded tokens, or leak
   Restricted input into a prompt or log. High-Quality gestures at "correctness"; none of
-  the five names *these* checks as gates.
+  the five names _these_ checks as gates.
 - **Most forks ship no AI at all.** The template is AI-off by default (`AI_API_KEY`
   unset, no `lib/ai` usage). A sixth pillar that fired on every fork would either be a
   dead checklist everyone waves off, or — worse — a `/ship`-RED on a repo with no AI
   surface to satisfy it. This very repo has no AI key; the pillar must not touch its
   green.
 
-So the pillar must be **conditional**: a real gate where AI exists, and *nothing* —
+So the pillar must be **conditional**: a real gate where AI exists, and _nothing_ —
 no finding, no checklist item, no `/ship` effect — where it doesn't.
 
 ## Decision drivers
@@ -80,7 +80,7 @@ Keep only the ADR-036 eval gate; add no pillar. Bad: the eval runner covers pass
 not injection resistance, honest failure states, grounding, cost bounds, or prompt/log
 hygiene — the judgment calls a checklist owns. A gate without a pillar has no home for the
 non-automatable half, so those checks stay vibes. Rejected in favor of a pillar that
-*includes* the eval gate as its automatable slice.
+_includes_ the eval gate as its automatable slice.
 
 ## Decision
 
@@ -104,19 +104,19 @@ slice of it. Precisely:
   (`contains` / `not-contains` / `llm-judge`). RED on any failing case; the pillar cites
   that RED as an AI-Quality failure.
 - **The checklist owns what the eval runner can't express** — injection resistance
-  (though it's *expressed* as `not-contains` eval cases), honest failure states,
+  (though it's _expressed_ as `not-contains` eval cases), honest failure states,
   grounding, cost bounds, and prompt/log hygiene are judgment calls `/qa`/`/uat` affirm.
 - **They share the same dormancy switch,** so they turn on together. Both are inert until
   `AI_API_KEY` is set AND fixtures/AI usage exist; both activate the moment a fork
   configures AI — no code change, just configuration.
-- **No duplication:** the pillar does not re-implement scoring; it *points at* the
+- **No duplication:** the pillar does not re-implement scoring; it _points at_ the
   `/ai-eval` gate for pass-rate and adds only the non-automatable checks around it.
 
 ## Why it stays inert on non-AI forks (and this repo stays green)
 
 - **No `AI_API_KEY`, no AI usage → no surface to bind to.** The pillar governs "AI
   endpoints"; a fork with none has zero AI routes, so it raises zero AI-Quality findings
-  and its Tier-2a subsection and release-readiness line are explicitly *skipped*.
+  and its Tier-2a subsection and release-readiness line are explicitly _skipped_.
 - **The automatable slice is already dormant-by-design.** `/ai-eval` exits 0 (SKIP) until
   `AI_API_KEY` + fixtures exist (ADR-036); the eleven ESLint rules only fire on code that
   imports `@/lib/ai` / `@anthropic-ai/sdk` or logs secrets — a non-AI fork has neither. So `/ship` is

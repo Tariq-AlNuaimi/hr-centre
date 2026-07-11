@@ -12,8 +12,8 @@ retries instead of one session dragging the whole history through N files.
 ## Steps
 
 1. Confirm the per-file transformation prompt with the operator (one sentence
-   + an example diff on ONE file done interactively first — never batch an
-   unvalidated prompt).
+   - an example diff on ONE file done interactively first — never batch an
+     unvalidated prompt).
 2. Build the file list (`git ls-files` + glob). Show count + estimated cost
    (~3-8k tokens/file on sonnet) and get a go.
 3. Loop (bash), per file:
@@ -37,6 +37,7 @@ retries instead of one session dragging the whole history through N files.
      license to land red** — the green-`/ship` bar still applies before any push.
 
 ## Rules
+
 - Max 2 attempts per file; parked files are reported, not retried forever.
 - Sonnet by default; haiku only for purely mechanical rewrites with a
   validation gate that would catch nonsense. Examples:

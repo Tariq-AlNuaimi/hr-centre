@@ -17,25 +17,30 @@ const ROOT = process.env.CLAUDE_PROJECT_DIR || ".";
 function git(args) {
   try {
     return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] })
-      .toString().trim();
-  } catch { return ""; }
+      .toString()
+      .trim();
+  } catch {
+    return "";
+  }
 }
 function capped(lines) {
-  return lines.length > CAP
-    ? [...lines.slice(0, CAP), `  ... +${lines.length - CAP} more`]
-    : lines;
+  return lines.length > CAP ? [...lines.slice(0, CAP), `  ... +${lines.length - CAP} more`] : lines;
 }
 
 const out = [];
-out.push("[pre-compact] Binding essentials to PRESERVE through compaction (CLAUDE.md token-thrift rule):");
+out.push(
+  "[pre-compact] Binding essentials to PRESERVE through compaction (CLAUDE.md token-thrift rule):",
+);
 
 try {
-  try { readFileSync(0, "utf8"); } catch {} // drain stdin; payload not needed
+  try {
+    readFileSync(0, "utf8");
+  } catch {} // drain stdin; payload not needed
 
   // 1. Standing pointers (always)
   out.push(
     "- Re-read after compaction if unsure: CLAUDE.md (standing instructions + hard rules), docs/agent-memory.md.",
-    "- Persist in-flight state BEFORE relying on the summary: /handoff-session, and commit+push (#3/#14)."
+    "- Persist in-flight state BEFORE relying on the summary: /handoff-session, and commit+push (#3/#14).",
   );
 
   // 2. Modified-file list (git, cheap)
@@ -47,9 +52,10 @@ try {
       ? git("diff --name-only @{u}..HEAD").split("\n").filter(Boolean)
       : [];
     const ahead = hasUpstream ? git("rev-list --count @{u}..HEAD") || "0" : "?";
-    out.push(`- Branch: ${branch} (${hasUpstream ? `${ahead} unpushed commit(s)` : "NO upstream — nothing pushed"}).`);
-    if (dirty.length)
-      out.push("- Uncommitted changes:", ...capped(dirty.map((l) => `    ${l}`)));
+    out.push(
+      `- Branch: ${branch} (${hasUpstream ? `${ahead} unpushed commit(s)` : "NO upstream — nothing pushed"}).`,
+    );
+    if (dirty.length) out.push("- Uncommitted changes:", ...capped(dirty.map((l) => `    ${l}`)));
     if (unpushed.length)
       out.push("- In unpushed commits:", ...capped(unpushed.map((f) => `    ${f}`)));
     if (!dirty.length && !unpushed.length) out.push("- Working tree clean and pushed.");
@@ -78,11 +84,16 @@ try {
     out.push(
       open.length
         ? `- Open findings-register wave-offs (BLOCK /ship): ${open.length}` +
-            open.slice(0, 3).map((l) => `\n    ${l.slice(0, 120)}`).join("")
-        : "- Findings register: no open wave-offs."
+            open
+              .slice(0, 3)
+              .map((l) => `\n    ${l.slice(0, 120)}`)
+              .join("")
+        : "- Findings register: no open wave-offs.",
     );
   }
-} catch { /* still print what we have; never fail compaction */ }
+} catch {
+  /* still print what we have; never fail compaction */
+}
 
 console.log(out.join("\n"));
 process.exit(0);

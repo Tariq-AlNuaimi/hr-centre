@@ -13,27 +13,70 @@ import { readFileSync } from "node:fs";
 
 // Restricted env-var names (SECURITY.md §1/§6 + .env.example provisioning block).
 const RESTRICTED_ENV = [
-  "DATABASE_URL", "AUTH_SECRET", "AUTH_GOOGLE_SECRET",
-  "AUTH_MICROSOFT_ENTRA_ID_SECRET", "SMTP_PASSWORD", "SEED_ADMIN_PASSWORD",
-  "CRON_SECRET", "AUDIT_PURGE_TOKEN", "SENTRY_AUTH_TOKEN", "NEON_API_KEY",
-  "VERCEL_TOKEN", "CLOUDFLARE_API_TOKEN", "GH_AUTOMATION_TOKEN", "ANTHROPIC_API_KEY",
+  "DATABASE_URL",
+  "AUTH_SECRET",
+  "AUTH_GOOGLE_SECRET",
+  "AUTH_MICROSOFT_ENTRA_ID_SECRET",
+  "SMTP_PASSWORD",
+  "SEED_ADMIN_PASSWORD",
+  "CRON_SECRET",
+  "AUDIT_PURGE_TOKEN",
+  "SENTRY_AUTH_TOKEN",
+  "NEON_API_KEY",
+  "VERCEL_TOKEN",
+  "CLOUDFLARE_API_TOKEN",
+  "GH_AUTOMATION_TOKEN",
+  "ANTHROPIC_API_KEY",
 ];
 const KEY_EXTENSIONS = [".pem", ".key", ".p12", ".pfx", ".jks", ".keystore"];
 const SECRET_BASENAMES = new Set([
-  "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", ".netrc", ".pgpass",
+  "id_rsa",
+  "id_dsa",
+  "id_ecdsa",
+  "id_ed25519",
+  ".netrc",
+  ".pgpass",
 ]);
 const SSH_PUBLIC_OK = new Set(["config", "known_hosts", "authorized_keys"]);
 // Commands whose file args are READ into output/context.
 const READ_CMDS = new Set([
-  "cat", "head", "tail", "less", "more", "grep", "rg", "awk", "sed", "cut",
-  "sort", "uniq", "strings", "base64", "xxd", "od", "nl", "tac", "view",
-  "vi", "vim", "nano", "emacs", "code", "open", "bat", "diff", "cmp", "tee",
+  "cat",
+  "head",
+  "tail",
+  "less",
+  "more",
+  "grep",
+  "rg",
+  "awk",
+  "sed",
+  "cut",
+  "sort",
+  "uniq",
+  "strings",
+  "base64",
+  "xxd",
+  "od",
+  "nl",
+  "tac",
+  "view",
+  "vi",
+  "vim",
+  "nano",
+  "emacs",
+  "code",
+  "open",
+  "bat",
+  "diff",
+  "cmp",
+  "tee",
 ]);
 
 /** Is this path/token secret-bearing? Returns a reason string or null. */
 function secretPath(raw) {
   if (!raw) return null;
-  const p = String(raw).replace(/^["']|["']$/g, "").replace(/[;,)]+$/, "");
+  const p = String(raw)
+    .replace(/^["']|["']$/g, "")
+    .replace(/[;,)]+$/, "");
   const base = p.split("/").pop() ?? "";
   if (base === ".env" || (base.startsWith(".env.") && base !== ".env.example"))
     return `'${p}' is a live env file (Restricted; SECURITY.md §1)`;
@@ -81,9 +124,7 @@ function scanBash(cmd) {
     }
     // 3. echo/printf expanding a Restricted var ($NAME or ${NAME})
     if (cmd0 === "echo" || cmd0 === "printf") {
-      const hit = RESTRICTED_ENV.find((n) =>
-        new RegExp(`\\$\\{?${n}\\b`).test(seg)
-      );
+      const hit = RESTRICTED_ENV.find((n) => new RegExp(`\\$\\{?${n}\\b`).test(seg));
       if (hit) return `expanding $${hit} (Restricted) into the transcript`;
     }
   }
@@ -99,16 +140,20 @@ try {
   else if (tool === "Grep") why = secretPath(ti.path) ?? secretPath(ti.glob);
   else if (tool === "Bash") why = scanBash(ti.command ?? "");
   if (why) {
-    console.log(JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason:
-          `[protect-secrets] Denied: ${why}. Secret VALUES must never enter the ` +
-          `transcript (CLAUDE.md hard rule; SECURITY.md §17). Use .env.example for ` +
-          `shape/names, or reference the variable NAME without printing its value.`,
-      },
-    }));
+    console.log(
+      JSON.stringify({
+        hookSpecificOutput: {
+          hookEventName: "PreToolUse",
+          permissionDecision: "deny",
+          permissionDecisionReason:
+            `[protect-secrets] Denied: ${why}. Secret VALUES must never enter the ` +
+            `transcript (CLAUDE.md hard rule; SECURITY.md §17). Use .env.example for ` +
+            `shape/names, or reference the variable NAME without printing its value.`,
+        },
+      }),
+    );
   }
-} catch { /* a guard hook must never brick the session */ }
+} catch {
+  /* a guard hook must never brick the session */
+}
 process.exit(0);

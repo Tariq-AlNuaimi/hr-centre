@@ -43,9 +43,7 @@ function ResetPasswordForm() {
           <h1 className="mb-6 text-center text-h4 font-semibold text-card-foreground">
             {t("resetPassword")}
           </h1>
-          <p className="text-center text-card-foreground">
-            {t("resetInvalidOrExpired")}
-          </p>
+          <p className="text-center text-card-foreground">{t("resetInvalidOrExpired")}</p>
           <Link
             href={`/${locale}/forgot-password`}
             className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
@@ -83,10 +81,7 @@ function ResetPasswordForm() {
           {t("resetPassword")}
         </h1>
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-4"
-          >
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
             <TextField
               name="newPassword"
               label={t("password")}

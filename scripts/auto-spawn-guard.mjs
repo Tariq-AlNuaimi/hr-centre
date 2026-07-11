@@ -43,7 +43,9 @@ const GREEN_SHA_FILE = join(ROOT, ".claude", "state", "last-green-sha");
 
 function git(args) {
   try {
-    return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
   } catch {
     return "";
   }
@@ -63,7 +65,12 @@ const arg = process.argv[2];
 if (arg === "--record" || arg === "--reset") {
   try {
     const s = loadState();
-    s.autoSpawn = s.autoSpawn || { enabled: false, cap: 3, consecutiveCount: 0, lastSpawnSha: null };
+    s.autoSpawn = s.autoSpawn || {
+      enabled: false,
+      cap: 3,
+      consecutiveCount: 0,
+      lastSpawnSha: null,
+    };
     if (arg === "--record") {
       s.autoSpawn.consecutiveCount = (s.autoSpawn.consecutiveCount || 0) + 1;
       s.autoSpawn.lastSpawnSha = git("rev-parse --short HEAD") || s.autoSpawn.lastSpawnSha;
@@ -71,7 +78,9 @@ if (arg === "--record" || arg === "--reset") {
       s.autoSpawn.consecutiveCount = 0;
     }
     saveState(s);
-    process.stderr.write(`[auto-spawn-guard] ${arg} -> consecutiveCount=${s.autoSpawn.consecutiveCount}\n`);
+    process.stderr.write(
+      `[auto-spawn-guard] ${arg} -> consecutiveCount=${s.autoSpawn.consecutiveCount}\n`,
+    );
   } catch (e) {
     process.stderr.write(`[auto-spawn-guard] ${arg} failed: ${e.message}\n`);
   }
@@ -85,7 +94,8 @@ try {
   const a = s.autoSpawn || {};
   const reasons = [];
 
-  if (a.enabled !== true) reasons.push("autoSpawn.enabled is false (opt-in — the operator has not turned auto-spawn on)");
+  if (a.enabled !== true)
+    reasons.push("autoSpawn.enabled is false (opt-in — the operator has not turned auto-spawn on)");
 
   const upstream = git("rev-parse --abbrev-ref --symbolic-full-name @{u}");
   if (!upstream) reasons.push("branch has no upstream — nothing is pushed");
@@ -95,21 +105,35 @@ try {
   }
   // A dirty working tree means uncommitted work a fresh container (or spawned session)
   // would never see. "Pushed" is not enough — the tree must also be clean.
-  if (git("status --porcelain") !== "") reasons.push("uncommitted changes in the working tree — commit + push before spawning (a successor clones only pushed state)");
+  if (git("status --porcelain") !== "")
+    reasons.push(
+      "uncommitted changes in the working tree — commit + push before spawning (a successor clones only pushed state)",
+    );
 
   const headShort = git("rev-parse --short HEAD");
   // Fail CLOSED on the green-for-HEAD signal: read the gitignored file /ship writes.
   let greenSha = "";
   try {
     if (existsSync(GREEN_SHA_FILE)) greenSha = readFileSync(GREEN_SHA_FILE, "utf8").trim();
-  } catch { /* treated as missing -> block */ }
-  if (!greenSha) reasons.push("no green-ship signal for this session (.claude/state/last-green-sha absent) — run /ship at HEAD before spawning");
+  } catch {
+    /* treated as missing -> block */
+  }
+  if (!greenSha)
+    reasons.push(
+      "no green-ship signal for this session (.claude/state/last-green-sha absent) — run /ship at HEAD before spawning",
+    );
   else if (!headShort) reasons.push("cannot resolve current HEAD");
-  else if (greenSha !== headShort) reasons.push(`green ship (${greenSha}) is not for current HEAD (${headShort}) — a commit moved past the last /ship; re-ship before spawning`);
+  else if (greenSha !== headShort)
+    reasons.push(
+      `green ship (${greenSha}) is not for current HEAD (${headShort}) — a commit moved past the last /ship; re-ship before spawning`,
+    );
 
   const cap = Number.isInteger(a.cap) ? a.cap : 3;
   const count = a.consecutiveCount || 0;
-  if (count >= cap) reasons.push(`consecutive auto-spawn cap reached (${count}/${cap}) — a human turn must reset it`);
+  if (count >= cap)
+    reasons.push(
+      `consecutive auto-spawn cap reached (${count}/${cap}) — a human turn must reset it`,
+    );
 
   verdict = {
     permitted: reasons.length === 0,

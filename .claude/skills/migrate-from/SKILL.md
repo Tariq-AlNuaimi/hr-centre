@@ -73,6 +73,7 @@ npm run migrate-from -- \
 ```
 
 What it does:
+
 1. Dumps source schema to `/tmp/migrate/schema.sql` (informational; the target's Prisma already owns its schema)
 2. `COPY ... TO STDOUT FORMAT csv` for each in-scope table → `/tmp/migrate/<table>.csv`
 3. Generates `/tmp/migrate/seed.ts` — a Prisma seed script using the target's own client (so `auditExtension` runs)
@@ -107,6 +108,7 @@ The transform layer is project-specific. Even with Claude reasoning, the operato
 - Source table has columns that map to Restricted fields (per `SECURITY.md` §1) without an audit-trail decision → stop, ask operator to acknowledge in writing (a comment in `/tmp/migrate.json`).
 
 ## Read before
+
 - `scripts/migrate-from.mjs`
 - `prisma/seed.ts` (target's existing seed pattern)
 - `lib/prisma/audit-extension.ts` (so the operator knows what auto-writes)

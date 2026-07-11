@@ -125,11 +125,7 @@ export function safeHexEqual(a: string, b: string): boolean {
  * Mint a new key. Returns the plaintext ONCE (caller shows it to the admin and then
  * forgets it) plus the persisted row. Only the hash + a non-secret prefix are stored.
  */
-export async function createApiKey(opts: {
-  name: string;
-  scopes: string[];
-  createdBy: string;
-}) {
+export async function createApiKey(opts: { name: string; scopes: string[]; createdBy: string }) {
   const secret = randomBytes(24).toString("base64url"); // ~32 chars, URL-safe
   const plaintext = `${PREFIX}${secret}`;
   const hashedKey = hashKey(plaintext);
@@ -140,7 +136,10 @@ export async function createApiKey(opts: {
   });
 
   // plaintext is returned to the caller, NOT stored.
-  return { plaintext, apiKey: { id: row.id, name: row.name, prefix: row.prefix, scopes: row.scopes } };
+  return {
+    plaintext,
+    apiKey: { id: row.id, name: row.name, prefix: row.prefix, scopes: row.scopes },
+  };
 }
 
 /**
@@ -158,7 +157,9 @@ export async function resolveApiKey(plaintext: string) {
   if (!safeHexEqual(row.hashedKey, hashedKey)) return null; // defensive; hashes match by construction
 
   // Fire-and-forget last-used bump (don't block the request on it).
-  void prisma.apiKey.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
+  void prisma.apiKey
+    .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
+    .catch(() => {});
 
   return { id: row.id, name: row.name, scopes: row.scopes, createdBy: row.createdBy };
 }
@@ -184,7 +185,15 @@ const CreateSchema = z.object({
 export const GET = withAdminAuth(async () => {
   const keys = await prisma.apiKey.findMany({
     // NEVER select hashedKey — it must never leave the DB.
-    select: { id: true, name: true, prefix: true, scopes: true, lastUsedAt: true, revokedAt: true, createdAt: true },
+    select: {
+      id: true,
+      name: true,
+      prefix: true,
+      scopes: true,
+      lastUsedAt: true,
+      revokedAt: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" },
   });
   return ok(keys);
@@ -243,7 +252,7 @@ import { resolveApiKey } from "./api-keys";
 type ApiKeyPrincipal = { id: string; name: string; scopes: string[]; createdBy: string | null };
 type ApiKeyHandler = (
   req: NextRequest,
-  ctx: RouteContext & { apiKey: ApiKeyPrincipal }
+  ctx: RouteContext & { apiKey: ApiKeyPrincipal },
 ) => Promise<NextResponse>;
 
 /**
@@ -257,10 +266,7 @@ type ApiKeyHandler = (
  *     { id: "v1-projects", limit: 120, windowMs: 60_000 },
  *   );
  */
-export function withApiKeyAuth(
-  opts: { scopes?: string[] },
-  handler: ApiKeyHandler,
-) {
+export function withApiKeyAuth(opts: { scopes?: string[] }, handler: ApiKeyHandler) {
   return async (req: NextRequest, ctx: RouteContext) => {
     const header = req.headers.get("authorization") ?? "";
     const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
@@ -357,11 +363,13 @@ const bearer = registry.registerComponent("securitySchemes", "ApiKey", {
 // Example: a Project response schema (reuse / import your real zod schemas here)
 const ProjectSchema = registry.register(
   "Project",
-  z.object({
-    id: z.string(),
-    name: z.string(),
-    createdAt: z.string().datetime(),
-  }).openapi("Project"),
+  z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      createdAt: z.string().datetime(),
+    })
+    .openapi("Project"),
 );
 
 registry.registerPath({
@@ -439,11 +447,11 @@ does not.)
 
 Add to **§1 Data classification**:
 
-| Field | Class | Note |
-|---|---|---|
-| `api_keys.hashedKey` | **Restricted-adjacent** | SHA-256 of a bearer credential. Irreversible but secret-equivalent if exfiltrated — same posture as `users.passwordHash`. Never selected by any API, never logged, scrubbed in `SCRUB_FIELDS`. |
-| `api_keys.prefix` | Internal | First 12 chars (`rk_live_xxxx`) for display only — not enough to authenticate. |
-| The minted plaintext key (response of `POST /api/api-keys`) | **Restricted** | Returned exactly once; never persisted in plaintext. The admin UI must surface a copy-and-dismiss flow, never re-fetchable. |
+| Field                                                       | Class                   | Note                                                                                                                                                                                           |
+| ----------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api_keys.hashedKey`                                        | **Restricted-adjacent** | SHA-256 of a bearer credential. Irreversible but secret-equivalent if exfiltrated — same posture as `users.passwordHash`. Never selected by any API, never logged, scrubbed in `SCRUB_FIELDS`. |
+| `api_keys.prefix`                                           | Internal                | First 12 chars (`rk_live_xxxx`) for display only — not enough to authenticate.                                                                                                                 |
+| The minted plaintext key (response of `POST /api/api-keys`) | **Restricted**          | Returned exactly once; never persisted in plaintext. The admin UI must surface a copy-and-dismiss flow, never re-fetchable.                                                                    |
 
 Note in **§3 Authorization**: machine consumers authenticate via `withApiKeyAuth` (hashed,
 scoped, revocable) under `/api/v1/*`; audit is attributed to the key's `createdBy`. Note in

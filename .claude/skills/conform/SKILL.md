@@ -22,17 +22,20 @@ security gap or introduce one. Every change is proposed, line-referenced, and ap
 ## Steps
 
 ### 1. Intake
+
 Operator points `/conform` at a folder (or pastes code). Inventory it: files, language,
 framework, whether it has a `package.json` / lockfile, what it appears to do. Do **not**
 run it. Summarize what you found.
 
 ### 2. Security scan FIRST (never trust foreign code)
+
 Run **`/audit`** against the incoming code — gitleaks + npm audit + Semgrep — **before
 reading deeply or running anything**. Report findings (secrets, dependency CVEs, SAST).
 If `/audit` reports hardcoded secrets, flag them as the top priority and note they must
 be removed + rotated, not just relocated.
 
 ### 3. Standard check
+
 Check the code against this template's hard-rules (from `CLAUDE.md` / `SECURITY.md`):
 
 - API route handlers wrapped with `withAuth` / `withAdminAuth` / `withInternalAuth`.
@@ -68,11 +71,13 @@ Produce a **conformance report**, every item line-referenced:
 ```
 
 ### 4. Plan
+
 For each ⚠️/❌, propose how to close it — rewrite the handler to use a wrapper, add a zod
 schema in `lib/validations/`, move a secret to env, scaffold missing CRUD via
 `/scaffold-entity`, etc. Present as a **checklist**, one approvable line per change.
 
-### 5. Approve  — [CONFIRM]
+### 5. Approve — [CONFIRM]
+
 **Show the operator the conformance report (step 3) and the change checklist (step 4),
 and wait for explicit approval before touching anything.** Approval is per-change: the
 operator can accept some and decline others. **No edit happens in step 6 without it.**
@@ -82,10 +87,12 @@ with the ones to apply, e.g. `Approve: 1,3,5` (apply those only) or `APPROVE ALL
 Anything not approved is **not** edited. Never edit without an explicit approval line.
 
 ### 6. Align
+
 Apply ONLY the approved changes. Then re-run **`/audit`** and **`/ship`** to verify the
 result is clean and green. If anything is still red, report and stop — do not paper over it.
 
 ### 7. Push
+
 Create a new repo **from this template** using the current on-ramp — see the
 **Fork lifecycle** in `CLAUDE.md` for which skill applies right now (`/first-fork` vs
 `/new-project`), rather than hardcoding it here. Drop the conformed code in, run

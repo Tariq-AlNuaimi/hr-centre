@@ -27,11 +27,7 @@ import { prisma } from "@/lib/prisma";
  * robust across client regenerations.
  */
 function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    (err as { code?: unknown }).code === "P2002"
-  );
+  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "P2002";
 }
 
 /** The dsync event types this handler acts on; others are ignored (noop). */
@@ -59,11 +55,7 @@ export interface NormalizedScimEvent {
 /** What provisioning did — the route logs the action (counts only, no PII). */
 export type ScimAction = "created" | "updated" | "deactivated" | "noop";
 
-const HANDLED: ReadonlySet<string> = new Set([
-  "user.created",
-  "user.updated",
-  "user.deleted",
-]);
+const HANDLED: ReadonlySet<string> = new Set(["user.created", "user.updated", "user.deleted"]);
 
 /**
  * Normalize a raw BoxyHQ dsync webhook body to {@link NormalizedScimEvent}, or
@@ -86,9 +78,7 @@ export function normalizeDirectoryEvent(raw: unknown): NormalizedScimEvent | nul
   const last = typeof data.last_name === "string" ? data.last_name : "";
   const combined = `${first} ${last}`.trim();
   const name =
-    typeof data.name === "string" && data.name.trim()
-      ? data.name.trim()
-      : combined || null;
+    typeof data.name === "string" && data.name.trim() ? data.name.trim() : combined || null;
 
   // A delete event is always a deactivation; otherwise honor `active` (default
   // true — a created/updated event with no active flag means the user is active).
@@ -96,13 +86,10 @@ export function normalizeDirectoryEvent(raw: unknown): NormalizedScimEvent | nul
   // SCIM boolean as a string, and a naive `!== false` would misread that as active
   // and miss the off-board.
   const active =
-    event === "user.deleted"
-      ? false
-      : data.active !== false && data.active !== "false";
+    event === "user.deleted" ? false : data.active !== false && data.active !== "false";
 
   // Stable directory id (BoxyHQ dsync `data.id`) for rename-safe correlation.
-  const externalId =
-    typeof data.id === "string" && data.id.trim() ? data.id.trim() : null;
+  const externalId = typeof data.id === "string" && data.id.trim() ? data.id.trim() : null;
 
   return { type: event as ScimEventType, email, name, active, externalId };
 }

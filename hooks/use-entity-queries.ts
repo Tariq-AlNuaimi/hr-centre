@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { PaginatedResponse } from "@/types";
 
@@ -25,8 +20,7 @@ export function entityKeys(basePath: string) {
   return {
     all: [basePath] as const,
     lists: () => [basePath, "list"] as const,
-    list: (params: Record<string, string>) =>
-      [basePath, "list", params] as const,
+    list: (params: Record<string, string>) => [basePath, "list", params] as const,
     details: () => [basePath, "detail"] as const,
     detail: (id: string) => [basePath, "detail", id] as const,
   };
@@ -46,17 +40,14 @@ export function entityKeys(basePath: string) {
 export function useEntityList<T>(
   basePath: string,
   params: Record<string, string>,
-  errorMessage?: string
+  errorMessage?: string,
 ) {
   const keys = entityKeys(basePath);
   return useQuery({
     queryKey: keys.list(params),
     queryFn: ({ signal }) => {
       const qs = new URLSearchParams(params).toString();
-      return apiClient.get<PaginatedResponse<T>>(
-        qs ? `${basePath}?${qs}` : basePath,
-        { signal }
-      );
+      return apiClient.get<PaginatedResponse<T>>(qs ? `${basePath}?${qs}` : basePath, { signal });
     },
     placeholderData: keepPreviousData,
     meta: errorMessage ? { errorMessage } : undefined,
@@ -68,16 +59,11 @@ export function useEntityList<T>(
  * call it before the route param resolves without firing a bad request).
  * `errorMessage` surfaces via the cache-level onError, as in useEntityList.
  */
-export function useEntityItem<T>(
-  basePath: string,
-  id: string | undefined,
-  errorMessage?: string
-) {
+export function useEntityItem<T>(basePath: string, id: string | undefined, errorMessage?: string) {
   const keys = entityKeys(basePath);
   return useQuery({
     queryKey: keys.detail(id ?? ""),
-    queryFn: ({ signal }) =>
-      apiClient.get<T>(`${basePath}/${id}`, { signal }),
+    queryFn: ({ signal }) => apiClient.get<T>(`${basePath}/${id}`, { signal }),
     enabled: Boolean(id),
     meta: errorMessage ? { errorMessage } : undefined,
   });

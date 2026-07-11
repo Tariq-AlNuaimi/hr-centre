@@ -141,9 +141,10 @@ async function purge() {
 // both exit via the same IP.
 export const GET = withRateLimit(
   withInternalAuth("CRON_SECRET", purge, { bearer: true, skipWhenUnconfigured: true }),
-  { id: "audit-purge-cron", limit: 5, windowMs: 60_000 }
+  { id: "audit-purge-cron", limit: 5, windowMs: 60_000 },
 );
-export const POST = withRateLimit(
-  withInternalAuth("AUDIT_PURGE_TOKEN", purge),
-  { id: "audit-purge-manual", limit: 5, windowMs: 60_000 }
-);
+export const POST = withRateLimit(withInternalAuth("AUDIT_PURGE_TOKEN", purge), {
+  id: "audit-purge-manual",
+  limit: 5,
+  windowMs: 60_000,
+});

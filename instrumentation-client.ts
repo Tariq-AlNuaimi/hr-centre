@@ -14,11 +14,9 @@ const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 if (dsn) {
   Sentry.init({
     dsn,
-    environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
-    integrations: [
-      Sentry.replayIntegration(),
-      Sentry.browserTracingIntegration(),
-    ],
+    environment:
+      process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development",
+    integrations: [Sentry.replayIntegration(), Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0.0,
     // Safe ONLY because replayIntegration() defaults to maskAllText: true + blockAllMedia: true.

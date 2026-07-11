@@ -24,9 +24,7 @@ const RTL_LOCALES = new Set(["ar", "he", "fa", "ur"]);
 
 function readLocales(raw: unknown): string[] {
   if (Array.isArray(raw)) {
-    const cleaned = raw.filter(
-      (l): l is string => typeof l === "string" && l.length > 0,
-    );
+    const cleaned = raw.filter((l): l is string => typeof l === "string" && l.length > 0);
     if (cleaned.length > 0) return cleaned;
   }
   // Defensive fallback: an empty/malformed config must never produce a routing
@@ -39,16 +37,14 @@ export const locales: string[] = readLocales(config.locales);
 
 /** Default locale; must be one of `locales`, else the first configured one. */
 export const defaultLocale: string =
-  typeof config.defaultLocale === "string" &&
-  locales.includes(config.defaultLocale)
+  typeof config.defaultLocale === "string" && locales.includes(config.defaultLocale)
     ? config.defaultLocale
     : locales[0];
 
 /** `ltr` | `rtl` per configured locale, derived from RTL_LOCALES. */
-export const localeDirection: Record<string, "ltr" | "rtl"> =
-  Object.fromEntries(
-    locales.map((l) => [l, RTL_LOCALES.has(l) ? "rtl" : "ltr"] as const),
-  );
+export const localeDirection: Record<string, "ltr" | "rtl"> = Object.fromEntries(
+  locales.map((l) => [l, RTL_LOCALES.has(l) ? "rtl" : "ltr"] as const),
+);
 
 /** Resolve text direction for an (arbitrary) locale; defaults to `ltr`. */
 export function directionForLocale(locale: string): "ltr" | "rtl" {
@@ -69,6 +65,4 @@ export function nextLocale(current: string): string {
 // locale needs no regex edits. The `(?=/|$)` boundary makes it stricter than the
 // old `/^\/(en|ar)/` (which would also have matched `/enterprise` → "en"), while
 // staying behavior-identical for real locale-prefixed paths.
-export const localePrefixRegex = new RegExp(
-  `^/(${locales.join("|")})(?=/|$)`,
-);
+export const localePrefixRegex = new RegExp(`^/(${locales.join("|")})(?=/|$)`);

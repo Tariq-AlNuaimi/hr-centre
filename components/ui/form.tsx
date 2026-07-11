@@ -76,10 +76,7 @@ export function useFormField() {
   };
 }
 
-export function FormItem({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+export function FormItem({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   const id = React.useId();
   const [hasDescription, setHasDescription] = React.useState(false);
   return (
@@ -89,10 +86,7 @@ export function FormItem({
   );
 }
 
-export function FormLabel({
-  className,
-  ...props
-}: React.LabelHTMLAttributes<HTMLLabelElement>) {
+export function FormLabel({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   const { error, formItemId } = useFormField();
   return (
     <Label
@@ -107,13 +101,8 @@ export function FormLabel({
  * FormControl — injects the accessible ids + aria-invalid onto its single form
  * control child (a plain element clone, so no @radix-ui/react-slot dep).
  */
-export function FormControl({
-  children,
-}: {
-  children: React.ReactElement;
-}) {
-  const { error, formItemId, formDescriptionId, formMessageId, hasDescription } =
-    useFormField();
+export function FormControl({ children }: { children: React.ReactElement }) {
+  const { error, formItemId, formDescriptionId, formMessageId, hasDescription } = useFormField();
   // Reference only ids whose elements actually render: the description id when a
   // <FormDescription> is present, the message id when there's an error (FormMessage
   // renders iff error). An empty list yields no attribute — never a dangling
@@ -122,14 +111,11 @@ export function FormControl({
     hasDescription ? formDescriptionId : null,
     error ? formMessageId : null,
   ].filter(Boolean);
-  return React.cloneElement(
-    children as React.ReactElement<Record<string, unknown>>,
-    {
-      id: formItemId,
-      "aria-invalid": !!error,
-      "aria-describedby": describedBy.length ? describedBy.join(" ") : undefined,
-    },
-  );
+  return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+    id: formItemId,
+    "aria-invalid": !!error,
+    "aria-describedby": describedBy.length ? describedBy.join(" ") : undefined,
+  });
 }
 
 export function FormDescription({

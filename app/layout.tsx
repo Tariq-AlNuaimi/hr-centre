@@ -13,10 +13,6 @@ export const viewport: Viewport = {
   themeColor: brand.themeColor,
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

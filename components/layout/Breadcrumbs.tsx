@@ -24,10 +24,7 @@ export function Breadcrumbs() {
   const locale = useLocale();
 
   // Strip locale prefix: /en/users/123 -> ['users', '123']
-  const segments = pathname
-    .replace(localePrefixRegex, "")
-    .split("/")
-    .filter(Boolean);
+  const segments = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean);
 
   type Crumb = { key: string; node: React.ReactNode; isLast: boolean };
 
@@ -96,11 +93,7 @@ export function Breadcrumbs() {
                 /
               </span>
             )}
-            {item.isLast ? (
-              <span aria-current="page">{item.node}</span>
-            ) : (
-              item.node
-            )}
+            {item.isLast ? <span aria-current="page">{item.node}</span> : item.node}
           </li>
         ))}
       </ol>

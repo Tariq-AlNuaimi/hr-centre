@@ -21,10 +21,7 @@ import {
 } from "../../lib/sso/config";
 
 const mockApi = mock as unknown as {
-  module?: (
-    specifier: string,
-    options: { namedExports?: Record<string, unknown> },
-  ) => unknown;
+  module?: (specifier: string, options: { namedExports?: Record<string, unknown> }) => unknown;
 };
 const canMock = typeof mockApi.module === "function";
 
@@ -40,7 +37,10 @@ test("isPolisSsoConfigured: requires issuer + id + secret together", () => {
   assert.equal(isPolisSsoConfigured({}), false);
   assert.equal(isPolisSsoConfigured({ POLIS_ISSUER: FULL.POLIS_ISSUER }), false);
   assert.equal(
-    isPolisSsoConfigured({ POLIS_ISSUER: FULL.POLIS_ISSUER, POLIS_CLIENT_ID: FULL.POLIS_CLIENT_ID }),
+    isPolisSsoConfigured({
+      POLIS_ISSUER: FULL.POLIS_ISSUER,
+      POLIS_CLIENT_ID: FULL.POLIS_CLIENT_ID,
+    }),
     false,
     "id+issuer without secret must stay dormant (no broken button)",
   );
@@ -102,7 +102,11 @@ test("verifyScimSignature: rejects a wrong signature, missing header, and tamper
   assert.equal(verifyScimSignature(body, "deadbeef", secret), false, "wrong digest");
   assert.equal(verifyScimSignature(body, null, secret), false, "missing header");
   assert.equal(verifyScimSignature(body, undefined, secret), false, "undefined header");
-  assert.equal(verifyScimSignature('{"event":"user.deleted"}', sig, secret), false, "tampered body");
+  assert.equal(
+    verifyScimSignature('{"event":"user.deleted"}', sig, secret),
+    false,
+    "tampered body",
+  );
 });
 
 // --- Federated sign-in guard (ADR-045 A1; pure) ----------------------------
@@ -143,7 +147,11 @@ test("isFederatedSignInAllowed: a RETURNING linked Polis user is allowed even if
 
 test("isFederatedSignInAllowed: guard is Polis-scoped (Entra passwordHash row not blocked here)", () => {
   assert.equal(
-    isFederatedSignInAllowed({ deletedAt: null, passwordHash: "$argon2id$x" }, "microsoft-entra-id", false),
+    isFederatedSignInAllowed(
+      { deletedAt: null, passwordHash: "$argon2id$x" },
+      "microsoft-entra-id",
+      false,
+    ),
     true,
     "Entra keeps allowDangerousEmailAccountLinking OFF; its collisions block upstream",
   );
@@ -218,129 +226,288 @@ beforeEach(() => {
 
 // normalizeDirectoryEvent lives in scim.ts (dynamic-imported after the mock).
 
-test("normalizeDirectoryEvent: ignores non-user + emailless + malformed events", { skip: !canMock }, () => {
-  assert.equal(scimMod.normalizeDirectoryEvent(null), null);
-  assert.equal(scimMod.normalizeDirectoryEvent({ event: "group.created", data: { email: "g@x.com" } }), null);
-  assert.equal(scimMod.normalizeDirectoryEvent({ event: "user.created", data: {} }), null, "no email");
-});
+test(
+  "normalizeDirectoryEvent: ignores non-user + emailless + malformed events",
+  { skip: !canMock },
+  () => {
+    assert.equal(scimMod.normalizeDirectoryEvent(null), null);
+    assert.equal(
+      scimMod.normalizeDirectoryEvent({ event: "group.created", data: { email: "g@x.com" } }),
+      null,
+    );
+    assert.equal(
+      scimMod.normalizeDirectoryEvent({ event: "user.created", data: {} }),
+      null,
+      "no email",
+    );
+  },
+);
 
-test("normalizeDirectoryEvent: user.created lowercases email + builds name from first/last", { skip: !canMock }, () => {
-  const evt = scimMod.normalizeDirectoryEvent({
-    event: "user.created",
-    data: { email: "  Ada@Example.COM ", first_name: "Ada", last_name: "Lovelace" },
-  });
-  assert.deepEqual(evt, { type: "user.created", email: "ada@example.com", name: "Ada Lovelace", active: true, externalId: null });
-});
+test(
+  "normalizeDirectoryEvent: user.created lowercases email + builds name from first/last",
+  { skip: !canMock },
+  () => {
+    const evt = scimMod.normalizeDirectoryEvent({
+      event: "user.created",
+      data: { email: "  Ada@Example.COM ", first_name: "Ada", last_name: "Lovelace" },
+    });
+    assert.deepEqual(evt, {
+      type: "user.created",
+      email: "ada@example.com",
+      name: "Ada Lovelace",
+      active: true,
+      externalId: null,
+    });
+  },
+);
 
-test("normalizeDirectoryEvent: captures the stable directory id (data.id) as externalId", { skip: !canMock }, () => {
-  const evt = scimMod.normalizeDirectoryEvent({
-    event: "user.updated",
-    data: { id: " dir-42 ", email: "x@y.com", name: "X" },
-  });
-  assert.equal(evt?.externalId, "dir-42", "trimmed directory id used for rename-safe correlation");
-  const none = scimMod.normalizeDirectoryEvent({ event: "user.updated", data: { email: "x@y.com" } });
-  assert.equal(none?.externalId, null, "absent data.id => null (falls back to email correlation)");
-});
+test(
+  "normalizeDirectoryEvent: captures the stable directory id (data.id) as externalId",
+  { skip: !canMock },
+  () => {
+    const evt = scimMod.normalizeDirectoryEvent({
+      event: "user.updated",
+      data: { id: " dir-42 ", email: "x@y.com", name: "X" },
+    });
+    assert.equal(
+      evt?.externalId,
+      "dir-42",
+      "trimmed directory id used for rename-safe correlation",
+    );
+    const none = scimMod.normalizeDirectoryEvent({
+      event: "user.updated",
+      data: { email: "x@y.com" },
+    });
+    assert.equal(
+      none?.externalId,
+      null,
+      "absent data.id => null (falls back to email correlation)",
+    );
+  },
+);
 
 test("normalizeDirectoryEvent: user.deleted is always a deactivation", { skip: !canMock }, () => {
-  const evt = scimMod.normalizeDirectoryEvent({ event: "user.deleted", data: { email: "x@y.com", active: true } });
+  const evt = scimMod.normalizeDirectoryEvent({
+    event: "user.deleted",
+    data: { email: "x@y.com", active: true },
+  });
   assert.equal(evt?.active, false, "a delete event deactivates regardless of active flag");
 });
 
-test("normalizeDirectoryEvent: active:false on an update is a deactivation", { skip: !canMock }, () => {
-  const evt = scimMod.normalizeDirectoryEvent({ event: "user.updated", data: { email: "x@y.com", active: false } });
-  assert.equal(evt?.active, false);
-});
+test(
+  "normalizeDirectoryEvent: active:false on an update is a deactivation",
+  { skip: !canMock },
+  () => {
+    const evt = scimMod.normalizeDirectoryEvent({
+      event: "user.updated",
+      data: { email: "x@y.com", active: false },
+    });
+    assert.equal(evt?.active, false);
+  },
+);
 
-test("normalizeDirectoryEvent: a string 'false' active is also a deactivation", { skip: !canMock }, () => {
-  const evt = scimMod.normalizeDirectoryEvent({ event: "user.updated", data: { email: "x@y.com", active: "false" } });
-  assert.equal(evt?.active, false, "string-serialized active must not be misread as active");
-});
+test(
+  "normalizeDirectoryEvent: a string 'false' active is also a deactivation",
+  { skip: !canMock },
+  () => {
+    const evt = scimMod.normalizeDirectoryEvent({
+      event: "user.updated",
+      data: { email: "x@y.com", active: "false" },
+    });
+    assert.equal(evt?.active, false, "string-serialized active must not be misread as active");
+  },
+);
 
-test("provision: user.created for a new email creates a VIEWER + stamps externalId", { skip: !canMock }, async () => {
-  findUniqueResult = null;
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.created", email: "new@x.com", name: "New", active: true, externalId: "dir-1" });
-  assert.equal(out.action, "created");
-  assert.equal(createCalls.length, 1);
-  const data = (createCalls[0] as { data: { role: string; email: string; scimExternalId: string | null } }).data;
-  assert.equal(data.role, "VIEWER", "least privilege on create");
-  assert.equal(data.email, "new@x.com");
-  assert.equal(data.scimExternalId, "dir-1", "directory id stamped for future rename-safe correlation");
-});
+test(
+  "provision: user.created for a new email creates a VIEWER + stamps externalId",
+  { skip: !canMock },
+  async () => {
+    findUniqueResult = null;
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.created",
+      email: "new@x.com",
+      name: "New",
+      active: true,
+      externalId: "dir-1",
+    });
+    assert.equal(out.action, "created");
+    assert.equal(createCalls.length, 1);
+    const data = (
+      createCalls[0] as { data: { role: string; email: string; scimExternalId: string | null } }
+    ).data;
+    assert.equal(data.role, "VIEWER", "least privilege on create");
+    assert.equal(data.email, "new@x.com");
+    assert.equal(
+      data.scimExternalId,
+      "dir-1",
+      "directory id stamped for future rename-safe correlation",
+    );
+  },
+);
 
-test("provision: active create for a soft-deleted email (rehire, P2002) => noop", { skip: !canMock }, async () => {
-  findUniqueResult = null; // audited client can't see the soft-deleted row
-  createError = Object.assign(new Error("Unique constraint"), { code: "P2002" });
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.created", email: "rehire@x.com", name: "R", active: true, externalId: null });
-  assert.equal(out.action, "noop", "documented v1 limitation, not a 500");
-});
+test(
+  "provision: active create for a soft-deleted email (rehire, P2002) => noop",
+  { skip: !canMock },
+  async () => {
+    findUniqueResult = null; // audited client can't see the soft-deleted row
+    createError = Object.assign(new Error("Unique constraint"), { code: "P2002" });
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.created",
+      email: "rehire@x.com",
+      name: "R",
+      active: true,
+      externalId: null,
+    });
+    assert.equal(out.action, "noop", "documented v1 limitation, not a 500");
+  },
+);
 
 test("provision: a non-P2002 create error propagates", { skip: !canMock }, async () => {
   findUniqueResult = null;
   createError = Object.assign(new Error("db down"), { code: "P1001" });
   await assert.rejects(
-    scimMod.provisionDirectoryEvent({ type: "user.created", email: "x@x.com", name: null, active: true, externalId: null }),
+    scimMod.provisionDirectoryEvent({
+      type: "user.created",
+      email: "x@x.com",
+      name: null,
+      active: true,
+      externalId: null,
+    }),
     /db down/,
   );
 });
 
-test("provision: user.updated changes the name only, never the role", { skip: !canMock }, async () => {
-  findUniqueResult = { id: "u1", email: "x@x.com", name: "Old", scimExternalId: null };
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.updated", email: "x@x.com", name: "New", active: true, externalId: null });
-  assert.equal(out.action, "updated");
-  assert.equal(updateCalls.length, 1);
-  const data = (updateCalls[0] as { data: Record<string, unknown> }).data;
-  assert.deepEqual(Object.keys(data), ["name"], "update touches name ONLY (role/promotion preserved)");
-  assert.equal(data.name, "New");
-});
+test(
+  "provision: user.updated changes the name only, never the role",
+  { skip: !canMock },
+  async () => {
+    findUniqueResult = { id: "u1", email: "x@x.com", name: "Old", scimExternalId: null };
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.updated",
+      email: "x@x.com",
+      name: "New",
+      active: true,
+      externalId: null,
+    });
+    assert.equal(out.action, "updated");
+    assert.equal(updateCalls.length, 1);
+    const data = (updateCalls[0] as { data: Record<string, unknown> }).data;
+    assert.deepEqual(
+      Object.keys(data),
+      ["name"],
+      "update touches name ONLY (role/promotion preserved)",
+    );
+    assert.equal(data.name, "New");
+  },
+);
 
 test("provision: update with an unchanged name is a noop", { skip: !canMock }, async () => {
   findUniqueResult = { id: "u1", email: "x@x.com", name: "Same", scimExternalId: null };
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.updated", email: "x@x.com", name: "Same", active: true, externalId: null });
+  const out = await scimMod.provisionDirectoryEvent({
+    type: "user.updated",
+    email: "x@x.com",
+    name: "Same",
+    active: true,
+    externalId: null,
+  });
   assert.equal(out.action, "noop");
   assert.equal(updateCalls.length, 0);
 });
 
-test("provision: a directory email RENAME (matched by externalId) updates the email in place, no orphan row", { skip: !canMock }, async () => {
-  // findExistingUser matches by scimExternalId first, so the OLD-email row is found
-  // even though the event carries the NEW email.
-  findByExternalIdResult = { id: "u1", email: "old@x.com", name: "Ada", scimExternalId: "dir-7" };
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.updated", email: "new@x.com", name: "Ada", active: true, externalId: "dir-7" });
-  assert.equal(out.action, "updated");
-  assert.equal(createCalls.length, 0, "no second row created — this is the US-3 rename fix");
-  assert.equal(updateCalls.length, 1);
-  const data = (updateCalls[0] as { data: Record<string, unknown> }).data;
-  assert.equal(data.email, "new@x.com", "the existing row's email is updated in place");
-});
+test(
+  "provision: a directory email RENAME (matched by externalId) updates the email in place, no orphan row",
+  { skip: !canMock },
+  async () => {
+    // findExistingUser matches by scimExternalId first, so the OLD-email row is found
+    // even though the event carries the NEW email.
+    findByExternalIdResult = { id: "u1", email: "old@x.com", name: "Ada", scimExternalId: "dir-7" };
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.updated",
+      email: "new@x.com",
+      name: "Ada",
+      active: true,
+      externalId: "dir-7",
+    });
+    assert.equal(out.action, "updated");
+    assert.equal(createCalls.length, 0, "no second row created — this is the US-3 rename fix");
+    assert.equal(updateCalls.length, 1);
+    const data = (updateCalls[0] as { data: Record<string, unknown> }).data;
+    assert.equal(data.email, "new@x.com", "the existing row's email is updated in place");
+  },
+);
 
-test("provision: backfills externalId onto a row first matched by email", { skip: !canMock }, async () => {
-  findByExternalIdResult = null; // no row carries this directory id yet
-  findUniqueResult = { id: "u1", email: "x@x.com", name: "N", scimExternalId: null };
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.updated", email: "x@x.com", name: "N", active: true, externalId: "dir-9" });
-  assert.equal(out.action, "updated");
-  const data = (updateCalls[0] as { data: Record<string, unknown> }).data;
-  assert.equal(data.scimExternalId, "dir-9", "the directory id is backfilled for future rename-safe correlation");
-});
+test(
+  "provision: backfills externalId onto a row first matched by email",
+  { skip: !canMock },
+  async () => {
+    findByExternalIdResult = null; // no row carries this directory id yet
+    findUniqueResult = { id: "u1", email: "x@x.com", name: "N", scimExternalId: null };
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.updated",
+      email: "x@x.com",
+      name: "N",
+      active: true,
+      externalId: "dir-9",
+    });
+    assert.equal(out.action, "updated");
+    const data = (updateCalls[0] as { data: Record<string, unknown> }).data;
+    assert.equal(
+      data.scimExternalId,
+      "dir-9",
+      "the directory id is backfilled for future rename-safe correlation",
+    );
+  },
+);
 
-test("provision: a rename colliding with another live email => noop (no 500)", { skip: !canMock }, async () => {
-  findByExternalIdResult = { id: "u1", email: "old@x.com", name: "A", scimExternalId: "dir-7" };
-  // The email-rename UPDATE hits a unique violation (another live row owns new@x.com).
-  updateError = Object.assign(new Error("Unique constraint"), { code: "P2002" });
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.updated", email: "new@x.com", name: "A", active: true, externalId: "dir-7" });
-  assert.equal(out.action, "noop", "a directory-side duplicate must not 500 the webhook");
-});
+test(
+  "provision: a rename colliding with another live email => noop (no 500)",
+  { skip: !canMock },
+  async () => {
+    findByExternalIdResult = { id: "u1", email: "old@x.com", name: "A", scimExternalId: "dir-7" };
+    // The email-rename UPDATE hits a unique violation (another live row owns new@x.com).
+    updateError = Object.assign(new Error("Unique constraint"), { code: "P2002" });
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.updated",
+      email: "new@x.com",
+      name: "A",
+      active: true,
+      externalId: "dir-7",
+    });
+    assert.equal(out.action, "noop", "a directory-side duplicate must not 500 the webhook");
+  },
+);
 
-test("provision: deactivation soft-deletes a live user (off-board)", { skip: !canMock }, async () => {
-  findUniqueResult = { id: "u9", email: "gone@x.com", name: "Gone", scimExternalId: null };
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.deleted", email: "gone@x.com", name: null, active: false, externalId: null });
-  assert.equal(out.action, "deactivated");
-  assert.equal(deleteCalls.length, 1, "soft-delete via prisma.user.delete");
-  assert.equal((deleteCalls[0] as { where: { id: string } }).where.id, "u9");
-});
+test(
+  "provision: deactivation soft-deletes a live user (off-board)",
+  { skip: !canMock },
+  async () => {
+    findUniqueResult = { id: "u9", email: "gone@x.com", name: "Gone", scimExternalId: null };
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.deleted",
+      email: "gone@x.com",
+      name: null,
+      active: false,
+      externalId: null,
+    });
+    assert.equal(out.action, "deactivated");
+    assert.equal(deleteCalls.length, 1, "soft-delete via prisma.user.delete");
+    assert.equal((deleteCalls[0] as { where: { id: string } }).where.id, "u9");
+  },
+);
 
-test("provision: deactivating an unknown user is a noop (no error)", { skip: !canMock }, async () => {
-  findUniqueResult = null;
-  const out = await scimMod.provisionDirectoryEvent({ type: "user.deleted", email: "ghost@x.com", name: null, active: false, externalId: null });
-  assert.equal(out.action, "noop");
-  assert.equal(deleteCalls.length, 0);
-});
+test(
+  "provision: deactivating an unknown user is a noop (no error)",
+  { skip: !canMock },
+  async () => {
+    findUniqueResult = null;
+    const out = await scimMod.provisionDirectoryEvent({
+      type: "user.deleted",
+      email: "ghost@x.com",
+      name: null,
+      active: false,
+      externalId: null,
+    });
+    assert.equal(out.action, "noop");
+    assert.equal(deleteCalls.length, 0);
+  },
+);

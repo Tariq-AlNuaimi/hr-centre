@@ -11,8 +11,8 @@
 Two on-ramps to a live URL already exist: `/new-project` (one-shot provisioner, but it is a
 **GitHub Actions** workflow and is shelved while Actions billing is blocked — ADR-007) and
 `/first-fork` (a **manual**, browser-driven click-through of Neon + Vercel). Neither fits the
-common case that surfaced in practice: *an operator has already built (or `/conform`-ed) an app
-inside a fork during a **Claude Code web session** and just wants it deployed* — without
+common case that surfaced in practice: _an operator has already built (or `/conform`-ed) an app
+inside a fork during a **Claude Code web session** and just wants it deployed_ — without
 GitHub Actions and without leaving the session to click through two dashboards.
 
 The blocker discovered while trying to do this from a web session: **outbound network egress is

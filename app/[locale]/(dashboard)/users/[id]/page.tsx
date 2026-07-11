@@ -26,11 +26,7 @@ export default function EditUserPage() {
 
   const id = params.id as string;
 
-  const { data: user, isLoading } = useEntityItem<UserRecord>(
-    "/api/users",
-    id,
-    t("notFound")
-  );
+  const { data: user, isLoading } = useEntityItem<UserRecord>("/api/users", id, t("notFound"));
   const { update } = useEntityMutations<UserRecord>("/api/users");
 
   useDynamicBreadcrumb(id, user?.name ?? user?.email ?? id);

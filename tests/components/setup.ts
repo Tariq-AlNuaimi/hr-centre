@@ -33,8 +33,7 @@ if (typeof window !== "undefined") {
       unobserve() {}
       disconnect() {}
     }
-    window.ResizeObserver =
-      ResizeObserverStub as unknown as typeof ResizeObserver;
+    window.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
     (globalThis as { ResizeObserver?: typeof ResizeObserver }).ResizeObserver =
       window.ResizeObserver;
   }

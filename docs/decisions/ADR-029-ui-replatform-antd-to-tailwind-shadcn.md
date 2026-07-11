@@ -62,6 +62,7 @@ Replace Ant Design 6 across the template with:
   underlying chart engine (Tremor wraps it); **dnd-kit stays** for kanban.
 
 **What survives** (concepts and surfaces, re-targeted):
+
 - `brand.config.ts` as the one-file white-label contract (ADR-028 Phase 0).
 - The `components/shared/*` prop APIs — Workstream C rebuilds internals
   **same-API** so screens keep compiling while the library swaps.
@@ -74,6 +75,7 @@ Replace Ant Design 6 across the template with:
   `start-*`, removing the `ConfigProvider direction` dependency entirely).
 
 **What is discarded** (sunk cost, recorded honestly):
+
 - `components/layout/antd-theme.ts` and all per-component AntD token overrides
   (ADR-028 Phases 1–3 code; the concepts — component depth, branded HOCs —
   are rebuilt on shadcn/Tremor).
@@ -93,6 +95,7 @@ runs `/sync-from-template`.
 ## Consequences
 
 ### Positive
+
 - Modern, "own product" aesthetic; Radix-grade a11y; best-in-class RSC fit
   (no runtime CSS-in-JS).
 - Copy-in ownership: forks own the component source — no library lock-in for a
@@ -102,6 +105,7 @@ runs `/sync-from-template`.
   shadcn MCP servers, style-dictionary → `@theme`, density tokens).
 
 ### Negative
+
 - ADR-028 Phases 0–4 AntD token work is sunk cost (code discarded, ~concepts
   survive). Recorded, accepted by the operator with the directive.
 - Copy-in means we maintain Table/DatePicker/Form component code ourselves.
@@ -111,6 +115,7 @@ runs `/sync-from-template`.
   pagination ergonomics in `DataView`) is a real risk, not just a port.
 
 ### Mitigations
+
 - Same-API rebuild of `components/shared/*` contains the blast radius; screens
   compile throughout.
 - Per-screen `/design-qa` exit bar (axe-clean serious/critical) prevents a
@@ -119,6 +124,7 @@ runs `/sync-from-template`.
   AntD-conditional verdicts, so the adoption backlog stays truthful.
 
 ## Alternatives considered
+
 1. **Stay on AntD (status quo, ADR-027).** Rejected by operator directive D3;
    the token-elevation ceiling was reached and the ecosystem weighting favors
    Tailwind for the template's next phase.
@@ -136,6 +142,7 @@ runs `/sync-from-template`.
    (double theming, double recipes) than a branch big-bang that lands green.
 
 ## Migration triggers
+
 - Revisit if the copy-in maintenance burden (Table/Form/DatePicker) measurably
   outweighs ownership benefits across forks.
 - Revisit the Tremor layer if Vercel's stewardship stalls it or Recharts
@@ -144,6 +151,7 @@ runs `/sync-from-template`.
   styles is the acceptance test that the CSS-in-JS surface is truly gone.
 
 ## Related
+
 - `docs/blueprints/2026-07-replatform-and-adoption-program.md` — the signed
   program contract (Workstream C is this ADR's execution plan).
 - ADR-027 (superseded Part 1; Part 2 skeleton stands), ADR-028 (Part 2

@@ -1,9 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  applySoftDeleteFilter,
-  isSoftDeleteModel,
-} from "../../lib/prisma/soft-delete-extension";
+import { applySoftDeleteFilter, isSoftDeleteModel } from "../../lib/prisma/soft-delete-extension";
 
 // The soft-delete extension's correctness hinges on ONE thing: every read
 // operation routes through applySoftDeleteFilter so none of them can silently
@@ -58,6 +55,6 @@ test("applySoftDeleteFilter leaves nested include relation args untouched", () =
   assert.deepEqual(
     (out as { include?: unknown }).include,
     { posts: true },
-    "nested include must not be auto-filtered (documented limitation)"
+    "nested include must not be auto-filtered (documented limitation)",
   );
 });

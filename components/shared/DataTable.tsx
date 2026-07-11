@@ -28,11 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Debounce window for the search box: long enough to coalesce a burst of
 // keystrokes into one API query, short enough to feel live.
@@ -172,15 +168,10 @@ export function DataTable<T extends object>({
   const t = useTranslations("common");
   const [searchValue, setSearchValue] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [filters, setFilters] = useState<Record<string, FilterValue | null>>(
-    {},
-  );
+  const [filters, setFilters] = useState<Record<string, FilterValue | null>>({});
 
   const rows = useMemo(() => (dataSource ?? []) as T[], [dataSource]);
-  const columns = useMemo(
-    () => (antdColumns ?? []) as ColumnsType<T>,
-    [antdColumns],
-  );
+  const columns = useMemo(() => (antdColumns ?? []) as ColumnsType<T>, [antdColumns]);
 
   // Stable per-row key (string), matching the AntD rowKey contract.
   const resolveRowKey = useCallback(
@@ -203,10 +194,7 @@ export function DataTable<T extends object>({
   const handleSearch = useCallback((value: string) => {
     setSearchValue(value);
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(
-      () => onSearchRef.current?.(value),
-      SEARCH_DEBOUNCE_MS,
-    );
+    timerRef.current = setTimeout(() => onSearchRef.current?.(value), SEARCH_DEBOUNCE_MS);
   }, []);
 
   // --- Sorting: bridge tanstack SortingState -> AntD-shaped onSortChange. -----
@@ -231,13 +219,10 @@ export function DataTable<T extends object>({
   }, [selectedKeysSig]);
 
   const handleRowSelectionChange: OnChangeFn<RowSelectionState> = (updater) => {
-    const next =
-      typeof updater === "function" ? updater(rowSelectionState) : updater;
+    const next = typeof updater === "function" ? updater(rowSelectionState) : updater;
     const keys = Object.keys(next).filter((k) => next[k]);
     const byKey = new Map(rows.map((r, i) => [resolveRowKey(r, i), r]));
-    const selectedRows = keys
-      .map((k) => byKey.get(k))
-      .filter((r): r is T => r != null);
+    const selectedRows = keys.map((k) => byKey.get(k)).filter((r): r is T => r != null);
     rowSelection?.onChange?.(keys as Key[], selectedRows, { type: "multiple" });
   };
 
@@ -254,9 +239,7 @@ export function DataTable<T extends object>({
         cell: (ctx) => {
           const value = ctx.getValue();
           return (
-            c.render
-              ? c.render(value, ctx.row.original, ctx.row.index)
-              : (value as React.ReactNode)
+            c.render ? c.render(value, ctx.row.original, ctx.row.index) : (value as React.ReactNode)
           ) as React.ReactNode;
         },
         meta: {
@@ -293,8 +276,7 @@ export function DataTable<T extends object>({
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, total);
   const cellPad = size === "small" ? "py-2" : "";
-  const minWidth =
-    scroll?.x && scroll.x !== true ? scroll.x : undefined;
+  const minWidth = scroll?.x && scroll.x !== true ? scroll.x : undefined;
 
   const applyColumnFilter = (key: string, value: FilterValue | null) => {
     const next = { ...filters, [key]: value };
@@ -305,9 +287,7 @@ export function DataTable<T extends object>({
   const headerGroups = table.getHeaderGroups();
   const modelRows = table.getRowModel().rows;
   const allSelected =
-    selectable &&
-    modelRows.length > 0 &&
-    modelRows.every((r) => r.getIsSelected());
+    selectable && modelRows.length > 0 && modelRows.every((r) => r.getIsSelected());
   const someSelected = selectable && modelRows.some((r) => r.getIsSelected());
 
   return (
@@ -352,9 +332,7 @@ export function DataTable<T extends object>({
                   </TableHead>
                 )}
                 {hg.headers.map((header) => {
-                  const meta = header.column.columnDef.meta as
-                    | ColumnMeta<T>
-                    | undefined;
+                  const meta = header.column.columnDef.meta as ColumnMeta<T> | undefined;
                   const canSort = header.column.getCanSort();
                   const sorted = header.column.getIsSorted();
                   const colFilters = meta?.antd.filters;
@@ -374,17 +352,11 @@ export function DataTable<T extends object>({
                             onClick={header.column.getToggleSortingHandler()}
                             className="inline-flex items-center gap-1.5 rounded-sm font-semibold outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                           >
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
+                            {flexRender(header.column.columnDef.header, header.getContext())}
                             <SortIcon dir={sorted} />
                           </button>
                         ) : (
-                          flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )
+                          flexRender(header.column.columnDef.header, header.getContext())
                         )}
                         {colFilters && colFilters.length > 0 && (
                           <ColumnFilter
@@ -392,9 +364,7 @@ export function DataTable<T extends object>({
                             options={colFilters}
                             multiple={meta?.antd.filterMultiple !== false}
                             selected={filters[header.column.id] ?? null}
-                            onApply={(v) =>
-                              applyColumnFilter(header.column.id, v)
-                            }
+                            onApply={(v) => applyColumnFilter(header.column.id, v)}
                             filterLabel={t("filter")}
                           />
                         )}
@@ -417,10 +387,7 @@ export function DataTable<T extends object>({
               </TableRow>
             ) : (
               modelRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-selected={row.getIsSelected() || undefined}
-                >
+                <TableRow key={row.id} data-selected={row.getIsSelected() || undefined}>
                   {selectable && (
                     <TableCell className={cn("w-10", cellPad)}>
                       <Checkbox
@@ -431,9 +398,7 @@ export function DataTable<T extends object>({
                     </TableCell>
                   )}
                   {row.getVisibleCells().map((cell) => {
-                    const meta = cell.column.columnDef.meta as
-                      | ColumnMeta<T>
-                      | undefined;
+                    const meta = cell.column.columnDef.meta as ColumnMeta<T> | undefined;
                     return (
                       <TableCell
                         key={cell.id}
@@ -441,14 +406,10 @@ export function DataTable<T extends object>({
                           cellPad,
                           meta?.align === "center" && "text-center",
                           meta?.align === "right" && "text-end",
-                          meta?.ellipsis &&
-                            "max-w-0 truncate whitespace-nowrap",
+                          meta?.ellipsis && "max-w-0 truncate whitespace-nowrap",
                         )}
                       >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     );
                   })}
@@ -541,19 +502,14 @@ function ColumnFilter({
           "inline-flex h-5 w-5 items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
           active
             ? "text-primary-emphasis"
-            // Full muted-foreground (not /60): as the filter control's only visual
-            // affordance it must clear WCAG 1.4.11 non-text contrast (>=3:1) — /60
-            // is ~2.6:1 on light. (SortIcon's inactive arrows stay /40: aria-hidden
-            // decoration, the sort state is on aria-sort.)
-            : "text-muted-foreground hover:text-foreground",
+            : // Full muted-foreground (not /60): as the filter control's only visual
+              // affordance it must clear WCAG 1.4.11 non-text contrast (>=3:1) — /60
+              // is ~2.6:1 on light. (SortIcon's inactive arrows stay /40: aria-hidden
+              // decoration, the sort state is on aria-sort.)
+              "text-muted-foreground hover:text-foreground",
         )}
       >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-3.5 w-3.5"
-          fill="currentColor"
-          aria-hidden
-        >
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden>
           <path d="M3 5h18l-7 8v6l-4-2v-4z" />
         </svg>
       </PopoverTrigger>
@@ -630,11 +586,7 @@ function Pager({
           aria-label={`${p}`}
           aria-current={p === page ? "page" : undefined}
           onClick={() => go(p)}
-          className={cn(
-            btn,
-            p === page &&
-              "border-primary bg-primary text-primary-foreground",
-          )}
+          className={cn(btn, p === page && "border-primary bg-primary text-primary-foreground")}
         >
           {p}
         </button>

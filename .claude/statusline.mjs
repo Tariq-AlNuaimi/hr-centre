@@ -12,16 +12,25 @@ try {
 
   const t = input.transcript_path;
   if (t && existsSync(t)) {
-    let usage = null, msgs = 0;
+    let usage = null,
+      msgs = 0;
     for (const line of readFileSync(t, "utf8").trim().split("\n")) {
       try {
         const e = JSON.parse(line);
-        if (e.type === "assistant" && e.message?.usage) { usage = e.message.usage; msgs++; }
-      } catch { /* skip */ }
+        if (e.type === "assistant" && e.message?.usage) {
+          usage = e.message.usage;
+          msgs++;
+        }
+      } catch {
+        /* skip */
+      }
     }
     if (usage) {
-      const ctx = (usage.input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0) +
-                  (usage.cache_creation_input_tokens ?? 0) + (usage.output_tokens ?? 0);
+      const ctx =
+        (usage.input_tokens ?? 0) +
+        (usage.cache_read_input_tokens ?? 0) +
+        (usage.cache_creation_input_tokens ?? 0) +
+        (usage.output_tokens ?? 0);
       const pct = Math.round((ctx / 200_000) * 100);
       const flag = pct >= 80 ? " !! handoff" : pct >= 60 ? " ! plan handoff" : "";
       parts.push(`ctx ${pct}%${flag}`, `${msgs} msgs`);

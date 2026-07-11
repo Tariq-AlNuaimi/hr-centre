@@ -4,7 +4,7 @@
 **Date:** 2026-05-29
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
-**Resolves:** the "UAT via Chrome" item deferred to *Future* in ADR-007.
+**Resolves:** the "UAT via Chrome" item deferred to _Future_ in ADR-007.
 
 ## Context
 
@@ -18,12 +18,12 @@ For a solo operator this is the highest-leverage testing gap: the repetitive
 "does the app actually work end-to-end before I share it" check is exactly what a
 browser robot should do. A market scan (2026) of agent-driven browser tooling:
 
-- **Playwright (committed specs + CLI)** — the standard for *repeatable* browser
+- **Playwright (committed specs + CLI)** — the standard for _repeatable_ browser
   tests; runs Chromium headless/headed, screenshots, asserts flows; specs commit
   to the repo and travel across machines; CI-ready. One-time per-machine binary
   install. **Chosen as the backbone.**
 - **Playwright MCP** — agent drives a live browser via the accessibility tree;
-  great for *exploratory* sessions but leaves no re-runnable artifact. Noted as an
+  great for _exploratory_ sessions but leaves no re-runnable artifact. Noted as an
   optional companion.
 - **Chrome DevTools MCP** — Chrome-only, debugging/perf/Lighthouse focused,
   token-heavy; better for "why is this slow/erroring" than acceptance flows.
@@ -55,6 +55,7 @@ VAPT is security, and ZAP carries a Docker dependency.
 ## Consequences
 
 ### Positive
+
 - The solo operator gets a one-command "prove the app works end-to-end," and the
   screenshots are the stakeholder-review artifact in the same step.
 - Specs are committed and machine-independent (consistent with the no-`.git/hooks`,
@@ -62,6 +63,7 @@ VAPT is security, and ZAP carries a Docker dependency.
 - Locale-independent selectors (`#email`, `getByRole`) work across `en` + `ar`.
 
 ### Negative
+
 - Playwright needs a one-time per-machine browser install (`npm run uat:install`),
   like gitleaks/semgrep. Mitigated: the skill detects the missing binary and tells
   the operator, never silently passing.
@@ -70,11 +72,13 @@ VAPT is security, and ZAP carries a Docker dependency.
   `npm audit --omit=dev` and not in the runtime bundle).
 
 ### Mitigations
+
 - `/uat` and the config surface missing-browser / missing-credential states loudly.
 - `tests/uat/` ships starter flows; the skill regenerates them per project so they
   stay meaningful as entities are scaffolded.
 
 ## Alternatives considered
+
 1. **Playwright MCP only (no committed specs)** — rejected as the backbone: no
    re-runnable artifact; good only for live exploration (kept as an optional companion).
 2. **Chrome DevTools MCP** — rejected for UAT: debugging/perf oriented, Chrome-only,
@@ -85,6 +89,7 @@ VAPT is security, and ZAP carries a Docker dependency.
    solo operator.
 
 ## Migration triggers
+
 - **Actions billing restored / handoff:** add a `uat.yml` workflow (or extend `verify`)
   to run `/uat` against the Vercel preview on PRs.
 - **Richer flows needed:** evolve `smoke.uat.ts` from "screen loads" to full CRUD
@@ -92,11 +97,13 @@ VAPT is security, and ZAP carries a Docker dependency.
 - **Performance/debugging need:** consider Chrome DevTools MCP / Lighthouse.
 
 ## Future
+
 - **`/vapt` (VAPT-light):** OWASP ZAP baseline DAST against the running deployment,
   layered on the existing static scans (`/audit`, `/ship`), with a clear caveat that
   it is not a substitute for a human penetration test.
 
 ## Related
+
 - ADR-007 — deferred this item to Future (now resolved).
 - `/uat` skill; `playwright.config.ts`; `tests/uat/`.
 - `/audit`, `/ship` — code/dependency-level security scanning (distinct from UAT).

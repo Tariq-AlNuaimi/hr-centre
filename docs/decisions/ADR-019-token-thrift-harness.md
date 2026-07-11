@@ -54,12 +54,14 @@ opt-in `MAX_THINKING_TOKENS`, LSP plugin install, weekly `/usage` review.
 ## Consequences
 
 ### Positive
+
 - The two dominant cost drivers (long-session resend, unscoped exploration)
   now have automated detection (watchdog) and a cheap alternative (scout,
   handoff) at the moment they occur.
 - Every fork inherits the discipline; nothing relies on the operator's memory.
 
 ### Negative
+
 - Hooks add ~100ms per event and can misfire; the guard may deny a command the
   operator genuinely wanted raw (mitigated: `VERBOSE=1` escape hatch, and all
   hooks fail open on any parse error).
@@ -71,10 +73,12 @@ opt-in `MAX_THINKING_TOKENS`, LSP plugin install, weekly `/usage` review.
   context hygiene, not from a capability cap.
 
 ### Mitigations
+
 - All hooks are fail-open (`catch → exit 0`); the harness can never block work.
 - `docs/REPO-MAP.md` is generated; staleness is bounded by the SessionStart check.
 
 ## Alternatives considered
+
 1. **Policy doc only, no automation** — that was the state after the research
    landed; rejected because habit-based savings decay (the research's own
    finding: enforcement beats alerts).
@@ -83,11 +87,13 @@ opt-in `MAX_THINKING_TOKENS`, LSP plugin install, weekly `/usage` review.
    `/usage-credits` provides the account-level cap.
 
 ## Migration triggers
+
 - Claude Code shipping native equivalents (e.g. built-in context warnings or
   cost statusline) supersedes the corresponding custom hook — delete ours then.
 - A second regular contributor: revisit per-user metering (ccusage/OTel).
 
 ## Related
+
 - `docs/token-policy.md` · `.claude/hooks/{context-watchdog,verbose-guard,session-receipt}.mjs`
 - `.claude/statusline.mjs` · `.claude/agents/scout.md`
 - `.claude/skills/handoff-session/` · `.claude/skills/batch/` · `scripts/repo-map.mjs`

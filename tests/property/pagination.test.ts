@@ -9,11 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
-import {
-  parsePagination,
-  paginatedResponse,
-  type PaginationParams,
-} from "../../lib/pagination";
+import { parsePagination, paginatedResponse, type PaginationParams } from "../../lib/pagination";
 
 // Deterministic seed for gate stability; 300 runs per property.
 fc.configureGlobal({ numRuns: 300, seed: 20260703 });
@@ -27,7 +23,23 @@ fc.configureGlobal({ numRuns: 300, seed: 20260703 });
 const paramValue = fc.oneof(
   fc.integer({ min: -100000, max: 100000 }).map(String),
   fc.integer({ min: -1000, max: 1000 }).map((n) => String(n / 7)), // floats
-  fc.constantFrom("", "NaN", "-0", "1e3", "abc", "  5  ", "1.5", "-42", "0", "99999999999", "1e20", "1e100", "Infinity", "1e309", "-Infinity"),
+  fc.constantFrom(
+    "",
+    "NaN",
+    "-0",
+    "1e3",
+    "abc",
+    "  5  ",
+    "1.5",
+    "-42",
+    "0",
+    "99999999999",
+    "1e20",
+    "1e100",
+    "Infinity",
+    "1e309",
+    "-Infinity",
+  ),
 );
 
 function makeParams(page: string, pageSize: string): URLSearchParams {
@@ -88,10 +100,7 @@ test("parsePagination — fractional page is floored to an integer", () => {
   const p = parsePagination(makeParams("1.5", "10"));
   assert.equal(p.page, 1, "1.5 is floored to 1");
   assert.equal(p.skip, 0, "skip = (1-1)*10 = 0");
-  assert.ok(
-    Number.isInteger(p.page) && Number.isInteger(p.skip),
-    "page and skip are integers",
-  );
+  assert.ok(Number.isInteger(p.page) && Number.isInteger(p.skip), "page and skip are integers");
 });
 
 test("paginatedResponse.totalPages matches ceil(total / pageSize)", () => {

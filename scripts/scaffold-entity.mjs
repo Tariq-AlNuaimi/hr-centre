@@ -38,9 +38,9 @@
 //
 // See .claude/skills/scaffold-entity/SKILL.md.
 
-import { readFile, writeFile, mkdir, stat } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { parseArgs } from 'node:util';
+import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { parseArgs } from "node:util";
 
 const ROOT = process.cwd();
 
@@ -48,22 +48,22 @@ const ROOT = process.cwd();
 
 const { values } = parseArgs({
   options: {
-    name: { type: 'string', short: 'n' },
-    fields: { type: 'string', short: 'f' },
-    enums: { type: 'string' },
-    relations: { type: 'string' },
-    'soft-delete': { type: 'string', default: 'true' },
-    writes: { type: 'string' },
-    'admin-writes': { type: 'string', default: 'false' },
-    'display-field': { type: 'string', default: 'name' },
-    'dry-run': { type: 'boolean', default: false },
+    name: { type: "string", short: "n" },
+    fields: { type: "string", short: "f" },
+    enums: { type: "string" },
+    relations: { type: "string" },
+    "soft-delete": { type: "string", default: "true" },
+    writes: { type: "string" },
+    "admin-writes": { type: "string", default: "false" },
+    "display-field": { type: "string", default: "name" },
+    "dry-run": { type: "boolean", default: false },
   },
   strict: true,
 });
 
 if (!values.name) {
-  console.error('ERROR: missing --name <PascalCase>');
-  console.error('See `head -40 scripts/scaffold-entity.mjs` for usage.');
+  console.error("ERROR: missing --name <PascalCase>");
+  console.error("See `head -40 scripts/scaffold-entity.mjs` for usage.");
   process.exit(1);
 }
 
@@ -73,69 +73,73 @@ if (!/^[A-Z][A-Za-z0-9]*$/.test(Entity)) {
   process.exit(1);
 }
 
-const softDelete = values['soft-delete'] !== 'false';
+const softDelete = values["soft-delete"] !== "false";
 
 // Write-route auth wrapper. `--writes` takes precedence; `--admin-writes` is a
 // back-compat alias (true => admin). Default "any" preserves the historical
 // default (no --admin-writes => withAuth).
 const WRITE_WRAPPERS = {
-  admin: 'withAdminAuth',
-  editor: 'withEditorAuth',
-  any: 'withAuth',
+  admin: "withAdminAuth",
+  editor: "withEditorAuth",
+  any: "withAuth",
 };
 let writesMode;
 if (values.writes !== undefined) {
   writesMode = values.writes;
   if (!Object.hasOwn(WRITE_WRAPPERS, writesMode)) {
-    console.error(`ERROR: invalid --writes "${writesMode}" -- expected one of: ${Object.keys(WRITE_WRAPPERS).join(', ')}.`);
+    console.error(
+      `ERROR: invalid --writes "${writesMode}" -- expected one of: ${Object.keys(WRITE_WRAPPERS).join(", ")}.`,
+    );
     process.exit(1);
   }
 } else {
-  writesMode = values['admin-writes'] === 'true' ? 'admin' : 'any';
+  writesMode = values["admin-writes"] === "true" ? "admin" : "any";
 }
 const writeWrap = WRITE_WRAPPERS[writesMode];
 
 // Import list for the API routes: GET uses withAuth (reads); write routes use
 // the resolved writeWrap. Both are wrapped with withRateLimit. writeWrap is
 // fixed for the run, so this is computed once and shared by both route files.
-const wrapImports = ['withAuth', ...(writeWrap !== 'withAuth' ? [writeWrap] : []), 'withRateLimit'].join(', ');
+const wrapImports = [
+  "withAuth",
+  ...(writeWrap !== "withAuth" ? [writeWrap] : []),
+  "withRateLimit",
+].join(", ");
 
-const displayField = values['display-field'];
-const dryRun = values['dry-run'];
+const displayField = values["display-field"];
+const dryRun = values["dry-run"];
 
 // ---------- Name helpers ----------
 
 const camel = (s) => s.charAt(0).toLowerCase() + s.slice(1);
 const pascalFromCamel = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-const kebab = (s) => s.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-const snake = (s) => s.replace(/([a-z])([A-Z])/g, '$1_$2').toLowerCase();
+const kebab = (s) => s.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+const snake = (s) => s.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 // "dueAt" -> "Due At", "name" -> "Name". Used to seed human-readable English
 // defaults in the i18n namespace merged into messages/en.json + messages/ar.json.
 const humanize = (s) =>
-  s
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/^./, (c) => c.toUpperCase());
+  s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
 
 const Pascal = Entity;
 const entityCamel = camel(Entity);
 const entityKebab = kebab(Entity);
 const entitySnake = snake(Entity);
-const entitySnakePlural = entitySnake + 's';
+const entitySnakePlural = entitySnake + "s";
 // next-intl namespace for this entity's UI strings. Mirrors the hand-written
 // `users` namespace in messages/*.json (camelCase + plural).
-const i18nNs = entityCamel + 's';
+const i18nNs = entityCamel + "s";
 
 // ---------- Field parsing ----------
 
 const FIELD_TYPES = {
-  string: { prisma: 'String', zod: 'z.string().min(1)', ts: 'string', input: 'Input' },
-  text: { prisma: 'String', zod: 'z.string()', ts: 'string', input: 'TextArea' },
-  int: { prisma: 'Int', zod: 'z.coerce.number().int()', ts: 'number', input: 'InputNumber' },
-  float: { prisma: 'Float', zod: 'z.coerce.number()', ts: 'number', input: 'InputNumber' },
-  boolean: { prisma: 'Boolean', zod: 'z.boolean()', ts: 'boolean', input: 'Switch' },
-  date: { prisma: 'DateTime', zod: 'z.coerce.date()', ts: 'string', input: 'DatePicker' },
-  datetime: { prisma: 'DateTime', zod: 'z.coerce.date()', ts: 'string', input: 'DatePicker' },
-  json: { prisma: 'Json', zod: 'z.any()', ts: 'unknown', input: 'TextArea' },
+  string: { prisma: "String", zod: "z.string().min(1)", ts: "string", input: "Input" },
+  text: { prisma: "String", zod: "z.string()", ts: "string", input: "TextArea" },
+  int: { prisma: "Int", zod: "z.coerce.number().int()", ts: "number", input: "InputNumber" },
+  float: { prisma: "Float", zod: "z.coerce.number()", ts: "number", input: "InputNumber" },
+  boolean: { prisma: "Boolean", zod: "z.boolean()", ts: "boolean", input: "Switch" },
+  date: { prisma: "DateTime", zod: "z.coerce.date()", ts: "string", input: "DatePicker" },
+  datetime: { prisma: "DateTime", zod: "z.coerce.date()", ts: "string", input: "DatePicker" },
+  json: { prisma: "Json", zod: "z.any()", ts: "unknown", input: "TextArea" },
 };
 
 const FIELD_RE = /^(\w+):(\w+)(\??)(!?)$/;
@@ -147,29 +151,31 @@ function parseField(spec) {
   if (!m) throw new Error(`Invalid field "${spec}" -- expected "name:type[?][!]".`);
   const [, name, type, opt, idx] = m;
   if (!FIELD_TYPES[type]) {
-    throw new Error(`Unknown field type "${type}" in "${spec}". Known: ${Object.keys(FIELD_TYPES).join(', ')}.`);
+    throw new Error(
+      `Unknown field type "${type}" in "${spec}". Known: ${Object.keys(FIELD_TYPES).join(", ")}.`,
+    );
   }
   // Json fields: always nullable. zod's z.any() is implicitly optional in
   // object schemas (zod quirk) -- Prisma's required-Json (InputJsonValue)
   // won't match the zod-inferred type. Forcing the Prisma side to Json?
   // aligns both sides. Hand-edit the schema afterward if you need
   // required-with-default behaviour (e.g. `Json @default("{}")`).
-  const optional = opt === '?' || type === 'json';
-  return { kind: 'scalar', name, type, optional, indexed: idx === '!' };
+  const optional = opt === "?" || type === "json";
+  return { kind: "scalar", name, type, optional, indexed: idx === "!" };
 }
 
 function parseEnum(spec) {
   const m = spec.match(ENUM_RE);
   if (!m) throw new Error(`Invalid enum "${spec}" -- expected "name:VAL1|VAL2|...[?]".`);
   const [, name, valuesRaw, opt] = m;
-  const enumValues = valuesRaw.split('|').filter(Boolean);
+  const enumValues = valuesRaw.split("|").filter(Boolean);
   if (enumValues.length < 2) throw new Error(`Enum "${spec}" needs at least 2 values.`);
   return {
-    kind: 'enum',
+    kind: "enum",
     name,
     enumName: Pascal + pascalFromCamel(name),
     values: enumValues,
-    optional: opt === '?',
+    optional: opt === "?",
   };
 }
 
@@ -177,28 +183,40 @@ function parseRelation(spec) {
   const m = spec.match(RELATION_RE);
   if (!m) throw new Error(`Invalid relation "${spec}" -- expected "fieldName:TargetModel[?]".`);
   const [, name, target, opt] = m;
-  return { kind: 'relation', name, target, optional: opt === '?' };
+  return { kind: "relation", name, target, optional: opt === "?" };
 }
 
-const fields = (values.fields ?? '').split(',').map((s) => s.trim()).filter(Boolean).map(parseField);
-const enums = (values.enums ?? '').split(',').map((s) => s.trim()).filter(Boolean).map(parseEnum);
-const relations = (values.relations ?? '').split(',').map((s) => s.trim()).filter(Boolean).map(parseRelation);
+const fields = (values.fields ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map(parseField);
+const enums = (values.enums ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map(parseEnum);
+const relations = (values.relations ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map(parseRelation);
 
 if (fields.length + enums.length + relations.length === 0) {
-  console.error('ERROR: at least one of --fields / --enums / --relations is required.');
+  console.error("ERROR: at least one of --fields / --enums / --relations is required.");
   process.exit(1);
 }
 
 // The list view can offer free-text search only if there is a string/text
 // field to search against. Used by both the GET route and the list page.
-const searchField = fields.find((f) => f.type === 'string' || f.type === 'text');
+const searchField = fields.find((f) => f.type === "string" || f.type === "text");
 
 // ---------- Schema parsing (for target-model lookups) ----------
 
-const schemaSrc = await readFile(join(ROOT, 'prisma/schema.prisma'), 'utf8');
+const schemaSrc = await readFile(join(ROOT, "prisma/schema.prisma"), "utf8");
 
 function findModelBlock(src, modelName) {
-  const re = new RegExp(`(model ${modelName}\\s*\\{)([\\s\\S]*?)(\\n\\})`, 'm');
+  const re = new RegExp(`(model ${modelName}\\s*\\{)([\\s\\S]*?)(\\n\\})`, "m");
   const m = src.match(re);
   if (!m) return null;
   return { header: m[1], body: m[2], footer: m[3], full: m[0], index: m.index };
@@ -206,12 +224,12 @@ function findModelBlock(src, modelName) {
 
 function detectDisplayField(modelName) {
   const block = findModelBlock(schemaSrc, modelName);
-  if (!block) return 'id';
-  const candidates = ['name', 'title', 'label', 'email'];
+  if (!block) return "id";
+  const candidates = ["name", "title", "label", "email"];
   for (const cand of candidates) {
-    if (new RegExp(`\\b${cand}\\s+String`, 'm').test(block.body)) return cand;
+    if (new RegExp(`\\b${cand}\\s+String`, "m").test(block.body)) return cand;
   }
-  return 'id';
+  return "id";
 }
 
 // Validate every relation target exists
@@ -227,7 +245,12 @@ for (const rel of relations) {
 // ---------- Idempotency check ----------
 
 async function pathExists(p) {
-  try { await stat(p); return true; } catch { return false; }
+  try {
+    await stat(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 for (const p of [
@@ -241,7 +264,7 @@ for (const p of [
   }
 }
 
-if (new RegExp(`^model ${Pascal}\\b`, 'm').test(schemaSrc)) {
+if (new RegExp(`^model ${Pascal}\\b`, "m").test(schemaSrc)) {
   console.error(`ERROR: model ${Pascal} already exists in prisma/schema.prisma.`);
   process.exit(1);
 }
@@ -249,35 +272,37 @@ if (new RegExp(`^model ${Pascal}\\b`, 'm').test(schemaSrc)) {
 // ---------- Schema generation ----------
 
 function enumBlocks() {
-  return enums.map((e) =>
-    `\nenum ${e.enumName} {\n${e.values.map((v) => `  ${v}`).join('\n')}\n}\n`
-  ).join('');
+  return enums
+    .map((e) => `\nenum ${e.enumName} {\n${e.values.map((v) => `  ${v}`).join("\n")}\n}\n`)
+    .join("");
 }
 
 function schemaModelBlock() {
-  const lines = ['', `model ${Pascal} {`, '  id        String   @id @default(cuid())'];
+  const lines = ["", `model ${Pascal} {`, "  id        String   @id @default(cuid())"];
 
   for (const f of fields) {
-    const type = FIELD_TYPES[f.type].prisma + (f.optional ? '?' : '');
+    const type = FIELD_TYPES[f.type].prisma + (f.optional ? "?" : "");
     lines.push(`  ${f.name.padEnd(11)} ${type}`);
   }
   for (const e of enums) {
-    const def = !e.optional ? ` @default(${e.values[0]})` : '';
-    const type = e.enumName + (e.optional ? '?' : '');
+    const def = !e.optional ? ` @default(${e.values[0]})` : "";
+    const type = e.enumName + (e.optional ? "?" : "");
     lines.push(`  ${e.name.padEnd(11)} ${type}${def}`);
   }
   for (const r of relations) {
-    const fkType = 'String' + (r.optional ? '?' : '');
-    lines.push(`  ${(r.name + 'Id').padEnd(11)} ${fkType}`);
-    const relType = r.target + (r.optional ? '?' : '');
-    lines.push(`  ${r.name.padEnd(11)} ${relType} @relation(fields: [${r.name}Id], references: [id])`);
+    const fkType = "String" + (r.optional ? "?" : "");
+    lines.push(`  ${(r.name + "Id").padEnd(11)} ${fkType}`);
+    const relType = r.target + (r.optional ? "?" : "");
+    lines.push(
+      `  ${r.name.padEnd(11)} ${relType} @relation(fields: [${r.name}Id], references: [id])`,
+    );
   }
 
-  lines.push('  createdAt DateTime @default(now())');
-  lines.push('  updatedAt DateTime @updatedAt');
+  lines.push("  createdAt DateTime @default(now())");
+  lines.push("  updatedAt DateTime @updatedAt");
   if (softDelete) {
-    lines.push('  deletedAt DateTime?');
-    lines.push('  deletedBy String?');
+    lines.push("  deletedAt DateTime?");
+    lines.push("  deletedBy String?");
   }
 
   for (const f of fields.filter((x) => x.indexed)) lines.push(`  @@index([${f.name}])`);
@@ -285,12 +310,12 @@ function schemaModelBlock() {
   // The soft-delete extension filters `deletedAt: null` on every read, and the
   // default list sort is `createdAt desc`; one composite index serves both (the
   // `deletedAt` prefix covers the filter). Mirrors the base User model.
-  if (softDelete) lines.push('  @@index([deletedAt, createdAt])');
+  if (softDelete) lines.push("  @@index([deletedAt, createdAt])");
 
   lines.push(`  @@map("${entitySnakePlural}")`);
-  lines.push('}');
-  lines.push('');
-  return lines.join('\n');
+  lines.push("}");
+  lines.push("");
+  return lines.join("\n");
 }
 
 function patchedTargetModels(src) {
@@ -298,12 +323,13 @@ function patchedTargetModels(src) {
   // Back-ref shape: `<sourceEntityCamel>s <SourceEntity>[]`.
   let out = src;
   for (const r of relations) {
-    const backRefField = entityCamel + 's';
+    const backRefField = entityCamel + "s";
     const block = findModelBlock(out, r.target);
     if (!block) continue; // already validated; defensive
-    if (new RegExp(`\\b${backRefField}\\s+${Pascal}\\[\\]`, 'm').test(block.body)) continue;
-    const newBody = block.body.replace(/(\n\s*@@\w|\s*$)/, (match) =>
-      `\n  ${backRefField.padEnd(11)} ${Pascal}[]${match}`
+    if (new RegExp(`\\b${backRefField}\\s+${Pascal}\\[\\]`, "m").test(block.body)) continue;
+    const newBody = block.body.replace(
+      /(\n\s*@@\w|\s*$)/,
+      (match) => `\n  ${backRefField.padEnd(11)} ${Pascal}[]${match}`,
     );
     out = out.replace(block.full, block.header + newBody + block.footer);
   }
@@ -313,21 +339,24 @@ function patchedTargetModels(src) {
 // ---------- File templates ----------
 
 function validationFile() {
-  const enumImports = enums.length === 0
-    ? ''
-    : `import { ${enums.map((e) => e.enumName).join(', ')} } from "../../generated/prisma/client";\n\n`;
+  const enumImports =
+    enums.length === 0
+      ? ""
+      : `import { ${enums.map((e) => e.enumName).join(", ")} } from "../../generated/prisma/client";\n\n`;
 
   function zodFor(f) {
     let z = FIELD_TYPES[f.type].zod;
-    if (f.type === 'string') z += '.max(255)';
+    if (f.type === "string") z += ".max(255)";
     return z;
   }
 
   const createLines = [
-    ...fields.map((f) => `  ${f.name}: ${zodFor(f)}${f.optional ? '.optional()' : ''},`),
-    ...enums.map((e) => `  ${e.name}: z.nativeEnum(${e.enumName})${e.optional ? '.optional()' : ''},`),
-    ...relations.map((r) => `  ${r.name}Id: z.string().min(1)${r.optional ? '.optional()' : ''},`),
-  ].join('\n');
+    ...fields.map((f) => `  ${f.name}: ${zodFor(f)}${f.optional ? ".optional()" : ""},`),
+    ...enums.map(
+      (e) => `  ${e.name}: z.nativeEnum(${e.enumName})${e.optional ? ".optional()" : ""},`,
+    ),
+    ...relations.map((r) => `  ${r.name}Id: z.string().min(1)${r.optional ? ".optional()" : ""},`),
+  ].join("\n");
 
   const updateLines = [
     ...fields.map((f) => `  ${f.name}: ${zodFor(f)}.optional(),`),
@@ -336,7 +365,7 @@ function validationFile() {
     // *UpdateInput rejects direct FK assignment for required relations
     // (must go through { connect: { id } }). Callers that need to reparent
     // should do so explicitly in the route handler.
-  ].join('\n');
+  ].join("\n");
 
   return `import { z } from "zod";
 ${enumImports}export const create${Pascal}Schema = z.object({
@@ -369,17 +398,14 @@ function apiListRouteFile() {
 
   // Sortable allowlist: scalar + enum fields + createdAt. Guards against raw
   // column injection via ?sort=. Relations are not directly sortable here.
-  const sortableNames = [
-    ...fields.map((f) => f.name),
-    ...enums.map((e) => e.name),
-    'createdAt',
-  ];
+  const sortableNames = [...fields.map((f) => f.name), ...enums.map((e) => e.name), "createdAt"];
 
-  const includeClause = relations.length === 0
-    ? ''
-    : `
+  const includeClause =
+    relations.length === 0
+      ? ""
+      : `
       include: {
-${relations.map((r) => `        ${r.name}: { select: ${r.displayField === 'id' ? '{ id: true }' : `{ id: true, ${r.displayField}: true }`} },`).join('\n')}
+${relations.map((r) => `        ${r.name}: { select: ${r.displayField === "id" ? "{ id: true }" : `{ id: true, ${r.displayField}: true }`} },`).join("\n")}
       },`;
 
   return `import { NextRequest } from "next/server";
@@ -391,7 +417,7 @@ import { create${Pascal}Schema } from "@/lib/validations/${entityKebab}";
 
 // Allowlist of sortable columns -- prevents raw column injection via ?sort=.
 const SORTABLE_COLUMNS = [
-${sortableNames.map((n) => `  "${n}",`).join('\n')}
+${sortableNames.map((n) => `  "${n}",`).join("\n")}
 ] as const;
 type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
@@ -435,10 +461,11 @@ export const POST = withRateLimit(${writeWrap}(async (request: NextRequest) => {
 }
 
 function apiItemRouteFile() {
-  const includeClause = relations.length === 0
-    ? ''
-    : ` include: {
-${relations.map((r) => `      ${r.name}: { select: ${r.displayField === 'id' ? '{ id: true }' : `{ id: true, ${r.displayField}: true }`} },`).join('\n')}
+  const includeClause =
+    relations.length === 0
+      ? ""
+      : ` include: {
+${relations.map((r) => `      ${r.name}: { select: ${r.displayField === "id" ? "{ id: true }" : `{ id: true, ${r.displayField}: true }`} },`).join("\n")}
     },`;
 
   return `import { NextRequest } from "next/server";
@@ -482,29 +509,36 @@ export const DELETE = withRateLimit(${writeWrap}(async (_request: NextRequest, c
 
 function recordTypeFields() {
   return [
-    ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}${f.optional ? ' | null' : ''}`),
-    ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}${e.optional ? ' | null' : ''}`),
+    ...fields.map(
+      (f) =>
+        `${f.name}${f.optional ? "?" : ""}: ${FIELD_TYPES[f.type].ts}${f.optional ? " | null" : ""}`,
+    ),
+    ...enums.map(
+      (e) =>
+        `${e.name}${e.optional ? "?" : ""}: ${e.values.map((v) => `"${v}"`).join(" | ")}${e.optional ? " | null" : ""}`,
+    ),
     ...relations.flatMap((r) => [
-      `${r.name}Id${r.optional ? '?' : ''}: string${r.optional ? ' | null' : ''}`,
-      `${r.name}${r.optional ? '?' : ''}: { ${r.displayField === 'id' ? 'id: string' : `id: string; ${r.displayField}: string | null`} }${r.optional ? ' | null' : ''}`,
+      `${r.name}Id${r.optional ? "?" : ""}: string${r.optional ? " | null" : ""}`,
+      `${r.name}${r.optional ? "?" : ""}: { ${r.displayField === "id" ? "id: string" : `id: string; ${r.displayField}: string | null`} }${r.optional ? " | null" : ""}`,
     ]),
   ];
 }
 
 function columnsFile() {
-  const recordType = `{ id: string; ${recordTypeFields().join('; ')}; createdAt: string; }`;
+  const recordType = `{ id: string; ${recordTypeFields().join("; ")}; createdAt: string; }`;
   // Round-robin over the shared Badge tones (was the AntD Tag color list). Since
   // scaffolded enum values are arbitrary, we cycle rather than semantically map.
-  const BADGE_VARIANTS = ['brand', 'success', 'warning', 'danger', 'default'];
+  const BADGE_VARIANTS = ["brand", "success", "warning", "danger", "default"];
 
   // Date/datetime scalars render as locale dates; everything else uses the
   // default cell renderer. `sorter: true` is server-driven (see the GET route's
   // SORTABLE_COLUMNS allowlist + onSortChange wiring on the list page).
   const scalarCols = fields.map((f) => {
-    const render = (f.type === 'date' || f.type === 'datetime')
-      ? `
+    const render =
+      f.type === "date" || f.type === "datetime"
+        ? `
       render: (val: string | null) => (val ? new Date(val).toLocaleDateString() : "-"),`
-      : '';
+        : "";
     return `    {
       title: t("${f.name}"),
       dataIndex: "${f.name}",
@@ -513,7 +547,8 @@ function columnsFile() {
     },`;
   });
 
-  const enumCols = enums.map((e) => `    {
+  const enumCols = enums.map(
+    (e) => `    {
       title: t("${e.name}"),
       dataIndex: "${e.name}",
       key: "${e.name}",
@@ -522,33 +557,36 @@ function columnsFile() {
         if (!val) return "-";
         return <Badge variant={tone[val] ?? "default"}>{val}</Badge>;
       },
-      filters: [${e.values.map((v) => `{ text: "${v}", value: "${v}" }`).join(', ')}],
+      filters: [${e.values.map((v) => `{ text: "${v}", value: "${v}" }`).join(", ")}],
       filterMultiple: false,
-    },`);
+    },`,
+  );
 
-  const relationCols = relations.map((r) => `    {
+  const relationCols = relations.map(
+    (r) => `    {
       title: t("${r.name}"),
       key: "${r.name}",
       render: (_: unknown, record: ${Pascal}Record) => record.${r.name}?.${r.displayField} ?? "-",
-    },`);
+    },`,
+  );
 
   const usesBadge = enums.length > 0;
   const badgeImports = usesBadge
     ? `import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 `
-    : '';
+    : "";
 
   // Enum value -> Badge tone map, round-robin over the available variants.
   const toneEntries = enums
     .flatMap((e) => e.values)
     .map((v, i) => `"${v}": "${BADGE_VARIANTS[i % BADGE_VARIANTS.length]}"`)
-    .join(', ');
+    .join(", ");
   const toneConst = usesBadge
     ? `
 const tone: Record<string, BadgeProps["variant"]> = { ${toneEntries} };
 `
-    : '';
+    : "";
 
   return `"use client";
 
@@ -609,7 +647,7 @@ export function get${Pascal}Columns({
   t: (key: string) => string;
 }) {
   return [
-${[...scalarCols, ...enumCols, ...relationCols].join('\n')}
+${[...scalarCols, ...enumCols, ...relationCols].join("\n")}
     {
       title: t("createdAt"),
       dataIndex: "createdAt",
@@ -654,34 +692,51 @@ function formFile() {
   const scalarZod = (f) => {
     let base;
     switch (f.type) {
-      case 'int': base = 'z.coerce.number().int()'; break;
-      case 'float': base = 'z.coerce.number()'; break;
-      case 'boolean': base = 'z.boolean()'; break;
-      case 'date':
-      case 'datetime': base = f.optional ? 'z.string()' : 'z.string().min(1)'; break;
-      case 'json': base = 'z.any()'; break;
-      case 'text': base = 'z.string()'; break;
-      default: base = f.optional ? 'z.string()' : 'z.string().min(1)'; break; // string
+      case "int":
+        base = "z.coerce.number().int()";
+        break;
+      case "float":
+        base = "z.coerce.number()";
+        break;
+      case "boolean":
+        base = "z.boolean()";
+        break;
+      case "date":
+      case "datetime":
+        base = f.optional ? "z.string()" : "z.string().min(1)";
+        break;
+      case "json":
+        base = "z.any()";
+        break;
+      case "text":
+        base = "z.string()";
+        break;
+      default:
+        base = f.optional ? "z.string()" : "z.string().min(1)";
+        break; // string
     }
     // json is inherently optional in a zod object (z.any); don't double it up.
-    if (f.optional && f.type !== 'json') base += '.nullish()';
+    if (f.optional && f.type !== "json") base += ".nullish()";
     return `    ${f.name}: ${base},`;
   };
 
   const schemaLines = [
     ...fields.map(scalarZod),
     ...enums.map((e) => {
-      const en = `z.enum([${e.values.map((v) => `"${v}"`).join(', ')}])`;
-      return `    ${e.name}: ${en}${e.optional ? '.nullish()' : ''},`;
+      const en = `z.enum([${e.values.map((v) => `"${v}"`).join(", ")}])`;
+      return `    ${e.name}: ${en}${e.optional ? ".nullish()" : ""},`;
     }),
-    ...relations.map((r) => `    ${r.name}Id: ${r.optional ? 'z.string().nullish()' : 'z.string().min(1)'},`),
+    ...relations.map(
+      (r) => `    ${r.name}Id: ${r.optional ? "z.string().nullish()" : "z.string().min(1)"},`,
+    ),
   ];
 
   // --- defaultValues (coalesce nulls to controlled-input-friendly seeds) ---
   const defaultLines = [
     ...fields.map((f) => {
-      if (f.type === 'boolean') return `      ${f.name}: initialValues?.${f.name} ?? false,`;
-      if (f.type === 'int' || f.type === 'float') return `      ${f.name}: initialValues?.${f.name} ?? undefined,`;
+      if (f.type === "boolean") return `      ${f.name}: initialValues?.${f.name} ?? false,`;
+      if (f.type === "int" || f.type === "float")
+        return `      ${f.name}: initialValues?.${f.name} ?? undefined,`;
       return `      ${f.name}: initialValues?.${f.name} ?? "",`;
     }),
     ...enums.map((e) =>
@@ -694,7 +749,7 @@ function formFile() {
 
   // --- field JSX ---
   const scalarItems = fields.map((f) => {
-    if (f.type === 'boolean') {
+    if (f.type === "boolean") {
       return `        <FormField
           name="${f.name}"
           render={({ field }) => (
@@ -709,13 +764,16 @@ function formFile() {
         />`;
     }
     const typeAttr =
-      f.type === 'int' || f.type === 'float' ? ' type="number"'
-      : f.type === 'date' || f.type === 'datetime' ? ' type="date"'
-      : '';
+      f.type === "int" || f.type === "float"
+        ? ' type="number"'
+        : f.type === "date" || f.type === "datetime"
+          ? ' type="date"'
+          : "";
     return `        <TextField name="${f.name}" label={t("${f.name}")}${typeAttr} />`;
   });
 
-  const enumItems = enums.map((e) => `        <FormField
+  const enumItems = enums.map(
+    (e) => `        <FormField
           name="${e.name}"
           render={({ field }) => (
             <FormItem>
@@ -727,15 +785,17 @@ function formFile() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectItem>`).join('\n')}
+${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectItem>`).join("\n")}
                 </SelectContent>
               </Select>
               <FormMessage />
             </FormItem>
           )}
-        />`);
+        />`,
+  );
 
-  const relationItems = relations.map((r) => `        <FormField
+  const relationItems = relations.map(
+    (r) => `        <FormField
           name="${r.name}Id"
           render={({ field }) => (
             <FormItem>
@@ -752,21 +812,30 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
               <FormMessage />
             </FormItem>
           )}
-        />`);
+        />`,
+  );
 
   // Form value type aligns with the Record type from columnsFile: optional
   // scalars include `| null` so the edit page's Prisma row shape (where optional
   // fields can be null) maps into the form's defaultValues directly.
   const valueTypeParts = [
-    ...fields.map((f) => `${f.name}${f.optional ? '?' : ''}: ${FIELD_TYPES[f.type].ts}${f.optional ? ' | null' : ''}`),
-    ...enums.map((e) => `${e.name}${e.optional ? '?' : ''}: ${e.values.map((v) => `"${v}"`).join(' | ')}${e.optional ? ' | null' : ''}`),
-    ...relations.map((r) => `${r.name}Id${r.optional ? '?' : ''}: string${r.optional ? ' | null' : ''}`),
+    ...fields.map(
+      (f) =>
+        `${f.name}${f.optional ? "?" : ""}: ${FIELD_TYPES[f.type].ts}${f.optional ? " | null" : ""}`,
+    ),
+    ...enums.map(
+      (e) =>
+        `${e.name}${e.optional ? "?" : ""}: ${e.values.map((v) => `"${v}"`).join(" | ")}${e.optional ? " | null" : ""}`,
+    ),
+    ...relations.map(
+      (r) => `${r.name}Id${r.optional ? "?" : ""}: string${r.optional ? " | null" : ""}`,
+    ),
   ];
-  const valueType = `{ ${valueTypeParts.join('; ')} }`;
+  const valueType = `{ ${valueTypeParts.join("; ")} }`;
 
   // --- imports (only what the emitted fields actually reference) ---
-  const hasTextField = fields.some((f) => f.type !== 'boolean');
-  const hasSwitch = fields.some((f) => f.type === 'boolean');
+  const hasTextField = fields.some((f) => f.type !== "boolean");
+  const hasSwitch = fields.some((f) => f.type === "boolean");
   const hasFormPrimitives = hasSwitch || enums.length > 0 || relations.length > 0;
   const hasSelect = enums.length > 0; // enums use Select; relations use a Popover combobox
   const hasPopover = relations.length > 0;
@@ -783,7 +852,7 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
   FormMessage,
 } from "@/components/ui/form";
 `
-    : '';
+    : "";
   const selectImport = hasSelect
     ? `import {
   Select,
@@ -793,8 +862,8 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
   SelectValue,
 } from "@/components/ui/select";
 `
-    : '';
-  const switchImport = hasSwitch ? 'import { Switch } from "@/components/ui/switch";\n' : '';
+    : "";
+  const switchImport = hasSwitch ? 'import { Switch } from "@/components/ui/switch";\n' : "";
   const popoverImport = hasPopover
     ? `import {
   Popover,
@@ -802,8 +871,9 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
   PopoverTrigger,
 } from "@/components/ui/popover";
 `
-    : '';
-  const reactImport = relations.length === 0 ? '' : 'import { useEffect, useRef, useState } from "react";\n';
+    : "";
+  const reactImport =
+    relations.length === 0 ? "" : 'import { useEffect, useRef, useState } from "react";\n';
 
   // Relation targets can exceed one page, so RelationSelect is a searchable
   // combobox: a Popover holding a debounced server-side search box + the matching
@@ -814,7 +884,10 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
   // box keyboard-unreachable. Plain buttons in a Popover are focusable + valid;
   // Radix owns focus/Escape/positioning. /api/<target> honors ?search= when the
   // target is searchable (ignored otherwise, so it's safe for every target).
-  const relationSelectComponent = relations.length === 0 ? '' : `
+  const relationSelectComponent =
+    relations.length === 0
+      ? ""
+      : `
 function RelationSelect({
   path,
   displayField,
@@ -954,12 +1027,12 @@ export function ${Pascal}Form({ initialValues, onSubmit, onCancel, loading = fal
 
   // The SAME shape guards the API route; client + server validation can't drift.
   const schema = z.object({
-${schemaLines.join('\n')}
+${schemaLines.join("\n")}
   });
 
   const form = useZodForm(schema, {
     defaultValues: {
-${defaultLines.join('\n')}
+${defaultLines.join("\n")}
     },
   });
 
@@ -969,7 +1042,7 @@ ${defaultLines.join('\n')}
         onSubmit={form.handleSubmit(onSubmit)}
         className="flex max-w-[500px] flex-col gap-4"
       >
-${[...scalarItems, ...enumItems, ...relationItems].join('\n\n')}
+${[...scalarItems, ...enumItems, ...relationItems].join("\n\n")}
 
         <div className="flex gap-2">
           <Button type="submit" disabled={loading}>
@@ -987,8 +1060,8 @@ ${[...scalarItems, ...enumItems, ...relationItems].join('\n\n')}
 }
 
 function listPageFile() {
-  const searchState = searchField ? '\n  const [search, setSearch] = useState("");' : '';
-  const searchParam = searchField ? '\n    ...(search ? { search } : {}),' : '';
+  const searchState = searchField ? '\n  const [search, setSearch] = useState("");' : "";
+  const searchParam = searchField ? "\n    ...(search ? { search } : {})," : "";
   const searchProps = searchField
     ? `
         searchable
@@ -996,7 +1069,7 @@ function listPageFile() {
           setSearch(value);
           setPage(1);
         }}`
-    : '';
+    : "";
 
   return `"use client";
 
@@ -1208,9 +1281,9 @@ function entityMessageKeys() {
   keys.title = `${Pascal}s`;
   keys.createNew = `New ${Pascal}`;
   keys.editTitle = `Edit ${Pascal}`;
-  keys.createdAt = 'Created';
-  keys.save = 'Save';
-  keys.cancel = 'Cancel';
+  keys.createdAt = "Created";
+  keys.save = "Save";
+  keys.cancel = "Cancel";
   keys.editAction = `Edit ${entityCamel}`;
   keys.deleteAction = `Delete ${entityCamel}`;
   keys.deleteConfirm = `Are you sure you want to delete this ${entityCamel}?`;
@@ -1224,8 +1297,8 @@ function entityMessageKeys() {
   // Relation-picker search box (RelationSelect) — only referenced when the entity
   // has relations, but emitting them unconditionally keeps the namespace stable.
   if (relations.length) {
-    keys.searchRelation = 'Search…';
-    keys.noRelationMatches = 'No matches';
+    keys.searchRelation = "Search…";
+    keys.noRelationMatches = "No matches";
   }
   return keys;
 }
@@ -1242,21 +1315,24 @@ function mergeMessages(src, namespace, keys) {
     return src;
   }
   parsed[namespace] = keys;
-  return JSON.stringify(parsed, null, 2) + '\n';
+  return JSON.stringify(parsed, null, 2) + "\n";
 }
 
 // ---------- Existing-file patches ----------
 
 async function patchSoftDeleteRegistry() {
   if (!softDelete) return null;
-  const path = join(ROOT, 'lib/prisma/soft-delete-extension.ts');
-  const src = await readFile(path, 'utf8');
+  const path = join(ROOT, "lib/prisma/soft-delete-extension.ts");
+  const src = await readFile(path, "utf8");
   const re = /const SOFT_DELETE_MODELS = new Set\(\[([^\]]*)\]\);/;
   const m = src.match(re);
-  if (!m) throw new Error('Could not locate SOFT_DELETE_MODELS.');
-  const existing = m[1].split(',').map((s) => s.trim()).filter(Boolean);
+  if (!m) throw new Error("Could not locate SOFT_DELETE_MODELS.");
+  const existing = m[1]
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (existing.includes(`"${Pascal}"`)) return null;
-  const updated = [...existing, `"${Pascal}"`].join(', ');
+  const updated = [...existing, `"${Pascal}"`].join(", ");
   return { path, content: src.replace(re, `const SOFT_DELETE_MODELS = new Set([${updated}]);`) };
 }
 
@@ -1265,18 +1341,18 @@ async function patchRecyclingBin() {
   // The recyclable allowlist is the single source of truth in
   // lib/prisma/recyclable.ts (both the list/restore and permanent-delete routes
   // read it). Register the new entity there.
-  const path = join(ROOT, 'lib/prisma/recyclable.ts');
-  const src = await readFile(path, 'utf8');
+  const path = join(ROOT, "lib/prisma/recyclable.ts");
+  const src = await readFile(path, "utf8");
   if (src.includes(`${Pascal}: { displayField`)) return null;
-  const marker = '  // Add more entity types here as you create them:';
-  if (!src.includes(marker)) throw new Error('Could not locate RECYCLABLE_ENTITY_TYPES marker.');
+  const marker = "  // Add more entity types here as you create them:";
+  if (!src.includes(marker)) throw new Error("Could not locate RECYCLABLE_ENTITY_TYPES marker.");
   const insertion = `  ${Pascal}: { displayField: "${displayField}" },\n`;
   return { path, content: src.replace(marker, insertion + marker) };
 }
 
 async function patchSidebar() {
-  const path = join(ROOT, 'components/layout/AppSidebar.tsx');
-  const src = await readFile(path, 'utf8');
+  const path = join(ROOT, "components/layout/AppSidebar.tsx");
+  const src = await readFile(path, "utf8");
   if (src.includes(`key: "${entityKebab}"`)) return null;
 
   // The migrated AppSidebar (ADR-029) renders a plain <nav> of nav-items with
@@ -1294,9 +1370,9 @@ async function patchSidebar() {
   const alreadyImported = importMatch && /\bLayoutGrid\b/.test(importMatch[1]);
 
   const anchor = src.match(/([ \t]*)\{[ \t]*\n[ \t]*key: "recycling-bin",/);
-  if (!anchor) throw new Error('Could not locate recycling-bin nav entry.');
+  if (!anchor) throw new Error("Could not locate recycling-bin nav entry.");
   const indent = anchor[1];
-  const inner = indent + '  ';
+  const inner = indent + "  ";
   const insertion =
     `${indent}{\n` +
     `${inner}key: "${entityKebab}",\n` +
@@ -1307,10 +1383,7 @@ async function patchSidebar() {
   let out = src.replace(anchor[0], insertion + anchor[0]);
 
   if (!alreadyImported) {
-    out = out.replace(
-      /(\}\s*from "lucide-react";)/,
-      '  LayoutGrid,\n$1'
-    );
+    out = out.replace(/(\}\s*from "lucide-react";)/, "  LayoutGrid,\n$1");
   }
   return { path, content: out };
 }
@@ -1341,7 +1414,7 @@ write(`app/[locale]/(dashboard)/${entityKebab}/[id]/page.tsx`, editPageFile());
 let patches;
 try {
   const schemaPatched = patchedTargetModels(schemaSrc) + enumBlocks() + schemaModelBlock();
-  const schemaWrite = { path: join(ROOT, 'prisma/schema.prisma'), content: schemaPatched };
+  const schemaWrite = { path: join(ROOT, "prisma/schema.prisma"), content: schemaPatched };
 
   // i18n: merge this entity's namespace into BOTH messages/en.json and
   // messages/ar.json. English values seed both (the ar copy is a placeholder an
@@ -1351,12 +1424,12 @@ try {
   // all-or-nothing semantics hold: a malformed/missing messages file aborts the
   // whole run rather than leaving a half-scaffolded repo.
   const messageKeys = entityMessageKeys();
-  const enPath = join(ROOT, 'messages/en.json');
-  const arPath = join(ROOT, 'messages/ar.json');
+  const enPath = join(ROOT, "messages/en.json");
+  const arPath = join(ROOT, "messages/ar.json");
   // These five reads are mutually independent, so fetch them concurrently.
   const [enSrc, arSrc, softDeletePatch, recyclingPatch, sidebarPatch] = await Promise.all([
-    readFile(enPath, 'utf8'),
-    readFile(arPath, 'utf8'),
+    readFile(enPath, "utf8"),
+    readFile(arPath, "utf8"),
     patchSoftDeleteRegistry(),
     patchRecyclingBin(),
     patchSidebar(),
@@ -1364,15 +1437,17 @@ try {
   const enWrite = { path: enPath, content: mergeMessages(enSrc, i18nNs, messageKeys) };
   const arWrite = { path: arPath, content: mergeMessages(arSrc, i18nNs, messageKeys) };
 
-  patches = [schemaWrite, enWrite, arWrite, softDeletePatch, recyclingPatch, sidebarPatch].filter(Boolean);
+  patches = [schemaWrite, enWrite, arWrite, softDeletePatch, recyclingPatch, sidebarPatch].filter(
+    Boolean,
+  );
 } catch (e) {
   console.error(`ERROR: precondition failed -- ${e.message}`);
-  console.error('Nothing was written. Restore the missing marker in the target file and re-run.');
+  console.error("Nothing was written. Restore the missing marker in the target file and re-run.");
   process.exit(1);
 }
 
 if (dryRun) {
-  console.log('--- DRY RUN ---');
+  console.log("--- DRY RUN ---");
   for (const w of writes) console.log(`would write ${w.path} (${w.content.length} bytes)`);
   for (const p of patches) console.log(`would patch ${p.path}`);
   process.exit(0);
@@ -1388,19 +1463,23 @@ for (const p of patches) {
   console.log(`~ ${p.path}`);
 }
 
-console.log('');
+console.log("");
 console.log(`Scaffolded ${Pascal}. Next steps:`);
 if (relations.length > 0) {
-  console.log(`  > Relations declared: ${relations.map((r) => `${r.name} -> ${r.target}`).join(', ')}`);
-  console.log('    Back-refs added to target models.');
+  console.log(
+    `  > Relations declared: ${relations.map((r) => `${r.name} -> ${r.target}`).join(", ")}`,
+  );
+  console.log("    Back-refs added to target models.");
 }
 if (enums.length > 0) {
-  console.log(`  > Enums declared: ${enums.map((e) => `${e.enumName} (${e.values.join('|')})`).join(', ')}`);
+  console.log(
+    `  > Enums declared: ${enums.map((e) => `${e.enumName} (${e.values.join("|")})`).join(", ")}`,
+  );
 }
 console.log(`  1. Review prisma/schema.prisma (new model + enums + back-refs).`);
 console.log(`  2. Run: npm run prisma:migrate -- --name add_${entitySnake}`);
 console.log(`  3. Run: npm run prisma:generate`);
 console.log('  4. i18n: the "' + i18nNs + '" namespace was merged into BOTH');
-console.log('     messages/en.json and messages/ar.json (English text seeds both).');
+console.log("     messages/en.json and messages/ar.json (English text seeds both).");
 console.log('     Translate the new "' + i18nNs + '" values in messages/ar.json.');
 console.log(`  5. Commit; CI verifies build + lint + typecheck.`);

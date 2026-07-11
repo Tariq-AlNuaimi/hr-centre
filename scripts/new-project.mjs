@@ -78,7 +78,7 @@ if (missing.length) {
       "    - NEON_API_KEY        -> https://console.neon.tech/app/settings/api-keys\n" +
       "    - VERCEL_TOKEN        -> https://vercel.com/account/tokens\n" +
       "    - CLOUDFLARE_API_TOKEN-> only for --apex (Zone.DNS:Edit on the apex zone)\n" +
-      "  (Egress to the provider hosts is checked separately by the preflight below.)"
+      "  (Egress to the provider hosts is checked separately by the preflight below.)",
   );
 }
 
@@ -108,19 +108,28 @@ async function teardown() {
     try {
       const r = await fetch(url, { method: "DELETE", headers });
       if (r.ok || r.status === 404) ok(P, `Rolled back ${label} ${id}.`);
-      else { left.push(`${label} ${id} (HTTP ${r.status})`); warn(P, `Could not delete ${label} ${id} (HTTP ${r.status}).`); }
+      else {
+        left.push(`${label} ${id} (HTTP ${r.status})`);
+        warn(P, `Could not delete ${label} ${id} (HTTP ${r.status}).`);
+      }
     } catch (e) {
       left.push(`${label} ${id} (${e.message})`);
       warn(P, `Could not delete ${label} ${id}: ${e.message}`);
     }
   };
   // Vercel (holds env vars + git link) -> Neon (the database) -> GitHub repo.
-  await del(created.vercelProjectId, "Vercel project",
+  await del(
+    created.vercelProjectId,
+    "Vercel project",
     `https://api.vercel.com/v9/projects/${created.vercelProjectId}${teamQs}`,
-    { Authorization: `Bearer ${VERCEL_TOKEN}` });
-  await del(created.neonProjectId, "Neon project",
+    { Authorization: `Bearer ${VERCEL_TOKEN}` },
+  );
+  await del(
+    created.neonProjectId,
+    "Neon project",
     `https://console.neon.tech/api/v2/projects/${created.neonProjectId}`,
-    { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" });
+    { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" },
+  );
   if (created.repoFullName) {
     step(P, `Rolling back: deleting GitHub repo ${created.repoFullName}...`);
     try {
@@ -133,7 +142,12 @@ async function teardown() {
         },
       });
       if (r.ok || r.status === 404) ok(P, `Rolled back GitHub repo ${created.repoFullName}.`);
-      else { left.push(`GitHub repo ${created.repoFullName} (HTTP ${r.status}${r.status === 403 ? "; token needs delete_repo scope" : ""})`); warn(P, `Could not delete GitHub repo ${created.repoFullName} (HTTP ${r.status}).`); }
+      else {
+        left.push(
+          `GitHub repo ${created.repoFullName} (HTTP ${r.status}${r.status === 403 ? "; token needs delete_repo scope" : ""})`,
+        );
+        warn(P, `Could not delete GitHub repo ${created.repoFullName} (HTTP ${r.status}).`);
+      }
     } catch (e) {
       left.push(`GitHub repo ${created.repoFullName} (${e.message})`);
       warn(P, `Could not delete GitHub repo ${created.repoFullName}: ${e.message}`);
@@ -218,7 +232,7 @@ step(P, "Preflight: checking egress to provider APIs...");
       } catch {
         return host;
       }
-    })
+    }),
   );
   const blocked = probes.filter(Boolean);
   if (blocked.length) {
@@ -238,7 +252,7 @@ step(P, "Preflight: checking egress to provider APIs...");
         "  that allows these hosts, then re-run:\n" +
         hosts.map((h) => `    - ${h}`).join("\n") +
         "\n  Docs: https://code.claude.com/docs/en/claude-code-on-the-web\n" +
-        "  (Or run this from a machine with open egress and the tokens set.)"
+        "  (Or run this from a machine with open egress and the tokens set.)",
     );
   }
   ok(P, "Egress OK.");
@@ -264,7 +278,7 @@ const ghRepo = await api(
       private: true,
       include_all_branches: false,
     }),
-  }
+  },
 );
 // Record the repo so a later failure (Neon/Vercel create) rolls it back.
 // Deleting a repo requires the token to carry the delete_repo scope; if it
@@ -289,7 +303,7 @@ try {
   const cur = await apiTry(
     "GitHub read project.config.json",
     `https://api.github.com/repos/${created.repoFullName}/contents/project.config.json?ref=${encodeURIComponent(branch)}`,
-    { headers: ghHeaders }
+    { headers: ghHeaders },
   );
   const decoded = Buffer.from(cur.content || "", cur.encoding || "base64").toString("utf8");
   if (/"pristine":\s*true/.test(decoded)) {
@@ -306,12 +320,18 @@ try {
           sha: cur.sha,
           branch,
         }),
-      }
+      },
     );
-    ok(P, "Cleared pristine-template flag in the new repo (ADR-031 db-structure gate now applies).");
+    ok(
+      P,
+      "Cleared pristine-template flag in the new repo (ADR-031 db-structure gate now applies).",
+    );
   }
 } catch (e) {
-  warn(P, `Could not clear pristine flag in the new repo: ${e.message}. Run /rebrand (clears it) or set "pristine": false in project.config.json before /ship.`);
+  warn(
+    P,
+    `Could not clear pristine flag in the new repo: ${e.message}. Run /rebrand (clears it) or set "pristine": false in project.config.json before /ship.`,
+  );
 }
 
 // 2. Neon: create project, derive pooled connection string
@@ -323,16 +343,20 @@ if (!neonOrgId) {
     "https://console.neon.tech/api/v2/users/me/organizations",
     {
       headers: { Authorization: `Bearer ${NEON_KEY}`, Accept: "application/json" },
-    }
+    },
   );
   const orgList = orgs.organizations || [];
   if (orgList.length === 0) {
     // The GitHub repo already exists by now, so roll it back rather than orphan it.
-    await bailWithRollback("Neon API returned no organizations. Set NEON_ORG_ID as a repo variable.");
+    await bailWithRollback(
+      "Neon API returned no organizations. Set NEON_ORG_ID as a repo variable.",
+    );
   }
   if (orgList.length > 1) {
     const names = orgList.map((o) => `${o.name} (${o.id})`).join(", ");
-    await bailWithRollback(`Multiple Neon orgs found: ${names}. Set NEON_ORG_ID as a repo variable.`);
+    await bailWithRollback(
+      `Multiple Neon orgs found: ${names}. Set NEON_ORG_ID as a repo variable.`,
+    );
   }
   neonOrgId = orgList[0].id;
   ok(P, `Neon org: ${orgList[0].name} (${neonOrgId})`);
@@ -356,7 +380,9 @@ const neon = await api("Neon project create", "https://console.neon.tech/api/v2/
 created.neonProjectId = neon.project?.id ?? null;
 const cu = neon.connection_uris?.[0];
 if (!cu?.connection_parameters?.pooler_host) {
-  await bailWithRollback(`Neon response missing pooler_host; got: ${JSON.stringify(neon).slice(0, 400)}`);
+  await bailWithRollback(
+    `Neon response missing pooler_host; got: ${JSON.stringify(neon).slice(0, 400)}`,
+  );
 }
 const cp = cu.connection_parameters;
 const databaseUrl = `postgresql://${cp.role}:${cp.password}@${cp.pooler_host}/${cp.database}?sslmode=require&channel_binding=require`;
@@ -383,11 +409,16 @@ const vercelProject = await api(
         { key: "AUTH_SECRET", value: authSecret, target: envTargets, type: "encrypted" },
         { key: "NEXT_PUBLIC_APP_NAME", value: displayName, target: envTargets, type: "plain" },
         { key: "SEED_ADMIN_EMAIL", value: adminEmail, target: envTargets, type: "plain" },
-        { key: "SEED_ADMIN_PASSWORD", value: seedAdminPassword, target: envTargets, type: "encrypted" },
+        {
+          key: "SEED_ADMIN_PASSWORD",
+          value: seedAdminPassword,
+          target: envTargets,
+          type: "encrypted",
+        },
         { key: "CRON_SECRET", value: cronSecret, target: envTargets, type: "encrypted" },
       ],
     }),
-  }
+  },
 );
 // Record so a later fatal step would roll the Vercel project back too. The
 // remaining steps (CF DNS, domain attach, deploy trigger) are non-fatal (they
@@ -416,7 +447,7 @@ for (let attempt = 1; attempt <= 5 && !envConfirmed; attempt++) {
     const envList = await apiTry(
       "Vercel env list",
       `https://api.vercel.com/v9/projects/${vercelProject.id}/env${teamQs}`,
-      { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } }
+      { headers: { Authorization: `Bearer ${VERCEL_TOKEN}` } },
     );
     present = (envList.envs || []).map((e) => e.key);
   } catch (e) {
@@ -428,7 +459,10 @@ for (let attempt = 1; attempt <= 5 && !envConfirmed; attempt++) {
     break;
   }
   if (attempt < 5) {
-    warn(P, `Env not fully propagated yet (missing: ${lastMissing.join(", ")}); retrying in ${attempt * 2}s...`);
+    warn(
+      P,
+      `Env not fully propagated yet (missing: ${lastMissing.join(", ")}); retrying in ${attempt * 2}s...`,
+    );
     await sleep(attempt * 2000);
   }
 }
@@ -437,7 +471,7 @@ if (!envConfirmed) {
     `Env vars did not propagate to the Vercel project after 5 attempts ` +
       `(still missing: ${lastMissing.join(", ")}). Aborting BEFORE deploy so we ` +
       `don't ship a first build that can't see CRON_SECRET / SEED_ADMIN_* ` +
-      `(dead cron + no admin user).`
+      `(dead cron + no admin user).`,
   );
 }
 ok(P, `All ${expectedEnvKeys.length} env vars confirmed on the project.`);
@@ -448,7 +482,7 @@ if (apex) {
   const zoneData = await api(
     "CF zone lookup",
     `https://api.cloudflare.com/client/v4/zones?name=${encodeURIComponent(apex)}`,
-    { headers: { Authorization: `Bearer ${CF_TOKEN}` } }
+    { headers: { Authorization: `Bearer ${CF_TOKEN}` } },
   );
   const zoneId = zoneData.result?.[0]?.id;
   if (!zoneId) await bailWithRollback(`Cloudflare zone not found: ${apex}`);
@@ -456,18 +490,22 @@ if (apex) {
 
   step(P, `Creating CNAME ${customDomain} -> cname.vercel-dns.com...`);
   try {
-    await apiTry("CF DNS create", `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "CNAME",
-        name: slug,
-        content: "cname.vercel-dns.com",
-        proxied: false,
-        ttl: 1,
-        comment: `${displayName} (created by new-project)`,
-      }),
-    });
+    await apiTry(
+      "CF DNS create",
+      `https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${CF_TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "CNAME",
+          name: slug,
+          content: "cname.vercel-dns.com",
+          proxied: false,
+          ttl: 1,
+          comment: `${displayName} (created by new-project)`,
+        }),
+      },
+    );
     ok(P, `CF CNAME: ${customDomain} -> cname.vercel-dns.com (proxied: off)`);
   } catch (e) {
     warn(P, `CF CNAME create failed; the record may already exist. Continuing. (${e.message})`);
@@ -482,34 +520,36 @@ if (apex) {
         method: "POST",
         headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify({ name: customDomain }),
-      }
+      },
     );
     ok(P, `Vercel domain: ${customDomain} (TLS issuance is automatic once DNS propagates)`);
   } catch (e) {
-    warn(P, `Vercel domain add failed; visit the project's Domains tab to add manually. (${e.message})`);
+    warn(
+      P,
+      `Vercel domain add failed; visit the project's Domains tab to add manually. (${e.message})`,
+    );
   }
 }
 
 // 6. Trigger first production deployment
 step(P, `Triggering first production deploy...`);
 try {
-  const deploy = await apiTry(
-    "Vercel deploy",
-    `https://api.vercel.com/v13/deployments${teamQs}`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: slug,
-        project: vercelProject.id,
-        target: "production",
-        gitSource: { type: "github", ref: "main", repoId: ghRepo.id },
-      }),
-    }
-  );
+  const deploy = await apiTry("Vercel deploy", `https://api.vercel.com/v13/deployments${teamQs}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: slug,
+      project: vercelProject.id,
+      target: "production",
+      gitSource: { type: "github", ref: "main", repoId: ghRepo.id },
+    }),
+  });
   ok(P, `Deploy queued: https://${deploy.url}`);
 } catch (e) {
-  warn(P, `Auto-deploy trigger failed; Vercel typically deploys on first push anyway. (${e.message})`);
+  warn(
+    P,
+    `Auto-deploy trigger failed; Vercel typically deploys on first push anyway. (${e.message})`,
+  );
 }
 
 // 7. Operator-facing summary
@@ -521,7 +561,9 @@ const summary = [
   `- **Vercel project:** https://vercel.com/dashboard (id \`${vercelProject.id}\`)`,
   `- **Neon project:** https://console.neon.tech/app/projects/${neon.project.id}`,
   ...(customDomain
-    ? [`- **Production URL:** https://${customDomain} (TLS can take 1-2 min after CF DNS propagates)`]
+    ? [
+        `- **Production URL:** https://${customDomain} (TLS can take 1-2 min after CF DNS propagates)`,
+      ]
     : []),
   `- **Vercel URL:** https://${slug}.vercel.app (active once the first build finishes)`,
   "",

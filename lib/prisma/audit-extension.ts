@@ -65,7 +65,7 @@ export async function recordAudit(
     action: "CREATE" | "UPDATE" | "DELETE" | "RESTORE";
     before?: Record<string, unknown> | null;
     after?: Record<string, unknown> | null;
-  }
+  },
 ) {
   const ctx = getAuditContext();
   await client.auditLog.create({
@@ -89,7 +89,7 @@ function modelAccessor(client: unknown, model: string) {
 
 export function computeChanges(
   before: Record<string, unknown>,
-  after: Record<string, unknown>
+  after: Record<string, unknown>,
 ): Record<string, { from: unknown; to: unknown }> | null {
   const changes: Record<string, { from: unknown; to: unknown }> = {};
   const skipFields = new Set(["updatedAt"]);

@@ -13,9 +13,7 @@ export interface PaginatedResponse<T> {
   totalPages: number;
 }
 
-export function parsePagination(
-  searchParams: URLSearchParams
-): PaginationParams {
+export function parsePagination(searchParams: URLSearchParams): PaginationParams {
   // Upper-clamp BOTH axes so skip/take stay bounded integers fed to Prisma:
   // pageSize to 100, and page to MAX_PAGE so a finite-but-huge `?page=1e300`
   // (which passes toPositiveInt's floor+finite guard) can't produce a
@@ -48,7 +46,7 @@ function toPositiveInt(raw: string | null, fallback: number): number {
 export function paginatedResponse<T>(
   data: T[],
   total: number,
-  params: PaginationParams
+  params: PaginationParams,
 ): PaginatedResponse<T> {
   return {
     data,

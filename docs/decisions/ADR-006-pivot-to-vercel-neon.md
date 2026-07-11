@@ -50,6 +50,7 @@ Specifically:
 8. **Ops workflows deleted:** `deploy.yml`, `preflight.yml`, `promote.yml`, `rollback.yml`, `restore.yml`, `restore-test.yml`, `build-snapshot.yml`, `new-project.yml`, `release.yml`, `audit-retention.yml`, `bootstrap-secrets.yml`, `diagnose-host.yml`, `docker-build.yml`. Their corresponding scripts under `scripts/` and skills under `.claude/skills/` are also deleted. `audit-retention` is replaced by Vercel Cron (configured per-project in `vercel.json` via `/scale-up`).
 
    > **Later update:** `new-project.yml` (+ its `/new-project` skill and `scripts/new-project.mjs`) was **re-introduced** for the Vercel/Neon rail — it provisions a GitHub repo + Neon + Vercel headlessly, no DigitalOcean/Portainer. It ships **dormant** on the free plan (ADR-007 / SECURITY.md §14). The rest of this list stays deleted.
+
 9. **New skills added:** `/first-fork` (rewritten for Vercel + Neon), `/quickstart` (idea → live URL), `/scale-up` (growth recipes), `/handoff` (clean export for the IT team).
 
 **The handoff is the production exit ramp.** When a prototype is approved, `/handoff` produces a `HANDOFF.md` with the project's state, schema, env-var list, route inventory, and instructions for the IT team to run locally and deploy on their own infrastructure. The IT team's setup is not this template's concern.
@@ -57,6 +58,7 @@ Specifically:
 ## Consequences
 
 ### Positive
+
 - Operator goes from "I have an idea" to a shareable URL in ~10 minutes on first project, ~5 minutes on subsequent projects.
 - Recurring deploy is `git push` (~90s). No `gh workflow run`, no Portainer webhook, no SSH transport retry logic.
 - Zero infrastructure for the operator to manage. No droplet upgrades, no cert renewals, no Docker image lifecycle, no backup retention to audit.
@@ -66,14 +68,16 @@ Specifically:
 - New "starts simple, grows complex" path is real, not theoretical. Vercel + Neon both scale up with the same code; the `/scale-up` skill enumerates the additions without any platform migration.
 
 ### Negative
+
 - **Vendor concentration.** Vercel + Neon are the deploy + DB providers. If either materially degrades (price, terms, outage profile), the operator's prototype rail is affected. Mitigations: (a) `lib/storage.ts` deliberately stays vendor-agnostic via `/scale-up` (Vercel Blob / S3 / Spaces / R2 are all interchangeable); (b) the Prisma + Postgres path means any Postgres-compatible host (Supabase / RDS / self-hosted) is a fallback; (c) the Next.js standalone output remains available — re-enabling it in `next.config.ts` makes the app containerizable in <10 lines.
 - **No self-hosted option in the template anymore.** Forks needing on-prem must add a Dockerfile back. The `/handoff` skill explicitly documents how to re-containerize (point IT team at the pre-pivot tag in this repo for a reference Dockerfile).
-- **Encrypted off-host backups go away.** Neon's own backups cover the prototype use case; for production data, the IT team owns it post-handoff. If a fork *does* hold Restricted-class data during the prototype phase, that's a misuse of this template — see SECURITY.md §1 for the policy.
+- **Encrypted off-host backups go away.** Neon's own backups cover the prototype use case; for production data, the IT team owns it post-handoff. If a fork _does_ hold Restricted-class data during the prototype phase, that's a misuse of this template — see SECURITY.md §1 for the policy.
 - **Free-tier ceilings.** Vercel Hobby's 100 GB-hours/month and Neon Free's 0.5 GB will not cover every project forever. Operator should track Vercel + Neon dashboard usage and upgrade tier when a project gets real traffic.
 - **Branch protection becomes optional.** Acceptable for the prototype phase because the operator is the only contributor. Once `/handoff` runs, the IT team enables their own protection in their fork / new repo.
 - **ADR-005's "keep the droplet path" recommendation is now reversed.** Operators who already deployed via `/deploy` on the previous template version (e.g. the support-case fork) keep working — this ADR does not force a migration. New forks default to the new path.
 
 ### Mitigations
+
 - The `/handoff` skill produces a clear artifact for the IT team. Their production-grade decisions (HA, encrypted backups, MFA, custom domain TLS, audit retention with offsite storage) are made on their own stack, with their own ADRs.
 - The pre-pivot droplet machinery is preserved in git history under the `pre-pivot` tag (if applied) and in the prior version of this template before this commit. Operators with active droplet forks can continue to reference the prior `scripts/deploy.mjs` + cloud-init + Caddy setup as their own internal pattern.
 - The `output: "standalone"` Docker baseline is documented in `/handoff` as "re-enable this line in next.config.ts to containerize." The escape hatch costs ~5 minutes of work.
@@ -82,7 +86,7 @@ Specifically:
 
 1. **Keep the droplet path, document Vercel as a side-option in `/first-fork`.** Rejected: ADR-005 already chose this; the past two weeks of operator debugging showed that "documented alternative" doesn't help when the default path has 8 integration boundaries. The operator stays in the default path's mental model. Making PaaS the default is the only change that actually shifts behaviour.
 
-2. **DO App Platform + DO Managed Postgres.** A real candidate. Stays inside the operator's existing DO account. Rejected because (a) DO App Platform's build times are ~3-5 min on every push vs. Vercel's ~90s; (b) DO App Platform's preview-environment feature is less polished than Vercel's; (c) Vercel's Next.js-specific optimizations (image, ISR, edge) are valuable enough on their own; (d) cost difference (~$25/mo for DO App Platform + Managed Postgres vs. $0-19/mo for Vercel + Neon free/Launch) favors Vercel for the prototype-class use case.
+2. **DO App Platform + DO Managed Postgres.** A real candidate. Stays inside the operator's existing DO account. Rejected because (a) DO App Platform's build times are ~3-5 min on every push vs. Vercel's ~~90s; (b) DO App Platform's preview-environment feature is less polished than Vercel's; (c) Vercel's Next.js-specific optimizations (image, ISR, edge) are valuable enough on their own; (d) cost difference (~~$25/mo for DO App Platform + Managed Postgres vs. $0-19/mo for Vercel + Neon free/Launch) favors Vercel for the prototype-class use case.
 
 3. **Cloudflare Pages + Cloudflare D1 / Hyperdrive + R2.** Cheaper at scale. Rejected because (a) D1 is SQLite — Prisma 7 + Postgres invariants would require porting; (b) Cloudflare Workers' Node compat for Auth.js + Prisma is improving but still has rough edges; (c) the prototype rail's "no migration when project grows" property requires Postgres parity. Worth revisiting in 12 months.
 
@@ -100,6 +104,7 @@ Specifically:
 - The IT team requests that prototypes be authored on the same stack as production (whatever that turns out to be) to skip the `/handoff` translation step. Worth doing if it happens 3+ times.
 
 ## Related
+
 - ADR-001 — Template baseline (partially superseded: `output: "standalone"` dropped, GHCR / Portainer CI/CD line dropped, MinIO baseline dropped).
 - ADR-002 — Observability stack (unchanged; Sentry + optional uptime monitoring still apply; Better Uptime is optional via `/scale-up`).
 - ADR-003 — Release process (partially superseded: promote/rollback/release workflows replaced by Vercel native deploy + revert).

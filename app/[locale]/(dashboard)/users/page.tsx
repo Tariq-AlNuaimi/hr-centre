@@ -47,11 +47,7 @@ export default function UsersPage() {
   // invalidates the list so it refetches itself -- no manual fetch/setState.
   // Read failures toast via the QueryProvider's cache-level onError (the message
   // passed here), so we don't hand-roll an error effect per page.
-  const { data, isLoading } = useEntityList<UserRecord>(
-    "/api/users",
-    params,
-    t("loadFailed")
-  );
+  const { data, isLoading } = useEntityList<UserRecord>("/api/users", params, t("loadFailed"));
   const { remove } = useEntityMutations<UserRecord>("/api/users");
 
   const handleDelete = async (id: string) => {
@@ -108,11 +104,7 @@ export default function UsersPage() {
         }}
         onFilterChange={(filters) => {
           const roleFilter = filters.role;
-          setRole(
-            roleFilter && roleFilter.length > 0
-              ? String(roleFilter[0])
-              : undefined
-          );
+          setRole(roleFilter && roleFilter.length > 0 ? String(roleFilter[0]) : undefined);
           setPage(1);
         }}
         searchable

@@ -8,39 +8,43 @@
 //   npm run rebrand -- --slug acme-portal --name "Acme Portal" --owner acme-corp
 //                      [--owner-name "Jane Doe"] [--dry-run]
 
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
-import { parseArgs } from 'node:util';
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
 
 const ROOT = process.cwd();
 
 const { values } = parseArgs({
   options: {
-    slug: { type: 'string' },
-    name: { type: 'string' },
-    owner: { type: 'string' },
-    'owner-name': { type: 'string' },
-    'dry-run': { type: 'boolean', default: false },
+    slug: { type: "string" },
+    name: { type: "string" },
+    owner: { type: "string" },
+    "owner-name": { type: "string" },
+    "dry-run": { type: "boolean", default: false },
   },
   strict: true,
 });
 
 if (!values.slug || !values.name || !values.owner) {
-  console.error('ERROR: --slug, --name, --owner are all required.');
-  console.error('Usage: npm run rebrand -- --slug acme-portal --name "Acme Portal" --owner acme-corp');
+  console.error("ERROR: --slug, --name, --owner are all required.");
+  console.error(
+    'Usage: npm run rebrand -- --slug acme-portal --name "Acme Portal" --owner acme-corp',
+  );
   process.exit(1);
 }
 
 const SLUG = values.slug;
 if (!/^[a-z][a-z0-9-]*$/.test(SLUG)) {
-  console.error(`ERROR: --slug "${SLUG}" must be kebab-case (lowercase letters, digits, hyphens; starts with a letter).`);
+  console.error(
+    `ERROR: --slug "${SLUG}" must be kebab-case (lowercase letters, digits, hyphens; starts with a letter).`,
+  );
   process.exit(1);
 }
 
 const NAME = values.name;
 const OWNER = values.owner;
-const OWNER_NAME = values['owner-name'] ?? OWNER;
-const DRY = values['dry-run'];
+const OWNER_NAME = values["owner-name"] ?? OWNER;
+const DRY = values["dry-run"];
 
 // NOTE: The Vercel + Neon pivot (ADR-006) deleted the Docker/GHCR/Portainer
 // surface, so rebrand only touches the identity strings that still exist on the
@@ -48,28 +52,22 @@ const DRY = values['dry-run'];
 // headers. docker-compose.yml + Makefile carry no template-specific identity.
 const FILES = [
   {
-    path: 'package.json',
-    rules: [
-      { from: /"name": "fullstack-next-template"/, to: `"name": "${SLUG}"` },
-    ],
+    path: "package.json",
+    rules: [{ from: /"name": "fullstack-next-template"/, to: `"name": "${SLUG}"` }],
   },
   {
     // Clear the pristine-template marker: a rebranded repo is a fork, so it must
     // be gated by the ADR-031 db-structure check (scripts/ship.mjs). No-op if the
     // flag is already false/absent (absence already means "gated"). See ADR-031.
-    path: 'project.config.json',
-    rules: [
-      { from: /"pristine":\s*true/, to: '"pristine": false' },
-    ],
+    path: "project.config.json",
+    rules: [{ from: /"pristine":\s*true/, to: '"pristine": false' }],
   },
   {
-    path: '.env.example',
-    rules: [
-      { from: /NEXT_PUBLIC_APP_NAME="My App"/g, to: `NEXT_PUBLIC_APP_NAME="${NAME}"` },
-    ],
+    path: ".env.example",
+    rules: [{ from: /NEXT_PUBLIC_APP_NAME="My App"/g, to: `NEXT_PUBLIC_APP_NAME="${NAME}"` }],
   },
   {
-    path: 'CLAUDE.md',
+    path: "CLAUDE.md",
     rules: [
       {
         from: /^# CLAUDE\.md — Fullstack Next\.js Template \(Prototype Rail\)$/m,
@@ -83,7 +81,7 @@ const FILES = [
     ],
   },
   {
-    path: 'README.md',
+    path: "README.md",
     rules: [
       {
         from: /^# Fullstack Next\.js Template \(Prototype Rail\)$/m,
@@ -99,7 +97,7 @@ for (const file of FILES) {
   const path = join(ROOT, file.path);
   let src;
   try {
-    src = await readFile(path, 'utf8');
+    src = await readFile(path, "utf8");
   } catch (e) {
     console.warn(`SKIP ${file.path}: ${e && e.message ? e.message : String(e)}`);
     continue;
@@ -119,17 +117,21 @@ for (const file of FILES) {
 }
 
 if (diffs.length === 0) {
-  console.log('No changes -- template is already rebranded to these values, or no matching strings were found.');
+  console.log(
+    "No changes -- template is already rebranded to these values, or no matching strings were found.",
+  );
   process.exit(0);
 }
 
 if (DRY) {
-  console.log('--- DRY RUN ---');
+  console.log("--- DRY RUN ---");
   for (const d of diffs) {
-    console.log(`${d.path}: would apply ${d.changedRules} rule(s), delta = ${d.after.length - d.before.length} bytes`);
+    console.log(
+      `${d.path}: would apply ${d.changedRules} rule(s), delta = ${d.after.length - d.before.length} bytes`,
+    );
   }
-  console.log('');
-  console.log('Re-run without --dry-run to write.');
+  console.log("");
+  console.log("Re-run without --dry-run to write.");
   process.exit(0);
 }
 
@@ -138,7 +140,7 @@ for (const d of diffs) {
   console.log(`~ ${d.path} (${d.changedRules} rule(s))`);
 }
 
-console.log('');
-console.log('Rebrand complete. Next:');
+console.log("");
+console.log("Rebrand complete. Next:");
 console.log(`  git add -A && git commit -m "chore: rebrand to ${SLUG}"`);
-console.log('  /first-fork    # finish the bootstrap (Vercel + Neon, env vars, first deploy)');
+console.log("  /first-fork    # finish the bootstrap (Vercel + Neon, env vars, first deploy)");

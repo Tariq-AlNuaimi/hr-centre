@@ -12,6 +12,7 @@ replace `/deploy` — for a live URL, use `/deploy` (Vercel) first.
 
 Everything here wraps existing, committed infrastructure — there is nothing to
 install:
+
 - `Dockerfile` — multi-stage build → small standalone runtime image
 - `docker-compose.dev.yml` — full local stack (app + Postgres)
 - `Makefile` targets — `docker-build` / `docker-run` / `docker-up` / `docker-down`
@@ -20,12 +21,12 @@ install:
 
 ## When to use which target
 
-| Goal | Command | Notes |
-|------|---------|-------|
-| Build a deployable image | `make docker-build` | Tag override: `make docker-build IMAGE=myrepo/app:1.2.3` |
-| Run the built image | `make docker-run` | Runs against the `DATABASE_URL` in `.env`; secrets passed at runtime, never baked in |
-| Full local stack (app + Postgres) | `make docker-up` | Builds + starts via `docker-compose.dev.yml` |
-| Tear the stack down | `make docker-down` | |
+| Goal                              | Command             | Notes                                                                                |
+| --------------------------------- | ------------------- | ------------------------------------------------------------------------------------ |
+| Build a deployable image          | `make docker-build` | Tag override: `make docker-build IMAGE=myrepo/app:1.2.3`                             |
+| Run the built image               | `make docker-run`   | Runs against the `DATABASE_URL` in `.env`; secrets passed at runtime, never baked in |
+| Full local stack (app + Postgres) | `make docker-up`    | Builds + starts via `docker-compose.dev.yml`                                         |
+| Tear the stack down               | `make docker-down`  |                                                                                      |
 
 ## Procedure
 
@@ -33,8 +34,8 @@ install:
    Ask the operator what they actually want:
    - A **shippable image** to hand IT / push to a registry → build path.
    - A **local containerized run** to reproduce prod-like behavior → compose path.
-   If they really just want a shareable URL, redirect to `/deploy` — don't
-   containerize for that.
+     If they really just want a shareable URL, redirect to `/deploy` — don't
+     containerize for that.
 
 2. **Preflight.** Confirm Docker is available (`docker version`). If the daemon
    isn't running or `docker` isn't on PATH in this environment, say so plainly
@@ -73,6 +74,7 @@ install:
   runtime; don't add dev dependencies or build tooling to the runtime stage.
 
 ## Related
+
 - `/deploy` — the default live-URL path (Vercel + Neon). Prefer this for sharing.
 - `/scale-up` — the self-host rail is listed there as a growth option.
 - `/handoff` — wrap the image + run instructions into the IT handoff package.

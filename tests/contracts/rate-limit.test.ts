@@ -97,8 +97,14 @@ test("RATE_LIMIT_TRUSTED_IP_HEADER, when set, is trusted over x-real-ip / XFF", 
         },
       });
     // Keyed by cf-connecting-ip: different value -> different bucket.
-    assert.equal((await rateLimit(mk("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
-    assert.equal((await rateLimit(mk("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok, false);
+    assert.equal(
+      (await rateLimit(mk("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok,
+      true,
+    );
+    assert.equal(
+      (await rateLimit(mk("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok,
+      false,
+    );
     assert.equal(
       (await rateLimit(mk("198.51.100.2"), { id, limit: 1, windowMs: 60_000 })).ok,
       true,

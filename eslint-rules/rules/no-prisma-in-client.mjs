@@ -17,8 +17,7 @@ export default {
   meta: {
     type: "problem",
     docs: {
-      description:
-        "Prevent importing the Prisma client in files marked 'use client'.",
+      description: "Prevent importing the Prisma client in files marked 'use client'.",
     },
     messages: {
       noPrismaInClient:

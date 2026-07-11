@@ -1,11 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
-import {
-  discoverRoles,
-  discoverSectionAccess,
-  type SectionAccess,
-} from "./_discover";
+import { discoverRoles, discoverSectionAccess, type SectionAccess } from "./_discover";
 
 // P2 (Build B) — PER-ROLE PERMISSION MATRIX. FULL mode only (`*.full.uat.ts`).
 //
@@ -85,9 +81,7 @@ function recordCell(cell: MatrixCell): void {
       }
     }
     // Replace any prior cell for the same role×section (idempotent re-runs).
-    rows = rows.filter(
-      (r) => !(r.role === cell.role && r.section === cell.section),
-    );
+    rows = rows.filter((r) => !(r.role === cell.role && r.section === cell.section));
     rows.push(cell);
     fs.writeFileSync(MATRIX_FILE, JSON.stringify(rows, null, 2));
   } catch {
@@ -112,10 +106,7 @@ function recordCell(cell: MatrixCell): void {
 const FORBIDDEN_GRACE_MS = 4000;
 const FORBIDDEN_POLL_MS = 100;
 
-async function visitSection(
-  page: Page,
-  section: SectionAccess,
-): Promise<Outcome> {
+async function visitSection(page: Page, section: SectionAccess): Promise<Outcome> {
   let sawForbidden = false;
   const onResponse = (res: { url(): string; status(): number }) => {
     const u = res.url();
@@ -175,10 +166,7 @@ for (const role of ROLES) {
       test(`${role} -> ${section.name} ${tag} (expect ${reachExpected ? "reach" : "blocked"})`, async ({
         page,
       }, testInfo) => {
-        test.skip(
-          !hasAuthState(role),
-          `no storage state for ${role}; roles.setup skipped it`,
-        );
+        test.skip(!hasAuthState(role), `no storage state for ${role}; roles.setup skipped it`);
 
         const outcome = await visitSection(page, section);
         const reached = outcome === "reached";
@@ -203,10 +191,9 @@ for (const role of ROLES) {
 
         if (reachExpected) {
           // allRoles for everyone; adminOnly for ADMIN -> must REACH content.
-          expect(
-            reached,
-            `${role} should REACH ${section.name} (${tag}); got "${outcome}"`,
-          ).toBe(true);
+          expect(reached, `${role} should REACH ${section.name} (${tag}); got "${outcome}"`).toBe(
+            true,
+          );
         } else {
           // adminOnly for a non-admin -> must be BLOCKED: redirected away, bounced
           // to login, or forbidden on the data fetch. The one thing it must NOT do

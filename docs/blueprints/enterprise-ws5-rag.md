@@ -10,6 +10,7 @@ Scope: lib/ai/rag.ts, lib/ai/embeddings.ts
 > (2026-07-11 — embeddings seam). Decision of record: **ADR-043**.
 
 ## Problem & outcome
+
 ADR-036 landed the AI runtime but explicitly deferred RAG + embeddings. This
 increment adds the smallest maintained retrieval seam: a pluggable embeddings
 provider (`lib/ai/embeddings.ts`) and a thin pgvector store/query pair
@@ -19,6 +20,7 @@ rest of `lib/ai/*` it is a **silent no-op until configured** — no
 instead of half-initializing.
 
 ## Market scan
+
 - **Vector store:** pgvector (rides the mandatory Postgres — no new datastore) vs.
   Pinecone/Weaviate/Qdrant (SaaS/self-host infra). Chose pgvector: Neon supports
   the `vector` extension; zero new infrastructure; matches the "no new datastore"
@@ -30,6 +32,7 @@ instead of half-initializing.
   opinionated chunking/store abstractions we don't need for a seam).
 
 ## User stories
+
 - As a fork operator, I set `EMBEDDINGS_PROVIDER=voyage` + `EMBEDDINGS_API_KEY`, run
   the migration, and `ragUpsert(ns, id, text)` / `ragQuery(ns, q, k)` work — no code
   change to switch provider or endpoint.
@@ -37,6 +40,7 @@ instead of half-initializing.
   dead checklist — the seam is inert until configured.
 
 ## Scenarios
+
 - **Happy:** provider configured + table applied → upsert embeds & stores; query
   embeds & returns top-k by cosine distance ascending.
 - **Worst / unconfigured:** no key → `isEmbeddingsConfigured()` false;
@@ -47,6 +51,7 @@ instead of half-initializing.
   `vector(1536)` column → INSERT fails loud (documented, not silent).
 
 ## Architecture sketch
+
 `EmbeddingsProvider { embed(texts):Promise<number[][]>; dimensions }` factory
 selects voyage|cohere|none by env at call time. `lib/ai/rag.ts` embeds via that
 provider and reads/writes the raw `document_embedding` pgvector table through the
@@ -56,6 +61,7 @@ Traced with `withSpan`. The table is SQL-only (not a Prisma model) to avoid
 `Unsupported("vector(1536)")` risk in `prisma generate`.
 
 ## Tier & open questions
+
 - Tier: personal (this repo); seam is shared-safe (security floor honored: zod-free
   because no HTTP boundary here; the consuming route adds zod).
 - **UNVERIFIED (open):** no pgvector DB + no embeddings egress in-session, so the

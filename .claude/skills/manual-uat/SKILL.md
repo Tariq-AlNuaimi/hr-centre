@@ -18,7 +18,7 @@ It does **two tracks for every flow**:
 - **Worst path** — the adversarial journey: empty/invalid/oversized/boundary
   input, wrong types, duplicate keys, XSS-ish strings, double-submits, the back
   button mid-flow, **and unauthorized access** (a role reaching for something it
-  must not). The app must fail *safely and legibly* — a zod message at the
+  must not). The app must fail _safely and legibly_ — a zod message at the
   boundary, a 403, a guard redirect — never a stack trace, a silent success, or a
   green toast over a real failure.
 
@@ -29,20 +29,20 @@ back as a prioritized report; fixes are a follow-up.
 > (`docs/uat-rubric.md`), run by `/qa` after design QA and `/ship`. The operator
 > signs off. It is **not** a security pentest (`/audit` + the planned `/vapt` own
 > that) — but the worst-path + RBAC tracks deliberately probe the authz boundary
-> from the *outside*, which canned UAT does not.
+> from the _outside_, which canned UAT does not.
 
 ## Why it's different from `/uat`
 
-| | `/uat` | `/manual-uat` |
-|---|---|---|
-| Driver | canned Playwright specs | **the agent, live, via Playwright MCP** |
-| Input | a generic form-filler | **real, hand-chosen values incl. adversarial ones** |
-| Judgment | assertions only | **human-style UI/UX critique + user-story sense-making** |
-| RBAC | section-reach matrix (Build B) | **live behavior diffed against the code-derived matrix, both tracks** |
-| Output | HTML + PDF evidence pack | **prioritized findings report (`uat-results/manual-uat-report.md`)** |
+|          | `/uat`                         | `/manual-uat`                                                         |
+| -------- | ------------------------------ | --------------------------------------------------------------------- |
+| Driver   | canned Playwright specs        | **the agent, live, via Playwright MCP**                               |
+| Input    | a generic form-filler          | **real, hand-chosen values incl. adversarial ones**                   |
+| Judgment | assertions only                | **human-style UI/UX critique + user-story sense-making**              |
+| RBAC     | section-reach matrix (Build B) | **live behavior diffed against the code-derived matrix, both tracks** |
+| Output   | HTML + PDF evidence pack       | **prioritized findings report (`uat-results/manual-uat-report.md`)**  |
 
 Use `/uat` for the repeatable regression evidence; use `/manual-uat` to actually
-*feel* the app and catch what canned specs can't (confusing copy, dead controls,
+_feel_ the app and catch what canned specs can't (confusing copy, dead controls,
 mislabeled errors, a VIEWER who can see a button they can't use, an EDITOR who can
 hit an admin API directly).
 
@@ -82,7 +82,7 @@ This statically parses the code and writes the **expected** permission matrix to
 `uat-results/rbac-expected.json` (plus a printed table). It auto-detects which of
 **two authorization models** the fork uses, so the same command works everywhere:
 
-- **Tier model** (the template default) — the wrapper *is* the gate: `withAdminAuth`
+- **Tier model** (the template default) — the wrapper _is_ the gate: `withAdminAuth`
   → ADMIN, `withEditorAuth` → ADMIN+EDITOR (or the fork's `WRITE_ROLES`), `withAuth`
   → any authed, `withApiAuth`/`withInternalAuth` → machine.
 - **Capability model** (forks like rihal-staffing-suite) — `withCapabilityAuth("<cap>")`
@@ -95,13 +95,14 @@ the public allowlist (report immediately; likely a real bug), an unknown/typo'd
 capability, or a runtime-computed capability the static pass can't resolve.
 
 ### Step 0b — reconcile against LIVE permissions (capability model only)
+
 For the capability model, **`rbac-expected.json` is canonical, NOT live.** If the
 app has an admin-editable permissions table (`role_permissions`, resolved in
 `lib/permissions.ts`), an admin can grant/revoke at runtime, so the running app
 legitimately differs from the code defaults. **Before judging anything an
 escalation, fetch the live grants** — `GET /api/admin/permissions` (the app's
 admin-permissions endpoint) as ADMIN, or read the `role_permissions` table — and treat
-THAT as the benchmark. A role reaching a capability the *live* table grants is correct
+THAT as the benchmark. A role reaching a capability the _live_ table grants is correct
 config, not a bug; only a divergence from **live** grants is a finding. (Skipping this
 step turns every admin permission edit into a false P0 — the canonical matrix alone will
 lie on any app whose permissions have been tuned.)
@@ -113,13 +114,13 @@ live-grants column in the report, a stale canonical matrix can silently hide per
 drift, so the reconciliation must be visible, not implicit.
 
 This reconciled matrix is the source of truth. The live walkthrough's job is to
-find every place the **running app disagrees with it** — in *either* direction:
+find every place the **running app disagrees with it** — in _either_ direction:
 
 - **Under-enforced (P0):** a role reaches something the (reconciled) matrix says it
   must not (privilege escalation / missing guard). The worst case.
 - **Over-enforced (P1):** a role is blocked from something the matrix grants
   (broken feature / the user story can't be completed). Note that a route whose
-  wrapper is `withAuth` but which gates *internally* on a capability/scope will read
+  wrapper is `withAuth` but which gates _internally_ on a capability/scope will read
   as "any authed" in the static matrix yet correctly 403 some roles live — confirm
   against the handler before filing it.
 
@@ -173,7 +174,7 @@ their own roster, e.g. admin → pmo_manager → … → sales), via the Playwri
    no more (a visible link to a forbidden section is a finding even if the click is
    blocked: it's a confusing dead end).
 
-2. **Happy path per user story.** For each thing this role is *supposed* to do,
+2. **Happy path per user story.** For each thing this role is _supposed_ to do,
    actually do it with realistic data:
    - Create → confirm it appears in the list → edit → (soft-)delete → confirm it's
      gone (and recoverable in the recycling bin where applicable).
@@ -198,9 +199,9 @@ their own roster, e.g. admin → pmo_manager → … → sales), via the Playwri
        failure.
      - **Direct API call** — hit the route's API directly (e.g. POST to an admin-only
        route). **Success criterion: 401 or 403.**
-     A **2xx (a 200) on either probe is a P0 privilege escalation** — the worst case.
-     Testing only the UI misses the API; this is what catches an EDITOR hitting an admin
-     API the sidebar merely hides.
+       A **2xx (a 200) on either probe is a P0 privilege escalation** — the worst case.
+       Testing only the UI misses the API; this is what catches an EDITOR hitting an admin
+       API the sidebar merely hides.
 
 4. **Record as you go** (don't rely on memory): for every step, capture
    role · flow · track (happy/worst) · expected · actual · screenshot · verdict ·
@@ -217,8 +218,8 @@ Single-role checks miss the interesting bugs. Explicitly test how roles interact
 - **Hand-offs.** ADMIN changes another user's role → does that user's access
   change as the matrix predicts on their next action? ADMIN soft-deletes a record →
   does it vanish for everyone and sit in the (admin-only) recycling bin?
-- **User-story completeness.** For each stated user story, can the *intended* role
-  complete it end-to-end, and is every *other* role correctly unable to? Frame each
+- **User-story completeness.** For each stated user story, can the _intended_ role
+  complete it end-to-end, and is every _other_ role correctly unable to? Frame each
   finding as "as a `<role>` I could/couldn't `<story>`, expected `<matrix says>`."
 
 ## Step 4 — monitor the actions (audit + console)
@@ -313,7 +314,7 @@ test("<entity> — create (happy) then reject empty (worst)", async ({ page }) =
   const marker = `UAT-${Date.now()}`;
   // happy: create with valid data
   await page.goto("/en/<entity>/new", { waitUntil: "networkidle" });
-  await page.locator('form input:visible').first().fill(marker);
+  await page.locator("form input:visible").first().fill(marker);
   await page.locator('[role="combobox"]').first().click();
   await page.locator('[role="option"]').first().click();
   await page.locator('form button[type="submit"]').first().click();

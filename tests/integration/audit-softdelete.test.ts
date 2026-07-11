@@ -52,7 +52,7 @@ try {
   console.warn(
     `[audit-softdelete.test] DB unreachable -- skipping all cases: ${
       (err as Error)?.message ?? err
-    }`
+    }`,
   );
 }
 
@@ -91,30 +91,34 @@ after(async () => {
   }
 });
 
-test("CREATE writes one audit row with ip / ua / userId attribution", { skip: !dbReachable }, async () => {
-  await withAuditContext(CTX, async () => {
-    const user = await prisma.user.create({
-      data: { email: email("create"), name: "Create Case", passwordHash: "hash-create" },
-    });
-    createdUserIds.push(user.id);
+test(
+  "CREATE writes one audit row with ip / ua / userId attribution",
+  { skip: !dbReachable },
+  async () => {
+    await withAuditContext(CTX, async () => {
+      const user = await prisma.user.create({
+        data: { email: email("create"), name: "Create Case", passwordHash: "hash-create" },
+      });
+      createdUserIds.push(user.id);
 
-    const rows = await prismaUnfiltered.auditLog.findMany({
-      where: { entityType: "User", entityId: user.id, action: "CREATE" },
-    });
-    assert.equal(rows.length, 1, "exactly one CREATE audit row");
-    const row = rows[0];
-    assert.equal(row.ipAddress, CTX.ipAddress, "ip attributed");
-    assert.equal(row.userAgent, CTX.userAgent, "user-agent attributed");
-    assert.equal(row.userId, CTX.userId, "userId attributed");
-    assert.ok(CTX.userId, "actor seeded (non-null userId)");
+      const rows = await prismaUnfiltered.auditLog.findMany({
+        where: { entityType: "User", entityId: user.id, action: "CREATE" },
+      });
+      assert.equal(rows.length, 1, "exactly one CREATE audit row");
+      const row = rows[0];
+      assert.equal(row.ipAddress, CTX.ipAddress, "ip attributed");
+      assert.equal(row.userAgent, CTX.userAgent, "user-agent attributed");
+      assert.equal(row.userId, CTX.userId, "userId attributed");
+      assert.ok(CTX.userId, "actor seeded (non-null userId)");
 
-    // passwordHash must be scrubbed in the CREATE snapshot.
-    const afterSnap = row.after as Record<string, unknown> | null;
-    assert.ok(afterSnap, "after snapshot present");
-    assert.equal(afterSnap!.passwordHash, "[redacted]", "passwordHash scrubbed in CREATE.after");
-    assert.equal(afterSnap!.email, email("create"), "non-restricted field kept verbatim");
-  });
-});
+      // passwordHash must be scrubbed in the CREATE snapshot.
+      const afterSnap = row.after as Record<string, unknown> | null;
+      assert.ok(afterSnap, "after snapshot present");
+      assert.equal(afterSnap!.passwordHash, "[redacted]", "passwordHash scrubbed in CREATE.after");
+      assert.equal(afterSnap!.email, email("create"), "non-restricted field kept verbatim");
+    });
+  },
+);
 
 test(
   "soft-delete (prisma.user.delete) writes a DELETE audit row, sets deletedBy, scrubs passwordHash",
@@ -153,10 +157,10 @@ test(
       assert.equal(
         beforeSnap!.passwordHash,
         "[redacted]",
-        "passwordHash scrubbed in DELETE.before"
+        "passwordHash scrubbed in DELETE.before",
       );
     });
-  }
+  },
 );
 
 test(
@@ -205,13 +209,13 @@ test(
       assert.equal(
         await filteredCount(),
         filteredBefore,
-        "groupBy(prisma) excludes the soft-deleted EDITOR (extension filtered)"
+        "groupBy(prisma) excludes the soft-deleted EDITOR (extension filtered)",
       );
       assert.equal(
         await unfilteredCount(),
         unfilteredBefore + 1,
-        "groupBy(prismaUnfiltered) still counts it -- the row is physically present"
+        "groupBy(prismaUnfiltered) still counts it -- the row is physically present",
       );
     });
-  }
+  },
 );

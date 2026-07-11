@@ -60,11 +60,13 @@ Modeling the nouns and their relationships first is what stops a mid-scaffold
 ## Examples
 
 Minimal scalar:
+
 ```
 npm run scaffold -- --name Project --fields 'name:string,description:text?'
 ```
 
 Full task-management slice:
+
 ```
 npm run scaffold -- --name Task \
   --fields 'title:string,dueAt:date?' \
@@ -73,6 +75,7 @@ npm run scaffold -- --name Task \
 ```
 
 HR record with required project ownership, admin-only writes:
+
 ```
 npm run scaffold -- --name Employee \
   --fields 'fullName:string,joinDate:date' \
@@ -83,6 +86,7 @@ npm run scaffold -- --name Employee \
 ```
 
 Editor-writable entity (ADMIN or EDITOR can write; VIEWER is read-only):
+
 ```
 npm run scaffold -- --name Article \
   --fields 'title:string,body:text' \
@@ -98,7 +102,7 @@ npm run scaffold -- --name Article \
    - Merge that namespace into **`messages/en.json`** (keep the English values).
    - Merge it into **`messages/ar.json`** as well, **translating** the values to Arabic (the companion seeds Arabic with the English text as a placeholder).
    - **Delete `messages/_scaffold-<kebab>.json`** once merged.
-   Until you merge, the UI renders the **raw key strings** (e.g. `title`, `createdAt`, `save`) instead of labels. This step is required for the entity to be usable.
+     Until you merge, the UI renders the **raw key strings** (e.g. `title`, `createdAt`, `save`) instead of labels. This step is required for the entity to be usable.
 5. Suggest `/ship` or rely on CI to verify typecheck + lint + build pass.
 
 ## What gets generated
@@ -121,6 +125,7 @@ npm run scaffold -- --name Article \
   > with an `emptyText`, vertical Form, the state triad). When you **customize**
   > them, stay on-pattern: use `/design-system` + `docs/design-recipes.md`, don't
   > hand-roll new layout — that's how a clean scaffold drifts into slop.
+
 - `messages/_scaffold-<kebab>.json` -- i18n companion holding the entity's `<entityCamel>s` namespace (field/enum/relation labels + fixed UI strings). **Must be merged into `messages/en.json` + `messages/ar.json` and then deleted** (see "After scaffolding" step 4). The generated UI uses these i18n keys, **not** the field names directly.
 
 ## What gets patched

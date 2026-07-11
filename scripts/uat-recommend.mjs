@@ -125,12 +125,16 @@ function staticFindings(base) {
           const key = `${rel}:${i + 1}`;
           if (seen.has(key)) return;
           seen.add(key);
-          recs.push(rec(m.priority, "code",
-            `${m.label} in ${path.basename(rel)}`,
-            line.trim().slice(0, 160),
-            [`${rel}:${i + 1}`],
-            "static",
-          ));
+          recs.push(
+            rec(
+              m.priority,
+              "code",
+              `${m.label} in ${path.basename(rel)}`,
+              line.trim().slice(0, 160),
+              [`${rel}:${i + 1}`],
+              "static",
+            ),
+          );
           return;
         }
       }
@@ -146,11 +150,15 @@ function failedSpecFindings(results) {
   const visit = (suite) => {
     for (const spec of suite.specs ?? []) {
       if (spec.ok === false) {
-        recs.push(rec("P0", "flow",
-          `Failing UAT flow: ${spec.title}`,
-          "A browser-driven flow failed; the app does not behave as expected here.",
-          [spec.file ?? suite.file ?? "(unknown spec file)"],
-        ));
+        recs.push(
+          rec(
+            "P0",
+            "flow",
+            `Failing UAT flow: ${spec.title}`,
+            "A browser-driven flow failed; the app does not behave as expected here.",
+            [spec.file ?? suite.file ?? "(unknown spec file)"],
+          ),
+        );
       }
     }
     for (const child of suite.suites ?? []) visit(child);
@@ -166,13 +174,17 @@ function matrixFindings(matrix) {
   for (const c of matrix) {
     if (c.ok === false) {
       const reachedButShouldNot = c.reached && !c.expectedReach;
-      recs.push(rec("P0", "authorization",
-        reachedButShouldNot
-          ? `Authorization gap: ${c.role} reached admin-only "${c.section}"`
-          : `Access regression: ${c.role} was blocked from "${c.section}" it should reach`,
-        `Expected ${c.expectedReach ? "reach" : "blocked"}, observed outcome "${c.outcome}". Derived from the app's own sidebar gating.`,
-        [`section ${c.section} (${c.sectionPath})`, `role ${c.role}`],
-      ));
+      recs.push(
+        rec(
+          "P0",
+          "authorization",
+          reachedButShouldNot
+            ? `Authorization gap: ${c.role} reached admin-only "${c.section}"`
+            : `Access regression: ${c.role} was blocked from "${c.section}" it should reach`,
+          `Expected ${c.expectedReach ? "reach" : "blocked"}, observed outcome "${c.outcome}". Derived from the app's own sidebar gating.`,
+          [`section ${c.section} (${c.sectionPath})`, `role ${c.role}`],
+        ),
+      );
     }
   }
   return recs;
@@ -185,33 +197,37 @@ function crudFindings(journeys) {
   for (const j of journeys) {
     for (const p of j.phases ?? []) {
       if (p.status === "failed") {
-        recs.push(rec("P0", "crud",
-          `CRUD "${p.phase}" failed for ${j.entity}`,
-          p.detail ?? "",
-          [`entity ${j.entity} (${j.listPath})`],
-        ));
+        recs.push(
+          rec("P0", "crud", `CRUD "${p.phase}" failed for ${j.entity}`, p.detail ?? "", [
+            `entity ${j.entity} (${j.listPath})`,
+          ]),
+        );
       } else if (p.status === "skipped") {
-        recs.push(rec("P1", "crud",
-          `CRUD "${p.phase}" could not be exercised for ${j.entity}`,
-          (p.detail ?? "").slice(0, 160) ||
-            "The step was skipped — the form/flow may be non-standard.",
-          [`entity ${j.entity} (${j.listPath})`],
-        ));
+        recs.push(
+          rec(
+            "P1",
+            "crud",
+            `CRUD "${p.phase}" could not be exercised for ${j.entity}`,
+            (p.detail ?? "").slice(0, 160) ||
+              "The step was skipped — the form/flow may be non-standard.",
+            [`entity ${j.entity} (${j.listPath})`],
+          ),
+        );
       }
     }
     for (const e of j.pageErrors ?? []) {
-      recs.push(rec("P0", "runtime",
-        `Runtime error on the ${j.entity} create/edit form`,
-        e.slice(0, 160),
-        [`entity ${j.entity} (${j.listPath})`],
-      ));
+      recs.push(
+        rec("P0", "runtime", `Runtime error on the ${j.entity} create/edit form`, e.slice(0, 160), [
+          `entity ${j.entity} (${j.listPath})`,
+        ]),
+      );
     }
     for (const e of j.consoleErrors ?? []) {
-      recs.push(rec("P2", "console",
-        `Console error on the ${j.entity} form`,
-        e.slice(0, 160),
-        [`entity ${j.entity} (${j.listPath})`],
-      ));
+      recs.push(
+        rec("P2", "console", `Console error on the ${j.entity} form`, e.slice(0, 160), [
+          `entity ${j.entity} (${j.listPath})`,
+        ]),
+      );
     }
   }
   return recs;
@@ -223,32 +239,48 @@ function uiuxFindings(findings) {
   if (!Array.isArray(findings)) return recs;
   for (const f of findings) {
     if (f.pageErrors > 0) {
-      recs.push(rec("P0", "runtime",
-        `Uncaught runtime error on "${f.section}"`,
-        `${f.pageErrors} uncaught error(s) while loading the screen.`,
-        [`${f.section} (${f.path})`],
-      ));
+      recs.push(
+        rec(
+          "P0",
+          "runtime",
+          `Uncaught runtime error on "${f.section}"`,
+          `${f.pageErrors} uncaught error(s) while loading the screen.`,
+          [`${f.section} (${f.path})`],
+        ),
+      );
     }
     if (f.headingOk === false) {
-      recs.push(rec("P1", "ux",
-        `"${f.section}" renders no heading (possible blank shell)`,
-        "The screen may be failing to render its content / hitting an error boundary.",
-        [`${f.section} (${f.path})`],
-      ));
+      recs.push(
+        rec(
+          "P1",
+          "ux",
+          `"${f.section}" renders no heading (possible blank shell)`,
+          "The screen may be failing to render its content / hitting an error boundary.",
+          [`${f.section} (${f.path})`],
+        ),
+      );
     }
     if (f.rtlOk === false) {
-      recs.push(rec("P1", "i18n",
-        `RTL regression on "${f.section}" (ar variant did not flip dir)`,
-        "The Arabic locale should render right-to-left; this screen did not.",
-        [`${f.section} (${f.path})`],
-      ));
+      recs.push(
+        rec(
+          "P1",
+          "i18n",
+          `RTL regression on "${f.section}" (ar variant did not flip dir)`,
+          "The Arabic locale should render right-to-left; this screen did not.",
+          [`${f.section} (${f.path})`],
+        ),
+      );
     }
     if (f.consoleErrors > 0) {
-      recs.push(rec("P2", "console",
-        `Console error(s) on "${f.section}"`,
-        `${f.consoleErrors} console error(s) — triage for library warnings vs real defects.`,
-        [`${f.section} (${f.path})`],
-      ));
+      recs.push(
+        rec(
+          "P2",
+          "console",
+          `Console error(s) on "${f.section}"`,
+          `${f.consoleErrors} console error(s) — triage for library warnings vs real defects.`,
+          [`${f.section} (${f.path})`],
+        ),
+      );
     }
   }
   return recs;
@@ -275,8 +307,7 @@ export function synthesizeRecommendations(root = ROOT) {
 
   const rank = { P0: 0, P1: 1, P2: 2 };
   items.sort((a, b) => {
-    if (rank[a.priority] !== rank[b.priority])
-      return rank[a.priority] - rank[b.priority];
+    if (rank[a.priority] !== rank[b.priority]) return rank[a.priority] - rank[b.priority];
     if (a.source !== b.source) return a.source === "uat" ? -1 : 1;
     return a.title.localeCompare(b.title);
   });

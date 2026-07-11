@@ -77,14 +77,14 @@ git add project.config.json && git commit --amend --no-edit && git push --force-
 
 In the Vercel project → **Settings → Environment Variables**, add:
 
-| Name | Value | Environments |
-|---|---|---|
-| `DATABASE_URL` | the Neon **pooled** connection string from step 2 | Production, Preview, Development |
-| `AUTH_SECRET` | `openssl rand -base64 32` output | Production, Preview, Development |
-| `AUTH_URL` | leave empty — Vercel sets it automatically | — |
-| `NEXT_PUBLIC_APP_NAME` | your app's display name | Production, Preview, Development |
-| `SEED_ADMIN_EMAIL` | your email | Production |
-| `SEED_ADMIN_PASSWORD` | a strong password (rotate after first login) | Production |
+| Name                   | Value                                             | Environments                     |
+| ---------------------- | ------------------------------------------------- | -------------------------------- |
+| `DATABASE_URL`         | the Neon **pooled** connection string from step 2 | Production, Preview, Development |
+| `AUTH_SECRET`          | `openssl rand -base64 32` output                  | Production, Preview, Development |
+| `AUTH_URL`             | leave empty — Vercel sets it automatically        | —                                |
+| `NEXT_PUBLIC_APP_NAME` | your app's display name                           | Production, Preview, Development |
+| `SEED_ADMIN_EMAIL`     | your email                                        | Production                       |
+| `SEED_ADMIN_PASSWORD`  | a strong password (rotate after first login)      | Production                       |
 
 Then **Deployments → Redeploy** the latest deployment.
 
@@ -124,6 +124,7 @@ branch creates a fresh preview URL automatically.
 4. Open the URL in ~90s. The change is live.
 
 If this works, the rail is set up. From here:
+
 - Use `/scaffold-entity` to add CRUD entities.
 - Use `/ship` before every push to catch typecheck / lint / build errors locally.
 - When the project gets complex (cron, file uploads, background jobs), use
@@ -166,6 +167,7 @@ after `/handoff`. The rail's job is to get you to "approved" fast.
 ## Report back
 
 When done, the operator should be able to confirm:
+
 - Vercel project URL (production).
 - Neon project URL (database dashboard).
 - First seeded admin email + (rotated) password.

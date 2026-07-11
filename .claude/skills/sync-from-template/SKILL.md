@@ -35,7 +35,7 @@ Backed by `scripts/sync-from-template.mjs`.
   `i18n/`, `project.config.json`, package identity, `.env*`, `public/`.
 
 > **Hook wiring trap (why a hook can be "template-only").** `.claude/hooks` is
-> OWNED (auto-pulled) but `.claude/settings.json` — which *wires* each hook to its
+> OWNED (auto-pulled) but `.claude/settings.json` — which _wires_ each hook to its
 > event (`SessionStart`/`UserPromptSubmit`/`Stop`/`PreCompact`) — is a REVIEW layer.
 > So a fork that pulls a NEW or changed hook script but skips the `settings.json`
 > diff ends up with the script on disk and **no event binding → the hook never
@@ -44,6 +44,7 @@ Backed by `scripts/sync-from-template.mjs`.
 > reconcile the `settings.json` `hooks` block** from `.template-sync-review.diff`
 > and confirm every shipped hook is bound. (A self-check: the hook scripts present
 > under `.claude/hooks/` should each have a matching command in `settings.json`.)
+
 - Writes **`.template-sync.json`** (committed) recording the template commit the
   fork is now based on — the version marker.
 
@@ -72,7 +73,7 @@ hook or CI step later.
 2. Merge the mixed files by hand from `.template-sync-review.diff`. Treat the
    Ask-before files (`lib/api-helpers.ts`, `lib/rate-limit.ts`, `lib/email.ts`,
    `lib/export.ts`, anything under `lib/prisma/`, `middleware.ts`) as
-   stop-and-think: only port the template's *improvement*, keep the fork's logic.
+   stop-and-think: only port the template's _improvement_, keep the fork's logic.
 3. If anything under auth / `lib` / schemas / API routes changed, run
    `/code-review`. **If the REVIEW diff is large or conflicting** (many
    `lib/` / `CLAUDE.md` / Ask-before hunks, or hunks that clash with the fork's
@@ -87,7 +88,7 @@ hook or CI step later.
 
 - **Clean tree required** for an apply — the script refuses on a dirty tree so the
   sync lands as its own reviewable commit. `--check` / `--dry-run` always run.
-- **Additive, not a mirror.** A file the template *deleted* is not removed from
+- **Additive, not a mirror.** A file the template _deleted_ is not removed from
   the fork; this skill brings in updates/additions, it does not prune. Intentional
   — pruning would risk deleting fork features.
 - **Private template:** `git fetch` uses your existing git credentials; ensure
@@ -100,8 +101,8 @@ hook or CI step later.
   `.template-sync-review.diff` — a hook calling into a not-yet-merged helper. Land
   the `lib/` half first, or stage them together, and `npm run ship` before
   committing so the mismatch surfaces.
-- This skill ships in the template, so every *future* fork inherits it. To seed it
-  into an *existing* fork, copy `scripts/sync-from-template.mjs` +
+- This skill ships in the template, so every _future_ fork inherits it. To seed it
+  into an _existing_ fork, copy `scripts/sync-from-template.mjs` +
   `.claude/skills/sync-from-template/` over once, or run the manual recipe in the
   "What it does" list, then use the skill from then on.
 

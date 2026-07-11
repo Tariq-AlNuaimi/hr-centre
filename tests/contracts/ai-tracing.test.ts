@@ -80,7 +80,8 @@ test("setAiRequestAttributes applies defaults (system=anthropic, operation=chat)
 
 test("setAiRequestAttributes sets model, maxTokens, custom fields + extra attributes", () => {
   const span = fakeSpan();
-  setAiRequestAttributes(span as any, { // eslint-disable-line @typescript-eslint/no-explicit-any
+  setAiRequestAttributes(span as any, {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     model: "claude-opus-4-8",
     operation: "tool_use",
     system: "gateway",
@@ -106,7 +107,8 @@ test("setAiResponseAttributes ignores non-object / null results", () => {
 
 test("setAiResponseAttributes reads model, finish reason, and token usage", () => {
   const span = fakeSpan();
-  setAiResponseAttributes(span as any, { // eslint-disable-line @typescript-eslint/no-explicit-any
+  setAiResponseAttributes(span as any, {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     model: "claude-opus-4-8",
     stop_reason: "end_turn",
     usage: { input_tokens: 12, output_tokens: 34 },

@@ -37,6 +37,7 @@ No new dependency (the provider ships with `next-auth`). **No DB migration:**
 tokens persisted in `Account` are already covered by `SCRUB_FIELDS`.
 
 ### Security decisions baked in
+
 - **Least privilege:** new SSO users get `VIEWER` (`mapSsoRole` default). An admin
   promotes them in-app. A misconfigured IdP cannot mint an ADMIN. Group/role-claim
   auto-mapping is a documented, opt-in extension a trusting fork can add.

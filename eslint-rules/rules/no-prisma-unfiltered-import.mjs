@@ -68,7 +68,7 @@ function isAllowedFile(filename) {
   if (!filename) return false;
   const normalized = filename.replace(/\\/g, "/");
   return ALLOWED_PATH_FRAGMENTS.some((frag) =>
-    frag.endsWith("/") ? normalized.includes(frag) : normalized.endsWith(frag)
+    frag.endsWith("/") ? normalized.includes(frag) : normalized.endsWith(frag),
   );
 }
 

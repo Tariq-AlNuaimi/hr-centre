@@ -39,12 +39,7 @@ const PRISMA_ROOTS = new Set(["prisma", "prismaUnfiltered"]);
 
 // camelCase accessors for the models in the audit extension's EXCLUDE set.
 // Bulk writes on these are not audited by design, so they're allowed.
-const EXCLUDED_ACCESSORS = new Set([
-  "auditLog",
-  "account",
-  "session",
-  "verificationToken",
-]);
+const EXCLUDED_ACCESSORS = new Set(["auditLog", "account", "session", "verificationToken"]);
 
 // Unwrap TS type-assertion / non-null wrappers so `(prisma as any).user...`
 // and `prisma!.user...` are still recognized as rooted at `prisma`.
@@ -143,8 +138,7 @@ export default {
         ) {
           const cb = node.arguments[0];
           if (
-            (cb.type === "ArrowFunctionExpression" ||
-              cb.type === "FunctionExpression") &&
+            (cb.type === "ArrowFunctionExpression" || cb.type === "FunctionExpression") &&
             cb.params[0] &&
             cb.params[0].type === "Identifier"
           ) {

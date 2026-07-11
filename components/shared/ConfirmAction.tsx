@@ -52,9 +52,7 @@ export function ConfirmAction({
           <DialogTitle>{title ?? t("confirm")}</DialogTitle>
         </DialogHeader>
         {description ? (
-          <p className="text-sm text-muted-foreground">
-            {description as React.ReactNode}
-          </p>
+          <p className="text-sm text-muted-foreground">{description as React.ReactNode}</p>
         ) : null}
         <DialogFooter>
           <DialogClose asChild>

@@ -29,10 +29,7 @@ const okHandler = async () => NextResponse.json({ data: "ok" });
 // mock.module must be called as a method of `mock` (it is bound to internal
 // state via `this`); extracting it to a const and calling it unbound throws.
 const mockApi = mock as unknown as {
-  module?: (
-    specifier: string,
-    options: { namedExports: Record<string, unknown> }
-  ) => unknown;
+  module?: (specifier: string, options: { namedExports: Record<string, unknown> }) => unknown;
 };
 const canMock = typeof mockApi.module === "function";
 
@@ -127,7 +124,7 @@ test("withInternalAuth accepts Authorization: Bearer when the route opts in (Ver
         called = true;
         return NextResponse.json({ data: "ran" });
       },
-      { bearer: true }
+      { bearer: true },
     );
     const req = new NextRequest("http://localhost/api/internal/x", {
       headers: { authorization: "Bearer s3cret-token-value" },
@@ -194,7 +191,7 @@ test("withInternalAuth with skipWhenUnconfigured returns 200 {skipped:true} when
         called = true;
         return NextResponse.json({ data: "ran" });
       },
-      { skipWhenUnconfigured: true }
+      { skipWhenUnconfigured: true },
     );
     const res = await handler(new NextRequest("http://localhost/api/internal/x"), ctx);
     assert.equal(res.status, 200);
@@ -233,7 +230,7 @@ test("withApiAuth returns 503 when the token env var is unset", async () => {
   await withApiEnv(undefined, async () => {
     const res = await helpers.withApiAuth(API_ENV, okHandler)(
       new NextRequest("http://localhost/api/v1/x"),
-      ctx
+      ctx,
     );
     assert.equal(res.status, 503);
   });
@@ -243,14 +240,14 @@ test("withApiAuth returns 401 when the Bearer header is missing or malformed", a
   await withApiEnv("api-key-value", async () => {
     const noHeader = await helpers.withApiAuth(API_ENV, okHandler)(
       new NextRequest("http://localhost/api/v1/x"),
-      ctx
+      ctx,
     );
     assert.equal(noHeader.status, 401);
     const malformed = await helpers.withApiAuth(API_ENV, okHandler)(
       new NextRequest("http://localhost/api/v1/x", {
         headers: { authorization: "api-key-value" }, // missing "Bearer "
       }),
-      ctx
+      ctx,
     );
     assert.equal(malformed.status, 401);
   });
@@ -262,7 +259,7 @@ test("withApiAuth returns 401 when the Bearer token does not match", async () =>
       new NextRequest("http://localhost/api/v1/x", {
         headers: { authorization: "Bearer wrong" },
       }),
-      ctx
+      ctx,
     );
     assert.equal(res.status, 401);
   });
@@ -279,7 +276,7 @@ test("withApiAuth passes through on a matching Bearer token", async () => {
       new NextRequest("http://localhost/api/v1/x", {
         headers: { authorization: "Bearer api-key-value" },
       }),
-      ctx
+      ctx,
     );
     assert.equal(res.status, 200);
     assert.equal(called, true);
@@ -316,7 +313,10 @@ test("withAuth returns 401 when there is no session", { skip: !canMock }, async 
 
 test("withAdminAuth returns 401 when there is no session", { skip: !canMock }, async () => {
   current = null;
-  const res = await helpers.withAdminAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+  const res = await helpers.withAdminAuth(okHandler)(
+    new NextRequest("http://localhost/api/x"),
+    ctx,
+  );
   assert.equal(res.status, 401);
 });
 
@@ -334,7 +334,10 @@ test("withAuth passes the session through to the handler", { skip: !canMock }, a
 
 test("withAdminAuth returns 403 for a non-admin session", { skip: !canMock }, async () => {
   current = { user: { id: "u2", role: "VIEWER" } };
-  const res = await helpers.withAdminAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+  const res = await helpers.withAdminAuth(okHandler)(
+    new NextRequest("http://localhost/api/x"),
+    ctx,
+  );
   assert.equal(res.status, 403);
 });
 
@@ -352,14 +355,24 @@ test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, as
 
 test("withEditorAuth returns 403 for a VIEWER session", { skip: !canMock }, async () => {
   current = { user: { id: "u4", role: "VIEWER" } };
-  const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
+  const res = await helpers.withEditorAuth(okHandler)(
+    new NextRequest("http://localhost/api/x"),
+    ctx,
+  );
   assert.equal(res.status, 403);
 });
 
-test("withEditorAuth passes through for EDITOR and ADMIN sessions", { skip: !canMock }, async () => {
-  for (const role of ["EDITOR", "ADMIN"]) {
-    current = { user: { id: "u5", role } };
-    const res = await helpers.withEditorAuth(okHandler)(new NextRequest("http://localhost/api/x"), ctx);
-    assert.equal(res.status, 200, `${role} should pass withEditorAuth`);
-  }
-});
+test(
+  "withEditorAuth passes through for EDITOR and ADMIN sessions",
+  { skip: !canMock },
+  async () => {
+    for (const role of ["EDITOR", "ADMIN"]) {
+      current = { user: { id: "u5", role } };
+      const res = await helpers.withEditorAuth(okHandler)(
+        new NextRequest("http://localhost/api/x"),
+        ctx,
+      );
+      assert.equal(res.status, 200, `${role} should pass withEditorAuth`);
+    }
+  },
+);

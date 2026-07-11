@@ -15,9 +15,7 @@ const rows: Row[] = [
 ];
 
 test("DataTable renders a row per data item", () => {
-  renderWithProviders(
-    <DataTable<Row> columns={columns} dataSource={rows} total={rows.length} />,
-  );
+  renderWithProviders(<DataTable<Row> columns={columns} dataSource={rows} total={rows.length} />);
   assert.ok(screen.getByText("Alice"));
   assert.ok(screen.getByText("Bob"));
 });
@@ -29,9 +27,7 @@ test("DataTable shows the empty-state text when there are no rows", () => {
 });
 
 test("DataTable hides the search input by default", () => {
-  renderWithProviders(
-    <DataTable<Row> columns={columns} dataSource={rows} total={rows.length} />,
-  );
+  renderWithProviders(<DataTable<Row> columns={columns} dataSource={rows} total={rows.length} />);
   assert.equal(screen.queryByPlaceholderText("Search..."), null);
 });
 
@@ -55,10 +51,7 @@ test("DataTable shows the search input when searchable and debounces onSearch", 
   assert.ok(input);
 
   // Drive the controlled input the way userland would.
-  const setter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype,
-    "value",
-  )!.set!;
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
   setter.call(input, "ali");
   input.dispatchEvent(new window.Event("input", { bubbles: true }));
 

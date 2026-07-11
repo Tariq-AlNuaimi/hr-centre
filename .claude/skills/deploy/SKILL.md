@@ -13,7 +13,7 @@ the repo-create and Cloudflare steps).
 ## First move — RUN the preflight, do not assume "no access"
 
 **A live URL is the default goal. Do not pre-emptively tell the operator you lack
-access.** The token table and egress list below are *reference*, not a reason to
+access.** The token table and egress list below are _reference_, not a reason to
 stop. The only authority on whether this environment can deploy is the
 provisioner's own preflight (`scripts/deploy.mjs` → `preflight()`), which actually
 probes `api.vercel.com` + `console.neon.tech` and prints either **`Egress OK.`**
@@ -21,11 +21,12 @@ or the exact blocked hosts.
 
 So the order is: **run the command, read the verdict, then report** — never the
 reverse. Specifically:
+
 - Do **not** say "I don't have access / tokens aren't set / I'll set it up
   locally" before the preflight has actually run and failed.
 - If preflight prints `Egress OK.` and the run proceeds → you HAVE access; finish
   the deploy and report the live URL.
-- If it fails, read WHY: blocked egress (`x-deny-reason` / network policy — *not*
+- If it fails, read WHY: blocked egress (`x-deny-reason` / network policy — _not_
   fixable with tokens) vs. a genuinely missing token (the script names which).
   Report that specific cause, not a generic "no access."
 - Only fall back to local dev if the operator explicitly asks for local, or
@@ -65,13 +66,13 @@ opened, run the same command from a laptop with the tokens set — it's identica
 
 ## Tokens (set as environment variables, never pasted in chat)
 
-| Env var | What | Where to mint |
-|---|---|---|
-| `NEON_API_KEY` | Neon account API key | https://console.neon.tech/app/settings/api-keys |
-| `VERCEL_TOKEN` | Vercel account token | https://vercel.com/account/tokens |
-| `CLOUDFLARE_API_TOKEN` | only for `--apex`; custom token scoped `Zone.DNS:Edit` on the apex zone | https://dash.cloudflare.com/profile/api-tokens |
-| `VERCEL_TEAM_ID` | optional, only for Team-scoped projects | Vercel team settings |
-| `NEON_ORG_ID` | optional, only if your key sees multiple Neon orgs | Neon settings |
+| Env var                | What                                                                    | Where to mint                                   |
+| ---------------------- | ----------------------------------------------------------------------- | ----------------------------------------------- |
+| `NEON_API_KEY`         | Neon account API key                                                    | https://console.neon.tech/app/settings/api-keys |
+| `VERCEL_TOKEN`         | Vercel account token                                                    | https://vercel.com/account/tokens               |
+| `CLOUDFLARE_API_TOKEN` | only for `--apex`; custom token scoped `Zone.DNS:Edit` on the apex zone | https://dash.cloudflare.com/profile/api-tokens  |
+| `VERCEL_TEAM_ID`       | optional, only for Team-scoped projects                                 | Vercel team settings                            |
+| `NEON_ORG_ID`          | optional, only if your key sees multiple Neon orgs                      | Neon settings                                   |
 
 ## Custom domain (optional)
 

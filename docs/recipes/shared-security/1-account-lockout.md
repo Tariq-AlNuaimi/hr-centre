@@ -11,10 +11,11 @@ Add this when **any** of these is true:
 - The app runs on more than one concurrent Vercel function instance (the in-memory
   limiter in `lib/rate-limit.ts` is **per-instance** and reset on cold start, so a
   round-robin attacker bypasses it — see the header comment in that file and SECURITY.md §2).
-- You want a *per-account* lockout (N bad passwords on one email → temporary lock),
+- You want a _per-account_ lockout (N bad passwords on one email → temporary lock),
   which the IP-bucket limiter cannot express.
 
 This recipe does **two** things with one Redis dependency:
+
 1. **Per-account lockout** wired into `lib/auth.ts` `authorize()`.
 2. **Replaces the in-memory per-IP limiter** on `/api/auth/*` with a shared-state one
    (closes the cross-instance part of T-01).
@@ -132,11 +133,7 @@ lockout checks around it:
 
 ```ts
 // top of lib/auth.ts, with the other imports
-import {
-  isLockedOut,
-  recordFailedLogin,
-  clearFailedLogins,
-} from "./account-lockout";
+import { isLockedOut, recordFailedLogin, clearFailedLogins } from "./account-lockout";
 ```
 
 ```ts
@@ -246,13 +243,13 @@ export async function POST(req: NextRequest): Promise<Response> {
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `lib/account-lockout.ts` | **New** — the helper above |
-| `lib/auth.ts` | Import the helpers; add lockout to `authorize()` |
-| `app/api/auth/[...nextauth]/route.ts` | Swap in `authIpRateLimiter` (fallback kept) |
-| `.env.example` / `.env` / Vercel env | Add the 5 vars |
-| `SECURITY.md` | Add the rows below; flip §16 row 4 to done |
+| File                                  | Change                                           |
+| ------------------------------------- | ------------------------------------------------ |
+| `lib/account-lockout.ts`              | **New** — the helper above                       |
+| `lib/auth.ts`                         | Import the helpers; add lockout to `authorize()` |
+| `app/api/auth/[...nextauth]/route.ts` | Swap in `authIpRateLimiter` (fallback kept)      |
+| `.env.example` / `.env` / Vercel env  | Add the 5 vars                                   |
+| `SECURITY.md`                         | Add the rows below; flip §16 row 4 to done       |
 
 > `lib/auth.ts` is in the CLAUDE.md "Ask before touching" list. Run the native
 > `/code-review` on this diff before pushing (it touches auth), then `/ship`.
@@ -293,10 +290,10 @@ In **§2 (Authentication)**, under "Brute-force defense", append:
 
 In **§6 (Secrets)** table, add:
 
-| Secret | Class | Where | Notes |
-|---|---|---|---|
-| `UPSTASH_REDIS_REST_URL` | Confidential | Vercel env / `.env` | Upstash REST endpoint for the lockout/limiter store. |
-| `UPSTASH_REDIS_REST_TOKEN` | Restricted | Vercel env / `.env` | Full read/write token for the Upstash DB. Rotate from the Upstash console. |
+| Secret                     | Class        | Where               | Notes                                                                      |
+| -------------------------- | ------------ | ------------------- | -------------------------------------------------------------------------- |
+| `UPSTASH_REDIS_REST_URL`   | Confidential | Vercel env / `.env` | Upstash REST endpoint for the lockout/limiter store.                       |
+| `UPSTASH_REDIS_REST_TOKEN` | Restricted   | Vercel env / `.env` | Full read/write token for the Upstash DB. Rotate from the Upstash console. |
 
 In **§16**, flip **row 4** ("Account lockout / brute-force throttle across instances") to
 done, referencing `lib/account-lockout.ts`. In the **T-01** row of §11 (findings register),

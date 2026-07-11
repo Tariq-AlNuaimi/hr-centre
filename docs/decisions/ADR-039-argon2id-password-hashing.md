@@ -15,7 +15,7 @@ an Ask-before file (`lib/auth.ts`, plus `lib/password.ts`), so per CLAUDE.md
 The repo hashes passwords with **bcryptjs** (pure-JS): `lib/password.ts:1`
 imports `bcryptjs` and `hashPassword` emits a bcrypt hash at a hardcoded cost;
 `lib/auth.ts:81` verifies the credentials login with `bcrypt.compare`. bcryptjs
-is OWASP-*acceptable* at cost ≥ 12 but is not the 2026 preferred algorithm, and
+is OWASP-_acceptable_ at cost ≥ 12 but is not the 2026 preferred algorithm, and
 being pure JS it is the slowest real option — the wrong direction for a security
 floor.
 
@@ -88,6 +88,7 @@ portability) to argon2 that ever justified staying on pure-JS bcrypt.
 ## Consequences
 
 ### Positive
+
 - Password storage sits on the OWASP-preferred algorithm — the security floor
   moves up without a user-visible reset.
 - Existing users migrate transparently: one successful login re-hashes them to
@@ -96,6 +97,7 @@ portability) to argon2 that ever justified staying on pure-JS bcrypt.
   nothing in build/deploy portability.
 
 ### Negative
+
 - A native dependency enters the tree (offset by the prebuilt binary + WASM
   fallback; no node-gyp).
 - A bcrypt legacy-verify branch must live alongside Argon2id until telemetry
@@ -104,6 +106,7 @@ portability) to argon2 that ever justified staying on pure-JS bcrypt.
   small SPEED cost, by design).
 
 ### Mitigations
+
 - `@node-rs/argon2`'s bundled WASM (WASI) variant covers environments where the
   napi binary won't load — no separate `hash-wasm` dependency needed.
 - Params live in one place (as `BCRYPT_COST` did) so they tune per deployment
@@ -113,6 +116,7 @@ portability) to argon2 that ever justified staying on pure-JS bcrypt.
   which bcrypt hashes are still accepted.
 
 ## Alternatives considered
+
 1. **Keep bcryptjs** — rejected: acceptable but not OWASP-preferred, and slowest.
 2. **`node:crypto` scrypt** — rejected: weaker tuning/verification story; not
    OWASP's first choice.
@@ -120,12 +124,14 @@ portability) to argon2 that ever justified staying on pure-JS bcrypt.
    node-gyp problem the chosen prebuilt napi avoids.
 
 ## Migration triggers
+
 - Revisit the Argon2id params on hardware upgrades — raise memory and/or
   iterations as the deployment's CPU/RAM budget grows.
 - **Drop the bcrypt legacy-verify + rehash path** once telemetry confirms no
   bcrypt-format hashes remain in `users.passwordHash`.
 
 ## Related
+
 - ADR-035 — Docker-first rail; removes the native-binding objection to argon2.
 - ADR-037 — enterprise security floor (this is the P0 password-storage slice).
 - SECURITY.md — must record the algorithm change and the legacy-verify window.

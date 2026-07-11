@@ -30,14 +30,18 @@ const STATE = join(ROOT, "docs", "session-state.json");
 
 function git(args) {
   try {
-    return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+    return execSync(`git ${args}`, { stdio: ["ignore", "pipe", "ignore"] })
+      .toString()
+      .trim();
   } catch {
     return "";
   }
 }
 
 try {
-  try { readFileSync(0, "utf8"); } catch {} // drain stdin; payload not needed
+  try {
+    readFileSync(0, "utf8");
+  } catch {} // drain stdin; payload not needed
 
   if (git("rev-parse --is-inside-work-tree") !== "true") process.exit(0);
   if (!existsSync(STATE)) process.exit(0);
@@ -57,10 +61,10 @@ try {
     (!hasUpstream
       ? " WARNING: branch has no upstream — nothing is pushed."
       : aheadRaw === ""
-      ? " NOTE: could not determine push status (git rev-list failed)."
-      : Number(aheadRaw) > 0
-      ? ` WARNING: ${aheadRaw} commit(s) unpushed — the handoff is not yet durable (push before the container is reclaimed).`
-      : " Branch is pushed — handoff is durable.");
+        ? " NOTE: could not determine push status (git rev-list failed)."
+        : Number(aheadRaw) > 0
+          ? ` WARNING: ${aheadRaw} commit(s) unpushed — the handoff is not yet durable (push before the container is reclaimed).`
+          : " Branch is pushed — handoff is durable.");
   console.error(notice + (r.stderr ? `\n${r.stderr.trim()}` : ""));
 
   // 3. Part 3 -- guarded auto-spawn (disabled by default). Ask the guard whether a
@@ -73,7 +77,9 @@ try {
   // that explicit firing step + a --record call; there is no background consumer yet.
   // When the guard ships disabled (autoSpawn.enabled=false), this is always BLOCKED
   // -> fully inert.
-  const g = spawnSync("node", [join(ROOT, "scripts", "auto-spawn-guard.mjs")], { encoding: "utf8" });
+  const g = spawnSync("node", [join(ROOT, "scripts", "auto-spawn-guard.mjs")], {
+    encoding: "utf8",
+  });
   if (g.status === 0) {
     try {
       const state = JSON.parse(readFileSync(STATE, "utf8"));
@@ -102,9 +108,13 @@ try {
           "  CONSUMER: from a LIVE turn (agent closeout — SessionEnd itself cannot call MCP), run\n" +
           "    node scripts/auto-spawn-fire.mjs\n" +
           "  and pass its CREATE_TRIGGER_PAYLOAD to mcp__Claude_Code_Remote__create_trigger. That\n" +
-          "  script re-checks the guard, prints the exact payload, and records the spawn against the cap."
+          "  script re-checks the guard, prints the exact payload, and records the spawn against the cap.",
       );
-    } catch { /* best-effort signal */ }
+    } catch {
+      /* best-effort signal */
+    }
   }
-} catch { /* a hook must never trap the agent */ }
+} catch {
+  /* a hook must never trap the agent */
+}
 process.exit(0);

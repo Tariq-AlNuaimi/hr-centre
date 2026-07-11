@@ -126,9 +126,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
       title: tAudit("action"),
       dataIndex: "action",
       key: "action",
-      render: (val: string) => (
-        <Badge variant={ACTION_VARIANTS[val] ?? "default"}>{val}</Badge>
-      ),
+      render: (val: string) => <Badge variant={ACTION_VARIANTS[val] ?? "default"}>{val}</Badge>,
     },
     { title: tAudit("entity"), dataIndex: "entityType", key: "entityType" },
     {
@@ -150,16 +148,8 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
       <PageHeader title={t("home")} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard
-          title={tDash("totalUsers")}
-          value={totalUsers}
-          icon={<UserIcon />}
-        />
-        <StatCard
-          title={tDash("deletedRecords")}
-          value={softDeletedTotal}
-          icon={<TrashIcon />}
-        />
+        <StatCard title={tDash("totalUsers")} value={totalUsers} icon={<UserIcon />} />
+        <StatCard title={tDash("deletedRecords")} value={softDeletedTotal} icon={<TrashIcon />} />
         <StatCard
           title={tDash("rolesInUse")}
           value={roleDistribution.length}
@@ -179,9 +169,7 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
                 height={280}
               />
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                {tCommon("noData")}
-              </div>
+              <div className="py-12 text-center text-muted-foreground">{tCommon("noData")}</div>
             )}
           </SectionCard>
         </div>

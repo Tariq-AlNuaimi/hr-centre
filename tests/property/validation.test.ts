@@ -8,10 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
-import {
-  emailSchema,
-  paginationSchema,
-} from "../../lib/validations/common";
+import { emailSchema, paginationSchema } from "../../lib/validations/common";
 
 // Deterministic seed for gate stability; 300 runs per property.
 fc.configureGlobal({ numRuns: 300, seed: 20260703 });

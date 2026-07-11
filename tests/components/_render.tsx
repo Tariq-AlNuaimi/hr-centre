@@ -55,8 +55,7 @@ export const messages = {
     forbiddenTitle: "Access denied",
     forbiddenSubtitle: "You don't have permission to view this page.",
     maintenanceTitle: "We'll be right back",
-    maintenanceSubtitle:
-      "The app is undergoing scheduled maintenance. Please check back shortly.",
+    maintenanceSubtitle: "The app is undergoing scheduled maintenance. Please check back shortly.",
     notFoundTitle: "Page not found",
     errorTitle: "Something went wrong",
     errorSubtitle: "An unexpected error occurred. Please try again.",
@@ -108,10 +107,7 @@ export function Providers({
   );
 }
 
-export function renderWithProviders(
-  ui: ReactElement,
-  options: ProviderOptions = {},
-) {
+export function renderWithProviders(ui: ReactElement, options: ProviderOptions = {}) {
   return render(
     <Providers locale={options.locale} messages={options.messages}>
       {ui}

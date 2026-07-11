@@ -18,7 +18,9 @@ function resolveChromiumPath(): string | undefined {
   if (process.env.PW_EXECUTABLE_PATH) {
     const p = process.env.PW_EXECUTABLE_PATH;
     if (existsSync(p)) return p;
-    console.warn(`[playwright] PW_EXECUTABLE_PATH=${p} does not exist; falling back to auto-detect / bundled Chromium.`);
+    console.warn(
+      `[playwright] PW_EXECUTABLE_PATH=${p} does not exist; falling back to auto-detect / bundled Chromium.`,
+    );
   }
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
   try {

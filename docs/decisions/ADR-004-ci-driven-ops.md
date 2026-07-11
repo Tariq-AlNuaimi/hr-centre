@@ -44,7 +44,7 @@ file that we can commit to an orphan branch on the same repo.
   tooling allows) tail the run logs. Claude never touches a vendor API
   directly.
 - Six workflow files live at `.github/workflows/{deploy,promote,rollback,
-  restore,new-project,release}.yml`. Two shared composite actions handle the
+restore,new-project,release}.yml`. Two shared composite actions handle the
   state-branch round-trip:
   `.github/actions/{restore-state,persist-state}/action.yml`.
 - The orphan `deployment-state` branch carries the
@@ -63,7 +63,7 @@ file that we can commit to an orphan branch on the same repo.
   `BETTER_UPTIME_API_KEY`, `SSH_PRIVATE_KEY`, `BACKUP_AGE_IDENTITY`,
   `RCLONE_CONFIG`, `SENTRY_AUTH_TOKEN`, `GH_AUTOMATION_TOKEN`).
 - Each workflow declares `concurrency: { group: <action>-<env>,
-  cancel-in-progress: false }` so two operators can't race a deploy on the
+cancel-in-progress: false }` so two operators can't race a deploy on the
   same env.
 - Scripts detect CI mode via `CI=true` / `NON_INTERACTIVE=true` env vars. In
   CI mode they never prompt; all confirmations require explicit `--yes` flags

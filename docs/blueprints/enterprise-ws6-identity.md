@@ -10,6 +10,7 @@ Scope: app/api/internal/scim/**, lib/sso/**
 > the identity seam). This is the requirements contract `/qa` and `/uat` trace against.
 
 ## Open questions — RESOLVED
+
 The full-track blueprint resolves open questions with the operator. This session is **non-interactive**
 (the harness `AskUserQuestion` channel was unavailable — two attempts returned a closed permission
 stream), so each question is resolved to its **recommended default** — every one the conservative,
@@ -32,6 +33,7 @@ and recorded here for operator audit/override. None changes the security floor.
    holders. Keeps the seam fully OSS/self-hostable and matches the benchmark's Apache-2.0 finding.
 
 ## Problem & outcome
+
 The stack does OIDC today (Microsoft Entra, ADR-024) but has **no SAML** and **no SCIM** — the two
 NET-NEW enterprise-identity rows in the v2 benchmark (C03). Deploy-per-tenant reshapes the category:
 one deployment = one tenant = one IdP, which collapses the value of multi-tenant SSO brokers and
@@ -49,6 +51,7 @@ and `lib/observability` (ADR-040): config gate reads `process.env` at call time;
 `lib/env.ts` is the loud boot validator.
 
 ## User stories
+
 - **US-1 (SAML tenant sign-in).** As a user at a SAML-only enterprise IdP, I can sign in to the app,
   because Polis bridges my IdP's SAML into an OIDC login Auth.js consumes. My first login lands me at
   the **VIEWER** role; an admin promotes me in-app.
@@ -63,6 +66,7 @@ and `lib/observability` (ADR-040): config gate reads `process.env` at call time;
   OSS Apache-2.0 image via one compose profile, no SaaS/per-connection tax.
 
 ## Scenarios (happy + worst path)
+
 - **SSO happy.** `POLIS_ISSUER`+`POLIS_CLIENT_ID`+`POLIS_CLIENT_SECRET` all set → a "Sign in with SSO"
   provider registers; a SAML tenant completes login; `signIn` callback rejects the login if the linked
   row is soft-deleted; new user = VIEWER; an in-app role promotion **survives** the next SSO login
@@ -86,6 +90,7 @@ and `lib/observability` (ADR-040): config gate reads `process.env` at call time;
   sync and is operator-tunable.
 
 ## Architecture sketch
+
 ```
 Tenant SAML IdP ──SAML──▶ Ory Polis sidecar ──OIDC (.well-known)──▶ Auth.js generic OIDC provider
                           (boxyhq/jackson,        lib/sso/config.ts gate + lib/auth.ts buildProviders()
@@ -97,6 +102,7 @@ Tenant directory ─SCIM──▶ Ory Polis Directory Sync ──dsync webhook�
                                                         → audited prisma.user create/update/delete
                                                           (VIEWER default; soft-delete off-board)
 ```
+
 - `lib/sso/config.ts` — call-time gate: `isPolisSsoConfigured()`/`polisSsoConfig()` (issuer+id+secret
   required together), `scimWebhookSecret()`, `verifyScimSignature()` (HMAC-SHA256, timing-safe),
   `SsoNotConfiguredError`. Reads `process.env` directly (Edge-safe), mirroring `lib/ai/config.ts`.
@@ -114,12 +120,15 @@ Tenant directory ─SCIM──▶ Ory Polis Directory Sync ──dsync webhook�
   egress = a T4 sub-case) + `tests/contracts/sso.test.ts`.
 
 ## Tier
+
 `shared` — enterprise identity (SSO/SCIM) is a shared-tier concern; the seam is inert on personal
 forks (no env → no-op), so it imposes nothing on the `personal` default.
 
 ## Closeout (2026-07-11 — senior-review fixes, ADR-045 amendment)
+
 Four open senior findings were fix-forwarded before landing WS-6 (decisions in **ADR-045
 amendment A1–A4**):
+
 - **A1 [High] SCIM users can now complete SSO login.** A SCIM row has no linked `Account`, so
   first Polis login threw `OAuthAccountNotLinked`. Fix: `allowDangerousEmailAccountLinking:true`
   scoped to the **Polis provider only**, paired with `isFederatedSignInAllowed` in the `signIn`
@@ -135,6 +144,7 @@ amendment A1–A4**):
   (`.email()`) → the SCIM route returns 400 on a non-conforming event.
 
 ## Non-goals / follow-ons (tracked)
+
 - **Infra-unverified seam** (like the pgvector RAG seam, ADR-043): no live Polis is booted in-session,
   so the OIDC handshake params (Jackson-compat `client_secret_post` / `checks`) and the dsync webhook
   shape are wired to the documented contract but **not** end-to-end verified. Wave-off in

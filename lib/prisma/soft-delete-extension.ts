@@ -10,8 +10,14 @@ const EXCLUDE = new Set(["Account", "Session", "VerificationToken", "AuditLog"])
 type SoftDeleteDelegate = {
   findUnique: (a: { where: unknown }) => Promise<unknown>;
   findMany: (a: { where?: unknown }) => Promise<unknown[]>;
-  update: (a: { where: unknown; data: { deletedAt: Date; deletedBy: string | null } }) => Promise<unknown>;
-  updateMany: (a: { where?: unknown; data: { deletedAt: Date; deletedBy: string | null } }) => Promise<unknown>;
+  update: (a: {
+    where: unknown;
+    data: { deletedAt: Date; deletedBy: string | null };
+  }) => Promise<unknown>;
+  updateMany: (a: {
+    where?: unknown;
+    data: { deletedAt: Date; deletedBy: string | null };
+  }) => Promise<unknown>;
 };
 
 // Models that have deletedAt/deletedBy fields
@@ -40,10 +46,7 @@ export function isSoftDeleteModel(model: string): boolean {
  * This limitation is asserted by tests/contracts/soft-delete-filter.test.ts so a
  * future change that "fixes" it is a conscious one.
  */
-export function applySoftDeleteFilter<A extends { where?: unknown }>(
-  model: string,
-  args: A
-): A {
+export function applySoftDeleteFilter<A extends { where?: unknown }>(model: string, args: A): A {
   if (!isSoftDeleteModel(model)) return args;
   const where = args.where as Record<string, unknown> | undefined;
   if (!where?.deletedAt) {
@@ -107,9 +110,7 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
           await recordAudit(client as unknown as Parameters<typeof recordAudit>[0], {
             entityType: model,
             entityId: String(
-              (before as { id?: string } | null)?.id ??
-                (where as { id?: string }).id ??
-                "unknown"
+              (before as { id?: string } | null)?.id ?? (where as { id?: string }).id ?? "unknown",
             ),
             action: "DELETE",
             before: before as Record<string, unknown> | null,

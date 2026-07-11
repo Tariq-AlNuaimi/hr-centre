@@ -2,8 +2,9 @@
 
 > `/scale-up` → shared-tier security checklist item **#2** (SECURITY.md §16).
 > Closes the two gaps **ADR-010** accepted for the prototype rail:
+>
 > 1. **Non-atomicity** — the app-level audit extension writes the audit row as a
->    *separate statement after* the data write, so a crash between them loses the
+>    _separate statement after_ the data write, so a crash between them loses the
 >    audit row.
 > 2. **Bulk / upsert blind spot** — `updateMany` / `createMany` / `upsert` on an
 >    audited model write **no** audit row at all (the extension only sees per-row
@@ -30,7 +31,7 @@ None. This is pure SQL in a Prisma migration plus a small change to `withAuth`.
 ## How it works
 
 - A generic PL/pgSQL trigger function `audit_row_change()` runs `AFTER INSERT OR
-  UPDATE OR DELETE ... FOR EACH ROW` on every audited table. It writes one
+UPDATE OR DELETE ... FOR EACH ROW` on every audited table. It writes one
   `audit_logs` row in the **same transaction** as the DML.
 - The acting user is read from a **Postgres GUC** (`app.user_id`) that `withAuth`
   sets at the start of each request via `set_config(...)`. No session → `NULL`
@@ -182,7 +183,7 @@ import { getAuditContext } from "./audit-context";
 // Use inside a withAuth handler for any write that must be attributed by the DB
 // triggers. set_config(..., true) scopes the GUC to THIS transaction only.
 export async function withAuditActor<T>(
-  fn: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => Promise<T>
+  fn: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => Promise<T>,
 ): Promise<T> {
   const { userId, ipAddress, userAgent } = getAuditContext();
   return prisma.$transaction(async (tx) => {
@@ -242,10 +243,10 @@ function createExtendedClient() {
    explicit `recordAudit`) — these now also get a trigger row:
    - **Restore** is an `UPDATE` clearing `deletedAt` → trigger writes `RESTORE`.
    - **Permanent delete** is a real `DELETE` → trigger writes `DELETE`.
-   Remove their `recordAudit(...)` calls too. **But** `prismaUnfiltered` runs
-   *outside* `withAuditActor`, so wrap those ops in a `prismaUnfiltered.$transaction`
-   that first `set_config`s the actor (same pattern), or accept a `NULL` actor on
-   bin operations.
+     Remove their `recordAudit(...)` calls too. **But** `prismaUnfiltered` runs
+     _outside_ `withAuditActor`, so wrap those ops in a `prismaUnfiltered.$transaction`
+     that first `set_config`s the actor (same pattern), or accept a `NULL` actor on
+     bin operations.
 
 4. **Keep `SCRUB_FIELDS` + the contract test** — `lib/sentry.ts` still imports
    `SCRUB_FIELDS`, and it's the canonical list the SQL `audit_scrub()` mirrors. When
@@ -254,16 +255,16 @@ function createExtendedClient() {
 
 ## Files to change in a fork
 
-| File | Change |
-|---|---|
-| `prisma/migrations/<ts>_atomic_audit_triggers/` | **New** — the SQL above; **Ask-before** (touches `prisma/migrations`) |
-| `lib/audit-guc.ts` | **New** — `withAuditActor` helper |
-| `lib/prisma.ts` | Drop `auditExtension` from the chain; **Ask-before** |
-| `lib/prisma/soft-delete-extension.ts` | Remove its `recordAudit` calls; **Ask-before** |
-| recycling-bin route(s) | Remove `recordAudit`; wrap `prismaUnfiltered` ops with the GUC if attribution is wanted |
-| write routes | Wrap mutating work in `withAuditActor(...)` |
-| `docs/decisions/ADR-0XX-*.md` | **New** — run `/adr` |
-| `SECURITY.md` | Update §5 (atomic; bulk/upsert closed); note dual scrub-list maintenance |
+| File                                            | Change                                                                                  |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `prisma/migrations/<ts>_atomic_audit_triggers/` | **New** — the SQL above; **Ask-before** (touches `prisma/migrations`)                   |
+| `lib/audit-guc.ts`                              | **New** — `withAuditActor` helper                                                       |
+| `lib/prisma.ts`                                 | Drop `auditExtension` from the chain; **Ask-before**                                    |
+| `lib/prisma/soft-delete-extension.ts`           | Remove its `recordAudit` calls; **Ask-before**                                          |
+| recycling-bin route(s)                          | Remove `recordAudit`; wrap `prismaUnfiltered` ops with the GUC if attribution is wanted |
+| write routes                                    | Wrap mutating work in `withAuditActor(...)`                                             |
+| `docs/decisions/ADR-0XX-*.md`                   | **New** — run `/adr`                                                                    |
+| `SECURITY.md`                                   | Update §5 (atomic; bulk/upsert closed); note dual scrub-list maintenance                |
 
 > Touches `prisma/migrations`, `lib/prisma/*`, and the audit invariant — **Ask
 > before** per CLAUDE.md, run `/code-review`, then `/ship`.

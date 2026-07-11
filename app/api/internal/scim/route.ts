@@ -31,8 +31,7 @@ async function handle(req: NextRequest) {
 
   const secret = scimWebhookSecret();
   if (secret) {
-    const signature =
-      req.headers.get("boxyhq-signature") ?? req.headers.get("x-scim-signature");
+    const signature = req.headers.get("boxyhq-signature") ?? req.headers.get("x-scim-signature");
     if (!verifyScimSignature(rawBody, signature, secret)) {
       return err("Invalid SCIM webhook signature", 401);
     }

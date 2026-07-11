@@ -13,7 +13,7 @@ Directive D5 of the replatform-and-adoption program (2026-07-02): **"Every app
 has a DB with a structured schema."** Today this is true by construction —
 `prisma/schema.prisma` is the source of truth, `/deploy`/`/new-project`
 provision Neon, `vercel.json` runs `prisma migrate deploy` every build, and
-`/scaffold-entity` is the entity path. But nothing *enforces* it: a fork could
+`/scaffold-entity` is the entity path. But nothing _enforces_ it: a fork could
 strip its domain models, drift its migrations, or ship a schema-less shell and
 every gate would still pass. D5 asks for the gate, not new machinery.
 
@@ -41,22 +41,26 @@ A structured, migrated database is a **gate**, not a convention:
 ## Consequences
 
 ### Positive
+
 - "Structured DB" moves from true-by-habit to deterministic gate — the
   template's whole philosophy (pillars as gates, not vibes).
 - Migration drift (schema edited, migration forgotten) is caught pre-push
   instead of at deploy time.
 
 ### Negative
+
 - The `migrate diff` check needs a Prisma engine run in `/ship` — a small,
   bounded cost in the gate.
 - Genuinely stateless forks (rare) must carry an explicit ack.
 
 ### Mitigations
+
 - The check reuses the local Prisma toolchain `/ship` already depends on; no
   new dependency.
 - `"dbAck"` + register adjudication keeps the escape explicit and auditable.
 
 ## Alternatives considered
+
 1. **Leave it as convention.** Rejected: directive D5 asks for mandatory, and
    every other pillar concern in this template is a gate.
 2. **Enforce at deploy only** (`vercel.json` migrate step). Rejected: too late —
@@ -64,12 +68,14 @@ A structured, migrated database is a **gate**, not a convention:
    operator's loop.
 
 ## Migration triggers
+
 - Revisit the baseline-model list when the auth/audit baseline itself changes
   (keep the check's allowlist in lockstep with `prisma/schema.prisma`).
 - Revisit if a real class of DB-less forks emerges (then consider a first-class
   `stateless` tier rather than per-fork acks).
 
 ## Related
+
 - ADR-001 (locked stack: Prisma + Postgres), ADR-006 (Neon), ADR-025 (ack +
   findings-register escape pattern), ADR-030 (compose app+DB as canonical
   local stack).

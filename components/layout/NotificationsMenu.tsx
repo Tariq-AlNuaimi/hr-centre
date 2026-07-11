@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -42,16 +38,12 @@ export function NotificationsMenu() {
       </PopoverTrigger>
       <PopoverContent align="end" className="w-72 p-0">
         <div className="flex items-center justify-between border-b border-border px-3 py-2">
-          <span className="text-sm font-semibold text-foreground">
-            {t("notifications")}
-          </span>
+          <span className="text-sm font-semibold text-foreground">{t("notifications")}</span>
         </div>
         <div className="flex flex-col items-center gap-1 px-3 py-8 text-center">
           <Bell className="mb-1 h-6 w-6 text-muted-foreground/60" />
           <div className="text-sm text-foreground">{t("noNotifications")}</div>
-          <div className="text-xs text-muted-foreground">
-            {t("noNotificationsHint")}
-          </div>
+          <div className="text-xs text-muted-foreground">{t("noNotificationsHint")}</div>
         </div>
       </PopoverContent>
     </Popover>

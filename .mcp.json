@@ -2,7 +2,10 @@
   "mcpServers": {
     "playwright": {
       "command": "sh",
-      "args": ["-c", "exec npx -y @playwright/mcp@0.0.76 --isolated --browser chromium --executable-path \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\""]
+      "args": [
+        "-c",
+        "exec npx -y @playwright/mcp@0.0.76 --isolated --browser chromium --executable-path \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\""
+      ]
     },
     "context7": {
       "command": "npx",

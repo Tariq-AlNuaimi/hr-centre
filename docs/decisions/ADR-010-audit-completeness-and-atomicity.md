@@ -12,7 +12,7 @@ A template audit found that several mutations were **not** producing audit rows,
 despite `SECURITY.md` §5 claiming "every write" is captured:
 
 1. **Soft deletes were a blind spot.** `prisma.<model>.delete()` flows through the
-   soft-delete extension, which is the *outermost* query hook for `delete`/`deleteMany`
+   soft-delete extension, which is the _outermost_ query hook for `delete`/`deleteMany`
    and rewrites the op to an `update` on the **base** client. That base-client update
    never reaches the audit extension, so soft-deleting a `User` wrote no audit row at
    all. (The `prisma.ts` comment "soft-delete rewrites delete→update, then audit
