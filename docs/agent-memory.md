@@ -25,6 +25,11 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Durable decisions
 <!-- choices made with the operator, so they are not relitigated -->
+- 2026-07-11 — **Enterprise-pivot execution** lives on branch
+  `claude/enterprise-pivot-research-6t7euo` (v2 benchmark + all pivot ADRs/blueprints/code
+  pushed there). Source-of-truth plan = `docs/research/v2/enterprise-benchmark-v2.html`
+  (P0/P1/P2 action plan) + `docs/research/v2/PHASE-2-BACKLOG.md` (WS-1..WS-8). Sequence:
+  Phase 0 ADRs → Phase 1 blueprint → Phase 2 workstreams (P0 = WS-1/2/3 first).
 - 2026-07-03 — Deferred #11 IMPLEMENTED as `/stack-advisor` (skill, not agent):
   a **build-time** advisor injecting Next 16 RSC + Prisma 7 + Postgres positive
   patterns *while* code is written, pointing at this repo's recipes/primitives.
@@ -54,6 +59,15 @@ recurring context tax — same discipline as CLAUDE.md.
 
 ## Gotchas & landmines
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+- 2026-07-11 — **Run `npm run ship` WITHOUT `NODE_ENV=production` exported.** That flag
+  loads production react-dom into jsdom and falsely fails the component tests — the gate
+  goes red for a bogus reason. Leave NODE_ENV unset/development for the gate.
+- 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
+  trusting it — agents sometimes return the report as the completion *message* instead of
+  writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
+- 2026-07-11 — **CLAUDE.md's stack text ("Ant Design 6") is STALE** — the repo migrated
+  off AntD to Tailwind v4 + Radix/shadcn (ADR-029). Treat Tailwind/shadcn as the real UI
+  stack; don't reintroduce `antd`.
 - 2026-07-03 (session 14) — **Can't delete remote branches from a web session.** The local git
   bridge returns HTTP 403 on ref-deletion (`git push origin --delete`), and the GitHub MCP exposes
   no delete-branch tool. Branch pruning must be handed to the operator (commands, or the GitHub
@@ -89,11 +103,6 @@ recurring context tax — same discipline as CLAUDE.md.
   loose `authjs` match — that hits the CSRF cookie and every authed nav still bounces to /login).
   Do NOT `pkill -f bridge.mjs` in a shell command that also contains that path — pkill matches
   your own cmdline and SIGTERMs the call (exit 144); stop the bridge with `fuser -k 8443/tcp`.
-- 2026-07-03 (session 12) — Vercel `SEED_ADMIN_PASSWORD` returns a SEALED envelope
-  (`eyJ2Ijoi…`) even with `?decrypt=true`, never plaintext — so you can't log into AUTHED
-  bridge screens with it. To browser-test authed screens, reset it to a known value + redeploy
-  (seed upserts) — mutates the shared demo admin, so ask first. PUBLIC screens
-  (login/forgot/reset) need no auth and confirm any GLOBAL change (e.g. the body-bg paint).
 - 2026-07-03 — **Dark-mode axe is FLOODED with false-positive `color-contrast` serious
   findings** because `html`/`body` have NO `background-color` — the dark canvas is realized
   only via `color-scheme:dark` (+ a painted wrapper), and axe-core cannot model `color-scheme`,
@@ -135,13 +144,6 @@ recurring context tax — same discipline as CLAUDE.md.
   ADR-031 E-gate goes RED on the baseline-only template if `pristine:false` is
   committed. After running deploy from the template branch, REVERT the pristine
   flip before committing (git file-restore is deny-listed → edit it back to true).
-- 2026-07-02 — Headless-browser networking in this remote env: Chromium CANNOT
-  complete HTTPS CONNECT through the MITM proxy (ERR_CONNECTION_RESET; curl/Node
-  fetch work fine). Working recipe: Playwright `context.route('**/*')` fulfilling
-  every request via `request.newContext({proxy:{server:process.env.HTTPS_PROXY}})`
-  (strip content-encoding/length from fulfilled headers). Also: Vercel-hosted
-  demos may bot-gate ("Failed to verify your browser") — screenshot our own app
-  on localhost instead (local-PG recipe above).
 - 2026-06-26 — First-deploy env-var race (#50): BOTH scripts/deploy.mjs AND
   scripts/new-project.mjs must set all 6 env vars (incl CRON_SECRET) and
   poll-confirm them via `GET /v9/projects/:id/env` BEFORE triggering the first
