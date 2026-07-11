@@ -37,8 +37,12 @@
 
 ## lib/ exports
 - lib/ai/config.ts: AiAuthStyle, AiConfig, isAiConfigured, aiConfig, AiNotConfiguredError
+- lib/ai/embeddings.ts: EmbeddingsProviderName, EmbeddingsProvider, isEmbeddingsConfigured, getEmbeddings, EmbeddingsNotConfiguredError
 - lib/ai/provider.ts: getAiClient
+- lib/ai/rag.ts: RagMetadata, RagHit, ragUpsert, ragQuery
+- lib/ai/route.ts: WithAiRouteOptions, withAiRoute
 - lib/ai/tool-runner.ts: AI_DEFAULT_MAX_TOKENS, RunAgentParams, runAgent
+- lib/ai/tracing.ts: GEN_AI_ATTR, GEN_AI_SYSTEM_ANTHROPIC, AiResultLike, AiSpanOptions, aiTraceContentEnabled, setAiRequestAttributes, setAiResponseAttributes, recordAiContent, withAiSpan
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
 - lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized

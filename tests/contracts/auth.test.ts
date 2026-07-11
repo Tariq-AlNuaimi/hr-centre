@@ -112,6 +112,8 @@ let authMod: {
     enforced: boolean;
     credentialsEnabled: boolean;
     ssoEnabled: boolean;
+    entraEnabled: boolean;
+    polisEnabled: boolean;
   };
   mapSsoRole: (claims: Record<string, unknown> | undefined) => string;
 };
@@ -377,6 +379,42 @@ test("ssoProviderPlan: enforce flag alone (no Entra) does NOT lock out password 
   assert.equal(plan.configured, false);
   assert.equal(plan.ssoEnabled, false);
   assert.equal(plan.credentialsEnabled, true, "never strand a fork with no usable provider");
+});
+
+// --- SSO provider gating: Ory Polis (ADR-045) ------------------------------
+
+const FULL_POLIS_ENV = {
+  POLIS_ISSUER: "http://polis:5225",
+  POLIS_CLIENT_ID: "polis-client",
+  POLIS_CLIENT_SECRET: "polis-shh",
+};
+
+test("ssoProviderPlan: Polis issuer+id+secret -> configured via Polis (Entra absent)", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ ...FULL_POLIS_ENV });
+  assert.equal(plan.configured, true, "any SSO provider being configured => configured");
+  assert.equal(plan.ssoEnabled, true);
+  assert.equal(plan.polisEnabled, true, "Polis registers once issuer+id+secret are set");
+  assert.equal(plan.entraEnabled, false, "Entra stays dormant with no Entra env");
+  assert.equal(plan.credentialsEnabled, true, "password login remains alongside SSO");
+});
+
+test("ssoProviderPlan: Polis issuer without secret -> NOT configured (no broken button)", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ POLIS_ISSUER: "http://polis:5225", POLIS_CLIENT_ID: "polis-client" });
+  assert.equal(plan.polisEnabled, false, "a half-set Polis config must not register");
+  assert.equal(plan.configured, false);
+});
+
+test("ssoProviderPlan: Polis configured AND enforced -> SSO ONLY (credentials removed)", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ ...FULL_POLIS_ENV, AUTH_ENFORCE_SSO: "true" });
+  assert.equal(plan.polisEnabled, true);
+  assert.equal(plan.credentialsEnabled, false, "enforcement applies to whichever provider is configured");
+});
+
+test("ssoProviderPlan: Entra AND Polis both configured -> both enabled", { skip: !canMock }, () => {
+  const plan = authMod.ssoProviderPlan({ ...FULL_SSO_ENV, ...FULL_POLIS_ENV });
+  assert.equal(plan.entraEnabled, true);
+  assert.equal(plan.polisEnabled, true);
+  assert.equal(plan.configured, true);
 });
 
 test("mapSsoRole: defaults to VIEWER (least privilege) for any claims", { skip: !canMock }, () => {

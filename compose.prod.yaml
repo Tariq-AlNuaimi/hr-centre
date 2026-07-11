@@ -24,6 +24,12 @@
 # then point the app at it: OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318.
 # Unset that env and the whole backbone is a silent no-op (app is unaffected).
 #
+# ENTERPRISE IDENTITY (optional — ADR-045, WS-6). The `sso` profile adds an Ory
+# Polis sidecar (SAML→OIDC bridge + SCIM 2.0). Combine it with a DB profile, e.g.:
+#   docker compose -f compose.prod.yaml --profile bundled-db --profile sso up -d
+# then set POLIS_* (SSO) / SCIM_INTERNAL_SECRET (provisioning) in .env. Unset those
+# and identity is a silent no-op (SSO dormant, SCIM endpoint returns skipped).
+#
 # WAL-G backups → object storage and volume snapshots are a follow-on (ADR-035);
 # they are NOT implemented here. This file is TLS + reverse proxy + app + an
 # optional bundled DB only.
@@ -84,6 +90,39 @@ services:
     expose:
       - "4317" # OTLP gRPC
       - "4318" # OTLP HTTP
+
+  polis:
+    # Ory Polis (ex-BoxyHQ SAML Jackson) — SAML→OIDC bridge + SCIM 2.0 directory
+    # sync in ONE sidecar (ADR-045, WS-6). OSS core image (Apache-2.0); swap for
+    # Ory's enterprise Polis image if you hold that license. Gated behind the `sso`
+    # profile so the base topology (app + Caddy [+ db]) is unaffected:
+    #   docker compose -f compose.prod.yaml --profile bundled-db --profile sso up -d
+    # Then point the app at it (in .env): POLIS_ISSUER=http://polis:5225 (+ the
+    # client id/secret from an SSO connection you create in Polis), and configure
+    # Polis Directory Sync to POST /api/internal/scim with the SCIM_INTERNAL_SECRET
+    # bearer. Pin to a version your tenant has vetted; never `latest`.
+    image: boxyhq/jackson:1.36.0
+    profiles:
+      - sso
+    restart: unless-stopped
+    environment:
+      # Public base URL of Polis. No `:?` required-guard: Compose interpolates every
+      # service (even profile-inactive ones) before profile filtering, so a `:?`
+      # here would break the base topologies that never start Polis — same pattern
+      # as the db block below.
+      EXTERNAL_URL: ${POLIS_EXTERNAL_URL:-http://localhost:5225}
+      NEXTAUTH_URL: ${POLIS_EXTERNAL_URL:-http://localhost:5225}
+      NEXTAUTH_SECRET: ${POLIS_NEXTAUTH_SECRET:-}
+      NEXTAUTH_ADMIN_CREDENTIALS: ${POLIS_ADMIN_CREDENTIALS:-}
+      # Storage: point DB_URL at the bundled Postgres (or any managed Postgres).
+      DB_ENGINE: sql
+      DB_TYPE: postgres
+      DB_URL: ${POLIS_DB_URL:-}
+      # API keys the app/tenant use to manage SSO + dsync connections.
+      JACKSON_API_KEYS: ${POLIS_API_KEYS:-}
+      SAML_AUDIENCE: ${POLIS_SAML_AUDIENCE:-https://saml.polis}
+    expose:
+      - "5225"
 
   db:
     # Bundled Postgres — the default topology. pgvector image (pg18) so the P1

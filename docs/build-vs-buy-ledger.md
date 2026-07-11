@@ -138,3 +138,28 @@ See ADR-043; blueprint docs/blueprints/enterprise-ws5-rag.md.
 Scope: lib/ai/tracing.ts
 Considered: Langfuse SDK / its OTel exporter (first-party generation+score model, prompt linkage — but a new runtime dep + a SECOND telemetry path parallel to the OTel backbone, the coherence cost ADR-040 warned of, + vendor coupling that breaks the swap-backend invariant), the OpenTelemetry GenAI semantic convention `gen_ai.*` (vendor-neutral attribute standard that Langfuse/SigNoz/Collectors all ingest via OTLP — emitted by hand as a few setAttribute calls, so NO instrumentation dep either), raw withSpan with ad-hoc attribute names (works but drifts from semconv so backends wouldn't recognize generations).
 Decision: build-thin-wrapper-around-the-WS4-OTel-backbone (withAiSpan over lib/observability withSpan, emitting gen_ai.* semconv) because Langfuse ingests OTLP, so reusing OTEL_EXPORTER_OTLP_ENDPOINT yields Langfuse (or any OTLP LLM backend) with ZERO new dependency and ONE telemetry path — preserving the ADR-040 instrument-once/swap-backend invariant. See ADR-044 / docs/blueprints/enterprise-ws5-tracing.md.
+
+### 2026-07-11 — Enterprise SSO + SCIM identity seam (Ory Polis)
+Scope: lib/sso/**
+Considered: **Ory Polis / BoxyHQ SAML Jackson** (Apache-2.0 sidecar — bridges any
+tenant's SAML into a standard OIDC endpoint Auth.js already consumes AND speaks
+SCIM 2.0 in the SAME service — one container, both NET-NEW rows); Keycloak /
+Authentik / Zitadel (full self-hosted IdPs — a whole identity microservice suite,
+heavy for the deploy-per-tenant single-IdP shape; documented as BYO-IdP); Better
+Auth native SAML+OIDC+SCIM plugins (in-app, but only reachable by rewriting off
+Auth.js — the tracked P1 migration, not this phase); WorkOS / Clerk / Auth0
+(managed B2B SSO — SaaS + per-connection "SSO tax", value muted by deploy-per-tenant
+and contradicts the self-host pivot); the `@boxyhq/saml` NextAuth provider package
+(turnkey but a runtime dep on the Ask-before surface + couples us to its Auth.js-v5
+support); **building SCIM in-house** (the 2026 consensus is buy/adopt — SCIM is
+harder than SSO: PATCH quirks, few OSS scaffolds).
+Decision: **adopt Ory Polis as an opt-in compose sidecar (OSS boxyhq/jackson image,
+Apache-2.0) + build a thin dep-free app-side seam under lib/sso/**: a config-driven
+GENERIC OIDC provider in lib/auth.ts (issuer = Polis .well-known — zero new runtime
+dep, mirrors the Entra OIDC wiring / ADR-024) and a small SCIM provisioning handler
+(withInternalAuth + optional BoxyHQ HMAC) that maps directory events onto the
+existing User model reusing the soft-delete + audit invariants, VIEWER-default
+least privilege. Polis owns the protocol complexity; the app just consumes OIDC +
+a provisioning webhook — the smallest maintained surface, fully OSS/self-hostable,
+silent no-op until POLIS_*/SCIM_* env is set. See ADR-045;
+blueprint docs/blueprints/enterprise-ws6-identity.md.
