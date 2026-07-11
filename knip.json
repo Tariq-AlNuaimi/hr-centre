@@ -3,6 +3,7 @@
   "entry": [
     "scripts/**/*.{mjs,ts}",
     "tools/**/*.{mjs,ts}",
+    "docker/**/*.mjs",
     ".claude/hooks/**/*.mjs",
     ".claude/statusline.mjs",
     "eslint-rules/**/*.mjs",

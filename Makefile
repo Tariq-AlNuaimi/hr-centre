@@ -1,4 +1,4 @@
-.PHONY: dev db-up db-down db-migrate db-seed db-studio setup docker-build docker-run docker-up docker-down
+.PHONY: dev db-up db-down db-migrate db-seed db-studio setup docker-build docker-run docker-up docker-down docker-prod-up docker-prod-down
 
 # Local dev: Postgres in Docker, app via `npm run dev`.
 # Production is Vercel + Neon -- see CLAUDE.md.
@@ -53,3 +53,14 @@ docker-up:
 
 docker-down:
 	docker compose -f docker-compose.dev.yml down
+
+# --- Docker: production self-host topology (ADR-035, compose.prod.yaml) ------
+# The Docker-first delivery rail: app + Caddy (TLS) + a bundled pgvector Postgres
+# (the `bundled-db` profile — the default an operator gets). Caddy fronts the app
+# on :80/:443; migrations run at container start. For an external/managed DB
+# (Neon/RDS) use `--profile external-db` instead (see compose.prod.yaml header).
+docker-prod-up:
+	docker compose -f compose.prod.yaml --profile bundled-db up -d --build
+
+docker-prod-down:
+	docker compose -f compose.prod.yaml --profile bundled-db down

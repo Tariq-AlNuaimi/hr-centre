@@ -1,0 +1,26 @@
+# Caddy reverse proxy + automatic HTTPS (ADR-035 — Docker-first self-host rail).
+#
+# Site address comes from the APP_DOMAIN env var (Caddy expands {$APP_DOMAIN}):
+#   - Set APP_DOMAIN to a real hostname (e.g. app.tenant.example.com) and Caddy
+#     obtains + renews a Let's Encrypt certificate automatically over :443.
+#   - Leave it at the default `:80` for local production testing (plain HTTP,
+#     no cert) — e.g. `APP_DOMAIN=:80` or unset. `localhost` also works for a
+#     locally-trusted cert.
+#
+# All traffic is reverse-proxied to the `app` service on the compose network.
+
+{$APP_DOMAIN::80} {
+	encode gzip zstd
+
+	# Security headers (belt-and-suspenders with the app's own headers).
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Don't advertise the server software.
+		-Server
+	}
+
+	reverse_proxy app:3000
+}

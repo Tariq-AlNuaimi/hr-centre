@@ -1,0 +1,84 @@
+# Production self-host topology (ADR-035 — Docker-first delivery, one dockerized
+# deployment per tenant). Caddy terminates TLS and reverse-proxies to the app;
+# the app runs migrations at startup then serves; Postgres is bundled by default.
+#
+# TWO DB PROFILES (operator decision: bundled DB is the DEFAULT):
+#
+#   Bundled Postgres (default — app + Caddy + pgvector Postgres):
+#     docker compose -f compose.prod.yaml --profile bundled-db up -d
+#     (this is what `make docker-prod-up` runs)
+#
+#   External / managed Postgres (app + Caddy only; skip the bundled db and point
+#   DATABASE_URL at Neon / RDS / any managed Postgres in .env):
+#     docker compose -f compose.prod.yaml --profile external-db up -d
+#
+# The `db` service is gated behind the `bundled-db` profile, so the external-db
+# profile (and a bare `up` with no profile) starts app + Caddy only. `app`'s
+# dependency on `db` is `required: false`, so it does not error when the bundled
+# db is disabled.
+#
+# WAL-G backups → object storage and volume snapshots are a follow-on (ADR-035);
+# they are NOT implemented here. This file is TLS + reverse proxy + app + an
+# optional bundled DB only.
+#
+# Required env (via .env / env_file): DATABASE_URL, AUTH_SECRET, APP_DOMAIN, and
+# — for the bundled-db profile — POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+# (which DATABASE_URL must match, e.g.
+#   DATABASE_URL=postgresql://<user>:<pass>@db:5432/<db>).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${APP_IMAGE:-app:local}
+    restart: unless-stopped
+    env_file: .env
+    # No published host port: Caddy is the only ingress. The app listens on 3000
+    # inside the compose network (see PORT/HOSTNAME in the Dockerfile).
+    expose:
+      - "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+        # Optional so the external-db profile (db disabled) does not error.
+        required: false
+
+  caddy:
+    # Profile-independent: TLS + reverse proxy in every topology.
+    image: caddy:2.8.4
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  db:
+    # Bundled Postgres — the default topology. pgvector image (pg18) so the P1
+    # vector work has the extension available; NEVER Bitnami (deprecated 2025-08).
+    image: pgvector/pgvector:pg18
+    profiles:
+      - bundled-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-app_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app_db}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
