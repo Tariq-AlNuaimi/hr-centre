@@ -9,8 +9,10 @@ export {
   polisSsoConfig,
   scimWebhookSecret,
   verifyScimSignature,
+  isFederatedSignInAllowed,
   SsoNotConfiguredError,
   type PolisSsoConfig,
+  type SsoSignInRow,
 } from "./config";
 
 export {

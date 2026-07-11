@@ -15,6 +15,14 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
+ * The Auth.js provider id for the Ory Polis OIDC provider. SINGLE SOURCE so the
+ * takeover guard's provider check (isFederatedSignInAllowed) and the provider
+ * registration in lib/auth.ts can never drift — a mismatch would silently disable
+ * the guard while allowDangerousEmailAccountLinking stays on (ADR-045 A1).
+ */
+export const POLIS_PROVIDER_ID = "polis";
+
+/**
  * Resolved Polis SAML→OIDC provider config (only valid when configured). Polis
  * bridges a tenant's SAML into a standard OIDC endpoint, so Auth.js consumes it
  * as an ordinary OIDC provider (issuer = Polis /.well-known/openid-configuration).
@@ -98,6 +106,46 @@ export function verifyScimSignature(
   // lengths.
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+/**
+ * The subset of a User row the federated-sign-in guard needs. Kept local (not the
+ * generated Prisma type) so this Edge-safe module has no generated-client import.
+ */
+export interface SsoSignInRow {
+  deletedAt: Date | null;
+  passwordHash: string | null;
+}
+
+/**
+ * Decide whether a federated (OAuth/OIDC) sign-in is allowed for the matched user
+ * row (ADR-045 amendment A1). Two invariants:
+ *
+ *   1. Soft-deleted (off-boarded) user → DENY. A SCIM `user.deleted`/`active:false`
+ *      soft-deletes the row (US-3); an existing JWT is torn down and re-auth is
+ *      blocked here. Applies to every federated provider.
+ *   2. Polis account-linking takeover guard. The Polis provider sets
+ *      `allowDangerousEmailAccountLinking:true` (scoped to Polis only) so a
+ *      SCIM-provisioned **passwordless** row can be claimed on first SSO login —
+ *      that is the fix for the flagship US-1/US-2 workflow. But a row that already
+ *      has a `passwordHash` is a real password user; auto-linking a spoofable SSO
+ *      email claim to it would be account takeover, so DENY when the matched row's
+ *      `passwordHash` is non-null. Scoped to `provider === "polis"` (Entra keeps
+ *      `allowDangerousEmailAccountLinking:false`, so its email collisions hard-block
+ *      upstream before this callback runs).
+ *
+ * `row === null` (no existing user) → allow: the adapter creates a fresh row, the
+ * pre-existing behavior. Pure + synchronous so it is unit-testable without booting
+ * NextAuth; `lib/auth.ts` does the single indexed lookup and delegates here.
+ */
+export function isFederatedSignInAllowed(
+  row: SsoSignInRow | null,
+  provider: string | undefined,
+): boolean {
+  if (!row) return true;
+  if (row.deletedAt) return false;
+  if (provider === POLIS_PROVIDER_ID && row.passwordHash !== null) return false;
+  return true;
 }
 
 /**

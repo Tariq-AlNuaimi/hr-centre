@@ -117,6 +117,23 @@ Tenant directory ─SCIM──▶ Ory Polis Directory Sync ──dsync webhook�
 `shared` — enterprise identity (SSO/SCIM) is a shared-tier concern; the seam is inert on personal
 forks (no env → no-op), so it imposes nothing on the `personal` default.
 
+## Closeout (2026-07-11 — senior-review fixes, ADR-045 amendment)
+Four open senior findings were fix-forwarded before landing WS-6 (decisions in **ADR-045
+amendment A1–A4**):
+- **A1 [High] SCIM users can now complete SSO login.** A SCIM row has no linked `Account`, so
+  first Polis login threw `OAuthAccountNotLinked`. Fix: `allowDangerousEmailAccountLinking:true`
+  scoped to the **Polis provider only**, paired with `isFederatedSignInAllowed` in the `signIn`
+  callback — auto-link happens **only when the matched row is passwordless** (a SCIM row); a real
+  password user with a colliding email still hard-blocks (no takeover). Contract test proves the
+  `passwordHash!==null` block.
+- **A2 [Med] Polis public ingress** via a `POLIS_DOMAIN` Caddy site block → `polis:5225`;
+  `POLIS_EXTERNAL_URL` must equal `https://<POLIS_DOMAIN>`.
+- **A3 [Med] email-rename no longer orphans access.** New nullable-unique `scimExternalId`
+  column (forward-compatible migration); `provisionDirectoryEvent` correlates on the stable
+  directory id first (email fallback), so a `user.updated` rename updates the row in place.
+- **A4 [Low] zod at the boundary:** `lib/validations/sso.ts` `normalizedScimEventSchema`
+  (`.email()`) → the SCIM route returns 400 on a non-conforming event.
+
 ## Non-goals / follow-ons (tracked)
 - **Infra-unverified seam** (like the pgvector RAG seam, ADR-043): no live Polis is booted in-session,
   so the OIDC handshake params (Jackson-compat `client_secret_post` / `checks`) and the dsync webhook

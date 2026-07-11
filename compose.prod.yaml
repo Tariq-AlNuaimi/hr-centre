@@ -30,6 +30,13 @@
 # then set POLIS_* (SSO) / SCIM_INTERNAL_SECRET (provisioning) in .env. Unset those
 # and identity is a silent no-op (SSO dormant, SCIM endpoint returns skipped).
 #
+# PUBLIC INGRESS (ADR-045 amendment A2): Polis's OIDC + SAML-callback endpoints must
+# be browser- and IdP-reachable, so Caddy fronts the sidecar on its OWN hostname.
+# Set POLIS_DOMAIN to that hostname (the Caddyfile `sso` site block proxies it to
+# polis:5225) and set POLIS_EXTERNAL_URL below to `https://<POLIS_DOMAIN>` so Polis
+# emits issuer/callback URLs matching the served host. Leaving POLIS_DOMAIN unset
+# keeps the Caddy block inert (unpublished port).
+#
 # WAL-G backups → object storage and volume snapshots are a follow-on (ADR-035);
 # they are NOT implemented here. This file is TLS + reverse proxy + app + an
 # optional bundled DB only.

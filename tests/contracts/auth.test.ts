@@ -380,6 +380,46 @@ test("signIn: allows credentials sign-in without an extra deletedAt lookup", { s
   assert.equal(findUniqueArgs, null, "credentials path already filters deletedAt in authorize");
 });
 
+// --- signIn callback: Polis account-linking takeover guard (ADR-045 A1) ------
+// allowDangerousEmailAccountLinking is ON for Polis so a SCIM-provisioned
+// PASSWORDLESS row is claimable on first login; a colliding PASSWORD user must
+// still hard-block (no takeover via a spoofable SSO email claim).
+
+test("signIn: BLOCKS a Polis link to a row that already has a passwordHash (takeover guard)", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: null, passwordHash: "$argon2id$real-password-user" };
+  const ok = await config.callbacks.signIn({
+    user: { id: "u1" },
+    account: { type: "oidc", provider: "polis" },
+  });
+  assert.equal(ok, false, "a real password user must not be taken over by a Polis email link");
+});
+
+test("signIn: ALLOWS a Polis link to a passwordless (SCIM-provisioned) row", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: null, passwordHash: null };
+  const ok = await config.callbacks.signIn({
+    user: { id: "u1" },
+    account: { type: "oidc", provider: "polis" },
+  });
+  assert.equal(ok, true, "a SCIM passwordless row is claimable — the US-1/US-2 flagship flow");
+});
+
+test("signIn: the takeover guard is scoped to Polis (Entra passwordHash row is not blocked here)", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: null, passwordHash: "$argon2id$x" };
+  const ok = await config.callbacks.signIn({
+    user: { id: "u1" },
+    account: { type: "oidc", provider: "microsoft-entra-id" },
+  });
+  assert.equal(ok, true, "Entra keeps allowDangerousEmailAccountLinking OFF — its collisions block upstream, not here");
+});
+
+test("signIn: selects passwordHash alongside deletedAt for the guard", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: null, passwordHash: null };
+  await config.callbacks.signIn({ user: { id: "u1" }, account: { type: "oidc", provider: "polis" } });
+  const sel = (findUniqueArgs as { select?: Record<string, boolean> } | null)?.select;
+  assert.equal(sel?.deletedAt, true);
+  assert.equal(sel?.passwordHash, true, "the guard needs passwordHash in the projection");
+});
+
 test("ssoProviderPlan: enforce flag alone (no Entra) does NOT lock out password login", { skip: !canMock }, () => {
   const plan = authMod.ssoProviderPlan({ AUTH_ENFORCE_SSO: "true" });
   assert.equal(plan.configured, false);

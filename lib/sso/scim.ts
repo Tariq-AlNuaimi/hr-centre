@@ -46,6 +46,14 @@ export interface NormalizedScimEvent {
   name: string | null;
   /** false => the user is deactivated/removed in the directory. */
   active: boolean;
+  /**
+   * Stable directory user id (BoxyHQ dsync `data.id`), or null when absent. Used
+   * to correlate a row across an email RENAME (ADR-045 amendment A3). The exact
+   * field is per the documented BoxyHQ shape and INFRA-UNVERIFIED in-session; the
+   * email fallback in provisionDirectoryEvent means a wrong assumption degrades to
+   * the previous email-only behavior rather than regressing.
+   */
+  externalId: string | null;
 }
 
 /** What provisioning did — the route logs the action (counts only, no PII). */
@@ -92,7 +100,46 @@ export function normalizeDirectoryEvent(raw: unknown): NormalizedScimEvent | nul
       ? false
       : data.active !== false && data.active !== "false";
 
-  return { type: event as ScimEventType, email, name, active };
+  // Stable directory id (BoxyHQ dsync `data.id`) for rename-safe correlation.
+  const externalId =
+    typeof data.id === "string" && data.id.trim() ? data.id.trim() : null;
+
+  return { type: event as ScimEventType, email, name, active, externalId };
+}
+
+/** The live-user fields provisioning reconciles against. */
+interface ExistingUser {
+  id: string;
+  email: string;
+  name: string | null;
+  scimExternalId: string | null;
+}
+
+const EXISTING_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  scimExternalId: true,
+} as const;
+
+/**
+ * Locate the live user this event refers to. Correlate on the stable directory id
+ * FIRST (ADR-045 amendment A3) so a directory email-RENAME still matches the same
+ * row; fall back to email for events with no externalId and for pre-externalId
+ * rows (which get the id backfilled on their next update). The audited client is
+ * soft-delete-filtered, so only LIVE users match — correct for both deactivation
+ * (an off-boarded user is a noop) and update (a name change doesn't resurrect a
+ * deleted row).
+ */
+async function findExistingUser(evt: NormalizedScimEvent): Promise<ExistingUser | null> {
+  if (evt.externalId) {
+    const byId = await prisma.user.findUnique({
+      where: { scimExternalId: evt.externalId },
+      select: EXISTING_SELECT,
+    });
+    if (byId) return byId;
+  }
+  return prisma.user.findUnique({ where: { email: evt.email }, select: EXISTING_SELECT });
 }
 
 /**
@@ -103,13 +150,7 @@ export function normalizeDirectoryEvent(raw: unknown): NormalizedScimEvent | nul
 export async function provisionDirectoryEvent(
   evt: NormalizedScimEvent,
 ): Promise<{ action: ScimAction }> {
-  // The audited client is soft-delete-filtered: this only finds LIVE users, which
-  // is exactly right for deactivation (an already-off-boarded user is a noop) and
-  // for update (we don't resurrect the deleted via a name change).
-  const existing = await prisma.user.findUnique({
-    where: { email: evt.email },
-    select: { id: true, name: true },
-  });
+  const existing = await findExistingUser(evt);
 
   // Deactivate / off-board: soft-delete a live user; unknown user => noop.
   if (!evt.active) {
@@ -118,12 +159,18 @@ export async function provisionDirectoryEvent(
     return { action: "deactivated" };
   }
 
-  // Create at VIEWER (least privilege). A collision on a soft-deleted email
+  // Create at VIEWER (least privilege), stamping the directory id for future
+  // rename-safe correlation. A collision on a soft-deleted email/externalId
   // (rehire) surfaces as P2002 — documented v1 noop, manual restore covers it.
   if (!existing) {
     try {
       await prisma.user.create({
-        data: { email: evt.email, name: evt.name, role: "VIEWER" },
+        data: {
+          email: evt.email,
+          name: evt.name,
+          role: "VIEWER",
+          scimExternalId: evt.externalId,
+        },
       });
       return { action: "created" };
     } catch (err) {
@@ -132,10 +179,23 @@ export async function provisionDirectoryEvent(
     }
   }
 
-  // Update: name only. Role is NEVER touched here (an in-app promotion survives).
-  if (evt.name !== null && evt.name !== existing.name) {
-    await prisma.user.update({ where: { id: existing.id }, data: { name: evt.name } });
+  // Update: reconcile email (a RENAME, when matched by directory id) + name, and
+  // backfill the directory id onto a row first matched by email. Role is NEVER
+  // touched here (an in-app promotion survives a re-sync).
+  const data: { email?: string; name?: string; scimExternalId?: string } = {};
+  if (evt.email !== existing.email) data.email = evt.email;
+  if (evt.name !== null && evt.name !== existing.name) data.name = evt.name;
+  if (evt.externalId && existing.scimExternalId === null) data.scimExternalId = evt.externalId;
+  if (Object.keys(data).length === 0) return { action: "noop" };
+
+  try {
+    await prisma.user.update({ where: { id: existing.id }, data });
     return { action: "updated" };
+  } catch (err) {
+    // A renamed email (or backfilled id) now colliding with ANOTHER live row =>
+    // P2002. Don't 500 the webhook on a directory-side duplicate; noop and let the
+    // operator reconcile (same posture as the rehire collision on create).
+    if (isUniqueViolation(err)) return { action: "noop" };
+    throw err;
   }
-  return { action: "noop" };
 }

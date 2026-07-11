@@ -7,7 +7,12 @@ import type { Adapter } from "next-auth/adapters";
 import type { Role } from "../generated/prisma/client";
 import { prisma, prismaUnfiltered } from "./prisma";
 import { verifyPassword, needsRehash, hashPassword } from "./password";
-import { isPolisSsoConfigured, polisSsoConfig } from "./sso/config";
+import {
+  isPolisSsoConfigured,
+  polisSsoConfig,
+  isFederatedSignInAllowed,
+  POLIS_PROVIDER_ID,
+} from "./sso/config";
 
 /**
  * SSO SEAM (ADR-013 / ADR-024): map an IdP's claims to our Role enum. Default is
@@ -141,8 +146,16 @@ const credentialsProvider = Credentials({
  * INFRA-UNVERIFIED (ADR-045 wave-off): no live Polis is booted in-session, so the
  * Jackson-compat handshake settings below (client_secret_post token auth; `state`
  * check only — Jackson does not implement PKCE/nonce fully) are wired to the
- * documented contract, not end-to-end tested. allowDangerousEmailAccountLinking
- * stays OFF so a spoofable email claim can't auto-link to a password user.
+ * documented contract, not end-to-end tested.
+ *
+ * allowDangerousEmailAccountLinking is ON, scoped to THIS provider ONLY (ADR-045
+ * amendment A1): a SCIM-provisioned User row has no linked Account, so without
+ * email-linking a provisioned user hits OAuthAccountNotLinked on first login and
+ * the flagship US-1/US-2 workflow is dead-on-arrival. The "dangerous" part — a
+ * spoofable email claim auto-linking to a REAL password user — is neutralized by
+ * the `isFederatedSignInAllowed` guard in the signIn callback, which only permits
+ * the link when the matched row is passwordless (a SCIM-created row). Entra keeps
+ * the flag OFF (its collisions hard-block upstream).
  */
 function polisOidcProvider(): Provider {
   const cfg = polisSsoConfig();
@@ -150,7 +163,7 @@ function polisOidcProvider(): Provider {
   if (cfg.tenant) authorizationParams.tenant = cfg.tenant;
   if (cfg.product) authorizationParams.product = cfg.product;
   return {
-    id: "polis",
+    id: POLIS_PROVIDER_ID,
     name: "SSO",
     type: "oidc",
     issuer: cfg.issuer,
@@ -161,7 +174,10 @@ function polisOidcProvider(): Provider {
       : {}),
     client: { token_endpoint_auth_method: "client_secret_post" },
     checks: ["state"],
-    allowDangerousEmailAccountLinking: false,
+    // Scoped to Polis ONLY + paired with the passwordHash===null guard in signIn
+    // (ADR-045 amendment A1): claims a passwordless SCIM row, blocks takeover of a
+    // password user.
+    allowDangerousEmailAccountLinking: true,
   } as Provider;
 }
 
@@ -225,14 +241,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     // an OIDC account's type "oidc" — keying on "oauth" alone would let a
     // SCIM-off-boarded Polis user re-authenticate (ADR-045 US-3). Only the
     // credentials path (type "credentials") is skipped — it already filters
-    // deletedAt in authorize().
+    // deletedAt in authorize(). The same lookup also feeds the Polis
+    // account-linking takeover guard (ADR-045 amendment A1): passwordHash is
+    // selected so isFederatedSignInAllowed can permit a link only for a
+    // passwordless (SCIM-provisioned) row and hard-block a real password user
+    // with a colliding email. One indexed read covers both invariants.
     async signIn({ user, account }) {
       if ((account?.type === "oauth" || account?.type === "oidc") && user?.id) {
         const row = await prismaUnfiltered.user.findUnique({
           where: { id: user.id },
-          select: { deletedAt: true },
+          select: { deletedAt: true, passwordHash: true },
         });
-        if (row?.deletedAt) return false;
+        return isFederatedSignInAllowed(row, account.provider);
       }
       return true;
     },

@@ -4,6 +4,7 @@ import { withInternalAuth, withRateLimit } from "@/lib/api-helpers";
 import { withSpan } from "@/lib/observability";
 import { scimWebhookSecret, verifyScimSignature } from "@/lib/sso/config";
 import { normalizeDirectoryEvent, provisionDirectoryEvent } from "@/lib/sso/scim";
+import { normalizedScimEventSchema } from "@/lib/validations/sso";
 
 // Internal endpoint — SCIM 2.0 directory provisioning from an Ory Polis sidecar
 // (ADR-045, WS-6). Ory Polis owns the SCIM protocol and POSTs BoxyHQ Directory-
@@ -44,13 +45,19 @@ async function handle(req: NextRequest) {
     return err("Invalid JSON body", 400);
   }
 
-  const event = normalizeDirectoryEvent(parsed);
+  const candidate = normalizeDirectoryEvent(parsed);
   // Group events, membership events, or anything without an email are not acted
   // on — acknowledge with 200 so Polis does not retry a well-formed no-op.
-  if (!event) return ok({ skipped: true, reason: "unhandled-event" });
+  if (!candidate) return ok({ skipped: true, reason: "unhandled-event" });
+
+  // Validate the normalized event at the API boundary (zod hard rule). The key
+  // check normalize doesn't make: the address is a REAL email — a malformed value
+  // is a 400, never a silently-provisioned bad users.email row.
+  const validated = normalizedScimEventSchema.safeParse(candidate);
+  if (!validated.success) return err("Invalid SCIM event payload", 400);
 
   const result = await withSpan("sso.scim.provision", () =>
-    provisionDirectoryEvent(event),
+    provisionDirectoryEvent(validated.data),
   );
   // Log the action only — never the email/name (PII stays out of logs).
   return ok({ action: result.action });
