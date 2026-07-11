@@ -64,6 +64,27 @@ recurring context tax — same discipline as CLAUDE.md.
 
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
 
+- 2026-07-11 — **gitleaks is NOT preinstalled in the web container; `/ship` phase B goes
+  RED ("gitleaks is not on PATH") until you reinstall it EACH session.** The GitHub release
+  is proxy-blocked; the go proxy works: `GOBIN=$HOME/.local/bin go install
+github.com/zricethezav/gitleaks/v8@v8.21.2`, then run ship with `export
+PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
+- 2026-07-11 — **Landing a working-branch commit on `main` when a generator-docs commit
+  (REPO-MAP/SESSION-HANDOFF regen) sits between `main` and it: use cherry-pick, NOT
+  `git push origin HEAD:main`.** A plain FF would drag the generator-docs commit onto main,
+  and SESSION-HANDOFF.md must stay OFF main. Pattern: `git fetch origin main` →
+  `git checkout -b tmp origin/main` → `git cherry-pick <sha>` → `git push origin HEAD:main`
+  → `git checkout <branch>`. Note **`git branch -d/-D` is DENY-listed** (destructive-git),
+  so the temp branch can't be cleaned in-session — harmless local cruft in an ephemeral box.
+- 2026-07-11 — **React Compiler (ADR-048): on the pinned `next@16.2.9` the ONLY supported
+  path is the stable Babel transform (`reactCompiler: true` + `babel-plugin-react-compiler`
+  devDep, ~35% build-time cost).** The faster `experimental.turbopackRustReactCompiler` Rust
+  port AND `experimental.turbopackFileSystemCacheForBuild` are canary/experimental and absent
+  from 16.2.9's config type (enabling the Rust port fails typecheck) — both are deferred to
+  the next pinned-Next bump. Compiler is default-ON with a `project.config.json`
+  `"reactCompiler": false` opt-out. `react-hooks/incompatible-library` is at `error`
+  (eslint.config.mjs) so a compiler-skipped component blocks `/ship`.
+
 - 2026-07-11 — **zod v4 migration (ADR-046): the ONLY type-break was the `@hookform/resolvers`
   `zodResolver` generic in `components/shared/FormField.tsx`.** resolvers v5 is the zod-4-native
   pairing; constrain `useZodForm<TSchema extends ZodType<FieldValues>>` and keep the `schema as never`
