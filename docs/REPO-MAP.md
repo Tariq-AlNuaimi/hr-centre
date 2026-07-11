@@ -36,6 +36,9 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 
 ## lib/ exports
+- lib/ai/config.ts: AiAuthStyle, AiConfig, isAiConfigured, aiConfig, AiNotConfiguredError
+- lib/ai/provider.ts: getAiClient
+- lib/ai/tool-runner.ts: AI_DEFAULT_MAX_TOKENS, RunAgentParams, runAgent
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
 - lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
@@ -46,9 +49,10 @@
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
+- lib/observability/config.ts: isOtelEnabled, otelServiceName
+- lib/observability/index.ts: withSpan
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
-- lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash (Argon2id; legacy bcrypt verify; ADR-039)
-- lib/valkey.ts: getValkey (lazy Valkey/Redis client for shared-state rate limiting; ADR-035)
+- lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
@@ -59,6 +63,7 @@
 - lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
+- lib/valkey.ts: getValkey
 
 ## components/
 - components/dashboard/DashboardContent.tsx
