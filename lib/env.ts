@@ -59,7 +59,29 @@ const envSchema = z.object({
   // sink; protocol defaults to http/protobuf. Declared here for the env
   // contract; the runtime gate lives in lib/observability/config.ts, which
   // reads process.env directly so it works on the Edge runtime too.
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  // z.string().url() alone is too loose: the WHATWG URL parser reads a bare
+  // "otel-collector:4318" as scheme `otel-collector:` with an empty host, so a
+  // scheme-less typo would validate yet export nowhere (silent telemetry loss).
+  // Require an absolute http(s) URL with a real host so a misconfig fails LOUD
+  // at boot, like every other required env here.
+  OTEL_EXPORTER_OTLP_ENDPOINT: z
+    .string()
+    .url()
+    .refine(
+      (v) => {
+        try {
+          const u = new URL(v);
+          return (
+            (u.protocol === "http:" || u.protocol === "https:") &&
+            u.hostname.length > 0
+          );
+        } catch {
+          return false;
+        }
+      },
+      { message: "must be an absolute http(s) URL with a host, e.g. http://otel-collector:4318" },
+    )
+    .optional(),
   OTEL_EXPORTER_OTLP_PROTOCOL: z
     .enum(["http/protobuf", "http/json", "grpc"])
     .optional(),

@@ -30,7 +30,8 @@ export async function register() {
   // registerOTel handles both the nodejs and edge runtimes and reads the OTLP
   // endpoint/protocol from the standard OTEL_EXPORTER_OTLP_* env vars; the
   // Collector it points at is the swappable-backend seam (SigNoz by default).
-  if (isOtelEnabled()) {
+  const otelEnabled = isOtelEnabled();
+  if (otelEnabled) {
     const { registerOTel } = await import("@vercel/otel");
     registerOTel({ serviceName: otelServiceName() });
   }
@@ -40,11 +41,24 @@ export async function register() {
 
   const environment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
 
+  // Sentry <-> OTel coexistence. @sentry/nextjs's Node SDK is itself built on
+  // OpenTelemetry and, by default, registers its OWN process-global
+  // TracerProvider. That global is first-writer-wins, so if the OTel backbone
+  // above already claimed it, Sentry's tracing setup would be silently dropped.
+  // Per ADR-040's division of labor -- SigNoz owns traces/metrics/logs,
+  // Sentry/GlitchTip owns ERRORS -- when the backbone is on we skip Sentry's
+  // OTel bootstrap (`skipOpenTelemetrySetup`) and disable its perf sampling, so
+  // there is exactly ONE TracerProvider (OTel's) and traces flow to the
+  // Collector. Error capture (captureException / captureRequestError) is
+  // unaffected. With the backbone off, Sentry keeps its ADR-002 behavior.
+  const tracesSampleRate = otelEnabled ? 0 : 0.1;
+
   if (process.env.NEXT_RUNTIME === "nodejs") {
     Sentry.init({
       dsn,
       environment,
-      tracesSampleRate: 0.1,
+      tracesSampleRate,
+      skipOpenTelemetrySetup: otelEnabled,
       // Disable Sentry's own SDK logger -- noisy in container logs and the
       // app's audit-extension scrubbing only covers our captureError wrapper.
       debug: false,
@@ -55,7 +69,7 @@ export async function register() {
     Sentry.init({
       dsn,
       environment,
-      tracesSampleRate: 0.1,
+      tracesSampleRate,
       debug: false,
     });
   }
