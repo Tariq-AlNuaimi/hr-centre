@@ -86,6 +86,45 @@ const envSchema = z.object({
     .enum(["http/protobuf", "http/json", "grpc"])
     .optional(),
   OTEL_SERVICE_NAME: z.string().optional(),
+
+  // AI runtime (optional; ADR-036, WS-5). The Claude-native AI layer (lib/ai/*)
+  // is a silent no-op unless AI_API_KEY is set -- isAiConfigured() is false and
+  // getAiClient() throws an actionable error rather than constructing a client
+  // that would 401 at call time (mirrors the OTel no-op + email {sent:false}).
+  // Endpoint-agnostic by operator decision (session 15): the same build targets
+  // Anthropic's hosted API or a self-hosted LLM by config alone --
+  //   AI_BASE_URL:   unset -> Anthropic's default; set -> a self-hosted /
+  //                  Anthropic-compat gateway endpoint. Validated as an absolute
+  //                  http(s) URL with a host (same rule as the OTLP endpoint) so
+  //                  a scheme-less typo fails LOUD at boot, not silently nowhere.
+  //   AI_AUTH_STYLE: how AI_API_KEY is sent -- "x-api-key" (Anthropic default)
+  //                  or "bearer" (Authorization: Bearer, for a gateway/proxy).
+  //   AI_MODEL:      default model/tier (ADR-022 routing consumes this); a
+  //                  per-call override passes through runAgent().
+  // Declared here for the env contract + boot-time validation; the runtime gate
+  // lives in lib/ai/config.ts, which reads process.env directly (like the OTel
+  // gate) so it evaluates at call time.
+  AI_API_KEY: z.string().optional(),
+  AI_BASE_URL: z
+    .string()
+    .url()
+    .refine(
+      (v) => {
+        try {
+          const u = new URL(v);
+          return (
+            (u.protocol === "http:" || u.protocol === "https:") &&
+            u.hostname.length > 0
+          );
+        } catch {
+          return false;
+        }
+      },
+      { message: "must be an absolute http(s) URL with a host, e.g. https://gateway.internal/anthropic" },
+    )
+    .optional(),
+  AI_AUTH_STYLE: z.enum(["x-api-key", "bearer"]).default("x-api-key"),
+  AI_MODEL: z.string().default("claude-opus-4-8"),
 });
 
 export const env = envSchema.parse(process.env);
