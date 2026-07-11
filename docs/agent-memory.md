@@ -64,6 +64,26 @@ recurring context tax — same discipline as CLAUDE.md.
 
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
 
+- 2026-07-11 — **zod v4 migration (ADR-046): the ONLY type-break was the `@hookform/resolvers`
+  `zodResolver` generic in `components/shared/FormField.tsx`.** resolvers v5 is the zod-4-native
+  pairing; constrain `useZodForm<TSchema extends ZodType<FieldValues>>` and keep the `schema as never`
+  arg cast (overload-probe). Deprecated `z.string().email()`/`.url()` → top-level `z.email()`/`z.url()`
+  (transform chains `.toLowerCase()/.trim()` survive on `z.email()`). Schemas are otherwise semantics-identical.
+- 2026-07-11 — **The Prettier `format` /ship gate (WS-7) fails RED on generator-owned docs.**
+  `docs/REPO-MAP.md` (SessionStart hook) + `docs/SESSION-HANDOFF.md` (render-handoff.mjs auto-status)
+  are regenerated each session, so they MUST stay in `.prettierignore` — Prettier must not fight the generators.
+- 2026-07-11 — **Security guard hooks fail-CLOSED, governance gates fail-OPEN (ADR-047).**
+  `protect-secrets`+`dangerous-commands` deny on internal error; `blueprint-gate`+`build-vs-buy-gate`
+  stay fail-open (a crash must not block all writes). A PERSISTENT fault in a fail-closed guard denies its
+  whole matcher surface (Read|Grep|Bash) for the session with NO in-session override — recovery is an
+  operator removing the hook's `.claude/settings.json` PreToolUse entry (the crash-path reason says so).
+- 2026-07-11 — **SCIM/SSO account-linking: `passwordHash` is NOT a reliable "SSO-managed" proxy
+  (ADR-045 A1).** The linked `Account` row is. Gate the Polis takeover block on "no polis Account linked
+  yet" (first-link only), else a later forgot-password/admin password-set permanently locks a returning
+  SSO user out (`lib/sso/config.ts isFederatedSignInAllowed` + `lib/auth.ts` signIn account.findFirst).
+- 2026-07-11 — **Landing to main is a clean FF push:** `git push origin HEAD:main` when the branch is
+  main + linear commits (WS-6/7/8 all landed this way). The pre-push /ship gate runs on the push.
+
 - 2026-07-11 — **Run `npm run ship` WITHOUT `NODE_ENV=production` exported.** That flag
   loads production react-dom into jsdom and falsely fails the component tests — the gate
   goes red for a bogus reason. Leave NODE_ENV unset/development for the gate.
