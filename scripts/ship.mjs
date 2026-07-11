@@ -691,7 +691,18 @@ async function scanDocker() {
   // it runs with a MINIMAL env (no inherited secrets) on EVERY invocation incl.
   // the version probe -- a weaponized binary's stealer fires on execution, not on
   // a specific subcommand. HOME is kept only so trivy can find its DB cache.
-  const TRIVY_ENV = { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "" };
+  // PATH + HOME (cache) + Docker daemon-location config (NOT secrets: these just
+  // tell `trivy image` where the daemon is on Colima/Rancher/remote DOCKER_HOST
+  // setups). Everything else -- API keys, DB/auth secrets, cloud creds -- is
+  // withheld, which is what the CVE-2026-33634 mitigation actually protects.
+  const TRIVY_ENV = {
+    PATH: process.env.PATH ?? "",
+    HOME: process.env.HOME ?? "",
+    ...(process.env.DOCKER_HOST ? { DOCKER_HOST: process.env.DOCKER_HOST } : {}),
+    ...(process.env.DOCKER_CONTEXT ? { DOCKER_CONTEXT: process.env.DOCKER_CONTEXT } : {}),
+    ...(process.env.DOCKER_CERT_PATH ? { DOCKER_CERT_PATH: process.env.DOCKER_CERT_PATH } : {}),
+    ...(process.env.DOCKER_TLS_VERIFY ? { DOCKER_TLS_VERIFY: process.env.DOCKER_TLS_VERIFY } : {}),
+  };
   const trivyProbe = await run("trivy probe", "trivy", ["--version"], TRIVY_ENV, true);
   if (!trivyProbe.ok) {
     return ok("image built; trivy scan skipped (not installed)", {
@@ -735,16 +746,15 @@ async function scanDocker() {
   const notes = [];
   if (!img.ok) notes.push("  trivy image (HIGH/CRITICAL):\n" + img.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
   if (!conf.ok) notes.push("  trivy config (HIGH/CRITICAL):\n" + conf.out.split("\n").filter((l) => l.trim()).slice(0, 12).map((l) => `    ${l}`).join("\n"));
-  if (notes.length === 0) {
-    return verWarn
-      ? ok("image built + trivy clean (no HIGH/CRITICAL)", { warn: verWarn.trim() })
-      : ok("image built + trivy clean (no HIGH/CRITICAL)");
-  }
+  // trivyVer is guaranteed valid + uncompromised here (the not-installed and
+  // unparseable-version cases already returned above), so there is no version
+  // caveat to append -- the old `verWarn` was removed with the fail-closed change.
+  if (notes.length === 0) return ok("image built + trivy clean (no HIGH/CRITICAL)");
   return ok("image built; trivy findings to triage", {
     warn:
       "trivy found HIGH/CRITICAL issues in the image/config. ADR-030: triage via docs/findings-register.md\n" +
       "  (fix, or log an adjudicated wave-off). Not a hard red -- base-image CVE churn would make the gate flaky:\n" +
-      notes.join("\n") + verWarn,
+      notes.join("\n"),
   });
 }
 

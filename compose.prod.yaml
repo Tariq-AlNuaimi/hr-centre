@@ -67,7 +67,12 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # No `:?` required-guard: Compose interpolates every service (even
+      # profile-inactive ones) before profile filtering, so a `:?` here would
+      # break the external-db / bare-`up` topologies that never start this db.
+      # Left blank by default; the postgres image itself refuses to boot without
+      # a password, so requiredness is enforced only when bundled-db is active.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
       POSTGRES_DB: ${POSTGRES_DB:-app_db}
     volumes:
       - pgdata:/var/lib/postgresql/data
