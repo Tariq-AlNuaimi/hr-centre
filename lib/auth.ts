@@ -252,7 +252,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           where: { id: user.id },
           select: { deletedAt: true, passwordHash: true },
         });
-        return isFederatedSignInAllowed(row, account.provider);
+        // For Polis, distinguish the true first-link moment from a returning
+        // login: the takeover block only applies when NO polis Account is linked
+        // yet (see isFederatedSignInAllowed). This lookup is skipped for every
+        // other provider — Entra never email-links, so it can't be taken over here.
+        let hasLinkedProviderAccount = false;
+        if (account.provider === POLIS_PROVIDER_ID) {
+          const linked = await prismaUnfiltered.account.findFirst({
+            where: { userId: user.id, provider: POLIS_PROVIDER_ID },
+            select: { id: true },
+          });
+          hasLinkedProviderAccount = linked !== null;
+        }
+        return isFederatedSignInAllowed(row, account.provider, hasLinkedProviderAccount);
       }
       return true;
     },

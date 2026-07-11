@@ -108,34 +108,42 @@ test("verifyScimSignature: rejects a wrong signature, missing header, and tamper
 // --- Federated sign-in guard (ADR-045 A1; pure) ----------------------------
 
 test("isFederatedSignInAllowed: null row (new user) is allowed", () => {
-  assert.equal(isFederatedSignInAllowed(null, "polis"), true);
+  assert.equal(isFederatedSignInAllowed(null, "polis", false), true);
 });
 
 test("isFederatedSignInAllowed: a soft-deleted row is denied for any provider", () => {
   const row = { deletedAt: new Date(), passwordHash: null };
-  assert.equal(isFederatedSignInAllowed(row, "polis"), false);
-  assert.equal(isFederatedSignInAllowed(row, "microsoft-entra-id"), false);
+  assert.equal(isFederatedSignInAllowed(row, "polis", true), false);
+  assert.equal(isFederatedSignInAllowed(row, "microsoft-entra-id", false), false);
 });
 
-test("isFederatedSignInAllowed: Polis link to a PASSWORD user is denied (takeover guard)", () => {
+test("isFederatedSignInAllowed: FIRST-link Polis to a PASSWORD user is denied (takeover guard)", () => {
   assert.equal(
-    isFederatedSignInAllowed({ deletedAt: null, passwordHash: "$argon2id$x" }, "polis"),
+    isFederatedSignInAllowed({ deletedAt: null, passwordHash: "$argon2id$x" }, "polis", false),
     false,
-    "a real password user must not be auto-linked via a spoofable SSO email",
+    "a real password user must not be auto-linked via a spoofable SSO email on first link",
   );
 });
 
-test("isFederatedSignInAllowed: Polis link to a PASSWORDLESS (SCIM) row is allowed", () => {
+test("isFederatedSignInAllowed: FIRST-link Polis to a PASSWORDLESS (SCIM) row is allowed", () => {
   assert.equal(
-    isFederatedSignInAllowed({ deletedAt: null, passwordHash: null }, "polis"),
+    isFederatedSignInAllowed({ deletedAt: null, passwordHash: null }, "polis", false),
     true,
     "the SCIM-provisioned passwordless row is claimable — US-1/US-2",
   );
 });
 
+test("isFederatedSignInAllowed: a RETURNING linked Polis user is allowed even if a passwordHash was later set", () => {
+  assert.equal(
+    isFederatedSignInAllowed({ deletedAt: null, passwordHash: "$argon2id$later" }, "polis", true),
+    true,
+    "once a polis Account is linked, a forgot-password/admin-set hash must NOT lock the SSO user out (senior-review High)",
+  );
+});
+
 test("isFederatedSignInAllowed: guard is Polis-scoped (Entra passwordHash row not blocked here)", () => {
   assert.equal(
-    isFederatedSignInAllowed({ deletedAt: null, passwordHash: "$argon2id$x" }, "microsoft-entra-id"),
+    isFederatedSignInAllowed({ deletedAt: null, passwordHash: "$argon2id$x" }, "microsoft-entra-id", false),
     true,
     "Entra keeps allowDangerousEmailAccountLinking OFF; its collisions block upstream",
   );

@@ -147,11 +147,24 @@ provider ONLY** (Entra keeps the default OFF), **paired with a
   null) always passes; only a password-user email collision is blocked.
 
 Rationale for this over an adapter wrap: the guard is a pure, unit-testable function
-(no NextAuth boot, no adapter surgery), it reuses the existing `signIn` soft-delete
-lookup (one extra selected column, no extra query), and it keeps the "dangerous"
-flag's blast radius provider-scoped and paired with an explicit invariant. A
-contract test (`tests/contracts/auth.test.ts`) proves the `passwordHash !== null`
-case still blocks. `allowDangerousEmailAccountLinking` on Entra stays OFF.
+(no NextAuth boot, no adapter surgery), and it keeps the "dangerous" flag's blast
+radius provider-scoped and paired with an explicit invariant.
+`allowDangerousEmailAccountLinking` on Entra stays OFF.
+
+**Refinement (2nd senior review, WS-6 closeout).** The block is applied ONLY at the
+true first-link moment — when NO `polis` `Account` is linked to the user yet. The
+`signIn` callback does an indexed `account.findFirst({ userId, provider:"polis" })`
+and passes `hasLinkedProviderAccount` to `isFederatedSignInAllowed`; once an Account
+exists, every later sign-in is a normal returning login and is allowed regardless of
+`passwordHash`. Without this, a `passwordHash` set on an ALREADY-linked SSO user (a
+forgot-password reset, an admin break-glass password — both pre-existing, unmodified
+routes) would permanently lock that user out of SSO, with no path to re-null the hash
+(and no login at all under `AUTH_ENFORCE_SSO=true`). `passwordHash` is not a reliable
+proxy for "SSO-managed"; the linked Account is. Contract tests
+(`tests/contracts/auth.test.ts`, `tests/contracts/sso.test.ts`) prove the first-link
+password-user block AND the returning-linked-user allow. Secondary hardening —
+forgot-password / admin-password-set refusing an already-federated identity — is a
+tracked follow-on (defense in depth; the Account-consult already closes the lockout).
 
 ### A3 — SCIM correlation gains a stable directory id (the email-rename [Med])
 

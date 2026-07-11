@@ -124,27 +124,41 @@ export interface SsoSignInRow {
  *   1. Soft-deleted (off-boarded) user → DENY. A SCIM `user.deleted`/`active:false`
  *      soft-deletes the row (US-3); an existing JWT is torn down and re-auth is
  *      blocked here. Applies to every federated provider.
- *   2. Polis account-linking takeover guard. The Polis provider sets
- *      `allowDangerousEmailAccountLinking:true` (scoped to Polis only) so a
- *      SCIM-provisioned **passwordless** row can be claimed on first SSO login —
- *      that is the fix for the flagship US-1/US-2 workflow. But a row that already
- *      has a `passwordHash` is a real password user; auto-linking a spoofable SSO
- *      email claim to it would be account takeover, so DENY when the matched row's
- *      `passwordHash` is non-null. Scoped to `provider === "polis"` (Entra keeps
- *      `allowDangerousEmailAccountLinking:false`, so its email collisions hard-block
+ *   2. Polis account-linking takeover guard — applied ONLY at the true first-link
+ *      moment. The Polis provider sets `allowDangerousEmailAccountLinking:true`
+ *      (scoped to Polis only) so a SCIM-provisioned **passwordless** row can be
+ *      claimed on first SSO login — the fix for the flagship US-1/US-2 workflow.
+ *      The takeover risk (a spoofable SSO email claim auto-linking to a REAL
+ *      password user) exists ONLY when no `polis` Account is linked yet, so the
+ *      `passwordHash !== null` block is gated on `hasLinkedProviderAccount ===
+ *      false`. Once a Polis Account exists, every later sign-in is a normal
+ *      returning login and is allowed regardless of `passwordHash` — otherwise a
+ *      password set on an already-linked SSO user (a forgot-password reset, an
+ *      admin break-glass password) would PERMANENTLY lock that user out of SSO,
+ *      with no path to re-null the hash (senior-review High, WS-6 closeout).
+ *      `passwordHash` is NOT a reliable proxy for "SSO-managed"; the linked
+ *      Account is. Scoped to `provider === "polis"` (Entra keeps
+ *      `allowDangerousEmailAccountLinking:false`, so its collisions hard-block
  *      upstream before this callback runs).
  *
  * `row === null` (no existing user) → allow: the adapter creates a fresh row, the
- * pre-existing behavior. Pure + synchronous so it is unit-testable without booting
- * NextAuth; `lib/auth.ts` does the single indexed lookup and delegates here.
+ * pre-existing behavior. Pure so it is unit-testable without booting NextAuth;
+ * `lib/auth.ts` does the indexed row + Account lookups and delegates here.
  */
 export function isFederatedSignInAllowed(
   row: SsoSignInRow | null,
   provider: string | undefined,
+  hasLinkedProviderAccount: boolean,
 ): boolean {
   if (!row) return true;
   if (row.deletedAt) return false;
-  if (provider === POLIS_PROVIDER_ID && row.passwordHash !== null) return false;
+  if (
+    provider === POLIS_PROVIDER_ID &&
+    !hasLinkedProviderAccount &&
+    row.passwordHash !== null
+  ) {
+    return false;
+  }
   return true;
 }
 

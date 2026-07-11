@@ -25,6 +25,7 @@ const canMock = typeof mockApi.module === "function";
 // --- mutable stubs the captured closures read through ----------------------
 let findUniqueArgs: unknown = null;
 let findUniqueResult: Record<string, unknown> | null = null;
+let accountFindFirstResult: Record<string, unknown> | null = null;
 let updateCalls: unknown[] = [];
 let auditedUpdateCalls: unknown[] = [];
 let compareResult = false;
@@ -98,6 +99,10 @@ before(async () => {
             return {};
           },
         },
+        account: {
+          // Drives the Polis "is this a returning linked user?" lookup in signIn.
+          findFirst: async () => accountFindFirstResult,
+        },
       },
     },
   });
@@ -121,6 +126,7 @@ let authMod: {
 beforeEach(() => {
   findUniqueArgs = null;
   findUniqueResult = null;
+  accountFindFirstResult = null;
   updateCalls = [];
   auditedUpdateCalls = [];
   compareResult = false;
@@ -385,8 +391,9 @@ test("signIn: allows credentials sign-in without an extra deletedAt lookup", { s
 // PASSWORDLESS row is claimable on first login; a colliding PASSWORD user must
 // still hard-block (no takeover via a spoofable SSO email claim).
 
-test("signIn: BLOCKS a Polis link to a row that already has a passwordHash (takeover guard)", { skip: !canMock }, async () => {
+test("signIn: BLOCKS a FIRST Polis link to a row that already has a passwordHash (takeover guard)", { skip: !canMock }, async () => {
   findUniqueResult = { deletedAt: null, passwordHash: "$argon2id$real-password-user" };
+  accountFindFirstResult = null; // no polis Account yet => this is the dangerous first-link moment
   const ok = await config.callbacks.signIn({
     user: { id: "u1" },
     account: { type: "oidc", provider: "polis" },
@@ -394,13 +401,24 @@ test("signIn: BLOCKS a Polis link to a row that already has a passwordHash (take
   assert.equal(ok, false, "a real password user must not be taken over by a Polis email link");
 });
 
-test("signIn: ALLOWS a Polis link to a passwordless (SCIM-provisioned) row", { skip: !canMock }, async () => {
+test("signIn: ALLOWS a first Polis link to a passwordless (SCIM-provisioned) row", { skip: !canMock }, async () => {
   findUniqueResult = { deletedAt: null, passwordHash: null };
+  accountFindFirstResult = null;
   const ok = await config.callbacks.signIn({
     user: { id: "u1" },
     account: { type: "oidc", provider: "polis" },
   });
   assert.equal(ok, true, "a SCIM passwordless row is claimable — the US-1/US-2 flagship flow");
+});
+
+test("signIn: ALLOWS a RETURNING linked Polis user even after a passwordHash is set (no SSO lockout)", { skip: !canMock }, async () => {
+  findUniqueResult = { deletedAt: null, passwordHash: "$argon2id$set-later-via-forgot-password" };
+  accountFindFirstResult = { id: "acct-1" }; // a polis Account already exists => returning login
+  const ok = await config.callbacks.signIn({
+    user: { id: "u1" },
+    account: { type: "oidc", provider: "polis" },
+  });
+  assert.equal(ok, true, "a linked SSO user must not be locked out when a password is later set (senior-review High)");
 });
 
 test("signIn: the takeover guard is scoped to Polis (Entra passwordHash row is not blocked here)", { skip: !canMock }, async () => {
