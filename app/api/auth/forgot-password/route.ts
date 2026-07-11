@@ -22,7 +22,7 @@ const schema = z.object({ email: z.string().email() });
 const TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export async function POST(req: NextRequest): Promise<Response> {
-  const limit = rateLimit(req, { id: "auth-reset", limit: 5, windowMs: 60_000 });
+  const limit = await rateLimit(req, { id: "auth-reset", limit: 5, windowMs: 60_000 });
   if (!limit.ok) {
     return err("Too many requests", 429);
   }

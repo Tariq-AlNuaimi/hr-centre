@@ -7,7 +7,7 @@ export const GET = handlers.GET;
 // Brute-force defense for credentials login (and any other POST to /api/auth/*).
 // 10 requests / minute / client IP. See SECURITY.md finding T-01.
 export async function POST(req: NextRequest): Promise<Response> {
-  const result = rateLimit(req, { id: "auth", limit: 10, windowMs: 60_000 });
+  const result = await rateLimit(req, { id: "auth", limit: 10, windowMs: 60_000 });
   if (!result.ok) {
     return new Response(
       JSON.stringify({ error: "Too many requests" }),

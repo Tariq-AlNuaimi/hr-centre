@@ -161,13 +161,14 @@ export function withInternalAuth(
  * Per-route rate limiting. Compose OUTSIDE the auth wrapper so abusive clients
  * are throttled before auth work runs:
  *   export const POST = withRateLimit(withAdminAuth(handler), { id: "x-write", limit: 30, windowMs: 60_000 });
- * Returns 429 + Retry-After when the per-IP bucket is exceeded. NOTE: the bucket
- * is in-memory/per-instance (see lib/rate-limit.ts) -- swap to @upstash/ratelimit
- * for multi-instance deployments.
+ * Returns 429 + Retry-After when the per-IP bucket is exceeded. The backend is
+ * shared-state (Valkey) when VALKEY_URL is set, else in-memory/per-instance --
+ * multi-replica deployments MUST set VALKEY_URL so the quota is shared (see
+ * lib/rate-limit.ts, ADR-035, SECURITY.md T-01).
  */
 export function withRateLimit(handler: RouteHandler, opts: RateLimitOptions): RouteHandler {
   return async (req, ctx) => {
-    const result = rateLimit(req, opts);
+    const result = await rateLimit(req, opts);
     if (!result.ok) {
       return NextResponse.json(
         { error: "Too many requests" },
