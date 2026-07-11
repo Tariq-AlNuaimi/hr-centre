@@ -170,9 +170,15 @@ recurring context tax — same discipline as CLAUDE.md.
   broken symlink under `app/api` can't hard-kill `/ship`. Per-file waiver marker:
   `pillar:scalable-ok` (+ a register line).
 - 2026-06-24 — `gitleaks` is NOT on PATH in fresh remote containers, so `/ship`
-  goes red at phase B ("gitleaks is not on PATH"). Install the release binary to
-  `~/.local/bin` (e.g. v8.21.2 from github.com/gitleaks/gitleaks/releases) and
-  re-export PATH before `/ship`. The binary does not survive a new container.
+  goes red at phase B ("gitleaks is not on PATH"). The binary does not survive a
+  new container. **2026-07-11 UPDATE: the github.com release download is now
+  BLOCKED** — the agent proxy scopes github.com to session repos and returns a
+  JSON "GitHub access not enabled" body (a 195-byte non-gzip that breaks `tar`).
+  Working install: the Go module proxy (`proxy.golang.org`) IS allowed, and Go is
+  at `/usr/local/go/bin/go`, so run
+  `GOBIN="$HOME/.local/bin" go install github.com/zricethezav/gitleaks/v8@v8.21.2`
+  (module path is `zricethezav/...`, NOT `gitleaks/gitleaks/...`), then
+  `export PATH="$HOME/.local/bin:$PATH"` before `/ship`.
 - 2026-06-24 — SessionStart hook now installs deps / regenerates the Prisma client
   on **stale** (package.json or schema.prisma newer than node_modules/generated),
   not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit) — this fixes
