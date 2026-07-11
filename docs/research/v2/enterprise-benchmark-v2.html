@@ -137,6 +137,15 @@
   .p2 { color: var(--c-slate); background: var(--c-slate-bg); border:1px solid var(--c-slate-bd); }
   .fit { font-family: var(--mono); font-weight: 600; color: var(--ink-2); }
 
+  /* ---- five-principle badges (reuse verdict-pill tokens; theme-aware) ---- */
+  .pbadge { display:inline-block; font-family: var(--mono); font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: 0.04em; border:1px solid; margin: 1px 3px 1px 0; white-space: nowrap; }
+  .pb-scal  { color: var(--c-teal);  background: var(--c-teal-bg);  border-color: var(--c-teal-bd); }
+  .pb-maint { color: var(--c-slate); background: var(--c-slate-bg); border-color: var(--c-slate-bd); }
+  .pb-sec   { color: var(--c-red);   background: var(--c-red-bg);   border-color: var(--c-red-bd); }
+  .pb-qual  { color: var(--c-green); background: var(--c-green-bg); border-color: var(--c-green-bd); }
+  .pb-speed { color: var(--c-amber); background: var(--c-amber-bg); border-color: var(--c-amber-bd); }
+  .tradenote { display:block; font-size: 9.5px; color: var(--ink-3); margin-top: 3px; font-style: italic; }
+
   /* ---- legend ---- */
   .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin: 22px 0 0; }
   .legend .li { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; color: var(--ink-2); }
@@ -303,6 +312,18 @@
 </ol>
 
 <div class="rec"><span class="rk">The one-line thesis</span>The foundation is correct; the work is <b>operationalizing it for self-host and closing the AI-output governance hole</b> — using the harness's own proven pattern (a gate plus a committed adjudication artifact) rather than inventing new mechanisms.</div>
+
+<h4 class="sub">How the Five Principles shaped the verdicts</h4>
+<p class="summary">The operator's five principles (the repo's Five Pillars) are the scoring axes behind every KEEP / ADOPT / REPLACE / DEFER above — each verdict is really a judgement about which principle it serves and at what cost. The compact map, with concrete verdicts from the report:</p>
+<div class="tscroll"><table class="verdict">
+<thead><tr><th>Principle</th><th>How it drove the benchmark</th><th>Example verdicts</th></tr></thead>
+<tbody>
+<tr><td><span class="pbadge pb-scal">SCAL</span> <b>Scalability</b></td><td>Scored for scalable-<em>to</em>-complexity, not complex from day 1 — stateless services, indexed/paginated/no-N+1 reads, modular seams so new load or modules don't force a core rewrite (50 → 5,000 users).</td><td>Distributed rate-limiter (Valkey + <code>rate-limiter-flexible</code>) fixes the N×limit multi-replica bug; PgBouncer only when &gt;1 replica; <b>DEFER</b> ReBAC engines / monorepo / k8s = complexity added when load demands it, not on day 1.</td></tr>
+<tr><td><span class="pbadge pb-maint">MAINT</span> <b>Maintainability</b></td><td>Rewarded reuse of existing primitives and a single integration point; penalized designs where changing one behavior means touching five files. Any future Claude session should modify without tribal knowledge.</td><td>The <code>lib/authz/</code> seam collapses scattered role-string checks to one <code>authorize()</code>; KEEP the shadcn/cva triad rather than re-author every component; Auth.js maintenance-only note + advisory watch over a v1 rewrite.</td></tr>
+<tr><td><span class="pbadge pb-sec">SEC</span> <b>Security</b></td><td>Every input hostile, every dataset sensitive — authn + RBAC on every route, server-side validation, no client secrets, parameterized queries, least-privilege DB/service access.</td><td>Pin the compromised Trivy + SHA-pin every Action; add SAST (Semgrep/Opengrep); bcryptjs → Argon2id; the <code>ai-eval</code> gate so model outputs are governed the way code is.</td></tr>
+<tr><td><span class="pbadge pb-qual">QUAL</span> <b>Quality</b></td><td>Correct, predictable, graceful — explicit edge/empty/error states, validated against requirements before "done", accessible UI, never ship a known-broken path. Correctness beats feature count.</td><td>Close the AI-output hole (6th AI-Quality pillar + <code>/ship</code> gate); WAL-G backups + migration-at-startup so self-host isn't a broken path; React Aria hatch for a11y-critical surfaces.</td></tr>
+<tr><td><span class="pbadge pb-speed">SPEED</span> <b>Speed of Delivery</b></td><td>Small shippable increments, proven libraries over from-scratch, no gold-plating or premature optimization — speed via tight scoping, never by sacrificing principles 1–4.</td><td><b>BUILD</b> a ~100-line wrapper on the native Tool Runner instead of adopting Mastra/LangGraph; <b>pg-boss</b> over standing up new queue infra; KEEP Recharts / Next / React rather than relitigate settled bets.</td></tr>
+</tbody></table></div>
 </section>
 
 <!-- ============================ CATCHES ============================ -->
@@ -1855,51 +1876,51 @@
 
 <h4 class="sub"><span class="prio p0">P0</span> &nbsp;Do first — cliffs, correctness bugs, and the load-bearing gaps</h4>
 <div class="tscroll"><table class="verdict">
-<thead><tr><th>Action</th><th>Cat</th><th>Why now</th></tr></thead>
+<thead><tr><th>Action</th><th>Cat</th><th>Why now</th><th>Principle</th></tr></thead>
 <tbody>
-<tr><td><b>Pin the compromised Trivy</b> (≤0.69.3 / action v0.35.0 / setup v0.2.6) + SHA-pin every Action (zizmor)</td><td>C11</td><td>Active credential-stealer in the scanner the repo runs in <code>/ship</code></td></tr>
-<tr><td><b>Fix the in-memory rate-limiter</b> → Valkey + <code>rate-limiter-flexible</code> (in-memory fallback single-container)</td><td>C14</td><td>Correctness bug: real limit = N×configured under &gt;1 replica</td></tr>
-<tr><td><b>Node 22 → Node 24</b> (Active LTS); pin Docker base to a digest</td><td>C01</td><td>Node 22 security-only after Oct 2026, EOL Apr 2027</td></tr>
-<tr><td><b>bcryptjs → @node-rs/argon2</b> (Argon2id) + bcrypt legacy-verify/rehash-on-login</td><td>C03</td><td>OWASP default; Docker-first removes the native-binding problem</td></tr>
-<tr><td><b>Build the AI runtime</b> — thin wrapper on native Tool Runner + <code>@anthropic-ai/sdk</code>; pgvector; RSC/SSE streaming</td><td>C07/C02</td><td>The largest net-new gap; BUILD beats a framework for Claude-first</td></tr>
-<tr><td><b>AI-output governance</b> — <code>ai-eval</code> agent + AI-eval <code>/ship</code> gate + <code>/scaffold-ai-endpoint</code> + 6th AI-Quality pillar</td><td>C15</td><td>The one AI-era hole; mirrors senior-code-reviewer</td></tr>
-<tr><td><b>Ship the self-host image + topology</b> — distroless multi-stage (non-root, digest-pinned) + <code>compose.prod.yaml</code> (profiles) + Caddy TLS</td><td>C09</td><td>The rail the Vercel-era stack never needed</td></tr>
-<tr><td><b>Migration-at-startup</b> — entrypoint chain / init-container, direct URL, forward-compatible only</td><td>C02</td><td>Prevents multi-replica migration races on self-host</td></tr>
-<tr><td><b>Backups from day one</b> — WAL-G → object storage + volume snapshots; pin <code>pgvector/pgvector:pg18</code>, never Bitnami</td><td>C02</td><td>Mandatory for enterprise self-host; pgBackRest unmaintained</td></tr>
-<tr><td><b>Observability backbone</b> — OTel + Collector seam; SigNoz unified backend; GlitchTip as Sentry backend default</td><td>C10</td><td>The swappable-backend seam that kills SaaS lock-in</td></tr>
-<tr><td><b>Activate CI + add gates</b> — turn dormant workflows into hard blocking checks; add Prettier + lhci; ESLint stays authoritative</td><td>C13</td><td>Local <code>/ship</code> gates are enterprise's blocking CI</td></tr>
-<tr><td><b>authZ policy seam</b> — <code>lib/authz/</code> <code>authorize(session, action, resource)</code> + <code>no-inline-role-check</code> rule</td><td>C04</td><td>Kills scattered role-string checks; the single future-engine integration point</td></tr>
-<tr><td><b>Harden Auth.js + Entra</b> — maintenance-only note + advisory watch; generalize to OIDC-per-deployment</td><td>C03</td><td>Auth.js is now security-fixes-only under Better Auth</td></tr>
+<tr><td><b>Pin the compromised Trivy</b> (≤0.69.3 / action v0.35.0 / setup v0.2.6) + SHA-pin every Action (zizmor)</td><td>C11</td><td>Active credential-stealer in the scanner the repo runs in <code>/ship</code></td><td><span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td><b>Fix the in-memory rate-limiter</b> → Valkey + <code>rate-limiter-flexible</code> (in-memory fallback single-container)</td><td>C14</td><td>Correctness bug: real limit = N×configured under &gt;1 replica</td><td><span class="pbadge pb-scal">SCAL</span> <span class="pbadge pb-sec">SEC</span><span class="tradenote">SCAL/SEC↑, small ops cost (adds Valkey)</span></td></tr>
+<tr><td><b>Node 22 → Node 24</b> (Active LTS); pin Docker base to a digest</td><td>C01</td><td>Node 22 security-only after Oct 2026, EOL Apr 2027</td><td><span class="pbadge pb-sec">SEC</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td><b>bcryptjs → @node-rs/argon2</b> (Argon2id) + bcrypt legacy-verify/rehash-on-login</td><td>C03</td><td>OWASP default; Docker-first removes the native-binding problem</td><td><span class="pbadge pb-sec">SEC</span><span class="tradenote">SEC↑, small SPEED cost (slower by design)</span></td></tr>
+<tr><td><b>Build the AI runtime</b> — thin wrapper on native Tool Runner + <code>@anthropic-ai/sdk</code>; pgvector; RSC/SSE streaming</td><td>C07/C02</td><td>The largest net-new gap; BUILD beats a framework for Claude-first</td><td><span class="pbadge pb-speed">SPEED</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td><b>AI-output governance</b> — <code>ai-eval</code> agent + AI-eval <code>/ship</code> gate + <code>/scaffold-ai-endpoint</code> + 6th AI-Quality pillar</td><td>C15</td><td>The one AI-era hole; mirrors senior-code-reviewer</td><td><span class="pbadge pb-qual">QUAL</span> <span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td><b>Ship the self-host image + topology</b> — distroless multi-stage (non-root, digest-pinned) + <code>compose.prod.yaml</code> (profiles) + Caddy TLS</td><td>C09</td><td>The rail the Vercel-era stack never needed</td><td><span class="pbadge pb-sec">SEC</span> <span class="pbadge pb-qual">QUAL</span></td></tr>
+<tr><td><b>Migration-at-startup</b> — entrypoint chain / init-container, direct URL, forward-compatible only</td><td>C02</td><td>Prevents multi-replica migration races on self-host</td><td><span class="pbadge pb-qual">QUAL</span> <span class="pbadge pb-scal">SCAL</span></td></tr>
+<tr><td><b>Backups from day one</b> — WAL-G → object storage + volume snapshots; pin <code>pgvector/pgvector:pg18</code>, never Bitnami</td><td>C02</td><td>Mandatory for enterprise self-host; pgBackRest unmaintained</td><td><span class="pbadge pb-qual">QUAL</span></td></tr>
+<tr><td><b>Observability backbone</b> — OTel + Collector seam; SigNoz unified backend; GlitchTip as Sentry backend default</td><td>C10</td><td>The swappable-backend seam that kills SaaS lock-in</td><td><span class="pbadge pb-qual">QUAL</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td><b>Activate CI + add gates</b> — turn dormant workflows into hard blocking checks; add Prettier + lhci; ESLint stays authoritative</td><td>C13</td><td>Local <code>/ship</code> gates are enterprise's blocking CI</td><td><span class="pbadge pb-qual">QUAL</span> <span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td><b>authZ policy seam</b> — <code>lib/authz/</code> <code>authorize(session, action, resource)</code> + <code>no-inline-role-check</code> rule</td><td>C04</td><td>Kills scattered role-string checks; the single future-engine integration point</td><td><span class="pbadge pb-maint">MAINT</span> <span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td><b>Harden Auth.js + Entra</b> — maintenance-only note + advisory watch; generalize to OIDC-per-deployment</td><td>C03</td><td>Auth.js is now security-fixes-only under Better Auth</td><td><span class="pbadge pb-sec">SEC</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
 </tbody></table></div>
 
 <h4 class="sub"><span class="prio p1">P1</span> &nbsp;The enterprise floor</h4>
 <div class="tscroll"><table class="verdict">
-<thead><tr><th>Action</th><th>Cat</th></tr></thead>
+<thead><tr><th>Action</th><th>Cat</th><th>Principle</th></tr></thead>
 <tbody>
-<tr><td>Enterprise SSO + SCIM via one dockerized <b>Ory Polis</b> sidecar (Keycloak BYO-IdP option); Better Auth migration eval</td><td>C03</td></tr>
-<tr><td>Supply-chain depth — <b>Syft</b> image SBOM + <b>Grype</b> second scanner + <b>Socket</b> behavioral gate + <b>Renovate</b>; <b>SAST</b> (Semgrep/Opengrep); <b>cosign + SLSA</b> verify-on-deploy</td><td>C11</td></tr>
-<tr><td>Secrets = <b>SOPS + age</b>; container registry = <b>GHCR</b> (Harbor on-prem); object storage = <b>Garage/SeaweedFS</b> (avoid MinIO)</td><td>C09</td></tr>
-<tr><td>Testing consolidation — <b>Vitest</b> runner + browser mode, <b>c8</b> coverage, <b>MSW</b> mocking, Playwright visual regression, component-level axe</td><td>C12</td></tr>
-<tr><td><b>pg-boss</b> queue + <b>React Email</b> templating + re-open PDF via <b>@react-pdf/renderer</b>; pin exceljs</td><td>C14</td></tr>
-<tr><td>AI depth — Voyage/Cohere embeddings + hybrid retrieval; <b>Langfuse + Promptfoo</b> evals; LLM-Guard guardrails; Inngest background exec</td><td>C07</td></tr>
-<tr><td>Data pooling (<b>PgBouncer</b> when &gt;1 replica) + <b>pgvector</b> RAG store</td><td>C02</td></tr>
-<tr><td>zod v3→v4; react-query scoped to islands (RSC reads / Server-Action mutations); tanstack-table + virtual</td><td>C06</td></tr>
-<tr><td>Base UI for new shadcn components + primitive-layer ADR; React Aria a11y hatch</td><td>C05</td></tr>
-<tr><td>next-intl typed-messages + <code>no-physical-inset-utility</code> RTL rule</td><td>C08</td></tr>
-<tr><td>Bundle/perf as hard CI gates (size-limit + lhci budgets); add lint-staged; activate release.yml</td><td>C13</td></tr>
-<tr><td>Harness — unify deny-hooks + lint + gates into one fail-closed policy pass; <code>security-architect</code> + <code>sre</code> agents; Docker-first <code>/deploy</code>; container-scan/SBOM always-on</td><td>C15</td></tr>
+<tr><td>Enterprise SSO + SCIM via one dockerized <b>Ory Polis</b> sidecar (Keycloak BYO-IdP option); Better Auth migration eval</td><td>C03</td><td><span class="pbadge pb-sec">SEC</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td>Supply-chain depth — <b>Syft</b> image SBOM + <b>Grype</b> second scanner + <b>Socket</b> behavioral gate + <b>Renovate</b>; <b>SAST</b> (Semgrep/Opengrep); <b>cosign + SLSA</b> verify-on-deploy</td><td>C11</td><td><span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td>Secrets = <b>SOPS + age</b>; container registry = <b>GHCR</b> (Harbor on-prem); object storage = <b>Garage/SeaweedFS</b> (avoid MinIO)</td><td>C09</td><td><span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td>Testing consolidation — <b>Vitest</b> runner + browser mode, <b>c8</b> coverage, <b>MSW</b> mocking, Playwright visual regression, component-level axe</td><td>C12</td><td><span class="pbadge pb-qual">QUAL</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td><b>pg-boss</b> queue + <b>React Email</b> templating + re-open PDF via <b>@react-pdf/renderer</b>; pin exceljs</td><td>C14</td><td><span class="pbadge pb-speed">SPEED</span> <span class="pbadge pb-qual">QUAL</span></td></tr>
+<tr><td>AI depth — Voyage/Cohere embeddings + hybrid retrieval; <b>Langfuse + Promptfoo</b> evals; LLM-Guard guardrails; Inngest background exec</td><td>C07</td><td><span class="pbadge pb-qual">QUAL</span> <span class="pbadge pb-sec">SEC</span></td></tr>
+<tr><td>Data pooling (<b>PgBouncer</b> when &gt;1 replica) + <b>pgvector</b> RAG store</td><td>C02</td><td><span class="pbadge pb-scal">SCAL</span></td></tr>
+<tr><td>zod v3→v4; react-query scoped to islands (RSC reads / Server-Action mutations); tanstack-table + virtual</td><td>C06</td><td><span class="pbadge pb-scal">SCAL</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td>Base UI for new shadcn components + primitive-layer ADR; React Aria a11y hatch</td><td>C05</td><td><span class="pbadge pb-maint">MAINT</span> <span class="pbadge pb-qual">QUAL</span></td></tr>
+<tr><td>next-intl typed-messages + <code>no-physical-inset-utility</code> RTL rule</td><td>C08</td><td><span class="pbadge pb-maint">MAINT</span> <span class="pbadge pb-qual">QUAL</span></td></tr>
+<tr><td>Bundle/perf as hard CI gates (size-limit + lhci budgets); add lint-staged; activate release.yml</td><td>C13</td><td><span class="pbadge pb-qual">QUAL</span></td></tr>
+<tr><td>Harness — unify deny-hooks + lint + gates into one fail-closed policy pass; <code>security-architect</code> + <code>sre</code> agents; Docker-first <code>/deploy</code>; container-scan/SBOM always-on</td><td>C15</td><td><span class="pbadge pb-maint">MAINT</span> <span class="pbadge pb-sec">SEC</span></td></tr>
 </tbody></table></div>
 
 <h4 class="sub"><span class="prio p2">P2</span> &nbsp;Polish &amp; opt-in escape hatches</h4>
 <div class="tscroll"><table class="verdict">
-<thead><tr><th>Action</th><th>Cat</th></tr></thead>
+<thead><tr><th>Action</th><th>Cat</th><th>Principle</th></tr></thead>
 <tbody>
-<tr><td>Plan TS 7 shadow-typecheck pilot; adopt React Compiler; enable Turbopack 16.3 build cache</td><td>C01</td></tr>
-<tr><td>DEFER but document: Cerbos/OpenFGA authZ engines; monorepo (pnpm+Turborepo); K3s+Helm; OpenTofu IaC; Dokploy/Coolify PaaS</td><td>C04/C01/C09</td></tr>
-<tr><td>Realtime (SSE/Centrifugo) + uploads (S3-presigned + Garage/R2) — build only when a feature needs them; blacklist Soketi</td><td>C14</td></tr>
-<tr><td>Charts escape hatches (ECharts/Tremor); Tolgee TMS when a fork ships real translation locales; cva dormancy watch → tailwind-variants</td><td>C05/C08</td></tr>
-<tr><td>Per-tenant token metering (thin PG + Langfuse); runtime LLM router recipe; enforce ADR-022 tier routing</td><td>C07/C15</td></tr>
-<tr><td>Conditional RUM (Vercel-only Speed-Insights; Sentry/GlitchTip browser default; Faro option)</td><td>C10</td></tr>
+<tr><td>Plan TS 7 shadow-typecheck pilot; adopt React Compiler; enable Turbopack 16.3 build cache</td><td>C01</td><td><span class="pbadge pb-speed">SPEED</span></td></tr>
+<tr><td>DEFER but document: Cerbos/OpenFGA authZ engines; monorepo (pnpm+Turborepo); K3s+Helm; OpenTofu IaC; Dokploy/Coolify PaaS</td><td>C04/C01/C09</td><td><span class="pbadge pb-scal">SCAL</span> <span class="pbadge pb-speed">SPEED</span></td></tr>
+<tr><td>Realtime (SSE/Centrifugo) + uploads (S3-presigned + Garage/R2) — build only when a feature needs them; blacklist Soketi</td><td>C14</td><td><span class="pbadge pb-speed">SPEED</span> <span class="pbadge pb-scal">SCAL</span></td></tr>
+<tr><td>Charts escape hatches (ECharts/Tremor); Tolgee TMS when a fork ships real translation locales; cva dormancy watch → tailwind-variants</td><td>C05/C08</td><td><span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td>Per-tenant token metering (thin PG + Langfuse); runtime LLM router recipe; enforce ADR-022 tier routing</td><td>C07/C15</td><td><span class="pbadge pb-scal">SCAL</span> <span class="pbadge pb-maint">MAINT</span></td></tr>
+<tr><td>Conditional RUM (Vercel-only Speed-Insights; Sentry/GlitchTip browser default; Faro option)</td><td>C10</td><td><span class="pbadge pb-qual">QUAL</span></td></tr>
 </tbody></table></div>
 </section>
 
