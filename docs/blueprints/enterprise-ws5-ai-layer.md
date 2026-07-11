@@ -88,8 +88,10 @@ throws a clear, actionable error rather than half-initializing), mirroring how o
 - `lib/env.ts` + `.env.example` — the `AI_*` env contract.
 - `tests/contracts/ai.test.ts` — node:test contract suite (the repo's runner; not Jest).
 
-Model-tier routing follows **ADR-022** — `AI_MODEL` is the default tier; per-call overrides pass
-through `runAgent`. No new routing policy here.
+`AI_MODEL` is the operator-configured default tier; per-call overrides pass through `runAgent`.
+There is **no automatic product-facing model-routing policy this phase** (a later WS-5 increment
+may add one). This is distinct from ADR-022, which governs the *coding harness's* dev-session
+model tiering — not a shipped product's runtime model selection.
 
 ```mermaid
 flowchart LR

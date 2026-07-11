@@ -19,7 +19,11 @@
 /** How AI_API_KEY is sent to the endpoint. */
 export type AiAuthStyle = "x-api-key" | "bearer";
 
-/** Default model/tier when AI_MODEL is unset (ADR-022 routing consumes this). */
+/**
+ * Default model/tier when AI_MODEL is unset. There is no automatic
+ * product-facing routing policy this phase — a per-call `model` override passes
+ * straight through runAgent(); a later WS-5 increment may add real routing.
+ */
 const DEFAULT_MODEL = "claude-opus-4-8";
 
 /** Resolved, endpoint-agnostic AI provider config (only valid when configured). */
@@ -30,7 +34,7 @@ export interface AiConfig {
   baseUrl: string | undefined;
   /** Which auth header carries the key. */
   authStyle: AiAuthStyle;
-  /** Default model/tier (ADR-022 routing); per-call override passes through runAgent. */
+  /** Default model/tier; per-call override passes through runAgent (no auto routing this phase). */
   model: string;
 }
 
@@ -61,6 +65,9 @@ export function aiConfig(): AiConfig {
   return {
     apiKey,
     baseUrl: baseUrl && baseUrl.length > 0 ? baseUrl : undefined,
+    // lib/env.ts is the authoritative boot-time validator (a value other than
+    // x-api-key/bearer fails app startup loud); this coerce is the defensive
+    // default for non-boot contexts (scripts/tests) that skip that parse.
     authStyle: process.env.AI_AUTH_STYLE === "bearer" ? "bearer" : "x-api-key",
     model: model && model.length > 0 ? model : DEFAULT_MODEL,
   };

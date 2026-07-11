@@ -17,7 +17,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 | **Public** | No harm if disclosed | Static assets in `public/`, i18n message files in `messages/`, Sentry DSN |
 | **Internal** | No individual harm if leaked | `audit_logs.action`, `audit_logs.entityType`, role definitions (`Role` enum), seed fixtures, `AUDIT_RETENTION_DAYS`, `RECYCLE_BIN_RETENTION_DAYS` |
 | **Confidential** | Disclosure harms individuals / contracts / competitive position | `users.email`, `users.name`, `users.image`, `users.lastLoginAt`, `audit_logs.before` / `after` / `changes` JSON blobs (they snapshot whatever entity you write — if the entity holds Confidential fields, the audit row inherits the label), `audit_logs.ipAddress`, `audit_logs.userAgent`, `DATABASE_URL` (embeds the Neon credential) |
-| **Restricted** | Significant harm or legal liability | `AUTH_SECRET`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `CRON_SECRET`, `users.passwordHash` (Argon2id via `@node-rs/argon2`, legacy bcryptjs verified during the migration window — irreversible but still secret-equivalent if exfiltrated; ADR-039), Auth.js JWT cookies in transit, `accounts.refresh_token` / `access_token` / `id_token`, `AUTH_GOOGLE_SECRET` if OAuth is enabled, `SMTP_PASSWORD` if email is enabled |
+| **Restricted** | Significant harm or legal liability | `AUTH_SECRET`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `CRON_SECRET`, `users.passwordHash` (Argon2id via `@node-rs/argon2`, legacy bcryptjs verified during the migration window — irreversible but still secret-equivalent if exfiltrated; ADR-039), Auth.js JWT cookies in transit, `accounts.refresh_token` / `access_token` / `id_token`, `AUTH_GOOGLE_SECRET` if OAuth is enabled, `SMTP_PASSWORD` if email is enabled, `AI_API_KEY` if the Claude-native AI layer is enabled (ADR-036) |
 
 **Operational rules per class:**
 
@@ -110,6 +110,9 @@ Production secrets live in **Vercel project environment variables** (set in the 
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` | `SMTP_PASSWORD` Restricted; rest Confidential | Vercel env / `.env` | Optional. `lib/email.ts` is gated by `SMTP_HOST`; unset → `sendEmail` returns `{ sent: false }`. Never log `opts.text` / `opts.html`. |
 | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` | Public | Vercel env / `.env` | Public-by-design — Sentry DSNs ship in client bundles. **Not** Restricted. See ADR-002. |
 | `SENTRY_AUTH_TOKEN` | Restricted | Vercel env (build) | Optional. Uploads source-maps at build time. Scope: `project:releases` + `org:read`. Missing → upload skips; app still runs. See ADR-002. |
+| `AI_API_KEY` | Restricted (optional) | Vercel env / `.env` | Gates the Claude-native AI layer (`lib/ai/*`, ADR-036). Unset → the layer is a silent no-op (`isAiConfigured()` false; `getAiClient()` throws, never 401s). Never logged. Sent as `x-api-key` or (with `AI_AUTH_STYLE=bearer`) `Authorization: Bearer`. |
+| `AI_BASE_URL` | Confidential (optional) | Vercel env / `.env` | Operator-configurable AI egress endpoint (`lib/ai`, ADR-036). Unset → Anthropic's hosted API; set → a self-hosted / Anthropic-compat gateway. Because it controls **where `AI_API_KEY` + prompt content are sent**, a compromised env can redirect AI egress (new sub-case of T4). Validated at boot as an absolute http(s) URL with a host. |
+| `AI_AUTH_STYLE` / `AI_MODEL` | Confidential (optional) | Vercel env / `.env` | AI layer config (`lib/ai`, ADR-036). `AI_AUTH_STYLE` (`x-api-key` default \| `bearer`) picks the auth header; `AI_MODEL` is the default model/tier. |
 | `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_ENVIRONMENT` | Public | Vercel env / `.env` | Org / project slugs + environment label. Not secret. |
 
 **CI-provisioning secrets (dormant on the free plan).** The `/new-project` GitHub Actions workflow (`new-project.yml`) — which cannot run until GitHub Actions billing is restored, see ADR-007 / Phase 6 — uses three repo-level secrets when active: `VERCEL_TOKEN`, `NEON_API_KEY`, and `CLOUDFLARE_API_TOKEN` (scoped to `Zone.DNS:Edit` on one zone, for the optional custom-domain CNAME). All Restricted. They live only as GitHub repo secrets, never operator-side. They are irrelevant to a fork that on-ramps via the manual `/first-fork`.
@@ -146,6 +149,7 @@ Template-level baseline. Re-run per project on: scope expansion, new external in
 - **Who:** anyone who phishes or hijacks the operator's Vercel or Neon login.
 - **Blast:** Vercel → can read every project env var (`AUTH_SECRET`, `DATABASE_URL`, etc.), redeploy arbitrary code, change domains. Neon → full read/write of the database, including every `passwordHash` and audit row.
 - **Control:** **enable MFA on both the Vercel and the Neon account.** Rotate `AUTH_SECRET` and the Neon role credential on any suspected compromise. Use a dedicated, isolated account for project ops, not a shared personal login.
+- **AI-egress sub-case (ADR-036):** when the AI layer is enabled, a Vercel-env compromise can also rewrite `AI_BASE_URL` to redirect `AI_API_KEY` + prompt content to an attacker endpoint. Rotate `AI_API_KEY` and re-pin `AI_BASE_URL` on any suspected compromise; scope the key minimally.
 
 ### T5 — Dependency / supply-chain compromise
 - **Who:** a malicious or compromised npm package in the tree.

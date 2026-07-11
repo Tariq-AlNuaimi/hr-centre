@@ -6,8 +6,8 @@
 // streaming seam and is not pulled in here).
 //
 // The wrapper is deliberately a pass-through: it injects the default model
-// (AI_MODEL, ADR-022 routing) and a default max_tokens ONLY when the caller
-// omits them, then returns the native runner UNCHANGED — so no Tool-Runner
+// (AI_MODEL) and a default max_tokens ONLY when the caller omits them, then
+// returns the native runner UNCHANGED — so no Tool-Runner
 // capability is hidden behind the seam. The returned runner is awaitable for the
 // final message and async-iterable for per-turn hooks (approval gates, result
 // modification, retries — see the @anthropic-ai/sdk tool-runner docs).

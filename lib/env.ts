@@ -99,11 +99,15 @@ const envSchema = z.object({
   //                  a scheme-less typo fails LOUD at boot, not silently nowhere.
   //   AI_AUTH_STYLE: how AI_API_KEY is sent -- "x-api-key" (Anthropic default)
   //                  or "bearer" (Authorization: Bearer, for a gateway/proxy).
-  //   AI_MODEL:      default model/tier (ADR-022 routing consumes this); a
-  //                  per-call override passes through runAgent().
+  //   AI_MODEL:      default model/tier; a per-call override passes through
+  //                  runAgent() (no automatic product-routing policy this phase).
   // Declared here for the env contract + boot-time validation; the runtime gate
   // lives in lib/ai/config.ts, which reads process.env directly (like the OTel
-  // gate) so it evaluates at call time.
+  // gate) so it evaluates at call time. The enum below is the AUTHORITATIVE
+  // boot-time validator for AI_AUTH_STYLE (a bad value fails loud at startup);
+  // lib/ai/config.ts owns the DEFAULTS, so no `.default()` is set here — one
+  // owner per concern, mirroring how OTEL_SERVICE_NAME is undefaulted here and
+  // defaulted in lib/observability/config.ts.
   AI_API_KEY: z.string().optional(),
   AI_BASE_URL: z
     .string()
@@ -123,8 +127,8 @@ const envSchema = z.object({
       { message: "must be an absolute http(s) URL with a host, e.g. https://gateway.internal/anthropic" },
     )
     .optional(),
-  AI_AUTH_STYLE: z.enum(["x-api-key", "bearer"]).default("x-api-key"),
-  AI_MODEL: z.string().default("claude-opus-4-8"),
+  AI_AUTH_STYLE: z.enum(["x-api-key", "bearer"]).optional(),
+  AI_MODEL: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);
