@@ -193,6 +193,7 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     ".next/**",
+    ".source/**", // fumadocs generated collections (enable-docs-site, ADR-053)
     "out/**",
     "build/**",
     "next-env.d.ts",

@@ -1,13 +1,14 @@
 # Blueprint — Docs site (Fumadocs, mounted in the Next app)
 
-Scope: app/(docs)/**, content/docs/**, lib/docs/**, source.config.ts
+Scope: app/[locale]/docs/**, app/api/docs-search/**, content/docs/**, lib/docs/**, source.config.ts, scripts/enable-docs-site.mjs
 
 > The `blueprint-gate.mjs` hook (ADR-033) matches NEW `app/api/**/route.ts` + `app/**/page.tsx`
-> against this `Scope:` line. The `app/(docs)/**` glob pre-authorizes the docs route group's
-> `page.tsx`/`layout.tsx` this blueprint governs; `content/docs/**`, `lib/docs/**`, and
-> `source.config.ts` cover the MDX content tree, the source adapter, and the Fumadocs source
-> config. This is the code-wave contract for ADR-053 (Proposed) — a `/scale-up` opt-in, not a
-> base-template default.
+> against this `Scope:` line. The `app/[locale]/docs/**` glob pre-authorizes the docs pages under
+> the locale segment (the operator-resolved mount path, `/{locale}/docs`); `app/api/docs-search/**`
+> covers the Fumadocs search route; `content/docs/**`, `lib/docs/**`, and `source.config.ts` cover
+> the MDX content tree, the source adapter, and the Fumadocs source config; the enabler script
+> emits all of them into an opting-in fork. This is the code-wave contract for ADR-053 (Accepted) —
+> a `/scale-up` opt-in, not a base-template default.
 
 ## Problem & outcome
 

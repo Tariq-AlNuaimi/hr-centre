@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+// fumadocs (enable-docs-site): compiles content/docs + ADR MDX collections (ADR-053)
+import { createMDX } from "fumadocs-mdx/next";
 import { withSentryConfig } from "@sentry/nextjs";
 import withBundleAnalyzer from "@next/bundle-analyzer";
 
@@ -95,7 +97,9 @@ const nextConfig: NextConfig = {
 const hasSentryAuth = Boolean(process.env.SENTRY_AUTH_TOKEN);
 const isCI = process.env.CI === "true" || process.env.CI === "1";
 
-const baseConfig = withAnalyzer(withNextIntl(nextConfig));
+// fumadocs (enable-docs-site): withMDX generates .source/ and wires the MDX loader
+const withMDX = createMDX();
+const baseConfig = withMDX(withAnalyzer(withNextIntl(nextConfig)));
 
 export default withSentryConfig(baseConfig, {
   org: process.env.SENTRY_ORG,

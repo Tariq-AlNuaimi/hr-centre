@@ -91,3 +91,6 @@ sbom.json
 # SessionEnd hook writes when the guard permits scheduling a successor; the agent
 # consumes it to fire create_trigger. Transient, machine-local, never work product.
 .claude/state/
+
+# fumadocs generated collections (enable-docs-site, ADR-053)
+/.source
