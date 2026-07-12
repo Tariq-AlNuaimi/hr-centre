@@ -30,10 +30,7 @@ export default async function DocsSiteLayout({
   if (!session) redirect(`/${locale}/login`);
 
   return (
-    <RootProvider
-      theme={{ enabled: false }}
-      search={{ options: { api: "/api/docs-search" } }}
-    >
+    <RootProvider theme={{ enabled: false }} search={{ options: { api: "/api/docs-search" } }}>
       <DocsLayout
         tree={source.getPageTree()}
         nav={{ title: `${brand.appName} Docs` }}

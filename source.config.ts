@@ -15,7 +15,11 @@ export const docs = defineDocs({
 // the schema DEFAULTS `title` from the filename at build time
 // ("ADR-012-some-slug.md" -> "ADR-012 — Some Slug").
 function adrTitleFromPath(filePath: string): string {
-  const base = filePath.split("/").pop()?.replace(/\.mdx?$/, "") ?? filePath;
+  const base =
+    filePath
+      .split("/")
+      .pop()
+      ?.replace(/\.mdx?$/, "") ?? filePath;
   const m = /^ADR-(\d+)-(.+)$/.exec(base);
   if (!m) return base;
   const words = m[2].split("-").map((w) => w.charAt(0).toUpperCase() + w.slice(1));

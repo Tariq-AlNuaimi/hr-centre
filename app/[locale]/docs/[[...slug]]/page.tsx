@@ -1,11 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from "fumadocs-ui/layouts/docs/page";
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from "fumadocs-ui/layouts/docs/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import { source } from "@/lib/docs/source";
 import { getMDXComponents } from "@/lib/docs/mdx-components";
