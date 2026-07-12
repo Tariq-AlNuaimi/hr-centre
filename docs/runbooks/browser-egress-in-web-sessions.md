@@ -100,10 +100,22 @@ running app's `DATABASE_URL`) from the Neon API:
 (needs `?org_id=` on the projects list call).
 
 **Least-privilege (`scripts/neon-sql.mjs` / `make db-sql`):** the helper prefers
-`NEON_READONLY_URL` over `DATABASE_URL`. Provision a dedicated **read-only** Neon role
-(`CREATE ROLE ... LOGIN; GRANT SELECT ON ALL TABLES ...`) and set `NEON_READONLY_URL` to
-its URI so diagnostics are read-only at the DB level, not just via the script's SELECT
-guard. Without it the helper falls back to the app's read-write role and prints a warning.
+`NEON_READONLY_URL` over `DATABASE_URL`. Provision a dedicated **read-only** Neon role and
+set `NEON_READONLY_URL` to its URI so diagnostics are read-only at the DB level, not just
+via the script's SELECT guard:
+
+```sql
+CREATE ROLE readonly LOGIN PASSWORD '...';
+GRANT USAGE ON SCHEMA public TO readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly;
+-- IMPORTANT: GRANT ON ALL TABLES only covers tables that exist NOW. Without this
+-- line, the next migration (/scaffold-entity) adds a table the read-only role can't
+-- see, and `make db-sql` against it fails "permission denied" — silent drift. This
+-- makes future tables auto-readable (run as the role that owns/creates them):
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO readonly;
+```
+
+Without it the helper falls back to the app's read-write role and prints a warning.
 The script is also SELECT-only, single-statement, and redacts secret columns
 (`REDACT_FIELDS`, kept in sync with the audit `SCRUB_FIELDS`) before printing.
 
