@@ -1,0 +1,83 @@
+# DORMANT contract-drift gate (ADR-052, US3). Schemathesis fuzzes the deployed
+# /api/v1 seam against its own OpenAPI spec (GET /api/openapi) to catch a route
+# whose response stops matching its declared zod schema.
+#
+# It ships REPORT-ONLY and NO-OP: the template has no /api/v1 routes and seeds no
+# machine token, so the job's preflight exits 0 without fuzzing (AC-3.2). A
+# non-consumer fork's CI is untouched. It also does not auto-run -- Actions is
+# dormant on the free plan (see senior-review.yml); only workflow_dispatch until a
+# fork activates it.
+#
+# ACTIVATE (a fork with a real /api/v1 consumer + paid Actions):
+#   1. Register the /api/v1 route(s) in lib/openapi/registry.ts so they appear in
+#      GET /api/openapi.
+#   2. Set the repo secrets CONTRACT_TEST_BASE_URL (a reachable preview/prod URL)
+#      and CONTRACT_TEST_TOKEN (a seeded machine Bearer token for withApiAuth).
+#   3. Restore the real triggers below (deployment_status / push).
+#
+# PROMOTE TO A HARD GATE (AC-3.3): once green against a real consumer, drop the
+# `continue-on-error: true` on the Schemathesis step (and remove it from the
+# report-only note). A detected drift then fails the job and blocks the push --
+# mirrors the dormant->enforced posture of the other gates.
+name: Contract test (Schemathesis)
+
+on:
+  workflow_dispatch:
+  # Restore at activation (paid Actions + secrets set):
+  # deployment_status:
+  # push:
+  #   branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # Dormancy preflight: with no target URL / no token, there is nothing to
+      # fuzz -- exit 0 (report-only no-op, AC-3.2). A non-consumer fork stops here.
+      - name: Preflight (dormant unless configured)
+        id: preflight
+        env:
+          BASE_URL: ${{ secrets.CONTRACT_TEST_BASE_URL }}
+          TOKEN: ${{ secrets.CONTRACT_TEST_TOKEN }}
+        run: |
+          if [ -z "$BASE_URL" ] || [ -z "$TOKEN" ]; then
+            echo "No CONTRACT_TEST_BASE_URL / CONTRACT_TEST_TOKEN set -- dormant no-op (AC-3.2)."
+            echo "active=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.preflight.outputs.active == 'true'
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Schemathesis
+        if: steps.preflight.outputs.active == 'true'
+        run: pip install schemathesis==3.39.5
+
+      # Report-only first (continue-on-error). Remove that line to PROMOTE this to
+      # a hard gate once green (AC-3.3). Cases are derived from the served spec;
+      # --checks all includes undeclared-5xx + response-schema conformance.
+      - name: Schemathesis contract fuzz
+        if: steps.preflight.outputs.active == 'true'
+        continue-on-error: true
+        env:
+          BASE_URL: ${{ secrets.CONTRACT_TEST_BASE_URL }}
+          TOKEN: ${{ secrets.CONTRACT_TEST_TOKEN }}
+        run: |
+          schemathesis run "$BASE_URL/api/openapi" \
+            --base-url "$BASE_URL" \
+            --checks all \
+            --header "Authorization: Bearer $TOKEN"

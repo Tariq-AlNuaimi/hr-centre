@@ -20,6 +20,7 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-12 — [speed/size-limit] sizeLimitAck (ADR-025) — the OpenAPI contract seam (ADR-052) ships the Scalar API-reference UI (`@scalar/api-reference-react`) in the template, which adds ~0.67MB gzipped to the summed client-chunk budget (`.size-limit.json`: 1.87MB vs 1.2MB). Scalar is dynamically imported (`ssr:false`) and auth-gated on the dev-only `/api-reference` page, so it is NOT in the app's first-load/first-paint payload — but `.size-limit.json` globs `.next/static/chunks/**` and sums ALL route chunks, so a lazy chunk still counts. The dependency itself is operator-accepted in ADR-052 (Accepted 2026-07-12, Tariq Al-Naaimi); this line records the bundle-budget consequence of that locked decision. Fix path if the budget matters to a fork: gate the Scalar page behind a per-fork opt-in (a follow-up increment) so a non-`/api/v1` fork doesn't ship it. — owner: operator — status: adjudicated(2026-07-12) (accepted: inherent cost of the ADR-052-approved Scalar dep; the page is lazy + auth-gated so it is off first paint; re-open to gate Scalar behind a fork opt-in if the template baseline bundle must return under budget)
 - 2026-07-11 — [quality/ai] ai-eval /ship gate is DORMANT — the LLM-as-judge eval gate
   (`scripts/ai-eval.mjs`, wired into /ship phase B) is a no-op that exits 0 (SKIP) until a fork
   BOTH sets AI_API_KEY and writes >=1 tests/ai-evals/*.eval.ts fixture (and points AI_EVAL_BASE_URL
