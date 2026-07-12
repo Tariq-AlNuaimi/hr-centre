@@ -8,7 +8,10 @@
 //   node scripts/neon-sql.mjs "select count(*) from users"
 //   make db-sql SQL="select 1"
 //
-// Reads DATABASE_URL (or DBURL) for the connection URI.
+// Reads DATABASE_URL (or DBURL) for the connection URI. The query comes from argv OR
+// $SQL (make exports it as an env var, NOT spliced into a shell string — otherwise a
+// backtick in the value would execute as a shell command under the Bash(make *) allow).
+// SELECT-only: refuses anything else so an injected/accidental write can't hit the DB.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
@@ -25,9 +28,15 @@ if (!process.env.NODE_EXTRA_CA_CERTS && existsSync(CA)) {
   process.exit(r.status ?? 1);
 }
 
-const sqlText = process.argv[2];
+const sqlText = process.argv[2] || process.env.SQL;
 if (!sqlText) {
-  console.error('usage: node scripts/neon-sql.mjs "<SQL>"');
+  console.error('usage: node scripts/neon-sql.mjs "<SQL>"   (or: make db-sql SQL="<SQL>")');
+  process.exit(1);
+}
+// Read-only diagnostics only: a single SELECT (or WITH…SELECT). Refuse writes/DDL and
+// statement-chaining so this tool can never mutate the live DB (audit/soft-delete bypass).
+if (!/^\s*(select|with)\b/i.test(sqlText) || /;\s*\S/.test(sqlText.trim().replace(/;\s*$/, ""))) {
+  console.error("refused: db-sql is SELECT-only and single-statement (read-only diagnostics)");
   process.exit(1);
 }
 const url = process.env.DBURL || process.env.DATABASE_URL;
