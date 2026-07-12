@@ -1,6 +1,7 @@
 # Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)
 
 ## Routes (app/)
+- app/(docs)/api-reference/page.tsx
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
@@ -22,6 +23,7 @@
 - app/api/health/route.ts
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/scim/route.ts  [POST]
+- app/api/openapi/route.ts  [GET]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
@@ -56,6 +58,8 @@
 - lib/format.ts: formatDateTime, formatDate
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
+- lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
+- lib/openapi/registry.ts: RegisteredMethod, RegisteredResponse, RegisteredRoute, registeredRoutes, BEARER_SCHEME_NAME, buildPaths
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
