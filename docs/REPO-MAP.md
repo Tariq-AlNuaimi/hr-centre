@@ -1,7 +1,6 @@
 # Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)
 
 ## Routes (app/)
-- app/(docs)/api-reference/page.tsx
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
