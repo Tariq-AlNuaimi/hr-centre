@@ -1,6 +1,6 @@
 # ADR-050 — CI supply-chain blast-radius hardening (SHA-pin + zizmor gate, Harden-Runner egress, dormant-gate promotion at handoff)
 
-**Status:** Proposed
+**Status:** Accepted (2026-07-12, Tariq Al-Naaimi)
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

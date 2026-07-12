@@ -1,6 +1,6 @@
 # ADR-049 — MCP trust policy: deny-by-default, pinned, three-tier wiring, untrusted-content rule
 
-**Status:** Proposed
+**Status:** Accepted (2026-07-12, Tariq Al-Naaimi)
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

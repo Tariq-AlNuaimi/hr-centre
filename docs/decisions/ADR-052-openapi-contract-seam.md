@@ -1,6 +1,6 @@
 # ADR-052 — OpenAPI contract seam for `/api/v1` (zod-openapi → Scalar → Schemathesis)
 
-**Status:** Proposed
+**Status:** Accepted (2026-07-12, Tariq Al-Naaimi)
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

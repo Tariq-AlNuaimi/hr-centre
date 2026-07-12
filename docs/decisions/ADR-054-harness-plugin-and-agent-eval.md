@@ -1,6 +1,6 @@
 # ADR-054 — Harness distribution as a versioned plugin + agent-eval golden-set (who reviews the reviewers)
 
-**Status:** Proposed
+**Status:** Accepted (2026-07-12, Tariq Al-Naaimi)
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

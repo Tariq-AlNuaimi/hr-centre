@@ -1,6 +1,6 @@
 # ADR-053 — Docs site: Fumadocs, mounted inside the existing Next.js app
 
-**Status:** Proposed
+**Status:** Accepted (2026-07-12, Tariq Al-Naaimi)
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
