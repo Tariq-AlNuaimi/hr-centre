@@ -153,7 +153,9 @@ change them.
 - Rich spec output requires per-schema OpenAPI metadata annotations in
   `lib/validations/` — a small, ongoing authoring cost as new entities are added.
 - Three new dev/tool dependencies (`zod-openapi` runtime + Scalar UI + Schemathesis
-  in CI) to keep current under the ADR-017 dependency cadence.
+  in CI) to keep current under the ADR-017 dependency cadence. (The Scalar UI dep is
+  **opt-in** as of the 2026-07-12 update below — the default template carries only
+  `zod-openapi`.)
 - Schemathesis needs a reachable deployed/preview URL and seeded auth to fuzz
   authenticated routes — CI wiring, not free.
 - The spec is only as complete as the schemas registered; an unregistered route is
@@ -199,6 +201,34 @@ Revisit this decision when any of:
 - Contract testing needs to graduate from spec-drift fuzzing to consumer-driven
   contracts across multiple services (Pact territory) — an estate-level concern, not
   a single deploy-per-tenant fork.
+
+## Update 2026-07-12 — Scalar UI is opt-in (item-2 closeout)
+
+The OpenAPI **contract seam** (`lib/openapi/**` + `GET /api/openapi` serving the 3.1
+document) ships in every fork — it is tiny and server-side. But the Scalar **renderer**
+(`@scalar/api-reference-react`) adds ~0.67MB gzipped of client chunk, and
+`.size-limit.json` sums ALL route chunks, so shipping it by default pushed the template
+over its 1.2MB budget (recorded as the `sizeLimitAck` wave-off). That contradicted the
+Consequences' "near-zero cost / fully dormant for non-consumer forks" claim, since ~every
+fork paid the Scalar bundle for a page they never expose.
+
+**Decision (operator, 2026-07-12):** gate the Scalar page + dep behind a per-fork opt-in.
+
+- `@scalar/api-reference-react` is **removed from `package.json`** and the
+  `app/(docs)/api-reference/` page is **not shipped** by default → the default template
+  bundle is back under budget and `sizeLimitAck` is removed from `project.config.json`.
+- A fork that actually serves `/api/v1` runs **`npm run enable:api-reference`**
+  (`scripts/enable-api-reference.mjs`) to write the page + install the dep, accepting the
+  ~0.67MB cost for that fork only. The page is pre-authorized by
+  `docs/blueprints/openapi-contract-seam.md` (Scope covers the page path), so it stays
+  gate-clean.
+- Middleware: `/api-reference` is a NON-localized route that must not go through next-intl
+  (localePrefix "always" would redirect it to `/en/api-reference` → 404) nor the generic
+  `/api` JSON-401 branch; `middleware.ts` handles it explicitly (authed → page; anon →
+  HTML login redirect).
+
+This makes the ADR's "zero-cost for non-consumer forks" claim literally true. The
+findings-register `sizeLimitAck` line is marked `fixed(item-2 closeout, 2026-07-12)`.
 
 ## Related
 

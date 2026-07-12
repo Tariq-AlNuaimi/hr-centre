@@ -92,6 +92,19 @@ export default auth((req) => {
   requestHeaders.set("Content-Security-Policy", csp);
   const pass = () => withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
 
+  // The opt-in Scalar docs page (ADR-052) lives at the NON-localized "/api-reference"
+  // (outside [locale]). Handle it explicitly, before the generic "/api" branches: it must
+  // NOT go through next-intl (localePrefix "always" would redirect it to /en/api-reference
+  // → 404) and anon visitors should get an HTML login redirect, not the API branch's JSON
+  // 401. Authed → pass straight to the page (its own auth() is defense in depth). Absent in
+  // a fork that hasn't run `npm run enable:api-reference` → this simply 404s, harmless.
+  if (pathname === "/api-reference" || pathname.startsWith("/api-reference/")) {
+    if (!req.auth) {
+      return NextResponse.redirect(new URL(`/${routing.defaultLocale}/login`, req.url));
+    }
+    return pass();
+  }
+
   // Let API routes and static files pass through (still nonced for consistency).
   // /api/internal is gated by withInternalAuth (shared-secret header), not session.
   if (

@@ -9,6 +9,15 @@ Scope: lib/openapi/**, app/api/openapi/route.ts, app/api/docs/route.ts, app/(doc
 > (`app/(docs)/api-reference/page.tsx`), plus the `lib/openapi/**` generation layer and
 > the CI contract-test workflow. Governance of record: ADR-052.
 
+> **Update 2026-07-12 (item-2 closeout):** the Scalar UI (`@scalar/api-reference-react`,
+> ~0.67MB client chunk) is now **opt-in** — removed from the default `package.json` and
+> not shipped in `app/` so the template baseline stays under the 1.2MB size-limit budget
+> (`sizeLimitAck` removed). Only the JSON contract seam (`lib/openapi/**` +
+> `GET /api/openapi`) ships by default. A `/api/v1`-consumer fork runs
+> `npm run enable:api-reference` to write the page (`app/(docs)/api-reference/page.tsx`,
+> still Scope-covered above → gate-clean) + install the dep. See ADR-052's 2026-07-12
+> update. `app/api/docs/route.ts` was never built (the page-only render satisfies US2).
+
 ## Problem & outcome
 
 The template is REST + zod: every route validates its input at the boundary with a
