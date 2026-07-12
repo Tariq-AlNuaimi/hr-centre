@@ -303,3 +303,16 @@ the root cause + fix and want it BUILT INTO THE HARNESS so it's automatic, not t
   BONUS from the runbook: Neon DB over raw TCP :5432 is blocked → use `@neondatabase/serverless` (SQL over HTTPS/443).
 - **Sequence vs code wave:** operator flagged this HIGH PRIORITY — likely do it BEFORE item-2 closeout, or in parallel.
   Confirm order with operator at session start.
+
+## SESSION 3 CLOSE (2026-07-12) — Task A (browser-egress bridge) DONE; resume at Task B (item-2 closeout)
+- **Sequencing (operator, AskUserQuestion):** Task A BEFORE Task B. Both optional extras INCLUDED (SessionStart auto-start + Neon serverless recipe).
+- **Task A ✅ DONE + pushed (`2d03ec8`), /ship GREEN, /code-review done (2 findings fixed+verified).** Automates docs/runbooks/browser-egress-in-web-sessions.md into the harness:
+  - `scripts/browser-bridge.mjs` (up/auto/env/status/down; idempotent, fail-open; `auto` never installs → fast SessionStart). `make browser-up|browser-status|browser-down`.
+  - `.mcp.json` playwright+chrome-devtools route through 127.0.0.1:8080 ONLY when `~/.browser-bridge/up` sentinel exists (byte-for-byte unchanged off-platform). `.claude/hooks/session-start.sh` calls `browser-bridge auto || true`.
+  - Neon recipe: `scripts/neon-sql.mjs` + `@neondatabase/serverless` (devDep) + `make db-sql SQL="…"` (SQL over HTTPS/443; raw TCP :5432 firewalled).
+  - `docs/blueprints/browser-egress-bridge.md` (full-track). playwright.config.ts UNCHANGED (already reads PW_PROXY_SERVER/PW_EXECUTABLE_PATH, issue #52).
+  - **VERIFIED:** Chromium → https://example.com = HTTP 200 through the chain (the request that ERR_CONNECTION_RESETs today); `auto` start 1.6s no-apt; Neon HTTPS reached.
+- **⚠️ Task A NOT fully closed — senior-code-reviewer was STILL RUNNING at handoff** (background agentId a00233a9fc5e68c9a). NEXT SESSION FIRST: retrieve its result (or re-run `senior-code-reviewer` on `git diff 57015df...2d03ec8`), fix-forward any findings, /ship green, push. THEN Task A is closed.
+- **RESUME POINT after Task A closeout = Task B (item-2 OpenAPI closeout), refactor-first.** The ordered 5 sub-items are in the "⚠️ ITEM-2 IS NOT DONE" block above (unchanged). Prep done this session: `.size-limit.json` budget=1200kB; Scalar page = `app/(docs)/api-reference/{page.tsx,ApiReferenceView.tsx}`; template-wide `sizeLimitAck` at project.config.json:7; findings-register size-limit line at docs/findings-register.md:23. Refactor = gate the Scalar page+dep behind a per-fork opt-in so default bundle <1.2MB, THEN remove sizeLimitAck + close/revert the register line. Use Task A's bridge (`make browser-up`) to satisfy item-2 sub-step 4 (browser-verify Scalar under nonce CSP).
+- **SEPARATE OPEN RISK (not in the item-2..8 list): enterprise-pivot WS-6 has 4 open senior findings incl. a [High] SCIM-provisioned users can't complete SSO login** (see the "In flight — WS-6" block far above; needs an ADR-045 decision). Flag to operator; do NOT let it fall through the cracks when WS-6 lands on main.
+- **Landmines (unchanged):** `npm run ship` WITHOUT `NODE_ENV=production`; reinstall gitleaks each session (`GOBIN=$HOME/.local/bin go install github.com/zricethezav/gitleaks/v8@v8.21.2` + export PATH — github release DL blocked, go proxy works); pre-push hook runs /ship so install gitleaks EARLY; branch is the UNSUFFIXED `claude/next-patch-bump-main-1i0qvr`.
