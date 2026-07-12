@@ -205,15 +205,16 @@ flowchart TB
   unregistered routes explicitly absent rather than silently wrong; `/api/openapi` degrades
   a hard-to-represent schema to terse-but-valid, never a 500.
 
-## Open questions (resolve via AskUserQuestion before build)
+## Open questions — RESOLVED (operator via AskUserQuestion, 2026-07-12)
 
-- [ ] **Docs surface exposure** — is the Scalar reference **public** (spec + docs open) or
-      **internal-only** (gated behind existing auth)? Default proposal: internal-gated for
-      `shared` tier (US2-worst), public opt-in per fork.
-- [ ] **`/api/openapi` auth posture** — served publicly (so consumers self-discover) or
-      gated with the docs? Default proposal: follows the docs decision above.
-- [ ] **Schemathesis enablement threshold** — report-only until the fork has its first real
-      `/api/v1` consumer + seeded token, then promote to a hard gate? Default proposal: yes
-      (dormant→enforced, mirroring the existing gate posture, AC-3.2/3.3).
-- [ ] **`/scaffold-entity` metadata emission** — land the OpenAPI `.meta()` emission in this
-      wave, or as a follow-up increment? Default proposal: follow-up (keep this wave thin).
+- [x] **Docs surface exposure** → **Internal-gated.** Both `GET /api/openapi` and the Scalar
+      reference sit behind existing auth (`withAuth`). No unauthenticated exposure of internal
+      route shapes (US2-worst). Public exposure is a per-fork opt-in later.
+- [x] **`/api/openapi` auth posture** → **Gated with the docs** (follows the decision above) —
+      `withAuth`-wrapped, internal-only.
+- [x] **Schemathesis enablement threshold** → **Dormant→enforced.** Report-only no-op until a
+      fork has a real `/api/v1` consumer + seeded token, then promote to a hard gate
+      (AC-3.2/3.3). Template ships with no `/api/v1` routes, so it's inert on land.
+- [x] **`/scaffold-entity` metadata emission** → **Follow-up increment.** Keep this wave thin
+      (generation layer + spec route + docs + CI). `.meta()` emission in `/scaffold-entity`
+      is a separate later increment.
