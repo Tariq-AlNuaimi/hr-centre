@@ -282,3 +282,24 @@ session fanned out the *governance layer* that unblocks the code wave.
 - Reinstall gitleaks each session (NOT preinstalled): `GOBIN=$HOME/.local/bin go install github.com/zricethezav/gitleaks/v8@v8.21.2` + `export PATH="$HOME/.local/bin:$PATH"`. github.com release DL blocked → Go module proxy.
 - ADR-055 wire-ups (reference from /handoff, /deploy, 20-remaining-sweep.md) pending — out of scope this session.
 - All ADRs Status: Proposed; only 3 of the merged action-plan P0 items are governance-recorded, the rest is code-wave.
+
+## NEW OPERATOR REQUEST (2026-07-12) — automate browser-egress fix into the harness (HIGH PRIORITY)
+Operator: browser-driven UAT via Playwright ALWAYS fails when accessing a real website in web sessions; they found
+the root cause + fix and want it BUILT INTO THE HARNESS so it's automatic, not troubleshot every time.
+- **Runbook saved: `docs/runbooks/browser-egress-in-web-sessions.md`** (the operator's upload — the authoritative fix).
+- **Root cause:** the MITM egress proxy RSTs Chromium's BoringSSL TLS ClientHello mid-handshake (ERR_CONNECTION_RESET),
+  while it accepts curl/Node OpenSSL. NOT a CA-trust issue (`--ignore-certificate-errors`/NSS import don't help).
+- **Fix:** chain chromium → local `mitmdump` (127.0.0.1:8080, `--mode upstream:$HTTPS_PROXY`,
+  `ssl_verify_upstream_trusted_ca=/root/.ccr/ca-bundle.crt`, `connection_strategy=lazy`) → egress proxy → origin.
+  Trust mitmproxy CA in `~/.pki/nssdb` via certutil; launch Playwright with `proxy.server=http://127.0.0.1:8080` +
+  `executablePath` (glob-resolve the installed chromium build, e.g. chromium-1194) + `--no-sandbox`.
+- **NEXT-SESSION TASK (design-first: /blueprint + plan-mode; touches .claude/ harness → Ask-before):** wrap the runbook
+  steps in an idempotent script (e.g. `scripts/browser-bridge.mjs` or a `make browser-up`) that: installs mitmproxy in a
+  venv (prefer-binary), starts mitmdump chained to $HTTPS_PROXY, trusts both CAs in NSS, health-checks via curl 200, and
+  exports the chromium launch config. Then wire `/manual-uat`, `/uat`, `/design-qa` (and the `.mcp.json` playwright +
+  chrome-devtools servers) to launch through 127.0.0.1:8080 automatically when in a web session. Reuse the existing
+  `tools/design-qa-bridge/` loopback pattern (agent-memory) — this generalizes it from "curl-forward a deployed URL" to
+  "drive ANY site live." Consider a SessionStart-hook auto-start (fail-open: silent no-op if mitmproxy/egress absent).
+  BONUS from the runbook: Neon DB over raw TCP :5432 is blocked → use `@neondatabase/serverless` (SQL over HTTPS/443).
+- **Sequence vs code wave:** operator flagged this HIGH PRIORITY — likely do it BEFORE item-2 closeout, or in parallel.
+  Confirm order with operator at session start.
