@@ -200,7 +200,27 @@ Senior-code-reviewer ran on `git diff origin/main...HEAD` and returned 2 High + 
 # SECTION-A EXECUTION — GOVERNANCE WAVE LANDED (2026-07-11)
 
 > Prose section = current truth (the auto-status JSON block above is stale). Branch
-> `claude/next-patch-bump-main-1i0qvr`, reconciled with origin/main, **0 unpushed**, last /ship GREEN (e638d5c).
+> `claude/next-patch-bump-main-1i0qvr`, reconciled with origin/main, **0 unpushed**, last /ship GREEN (388500d).
+
+## UPDATE 2026-07-12 (session 2) — ADRs ACCEPTED + code-wave item 1 DONE
+- **Step 0 DONE — operator accepted all 8 ADRs** (AskUserQuestion "Accept all 8 as-is"). ADRs 049-056 flipped
+  Proposed → **Accepted (2026-07-12, Tariq Al-Naaimi)** on line 3 of each. Commit `c6bf930`, /ship green, pushed.
+- **Code-wave item 1 DONE — `.mcp.json` version pins (ADR-049 part 2).** Commit `388500d`, /ship green, pushed.
+  Killed the 3 floats: context7 `@upstash/context7-mcp@3.2.3`, `shadcn@4.13.0`, `chrome-devtools-mcp@1.5.0`
+  (versions web-verified vs npm registry 2026-07-12). Fixed chrome-devtools `--executablePath` to glob-resolve
+  the real Chromium binary via playwright's `$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | sort -V | tail -1)`
+  pattern (the old `/opt/pw-browsers/chromium` value was a version-specific symlink, not a directory as ADR-049
+  assumed — glob-resolution is robust across browser bumps regardless). `/code-review` (low) CLEAN. senior-review
+  SKIPPED as disproportionate for a config-only 7-line pin (ADR-022 tier routing) — applies to the real code items below.
+- **RESUME POINT: code-wave item 2 (OpenAPI seam).** Items 0 and 1 are done; start fresh at item 2 with full context
+  (it's a real multi-file feature → blueprint open-question resolve + EnterPlanMode sign-off + build). Handed off here
+  because item 2+ are large/Ask-before and the context watchdog warned — do them on a clean budget, not mid-degrade.
+- **GOTCHA (session 2): the fresh container checked out `claude/next-patch-bump-main-1i0qvr-h0jk09` (suffixed), which
+  did NOT contain the governance wave.** The wave is on the UNSUFFIXED `claude/next-patch-bump-main-1i0qvr`. If a future
+  session can't find ADRs 049-056, `git fetch origin && git switch claude/next-patch-bump-main-1i0qvr` (tip `388500d`).
+- **GOTCHA: AskUserQuestion + Write/Edit intermittently fail mid-call with "permission stream closed" in this
+  non-interactive run — RETRY the same call once and it succeeds** (both the ADR-accept question and 2 file writes
+  needed one retry this session).
 
 ## Operator goal
 "Do the entire Section-A action plan in parallel, one sweep." Scoped (AskUserQuestion) to **governance-first**:
@@ -224,8 +244,8 @@ session fanned out the *governance layer* that unblocks the code wave.
 2. **Frontend quality is a repeat weak spot.** → `/design-system` proactively + `/design-qa` gate; don't improvise UI.
 
 ## NEXT SESSION — the CODE WAVE (each: blueprint→plan-mode sign-off→implement→/ship green→/code-review→push→senior-code-reviewer; independents as parallel worktree agents)
-0. **First: operator reviews/accepts the 8 ADRs** (they're Proposed). Acceptance is the operator's call, not auto.
-1. **.mcp.json version pins (P0)** — web-verify current versions first (chrome-devtools, context7, shadcn); fix chrome-devtools executablePath (dir→binary). ADR-049 records the policy. Small, do early.
+0. ~~operator reviews/accepts the 8 ADRs~~ **✅ DONE 2026-07-12 (c6bf930)** — accepted all 8.
+1. ~~.mcp.json version pins (P0)~~ **✅ DONE 2026-07-12 (388500d)** — 3 floats pinned + executablePath glob-fix. ADR-049 part 2.
 2. **OpenAPI seam** — blueprint exists; resolve its open questions, then build (lib/openapi/**, /api/openapi, Scalar page, Schemathesis CI).
 3. **Docs site (Fumadocs)** — blueprint exists but has 2 OPEN QUESTIONS (content source: existing docs/ vs curated content/docs/**; access posture: internal-only vs public) → resolve via AskUserQuestion BEFORE build.
 4. **CI hardening (ADR-050)** + **supply-chain P1 (ADR-051)** — .github/workflows (dormant CI) + /ship license-allowlist gate + Renovate/osv-scanner. Ask-before (.github, /ship).
