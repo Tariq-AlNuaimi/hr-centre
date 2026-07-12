@@ -127,3 +127,11 @@ if [ -f .template-sync.json ]; then
     fi
   fi
 fi
+
+# --- browser-egress bridge auto-start (fail-open; docs/runbooks/browser-egress-in-web-sessions.md) ---
+# In a web session the TLS-MITM egress proxy resets Chromium's ClientHello, so the
+# browser MCP servers + /design-qa /uat /manual-uat can't reach any real site. `auto`
+# starts the local mitmproxy chain ONLY if mitmproxy is already installed -- it never
+# installs (keeps SessionStart fast) and is a silent no-op off-platform (no $HTTPS_PROXY)
+# or when mitmproxy is absent. Run `make browser-up` once to install + enable it.
+node scripts/browser-bridge.mjs auto >/dev/null 2>&1 || true

@@ -208,6 +208,11 @@ What you get:
 
 No code change required.
 
+> **Querying the DB from a Claude Code web session?** Raw TCP `:5432` to Neon is
+> firewalled; use the serverless driver (SQL over HTTPS/443): `make db-sql SQL="select 1"`
+> (`scripts/neon-sql.mjs`, `@neondatabase/serverless` devDep). See
+> `docs/runbooks/browser-egress-in-web-sessions.md` §Bonus.
+
 ---
 
 ## 6. Custom domain

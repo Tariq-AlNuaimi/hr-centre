@@ -134,6 +134,14 @@ into the report. The sinks are reset at the start of every full run by
    **Do NOT report a pass when the browser could not launch** — that's a "could not
    run," not a green.
 
+   **Web session? Start the browser-egress bridge first.** In a Claude Code web session
+   the TLS-MITM egress proxy resets Chromium's ClientHello (`ERR_CONNECTION_RESET`), so
+   the browser can't reach a deployed URL at all. Run `make browser-up` once, then
+   `eval "$(node scripts/browser-bridge.mjs env)"` — that exports `PW_PROXY_SERVER` +
+   `PW_EXECUTABLE_PATH`, which `playwright.config.ts` already consumes, routing the run
+   through the local mitmproxy chain. Off-platform it's a clean no-op. Root cause + fix:
+   `docs/runbooks/browser-egress-in-web-sessions.md`.
+
 > **"Could not run" vs "red" — the boundary that gates the `/qa` tiers.** _Could not
 > run_ = the **Chromium binary is still missing after `uat:install`**, OR **login /
 > credentials failed** (auth.setup couldn't authenticate). Everything else — a broken

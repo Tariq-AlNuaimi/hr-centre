@@ -52,6 +52,15 @@ Plus the rubric's **Tier-0 anti-slop defaults** (defined in `docs/uat-rubric.md`
 > The Playwright **MCP** is for ad-hoc "look at this one screen with me now" exploration
 > only — keep the repeatable captures in `tests/uat/`.
 
+> **Web session? Start the browser-egress bridge first.** In a Claude Code web session
+> the TLS-MITM egress proxy resets Chromium's ClientHello (`ERR_CONNECTION_RESET`), so
+> neither the committed specs nor the Playwright MCP can reach any real site. Run
+> `make browser-up` once, then `eval "$(node scripts/browser-bridge.mjs env)"` (the specs
+> pick up `PW_PROXY_SERVER`/`PW_EXECUTABLE_PATH`; the MCP servers route through the bridge
+> automatically once it's up). Off-platform it's a no-op. See
+> `docs/runbooks/browser-egress-in-web-sessions.md`. This is what makes the axe pass run
+> against a deployed target instead of failing on every navigation.
+
 4. **Run axe** on each screen (`@axe-core/playwright`); record serious/critical
    violations (unlabeled inputs, contrast, focus order, keyboard traps).
 5. **Diff against the design source** — spacing on the token scale? palette colors?

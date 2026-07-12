@@ -1,4 +1,4 @@
-.PHONY: dev db-up db-down db-migrate db-seed db-studio setup docker-build docker-run docker-up docker-down docker-prod-up docker-prod-down
+.PHONY: dev db-up db-down db-migrate db-seed db-studio db-sql setup docker-build docker-run docker-up docker-down docker-prod-up docker-prod-down browser-up browser-down browser-status
 
 # Local dev: Postgres in Docker, app via `npm run dev`.
 # Production is Vercel + Neon -- see CLAUDE.md.
@@ -29,6 +29,29 @@ db-seed:
 
 db-studio:
 	npx prisma studio
+
+# Query the DB over HTTPS/443 from a web session, where raw TCP :5432 is firewalled
+# (see docs/runbooks/browser-egress-in-web-sessions.md §Bonus). Uses the Neon serverless
+# driver. Example: `make db-sql SQL="select count(*) from users"`.
+SQL ?= select 1
+db-sql:
+	node scripts/neon-sql.mjs "$(SQL)"
+
+# --- Browser-egress bridge: headless Chromium online in a web session -----------
+# In a Claude Code web session the TLS-MITM egress proxy resets Chromium's ClientHello
+# (ERR_CONNECTION_RESET), so /design-qa, /uat, /manual-uat, and the browser MCP servers
+# can't reach any real site. `browser-up` chains Chromium through a local mitmdump that
+# the proxy accepts. Idempotent + fail-open (a clean no-op off-platform). Root cause +
+# fix: docs/runbooks/browser-egress-in-web-sessions.md. After `browser-up`, load the
+# launch env with: eval "$(node scripts/browser-bridge.mjs env)"
+browser-up:
+	node scripts/browser-bridge.mjs up
+
+browser-status:
+	node scripts/browser-bridge.mjs status
+
+browser-down:
+	node scripts/browser-bridge.mjs down
 
 # --- Docker: standard build artifact (ADR-030; supersedes ADR-023 opt-in) ---
 # Production is Vercel + Neon by default (ADR-006) -- unchanged. But the image is

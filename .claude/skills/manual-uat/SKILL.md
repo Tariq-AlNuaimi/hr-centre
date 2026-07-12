@@ -56,6 +56,14 @@ hit an admin API directly).
    session. **Never silently fall back to the canned `/uat` specs and call it a manual
    run** — that is a different thing and reporting it as manual-uat is dishonest. (If the
    operator declines MCP, the honest fallback is `/uat --full`, stated as such.)
+
+   **Web session? Start the browser-egress bridge first.** In a Claude Code web session
+   the TLS-MITM egress proxy resets Chromium's ClientHello (`ERR_CONNECTION_RESET`), so
+   the Playwright MCP can navigate loopback but **not** a real deployed URL. Run
+   `make browser-up` once — the MCP server then routes through the local mitmproxy chain
+   automatically (it gates on the `~/.browser-bridge/up` sentinel). Off-platform it's a
+   no-op. Root cause + fix: `docs/runbooks/browser-egress-in-web-sessions.md`.
+
 2. **A running target.** Prefer a deployed preview/prod URL (matches the
    share-via-URL workflow); otherwise local `http://localhost:3000` with a running,
    seeded DB (`make db-up` + `npm run prisma:seed`).

@@ -4,7 +4,7 @@
       "command": "sh",
       "args": [
         "-c",
-        "exec npx -y @playwright/mcp@0.0.76 --isolated --browser chromium --executable-path \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\""
+        "BRIDGE=\"\"; [ -f \"$HOME/.browser-bridge/up\" ] && BRIDGE=\"--proxy-server http://127.0.0.1:8080 --ignore-https-errors --no-sandbox\"; exec npx -y @playwright/mcp@0.0.76 --isolated --browser chromium --executable-path \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\" $BRIDGE"
       ]
     },
     "context7": {
@@ -19,7 +19,7 @@
       "command": "sh",
       "args": [
         "-c",
-        "exec npx -y chrome-devtools-mcp@1.5.0 --executablePath \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\""
+        "BRIDGE=\"\"; [ -f \"$HOME/.browser-bridge/up\" ] && BRIDGE=\"--proxyServer http://127.0.0.1:8080 --acceptInsecureCerts\"; exec npx -y chrome-devtools-mcp@1.5.0 --executablePath \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\" $BRIDGE"
       ]
     }
   }
