@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { scrub, computeChanges, SCRUB_FIELDS } from "../../lib/prisma/audit-extension";
+import { REDACT_FIELDS, redactRows } from "../../scripts/neon-sql.mjs";
 
 test("scrub replaces every SCRUB_FIELDS key value with [redacted]", () => {
   for (const key of SCRUB_FIELDS) {
@@ -64,6 +65,32 @@ test("computeChanges captures unscrubbed value changes verbatim", () => {
   assert.ok(changes);
   assert.deepEqual(changes!.name, { from: "Old", to: "New" });
   assert.deepEqual(changes!.count, { from: 1, to: 2 });
+});
+
+test("neon-sql REDACT_FIELDS stays a superset of SCRUB_FIELDS (no drift)", () => {
+  for (const key of SCRUB_FIELDS) {
+    assert.ok(
+      REDACT_FIELDS.has(key),
+      `scripts/neon-sql.mjs REDACT_FIELDS must include "${key}" so db-sql never prints its value`,
+    );
+  }
+});
+
+test("neon-sql redactRows redacts REDACT_FIELDS values but keeps the rest", () => {
+  const [row] = redactRows([
+    { id: "u1", email: "a@example.com", passwordHash: "$argon2id$…", token: "tok_123" },
+  ]) as Array<Record<string, unknown>>;
+  assert.equal(row.id, "u1");
+  assert.equal(row.email, "a@example.com");
+  assert.equal(row.passwordHash, "[redacted]");
+  assert.equal(row.token, "[redacted]");
+});
+
+test("neon-sql redactRows leaves null values and non-array input untouched", () => {
+  const [row] = redactRows([{ passwordHash: null, name: "Foo" }]) as Array<Record<string, unknown>>;
+  assert.equal(row.passwordHash, null);
+  assert.equal(row.name, "Foo");
+  assert.equal(redactRows("not-an-array"), "not-an-array");
 });
 
 test("SCRUB_FIELDS includes all critical Restricted-class field names", () => {

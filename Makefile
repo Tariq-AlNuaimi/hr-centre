@@ -32,7 +32,9 @@ db-studio:
 
 # Query the DB over HTTPS/443 from a web session, where raw TCP :5432 is firewalled
 # (see docs/runbooks/browser-egress-in-web-sessions.md §Bonus). Uses the Neon serverless
-# driver. Example: `make db-sql SQL="select count(*) from users"`.
+# driver. Example: `make db-sql SQL="select count(*) from users"`. SELECT-only, output
+# redacted. Prefers NEON_READONLY_URL (a dedicated least-privilege Neon role) over the
+# app's DATABASE_URL — set it to keep diagnostics read-only at the DB level, not just here.
 # `export SQL` hands the value to the recipe's environment DIRECTLY (execve, no shell
 # re-parse), so a backtick/`$()` in SQL is NOT executed as a shell command — the recipe
 # must never interpolate $(SQL) into the command string.

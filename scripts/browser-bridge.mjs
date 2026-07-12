@@ -52,6 +52,11 @@ const NSSDB = path.join(HOME, ".pki", "nssdb");
 const LISTEN_HOST = "127.0.0.1";
 const LISTEN_PORT = 8080;
 const PROXY_URL = `http://${LISTEN_HOST}:${LISTEN_PORT}`;
+// Per-attempt curl budget for a health probe, and the TOTAL wall-clock ceiling for
+// waitHealthy(). Bounded on purpose: `auto` runs waitHealthy synchronously (and silently)
+// from session-start.sh, so an unbounded retry loop would stall SessionStart for minutes.
+const HEALTH_CURL_TIMEOUT = "8";
+const HEALTH_DEADLINE_MS = 60_000;
 const BROWSERS_ROOT = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
 
 let QUIET = false;
@@ -63,12 +68,21 @@ function sh(cmd, args, opts = {}) {
   return spawnSync(cmd, args, { encoding: "utf8", ...opts });
 }
 
-// Highest-revision Chromium under PLAYWRIGHT_BROWSERS_PATH (matches playwright.config.ts).
+// Numeric revision from a `chromium-<n>` dir name (for version-correct sorting).
+function chromiumRev(dir) {
+  return Number(dir.slice("chromium-".length)) || 0;
+}
+
+// Highest-revision Chromium under PLAYWRIGHT_BROWSERS_PATH (matches playwright.config.ts
+// and the `.mcp.json` `ls chromium-*/… | sort -V | tail -1` pattern). Version-sort by the
+// numeric revision, NOT lexicographically — otherwise "chromium-99" sorts above
+// "chromium-1194" and the wrong (older) build wins once two revisions coexist. The
+// `chromium-<n>` filter also excludes the `chromium` symlink + `chromium_headless_shell-*`.
 function resolveChromium() {
   try {
     const dirs = readdirSync(BROWSERS_ROOT)
-      .filter((d) => d.startsWith("chromium"))
-      .sort()
+      .filter((d) => /^chromium-\d+$/.test(d))
+      .sort((a, b) => chromiumRev(a) - chromiumRev(b))
       .reverse();
     for (const d of dirs) {
       const c = path.join(BROWSERS_ROOT, d, "chrome-linux", "chrome");
@@ -101,7 +115,7 @@ function healthy() {
     "-w",
     "%{http_code}",
     "--max-time",
-    "25",
+    HEALTH_CURL_TIMEOUT,
     "-x",
     PROXY_URL,
   ];
@@ -154,6 +168,29 @@ function ensureNssTrust(install) {
   add("ccr-egress", EGRESS_CA);
 }
 
+// SIGTERM a running mitmdump and wait (bounded) for it to actually exit, so its listen
+// port is free before we rebind. Escalates to SIGKILL if it doesn't go within ~3s.
+async function killStale(pid) {
+  try {
+    process.kill(pid, "SIGTERM");
+  } catch {
+    return; // already gone
+  }
+  for (let i = 0; i < 30; i++) {
+    try {
+      process.kill(pid, 0); // still alive?
+    } catch {
+      return; // exited
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    /* raced to exit */
+  }
+}
+
 function startMitm() {
   mkdirSync(STATE_DIR, { recursive: true });
   writeFileSync(LOGFILE, ""); // truncate the previous run's log
@@ -188,8 +225,12 @@ function clearSentinel() {
   rmSync(SENTINEL, { force: true });
 }
 
-async function waitHealthy(seconds) {
-  for (let i = 0; i < seconds; i++) {
+// Poll until the chain answers, bounded by a real WALL-CLOCK deadline. Each healthy()
+// is a curl capped at HEALTH_CURL_TIMEOUT, so total ≈ deadlineMs (+ one in-flight probe)
+// — never the old failure mode of 20 × 25s ≈ 520s of silent stall.
+async function waitHealthy(deadlineMs) {
+  const deadline = Date.now() + deadlineMs;
+  while (Date.now() < deadline) {
     if (healthy()) return true;
     await new Promise((r) => setTimeout(r, 1000));
   }
@@ -202,12 +243,13 @@ async function bringUp({ install }) {
     clearSentinel();
     return 0;
   }
-  if (pidAlive() && healthy()) {
+  const running = pidAlive();
+  if (running && healthy()) {
     log(`already up + healthy on ${PROXY_URL}`);
     writeSentinel();
     return 0;
   }
-  // Not currently live — drop any stale sentinel (e.g. left in $HOME by a prior
+  // Not currently live+healthy — drop any stale sentinel (e.g. left in $HOME by a prior
   // container) so the MCP wrappers never route through a dead proxy while we (re)start.
   clearSentinel();
   if (!ensureMitmproxy(install)) {
@@ -215,12 +257,21 @@ async function bringUp({ install }) {
     log("mitmproxy install failed — see output above.");
     return 1;
   }
+  // Self-heal: a mitmdump that's ALIVE but just failed the health check above is a broken
+  // bridge (dead upstream, half-crashed process from a prior container). Kill it + clear
+  // the PID file so the (re)start below replaces it, instead of waitHealthy() polling a
+  // corpse for the whole deadline and then failing.
+  if (running) {
+    await killStale(running);
+    rmSync(PIDFILE, { force: true });
+    log(`replaced stale mitmdump (pid ${running} was alive but unhealthy)`);
+  }
   if (!pidAlive()) {
     const pid = startMitm();
     log(`started mitmdump (pid ${pid}) on ${PROXY_URL} → upstream ${process.env.HTTPS_PROXY}`);
   }
   ensureNssTrust(install);
-  if (!(await waitHealthy(20))) {
+  if (!(await waitHealthy(HEALTH_DEADLINE_MS))) {
     log("health check FAILED — last mitmdump log lines:");
     if (!QUIET) sh("tail", ["-n", "15", LOGFILE], { stdio: "inherit" });
     clearSentinel();

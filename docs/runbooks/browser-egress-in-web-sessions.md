@@ -99,6 +99,14 @@ running app's `DATABASE_URL`) from the Neon API:
 `GET https://console.neon.tech/api/v2/projects/{id}/connection_uri?branch_id=..&database_name=..&role_name=..`
 (needs `?org_id=` on the projects list call).
 
+**Least-privilege (`scripts/neon-sql.mjs` / `make db-sql`):** the helper prefers
+`NEON_READONLY_URL` over `DATABASE_URL`. Provision a dedicated **read-only** Neon role
+(`CREATE ROLE ... LOGIN; GRANT SELECT ON ALL TABLES ...`) and set `NEON_READONLY_URL` to
+its URI so diagnostics are read-only at the DB level, not just via the script's SELECT
+guard. Without it the helper falls back to the app's read-write role and prints a warning.
+The script is also SELECT-only, single-statement, and redacts secret columns
+(`REDACT_FIELDS`, kept in sync with the audit `SCRUB_FIELDS`) before printing.
+
 ## One-line diagnosis if it still fails
 
 ```bash

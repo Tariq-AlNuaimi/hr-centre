@@ -24,10 +24,14 @@ function resolveChromiumPath(): string | undefined {
   }
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH || "/opt/pw-browsers";
   try {
-    // Prefer the highest revision present (readdir is unordered, so sort desc).
+    // Prefer the highest revision present. Version-sort by the numeric revision (matches
+    // scripts/browser-bridge.mjs and `.mcp.json`'s `sort -V`), NOT lexicographically —
+    // otherwise "chromium-99" outranks "chromium-1194". The `chromium-<n>` filter also
+    // excludes the `chromium` symlink + `chromium_headless_shell-*`.
+    const rev = (d: string): number => Number(d.slice("chromium-".length)) || 0;
     const dirs = readdirSync(root)
-      .filter((d) => d.startsWith("chromium"))
-      .sort()
+      .filter((d) => /^chromium-\d+$/.test(d))
+      .sort((a, b) => rev(a) - rev(b))
       .reverse();
     for (const d of dirs) {
       const candidate = path.join(root, d, "chrome-linux", "chrome");
