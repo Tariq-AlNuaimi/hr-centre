@@ -72,6 +72,14 @@ recurring context tax — same discipline as CLAUDE.md.
 
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
 
+- 2026-07-12 — **Headless Chromium can't reach any real site in a web session** (TLS-MITM
+  egress proxy resets its BoringSSL ClientHello → ERR_CONNECTION_RESET; NOT a CA-trust
+  issue). Fix is now automated: `make browser-up` starts a local mitmdump chain and the
+  playwright/chrome-devtools MCP servers + `/design-qa /uat /manual-uat` route through it
+  (SessionStart auto-starts it fail-open). Also `make db-sql SQL="…"` for Neon over
+  HTTPS/443 (raw TCP :5432 is firewalled). See scripts/browser-bridge.mjs +
+  docs/runbooks/browser-egress-in-web-sessions.md + docs/blueprints/browser-egress-bridge.md.
+
 - 2026-07-11 — **gitleaks is NOT preinstalled in the web container; `/ship` phase B goes
   RED ("gitleaks is not on PATH") until you reinstall it EACH session.** The GitHub release
   is proxy-blocked; the go proxy works: `GOBIN=$HOME/.local/bin go install
