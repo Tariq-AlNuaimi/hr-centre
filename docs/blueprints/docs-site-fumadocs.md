@@ -157,19 +157,19 @@ flowchart TB
   file-pointed error (AC-2.2), never a blank/500 page; theme-aware + RTL-safe (AC-1.3); axe-clean nav/
   search; on-token colors (`no-raw-hex-color`).
 
-## Open questions (to resolve via AskUserQuestion before the code wave)
+## Open questions — RESOLVED (operator, AskUserQuestion 2026-07-12)
 
-- [ ] **Content source**: point the Fumadocs source root **directly at the existing `docs/`** tree
-      (single source of truth, but couples site layout to the repo docs layout), **or** keep a
-      dedicated `content/docs/**` tree that curates/re-exports selected `docs/*.md` + ADRs (cleaner
-      site IA, but a sync step)? Default lean: dedicated `content/docs/**` with the ADR series pulled
-      in, per the `Scope:` line.
-- [ ] **Default access posture**: ship the recipe **internal-only (auth-gated) by default** with a
-      public opt-in, or public by default? Default lean: internal-only (enterprise, Restricted-data
-      posture).
-- [ ] **Path + i18n**: mount at `/docs` under the existing `[locale]` routing (docs get `en`/`ar` + RTL for free) or as a locale-independent `/docs`? Default lean: under `[locale]` for
-      consistency with the app chrome.
-- [ ] **Versioning need**: does any target tenant need versioned public docs now (would trigger the
-      Docusaurus fallback per ADR-053), or is unversioned sufficient for v1? Default lean: unversioned.
-- [ ] **ADR ingestion**: render ADRs as-is from `docs/decisions/` or normalize frontmatter for the
-      nav? Default lean: light frontmatter shim in the source adapter, ADR bodies unchanged.
+- [x] **Content source** → **dedicated `content/docs/**` tree** with the ADR series pulled in (per the
+      `Scope:` line). Curated site IA decoupled from the repo `docs/` layout; a light sync/curation
+      step is accepted. _(operator: "Dedicated content/docs/\**")_
+- [x] **Default access posture** → **internal-only (auth-gated) by default**, public as a fork opt-in.
+      `app/(docs)` fronts the existing auth wrapper; the recipe warns only non-Restricted content
+      belongs in a public tree. _(operator: "Internal-only (auth-gated)")_
+- [x] **Path + i18n** → **under `[locale]` at `/{locale}/docs`** so docs get `en`/`ar` + RTL for free
+      and share the app chrome. NOTE: this differs from the opt-in `/api-reference` (which is
+      non-localized); the docs site is inside `[locale]`, so the middleware needs no `/api-reference`-
+      style special case. _(operator: "Under [locale] at /{locale}/docs")_
+- [x] **Versioning need** → **unversioned for v1** (no Docusaurus-fallback trigger). _(operator:
+      confirmed default by non-objection)_
+- [x] **ADR ingestion** → **light frontmatter shim** in the source adapter; ADR bodies unchanged.
+      _(operator: confirmed default by non-objection)_
