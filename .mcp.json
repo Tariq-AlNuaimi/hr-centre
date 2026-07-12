@@ -9,15 +9,18 @@
     },
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
+      "args": ["-y", "@upstash/context7-mcp@3.2.3"]
     },
     "shadcn": {
       "command": "npx",
-      "args": ["shadcn@latest", "mcp"]
+      "args": ["shadcn@4.13.0", "mcp"]
     },
     "chrome-devtools": {
-      "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest", "--executablePath", "/opt/pw-browsers/chromium"]
+      "command": "sh",
+      "args": [
+        "-c",
+        "exec npx -y chrome-devtools-mcp@1.5.0 --executablePath \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\""
+      ]
     }
   }
 }
