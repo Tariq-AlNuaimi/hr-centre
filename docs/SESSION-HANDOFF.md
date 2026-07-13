@@ -510,3 +510,24 @@ the root cause + fix and want it BUILT INTO THE HARNESS so it's automatic, not t
   action (auth pin done; SheetJS trigger-gated in ledger).
 - Execution: item 8 research + item 5 seam delegated in parallel (disjoint files); item 4 after 5 (package.json
   contention); item 7 last. If the session dies mid-flight: re-check `git log origin/main` + this section.
+
+## SESSION 6 CODE-WAVE COMPLETE (2026-07-13) — items 3,4,5,7,8 + dep PRs ALL ON MAIN (f9f6c33)
+
+- **Landed on main this session (each /ship-green before push):** item-3 Fumadocs enabler (63b98ae group,
+  fully review-gated) · codeql SHA re-pin (dead-history PRs #69–72 closed) · dependabot #74 cyclonedx-6 (sbom
+  verified) + #77 minor-and-patch ×15 · item-8 A.6 verdict table (docs/research/a6-tool-shortlist-verdicts.md;
+  top action: adopt Anthropic frontend-design plugin P1) · item-5 pg-boss seam (lib/queue/**, QUEUE_ENABLED
+  explicit opt-in, /code-review-gated: singleton stale-attempt races fixed 4608d62) · item-4 account-free
+  CI/supply-chain slice (zizmor + osv dormant workflows, /ship 'licenses' gate + allowlist, npm ci
+  --ignore-scripts + rebuild allowlist, ADR-050/051 amendments; Socket/Harden-Runner deferred pending operator
+  accounts) · item-7 ADR-054 harness v1 (plugin.json 0.1.0 private, 2 golden agent-eval fixtures + dormant
+  runner, observe-only routing receipts via PostToolUse Task hook, generator manifest; 3 defaults recorded in
+  docs/blueprints/harness-plugin-agent-eval.md).
+- **IN FLIGHT at write time: batched post-push senior-code-reviewer over items 4/5/7** (diff 18fad78...f9f6c33;
+  focus: --ignore-scripts rebuild completeness, license allowlist elections, receipt-hook trust boundary,
+  generator-manifest failure modes, agent-eval fixture correctness). NEXT SESSION FIRST if this session ends
+  before it returns: retrieve or re-run it, fix-forward, /ship green, push, FF main.
+- **Item 6 = no action** (auth pin already exact; exceljs→SheetJS trigger-gated in ledger). **Code wave 1–8
+  is otherwise COMPLETE.** Remaining program work: enterprise-pivot P2 backlog (WS-1..8 all landed), A.6
+  follow-ups (frontend-design plugin adoption P1), deferred-adoption plan triggers, Socket/Harden-Runner
+  when accounts exist.
