@@ -48,10 +48,7 @@ const EXPECTED_FILES = [
 
 test("every emitted file has a byte-source .tpl in scripts/templates/docs-site", () => {
   for (const rel of EXPECTED_FILES) {
-    assert.ok(
-      existsSync(path.join(TEMPLATE_DIR, `${rel}.tpl`)),
-      `missing template ${rel}.tpl`,
-    );
+    assert.ok(existsSync(path.join(TEMPLATE_DIR, `${rel}.tpl`)), `missing template ${rel}.tpl`);
   }
 });
 
