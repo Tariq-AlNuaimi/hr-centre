@@ -495,3 +495,18 @@ the root cause + fix and want it BUILT INTO THE HARNESS so it's automatic, not t
     marketplace private vs public; golden-set seed diffs; receipt format. Blueprint enterprise-ws8-harness.md does
     NOT cover the plugin/agent-eval layer — needs a /blueprint before build.
 - Landmines unchanged (NODE_ENV, gitleaks reinstall, single simple destructive commands, no docker/:5432).
+
+## SESSION 6 FINAL (2026-07-13) — item-3 + dep-PRs ON MAIN; operator scoped items 4–8
+
+- **MERGED to main `18fad78`:** item-3 enabler (all gates: /code-review 9 fixed + senior Critical/High/Med/Low
+  fixed in 637f71d) + codeql SHA re-pin (hand-applied; dead-history PRs #69–72 closed w/ comment) + dependabot
+  #74 cyclonedx-npm 6 (npm run sbom verified: CycloneDX 1.6, 504 components) + #77 minor-and-patch ×15 — both
+  gated /ship green before landing; #74/#77 auto-close as merged.
+- **OPERATOR DECISIONS (AskUserQuestion 2026-07-13) on items 4–8:** Item 4 = ACCOUNT-FREE SLICE (SHA-pin
+  remaining actions, zizmor, /ship license-gate, osv-scanner SARIF, npm ci --ignore-scripts allowlist; SKIP
+  Socket/Harden-Runner until operator accounts exist). Item 5 = BUILD the lib/queue pg-boss seam NOW (ledger
+  entry exists 2026-07-11). Item 7 = BLUEPRINT + BUILD NOW (resolve open questions with recommended defaults,
+  record them in the blueprint). Item 8 = RUN the A.6 research (verdict table, committed doc). Item 6 = no
+  action (auth pin done; SheetJS trigger-gated in ledger).
+- Execution: item 8 research + item 5 seam delegated in parallel (disjoint files); item 4 after 5 (package.json
+  contention); item 7 last. If the session dies mid-flight: re-check `git log origin/main` + this section.
