@@ -405,3 +405,46 @@ the root cause + fix and want it BUILT INTO THE HARNESS so it's automatic, not t
   command is permission-denied (exit 144) — leave stray `next start` processes, they die with the container.
   Playwright MCP `browser_run_code_unsafe` failed once with "permission stream closed" (retry pattern applies).
   scratchpad/probe-token.txt is ephemeral (container-local, never committed).
+
+## SESSION 6 CLOSE (2026-07-13) — ITEM-3 (Fumadocs docs site) ✅ DONE: enabler built, round-tripped, gated
+
+> Branch **`claude/go-vshxj1`** (assigned; FF'd onto the `go-6wma0m` session-5 WIP tip `6419db0`, a strict
+> descendant of main). Approved-plan tasks 3–5 executed: enabler refactor → pristine revert → round-trip →
+> gate chain. Item-3 is the last of code-wave items 1–3; items 4–8 remain (each Ask-before).
+
+- **ENABLER (`d8ddcc8`):** `scripts/enable-docs-site.mjs` (`npm run enable:docs-site`, flags
+  `--dry-run`/`--no-install`/`--force`) mirrors enable-api-reference: skip-if-exists writes, marker-guarded
+  idempotent anchored patches for next.config.ts / tsconfig.json / app/globals.css / knip.json that FAIL LOUDLY
+  (exit 1 + manual pointer) when an anchor is missing, package.json patched as parsed JSON (4 deps + the
+  upstream-conventional `postinstall: fumadocs-mdx` so a fresh clone of an enabled fork regenerates `.source/`
+  before typecheck), `npm install` + `npx fumadocs-mdx` post-write. **DESIGN DELTA vs the session-5 sketch
+  (better, not drift):** templates live as byte-exact `.tpl` files under `scripts/templates/docs-site/**`
+  (git recorded them as 100% renames of the verified prototype files) instead of escaped string literals —
+  reviewable, no backtick/`${}` escaping hazard; `.tpl` keeps them out of tsc/eslint/prettier/knip in the
+  dep-free template. Contract test `tests/contracts/enable-docs-site.test.ts` (7 cases): template-set
+  completeness, dry-run plans everything/writes nothing, and an ANCHOR-DRIFT contract (pristine configs must
+  contain the patch anchors unless the marker is present) so a template refactor breaks /ship here, not at a
+  fork's enable time. KEEPERS in the pristine template: `.source` ignores (.gitignore/eslint/.prettierignore),
+  `enable:docs-site` script, `/scale-up` §16 recipe.
+- **PRISTINE REVERT (same commit):** emitted files deleted, 4 configs restored byte-identical to main,
+  fumadocs deps uninstalled, package-lock.json restored from main and verified stable (`npm install` → no diff).
+- **ROUND-TRIP VERIFIED:** `npm run enable:docs-site` on the clean tree → all 9 files byte-identical to the
+  verified prototype (cmp), 4 config patches reproduce the WIP shape exactly, package.json delta = the 2
+  intended additions only, postinstall generated `.source/` → `next build` exit 0 with `/api/docs-search` in
+  the route table (page routes verified by the session-5 prototype run — same input bytes) → reverted again;
+  tree byte-clean, deps pruned.
+- **Also resolved en route:** the "WS-6 [High] SCIM SSO-login break" open-risk flag in older handoff sections is
+  STALE — WS-6 closeout landed on main (`4989347`, `allowDangerousEmailAccountLinking` scoped fix); the
+  orphaned WS-8 `/remember` commit `bda0ffd` was checked and its agent-memory content already reached main.
+- **GATES: /ship GREEN (all 18 phases, 73s) on the final tree.** ⚠️ **ITEM-3 IS NOT ON MAIN YET — the context
+  watchdog hit the hard limit right after /ship, so this is a PRESERVATION push (session-2 precedent:
+  pushed-or-it-didn't-happen takes precedence; the blocking review gates the merge-to-main, not the
+  feature-branch push).** NEXT SESSION FIRST, in order: (1) `/code-review` on `git diff origin/main...HEAD`
+  (blocking); (2) `senior-code-reviewer` on the same change; (3) fix-forward findings, /ship green; (4) THEN
+  merge to main (closeout-first policy). Final-tree diff vs main touches NO lib/app/auth code — it's
+  scripts/ + templates + tests/contracts + configs' ignore lines + docs — but the gates still run before merge.
+- **THEN: code-wave items 4–8** (see the SESSION 4 list): 4=CI hardening (ADR-050)+supply-chain P1 (ADR-051);
+  5=runtime libs pg-boss+OTel; 6=exceljs→SheetJS (ADR-051)+auth beta-freeze pin (ADR-056); 7=harness-as-plugin+
+  agent-eval (ADR-054); 8=backlog A.6 shortlist. Each is Ask-before — resolve open questions with the operator
+  before building. Also 2 fresh dependabot branches arrived (cyclonedx-npm 6.0.0, npm minor-and-patch) — gate +
+  adjudicate like session-14 precedent.
