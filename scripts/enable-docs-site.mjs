@@ -11,19 +11,24 @@
 // Mirrors enable-api-reference.mjs / the scaffold-* generators: writes via `fs`
 // (a plain Node process), so the blueprint/build-vs-buy PreToolUse hooks — which
 // only intercept Claude's Write/Edit tools — don't fire; the emitted surface is
-// pre-authorized by docs/blueprints/docs-site-fumadocs.md (Scope covers
-// app/[locale]/docs/**, app/api/docs-search/**, content/docs/**, lib/docs/**,
-// source.config.ts), so a later human edit is gate-clean.
+// pre-authorized by docs/blueprints/docs-site-fumadocs.md (its Scope line covers
+// the emitted files and these templates), so a later human edit is gate-clean.
 //
 // The emitted files live as byte-exact `.tpl` snapshots under
 // scripts/templates/docs-site/** (verified end-to-end: build green, authed render,
 // search, AC-2.2 frontmatter failure, anon 307 — see the blueprint). The `.tpl`
 // suffix keeps them out of tsc/eslint in the dep-free default template.
 //
+// FAILURE ORDERING (all-or-nothing, like scaffold-entity): every config patch is
+// computed and validated BEFORE anything is written or installed — a diverged
+// anchor aborts with the manual instruction and an untouched tree. The real run
+// then installs deps FIRST (a transient npm failure also leaves the tree
+// untouched), and only after a successful install writes files + configs.
+//
 // Usage:
-//   npm run enable:docs-site                 # write files, patch configs, install deps
+//   npm run enable:docs-site                 # install deps, write files, patch configs
 //   npm run enable:docs-site -- --no-install # write/patch only (you install + run `npx fumadocs-mdx`)
-//   npm run enable:docs-site -- --dry-run    # show what would happen
+//   npm run enable:docs-site -- --dry-run    # validate + show what would happen
 //   npm run enable:docs-site -- --force      # overwrite already-emitted files
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -46,6 +51,12 @@ const dryRun = argv.has("--dry-run");
 const noInstall = argv.has("--no-install");
 const force = argv.has("--force");
 
+// npm/npx are .cmd shims on Windows; spawnSync needs a shell there. The command
+// strings are static (never user input), so shell:true is injection-safe.
+function run(cmd, args) {
+  return spawnSync(cmd, args, { stdio: "inherit", shell: process.platform === "win32" });
+}
+
 // ---------------------------------------------------------------------------
 // 1. Files: every *.tpl under scripts/templates/docs-site/** copies to the same
 //    repo-relative path minus the .tpl suffix.
@@ -66,16 +77,19 @@ const templates = walkTemplates(TEMPLATE_DIR).map((abs) => ({
 }));
 
 // ---------------------------------------------------------------------------
-// 2. Config patches — idempotent (marker-guarded) anchored edits. A missing
-//    anchor means the file diverged from the template shape: FAIL LOUDLY with
-//    the manual instruction instead of writing a corrupt config.
+// 2. Config patches — idempotent anchored edits, computed up front. A missing
+//    anchor means the file diverged from the template shape: the whole run
+//    aborts BEFORE any write, with the manual instruction, instead of leaving a
+//    half-enabled tree. `optional` configs (droppable dev tools) are skipped
+//    with a warning when absent. isApplied() must be precise — a substring an
+//    unrelated fork edit could contain is not enough (the knip check parses).
 //    tests/contracts/enable-docs-site.test.ts pins these anchors against drift.
 // ---------------------------------------------------------------------------
 const PATCHES = [
   {
     rel: "next.config.ts",
-    marker: "fumadocs-mdx/next",
     describe: "wire the fumadocs-mdx loader (createMDX) into the plugin chain",
+    isApplied: (text) => text.includes("fumadocs-mdx/next"),
     apply(text) {
       const importAnchor = 'import createNextIntlPlugin from "next-intl/plugin";';
       const chainAnchor = "const baseConfig = withAnalyzer(withNextIntl(nextConfig));";
@@ -97,8 +111,8 @@ const PATCHES = [
   },
   {
     rel: "tsconfig.json",
-    marker: '"collections/*"',
     describe: 'add the "collections/*" -> ./.source/* path alias',
+    isApplied: (text) => text.includes('"collections/*"'),
     apply(text) {
       const anchor = '"@/*": ["./*"]';
       if (!text.includes(anchor)) return null;
@@ -107,8 +121,8 @@ const PATCHES = [
   },
   {
     rel: "app/globals.css",
-    marker: "BEGIN fumadocs",
     describe: "import fumadocs-ui styles + the app-token bridge",
+    isApplied: (text) => text.includes("BEGIN fumadocs"),
     apply(text) {
       const anchor = '@import "./tokens.css";';
       if (!text.includes(anchor)) return null;
@@ -125,8 +139,17 @@ const PATCHES = [
   },
   {
     rel: "knip.json",
-    marker: "source.config.ts",
+    optional: true, // a fork may have dropped knip entirely
     describe: "register source.config.ts as a knip entry (the fumadocs toolchain consumes it)",
+    // Parse instead of substring-matching: "source.config.ts" appearing in an
+    // unrelated knip field (ignore, a comment) must not skip the entry insert.
+    isApplied(text) {
+      try {
+        return JSON.parse(text).entry?.includes("source.config.ts") ?? false;
+      } catch {
+        return false;
+      }
+    },
     apply(text) {
       const anchor = '"brand.config.ts"';
       if (!text.includes(anchor)) return null;
@@ -135,17 +158,38 @@ const PATCHES = [
   },
 ];
 
-// package.json is parsed as JSON (not string-patched): add the deps at pinned
-// ranges and the upstream-conventional `postinstall: fumadocs-mdx`, so a fresh
-// clone of an ENABLED fork regenerates .source/ before typecheck/build instead
-// of failing TS2307 on the collections/* alias.
-function patchPackageJson(pkg) {
+// Validate every patch up front. Result per patch: {patch, status, next?}
+// status: "apply" | "already" | "skip-missing" | "fail"
+function planPatches() {
+  return PATCHES.map((patch) => {
+    const abs = path.join(ROOT, patch.rel);
+    if (!existsSync(abs)) {
+      return { patch, status: patch.optional ? "skip-missing" : "fail" };
+    }
+    const text = readFileSync(abs, "utf8");
+    if (patch.isApplied(text)) return { patch, status: "already" };
+    const next = patch.apply(text);
+    if (next === null) return { patch, status: "fail" };
+    return { patch, status: "apply", next };
+  });
+}
+
+// package.json is parsed as JSON (not string-patched). Deps are recorded by the
+// npm install itself in the default path; this only handles --no-install dep
+// recording plus the upstream-conventional postinstall so a fresh clone of an
+// ENABLED fork regenerates .source/ before typecheck/build instead of failing
+// TS2307 on the collections/* alias. An existing postinstall is CHAINED, never
+// warn-and-skipped — a missed warning here would surface months later as a
+// broken fresh clone.
+function patchPackageJson(pkg, { recordDeps }) {
   const notes = [];
-  pkg.dependencies ??= {};
-  for (const [dep, range] of Object.entries(DEPS)) {
-    if (!pkg.dependencies[dep]) {
-      pkg.dependencies[dep] = range;
-      notes.push(`dependencies.${dep} = ${range}`);
+  if (recordDeps) {
+    pkg.dependencies ??= {};
+    for (const [dep, range] of Object.entries(DEPS)) {
+      if (!pkg.dependencies[dep]) {
+        pkg.dependencies[dep] = range;
+        notes.push(`dependencies.${dep} = ${range}`);
+      }
     }
   }
   pkg.scripts ??= {};
@@ -153,35 +197,79 @@ function patchPackageJson(pkg) {
     pkg.scripts.postinstall = "fumadocs-mdx";
     notes.push('scripts.postinstall = "fumadocs-mdx"');
   } else if (!pkg.scripts.postinstall.includes("fumadocs-mdx")) {
-    console.warn(
-      `${TAG} WARNING: scripts.postinstall already exists ("${pkg.scripts.postinstall}") — ` +
-        `chain \`fumadocs-mdx\` into it manually so fresh clones regenerate .source/.`,
-    );
+    pkg.scripts.postinstall = `${pkg.scripts.postinstall} && fumadocs-mdx`;
+    notes.push('scripts.postinstall += " && fumadocs-mdx"');
   }
   return notes;
 }
 
+const plan = planPatches();
+const failed = plan.filter((p) => p.status === "fail");
+const depList = Object.entries(DEPS)
+  .map(([d, r]) => `${d}@${r}`)
+  .join(" ");
+
 // ---------------------------------------------------------------------------
-// Dry run: report, touch nothing.
+// Dry run: report the validated plan, touch nothing. Exits 1 when a patch
+// would fail so the plan is trustworthy — the real run aborts on the same
+// condition.
 // ---------------------------------------------------------------------------
 if (dryRun) {
   console.log(`${TAG} --dry-run — would:`);
   for (const t of templates) console.log(`  write ${t.rel}`);
-  for (const p of PATCHES) {
-    const abs = path.join(ROOT, p.rel);
-    const done = existsSync(abs) && readFileSync(abs, "utf8").includes(p.marker);
-    console.log(`  patch ${p.rel} — ${p.describe}${done ? " (already applied)" : ""}`);
+  for (const { patch, status } of plan) {
+    const note = {
+      apply: "",
+      already: " (already applied)",
+      "skip-missing": " (file absent — skipped)",
+      fail: " (WOULD FAIL — file diverged/missing, see docs/blueprints/docs-site-fumadocs.md)",
+    }[status];
+    console.log(`  patch ${patch.rel} — ${patch.describe}${note}`);
   }
-  console.log(`  patch package.json — deps + postinstall`);
-  const depList = Object.entries(DEPS)
-    .map(([d, r]) => `${d}@${r}`)
-    .join(" ");
+  console.log(`  patch package.json — postinstall${noInstall ? " + deps" : ""}`);
   if (!noInstall) console.log(`  npm install (${depList}) + npx fumadocs-mdx`);
+  if (failed.length > 0) {
+    console.error(
+      `${TAG} --dry-run: ${failed.length} config patch(es) WOULD FAIL — fix before enabling.`,
+    );
+    process.exit(1);
+  }
   process.exit(0);
 }
 
+// Abort before ANY mutation when a required patch can't apply.
+if (failed.length > 0) {
+  for (const { patch } of failed) {
+    console.error(
+      `${TAG} ERROR: ${patch.rel} is missing or diverged from the expected shape — ` +
+        `could not ${patch.describe}. Apply that change manually ` +
+        `(see docs/blueprints/docs-site-fumadocs.md), then re-run. Nothing was written.`,
+    );
+  }
+  process.exit(1);
+}
+
 // ---------------------------------------------------------------------------
-// 3. Write the files.
+// 3. Install deps FIRST (unless --no-install): `npm install <specs>` records
+//    them in package.json AND installs atomically, so a transient npm failure
+//    leaves the tree completely untouched (no files, no config patches, no
+//    import of a module that isn't installed).
+// ---------------------------------------------------------------------------
+if (!noInstall) {
+  if (existsSync(path.join(ROOT, "node_modules", "fumadocs-ui"))) {
+    console.log(`${TAG} fumadocs deps already installed — skipping npm install`);
+  } else {
+    console.log(`${TAG} installing ${depList} …`);
+    const r = run("npm", ["install", ...Object.entries(DEPS).map(([d, v]) => `${d}@${v}`)]);
+    if (r.status !== 0) {
+      console.error(`${TAG} npm install failed — nothing was written; fix the install and re-run.`);
+      process.exit(r.status ?? 1);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4. Write the files.
 // ---------------------------------------------------------------------------
 for (const t of templates) {
   const abs = path.join(ROOT, t.rel);
@@ -196,32 +284,24 @@ for (const t of templates) {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Patch the configs.
+// 5. Apply the pre-validated config patches + package.json.
 // ---------------------------------------------------------------------------
-let patchFailed = false;
-for (const p of PATCHES) {
-  const abs = path.join(ROOT, p.rel);
-  const text = readFileSync(abs, "utf8");
-  if (text.includes(p.marker)) {
-    console.log(`${TAG} ${p.rel} already patched — skipping`);
+for (const { patch, status, next } of plan) {
+  if (status === "already") {
+    console.log(`${TAG} ${patch.rel} already patched — skipping`);
     continue;
   }
-  const next = p.apply(text);
-  if (next === null) {
-    console.error(
-      `${TAG} ERROR: ${p.rel} has diverged from the expected shape — could not ${p.describe}. ` +
-        `Apply that change manually (see docs/blueprints/docs-site-fumadocs.md).`,
-    );
-    patchFailed = true;
+  if (status === "skip-missing") {
+    console.warn(`${TAG} ${patch.rel} not found — skipped (${patch.describe})`);
     continue;
   }
-  writeFileSync(abs, next);
-  console.log(`${TAG} patched ${p.rel} — ${p.describe}`);
+  writeFileSync(path.join(ROOT, patch.rel), next);
+  console.log(`${TAG} patched ${patch.rel} — ${patch.describe}`);
 }
 
 const pkgPath = path.join(ROOT, "package.json");
 const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
-const pkgNotes = patchPackageJson(pkg);
+const pkgNotes = patchPackageJson(pkg, { recordDeps: noInstall });
 if (pkgNotes.length > 0) {
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
   console.log(`${TAG} patched package.json — ${pkgNotes.join(", ")}`);
@@ -230,21 +310,12 @@ if (pkgNotes.length > 0) {
 }
 
 // ---------------------------------------------------------------------------
-// 5. Install + generate .source/.
+// 6. Generate .source/ for this working tree (postinstall covers future
+//    installs). Re-running the enabler is idempotent, so a failure here is
+//    recoverable by re-running (or `npx fumadocs-mdx` directly).
 // ---------------------------------------------------------------------------
 if (!noInstall) {
-  if (existsSync(path.join(ROOT, "node_modules", "fumadocs-ui"))) {
-    console.log(`${TAG} fumadocs deps already installed — skipping npm install`);
-  } else {
-    console.log(`${TAG} installing fumadocs deps …`);
-    const r = spawnSync("npm", ["install"], { stdio: "inherit" });
-    if (r.status !== 0) {
-      console.error(`${TAG} npm install failed. Files are written; install manually.`);
-      process.exit(r.status ?? 1);
-    }
-  }
-  // postinstall covers future installs; generate now for this working tree.
-  const g = spawnSync("npx", ["fumadocs-mdx"], { stdio: "inherit" });
+  const g = run("npx", ["fumadocs-mdx"]);
   if (g.status !== 0) {
     console.error(`${TAG} \`npx fumadocs-mdx\` failed — run it manually before building.`);
     process.exit(g.status ?? 1);
@@ -256,10 +327,6 @@ if (!noInstall) {
   );
 }
 
-if (patchFailed) {
-  console.error(`${TAG} done WITH ERRORS — one or more config patches need manual attention.`);
-  process.exit(1);
-}
 console.log(
   `${TAG} done. Docs live at /{locale}/docs (auth-gated; internal-only by default — ` +
     `see content/docs/adding-pages.mdx for the public posture). Adds ~213kB gzip of ` +

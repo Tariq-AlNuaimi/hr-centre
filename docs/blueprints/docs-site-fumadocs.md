@@ -1,6 +1,6 @@
 # Blueprint — Docs site (Fumadocs, mounted in the Next app)
 
-Scope: app/[locale]/docs/**, app/api/docs-search/**, content/docs/**, lib/docs/**, source.config.ts, scripts/enable-docs-site.mjs
+Scope: app/[locale]/docs/**, app/api/docs-search/**, app/fumadocs-tokens.css, content/docs/**, lib/docs/**, source.config.ts, scripts/enable-docs-site.mjs, scripts/templates/docs-site/**
 
 > The `blueprint-gate.mjs` hook (ADR-033) matches NEW `app/api/**/route.ts` + `app/**/page.tsx`
 > against this `Scope:` line. The `app/[locale]/docs/**` glob pre-authorizes the docs pages under

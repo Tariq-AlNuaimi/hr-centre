@@ -10,28 +10,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { ROOT, runScript } from "./_run-script";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts", "enable-docs-site.mjs");
 const TEMPLATE_DIR = path.join(ROOT, "scripts", "templates", "docs-site");
 
-function runEnabler(args: string[]): { code: number; stdout: string; stderr: string } {
-  try {
-    const stdout = execFileSync("node", [SCRIPT, ...args], {
-      cwd: ROOT,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return { code: 0, stdout, stderr: "" };
-  } catch (e) {
-    const err = e as { status?: number; stdout?: string; stderr?: string };
-    return { code: err.status ?? 1, stdout: err.stdout ?? "", stderr: err.stderr ?? "" };
-  }
-}
+const runEnabler = (args: string[]) => runScript(SCRIPT, args);
 
 // The full emitted surface (blueprint Scope) — one .tpl per target file.
 const EXPECTED_FILES = [

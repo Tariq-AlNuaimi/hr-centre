@@ -9,28 +9,14 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { ROOT, runScript } from "./_run-script";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts", "scaffold-entity.mjs");
 
 /** Run the generator; return { code, stdout, stderr }. Never throws on non-zero. */
-function runScaffold(args: string[]): { code: number; stdout: string; stderr: string } {
-  try {
-    const stdout = execFileSync("node", [SCRIPT, ...args], {
-      cwd: ROOT,
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    return { code: 0, stdout, stderr: "" };
-  } catch (e) {
-    const err = e as { status?: number; stdout?: string; stderr?: string };
-    return { code: err.status ?? 1, stdout: err.stdout ?? "", stderr: err.stderr ?? "" };
-  }
-}
+const runScaffold = (args: string[]) => runScript(SCRIPT, args);
 
 test("dry-run (scalars only): plans all writes + patches, writes nothing", () => {
   const { code, stdout } = runScaffold([
