@@ -35,7 +35,11 @@ export async function getQueue(): Promise<PgBoss> {
   const { connectionString } = queueConfig();
   if (instance) return instance;
   if (!starting) {
-    starting = (async () => {
+    // Declared `let ... | undefined = undefined` (not `const`): the closure
+    // below compares against `attempt` after an await, by which point the real
+    // assignment has run; a `const` self-reference fails TS2454.
+    let attempt: Promise<PgBoss> | undefined = undefined;
+    attempt = (async () => {
       const boss = new PgBoss(connectionString);
       // pg-boss emits internal maintenance/scheduling errors on this event; an
       // unhandled 'error' event would crash the Node process. Metadata only —
@@ -44,12 +48,18 @@ export async function getQueue(): Promise<PgBoss> {
         console.error("[queue] pg-boss error:", error instanceof Error ? error.message : error);
       });
       await boss.start();
-      instance = boss;
+      // Cache only if this attempt is still current — if stopQueue() ran while
+      // start() was in flight it already claimed this promise and will stop the
+      // boss; caching here would resurrect a stopped client as the singleton.
+      if (starting === attempt) instance = boss;
       return boss;
     })();
-    // Reset on failure so a later call can retry instead of caching the rejection.
-    starting.catch(() => {
-      starting = null;
+    starting = attempt;
+    // Reset on failure so a later call can retry instead of caching the
+    // rejection — but only if this attempt is still the current one, so a
+    // late rejection can't clobber a newer retry's in-flight promise.
+    attempt.catch(() => {
+      if (starting === attempt) starting = null;
     });
   }
   return starting;
