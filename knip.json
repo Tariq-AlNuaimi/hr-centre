@@ -15,8 +15,7 @@
     "hooks/**/*.{ts,tsx}",
     "lib/**/*.{ts,tsx}",
     "types/**/*.{ts,tsx}",
-    "brand.config.ts",
-    "source.config.ts"
+    "brand.config.ts"
   ],
   "ignore": [],
   "ignoreDependencies": ["pg", "@types/pg", "playwright", "@typescript-eslint/parser", "jscpd"],

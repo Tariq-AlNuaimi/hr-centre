@@ -531,6 +531,35 @@ checklist of record; don't check items off from here):
 
 ---
 
+## 16. Internal docs site (Fumadocs)
+
+**Trigger:** the team needs browsable, searchable project documentation — the
+guides in `content/docs/**` plus the ADR series — behind the app's login,
+instead of reading Markdown on GitHub.
+
+**Recipe (one command; the docs rail is pre-built, ADR-053):**
+
+```sh
+npm run enable:docs-site            # or -- --dry-run to preview
+```
+
+The enabler emits the verified docs surface (pages under `/{locale}/docs`, an
+auth-gated `/api/docs-search` Orama route, `source.config.ts` MDX collections,
+the `--color-fd-*` → app-token bridge so light/dark/RTL follow the app), patches
+`next.config.ts`/`tsconfig.json`/`app/globals.css`/`knip.json`, and installs
+`fumadocs-ui`/`fumadocs-core`/`fumadocs-mdx` (the Ask-before >50KB deps this
+recipe pre-authorizes on operator approval). Authoring workflow: commit an
+`.mdx` with `title` frontmatter → it's in the sidebar next build; ADRs are
+ingested from `docs/decisions/` unchanged. Internal-only by default — the
+public posture (remove the layout session check + add `/docs` to middleware
+`publicPaths`) is documented in the emitted `content/docs/adding-pages.mdx`.
+
+**Cost:** free (OSS). ~213kB gzip extra client chunk — an enabled fork stays
+under the 1.2MB size-limit budget (918kB verified); MDX compile adds a few
+seconds to `next build`.
+
+---
+
 ## Decision rule
 
 Default position: **don't add until the user describes the symptom**. The

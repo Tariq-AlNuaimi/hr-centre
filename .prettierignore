@@ -1,5 +1,7 @@
 node_modules
 .next
+# fumadocs generated collections in an enabled fork (enable-docs-site, ADR-053)
+.source
 generated
 coverage
 *.min.*
