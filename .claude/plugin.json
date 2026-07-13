@@ -1,0 +1,18 @@
+{
+  "name": "rihal-prototype-harness",
+  "version": "0.1.0",
+  "description": "Rihal prototype-rail harness for the fullstack Next.js template: 27 lifecycle skills, 4 tiered agents (scout/senior-code-reviewer/security-architect/sre), 14 hooks (gate-quartet, watchdogs, push guard), skill-activation rules and settings. Versioned per ADR-054 so forks can pin and detect staleness.",
+  "author": {
+    "name": "Tariq Al-Naaimi"
+  },
+  "license": "UNLICENSED",
+  "x-posture": "private/internal — versioning + /handoff portability only; NOT published to any marketplace (ADR-054 amendment 2026-07-13). If a public/marketplace channel is ever adopted, relocate per the official plugin spec (.claude-plugin/plugin.json) and record a superseding ADR.",
+  "x-versioning": "Bumps ride the @changesets flow already in the stack: `npm run changeset` per harness-visible change, `npm run changeset:version` at release, then mirror the bump here. Changelog = the generated CHANGELOG.md from changesets plus docs/decisions/ADR-054-harness-plugin-and-agent-eval.md (amendments).",
+  "x-components": {
+    "skills": ".claude/skills/*/SKILL.md",
+    "agents": ".claude/agents/*.md",
+    "hooks": ".claude/hooks/*.mjs (bindings in .claude/settings.json)",
+    "skillRules": ".claude/skill-rules.json",
+    "statusline": ".claude/statusline.mjs"
+  }
+}

@@ -39,8 +39,9 @@
 // See .claude/skills/scaffold-entity/SKILL.md.
 
 import { readFile, writeFile, mkdir, stat } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { parseArgs } from "node:util";
+import { recordGeneration } from "./lib/generated-manifest.mjs";
 
 const ROOT = process.cwd();
 
@@ -1462,6 +1463,15 @@ for (const p of patches) {
   await writeFile(p.path, p.content);
   console.log(`~ ${p.path}`);
 }
+
+// Generator manifest (ADR-054): record what this run generated, at which harness
+// version, so a later re-sync/codemod knows. Non-fatal by contract.
+await recordGeneration(ROOT, {
+  generator: "scaffold-entity",
+  name: Pascal,
+  files: writes.map((w) => relative(ROOT, w.path)),
+  patched: patches.map((p) => relative(ROOT, p.path)),
+});
 
 console.log("");
 console.log(`Scaffolded ${Pascal}. Next steps:`);

@@ -1,0 +1,18 @@
+{
+  "fixture": "docker-postinstall-deps-stage",
+  "agent": "senior-code-reviewer",
+  "derivedFrom": "REAL escape, item-3 docs-site enabler (docs/blueprints/docs-site-fumadocs.md \"Docker path\", senior breadth review, [Critical]): a bare `postinstall: fumadocs-mdx` passed the Vercel/next-build verification but failed `npm ci` in the Dockerfile deps stage — where only package.json + the lockfile exist — bricking every image build of an enabled fork.",
+  "task": "Review this diff, which adds a postinstall codegen step to package.json. The repo's existing Dockerfile is supplied in context/Dockerfile. Report every defect a senior reviewer must surface, with severity.",
+  "expectedFindings": [
+    {
+      "class": "build-break.lifecycle-script-missing-context",
+      "severity": "critical",
+      "summary": "npm lifecycle scripts run on EVERY install, including the Dockerfile deps stage where only package.json + package-lock.json are present. The unguarded postinstall needs source.config.ts and the content sources, so `npm ci` in the deps stage exits non-zero and every Docker image build fails. It must be guarded (no-op when its inputs are absent) or moved out of the install lifecycle.",
+      "mustMentionAnyOf": [
+        ["postinstall"],
+        ["docker", "deps stage", "image"],
+        ["npm ci", "install", "lockfile", "package-lock"]
+      ]
+    }
+  ]
+}

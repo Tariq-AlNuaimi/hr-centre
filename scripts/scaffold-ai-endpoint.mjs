@@ -30,6 +30,7 @@
 import { writeFile, mkdir, stat, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseArgs } from "node:util";
+import { recordGeneration } from "./lib/generated-manifest.mjs";
 
 const ROOT = process.cwd();
 
@@ -311,6 +312,14 @@ for (const o of outputs) {
   await writeFile(abs, o.content);
   console.log(`+ ${o.path}`);
 }
+
+// Generator manifest (ADR-054): record what this run generated, at which harness
+// version, so a later re-sync/codemod knows. Non-fatal by contract.
+await recordGeneration(ROOT, {
+  generator: "scaffold-ai-endpoint",
+  name: Pascal,
+  files: outputs.map((o) => o.path),
+});
 
 // --- summary ----------------------------------------------------------------
 

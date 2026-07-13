@@ -304,3 +304,32 @@ Revisit this decision when any of these fire:
   "who reviews the reviewers"), §5 (routing-adherence check, keep static tiers).
 - `.claude/skills/sync-from-template/SKILL.md` — the transitional/mixed-layer upgrade
   path the plugin supersedes for the harness role.
+
+## Amendment (2026-07-13) — v1 shipped: private posture, 2 golden seeds, observe-only receipts; marketplace/public + enforcement deferred
+
+Code-wave item 7 landed the first implementation wave (blueprint:
+`docs/blueprints/harness-plugin-agent-eval.md`; operator-approved defaults recorded there):
+
+1. **Plugin manifest, PRIVATE/internal posture** — `.claude/plugin.json` v0.1.0
+   (name/version/description/changelog pointer). Exists for versioning + `/handoff`
+   portability, NOT distribution; no marketplace publish, no install channel yet.
+   Version bumps ride the existing `@changesets` flow (docs note only — no CI wiring).
+2. **Generator manifest (manifest half only)** — `scripts/lib/generated-manifest.mjs`
+   upserts a `docs/generated-manifest.json` entry (generator, name, files/patched,
+   harnessVersion, date) at the end of every real `scaffold-entity` /
+   `scaffold-ai-endpoint` run. The re-sync/codemod mode that consumes it is deferred.
+3. **Agent-eval golden-set, seeded from 2 REAL escapes** — `tests/agent-evals/`
+   (`oidc-deactivation-bypass` from the WS-6 SCIM account-linking [High];
+   `docker-postinstall-deps-stage` from the item-3 Docker postinstall [Critical]) as
+   synthetic minimal diffs + `expected-findings.json` ground truth, scored on
+   findings-recall by `scripts/agent-eval.mjs` (`npm run agent-eval`) — DORMANT
+   (exit 0) without `AI_API_KEY`, mirroring `ai-eval`, and deliberately NOT a `/ship`
+   phase (observe-only v1).
+4. **Routing-adherence receipts, observe-only** — a `PostToolUse(Task)` hook
+   (`.claude/hooks/routing-receipt.mjs`, bound additively in `.claude/settings.json`)
+   appends JSONL rows to the gitignored `.claude/state/routing-receipts.jsonl`;
+   `npm run routing-report` summarizes tier usage vs the ADR-022 table. No enforcement.
+
+Deferred to the migration triggers above: public/marketplace publishing + a real
+`plugin install` channel, the generator codemod mode, promoting agent-eval to a
+required check, and promoting the routing receipt to a soft `/ship` gate.

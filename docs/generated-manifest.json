@@ -1,0 +1,4 @@
+{
+  "note": "Generator manifest (ADR-054). One entry per scaffold run (generator+name), upserted by scripts/lib/generated-manifest.mjs. Consumed by the future re-sync/codemod mode; do not hand-edit.",
+  "entries": []
+}

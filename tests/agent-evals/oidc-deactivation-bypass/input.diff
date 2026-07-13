@@ -1,0 +1,19 @@
+--- a/lib/auth.ts
++++ b/lib/auth.ts
+@@ -38,6 +38,18 @@ export const authConfig = {
+   callbacks: {
++    // SCIM dsync marks off-boarded users active=false; block them at the door
++    // so a deprovisioned employee cannot sign back in through SSO.
++    async signIn({ user, account }) {
++      if (account?.type === "oauth") {
++        const dbUser = await prisma.user.findUnique({
++          where: { email: user.email ?? "" },
++          select: { active: true },
++        });
++        if (dbUser && dbUser.active === false) return false;
++      }
++      return true;
++    },
+     async session({ session, token }) {
+       if (token.sub && session.user) {
+         session.user.id = token.sub;
