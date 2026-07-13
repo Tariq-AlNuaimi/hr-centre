@@ -15,6 +15,18 @@ That's the recipes + this checklist.
 clean through `/design-qa`; a screen improvised does not (that's the "UI is
 horrible" complaint).
 
+## 0. Creative direction first (frontend-design plugin, when present)
+
+The official Anthropic **frontend-design** plugin is enabled project-wide
+(`.claude/settings.json` `enabledPlugins`; adopted per the A.6 verdict,
+`docs/research/a6-tool-shortlist-verdicts.md`). When its skill is loaded, run it
+**before** this checklist: it forces an aesthetic commitment (purpose, tone,
+constraints, differentiation) so the screen has a creative direction instead of
+generic-AI defaults. It does NOT relax anything here — this repo's tokens,
+shared primitives, `no-raw-hex-color`, and the recipes stay binding; the plugin
+supplies direction, this skill supplies the ruler. If the plugin isn't loaded
+(e.g. marketplace unreachable), proceed from §1 — nothing below depends on it.
+
 ## 1. Declare the design read (one line, mandatory — Tier 0)
 
 Before any markup, state it in the response (not a file):

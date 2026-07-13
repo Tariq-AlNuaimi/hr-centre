@@ -28,6 +28,13 @@ recurring context tax — same discipline as CLAUDE.md.
 
 <!-- choices made with the operator, so they are not relitigated -->
 
+- 2026-07-13 — **A.6 P1 adopted: official `frontend-design` plugin** enabled project-wide
+  (`.claude/settings.json` `extraKnownMarketplaces` + `enabledPlugins`
+  `frontend-design@claude-code-plugins`) and ordered AHEAD of `/design-system`
+  (SKILL.md §0: plugin = creative direction, repo tokens/primitives stay binding).
+  Fail-open if the marketplace is unreachable. TRIAL PENDING: on the next real UI
+  build, use it and record the verdict here; `impeccable` is the single sanctioned
+  fallback if the quality gap persists (a6-tool-shortlist-verdicts.md).
 - 2026-07-11 — **Enterprise-pivot execution** lives on branch
   `claude/enterprise-pivot-research-6t7euo` (v2 benchmark + all pivot ADRs/blueprints/code
   pushed there). Source-of-truth plan = `docs/research/v2/enterprise-benchmark-v2.html`
