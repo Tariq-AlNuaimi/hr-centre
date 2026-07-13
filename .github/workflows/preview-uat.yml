@@ -54,7 +54,7 @@ jobs:
       # with the Dockerfile deps stage).
       - run: |
           npm ci --ignore-scripts
-          npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver
+          npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver @parcel/watcher
 
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

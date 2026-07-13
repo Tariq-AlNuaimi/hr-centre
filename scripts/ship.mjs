@@ -187,6 +187,17 @@ function scanLicenses() {
     );
   }
   const { scanned, offenders, elections, unknown } = evaluateLicenses(lock.packages, allowlist);
+  // Floor check (senior review 2026-07-13): a lockfile-shape drift (future npm
+  // format, bad merge) makes lock.packages empty and every check above vacuous --
+  // that must fail LOUD, not report a false "clean (0 packages)". The real tree
+  // is ~1500 packages; 500 is far below any legitimate state.
+  if (scanned < 500) {
+    return red(
+      `license gate scanned only ${scanned} package(s) -- package-lock.json shape is unexpected ` +
+        "(format drift or a bad merge); the gate cannot verify the tree. Regenerate the lockfile " +
+        "or update scripts/license-gate.mjs for the new format (ADR-051).",
+    );
+  }
   if (offenders.size > 0) {
     return red(
       "Denied license(s) in the dependency tree (ADR-051: AGPL/SSPL/BUSL/Elastic/GPL-only are a\n" +

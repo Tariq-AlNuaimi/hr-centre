@@ -43,7 +43,7 @@ jobs:
         # Keep the list in lockstep with the Dockerfile deps stage.
         run: |
           npm ci --ignore-scripts
-          npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver
+          npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver @parcel/watcher
 
       - name: Generate Prisma client
         run: npx prisma generate

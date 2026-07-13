@@ -41,7 +41,7 @@ COPY package.json package-lock.json* ./
 # `next build` in the builder stage regenerates .source. Keep this list in lockstep
 # with the CI install sites (verify/uat/preview-uat/release workflows).
 RUN npm ci --no-audit --no-fund --ignore-scripts \
-  && npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver
+  && npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver @parcel/watcher
 
 # ---- builder: generate Prisma client + standalone Next build ---------------
 FROM node:24.10.0-bookworm-slim AS builder
