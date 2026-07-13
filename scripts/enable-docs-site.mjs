@@ -138,6 +138,23 @@ const PATCHES = [
     },
   },
   {
+    rel: ".dockerignore",
+    optional: true, // a fork may have dropped the Docker rail
+    describe:
+      "except docs/decisions/*.md from the *.md exclusion (the ADR collection needs them in the image)",
+    isApplied: (text) => text.includes("!docs/decisions/*.md"),
+    apply(text) {
+      const anchor = "*.md";
+      if (!text.includes(anchor)) return null;
+      return text.replace(
+        anchor,
+        "*.md\n# fumadocs (enable-docs-site): the ADR docs collection reads docs/decisions/*.md\n" +
+          "# at build time — without this exception the ADR half of the docs site silently\n" +
+          "# vanishes from Docker-built images.\n!docs/decisions/*.md",
+      );
+    },
+  },
+  {
     rel: "knip.json",
     optional: true, // a fork may have dropped knip entirely
     describe: "register source.config.ts as a knip entry (the fumadocs toolchain consumes it)",
@@ -174,13 +191,23 @@ function planPatches() {
   });
 }
 
+// The postinstall regenerates .source/ so a fresh clone of an ENABLED fork
+// typechecks/builds instead of failing TS2307 on the collections/* alias. It is
+// GUARDED on source.config.ts existing: the Dockerfile's deps stage runs
+// `npm ci` with ONLY package.json+lock copied in (no source files), where a bare
+// `fumadocs-mdx` postinstall exits 1 and fails the whole image build (ADR-030's
+// mandatory rail). Absent config → silent no-op (exit 0); present → generate,
+// and a real generation failure still fails loudly. Single-quoted JS only — the
+// value is executed via sh/cmd, so inner double quotes would break quoting.
+const GUARDED_POSTINSTALL =
+  "node -e \"if(require('fs').existsSync('source.config.ts')){const r=require('child_process')" +
+  ".spawnSync('npx',['fumadocs-mdx'],{stdio:'inherit',shell:true});process.exit(r.status??1)}\"";
+
 // package.json is parsed as JSON (not string-patched). Deps are recorded by the
 // npm install itself in the default path; this only handles --no-install dep
-// recording plus the upstream-conventional postinstall so a fresh clone of an
-// ENABLED fork regenerates .source/ before typecheck/build instead of failing
-// TS2307 on the collections/* alias. An existing postinstall is CHAINED, never
-// warn-and-skipped — a missed warning here would surface months later as a
-// broken fresh clone.
+// recording plus the guarded postinstall. An existing postinstall is CHAINED,
+// never warn-and-skipped — a missed warning here would surface months later as
+// a broken fresh clone.
 function patchPackageJson(pkg, { recordDeps }) {
   const notes = [];
   if (recordDeps) {
@@ -194,11 +221,11 @@ function patchPackageJson(pkg, { recordDeps }) {
   }
   pkg.scripts ??= {};
   if (!pkg.scripts.postinstall) {
-    pkg.scripts.postinstall = "fumadocs-mdx";
-    notes.push('scripts.postinstall = "fumadocs-mdx"');
+    pkg.scripts.postinstall = GUARDED_POSTINSTALL;
+    notes.push("scripts.postinstall = <guarded fumadocs-mdx>");
   } else if (!pkg.scripts.postinstall.includes("fumadocs-mdx")) {
-    pkg.scripts.postinstall = `${pkg.scripts.postinstall} && fumadocs-mdx`;
-    notes.push('scripts.postinstall += " && fumadocs-mdx"');
+    pkg.scripts.postinstall = `${pkg.scripts.postinstall} && ${GUARDED_POSTINSTALL}`;
+    notes.push("scripts.postinstall += <guarded fumadocs-mdx>");
   }
   return notes;
 }

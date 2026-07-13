@@ -202,3 +202,14 @@ Revisit this decision when any of the following hold:
 - ADR-017 — dependency cadence for the `fumadocs-*` deps.
 - Blueprint: `docs/blueprints/docs-site-fumadocs.md` (the buildable surface this ADR authorizes).
 - Sweep 7a (zod-openapi + Scalar) — the OpenAPI-in-Next docs story that folds into this site.
+
+## Amendment (2026-07-13) — enabler template mechanism
+
+Two opt-in enablers now coexist with different file-emission mechanisms:
+`enable-api-reference.mjs` embeds its 2 small files as inline template-literal
+strings; `enable-docs-site.mjs` copies byte-exact `.tpl` snapshots from
+`scripts/templates/docs-site/**`. Decision rule for future `enable-*.mjs`
+scripts: **inline strings for ≤2 tiny files; a `.tpl` template directory for
+anything larger** (real syntax highlighting, no backtick/`${}` escaping hazard,
+diffable, and git tracks moves as renames). The `.tpl` suffix keeps emitted-but-
+dormant code out of the pristine template's tsc/eslint/prettier/knip sweeps.

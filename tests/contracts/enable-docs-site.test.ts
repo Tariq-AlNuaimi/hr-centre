@@ -44,7 +44,13 @@ test("dry-run: plans all writes + patches + install, exits 0", () => {
   for (const rel of EXPECTED_FILES) {
     assert.ok(stdout.includes(`write ${rel}`), `expected a planned write for ${rel}`);
   }
-  for (const cfg of ["next.config.ts", "tsconfig.json", "app/globals.css", "knip.json"]) {
+  for (const cfg of [
+    "next.config.ts",
+    "tsconfig.json",
+    "app/globals.css",
+    ".dockerignore",
+    "knip.json",
+  ]) {
     assert.ok(stdout.includes(`patch ${cfg}`), `expected a planned patch for ${cfg}`);
   }
   assert.match(stdout, /patch package\.json/);
@@ -85,6 +91,11 @@ const ANCHOR_CONTRACT: Array<{ rel: string; marker: string; anchors: string[] }>
     rel: "app/globals.css",
     marker: "BEGIN fumadocs",
     anchors: ['@import "./tokens.css";'],
+  },
+  {
+    rel: ".dockerignore",
+    marker: "!docs/decisions/*.md",
+    anchors: ["*.md"],
   },
   {
     rel: "knip.json",

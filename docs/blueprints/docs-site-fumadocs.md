@@ -174,3 +174,26 @@ flowchart TB
       confirmed default by non-objection)_
 - [x] **ADR ingestion** → **light frontmatter shim** in the source adapter; ADR bodies unchanged.
       _(operator: confirmed default by non-objection)_
+
+## Docker path (senior-review follow-through, 2026-07-13)
+
+The enabler was originally verified on the Vercel/`next build` path only; the senior
+breadth review reproduced two Docker-rail defects, both fixed in the enabler:
+
+- **postinstall is GUARDED.** The Dockerfile `deps` stage runs `npm ci` with only
+  `package.json`+lock present; a bare `fumadocs-mdx` postinstall exits 1 there and
+  fails every image build of an enabled fork. The enabler therefore writes a
+  `node -e` guard that no-ops when `source.config.ts` is absent and fails loudly
+  when it exists but generation fails. The `builder` stage needs no extra step:
+  `next build`'s `createMDX` plugin regenerates `.source/` itself.
+- **`.dockerignore` exception (5th config patch).** The template excludes `*.md`
+  from the build context, which silently emptied the ADR collection
+  (`docs/decisions/**/*.md`) in images; the enabler now appends
+  `!docs/decisions/*.md` (optional patch — skipped if a fork dropped the file).
+
+**Accepted trade-off / scheduled follow-up:** the 9 emitted `.tpl` files are outside
+the pristine template's typecheck (by design — the deps aren't installed), so a
+`lib/api-helpers`/`lib/auth`/`brand.config`/`i18n/config` API refactor won't redden
+`/ship` until a fork enables. Detection points today: this blueprint's verified
+round-trip + the enable-time build. Follow-up when wanted: a `/ship --full`-tier
+phase that enables into a disposable checkout and runs `tsc --noEmit` + `next build`.
