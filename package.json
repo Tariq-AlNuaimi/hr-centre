@@ -100,6 +100,7 @@
     "next-intl": "^4.13.2",
     "nodemailer": "^9.0.1",
     "pg": "^8.22.0",
+    "pg-boss": "^12.26.0",
     "prisma": "^7.7.0",
     "rate-limiter-flexible": "^7.4.0",
     "react": "^19.2.5",

@@ -13,3 +13,6 @@ messages/*.json
 # block by scripts/render-handoff.mjs.
 docs/REPO-MAP.md
 docs/SESSION-HANDOFF.md
+# Machine-local, gitignored harness state (permission grants are appended
+# mid-session) — never committed, so Prettier must not gate on it.
+.claude/settings.local.json
