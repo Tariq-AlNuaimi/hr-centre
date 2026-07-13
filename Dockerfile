@@ -25,7 +25,23 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
-RUN npm ci --no-audit --no-fund
+# --ignore-scripts (ADR-051 install-time hardening): lifecycle scripts are the npm
+# worm era's entry point (Shai-Hulud, chalk/debug), so NO package in the ~1.5k-dep
+# tree may run arbitrary code at install. The explicit `npm rebuild` allowlist then
+# runs scripts for ONLY the packages that genuinely need them:
+#   @prisma/engines  -- downloads the schema engine (`prisma migrate deploy` at boot)
+#   @sentry/cli      -- fetches the sentry-cli binary (next-build sourcemap plugin)
+#   sharp            -- verifies the prebuilt libvips binding (Next image optimization)
+#   @swc/core        -- verifies the prebuilt binding (next-intl build tooling)
+#   esbuild          -- verifies the prebuilt binary (tsx: prisma seed/config loading)
+#   unrs-resolver    -- verifies the prebuilt binding (eslint import resolver, CI lint)
+# NOT allowlisted (verified 2026-07-13): @node-rs/argon2 has NO install script (its
+# native binding ships as a platform optionalDependency), and the fork-only guarded
+# docs-site postinstall (scripts/enable-docs-site.mjs) is a deliberate no-op here --
+# `next build` in the builder stage regenerates .source. Keep this list in lockstep
+# with the CI install sites (verify/uat/preview-uat/release workflows).
+RUN npm ci --no-audit --no-fund --ignore-scripts \
+  && npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver
 
 # ---- builder: generate Prisma client + standalone Next build ---------------
 FROM node:24.10.0-bookworm-slim AS builder

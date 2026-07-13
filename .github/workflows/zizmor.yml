@@ -1,0 +1,65 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
+# Activates at the CI-activation line (ADR-050: /handoff to a paid-Actions team, billing
+# unblocking, or a second regular contributor). See SECURITY.md §14 / ADR-007 / ADR-050.
+#
+# Triggers are set to workflow_dispatch (manual) only so the job does not auto-run and
+# fail-in-2s on a billing-blocked plan. AT HANDOFF: restore the real triggers below.
+#
+# zizmor is the CI-lint gate ADR-050 promotes from ADR-041 prose to a FAILING check:
+# it reds the build on any action not pinned to a full 40-char commit SHA (the
+# tj-actions/changed-files vector, CVE-2025-30066) and on dangerous triggers such as
+# `pull_request_target` with an untrusted-head checkout (the root cause of the trivy
+# compromise, CVE-2026-33634).
+name: zizmor
+
+on:
+  workflow_dispatch:
+  # Restore at handoff (paid Actions):
+  # pull_request:
+  #   paths: [".github/workflows/**", ".github/actions/**"]
+  # push:
+  #   branches: [main]
+  #   paths: [".github/workflows/**", ".github/actions/**"]
+
+permissions:
+  contents: read
+  # Lets the SARIF upload below post findings to the repo Security tab.
+  security-events: write
+
+concurrency:
+  group: zizmor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # zizmor is version-pinned via PyPI (pipx ships on ubuntu-latest), so this job
+      # adds NO new mutable action ref of its own — the gate that enforces SHA-pinning
+      # should not itself depend on an unpinned step. (The official wrapper,
+      # zizmorcore/zizmor-action@192e21d79ab29983730a13d1382995c2307fbcaa # v0.5.7,
+      # is a verified alternative, but its Advanced-Security mode does not fail the
+      # build on findings — ADR-050 requires a failing gate.)
+      #
+      # `--format=sarif` writes the report for the Security-tab upload below; zizmor
+      # exits non-zero on findings, so this step IS the gate. GH_TOKEN enables the
+      # online audits (impostor-commit, ref-confusion, stale pins).
+      - name: Run zizmor
+        run: pipx run zizmor==1.26.1 --format=sarif . > zizmor.sarif
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      # Upload SARIF so findings land in the Security tab. Guarded so a clean run
+      # (no report file) does not fail; `!cancelled()` lets it run even after the
+      # gate step above failed on findings.
+      - name: Upload zizmor SARIF
+        if: ${{ !cancelled() && hashFiles('zizmor.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        with:
+          sarif_file: zizmor.sarif
+          category: zizmor

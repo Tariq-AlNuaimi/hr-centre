@@ -280,3 +280,41 @@ Revisit / act when any of these fire:
   §3 install-time triad + top-10, §5 current-events).
 - **`SECURITY.md` §12** (suppression log) — where any waived license/Socket/cooldown
   exception is recorded.
+
+## Amendment (2026-07-13) — account-free slice shipped; Socket/Renovate deferred pending operator accounts
+
+Operator-approved slice (2026-07-13): the account-free parts of this ADR are now
+implemented; the account-bound parts are explicitly deferred, not dropped.
+
+- **License-allowlist gate is LIVE in `/ship`** (decision §2): a `licenses`
+  phase-A check (`scripts/ship.mjs` → `scripts/license-gate.mjs`, contract-tested
+  in `tests/contracts/license-gate.test.ts`). It reads ONLY `package-lock.json`
+  (npm ≥ 7 records each package's `license` there — deterministic, dependency-free,
+  sub-second), scans the WHOLE tree (dev deps included: the template redistributes
+  the repo itself), and goes RED on AGPL/SSPL/BUSL/Elastic/GPL-only. Elections
+  live in `scripts/license-allowlist.json` (each with a mandatory `reason`):
+  `jszip` (MIT elected from `MIT OR GPL-3.0-or-later`) and the two
+  UNKNOWN-license leaves (`buffers`, `seq-queue` — the "2 UNKNOWN leaf utils"
+  above). It landed **blocking, not warn-then-block**: the phase-in mitigation
+  was designed for a red baseline, and the tree is green under the committed
+  elections, so there is nothing to normalize.
+- **`npm ci --ignore-scripts` posture landed** (decision §1, third leg) in the
+  Dockerfile `deps` stage and the four CI `npm ci` sites
+  (verify/uat/preview-uat/release), each followed by the explicit allowlist
+  rebuild: `npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild
+unrs-resolver`. **Correction to the seeded allowlist in §Mitigations:**
+  verified against the lockfile 2026-07-13, `@node-rs/argon2` has **no install
+  script** (its native binding ships as platform `optionalDependencies`) and
+  `lightningcss` is not in the tree's script-bearing set — the six packages
+  above are the real script-bearing set that must run (`@parcel/watcher` and
+  `libxmljs2` are dev-tooling-only and stay unrebuilt). Local dev installs keep
+  scripts; the posture is CI/Docker as decided.
+- **osv-scanner SARIF is wired as a dormant workflow** (decision §3):
+  `.github/workflows/osv-scanner.yml` uses Google's reusable workflow pinned to
+  the verified `9a498708959aeaef5ef730655706c5a1df1edbc2` (v2.3.8),
+  `workflow_dispatch`-only until the CI-activation trigger fires.
+- **Deferred pending operator accounts** (operator 2026-07-13: "Skip Socket"):
+  Socket behavioral SCA, and Renovate onboarding — the min-release-age cooldown
+  rides on Renovate, so it defers with it. cosign/SLSA verify-on-deploy stays at
+  its CI-activation trigger. The exceljs→SheetJS track (§4) is unchanged:
+  recorded, frozen, not implemented.

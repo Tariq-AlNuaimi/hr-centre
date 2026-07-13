@@ -63,14 +63,16 @@ the changed surface is still **open** (un-adjudicated).
   meaningful once CI activates (at `/handoff` to a paid-Actions team, or when billing unblocks) — the
   same activation line ADR-037 already defines. **Interim control:** the Semgrep ruleset is mirrored
   locally by the `/audit` skill (runs on demand), and the trivy-pin + SHA-pin halves of ADR-041 P0
-  DID land in WS-2a. `zizmor` is not yet wired. **Not silently dropped — recorded here for the
-  operator to adjudicate**; the fix at activation is to restore `sast.yml`'s real triggers + add a
-  `zizmor` workflow step. — owner: operator — status: adjudicated(2026-07-11) (accepted:
+  DID land in WS-2a. **Update 2026-07-13 (ADR-050 account-free slice):** the `zizmor` gate is now
+  AUTHORED as a dormant workflow (`.github/workflows/zizmor.yml` — PyPI-pinned `zizmor==1.26.1`,
+  fails on unpinned actions/dangerous triggers, SARIF upload), so the fix at activation shrinks to
+  restoring the real push/PR triggers on BOTH `sast.yml` and `zizmor.yml` — no authoring work
+  remains. **Not silently dropped — recorded here for the
+  operator to adjudicate.** — owner: operator — status: adjudicated(2026-07-11) (accepted:
   program-level deferral to CI activation — the risk description stands, but the _hard-gate_ half is
   only meaningful once Actions runs; interim control is the local `/audit` Semgrep mirror + the
   landed trivy/SHA pins. RE-OPENS at the CI/Actions-activation line — `/handoff` to a paid-Actions
-  team, or billing unblocking — when `sast.yml`'s push/PR triggers are restored and the `zizmor`
-  action-pin audit step is added)
+  team, or billing unblocking — when `sast.yml`'s and `zizmor.yml`'s push/PR triggers are restored)
 - 2026-07-11 — [quality] WS-1 Docker image build is UNVERIFIED in-session — the enterprise self-host
   image (distroless Node 24 + `compose.prod.yaml` + Caddy) was authored to spec but there is **no
   Docker daemon in the build environment**, so it was not built/booted here. Per ADR-030 the image

@@ -1,0 +1,17 @@
+{
+  "$comment": "ADR-051 license-gate elections. The /ship `licenses` phase (scripts/license-gate.mjs) goes RED when any package in package-lock.json resolves an AGPL / SSPL / BUSL / Elastic / GPL-only license, unless the package has an election here. Elections are for: (a) dual-licensed packages electing their permissive branch, (b) packages with no published license field (documented exceptions, noted in the SBOM). Every entry REQUIRES a human 'reason' — a reasonless entry fails allowlist validation. Waiving a TRUE (non-dual) copyleft/source-available license additionally needs a SECURITY.md §12 row with sign-off (ADR-051 migration trigger). MPL-2.0 is NOT in the deny set: file-level weak copyleft consumed unmodified (axe-core, lightningcss — dev/build only) carries no obligation for this template (ADR-051).",
+  "elections": {
+    "jszip": {
+      "license": "MIT",
+      "reason": "dual-licensed (MIT OR GPL-3.0-or-later); MIT elected per ADR-051. Transitive via exceljs; the tracked exceljs->SheetJS migration (ADR-051 §4) prunes this subtree."
+    },
+    "buffers": {
+      "license": "UNKNOWN",
+      "reason": "no license field published (pre-SPDX-era leaf util, transitive); documented exception per ADR-051, noted in the SBOM."
+    },
+    "seq-queue": {
+      "license": "UNKNOWN",
+      "reason": "no license field published (pre-SPDX-era leaf util, transitive); documented exception per ADR-051, noted in the SBOM."
+    }
+  }
+}

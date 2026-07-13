@@ -27,6 +27,7 @@ import {
   mkdirSync,
 } from "node:fs";
 import { resolve } from "node:path";
+import { evaluateLicenses, loadAllowlist } from "./license-gate.mjs";
 
 const CACHE = "node_modules/.cache";
 
@@ -145,6 +146,78 @@ function scanWaveOffs() {
       `${open.length} OPEN pillar wave-off(s) in ${file} — adjudicate (accept/schedule) or fix before green (Five Pillars):\n` +
       open.map((l) => `  ${l}`).join("\n") +
       `\n  An open wave-off is an un-adjudicated decision. Flip it to status: adjudicated(<date>) or fixed(<commit>).`,
+  };
+}
+
+// -- license-allowlist gate (ADR-051 §2; Five Pillars: Secure/Maintainable) --
+// The template is REDISTRIBUTED: forks inherit the whole dependency tree, so an
+// AGPL / SSPL / BUSL / Elastic / GPL-only license resolving ANYWHERE in the tree
+// (dev deps included -- the repo itself is what forks inherit) is a
+// redistribution problem no fork operator would notice by hand. RED on any such
+// license in package-lock.json. Elections (dual-license permissive picks,
+// documented UNKNOWN-license leaves, adjudicated exceptions -- each with a
+// mandatory "reason") live in scripts/license-allowlist.json: committed and
+// reviewable, mirroring audit-allowlist.json. Reads ONLY the lockfile (npm >= 7
+// records each package's license there), so the check is deterministic,
+// dependency-free, and sub-second. Logic lives in scripts/license-gate.mjs
+// (pure; contract-tested in tests/contracts/license-gate.test.ts).
+function scanLicenses() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const red = (out) => ({ name: "licenses", ok: false, out, secs: secs() });
+  let lock;
+  try {
+    lock = JSON.parse(readFileSync("package-lock.json", "utf8"));
+  } catch (err) {
+    return red(
+      `package-lock.json is missing/unparseable -- the license gate (ADR-051) cannot run: ${err.message}\n` +
+        "  The lockfile is the integrity + license record of the shipped tree; restore it (npm install).",
+    );
+  }
+  let allowlist = {};
+  const warns = [];
+  try {
+    allowlist = loadAllowlist(readFileSync("scripts/license-allowlist.json", "utf8"));
+  } catch (err) {
+    // Safe-fail (mirrors audit-allowlist.json): an empty allowlist only makes the
+    // gate STRICTER; warn loudly so the cause is the malformed file, not a
+    // confusing "new denied license".
+    warns.push(
+      `scripts/license-allowlist.json missing/malformed -- treating as empty (every election will flag): ${err.message}`,
+    );
+  }
+  const { scanned, offenders, elections, unknown } = evaluateLicenses(lock.packages, allowlist);
+  if (offenders.size > 0) {
+    return red(
+      "Denied license(s) in the dependency tree (ADR-051: AGPL/SSPL/BUSL/Elastic/GPL-only are a\n" +
+        "redistribution problem for a shipped template):\n" +
+        [...offenders.entries()]
+          .map(
+            ([n, o]) =>
+              `  - ${n}${o.dev ? " [dev]" : ""}: ${o.license} (${o.deny}${o.dual ? "; dual-licensed -- elect the permissive branch" : ""})`,
+          )
+          .join("\n") +
+        "\n  Fix: drop the dep or pick a permissive alternative. For a dual license, record the\n" +
+        '  permissive election in scripts/license-allowlist.json (a "reason" is mandatory). Waiving a\n' +
+        "  TRUE copyleft/source-available license additionally needs a SECURITY.md §12 row (ADR-051).",
+    );
+  }
+  if (unknown.length) {
+    warns.push(
+      `${unknown.length} package(s) carry NO license field in package-lock.json: ${unknown.join(", ")}\n` +
+        "  -- verify upstream and add a documented exception to scripts/license-allowlist.json (ADR-051).",
+    );
+  }
+  const out =
+    `clean (${scanned} packages` +
+    (elections.length ? `; ${elections.length} election(s): ${elections.join(", ")}` : "") +
+    ")";
+  return {
+    name: "licenses",
+    ok: true,
+    out,
+    secs: secs(),
+    ...(warns.length ? { warn: warns.join("\n  ") } : {}),
   };
 }
 
@@ -1098,12 +1171,13 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | scalability | wave-offs | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | scalability | wave-offs | licenses | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
 const waveoffs = scanWaveOffs();
+const licenses = scanLicenses();
 const tier = scanTier();
 const blueprint = scanBlueprint();
 const complexity = scanComplexity();
@@ -1151,6 +1225,7 @@ for (const r of [
   components,
   scalability,
   waveoffs,
+  licenses,
   tier,
   blueprint,
   complexity,
@@ -1160,6 +1235,7 @@ for (const r of [
   coverage,
 ])
   report(r);
+if (licenses.warn) console.warn(`  note: licenses — ${licenses.warn}`);
 if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
 if (dbStructure.warn) console.warn(`  note: db-structure — ${dbStructure.warn}`);
 if (knip.warn) console.warn(`  note: knip — ${knip.warn}`);
@@ -1173,6 +1249,7 @@ const redA = [
   components,
   scalability,
   waveoffs,
+  licenses,
   tier,
   blueprint,
   complexity,
@@ -1277,5 +1354,5 @@ try {
 }
 
 console.log(
-  `\nship: green -- typecheck + lint + format + tests + component tests + scalability + wave-offs + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`,
+  `\nship: green -- typecheck + lint + format + tests + component tests + scalability + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`,
 );

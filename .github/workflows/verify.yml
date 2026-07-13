@@ -32,13 +32,18 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: "24"
           cache: "npm"
 
       - name: Install deps
-        run: npm ci
+        # ADR-051 install-time hardening: no lifecycle scripts from the dep tree;
+        # the explicit rebuild allowlist runs the few genuinely needed ones.
+        # Keep the list in lockstep with the Dockerfile deps stage.
+        run: |
+          npm ci --ignore-scripts
+          npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver
 
       - name: Generate Prisma client
         run: npx prisma generate

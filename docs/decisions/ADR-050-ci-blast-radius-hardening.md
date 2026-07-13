@@ -232,3 +232,31 @@ SECURITY.md §12, adjudicated in `docs/findings-register.md` — never silent.
   `docs/findings-register.md` — adjudication of any waived gate.
 - `.github/workflows/` — the dormant workflows (`sast.yml`, `secrets-scan.yml`,
   `codeql.yml`, `docker-build.yml`, `release.yml`, `verify.yml`) this contract promotes.
+
+## Amendment (2026-07-13) — account-free slice shipped; Socket/Harden-Runner deferred pending operator accounts
+
+Operator-approved slice (2026-07-13): everything in this ADR that needs **no
+third-party account** is now implemented; the rest is explicitly deferred, not
+dropped.
+
+- **SHA-pin sweep verified complete.** Every `uses:` across `.github/workflows/**`
+  was already pinned to a full 40-char commit SHA; the imprecise `# v4`/`# v5`
+  pin comments were tightened to exact versions (setup-node `v4.4.0`/`v5.0.0`,
+  upload-artifact `v4.6.2`), web-verified against the upstream tags on github.com.
+- **zizmor is wired as a dormant workflow** — `.github/workflows/zizmor.yml`
+  (`workflow_dispatch`-only per the free-plan dormancy pattern; real PR/push
+  triggers restore at the CI-activation line). It runs PyPI-pinned
+  `zizmor==1.26.1` with SARIF upload to the Security tab and **fails on
+  findings** (unpinned actions, dangerous triggers). zizmor runs from PyPI
+  rather than via `zizmorcore/zizmor-action` because the action's
+  Advanced-Security mode deliberately does not fail the build on findings —
+  and this ADR requires a failing gate. (The action's verified pin,
+  `192e21d79ab29983730a13d1382995c2307fbcaa` = v0.5.7, is recorded in the
+  workflow comment as the alternative.)
+- **Harden-Runner is DEFERRED** pending an operator StepSecurity account
+  decision — per the operator's 2026-07-13 direction ("Skip Socket +
+  Harden-Runner"). It remains the containment half of Option 1; wire it (audit
+  mode first) at CI activation once the account exists.
+
+The dormant→blocking promotion contract and all other decisions above are
+unchanged.

@@ -1,0 +1,42 @@
+# DORMANT on the free GitHub plan (Actions billing blocked): this workflow does not run.
+# Activates at the CI-activation line (ADR-051 migration trigger: /handoff to a
+# paid-Actions team, billing unblocking, or a second regular contributor). See
+# SECURITY.md §14 / ADR-007 / ADR-051.
+#
+# Triggers are set to workflow_dispatch (manual) only so the job does not auto-run and
+# fail-in-2s on a billing-blocked plan. AT HANDOFF: restore the real triggers below.
+#
+# osv-scanner (Google) is the SECOND CVE source ADR-051 §3 adds: npm audit reads only
+# the GitHub Advisory DB, and a single-DB view is a blind spot; OSV aggregates
+# ecosystem-wide advisories. Results land as SARIF in the Security tab via the
+# vendor's reusable workflow (which scans the lockfile and uploads the report).
+name: osv-scanner
+
+on:
+  workflow_dispatch:
+  # Restore at handoff (paid Actions):
+  # push:
+  #   branches: [main]
+  # schedule:
+  #   - cron: "30 4 * * 1" # weekly, Monday 04:30 UTC
+  # pull_request:
+  #   branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  osv-scan:
+    permissions:
+      # Required by the reusable workflow: read the repo + workflow metadata,
+      # write the SARIF report to the Security tab.
+      actions: read
+      contents: read
+      security-events: write
+    # Vendor-recommended reusable workflow, pinned to a full 40-char commit SHA
+    # (ADR-050 SHA-pin mandate; verified against the v2.3.8 tag on github.com).
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+    with:
+      scan-args: |-
+        --recursive
+        ./
