@@ -448,3 +448,50 @@ the root cause + fix and want it BUILT INTO THE HARNESS so it's automatic, not t
   agent-eval (ADR-054); 8=backlog A.6 shortlist. Each is Ask-before — resolve open questions with the operator
   before building. Also 2 fresh dependabot branches arrived (cyclonedx-npm 6.0.0, npm minor-and-patch) — gate +
   adjudicate like session-14 precedent.
+
+## SESSION 6 CONTINUED (2026-07-13, operator said "do both") — /code-review DONE+FIXED; senior IN FLIGHT; items 4–8 scouted
+
+- **/code-review (high, 8 finder angles + verify) DONE on the item-3 diff → 9 CONFIRMED findings, ALL FIXED in
+  `a2c95a3` (pushed, /ship green 2×):** (1) all-or-nothing — every config patch validated BEFORE any mutation
+  (was: files written, patches applied, npm run, THEN exit 1 on a diverged anchor); (2) install-FIRST ordering so
+  a transient npm failure leaves the tree untouched (was: next.config.ts imported fumadocs-mdx before install →
+  MODULE_NOT_FOUND brick); (3) postinstall CHAINED (`existing && fumadocs-mdx`) not warn-and-skip (prisma-generate
+  forks would break fresh clones); (4) knip isApplied() parses JSON entry array (bare substring false-skipped);
+  (5) missing config guard (optional knip → skip+warn; required → fail-fast); (6) --dry-run validates anchors +
+  exits 1 on would-fail; (7) win32 shell spawn; (8) blueprint Scope += app/fumadocs-tokens.css +
+  scripts/templates/docs-site/**; (9) tests/contracts/_run-script.ts shared runner (was byte-copied in
+  scaffold.test.ts). One PLAUSIBLE skipped as accepted trade-off: .tpl emitted TS is not typechecked in the
+  dep-free template (round-trip build verified; fork enable-time is the detection point — documented). Enable →
+  configs byte-match WIP → idempotent re-run → revert re-verified after the rework. Stale-REPO-MAP finding was
+  already fixed by the d1000b4 regen.
+- **⚠️ senior-code-reviewer IN FLIGHT at handoff** (launched on `git diff origin/main...HEAD` @ a2c95a3 with a
+  don't-re-report list of the 9 fixed findings; asked to own: sync-from-template layer ownership, .tpl code
+  escaping the eleven ESLint rules, content/docs as a build-time MDX injection surface + who can commit it,
+  .source lifecycle across Vercel/Docker builds in an ENABLED fork (does every build path run npm install →
+  postinstall?), caret-range drift vs verified versions, and the two-enabler-mechanisms inconsistency
+  (api-reference inline strings vs docs-site .tpl dir)). **NEXT SESSION FIRST: retrieve its result or re-run
+  senior-code-reviewer with that scope, fix-forward, /ship green, push, THEN merge item-3 to main**
+  (closeout-first). Branch tip to merge: a2c95a3 + any senior fixes.
+- **AFTER the merge: dependabot** (branches target main): (a) cyclonedx-npm 5→6 devDep major (used by `npm run
+  sbom` only — verify `npm run sbom` still emits sbom.json, then merge); (b) minor-and-patch group ×15 (radix
+  minors, sentry 10.63→10.65…) — its base package.json differs from main (pre-item-3), so re-apply on top of
+  merged main if GitHub reports conflicts, /ship gate, merge (session-14 precedent).
+- **ITEMS 4–8 SCOUTED (brief below; full ADR paths in the scout report — re-derive with a scout over ADR-050/051/
+  054/056 + PHASE-2-BACKLOG A.6 if needed). Recommended slicing + the operator questions to ask FIRST:**
+  - **Item 6 (S) — mostly DONE/dormant:** next-auth is already exact-pinned (ADR-056 satisfied, no action);
+    exceljs→SheetJS is TRIGGER-GATED in the ledger (CVE or new export feature) — no action until a trigger fires.
+    Record as such; don't build.
+  - **Item 8 (S) — research-only:** A.6 verdict table (Tool|Category|vs current|Recommendation|Priority); backlog
+    marks it a future research phase. Cheap; can run as a scout/deep-research pass any session.
+  - **Item 5 (M) — pg-boss:** ledger says deferred-P1, NO fork trigger fired. Confirm with operator whether to
+    build the lib/queue seam now (mirrors lib/ai no-op-until-configured pattern) or leave deferred.
+  - **Item 4 (L) — CI/supply-chain (ADR-050/051):** SHA-pin actions, zizmor, Harden-Runner (audit), Socket +
+    cooldown, `npm ci --ignore-scripts` + allowlist (@node-rs/argon2, lightningcss, pg), /ship license-gate
+    (AGPL/SSPL/BUSL RED + MPL/dual elections), osv-scanner SARIF, cosign+SLSA verify-on-deploy. OPEN QUESTIONS
+    for operator: Socket account/tier; Harden-Runner egress allowlist process; license-allowlist maintenance;
+    cooldown fast-path. CI is DORMANT (free plan) so most of this ships inert — still Ask-before (.github + ship.mjs).
+  - **Item 7 (M–L) — ADR-054 harness-as-plugin + agent-eval:** .claude/plugin.json versioning via changesets,
+    tests/agent-evals golden sets, generator manifest + re-sync mode, routing-adherence receipts. OPEN QUESTIONS:
+    marketplace private vs public; golden-set seed diffs; receipt format. Blueprint enterprise-ws8-harness.md does
+    NOT cover the plugin/agent-eval layer — needs a /blueprint before build.
+- Landmines unchanged (NODE_ENV, gitleaks reinstall, single simple destructive commands, no docker/:5432).
