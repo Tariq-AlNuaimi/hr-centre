@@ -66,6 +66,8 @@
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
 - lib/prisma.ts: prisma, prismaUnfiltered
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
+- lib/queue/client.ts: JobHandler, getQueue, sendJob, registerWorker, stopQueue
+- lib/queue/config.ts: QueueConfig, isQueueConfigured, queueConfig, QueueNotConfiguredError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/config.ts: POLIS_PROVIDER_ID, PolisSsoConfig, isPolisSsoConfigured, polisSsoConfig, scimWebhookSecret, verifyScimSignature, SsoSignInRow, isFederatedSignInAllowed, SsoNotConfiguredError

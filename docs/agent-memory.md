@@ -35,11 +35,10 @@ recurring context tax — same discipline as CLAUDE.md.
   Fail-open if the marketplace is unreachable. TRIAL PENDING: on the next real UI
   build, use it and record the verdict here; `impeccable` is the single sanctioned
   fallback if the quality gap persists (a6-tool-shortlist-verdicts.md).
-- 2026-07-11 — **Enterprise-pivot execution** lives on branch
-  `claude/enterprise-pivot-research-6t7euo` (v2 benchmark + all pivot ADRs/blueprints/code
-  pushed there). Source-of-truth plan = `docs/research/v2/enterprise-benchmark-v2.html`
-  (P0/P1/P2 action plan) + `docs/research/v2/PHASE-2-BACKLOG.md` (WS-1..WS-8). Sequence:
-  Phase 0 ADRs → Phase 1 blueprint → Phase 2 workstreams (P0 = WS-1/2/3 first).
+- 2026-07-13 — **Enterprise pivot (WS-1..8) + code wave (ADR-049..056) are COMPLETE on
+  `main`.** Plan docs: `docs/research/v2/enterprise-benchmark-v2.html` +
+  `docs/research/v2/PHASE-2-BACKLOG.md`. Only trigger-gated deferred work remains
+  (`docs/session-state.json` deferred list + `docs/deferred-adoption-plan.md`).
 - 2026-07-11 — **Next feature-bump trigger (ADR-048) has NOT fired.** The React
   Compiler Rust port + Turbopack persistent PRODUCTION build cache are **16.3-only**,
   and 16.3 is still `preview`/`canary` (npm `latest` = 16.2.10); the Rust compiler is
@@ -58,22 +57,15 @@ recurring context tax — same discipline as CLAUDE.md.
   in `skill-rules.json` on `app/api/**/route.ts` + `app/**/page.tsx`. Don't
   relitigate skill-vs-agent or advisor-vs-reviewer — see the blueprint at
   `docs/blueprints/deferred-11-specialist-stack-advisor.md`.
-- 2026-07-02 — Replatform program Phase 0 SIGNED: UI layer = **shadcn/ui + Tremor**
-  on Tailwind v4 (ADR-029, reverses ADR-027's "keep AntD" with rationale recorded);
-  Docker = standard build artifact gated at `/ship --full`/`/deploy`/`/handoff`/CI
-  (ADR-030); structured DB mandatory via `/ship` gate (ADR-031). Adoption backlog =
-  `docs/deep-comparison/ADOPT.md` (A2+A4 now, A1 after Workstream C). Don't relitigate.
-- 2026-06-25 — Harness-hardening sweep (15 operator complaints) is COMPLETE and the
-  "tiered blocking gate · hard hooks" roadmap is implemented (ADR-025): pillars-as
-  -gates + the `Stop` hook hard-BLOCKS unpushed commits + `/ship` blueprint & tier
-  gates (blueprint/tier block on `shared`, warn on `personal`; escapes are recorded
-  `*Ack` keys / adjudicated register lines, never silent). Native design system =
-  ADR-026 (built, not imported — consistent with the ADR-022 native-over-imported
-  call). Don't relitigate these — read the ADRs.
-- 2026-06-20 — Adopted cross-session agent memory as committed Markdown + model
-  routing as a documented tier table; evaluated and rejected ruflo wholesale
-  (unverified claims, destructive-preinstall history, off-Anthropic egress,
-  `--dangerously-skip-permissions`). (ADR-022)
+- 2026-07-02 — Replatform Phase 0 SIGNED: UI = Tailwind v4 + shadcn (ADR-029, reverses
+  ADR-027); Docker standard artifact (ADR-030); structured DB mandatory (ADR-031).
+  Don't relitigate — read the ADRs.
+- 2026-06-25 — Harness-hardening sweep COMPLETE: pillars-as-gates + Stop-hook
+  unpushed-block + blueprint/tier gates (ADR-025); native design system (ADR-026).
+  Don't relitigate — read the ADRs.
+- 2026-06-20 — Agent memory as committed Markdown + model-tier routing adopted;
+  ruflo evaluated and REJECTED wholesale (unverified claims, destructive preinstall,
+  off-Anthropic egress). (ADR-022)
 
 ## Gotchas & landmines
 
@@ -134,10 +126,8 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
 - 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
   trusting it — agents sometimes return the report as the completion _message_ instead of
   writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
-- 2026-07-11 — **CLAUDE.md's stack text ("Ant Design 6") is STALE** — the repo migrated
-  off AntD to Tailwind v4 + Radix/shadcn (ADR-029). Treat Tailwind/shadcn as the real UI
-  stack; don't reintroduce `antd`.
-- 2026-07-03 (session 14) — **Can't delete remote branches from a web session.** The local git
+- 2026-07-03 (session 14) — **Can't delete remote branches from a web session** (re-verified
+  2026-07-13). The local git
   bridge returns HTTP 403 on ref-deletion (`git push origin --delete`), and the GitHub MCP exposes
   no delete-branch tool. Branch pruning must be handed to the operator (commands, or the GitHub
   Branches UI). `git branch -d/-D` and force-push are also deny-listed locally.
@@ -146,67 +136,35 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
 merge-base origin/main <branch>` prints empty) — merging one resurrects a whole dead project. Check
   merge-base first; if disjoint, CLOSE the PR and hand-apply the version bump to the live files
   (resolve pinned action SHAs via `git ls-remote https://github.com/<owner>/<action> refs/tags/<tag>`).
-- 2026-07-03 (session 12) — **Dark/RTL browser-axe recipe (reusable; confirmed end-to-end).**
-  Real-browser axe against the deployed app from a web session: (1) REDEPLOY the tip WITHOUT
-  the pristine flip — do NOT use `scripts/deploy.mjs` (it clears `project.config.json`
-  "pristine", a landmine); POST directly to `api.vercel.com/v13/deployments?teamId=<team>&forceNew=1`
-  `{project:"prj_PDhqr8z3gqOB8TXbWaR4pD4DUzL0", target:"production", gitSource:{type:"github",
-repoId:1241728413, ref:"<branch>", sha:"<sha>"}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is
-  SSO-gated — disable with `PATCH /v9/projects/<id>?teamId=<team>` `{"ssoProtection":null}` and
-  ALWAYS RESTORE to `{"ssoProtection":{"deploymentType":"all_except_custom_domains"}}` after.
-  (3) Run `tools/design-qa-bridge/bridge.mjs` (loopback HTTPS→app via curl) + Playwright at
-  https://127.0.0.1:8443 with a `theme-mode=dark` cookie; inject `node_modules/axe-core/axe.min.js`.
-  Once `<body>` paints `var(--background)` (8051d85), dark bodyBg computes `#030712` and the
-  false-positive flood below is GONE — a dark finding is now genuine.
-- 2026-07-03 (session 13) — **CORRECTION to the "seed upserts" note below: it does NOT.**
-  `prisma/seed.ts` only CREATES the admin when it doesn't already exist (findUnique → skip if
-  present); it never updates an existing admin's password. So resetting `SEED_ADMIN_PASSWORD`
-  - redeploying does nothing to the existing `admin@example.com`. The clean way to browser-test
-    AUTHED screens is a DISTINCT throwaway probe admin: PATCH `SEED_ADMIN_EMAIL` to a new email
-    (e.g. `axe-probe@example.com`) + `SEED_ADMIN_PASSWORD` to a known value → redeploy → seed
-    CREATES that probe ADMIN, leaving the real demo credential untouched. Restore `SEED_ADMIN_EMAIL`
-    after; the probe admin persists in the DB (soft-delete via user mgmt to clean up). Session 13
-    ran this: all 11 authed dark screens axe-CLEAN (0 serious/critical, bodyBg #030712) on dd15554.
-    Bridge login gate: wait ~2.5s for hydration before submit (else the form does a native GET and
-    leaks creds to the query string), and gate strictly on `__Secure-authjs.session-token` (NOT a
-    loose `authjs` match — that hits the CSRF cookie and every authed nav still bounces to /login).
-    Do NOT `pkill -f bridge.mjs` in a shell command that also contains that path — pkill matches
-    your own cmdline and SIGTERMs the call (exit 144); stop the bridge with `fuser -k 8443/tcp`.
-- 2026-07-03 — **Dark-mode axe is FLOODED with false-positive `color-contrast` serious
-  findings** because `html`/`body` have NO `background-color` — the dark canvas is realized
-  only via `color-scheme:dark` (+ a painted wrapper), and axe-core cannot model `color-scheme`,
-  so it composites every light token against an assumed `#ffffff` and reports ~1:1 ratios that
-  are fine on the real `#030712` canvas (verified session 11 via live computed tokens +
-  screenshots). Do NOT chase these — verify against the real token values / a screenshot first.
-  Permanent fix (still TODO): paint `background: var(--background)` onto `body` in
-  `app/globals.css` (visually identical, makes dark axe + `tests/uat/design-a11y.uat.ts` dark
-  runs meaningful; re-baseline that spec's dark expectations when you do).
-- 2026-07-03 — Vercel git-integration PREVIEW deploys are behind **SSO deployment protection**
-  (`ssoProtection: all_except_custom_domains`) → every request 302s to `vercel.com/login`, so
-  the design-qa bridge can't reach them. To run a browser sweep you must temporarily disable it
-  via the Vercel API and RESTORE it after (the automation-bypass-secret endpoints aren't on this
-  API version). Admin creds for login come from the Vercel single-env decrypt endpoint.
-- 2026-07-03 — **Worktree subagents (`isolation:"worktree"`) keep booting on the STALE
-  base 032f643, not the program tip — even when the main checkout is on the tip.** The
-  agent then reads the pre-migration (AntD-era) tree and can't do the task. Same
-  mis-basing the main-checkout landmine warns about. FIX that worked (session 10):
-  run the agent in the MAIN checkout (already on the tip) scoped to a DISJOINT file
-  set — explicitly forbid it from touching your in-flight files; the harness serializes
-  tool calls so disjoint edits don't collide. Only use a worktree when agents truly
-  mutate the SAME files in parallel, and reset its base to the tip (`git rev-parse HEAD`
-  check) before letting it work.
-- 2026-07-03 — **Browser QA against a DEPLOYED app now works (proven): use the
-  loopback bridge `tools/design-qa-bridge/`.** Chromium can't traverse the MITM
-  egress proxy (ERR_CONNECTION_RESET; curl/fetch can) AND local dev can't reach the
-  Neon DB (:5432 egress blocked) — so authenticated screens were un-testable in a
-  browser, which is why `/design-qa` axe went un-run for the whole program. FIX
-  that carried a full authenticated axe sweep (session 6): a loopback HTTPS server
-  the browser hits directly and which forwards upstream to the deployed Vercel app
-  via `curl`. Serving HTTPS on loopback makes the app's `Secure __Host-` auth
-  cookies work, so login + authed screens render. Recipe + axe driver in
-  `tools/design-qa-bridge/README.md`. This unblocks the remaining dark/RTL/uat
-  browser passes too. (Supersedes the `context.route` note below, which never
-  carried a full authed pass in practice.)
+- 2026-07-03 (session 12) — **Dark/RTL browser-axe recipe (confirmed end-to-end).**
+  (1) Redeploy WITHOUT the pristine flip — not `scripts/deploy.mjs`; POST
+  `api.vercel.com/v13/deployments?teamId=<team>&forceNew=1` `{project:
+"prj_PDhqr8z3gqOB8TXbWaR4pD4DUzL0", target:"production", gitSource:{type:"github",
+repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-gated:
+  `PATCH /v9/projects/<id>` `{"ssoProtection":null}`, ALWAYS RESTORE to
+  `{"deploymentType":"all_except_custom_domains"}` after. (3) `tools/design-qa-bridge/` +
+  Playwright at https://127.0.0.1:8443, `theme-mode=dark` cookie, inject axe.min.js.
+  Since `<body>` paints `var(--background)` (8051d85) a dark axe finding is GENUINE
+  (the old transparent-body/`color-scheme:dark` false-positive flood is gone).
+- 2026-07-03 (session 13) — **`prisma/seed.ts` only CREATES the admin, never updates an
+  existing one's password** — resetting `SEED_ADMIN_PASSWORD` + redeploy does nothing to
+  `admin@example.com`. Browser-test AUTHED screens with a throwaway probe admin: PATCH
+  `SEED_ADMIN_EMAIL` to e.g. `axe-probe@example.com` + known password → redeploy (seed
+  creates it) → restore `SEED_ADMIN_EMAIL`; soft-delete the probe via user mgmt after.
+  Bridge login gate: wait ~2.5s for hydration before submit (else native GET leaks creds
+  into the query string) and gate strictly on `__Secure-authjs.session-token` (a loose
+  `authjs` match hits the CSRF cookie and authed navs bounce). Don't `pkill -f bridge.mjs`
+  (matches your own cmdline, exit 144) — stop it with `fuser -k 8443/tcp`.
+- 2026-07-03 — **Worktree subagents (`isolation:"worktree"`) can boot on a STALE base**
+  even when the main checkout is on the tip. Fix that worked: run agents in the MAIN
+  checkout scoped to DISJOINT file sets (forbid touching in-flight files); use a
+  worktree only when agents truly mutate the SAME files, and verify its base
+  (`git rev-parse HEAD`) first.
+- 2026-07-03 — **Browser QA against a DEPLOYED app: loopback bridge
+  `tools/design-qa-bridge/`** (Chromium can't traverse the MITM proxy; the bridge
+  serves loopback HTTPS — so `Secure __Host-` auth cookies work — and forwards
+  upstream via curl). Recipe + axe driver in its README. For driving ARBITRARY live
+  sites, the generalized `make browser-up` mitmdump chain (2026-07-12 entry) is the tool.
 - 2026-07-03 — `scripts/deploy.mjs` (and new-project.mjs/rebrand.mjs) set
   `project.config.json` `"pristine": false` in the LOCAL working tree as a side
   effect. On the TEMPLATE repo that must stay `true` (a fork clears it) — `/ship`'s
@@ -220,42 +178,11 @@ repoId:1241728413, ref:"<branch>", sha:"<sha>"}}` (Bearer $VERCEL_TOKEN). (2) `.
   / SEED_ADMIN_* (no admin). The Vercel build already seeds (vercel.json); #51
   was a symptom of #50. seed.ts skips cleanly (exit 0) in prod with no password.
 - 2026-06-26 — `AskUserQuestion` failed repeatedly in this remote env ("Tool
-  permission stream closed before response received"). If it errors twice, stop
-  retrying and pose decisions as plain text in the reply.
-- 2026-06-25 — **STOP claiming "I can't run build/browser/deploy" — VERIFY first.**
-  Probed this env: `next build` works (exit 0; `@next/swc-linux-x64-gnu` loads,
-  glibc 2.39). Playwright MCP + Chromium present at `/opt/pw-browsers`. `VERCEL_TOKEN`
-  - `NEON_API_KEY` are SET; egress to api.vercel.com (403 unauth) + console.neon.tech
-    (401 unauth) is OPEN (real auth-level responses, not proxy blocks). The mid-session
-    `next build` failure was TRANSIENT: SessionStart had just reinstalled 183 pkgs and
-    the gnu SWC binary wasn't installed yet — it resolves once deps settle. So `/ship`
-    -> `/deploy` -> live URL -> Playwright screenshot is a CLOSED loop here. Don't push
-    `--no-verify` by default; run the real gate. The only true prerequisite for a
-    screenshot is a running URL (`npm run dev` localhost, or a deployed preview).
-- 2026-06-25 — `/ship` scalability scan (`scripts/ship.mjs` `scanScalability`)
-  tests bound tokens (take/skip/cursor/paginat) against each `.findMany(` CALL
-  SITE (~250 chars after the call), NOT file-wide — a comment word "take"/"skip"
-  must not mask a genuinely unbounded query. `walkRoutes` guards `statSync` so a
-  broken symlink under `app/api` can't hard-kill `/ship`. Per-file waiver marker:
-  `pillar:scalable-ok` (+ a register line).
-- 2026-06-24 — `gitleaks` is NOT on PATH in fresh remote containers, so `/ship`
-  goes red at phase B ("gitleaks is not on PATH"). The binary does not survive a
-  new container. **2026-07-11 UPDATE: the github.com release download is now
-  BLOCKED** — the agent proxy scopes github.com to session repos and returns a
-  JSON "GitHub access not enabled" body (a 195-byte non-gzip that breaks `tar`).
-  Working install: the Go module proxy (`proxy.golang.org`) IS allowed, and Go is
-  at `/usr/local/go/bin/go`, so run
-  `GOBIN="$HOME/.local/bin" go install github.com/zricethezav/gitleaks/v8@v8.21.2`
-  (module path is `zricethezav/...`, NOT `gitleaks/gitleaks/...`), then
-  `export PATH="$HOME/.local/bin:$PATH"` before `/ship`.
-- 2026-06-24 — SessionStart hook now installs deps / regenerates the Prisma client
+  permission stream closed before response received"). Retry once; if it errors
+  twice, stop retrying and pose decisions as plain text in the reply.
+- 2026-06-24 — SessionStart hook installs deps / regenerates the Prisma client
   on **stale** (package.json or schema.prisma newer than node_modules/generated),
-  not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit) — this fixes
-  the trap below. Until that lands on `main`, the manual workaround still applies.
-- 2026-06-20 — SessionStart hook installs deps / generates the Prisma client only
-  when **missing, not stale**. After checking out a branch whose `package.json` or
-  `prisma/schema.prisma` moved ahead, run `npm install` + `npx prisma generate`
-  before `/ship` or typecheck fails on phantom missing modules / fields.
+  not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit).
 - 2026-06-20 — Fresh containers can have local `main` far behind `origin/main`.
   Before fast-forward-merging a working branch into `main`, verify `origin/main`
   is an ancestor of the branch (`git merge-base --is-ancestor origin/main <branch>`)

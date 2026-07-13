@@ -1,21 +1,20 @@
 {
   "$schema": "./session-state.schema.json",
-  "program": "replatform-and-adoption",
-  "blueprint": "docs/blueprints/2026-07-replatform-and-adoption-program.md",
-  "branch": "claude/deferred-adoption-repo-cleanup-9pqo82",
-  "$comment_branch": "Session 12 works on claude/ui-replatform-dark-axe-verify-vj0vv9, based on the program tip 62cba26 (which contains 8051d85) from claude/ui-replatform-auto-spawn-fix-8dee0o. The harness assigned dark-axe-verify to this session; it is a clean continuation off the program tip and can be merged/PR'd back into the program line.",
-  "updated": "2026-07-03",
+  "program": "template-maintenance (post enterprise-pivot + code-wave)",
+  "blueprint": "docs/research/v2/PHASE-2-BACKLOG.md",
+  "branch": "claude/git-integration-dlg383",
+  "updated": "2026-07-13",
   "lastShip": {
     "status": "green",
-    "sha": "f78b2c6",
-    "date": "2026-07-03"
+    "sha": "4ad32b5",
+    "date": "2026-07-13"
   },
   "autoSpawn": {
     "enabled": false,
     "cap": 3,
     "consecutiveCount": 0,
     "lastSpawnSha": "eedfcc6",
-    "note": "DISABLED 2026-07-03 (session 5) after the true auto-spawn hop FAILED to produce a working successor. Evidence: two independent create_new_session_on_fire triggers — the enabled-run trig_01VeDUPhfYLEz41fgMw8vEGa, and a clean minimal probe trig_01DJ5H5Rko2QkAX2QaTt7KNR whose prompt explicitly fetch+checkouts the branch — both reported ended_reason=run_once_fired but neither produced a visible session OR pushed any commit within 10+ min. Per the Claude Code web docs, run_once_fired/green means only 'the schedule fired and the session exited without an INFRASTRUCTURE error' — NOT that the successor did work — and there is no observable success signal to gate on. Root cause is NOT our code: guard/consumer/hooks worked (a valid trigger was created + fired); the failure is downstream platform session-provisioning we cannot verify or observe. Auto-spawn is OFF; the program uses the MANUAL-continuation fallback (see docs/blueprints/session-automation-auto-handoff.md 'Auto-spawn failure (2026-07-03)'). The prompt-checkout FIX (successor must git fetch+checkout the working branch — spawns boot on main) is kept in auto-spawn-fire.mjs + auto-handoff.mjs for if/when the platform hop is verified. Cap counter reset (the earlier consecutiveCount=1 was for a spawn that never ran). TEMPLATE DEFAULT was already false; this program is now false too."
+    "note": "DISABLED 2026-07-03 after the true auto-spawn hop failed to produce a working successor (platform session-provisioning is unobservable; run_once_fired != successor did work). Manual continuation is the fallback. Details: docs/blueprints/session-automation-auto-handoff.md 'Auto-spawn failure (2026-07-03)'."
   },
   "directives": [
     {
@@ -23,7 +22,7 @@
       "title": "Adopt all 22-table recommendations",
       "status": "done",
       "commit": "",
-      "note": "DONE (session 12): A1/A2/A3/A4 + A5 all landed. A5 remainder closed this session — /cover (qodo-cover-style AI test-gen), /manual-uat record-to-spec, token-thrift Playwright notes, Figma design-to-code sub-recipe, superdesign variants step. All SCHEDULED 22-table recommendations adopted. 21/22 categories are done/deferred; the ONE carve-out is cat 12 (performance) which remains 'partial' because its last piece — the lhci per-PR CI assertion — is dormant until Actions billing (tracked in the deferred set as lhci-ci), NOT an un-adopted recommendation. Every other remaining catalog item is the tracked-not-scheduled DEFERRED set (re-promote via /blueprint on trigger). That is the intended terminal state, not a gap."
+      "note": "DONE (2026-07-03). 21/22 categories done/deferred; cat 12 stays partial only because lhci per-PR CI is dormant until Actions billing (deferred: lhci-ci). Remaining catalog items = the tracked DEFERRED set (re-promote via /blueprint on trigger)."
     },
     {
       "id": "D2",
@@ -37,14 +36,14 @@
       "title": "Replace AntD with Tailwind fully",
       "status": "done",
       "commit": "c7f3a4c",
-      "note": "DONE (ADR-029). C1+C2+C3+C3.5+C4 all complete: the antd/@ant-design/* dependencies are UNINSTALLED and `git grep antd` is clean across shipped code+config (C4, session 10). The UI runs entirely on shadcn/Radix/TanStack/RHF/recharts/sonner/lucide. Workstream D (dark-mode + RTL a11y polish) is a SEPARATE follow-up — it is not AntD-related, so D3 is fully satisfied."
+      "note": "ADR-029. antd/@ant-design/* uninstalled; git grep antd clean. UI = Tailwind v4 + shadcn/Radix/TanStack/RHF/recharts/sonner/lucide."
     },
     {
       "id": "D4",
       "title": "RTL + Arabic fully optional",
       "status": "done",
       "commit": "",
-      "note": "ADR-028 Part 1 + workstream D done (session 11): DirectionProvider RTL wiring + dark a11y browser-verified"
+      "note": "ADR-028 Part 1 + workstream D (2026-07-03): DirectionProvider RTL + dark a11y browser-verified"
     },
     {
       "id": "D5",
@@ -56,150 +55,57 @@
   ],
   "workstreams": [
     {
-      "id": "Phase0",
-      "title": "Governance ADRs 029/030/031 + ADOPT.md",
-      "status": "done",
-      "commit": "",
-      "blockedBy": [],
-      "date": "2026-07-02"
-    },
-    {
-      "id": "C1",
-      "title": "Tailwind foundation (@theme, tokens, font)",
-      "status": "done",
-      "commit": "0ec5e62",
-      "blockedBy": [],
-      "date": "2026-07-02"
-    },
-    {
-      "id": "C2",
-      "title": "Primitive layer (shadcn/Radix/TanStack, same APIs)",
-      "status": "done",
-      "commit": "365fa85",
-      "blockedBy": [],
-      "date": "2026-07-03"
-    },
-    {
-      "id": "C3",
-      "title": "Screen migration (app/[locale]/**)",
-      "status": "done",
-      "commit": "669c62b,e4e33b1,79fd6be,1057b79,9264778",
-      "blockedBy": [],
-      "date": "2026-07-03",
-      "note": "EXIT GATE MET (session 6): per-screen /design-qa axe (WCAG 2.0/2.1 A+AA) serious/critical is CLEAN across all 14 migrated screens in LIGHT mode (auth forms, users, users/new, audit-log, recycling-bin, settings, settings/profile, dashboard, style-guide, forbidden/maintenance/not-found). This is the FIRST time the program ran a real-browser a11y pass: Chromium cannot traverse this env's MITM egress proxy (the wall that blocked every prior session's design-qa), so we bridged it — a loopback HTTPS server (scratchpad/bridge.mjs) that the browser hits directly and which forwards upstream to the deployed Vercel app via curl (curl DOES traverse the proxy). Fixed 9 serious findings (0 critical): --muted-foreground #6b7280->#5b6472 (table headers, dt), AntD colorTextSecondary/Tertiary + kbd -> #5b6472 light / #9aa3b2 dark, style-guide + StatCard semantic swatches -600->-700, recharts pie Cell role+aria-label (svg-img-alt + label-line prohibited-attr). Committed regression spec: tests/uat/design-a11y.uat.ts (+ auth.setup.ts selector fix). NOTE: C3 'done' = the design-qa/axe exit bar in LIGHT mode; DARK-mode axe surfaced separate pre-existing token findings (brand-primary-as-text on dark links/tags, destructive-foreground white-on-red) routed to workstream D. SCOPE CORRECTION for C4: 'all screens off AntD runtime' was overstated — 16 files still import antd at RUNTIME (all of components/layout/* chrome + auth screens + (auth)/layout + settings/profile + UserForm + KanbanBoard.impl; 8 also use @ant-design/icons). Only the DataTable-consuming files (DataTable/DataView/DashboardContent/AuditLogClient/style-guide) are genuinely type-only. That runtime-AntD removal is C4's hard prerequisite."
-    },
-    {
-      "id": "C3.5",
-      "title": "Runtime-AntD removal (chrome+auth+forms → shadcn/Radix)",
-      "status": "done",
-      "commit": "adb155e",
-      "blockedBy": [],
-      "date": "2026-07-03",
-      "note": "DONE this session. 3 parallel worktree agents over a serial foundation (e7ca201): +deps lucide-react/sonner/@radix-ui/react-{dropdown-menu,avatar}; new components/ui/{dropdown-menu,avatar,sonner,separator}.tsx; use-notify rewritten over sonner (same {success,error,info,warning,notify} shape); tokens --popover/--popover-foreground/--nav-active-foreground (+dark). Cluster A=all components/layout/* chrome (Layout/Menu/Dropdown/Avatar/ConfigProvider/App→Tailwind+Radix, CommandPalette handlers preserved, ThemeProvider keeps useTheme+FOUC drops ConfigProvider/App); B=(auth)/* (Card/Typography/Divider/App.message→ui/card+semantic+separator+useNotify, WindowsOutlined→inline mono SVG); C=settings/profile+UserForm(RHF+zodResolver rewrite)+KanbanBoard+maintenance(Wrench)+scaffold patchSidebar() lockstep. Integrator wiring: layout.tsx drop AntdRegistry+mount Toaster; globals.css drop dead .ant-layout* + repoint .header-search-kbd vars→var(--border)/var(--muted-foreground); knip.json ignore antd-theme.ts + waive now-unused @ant-design/{icons,nextjs-registry} (C4 removes them). /ship GREEN (all 17 phases incl build, 45s). Post-land verification (deploy/re-axe/senior-review) tracked in nextActions. Did NOT uninstall antd/@ant-design (C4). CSP untouched (C4). CLOSEOUT DONE: deployed to https://fullstack-vibe-template.vercel.app (existing session-6 Vercel project, direct API redeploy — pristine flip avoided); design-qa axe LIGHT serious/critical CLEAN across all 14 screens (exit bar MET, no regression); senior-code-reviewer ran (findings recorded — RTL High is dormant→D, double-h1 Med + aria Low + breakpoint nit→cheap fixes). Dark-mode color-contrast on authed screens (table th/td, breadcrumb, footer, headings) routed to workstream D."
-    },
-    {
-      "id": "C4",
-      "title": "Harness/guard (no-raw-hex, drop AntD+CSP, recipes)",
+      "id": "Replatform",
+      "title": "AntD→Tailwind replatform (Phase0, C1–C4, C3.5, B, E, D, A1–A5)",
       "status": "done",
       "commit": "c7f3a4c",
       "blockedBy": [],
       "date": "2026-07-03",
-      "note": "DONE (session 10, /ship green, pushed). Built the approved blueprint's 8 phases: P1 new components/shared/table-types.ts (Key/FilterValue/ColumnType/ColumnsType/TableProps/TableRowSelection modeling the AntD Table subset the consumers use) + repoint DataTable/DataView/DashboardContent/AuditLogClient/style-guide off antd/es/table + ConfirmAction inline Popconfirm-subset props. P2 delete components/layout/antd-theme.ts -> chartPalette to new components/shared/chart-palette.ts (byte-identical, no-raw-hex EXEMPT retargeted chart-palette<-antd-theme) + brandTokens inlined into design-tokens.test.ts + dead buildTheme deleted + rules.test.mjs THEME_SRC retargeted + antd-theme dropped from knip ignore. P3 tests/components/_render.tsx drops antd ConfigProvider/App (next-intl+react-query only) + PageHeader.test.tsx antd Button->shadcn. P4 scripts/scaffold-entity.mjs columns/form/list generators emit shadcn/RHF/DataView/Badge/lucide (no antd; emitted code tsc-verified by the P4 agent). P5 docs/design-recipes.md rewritten off AntD + live-doc sweep (recipes/skill-rules/design-system SKILL/design README/uat-rubric/tokens.css+brand.config comments; ADRs immutable). P6 npm uninstall antd @ant-design/icons @ant-design/nextjs-registry + drop @ant-design/* from knip ignoreDependencies. P7 CSP style-src 'unsafe-inline' KEPT (operator: empirically verify then decide; KEPT is the anticipated non-breaking outcome) with comment corrected AntD/emotion -> Radix/recharts/sonner/dnd-kit inline styles (a nonce can't cover them; dropping is the only risky action and was not taken without positive zero-violation evidence) + SECURITY.md updated. git grep antd is clean across shipped code+config. Two focused reviewers: table-types faithfulness CLEAN (empty). Built via 2 parallel worktree agents (P4 scaffold + P5 docs, both based on program tip f12760c not stale 032f643) over serial P1-P3/P6-P7 integrator work. D3 (replace AntD fully) now TRUE."
+      "note": "All workstreams complete + browser-verified (light AND dark axe serious/critical clean; body-bg paint 8051d85 killed the dark false-positive flood). Full per-workstream history: git log docs/session-state.json before 2026-07-13."
     },
     {
-      "id": "B",
-      "title": "Docker standard (gate + trivy + skills)",
+      "id": "EP",
+      "title": "Enterprise pivot P0+P1+P2 (WS-1..8, ADR-035..048)",
       "status": "done",
-      "commit": "4065f1a",
+      "commit": "4989347",
       "blockedBy": [],
-      "date": "2026-07-03"
+      "date": "2026-07-12",
+      "note": "All landed on main: WS-1 distroless Docker, WS-2 supply-chain+Argon2id, WS-3 Valkey limiter, WS-4 OTel backbone, WS-5 lib/ai + /scaffold-ai-endpoint + ai-eval gate + AI-Quality pillar + pgvector seam + Langfuse-via-OTel, WS-6 Ory Polis SSO/SCIM (closeout 4989347), WS-7 Node 24 + zod v4 + Prettier gate + React Compiler (ADR-048), WS-8 harness hardening."
     },
     {
-      "id": "E",
-      "title": "Mandatory structured-DB /ship gate",
+      "id": "CW",
+      "title": "Code wave items 1–8 (ADR-049..056)",
       "status": "done",
-      "commit": "b82c12d",
+      "commit": "f9f6c33",
       "blockedBy": [],
-      "date": "2026-07-02"
+      "date": "2026-07-13",
+      "note": "1 .mcp.json pins · 2 OpenAPI seam (opt-in Scalar enabler) · 3 Fumadocs docs-site enabler · 4 account-free CI/supply-chain slice (zizmor, osv, license gate, --ignore-scripts) · 5 pg-boss queue seam · 7 harness-as-plugin + agent-eval v1 · 8 A.6 verdict table. Item 6 = no action (auth pin done; SheetJS trigger-gated). Batched senior review closed (44ac3e1). Socket/Harden-Runner deferred pending operator accounts."
     },
     {
-      "id": "D",
-      "title": "RTL/Arabic verify pass",
+      "id": "A.6",
+      "title": "frontend-design plugin adoption (top A.6 action)",
       "status": "done",
-      "commit": "34168c2,6516bf6,58bd870",
+      "commit": "4ad32b5",
       "blockedBy": [],
-      "date": "2026-07-03",
-      "note": "DONE (session 11). BROWSER-VERIFIED: deployed the a035399 preview -> design-qa-bridge + axe dark pass across login/forgot/dashboard/users/users-new/audit-log/style-guide -> the 4 dark fixes HOLD (indigo-300 brand-as-text ~9.9:1, red-400 error ~6.8:1, full muted-fg sort/filter icon ~5.9:1, pie no chart findings). axe raised MANY serious color-contrast findings but ALL are FALSE POSITIVES: html/body background is transparent + the dark canvas is realized via color-scheme:dark, which axe-core cannot model (it composites light tokens against assumed #ffffff). Confirmed via live computed tokens + full-page screenshots. FOLLOW-UP (next session, cheap, high-value): paint `background: var(--background)` on `body` in globals.css so automated dark axe (incl. tests/uat/design-a11y.uat.ts) stops flooding false positives and can actually catch a real dark regression. RTL ar browser pass N/A on English-only default fork (ar 302->en; DirectionProvider covered by tests/uat/uiux.full.uat.ts geometry test). ORIG: dark-mode + RTL a11y fixes LANDED + pushed (/ship green, a035399). (1) Split fg/bg brand+red tokens for dark AA: new --primary-emphasis (brand-as-text; light=brand, dark=indigo-300 #a5b4fc; bg-primary buttons UNAFFECTED) + --destructive-emphasis (red-as-text; dark=red-400 #f87171), and darkened the dark destructive SURFACE red-500->red-600 #dc2626 so white-on-red clears 4.83:1 (was 3.76). Repointed all text-primary/text-destructive call sites (button/badge/select/form/dropdown-menu/OrgSwitcher/StatCard/DataTable/UserColumns) to the -emphasis utilities. (2) DataTable filter-toggle icon -> full muted-foreground (WCAG 1.4.11 non-text >=3:1; /60 was ~2.6:1 light). (3) recharts pie labelLine={false}. (4) design-tokens lockstep extended to guard both new mode-varying tokens. (5) RTL: @radix-ui/react-direction DirectionProvider dir={direction} wired in ThemeProvider so portalled Radix overlays mirror for ar/he/fa/ur; tests/uat/uiux.full.uat.ts extended with a guarded ar dropdown+popover boundingBox geometry test. Contrast ratios computed exactly (not guessed) + design-tokens contract green. REMAINING closeout: real-browser dark+ar axe confirmation via tools/design-qa-bridge (deploy a035399 -> bridge -> axe with theme-mode=dark cookie + /ar) was running at session end — flip to done once it confirms serious/critical clean in dark. Original session-6 dark findings this addresses: brand-as-text on dark (~2.3-3.0:1), destructive white-on-red 3.76, DataTable icon 1.4.11, pie double-announce.  [ORIG NOTE] Carries the DARK-mode axe findings surfaced by session 6's first real-browser a11y pass (the design-qa bridge makes dark/RTL browser checks feasible — reuse scratchpad/bridge.mjs + axe-run.mjs with a theme-mode=dark cookie). Dark serious/critical color-contrast to fix here: (1) style-guide + auth links using brand-primary #4f46e5 as TEXT on dark surfaces (~2.3-3.0:1) — needs a lighter dark-mode primary-as-text token (bg-primary buttons must stay unaffected, so split fg/bg primary); (2) .text-destructive-foreground #fff on #ef4444 destructive = 3.76; (3) the dark kbd/secondary was already fixed this session (colorTextTertiary/Secondary #9aa3b2 dark). Light mode is fully clean. Plus two senior-review a11y follow-ups (axe-invisible): (4) the recharts pie Cell role+aria-label double-announces each slice (sector + leader label-line) — prefer labelLine={false} or aria-hide the line; (5) WCAG 1.4.11 non-text contrast: DataTable icon-only filter toggle (text-muted-foreground/60 ~2.57:1) + other icon controls are below 3:1 (axe's color-contrast is text-only, so the 'axe clean' bar didn't cover them)."
-    },
-    {
-      "id": "A1",
-      "title": "Deterministic /ship gates (6 left)",
-      "status": "done",
-      "commit": "a0a9f61",
-      "blockedBy": [],
-      "date": "2026-07-03",
-      "note": "knip+jscpd+coverage+size-limit+jsx-a11y+complexity landed as /ship gates (+ E+B). All green (52s)."
-    },
-    {
-      "id": "A2",
-      "title": "Security & trust-boundary hooks",
-      "status": "done",
-      "commit": "",
-      "blockedBy": [],
-      "date": "2026-07-02"
-    },
-    {
-      "id": "A3",
-      "title": "Measurement & runtime verification",
-      "status": "done",
-      "commit": "ac3eb4c",
-      "blockedBy": [],
-      "date": "2026-07-02",
-      "note": "lhci per-PR CI dormant until Actions"
-    },
-    {
-      "id": "A4",
-      "title": "Process & skills upgrades",
-      "status": "done",
-      "commit": "804f331",
-      "blockedBy": [],
-      "date": "2026-07-03"
-    },
-    {
-      "id": "A5",
-      "title": "Testing & design depth (9)",
-      "status": "done",
-      "commit": "2333c98",
-      "blockedBy": [],
-      "date": "2026-07-03",
-      "note": "DONE (session 12). Session 5 landed 3 (fast-check property tests, style-dictionary token pipeline seed, slop-gate + manual-a11y WCAG 2.2 AA criteria); sessions before landed the coverage-floor/slop/token-compile items. Session 12 closed the final 5 remainder items as native harness/docs adoptions (concept-not-dep, ADR-022): (1) /cover skill = qodo-cover-style AI test-gen feeding the /ship coverage floor; (2) /manual-uat Record-to-spec section = exploratory walk emits a committed tests/uat/*.uat.ts on our Radix/shadcn selectors; (3) Token-thrift (ADR-019) notes across /manual-uat, /uat, /design-qa for trimmed Playwright-MCP responses; (4) Figma design-to-code sub-recipe in /design-system SKILL + docs/design-recipes.md §1b (read frame via Figma MCP, map variables → app/tokens.css tokens, rebuild on components/shared/*); (5) superdesign rough-variant sketch step in /blueprint lightweight track (greenfield-only, concept not dep). ADOPT.md Wave-A5 checkboxes all ticked."
+      "date": "2026-07-13",
+      "note": "Enabled project-wide, ordered AHEAD of /design-system (SKILL.md §0; repo tokens/primitives stay binding). TRIAL VERDICT PENDING on the next real UI build (agent-memory 2026-07-13)."
     }
   ],
   "categories": [
-    {
-      "id": "01",
-      "title": "collections",
-      "status": "done",
-      "where": "skill auto-activation (A4·804f331)"
-    },
+    { "id": "01", "title": "collections", "status": "done", "where": "skill auto-activation (A4)" },
     {
       "id": "02",
       "title": "skills",
       "status": "done",
-      "where": "grill-with-docs + domain-modeling, anti-rationalization (A4)"
+      "where": "grill-with-docs + domain-modeling (A4)"
     },
     {
       "id": "03",
       "title": "subagents",
       "status": "done",
-      "where": "reviewer lenses (A4); specialist-seeds shipped as /stack-advisor build-time skill"
+      "where": "reviewer lenses (A4) + /stack-advisor"
     },
-    {
-      "id": "04",
-      "title": "hooks",
-      "status": "done",
-      "where": "A2 (7 hooks)"
-    },
+    { "id": "04", "title": "hooks", "status": "done", "where": "A2 (7 hooks)" },
     {
       "id": "05",
       "title": "mcp",
@@ -222,20 +128,15 @@
       "id": "08",
       "title": "maintainability",
       "status": "done",
-      "where": "knip + jscpd ship gates (A1·a0a9f61)"
+      "where": "knip + jscpd ship gates (A1)"
     },
     {
       "id": "09",
       "title": "quality",
       "status": "done",
-      "where": "reviewer lenses (A4) + coverage + complexity gates (A1)"
+      "where": "reviewer lenses (A4) + coverage/complexity gates (A1)"
     },
-    {
-      "id": "10",
-      "title": "security",
-      "status": "done",
-      "where": "A2 + trivy + trufflehog"
-    },
+    { "id": "10", "title": "security", "status": "done", "where": "A2 + trivy + trufflehog" },
     {
       "id": "11",
       "title": "speed-of-dev",
@@ -246,13 +147,13 @@
       "id": "12",
       "title": "performance",
       "status": "partial",
-      "where": "Speed Insights/analyzer/react-scan + size-limit done; lhci CI dormant"
+      "where": "Speed Insights/analyzer/react-scan/size-limit done; lhci CI dormant"
     },
     {
       "id": "13",
       "title": "code-optimization",
       "status": "done",
-      "where": "knip + jscpd ship gates (A1·a0a9f61)"
+      "where": "knip + jscpd ship gates (A1)"
     },
     {
       "id": "14",
@@ -270,25 +171,25 @@
       "id": "16",
       "title": "testing",
       "status": "done",
-      "where": "coverage floor (A1) + /cover qodo-cover-style AI test-gen skill (A5, session 12)"
+      "where": "coverage floor (A1) + /cover (A5)"
     },
     {
       "id": "17",
       "title": "functional-testing",
       "status": "done",
-      "where": "GWT shape + /manual-uat record-to-spec + token-thrift Playwright notes (A5, session 12)"
+      "where": "GWT + /manual-uat record-to-spec (A5)"
     },
     {
       "id": "18",
       "title": "logical-testing",
       "status": "done",
-      "where": "fast-check property tests landed (A5·2333c98)"
+      "where": "fast-check property tests (A5)"
     },
     {
       "id": "19",
       "title": "requirements",
       "status": "done",
-      "where": "blueprint story IDs + EARS + was->now (A4)"
+      "where": "blueprint story IDs + EARS (A4)"
     },
     {
       "id": "20",
@@ -300,69 +201,29 @@
       "id": "21",
       "title": "design",
       "status": "done",
-      "where": "style-dictionary token pipeline seed + Figma design-to-code sub-recipe + superdesign variants step (A5, session 12)"
+      "where": "style-dictionary seed + Figma sub-recipe (A5)"
     },
     {
       "id": "22",
       "title": "uiux",
       "status": "done",
-      "where": "jsx-a11y gate (A1) + slop-gate + WCAG 2.2 AA manual-a11y criteria in uat-rubric (A5)"
-    }
-  ],
-  "seniorReviewLows": [
-    {
-      "id": "c4-crud-uat-antd-selectors",
-      "file": "tests/uat/crud.full.uat.ts",
-      "note": "[High] deferred C4 senior breadth pass: the Full-UAT CRUD journey still targeted AntD DOM (.ant-select/.anticon-*/.ant-popconfirm/.ant-input-affix) removed in C3.5+C4, so uat:full hard-failed on the shipped users entity + any scaffold. Retargeted Radix/shadcn (role=combobox/option, input[type=search], button[aria-label^=Edit/Delete], ConfirmAction dialog).",
-      "status": "fixed (session 11, a035399)"
-    },
-    {
-      "id": "c4-scaffold-relationselect-search",
-      "file": "scripts/scaffold-entity.mjs",
-      "note": "[Low] deferred C4 senior breadth pass: shadcn RelationSelect fetched one 50-row page, no server search -> 51st+ target row unselectable. Operator chose FIX NOW. FIRST fix (a035399) put a search <input> inside Radix Select's SelectContent -> the POST-PUSH senior D review flagged that [High]: input keyboard-unreachable (Radix focuses a SelectItem + swallows Tab) + invalid ARIA listbox child (aria-required-children), propagating into every scaffolded relation entity. RE-FIXED (58bd870) as a Popover combobox: debounced ?search= input + option <button>s (no listbox/option roles), focused via onOpenAutoFocus; enums keep Select, relations import Popover + searchRelation/noRelationMatches i18n keys. Re-verified via throwaway scaffold -> tsc + eslint(jsx-a11y) clean.",
-      "status": "fixed (session 11, 58bd870)"
-    },
-    {
-      "id": "design-tokens-lockstep",
-      "file": "tests/contracts/design-tokens.test.ts",
-      "note": "SEMANTIC_VARS + dark-override loop omit --card-foreground/--muted-foreground/--destructive/--ring; extend both so a dropped dark override fails the suite",
-      "status": "fixed (this session)"
-    },
-    {
-      "id": "formfield-footguns",
-      "file": "components/shared/FormField.tsx + components/ui/form.tsx",
-      "note": "(a) TextFieldProps must also omit onChange|onBlur|value|ref; (b) aria-describedby points at non-existent id when no FormDescription renders",
-      "status": "fixed (this session)"
+      "where": "jsx-a11y gate (A1) + slop-gate + WCAG 2.2 AA criteria (A5)"
     }
   ],
   "deferred": [
-    {
-      "id": "tremor",
-      "title": "Tremor charts",
-      "trigger": "@tremor/react peer accepts React 19",
-      "note": "Chart runs on recharts with Tremor-style API; adopt drop-in or DROP + record in ADR-029"
-    },
+    { "id": "tremor", "title": "Tremor charts", "trigger": "@tremor/react peer accepts React 19" },
     {
       "id": "lhci-ci",
       "title": "Lighthouse-CI per-PR assertion",
-      "trigger": "/handoff to a team with Actions billing",
-      "note": "config + npm run lhci shipped; CI gate dormant"
+      "trigger": "/handoff to a team with Actions billing"
     },
     {
       "id": "claude-task-master",
       "title": "claude-task-master",
       "trigger": "fork outgrows single-session planning"
     },
-    {
-      "id": "backlog-md",
-      "title": "Backlog.md",
-      "trigger": "same as claude-task-master"
-    },
-    {
-      "id": "fastmcp",
-      "title": "fastmcp provider path",
-      "trigger": "we ship our own MCP server"
-    },
+    { "id": "backlog-md", "title": "Backlog.md", "trigger": "same as claude-task-master" },
+    { "id": "fastmcp", "title": "fastmcp provider path", "trigger": "we ship our own MCP server" },
     {
       "id": "keploy",
       "title": "keploy record-replay",
@@ -373,11 +234,7 @@
       "title": "Vitest migration",
       "trigger": "test-runner swap; needs its own ADR"
     },
-    {
-      "id": "citus",
-      "title": "citus / read-replicas",
-      "trigger": "scale trigger (cat 07)"
-    },
+    { "id": "citus", "title": "citus / read-replicas", "trigger": "scale trigger (cat 07)" },
     {
       "id": "sonarqube-mcp",
       "title": "sonarqube-mcp at /handoff",
@@ -389,91 +246,51 @@
       "trigger": "over /scaffold-entity (cat 11)"
     },
     {
-      "id": "specialist-agents",
-      "title": "specialist stack-advisor (build-time)",
-      "trigger": "operator directive (2026-07-03) — build-time advisor, not a reviewer",
-      "status": "done",
-      "note": "IMPLEMENTED (session 15, 2026-07-03) as the /stack-advisor skill: .claude/skills/stack-advisor/SKILL.md — one composed build-time advisor (Next 16 RSC + Prisma 7 + Postgres) emitting POSITIVE patterns pointing at docs/design-recipes.md / docs/recipes.md / ADRs / components/shared/* and lib/*, with an explicit 'I advise, I do not review' boundary (no lenses/severity/findings; never restates the 10 ESLint rules). Wired into .claude/skill-rules.json on app/api/**/route.ts + app/**/page.tsx. Optional thin stack-expert subagent NOT built (no offload need appeared; add later only if one does). Blueprint updated: docs/blueprints/deferred-11-specialist-stack-advisor.md."
+      "id": "socket-harden-runner",
+      "title": "Socket + Harden-Runner CI slices (ADR-050/051)",
+      "trigger": "operator creates the accounts"
+    },
+    {
+      "id": "sheetjs",
+      "title": "exceljs -> SheetJS swap (ADR-051)",
+      "trigger": "exceljs CVE or a new export feature"
     }
   ],
   "inProgress": [
     {
+      "item": "EP+CW",
+      "title": "Enterprise pivot (WS-1..8) + code wave (items 1–8)",
       "state": "done",
-      "item": "D3",
-      "title": "Replace AntD w/ Tailwind",
       "blockedBy": "",
-      "next": "DONE: C1+C2+C3+C3.5+C4 complete; antd deps uninstalled, git grep antd clean. Dark/RTL polish = workstream D (separate)."
+      "next": "ALL ON MAIN. Senior batch on items 4/5/7 closed (44ac3e1: license-gate lockfile floor + @parcel/watcher rebuild allowlist). Item 6 = no action."
     },
     {
+      "item": "A.6",
+      "title": "frontend-design plugin (P1)",
       "state": "done",
-      "item": "D1",
-      "title": "Adopt 22-table recs",
       "blockedBy": "",
-      "next": "DONE (session 12): A1-A5 all landed. 21/22 categories done; cat 12 (performance) stays 'partial' only because the lhci per-PR CI gate is dormant until Actions billing (tracked in deferred as lhci-ci) — the automatable perf work (Speed Insights/analyzer/react-scan/size-limit) is done."
+      "next": "Adopted 4ad32b5, ahead of /design-system. TRIAL PENDING: use it on the next real UI build and record the verdict in agent-memory; impeccable is the sanctioned fallback."
     },
     {
+      "item": "CLEANUP",
+      "title": "Delete 18 stale remote branches",
+      "state": "remaining",
+      "blockedBy": "operator — sessions get HTTP 403 on ref-delete; GitHub MCP has no delete tool",
+      "next": "Run the deletion commands in the prose section below (8 merged, 6 superseded doc-scratch, 4 dead-history). Leaves main + the live session branch."
+    },
+    {
+      "item": "DOCS",
+      "title": "Docs reconciliation to cleaned state",
       "state": "done",
-      "item": "session-automation",
-      "title": "auto-handoff + auto-start",
       "blockedBy": "",
-      "next": "Parts 1/2 on; Part 3 auto-spawn TESTED session 5 → hop broken (no working successor) → DISABLED + documented; prompt-checkout fix kept"
-    },
-    {
-      "state": "done",
-      "item": "C3",
-      "title": "Screen migration",
-      "blockedBy": "",
-      "next": "DONE (session 6): design-qa axe serious/critical CLEAN in light across all 14 migrated screens (via loopback browser bridge). Dark findings -> workstream D."
-    },
-    {
-      "state": "done",
-      "item": "C3.5",
-      "title": "Runtime-AntD removal",
-      "blockedBy": "",
-      "next": "DONE (adb155e, /ship green): chrome+auth+forms off AntD onto shadcn/Radix via 3 parallel worktree agents. Closeout (deploy/re-axe/senior-review) in nextActions."
-    },
-    {
-      "state": "done",
-      "item": "C4",
-      "title": "Harness/guard",
-      "blockedBy": "",
-      "next": "DONE (session 10, /ship green): local table-types + chart-palette, antd uninstalled, no-raw-hex retargeted, CSP style-src KEPT+recommented (Radix/recharts/sonner/dnd-kit inline styles), scaffold generators + design-recipes migrated. git grep antd clean."
-    },
-    {
-      "state": "done",
-      "item": "A1",
-      "title": "Deterministic gates (6 left)",
-      "blockedBy": "(unblocked)",
-      "next": "SHIPPED (a0a9f61): 6 deterministic gates green"
-    },
-    {
-      "state": "done",
-      "item": "A5",
-      "title": "Testing & design depth (9)",
-      "blockedBy": "(unblocked)",
-      "next": "DONE (session 12): final 5 remainder items landed as native harness/docs adoptions — /cover skill, /manual-uat record-to-spec, token-thrift Playwright notes, Figma design-to-code sub-recipe, superdesign variants step. ADOPT.md Wave-A5 all ticked. Closes D1."
-    },
-    {
-      "state": "done",
-      "item": "D",
-      "title": "dark-mode + RTL a11y",
-      "blockedBy": "",
-      "next": "DONE (session 11, 58bd870): dark AA token split + DataTable icon 1.4.11 + pie labelLine + DirectionProvider RTL + ar uiux geometry test. Senior review CLEAN (core). BROWSER-VERIFIED dark: 4 fixes hold; all axe serious findings are color-scheme:dark false positives (transparent body). Follow-up: paint body background so dark axe is meaningful."
-    },
-    {
-      "state": "done",
-      "item": "2 senior-review Lows",
-      "title": "lockstep gap + FormField footguns",
-      "blockedBy": "",
-      "next": "FIXED (this session): design-tokens lockstep + FormField footguns"
+      "next": "This session: session-state.json rewritten to current truth, handoff collapsed, agent-memory pruned to budget, CLAUDE.md stale 'Ant Design 6' stack line fixed to Tailwind v4 + shadcn/Radix."
     }
   ],
   "nextActions": [
-    "CARRY-FORWARD (next session, in order): (1) IMPLEMENT deferred #11 as a build-time advisor — write .claude/skills/stack-advisor/SKILL.md per the committed blueprint docs/blueprints/deferred-11-specialist-stack-advisor.md: ONE composed advisor (Next 16 RSC + Prisma 7 + Postgres) as POSITIVE build-time patterns pointing at docs/design-recipes.md / docs/recipes.md / ADRs / components/shared/* — NOT restating the 10 ESLint rules, NOT shipping review/severity/lens language (that's senior-code-reviewer), with an explicit 'I advise, I do not review' boundary; register in skill-rules.json + the skill list mirroring an existing skill; optional thin .claude/agents/stack-expert.md only if an offloaded deep-dive need appears; /remember it; /ship green; land on main. (2) CLEAN THE REPO FULLY — operator must delete the 11 stale remote branches (this session's git bridge 403s on ref-delete, GitHub MCP has no delete-branch tool): claude/deferred-adoption-repo-cleanup-9pqo82, claude/fullstack-vibe-replatform-complete-lqfalj, claude/ui-layer-signoff-replatform-onjlrr, claude/ui-replatform-auto-spawn-fix-8dee0o, claude/ui-replatform-dark-axe-verify-vj0vv9, worktree-agent-a37a6490a19c0adc3, claude/claude-repos-comparison-0ddkul, claude/fullstack-vibe-branch-cleanup-w99wn9, claude/c3.5-cluster-a-chrome, claude/c3.5-cluster-b-auth, claude/c3.5-cluster-c-forms (leaves only main). All are merged-to-main or dead-history/garbage. Then sweep for other cruft (stale .next, orphaned docs). (3) UPDATE ALL DOCS to reflect the cleaned state once branches are gone (REPO-MAP auto-refreshes; reconcile SESSION-HANDOFF / session-state / deferred-plan).",
-    "Session 14 (deferred-adoption + repo cleanup): (a) PRs — merged #64 (npm minor-patch: sentry 10.63/next-intl 4.13.1/tsx 4.23, gated /ship green before merge, squash 40d7c76 on main); closed #59-#63 (GitHub Actions bumps) as UNMERGEABLE — they sit on abandoned pre-replatform history with NO common ancestor to current main, so hand-applied the bumps directly to the live workflow files instead (codeql-action 4.36.2->4.36.3, actions/cache v4->v6.1.0, docker/build-push-action v6->v7; commit f78b2c6). (b) Deferred set: adjudicated all 11 — tremor(#1)/wasp(#10) STAY-DEFERRED (triggers unfired: tremor latest stable still pins React 18); specialist-agents(#11) DROPPED (niche filled by senior-code-reviewer); the other 8 are /handoff- or scale-trigger-gated (no trigger fired). 10 live deferred items remain. (c) Branch cleanup: 6 dependabot branches auto-deleted by GitHub on PR close/merge. The 9 stale non-dependabot branches (3 merged: onjlrr/8dee0o/vj0vv9; 1 garbage worktree-agent-a37a6490a19c0adc3; 2 dead-history: claude-repos-comparison-0ddkul/fullstack-vibe-branch-cleanup-w99wn9; 3 superseded clusters: c3.5-cluster-a/b/c) COULD NOT be deleted by this session — the local git bridge returns HTTP 403 on ref-deletion and GitHub MCP has no delete-branch tool. OPERATOR must run the deletion commands (provided in session output) or delete via GitHub UI. Keep: main, this branch (9pqo82), lqfalj (base, delete after this lands).",
-    "Session 13: AUTHED dark browser-axe now RUN clean end-to-end (all 11 authed screens, 0 bounced, bodyBg=#030712, 0 serious/critical) on prod dd15554 via a distinct throwaway probe admin (axe-probe@example.com) — the real admin@example.com credential was NOT overwritten (seed only CREATES, never updates existing). Fixed the one dark finding it surfaced (style-guide border-accent swatch text-accent->text-primary-emphasis, dd15554). Also closed TODO(C4): 3 held jsx-a11y rules flipped warn->error (CommandPalette keydown on native Input + tabIndex=-1 rows per senior-review, label primitive + autofocus justified disables). Added docs/deferred-adoption-plan.md (11 deferred items, per-item trigger+disposition). SSO + SEED_ADMIN_EMAIL RESTORED. LEFTOVER: probe admin axe-probe@example.com persists as an extra ADMIN in prod DB (soft-delete via user mgmt if unwanted); SEED_ADMIN_PASSWORD env holds the probe value (sealed original unrecoverable, but admin@example.com DB login is unaffected).",
-    "WORKSTREAM D = DONE + browser-CONFIRMED (session 12): dark AA token split + RTL DirectionProvider + cheap fixes + body-bg paint (8051d85). The new dark axe pass is now BROWSER-RUN clean end-to-end: deployed tip 62cba26 (contains 8051d85) to the existing Vercel prod project (direct git-integration deploy, dpl_9Fe4PcSCPjSpTpzCygY7KBXxncJD; SSO temporarily disabled via the v9 projects PATCH ssoProtection:null then RESTORED to all_except_custom_domains) and ran the dark design-a11y spec via tools/design-qa-bridge across the PUBLIC screens (login/forgot-password/reset-password): bodyBg computed = rgb(3,7,18) = #030712 (the paint IS active), serious/critical = 0, color-contrast = 0 on all three. The session-11 false-positive flood (many bogus color-contrast findings from the transparent body + color-scheme:dark) is GONE — the body-bg paint achieves its purpose and the spec can now catch a REAL dark regression. Dark login screenshot visually confirms the dark canvas + --primary-emphasis link + white-on-brand button. AUTHED dark screens were NOT browser-run this session (SEED_ADMIN_PASSWORD is a Vercel-sealed envelope, no plaintext; declined to mutate the shared demo admin credential) — but their -emphasis token fixes were exact-ratio verified in session 11, and the body-bg paint is a GLOBAL <body> change that can only remove false positives (never add genuine findings against AA-correct tokens), so they hold by sound inference. If a full authed dark run is wanted later, reset SEED_ADMIN_PASSWORD to a known value + redeploy so seed upserts it, then run the AUTHED_SCREENS block. ar browser pass N/A on the English-only default fork (covered by uiux.full.uat.ts geometry test).",
-    "A5 DONE (session 12) → D1 (adopt all 22-table recs) DONE. All 5 A5 remainder items landed as native harness/docs adoptions (/cover, /manual-uat record-to-spec, token-thrift Playwright notes, Figma sub-recipe, superdesign variants). Remaining catalog items are the tracked-DEFERRED set only (re-promote via /blueprint on trigger). OPTIONAL cleanup DONE (session 12): the 2 KNOWN-GAP lib/pagination edges (?page=Infinity, ?page=1.5) are now fixed — parsePagination floors + finite-guards via a toPositiveInt helper (non-finite/fractional/<1 → default); the pinned tests/property/pagination.test.ts KNOWN-GAP tests were flipped to assert the fixed behavior + the property generator now feeds Infinity/1e309/-Infinity + asserts integer page/skip. All 6 property tests green.",
-    "Design-qa bridge lives at tools/design-qa-bridge/ (loopback HTTPS -> deployed app via curl). See agent-memory. Worktree subagents mis-base on stale 032f643 in this env — run agents in the MAIN checkout scoped to disjoint files (agent-memory gotcha)."
+    "OPERATOR: delete the 18 stale remote branches — exact commands in the prose section of SESSION-HANDOFF.md. After this session's branch merges, delete claude/git-integration-dlg383 too (leaves only main).",
+    "Next real UI build: build with the frontend-design plugin (ordered ahead of /design-system) and record the trial verdict in agent-memory + docs/research/a6-tool-shortlist-verdicts.md.",
+    "Trigger-gated backlog only — docs/deferred-adoption-plan.md (10 items) + the deferred list here (Socket/Harden-Runner on operator accounts; lhci-ci at Actions billing; SheetJS on CVE/feature trigger). No scheduled work remains.",
+    "Optional prod-DB hygiene: soft-delete the probe admin axe-probe@example.com via user management; note SEED_ADMIN_PASSWORD env still holds the probe value (admin@example.com login unaffected).",
+    "Per-session landmines live in agent-memory: gitleaks reinstall via Go proxy, /ship WITHOUT NODE_ENV=production, make browser-up for real-site browser work."
   ]
 }

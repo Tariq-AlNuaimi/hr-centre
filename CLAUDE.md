@@ -1,6 +1,6 @@
 # CLAUDE.md — Fullstack Next.js Template (Prototype Rail)
 
-Reusable starter for Rihal internal-tool prototypes. Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Ant Design 6 + next-intl (`en`/`ar`, RTL) + recharts + dnd-kit + zod. Vercel + Neon; deploy = `git push`. Owner: Tariq Al-Naaimi. Audience: non-developer stakeholders reviewing via shared URLs; the operator iterates with Claude, then `/handoff` gives production to the IT team (ADR-006).
+Reusable starter for Rihal internal-tool prototypes. Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Tailwind v4 + shadcn/Radix (ADR-029) + next-intl (`en`/`ar`, RTL) + recharts + dnd-kit + zod. Vercel + Neon; deploy = `git push`. Owner: Tariq Al-Naaimi. Audience: non-developer stakeholders reviewing via shared URLs; the operator iterates with Claude, then `/handoff` gives production to the IT team (ADR-006).
 
 Fork lifecycle: `/rebrand` → `/first-fork` (or `/new-project` / `/deploy`) → `/quickstart` per idea → `/scale-up` per growth axis → `/handoff` at the end.
 
