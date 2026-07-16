@@ -1,10 +1,11 @@
 # Blueprint — HARNESS-V2 Phase 0: "Trust the gates"
 
-Status: **DRAFT — awaiting operator confirmation** (KICKOFF §2.1 / step 5)
+Status: **CONFIRMED** (operator sign-off 2026-07-16) (KICKOFF §2.1 / step 5)
 Track: **Full** · Tier: repo is `personal` (`project.config.json`), but Phase 0 modifies
 governance + security gates, so the elevated KICKOFF ceremony (negative tests, evidence
 manifest, register lines) applies regardless.
-Confirmed: _pending_
+Confirmed: 2026-07-16 — operator confirmed; V2-006 resolved to the **branch-only** lifecycle
+(Open Question 1, option b).
 Program: harness-v2 · Phase: 0 · Backlog items: V2-001 … V2-006
 
 Scope: .claude/hooks/bash-write-gate.mjs, .claude/hooks/blueprint-gate.mjs, .claude/hooks/session-start.sh, .claude/hooks/auto-handoff.mjs, .claude/hooks/context-watchdog.mjs, .claude/settings.json, tests/harness/**, scripts/ship.mjs, scripts/render-handoff.mjs, scripts/auto-spawn-guard.mjs, scripts/auto-spawn-fire.mjs, package.json, README.md, SECURITY.md, CLAUDE.md, .gitignore, docs/session-state.json, docs/HARNESS-V2-EVIDENCE.md, docs/findings-register.md, docs/build-vs-buy-ledger.md, docs/blueprints/harness-v2-phase-0.md
@@ -145,13 +146,13 @@ Grounding facts (from repo investigation):
 
 ## 5. Open questions (to resolve at confirmation)
 
-1. **V2-006 lifecycle choice (the one real decision).** The backlog offers _either_ (a)
-   gitignore + regenerate at SessionStart, _or_ (b) relocate under the branch-only "never merged
-   to main" rule. **Recommendation: (b).** Rationale: the file holds rich, hand-maintained
-   program state (directives, workstreams, 22 comparison categories) that cannot be regenerated
-   from nothing; (a) would silently lose it. (b) keeps functionality, matches how
-   `SESSION-HANDOFF.md` is already treated, and satisfies the accept criterion's "documented
-   branch-only rule" branch. → **Please confirm (b), or direct me to (a).**
+1. **V2-006 lifecycle choice (the one real decision). — RESOLVED 2026-07-16: option (b),
+   branch-only.** The backlog offered _either_ (a) gitignore + regenerate at SessionStart, _or_
+   (b) relocate under the branch-only "never merged to main" rule. Operator confirmed **(b)**.
+   Rationale: the file holds rich, hand-maintained program state (directives, workstreams, 22
+   comparison categories) that cannot be regenerated from nothing; (a) would silently lose it.
+   (b) keeps functionality, matches how `SESSION-HANDOFF.md` is already treated, and satisfies the
+   accept criterion's "documented branch-only rule" branch.
 2. **V2-002 breadth threshold.** I'll treat a glob as "too broad" when it matches more than one
    top-level feature area — concretely: bare `**`, `app/**`, `lib/**`, `app/api/**`,
    `components/**`, `scripts/**` used as the _sole_ coverage token. A glob like
