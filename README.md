@@ -1,16 +1,16 @@
 # Fullstack Next.js Template (Prototype Rail)
 
-Fast prototype rail for Rihal internal tools. Next.js 16 + Prisma + Postgres + Auth.js + Ant Design, deployed to Vercel + Neon. **`git push` → live URL in 90 seconds.**
+Fast prototype rail for Rihal internal tools. Next.js 16 + Prisma + Postgres + Auth.js + shadcn/Radix, deployed to Vercel + Neon. **`git push` → live URL in 90 seconds.**
 
 The audience is non-developer stakeholders. They review prototypes via shared URLs (`<slug>.vercel.app`). The operator (working with Claude Code) iterates with them until approved. Then `/handoff` produces a clean package for the IT team to take over.
 
 ## Stack
 
 - **Framework**: Next.js 16, React 19, TypeScript
-- **UI**: Ant Design 6 with dark mode and RTL support
+- **UI**: Tailwind v4 + shadcn/ui + Radix (ADR-029) with dark mode and RTL support
 - **Database**: PostgreSQL 17 via Prisma 7 (Neon in prod, local Postgres in dev)
 - **Auth**: Auth.js v5 (credentials + optional OAuth)
-- **i18n**: next-intl (English + Arabic)
+- **i18n**: next-intl (English default; Arabic + RTL shipped, enabled per-fork)
 - **Hosting**: Vercel (auto-deploy on git push) + Neon (managed Postgres)
 - **Observability**: Sentry (optional)
 
@@ -31,7 +31,7 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 - Excel export helper
 - Email sender (nodemailer, optional)
 - Health check endpoint
-- Ten local ESLint rules guarding the template's invariants
+- Eleven local ESLint rules guarding the template's invariants
 
 ## Claude Code
 
@@ -143,7 +143,7 @@ hooks/                       # use-entity-queries (TanStack Query), useNotify, u
 lib/                         # Prisma client, auth, email, export, validations
 prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs
-eslint-rules/                # Project-local ESLint plugin (10 hard rules)
+eslint-rules/                # Project-local ESLint plugin (11 hard rules)
 tests/contracts/             # Contract test suite (node:test)
 .github/workflows/           # verify, secrets-scan, sast, codeql, senior-review, uat, preview-uat, release, new-project (all dispatch-only on free plan)
 ```

@@ -289,7 +289,7 @@ The contract suite (`tests/contracts/*.test.ts`, run via `node:test` + `tsx`) co
 | `lib/sentry.ts`                                                                           | `tests/contracts/sentry-scrub.test.ts` | Context scrubbing shares `SCRUB_FIELDS`, `setUserContext` forwards only the id (no email / name / PII), `setUserContext(null)` clears, `captureError` with/without context                                                                                                                                                                                                                                                                                    |
 | `lib/api-helpers.ts` (auth wrappers)                                                      | `tests/contracts/api-auth.test.ts`     | `withInternalAuth`: 503 when the token env var is unset (200 `{skipped:true}` with `skipWhenUnconfigured`), 401 on missing / mismatched `x-internal-token`, pass-through on match; Bearer accepted only with `{ bearer: true }` (strict `Bearer ` prefix, rejected by default, never overrides a present `x-internal-token`). `withAuth` / `withAdminAuth`: 401 with no session, 403 for a non-admin, session pass-through to the handler, ADMIN pass-through |
 
-**Note on the auth-wrapper tests.** The session-bearing cases stub `auth()` (and `lib/sentry`) via `node:test`'s `mock.module`, which needs `--experimental-test-module-mocks`. The plain `npm test` command does not pass that flag, so those cases **self-skip** there — but the `withInternalAuth` token-gate cases (the security-critical branch) run on every `npm test`. To exercise the full file:
+**Note on the auth-wrapper tests.** The session-bearing cases stub `auth()` (and `lib/sentry`) via `node:test`'s `mock.module`, which needs `--experimental-test-module-mocks`. The `npm test` script passes that flag (`node --experimental-test-module-mocks --import tsx --test …`), so **all** cases — including the session-bearing module-mock cases and the `withInternalAuth` token-gate cases (the security-critical branch) — run on every `npm test`. To run just this file with the flag:
 
 ```
 node --experimental-test-module-mocks --import tsx --test tests/contracts/api-auth.test.ts
@@ -304,7 +304,7 @@ Still deliberately not covered (would need disproportionate Prisma mocking for t
 ## 16. Shared-tier security checklist (at `/handoff`)
 
 The template's **security floor** (auth wrappers, no leaked secrets, zod at every
-boundary, no raw SQL, the ten `rihal-template/*` ESLint rules, audit log ON, `/ship`
+boundary, no raw SQL, the eleven `rihal-template/*` ESLint rules, audit log ON, `/ship`
 before every push) holds for **both** tiers from day zero — see `CLAUDE.md` → "Project
 tiers". A prototype that has only been reviewed by stakeholders via a shared URL is **not
 yet cleared to hold sensitive (Confidential / Restricted) production data.**
