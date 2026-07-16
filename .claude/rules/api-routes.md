@@ -1,5 +1,5 @@
 ---
-globs: app/api/**
+globs: app/api/**, lib/api-helpers.ts, lib/rate-limit.ts, lib/auth.ts, middleware.ts
 title: API routes — auth wrappers, zod, rate limiting
 ---
 

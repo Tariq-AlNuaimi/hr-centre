@@ -142,6 +142,25 @@ the changed surface is still **open** (un-adjudicated).
   build-vs-buy-gate.mjs onto lib/scope-cover.mjs; one shared coverage implementation; hook suite
   19/19 confirms behavior unchanged)
 
+- 2026-07-16 — [harness-v2 V2-101/correctness] the "zero rule-content loss" claim was FALSE:
+  ADR-020 (senior-review CI path + `install-senior-review.mjs` portability) and ADR-048 (React
+  Compiler build-time note) were dropped in the constitution split; the keyword sweep used a
+  hand-picked list that missed them (senior-review 2026-07-16, confidence 92) — owner: operator —
+  status: fixed(this commit) (restored both to `.claude/rules/harness.md`; added a mechanical
+  `ADR-\d+` set-diff test to `tests/harness/hooks.test.mjs` so any future dropped ADR reds).
+- 2026-07-16 — [harness-v2 V2-101/correctness] rules-injection globs under-matched:
+  `lib/api-helpers.ts`, `lib/rate-limit.ts`, `lib/auth.ts`, `middleware.ts`, `lib/email.ts`,
+  `lib/export.ts` (named in the rule files' own Ask-before/traps) matched no glob, so the hook
+  never fired there (senior-review 2026-07-16, confidence 90) — owner: operator — status:
+  fixed(this commit) (added those files to `api-routes.md`/`deploy.md` globs; also narrowed
+  `deploy.md`'s `scripts/**` to the four deploy scripts to remove the harness.md double-injection
+  overlap; added per-file + per-rule-file frontmatter regression tests).
+- 2026-07-16 — [harness-v2 V2-101/operational] harness self-docs drift: `docs/harness-inventory.md`
+  §5 hook table + count and `.claude/README.md` do not list the new `rules-injection.mjs` hook
+  (senior-review 2026-07-16, confidence 82) — owner: operator — status: fixed(this commit) (added
+  the `rules-injection` row + corrected the hook count 13→14 in `docs/harness-inventory.md` §5 +
+  overview table, and a `rules/*.md` section to `.claude/README.md`).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--

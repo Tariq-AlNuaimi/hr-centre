@@ -9,7 +9,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync, execSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -302,6 +302,56 @@ test("V2-101 context-tax: constitution ≤8KB AND total always-on ≤20KB (--str
     encoding: "utf8",
   });
   assert.equal(res.status, 0, `context-tax --strict must pass:\n${res.stdout}`);
+});
+
+test("V2-101 rules-injection covers the high-blast-radius lib/ + middleware files (senior-review fix)", () => {
+  // These files are named in the rule files' own Ask-before/traps; their globs must match them.
+  const cases = [
+    ["lib/api-helpers.ts", /api-routes\.md/],
+    ["lib/rate-limit.ts", /api-routes\.md/],
+    ["lib/auth.ts", /api-routes\.md/],
+    ["middleware.ts", /api-routes\.md/],
+    ["lib/email.ts", /deploy\.md/],
+    ["lib/export.ts", /deploy\.md/],
+  ];
+  for (const [file, re] of cases) {
+    const ctx = injectedContext(runHook("rules-injection.mjs", preEdit(file)));
+    assert.match(ctx, re, `${file} must inject a rule matching ${re}`);
+  }
+});
+
+test("V2-101 every .claude/rules/*.md has a parseable frontmatter glob that matches ≥1 real path", () => {
+  // Guards deploy/ai/harness (previously untested) against a broken frontmatter silently
+  // disabling their lazy-load. Representative path per rule file.
+  const reps = {
+    "prisma.md": "prisma/schema.prisma",
+    "api-routes.md": "app/api/x/route.ts",
+    "design.md": "components/shared/Foo.tsx",
+    "deploy.md": "vercel.json",
+    "ai.md": "lib/ai/index.ts",
+    "harness.md": "scripts/ship.mjs",
+  };
+  for (const [name, path] of Object.entries(reps)) {
+    const ctx = injectedContext(runHook("rules-injection.mjs", preEdit(path)));
+    assert.match(ctx, new RegExp(name.replace(".", "\\.")), `${name} must inject on ${path}`);
+  }
+});
+
+test("V2-101 rule migration preserved every ADR referenced by the old constitution", () => {
+  // Mechanical ADR-\d+ set-diff old CLAUDE.md → new CLAUDE.md + rules (senior-review fix:
+  // a hand-picked keyword list missed ADR-020/048).
+  const oldClaude = execSync("git show b265104^:CLAUDE.md", { cwd: REPO, encoding: "utf8" });
+  const newAll =
+    readFileSync(join(REPO, "CLAUDE.md"), "utf8") +
+    readdirSync(join(REPO, ".claude", "rules"))
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => readFileSync(join(REPO, ".claude", "rules", f), "utf8"))
+      .join("\n");
+  const adrs = (s) => new Set(s.match(/ADR-\d+/g) || []);
+  const oldAdrs = adrs(oldClaude);
+  const newAdrs = adrs(newAll);
+  const missing = [...oldAdrs].filter((a) => !newAdrs.has(a));
+  assert.deepEqual(missing, [], `ADRs dropped in the split: ${missing.join(", ")}`);
 });
 
 test("V2-101 context-tax --strict FAILS when a fixture constitution blows the 8KB budget", () => {

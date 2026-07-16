@@ -26,6 +26,18 @@ SessionStart hook bootstraps `.env`/deps/client and warns when the branch is beh
 Read access to `.next/`, `node_modules/`, `generated/` is denied — work from source + `lib/`
 types, not build artifacts.
 
+## Review rail — CI path & portability (ADR-020)
+
+The `senior-code-reviewer` runs after every code push. **Preferred path is CI**
+(`.github/workflows/senior-review.yml`; non-blocking; dormant until `ANTHROPIC_API_KEY` + triggers
+are set); when CI is off, invoke the `senior-code-reviewer` agent on the change before calling the
+work done. It is portable to any repo/stack via `node scripts/install-senior-review.mjs` (ADR-020;
+`tools/senior-review/README.md`).
+
+`/ship`'s own CI activates at the FIRST of: (a) `/handoff` to a team with Actions, (b) Actions
+billing unblocking, (c) a second regular contributor. Build-time note: the React Compiler Babel
+pass (ADR-048) adds ~10s to `/ship`'s build phase.
+
 ## Token thrift (binding; full policy: `docs/token-policy.md`, ADR-019)
 
 - Delegate repo-wide searches/investigations to the **scout** agent (haiku, read-only); don't

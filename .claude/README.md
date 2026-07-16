@@ -8,6 +8,14 @@ and `settings.json` (permissions + hook bindings; an Ask-before surface — see
 CLAUDE.md). CLAUDE.md is the authority on how these compose; this README only
 covers what lives here.
 
+## `rules/*.md` — path-lazy domain rules (V2-101)
+
+The constitution (`CLAUDE.md`) is the ≤8KB always-on floor; domain detail lives in
+`.claude/rules/*.md`, each with a frontmatter `globs:` header. `.claude/hooks/rules-injection.mjs`
+(PreToolUse Edit/Write/MultiEdit, wired in `settings.json`) injects the matching rule file's body as
+advisory `additionalContext` when you edit a covered path — same advisory, fail-open contract as
+`skill-activation`. Adding a rule file with a `globs:` header participates with no code change.
+
 ## `skill-rules.json` — advisory skill auto-activation
 
 Maps operator intent (keywords) and touched paths (globs) to the skill that

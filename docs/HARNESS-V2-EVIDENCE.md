@@ -248,6 +248,26 @@ present across `CLAUDE.md` + `.claude/rules/`.
 | 108, 109, 112, 113  | Traps: rate limiter in-memory, sendEmail no-throw, uploads/PDF, Docker artifact                                             | `.claude/rules/deploy.md` (Known traps)                                                                 |
 | 117                 | When in doubt, stop and ask                                                                                                 | `CLAUDE.md` (last line)                                                                                 |
 
+### V2-101 senior review (post-push, `senior-code-reviewer`)
+
+Ran on the V2-101 diff. Confirmed the hook is fail-open/non-blocking and the context-tax mechanism
+sound. Four findings, **all fixed in the follow-up commit**:
+
+- **[High] zero-loss claim was false** — ADR-020 (senior-review CI path + `install-senior-review.mjs`
+  portability) and ADR-048 (React Compiler build note) were dropped; the keyword sweep was
+  hand-picked. FIXED: restored both to `.claude/rules/harness.md`; added a **mechanical `ADR-\d+`
+  set-diff test** (old `CLAUDE.md` vs new `CLAUDE.md` + rules) so a future dropped ADR reds the suite.
+- **[High] rules-injection glob under-match** — `lib/api-helpers.ts`, `lib/rate-limit.ts`,
+  `lib/auth.ts`, `middleware.ts`, `lib/email.ts`, `lib/export.ts` (named in the rule files' own
+  Ask-before/traps) matched no glob. FIXED: added them to `api-routes.md`/`deploy.md` globs;
+  per-file + per-rule-file frontmatter regression tests added (suite 26→29 green).
+- **[Medium] scripts/** overlap** — `deploy.md` + `harness.md` both globbed `scripts/**`,
+  double-injecting on every script edit. FIXED: narrowed `deploy.md` to the four deploy scripts.
+- **[Low] harness self-doc drift** — FIXED: `rules-injection` row + count 13→14 in
+  `docs/harness-inventory.md`; `rules/*.md` section in `.claude/README.md`.
+
+All four logged in `docs/findings-register.md` (2026-07-16), status `fixed`.
+
 ## Per-phase retros
 
 ### Phase 0 retro — "Trust the gates" (V2-001 … V2-006)

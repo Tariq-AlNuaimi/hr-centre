@@ -1,5 +1,5 @@
 ---
-globs: scripts/**, vercel.json, next.config.ts, Makefile, docker-compose*.yml, Dockerfile*, .github/**
+globs: scripts/deploy.mjs, scripts/new-project.mjs, scripts/rebrand.mjs, scripts/migrate-from.mjs, lib/email.ts, lib/export.ts, vercel.json, next.config.ts, docker-compose*.yml, Dockerfile*, .github/**
 title: Deploy & ops — Vercel/Neon, Docker, growth path
 ---
 
