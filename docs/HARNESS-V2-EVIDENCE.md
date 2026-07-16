@@ -25,56 +25,56 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 
 ## Manifest
 
-| ID     | Phase | Status  | Commit(s) | Evidence                                                    | Notes                                                                                  |
-| ------ | ----- | ------- | --------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| V2-001 | 0     | done    | 32d1f9d   | [detail](#v2-001-evidence) · `tests/harness/hooks.test.mjs` | Bash write-gate: heredoc→new route DENIED, covered ALLOWED, `rm -rf` unchanged         |
-| V2-002 | 0     | done    | 32d1f9d   | [detail](#v2-002-evidence) · `tests/harness/hooks.test.mjs` | Scope-glob hygiene: over-broad+expired don't cover; specific does; existing pass       |
-| V2-003 | 0     | done    | 32d1f9d   | [detail](#v2-003-evidence) · `tests/harness/hooks.test.mjs` | Hook harness: 18/18 green; /ship phase-A `hooks`; mutation→RED demonstrated            |
-| V2-004 | 0     | done    | 32d1f9d   | [detail](#v2-004-evidence)                                  | Superpowers enabled + SessionStart presence check (both states shown)                  |
-| V2-005 | 0     | done    | 22baea3   | [detail](#v2-005-evidence)                                  | Docs truth: AntD→shadcn/Radix; eleven rules; §15 test-flag corrected                   |
-| V2-006 | 0     | done    | 32d1f9d   | [detail](#v2-006-evidence)                                  | session-state.json branch-only + SessionStart skeleton-regen; readers absence-tolerant |
-| V2-101 | 1     | pending | —         | —                                                           | Constitution split + lazy rules (ASK)                                                  |
-| V2-102 | 1     | pending | —         | —                                                           | Memory retrieval-on-demand                                                             |
-| V2-103 | 1     | pending | —         | —                                                           | Velocity becomes a gated pillar (ASK)                                                  |
-| V2-104 | 1     | pending | —         | —                                                           | Parallel-by-default standing instruction                                               |
-| V2-105 | 1     | pending | —         | —                                                           | Native agent-teams evaluation (ASK)                                                    |
-| V2-106 | 1     | pending | —         | —                                                           | Token observability: ccusage (LEDGER)                                                  |
-| V2-107 | 1     | pending | —         | —                                                           | Permission friction review                                                             |
-| V2-201 | 2     | pending | —         | —                                                           | /benchmark <category> skill                                                            |
-| V2-202 | 2     | pending | —         | —                                                           | Feature-parity disposition in the blueprint                                            |
-| V2-203 | 2     | pending | —         | —                                                           | Universal app-floor checklist                                                          |
-| V2-204 | 2     | pending | —         | —                                                           | /explore divergent skill                                                               |
-| V2-205 | 2     | pending | —         | —                                                           | Work-graph in the blueprint                                                            |
-| V2-206 | 2     | pending | —         | —                                                           | Two-stage review                                                                       |
-| V2-207 | 2     | pending | —         | —                                                           | playwright-bdd traceability (LEDGER, ADR, ASK)                                         |
-| V2-208 | 2     | pending | —         | —                                                           | /retro skill + omission feedback                                                       |
-| V2-209 | 2     | pending | —         | —                                                           | Blueprint amendment deltas                                                             |
-| V2-210 | 2     | pending | —         | —                                                           | Pilot feature end-to-end (ASK)                                                         |
-| V2-301 | 3     | pending | —         | —                                                           | Visual iteration loop                                                                  |
-| V2-302 | 3     | pending | —         | —                                                           | Layout primitive layer (LEDGER)                                                        |
-| V2-303 | 3     | pending | —         | —                                                           | Page archetypes                                                                        |
-| V2-304 | 3     | pending | —         | —                                                           | Spacing/typography lint (LEDGER)                                                       |
-| V2-305 | 3     | pending | —         | —                                                           | Copy chokepoint + copy lint                                                            |
-| V2-306 | 3     | pending | —         | —                                                           | OSS catalog + /adopt skill                                                             |
-| V2-307 | 3     | pending | —         | —                                                           | Taste anchors + scored design-qa (ASK)                                                 |
-| V2-308 | 3     | pending | —         | —                                                           | Visual regression (LEDGER)                                                             |
-| V2-309 | 3     | pending | —         | —                                                           | Build-vs-buy completeness                                                              |
-| V2-401 | 4     | pending | —         | —                                                           | Testcontainers + /ship --full (LEDGER)                                                 |
-| V2-402 | 4     | pending | —         | —                                                           | pgvector verification                                                                  |
-| V2-403 | 4     | pending | —         | —                                                           | Coverage floor                                                                         |
-| V2-404 | 4     | pending | —         | —                                                           | Cognitive complexity at error (LEDGER)                                                 |
-| V2-405 | 4     | pending | —         | —                                                           | Mutation testing on invariants (LEDGER)                                                |
-| V2-406 | 4     | pending | —         | —                                                           | Invariant unit tests                                                                   |
-| V2-407 | 4     | pending | —         | —                                                           | Local security fallbacks (LEDGER)                                                      |
-| V2-408 | 4     | pending | —         | —                                                           | protect-secrets scope honesty                                                          |
-| V2-409 | 4     | pending | —         | —                                                           | Debt sunset                                                                            |
-| V2-501 | 5     | pending | —         | —                                                           | ADR-056 decision (ASK, ADR)                                                            |
-| V2-502 | 5     | pending | —         | —                                                           | Renovate (LEDGER)                                                                      |
-| V2-503 | 5     | pending | —         | —                                                           | Skill-standard conformance                                                             |
-| V2-504 | 5     | pending | —         | —                                                           | Docs-currency skill                                                                    |
-| V2-505 | 5     | pending | —         | —                                                           | Doctrine sync + maintainer runbook                                                     |
-| V2-506 | 5     | pending | —         | —                                                           | Fork doc-payload manifest                                                              |
-| V2-507 | 5     | pending | —         | —                                                           | Program closeout                                                                       |
+| ID     | Phase | Status  | Commit(s) | Evidence                                                                                | Notes                                                                                                                                                 |
+| ------ | ----- | ------- | --------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V2-001 | 0     | done    | 32d1f9d   | [detail](#v2-001-evidence) · `tests/harness/hooks.test.mjs`                             | Bash write-gate: heredoc→new route DENIED, covered ALLOWED, `rm -rf` unchanged                                                                        |
+| V2-002 | 0     | done    | 32d1f9d   | [detail](#v2-002-evidence) · `tests/harness/hooks.test.mjs`                             | Scope-glob hygiene: over-broad+expired don't cover; specific does; existing pass                                                                      |
+| V2-003 | 0     | done    | 32d1f9d   | [detail](#v2-003-evidence) · `tests/harness/hooks.test.mjs`                             | Hook harness: 18/18 green; /ship phase-A `hooks`; mutation→RED demonstrated                                                                           |
+| V2-004 | 0     | done    | 32d1f9d   | [detail](#v2-004-evidence)                                                              | Superpowers enabled + SessionStart presence check (both states shown)                                                                                 |
+| V2-005 | 0     | done    | 22baea3   | [detail](#v2-005-evidence)                                                              | Docs truth: AntD→shadcn/Radix; eleven rules; §15 test-flag corrected                                                                                  |
+| V2-006 | 0     | done    | 32d1f9d   | [detail](#v2-006-evidence)                                                              | session-state.json branch-only + SessionStart skeleton-regen; readers absence-tolerant                                                                |
+| V2-101 | 1     | done    | (this)    | [detail](#v2-101-evidence) · `tests/harness/hooks.test.mjs` · `scripts/context-tax.mjs` | Constitution 25098→8184B (≤8KB); always-on 36868→19954B (≤20KB); lazy `.claude/rules/*.md` via `rules-injection.mjs`; mapping table below (zero loss) |
+| V2-102 | 1     | pending | —         | —                                                                                       | Memory retrieval-on-demand                                                                                                                            |
+| V2-103 | 1     | pending | —         | —                                                                                       | Velocity becomes a gated pillar (ASK)                                                                                                                 |
+| V2-104 | 1     | pending | —         | —                                                                                       | Parallel-by-default standing instruction                                                                                                              |
+| V2-105 | 1     | pending | —         | —                                                                                       | Native agent-teams evaluation (ASK)                                                                                                                   |
+| V2-106 | 1     | pending | —         | —                                                                                       | Token observability: ccusage (LEDGER)                                                                                                                 |
+| V2-107 | 1     | pending | —         | —                                                                                       | Permission friction review                                                                                                                            |
+| V2-201 | 2     | pending | —         | —                                                                                       | /benchmark <category> skill                                                                                                                           |
+| V2-202 | 2     | pending | —         | —                                                                                       | Feature-parity disposition in the blueprint                                                                                                           |
+| V2-203 | 2     | pending | —         | —                                                                                       | Universal app-floor checklist                                                                                                                         |
+| V2-204 | 2     | pending | —         | —                                                                                       | /explore divergent skill                                                                                                                              |
+| V2-205 | 2     | pending | —         | —                                                                                       | Work-graph in the blueprint                                                                                                                           |
+| V2-206 | 2     | pending | —         | —                                                                                       | Two-stage review                                                                                                                                      |
+| V2-207 | 2     | pending | —         | —                                                                                       | playwright-bdd traceability (LEDGER, ADR, ASK)                                                                                                        |
+| V2-208 | 2     | pending | —         | —                                                                                       | /retro skill + omission feedback                                                                                                                      |
+| V2-209 | 2     | pending | —         | —                                                                                       | Blueprint amendment deltas                                                                                                                            |
+| V2-210 | 2     | pending | —         | —                                                                                       | Pilot feature end-to-end (ASK)                                                                                                                        |
+| V2-301 | 3     | pending | —         | —                                                                                       | Visual iteration loop                                                                                                                                 |
+| V2-302 | 3     | pending | —         | —                                                                                       | Layout primitive layer (LEDGER)                                                                                                                       |
+| V2-303 | 3     | pending | —         | —                                                                                       | Page archetypes                                                                                                                                       |
+| V2-304 | 3     | pending | —         | —                                                                                       | Spacing/typography lint (LEDGER)                                                                                                                      |
+| V2-305 | 3     | pending | —         | —                                                                                       | Copy chokepoint + copy lint                                                                                                                           |
+| V2-306 | 3     | pending | —         | —                                                                                       | OSS catalog + /adopt skill                                                                                                                            |
+| V2-307 | 3     | pending | —         | —                                                                                       | Taste anchors + scored design-qa (ASK)                                                                                                                |
+| V2-308 | 3     | pending | —         | —                                                                                       | Visual regression (LEDGER)                                                                                                                            |
+| V2-309 | 3     | pending | —         | —                                                                                       | Build-vs-buy completeness                                                                                                                             |
+| V2-401 | 4     | pending | —         | —                                                                                       | Testcontainers + /ship --full (LEDGER)                                                                                                                |
+| V2-402 | 4     | pending | —         | —                                                                                       | pgvector verification                                                                                                                                 |
+| V2-403 | 4     | pending | —         | —                                                                                       | Coverage floor                                                                                                                                        |
+| V2-404 | 4     | pending | —         | —                                                                                       | Cognitive complexity at error (LEDGER)                                                                                                                |
+| V2-405 | 4     | pending | —         | —                                                                                       | Mutation testing on invariants (LEDGER)                                                                                                               |
+| V2-406 | 4     | pending | —         | —                                                                                       | Invariant unit tests                                                                                                                                  |
+| V2-407 | 4     | pending | —         | —                                                                                       | Local security fallbacks (LEDGER)                                                                                                                     |
+| V2-408 | 4     | pending | —         | —                                                                                       | protect-secrets scope honesty                                                                                                                         |
+| V2-409 | 4     | pending | —         | —                                                                                       | Debt sunset                                                                                                                                           |
+| V2-501 | 5     | pending | —         | —                                                                                       | ADR-056 decision (ASK, ADR)                                                                                                                           |
+| V2-502 | 5     | pending | —         | —                                                                                       | Renovate (LEDGER)                                                                                                                                     |
+| V2-503 | 5     | pending | —         | —                                                                                       | Skill-standard conformance                                                                                                                            |
+| V2-504 | 5     | pending | —         | —                                                                                       | Docs-currency skill                                                                                                                                   |
+| V2-505 | 5     | pending | —         | —                                                                                       | Doctrine sync + maintainer runbook                                                                                                                    |
+| V2-506 | 5     | pending | —         | —                                                                                       | Fork doc-payload manifest                                                                                                                             |
+| V2-507 | 5     | pending | —         | —                                                                                       | Program closeout                                                                                                                                      |
 
 ## Phase 0 evidence detail
 
@@ -186,6 +186,67 @@ and `/ship` red-gate wiring correct. Findings:
   3. _(Low, maintainability)_ ledger logic duplicated in `build-vs-buy-gate.mjs` vs
      `scope-cover.mjs`. **FIXED `205ddfe`** — refactored build-vs-buy-gate onto scope-cover (one
      shared coverage implementation); suite 19/19 confirms behavior unchanged.
+
+## Phase 1 evidence detail
+
+### V2-101 evidence
+
+**Constitution split + path-lazy rules.** CLAUDE.md was restructured into an ≤8KB always-on
+constitution + six path-globbed rule files under `.claude/rules/`, loaded lazily by
+`.claude/hooks/rules-injection.mjs` (PreToolUse Edit|Write|MultiEdit — mirrors `skill-activation.mjs`:
+advisory `additionalContext` only, fail-open).
+
+Context-tax measured by `scripts/context-tax.mjs` (`npm run context-tax`):
+
+```
+                            BEFORE      AFTER
+CLAUDE.md (constitution)    25098   →    8184   (7.99KB)  OK vs 8KB
+agent-memory surface         3898   →    3898   (head-60; formalized to a digest by V2-102)
+handoff auto-status          7872   →    7872
+TOTAL always-on             36868   →   19954   (19.49KB)  OK vs 20KB
+```
+
+Both budgets pass. Negative test (`tests/harness/hooks.test.mjs`, suite now 26/26): a fixture
+CLAUDE.md of 9000B makes `context-tax --strict` exit 1; the real repo passes. Live hook evidence:
+writing `scripts/context-tax.mjs` and `tests/harness/hooks.test.mjs` this session triggered
+`rules-injection` to inject `deploy.md`/`harness.md` (captured in the session transcript). Suite
+cases prove injection on prisma/api/component paths, NO injection on a non-matching path
+(`README.md`), and non-edit tools ignored.
+
+**Zero rule-content-loss mapping** (old `CLAUDE.md` line-range → new home). Every rule/fact has
+exactly one home; the constitution keeps the always-on floor, domain detail moved. Automated
+sweep confirms all 11 ESLint rule names + key Hard-rule/trap keywords (SCRUB_FIELDS,
+prismaUnfiltered, withInternalAuth/withApiAuth, EXCLUDE, executeRawUnsafe, next@16.2.9,
+context-watchdog, dockerAck, SMTP_HOST, unsafe-inline, localePrefixRegex, generated/prisma,
+audit-purge, tierAck, complexityAck, ai-eval, Superpowers, EnterPlanMode, "market scan") still
+present across `CLAUDE.md` + `.claude/rules/`.
+
+| Old CLAUDE.md lines | Section                                                                                                                     | New home                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1–5                 | Identity, stack, fork lifecycle                                                                                             | `CLAUDE.md` (intro)                                                                                     |
+| 7–16                | Read before non-trivial work                                                                                                | `CLAUDE.md` (Read-before line) + rule-file index blockquote                                             |
+| 18–24               | Token thrift                                                                                                                | `.claude/rules/harness.md` (Token thrift)                                                               |
+| 26–28               | Harness (`.claude/`) — agents, allowlist, read-denials                                                                      | `.claude/rules/harness.md` (The `.claude/` harness)                                                     |
+| 30–36, 39–42        | Standing instructions (main SoT, pushed-or-didn't, /ship, review rail, market benchmark, Superpowers, blueprint, auto-plan) | `CLAUDE.md` (Standing instructions); CI-dormancy + portability + memory-lifecycle detail → `harness.md` |
+| 37–38               | Deploy/ops standing rules (offer `/deploy`, live-URL-by-running)                                                            | `.claude/rules/deploy.md` (Standing instructions) + 1-line pointer in `CLAUDE.md`                       |
+| 44–53               | Five Pillars + `/ship` enforcement                                                                                          | `CLAUDE.md` (Five Pillars); wave-off mechanism kept in Hard rules                                       |
+| 55                  | Conditional 6th pillar — AI-Quality                                                                                         | `.claude/rules/ai.md` + 1-line flag in `CLAUDE.md`                                                      |
+| 57–59, 63–65, 71    | Hard rules — pillars-gate, quartet, push, `.env`, secret-logging, zod/session                                               | `CLAUDE.md` (Hard rules, terse floor); quartet full mechanism → `harness.md`                            |
+| 60–62               | Quartet detail (build-vs-buy / blueprint / complexity / ai-eval)                                                            | `.claude/rules/harness.md` (The enforcement quartet)                                                    |
+| 66, 67, 70, 72      | Restricted-column/SCRUB, go-through-Prisma, audit-fragile, naming                                                           | `.claude/rules/prisma.md` (constitution keeps the 1-line Prisma floor)                                  |
+| 68                  | UI→API→service→Prisma (`no-prisma-in-client`)                                                                               | `CLAUDE.md` (Hard rules)                                                                                |
+| 69                  | Auth wrapper table                                                                                                          | `.claude/rules/api-routes.md` (constitution keeps the 1-line floor)                                     |
+| 73                  | Eleven ESLint rules roster                                                                                                  | `.claude/rules/harness.md` (Local ESLint plugin); `CLAUDE.md` keeps "eleven rules at error" + pointer   |
+| 75–77               | UI Definition of Done                                                                                                       | `.claude/rules/design.md` + 1-line in `CLAUDE.md`                                                       |
+| 79–81               | Project tiers                                                                                                               | `.claude/rules/harness.md` (full contract) + summary in `CLAUDE.md`                                     |
+| 83–89               | Ask before                                                                                                                  | `CLAUDE.md` (Ask before — verbatim, always-on)                                                          |
+| 91–96               | Commands                                                                                                                    | `.claude/rules/harness.md` (Commands)                                                                   |
+| 98–100              | Growth path                                                                                                                 | `.claude/rules/deploy.md` (Growth path)                                                                 |
+| 104, 115            | Traps: context-watchdog wiring, stale `.next`                                                                               | `.claude/rules/harness.md` (Known traps)                                                                |
+| 105, 106, 111       | Traps: generated/prisma path, Auth.js JWT sessions, vercel.json migrate cadence                                             | `.claude/rules/prisma.md` (Known traps)                                                                 |
+| 107, 110, 114       | Traps: locales config-driven, CSP unsafe-inline, root not-found.tsx                                                         | `.claude/rules/design.md` (Known traps)                                                                 |
+| 108, 109, 112, 113  | Traps: rate limiter in-memory, sendEmail no-throw, uploads/PDF, Docker artifact                                             | `.claude/rules/deploy.md` (Known traps)                                                                 |
+| 117                 | When in doubt, stop and ask                                                                                                 | `CLAUDE.md` (last line)                                                                                 |
 
 ## Per-phase retros
 

@@ -24,7 +24,7 @@ that are irrelevant to the file the agent is about to touch. The fix is structur
 compression (supersedes "caveman compression"): a small always-on constitution, domain rules
 that load lazily by path, memory surfaced as a digest and retrieved on demand — plus the
 standing instructions that make sessions cheap in wall-clock too (parallel-by-default), the
-pillar that makes velocity a *gate* rather than a vibe, and the observability (ccusage) to
+pillar that makes velocity a _gate_ rather than a vibe, and the observability (ccusage) to
 measure the win.
 
 Exit criterion (KICKOFF §3, row 1): SessionStart injected context ≤ 20KB measured (`wc -c`
@@ -37,81 +37,89 @@ up with a verdict.
 
 - **US1.1 (agent, every session):** As the agent, I want only the constitution (≤8KB) plus the
   rule files relevant to the paths I'm touching loaded into context, so I spend tokens on the
-  task, not on prisma rules while editing a React component. *(V2-101)*
+  task, not on prisma rules while editing a React component. _(V2-101)_
 - **US1.2 (re-auditor):** As the re-auditor, I want a mapping table proving every rule line in
   the old 25KB CLAUDE.md still lives somewhere (constitution or a rule file), so the split is
-  verifiably lossless, not a quiet deletion. *(V2-101)*
+  verifiably lossless, not a quiet deletion. _(V2-101)_
 - **US1.3 (agent):** As the agent, I want agent-memory surfaced as a ≤30-line digest with
   full sections fetched only when a lookup is relevant, so a growing memory file stops taxing
-  every session. *(V2-102)*
+  every session. _(V2-102)_
 - **US1.4 (operator):** As the operator, I want development **velocity** to be a gated pillar
   (context-size, `/ship` wall-time, hook latency) so speed regressions surface mechanically the
-  way security regressions do, instead of drifting silently. *(V2-103)*
+  way security regressions do, instead of drifting silently. _(V2-103)_
 - **US1.5 (agent):** As the agent, I want a binding standing instruction to decompose
   multi-part work and dispatch write-disjoint units as parallel subagents in one message
-  without being asked, so wall-clock (Pillar 1) is spent, not idled. *(V2-104)*
+  without being asked, so wall-clock (Pillar 1) is spent, not idled. _(V2-104)_
 - **US1.6 (operator / maintainer):** As the maintainer, I want a recorded, evidence-backed
   decision on whether to use Claude Code's **native agent teams** or build a custom `/fan-out`
-  orchestrator, so the parallel mechanism is chosen on data, not assumption. *(V2-105)*
+  orchestrator, so the parallel mechanism is chosen on data, not assumption. _(V2-105)_
 - **US1.7 (operator):** As the operator, I want per-session/model token spend visible via a
-  `npm run tokens` command, so the "cheapen every session" claim is measurable. *(V2-106)*
+  `npm run tokens` command, so the "cheapen every session" claim is measurable. _(V2-106)_
 - **US1.8 (operator):** As the operator, I want the permission deny-list re-evaluated so safe,
   high-friction ops (`git branch -d`, `git commit --amend` on unpushed HEAD) stop prompting,
-  while force-push/reset stay denied. *(V2-107)*
+  while force-push/reset stay denied. _(V2-107)_
 
 ## 3. Scenarios (happy + worst path per item)
 
 **V2-101 — constitution split**
-- *Happy:* new session; SessionStart injects constitution (≤8KB) + digest; agent opens
+
+- _Happy:_ new session; SessionStart injects constitution (≤8KB) + digest; agent opens
   `lib/prisma/audit-extension.ts`, the prisma rule file loads, SCRUB_FIELDS rule is present;
   total auto-injected bytes ≤20KB (`wc -c` evidence, before/after).
-- *Worst:* a rule that used to be in CLAUDE.md (e.g. `no-raw-sql-unsafe`) is silently dropped in
+- _Worst:_ a rule that used to be in CLAUDE.md (e.g. `no-raw-sql-unsafe`) is silently dropped in
   the split → caught by the mapping table's completeness check (every old line-range maps to a
   new home) and a grep sweep proving each of the 11 ESLint rules + each Hard rule still appears
   in exactly one home. A rule file with a bad path glob never loads → a smoke check confirms
   each rule file loads on a representative path.
 
 **V2-102 — memory retrieval-on-demand**
-- *Happy:* SessionStart prints only the ≤30-line digest; `grep`-ing a section header pulls the
+
+- _Happy:_ SessionStart prints only the ≤30-line digest; `grep`-ing a section header pulls the
   full section on demand; `/remember` appends to a section and regenerates the digest.
-- *Worst:* memory grows unbounded again → session-start warns when the digest >30 lines or any
+- _Worst:_ memory grows unbounded again → session-start warns when the digest >30 lines or any
   section >60 lines (mechanical budget, demonstrated on a synthetic over-budget fixture).
 
 **V2-103 — velocity pillar**
-- *Happy:* constitution + `docs/uat-rubric.md` state Pillar 1 covers runtime speed AND dev
+
+- _Happy:_ constitution + `docs/uat-rubric.md` state Pillar 1 covers runtime speed AND dev
   velocity; the three checks (context-size warn, `/ship` wall-time >25% warn, hook-latency
   baseline) fire on synthetic regressions.
-- *Worst:* the wall-time warn fires on cold-cache noise → warn (never block), compares against a
+- _Worst:_ the wall-time warn fires on cold-cache noise → warn (never block), compares against a
   recorded warm baseline in `project.config.json`, and is a >25% band, not a hair-trigger.
 
 **V2-104 — parallel-by-default**
-- *Happy:* text lands in the constitution; demonstrated once this phase on a real ≥2-unit
+
+- _Happy:_ text lands in the constitution; demonstrated once this phase on a real ≥2-unit
   write-disjoint task (e.g. the `[P]` items V2-106/V2-107) with routing receipts as evidence.
-- *Worst:* parallelizing a dependency chain corrupts state → the instruction's calibration notes
+- _Worst:_ parallelizing a dependency chain corrupts state → the instruction's calibration notes
   ("dependency chains don't parallelize; orchestrator-only during waves") + file-ownership sets
   prevent overlap.
 
 **V2-105 — native agent-teams evaluation**
-- *Happy:* `ADR-057` records native/custom/hybrid with evidence of the native feature's tested
+
+- _Happy:_ `ADR-057` records native/custom/hybrid with evidence of the native feature's tested
   behavior + the operator's confirmed verdict; `/fan-out` built only if the verdict is "custom".
-- *Worst:* building `/fan-out` when native already suffices → the ADR gates the build; no skill
+- _Worst:_ building `/fan-out` when native already suffices → the ADR gates the build; no skill
   is written unless the verdict is custom.
 
 **V2-106 — ccusage**
-- *Happy:* ledger entry recorded; `npm run tokens` prints a per-session/model spend report for
+
+- _Happy:_ ledger entry recorded; `npm run tokens` prints a per-session/model spend report for
   this program's sessions.
-- *Worst:* ccusage unavailable offline / egress-blocked → wrapper fails soft with a clear
+- _Worst:_ ccusage unavailable offline / egress-blocked → wrapper fails soft with a clear
   message; the ledger entry names the fallback (local JSONL log analyzer).
 
 **V2-107 — permission friction**
-- *Happy:* `.claude/settings.json` diff allows `git branch -d` and (if expressible)
+
+- _Happy:_ `.claude/settings.json` diff allows `git branch -d` and (if expressible)
   `git commit --amend` on unpushed HEAD; each change carries a one-line rationale in the commit.
-- *Worst:* an amend rewrites pushed history → keep the amend denial if "unpushed HEAD" isn't
+- _Worst:_ an amend rewrites pushed history → keep the amend denial if "unpushed HEAD" isn't
   expressible in the permission matcher, and document why in the commit body.
 
 ## 4. Architecture sketch
 
 **Context-tax pipeline (the measurable target).**
+
 ```
 SessionStart injection today (~47KB):
   CLAUDE.md (25KB, auto-loaded)  +  agent-memory.md whole (16.7KB)  +  handoff auto-status (~5KB)
@@ -126,34 +134,36 @@ After Phase 1 (≤20KB target):
 ```
 
 **Proposed rule-file layout (`.claude/rules/`)** — mechanism confirmed in §7 Q1:
-| Rule file | Loads on paths | Content moved from CLAUDE.md |
-|---|---|---|
-| `prisma.md` | `prisma/**`, `lib/prisma/**` | Go-through-Prisma, no raw SQL, SCRUB_FIELDS, audit/soft-delete invariants, `prismaUnfiltered` |
-| `api-routes.md` | `app/api/**` | auth wrappers, zod-at-boundary, rate-limit-outside-auth, internal-route rules |
-| `design.md` | `components/**`, `app/**/*.tsx` | UI Definition of Done, design-system read, token/no-raw-hex rules |
-| `deploy.md` | `scripts/**`, `vercel.json`, `next.config.ts` | deploy rails, migrate-deploy cadence, Docker artifact rule |
-| `ai.md` | `lib/ai/**`, `app/api/ai/**` | AI-Quality pillar, `no-direct-anthropic-sdk`, eval gate |
-| `harness.md` | `.claude/**`, `eslint-rules/**`, `scripts/ship.mjs` | ESLint-rule roster, gate quartet, ship-before-push |
 
-The constitution keeps: identity, the Five Pillars (terse), the Hard-rules *summary* + Ask-before
+| Rule file       | Loads on paths                                      | Content moved from CLAUDE.md                                                                  |
+| --------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `prisma.md`     | `prisma/**`, `lib/prisma/**`                        | Go-through-Prisma, no raw SQL, SCRUB_FIELDS, audit/soft-delete invariants, `prismaUnfiltered` |
+| `api-routes.md` | `app/api/**`                                        | auth wrappers, zod-at-boundary, rate-limit-outside-auth, internal-route rules                 |
+| `design.md`     | `components/**`, `app/**/*.tsx`                     | UI Definition of Done, design-system read, token/no-raw-hex rules                             |
+| `deploy.md`     | `scripts/**`, `vercel.json`, `next.config.ts`       | deploy rails, migrate-deploy cadence, Docker artifact rule                                    |
+| `ai.md`         | `lib/ai/**`, `app/api/ai/**`                        | AI-Quality pillar, `no-direct-anthropic-sdk`, eval gate                                       |
+| `harness.md`    | `.claude/**`, `eslint-rules/**`, `scripts/ship.mjs` | ESLint-rule roster, gate quartet, ship-before-push                                            |
+
+The constitution keeps: identity, the Five Pillars (terse), the Hard-rules _summary_ + Ask-before
 surface (these are cross-cutting and must always be present), standing instructions (terse EARS),
-and a one-line pointer to each rule file. **Zero-loss rule:** every domain-specific *detail* moves
-to a rule file; the constitution keeps the *always-true* floor. The mapping table (old
+and a one-line pointer to each rule file. **Zero-loss rule:** every domain-specific _detail_ moves
+to a rule file; the constitution keeps the _always-true_ floor. The mapping table (old
 line-range → new home) is the proof, committed to `docs/HARNESS-V2-EVIDENCE.md`.
 
-**Velocity gate wiring (V2-103).** Three checks, all *warn* (Pillar-1 is a gate but these
+**Velocity gate wiring (V2-103).** Three checks, all _warn_ (Pillar-1 is a gate but these
 sub-checks are fail-open velocity signals, per KICKOFF §2.5 friction budget):
+
 1. `scripts/context-tax.mjs` — SessionStart/`/ship` phase-A: warn if always-on bytes > budget.
 2. `scripts/ship.mjs` — warn if warm run wall-time > 125% of `project.config.json` baseline.
 3. hook-latency: measure UserPromptSubmit+PreToolUse chain once, record baseline, warn threshold.
 
-**Parallel mechanism (V2-104/V2-105).** V2-104 is the *instruction* (constitution text). V2-105 is
-the *mechanism decision* (ADR-057). `/fan-out` is built only if the ADR says "custom".
+**Parallel mechanism (V2-104/V2-105).** V2-104 is the _instruction_ (constitution text). V2-105 is
+the _mechanism decision_ (ADR-057). `/fan-out` is built only if the ADR says "custom".
 
 ## 5. Item plan & sequence (V2-101 FIRST, then the rest)
 
 1. **V2-101** (do first — everything after benefits): split CLAUDE.md → constitution + rule files
-   + mapping table. Gate check: constitution ≤8KB, total ≤20KB, grep sweep for path validity.
+   - mapping table. Gate check: constitution ≤8KB, total ≤20KB, grep sweep for path validity.
 2. **V2-102** memory digest + budget warn.
 3. **V2-103** velocity pillar text + the 3 checks + recorded baselines.
 4. **V2-104** parallel-by-default constitution text.
@@ -183,6 +193,7 @@ V2-102 budget warn, V2-103 checks) get negative tests. Phase ends: `/ship` green
 
 **Q1 (V2-101, ASK structure review) — lazy-rules mechanism.** Which mechanism for path-globbed
 loading?
+
 - **(a, recommended)** `.claude/rules/<domain>.md` files with a path-glob header, referenced from
   the constitution — cleanest separation, one file per domain, explicit globs.
 - **(b)** Nested `CLAUDE.md`/`AGENTS.md` files in subdirectories (`app/api/CLAUDE.md`,
@@ -195,7 +206,7 @@ loading?
 **"Speed & Velocity"** (recommended: explicit) or keep the name "Speed" and expand its definition
 to cover dev velocity? And confirm the >25% `/ship` wall-time warn band.
 
-**Q3 (V2-105, ASK verdict) — timing.** This ASK fires *after* the research/ADR-057 draft, not now
+**Q3 (V2-105, ASK verdict) — timing.** This ASK fires _after_ the research/ADR-057 draft, not now
 — I'll research native agent teams, draft the ADR with evidence, and bring the build-vs-native
 verdict back to you mid-phase. Flagging so it's expected.
 
@@ -204,5 +215,5 @@ V2-106/V2-107 run as the parallel-demo pair.
 
 ---
 
-*Confirmation block (operator fills on sign-off): resolved Q1=___ Q2=___ Q4=___; Q3 deferred to
-mid-phase ADR-057 verdict.*
+_Confirmation block (operator fills on sign-off): resolved Q1=\___ Q2=\___ Q4=\___; Q3 deferred to
+mid-phase ADR-057 verdict._

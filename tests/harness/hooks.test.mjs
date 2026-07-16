@@ -258,3 +258,64 @@ test("every .mjs hook exits 0 on benign input and on malformed stdin", () => {
     }
   }
 });
+
+// ---------------------------------------------------------------------------
+// V2-101 — rules-injection: path-lazy rule files load on a matching edit, and the
+// constitution/total context-tax budgets hold.
+// ---------------------------------------------------------------------------
+const preEdit = (file_path) => ({ tool_name: "Edit", tool_input: { file_path } });
+const injectedContext = (r) => r.json?.hookSpecificOutput?.additionalContext ?? "";
+
+test("V2-101 rules-injection surfaces prisma.md when editing a prisma path", () => {
+  const r = runHook("rules-injection.mjs", preEdit("prisma/schema.prisma"));
+  const ctx = injectedContext(r);
+  assert.match(ctx, /\.claude\/rules\/prisma\.md/, `expected prisma.md, got: ${ctx.slice(0, 120)}`);
+  assert.match(ctx, /SCRUB_FIELDS/, "prisma rule body must be present");
+});
+
+test("V2-101 rules-injection surfaces api-routes.md when editing an API route", () => {
+  const ctx = injectedContext(runHook("rules-injection.mjs", preEdit("app/api/widgets/route.ts")));
+  assert.match(ctx, /\.claude\/rules\/api-routes\.md/);
+  assert.match(ctx, /withRateLimit/, "auth-wrapper detail must be present");
+});
+
+test("V2-101 rules-injection surfaces design.md when editing a component", () => {
+  const ctx = injectedContext(runHook("rules-injection.mjs", preEdit("components/shared/Foo.tsx")));
+  assert.match(ctx, /\.claude\/rules\/design\.md/);
+});
+
+test("V2-101 rules-injection injects NOTHING for a non-matching path", () => {
+  const r = runHook("rules-injection.mjs", preEdit("README.md"));
+  assert.equal(injectedContext(r), "", "README.md matches no rule glob → no injection");
+  assert.equal(r.code, 0);
+});
+
+test("V2-101 rules-injection ignores non-edit tools (e.g. Bash)", () => {
+  const r = runHook("rules-injection.mjs", preBash("echo hi"));
+  assert.equal(injectedContext(r), "");
+  assert.equal(r.code, 0);
+});
+
+test("V2-101 context-tax: constitution ≤8KB AND total always-on ≤20KB (--strict passes)", () => {
+  const res = spawnSync("node", [join(REPO, "scripts", "context-tax.mjs"), "--strict"], {
+    cwd: REPO,
+    encoding: "utf8",
+  });
+  assert.equal(res.status, 0, `context-tax --strict must pass:\n${res.stdout}`);
+});
+
+test("V2-101 context-tax --strict FAILS when a fixture constitution blows the 8KB budget", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hooks-tax-"));
+  try {
+    mkdirSync(join(dir, "docs"), { recursive: true });
+    writeFileSync(join(dir, "CLAUDE.md"), "x".repeat(9000)); // 9000B > 8192 budget
+    const res = spawnSync("node", [join(REPO, "scripts", "context-tax.mjs"), "--strict"], {
+      cwd: dir,
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      encoding: "utf8",
+    });
+    assert.equal(res.status, 1, `over-budget constitution must fail --strict:\n${res.stdout}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
