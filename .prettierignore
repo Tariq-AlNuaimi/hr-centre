@@ -16,3 +16,7 @@ docs/SESSION-HANDOFF.md
 # Machine-local, gitignored harness state (permission grants are appended
 # mid-session) — never committed, so Prettier must not gate on it.
 .claude/settings.local.json
+# Verbatim external-audit artifacts — the harness-v2 program's re-audit contract
+# is that these are preserved byte-for-byte as delivered; Prettier must not reflow them.
+HARNESS-V2-KICKOFF.md
+HARNESS-V2-BACKLOG.md
