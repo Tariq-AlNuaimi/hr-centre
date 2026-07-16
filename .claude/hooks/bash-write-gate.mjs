@@ -16,7 +16,8 @@
 // dangerous-commands.mjs / protect-secrets.mjs security guards): any parse/internal error
 // stays silent and ALLOWS. It never denies a legitimate write on error, and it does not
 // touch the destructive-command logic in dangerous-commands.mjs (a sibling Bash hook).
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
 import {
   relPath,
   isFeatureFile,
@@ -88,6 +89,11 @@ function firstUncoveredViolation(command) {
   for (const raw of writeTargets(command)) {
     const rel = relPath(raw, ROOT);
     if (!rel || rel.startsWith("..")) continue; // outside the repo
+    // Overwrite of an EXISTING file = a continuation, not a fresh build -> don't gate.
+    // Mirrors the Write-tool gates (blueprint-gate.mjs / build-vs-buy-gate.mjs), which
+    // exempt existing files; without this, sed -i / tee / cat> on already-shipped gated
+    // files (e.g. lib/api-helpers.ts, existing routes) would false-deny routine edits.
+    if (existsSync(resolve(ROOT, raw))) continue;
     if (isFeatureFile(rel)) {
       const cover = blueprintCoverInfo(rel, ROOT);
       if (!cover.covered) return { rel, kind: "blueprint", cover };

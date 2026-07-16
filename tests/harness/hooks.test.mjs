@@ -88,6 +88,18 @@ test("V2-001 bash-write-gate catches tee / cp into gated surfaces", () => {
   assert.match(cp.json.hookSpecificOutput.permissionDecisionReason, /build-vs-buy/);
 });
 
+test("V2-001 bash-write-gate ALLOWS edits to EXISTING gated files (overwrite = continuation)", () => {
+  // Mirrors the Write-tool gates' existsSync exemption: sed -i / tee on already-shipped
+  // gated files must NOT be denied (they aren't NEW feature/capability files).
+  const route = runHook("bash-write-gate.mjs", preBash("sed -i s/a/b/ app/api/health/route.ts"));
+  assert.equal(route.decision, null, `edit to existing route must allow :: ${route.stdout}`);
+  const lib = runHook("bash-write-gate.mjs", preBash("sed -i s/a/b/ lib/api-helpers.ts"));
+  assert.equal(lib.decision, null, `edit to existing lib file must allow :: ${lib.stdout}`);
+  // A NEW (nonexistent) uncovered file still denies.
+  const neu = runHook("bash-write-gate.mjs", preBash("sed -i s/a/b/ app/api/brandnewzzz/route.ts"));
+  assert.ok(isDeny(neu), `new uncovered route must still deny :: ${neu.stdout}`);
+});
+
 test("V2-001 bash-write-gate is FAIL-OPEN on a forced internal error (malformed stdin)", () => {
   const r = runHook("bash-write-gate.mjs", "this is not json");
   assert.equal(r.decision, null, "governance gate must allow on error, not deny");

@@ -166,6 +166,30 @@ Readers (`render-handoff`, `auto-spawn-guard`, `auto-spawn-fire`, `auto-handoff`
 guard absence (try/catch or existsSync); `auto-spawn-fire`/`auto-handoff` already carried the
 "lives only on that branch, never on main" comment. Chosen approach (b) branch-only per operator.
 
+## Phase 0 senior review (post-push, `senior-code-reviewer`)
+
+Ran on the Phase 0 diff. Confirmed both fail-closed guards unchanged, the new hook fail-open,
+and `/ship` red-gate wiring correct. Findings:
+
+- **[High] FIXED (commit below):** `bash-write-gate.mjs` lacked the Write-gates' `existsSync`
+  "overwrite = continuation" exemption, so it false-denied `sed -i`/`tee`/`cat>` edits to
+  EXISTING gated files (`lib/*.ts`, existing routes). Fixed by skipping targets that already
+  exist; regression test added (`tests/harness/hooks.test.mjs`, 19/19). Verified: existing
+  `lib/api-helpers.ts` + `app/api/health/route.ts` now ALLOW; new uncovered route still DENIES.
+- **[Open — needs operator adjudication → register/register-then-schedule] 3 findings** (NOT
+  logged as `status: open` register lines this session because that reds `/ship` and only the
+  operator adjudicates — KICKOFF §4; surfaced for adjudication instead):
+  1. _(Medium, evasion)_ bash-write-gate is bypassable via a shell variable holding the path or
+     an interpreter one-liner (`node -e "fs.writeFileSync(...)"`) — best-effort parser per the
+     hook header; hardening deferred (heuristics, better in a fresh session).
+  2. _(Medium, false-deny)_ the redirection regex scans heredoc bodies / quoted text, so a
+     command merely MENTIONING `> app/api/foo/route.ts` false-denies (observed live this
+     session — a verification Bash command was itself denied). Fix = strip heredoc bodies before
+     scanning. Interim: avoid literal gated-path redirect text in Bash commands.
+  3. _(Low, maintainability)_ ledger-coverage logic still duplicated in `build-vs-buy-gate.mjs`
+     vs `lib/scope-cover.mjs`; will diverge when V2-309 adds ledger hygiene — fold the refactor
+     into V2-309 (out of V2-001's Scope line).
+
 ## Per-phase retros
 
 ### Phase 0 retro — "Trust the gates" (V2-001 … V2-006)
