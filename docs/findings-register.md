@@ -119,6 +119,29 @@ the changed surface is still **open** (un-adjudicated).
   project.config.json read by `scanDbStructure`; every fork-creation path clears it —
   rebrand.mjs, deploy.mjs, new-project.mjs)
 
+- 2026-07-16 — [harness-v2 V2-001/correctness] `bash-write-gate.mjs`'s redirection regex scans
+  the WHOLE command string including heredoc bodies / quoted example text, so a Bash command that
+  merely MENTIONS a gated path (`> app/api/foo/route.ts` in documentation text, a `git commit -m`
+  body, an `echo`) false-denies even though no write occurs (senior-review 2026-07-16, confidence
+  85; observed live — a verification command this session was itself denied). WHY not fixed now:
+  the fix (strip heredoc bodies / model shell-syntax vs data before scanning) is real parser work,
+  risky at the session's context limit. Interim mitigation: avoid embedding literal gated-path
+  redirect text in Bash commands. — owner: operator — status: adjudicated(2026-07-16) (scheduled:
+  fix early next session per operator)
+- 2026-07-16 — [harness-v2 V2-001/secure] `bash-write-gate.mjs` is evadable by writes that avoid a
+  literal `>`/`tee`/`cp`/`sed -i` token: a shell variable holding the path (`F=…; cat > "$F" …`) or
+  an interpreter one-liner (`node -e "fs.writeFileSync('app/api/x/route.ts',…)"`) creates a new
+  uncovered gated file without tripping the gate (senior-review 2026-07-16, confidence 88). WHY not
+  fixed now: the hook is best-effort by design (its header says so) and the Write-tool gates still
+  catch the normal path; closing these needs variable-tracking / interpreter-verb heuristics. —
+  owner: operator — status: adjudicated(2026-07-16) (scheduled: add hardening heuristics in a later
+  phase per operator; add negative tests documenting the gap)
+- 2026-07-16 — [harness-v2 V2-001/maintainable] ledger-coverage logic was duplicated between
+  `build-vs-buy-gate.mjs` and `lib/scope-cover.mjs` (would diverge when V2-309 adds ledger hygiene;
+  senior-review 2026-07-16, confidence 85) — owner: operator — status: fixed(205ddfe) (refactored
+  build-vs-buy-gate.mjs onto lib/scope-cover.mjs; one shared coverage implementation; hook suite
+  19/19 confirms behavior unchanged)
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--

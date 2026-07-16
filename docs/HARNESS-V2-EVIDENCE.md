@@ -176,19 +176,16 @@ and `/ship` red-gate wiring correct. Findings:
   EXISTING gated files (`lib/*.ts`, existing routes). Fixed by skipping targets that already
   exist; regression test added (`tests/harness/hooks.test.mjs`, 19/19). Verified: existing
   `lib/api-helpers.ts` + `app/api/health/route.ts` now ALLOW; new uncovered route still DENIES.
-- **[Open — needs operator adjudication → register/register-then-schedule] 3 findings** (NOT
-  logged as `status: open` register lines this session because that reds `/ship` and only the
-  operator adjudicates — KICKOFF §4; surfaced for adjudication instead):
-  1. _(Medium, evasion)_ bash-write-gate is bypassable via a shell variable holding the path or
-     an interpreter one-liner (`node -e "fs.writeFileSync(...)"`) — best-effort parser per the
-     hook header; hardening deferred (heuristics, better in a fresh session).
-  2. _(Medium, false-deny)_ the redirection regex scans heredoc bodies / quoted text, so a
-     command merely MENTIONING `> app/api/foo/route.ts` false-denies (observed live this
-     session — a verification Bash command was itself denied). Fix = strip heredoc bodies before
-     scanning. Interim: avoid literal gated-path redirect text in Bash commands.
-  3. _(Low, maintainability)_ ledger-coverage logic still duplicated in `build-vs-buy-gate.mjs`
-     vs `lib/scope-cover.mjs`; will diverge when V2-309 adds ledger hygiene — fold the refactor
-     into V2-309 (out of V2-001's Scope line).
+- **3 more findings — operator-adjudicated 2026-07-16, all now in `docs/findings-register.md`:**
+  1. _(Medium, false-deny)_ redirection regex scans heredoc bodies/quoted text → false-deny on a
+     command that merely mentions a gated path (bit a verification command this session).
+     **adjudicated → scheduled** (fix early next session; strip heredoc bodies before scanning).
+  2. _(Medium, evasion)_ bypassable via shell-variable path or `node -e` one-liner (best-effort
+     parser). **adjudicated → scheduled** (add hardening heuristics + gap-documenting negative
+     tests in a later phase).
+  3. _(Low, maintainability)_ ledger logic duplicated in `build-vs-buy-gate.mjs` vs
+     `scope-cover.mjs`. **FIXED `205ddfe`** — refactored build-vs-buy-gate onto scope-cover (one
+     shared coverage implementation); suite 19/19 confirms behavior unchanged.
 
 ## Per-phase retros
 
