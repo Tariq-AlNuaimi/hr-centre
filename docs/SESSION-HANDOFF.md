@@ -79,10 +79,11 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 **Next actions**
 
 1. RESUME harness-v2 at Phase 1. Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md (the re-audit contract, one row per item). Next item: V2-101.
-2. Phase 1 first action: write docs/blueprints/harness-v2-phase-1.md (full track) and present for operator confirmation before implementation. V2-101 (constitution split), V2-103 (velocity pillar wording), V2-105 (native agent-teams verdict) are ASK items — stop and use AskUserQuestion.
-3. Per-session landmine (still applies): gitleaks is NOT preinstalled and its GitHub release asset is egress-blocked — reinstall from source: `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest` then add ~/.local/bin to PATH before any /ship push. (Also in agent-memory.)
-4. Phase 0 added a /ship phase-A `hooks` check (npm run test:hooks) and wired bash-write-gate.mjs on the Bash matcher — both active now. Keep them green.
-5. Do NOT start Phase 1 implementation until its blueprint is confirmed; do NOT weaken any Phase 0 gate to make a Phase 1 change pass (KICKOFF §2.10).
+2. PHASE 0 CLOSEOUT (do first): the post-push senior-code-reviewer on the Phase 0 diff was LAUNCHED but its report did not arrive before the session hit the context limit. Re-run it on the pushed diff (`git diff origin/main...HEAD` covers the same commits — the whole branch is Phase 0) and resolve any findings before treating Phase 0 as fully closed.
+3. Phase 1 first action: write docs/blueprints/harness-v2-phase-1.md (full track) and present for operator confirmation before implementation. V2-101 (constitution split), V2-103 (velocity pillar wording), V2-105 (native agent-teams verdict) are ASK items — stop and use AskUserQuestion.
+4. Per-session landmine (still applies): gitleaks is NOT preinstalled and its GitHub release asset is egress-blocked — reinstall from source: `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest` then add ~/.local/bin to PATH before any /ship push. (Also in agent-memory.)
+5. Phase 0 added a /ship phase-A `hooks` check (npm run test:hooks) and wired bash-write-gate.mjs on the Bash matcher — both active now. Keep them green.
+6. Do NOT start Phase 1 implementation until its blueprint is confirmed; do NOT weaken any Phase 0 gate to make a Phase 1 change pass (KICKOFF §2.10).
 
 <!-- END:auto-status -->
 
