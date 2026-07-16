@@ -28,6 +28,8 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { evaluateLicenses, loadAllowlist } from "./license-gate.mjs";
+// V2-002: the blueprint gate's Scope-glob hygiene, shared so /ship mirrors it.
+import { isGlobTooBroad } from "../.claude/hooks/lib/scope-cover.mjs";
 
 const CACHE = "node_modules/.cache";
 
@@ -356,8 +358,36 @@ function scanBlueprint() {
   );
   const signals = [...newRoutes, ...newMigrationDirs];
   if (signals.length === 0) return ok("no new feature surface in diff");
-  if (newBlueprints.length > 0)
-    return ok(`new feature surface + blueprint present (${newBlueprints.join(", ")})`);
+  if (newBlueprints.length > 0) {
+    // V2-002 mirror: a newly-added blueprint whose Scope globs are ALL over-broad
+    // (app/**, lib/**, bare **) doesn't really scope anything — warn (non-blocking) so
+    // /ship surfaces the same hygiene the blueprint gate enforces on the write path.
+    const lazy = [];
+    for (const bp of newBlueprints) {
+      let text = "";
+      try {
+        text = readFileSync(bp, "utf8");
+      } catch {
+        continue;
+      }
+      const globs = [];
+      for (const line of text.split("\n")) {
+        const m = /^\s*Scope:\s*(.+?)\s*$/i.exec(line);
+        if (m) for (const g of m[1].split(",")) if (g.trim()) globs.push(g.trim());
+      }
+      if (globs.length > 0 && globs.every((g) => isGlobTooBroad(g))) lazy.push(bp);
+    }
+    const base = `new feature surface + blueprint present (${newBlueprints.join(", ")})`;
+    if (lazy.length > 0)
+      return ok(base, {
+        warn:
+          `Scope-glob hygiene (V2-002): these blueprints scope only over-broad globs ` +
+          `(app/**, lib/**, or bare **), which the blueprint gate ignores as coverage:\n` +
+          lazy.map((p) => `  - ${p}`).join("\n") +
+          `\n  Narrow each Scope: to the specific feature area (e.g. app/api/<feature>/**).`,
+      });
+    return ok(base);
+  }
 
   const cfg = readCfg();
   if (cfg.blueprintAck) return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck}`);
@@ -1182,7 +1212,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | scalability | wave-offs | licenses | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | wave-offs | licenses | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1196,7 +1226,7 @@ const complexity = scanComplexity();
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
 
-let [tsc, lint, format, contract, components, dbStructure, knip, duplication, coverage] =
+let [tsc, lint, format, contract, components, hooks, dbStructure, knip, duplication, coverage] =
   await Promise.all([
     typecheck(),
     // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
@@ -1211,6 +1241,9 @@ let [tsc, lint, format, contract, components, dbStructure, knip, duplication, co
     run("format", "npx", ["prettier", "--check", "."]),
     run("contract tests", "npm", ["test"]),
     run("component tests", "npm", ["run", "test:components"]),
+    // hooks: the harness-v2 hook test suite (V2-003) — asserts every .claude/hooks
+    // gate's deny/allow/block/warn decisions + fail-open vs fail-closed on error.
+    run("hooks", "npm", ["run", "test:hooks"]),
     scanDbStructure(),
     // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
     // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
@@ -1234,6 +1267,7 @@ for (const r of [
   format,
   contract,
   components,
+  hooks,
   scalability,
   waveoffs,
   licenses,
@@ -1258,6 +1292,7 @@ const redA = [
   format,
   contract,
   components,
+  hooks,
   scalability,
   waveoffs,
   licenses,
@@ -1365,5 +1400,5 @@ try {
 }
 
 console.log(
-  `\nship: green -- typecheck + lint + format + tests + component tests + scalability + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`,
+  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`,
 );

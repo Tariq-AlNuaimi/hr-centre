@@ -21,58 +21,19 @@
 //
 // Fail-open: on any internal error it stays silent and allows -- a build-quality gate
 // must never brick a session (the guard-hook convention; see ADR-032).
-import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { resolve, relative, join } from "node:path";
+//
+// V2-002 (Scope-glob hygiene): coverage now runs through the shared scope-cover helper,
+// which ignores over-broad Scope globs (`app/**`, `app/api/**`, `lib/**`, bare `**`) and
+// expired stubs — so a lazy one-line stub can't wave a whole feature area past this gate.
+import { readFileSync, existsSync } from "node:fs";
+import { resolve } from "node:path";
+import { relPath as relTo, isFeatureFile, blueprintCoverInfo } from "./lib/scope-cover.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
-const BLUEPRINTS = resolve(ROOT, "docs/blueprints");
 
 /** Project-relative, forward-slashed path (abs or relative input). */
 function relPath(fp) {
-  if (!fp) return "";
-  return relative(ROOT, resolve(ROOT, fp)).split("\\").join("/");
-}
-
-/** Is this new file a "feature is being built" surface? */
-function isFeatureFile(rel) {
-  if (!rel || rel.startsWith("..")) return false;
-  if (/^app\/api\/.+\/route\.ts$/.test(rel)) return true; // new API route
-  if (/^app\/.+\/page\.tsx$/.test(rel)) return true; // new page/screen
-  return false;
-}
-
-/** Minimal glob -> RegExp: ** = any depth, * = within a segment. */
-function globToRe(glob) {
-  const esc = glob
-    .trim()
-    .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-    .replace(/\*\*/g, " ")
-    .replace(/\*/g, "[^/]*")
-    .replace(/ /g, ".*");
-  return new RegExp(`^${esc}$`);
-}
-
-/** Any docs/blueprints/*.md whose Scope: glob covers `rel`? */
-function blueprintCovers(rel) {
-  if (!existsSync(BLUEPRINTS)) return false;
-  for (const name of readdirSync(BLUEPRINTS)) {
-    if (!name.endsWith(".md")) continue;
-    let text = "";
-    try {
-      text = readFileSync(join(BLUEPRINTS, name), "utf8");
-    } catch {
-      continue;
-    }
-    for (const line of text.split("\n")) {
-      const m = /^\s*Scope:\s*(.+?)\s*$/i.exec(line);
-      if (!m) continue;
-      for (const g of m[1].split(",")) {
-        const glob = g.trim();
-        if (glob && globToRe(glob).test(rel)) return true;
-      }
-    }
-  }
-  return false;
+  return relTo(fp, ROOT);
 }
 
 try {
@@ -82,7 +43,18 @@ try {
   const rel = relPath(fp);
   if (existsSync(resolve(ROOT, fp))) process.exit(0); // overwrite = continuation
   if (!isFeatureFile(rel)) process.exit(0);
-  if (blueprintCovers(rel)) process.exit(0);
+  const cover = blueprintCoverInfo(rel, ROOT);
+  if (cover.covered) process.exit(0);
+
+  // V2-002: explain WHY an existing-but-ignored Scope line didn't count.
+  const hygiene = cover.sawBroadMatch
+    ? ` A blueprint's Scope glob matches '${rel}' but is TOO BROAD (a whole structural ` +
+      `root like app/**, app/api/**, or lib/**) — narrow it to the specific feature ` +
+      `(e.g. "Scope: ${rel.replace(/[^/]+$/, "**")}") so it counts.`
+    : cover.sawExpiredMatch
+      ? ` A blueprint whose Scope matches '${rel}' is an EXPIRED stub (past its ` +
+        `"Expires:" date) — refresh it (or write a full blueprint) so it counts.`
+      : "";
 
   console.log(
     JSON.stringify({
@@ -91,10 +63,10 @@ try {
         permissionDecision: "deny",
         permissionDecisionReason:
           `[blueprint-gate] Denied: '${rel}' is new feature code with no blueprint ` +
-          `covering it (ADR-033; CLAUDE.md "Blueprint before building"). Run /blueprint ` +
-          `FIRST: pin down user stories, happy + worst-path scenarios, and resolve open ` +
-          `questions with AskUserQuestion (don't guess the requirements). Then ensure the ` +
-          `blueprint carries a "Scope:" line covering this file — e.g. ` +
+          `covering it (ADR-033; CLAUDE.md "Blueprint before building").${hygiene} Run ` +
+          `/blueprint FIRST: pin down user stories, happy + worst-path scenarios, and ` +
+          `resolve open questions with AskUserQuestion (don't guess the requirements). Then ` +
+          `ensure the blueprint carries a "Scope:" line covering this file — e.g. ` +
           `"Scope: ${rel.replace(/[^/]+$/, "**")}". Lightweight/quickstart work still writes ` +
           `a minimal Scope'd stub under docs/blueprints/. The blueprint is the contract ` +
           `/qa and /uat trace against; building without it is the rebuild this gate prevents.`,

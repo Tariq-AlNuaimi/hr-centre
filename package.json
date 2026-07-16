@@ -19,6 +19,7 @@
     "test:watch": "node --experimental-test-module-mocks --import tsx --test --watch tests/contracts/*.test.ts",
     "test:lint-rules": "node --import tsx --test tests/eslint-rules/*.test.mjs",
     "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "test:hooks": "node --test tests/harness/*.test.mjs",
     "test:components": "node --import tsx --import global-jsdom/register --import ./tests/components/setup.ts --test tests/components/*.test.tsx",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

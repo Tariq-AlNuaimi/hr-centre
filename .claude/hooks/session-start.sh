@@ -74,6 +74,29 @@ fi
 # docs/session-state.json (scripts/render-handoff.mjs); we re-render here so the
 # printed status is never stale, then print the standing directive + the
 # auto-status block. Fail-open: any failure just skips the surface.
+# session-state.json skeleton regen (harness-v2 V2-006): session-state.json is BRANCH-ONLY
+# in-flight state (like SESSION-HANDOFF.md, ADR-019) -- committed on working branches, never
+# merged to main, pruned from forks -- so a fresh fork/checkout may lack it. Regenerate a
+# minimal VALID skeleton when absent so render-handoff + the status tooling keep working and
+# a fork boots clean instead of crashing. Fail-open (|| true).
+if [ ! -f docs/session-state.json ] && [ -d docs ]; then
+  cat >docs/session-state.json <<'SEED' || true
+{
+  "program": "",
+  "branch": "",
+  "updated": "",
+  "lastShip": { "sha": "", "status": "", "date": "" },
+  "autoSpawn": { "enabled": false, "cap": 3, "consecutiveCount": 0, "lastSpawnSha": null },
+  "directives": [],
+  "workstreams": [],
+  "categories": [],
+  "deferred": [],
+  "inProgress": [],
+  "nextActions": []
+}
+SEED
+  echo "[harness] docs/session-state.json was absent -- wrote a fresh skeleton (branch-only in-flight state; V2-006)."
+fi
 if [ -f docs/SESSION-HANDOFF.md ]; then
   node scripts/render-handoff.mjs >/dev/null 2>&1 || true
   echo "[harness] session handoff (docs/SESSION-HANDOFF.md) -- STANDING DIRECTIVE: show BOTH status tables (compact IN PROGRESS/REMAINING + full GRAND PROGRESS TABLE) before any work, then continue at Next actions:"
@@ -100,6 +123,23 @@ fi
 mcp_count=$( ( (cat .mcp.json "$HOME/.claude.json" 2>/dev/null | grep -o '"command"' | wc -l) || echo 0 ) | tr -dc '0-9' )
 if [ "${mcp_count:-0}" -gt 3 ]; then
   echo "[harness] NOTE: ~$mcp_count MCP server entries configured -- each loads tool schemas into context; disable unused ones via /mcp (docs/token-policy.md)"
+fi
+
+# --- Superpowers plugin presence (harness-v2 V2-004) ---
+# CLAUDE.md defers real multi-file features (brainstorm -> spec -> plan -> TDD) to the
+# Superpowers plugin. That reference is only trustworthy if the plugin is actually loaded,
+# so verify it at SessionStart and warn LOUDLY when it is absent (fail-open: never blocks).
+# Ground truth = an installed/enabled "superpowers" entry in the plugin config or settings.
+# Override the config path for testing via SUPERPOWERS_PLUGIN_CONFIG.
+sp_config="${SUPERPOWERS_PLUGIN_CONFIG:-$HOME/.claude/plugins/installed_plugins.json}"
+if grep -qi 'superpowers' "$sp_config" 2>/dev/null ||
+  grep -qi '"superpowers[@"]' "$CLAUDE_PROJECT_DIR/.claude/settings.json" 2>/dev/null; then
+  echo "[harness] Superpowers plugin: present (verified)."
+else
+  echo "[harness] WARNING: Superpowers plugin NOT detected this session. CLAUDE.md routes real"
+  echo "          multi-file features (brainstorm -> spec -> plan -> TDD) through it. Install it"
+  echo "          (/plugin marketplace add <superpowers-source> && /plugin install superpowers),"
+  echo "          or fall back to the built-in /blueprint + writing-plans path for planning."
 fi
 
 # --- template drift (advisory; forks only) ---
