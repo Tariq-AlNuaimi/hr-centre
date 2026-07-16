@@ -4,12 +4,12 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-25kqc6` · updated 2026-07-16 · last /ship: **green** (3222935, 2026-07-16)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-16 · last /ship: **green** (b265104, 2026-07-16)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
-| ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED (3222935, /ship green). All 6 items done with evidence + negative tests in docs/HARNESS-V2-EVIDENCE.md. Exit criteria (KICKOFF §3 row 0) all met. |
-| ⬜ REMAINING | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | NEXT. Start with V2-101 (CLAUDE.md constitution split + lazy rules; ASK on structure) — do it FIRST in the phase, everything after benefits. Write docs/blueprints/harness-v2-phase-1.md (full track) and confirm with the operator before implementing. V2-101/103/105 are ASK items. |
+| ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED. Now on branch yhid26 (fast-forwarded from 25kqc6). |
+| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | Blueprint CONFIRMED (docs/blueprints/harness-v2-phase-1.md). V2-101 DONE+PUSHED (b265104, /ship green): constitution split to 8184B + .claude/rules/*.md lazy-loaded via rules-injection.mjs; always-on tax 36868->19954B. NEXT: V2-102 (memory digest). Then V2-103 (velocity pillar, ASK confirmed=rename Speed&Velocity), V2-104 (parallel-by-default), V2-105 (ADR-057 native-teams, ASK verdict mid-phase), V2-106/107 [P] parallel demo pair. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -78,12 +78,12 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. RESUME harness-v2 at Phase 1. Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md (the re-audit contract, one row per item). Next item: V2-101.
-2. PHASE 0 SENIOR REVIEW: DONE + ADJUDICATED. High (bash-write-gate missing existsSync exemption) FIXED + regression-tested. Operator adjudicated the 3 remaining (all now in docs/findings-register.md): F#3 ledger-dup FIXED (205ddfe); F#2 heredoc-body false-deny SCHEDULED = fix EARLY next session (strip heredoc bodies before the redirection scan); F#1 var/node-e evasion SCHEDULED = add hardening heuristics + gap-documenting negative tests in a later phase. Phase 0 is fully closed.
-3. Phase 1 first action: write docs/blueprints/harness-v2-phase-1.md (full track) and present for operator confirmation before implementation. V2-101 (constitution split), V2-103 (velocity pillar wording), V2-105 (native agent-teams verdict) are ASK items — stop and use AskUserQuestion.
-4. Per-session landmine (still applies): gitleaks is NOT preinstalled and its GitHub release asset is egress-blocked — reinstall from source: `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest` then add ~/.local/bin to PATH before any /ship push. (Also in agent-memory.)
-5. Phase 0 added a /ship phase-A `hooks` check (npm run test:hooks) and wired bash-write-gate.mjs on the Bash matcher — both active now. Keep them green.
-6. Do NOT start Phase 1 implementation until its blueprint is confirmed; do NOT weaken any Phase 0 gate to make a Phase 1 change pass (KICKOFF §2.10).
+1. RESUME harness-v2 Phase 1 at V2-102 (memory retrieval-on-demand). Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md. Blueprint docs/blueprints/harness-v2-phase-1.md is CONFIRMED.
+2. V2-101 DONE+PUSHED (b265104). Senior-code-reviewer was invoked on it post-push — check/adjudicate any findings before phase close.
+3. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.
+4. Remaining Phase 1: V2-103 (velocity pillar — CONFIRMED rename Pillar 1 -> Speed & Velocity + 3 checks: context-tax done via scripts/context-tax.mjs, /ship wall-time >25% warn, hook-latency baseline), V2-104 (parallel-by-default constitution text), V2-105 (research native agent teams -> ADR-057 -> ASK verdict; build /fan-out only if custom), V2-106 [P] ccusage LEDGER + npm run tokens, V2-107 [P] permission friction (git branch -d, amend on unpushed).
+5. Per-session landmine: gitleaks NOT preinstalled + release egress-blocked — reinstall via `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest`, add ~/.local/bin to PATH before /ship. Run /ship WITHOUT NODE_ENV=production.
+6. Do NOT weaken any Phase 0/V2-101 gate to make a later change pass (KICKOFF §2.10). The context-tax --strict budget (8KB constitution / 20KB total) is now a hook-suite test — keep it green.
 
 <!-- END:auto-status -->
 
