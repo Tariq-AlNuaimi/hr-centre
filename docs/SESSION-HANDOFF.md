@@ -4,14 +4,12 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **template-maintenance (post enterprise-pivot + code-wave)** · branch `claude/git-integration-dlg383` · updated 2026-07-13 · last /ship: **green** (4ad32b5, 2026-07-13)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-25kqc6` · updated 2026-07-16 · last /ship: **green** (3222935, 2026-07-16)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
-| ✅ DONE | **EP+CW** Enterprise pivot (WS-1..8) + code wave (items 1–8) | — | ALL ON MAIN. Senior batch on items 4/5/7 closed (44ac3e1: license-gate lockfile floor + @parcel/watcher rebuild allowlist). Item 6 = no action. |
-| ✅ DONE | **A.6** frontend-design plugin (P1) | — | Adopted 4ad32b5, ahead of /design-system. TRIAL PENDING: use it on the next real UI build and record the verdict in agent-memory; impeccable is the sanctioned fallback. |
-| ⬜ REMAINING | **CLEANUP** Delete 18 stale remote branches | operator — sessions get HTTP 403 on ref-delete; GitHub MCP has no delete tool | Run the deletion commands in the prose section below (8 merged, 6 superseded doc-scratch, 4 dead-history). Leaves main + the live session branch. |
-| ✅ DONE | **DOCS** Docs reconciliation to cleaned state | — | This session: session-state.json rewritten to current truth, handoff collapsed, agent-memory pruned to budget, CLAUDE.md stale 'Ant Design 6' stack line fixed to Tailwind v4 + shadcn/Radix. |
+| ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED (3222935, /ship green). All 6 items done with evidence + negative tests in docs/HARNESS-V2-EVIDENCE.md. Exit criteria (KICKOFF §3 row 0) all met. |
+| ⬜ REMAINING | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | NEXT. Start with V2-101 (CLAUDE.md constitution split + lazy rules; ASK on structure) — do it FIRST in the phase, everything after benefits. Write docs/blueprints/harness-v2-phase-1.md (full track) and confirm with the operator before implementing. V2-101/103/105 are ASK items. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -80,11 +78,11 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. OPERATOR: delete the 18 stale remote branches — exact commands in the prose section of SESSION-HANDOFF.md. After this session's branch merges, delete claude/git-integration-dlg383 too (leaves only main).
-2. Next real UI build: build with the frontend-design plugin (ordered ahead of /design-system) and record the trial verdict in agent-memory + docs/research/a6-tool-shortlist-verdicts.md.
-3. Trigger-gated backlog only — docs/deferred-adoption-plan.md (10 items) + the deferred list here (Socket/Harden-Runner on operator accounts; lhci-ci at Actions billing; SheetJS on CVE/feature trigger). No scheduled work remains.
-4. Optional prod-DB hygiene: soft-delete the probe admin axe-probe@example.com via user management; note SEED_ADMIN_PASSWORD env still holds the probe value (admin@example.com login unaffected).
-5. Per-session landmines live in agent-memory: gitleaks reinstall via Go proxy, /ship WITHOUT NODE_ENV=production, make browser-up for real-site browser work.
+1. RESUME harness-v2 at Phase 1. Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md (the re-audit contract, one row per item). Next item: V2-101.
+2. Phase 1 first action: write docs/blueprints/harness-v2-phase-1.md (full track) and present for operator confirmation before implementation. V2-101 (constitution split), V2-103 (velocity pillar wording), V2-105 (native agent-teams verdict) are ASK items — stop and use AskUserQuestion.
+3. Per-session landmine (still applies): gitleaks is NOT preinstalled and its GitHub release asset is egress-blocked — reinstall from source: `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest` then add ~/.local/bin to PATH before any /ship push. (Also in agent-memory.)
+4. Phase 0 added a /ship phase-A `hooks` check (npm run test:hooks) and wired bash-write-gate.mjs on the Bash matcher — both active now. Keep them green.
+5. Do NOT start Phase 1 implementation until its blueprint is confirmed; do NOT weaken any Phase 0 gate to make a Phase 1 change pass (KICKOFF §2.10).
 
 <!-- END:auto-status -->
 
