@@ -28,6 +28,20 @@
       "reason": "Build UI right the first time from the vetted recipes instead of fixing it at design QA."
     },
     {
+      "skill": "docs-current",
+      "keywords": [
+        "current docs",
+        "latest docs",
+        "is this still the api",
+        "did this change in",
+        "current way to",
+        "latest api",
+        "which version"
+      ],
+      "paths": [],
+      "reason": "Pull current stack docs (Next/Prisma/Tailwind/Auth.js/Playwright) via context7 before answering a version-sensitive question, so a stale training answer doesn't ship."
+    },
+    {
       "skill": "stack-advisor",
       "keywords": [
         "right way to build",

@@ -109,8 +109,17 @@ column extends `SCRUB_FIELDS` (audit) and is never an Excel export column key
 (`no-restricted-export-column`). This skill _teaches_ the floor as part of the
 right pattern — it doesn't route around it.
 
+## Freshness
+
+The stack is version-LOCKED (ADR-001) but the libraries move. Before advising on an API that may have
+changed across versions, run **`/docs-current`** (V2-504) — it pulls the CURRENT docs for the pinned
+version via the context7 MCP (Prisma 7 / Next 16 / Tailwind v4 / Auth.js / Playwright), with a
+WebSearch fallback — so a build-time pattern is framework-correct for what the repo actually runs, not
+a stale remembered signature.
+
 ## Related
 
+- `/docs-current` — version-correct stack docs before answering (V2-504).
 - `docs/recipes.md` / `docs/design-recipes.md` — the copy-paste code + design patterns.
 - `app/api/users/route.ts` — the reference list-route shape (paginate + select + allowlist).
 - `lib/pagination.ts`, `lib/api-helpers.ts`, `lib/validations/*` — the primitives to reuse.

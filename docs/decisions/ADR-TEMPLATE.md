@@ -101,6 +101,10 @@ this quarter? For each area, note **keep / thin / retire** + why (cite the nativ
 _No change is a valid outcome — but record that you looked, so "still custom" is a decision,
 not an omission. Anything retired needs its own line here + the removal in the same batch._
 
+**Docs-freshness (V2-504):** before deciding keep/upgrade on any held major, run **`/docs-current`**
+(context7-backed live docs for the pinned version) so the call is made against the CURRENT API, not a
+remembered one — and let `/stack-advisor` shape any new pattern from those current docs.
+
 ## Related
 
 -

@@ -492,3 +492,20 @@ hyphen, no leading/trailing/consecutive hyphens, MUST match the parent dir; requ
 The official `skills-ref` stays the reference for the SPEC (cited in the script header) — we track
 its rules, not its binary. Zero runtime/dev dependency. Informational for the ADR-032 hook (lives in
 `scripts/`). See V2-503, ADR-054.
+
+### 2026-07-17 — Docs-currency lookup (context7 MCP) — V2-504
+
+Scope: .claude/skills/docs-current/**
+Considered: **build a fetch-and-cache skill** (a skill that fetches + caches official docs itself —
+reinvents crawling, versioning, and snippet extraction that a purpose-built service already does, and
+owns the staleness problem), **WebSearch-only** (works offline-ish but noisy + less authoritative than
+a docs-indexed source, and no version pinning), **the already-connected context7 MCP** (chosen —
+purpose-built live library-doc lookup with version-pinned IDs, `/org/project/version`; no new npm/
+runtime dependency; already in the session's MCP set).
+Decision: **ADOPT the context7 MCP** behind a thin `docs-current` skill: it routes version-sensitive
+questions about the locked stack (Next 16 / Prisma 7 / Tailwind 4 / Auth.js / Playwright) through
+`resolve-library-id` → `query-docs` (pinning the stack version, e.g. `/prisma/prisma/7.6.0`), with a
+graceful **WebSearch / `docs/recipes.md` fallback** when context7 is unreachable — never a stale
+confident answer. Verified live: a Prisma 7.6.0 `$extends` client-extension lookup returned current
+`result`/`model`/`query` extension docs + the `Prisma.defineExtension` typing pattern. No dependency
+added (MCP server already connected). See V2-504.
