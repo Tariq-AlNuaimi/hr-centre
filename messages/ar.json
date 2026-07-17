@@ -184,5 +184,32 @@
     "selected": "{count} محدد",
     "clearSelection": "مسح",
     "columns": "الأعمدة"
+  },
+  "assets": {
+    "assetTag": "Asset Tag",
+    "name": "Name",
+    "serial": "Serial",
+    "purchasedAt": "Purchased At",
+    "status": "Status",
+    "category": "Category",
+    "assignee": "Assignee",
+    "title": "Assets",
+    "createNew": "New Asset",
+    "editTitle": "Edit Asset",
+    "createdAt": "Created",
+    "save": "Save",
+    "cancel": "Cancel",
+    "editAction": "Edit asset",
+    "deleteAction": "Delete asset",
+    "deleteConfirm": "Are you sure you want to delete this asset?",
+    "loadFailed": "Failed to load assets",
+    "deleted": "Asset deleted",
+    "deleteFailed": "Failed to delete asset",
+    "created": "Asset created",
+    "createFailed": "Failed to create asset",
+    "updated": "Asset updated",
+    "updateFailed": "Failed to update asset",
+    "searchRelation": "Search…",
+    "noRelationMatches": "No matches"
   }
 }

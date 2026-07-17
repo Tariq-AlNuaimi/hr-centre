@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Menu as MenuIcon,
   PanelLeftClose,
+  LayoutGrid,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
@@ -66,6 +67,12 @@ export function AppSidebar() {
           },
         ]
       : []),
+    {
+      key: "asset",
+      icon: <LayoutGrid className="h-4 w-4" />,
+      label: "Assets",
+      onClick: () => router.push(`/${locale}/asset`),
+    },
     {
       key: "recycling-bin",
       icon: <Trash2 className="h-4 w-4" />,

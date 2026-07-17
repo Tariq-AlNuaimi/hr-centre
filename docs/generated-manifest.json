@@ -1,4 +1,29 @@
 {
   "note": "Generator manifest (ADR-054). One entry per scaffold run (generator+name), upserted by scripts/lib/generated-manifest.mjs. Consumed by the future re-sync/codemod mode; do not hand-edit.",
-  "entries": []
+  "entries": [
+    {
+      "generator": "scaffold-entity",
+      "name": "Asset",
+      "files": [
+        "lib/validations/asset.ts",
+        "app/api/asset/route.ts",
+        "app/api/asset/[id]/route.ts",
+        "components/asset/AssetColumns.tsx",
+        "components/asset/AssetForm.tsx",
+        "app/[locale]/(dashboard)/asset/page.tsx",
+        "app/[locale]/(dashboard)/asset/new/page.tsx",
+        "app/[locale]/(dashboard)/asset/[id]/page.tsx"
+      ],
+      "patched": [
+        "prisma/schema.prisma",
+        "messages/en.json",
+        "messages/ar.json",
+        "lib/prisma/soft-delete-extension.ts",
+        "lib/prisma/recyclable.ts",
+        "components/layout/AppSidebar.tsx"
+      ],
+      "harnessVersion": "0.1.0",
+      "date": "2026-07-17"
+    }
+  ]
 }

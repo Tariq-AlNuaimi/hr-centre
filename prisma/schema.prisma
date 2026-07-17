@@ -54,6 +54,7 @@ model User {
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
   // index serves both the filter prefix and the sort. Scaffolded soft-deletable
   // models get the same (see scripts/scaffold-entity.mjs).
+  assets      Asset[]
   @@index([deletedAt, createdAt])
   @@map("users")
 }
@@ -118,4 +119,37 @@ model AuditLog {
   @@index([userId])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+enum AssetStatus {
+  IN_STOCK
+  ASSIGNED
+  REPAIR
+  RETIRED
+}
+
+enum AssetCategory {
+  LAPTOP
+  MONITOR
+  PHONE
+  OTHER
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  assetTag    String @unique
+  name        String
+  serial      String?
+  purchasedAt DateTime?
+  status      AssetStatus @default(IN_STOCK)
+  category    AssetCategory @default(LAPTOP)
+  assigneeId  String?
+  assignee    User? @relation(fields: [assigneeId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  deletedBy String?
+  @@index([assigneeId])
+  @@index([deletedAt, createdAt])
+  @@map("assets")
 }

@@ -247,6 +247,14 @@ the changed surface is still **open** (un-adjudicated).
   document git-diff/verify-scope as the sanctioned trail. Low urgency — `/fan-out` enforcement is
   independent of it; `routing-report.mjs` is observe-only. Not a `/fan-out` blocker).
 
+- 2026-07-17 — [harness-v2 V2-210/parity] Asset Tracker pilot DEFERS three ITAM table-stakes rows
+  from `docs/benchmarks/it-asset-management.md` (dispositioned in `docs/blueprints/asset-tracker.md`):
+  T2 Model→Category→Manufacturer hierarchy (pilot ships a flat `category` enum), T9 Custom fields
+  (Fieldset model), T11 Bulk CSV import — owner: operator — status: scheduled (the pilot is a
+  table-stakes slice to exercise the loop, not a full ITAM suite; each is a `/scale-up` follow-up:
+  T2 via `--relations` to Model/Category models, T9 via a custom-field model, T11 via the import
+  recipe. Re-open when the Asset Tracker graduates from pilot to a real tool).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--
