@@ -36,10 +36,10 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 | V2-101 | 1     | done    | (this)    | [detail](#v2-101-evidence) · `tests/harness/hooks.test.mjs` · `scripts/context-tax.mjs`   | Constitution 25098→8184B (≤8KB); always-on 36868→19954B (≤20KB); lazy `.claude/rules/*.md` via `rules-injection.mjs`; mapping table below (zero loss)                                    |
 | V2-102 | 1     | done    | (this)    | [detail](#v2-102-evidence) · `tests/harness/hooks.test.mjs` · `scripts/memory-digest.mjs` | agent-memory → ≤30-line SessionStart digest + themed ≤60-line sections; `npm run memory-digest` budget check; memory surface 3898→2763B (tax 19288B)                                     |
 | V2-103 | 1     | done    | (this)    | [detail](#v2-103-evidence) · `tests/harness/hooks.test.mjs` · `scripts/hook-latency.mjs`  | Pillar 1 → "Speed & Velocity" (constitution + rubric); 3 advisory checks (context-size, /ship wall-time, hook-latency) fire on synthetic regressions; baselines in `project.config.json` |
-| V2-104 | 1     | pending | —         | —                                                                                         | Parallel-by-default standing instruction                                                                                                                                                 |
+| V2-104 | 1     | done    | (this)    | [detail](#v2-104-evidence)                                                                | Binding constitution line + full mechanism in `harness.md`; demonstrated by dispatching V2-106+V2-107 as a parallel disjoint subagent pair (git-diff provenance)                         |
 | V2-105 | 1     | pending | —         | —                                                                                         | Native agent-teams evaluation (ASK)                                                                                                                                                      |
-| V2-106 | 1     | pending | —         | —                                                                                         | Token observability: ccusage (LEDGER)                                                                                                                                                    |
-| V2-107 | 1     | pending | —         | —                                                                                         | Permission friction review                                                                                                                                                               |
+| V2-106 | 1     | done    | (this)    | [detail](#v2-104-evidence) · `docs/build-vs-buy-ledger.md`                                | `npm run tokens` (ccusage via npx, per-session/model spend); LEDGER entry; ADR-054 budget-line note; verified `$112.53`/136.5M-token report from local logs                              |
+| V2-107 | 1     | done    | (this)    | [detail](#v2-104-evidence) · `.claude/settings.json`                                      | Deny-list: allow the safe `git branch -d` (force `-D`/force-push/reset/clean/`--amend` still denied); `--amend` unpushed-only not matcher-expressible                                    |
 | V2-201 | 2     | pending | —         | —                                                                                         | /benchmark <category> skill                                                                                                                                                              |
 | V2-202 | 2     | pending | —         | —                                                                                         | Feature-parity disposition in the blueprint                                                                                                                                              |
 | V2-203 | 2     | pending | —         | —                                                                                         | Universal app-floor checklist                                                                                                                                                            |
@@ -364,6 +364,44 @@ start) and the constitution ≤8KB invariant holds. Three findings, **all fixed*
   to the rubric's Secure pillar.
 
 All three logged in `docs/findings-register.md` (2026-07-16), status `fixed`. Hook suite stays 34 green.
+
+### V2-104 evidence (+ the V2-106 / V2-107 parallel demonstration)
+
+**V2-104 — parallel-by-default.** Binding line in the constitution (`CLAUDE.md`, held ≤8KB: 8185B):
+"Dispatch ≥2 write-disjoint units of multi-part work as parallel subagents in ONE message,
+unprompted (file-ownership sets mandatory)." Full mechanism in `.claude/rules/harness.md` §Parallel-
+by-default: file-ownership sets, ADR-022 tiering, the two calibration notes (dependency chains
+don't parallelize; orchestrator-only during waves), and one-`/ship`-per-wave.
+
+**Demonstrated once, in this program:** V2-106 and V2-107 were dispatched as a **parallel subagent
+pair in a single message**, each with an explicit disjoint file-ownership set. Provenance (the
+evidence the receipts would carry) is in git — the two agents' diffs are strictly non-overlapping:
+
+- **V2-107** wrote **only** `.claude/settings.json` (1 line).
+- **V2-106** wrote **only** `package.json` + `docs/build-vs-buy-ledger.md` + `docs/decisions/ADR-054-*.md`.
+
+No file was touched by both; the orchestrator held off editing their files during the wave, then
+integrated with a single `/ship`. _Note:_ the intended receipt sink `.claude/state/routing-receipts.jsonl`
+(the `PostToolUse(Task)` hook) did **not** populate in this web session — async subagent dispatch
+here doesn't fire that hook — so the git-diff disjointness above stands in as the demonstration
+evidence. (Flagged, not hidden: the receipt mechanism exists and is wired; it just isn't triggered
+by this environment's background-Agent path.)
+
+**V2-106 — ccusage (LEDGER).** `npm run tokens` → `npx -y ccusage@latest session` (no runtime dep;
+reads local `~/.claude/projects/**/*.jsonl`). Verified: produced a real per-session/model spend
+report (~136.5M tokens / **$112.53** across opus-4-8 + sonnet-5). `docs/build-vs-buy-ledger.md` entry
+(ccusage vs. build-a-log-analyzer vs. token-policy prose); ADR-054 amended — `npm run tokens` is the
+"budget line" instrument; the observe-only `routing-report` promotes to a soft `/ship` gate once the
+operator sets a budget.
+
+**V2-107 — permission friction.** `.claude/settings.json` deny-list: removed only `Bash(git branch
+-d *)` so the **safe** delete (git refuses on an unmerged branch) falls through to the existing
+`Bash(git branch*)` allow. **Kept denied** (verified): force-push (`--force`/`-f`/`--force-with-lease`),
+`reset --hard`, `git branch -D`, `clean -f`/`-d`, `rebase -i`, `commit --amend`, `checkout`/`restore`
+guards. `commit --amend` on an unpushed HEAD is **not matcher-expressible** (static string/glob can't
+read git state), so it stays denied. ⚠️ The harness flagged this as a permission-widening
+self-modification — it is exactly the operator-confirmed V2-107 scope (minimal, reversible), surfaced
+here for visibility.
 
 ## Per-phase retros
 
