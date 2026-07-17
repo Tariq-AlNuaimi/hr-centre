@@ -1,0 +1,81 @@
+{
+  // Renovate config (V2-502) — the active dependency-update bot, honoring ADR-017's two-track
+  // currency policy and ADR-056's next-auth freeze. JSON5 so this policy mapping lives in real
+  // comments. Runs via the hosted Renovate GitHub App on its own schedule, independent of GitHub
+  // Actions (which are dormant on the free plan) — so dependency currency doesn't wait for CI.
+  //
+  // MUTUALLY EXCLUSIVE with Dependabot (.github/dependabot.yml): both would open duplicate PRs.
+  // When the Renovate app is installed, it is the bot; dependabot.yml carries a note pointing here.
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    ":dependencyDashboard", // one issue tracking everything Renovate sees — the "quarterly look"
+    ":semanticCommits",
+    "group:monorepos", // keep monorepo siblings (radix, tanstack, opentelemetry) in one PR
+  ],
+  labels: ["dependencies"],
+  // Keep PR noise low; the dashboard holds the rest.
+  prConcurrentLimit: 5,
+  prHourlyLimit: 2,
+  // ADR-017 track 1 hygiene: keep the lockfile fresh (Dependabot has no equivalent).
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ["before 5am on monday"],
+  },
+  packageRules: [
+    {
+      // ADR-017 track 1 — minor/patch: continuous, grouped into ONE low-noise PR, auto-mergeable
+      // in spirit (a full /ship gates it). These are the bumps a session could merge without an ADR.
+      description: "ADR-017 track 1: group all minor+patch updates into a single continuous PR",
+      matchUpdateTypes: ["minor", "patch", "pin", "digest"],
+      groupName: "minor and patch dependencies",
+      labels: ["dependencies", "minor-and-patch"],
+    },
+    {
+      // ADR-017 track 2 — majors: grouped + labeled for the QUARTERLY stack-refresh review, never
+      // auto. Holding a major is fine; holding it silently is not — the label forces the look.
+      description: "ADR-017 track 2: majors are grouped + labeled for the quarterly stack-refresh ADR",
+      matchUpdateTypes: ["major"],
+      groupName: "major updates (quarterly stack-refresh review)",
+      labels: ["dependencies", "major-review"],
+      schedule: ["every 3 months on the first day of the month"],
+      dependencyDashboardApproval: true, // a human approves each major from the dashboard
+    },
+    {
+      // ADR-001-locked majors: a superseding ADR is required to bump these (CLAUDE.md "Ask before"),
+      // so Renovate must not propose the major at all. Mirrors .github/dependabot.yml's ignore list.
+      description: "ADR-001 locked stack: no unsolicited major bumps (needs a superseding ADR first)",
+      matchPackageNames: [
+        "zod",
+        "recharts",
+        "eslint",
+        "typescript",
+        "jsdom",
+        "global-jsdom",
+        "@types/node",
+      ],
+      matchUpdateTypes: ["major"],
+      enabled: false,
+    },
+    {
+      // `next` is exact-pinned and bumped deliberately in lockstep with its toolchain siblings
+      // (known-trap note in CLAUDE.md) — never via the bot.
+      description: "next toolchain is exact-pinned + bumped deliberately, not by the bot",
+      matchPackageNames: ["next", "eslint-config-next", "@next/bundle-analyzer"],
+      enabled: false,
+    },
+    {
+      // ADR-056: next-auth is FROZEN at exactly 5.0.0-beta.31 (no caret). Renovate must not even
+      // propose an in-range bump — the freeze is revisited only on ADR-056's named triggers.
+      description: "ADR-056: next-auth is frozen at 5.0.0-beta.31 — no updates of any kind",
+      matchPackageNames: ["next-auth"],
+      enabled: false,
+    },
+  ],
+  // ADR-017 ("or when a security advisory forces it") — a vulnerability fix is never held for the
+  // quarterly gate. Renovate raises these immediately, outside the schedules above.
+  vulnerabilityAlerts: {
+    labels: ["dependencies", "security"],
+    schedule: [], // no schedule restriction — security fixes go out as soon as they're found
+  },
+}

@@ -454,3 +454,23 @@ missing optional scanner never marks a target "incomplete" (only the three CORE 
 or dev dependency added (external binaries). Also **evaluated** `anthropics/claude-code-security-review`
 for the dormant CI security slot (noted in SKILL.md — an AI-diff security reviewer, complementary to
 the deterministic scanners; deferred to the CI-activation trigger, not wired now). See V2-407.
+
+### 2026-07-17 — Dependency-update bot (Renovate hosted app) — V2-502
+
+Scope: renovate.json5
+Considered: **Dependabot** (already configured in `.github/dependabot.yml` — GitHub-native, but its
+grouping is coarser, it has no lockfile-maintenance job, and its value is realized once CI gates its
+PRs; the repo's CI is dormant on the free plan), **a hand-rolled `npm outdated` cron / script** (re-
+implements PR creation, grouping, and scheduling that a mature bot already does), **Renovate hosted
+GitHub App** (chosen — config-only, NO npm/runtime dependency; richer `packageRules` grouping +
+`lockFileMaintenance`; runs on its own schedule via the hosted app independent of GitHub Actions, so
+it works NOW while Actions are dormant, ADR-017's exact intent).
+Decision: **ADOPT the Renovate hosted app** via `renovate.json5` (JSON5 so the ADR-017/ADR-056 policy
+mapping lives in real comments). It mirrors and extends the Dependabot policy: minor/patch grouped +
+continuous (ADR-017 track 1); majors grouped + labeled for the quarterly review, never auto (ADR-017
+track 2); the ADR-001-locked majors + the exact-pinned `next` toolchain excluded; and **`next-auth`
+pinned OFF entirely** (ADR-056 froze it at `5.0.0-beta.31` — Renovate must not even propose an
+in-range bump). Renovate and Dependabot are mutually exclusive (both would open duplicate PRs) — when
+the Renovate app is installed it is the active bot; `.github/dependabot.yml` carries a note pointing
+here and reactivates only if Renovate is removed. No runtime/dev dependency (hosted app + config).
+Informational for the ADR-032 hook (root config, not a new `lib/` file). See V2-502, ADR-017, ADR-056.

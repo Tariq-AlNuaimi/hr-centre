@@ -1,6 +1,14 @@
 # Dependabot keeps dependencies patched. Like the workflows, this is most useful
 # once the project is on a plan that runs Actions (it opens PRs that CI then
 # gates). Grouped to keep PR noise low. See SECURITY.md §13 (CVE remediations).
+#
+# NOTE (V2-502): `renovate.json5` is the ACTIVE dependency bot when the Renovate
+# GitHub App is installed — it runs on the hosted app's schedule (independent of
+# Actions) and carries richer grouping + lockfile maintenance + the ADR-056
+# next-auth freeze. Renovate and Dependabot are MUTUALLY EXCLUSIVE: enabling both
+# opens duplicate PRs. This file stays as the CI-era fallback (it reactivates only
+# if Renovate is removed). Keep the two ignore/exclude lists in sync when either
+# changes.
 version: 2
 updates:
   - package-ecosystem: "npm"
