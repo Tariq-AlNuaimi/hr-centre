@@ -252,3 +252,17 @@ playwright-bdd install + the enforced `/ship --full` flip await the operator's A
 V2-401 (`/ship --full`, Phase 4). Dev-dependency ⇒ ADR-058 records the adoption; this ledger entry
 is the build-vs-buy adjudication. Informational for the ADR-032 hook (it matches only `lib/` files;
 these live in `scripts/` + `package.json`). See ADR-058, ADR-008; `scripts/bdd-coverage.mjs`.
+
+Scope: components/shared/PageShell.tsx, components/shared/StatGrid.tsx, components/shared/FormLayout.tsx
+Considered: **build the missing layout primitives in-repo** (chosen — 3 thin, token-scale wrappers:
+PageShell/StatGrid/FormLayout), **adopt a shadcn "blocks" layout kit / a headless layout lib**
+(rejected — the repo already ships the vetted `components/shared/*` set: EmptyState, DescriptionList,
+SectionCard, Toolbar, StatCard, PageHeader, FormField; a third-party layout kit would duplicate them
+and drag in its own spacing scale, fighting `app/tokens.css`), **keep hand-rolling grid/spacing
+classes per page** (rejected — that is exactly the per-page drift V2-302 exists to stop). The three
+new files are pure composition wrappers (no deps) that own spacing/columns on the token scale and use
+only RTL-safe logical utilities (`space-y-*`, `gap-*`, `justify-end`, no `ml/mr`/`left/right`).
+Decision: **build the 3 genuinely-missing primitives; extend/reuse the 6 that already exist** (V2-302
+"extend existing where present"). No dependency added. Informational for the ADR-032 gate (it matches
+`lib/**`; these live in `components/shared/**` — which V2-309 brings under the gate). See
+`docs/design-recipes.md` (compose-first) + `docs/design-references.md` (archetype anchors).

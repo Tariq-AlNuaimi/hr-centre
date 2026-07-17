@@ -88,6 +88,37 @@ are the output. Steps:
 5. **`/design-qa` audits the result** against the Figma screenshot as the fidelity
    target — deviations are findings, same as any other surface.
 
+## 1c. Layout primitives — compose, don't hand-roll (V2-302)
+
+Every screen is **composed from the shipped `components/shared/*` layout primitives** — none of
+them get re-derived per page. If you're writing a raw `grid`/`flex`/`space-y-*` on a page, reach for
+one of these first:
+
+| Primitive         | Owns                                                        | Use for                     |
+| ----------------- | ----------------------------------------------------------- | --------------------------- |
+| `PageShell`       | content max-width + vertical rhythm between sections        | the outer frame of any page |
+| `PageHeader`      | title + subtitle + the ONE primary action, on-token spacing | every page's top            |
+| `Toolbar`         | a horizontal control row (search/filters/actions)           | above a list/table          |
+| `StatGrid`        | responsive columns + gap for a `StatCard` row               | dashboard KPI strips        |
+| `SectionCard`     | a titled card section (surface + padding)                   | grouping related content    |
+| `FormLayout`      | vertical field rhythm + a footer action row (one primary)   | every create/edit form      |
+| `FormField`       | label + control + one message slot                          | each field inside a form    |
+| `DescriptionList` | label/value pairs (detail view)                             | detail screens              |
+| `DataTable`       | list + sort/filter/pagination + its empty state             | list screens                |
+| `EmptyState`      | the honest "nothing here yet" + one action                  | any empty data surface      |
+
+The primitives own **all internal spacing/alignment on the token scale** and use only RTL-safe
+logical utilities (`space-y-*`, `gap-*`, `justify-end` — never `ml/mr`/`left/right`), so a screen
+built from them is RTL- and dark-correct by construction. Composition example:
+
+```tsx
+<PageShell>
+  <PageHeader title="Assets" actions={<Button>New asset</Button>} />
+  <Toolbar>{/* search + filters */}</Toolbar>
+  <DataTable {...} />
+</PageShell>
+```
+
 ## 2. Page header — `PageHeader`
 
 The one title pattern: heading + optional one-sentence subtitle on the inline-start,
