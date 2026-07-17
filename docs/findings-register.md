@@ -43,6 +43,17 @@ the changed surface is still **open** (un-adjudicated).
   pgvector DB, set EMBEDDINGS_PROVIDER + EMBEDDINGS_API_KEY, and exercise ragUpsert/ragQuery. —
   owner: operator — status: adjudicated(2026-07-11) (accepted: infra-unavailable in-session;
   verification delegated to a pgvector-capable fork/CI, same posture as the WS-1 image wave-off)
+  — **UPDATE 2026-07-17 (V2-402): the pgvector SUBSTRATE is now VERIFIED in-session** against
+  native Postgres 16 + pgvector 0.6.0 (the env-unblock recipe, agent-memory 2026-07-17). The
+  migration `20260711120000_pgvector_rag` is applied, and `tests/integration/pgvector.test.ts`
+  (6/6 via `npm run test:integration`) proves the highest-risk unknowns this wave-off named: the
+  `vector` extension + the `<=>` cosine nearest-neighbor query (returns the aligned doc, distance
+  ~0) + the HNSW index in the plan (`document_embedding_embedding_cosine_idx`) + a wrong-dimension
+  INSERT failing LOUD (the 1024-trap), all pass. The test SKIPS gracefully with no DB. **STILL
+  UNVERIFIED:** the embeddings PROVIDER round-trip (text→vector via voyage/cohere) — needs
+  `EMBEDDINGS_API_KEY` + egress this env lacks. **PROPOSED (executor does not self-adjudicate — the
+  operator confirms): flip the DB-substrate half to `fixed(<this commit>)`; keep the provider-
+  round-trip half deferred until a fork sets an embeddings key.**
 - 2026-07-11 — [quality] WS-6 Ory Polis SSO/SCIM seam (ADR-045) is UNVERIFIED in-session —
   lib/sso/* + app/api/internal/scim + the generic OIDC provider in lib/auth.ts + the `sso` compose
   profile were authored to the documented Ory Polis / BoxyHQ dsync contract, but **no live Polis
