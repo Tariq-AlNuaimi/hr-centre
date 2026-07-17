@@ -326,6 +326,11 @@ here as pointers so they aren't re-litigated as new findings:
   `SELECT count(*) FROM "users" WHERE "passwordHash" LIKE '$2%';` (verified = 0 in the seeded DB
   2026-07-17); when durably 0, delete the bcrypt branch + `npm uninstall bcryptjs`. Annotated in
   `lib/password.ts`.
+- 2026-07-17 — [awareness, V2-405] **`qs` moderate advisory (dev-only)**: adopting
+  `@stryker-mutator/core` (V2-405) pulled a transitive `qs` (via `typed-rest-client`) carrying a
+  **Moderate** DoS advisory (GHSA — below `/ship`'s High+ npm-audit gate, so it does not red). Dev/
+  mutation-testing tooling only, never in the runtime bundle. Awareness line, not a wave-off; clears
+  when the upstream chain bumps `qs`. (Surfaced by the senior review; noted per its recommendation.)
 - 2026-07-17 — [env constraint, V2-401/ADR-061] **testcontainers container-run acceptance**: the
   `ship:full` integration gate provisions an ephemeral `pgvector/pgvector:pg16` container via
   `@testcontainers/postgresql` when a Docker daemon is present. THIS build container has no daemon,

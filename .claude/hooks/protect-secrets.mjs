@@ -136,19 +136,68 @@ function scanBash(cmd) {
       if (hit) return `expanding $${hit} (Restricted) into the transcript`;
     }
   }
+  // 4. WRITE side (V2-408, senior-review): a shell command that WRITES to a tracked file
+  // carrying real secret material. Dropping to Bash (`echo >`, a heredoc, `tee`, `sed -i`)
+  // must not bypass the Write/Edit write-guard — the same discipline `bash-write-gate.mjs`
+  // applies to the blueprint/build-vs-buy gates. If any write TARGET is a tracked file (not
+  // the gitignored live-env store) and the command text carries secret material (echo/printf
+  // literals, a heredoc body, a `sed -i` replacement all live in the command string),
+  // deny. scanContent covers token shapes + Restricted assignments.
+  const writeTargets = bashWriteTargets(cmd).filter((t) => !isLiveEnvTarget(t));
+  if (writeTargets.length > 0) {
+    const why = scanContent(cmd);
+    if (why) return `${why} -> a tracked file via a shell write ('${writeTargets[0]}')`;
+  }
   return null;
+}
+
+/** Collect the file paths a Bash command WRITES to (redirects, heredocs, tee, sed -i, dd). */
+function bashWriteTargets(cmd) {
+  const targets = [];
+  const unquote = (s) => s.replace(/^["']|["']$/g, "");
+  // stdout redirects: `> file` / `>> file` (heredocs `cat > f <<EOF` match here too).
+  // Exclude fd-dups (`>&`, `2>`) via the negative lookbehind on a digit/&.
+  for (const m of cmd.matchAll(/(?<![0-9&])>>?\s*("[^"]+"|'[^']+'|[^\s;&|<>]+)/g)) {
+    targets.push(unquote(m[1]));
+  }
+  for (const seg of cmd.split(/(?:\|\||&&|;|\||\n)/)) {
+    const toks = seg.trim().split(/\s+/).filter(Boolean);
+    const base0 = (toks[0] ?? "").split("/").pop();
+    // tee [-a] file... — the pipe target(s) are written.
+    const ti = toks.findIndex((t) => t === "tee" || t.split("/").pop() === "tee");
+    if (ti >= 0)
+      for (const a of toks.slice(ti + 1)) if (!a.startsWith("-")) targets.push(unquote(a));
+    // sed -i / --in-place FILE (in-place edit) — the last non-flag token is the file.
+    if (
+      base0 === "sed" &&
+      toks.some((t) => t === "-i" || t.startsWith("-i") || t === "--in-place")
+    ) {
+      const last = toks[toks.length - 1];
+      if (last && !last.startsWith("-")) targets.push(unquote(last));
+    }
+    // dd of=FILE
+    for (const t of toks) {
+      const m = t.match(/^of=(.+)$/);
+      if (m) targets.push(unquote(m[1]));
+    }
+  }
+  return targets;
 }
 
 // --- WRITE side (V2-408): reject real secret material landing in a file. ---------------
 
-// A gitignored live-secret store (.env, .env.local, .env.<anything-but-example>) is where
-// real secrets BELONG and is never committed, so writes to it are exempt. Everything else --
-// `.env.example`, source, config, docs -- is scanned (they are tracked / committable).
+// A gitignored live-secret store is where real secrets BELONG and is never committed, so
+// writes to it are exempt. This MUST mirror `.gitignore` EXACTLY (`.env`, `.env.local`,
+// `.env.*.local`) — a broader match (e.g. any `.env.<x>`) would wrongly exempt TRACKED files
+// like `.env.production`, `.env.example`, or an adversarial `x/.env.example.ts`, letting real
+// secret material land committable and unscanned (senior-review V2-408 finding). Everything
+// else — `.env.example`, `.env.production`, source, config, docs — is scanned.
 function isLiveEnvTarget(filePath) {
-  const base = String(filePath ?? "")
-    .split("/")
-    .pop();
-  return base === ".env" || (base?.startsWith(".env.") && base !== ".env.example");
+  const base =
+    String(filePath ?? "")
+      .split("/")
+      .pop() ?? "";
+  return base === ".env" || base === ".env.local" || /^\.env\..+\.local$/.test(base);
 }
 
 // A value is a PLACEHOLDER (allowed anywhere) if it is empty or carries an obvious
@@ -207,11 +256,20 @@ try {
   if (tool === "Read") why = secretPath(ti.file_path);
   else if (tool === "Grep") why = secretPath(ti.path) ?? secretPath(ti.glob);
   else if (tool === "Bash") why = scanBash(ti.command ?? "");
-  else if (tool === "Write" || tool === "Edit") {
+  else if (tool === "Write" || tool === "Edit" || tool === "MultiEdit") {
     // The live gitignored secret store is exempt; every tracked/committable file is scanned.
     if (!isLiveEnvTarget(ti.file_path)) {
-      // Write payload = content; Edit payload = the new text being inserted.
-      why = scanContent(tool === "Write" ? ti.content : ti.new_string);
+      // Write payload = content; Edit = the inserted text; MultiEdit = every edit's new_string
+      // (an array of {old_string,new_string}) joined so one scan covers them all.
+      const payload =
+        tool === "Write"
+          ? ti.content
+          : tool === "Edit"
+            ? ti.new_string
+            : Array.isArray(ti.edits)
+              ? ti.edits.map((e) => e?.new_string ?? "").join("\n")
+              : "";
+      why = scanContent(payload);
       if (why) why += ` -> a tracked file ('${ti.file_path}')`;
     }
   }
@@ -239,8 +297,8 @@ try {
         permissionDecisionReason:
           "protect-secrets hook errored; DENYING by fail-closed policy (WS-8/ADR-047) " +
           "— a secret-guard that can't evaluate must block, not allow. NOTE: this hook " +
-          "matches Read|Grep|Bash|Write|Edit, so a PERSISTENT (input-independent) fault " +
-          "denies all five for the rest of the session and cannot be repaired from inside it. " +
+          "matches Read|Grep|Bash|Write|Edit|MultiEdit, so a PERSISTENT (input-independent) fault " +
+          "denies all six for the rest of the session and cannot be repaired from inside it. " +
           "RECOVERY: an operator removes the protect-secrets entry from " +
           ".claude/settings.json PreToolUse (or restarts with hooks disabled), then fixes the hook.",
       },

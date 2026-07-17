@@ -329,6 +329,81 @@ test("protect-secrets (V2-408) ALLOWS placeholders, the gitignored .env store, a
   );
 });
 
+// V2-408 senior-review fixes — three verified bypasses of the write-side guard, now closed.
+// `>` is assembled from a variable so this test source carries no literal `> path` (the
+// SEPARATE bash-write-gate would otherwise flag the string).
+const R = ">";
+const preMultiEdit = (file_path, new_string) => ({
+  tool_name: "MultiEdit",
+  tool_input: { file_path, edits: [{ old_string: "x", new_string }] },
+});
+
+test("protect-secrets (V2-408 fix) DENIES a Bash WRITE of secret material to a tracked file", () => {
+  // Heredoc, echo-append, tee, and sed -i are all shell write vectors that used to bypass the
+  // guard (only Write/Edit were scanned). Dropping to Bash must not bypass it.
+  assert.ok(
+    isDeny(
+      runHook("protect-secrets.mjs", preBash(`cat ${R} lib/leaked.ts <<EOF\nK="${ANT_KEY}"\nEOF`)),
+    ),
+    "heredoc write of a secret must deny",
+  );
+  assert.ok(
+    isDeny(
+      runHook(
+        "protect-secrets.mjs",
+        preBash(`echo "ANTHROPIC_API_KEY=${ANT_KEY}" ${R}${R} .env.production`),
+      ),
+    ),
+    "echo-append of a secret to a tracked .env.production must deny",
+  );
+  assert.ok(
+    isDeny(runHook("protect-secrets.mjs", preBash(`echo "${ANT_KEY}" | tee lib/x.ts`))),
+    "echo | tee of a secret must deny",
+  );
+  // A shell write of a real secret to the gitignored live store is still exempt.
+  assert.equal(
+    runHook("protect-secrets.mjs", preBash(`echo "ANTHROPIC_API_KEY=${ANT_KEY}" ${R} .env`))
+      .decision,
+    null,
+    "writing a secret to the live .env store stays allowed",
+  );
+  // A clean shell write passes.
+  assert.equal(runHook("protect-secrets.mjs", preBash(`echo hi ${R} lib/util.ts`)).decision, null);
+});
+
+test("protect-secrets (V2-408 fix) DENIES a MultiEdit that inserts secret material", () => {
+  assert.ok(
+    isDeny(
+      runHook("protect-secrets.mjs", preMultiEdit("lib/config.ts", `const K = "${ANT_KEY}";`)),
+    ),
+    "a secret in a MultiEdit new_string must deny",
+  );
+  assert.equal(
+    runHook("protect-secrets.mjs", preMultiEdit("lib/config.ts", "const N = 1;")).decision,
+    null,
+    "a clean MultiEdit passes",
+  );
+});
+
+test("protect-secrets (V2-408 fix) exemption matches .gitignore, not any .env.*", () => {
+  // .env.production / .env.staging / an adversarial x/.env.example.ts are TRACKED (not in
+  // .gitignore's `.env`, `.env.local`, `.env.*.local`) — a real secret there must be denied.
+  for (const p of [".env.production", ".env.staging", "x/.env.example.ts", "notes/.env.docs.md"]) {
+    assert.ok(
+      isDeny(runHook("protect-secrets.mjs", preWriteBody(p, `ANTHROPIC_API_KEY=${ANT_KEY}`))),
+      `${p} is tracked — a real secret there must deny`,
+    );
+  }
+  // Only the genuinely-gitignored names are exempt.
+  for (const p of [".env", ".env.local", ".env.production.local"]) {
+    assert.equal(
+      runHook("protect-secrets.mjs", preWriteBody(p, `ANTHROPIC_API_KEY=${ANT_KEY}`)).decision,
+      null,
+      `${p} is gitignored — exempt`,
+    );
+  }
+});
+
 // ---------------------------------------------------------------------------
 // session-stop — block-once semantics (unpushed commits block exactly once).
 // ---------------------------------------------------------------------------

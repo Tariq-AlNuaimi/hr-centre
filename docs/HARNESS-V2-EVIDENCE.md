@@ -832,6 +832,17 @@ guard's tool surface).
 - **SECURITY.md §17** updated: the `protect-secrets` row documents both the read and write sides +
   the exemption; also corrected a pre-existing design-rule line that mislabeled the deny hooks
   "fail open" (both fail **closed** — asserted by the hook test's `failClosed` set).
+- **Post-review hardening (senior-code-reviewer, same session).** The first cut scanned only the
+  `Write`/`Edit` tools — the reviewer found **three verified bypasses**, all now closed with
+  regression tests (`tests/harness/hooks.test.mjs`, 64/64): **(1) Bash writes** (`echo >`, heredoc,
+  `tee`, `sed -i`) skipped the guard entirely — `scanBash` now collects write TARGETS and runs
+  `scanContent` over the command when any target is a tracked file (mirrors `bash-write-gate.mjs`'s
+  "dropping to Bash doesn't bypass the gate"); **(2) MultiEdit** wasn't in the matcher — added to
+  `.claude/settings.json` and the dispatcher (scans every `edits[].new_string`); **(3) the
+  `.env.*` exemption was over-broad** — `isLiveEnvTarget` wrongly exempted TRACKED `.env.production`
+  / `.env.example` / `x/.env.example.ts`; it now matches `.gitignore` EXACTLY (`.env`, `.env.local`,
+  `.env.*.local`). Verified: real secret material via any of Bash/MultiEdit/`.env.production` is now
+  denied, while `.env`/`.env.local` writes and `.env.example` placeholders stay allowed.
 
 ### Phase 4 evidence — V2-404 cognitive-complexity gate (closes ADR-034's named v2 gap)
 

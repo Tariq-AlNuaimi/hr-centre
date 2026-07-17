@@ -1,6 +1,6 @@
 # Blueprint — HARNESS-V2 Phase 4: "Verify what was waived"
 
-Scope: CLAUDE.md, .claude/rules/harness.md, .claude/hooks/protect-secrets.mjs, .claude/skills/audit/**, eslint.config.mjs, package.json, scripts/ship.mjs, tests/integration/**, tests/contracts/**, tests/harness/**, lib/password.ts, lib/ai/rag.ts, lib/ai/embeddings.ts, prisma/migrations/**, SECURITY.md, docs/decisions/**, docs/findings-register.md, docs/build-vs-buy-ledger.md, docs/HARNESS-V2-EVIDENCE.md, docs/blueprints/harness-v2-phase-4.md, .github/workflows/**, Makefile
+Scope: CLAUDE.md, .claude/rules/harness.md, .claude/hooks/protect-secrets.mjs, .claude/settings.json, .claude/skills/audit/**, eslint.config.mjs, knip.json, .gitignore, stryker.config.json, package.json, scripts/ship.mjs, scripts/test-integration.mjs, scripts/license-allowlist.json, middleware.ts, i18n/**, tests/integration/**, tests/contracts/**, tests/harness/**, tests/eslint-rules/**, lib/password.ts, lib/ai/rag.ts, lib/ai/embeddings.ts, prisma/migrations/**, SECURITY.md, docs/decisions/**, docs/findings-register.md, docs/build-vs-buy-ledger.md, docs/HARNESS-V2-EVIDENCE.md, docs/blueprints/harness-v2-phase-4.md, .github/workflows/**, Makefile
 
 Track: **Full** · Program: harness-v2 · Phase: 4 of 5 · Branch `claude/harness-v2-kickoff-yhid26`
 
@@ -111,3 +111,15 @@ postgresql` (pgvector image), applies migrations, and runs the round-trips (pgve
   pgvector on native Postgres, V2-406 invariant tests, V2-408 secrets honesty, V2-409 debt
   sunset) land first; the dep-adopting / Docker-gated items (V2-401, V2-404, V2-405, V2-407)
   follow with their ledger/ADR entries.
+
+## Amendments
+
+- **2026-07-17 (senior-review Stage-1 fix).** The original `Scope:` line narrated V2-406's
+  middleware work in **US4.4** ("the SECURITY.md §15 holes … middleware routing … covered by
+  invariant unit tests") but did not list the files it produced, so a Scope-vs-diff trace flagged
+  `middleware.ts` (rewrite) and `i18n/route-decision.ts` (new) as uncovered surface. The middleware
+  touch was operator-approved ("Extract + unit-test", `docs/HARNESS-V2-EVIDENCE.md`) — this is a
+  contract-hygiene fix, not a new authorization. Scope widened to add `middleware.ts`, `i18n/**`,
+  and the other files this phase actually touched but hadn't enumerated (`.claude/settings.json`,
+  `knip.json`, `.gitignore`, `stryker.config.json`, `scripts/test-integration.mjs`,
+  `scripts/license-allowlist.json`, `tests/eslint-rules/**`).
