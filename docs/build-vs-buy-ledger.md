@@ -302,3 +302,18 @@ already fully next-intl'd — the rule lands at zero product-code violations); (
 no-dead-dependency floor, so a plugin kept "for later" would fail /ship (the V2-304 lesson).
 Informational for the ADR-032 hook (it matches `lib/`; this lives in `eslint-rules/`). See CLAUDE.md
 "Local ESLint plugin" (now thirteen rules); `scripts/copy-check.mjs` (the copy-lint half of V2-305).
+
+### 2026-07-17 — Rich-text editor (Tiptap) — deferred, `/adopt` demo (V2-306)
+
+Scope: lib/editor/**
+Considered: **Tiptap** (MIT, headless ProseMirror wrapper — the OSS catalog's rich-text default;
+composes with the token/theme layer), **Lexical** (MIT, Meta — capable but heavier model, weaker
+shadcn-style theming ecosystem), **build on ProseMirror directly** (full control, high maintenance
+surface — the drift the gate exists to stop), **keep plain `<textarea>`/shadcn Input** (the current
+default, fine until a fork needs formatting). Decision: **adopt Tiptap (MIT) when a fork needs a
+rich-text field** — a thin `lib/editor/**` seam (schema + server-side sanitize-on-save behind a zod
+allowlist; stored HTML is Restricted-adjacent) behind a `components/shared/RichText*` primitive.
+Deferred (nothing installed yet); recorded now so the gate is ready — the "entry ahead of build"
+pattern (cf. pg-boss). This entry is the worked demonstration of `/adopt` (V2-306): catalog lookup →
+options weighed → ledger + ADR stub, no wasteful install. See ADR-060; docs/oss-catalog.md
+(rich-text-editor row).

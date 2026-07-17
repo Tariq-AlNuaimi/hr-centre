@@ -55,7 +55,7 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 | V2-303 | 3     | done    | 5876859   | `app/[locale]/(dashboard)/style-guide/page.tsx` · `docs/design-recipes.md` §1d · `docs/design-references.md`                                              | Page archetypes: 5 canonical archetypes + density rule; style-guide "Page archetypes" demo section (Dashboard/Detail/Form/List/Settings) on the shipped primitives                                                                                                                                                                                                           |
 | V2-304 | 3     | done    | (this)    | [detail](#v2-304-evidence) · `eslint-rules/rules/no-arbitrary-className.mjs` · `docs/verification/v2-304-lint/` · `docs/build-vs-buy-ledger.md`           | Spacing/typography lint: 12th local rule (scoped to spacing p/m/gap/space + font-size text-[…px]) at `error` on JSX/TSX; RuleTester-covered; 3 pre-existing hits resolved (1 on-scale, 2 justified escape-hatch); visual loop confirmed                                                                                                                                      |
 | V2-305 | 3     | done    | (this)    | [detail](#v2-305-evidence) · `eslint-rules/rules/no-literal-jsx-text.mjs` · `scripts/copy-check.mjs` · `messages/en.json` · `docs/build-vs-buy-ledger.md` | Copy chokepoint: 13th ESLint rule routes literal JSX text/attrs → next-intl (product code lands at 0 violations; dev-page/root-boundary/test exempt); `/ship` `copy` gate holds source-locale copy to house style (sentence case, no trailing period, terminology); 22 Title-case labels migrated; planted-literal + "Submit Request." both fail; RuleTester + harness tests |
-| V2-306 | 3     | pending | —         | —                                                                                                                                                         | OSS catalog + /adopt skill                                                                                                                                                                                                                                                                                                                                                   |
+| V2-306 | 3     | done    | (this)    | [detail](#v2-306-evidence) · `docs/oss-catalog.md` · `.claude/skills/adopt/SKILL.md` · `docs/decisions/ADR-060-*.md`                                      | OSS catalog (feature-oracle products + capability adopt-or-build table) + `/adopt` skill (catalog lookup → AskUserQuestion trade-off → ledger + ADR stub → install); both build-vs-buy gate deny messages name the catalog as step 0; demoed on rich-text-editor (ADR-060 + ledger "entry ahead of build")                                                                   |
 | V2-307 | 3     | done    | e338a37   | `docs/design-references.md` · `.claude/rules/design.md` (10-point rubric)                                                                                 | Taste anchors (Linear/Vercel/Stripe + additions) per archetype; the numeric 0/1 10-point rubric wired into the visual loop + `/design-qa`; cite anchor+capture per deduction                                                                                                                                                                                                 |
 | V2-308 | 3     | pending | —         | —                                                                                                                                                         | Visual regression (LEDGER)                                                                                                                                                                                                                                                                                                                                                   |
 | V2-309 | 3     | pending | —         | —                                                                                                                                                         | Build-vs-buy completeness                                                                                                                                                                                                                                                                                                                                                    |
@@ -605,6 +605,36 @@ trailing-period and Title Case, and reverts clean; unit tests in `tests/harness/
 `eslint-plugin-i18next` (its `no-literal-string` allowlist is inverted vs the house opt-in set;
 knip forbids a dead dep — the V2-304 lesson); the copy checker over Vale/alex (heavier prose
 linters). Ledger: `docs/build-vs-buy-ledger.md`.
+
+<a id="v2-306-evidence"></a>
+
+### Phase 3 evidence — V2-306 OSS catalog + `/adopt` skill
+
+Makes reuse the DEFAULT by giving the build-vs-buy scan a step-0 catalog and a skill that runs it.
+
+- **`docs/oss-catalog.md` (committed).** Two tables: (1) the **feature-oracle products** per category
+  (Plane / Twenty / Documenso / Formbricks / Cal.com / Snipe-IT / GLPI — with repo + license + what
+  to mine), so `/benchmark`/`/blueprint` mine a real data model, not a marketing page; (2) the
+  **capability adopt-or-build table** (uploads, jobs, realtime, flags, search, PDF, rich-text,
+  analytics, …) with the in-stack default, the self-host OSS option + license, the SaaS option, and a
+  verdict/pointer. Header states the reading rules (in-stack / self-host / SaaS; AGPL + >50 KB flags)
+  and the feedback loop: a catalog MISS means add the row you wished existed.
+- **`/adopt` skill (`.claude/skills/adopt/SKILL.md`).** The ADR-032 scan run as a skill: name the
+  capability → look it up in the catalog (step 0) → surface the in-stack / self-host-OSS / SaaS /
+  build-thin trade-off with `AskUserQuestion` (license, weight, data-egress, self-host) → on the
+  operator's choice write the `build-vs-buy-ledger.md` entry (+ ADR stub for a runtime dep, +
+  Ask-before for >50 KB / AGPL-fork) → install per recipe → `/ship` green. Skip-when the capability
+  is already in-stack.
+- **Gate messages updated (step 0).** BOTH build-vs-buy deny paths now name the catalog first:
+  `.claude/hooks/build-vs-buy-gate.mjs` (Write) gained a `(0) check docs/oss-catalog.md … or run
+/adopt` step ahead of the REPO-MAP/scale-up/web-search steps; `.claude/hooks/bash-write-gate.mjs`
+  (the Bash-write path) mirrors it. Behavior unchanged — the message is the only edit.
+- **Demonstrated on a real capability.** Ran `/adopt "rich-text editor"` — a genuine gap (no in-stack
+  editor). Catalog hit → Tiptap (MIT) vs Lexical vs build-on-ProseMirror vs plain textarea → decision
+  **adopt Tiptap when needed**, recorded as **ADR-060** + a `build-vs-buy-ledger.md` entry
+  (`Scope: lib/editor/**`, deferred — the "entry ahead of build" pattern, cf. pg-boss). No wasteful
+  install; the artifacts the skill produces (ledger entry + ADR stub with the license/weight/self-host
+  call made) are the demonstration.
 
 ## Per-phase retros
 

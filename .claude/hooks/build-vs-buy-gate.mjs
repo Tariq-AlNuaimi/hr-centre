@@ -55,9 +55,11 @@ try {
         permissionDecisionReason:
           `[build-vs-buy] Denied: '${rel}' is a NEW hand-built capability, but no ` +
           `build-vs-buy decision covers it. Do the reuse scan BEFORE writing (ADR-032; ` +
-          `CLAUDE.md "Market benchmark before building"): (1) check docs/REPO-MAP.md and ` +
-          `lib/ + components/shared/ for an existing primitive; (2) check the /scale-up ` +
-          `recipe table; (3) web-search for a library/open-source fit. Then record the ` +
+          `CLAUDE.md "Market benchmark before building"): (0) check docs/oss-catalog.md ` +
+          `-- the seeded reuse catalog, step 0 (or run /adopt <capability>, which reads it); ` +
+          `(1) check docs/REPO-MAP.md and lib/ + components/shared/ for an existing ` +
+          `primitive; (2) check the /scale-up recipe table; (3) web-search for a library/ ` +
+          `open-source fit. Then record the ` +
           `decision in docs/build-vs-buy-ledger.md -- a "### <date> - <capability>" entry ` +
           `with a "Scope: ${rel.replace(/[^/]+$/, "**")}" glob, the options you considered, ` +
           `and why you're building vs adopting. Recording it is not a bypass; it IS the ` +
