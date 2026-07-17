@@ -8,12 +8,15 @@ gives the IT team that takes over production (ADR-006). Decision of record:
 
 ## The set
 
-| Runbook                                              | Answers                                                                      | Owner    | Last reviewed |
-| ---------------------------------------------------- | ---------------------------------------------------------------------------- | -------- | ------------- |
-| [`restore-drill.md`](./restore-drill.md)             | Can we actually restore the database from a backup? (proof, not hope)        | Operator | 2026-07-11    |
-| [`deploy-rollback.md`](./deploy-rollback.md)         | This deploy is bad — how do we get back to green, and how fast?              | Operator | 2026-07-11    |
-| [`incident-response.md`](./incident-response.md)     | It's 3am and something paged — what do I do in the first 15 minutes?         | Operator | 2026-07-11    |
-| [`database-operations.md`](./database-operations.md) | How do I run a migration / touch data / handle connection exhaustion safely? | Operator | 2026-07-11    |
+| Runbook                                              | Answers                                                                                                      | Owner      | Last reviewed |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------- | ------------- |
+| [`restore-drill.md`](./restore-drill.md)             | Can we actually restore the database from a backup? (proof, not hope)                                        | Operator   | 2026-07-11    |
+| [`deploy-rollback.md`](./deploy-rollback.md)         | This deploy is bad — how do we get back to green, and how fast?                                              | Operator   | 2026-07-11    |
+| [`incident-response.md`](./incident-response.md)     | It's 3am and something paged — what do I do in the first 15 minutes?                                         | Operator   | 2026-07-11    |
+| [`database-operations.md`](./database-operations.md) | How do I run a migration / touch data / handle connection exhaustion safely?                                 | Operator   | 2026-07-11    |
+| [`maintainer.md`](./maintainer.md)                   | How do I evolve the harness (gates / hooks / ESLint rules / ADRs / permissions) without weakening the floor? | Maintainer | 2026-07-17    |
+
+_The first four operate a **deployment**; `maintainer.md` operates the **template itself** (V2-505, the bus-factor floor) — a different audience (the harness maintainer, not the on-call operator)._
 
 ## How runbooks are used
 
