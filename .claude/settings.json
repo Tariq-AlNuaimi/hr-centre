@@ -60,7 +60,7 @@
         ]
       },
       {
-        "matcher": "Read|Grep|Bash",
+        "matcher": "Read|Grep|Bash|Write|Edit",
         "hooks": [
           {
             "type": "command",

@@ -1,12 +1,20 @@
 #!/usr/bin/env node
-// PreToolUse hook (Read|Grep|Bash matcher) -- agent-read secret guard (Wave A2).
-// Blocks tool calls that would pull secret MATERIAL into the transcript: reading
-// .env* / key files (Read, Grep path, Bash read-commands) and printing Restricted
-// env vars (`printenv AUTH_SECRET`, `echo $DATABASE_URL`, bare `env`). gitleaks
-// only scans commits at push time; this closes the mid-session read boundary
-// (evidence: docs/deep-comparison/04-hooks.md karanb192 row + 10-security.md
+// PreToolUse hook (Read|Grep|Bash|Write|Edit matcher) -- agent secret guard (Wave A2; V2-408).
+// Blocks tool calls that would pull secret MATERIAL into the transcript OR write real
+// secret material into a file the agent might commit:
+//   READ side  -- reading .env* / key files (Read, Grep path, Bash read-commands) and
+//                 printing Restricted env vars (`printenv AUTH_SECRET`, `echo $DATABASE_URL`,
+//                 bare `env`).
+//   WRITE side -- a Write/Edit whose payload carries a REAL secret (a high-confidence token
+//                 shape -- Anthropic/AWS/GitHub/Slack key, PEM private-key block -- or a
+//                 Restricted-var assignment with a non-placeholder, high-entropy value). The
+//                 live gitignored secret store (.env, .env.local, ...) is EXEMPT -- that is
+//                 where real secrets belong; `.env.example` is scanned (it must stay
+//                 placeholder-only), as is every tracked source/doc/config file.
+// gitleaks only scans commits at push time; this closes the mid-session read AND write
+// boundaries (evidence: docs/deep-comparison/04-hooks.md karanb192 row + 10-security.md
 // mintmcp row -- one hook covers both items). Deny-with-reason; on any internal
-// error the hook stays silent (push-time gitleaks remains the backstop).
+// error the hook fails CLOSED (push-time gitleaks remains the backstop).
 // No override by design (blueprint decision #1): edit this file or use the
 // permission system if a deny is genuinely wrong.
 import { readFileSync } from "node:fs";
@@ -131,6 +139,66 @@ function scanBash(cmd) {
   return null;
 }
 
+// --- WRITE side (V2-408): reject real secret material landing in a file. ---------------
+
+// A gitignored live-secret store (.env, .env.local, .env.<anything-but-example>) is where
+// real secrets BELONG and is never committed, so writes to it are exempt. Everything else --
+// `.env.example`, source, config, docs -- is scanned (they are tracked / committable).
+function isLiveEnvTarget(filePath) {
+  const base = String(filePath ?? "")
+    .split("/")
+    .pop();
+  return base === ".env" || (base?.startsWith(".env.") && base !== ".env.example");
+}
+
+// A value is a PLACEHOLDER (allowed anywhere) if it is empty or carries an obvious
+// shape-not-secret marker -- the vocabulary `.env.example` uses (`user:password@localhost`,
+// `changeme`, `<your-key>`, `sk-ant-...`, `generate-with-...`).
+function looksPlaceholder(v) {
+  if (!v) return true;
+  if (/[<>]/.test(v) || /\.\.\./.test(v)) return true;
+  return /(change[-_ ]?me|your[-_]|example|placeholder|dummy|replace|todo|generate|paste|secret[-_]?here|xxxx+|user:password|:password@|localhost|127\.0\.0\.1)/i.test(
+    v,
+  );
+}
+
+// A non-placeholder value is treated as REAL secret material if it is a DB URL with remote
+// credentials, or a long high-entropy token (>=28 base64/hex chars).
+function looksReal(v) {
+  const url = v.match(/^\w+:\/\/[^:@/\s]+:([^@/\s]+)@/);
+  if (url) return url[1].length >= 8 && !/password/i.test(url[1]);
+  return /[A-Za-z0-9_\-+/=]{28,}/.test(v.replace(/\s+/g, ""));
+}
+
+// High-confidence secret token shapes (mirror gitleaks' low-false-positive rules).
+const SECRET_TOKEN_PATTERNS = [
+  { re: /sk-ant-(?:api|admin)\d{2}-[A-Za-z0-9_-]{24,}/, why: "an Anthropic API key" },
+  { re: /\bAKIA[0-9A-Z]{16}\b/, why: "an AWS access-key id" },
+  { re: /\bgh[pousr]_[A-Za-z0-9]{36,}\b/, why: "a GitHub token" },
+  { re: /\bxox[baprs]-[A-Za-z0-9-]{12,}/, why: "a Slack token" },
+  { re: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/, why: "a private-key block" },
+];
+
+/** Scan file content for real secret material. Returns a reason string or null. */
+function scanContent(text) {
+  if (!text) return null;
+  for (const { re, why } of SECRET_TOKEN_PATTERNS) {
+    if (re.test(text)) return `the payload contains ${why}`;
+  }
+  // A Restricted-var assignment (NAME=..., export NAME=..., NAME: ...) with a real value.
+  const re = new RegExp(`^\\s*(?:export\\s+)?(${RESTRICTED_ENV.join("|")})\\s*[:=]\\s*(.+)$`, "gm");
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const val = m[2]
+      .trim()
+      .replace(/\s+#.*$/, "")
+      .replace(/^["']|["']$/g, "");
+    if (!looksPlaceholder(val) && looksReal(val))
+      return `the payload sets $${m[1]} to a real value`;
+  }
+  return null;
+}
+
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
   const tool = input.tool_name ?? "";
@@ -139,6 +207,14 @@ try {
   if (tool === "Read") why = secretPath(ti.file_path);
   else if (tool === "Grep") why = secretPath(ti.path) ?? secretPath(ti.glob);
   else if (tool === "Bash") why = scanBash(ti.command ?? "");
+  else if (tool === "Write" || tool === "Edit") {
+    // The live gitignored secret store is exempt; every tracked/committable file is scanned.
+    if (!isLiveEnvTarget(ti.file_path)) {
+      // Write payload = content; Edit payload = the new text being inserted.
+      why = scanContent(tool === "Write" ? ti.content : ti.new_string);
+      if (why) why += ` -> a tracked file ('${ti.file_path}')`;
+    }
+  }
   if (why) {
     console.log(
       JSON.stringify({
@@ -163,8 +239,8 @@ try {
         permissionDecisionReason:
           "protect-secrets hook errored; DENYING by fail-closed policy (WS-8/ADR-047) " +
           "— a secret-guard that can't evaluate must block, not allow. NOTE: this hook " +
-          "matches Read|Grep|Bash, so a PERSISTENT (input-independent) fault denies all " +
-          "three for the rest of the session and cannot be repaired from inside it. " +
+          "matches Read|Grep|Bash|Write|Edit, so a PERSISTENT (input-independent) fault " +
+          "denies all five for the rest of the session and cannot be repaired from inside it. " +
           "RECOVERY: an operator removes the protect-secrets entry from " +
           ".claude/settings.json PreToolUse (or restarts with hooks disabled), then fixes the hook.",
       },

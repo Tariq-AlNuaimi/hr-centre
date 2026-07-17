@@ -264,6 +264,71 @@ test("protect-secrets ALLOWS a normal read and is FAIL-CLOSED on malformed stdin
   assert.ok(isDeny(runHook("protect-secrets.mjs", "broken")), "must deny on error");
 });
 
+// V2-408 — WRITE side: real secret material must not land in a tracked/committable file.
+// The secret-shaped strings are ASSEMBLED at runtime so this test source carries no literal
+// token (the hook now scans Write/Edit payloads — a literal here would deny its own write).
+const preWriteBody = (file_path, content) => ({
+  tool_name: "Write",
+  tool_input: { file_path, content },
+});
+const preEditBody = (file_path, new_string) => ({
+  tool_name: "Edit",
+  tool_input: { file_path, new_string },
+});
+const ANT_KEY = "sk-ant-" + "api03-" + "A".repeat(40); // a real-shaped Anthropic key
+const REAL_DB = "postgresql://app:" + "Zx9Qp2mVrkLs" + "@ep-cool-hill.neon.tech/app_db";
+
+test("protect-secrets (V2-408) DENIES real secret material written to a tracked file", () => {
+  assert.ok(
+    isDeny(
+      runHook(
+        "protect-secrets.mjs",
+        preWriteBody("lib/config.ts", `export const K = "${ANT_KEY}";`),
+      ),
+    ),
+    "an Anthropic key in a lib file must deny",
+  );
+  assert.ok(
+    isDeny(runHook("protect-secrets.mjs", preEditBody("docs/notes.md", `DATABASE_URL=${REAL_DB}`))),
+    "a real DATABASE_URL edited into a doc must deny",
+  );
+  // .env.example is tracked → a REAL secret there is still denied (it must stay placeholder-only).
+  assert.ok(
+    isDeny(
+      runHook("protect-secrets.mjs", preWriteBody(".env.example", `ANTHROPIC_API_KEY=${ANT_KEY}`)),
+    ),
+    "a real key in .env.example must deny",
+  );
+});
+
+test("protect-secrets (V2-408) ALLOWS placeholders, the gitignored .env store, and clean source", () => {
+  // .env.example placeholder shapes (the vocabulary the file actually uses) pass.
+  const placeholders =
+    'DATABASE_URL="postgresql://user:password@localhost:5432/app_db"\n' +
+    'AUTH_SECRET="generate-with-openssl-rand-base64-32"';
+  assert.equal(
+    runHook("protect-secrets.mjs", preWriteBody(".env.example", placeholders)).decision,
+    null,
+  );
+  // The live gitignored secret store is EXEMPT — real secrets belong there.
+  assert.equal(
+    runHook("protect-secrets.mjs", preWriteBody(".env", `DATABASE_URL=${REAL_DB}`)).decision,
+    null,
+  );
+  assert.equal(
+    runHook("protect-secrets.mjs", preWriteBody(".env.local", `DATABASE_URL=${REAL_DB}`)).decision,
+    null,
+  );
+  // Ordinary source with no secret passes.
+  assert.equal(
+    runHook(
+      "protect-secrets.mjs",
+      preWriteBody("lib/util.ts", "export const add = (a, b) => a + b;"),
+    ).decision,
+    null,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // session-stop — block-once semantics (unpushed commits block exactly once).
 // ---------------------------------------------------------------------------

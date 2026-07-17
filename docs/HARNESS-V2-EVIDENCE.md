@@ -801,6 +801,38 @@ would have to stand up the whole Next request pipeline.
 - **SECURITY.md §15** updated: both holes marked closed, citing `soft-delete-filter.test.ts` +
   `middleware-routing.test.ts` + the extraction; two rows added to the coverage table.
 
+### Phase 4 evidence — V2-408 protect-secrets guards the WRITE boundary
+
+The `protect-secrets.mjs` PreToolUse hook already denied secret material flowing INTO the transcript
+(reads, env prints). V2-408 closes the symmetric hole: secret material flowing OUT of the agent into
+a **committable file** — a mid-session write boundary that gitleaks (commit/push-time) structurally
+can't see. Operator answered "Extend the matcher" (Ask-before: this widens a fail-closed security
+guard's tool surface).
+
+- **Matcher widened** to `Read|Grep|Bash|Write|Edit` (`.claude/settings.json`). Widening a
+  security guard's coverage (denying MORE) — not the `permissions.allow/deny` arrays — so it tightens
+  rather than loosens the autonomous surface.
+- **Write-side scan (`scanContent`).** A `Write` (`content`) / `Edit` (`new_string`) payload is
+  denied when it carries: (a) a high-confidence token shape — Anthropic (`sk-ant-…`), AWS (`AKIA…`),
+  GitHub (`gh[pousr]_…`), Slack (`xox[baprs]-…`), or a PEM `-----BEGIN … PRIVATE KEY-----` block; or
+  (b) a Restricted-var assignment (`DATABASE_URL=…`, `AUTH_SECRET=…`, …) whose value is
+  **non-placeholder AND high-entropy** (a remote-credentialed DB URL, or a ≥28-char token). The
+  placeholder vocabulary `.env.example` actually uses (`user:password@localhost`, `<your-key>`,
+  `generate-with-…`, `sk-ant-…`) passes.
+- **Exemption is the live gitignored store.** `.env`, `.env.local`, `.env.<x>` are EXEMPT — real
+  secrets belong there and the file is never committed. `.env.example` (tracked) IS scanned and must
+  stay placeholder-only; every other tracked source/doc/config file is scanned.
+- **Fail-closed preserved.** The widened matcher extends the same WS-8/ADR-047 fail-closed catch
+  (a guard that can't evaluate must block); the message now names all five matched tools.
+- **Negative tests (`tests/harness/hooks.test.mjs`, `npm run test:hooks` → 61/61, +2).** The
+  secret-shaped strings are **assembled at runtime** so the test source carries no literal token
+  (else the widened guard would deny its own write). Denies: an Anthropic key in `lib/config.ts`, a
+  real `DATABASE_URL` edited into a doc, a real key in `.env.example`. Allows: `.env.example`
+  placeholder shapes, a real secret written to `.env`/`.env.local`, and clean source.
+- **SECURITY.md §17** updated: the `protect-secrets` row documents both the read and write sides +
+  the exemption; also corrected a pre-existing design-rule line that mislabeled the deny hooks
+  "fail open" (both fail **closed** — asserted by the hook test's `failClosed` set).
+
 ## Per-phase retros
 
 ### Phase 0 retro — "Trust the gates" (V2-001 … V2-006)
