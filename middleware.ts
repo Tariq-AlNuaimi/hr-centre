@@ -3,26 +3,11 @@ export const runtime = "nodejs";
 import createMiddleware from "next-intl/middleware";
 import { auth } from "./lib/auth";
 import { routing } from "./i18n/routing";
-import { localePrefixRegex } from "./i18n/config";
+import { routeDecision } from "./i18n/route-decision";
 import { NextResponse, NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 
 const intlMiddleware = createMiddleware(routing);
-
-const publicPaths = [
-  "/login",
-  "/forgot-password",
-  "/reset-password",
-  "/api/auth",
-  "/api/health",
-  "/api/internal",
-];
-
-function isPublicPath(pathname: string): boolean {
-  // Strip locale prefix for matching (regex derived from configured locales)
-  const stripped = pathname.replace(localePrefixRegex, "") || "/";
-  return publicPaths.some((p) => stripped === p || stripped.startsWith(p + "/"));
-}
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -92,69 +77,38 @@ export default auth((req) => {
   requestHeaders.set("Content-Security-Policy", csp);
   const pass = () => withNonce(nonce, NextResponse.next({ request: { headers: requestHeaders } }));
 
-  // The opt-in Scalar docs page (ADR-052) lives at the NON-localized "/api-reference"
-  // (outside [locale]). Handle it explicitly, before the generic "/api" branches: it must
-  // NOT go through next-intl (localePrefix "always" would redirect it to /en/api-reference
-  // → 404) and anon visitors should get an HTML login redirect, not the API branch's JSON
-  // 401. Authed → pass straight to the page (its own auth() is defense in depth). Absent in
-  // a fork that hasn't run `npm run enable:api-reference` → this simply 404s, harmless.
-  if (pathname === "/api-reference" || pathname.startsWith("/api-reference/")) {
-    if (!req.auth) {
-      return NextResponse.redirect(new URL(`/${routing.defaultLocale}/login`, req.url));
+  // The pure branch logic (public/private path, /api-reference special-casing, the
+  // login/home redirect, the API 401) lives in i18n/route-decision.ts so it can be unit
+  // tested without Next's request/auth machinery (V2-406). This wrapper maps each action
+  // to the actual NextResponse and keeps the framework side effects (CSP/nonce/next-intl).
+  const action = routeDecision(pathname, !!req.auth);
+  switch (action.kind) {
+    // Redirects carry no CSP/nonce — they render no HTML; the destination page gets its
+    // own per-request CSP when the browser follows. (Anon on a private page / the opt-in
+    // Scalar /api-reference docs page — ADR-052 — get an HTML login redirect, not a JSON 401.)
+    case "redirectLogin":
+      return NextResponse.redirect(new URL(`/${action.locale}/login`, req.url));
+    // Authenticated users on a public page (e.g. /login) are sent home.
+    case "redirectHome":
+      return NextResponse.redirect(new URL(`/${action.locale}`, req.url));
+    // A private API route with no session — JSON 401 (not an HTML doc, so no CSP/nonce).
+    case "apiUnauthorized":
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // A localized page: hand it to next-intl. It needs the nonce-bearing request headers
+    // too, so clone a real NextRequest (not a bare Request) so next-intl keeps
+    // nextUrl/cookies and forwards x-nonce to the rendered (possibly rewritten) request.
+    case "intl": {
+      const intlReq = new NextRequest(req, { headers: requestHeaders });
+      const intlRes = intlMiddleware(intlReq) as NextResponse;
+      return withNonce(nonce, intlRes);
     }
-    return pass();
+    // API/static passthrough (+ authed API routes + authed /api-reference): pass to the
+    // app, still nonced. The route's own wrapper (withInternalAuth / withApiAuth / withAuth)
+    // and the /api/v1 rewrite (ADR-013) decide from here — middleware must not pre-empt them.
+    case "pass":
+    default:
+      return pass();
   }
-
-  // Let API routes and static files pass through (still nonced for consistency).
-  // /api/internal is gated by withInternalAuth (shared-secret header), not session.
-  if (
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/health") ||
-    pathname.startsWith("/api/internal") ||
-    // /api/v1/* is the public, versioned API surface (rewrites to /api/* via
-    // next.config). Let it through here so the rewrite + the route's own wrapper
-    // (withApiAuth for external consumers, or withAuth) decide -- middleware must
-    // not blanket-401 it before the rewrite resolves. See ADR-013.
-    pathname.startsWith("/api/v1") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico"
-  ) {
-    return pass();
-  }
-
-  // Apply i18n routing for non-API routes
-  if (!pathname.startsWith("/api")) {
-    const isPublic = isPublicPath(pathname);
-    const isAuth = !!req.auth;
-
-    // Redirects carry no CSP/nonce — they render no HTML; the destination page
-    // gets its own per-request CSP when the browser follows.
-    if (!isAuth && !isPublic) {
-      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
-      return NextResponse.redirect(new URL(`/${locale}/login`, req.url));
-    }
-
-    // Redirect authenticated users away from login
-    if (isAuth && isPublicPath(pathname)) {
-      const locale = pathname.match(localePrefixRegex)?.[1] ?? routing.defaultLocale;
-      return NextResponse.redirect(new URL(`/${locale}`, req.url));
-    }
-
-    // next-intl needs the nonce-bearing request headers too. Hand it a real
-    // NextRequest (cloned from req with the nonce header added) — not a bare
-    // Request — so next-intl keeps nextUrl/cookies and forwards x-nonce to the
-    // rendered (possibly rewritten) request, where the layout reads it.
-    const intlReq = new NextRequest(req, { headers: requestHeaders });
-    const intlRes = intlMiddleware(intlReq) as NextResponse;
-    return withNonce(nonce, intlRes);
-  }
-
-  // API routes - check auth. JSON 401 carries no CSP/nonce (not an HTML doc).
-  if (!req.auth) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  return pass();
 });
 
 export const config = {

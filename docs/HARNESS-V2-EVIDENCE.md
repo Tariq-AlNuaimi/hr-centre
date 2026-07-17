@@ -773,6 +773,34 @@ Puts a dated retirement condition on the last two carried-debt items so neither 
 - **Register:** both are dated trade-off lines under "Standing wave-offs promoted to documented
   trade-offs" (no `status: open` → `/ship`'s wave-off scan stays green).
 
+### Phase 4 evidence — V2-406 middleware routing tests (SECURITY.md §15 hole closed)
+
+SECURITY.md §15 carried two named "would need disproportionate framework mocking" test holes. V2-406
+closes the middleware half (the soft-delete-filter half was closed earlier). The middleware
+redirect/pass/401 cascade was untestable because it lived inside the `auth((req) => …)` closure,
+tangled with next-intl's `createMiddleware`, `NextResponse`, and per-request CSP/nonce — a unit test
+would have to stand up the whole Next request pipeline.
+
+- **Extraction (`i18n/route-decision.ts`, NEW).** The _pure_ branch logic — public-vs-private path,
+  locale-prefix stripping, the `/api-reference` special-case (ADR-052), the login/home redirect, the
+  API 401 — is factored into a module with **no** next-intl / auth / `NextResponse` imports, exporting
+  `isPublicPath`, `localeOf`, `routeDecision(pathname, isAuthed): RouteAction`. It sits under `i18n/`
+  (not a gated `lib/**` surface), so no build-vs-buy ledger entry is required, and it has no
+  import-time framework side effects, so `node:test` imports it directly.
+- **Middleware rewrite (`middleware.ts`, Ask-before — operator approved "Extract + unit-test").** The
+  inline branch cascade is replaced by `const action = routeDecision(pathname, !!req.auth)` + a
+  `switch` that maps each `RouteAction` to the real `NextResponse` and keeps ALL framework side
+  effects (CSP/nonce/next-intl clone). **Behavior-preserving** — the switch reproduces every original
+  branch's response byte-for-byte; asserted by the new contract test.
+- **Contract test (`tests/contracts/middleware-routing.test.ts`, NEW).** 8 cases, all green in the
+  warm-`/ship` contract suite: `isPublicPath` with/without locale prefix + the `/loginx` non-match
+  trap, `localeOf`, and `routeDecision` across the `/api-reference` anon-redirect, API/static
+  passthrough, private-page anon→login, public-page authed→home / anon→intl, and private-API-anon→401
+  paths. A future edit that (say) stops redirecting an anon visitor or leaks a private API route now
+  reds the build instead of shipping.
+- **SECURITY.md §15** updated: both holes marked closed, citing `soft-delete-filter.test.ts` +
+  `middleware-routing.test.ts` + the extraction; two rows added to the coverage table.
+
 ## Per-phase retros
 
 ### Phase 0 retro — "Trust the gates" (V2-001 … V2-006)
