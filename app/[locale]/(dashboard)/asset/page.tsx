@@ -39,6 +39,8 @@ export default function AssetsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortChange>({});
+  const [status, setStatus] = useState<string>();
+  const [category, setCategory] = useState<string>();
 
   const params: Record<string, string> = {
     page: String(page),
@@ -46,6 +48,8 @@ export default function AssetsPage() {
     ...(search ? { search } : {}),
     ...(sort.field ? { sort: sort.field } : {}),
     ...(sort.order ? { order: sort.order === "ascend" ? "asc" : "desc" } : {}),
+    ...(status ? { status } : {}),
+    ...(category ? { category } : {}),
   };
 
   // Declarative data layer (ADR-021): the query caches + keeps the previous page
@@ -95,6 +99,15 @@ export default function AssetsPage() {
         }}
         onSortChange={(s) => {
           setSort(s);
+          setPage(1);
+        }}
+        onFilterChange={(filters) => {
+          const statusFilter = filters.status;
+          const categoryFilter = filters.category;
+          setStatus(statusFilter && statusFilter.length > 0 ? String(statusFilter[0]) : undefined);
+          setCategory(
+            categoryFilter && categoryFilter.length > 0 ? String(categoryFilter[0]) : undefined,
+          );
           setPage(1);
         }}
         searchable

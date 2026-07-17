@@ -255,6 +255,25 @@ the changed surface is still **open** (un-adjudicated).
   T2 via `--relations` to Model/Category models, T9 via a custom-field model, T11 via the import
   recipe. Re-open when the Asset Tracker graduates from pilot to a real tool).
 
+- 2026-07-17 — [harness-v2 V2-210/correctness] the pilot's two-stage senior review found 1 High + 2
+  Medium + 1 Low in the hand-layered pilot code (Stage 1 confirmed scope-clean + caught the AC drift;
+  Stage 2 found the code bugs) — owner: operator — status: fixed(this commit): **High** — the
+  scaffold-generated `AssetForm` assignee `RelationSelect` pointed at `/api/user` (singular) but the
+  User routes are pluralized `/api/users`, so the dropdown 404'd silently → fixed to `/api/users`
+  (root cause `scripts/scaffold-entity.mjs` assumes singular-kebab target routes — logged as the
+  scheduled follow-up below). **Medium** — duplicate `assetTag` POST threw an unhandled P2002 500 →
+  added a `findUnique` pre-check returning a clean 409 (mirrors `app/api/users/route.ts`). **Medium**
+  — `status`/`category` DataTable column filters were dead controls (DataTable runs
+  `manualFiltering`, no `onFilterChange` wired, GET took no such param) → wired `onFilterChange` +
+  the `where` clauses. **Low** — blueprint AC-4.1 said "422" but `err()` defaults to 400 app-wide →
+  blueprint corrected to 400.
+- 2026-07-17 — [harness-v2 V2-210/scaffold] `scripts/scaffold-entity.mjs` emits a relation-picker
+  `path="/api/<targetKebab>"` assuming every target model's routes are singular-kebab; that holds for
+  scaffolded entities but not for hand-built pluralized routes (`User` → `/api/users`), so a
+  generated `RelationSelect` to such a target 404s — owner: operator — status: scheduled (fix the
+  generator to accept a per-relation route override, or add a `/api/user` alias; low urgency — only
+  bites relations pointing at the pre-existing pluralized routes. Discovered via the V2-210 pilot).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--

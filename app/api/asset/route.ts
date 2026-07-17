@@ -4,6 +4,8 @@ import { withAuth, withEditorAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
 import { createAssetSchema } from "@/lib/validations/asset";
+import { AssetStatus, AssetCategory } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 
 // Allowlist of sortable columns -- prevents raw column injection via ?sort=.
 const SORTABLE_COLUMNS = [
@@ -23,7 +25,14 @@ export const GET = withRateLimit(
     const pagination = parsePagination(searchParams);
 
     const search = searchParams.get("search") ?? undefined;
-    const where = search ? { assetTag: { contains: search, mode: "insensitive" as const } } : {};
+    const where: Prisma.AssetWhereInput = {};
+    if (search) where.assetTag = { contains: search, mode: "insensitive" };
+    // Server-side status/category filters (wired to the DataTable column filters).
+    const statusParam = searchParams.get("status");
+    if (statusParam && statusParam in AssetStatus) where.status = statusParam as AssetStatus;
+    const categoryParam = searchParams.get("category");
+    if (categoryParam && categoryParam in AssetCategory)
+      where.category = categoryParam as AssetCategory;
 
     const sortParam = searchParams.get("sort");
     const sortField: SortableColumn =
@@ -57,6 +66,13 @@ export const POST = withRateLimit(
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => i.message).join(", "));
     }
+
+    // assetTag is @unique + immutable — surface a duplicate as a clean 409, not a raw P2002 500
+    // (mirrors app/api/users/route.ts's email pre-check).
+    const existing = await prisma.asset.findUnique({
+      where: { assetTag: parsed.data.assetTag },
+    });
+    if (existing) return err("Asset tag already in use", 409);
 
     const asset = await prisma.asset.create({ data: parsed.data });
 

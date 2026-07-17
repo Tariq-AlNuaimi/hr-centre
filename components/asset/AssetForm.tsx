@@ -242,7 +242,7 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
             <FormItem>
               <FormLabel>{t("assignee")}</FormLabel>
               <RelationSelect
-                path="/api/user"
+                path="/api/users"
                 displayField="name"
                 placeholder={t("assignee")}
                 searchPlaceholder={t("searchRelation")}

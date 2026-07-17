@@ -55,14 +55,14 @@ ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pil
   - **AC-3.1** — IF `assetTag` is blank THEN THE SYSTEM SHALL reject with the zod message (not a 500).
 - **US4** — As a fleet admin, I want legal status transitions enforced, so that lifecycle is coherent.
   - **AC-4.1** — IF a status change is not a legal move (e.g. RETIRED→ASSIGNED) THEN THE SYSTEM SHALL
-    reject with a 422 zod message.
+    reject with a 400 (the app-wide convention) zod message.
 
 ## Scenarios (per story; worst path mandatory)
 
 - **US1-happy** — Given an ADMIN session + valid data, When POST /api/asset, Then created + audited + listed.
 - **US2-worst** — Given a VIEWER session, When POST /api/asset, Then 403, no row written.
 - **US3-worst** — Given an editor + blank `assetTag`, When POST /api/asset, Then the zod message, not a 500.
-- **US4-worst** — Given an asset in RETIRED, When PUT status→ASSIGNED, Then 422 (illegal transition).
+- **US4-worst** — Given an asset in RETIRED, When PUT status→ASSIGNED, Then 400 (illegal transition — app-wide err() convention).
 
 ## Delta — was → now
 
