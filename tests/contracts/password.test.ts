@@ -56,3 +56,33 @@ test("verifyPassword returns false (never throws) on a malformed hash", async ()
   assert.equal(await verifyPassword("anything", "not-a-real-hash"), false);
   assert.equal(await verifyPassword("anything", ""), false);
 });
+
+// The malformed-hash cases above route to bcrypt.compare, which RETURNS false rather
+// than throwing — so they never exercise verifyPassword's catch block. A hash that LOOKS
+// like Argon2 but has a corrupt body makes argon2Verify THROW, which is the only path that
+// reaches the catch. Without this, a mutation of the catch to `return true` (a corrupt hash
+// silently authenticating!) survives — the exact failure mutation testing (V2-405) surfaced.
+test("verifyPassword swallows an Argon2 verify THROW and returns false (catch path)", async () => {
+  assert.equal(await verifyPassword("anything", "$argon2id$v=19$corrupt-body"), false);
+});
+
+// needsRehash's defensive `if (!m) return true` on an Argon2-prefixed hash whose params
+// don't parse. Pins that a malformed argon2 header re-hashes (never trusts it as current).
+test("needsRehash re-hashes an Argon2-prefixed hash with an unparseable param header", () => {
+  assert.equal(needsRehash("$argon2id$notaparamstring"), true);
+});
+
+// The single weak-params test below leaves EACH `< current` comparison individually
+// mutable-to-false-and-surviving (any one true keeps the OR true). Pin each parameter on
+// its own — only-memory-weak and only-time-weak — so a mutation that drops a specific
+// downgrade check (e.g. stops noticing a weakened memoryCost) fails. (parallelism has a
+// floor of 1 = the current value, so `m[3] < 1` is unreachable — an equivalent mutant.)
+test("needsRehash detects a weakened memoryCost alone (kills the m[1] check)", async () => {
+  const weakMem = await argon2Hash("x", { memoryCost: 4096, timeCost: 2, parallelism: 1 });
+  assert.equal(needsRehash(weakMem), true, "lower memoryCost alone must trigger a rehash");
+});
+
+test("needsRehash detects a weakened timeCost alone (kills the m[2] check)", async () => {
+  const weakTime = await argon2Hash("x", { memoryCost: 19456, timeCost: 1, parallelism: 1 });
+  assert.equal(needsRehash(weakTime), true, "lower timeCost alone must trigger a rehash");
+});

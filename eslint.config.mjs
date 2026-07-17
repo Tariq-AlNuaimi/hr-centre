@@ -279,6 +279,11 @@ const eslintConfig = defineConfig([
     // .claude/worktrees/); linting into them double-counts files and picks up
     // other agents' in-flight code. Gitignored already; ignore for lint too.
     ".claude/worktrees/**",
+    // StrykerJS sandbox + report (V2-405) — Stryker copies the whole repo into
+    // .stryker-tmp/sandbox-*/ to mutate it; linting into that double-counts every
+    // file. Gitignored already; ignore for lint too.
+    ".stryker-tmp/**",
+    "reports/**",
   ]),
 ]);
 

@@ -203,6 +203,9 @@ Two honest tiers — the constitution's "run `/ship` before every push" means th
 - `npm run capture` (visual-iteration capture matrix — V2-301) · `npm run copy-check` (source-locale
   copy house-style gate — V2-305) · `npm run visual-regression -- --baseline <dir> --current <dir>`
   (pixel-diff vs a committed baseline — V2-308; QA-time / `uat:full`, NOT warm `/ship`)
+- `npm run test:mutation` (StrykerJS mutation testing — V2-405; scoped to the three invariant files
+  `lib/prisma/audit-extension.ts` · `lib/api-helpers.ts` · `lib/password.ts` via `stryker.config.json`;
+  `/qa`-tier, minutes-not-seconds, NOT warm `/ship`. `npx stryker run --mutate <file>` for one file.)
 - Push = deploy: `main` → production, other branches → preview URL.
 
 ## Known traps (don't "fix")

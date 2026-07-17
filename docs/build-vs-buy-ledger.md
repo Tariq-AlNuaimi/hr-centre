@@ -417,3 +417,21 @@ Docker/DB — does not silently pass) and let the DB-guarded tests self-skip. Wi
 when no Docker (mirrors the ADR-030 docker gate), RED when a container IS present and a test fails.
 Dev-dependency, no runtime bundle. ADR-061; container-run acceptance "verified where Docker present"
 (this build container has no daemon) recorded in `docs/findings-register.md`. See V2-401.
+
+### 2026-07-17 — Mutation testing on the invariant files (@stryker-mutator/core) — V2-405
+
+Scope: stryker.config.json
+Considered: **hand-rolled mutation** (flip operators in a script, re-run tests — reinventing a mature
+tool's mutator catalog, sandboxing, and reporting badly), **no mutation testing / rely on line
+coverage** (coverage proves a line RAN, not that a test would FAIL if the line were wrong — exactly
+the false-confidence gap on security invariants like SCRUB_FIELDS and the auth wrappers), **PIT/other
+JVM tools** (wrong ecosystem), **@stryker-mutator/core** (chosen — the JS/TS-standard mutation-testing
+framework, MIT, dev-dependency; the `command` runner drives this repo's `node --test` contract suite
+without a bespoke runner plugin).
+Decision: **ADOPT `@stryker-mutator/core`** with the built-in `command` runner pointed at the contract
+suite, `mutate` scoped to the THREE security-invariant files — `lib/prisma/audit-extension.ts`
+(SCRUB_FIELDS / audit completeness), `lib/api-helpers.ts` (the auth wrappers), `lib/password.ts`
+(Argon2id verify + bcrypt upgrade). It answers "would a test actually FAIL if this invariant broke?"
+where line coverage can't. **/qa-tier, NOT warm `/ship`** (mutation runs re-execute the suite per
+mutant — minutes, not the ~60s warm loop); `npm run test:mutation`. Dev-dependency, no runtime
+bundle. Informational for the ADR-032 hook (config file, not a new `lib/` file). See V2-405.

@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "V2-405 — mutation testing on the security-invariant files (ADR-034 family / build-vs-buy-ledger.md). Answers 'would a test FAIL if this invariant broke?' where line coverage only proves a line RAN. /qa-tier, NOT warm /ship — the command runner re-executes the contract suite per mutant (minutes). Run: `npm run test:mutation` (all three files) or `npx stryker run --mutate lib/password.ts` for one. Scope is deliberately the three highest-value invariants, not the whole tree.",
+  "_commandNote": "The command runs the tests that COVER the three mutated files (their invariant assertions), not the whole contract suite — mutation testing should execute the tests exercising the mutated code, and this also keeps sandbox-fragile scaffolding tests (enable-docs-site tsconfig patching) out of the run.",
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "node --experimental-test-module-mocks --import tsx --test tests/contracts/password.test.ts tests/contracts/auth.test.ts tests/contracts/api-auth.test.ts tests/contracts/audit-scrub.test.ts tests/contracts/scrub-completeness.test.ts tests/contracts/export-column-completeness.test.ts tests/contracts/sentry-scrub.test.ts"
+  },
+  "mutate": ["lib/prisma/audit-extension.ts", "lib/api-helpers.ts", "lib/password.ts"],
+  "concurrency": 4,
+  "timeoutMS": 60000,
+  "coverageAnalysis": "off",
+  "reporters": ["clear-text", "progress", "html"],
+  "htmlReporter": { "fileName": "reports/mutation/index.html" },
+  "thresholds": { "high": 80, "low": 60, "break": null },
+  "tempDirName": ".stryker-tmp"
+}
