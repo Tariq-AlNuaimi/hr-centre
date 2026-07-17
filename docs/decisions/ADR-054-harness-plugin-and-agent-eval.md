@@ -333,3 +333,13 @@ Code-wave item 7 landed the first implementation wave (blueprint:
 Deferred to the migration triggers above: public/marketplace publishing + a real
 `plugin install` channel, the generator codemod mode, promoting agent-eval to a
 required check, and promoting the routing receipt to a soft `/ship` gate.
+
+## Amendment (2026-07-17) — V2-106: `npm run tokens` (ccusage) is the "budget line" trigger-enabler
+
+The "Token/credit spend … becomes a budget line" migration trigger above now has its instrument:
+V2-106 adopted **ccusage** (`npm run tokens` → `npx -y ccusage@latest session`, ledger entry
+2026-07-17) for per-session/model $ spend from the local Claude Code logs. When the operator sets
+a budget against that spend, the routing-report promotion (was M10) re-activates — the
+observe-only `routing-adherence` receipt (`npm run routing-report`) promotes from observed-only to
+a soft `/ship` gate, as this trigger anticipated. ccusage is a dev-tool run via npx (no runtime
+dep, no ADR required — the ledger entry is the adjudication).

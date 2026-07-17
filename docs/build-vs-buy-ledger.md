@@ -210,3 +210,26 @@ Decision: adopt the OTel sdk-node set behind lib/otel — instrument-once, swap 
 Scope: prisma/factories.ts, lib/factories/**
 Considered: @faker-js/faker (chosen, dev-dep), hand-written seeds (current), snaplet (shut down), neosync (archived).
 Decision: adopt @faker-js/faker for FK-valid seed graphs (dev-dep only). See 20-remaining-sweep.md.
+
+### 2026-07-17 — Token/spend observability (ccusage) — V2-106
+
+Scope: package.json (npm run tokens)
+Considered: **ccusage** (chosen — reads the local `~/.claude/projects/**/*.jsonl` Claude Code
+logs, per-session/model/daily spend + cost tables, zero runtime dep — run via `npx -y
+ccusage@latest session`, no install), building an in-repo log-analyzer (would re-implement
+ccusage's JSONL parsing + model price table + cost math, ongoing upkeep as the log schema and
+prices move — no unique-to-us value), leaning on `docs/token-policy.md` prose + the observe-only
+`routing-report` receipts alone (guidance/tier-adherence only, no actual $ spend accounting —
+they answer "did recon run on haiku", not "what did this program cost").
+Decision: **adopt ccusage as a dev-tool, invoked via `npx` (no dependency added to package.json's
+deps/devDeps)** — smallest maintained surface for real per-session spend, and it feeds ADR-054's
+"budget line" trigger (once the operator sets a budget, the `routing-report` receipt promotes
+from observe-only to a soft `/ship` gate). Dev-tool run via npx ⇒ no runtime dep ⇒ no ADR
+required; this ledger entry is the adjudication. This entry is informational for the gate (ADR-032
+matches only `lib/` files; the command lives in `package.json`). See ADR-054 (routing-adherence /
+budget-line trigger); `docs/token-policy.md`.
+<!-- Verified 2026-07-17: `npm run tokens` (npx -y ccusage@latest session) produced a real
+     per-session/model spend report from this container's local Claude Code logs (egress to the
+     npm registry was available). On an egress-blocked machine the npx fetch fails — run ccusage
+     on a machine with npm-registry egress (it only needs the local `~/.claude` logs to read); the
+     wrapper command is unchanged and correct. -->
