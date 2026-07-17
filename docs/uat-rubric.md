@@ -17,7 +17,7 @@ Five apply to every fork; a **conditional sixth (AI-Quality)** applies only when
 fork ships AI endpoints (ADR-042).
 
 1. **Speed & Velocity** — two halves, both gated (V2-103). **Runtime speed:** RSC reads, no needless round-trips, debounced inputs, bounded payloads. **Development velocity:** a session is cheap and fast to run — low SessionStart context tax, a warm `/ship` that doesn't regress, and parallel-by-default work (wall-clock is a pillar cost, not free). _Automatable slice — three advisory checks (fail-open, house pattern), baselines in `project.config.json` `velocityBaselines`:_ **(a) context-size** — `scripts/context-tax.mjs` warns when the always-on SessionStart bytes exceed budget (constitution ≤8KB, total ≤20KB; also a `/ship` phase-A hook test); **(b) `/ship` wall-time** — `/ship` warns when its total exceeds 125% of the recorded warm baseline (`shipWarmSeconds`); **(c) hook-latency** — `scripts/hook-latency.mjs` (`npm run hook-latency`) times the `UserPromptSubmit`+`PreToolUse` hook chain and warns past 150% of the recorded `hookChainMs` baseline. _(Formerly "Fast" → "Speed"; V2-103 added the velocity half.)_
-2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage. **The hardest-gated pillar** — the eleven ESLint rules + the constitution's Hard rules are its automatable floor.
+2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage. **The hardest-gated pillar** — the twelve ESLint rules + the constitution's Hard rules are its automatable floor.
 3. **Maintainable** — reuses existing primitives/services; typed; no dead code; small, forward-compatible migrations.
 4. **Scalable** — handles growth (bulk paths not N×1; pagination; rate-limit-aware; no N+1).
 5. **High-Quality** — the polish pillar a finding cites when it isn't one of the four above: correctness + UX fidelity, automated gates (CI / pre-push / axe / coverage), honest empty/loading/error states, and no deprecation drift.
@@ -173,7 +173,7 @@ eval threshold met → no open AI-Quality wave-off.
   `tests/ai-evals/*.eval.ts` case to its `POST /api/ai/<kebab>` route and scores the
   completion (`contains` / `not-contains` / `llm-judge`). Dormant (exit 0) until
   `AI_API_KEY` + fixtures exist; RED on any failing case once live. This is the eval
-  pass-rate half of the pillar. The eleven ESLint rules cover the rest of the automatable
+  pass-rate half of the pillar. The twelve ESLint rules cover the rest of the automatable
   slice (`no-direct-anthropic-sdk` → model only via `@/lib/ai`, `no-secret-env-in-console`
   → no secret/PII logging, zod at the boundary).
 - **Blocking checklist** (pass/fail per AI surface; a fail on a core AI flow is a critical

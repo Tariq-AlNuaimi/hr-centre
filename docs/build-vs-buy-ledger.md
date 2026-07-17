@@ -266,3 +266,21 @@ Decision: **build the 3 genuinely-missing primitives; extend/reuse the 6 that al
 "extend existing where present"). No dependency added. Informational for the ADR-032 gate (it matches
 `lib/**`; these live in `components/shared/**` — which V2-309 brings under the gate). See
 `docs/design-recipes.md` (compose-first) + `docs/design-references.md` (archetype anchors).
+
+Scope: eslint-rules/rules/no-arbitrary-className.mjs
+Considered: **eslint-plugin-tailwindcss** (installed and evaluated as the off-the-shelf option, then
+REMOVED — its `no-arbitrary-value` rule bans ALL `[...]` values bluntly, which would false-positive
+on the ~50 legit arbitrary values the repo relies on: `grid-cols-[1fr_auto]`, `w-[calc(...)]`,
+`min-h-[44px]` touch targets, `data-[state=open]:` variants, arbitrary colors — with no way to scope
+it to just the spacing + type axes; its `no-contradicting-classname` is orthogonal and speculative,
+not worth carrying an unused dependency for), **build a scoped local rule** (chosen —
+`no-arbitrary-className`, the layout sibling of `no-raw-hex-color`: flags an arbitrary value ONLY on
+the utilities the design scale governs — spacing p/m/gap/space and font-size `text-[...px|rem|em]` —
+and leaves every other arbitrary value alone), **do nothing / rely on review** (rejected — off-scale
+`p-[13px]`/`text-[15px]` is exactly the silent drift V2-304 exists to gate; a vibe, not a gate).
+Decision: **BUILD the scoped `no-arbitrary-className` rule in the existing local plugin and add NO
+dependency** (wired at `error` on `**/*.{jsx,tsx}`, RuleTester-covered, single-line-disable escape
+hatch). eslint-plugin-tailwindcss was uninstalled after evaluation — a scoped in-repo rule is both
+more precise (only the spacing/type axes) and lighter (zero devDependency, which knip enforces).
+Informational for the ADR-032 hook (it matches `lib/`; this lives in `eslint-rules/`). See CLAUDE.md
+"Local ESLint plugin" (now twelve rules); `eslint-rules/rules/no-arbitrary-className.mjs`.

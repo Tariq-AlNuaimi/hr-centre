@@ -54,6 +54,20 @@ const eslintConfig = defineConfig([
     },
   },
 
+  // Layout design-token enforcement (V2-304) — the sibling of no-raw-hex-color
+  // (which does color). Spacing and font-size must come from the scale (the 4px
+  // `p-*`/`gap-*` steps, the `text-xs…text-h1` type scale), never a one-off
+  // arbitrary value dropped into a className (`p-[13px]`, `text-[15px]`). Scoped
+  // to JSX/TSX where Tailwind classNames live (a plain .ts string that happens to
+  // read `p-[13px]` is not a class). At error so a considered spacing/type rhythm
+  // can't quietly drift back to ad-hoc pixels; escape is the single-line
+  // `// eslint-disable-next-line rihal-template/no-arbitrary-className` for a
+  // justified one-off (e.g. an outsize display number with no token).
+  {
+    files: ["**/*.{jsx,tsx}"],
+    rules: { "rihal-template/no-arbitrary-className": "error" },
+  },
+
   // Static accessibility gate (ADOPT.md A1; cat 22). eslint-plugin-jsx-a11y's
   // recommended set catches the mechanical a11y regressions (missing alt text,
   // invalid ARIA, non-interactive elements with handlers, label-less controls)

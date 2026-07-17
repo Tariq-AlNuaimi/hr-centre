@@ -31,7 +31,7 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 - Excel export helper
 - Email sender (nodemailer, optional)
 - Health check endpoint
-- Eleven local ESLint rules guarding the template's invariants
+- Twelve local ESLint rules guarding the template's invariants
 
 ## Claude Code
 

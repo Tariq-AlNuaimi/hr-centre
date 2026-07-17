@@ -37,6 +37,9 @@ export function BrandedStatus({
         </span>
 
         {code && (
+          // Outsize display number (e.g. a 404 code) — larger than the type scale's
+          // top step (text-h1 / 38px) by design; no token covers a hero numeral.
+          // eslint-disable-next-line rihal-template/no-arbitrary-className
           <div className="mb-1 text-[56px] font-extrabold leading-none tracking-tight text-foreground">
             {code}
           </div>

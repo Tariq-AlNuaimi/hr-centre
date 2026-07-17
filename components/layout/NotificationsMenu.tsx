@@ -30,6 +30,10 @@ export function NotificationsMenu() {
         >
           <Bell className="h-4 w-4" />
           {count > 0 && (
+            // Micro count badge inside a 16px (h-4) dot — 10px keeps a 2-digit
+            // count legible without overflowing; the type scale's floor (text-xs
+            // / 12px) would clip it. A justified sub-scale one-off.
+            // eslint-disable-next-line rihal-template/no-arbitrary-className
             <span className="absolute end-1 top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium leading-none text-destructive-foreground">
               {count}
             </span>

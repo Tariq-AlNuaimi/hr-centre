@@ -15,6 +15,7 @@
 //   no-restricted-export-column Restricted/secret field name used as a toExcel column key -- export leak.
 //   no-prisma-unfiltered-import prismaUnfiltered (raw client) imported outside its auth/recycling/maintenance allowlist.
 //   no-direct-anthropic-sdk   @anthropic-ai/sdk imported outside lib/ai/** -- model access must go through @/lib/ai (ADR-042).
+//   no-arbitrary-className    Arbitrary Tailwind values on spacing (p/m/gap/space) + font-size (text-[..px]) -- use the scale (V2-304).
 //
 // See CLAUDE.md ‘Hard rules’ for the underlying invariants each rule protects.
 
@@ -29,6 +30,7 @@ import noRateLimitInsideAuth from "./rules/no-rate-limit-inside-auth.mjs";
 import noRestrictedExportColumn from "./rules/no-restricted-export-column.mjs";
 import noPrismaUnfilteredImport from "./rules/no-prisma-unfiltered-import.mjs";
 import noDirectAnthropicSdk from "./rules/no-direct-anthropic-sdk.mjs";
+import noArbitraryClassName from "./rules/no-arbitrary-className.mjs";
 
 const plugin = {
   meta: { name: "rihal-template", version: "1.0.0" },
@@ -44,6 +46,7 @@ const plugin = {
     "no-restricted-export-column": noRestrictedExportColumn,
     "no-prisma-unfiltered-import": noPrismaUnfilteredImport,
     "no-direct-anthropic-sdk": noDirectAnthropicSdk,
+    "no-arbitrary-className": noArbitraryClassName,
   },
 };
 

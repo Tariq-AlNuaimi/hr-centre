@@ -24,6 +24,7 @@ import noRateLimitInsideAuth from "../../eslint-rules/rules/no-rate-limit-inside
 import noRestrictedExportColumn from "../../eslint-rules/rules/no-restricted-export-column.mjs";
 import noPrismaUnfilteredImport from "../../eslint-rules/rules/no-prisma-unfiltered-import.mjs";
 import noDirectAnthropicSdk from "../../eslint-rules/rules/no-direct-anthropic-sdk.mjs";
+import noArbitraryClassName from "../../eslint-rules/rules/no-arbitrary-className.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -665,3 +666,63 @@ ruleTest(
   },
   { ecmaVersion: 2022, sourceType: "module" },
 );
+
+// --- no-arbitrary-className (V2-304) ---------------------------------------
+// Layout design-token enforcement: an arbitrary Tailwind value on a SPACING
+// (p/m/gap/space) or FONT-SIZE (text-[…px|rem|em]) utility drifts off the 4px
+// scale / type scale. Legit arbitrary values elsewhere (grid, calc, min-h,
+// positioning, data-attr variants, arbitrary colors) stay allowed.
+ruleTest("no-arbitrary-className", noArbitraryClassName, {
+  valid: [
+    // On-scale spacing + type utilities.
+    { code: `const c = "p-4 mt-2 gap-3 text-sm";` },
+    { code: `const c = "px-density-page text-h4 font-semibold";` },
+    // Arbitrary values the rule deliberately does NOT govern.
+    { code: `const c = "grid-cols-[1fr_auto]";` },
+    { code: `const c = "w-[calc(100%-2rem)]";` },
+    { code: `const c = "min-h-[44px]";` }, // touch target — a size, not spacing
+    { code: `const c = "top-[3px] end-1";` }, // positioning, not spacing
+    { code: `const c = "data-[state=open]:bg-muted";` }, // arbitrary variant
+    { code: `const c = "text-[var(--brand)]";` }, // arbitrary COLOR (no px/rem/em)
+    { code: `const c = "text-[#fff]";` }, // arbitrary color, not a length
+    // A template literal whose static chunks are all on-scale.
+    { code: "const c = `flex ${x} p-2 text-base`;" },
+    // A plain string that isn't a className — the rule is JSX/TSX-scoped in the
+    // config, but the rule body itself only reports the pattern; a non-matching
+    // string is inert.
+    { code: `const note = "grid p-4";` },
+  ],
+  invalid: [
+    // Arbitrary spacing.
+    {
+      code: `const c = "p-[13px]";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    {
+      code: `const c = "mt-[7px] flex";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    {
+      code: `const c = "gap-[5px]";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    {
+      code: `const c = "space-y-[9px]";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    // Arbitrary font size (a length).
+    {
+      code: `const c = "text-[15px] font-bold";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    {
+      code: `const c = "text-[1.375rem]";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    // Caught inside a template literal's static chunk too.
+    {
+      code: "const c = `flex ${x} text-[56px]`;",
+      errors: [{ messageId: "noArbitrary" }],
+    },
+  ],
+});

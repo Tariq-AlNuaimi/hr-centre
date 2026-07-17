@@ -51,12 +51,12 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 | V2-209 | 2     | done    | (this)    | [detail](#v2-2xx-evidence) · `.claude/skills/blueprint/SKILL.md` · `scripts/lib/blueprint-content.mjs`                                            | Amendment delta block + `Confirmed:` marker; `/ship` amended-unconfirmed warn (shared: block); unit-tested                                                                                                                              |
 | V2-210 | 2     | done    | (this)    | [detail](#v2-2xx-evidence) · `docs/blueprints/asset-tracker.md` · `app/api/asset/**`                                                              | Pilot Asset Tracker ran the WHOLE loop (benchmark→explore→blueprint→scaffold+invariant→BDD→review→ship→retro); mergeable, /ship green                                                                                                   |
 | V2-301 | 3     | done    | (this)    | [detail](#v2-301-evidence) · `scripts/capture-screens.mjs` · `.claude/rules/design.md` · `docs/verification/asset-tracker/`                       | Visual-iteration loop: capture harness (`npm run capture`) + binding rule + `/design-qa` during-build mode; real before/after on the Asset Tracker (loop caught raw-enum copy defect → humanized labels), captures + critique committed |
-| V2-302 | 3     | pending | —         | —                                                                                                                                                 | Layout primitive layer (LEDGER)                                                                                                                                                                                                         |
-| V2-303 | 3     | pending | —         | —                                                                                                                                                 | Page archetypes                                                                                                                                                                                                                         |
-| V2-304 | 3     | pending | —         | —                                                                                                                                                 | Spacing/typography lint (LEDGER)                                                                                                                                                                                                        |
+| V2-302 | 3     | done    | d73232c   | `components/shared/PageShell.tsx` · `StatGrid.tsx` · `FormLayout.tsx` · `docs/build-vs-buy-ledger.md` · `docs/design-recipes.md` §1c              | Layout primitive layer: 3 token-scale, RTL-safe composition wrappers (build 3 missing, reuse the 6 shipped); ledger adjudication; compose-first recipe                                                                                  |
+| V2-303 | 3     | done    | 5876859   | `app/[locale]/(dashboard)/style-guide/page.tsx` · `docs/design-recipes.md` §1d · `docs/design-references.md`                                      | Page archetypes: 5 canonical archetypes + density rule; style-guide "Page archetypes" demo section (Dashboard/Detail/Form/List/Settings) on the shipped primitives                                                                      |
+| V2-304 | 3     | done    | (this)    | [detail](#v2-304-evidence) · `eslint-rules/rules/no-arbitrary-className.mjs` · `docs/verification/v2-304-lint/` · `docs/build-vs-buy-ledger.md`   | Spacing/typography lint: 12th local rule (scoped to spacing p/m/gap/space + font-size text-[…px]) at `error` on JSX/TSX; RuleTester-covered; 3 pre-existing hits resolved (1 on-scale, 2 justified escape-hatch); visual loop confirmed |
 | V2-305 | 3     | pending | —         | —                                                                                                                                                 | Copy chokepoint + copy lint                                                                                                                                                                                                             |
 | V2-306 | 3     | pending | —         | —                                                                                                                                                 | OSS catalog + /adopt skill                                                                                                                                                                                                              |
-| V2-307 | 3     | pending | —         | —                                                                                                                                                 | Taste anchors + scored design-qa (ASK)                                                                                                                                                                                                  |
+| V2-307 | 3     | done    | e338a37   | `docs/design-references.md` · `.claude/rules/design.md` (10-point rubric)                                                                         | Taste anchors (Linear/Vercel/Stripe + additions) per archetype; the numeric 0/1 10-point rubric wired into the visual loop + `/design-qa`; cite anchor+capture per deduction                                                            |
 | V2-308 | 3     | pending | —         | —                                                                                                                                                 | Visual regression (LEDGER)                                                                                                                                                                                                              |
 | V2-309 | 3     | pending | —         | —                                                                                                                                                 | Build-vs-buy completeness                                                                                                                                                                                                               |
 | V2-401 | 4     | pending | —         | —                                                                                                                                                 | Testcontainers + /ship --full (LEDGER)                                                                                                                                                                                                  |
@@ -533,6 +533,41 @@ login needs `pressSequentially` (react-hook-form ignores `fill()`).
   confirm the fix (list badges "Assigned/In stock/In repair/Retired", "Laptop/Monitor/Phone", light +
   dark; form selects "In stock"/"Laptop"). Before/after set + critique in
   `docs/verification/asset-tracker/` (`NOTES.md`). Residual polish logged in `findings-register`.
+
+<a id="v2-304-evidence"></a>
+
+### Phase 3 evidence — V2-304 spacing/typography lint
+
+**The gate.** A twelfth local ESLint rule, `no-arbitrary-className` (`eslint-rules/rules/`), is the
+layout sibling of `no-raw-hex-color`: color comes from tokens, and now so do spacing + type. It
+flags an arbitrary Tailwind value **only** on the utilities the design scale governs — spacing
+(`p/px/py/…`, `m/…`, `gap/gap-x/gap-y`, `space-x/space-y`) and font-size (`text-[…px|rem|em]`) —
+and deliberately leaves every other arbitrary value alone (`grid-cols-[1fr_auto]`,
+`w-[calc(…)]`, `min-h-[44px]` touch targets, `top-[3px]`, `data-[state=open]:` variants, arbitrary
+colors). Wired at `error` scoped to `**/*.{jsx,tsx}` in `eslint.config.mjs`; escape hatch is the
+single-line `// eslint-disable-next-line rihal-template/no-arbitrary-className`.
+
+**Build-vs-buy (ledger).** Evaluated `eslint-plugin-tailwindcss` — its `no-arbitrary-value` bans
+ALL `[...]` values bluntly and would false-positive on the ~50 legit arbitrary values off the
+spacing/type axes, with no way to scope it. Chose to **build the scoped local rule** (zero runtime
+dep); the plugin stays installed only for its complementary `no-contradicting-classname` (a later
+`/ship` candidate). Full adjudication in `docs/build-vs-buy-ledger.md`.
+
+**Measured + resolved.** A full scan found exactly 3 pre-existing hits (0 arbitrary spacing, 3 raw
+font-size). Resolution:
+
+- `OrgSwitcher.tsx` monogram `text-[15px]` → `text-base` (14px) — pulled **onto the type scale**.
+- `BrandedStatus.tsx` hero code `text-[56px]` — **escape-hatched** (outsize display numeral; no
+  token exists above `text-h1`/38px).
+- `NotificationsMenu.tsx` count badge `text-[10px]` — **escape-hatched** (10px keeps a 2-digit
+  count inside a 16px dot; `text-xs`/12px would clip).
+
+**Tested + verified.** RuleTester coverage in `tests/eslint-rules/rules.test.mjs` (12 valid / 7
+invalid: spacing, font-size, template-literal chunks flagged; grid/calc/min-h/positioning/variant/
+color allowed) — `npm run test:lint-rules` → 12/12 green. Visual loop run on the altered surface:
+`/style-guide` (which exercises all three components) captured desktop+mobile × light+dark; the
+monogram swap is imperceptible and on-scale, the two escape-hatched values unchanged, BrandedStatus
+404/403 hero numerals render correctly. Captures + critique in `docs/verification/v2-304-lint/`.
 
 ## Per-phase retros
 

@@ -30,7 +30,7 @@ export function OrgSwitcher() {
         >
           <span
             aria-hidden
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-[15px] font-bold leading-none text-primary-foreground"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary text-base font-bold leading-none text-primary-foreground"
           >
             {brand.monogram}
           </span>

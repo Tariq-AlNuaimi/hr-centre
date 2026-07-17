@@ -138,7 +138,7 @@ while tier is still the `personal` default, `/ship` fails — a multi-contributo
 shouldn't skip the shared-tier ceremony. Fix by setting `"tier": "shared"`, or record
 `"tierAck": "personal"` if it's genuinely still personal.
 
-## Local ESLint plugin (`eslint-rules/`, all eleven at `error`)
+## Local ESLint plugin (`eslint-rules/`, all twelve at `error`)
 
 `no-prisma-in-client`, `no-any-cast-on-session`, `no-secret-env-in-console`,
 `no-bare-internal-route`, `no-raw-hex-color` (tokens from `app/tokens.css` / `brand.config.ts` /
@@ -149,8 +149,10 @@ must compose OUTSIDE the auth wrapper; OWASP A04), `no-restricted-export-column`
 field as a `toExcel` column key leaks the raw value into the downloadable `.xlsx`; `SCRUB_FIELDS`
 does not cover exports; SECURITY.md §1), `no-prisma-unfiltered-import` (`prismaUnfiltered`
 bypasses soft-delete + audit; allowlisted to auth/recycling-bin/maintenance files),
-`no-direct-anthropic-sdk` (see `.claude/rules/ai.md`; ADR-042). Justified suppressions: single-line
-disable; if security-related, log in SECURITY.md §12.
+`no-direct-anthropic-sdk` (see `.claude/rules/ai.md`; ADR-042), `no-arbitrary-className` (arbitrary
+Tailwind values on spacing `p/m/gap/space` + font-size `text-[…px]` drift off the 4px scale / type
+scale — the layout sibling of `no-raw-hex-color`; JSX/TSX-scoped; V2-304). Justified suppressions:
+single-line disable; if security-related, log in SECURITY.md §12.
 
 ## Commands
 
