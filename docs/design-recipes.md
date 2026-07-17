@@ -119,6 +119,25 @@ built from them is RTL- and dark-correct by construction. Composition example:
 </PageShell>
 ```
 
+## 1d. Page archetypes — declare one, don't invent a layout (V2-303)
+
+Nearly every internal-tool screen is one of **five archetypes**. A blueprint's design-read
+**declares its archetype**; a screen that is none of these needs a one-line rationale. See them
+rendered at `/style-guide` (the "Page archetypes" section).
+
+| Archetype     | Shape (compose from primitives)                                                                    | Anchor (`design-references.md`) |
+| ------------- | -------------------------------------------------------------------------------------------------- | ------------------------------- |
+| **List**      | `PageShell` → `PageHeader` (one action) → `Toolbar` (search/filter) → `DataTable` (+ empty state)  | Linear issues                   |
+| **Detail**    | `PageShell` → `PageHeader` → `DescriptionList` (+ related lists); no nested cards                  | Linear issue detail             |
+| **Form**      | `PageShell` (narrow) → `PageHeader` → `FormLayout` (fields + one-primary footer)                   | Stripe forms                    |
+| **Dashboard** | `PageShell` → `PageHeader` → `StatGrid` (KPI row) → one or two charts with breathing room          | Vercel overview                 |
+| **Settings**  | `PageShell` (narrow) → `PageHeader` → grouped controls, a description under each, destructive last | Vercel settings                 |
+
+**Density rule (binding):** use a **Card only for a peer collection of ≥2** (e.g. a grid of
+`StatCard`s, member cards). A single object's facts go in a `DescriptionList`, **never a lone
+card** — a card around one thing is the "card soup" tell (`uat-rubric.md` Tier-0). One accent, one
+primary action per archetype; destructive actions are visually separated + confirmed.
+
 ## 2. Page header — `PageHeader`
 
 The one title pattern: heading + optional one-sentence subtitle on the inline-start,

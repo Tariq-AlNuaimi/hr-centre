@@ -94,15 +94,30 @@ const themes = ["light", "dark"];
 
 async function login(ctx, locale) {
   const page = await ctx.newPage();
-  await page.goto(`${BASE}/${locale}/login`, { waitUntil: "networkidle" });
-  // react-hook-form ignores programmatic fill(); type real keystrokes.
-  await page.getByLabel(/email|بريد/i).pressSequentially(env.SEED_ADMIN_EMAIL ?? "", { delay: 12 });
-  await page
-    .getByLabel(/password|كلمة/i)
-    .pressSequentially(env.SEED_ADMIN_PASSWORD ?? "", { delay: 12 });
-  await page.getByRole("button", { name: /sign in|log in|دخول/i }).click();
-  await page.waitForURL(new RegExp(`/${locale}(/|$)`), { timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(1200);
+  // Retry the whole login up to 3× — the credentials form occasionally races (the auth
+  // POST + session round-trip), and a context that stays on /login silently captures the
+  // login screen instead of the target. Verify we actually left /login before returning.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto(`${BASE}/${locale}/login`, { waitUntil: "networkidle" });
+    // react-hook-form ignores programmatic fill(); type real keystrokes.
+    await page
+      .getByLabel(/email|بريد/i)
+      .pressSequentially(env.SEED_ADMIN_EMAIL ?? "", { delay: 12 });
+    await page
+      .getByLabel(/password|كلمة/i)
+      .pressSequentially(env.SEED_ADMIN_PASSWORD ?? "", { delay: 12 });
+    await Promise.all([
+      page.waitForLoadState("networkidle"),
+      page.getByRole("button", { name: /sign in|log in|دخول/i }).click(),
+    ]);
+    await page
+      .waitForURL((u) => !u.pathname.endsWith("/login"), { timeout: 15000 })
+      .catch(() => {});
+    await page.waitForTimeout(1500);
+    if (!page.url().includes("/login")) break;
+    if (attempt === 3)
+      console.warn(`[capture-screens] WARN: login did not leave /login after 3 tries`);
+  }
   await page.close();
 }
 

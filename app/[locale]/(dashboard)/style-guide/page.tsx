@@ -14,6 +14,8 @@ import type { ColumnsType } from "@/components/shared/table-types";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { StatCard } from "@/components/shared/StatCard";
+import { StatGrid } from "@/components/shared/StatGrid";
+import { FormLayout } from "@/components/shared/FormLayout";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { DataView } from "@/components/shared/DataView";
@@ -161,6 +163,89 @@ export default function StyleGuidePage() {
           </Button>
         }
       />
+
+      <Section title="Page archetypes (V2-303) — compose these, don't hand-roll layouts">
+        <p className="mb-4 text-sm text-muted-foreground">
+          Five canonical archetypes on the shipped primitives. A new screen{" "}
+          <strong>declares its archetype</strong> in the blueprint design-read; a non-archetype page
+          needs a one-line rationale. Density rule: use Cards only for a peer collection of ≥2 —
+          otherwise a <code>DescriptionList</code>, never a lone card.
+        </p>
+        <div className="space-y-6">
+          <div>
+            <h3 className="mb-2 text-h5 font-semibold text-foreground">Dashboard — StatGrid</h3>
+            <StatGrid columns={4}>
+              <StatCard title="Total assets" value="1,284" hint="6 categories" />
+              <StatCard title="Assigned" value="812" trend={{ value: 4, direction: "up" }} />
+              <StatCard
+                title="In repair"
+                value="37"
+                trend={{ value: 2, direction: "down", positiveIsGood: false }}
+              />
+              <StatCard title="Retired" value="112" hint="this year" />
+            </StatGrid>
+          </div>
+          <div>
+            <h3 className="mb-2 text-h5 font-semibold text-foreground">Detail — DescriptionList</h3>
+            <DescriptionList
+              items={[
+                { key: "tag", label: "Asset tag", value: "LAP-0001" },
+                { key: "status", label: "Status", value: <Badge>Assigned</Badge> },
+                {
+                  key: "category",
+                  label: "Category",
+                  value: <Badge variant="outline">Laptop</Badge>,
+                },
+                { key: "purchased", label: "Purchased", value: "29 Dec 2025" },
+              ]}
+            />
+          </div>
+          <div>
+            <h3 className="mb-2 text-h5 font-semibold text-foreground">Form — FormLayout</h3>
+            <FormLayout
+              actions={
+                <>
+                  <Button>Save</Button>
+                  <Button variant="outline">Cancel</Button>
+                </>
+              }
+            >
+              <div className="space-y-2">
+                <label htmlFor="sg-arch-tag" className="text-sm font-medium text-foreground">
+                  Asset tag
+                </label>
+                <Input id="sg-arch-tag" placeholder="LAP-0001" />
+              </div>
+            </FormLayout>
+          </div>
+          <div>
+            <h3 className="mb-2 text-h5 font-semibold text-foreground">
+              List — Toolbar + honest empty state
+            </h3>
+            <Toolbar
+              start={<Input placeholder="Search…" className="max-w-xs" />}
+              end={<Button>New asset</Button>}
+            />
+            <div className="mt-4">
+              <EmptyState description="No assets match your filters yet." />
+            </div>
+          </div>
+          <div>
+            <h3 className="mb-2 text-h5 font-semibold text-foreground">
+              Settings — grouped controls, description under each
+            </h3>
+            <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">Audit retention</p>
+                <p className="text-sm text-muted-foreground">
+                  How long audit rows are kept before the purge cron removes them.
+                </p>
+              </div>
+              <Input defaultValue="365" className="w-24" aria-label="Audit retention days" />
+            </div>
+          </div>
+        </div>
+      </Section>
 
       <Section title="Typography">
         <h1 className="m-0 text-h1 font-bold text-foreground">Heading 1</h1>
