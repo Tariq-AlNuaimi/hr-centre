@@ -1,17 +1,16 @@
 # ADR-058 — Story→test traceability via playwright-bdd (machine-verified coverage)
 
 **Status:** Accepted (2026-07-17, Tariq Al-Naaimi — operator signed off on adopting the
-`playwright-bdd` runtime). `playwright-bdd` is installed (dev-dependency); `playwright-bdd.config.ts`
-
-- `npm run bdd:gen`/`test:bdd` wire the Gherkin executor; `bddgen` verified generating a Playwright
-  spec from the pilot's feature + steps. The **enforced** coverage flip still rides `/ship --full`
-  (V2-401, Phase 4); warm `/ship` is unchanged.
-  **Date:** 2026-07-17
-  **Decision owner:** Tariq Al-Naaimi
-  **Reviewers:** —
-  **Amends:** ADR-008 (UAT through Playwright — the acceptance loop this adds traceability to) ·
-  ADR-016 (website E2E tool). **Relates to:** ADR-033 (blueprint stories — the `USn`/`AC` spine this
-  traces against), V2-207, V2-401 (`/ship --full` — where the gate becomes enforced).
+`playwright-bdd` runtime). It is installed (dev-dependency); `playwright-bdd.config.ts` plus
+`npm run bdd:gen`/`test:bdd` wire the Gherkin executor; `bddgen` verified generating a Playwright
+spec from the pilot's feature + steps. The **enforced** coverage flip still rides `/ship --full`
+(V2-401, Phase 4); warm `/ship` is unchanged.
+**Date:** 2026-07-17
+**Decision owner:** Tariq Al-Naaimi
+**Reviewers:** —
+**Amends:** ADR-008 (UAT through Playwright — the acceptance loop this adds traceability to) ·
+ADR-016 (website E2E tool). **Relates to:** ADR-033 (blueprint stories — the `USn`/`AC` spine this
+traces against), V2-207, V2-401 (`/ship --full` — where the gate becomes enforced).
 
 ## Context
 
