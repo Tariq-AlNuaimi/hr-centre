@@ -357,3 +357,20 @@ Decision: **BUILD `scripts/fan-out.mjs`** — `check-overlap` (sound segment-by-
 refusal) + `verify-scope` (every changed file landed in exactly one declared set) around native
 dispatch; it does not replace native, it guards it. Zero runtime dependency. Informational for the
 ADR-032 hook (lives in `scripts/`). See ADR-057, V2-105.
+
+### 2026-07-17 — Visual regression (scripts/visual-regression.mjs) — V2-308
+
+Scope: scripts/visual-regression.mjs
+Considered: **Lost Pixel** (OSS runner — but it owns its OWN capture step + config surface, duplicating
+the `scripts/capture-screens.mjs` matrix this repo already produces, and its richer modes lean on a CI/
+SaaS platform), **Argos CE** (visual-testing — SaaS-first: uploads snapshots to argos-ci.com, needs
+account + egress, wrong for a local/offline QA loop), **Playwright `toHaveScreenshot`** (zero new dep —
+but it re-captures inside the test runner rather than diffing the existing capture set, and stores
+baselines as opaque per-test snapshots), **build a thin differ on `pixelmatch` + `pngjs`** (chosen).
+Decision: **BUILD `scripts/visual-regression.mjs`** on `pixelmatch` + `pngjs` (both small, MIT,
+dependency-free pure-JS — what Lost Pixel/Playwright use internally anyway) — it diffs a committed
+BASELINE dir against a fresh capture dir (the output `scripts/capture-screens.mjs` already produces),
+per-image pixel-diff against a threshold, writes a `*.diff.png` on regression, exits non-zero. Reuses
+the capture harness this repo owns instead of a second capture stack; local + offline; wired to `/qa`
+/ `uat:full` (NOT warm `/ship`). `pixelmatch`/`pngjs` are dev-dependencies (QA tooling, no runtime
+bundle cost). Informational for the ADR-032 hook (lives in `scripts/`; V2-309 gate). See V2-308, V2-301.

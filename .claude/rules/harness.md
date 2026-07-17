@@ -172,6 +172,9 @@ security-related, log in SECURITY.md §12.
 - `npm run tokens` (per-session/model spend report — ccusage, V2-106)
 - `npm run bdd-coverage` (story↔scenario↔step traceability gate — V2-207/ADR-058; dormant until a
   fork writes `tests/features/*.feature`; enforced under `/ship --full`) · `npm run fan-out` (ADR-057)
+- `npm run capture` (visual-iteration capture matrix — V2-301) · `npm run copy-check` (source-locale
+  copy house-style gate — V2-305) · `npm run visual-regression -- --baseline <dir> --current <dir>`
+  (pixel-diff vs a committed baseline — V2-308; QA-time / `uat:full`, NOT warm `/ship`)
 - Push = deploy: `main` → production, other branches → preview URL.
 
 ## Known traps (don't "fix")

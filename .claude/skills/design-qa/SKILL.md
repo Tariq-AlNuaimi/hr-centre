@@ -33,6 +33,25 @@ just the code:
 This during-build loop is fast (no axe/bridge); the FULL `/design-qa` below (Chromium states, axe,
 scored deviations) still runs at QA time. The rule is in `.claude/rules/design.md`.
 
+## Visual regression against a baseline (V2-308)
+
+Once a feature's look is signed off, its captures become a **committed baseline** and the diff runs
+at QA time to catch silent pixel drift (a stray 4px misalignment, a token/spacing regression) that
+the eyeball pass on a later change might miss:
+
+1. **Establish the baseline** — after sign-off, copy the accepted set into
+   `docs/verification/<feature>/baseline/` and commit it (see
+   `docs/verification/v2-305-copy/baseline/` for a worked example).
+2. **Diff at QA time** — re-capture, then
+   `npm run visual-regression -- --baseline docs/verification/<feature>/baseline --current docs/verification/<feature>`.
+   A per-image pixel diff beyond the tolerance (default 0.1%, or any dimension change) exits non-zero
+   and writes a `*.diff.png` for review — a red diff, not a silent regression.
+
+This runs at **QA time (`/design-qa` / `npm run uat:full`), never in the warm `/ship` loop** — a pixel
+diff needs a running app + a fresh capture, which the fast pre-push gate doesn't do. Built on
+`pixelmatch` + `pngjs` (`scripts/visual-regression.mjs`); when a diff is an intended redesign, refresh
+the baseline in the same change.
+
 ## Taste anchors + scored verdict (V2-307)
 
 The verdict is a **numeric 10-point rubric** (grid · hierarchy · one-primary-action · state honesty
