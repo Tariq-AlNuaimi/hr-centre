@@ -4,15 +4,16 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (5285a19, 2026-07-17)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (ac59bdf, 2026-07-17)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
-| ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED. Now on branch yhid26 (fast-forwarded from 25kqc6). |
-| ✅ DONE | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | PHASE 1 COMPLETE (832821c, /ship green), landed on main (6c56af3). ALL 7/7 items done + senior-reviewed + fixed. V2-105 CLOSED: ADR-057 (verdict=CUSTOM), /fan-out skill + scripts/fan-out.mjs; senior review 1 High + 3 Med + 1 Low ALL fixed. Exit criteria met. Retro in HARNESS-V2-EVIDENCE.md. |
-| ✅ DONE | **H2-P2** harness-v2 Phase 2 — Complete the loop (V2-201..V2-210) | — | PHASE 2 COMPLETE (5cc2d21, /ship green, pushed), landed on main (f905631). ALL 10/10 items done + pilot two-stage-reviewed + fixed. Loop machinery: /benchmark+/explore+/retro, two-stage review (V2-206), blueprint parity/app-floor/DAG/amendment gate (V2-202/203/205/209), BDD traceability (V2-207/ADR-058 Accepted). Retro in HARNESS-V2-EVIDENCE.md. |
-| ✅ DONE | **H2-P3** harness-v2 Phase 3 — Shrink the decision space (V2-301..V2-309) | — | PHASE 3 COMPLETE + LANDED ON MAIN (main @ 45a0500, /ship green, ff from f905631). ALL 9/9 done + THREE senior-review rounds (V2-304 font-size-regex substring bug; V2-305 JSXExpressionContainer bypass; phase-3-close: 3 wrong OSS-catalog AGPL labels + ledger broad-glob hygiene + VR ratio-vs-absolute tolerance — all CONFIRMED, fixed, re-tested). Look: V2-301 visual loop + V2-307 anchors/rubric + V2-302 primitives + V2-303 archetypes + V2-304 no-arbitrary-className + V2-308 visual-regression. Copy: V2-305 no-literal-jsx-text chokepoint + /ship copy gate (22 labels → sentence case). Build-vs-buy: V2-306 oss-catalog + /adopt (ADR-060 demo) + V2-309 gate widened to components/shared+scripts, Considered: + broad-glob hygiene. 13 ESLint rules; tests 13/13 lint-rules + 59/59 hooks (incl 5/5 visual). Retro in HARNESS-V2-EVIDENCE.md. |
-| ✅ DONE | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | — | PHASE 4 COMPLETE (5285a19, /ship + ship:full green) + senior-reviewed + fixed. 9/9 items: V2-401 (@testcontainers/postgresql + ship:full, 6/6 vs native pgvector), V2-402/403 (pgvector + coverage floor), V2-404 (sonarjs cognitive-complexity @error), V2-405 (StrykerJS; caught real password.ts gaps 70->82.5%), V2-406 (routeDecision extraction + §15 tests), V2-407 (osv-scanner+trivy in /audit), V2-408 (protect-secrets write-guard), V2-409 (debt sunset). senior review: 1 Critical + 2 High (protect-secrets Bash/MultiEdit/exemption bypasses) + 1 Stage-1 High (blueprint Scope) ALL FIXED with regression tests (test:hooks 64/64). Ready to land on main. |
+| ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + on main. Phase 0 — trust the gates (V2-001..006). |
+| ✅ DONE | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | COMPLETE + on main (6c56af3). Phase 1 — cheapen every session (V2-101..107). Retro in EVIDENCE. |
+| ✅ DONE | **H2-P2** harness-v2 Phase 2 — Complete the loop (V2-201..V2-210) | — | COMPLETE + on main (f905631). Phase 2 — complete the loop (V2-201..210). Retro in EVIDENCE. |
+| ✅ DONE | **H2-P3** harness-v2 Phase 3 — Shrink the decision space (V2-301..V2-309) | — | COMPLETE + on main (45a0500). Phase 3 — shrink the decision space (V2-301..309). Retro in EVIDENCE. |
+| ✅ DONE | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | — | COMPLETE + on main (8fb4737) + senior-reviewed+fixed. Phase 4 — verify what was waived (V2-401..409). WS-5 adjudicated SPLIT. Detail in EVIDENCE. |
+| ⬜ IN_PROGRESS | **H2-P5** harness-v2 Phase 5 — Stack & steady state (V2-501..V2-507) | senior review (in flight) | ALL 7 items done + pushed (ac59bdf, /ship+skill-check green). Phase 5 — stack & steady state (V2-501..507): auth STAY FROZEN, Renovate, skill-standard gate, docs-current, doctrine-sync+runbook, doc-manifest+prune, CLOSEOUT. senior review in flight → fix, land on main, CLOSE PROGRAM. Detail in EVIDENCE/CLOSEOUT. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -81,9 +82,9 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. Phase 4 COMPLETE + landed on main (8fb4737). WS-5 pgvector wave-off ADJUDICATED by operator (SPLIT: substrate fixed, provider round-trip waived).
-2. START Phase 5 (final harness-v2 phase): re-read the program doc for the Phase-5 item list; /blueprint (full track) first, then execute item-by-item (ship-green + push each), senior review at close, land on main.
-3. Provider RAG round-trip (WS-5 half) stays waived until a fork sets EMBEDDINGS_PROVIDER + EMBEDDINGS_API_KEY with egress.
+1. Phase 5 pushed (ac59bdf); senior review running over 482b646..HEAD — fix findings, re-ship, FF-land Phase 5 on main = harness-v2 CLOSED.
+2. Capstone: docs/HARNESS-V2-CLOSEOUT.md. 8 deferrals carry register lines.
+3. No further phases.
 
 <!-- END:auto-status -->
 
