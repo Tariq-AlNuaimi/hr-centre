@@ -51,9 +51,13 @@ the changed surface is still **open** (un-adjudicated).
   ~0) + the HNSW index in the plan (`document_embedding_embedding_cosine_idx`) + a wrong-dimension
   INSERT failing LOUD (the 1024-trap), all pass. The test SKIPS gracefully with no DB. **STILL
   UNVERIFIED:** the embeddings PROVIDER round-trip (text→vector via voyage/cohere) — needs
-  `EMBEDDINGS_API_KEY` + egress this env lacks. **PROPOSED (executor does not self-adjudicate — the
-  operator confirms): flip the DB-substrate half to `fixed(<this commit>)`; keep the provider-
-  round-trip half deferred until a fork sets an embeddings key.**
+  `EMBEDDINGS_API_KEY` + egress this env lacks. **ADJUDICATED — SPLIT (operator, 2026-07-17):**
+  (a) the **DB-substrate half is `fixed(8fb4737)`** — the `vector` extension + `<=>` cosine query +
+  HNSW plan + dimension-trap are proven by `tests/integration/pgvector.test.ts` (6/6) against native
+  Postgres 16 + pgvector; (b) the **provider round-trip half stays `waived`** — `ragUpsert`/`ragQuery`
+  through a real embeddings provider is deferred until a fork sets `EMBEDDINGS_PROVIDER` +
+  `EMBEDDINGS_API_KEY` with egress (fix at activation: apply the migration, set the keys, exercise the
+  round-trip). The two halves are tracked independently; only the substrate is closed.
 - 2026-07-11 — [quality] WS-6 Ory Polis SSO/SCIM seam (ADR-045) is UNVERIFIED in-session —
   lib/sso/* + app/api/internal/scim + the generic OIDC provider in lib/auth.ts + the `sso` compose
   profile were authored to the documented Ory Polis / BoxyHQ dsync contract, but **no live Polis

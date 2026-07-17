@@ -81,9 +81,9 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. Phase 4 (V2-401..409) COMPLETE + senior-reviewed + fixed + green (5285a19). LAND on main (fast-forward), then start Phase 5 (final phase).
-2. Phase 5: re-read the harness-v2 program doc for the Phase-5 item list; /blueprint first (full track).
-3. V2-402 register wave-off flip (WS-5) to fixed() is OPERATOR adjudication — proposed, awaiting sign-off; do not self-adjudicate.
+1. Phase 4 COMPLETE + landed on main (8fb4737). WS-5 pgvector wave-off ADJUDICATED by operator (SPLIT: substrate fixed, provider round-trip waived).
+2. START Phase 5 (final harness-v2 phase): re-read the program doc for the Phase-5 item list; /blueprint (full track) first, then execute item-by-item (ship-green + push each), senior review at close, land on main.
+3. Provider RAG round-trip (WS-5 half) stays waived until a fork sets EMBEDDINGS_PROVIDER + EMBEDDINGS_API_KEY with egress.
 
 <!-- END:auto-status -->
 
