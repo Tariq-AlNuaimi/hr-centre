@@ -161,6 +161,15 @@ next-intl so `messages/*.json` stays the copy chokepoint; `aria-*`/`data-*`/code
 root-boundaries/tests exempt; V2-305). Justified suppressions: single-line disable; if
 security-related, log in SECURITY.md §12.
 
+**Adopted (not local): `sonarjs/cognitive-complexity`** (V2-404, closes ADR-034's named
+"cognitive-complexity v2" gap). `eslint-plugin-sonarjs`'s cognitive-complexity rule at `error`
+on the product surfaces (`app`/`components`/`lib`/`i18n`/`middleware` — not `scripts`/`tests`),
+threshold **25** (product max 22 + headroom; ratchet toward the sonarjs default of 15 as the max
+drops). Unlike `scanComplexity()` (NEW files only), it catches a per-function regression on an
+edit to an existing product file. Not one of the thirteen local rules — an adopted dependency
+(`docs/build-vs-buy-ledger.md`, V2-404). Escape: `// eslint-disable-next-line
+sonarjs/cognitive-complexity` for a justified one-off.
+
 ## Commands
 
 - `npm run dev` · `npm run ship` (the gate) · `npm run scaffold -- --name <Pascal> --fields

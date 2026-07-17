@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import jsxA11y from "eslint-plugin-jsx-a11y";
+import sonarjs from "eslint-plugin-sonarjs";
 import rihalTemplate from "./eslint-rules/index.mjs";
 
 const eslintConfig = defineConfig([
@@ -93,6 +94,31 @@ const eslintConfig = defineConfig([
   {
     files: ["app/not-found.tsx", "app/global-error.tsx"],
     rules: { "rihal-template/no-literal-jsx-text": "off" },
+  },
+
+  // Cognitive-complexity gate (V2-404 — closes ADR-034's named "cognitive-complexity
+  // v2" gap). eslint-plugin-sonarjs implements the SonarSource COGNITIVE metric (weights
+  // nesting / control-flow breaks the way a reader experiences code — distinct from the
+  // cyclomatic `complexity` core rule and from ship.mjs's branch-token proxy on NEW
+  // files). We enable ONLY this one rule (not the recommended set — scope stays the named
+  // gap, no new noise). Scoped to the PRODUCT surfaces: app/components/lib/i18n/middleware
+  // — NOT scripts/** or tests/** (harness tooling with legitimately higher orchestration
+  // complexity, e.g. scripts/ship.mjs's phase runner at 36). Threshold 25 = current
+  // product max (22, lib/openapi/registry.ts) + headroom; ratchet toward the sonarjs
+  // default of 15 as the max drops (ADR-034 ratchet convention). At error so a deeply
+  // nested new function reds the build instead of a reviewer's memory; escape for a
+  // justified one-off is the single-line `// eslint-disable-next-line
+  // sonarjs/cognitive-complexity`. Build-vs-buy: docs/build-vs-buy-ledger.md (V2-404).
+  {
+    files: [
+      "app/**/*.{ts,tsx}",
+      "components/**/*.{ts,tsx}",
+      "lib/**/*.ts",
+      "i18n/**/*.ts",
+      "middleware.ts",
+    ],
+    plugins: { sonarjs },
+    rules: { "sonarjs/cognitive-complexity": ["error", 25] },
   },
 
   // Static accessibility gate (ADOPT.md A1; cat 22). eslint-plugin-jsx-a11y's

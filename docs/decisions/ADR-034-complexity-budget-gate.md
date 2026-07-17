@@ -106,6 +106,14 @@ than shipped half-done. This limitation is stated so a future session re-promote
 
 - Add v2 (modified-file per-function complexity) when over-engineering slips through
   edits to existing files — via ESLint once a baseline is clean, or an AST pass.
+  **CLOSED (2026-07-17, V2-404):** the "via ESLint" path shipped — `eslint-plugin-sonarjs`'s
+  `sonarjs/cognitive-complexity` is now at `error` on the product surfaces
+  (`app`/`components`/`lib`/`i18n`/`middleware`, not `scripts`/`tests`) at threshold **25**
+  (current product max 22 + headroom; ratchet toward the sonarjs default of 15 as the max
+  drops). Unlike the diff-scoped `scanComplexity()` proxy (NEW files only), this catches a
+  per-function regression on an EDIT to an existing file too. Build-vs-buy:
+  `docs/build-vs-buy-ledger.md` (V2-404); wiring: `eslint.config.mjs`; test:
+  `tests/eslint-rules/cognitive-complexity.test.mjs`.
 - Tune thresholds if false reds recur (adjust the constants + a register note).
 - Fold the three enforcement gates into a unified layer if maintaining three surfaces
   becomes friction.

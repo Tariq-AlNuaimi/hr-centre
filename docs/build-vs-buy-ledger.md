@@ -374,3 +374,23 @@ per-image pixel-diff against a threshold, writes a `*.diff.png` on regression, e
 the capture harness this repo owns instead of a second capture stack; local + offline; wired to `/qa`
 / `uat:full` (NOT warm `/ship`). `pixelmatch`/`pngjs` are dev-dependencies (QA tooling, no runtime
 bundle cost). Informational for the ADR-032 hook (lives in `scripts/`; V2-309 gate). See V2-308, V2-301.
+
+### 2026-07-17 — Cognitive-complexity gate (eslint-plugin-sonarjs) — V2-404
+
+Scope: eslint.config.mjs (sonarjs/cognitive-complexity block)
+Considered: **ESLint core `complexity`** (built-in, zero dep — but it measures CYCLOMATIC complexity,
+a different metric; ADR-034 explicitly named the missing gap as SonarSource **cognitive** complexity,
+which weights nesting/breaks the way a reader experiences code, and core ESLint does not implement it),
+**a hand-built AST metric** (the `scripts/ship.mjs` ADR-034 check already ships a branch-token proxy on
+NEW files — extending it to a full cognitive-complexity walk means re-deriving SonarSource's published
+algorithm and maintaining it; the reviewer-caught paper-cuts on the count-in-prose checks are the
+cautionary tale for hand-rolled metrics), **eslint-plugin-sonarjs** (chosen — the reference
+implementation of the exact metric, MIT, dev-dependency, 9 net packages, 0 vulnerabilities).
+Decision: **ADOPT `eslint-plugin-sonarjs`** and enable ONLY `sonarjs/cognitive-complexity` (not the
+whole recommended set — scope stays the ADR-034 gap, no new noise) at **error**, scoped to the product
+surfaces (`app/**`, `components/**`, `lib/**`, `i18n/**`, `middleware.ts` — NOT `scripts/**`/`tests/**`,
+which are harness tooling with legitimately higher orchestration complexity). Threshold **25** =
+current product-surface max (22, `lib/openapi/registry.ts`) + headroom; ratchet toward the sonarjs
+default of 15 as the max drops via refactors (ADR-034 ratchet convention). Dev-dependency, no runtime
+bundle cost. Informational for the ADR-032 hook (config edit, not a new `lib/` file). See V2-404,
+ADR-034.
