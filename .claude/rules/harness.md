@@ -34,6 +34,16 @@ are set); when CI is off, invoke the `senior-code-reviewer` agent on the change 
 work done. It is portable to any repo/stack via `node scripts/install-senior-review.mjs` (ADR-020;
 `tools/senior-review/README.md`).
 
+**Two-stage review (V2-206).** Both the pre-push `/code-review` diff gate and the post-push
+`senior-code-reviewer` run **STAGE 1 spec-compliance BEFORE STAGE 2 code-quality**. Stage 1 maps
+every changed file to a covering blueprint `Scope:` and reads its stories/ACs/Delta: a changed
+gated file (`app/api/**/route.ts`, `app/**/page.tsx`, `lib/**`) outside every covering Scope is a
+**Stage-1 finding** (High — unplanned surface, or a missing/too-narrow blueprint), and diff
+behavior that contradicts a story/AC is a Stage-1 finding. A flawless-but-wrong change fails Stage
+1; only a Scope-clean change proceeds to the five quality lenses. Stage 1 leads the report (or an
+explicit "Stage 1 clean" line). The reviewer agent's `.claude/agents/senior-code-reviewer.md`
+carries the full protocol; `/code-review` applies the same order on the pre-push diff.
+
 `/ship`'s own CI activates at the FIRST of: (a) `/handoff` to a team with Actions, (b) Actions
 billing unblocking, (c) a second regular contributor. Build-time note: the React Compiler Babel
 pass (ADR-048) adds ~10s to `/ship`'s build phase.
