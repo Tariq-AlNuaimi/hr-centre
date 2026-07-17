@@ -4,12 +4,12 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-16 · last /ship: **green** (2bccb8f, 2026-07-16)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-16 · last /ship: **green** (10a4c86, 2026-07-16)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED. Now on branch yhid26 (fast-forwarded from 25kqc6). |
-| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | Blueprint CONFIRMED. V2-101 DONE (constitution split, always-on 36868->~19288B). V2-102 DONE (agent-memory digest + memory-digest.mjs budget). Context-watchdog REMOVED (operator). NEXT: V2-103 velocity pillar (rename Speed & Velocity + context-tax/ship-walltime/hook-latency checks). |
+| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | V2-101 + V2-102 DONE + senior-reviewed + all findings fixed. Context-watchdog REMOVED. Always-on tax now ~19096B (18.65KB). NEXT: V2-103 velocity pillar — rename Pillar 1 -> Speed & Velocity (ASK-confirmed) in CLAUDE.md + docs/uat-rubric.md; add 3 checks: context-tax warn (scripts/context-tax.mjs DONE), /ship wall-time >25% over baseline warn, hook-latency baseline. Then V2-104/105/106/107. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -79,7 +79,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 **Next actions**
 
 1. RESUME Phase 1 at V2-103 (velocity pillar → Speed & Velocity, ASK-confirmed). V2-101 + V2-102 DONE+green. Then V2-104 (parallel-by-default), V2-105 (ADR-057 native-teams, ASK verdict), V2-106/107 [P].
-2. RESUME harness-v2 Phase 1 at V2-102 (memory retrieval-on-demand). Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md. Blueprint docs/blueprints/harness-v2-phase-1.md is CONFIRMED.
+2. V2-102 CLOSED: senior-code-reviewer verified zero entry loss + clean watchdog removal; 5 findings (High boldOf prefix-collision + Medium count-drift + 3 Low) ALL fixed (10a4c86), logged in docs/findings-register.md. Hook suite 32 green.
 3. V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.
 4. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.
 5. Remaining Phase 1: V2-103 (velocity pillar — CONFIRMED rename Pillar 1 -> Speed & Velocity + 3 checks: context-tax done via scripts/context-tax.mjs, /ship wall-time >25% warn, hook-latency baseline), V2-104 (parallel-by-default constitution text), V2-105 (research native agent teams -> ADR-057 -> ASK verdict; build /fan-out only if custom), V2-106 [P] ccusage LEDGER + npm run tokens, V2-107 [P] permission friction (git branch -d, amend on unpushed).
