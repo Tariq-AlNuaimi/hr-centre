@@ -130,7 +130,7 @@ a committed adjudication artifact.
 
 `project.config.json` `"tier": "personal" | "shared"` (default personal). Tier scales ceremony,
 **never the security floor**: auth wrappers on every route, no leaked secrets, zod at every
-boundary, no raw SQL, the eleven ESLint rules at `error`, audit log ON, `/ship` before every push —
+boundary, no raw SQL, the twelve ESLint rules at `error`, audit log ON, `/ship` before every push —
 identical for both. `shared` adds: `/handoff` package, SECURITY.md §9 compliance, CI activation at
 handoff, formal findings register. `personal` skips those (audit log stays ON). **`/ship` enforces
 tier-vs-reality:** if the repo has ≥2 distinct human contributors (the same line that activates CI)

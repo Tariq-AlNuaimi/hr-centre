@@ -550,8 +550,8 @@ single-line `// eslint-disable-next-line rihal-template/no-arbitrary-className`.
 **Build-vs-buy (ledger).** Evaluated `eslint-plugin-tailwindcss` — its `no-arbitrary-value` bans
 ALL `[...]` values bluntly and would false-positive on the ~50 legit arbitrary values off the
 spacing/type axes, with no way to scope it. Chose to **build the scoped local rule** (zero runtime
-dep); the plugin stays installed only for its complementary `no-contradicting-classname` (a later
-`/ship` candidate). Full adjudication in `docs/build-vs-buy-ledger.md`.
+dep); the plugin was **uninstalled after evaluation** — no dependency added (knip enforces it).
+Full adjudication in `docs/build-vs-buy-ledger.md`.
 
 **Measured + resolved.** A full scan found exactly 3 pre-existing hits (0 arbitrary spacing, 3 raw
 font-size). Resolution:
@@ -562,9 +562,10 @@ font-size). Resolution:
 - `NotificationsMenu.tsx` count badge `text-[10px]` — **escape-hatched** (10px keeps a 2-digit
   count inside a 16px dot; `text-xs`/12px would clip).
 
-**Tested + verified.** RuleTester coverage in `tests/eslint-rules/rules.test.mjs` (12 valid / 7
-invalid: spacing, font-size, template-literal chunks flagged; grid/calc/min-h/positioning/variant/
-color allowed) — `npm run test:lint-rules` → 12/12 green. Visual loop run on the altered surface:
+**Tested + verified.** RuleTester coverage in `tests/eslint-rules/rules.test.mjs` (16 valid / 9
+invalid: spacing, font-size, `length:` hint, multi-hit-reports-all, template-literal chunks flagged;
+grid/calc/min-h/positioning/variant/arbitrary-color and px/rem/em-as-substring-of-a-var/theme/named
+value allowed — the senior-review false-positive class) — `npm run test:lint-rules` → 12/12 green. Visual loop run on the altered surface:
 `/style-guide` (which exercises all three components) captured desktop+mobile × light+dark; the
 monogram swap is imperceptible and on-scale, the two escape-hatched values unchanged, BrandedStatus
 404/403 hero numerals render correctly. Captures + critique in `docs/verification/v2-304-lint/`.

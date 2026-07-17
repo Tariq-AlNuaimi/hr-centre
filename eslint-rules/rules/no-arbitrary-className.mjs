@@ -18,16 +18,25 @@
 // Escape hatch (a justified one-off, e.g. an outsize display number with no token):
 //   // eslint-disable-next-line rihal-template/no-arbitrary-className
 
-const ARBITRARY_SPACING = /\b(?:p[xytrbl]?|m[xytrbl]?|gap(?:-[xy])?|space-[xy])-\[[^\]]+\]/;
-const ARBITRARY_FONT_SIZE = /\btext-\[[^\]]*(?:px|rem|em)[^\]]*\]/;
+const ARBITRARY_SPACING = /\b(?:p[xytrbl]?|m[xytrbl]?|gap(?:-[xy])?|space-[xy])-\[[^\]]+\]/g;
+// A font-size arbitrary value is a LENGTH: an optional `length:` type hint, an optional
+// sign, a number, then a px/rem/em unit — `text-[15px]`, `text-[1.375rem]`, `text-[.9em]`,
+// `text-[length:14px]`. The unit must TRAIL A DIGIT, so an arbitrary COLOR / named token /
+// theme() / CSS-var whose name merely CONTAINS the letters px|rem|em as a substring stays
+// allowed: `text-[var(--element-color)]`, `text-[system-ui]`, `text-[theme(spacing.4)]`,
+// `text-[var(--primary-emphasis)]` (this repo's own token) are NOT font sizes, NOT flagged.
+// (Anchoring the unit to a digit is the V2-304 senior-review fix.)
+const ARBITRARY_FONT_SIZE = /\btext-\[(?:length:)?-?[\d.]+(?:px|rem|em)\]/g;
 
+// Return EVERY off-scale utility in the string (not just the first) so a developer sees
+// all violations in one lint pass, not one-per-rerun.
 function offending(value) {
-  if (typeof value !== "string" || !value.includes("[")) return null;
-  const s = ARBITRARY_SPACING.exec(value);
-  if (s) return s[0];
-  const f = ARBITRARY_FONT_SIZE.exec(value);
-  if (f) return f[0];
-  return null;
+  if (typeof value !== "string" || !value.includes("[")) return [];
+  const hits = [];
+  for (const re of [ARBITRARY_SPACING, ARBITRARY_FONT_SIZE]) {
+    for (const m of value.matchAll(re)) hits.push(m[0]);
+  }
+  return hits;
 }
 
 export default {
@@ -45,8 +54,7 @@ export default {
   },
   create(context) {
     function check(node, value) {
-      const hit = offending(value);
-      if (hit) {
+      for (const hit of offending(value)) {
         context.report({ node, messageId: "noArbitrary", data: { value: hit.slice(0, 40) } });
       }
     }

@@ -685,6 +685,13 @@ ruleTest("no-arbitrary-className", noArbitraryClassName, {
     { code: `const c = "data-[state=open]:bg-muted";` }, // arbitrary variant
     { code: `const c = "text-[var(--brand)]";` }, // arbitrary COLOR (no px/rem/em)
     { code: `const c = "text-[#fff]";` }, // arbitrary color, not a length
+    // px/rem/em as a SUBSTRING of a var/token/theme/named value is NOT a font size
+    // (the V2-304 senior-review regression cases — the unit must trail a digit).
+    { code: `const c = "text-[var(--element-color)]";` }, // "element" contains "em"
+    { code: `const c = "text-[var(--primary-emphasis)]";` }, // this repo's own token
+    { code: `const c = "text-[system-ui]";` }, // "system" contains "em"
+    { code: `const c = "text-[theme(spacing.4)]";` }, // "theme" contains "em"
+    { code: `const c = "text-[color:var(--x)]";` }, // explicit color hint
     // A template literal whose static chunks are all on-scale.
     { code: "const c = `flex ${x} p-2 text-base`;" },
     // A plain string that isn't a className — the rule is JSX/TSX-scoped in the
@@ -718,6 +725,21 @@ ruleTest("no-arbitrary-className", noArbitraryClassName, {
     {
       code: `const c = "text-[1.375rem]";`,
       errors: [{ messageId: "noArbitrary" }],
+    },
+    {
+      // An explicit `length:` type hint is still a font size.
+      code: `const c = "text-[length:14px]";`,
+      errors: [{ messageId: "noArbitrary" }],
+    },
+    {
+      // EVERY off-scale utility in the string is reported, not just the first
+      // (the V2-304 senior-review whack-a-mole fix): 3 hits → 3 errors.
+      code: `const c = "p-[13px] mt-[7px] text-[15px]";`,
+      errors: [
+        { messageId: "noArbitrary" },
+        { messageId: "noArbitrary" },
+        { messageId: "noArbitrary" },
+      ],
     },
     // Caught inside a template literal's static chunk too.
     {
