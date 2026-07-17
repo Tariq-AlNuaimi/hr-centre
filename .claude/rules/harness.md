@@ -53,6 +53,24 @@ pass (ADR-048) adds ~10s to `/ship`'s build phase.
   `/remember`; route work by model tier (haiku/sonnet/opus) per the table in
   `docs/token-policy.md` (ADR-022).
 
+## Parallel-by-default (binding — full detail, V2-104)
+
+The constitution states the rule; here is the mechanism. **Before any multi-part task, decompose
+it.** If ≥2 units are **write-disjoint** (they touch non-overlapping file sets), dispatch them as
+**parallel subagents in a single message** — without being asked. Parallelism trades tokens for
+wall-clock, and wall-clock is Pillar 1 (Speed & Velocity).
+
+- **File-ownership sets are mandatory.** Each spawned unit gets an explicit, disjoint set of files
+  it may write; forbid it from touching any in-flight file. Overlap → serialize those units.
+- **Each unit rides its ADR-022 tier** — scout (haiku) for reads, sonnet for implementation, opus
+  only for architecture-grade work. The main session orchestrates; routing receipts stay on
+  (`routing-receipt.mjs`) so every spawn leaves a trace.
+- **Two calibration notes:** (1) **dependency chains don't parallelize** — if unit B needs unit A's
+  output, they're sequential, not a wave. (2) **Orchestrator-only during waves** — while a parallel
+  wave runs, the main session coordinates and integrates; it doesn't also edit the same files.
+- Verify each returned unit (Glob-confirm it wrote its files; read the diff), then integrate and run
+  ONE `/ship` over the combined result — not per-unit.
+
 ## Memory lifecycle (cross-session durability)
 
 - **In-flight state** → `docs/SESSION-HANDOFF.md` + its data source `docs/session-state.json` —

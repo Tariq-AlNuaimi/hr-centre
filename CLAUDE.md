@@ -1,6 +1,6 @@
 # CLAUDE.md — Fullstack Next.js Template (Constitution)
 
-Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Tailwind v4 + shadcn/Radix (ADR-029) + next-intl (`en`/`ar`, RTL) + recharts + dnd-kit + zod; Vercel + Neon, `git push` deploys. Owner: Tariq Al-Naaimi. Non-dev stakeholders review via shared URLs; the operator iterates, then `/handoff` gives production to IT (ADR-006). Fork lifecycle: `/rebrand` → `/first-fork` (or `/new-project` / `/deploy`) → `/quickstart` per idea → `/scale-up` per growth axis → `/handoff`.
+Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Tailwind v4 + shadcn/Radix (ADR-029) + next-intl (RTL) + recharts + zod; Vercel + Neon, `git push` deploys. Owner: Tariq Al-Naaimi. Non-dev stakeholders review via shared URLs; the operator iterates, then `/handoff` gives production to IT (ADR-006). Fork lifecycle: `/rebrand` → `/first-fork` (or `/new-project` / `/deploy`) → `/quickstart` per idea → `/scale-up` per growth axis → `/handoff`.
 
 > **Always-on constitution** (identity, pillars, security floor, Ask-before). Domain detail loads
 > lazily by path from `.claude/rules/*.md` — read the matching file first (a PreToolUse hook also
@@ -14,20 +14,21 @@ Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Pri
 ## Standing instructions (binding)
 
 - **`main` is the fork source-of-truth.** Land completed green work on `main` before a session ends; merge often. Never land red — `/ship` green is the bar.
-- **Pushed-or-it-didn't-happen (#3/#14).** The container is ephemeral; the next session clones **only what was pushed**. Commit completed work and **push before the session ends**, then _verify_ (`git rev-list --count @{u}..HEAD` → `0`), never assume — the `Stop` hook **hard-blocks** turn-end while commits are unpushed (uncommitted WIP is a warning). A past session's missing work is usually an unpushed commit — recover, don't claim "no access." (Memory lifecycle in `.claude/rules/harness.md`.)
+- **Pushed-or-it-didn't-happen (#3/#14).** The container is ephemeral; the next session clones **only what was pushed**. Commit completed work and **push before the session ends**, then _verify_ (`git rev-list --count @{u}..HEAD` → `0`), never assume — the `Stop` hook **hard-blocks** turn-end while commits are unpushed. A past session's missing work is usually an unpushed commit — recover, don't claim "no access." (Memory lifecycle in `.claude/rules/harness.md`.)
 - **Run `/ship` before every push** (`npm run ship`; ~55s warm; stops on first failure) — the active gate; CI is dormant on the free plan (triggers + cadence: `.claude/rules/harness.md`, ADR-017).
-- **Review rail** (detail + CI path in `.claude/rules/harness.md`): before any push touching auth, schemas, API routes, or `lib/`, run `/code-review` (pre-push, diff-scoped, blocking) and resolve findings; **after** every code push invoke the `senior-code-reviewer` (post-push breadth) — layers on `/code-review`, never replaces it.
-- **Market benchmark before building.** Brainstorm/requirements passes web-search existing products/libraries first (a "market scan" section in the spec).
+- **Review rail** (detail + CI path in `.claude/rules/harness.md`): before any push touching auth, schemas, API routes, or `lib/`, run `/code-review` (pre-push, blocking) and resolve findings; **after** every code push invoke the `senior-code-reviewer` (post-push breadth) — it layers on `/code-review`.
+- **Market benchmark before building.** Brainstorm/requirements passes web-search existing products/libraries first (a "market scan" in the spec).
 - For real multi-file features use **Superpowers** (brainstorm → spec → plan → TDD; verified at SessionStart); for disposable idea-to-URL use `/quickstart`. No spec ceremony on throwaways.
-- **Blueprint before building (pre-build gate).** Run `/blueprint` first: **lightweight track** for disposable `/quickstart` work; **full track** (committed `docs/blueprints/<feature>.md`: stories + happy/worst scenarios + architecture + tier + open questions via `AskUserQuestion`) for real multi-file work or the Ask-before surface. The contract `/qa`/`/uat` trace against; don't drift silently — update and re-confirm.
-- **Auto-plan high blast-radius / ambiguous work.** Call `EnterPlanMode` (await sign-off) when ANY holds: multi-file/multi-step; Ask-before surface; ambiguous requirements; unfamiliar code; hard to reverse. Pair with `/blueprint`. Act directly for read-only lookups, low-risk single-file edits, typos/renames. Close call → plan, name the trigger.
+- **Blueprint before building (pre-build gate).** Run `/blueprint` first: **lightweight track** for disposable `/quickstart` work; **full track** (committed `docs/blueprints/<feature>.md`: stories + happy/worst scenarios + architecture + open questions) for real multi-file work or the Ask-before surface — the contract `/qa`/`/uat` trace against. Don't drift silently.
+- **Auto-plan high blast-radius / ambiguous work.** Call `EnterPlanMode` (await sign-off) when ANY holds: multi-file/multi-step; Ask-before surface; ambiguous requirements; unfamiliar code; hard to reverse. Pair with `/blueprint`. Act directly for read-only lookups, low-risk single-file edits, typos/renames.
+- **Parallel-by-default (binding).** Dispatch ≥2 write-disjoint units of multi-part work as parallel subagents in ONE message, unprompted (file-ownership sets mandatory). Detail in `.claude/rules/harness.md`.
 - **Deploy/ops** (offer `/deploy` after green ship; a live URL is the default — verify by RUNNING, not assuming): `.claude/rules/deploy.md`.
 
 ## Five Pillars (binding — gates, not vibes)
 
 Every change is judged against five pillars (full definitions in `docs/uat-rubric.md`) — **gates**: `/ship`/`/qa` enforce them and a violation blocks like a security violation.
 
-1. **Speed & Velocity** — runtime (RSC, bounded payloads) + dev velocity (low context tax, warm `/ship`, parallel-by-default); gated checks in the rubric.
+1. **Speed & Velocity** — runtime (RSC, bounded payloads) + dev velocity (low context tax, warm `/ship`, parallel-by-default); rubric-gated.
 2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage (the eleven ESLint rules + Hard rules below).
 3. **Maintainable** — reuses existing primitives (check `docs/REPO-MAP.md` first); typed; no dead code; forward-compatible migrations.
 4. **Scalable** — list/read routes paginate or bound; no N+1; bulk paths not N×1; rate-limit-aware.
@@ -40,7 +41,7 @@ Every change is judged against five pillars (full definitions in `docs/uat-rubri
 ## Hard rules
 
 - **The Five Pillars are gates, not vibes** (above): unfixed concern → **wave-off in `docs/findings-register.md`**, `/ship` RED until adjudicated. Never silently dropped.
-- **The enforcement quartet — hard gates:** build-vs-buy (ADR-032), blueprint (ADR-033), complexity (ADR-034), ai-eval (ADR-036/042). Each = a gate + a committed adjudication artifact; a new gated file (`lib/**`, `app/api/**/route.ts`, `app/**/page.tsx`) or over-budget file is **denied/RED** until its ledger/blueprint/ack entry exists (Bash writes too). Mechanism + waivers in `.claude/rules/harness.md`.
+- **The enforcement quartet — hard gates:** build-vs-buy (ADR-032), blueprint (ADR-033), complexity (ADR-034), ai-eval (ADR-036/042). Each = a gate + a committed adjudication artifact; a new gated file (`lib/**`, `app/api/**/route.ts`, `app/**/page.tsx`) or over-budget file is **denied/RED** until its ledger/blueprint/ack entry exists (Bash writes too). Mechanism in `.claude/rules/harness.md`.
 - **Never commit `.env`** (Restricted; SECURITY.md §1; gitleaks gates every push). **Never log** any Restricted env var (`no-secret-env-in-console`; `lib/email.ts` logs metadata only — never `opts.text`/`opts.html`).
 - **Go through Prisma.** No raw SQL except `$queryRaw`/`$executeRaw` with placeholders; never `$executeRawUnsafe` on user input; no `SELECT *`; no raw UPDATE/DELETE without WHERE. Audit/soft-delete/SCRUB_FIELDS/naming in `.claude/rules/prisma.md`.
 - **UI → API route → service → Prisma.** Only server components and API routes touch `prisma` (`no-prisma-in-client`).
@@ -50,7 +51,7 @@ Every change is judged against five pillars (full definitions in `docs/uat-rubri
 
 ## Project tiers
 
-`project.config.json` `"tier": "personal" | "shared"` (default personal) scales ceremony, **never the security floor** (identical for both). `shared` adds `/handoff`, SECURITY.md §9 compliance, CI at handoff, findings register. **`/ship` enforces tier-vs-reality** (≥2 human contributors on the `personal` default fails). Full contract in `.claude/rules/harness.md`.
+`project.config.json` `"tier": "personal" | "shared"` (default personal) scales ceremony, **never the security floor** (identical for both). `shared` adds `/handoff`, SECURITY.md §9 compliance, CI at handoff, findings register. **`/ship` enforces tier-vs-reality** (≥2 human contributors on `personal` fails); full contract in `.claude/rules/harness.md`.
 
 ## Ask before
 
