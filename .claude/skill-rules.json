@@ -167,6 +167,34 @@
       ],
       "paths": [],
       "reason": "Write-disjoint units run as a parallel subagent wave with enforced file-ownership (ADR-057), not ad-hoc dispatch."
+    },
+    {
+      "skill": "benchmark",
+      "keywords": [
+        "benchmark this category",
+        "what do mature",
+        "parity matrix",
+        "existing products have"
+      ],
+      "paths": ["docs/benchmarks/**"],
+      "reason": "A new feature starts from a sourced parity matrix (table-stakes/differentiators/anti-features), not guesses."
+    },
+    {
+      "skill": "explore",
+      "keywords": [
+        "explore approaches",
+        "what are the options",
+        "diverge before committing",
+        "which approach"
+      ],
+      "paths": [],
+      "reason": "Architecture is chosen from 2-3 evaluated options with an ADR stub for the losers, before the blueprint locks it."
+    },
+    {
+      "skill": "retro",
+      "keywords": ["retrospective", "phase retro", "what did we learn", "what was missing"],
+      "paths": [],
+      "reason": "Phase/feature end captures broke/learned/missing durably; missing features feed back to the benchmark."
     }
   ]
 }
