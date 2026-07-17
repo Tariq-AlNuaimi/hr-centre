@@ -794,3 +794,49 @@ maxDiffRatio})` (a dimension change or a diff beyond the tolerance = a regressio
   runnable specs (`bddgen`) ✓. _Caveat honestly recorded:_ scenario EXECUTION against a browser needs
   a live app + seeded DB + per-role auth (not in the build container) — that run lands with `/ship
 --full` in Phase 4; the coverage MAPPING + spec GENERATION are verified now.
+
+### Phase 3 retro — "Shrink the decision space" (V2-301 … V2-309)
+
+- **The win:** the three axes an agent silently drifts on — **look, copy, build-vs-buy** — now each
+  have a **default that is already on-scale, on-voice, and reuse-first**, enforced by a gate rather than
+  a vibe. Look: the visual-iteration loop (capture → view → critique, binding) + taste anchors + a
+  scored 10-point rubric + composed layout primitives + named archetypes + the `no-arbitrary-className`
+  spacing/type lint + `visual-regression` pixel diffs. Copy: the `no-literal-jsx-text` chokepoint routes
+  every string through next-intl and the `/ship` `copy` gate holds the source-locale to a house style.
+  Build-vs-buy: the OSS catalog is step 0, `/adopt` runs the scan as a skill, and the gate now spans
+  `lib/ **` + `components/shared/**` + `scripts/**` and demands a `Considered:` line.
+- **The environment unblock paid off across the phase:** native Postgres + `npm run dev` (no Docker)
+  made the visual loop REAL — every design item (V2-301/302/303/304/305) shipped with committed
+  desktop+mobile×light+dark captures + a critique, not a code-only affirmation. The V2-301 loop caught a
+  live copy defect (raw enum tokens) on the pilot before it reached QA, and the V2-305 migration was
+  eyeball-verified (sidebar/nav/buttons render consistent sentence case) — pixels, not claims.
+- **The review rail caught two load-bearing bugs the tests missed — twice:** V2-304's font-size regex
+  matched `px|rem|em` as a free substring (would have false-flagged this repo's own
+  `--primary-emphasis` token and every `text-[var(--…)]`); V2-305's JSX-literal rule silently missed
+  every literal reached through a `JSXExpressionContainer` (`{cond ? "A" : "B"}`), so the "every string
+  through next-intl" claim didn't actually hold. Both were CONFIRMED against real ESLint output by the
+  reviewer, fixed, and re-tested. Lesson: **a rule's RuleTester cases prove what you thought to test;
+  the adversarial reviewer proves what you didn't** — the two-stage review is not ceremony.
+- **The gate reviewing itself:** V2-309 widened the build-vs-buy surface to `scripts/**` — and then
+  immediately gated V2-308's own new `scripts/visual-regression.mjs`, which was only allowed to be
+  written AFTER its ledger entry (with a `Considered:` line) landed. The enforcement quartet enforcing
+  the very commit that extends it is the strongest possible evidence it works. The widening also
+  surfaced three already-built session scripts (`copy-check`, `capture-screens`, `fan-out`) with no
+  ledger coverage — backfilled with real `Considered:` entries, so the ledger is now complete.
+- **Build-over-adopt, four times, each on the record:** `no-arbitrary-className` over
+  eslint-plugin-tailwindcss (too blunt), `no-literal-jsx-text` over eslint-plugin-i18next (inverted
+  allowlist), `copy-check` over Vale/alex (wrong target), `visual-regression` over Lost Pixel/Argos
+  (duplicate capture stack / SaaS). The recurring reason: **the off-the-shelf tool is broader and
+  heavier than the scoped need, and knip forbids a dead dependency** (the V2-304 lesson, applied since).
+  Every call is a ledger entry with named alternatives — the discipline V2-309 then made mandatory.
+- **Friction / cost:** the "N-th ESLint rule" doc sweep (`eleven`→`twelve`→`thirteen` across ~10 live
+  docs) is fragile — the reviewer twice found a missed reference. Going forward `thirteen`→`fourteen` is
+  byte-neutral for CLAUDE.md (still ≤8192), but the count-in-prose pattern is a standing paper-cut; a
+  future item could derive the count instead of hard-coding it. Prettier's mid-sentence `-`/`+`
+  list-marker and bare-`*` emphasis mangling bit several docs (fixed each time by rewording/backticks) —
+  a known hazard now worth a `/remember`.
+- **Exit criteria (KICKOFF §3 row 3):** every V2-301…309 item is `done` with evidence above — gates
+  live at `error`/`/ship`, negative tests green (`test:lint-rules` 13/13, `test:hooks` 54/54 +
+  visual-regression 4/4), the visual loop run for real with committed captures, `/adopt` demonstrated
+  (ADR-060), and the build-vs-buy gate widened + Considered-gated with its own commit gated by it. All
+  landed green and pushed.
