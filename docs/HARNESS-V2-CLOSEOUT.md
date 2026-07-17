@@ -33,7 +33,7 @@ non-deferred items** — the V2-507 exit bar).
   we fixed — three real protect-secrets write bypasses (Bash/MultiEdit/over-broad `.env.*`). Detail:
   EVIDENCE "Phase 4 evidence" rows.
 - **Phase 5 — Stack & steady state (V2-501…507).** The after-the-program layer: the recorded auth
-  decision (ADR-056 re-confirmed STAY FROZEN), Renovate, skill-standard conformance (all 33/34 skills
+  decision (ADR-056 re-confirmed STAY FROZEN), Renovate, skill-standard conformance (all 34 skills
   vs agentskills.io, gated in `/ship`) + plugin.json refresh, the context7-backed docs-currency
   skill, the platform-doctrine-sync ADR section + maintainer runbook (the bus-factor floor), the fork
   doc-payload manifest (`rebrand --prune-docs`), and this closeout. Detail: EVIDENCE "Phase 5

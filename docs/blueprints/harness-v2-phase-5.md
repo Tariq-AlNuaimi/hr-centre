@@ -1,6 +1,6 @@
 # Blueprint — HARNESS-V2 Phase 5: "Stack & steady state"
 
-Scope: docs/decisions/**, renovate.json, .claude/skills/**, .claude/plugin.json, scripts/skill-standard-check.mjs, scripts/rebrand.mjs, scripts/generate-manifest.mjs, docs/generated-manifest.json, docs/runbooks/**, docs/build-vs-buy-ledger.md, docs/findings-register.md, docs/HARNESS-V2-CLOSEOUT.md, docs/HARNESS-V2-EVIDENCE.md, docs/blueprints/harness-v2-phase-5.md, HARNESS-V2-BACKLOG.md, package.json, .claude/rules/harness.md
+Scope: docs/decisions/**, renovate.json5, .github/dependabot.yml, .claude/skills/**, .claude/skill-rules.json, .claude/plugin.json, scripts/skill-standard-check.mjs, scripts/rebrand.mjs, scripts/ship.mjs, docs/doc-manifest.json, docs/runbooks/**, docs/build-vs-buy-ledger.md, docs/findings-register.md, docs/HARNESS-V2-CLOSEOUT.md, docs/HARNESS-V2-EVIDENCE.md, docs/session-state.json, docs/SESSION-HANDOFF.md, docs/blueprints/harness-v2-phase-5.md, HARNESS-V2-BACKLOG.md, package.json, .claude/rules/harness.md
 
 Track: **Full** · Program: harness-v2 · Phase: 5 of 5 (final) · Branch `claude/harness-v2-kickoff-yhid26`
 
@@ -140,4 +140,13 @@ an already-connected MCP server).
 
 ## Amendments
 
-_(none yet)_
+- **2026-07-17 (senior-review Stage-1 fix).** The `Scope:` line lagged the real diff + this
+  blueprint's own Architecture section. Corrected: `renovate.json` → **`renovate.json5`** (JSON5
+  chosen for the policy comments, per the ledger); `docs/generated-manifest.json` →
+  **`docs/doc-manifest.json`** (the sibling the Architecture section anticipated); removed
+  **`scripts/generate-manifest.mjs`** (never created — the manifest was hand-authored, a curated
+  per-doc judgment call). Added the files this phase actually touched but hadn't enumerated:
+  **`scripts/ship.mjs`** (V2-503 wired the `skill-check` gate into phase A), **`.claude/skill-rules.json`**
+  (V2-504 `docs-current` activation rule), **`.github/dependabot.yml`** (V2-502 Renovate mutual-
+  exclusivity note), **`docs/session-state.json`** + **`docs/SESSION-HANDOFF.md`** (session
+  checkpoints).

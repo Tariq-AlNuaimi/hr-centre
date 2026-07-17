@@ -24,6 +24,11 @@
       "why": "branch-only in-flight state; never reaches fork main"
     },
     {
+      "glob": "docs/session-state.json",
+      "inheritance": "template-dev",
+      "why": "per-session in-flight state (the SESSION-HANDOFF.md data source) — never merged to main, pruned from forks (.claude/rules/harness.md Memory lifecycle). The schema (session-state.schema.json) stays fork-inherited: a fork regenerates its own state against it."
+    },
+    {
       "glob": "docs/INVENTORY-BY-OBJECTIVE.md",
       "inheritance": "template-dev",
       "why": "template build inventory"
