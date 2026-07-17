@@ -9,7 +9,7 @@ Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Pri
 > (`scripts/**`, deploy) · `ai.md` (`lib/ai/**`) · `harness.md` (`.claude/**`, `eslint-rules/**`,
 > gates, ESLint roster, commands).
 
-**Read before non-trivial work:** `README.md` (stack/structure) · `SECURITY.md` (data classes, secrets, threat model, register) · `docs/decisions/ADR-001` (locked stack) + `ADR-006` (Vercel+Neon) · `prisma/schema.prisma` · `docs/REPO-MAP.md` ("where is X"). Recipes: `docs/recipes.md` + `docs/design-recipes.md`.
+**Read before non-trivial work:** `README.md` · `SECURITY.md` (data classes, secrets, threat model, register) · `docs/decisions/ADR-001` (locked stack) + `ADR-006` (Vercel+Neon) · `prisma/schema.prisma` · `docs/REPO-MAP.md` ("where is X"). Recipes: `docs/recipes.md` + `docs/design-recipes.md`.
 
 ## Standing instructions (binding)
 
@@ -27,11 +27,11 @@ Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Pri
 
 Every change is judged against five pillars (full definitions in `docs/uat-rubric.md`) — **gates**: `/ship`/`/qa` enforce them and a violation blocks like a security violation.
 
-1. **Speed** — RSC reads, no needless round-trips, debounced inputs, bounded payloads.
-2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage (hardest-gated: the eleven ESLint rules + Hard rules below).
-3. **Maintainable** — reuses existing primitives (check `docs/REPO-MAP.md` first); typed; no dead code; small, forward-compatible migrations.
+1. **Speed & Velocity** — runtime (RSC, bounded payloads) + dev velocity (low context tax, warm `/ship`, parallel-by-default); gated checks in the rubric.
+2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage (the eleven ESLint rules + Hard rules below).
+3. **Maintainable** — reuses existing primitives (check `docs/REPO-MAP.md` first); typed; no dead code; forward-compatible migrations.
 4. **Scalable** — list/read routes paginate or bound; no N+1; bulk paths not N×1; rate-limit-aware.
-5. **High-Quality** — correctness + UX fidelity; honest empty/loading/error states; axe-clean; no deprecation drift.
+5. **High-Quality** — correctness + UX fidelity; honest empty/loading/error states; axe-clean.
 
 `/ship` runs the automatable checks (ESLint security; unbounded-query scalability scan); the non-automatable pillars are a **blocking checklist** `/ship`/`/qa` must affirm (enforcement + the wave-off mechanism in Hard rules below).
 

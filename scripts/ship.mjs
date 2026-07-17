@@ -1399,6 +1399,27 @@ try {
   /* surfacing is best-effort */
 }
 
+const totalSec = Math.round((Date.now() - t0) / 1000);
+
+// Velocity pillar check (b), V2-103: warn when the warm run regresses past 125% of the recorded
+// `velocityBaselines.shipWarmSeconds`. Advisory (fail-open) — a cold or `--full` build legitimately
+// exceeds it, so this never blocks green; it just nudges when the fast loop is slowing down.
+try {
+  if (!FULL && existsSync("project.config.json")) {
+    const base = JSON.parse(readFileSync("project.config.json", "utf8")).velocityBaselines
+      ?.shipWarmSeconds;
+    if (base) {
+      const limit = Math.round(base * 1.25);
+      if (totalSec > limit)
+        console.warn(
+          `  note [velocity]: /ship took ${totalSec}s > 125% of the ${base}s warm baseline (${limit}s). If this is the warm loop (not a cold/--full build), profile it or re-record: bump "velocityBaselines.shipWarmSeconds" in project.config.json.`,
+        );
+    }
+  }
+} catch {
+  /* velocity warn is best-effort; never fail a green ship on it */
+}
+
 console.log(
-  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${((Date.now() - t0) / 1000).toFixed(0)}s total)`,
+  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
 );

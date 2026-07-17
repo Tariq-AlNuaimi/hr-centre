@@ -119,6 +119,18 @@ if [ -f docs/agent-memory.md ]; then
     echo "[harness] ...agent-memory over budget -- prune/promote per its curation rule, then 'npm run memory-digest'"
   fi
 fi
+
+# --- velocity pillar check (a): SessionStart context-size (V2-103) ---
+# The always-on SessionStart tax (constitution + agent-memory digest + handoff) has a budget
+# (constitution <=8KB, total <=20KB). Surface a WARN when it's over so context bloat is visible
+# up front. Advisory/fail-open; the same budget is a hard /ship phase-A hook test.
+if [ -f scripts/context-tax.mjs ]; then
+  ctxwarn="$(node scripts/context-tax.mjs 2>/dev/null || true)"
+  if printf '%s' "$ctxwarn" | grep -q "OVER"; then
+    echo "[harness] velocity WARN -- SessionStart context over budget:"
+    printf '%s\n' "$ctxwarn" | grep -E "OVER|WARN:"
+  fi
+fi
 # Warn when many MCP servers are configured (schemas cost context; prune via /mcp).
 # tr -dc collapses the count to a single integer -- under pipefail a no-match grep
 # makes the subshell exit non-zero, so `|| echo 0` can append a second line.

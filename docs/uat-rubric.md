@@ -16,7 +16,7 @@ per-domain.
 Five apply to every fork; a **conditional sixth (AI-Quality)** applies only when the
 fork ships AI endpoints (ADR-042).
 
-1. **Speed** — RSC reads, no needless round-trips, debounced inputs, bounded payloads. _(Formerly "Fast".)_
+1. **Speed & Velocity** — two halves, both gated (V2-103). **Runtime speed:** RSC reads, no needless round-trips, debounced inputs, bounded payloads. **Development velocity:** a session is cheap and fast to run — low SessionStart context tax, a warm `/ship` that doesn't regress, and parallel-by-default work (wall-clock is a pillar cost, not free). _Automatable slice — three advisory checks (fail-open, house pattern), baselines in `project.config.json` `velocityBaselines`:_ **(a) context-size** — `scripts/context-tax.mjs` warns when the always-on SessionStart bytes exceed budget (constitution ≤8KB, total ≤20KB; also a `/ship` phase-A hook test); **(b) `/ship` wall-time** — `/ship` warns when its total exceeds 125% of the recorded warm baseline (`shipWarmSeconds`); **(c) hook-latency** — `scripts/hook-latency.mjs` (`npm run hook-latency`) times the `UserPromptSubmit`+`PreToolUse` hook chain and warns past 150% of the recorded `hookChainMs` baseline. _(Formerly "Fast" → "Speed"; V2-103 added the velocity half.)_
 2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage.
 3. **Maintainable** — reuses existing primitives/services; typed; no dead code; small, forward-compatible migrations.
 4. **Scalable** — handles growth (bulk paths not N×1; pagination; rate-limit-aware; no N+1).

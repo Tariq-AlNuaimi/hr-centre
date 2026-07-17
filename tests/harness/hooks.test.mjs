@@ -297,6 +297,31 @@ test("V2-102 memory-digest --strict FAILS on a fixture with an over-budget secti
 });
 
 // ---------------------------------------------------------------------------
+// V2-103 — velocity pillar checks fire on synthetic regressions.
+//   (a) context-size: the V2-101 "context-tax --strict FAILS on over-budget" test above IS this
+//       check. (b) /ship wall-time: demonstrated by a captured low-baseline run (evidence file).
+//       (c) hook-latency: below.
+// ---------------------------------------------------------------------------
+test("V2-103 hook-latency --strict FAILS when the chain exceeds the baseline (synthetic 1ms)", () => {
+  const res = spawnSync("node", [join(REPO, "scripts", "hook-latency.mjs"), "--strict"], {
+    cwd: REPO,
+    env: { ...process.env, HOOK_CHAIN_BASELINE_MS: "1" }, // real chain (~600ms) >> 150% of 1ms
+    encoding: "utf8",
+  });
+  assert.equal(res.status, 1, `a 1ms baseline must trip the latency warn:\n${res.stdout}`);
+  assert.match(res.stdout, /WARN: chain/, "should print the latency warning");
+});
+
+test("V2-103 hook-latency passes with a generous baseline", () => {
+  const res = spawnSync("node", [join(REPO, "scripts", "hook-latency.mjs"), "--strict"], {
+    cwd: REPO,
+    env: { ...process.env, HOOK_CHAIN_BASELINE_MS: "100000" },
+    encoding: "utf8",
+  });
+  assert.equal(res.status, 0, `a huge baseline must pass:\n${res.stdout}`);
+});
+
+// ---------------------------------------------------------------------------
 // Smoke: EVERY hook survives a benign input and malformed stdin without crashing
 // (exit 0), so a broken hook can't silently brick a session.
 // ---------------------------------------------------------------------------
