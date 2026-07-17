@@ -442,8 +442,23 @@ preserved in the ADR as the honest record; decision is the operator's. Status �
   gitignored; `harness.md` §Parallel-by-default points to it.
 - **5 hook tests** in `tests/harness/hooks.test.mjs` (globsOverlap nested/identical/sibling;
   findDeclaredOverlaps; unitsMatching attribution; loadManifest validation; check-overlap CLI exit
-  codes) — 40/40 green. Live-verified: disjoint manifest passes, `lib/foo/**` ∩ `lib/**` refuses,
-  an out-of-scope working-tree file is flagged by verify-scope.
+  codes) — green. Live-verified: disjoint manifest passes, `lib/foo/**` ∩ `lib/**` refuses, an
+  out-of-scope working-tree file is flagged by verify-scope.
+
+⚠️ **Senior-review (post-push, fixed) — found 1 High + 3 Medium + 1 Low, all addressed (42 tests green):**
+
+- **High — `globsOverlap` was false-disjoint for mid-segment wildcards** (the dangerous direction:
+  `check-overlap` would PASS a colliding manifest). The representative-path heuristic (wildcards →
+  literal `x`) missed e.g. `lib/validations/order*.ts` ∩ `lib/validations/*.test.ts` (collide on
+  `order.test.ts`). **Fixed:** replaced with a **sound** segment-by-segment glob-intersection
+  (`segmentsIntersect` product-automaton over `*`/`?`/literals + `**` segment absorption). All 4
+  reviewer counterexamples now detected; regression test added.
+- **Medium — `git status` collapsed brand-new dirs** → `-uall` added (per-file granularity).
+- **Medium — clean-tree precondition was doc-only** → `check-overlap` now snapshots the pre-wave dirty
+  set to a `.baseline`; `verify-scope` subtracts it (enforced in code; temp-git integration test).
+- **Medium — ADR/SKILL overclaimed per-unit attribution** → narrowed to the true **aggregate-disjoint**
+  property (one shared tree → no per-subagent diff); per-unit isolation moved to a migration trigger.
+- **Low — bare "OK" on zero changed files** → verify-scope now names any unit that changed nothing.
 
 _Follow-up logged (findings-register):_ `routing-receipt.mjs` under-records async dispatch in this
 env — a separate small fix; `/fan-out`'s own diff-verification does not depend on it.
@@ -479,11 +494,13 @@ env — a separate small fix; `/fan-out`'s own diff-verification does not depend
   loss** (the V2-101 senior review caught two dropped ADRs + six under-matching globs here — fixed,
   now guarded by a mechanical ADR-diff hook test).
 - **What worked:** every gate item got a negative test in the same commit (`hooks.test.mjs` grew
-  19 → 40), so "the budget is enforced" is a red-on-regression fact, not a claim. The review rail
+  19 → 42), so "the budget is enforced" is a red-on-regression fact, not a claim. The review rail
   paid for itself repeatedly — it caught a **real security hole** (V2-107 force-delete via flag
-  combo), a fictional 9-hook latency measurement (V2-103), and a prefix-collision in the digest
-  matcher (V2-102). Context depth was visibly taxing my own quality; the adversarial post-push pass
-  is what kept the phase honest.
+  combo), a **false-disjoint bug in the V2-105 `/fan-out` gate itself** (its glob-overlap heuristic
+  would have passed a colliding manifest — exactly what the custom verdict was chosen to prevent;
+  fixed to a sound intersection test), a fictional 9-hook latency measurement (V2-103), and a
+  prefix-collision in the digest matcher (V2-102). Context depth was visibly taxing my own quality;
+  the adversarial post-push pass is what kept the phase honest.
 - **What broke / friction:** the **8KB constitution ceiling was the dominant friction** — nearly
   every content addition pushed it over 8192B and needed trimming (dozens of micro-edits). Worth it
   (the ceiling is the product), but the constitution is now near-saturated: future always-on

@@ -40,8 +40,10 @@ files or B needs A's output, they are NOT a wave — serialize them (see Skip-wh
    Overlap → narrow the sets or serialize the overlapping units. **Do not dispatch a
    wave that failed this gate** — that is the whole point of the custom verdict.
 
-3. **Start from a clean tree.** Commit or stash unrelated WIP first (verify-scope reads
-   working-tree status, exactly like `/batch`). A dirty tree makes the post-check lie.
+3. **Start from a clean tree.** Commit or stash unrelated WIP first. `check-overlap`
+   snapshots the pre-wave dirty set to a baseline so `verify-scope` subtracts it — but a
+   clean start keeps the signal unambiguous. (Run `check-overlap` from the state you'll
+   dispatch from, so the baseline is accurate.)
 
 4. **Dispatch the wave — native, one message.** Send all units as parallel subagents
    **in a single message** (this is native in-message dispatch — the mechanism ADR-057
@@ -49,8 +51,8 @@ files or B needs A's output, they are NOT a wave — serialize them (see Skip-wh
    explicit instruction to write ONLY those files. Route each to its declared tier.
    While the wave runs you are **orchestrator-only** — do not edit wave files yourself.
 
-5. **Verify scope (post-dispatch).** After all units return, confirm every changed
-   file landed in exactly one declared set:
+5. **Verify scope (post-dispatch).** After all units return, confirm the wave's combined
+   change-set is **aggregate-disjoint** — every changed file matches exactly one declared set:
 
    ```bash
    npm run fan-out -- verify-scope docs/blueprints/.fan-out.json
@@ -58,8 +60,13 @@ files or B needs A's output, they are NOT a wave — serialize them (see Skip-wh
 
    - **0 matches** for a file → an out-of-scope write. Revert it (`git checkout -- <f>`
      or `git clean`) or re-run that unit with a tighter instruction.
-   - **≥2 matches** → the sets overlapped on a real file (step-2 heuristic missed it) —
-     the units were not disjoint; reconcile by hand and tighten the manifest.
+   - **≥2 matches** → the sets collided on a real file; the units were not disjoint —
+     reconcile by hand and tighten the manifest.
+   - _Attribution limit:_ native dispatch shares ONE working tree, so this checks the
+     combined change-set, not "unit B stayed out of unit A's files." A stray write that
+     lands inside _another_ unit's declared set still matches exactly one set and passes —
+     so step 6's manual per-unit glance still matters. (Per-subagent isolation is an
+     ADR-057 migration trigger, not built here.)
 
 6. **Integrate + ONE `/ship`.** Glob-confirm each unit wrote its files, read the
    combined diff, then run **one** `npm run ship` over the whole result (never per-unit).

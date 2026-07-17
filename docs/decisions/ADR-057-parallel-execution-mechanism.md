@@ -91,7 +91,7 @@ the existing (observe-only) `routing-receipt.mjs` / `routing-report.mjs`. No new
 ### Option 2 — Custom `/fan-out` orchestration skill (chosen)
 
 A skill that takes a declarative decomposition (units + file-ownership sets + deps),
-dispatches the wave, hard-verifies each unit wrote only its files, then integrates.
+dispatches the wave, hard-verifies the combined change-set is aggregate-disjoint, then integrates.
 
 - Good, because it makes file-ownership _enforced_, not advisory (the one real native gap).
 - Good, because it names the decomposition and standardizes the verify-then-integrate loop.
@@ -123,17 +123,29 @@ is preserved above as the honest record; the decision is the operator's.
 Accordingly `/fan-out` ships as a skill that: (1) takes an explicit decomposition (units +
 disjoint file-ownership sets + dependency notes), (2) refuses to dispatch when the declared
 sets overlap, (3) dispatches the write-disjoint units as native parallel subagents in one
-message (it uses the native mechanism — it does not replace it), (4) hard-verifies each
-returned unit wrote **only** the files in its declared set, and (5) integrates, then runs
-**one** `/ship` over the combined result. It is the enforcement layer over V2-104's discipline,
-not a second dispatch engine.
+message (it uses the native mechanism — it does not replace it), (4) hard-verifies the
+combined change-set is **aggregate-disjoint** — every changed file matches exactly one
+declared set (0 = out-of-scope, ≥2 = the sets weren't disjoint) — and (5) integrates, then
+runs **one** `/ship` over the combined result. It is the enforcement layer over V2-104's
+discipline, not a second dispatch engine.
+
+_Scope of the guarantee (senior-review):_ native in-message dispatch writes into ONE shared
+working tree, so there is no per-subagent diff to attribute — the check is over the wave's
+**combined** change-set, not "unit X wrote only its files." It catches any file written
+outside every declared set, or on a real collision between two sets; it cannot catch unit B
+writing into unit A's _declared_ territory (that file still matches exactly one set — A's).
+True per-unit attribution would need worktree/branch isolation per subagent, a materially
+bigger change than ADR-034's "thin git/path arithmetic" mandate; deferred to the migration
+triggers. The pre-dispatch overlap refusal (`check-overlap`) uses a **sound** glob-intersection
+test (not a heuristic), so a colliding manifest is refused before any subagent runs.
 
 ## Consequences
 
 ### Positive
 
 - File-ownership becomes **enforced**: `/fan-out` refuses to dispatch on declared-set
-  overlap and hard-verifies each unit's diff stayed in-scope after return — the native gap closed.
+  overlap (sound intersection test) and verifies the wave's combined change-set is
+  aggregate-disjoint after return — the native gap closed (within the attribution limit noted above).
 - The parallel-wave workflow (decompose → dispatch → verify → one `/ship`) is named,
   repeatable, and self-documenting instead of ad-hoc per session.
 - Verification gives a reliable evidence trail (per-unit git-diff-vs-declared-set) that does
@@ -174,6 +186,9 @@ Revisit `/fan-out`'s design when ANY fires:
 - Native subagent-dispatch semantics change → update the skill's dispatch step to track them.
 - The overlap-refusal / diff-verification proves too coarse (e.g. legitimately shared generated files) →
   refine the file-ownership model (allow-list shared paths).
+- A cross-contamination incident occurs that aggregate-disjointness can't catch (unit B writes into
+  unit A's _declared_ territory) → give each subagent an isolated worktree/branch so its own diff can be
+  attributed and checked against its own set (the per-unit attribution deferred as over-budget here).
 
 ## Related
 

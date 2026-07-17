@@ -21,7 +21,7 @@
 //                { "id": "routes","files": ["app/api/widgets/**"] } ] }
 //
 // Fail-open by nature of a helper (bad manifest → exit 2 with a message, not a crash).
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { globToRe, relPath } from "../.claude/hooks/lib/scope-cover.mjs";
 
@@ -58,14 +58,71 @@ export function loadManifest(path) {
   return obj;
 }
 
-/** A concrete representative path for a glob (wildcards → a fixed segment token). */
-export function representativePath(glob) {
-  return glob.trim().replace(/\*\*/g, "x").replace(/\*/g, "x").replace(/\?/g, "x");
+// ── Sound glob-overlap (senior-review High fix) ────────────────────────────────
+// Two globs overlap iff SOME path matches both. The old representative-path probe
+// (wildcards → the literal "x", cross-tested once) was false-disjoint whenever the
+// collision needed a wildcard to resolve to something other than "x" — e.g.
+// `lib/validations/order*.ts` ∩ `lib/validations/*.test.ts` on `order.test.ts`. That
+// is the "dangerous direction": check-overlap would pass a manifest that actually
+// collides. This is a real intersection test over the flat glob subset (`**`, `*`,
+// `?`, literals) — `**` matches any run of whole segments, `*`/`?` stay within one
+// segment. Sound (no false "disjoint"); conservative only in that a segment token
+// literally containing `**` (rare, e.g. `a**b`) is treated as `a*b`.
+
+/** Split a glob into segments; a whole-segment `**` is kept as the cross-segment token. */
+export function normSegs(glob) {
+  return glob
+    .trim()
+    .split("/")
+    .filter(Boolean)
+    .map((s) => (s === "**" ? "**" : s.replace(/\*\*/g, "*")));
 }
 
-/** Could two globs match a common path? Heuristic via representative-path cross-test. */
+/** Do two single-segment patterns (only `*`/`?`, no `/`) share a common match? */
+export function segmentsIntersect(a, b) {
+  const A = a.length;
+  const B = b.length;
+  const memo = new Map();
+  const go = (i, j) => {
+    const key = i * (B + 1) + j;
+    if (memo.has(key)) return memo.get(key);
+    memo.set(key, false); // DAG guard (the only cycle is the `*`∩`*` self-loop, skipped below)
+    let res = false;
+    if (!res && i < A && a[i] === "*") res = go(i + 1, j); // `*` matches zero chars
+    if (!res && j < B && b[j] === "*") res = go(i, j + 1);
+    if (!res && i === A && j === B) res = true;
+    if (!res && i < A && j < B) {
+      const ca = a[i];
+      const cb = b[j];
+      const wildA = ca === "*" || ca === "?";
+      const wildB = cb === "*" || cb === "?";
+      const common = wildA || wildB || ca === cb; // some char both can consume?
+      if (common) {
+        const ni = ca === "*" ? i : i + 1; // `*` stays (can match more)
+        const nj = cb === "*" ? j : j + 1;
+        if (ni !== i || nj !== j) res = go(ni, nj); // skip the `*`∩`*` self-loop
+      }
+    }
+    memo.set(key, res);
+    return res;
+  };
+  return go(0, 0);
+}
+
+/** Do two segment-lists overlap, with `**` absorbing zero-or-more whole segments? */
+function segsOverlap(a, i, b, j) {
+  if (i < a.length && a[i] === "**")
+    return segsOverlap(a, i + 1, b, j) || (j < b.length && segsOverlap(a, i, b, j + 1));
+  if (j < b.length && b[j] === "**")
+    return segsOverlap(a, i, b, j + 1) || (i < a.length && segsOverlap(a, i + 1, b, j));
+  if (i === a.length || j === b.length) return i === a.length && j === b.length;
+  if (!segmentsIntersect(a[i], b[j])) return false;
+  return segsOverlap(a, i + 1, b, j + 1);
+}
+
+/** Could two globs match a common path? Sound intersection over the flat glob subset. */
 export function globsOverlap(a, b) {
-  return globToRe(b).test(representativePath(a)) || globToRe(a).test(representativePath(b));
+  return segsOverlap(normSegs(a), 0, normSegs(b), 0);
 }
 
 /** All cross-unit declared-set overlaps: [{ a, b, globA, globB }]. */
@@ -89,12 +146,18 @@ export function unitsMatching(rel, units) {
   return units.filter((u) => u.files.some((g) => globToRe(g).test(rel))).map((u) => u.id);
 }
 
-/** Working-tree changes vs a clean tree: project-relative paths (modified + untracked). */
+/**
+ * Working-tree changes as project-relative paths (modified + untracked, ONE line per
+ * file). `-uall` is required (senior-review Medium): the default porcelain collapses a
+ * brand-new directory tree into a single entry, so per-file attribution would test a bare
+ * dir path against file globs and mis-flag a correct wave.
+ */
 export function changedFiles(root = ROOT) {
-  const out = execFileSync("git", ["-c", "core.quotepath=false", "status", "--porcelain"], {
-    cwd: root,
-    encoding: "utf8",
-  });
+  const out = execFileSync(
+    "git",
+    ["-c", "core.quotepath=false", "status", "--porcelain", "-uall"],
+    { cwd: root, encoding: "utf8" },
+  );
   const files = [];
   for (const line of out.split("\n")) {
     if (!line.trim()) continue;
@@ -104,6 +167,27 @@ export function changedFiles(root = ROOT) {
     files.push(relPath(p.trim(), root));
   }
   return files;
+}
+
+/** Baseline path for a manifest — the pre-wave dirty set, so verify-scope ignores it. */
+function baselinePath(manifestPath) {
+  return `${manifestPath}.baseline`;
+}
+
+/** Snapshot the pre-wave dirty set so a not-actually-clean tree can't skew verify-scope. */
+function writeBaseline(manifestPath) {
+  const before = changedFiles();
+  writeFileSync(baselinePath(manifestPath), JSON.stringify(before), "utf8");
+  return before;
+}
+
+/** The recorded pre-wave dirty set (empty + a "no baseline" flag if none was snapshotted). */
+function readBaseline(manifestPath) {
+  try {
+    return { files: JSON.parse(readFileSync(baselinePath(manifestPath), "utf8")), had: true };
+  } catch {
+    return { files: [], had: false };
+  }
 }
 
 function die(msg, code = 2) {
@@ -138,14 +222,27 @@ function main(argv) {
       );
       process.exit(1);
     }
+    // Snapshot the pre-wave dirty set so verify-scope can subtract it (clean-tree
+    // precondition enforced by code, not just documented — senior-review Medium).
+    const before = writeBaseline(manifestPath);
+    const dirtyNote = before.length
+      ? ` (recorded ${before.length} pre-existing dirty file(s) to ignore at verify-scope)`
+      : "";
     process.stdout.write(
-      `[fan-out] OK — ${units.length} units, declared sets are write-disjoint.\n`,
+      `[fan-out] OK — ${units.length} units, declared sets are write-disjoint${dirtyNote}.\n`,
     );
     return;
   }
 
-  // verify-scope
-  const changed = changedFiles();
+  // verify-scope — subtract the pre-wave baseline so a not-actually-clean tree can't skew it.
+  const baseline = readBaseline(manifestPath);
+  const baseSet = new Set(baseline.files);
+  const changed = changedFiles().filter((f) => !baseSet.has(f));
+  if (!baseline.had)
+    process.stderr.write(
+      "[fan-out] WARN — no baseline snapshot found (run check-overlap first, from a clean tree); " +
+        "assuming the whole working tree is this wave's output.\n",
+    );
   const outOfScope = [];
   const overlapHits = [];
   for (const f of changed) {
@@ -154,8 +251,17 @@ function main(argv) {
     else if (hits.length > 1) overlapHits.push({ f, hits });
   }
   if (!outOfScope.length && !overlapHits.length) {
+    // Positive-completion signal (senior-review Low): a wave where nothing changed is
+    // suspicious (a unit may have silently no-op'd) — say so instead of a bare "OK".
+    const declared = units.flatMap((u) => u.files);
+    const touchedUnits = new Set(changed.flatMap((f) => unitsMatching(f, units)));
+    const silent = units.filter((u) => !touchedUnits.has(u.id)).map((u) => u.id);
+    const silentNote = silent.length
+      ? ` — but unit(s) [${silent.join(", ")}] changed NO files (silently no-op'd? verify each ran)`
+      : "";
     process.stdout.write(
-      `[fan-out] OK — ${changed.length} changed file(s), all within exactly one unit's declared set.\n`,
+      `[fan-out] OK — ${changed.length} changed file(s) across ${declared.length} declared glob(s), ` +
+        `all within exactly one unit's declared set${silentNote}.\n`,
     );
     return;
   }

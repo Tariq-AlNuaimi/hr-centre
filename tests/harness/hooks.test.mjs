@@ -487,6 +487,24 @@ test("V2-105 fan-out globsOverlap: nested/identical sets overlap, sibling sets d
   assert.equal(fanout.globsOverlap("app/api/x/**", "lib/**"), false, "different roots do not");
 });
 
+// Senior-review High regression: the old representative-path heuristic was FALSE-disjoint for
+// mid-segment wildcards (prefix/suffix globs in the same dir) — the dangerous direction, since
+// check-overlap would pass a manifest that actually collides. Each pair below shares a real path.
+test("V2-105 fan-out globsOverlap detects mid-segment-wildcard collisions (was false-disjoint)", () => {
+  const collide = [
+    ["lib/a*.ts", "lib/*b.ts"], // → lib/ab.ts
+    ["lib/foo.*", "lib/*.ts"], // → lib/foo.ts
+    ["app/api/widgets/*.ts", "app/api/*/create.ts"], // → app/api/widgets/create.ts
+    ["lib/validations/order*.ts", "lib/validations/*.test.ts"], // → lib/validations/order.test.ts
+  ];
+  for (const [a, b] of collide)
+    assert.equal(fanout.globsOverlap(a, b), true, `${a} ∩ ${b} must be detected as overlapping`);
+  // truly-disjoint mid-segment patterns and depth-mismatched `**` stay FALSE
+  assert.equal(fanout.globsOverlap("lib/a*.ts", "lib/b*.ts"), false, "distinct fixed prefixes");
+  assert.equal(fanout.globsOverlap("lib/a?.ts", "lib/abc.ts"), false, "? is exactly one char");
+  assert.equal(fanout.globsOverlap("lib/**/x.ts", "lib/a/b/y.ts"), false, "different leaf files");
+});
+
 test("V2-105 fan-out findDeclaredOverlaps flags a colliding pair and passes a disjoint set", () => {
   const bad = fanout.findDeclaredOverlaps([
     { id: "a", files: ["lib/foo/**"] },
@@ -571,5 +589,60 @@ test("V2-105 fan-out check-overlap CLI exits 1 on overlap, 0 on a disjoint manif
     assert.equal(disjoint.status, 0, `disjoint must pass:\n${disjoint.stderr}`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// Senior-review Mediums: verify-scope must (a) list every file in a brand-new dir (`-uall`,
+// else a new tree collapses to one entry and mis-flags a correct wave), and (b) ignore
+// pre-existing dirty files via the baseline check-overlap snapshots (clean-tree enforced in code).
+test("V2-105 fan-out verify-scope: -uall granularity + baseline subtraction (temp git repo)", () => {
+  const dir = mkdtempSync(join(tmpdir(), "fanout-verify-"));
+  const mdir = mkdtempSync(join(tmpdir(), "fanout-mf-")); // manifest lives OUTSIDE the repo
+  const git = (...a) => spawnSync("git", a, { cwd: dir, encoding: "utf8" });
+  const run = (cmd, mp) =>
+    spawnSync("node", [join(REPO, "scripts", "fan-out.mjs"), cmd, mp], {
+      cwd: dir,
+      encoding: "utf8",
+    });
+  try {
+    git("init", "-q");
+    git("config", "user.email", "t@t.t");
+    git("config", "user.name", "t");
+    // a tracked baseline commit so later writes create a BRAND-NEW dir (app/ did not exist)
+    writeFileSync(join(dir, "seed.txt"), "seed\n");
+    git("add", "-A");
+    git("commit", "-qm", "seed");
+    const mp = join(mdir, "m.json");
+    writeFileSync(
+      mp,
+      JSON.stringify({
+        units: [
+          { id: "routes", files: ["app/api/**"] },
+          { id: "lib", files: ["lib/**"] },
+        ],
+      }),
+    );
+    // pre-existing dirty file OUTSIDE every declared set — must NOT be blamed on the wave
+    writeFileSync(join(dir, "preexisting.txt"), "wip\n");
+    assert.equal(run("check-overlap", mp).status, 0, "disjoint manifest passes + writes baseline");
+    // the wave writes several files into a brand-new nested dir (would collapse without -uall)
+    mkdirSync(join(dir, "app", "api", "widgets"), { recursive: true });
+    writeFileSync(join(dir, "app", "api", "widgets", "route.ts"), "x\n");
+    writeFileSync(join(dir, "app", "api", "widgets", "schema.ts"), "x\n");
+    const clean = run("verify-scope", mp);
+    assert.equal(
+      clean.status,
+      0,
+      `in-scope new-dir wave must pass (-uall + baseline):\n${clean.stderr}`,
+    );
+    // now an out-of-scope write is caught (not masked by the baseline)
+    writeFileSync(join(dir, "rogue.ts"), "x\n");
+    const rogue = run("verify-scope", mp);
+    assert.equal(rogue.status, 1, "out-of-scope write must fail");
+    assert.match(rogue.stderr, /rogue\.ts/, "names the offending file");
+    assert.doesNotMatch(rogue.stderr, /preexisting\.txt/, "pre-existing dirty file is NOT blamed");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(mdir, { recursive: true, force: true });
   }
 });

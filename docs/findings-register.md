@@ -218,6 +218,26 @@ the changed surface is still **open** (un-adjudicated).
   `lhci` in a follow-up. Low urgency, `npm audit` clean, blast radius is a local dev-reporting
   tool. Operator: re-open if you want it prioritized).
 
+- 2026-07-17 — [harness-v2 V2-105/correctness] `scripts/fan-out.mjs` `globsOverlap` used a
+  representative-path heuristic (wildcards → literal `x`) that was **false-disjoint** for
+  mid-segment wildcards — `check-overlap` would PASS a colliding manifest (e.g.
+  `lib/validations/order*.ts` ∩ `lib/validations/*.test.ts` collide on `order.test.ts`), defeating
+  the exact hard-enforcement the operator's custom verdict was chosen for (senior-review 2026-07-17,
+  confidence 97) — owner: operator — status: fixed(this commit) (replaced with a sound
+  segment-by-segment glob-intersection `segmentsIntersect` + `**` segment absorption; all 4 reviewer
+  counterexamples now detected; regression test in `tests/harness/hooks.test.mjs`).
+- 2026-07-17 — [harness-v2 V2-105/correctness+invariant] `verify-scope` (a) ran `git status
+--porcelain` without `-uall` (a brand-new dir collapsed to one entry → mis-flagged a correct wave)
+  and (b) asserted its clean-tree precondition in docs only (a pre-existing dirty file was absorbed
+  as wave output / mis-blamed) (senior-review 2026-07-17, confidence 88-90) — owner: operator —
+  status: fixed(this commit) (added `-uall`; `check-overlap` now snapshots the pre-wave dirty set to
+  a `.baseline` that `verify-scope` subtracts; temp-git integration test covers both).
+- 2026-07-17 — [harness-v2 V2-105/documentation] ADR-057 + SKILL.md claimed `/fan-out`
+  "hard-verifies each unit wrote only its files" — but native dispatch shares ONE working tree, so
+  the check is the weaker **aggregate-disjoint** property (no per-subagent attribution)
+  (senior-review 2026-07-17, confidence 85) — owner: operator — status: fixed(this commit) (docs
+  narrowed to the true guarantee; per-unit worktree isolation moved to an ADR-057 migration trigger;
+  the Low "bare OK on zero changed files" also fixed — verify-scope now names silently-no-op'd units).
 - 2026-07-17 — [harness-v2 V2-105/observability] `.claude/hooks/routing-receipt.mjs` (the
   `PostToolUse(Task)` receipt sink at `.claude/state/routing-receipts.jsonl`) does **not** populate
   for async background-Agent dispatch in this web environment — observed twice (V2-106/107 wave and
