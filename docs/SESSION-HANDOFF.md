@@ -4,12 +4,12 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-16 · last /ship: **green** (10a4c86, 2026-07-16)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-16 · last /ship: **green** (45c283e, 2026-07-16)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED. Now on branch yhid26 (fast-forwarded from 25kqc6). |
-| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | V2-101 + V2-102 DONE + senior-reviewed + all findings fixed. Context-watchdog REMOVED. Always-on tax now ~19096B (18.65KB). NEXT: V2-103 velocity pillar — rename Pillar 1 -> Speed & Velocity (ASK-confirmed) in CLAUDE.md + docs/uat-rubric.md; add 3 checks: context-tax warn (scripts/context-tax.mjs DONE), /ship wall-time >25% over baseline warn, hook-latency baseline. Then V2-104/105/106/107. |
+| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | V2-101/102/103 DONE + green + pushed (V2-101/102 senior-reviewed+fixed; V2-103 review in flight 45c283e). Watchdog removed. NEXT: V2-104 parallel-by-default (constitution binding line; detail may go in harness.md — constitution at 8190B/8192 ceiling). Then V2-105 (ADR-057 native-teams, ASK verdict), V2-106/107 [P] (the parallel demo pair for V2-104). |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -78,7 +78,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. RESUME Phase 1 at V2-103 (velocity pillar → Speed & Velocity, ASK-confirmed). V2-101 + V2-102 DONE+green. Then V2-104 (parallel-by-default), V2-105 (ADR-057 native-teams, ASK verdict), V2-106/107 [P].
+1. RESUME Phase 1 at V2-104 (parallel-by-default standing instruction). V2-101/102/103 DONE+green. NOTE: constitution is at the 8KB ceiling (8190B) — V2-104 must add its terse binding line + trim, or put detail in .claude/rules/harness.md with a constitution pointer. V2-104 demo (a real 2+-unit parallel task) couples to running V2-106/V2-107 [P] as the parallel pair.
 2. V2-102 CLOSED: senior-code-reviewer verified zero entry loss + clean watchdog removal; 5 findings (High boldOf prefix-collision + Medium count-drift + 3 Low) ALL fixed (10a4c86), logged in docs/findings-register.md. Hook suite 32 green.
 3. V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.
 4. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.
