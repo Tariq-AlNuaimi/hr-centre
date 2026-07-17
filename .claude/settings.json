@@ -181,7 +181,6 @@
       "Bash(git push --force-with-lease*)",
       "Bash(git reset --hard*)",
       "Bash(git branch -D*)",
-      "Bash(git branch -d *)",
       "Bash(git checkout .)",
       "Bash(git checkout --*)",
       "Bash(git restore .)",
