@@ -1,6 +1,15 @@
 import bcrypt from "bcryptjs";
 import { hash as argon2Hash, verify as argon2Verify } from "@node-rs/argon2";
 
+// SUNSET (V2-409, debt): `bcryptjs` is kept ONLY to verify legacy `$2*` hashes and
+// silently upgrade them to Argon2id on next login (see verifyPassword + needsRehash).
+// New hashes are never bcrypt. Removal condition: no `$2*` hashes remain in the DB for
+// 90 days. Count remaining legacy hashes with (run via `make db-sql` / psql):
+//   SELECT count(*) AS legacy_bcrypt FROM "users" WHERE "passwordHash" LIKE '$2%';
+// When that is 0 (and has been for 90 days), delete this import + the bcrypt branch in
+// verifyPassword and `npm uninstall bcryptjs`. Tracked: docs/findings-register.md
+// "documented trade-offs".
+
 // Argon2id is the current algorithm (OWASP Password Storage default; ADR-039).
 // These params are the OWASP 2026 baseline — tune per deployment: raise
 // memoryCost / timeCost as hardware allows. @node-rs/argon2 defaults to the

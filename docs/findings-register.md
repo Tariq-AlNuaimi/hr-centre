@@ -315,3 +315,14 @@ here as pointers so they aren't re-litigated as new findings:
 - Rate limiter is in-memory per-instance (fine single-instance; Upstash via `/scale-up`).
 - CSP allows `'unsafe-inline'` script+style (AntD SSR + Next bootstrap).
   (See CLAUDE.md "Known traps" for the full list.)
+- 2026-07-17 — [debt sunset, V2-409] **AntD type-shim** (`components/shared/table-types.ts`): a
+  transitional AntD-shaped `Table`/`Column` type surface kept so the rebuilt `DataTable`/`DataView`
+  authoring shape survived the AntD removal (ADR-029, C4). SUNSET: re-author columns directly against
+  @tanstack/react-table `ColumnDef` at the next `DataTable` refactor; remove when
+  `git grep "@/components/shared/table-types"` is empty. Annotated in the file header.
+- 2026-07-17 — [debt sunset, V2-409] **bcryptjs** (`lib/password.ts`): kept ONLY to verify legacy
+  `$2*` hashes and auto-upgrade them to Argon2id on next login (new hashes are never bcrypt). SUNSET
+  condition: no `$2*` hashes remain for 90 days — count with
+  `SELECT count(*) FROM "users" WHERE "passwordHash" LIKE '$2%';` (verified = 0 in the seeded DB
+  2026-07-17); when durably 0, delete the bcrypt branch + `npm uninstall bcryptjs`. Annotated in
+  `lib/password.ts`.
