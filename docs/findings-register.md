@@ -218,6 +218,15 @@ the changed surface is still **open** (un-adjudicated).
   `lhci` in a follow-up. Low urgency, `npm audit` clean, blast radius is a local dev-reporting
   tool. Operator: re-open if you want it prioritized).
 
+- 2026-07-17 — [harness-v2 V2-105/observability] `.claude/hooks/routing-receipt.mjs` (the
+  `PostToolUse(Task)` receipt sink at `.claude/state/routing-receipts.jsonl`) does **not** populate
+  for async background-Agent dispatch in this web environment — observed twice (V2-106/107 wave and
+  the V2-105 research wave). The parallel-wave evidence trail is git-diff disjointness +
+  `/fan-out verify-scope`, neither of which depends on the receipt hook — owner: operator —
+  status: scheduled (a separate small fix: either wire the receipt to the async dispatch path or
+  document git-diff/verify-scope as the sanctioned trail. Low urgency — `/fan-out` enforcement is
+  independent of it; `routing-report.mjs` is observe-only. Not a `/fan-out` blocker).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--

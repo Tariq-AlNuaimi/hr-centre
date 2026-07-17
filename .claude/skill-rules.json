@@ -156,6 +156,17 @@
       "keywords": ["template updates", "update from upstream", "fork is behind"],
       "paths": [],
       "reason": "Forks pull template layers via the path-scoped sync, never by cherry-picking blind."
+    },
+    {
+      "skill": "fan-out",
+      "keywords": [
+        "fan this out",
+        "parallelize these",
+        "run these in parallel",
+        "split across agents"
+      ],
+      "paths": [],
+      "reason": "Write-disjoint units run as a parallel subagent wave with enforced file-ownership (ADR-057), not ad-hoc dispatch."
     }
   ]
 }

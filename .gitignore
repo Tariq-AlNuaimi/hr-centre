@@ -99,3 +99,6 @@ sbom.json
 
 # fumadocs generated collections (enable-docs-site, ADR-053)
 /.source
+
+# /fan-out wave manifest — a per-session scratch decomposition (ADR-057), never work product
+docs/blueprints/.fan-out.json

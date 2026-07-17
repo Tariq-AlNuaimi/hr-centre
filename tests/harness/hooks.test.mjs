@@ -476,3 +476,100 @@ test("V2-101 context-tax --strict FAILS when a fixture constitution blows the 8K
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── V2-105 /fan-out enforcement helper (ADR-057, custom verdict) ─────────────────
+const fanout = await import(resolve(REPO, "scripts", "fan-out.mjs"));
+
+test("V2-105 fan-out globsOverlap: nested/identical sets overlap, sibling sets do not", () => {
+  assert.equal(fanout.globsOverlap("lib/foo/**", "lib/**"), true, "child under parent overlaps");
+  assert.equal(fanout.globsOverlap("lib/a.ts", "lib/a.ts"), true, "identical globs overlap");
+  assert.equal(fanout.globsOverlap("lib/a/**", "lib/b/**"), false, "disjoint siblings do not");
+  assert.equal(fanout.globsOverlap("app/api/x/**", "lib/**"), false, "different roots do not");
+});
+
+test("V2-105 fan-out findDeclaredOverlaps flags a colliding pair and passes a disjoint set", () => {
+  const bad = fanout.findDeclaredOverlaps([
+    { id: "a", files: ["lib/foo/**"] },
+    { id: "b", files: ["lib/**"] },
+  ]);
+  assert.equal(bad.length, 1);
+  assert.deepEqual([bad[0].a, bad[0].b], ["a", "b"]);
+  const ok = fanout.findDeclaredOverlaps([
+    { id: "a", files: ["lib/auth.ts"] },
+    { id: "b", files: ["app/api/widgets/**"] },
+  ]);
+  assert.deepEqual(ok, []);
+});
+
+test("V2-105 fan-out unitsMatching attributes a path to exactly the owning unit", () => {
+  const units = [
+    { id: "auth", files: ["lib/auth.ts", "lib/validations/**"] },
+    { id: "routes", files: ["app/api/widgets/**"] },
+  ];
+  assert.deepEqual(fanout.unitsMatching("lib/validations/x.ts", units), ["auth"]);
+  assert.deepEqual(fanout.unitsMatching("app/api/widgets/route.ts", units), ["routes"]);
+  assert.deepEqual(fanout.unitsMatching("lib/rogue.ts", units), [], "out-of-scope matches nothing");
+});
+
+test("V2-105 fan-out loadManifest rejects empty units, duplicate ids, and empty file sets", () => {
+  const dir = mkdtempSync(join(tmpdir(), "fanout-mf-"));
+  try {
+    const write = (obj) => {
+      const p = join(dir, "m.json");
+      writeFileSync(p, JSON.stringify(obj));
+      return p;
+    };
+    assert.throws(() => fanout.loadManifest(write({ units: [] })), /non-empty "units"/);
+    assert.throws(
+      () =>
+        fanout.loadManifest(
+          write({
+            units: [
+              { id: "a", files: ["x"] },
+              { id: "a", files: ["y"] },
+            ],
+          }),
+        ),
+      /duplicate unit id/,
+    );
+    assert.throws(
+      () => fanout.loadManifest(write({ units: [{ id: "a", files: [] }] })),
+      /non-empty files/,
+    );
+    // a valid manifest round-trips
+    const ok = fanout.loadManifest(write({ units: [{ id: "a", files: ["lib/a.ts"] }] }));
+    assert.equal(ok.units.length, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("V2-105 fan-out check-overlap CLI exits 1 on overlap, 0 on a disjoint manifest", () => {
+  const dir = mkdtempSync(join(tmpdir(), "fanout-cli-"));
+  try {
+    const run = (obj) => {
+      const p = join(dir, "m.json");
+      writeFileSync(p, JSON.stringify(obj));
+      return spawnSync("node", [join(REPO, "scripts", "fan-out.mjs"), "check-overlap", p], {
+        cwd: REPO,
+        encoding: "utf8",
+      });
+    };
+    const overlap = run({
+      units: [
+        { id: "a", files: ["lib/foo/**"] },
+        { id: "b", files: ["lib/**"] },
+      ],
+    });
+    assert.equal(overlap.status, 1, `overlap must refuse:\n${overlap.stderr}`);
+    const disjoint = run({
+      units: [
+        { id: "a", files: ["lib/auth.ts"] },
+        { id: "b", files: ["app/api/x/**"] },
+      ],
+    });
+    assert.equal(disjoint.status, 0, `disjoint must pass:\n${disjoint.stderr}`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

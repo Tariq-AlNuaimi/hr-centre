@@ -70,6 +70,12 @@ wall-clock, and wall-clock is Pillar 1 (Speed & Velocity).
   wave runs, the main session coordinates and integrates; it doesn't also edit the same files.
 - Verify each returned unit (Glob-confirm it wrote its files; read the diff), then integrate and run
   ONE `/ship` over the combined result — not per-unit.
+- **Mechanism = `/fan-out` (ADR-057, operator verdict: custom).** The skill is the _enforcement_
+  layer over this discipline: it takes a manifest of units + disjoint file-ownership globs, **refuses
+  to dispatch** on overlap (`npm run fan-out -- check-overlap`), and after the wave **verifies** every
+  changed file landed in exactly one declared set (`npm run fan-out -- verify-scope`). It uses native
+  in-message subagent dispatch — it does not replace it. Run from a clean tree so verify-scope is
+  truthful. (Native was _recommended_ in ADR-057; the operator chose the enforced skill.)
 
 ## Memory lifecycle (cross-session durability)
 
