@@ -176,6 +176,11 @@ const eslintConfig = defineConfig([
       // client (assert soft-deleted rows, seed fixtures), so the containment
       // gate is for app/lib runtime, not the test harness.
       "rihal-template/no-prisma-unfiltered-import": "off",
+      // Playwright / playwright-bdd fixtures take a `use` callback
+      // (`async ({}, use) => { await use(value) }`) that the react-hooks plugin
+      // misreads as a React Hook. Test harness code is not React — the rule
+      // doesn't apply here (ADR-058 BDD step fixtures).
+      "react-hooks/rules-of-hooks": "off",
     },
   },
 

@@ -1,14 +1,17 @@
 # ADR-058 — Story→test traceability via playwright-bdd (machine-verified coverage)
 
-**Status:** Proposed (2026-07-17 — **needs operator sign-off**; the Phase-2 pilot exercised the
-gate, but adopting the `playwright-bdd` runtime dependency + flipping the gate to enforced is the
-operator's call. Written under the operator's "continue" wave on the interactive ASK.)
-**Date:** 2026-07-17
-**Decision owner:** Tariq Al-Naaimi
-**Reviewers:** —
-**Amends:** ADR-008 (UAT through Playwright — the acceptance loop this adds traceability to) ·
-ADR-016 (website E2E tool). **Relates to:** ADR-033 (blueprint stories — the `USn`/`AC` spine this
-traces against), V2-207, V2-401 (`/ship --full` — where the gate becomes enforced).
+**Status:** Accepted (2026-07-17, Tariq Al-Naaimi — operator signed off on adopting the
+`playwright-bdd` runtime). `playwright-bdd` is installed (dev-dependency); `playwright-bdd.config.ts`
+
+- `npm run bdd:gen`/`test:bdd` wire the Gherkin executor; `bddgen` verified generating a Playwright
+  spec from the pilot's feature + steps. The **enforced** coverage flip still rides `/ship --full`
+  (V2-401, Phase 4); warm `/ship` is unchanged.
+  **Date:** 2026-07-17
+  **Decision owner:** Tariq Al-Naaimi
+  **Reviewers:** —
+  **Amends:** ADR-008 (UAT through Playwright — the acceptance loop this adds traceability to) ·
+  ADR-016 (website E2E tool). **Relates to:** ADR-033 (blueprint stories — the `USn`/`AC` spine this
+  traces against), V2-207, V2-401 (`/ship --full` — where the gate becomes enforced).
 
 ## Context
 
@@ -73,9 +76,13 @@ install the `playwright-bdd` runtime + config when that gate is flipped enforced
 (V2-210) writes real `.feature` files and runs `npm run bdd-coverage` to evidence the machine
 verification; deleting a step definition reds the run (the acceptance test).
 
-**This ADR stays Proposed until the operator signs off on the `playwright-bdd` dependency + the
-enforced `--full` gate.** The checker and layout ship regardless (no dependency); only the executor
-adoption and the RED flip await sign-off.
+**Operator signed off (2026-07-17).** `playwright-bdd` is installed and the executor is wired
+(`playwright-bdd.config.ts`, `npm run bdd:gen`/`test:bdd`; `bddgen` verified generating the pilot's
+spec). Scenario EXECUTION needs a running app + seeded DB + per-role auth storage state (not present
+in the build container), so `test:bdd` is a live-target/`--full` runner, never warm `/ship`. One
+harness note: the `tests/**` ESLint block now disables `react-hooks/rules-of-hooks` — playwright-bdd
+fixtures take a `use` callback the react-hooks plugin misreads as a Hook; test-harness code is not
+React, so the rule doesn't apply there (no security rule was relaxed).
 
 ## Consequences
 

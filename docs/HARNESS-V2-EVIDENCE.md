@@ -485,11 +485,14 @@ env — a separate small fix; `/fan-out`'s own diff-verification does not depend
   Amendment-delta sections; `/ship`'s `blueprint-content` gate (`scripts/lib/blueprint-content.mjs`,
   unit-tested) warns (shared: blocks) on a benchmark-referencing blueprint with no parity section, or a real
   amendment row with an empty `Confirmed:`.
-- **V2-207 BDD traceability** — ADR-058 (**Proposed — needs operator sign-off** on the playwright-bdd
-  dependency + the enforced `--full` flip) + build-vs-buy ledger; the owned, dependency-free
-  `scripts/bdd-coverage.mjs` gate (dormant in warm `/ship`, wired into `/ship --full`). Machine-verified: a
-  story with no scenario, a scenario with no `@US` tag/no steps, a dangling `@US`, or a step with no
-  definition reds. Unit-tested incl. the "delete a step definition → red" acceptance.
+- **V2-207 BDD traceability** — ADR-058 **Accepted** (operator signed off on the playwright-bdd
+  runtime, 2026-07-17) + build-vs-buy ledger. Two halves: (1) the owned, dependency-free
+  `scripts/bdd-coverage.mjs` COVERAGE gate — a story with no scenario, a scenario with no `@US`
+  tag/no steps, a dangling `@US`, or a step with no definition reds (unit-tested incl. the "delete a
+  step definition → red" acceptance); (2) the playwright-bdd EXECUTOR now installed +
+  wired (`playwright-bdd.config.ts`, `npm run bdd:gen`/`test:bdd`), verified: `bddgen` generates a
+  Playwright spec from the pilot's `.feature` + `.ts` steps. Coverage enforced under `/ship --full`
+  (V2-401); scenario execution needs a live app+DB (deferred with `--full`). Warm `/ship` untouched.
 
 **V2-210 pilot — the Asset Tracker ran the WHOLE loop, each station evidenced:**
 
@@ -592,13 +595,16 @@ The feature is **mergeable and green**; the machinery it exercised is the phase'
   `docs/findings-register.md` as `status: scheduled` and dispositioned in the blueprint's parity
   section. That is the `/retro` omission-feedback loop working: what the pilot didn't build is recorded
   against the benchmark it was measured on, so it re-surfaces rather than being silently dropped.
-- **The V2-207 ASK — deferred to the operator, honestly:** playwright-bdd adoption (ADR-058) is
-  **Proposed, not Accepted** — the owned `bdd-coverage` checker + `tests/features/` layout ship now
-  (no dependency), but installing the `playwright-bdd` runtime + flipping the gate to enforced awaits
-  operator sign-off + V2-401 (`/ship --full`, Phase 4). Warm `/ship` is untouched.
+- **The V2-207 ASK — brought to the operator, then closed:** the analysis shipped ADR-058 as
+  _Proposed_ and surfaced the playwright-bdd adoption as an explicit `AskUserQuestion`. **The operator
+  accepted** — so `playwright-bdd` is now installed and the executor wired (`playwright-bdd.config.ts`,
+  `bdd:gen`/`test:bdd`; `bddgen` verified generating the pilot's spec), ADR-058 → Accepted. The owned
+  `bdd-coverage` checker was always dependency-free; the executor rode the sign-off. The **enforced**
+  coverage flip still rides `/ship --full` (V2-401, Phase 4); warm `/ship` untouched.
 - **Exit criteria (KICKOFF §3 row 2):** the pilot runs benchmark → explore → blueprint(+DAG) →
-  implement → two-stage review → ship-full → retro end-to-end ✓ (every station evidenced above); its
+  implement → two-stage review → ship → retro end-to-end ✓ (every station evidenced above); its
   story→test coverage is machine-verified via `bdd-coverage` — every US1-US4 maps to a scenario, and
-  an unimplemented scenario (deleted step def) fails ✓. _Caveat honestly recorded:_ `playwright-bdd`
-  EXECUTION of the scenarios is deferred (ADR-058 Proposed / Phase 4) — the coverage MAPPING is
-  machine-verified now; the scenario RUN lands when the operator accepts the dependency.
+  an unimplemented scenario (deleted step def) fails ✓; the playwright-bdd executor generates the
+  runnable specs (`bddgen`) ✓. _Caveat honestly recorded:_ scenario EXECUTION against a browser needs
+  a live app + seeded DB + per-role auth (not in the build container) — that run lands with `/ship
+--full` in Phase 4; the coverage MAPPING + spec GENERATION are verified now.

@@ -245,7 +245,8 @@ stacks), **plain Playwright specs + a tag-lint** (no Gherkin — a tagged empty 
 free, parses blueprint USn + `.feature` @tags + step defs, and is unit-tested — the coverage
 verdict must be ours, not a black box.
 Decision: **adopt playwright-bdd as the Gherkin EXECUTOR (dev-dependency) and BUILD
-`scripts/bdd-coverage.mjs` as the owned traceability GATE** (ADR-058, Proposed). Phased: the owned
+`scripts/bdd-coverage.mjs` as the owned traceability GATE** (ADR-058, Accepted 2026-07-17 — operator
+signed off; playwright-bdd installed + executor wired). Phased: the owned
 checker + `tests/features/` layout ship now with NO dependency (the checker needs none); the
 playwright-bdd install + the enforced `/ship --full` flip await the operator's ADR-058 sign-off and
 V2-401 (`/ship --full`, Phase 4). Dev-dependency ⇒ ADR-058 records the adoption; this ledger entry
