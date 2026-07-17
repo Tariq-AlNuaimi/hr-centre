@@ -177,7 +177,8 @@ Two honest tiers — the constitution's "run `/ship` before every push" means th
 - **Warm `/ship`** (`npm run ship`, ~60–80s, DB-free — a normal push): typecheck · lint (incl.
   `sonarjs/cognitive-complexity`, V2-404) · format · contract/component/hook tests · scalability ·
   copy · wave-offs · licenses · tier · blueprint(+content) · complexity · db-structure · knip ·
-  duplication · coverage · build · size-limit · gitleaks · npm-audit · ai-eval.
+  duplication · coverage · skill-check (agentskills.io conformance, V2-503) · build · size-limit ·
+  gitleaks · npm-audit · ai-eval.
 - **`ship:full`** (`npm run ship:full` / `SHIP_FULL=1`; runs in `/deploy`, `/handoff`, CI): warm loop
   **plus** the docker image-build + trivy scan (ADR-030), the BDD traceability gate (ADR-058), and
   the **integration** gate — `scripts/test-integration.mjs` runs `tests/integration/*` against a real

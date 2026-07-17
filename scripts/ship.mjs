@@ -1333,7 +1333,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1349,32 +1349,47 @@ const complexity = scanComplexity();
 const typecheck = () =>
   run("typecheck", "npx", ["tsc", "--noEmit", "--tsBuildInfoFile", `${CACHE}/ship.tsbuildinfo`]);
 
-let [tsc, lint, format, contract, components, hooks, dbStructure, knip, duplication, coverage] =
-  await Promise.all([
-    typecheck(),
-    // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
-    // hash, NOT on the source of imported rule plugins. After editing a rule under
-    // eslint-rules/, clear `node_modules/.cache/eslint/` or the cache can serve a
-    // STALE result (a fixed rule looks green; a newly-strict rule looks clean).
-    run("lint", "npx", ["eslint", "--cache", "--cache-location", `${CACHE}/eslint/`]),
-    // Prettier formatting gate (WS-7): `prettier --check .` respects .prettierignore
-    // and fails RED on any file not in Prettier style. The repo was normalized once
-    // (`prettier --write .`) at adoption, so this stays green unless a new/edited
-    // file drifts. Fix with `npm run format`.
-    run("format", "npx", ["prettier", "--check", "."]),
-    run("contract tests", "npm", ["test"]),
-    run("component tests", "npm", ["run", "test:components"]),
-    // hooks: the harness-v2 hook test suite (V2-003) — asserts every .claude/hooks
-    // gate's deny/allow/block/warn decisions + fail-open vs fail-closed on error.
-    run("hooks", "npm", ["run", "test:hooks"]),
-    scanDbStructure(),
-    // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
-    // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
-    // when its tool is absent and carries an ADR-025 <gate>Ack + register waiver.
-    scanKnip(),
-    scanDuplication(),
-    scanCoverage(),
-  ]);
+let [
+  tsc,
+  lint,
+  format,
+  contract,
+  components,
+  hooks,
+  dbStructure,
+  knip,
+  duplication,
+  coverage,
+  skillCheck,
+] = await Promise.all([
+  typecheck(),
+  // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
+  // hash, NOT on the source of imported rule plugins. After editing a rule under
+  // eslint-rules/, clear `node_modules/.cache/eslint/` or the cache can serve a
+  // STALE result (a fixed rule looks green; a newly-strict rule looks clean).
+  run("lint", "npx", ["eslint", "--cache", "--cache-location", `${CACHE}/eslint/`]),
+  // Prettier formatting gate (WS-7): `prettier --check .` respects .prettierignore
+  // and fails RED on any file not in Prettier style. The repo was normalized once
+  // (`prettier --write .`) at adoption, so this stays green unless a new/edited
+  // file drifts. Fix with `npm run format`.
+  run("format", "npx", ["prettier", "--check", "."]),
+  run("contract tests", "npm", ["test"]),
+  run("component tests", "npm", ["run", "test:components"]),
+  // hooks: the harness-v2 hook test suite (V2-003) — asserts every .claude/hooks
+  // gate's deny/allow/block/warn decisions + fail-open vs fail-closed on error.
+  run("hooks", "npm", ["run", "test:hooks"]),
+  scanDbStructure(),
+  // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
+  // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
+  // when its tool is absent and carries an ADR-025 <gate>Ack + register waiver.
+  scanKnip(),
+  scanDuplication(),
+  scanCoverage(),
+  // Skill-standard conformance (V2-503): every .claude/skills/*/SKILL.md frontmatter
+  // must satisfy the agentskills.io open standard (name/description + only spec fields).
+  // Fast, dependency-free; keeps the portable .claude/ layer from drifting.
+  run("skill-check", "node", ["scripts/skill-standard-check.mjs"]),
+]);
 
 // stale .next/types trap: TS2307 pointing into .next means the build cache is
 // from a tree with routes that no longer exist -- clear and retry once.
@@ -1403,6 +1418,7 @@ for (const r of [
   knip,
   duplication,
   coverage,
+  skillCheck,
 ])
   report(r);
 if (copy.warn) console.warn(`  note: copy — ${copy.warn}`);
@@ -1432,6 +1448,7 @@ const redA = [
   knip,
   duplication,
   coverage,
+  skillCheck,
 ].find((r) => !r.ok);
 if (redA) fail(redA);
 
@@ -1578,5 +1595,5 @@ try {
 }
 
 console.log(
-  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + copy + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
+  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + copy + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + skill-check + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
 );

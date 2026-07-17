@@ -474,3 +474,21 @@ in-range bump). Renovate and Dependabot are mutually exclusive (both would open 
 the Renovate app is installed it is the active bot; `.github/dependabot.yml` carries a note pointing
 here and reactivates only if Renovate is removed. No runtime/dev dependency (hosted app + config).
 Informational for the ADR-032 hook (root config, not a new `lib/` file). See V2-502, ADR-017, ADR-056.
+
+### 2026-07-17 — Skill-standard conformance checker (scripts/skill-standard-check.mjs) — V2-503
+
+Scope: scripts/skill-standard-check.mjs
+Considered: **the official `skills-ref validate` CLI** (from agentskills/agentskills — authoritative,
+but an external binary to install + keep current, and it can't be wired dependency-free into `/ship`
+the way this repo's other gates are; it's a Go/Rust tool, not a node module), **`npm run lint` /
+existing gates** (none parse SKILL.md frontmatter against the agentskills.io schema), **a small
+dependency-free node validator** (chosen — mirrors the repo's `copy-check`/`bdd-coverage`/`fan-out`
+harness scripts: zero deps, node:test-adjacent, runs anywhere, easy to wire into a gate).
+Decision: **BUILD `scripts/skill-standard-check.mjs`** — validates every `.claude/skills/*/SKILL.md`
+frontmatter against the agentskills.io open standard (required `name` ≤64 lowercase-alphanumeric-
+hyphen, no leading/trailing/consecutive hyphens, MUST match the parent dir; required `description`
+1–1024 chars; only the spec's known optional fields `license`/`compatibility`/`metadata`/
+`allowed-tools` allowed), exits non-zero on drift naming the file+field. `npm run skill-check`.
+The official `skills-ref` stays the reference for the SPEC (cited in the script header) — we track
+its rules, not its binary. Zero runtime/dev dependency. Informational for the ADR-032 hook (lives in
+`scripts/`). See V2-503, ADR-054.
