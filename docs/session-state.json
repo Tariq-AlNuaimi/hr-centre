@@ -5,7 +5,7 @@
   "branch": "claude/harness-v2-kickoff-yhid26",
   "updated": "2026-07-17",
   "lastShip": {
-    "sha": "832821c",
+    "sha": "452ba18",
     "status": "green",
     "date": "2026-07-17"
   },
@@ -300,11 +300,19 @@
       "title": "harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107)",
       "state": "done",
       "blockedBy": "",
-      "next": "PHASE 1 COMPLETE (832821c, /ship green, pushed). ALL 7/7 items done + senior-reviewed + fixed. V2-105 CLOSED: ADR-057 (native recommended, operator verdict=CUSTOM), built /fan-out skill + scripts/fan-out.mjs; senior review found 1 High (false-disjoint glob-overlap heuristic → replaced with a SOUND segment intersection) + 3 Med + 1 Low, ALL fixed (42 hook tests green). Exit criteria met: always-on 36868B→19751B (≤20KB), constitution ≤8KB, zero-loss split, memory digest, parallel-by-default live, ADR-057 verdict. Phase 1 retro in HARNESS-V2-EVIDENCE.md. NEXT: land Phase-1 branch work on main per standing instructions, then start Phase 2 (V2-201 /benchmark, V2-204 /explore, V2-210 pilot feature…)."
+      "next": "PHASE 1 COMPLETE (832821c, /ship green), landed on main (6c56af3). ALL 7/7 items done + senior-reviewed + fixed. V2-105 CLOSED: ADR-057 (verdict=CUSTOM), /fan-out skill + scripts/fan-out.mjs; senior review 1 High + 3 Med + 1 Low ALL fixed. Exit criteria met. Retro in HARNESS-V2-EVIDENCE.md."
+    },
+    {
+      "item": "H2-P2",
+      "title": "harness-v2 Phase 2 — Complete the loop (V2-201..V2-210)",
+      "state": "in-progress",
+      "blockedBy": "",
+      "next": "ALL 10/10 Phase-2 items built + /ship green (452ba18, pushed). Loop machinery: /benchmark+/explore+/retro (built as a real /fan-out parallel wave — check-overlap+verify-scope clean, dogfooding V2-104/105/205), two-stage review (V2-206), blueprint parity/app-floor/DAG/amendment sections + /ship blueprint-content gate (V2-202/203/205/209), BDD traceability (V2-207: ADR-058 Proposed+ledger+scripts/bdd-coverage.mjs, dormant until /ship --full). PILOT V2-210: Asset Tracker ran the WHOLE loop (benchmark→explore→ADR-059→blueprint→scaffold+US4 transition invariant→BDD US1-US4→contract test→ship green→retro); mergeable. REMAINING to close Phase 2: (a) two-stage senior review on the pilot is RUNNING — fix findings; (b) commit evidence+retro (drafted). ASKS pending operator: ADR-058 playwright-bdd adoption sign-off. Then land on main, start Phase 3 (V2-301 visual iteration loop)."
     }
   ],
   "nextActions": [
-    "PHASE 1 COMPLETE + PUSHED (832821c green). V2-105 fully closed: ADR-057 (verdict=CUSTOM, operator override of the native recommendation) + /fan-out skill + scripts/fan-out.mjs. Senior review closed: 1 High (globsOverlap was false-disjoint for mid-segment wildcards — check-overlap would PASS a colliding manifest; REPLACED the representative-path heuristic with a SOUND segment-by-segment glob intersection) + 3 Medium (-uall; code-enforced clean-tree baseline; docs narrowed to aggregate-disjoint) + 1 Low, ALL fixed, 42 hook tests green. NEXT SESSION: per standing instruction land completed Phase-1 work on main (merge branch), then open Phase 2 (V2-201 /benchmark skill first).",
+    "PHASE 2 all 10 items built + /ship green (452ba18, pushed). Loop machinery + the Asset Tracker pilot done. IMMEDIATE: (a) the pilot's two-stage senior review is RUNNING — fix any findings; (b) commit the drafted evidence+Phase-2 retro (HARNESS-V2-EVIDENCE.md) + this session-state. THEN: land Phase 2 on main (fast-forward), then Phase 3 (V2-301 visual iteration loop = highest design priority). OPERATOR ASKS pending: ADR-058 (playwright-bdd adoption) sign-off — bdd-coverage checker ships now, the runtime install + enforced --full flip await sign-off + V2-401.",
+    "Phase 1 COMPLETE + on main (6c56af3). V2-105 closed: ADR-057 (verdict=CUSTOM) + /fan-out; senior review 1 High + 3 Med + 1 Low all fixed. Detail in docs/HARNESS-V2-EVIDENCE.md.",
     "Phase-1 history (all DONE+green, detail in docs/HARNESS-V2-EVIDENCE.md): V2-101 constitution split (zero-loss) · V2-102 memory digest · V2-103 Speed&Velocity pillar + 3 velocity checks · V2-104 parallel-by-default · V2-105 ADR-057 + /fan-out · V2-106 ccusage · V2-107 permission friction. Each senior-reviewed; all findings fixed + logged in docs/findings-register.md.",
     "Per-session landmine: gitleaks NOT preinstalled + release egress-blocked — reinstall via `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest`, add ~/.local/bin to PATH before /ship. Run /ship WITHOUT NODE_ENV=production.",
     "Do NOT weaken any Phase 0/V2-101 gate to make a later change pass (KICKOFF §2.10). The context-tax --strict budget (8KB constitution / 20KB total) is now a hook-suite test — keep it green."
