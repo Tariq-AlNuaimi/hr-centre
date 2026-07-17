@@ -80,6 +80,11 @@ wall-clock, and wall-clock is Pillar 1 (Speed & Velocity).
 - **Durable decisions/gotchas/conventions** → `docs/agent-memory.md` — committed, reaches `main`,
   inherited by forks; a ≤30-line digest is surfaced at SessionStart with full sections retrieved on
   demand (V2-102). Add via `/remember`.
+- **Stop-hook nuance** (V2-104 senior-review): the `Stop` hook **hard-blocks** turn-end on
+  **unpushed commits**; **uncommitted** WIP is only a **warning**, not a block.
+- **Auto-plan close call** (V2-104 senior-review): when it's a close call whether work is
+  high-blast-radius, default to `EnterPlanMode` **and name the trigger** that justified it (so the
+  plan decision is auditable) — the constitution's auto-plan rule, elaborated.
 
 ## The enforcement quartet (Hard gates — full detail)
 
@@ -151,4 +156,9 @@ disable; if security-related, log in SECURITY.md §12.
 
 Touching `eslint-rules/`; disabling any `rihal-template/*` rule beyond a single-line disable;
 suppressing a Semgrep/gitleaks/npm-audit finding (log in SECURITY.md §12); changing the ADR-001
-locked stack (write a superseding ADR first).
+locked stack (write a superseding ADR first); **editing `.claude/settings.json`'s
+`permissions.allow`/`permissions.deny` arrays** — widening what an autonomous agent may run without
+a human in the loop is a security-sensitive change (V2-107 senior-review): stop and get explicit
+operator sign-off, and note it in `docs/findings-register.md`. The semantic backstop under the
+lexical deny-list is `dangerous-commands.mjs` (fail-closed; e.g. it denies `git branch` force-delete
+in any flag spelling) — extend IT, don't rely on prefix patterns alone.

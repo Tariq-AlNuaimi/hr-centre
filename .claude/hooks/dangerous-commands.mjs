@@ -61,6 +61,22 @@ function checkSegment(seg) {
     if (args.some((a) => /^\+\S/.test(a)))
       return "`git push +<ref>` is a force push by refspec (rewrites remote history)";
   }
+  // 2.5. git branch FORCE-delete (semantic, any flag spelling/order) -- V2-107 senior-review High.
+  // The settings deny-list only allows the SAFE `git branch -d` (git refuses on an unmerged
+  // branch); but `-D`, `-d -f`, `--delete --force`, `-Df`, `-fd`, `--delete -f`, ... all force-drop
+  // a branch (unmerged/unpushed commits gone) and a lexical prefix rule can't cover the combos.
+  // Deny force-delete here; the bare safe delete (`-d` / `--delete` alone) falls through.
+  if (cmd === "git" && args[0] === "branch") {
+    const shortLetters = args
+      .filter((a) => /^-[A-Za-z]/.test(a) && !a.startsWith("--"))
+      .flatMap((a) => a.slice(1).split(""));
+    const longs = args.filter((a) => a.startsWith("--"));
+    const del =
+      shortLetters.includes("d") || shortLetters.includes("D") || longs.includes("--delete");
+    const force = shortLetters.includes("f") || longs.includes("--force");
+    if (del && (force || shortLetters.includes("D")))
+      return "`git branch` force-delete (`-D` / `-d --force`) drops a branch even with unmerged, unpushed commits; use the safe `git branch -d` (git refuses on an unmerged branch) or ask the operator";
+  }
   // 3. chmod 777 (incl. -R) -- world-writable
   if (cmd === "chmod" && args.some((a) => /^([ugoa=+-]*)?0?777$/.test(a) || a === "a+rwx"))
     return "`chmod 777` makes files world-writable; use the minimal mode needed";

@@ -16,8 +16,8 @@ Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Pri
 - **`main` is the fork source-of-truth.** Land completed green work on `main` before a session ends; merge often. Never land red — `/ship` green is the bar.
 - **Pushed-or-it-didn't-happen (#3/#14).** The container is ephemeral; the next session clones **only what was pushed**. Commit completed work and **push before the session ends**, then _verify_ (`git rev-list --count @{u}..HEAD` → `0`), never assume — the `Stop` hook **hard-blocks** turn-end while commits are unpushed. A past session's missing work is usually an unpushed commit — recover, don't claim "no access." (Memory lifecycle in `.claude/rules/harness.md`.)
 - **Run `/ship` before every push** (`npm run ship`; ~55s warm; stops on first failure) — the active gate; CI is dormant on the free plan (triggers + cadence: `.claude/rules/harness.md`, ADR-017).
-- **Review rail** (detail + CI path in `.claude/rules/harness.md`): before any push touching auth, schemas, API routes, or `lib/`, run `/code-review` (pre-push, blocking) and resolve findings; **after** every code push invoke the `senior-code-reviewer` (post-push breadth) — it layers on `/code-review`.
-- **Market benchmark before building.** Brainstorm/requirements passes web-search existing products/libraries first (a "market scan" in the spec).
+- **Review rail** (detail + CI path in `.claude/rules/harness.md`): before any push touching auth, schemas, API routes, or `lib/`, run `/code-review` (blocking) and resolve findings; **after** every code push invoke the `senior-code-reviewer` (breadth) — it layers on `/code-review`.
+- **Market benchmark before building.** Brainstorm/requirements passes web-search existing products/libraries first.
 - For real multi-file features use **Superpowers** (brainstorm → spec → plan → TDD; verified at SessionStart); for disposable idea-to-URL use `/quickstart`. No spec ceremony on throwaways.
 - **Blueprint before building (pre-build gate).** Run `/blueprint` first: **lightweight track** for disposable `/quickstart` work; **full track** (committed `docs/blueprints/<feature>.md`: stories + happy/worst scenarios + architecture + open questions) for real multi-file work or the Ask-before surface — the contract `/qa`/`/uat` trace against. Don't drift silently.
 - **Auto-plan high blast-radius / ambiguous work.** Call `EnterPlanMode` (await sign-off) when ANY holds: multi-file/multi-step; Ask-before surface; ambiguous requirements; unfamiliar code; hard to reverse. Pair with `/blueprint`. Act directly for read-only lookups, low-risk single-file edits, typos/renames.
@@ -58,7 +58,7 @@ Every change is judged against five pillars (full definitions in `docs/uat-rubri
 - Installing a runtime dep > 50 KB minified (needs ADR or `/scale-up` recipe)
 - Touching `lib/auth.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/api-helpers.ts`, `middleware.ts`, anything under `lib/prisma/`, `eslint-rules/`, or `prisma/migrations/`
 - Adding a model to the audit EXCLUDE set; adding a public path or `/api/internal/*` route; bypassing any auth wrapper; changing the `Role` enum or role checks
-- Disabling any `rihal-template/*` rule beyond a single-line disable; suppressing a Semgrep/gitleaks/npm-audit finding (log in SECURITY.md §12)
+- Disabling any `rihal-template/*` rule beyond a single-line disable; suppressing a Semgrep/gitleaks/npm-audit finding (log in SECURITY.md §12); widening `.claude/settings.json` `permissions`
 - Pushing to `main` directly when branch protection is on; changing the ADR-001 locked stack (write a superseding ADR first)
 
 When in doubt, stop and ask.

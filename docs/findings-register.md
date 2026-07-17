@@ -193,6 +193,31 @@ the changed surface is still **open** (un-adjudicated).
   pillar). Note: the review confirmed the `ship.mjs` wall-time warn + `session-start.sh` context
   block are correctly fail-open, and the two other trimmed pillar tails are intact in the rubric.
 
+- 2026-07-16 — [harness-v2 V2-107/**security**] the deny-list change removed `Bash(git branch -d *)`
+  leaving only `Bash(git branch -D*)`, so `git branch -d -f` / `-d --force` / `--delete --force`
+  (force-delete via flag combo) fell through to the `git branch*` allow and were **silently
+  permitted** — a real regression, reproduced live (senior-review 2026-07-16, confidence 95) —
+  owner: operator — status: fixed(this commit) (added a **semantic** force-delete guard to
+  `dangerous-commands.mjs` — denies `-D` and any delete+force flag spelling/order, allows the bare
+  safe `-d`; regression test in `tests/harness/hooks.test.mjs`).
+- 2026-07-16 — [harness-v2 V2-107/architecture] `.claude/settings.json`'s permission arrays — the
+  control over what an agent may run without a human — were NOT on the Ask-before surface and had no
+  gate hook; this wave widened them via a subagent with only a self-reported note (senior-review
+  2026-07-16, confidence 90) — owner: operator — status: fixed(this commit) (added
+  `.claude/settings.json` `permissions` to the Ask-before list in `CLAUDE.md` + `.claude/rules/harness.md`;
+  a PreToolUse settings-permission gate hook is SCHEDULED as a follow-up — heavier, next session).
+- 2026-07-16 — [harness-v2 V2-104/completeness] three trims from the constitution weren't preserved:
+  `dnd-kit`'s ADR-001 lock (only CLAUDE.md asserted it), the auto-plan "name the trigger" guidance,
+  and the Stop-hook "uncommitted WIP is a warning" nuance (senior-review 2026-07-16, confidence
+  82-85) — owner: operator — status: fixed(this commit) (dnd-kit+recharts added to
+  `ADR-001-template-baseline.md`; the other two restored to `.claude/rules/harness.md`).
+- 2026-07-17 — [harness-v2 V2-106/supply-chain] `npm run tokens` uses `npx -y ccusage@latest`
+  (unpinned float; matches the pre-existing `scan`/`lhci` `@latest` floats — not a new deviation)
+  (senior-review 2026-07-16, confidence 88) — owner: operator — status: scheduled (not a new
+  deviation — matches the pre-existing `scan`/`lhci` `@latest` floats; pin `ccusage` + `scan` +
+  `lhci` in a follow-up. Low urgency, `npm audit` clean, blast radius is a local dev-reporting
+  tool. Operator: re-open if you want it prioritized).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--

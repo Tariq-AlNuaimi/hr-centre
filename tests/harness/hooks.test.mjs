@@ -243,6 +243,34 @@ test("session-stop BLOCKS on unpushed commits but only when not already stop-act
 });
 
 // ---------------------------------------------------------------------------
+// V2-107 — git branch force-delete guard (senior-review High): the safe `-d` is allowed,
+// every force-delete flag combination is denied by dangerous-commands.mjs.
+// ---------------------------------------------------------------------------
+test("V2-107 dangerous-commands allows safe `git branch -d` but DENIES every force-delete combo", () => {
+  const allow = ["git branch -d feature", "git branch --delete feature", "git branch feature"];
+  const deny = [
+    "git branch -D feature",
+    "git branch -d -f feature",
+    "git branch -d --force feature",
+    "git branch --delete --force feature",
+    "git branch -Df feature",
+    "git branch -fd feature",
+    "git branch -f -d feature",
+  ];
+  for (const c of allow)
+    assert.equal(
+      runHook("dangerous-commands.mjs", preBash(c)).decision,
+      null,
+      `should ALLOW: ${c}`,
+    );
+  for (const c of deny) {
+    const r = runHook("dangerous-commands.mjs", preBash(c));
+    assert.ok(isDeny(r), `should DENY force-delete: ${c} :: ${r.stdout}`);
+    assert.match(r.json.hookSpecificOutput.permissionDecisionReason, /force-delete/);
+  }
+});
+
+// ---------------------------------------------------------------------------
 // V2-102 — agent-memory retrieval-on-demand: digest present + budgets + lookup.
 // ---------------------------------------------------------------------------
 test("V2-102 agent-memory has a digest block and passes the budget check (--strict)", () => {

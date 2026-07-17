@@ -396,12 +396,18 @@ operator sets a budget.
 
 **V2-107 — permission friction.** `.claude/settings.json` deny-list: removed only `Bash(git branch
 -d *)` so the **safe** delete (git refuses on an unmerged branch) falls through to the existing
-`Bash(git branch*)` allow. **Kept denied** (verified): force-push (`--force`/`-f`/`--force-with-lease`),
-`reset --hard`, `git branch -D`, `clean -f`/`-d`, `rebase -i`, `commit --amend`, `checkout`/`restore`
-guards. `commit --amend` on an unpushed HEAD is **not matcher-expressible** (static string/glob can't
-read git state), so it stays denied. ⚠️ The harness flagged this as a permission-widening
-self-modification — it is exactly the operator-confirmed V2-107 scope (minimal, reversible), surfaced
-here for visibility.
+`Bash(git branch*)` allow. `commit --amend` on an unpushed HEAD is **not matcher-expressible**
+(static string/glob can't read git state), so it stays denied. Force-push (`--force`/`-f`/
+`--force-with-lease`), `reset --hard`, `clean`, `rebase -i`, `commit --amend`, `checkout`/`restore`
+guards all still denied.
+
+⚠️ **Senior-review High (fixed):** the lexical deny only covered `git branch -D`, so `git branch -d
+-f` / `-d --force` / `--delete --force` (force-delete via flag combo) initially fell through to the
+allow — a real regression, reproduced live. **Fixed** by a **semantic** guard in
+`.claude/hooks/dangerous-commands.mjs` (fail-closed): it denies `git branch` force-delete in ANY
+flag spelling/order (`-D`, `-d -f`, `-Df`, `-fd`, `--delete --force`, …) and allows the bare safe
+`-d`/`--delete`. Regression test in `tests/harness/hooks.test.mjs`. Also: `.claude/settings.json`'s
+`permissions` arrays added to the Ask-before surface (the widening was previously ungated).
 
 ## Per-phase retros
 

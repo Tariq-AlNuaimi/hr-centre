@@ -30,6 +30,7 @@ The template ships with the following stack and invariants. Forks change them on
 - **UI:** Ant Design 6 + `@ant-design/nextjs-registry`
 - **i18n:** `next-intl` 4, locales `en` + `ar` (RTL on `ar`)
 - **Validation:** `zod` 3 at API boundaries
+- **Charts & interaction:** `recharts` (SVG charts) · `@dnd-kit/core` (drag-and-drop, e.g. the Kanban board) — part of the ADR-001-locked stack; swapping either needs a superseding ADR (V2-104 senior-review: this is the authoritative record of their lock now that CLAUDE.md's one-liner is terser).
 - **CI/CD:** GitHub Actions → GHCR → Portainer webhook
 
 ### Framework-enforced invariants
