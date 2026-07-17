@@ -24,12 +24,15 @@ drive Claude to build internal tools safely, then hand production to IT. The har
    matching path (a `rules-injection` hook surfaces the right file on an edit). → _Read the rule file
    for the area before you change it._
 
-2. **The gate quartet (pre-build gates).** Four PreToolUse hooks deny a new gated file until its
-   adjudication artifact exists: **build-vs-buy** (ADR-032 → `docs/build-vs-buy-ledger.md` entry with
-   a `Considered:` line), **blueprint** (ADR-033 → a `docs/blueprints/*.md` with a covering `Scope:`),
-   **complexity** (ADR-034 → the `/ship` budget check), **ai-eval** (ADR-036/042, dormant). → _A new
-   `lib/**`, `app/api/**/route.ts`, `app/**/page.tsx`, or `scripts/**` file needs its artifact first;
-   Bash writes hit the same gates (`bash-write-gate`)._
+2. **The enforcement quartet.** Four gates, enforced at TWO different moments (mirror `CLAUDE.md`'s
+   "denied/RED" wording): **two PreToolUse hooks DENY at write time** — **build-vs-buy** (ADR-032 →
+   a `docs/build-vs-buy-ledger.md` entry with a `Considered:` line) and **blueprint** (ADR-033 → a
+   `docs/blueprints/*.md` with a covering `Scope:`) block the Write/Bash outright until the artifact
+   exists (`bash-write-gate` covers shell writes too). **Two more turn `/ship` RED after the fact** —
+   **complexity** (ADR-034 → `/ship`'s phase-A budget check on the diff; a `complexityAck` waiver +
+   register line clears it) and **ai-eval** (ADR-036/042, dormant `/ship` phase-B). → _A new `lib/**`,
+   `app/api/**/route.ts`, `app/**/page.tsx`, or `scripts/**` file is DENIED at write without its
+   ledger/blueprint entry; an over-budget file WRITES but reds `/ship`._
 
 3. **`/ship` — the active gate.** `npm run ship` (warm, ~60–90 s, DB-free) is what makes a push
    allowed (a `Stop`/pre-push hook enforces it). **`ship:full`** adds docker + BDD + integration +

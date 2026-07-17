@@ -109,8 +109,13 @@ avoid needing — use it when the units simply can't be partitioned.
 git worktree add ../wt-unitA -b wave/unitA
 git worktree add ../wt-unitB -b wave/unitB
 # ...run each unit's work inside its own worktree (cd ../wt-unitA && …), in parallel…
-# integrate: merge or cherry-pick each unit's branch back onto the working branch
-git merge --no-ff wave/unitA wave/unitB      # (or cherry-pick specific commits)
+# integrate: merge each unit's branch back onto the working branch. NOTE: this is an
+# OCTOPUS merge (multiple branches at once) — it auto-succeeds ONLY when the branches
+# don't touch the same lines. If it reports a conflict it aborts cleanly (no data loss):
+#   git merge --abort   # then merge sequentially and resolve each in turn:
+#   git merge --no-ff wave/unitA   # resolve + commit
+#   git merge --no-ff wave/unitB   # resolve + commit   (or cherry-pick specific commits)
+git merge --no-ff wave/unitA wave/unitB
 # tear down — worktrees are scratch, never left lying around (safe -d: the branches
 # are merged above, so they delete cleanly; force -D is unnecessary and is deny-listed)
 git worktree remove ../wt-unitA && git branch -d wave/unitA

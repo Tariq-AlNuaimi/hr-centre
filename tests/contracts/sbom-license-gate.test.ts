@@ -49,6 +49,19 @@ test("sbomToLockLikeMap → evaluateLicenses flags a denied license, passes perm
   assert.ok(unknown.includes("nolic"), "a no-license component is an unknown, not an offender");
 });
 
+test("duplicate component names AGGREGATE licenses — a denied version isn't overwritten", () => {
+  // Two components share a name at different versions (version is stripped from the key).
+  // The AGPL one must still be caught even though the MIT one is processed later (last-write
+  // would have silently dropped it) — the gate's "denied license anywhere in the SBOM" claim.
+  const components = [
+    { purl: "pkg:npm/foo@1.0.0", licenses: [{ license: { id: "AGPL-3.0-only" } }] },
+    { purl: "pkg:npm/foo@2.0.0", licenses: [{ license: { id: "MIT" } }] },
+  ];
+  const { offenders } = evaluateLicenses(sbomToLockLikeMap(components), {});
+  assert.ok(offenders.has("foo"), "a denied license on a superseded version must still be flagged");
+  assert.equal(offenders.get("foo")?.deny, "AGPL");
+});
+
 test("a dual SPDX expression is flagged until elected, then passes", () => {
   const components = [
     { purl: "pkg:npm/dual@1.0.0", licenses: [{ expression: "MIT OR GPL-3.0-only" }] },

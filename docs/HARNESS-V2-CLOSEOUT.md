@@ -96,7 +96,7 @@ Deliberately NOT done in harness-v2 — deferred with a `docs/findings-register.
 - ~~**#17 SECURITY.md size review**~~ → **DONE 2026-07-18** (operator chose "reformat for
   readability"): §11 (threat findings) + §13 (CVE remediations) reformatted from wide single-line
   table cells into a lean index + per-item subsections — **zero content loss** (85/85 cells verified
-  verbatim), 104.6 KB → 87.3 KB. §6 (a genuine secrets lookup table) + §2 (prose) left as correct.
+  verbatim), 104.6 KB → 88.1 KB. §6 (a genuine secrets lookup table) + §2 (prose) left as correct.
 - ~~**#22 marketplace publication**~~ → **DONE 2026-07-18** (operator chose "prepare, don't
   publish"): ADR-062 supersedes the ADR-054 private posture to **publication-ready but intentionally
   unpublished**; `docs/plugin-publish-readiness.md` is the checklist; `plugin.json` `x-posture`

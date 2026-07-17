@@ -54,6 +54,12 @@ export function licenseEntryString(entry) {
  * Build the synthetic `{name: {license, dev}}` map license-gate.mjs's evaluateLicenses expects.
  * Multiple license entries on one component are joined with " AND " (all apply) — a denied
  * substring still trips DENY, and it won't be mis-read as an OR dual-license alternative.
+ *
+ * The map is keyed by bare package NAME (version-stripped), so two components with the same
+ * name at different versions collide. `cyclonedx-npm` currently emits one component per name,
+ * but we don't control that — so AGGREGATE (join all license strings seen for a name) rather
+ * than last-write-wins, or a denied license on a superseded version could slip past unseen if
+ * the SBOM generator ever emits per-version components.
  * @returns {Record<string, {license: string, dev: boolean}>}
  */
 export function sbomToLockLikeMap(components) {
@@ -63,7 +69,8 @@ export function sbomToLockLikeMap(components) {
     const name = componentName(c);
     if (!name) continue;
     const parts = (c.licenses ?? []).map(licenseEntryString).filter(Boolean);
-    map[name] = { license: parts.join(" AND "), dev: false };
+    const license = [map[name]?.license, ...parts].filter(Boolean).join(" AND ");
+    map[name] = { license, dev: false };
   }
   return map;
 }
