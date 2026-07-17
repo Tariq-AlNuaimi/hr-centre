@@ -1,6 +1,6 @@
 # ADR-056 — Freeze the Auth.js v5 beta pin; track Better Auth as the successor
 
-**Status:** Accepted (2026-07-12, Tariq Al-Naaimi)
+**Status:** Accepted (2026-07-12, Tariq Al-Naaimi) · **Re-confirmed 2026-07-17 (V2-501): STAY FROZEN, trigger-based revisit, no calendar deadline** (see Amendments).
 **Date:** 2026-07-11
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
@@ -194,6 +194,24 @@ Revisit (open the Better Auth migration blueprint) when **any** fires:
 
 Any migration that follows is a deliberate, blueprinted, plan-gated project on the
 Ask-before surface — never an in-place dependency bump.
+
+## Amendments
+
+### 2026-07-17 (V2-501) — decision re-confirmed: STAY FROZEN, triggers only
+
+The harness-v2 Phase-5 auth-posture review (V2-501) put the migrate-vs-stay-frozen question to the
+operator explicitly, weighing Better Auth's plugin depth (first-class 2FA / passkeys / magic-link —
+the auth-depth gap this frozen beta can't close) against the cost and risk of a migration.
+
+**Operator decision (Tariq Al-Naaimi, 2026-07-17): STAY FROZEN.** Keep `next-auth@5.0.0-beta.31` at
+the exact pin and keep this ADR's **trigger-based** revisit rule unchanged — **no calendar deadline
+is added**, because the four triggers above are the right signals and a fixed review date would add
+recurring churn without new information (the quarterly stack-refresh ADR, ADR-017 track 2, already
+forces a periodic look). Better Auth's plugin depth is noted as a standing counter-case but does not
+by itself fire a trigger: the bar remains a **stable (non-beta) Better Auth with verified Prisma /
+SSO / SCIM parity against our routes** (trigger 3). The migration, if a trigger ever fires, stays a
+separate blueprinted, plan-gated program — harness-v2 records this decision only and does **not**
+migrate auth.
 
 ## Related
 
