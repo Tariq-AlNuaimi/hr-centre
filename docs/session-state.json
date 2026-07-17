@@ -5,7 +5,7 @@
   "branch": "claude/harness-v2-kickoff-yhid26",
   "updated": "2026-07-17",
   "lastShip": {
-    "sha": "ff3e8d5",
+    "sha": "5285a19",
     "status": "green",
     "date": "2026-07-17"
   },
@@ -319,14 +319,14 @@
     {
       "item": "H2-P4",
       "title": "harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409)",
-      "state": "in_progress",
-      "blockedBy": "senior review (in flight)",
-      "next": "ALL 9 items done + pushed on yhid26 (ff3e8d5, /ship + ship:full green). V2-402/403/409 landed earlier; this session: V2-406 (extract routeDecision + unit-test SECURITY.md §15), V2-408 (protect-secrets guards Write/Edit), V2-404 (sonarjs cognitive-complexity @error thr 25), V2-401 (@testcontainers/postgresql + ship:full; verified 6/6 vs native pgvector), V2-405 (StrykerJS; caught real password.ts gaps, 70->82.5%), V2-407 (osv-scanner+trivy in /audit; osv v2.4.0 verified). senior-code-reviewer running over d1b29fd..HEAD — fix findings, THEN land Phase 4 on main."
+      "state": "done",
+      "blockedBy": "",
+      "next": "PHASE 4 COMPLETE (5285a19, /ship + ship:full green) + senior-reviewed + fixed. 9/9 items: V2-401 (@testcontainers/postgresql + ship:full, 6/6 vs native pgvector), V2-402/403 (pgvector + coverage floor), V2-404 (sonarjs cognitive-complexity @error), V2-405 (StrykerJS; caught real password.ts gaps 70->82.5%), V2-406 (routeDecision extraction + §15 tests), V2-407 (osv-scanner+trivy in /audit), V2-408 (protect-secrets write-guard), V2-409 (debt sunset). senior review: 1 Critical + 2 High (protect-secrets Bash/MultiEdit/exemption bypasses) + 1 Stage-1 High (blueprint Scope) ALL FIXED with regression tests (test:hooks 64/64). Ready to land on main."
     }
   ],
   "nextActions": [
-    "Phase 4 (V2-401..409) COMPLETE + pushed on yhid26 (ff3e8d5). senior-code-reviewer running over the batch (d1b29fd..HEAD) — resolve findings, re-ship green, then FAST-FORWARD LAND Phase 4 on main.",
-    "After landing: Phase 5 (final phase). Re-read the harness-v2 program doc for the Phase-5 item list; blueprint first.",
+    "Phase 4 (V2-401..409) COMPLETE + senior-reviewed + fixed + green (5285a19). LAND on main (fast-forward), then start Phase 5 (final phase).",
+    "Phase 5: re-read the harness-v2 program doc for the Phase-5 item list; /blueprint first (full track).",
     "V2-402 register wave-off flip (WS-5) to fixed() is OPERATOR adjudication — proposed, awaiting sign-off; do not self-adjudicate."
   ]
 }

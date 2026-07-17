@@ -4,7 +4,7 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (ff3e8d5, 2026-07-17)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (5285a19, 2026-07-17)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -12,7 +12,7 @@ _Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated
 | ✅ DONE | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | PHASE 1 COMPLETE (832821c, /ship green), landed on main (6c56af3). ALL 7/7 items done + senior-reviewed + fixed. V2-105 CLOSED: ADR-057 (verdict=CUSTOM), /fan-out skill + scripts/fan-out.mjs; senior review 1 High + 3 Med + 1 Low ALL fixed. Exit criteria met. Retro in HARNESS-V2-EVIDENCE.md. |
 | ✅ DONE | **H2-P2** harness-v2 Phase 2 — Complete the loop (V2-201..V2-210) | — | PHASE 2 COMPLETE (5cc2d21, /ship green, pushed), landed on main (f905631). ALL 10/10 items done + pilot two-stage-reviewed + fixed. Loop machinery: /benchmark+/explore+/retro, two-stage review (V2-206), blueprint parity/app-floor/DAG/amendment gate (V2-202/203/205/209), BDD traceability (V2-207/ADR-058 Accepted). Retro in HARNESS-V2-EVIDENCE.md. |
 | ✅ DONE | **H2-P3** harness-v2 Phase 3 — Shrink the decision space (V2-301..V2-309) | — | PHASE 3 COMPLETE + LANDED ON MAIN (main @ 45a0500, /ship green, ff from f905631). ALL 9/9 done + THREE senior-review rounds (V2-304 font-size-regex substring bug; V2-305 JSXExpressionContainer bypass; phase-3-close: 3 wrong OSS-catalog AGPL labels + ledger broad-glob hygiene + VR ratio-vs-absolute tolerance — all CONFIRMED, fixed, re-tested). Look: V2-301 visual loop + V2-307 anchors/rubric + V2-302 primitives + V2-303 archetypes + V2-304 no-arbitrary-className + V2-308 visual-regression. Copy: V2-305 no-literal-jsx-text chokepoint + /ship copy gate (22 labels → sentence case). Build-vs-buy: V2-306 oss-catalog + /adopt (ADR-060 demo) + V2-309 gate widened to components/shared+scripts, Considered: + broad-glob hygiene. 13 ESLint rules; tests 13/13 lint-rules + 59/59 hooks (incl 5/5 visual). Retro in HARNESS-V2-EVIDENCE.md. |
-| ⬜ IN_PROGRESS | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | senior review (in flight) | ALL 9 items done + pushed on yhid26 (ff3e8d5, /ship + ship:full green). V2-402/403/409 landed earlier; this session: V2-406 (extract routeDecision + unit-test SECURITY.md §15), V2-408 (protect-secrets guards Write/Edit), V2-404 (sonarjs cognitive-complexity @error thr 25), V2-401 (@testcontainers/postgresql + ship:full; verified 6/6 vs native pgvector), V2-405 (StrykerJS; caught real password.ts gaps, 70->82.5%), V2-407 (osv-scanner+trivy in /audit; osv v2.4.0 verified). senior-code-reviewer running over d1b29fd..HEAD — fix findings, THEN land Phase 4 on main. |
+| ✅ DONE | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | — | PHASE 4 COMPLETE (5285a19, /ship + ship:full green) + senior-reviewed + fixed. 9/9 items: V2-401 (@testcontainers/postgresql + ship:full, 6/6 vs native pgvector), V2-402/403 (pgvector + coverage floor), V2-404 (sonarjs cognitive-complexity @error), V2-405 (StrykerJS; caught real password.ts gaps 70->82.5%), V2-406 (routeDecision extraction + §15 tests), V2-407 (osv-scanner+trivy in /audit), V2-408 (protect-secrets write-guard), V2-409 (debt sunset). senior review: 1 Critical + 2 High (protect-secrets Bash/MultiEdit/exemption bypasses) + 1 Stage-1 High (blueprint Scope) ALL FIXED with regression tests (test:hooks 64/64). Ready to land on main. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -81,8 +81,8 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. Phase 4 (V2-401..409) COMPLETE + pushed on yhid26 (ff3e8d5). senior-code-reviewer running over the batch (d1b29fd..HEAD) — resolve findings, re-ship green, then FAST-FORWARD LAND Phase 4 on main.
-2. After landing: Phase 5 (final phase). Re-read the harness-v2 program doc for the Phase-5 item list; blueprint first.
+1. Phase 4 (V2-401..409) COMPLETE + senior-reviewed + fixed + green (5285a19). LAND on main (fast-forward), then start Phase 5 (final phase).
+2. Phase 5: re-read the harness-v2 program doc for the Phase-5 item list; /blueprint first (full track).
 3. V2-402 register wave-off flip (WS-5) to fixed() is OPERATOR adjudication — proposed, awaiting sign-off; do not self-adjudicate.
 
 <!-- END:auto-status -->
