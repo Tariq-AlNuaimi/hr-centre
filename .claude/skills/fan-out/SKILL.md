@@ -86,6 +86,45 @@ files or B needs A's output, they are NOT a wave — serialize them (see Skip-wh
 - **The manifest is scratch.** `docs/blueprints/.fan-out.json` is a working file, not a
   committed blueprint — it does not satisfy the ADR-033 blueprint gate.
 
+## Worktree isolation (P6 recipe — when one working tree isn't enough)
+
+Native dispatch shares ONE working tree, so `verify-scope` checks the combined change-set,
+not "unit B stayed out of unit A's files" (the attribution limit above). When that isn't
+enough — units that genuinely must **write the same paths** (they can't be made disjoint), or
+work where a stray cross-unit write would be costly to untangle — give each unit its **own git
+worktree** so isolation is physical, not just declared. ADR-057 named this a migration trigger,
+not the default: worktrees cost ~200–500 ms setup + disk each, so reach for them only when the
+overlap is real.
+
+**Native path (preferred).** The `Agent` tool takes `isolation: "worktree"` — the subagent runs
+in a fresh worktree, auto-removed if it made no changes. Use it when spawning units that mutate
+files in parallel and would otherwise collide; each unit's writes land in its own tree, and you
+integrate the results afterward. This is the same mechanism `/fan-out`'s overlap gate exists to
+avoid needing — use it when the units simply can't be partitioned.
+
+**Manual path (a shell wave, or to inspect before merging).** From a clean tree:
+
+```bash
+# one worktree + throwaway branch per unit (siblings of the repo, never nested inside it)
+git worktree add ../wt-unitA -b wave/unitA
+git worktree add ../wt-unitB -b wave/unitB
+# ...run each unit's work inside its own worktree (cd ../wt-unitA && …), in parallel…
+# integrate: merge or cherry-pick each unit's branch back onto the working branch
+git merge --no-ff wave/unitA wave/unitB      # (or cherry-pick specific commits)
+# tear down — worktrees are scratch, never left lying around (safe -d: the branches
+# are merged above, so they delete cleanly; force -D is unnecessary and is deny-listed)
+git worktree remove ../wt-unitA && git branch -d wave/unitA
+git worktree remove ../wt-unitB && git branch -d wave/unitB
+git worktree prune
+```
+
+Then the normal close: integrate → **one** `npm run ship` over the combined result → commit +
+push. Cautions: worktrees live OUTSIDE the repo dir (siblings), never nested; each is a full
+checkout (disk cost); the shared `.git` means a branch is checked out in at most one worktree at
+a time; and `node_modules`/`.env` are per-worktree, so a unit that needs deps/DB pays the
+bootstrap in its own tree. If the units can be made write-disjoint instead, do that — the
+overlap gate + one shared tree is cheaper.
+
 ## Skip-when
 
 - **One unit, or the units share files** → just do the work (or serialize); a wave of one
