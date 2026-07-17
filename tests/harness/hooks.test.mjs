@@ -687,3 +687,69 @@ test("V2-209 analyzeBlueprint flags a real amendment row with an empty Confirmed
   // no amendment row at all → no gap
   assert.equal(bpc.analyzeBlueprint("# BP\nConfirmed: \nnothing\n", no).amendGap, false);
 });
+
+// ── V2-207 bdd-coverage traceability gate (ADR-058) ──────────────────────────────
+const bdd = await import(resolve(REPO, "scripts", "bdd-coverage.mjs"));
+
+test("V2-207 bdd parseFeature extracts @US tags + steps per scenario", () => {
+  const feat = `Feature: Assets
+@US7 @smoke
+Scenario: admin creates an asset
+  Given an ADMIN session
+  When they POST a valid asset
+  Then it is persisted
+`;
+  const p = bdd.parseFeature(feat, "a.feature");
+  assert.equal(p.scenarios.length, 1);
+  assert.deepEqual(p.scenarios[0].tags.includes("US7"), true);
+  assert.equal(p.scenarios[0].steps.length, 3);
+});
+
+test("V2-207 bdd step matching: cucumber-expression + regex defs match; a gap does not", () => {
+  const defs = bdd.parseStepDefs(
+    `Given('an ADMIN session', () => {});\nWhen('they POST a {word} asset', () => {});\nThen(/^it is (persisted|listed)$/, () => {});`,
+  );
+  assert.equal(bdd.stepMatches("an ADMIN session", defs), true);
+  assert.equal(bdd.stepMatches("they POST a valid asset", defs), true, "{word} placeholder");
+  assert.equal(bdd.stepMatches("it is persisted", defs), true, "regex def");
+  assert.equal(bdd.stepMatches("they DELETE everything", defs), false, "no def → unmatched");
+});
+
+test("V2-207 bdd checkBddCoverage reds on unimplemented step, missing tag, and uncovered story", () => {
+  const feat = bdd.parseFeature(
+    `@US7\nScenario: create\n  Given an ADMIN session\n  Then it is persisted\n`,
+    "assets.feature",
+  );
+  const allStories = new Set(["US7", "US8"]);
+  // full defs → the only gap is the required-but-uncovered US8
+  const defs = bdd.parseStepDefs(
+    `Given('an ADMIN session',()=>{});Then('it is persisted',()=>{});`,
+  );
+  const req = new Set(["US7", "US8"]);
+  const errs = bdd.checkBddCoverage([feat], defs, allStories, req);
+  assert.ok(
+    errs.some((e) => /US8 has no @US8 scenario/.test(e)),
+    "uncovered story reds",
+  );
+  assert.ok(!errs.some((e) => /US7/.test(e) && /no @US/.test(e)), "US7 IS covered");
+
+  // delete a step definition (the acceptance case) → unimplemented-step red
+  const defsMissing = bdd.parseStepDefs(`Given('an ADMIN session',()=>{});`);
+  const errs2 = bdd.checkBddCoverage([feat], defsMissing, allStories, new Set(["US7"]));
+  assert.ok(
+    errs2.some((e) => /no matching step definition/.test(e) && /it is persisted/.test(e)),
+    "deleting a step def turns the run red",
+  );
+
+  // scenario with no @US tag → untraceable red
+  const untagged = bdd.parseFeature(`Scenario: orphan\n  Given an ADMIN session\n`, "x.feature");
+  const errs3 = bdd.checkBddCoverage([untagged], defs, allStories, new Set());
+  assert.ok(
+    errs3.some((e) => /no @US<n> tag/.test(e)),
+    "untagged scenario reds",
+  );
+
+  // a clean, fully-covered set → no errors
+  const errs4 = bdd.checkBddCoverage([feat], defs, allStories, new Set(["US7"]));
+  assert.deepEqual(errs4, []);
+});

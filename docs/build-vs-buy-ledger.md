@@ -233,3 +233,21 @@ budget-line trigger); `docs/token-policy.md`.
      npm registry was available). On an egress-blocked machine the npx fetch fails — run ccusage
      on a machine with npm-registry egress (it only needs the local `~/.claude` logs to read); the
      wrapper command is unchanged and correct. -->
+
+Scope: package.json (playwright-bdd — dev-dependency), scripts/bdd-coverage.mjs
+Considered: **playwright-bdd** (chosen as the Gherkin executor — turns `.feature` files into
+Playwright tests on the EXISTING @playwright/test runner from ADR-008, so fixtures/tracing are
+reused, not a second stack; dev-only, no runtime/bundle cost), **@cucumber/cucumber** (a full
+separate BDD runner — would duplicate the Playwright runner and its fixtures/tracing; heavier, two
+stacks), **plain Playwright specs + a tag-lint** (no Gherkin — a tagged empty test passes, so no
+"unimplemented scenario = red"; weaker than the exit criterion). For the TRACEABILITY GATE itself
+(story↔scenario↔step coverage math), build-in-repo won: `scripts/bdd-coverage.mjs` is dependency-
+free, parses blueprint USn + `.feature` @tags + step defs, and is unit-tested — the coverage
+verdict must be ours, not a black box.
+Decision: **adopt playwright-bdd as the Gherkin EXECUTOR (dev-dependency) and BUILD
+`scripts/bdd-coverage.mjs` as the owned traceability GATE** (ADR-058, Proposed). Phased: the owned
+checker + `tests/features/` layout ship now with NO dependency (the checker needs none); the
+playwright-bdd install + the enforced `/ship --full` flip await the operator's ADR-058 sign-off and
+V2-401 (`/ship --full`, Phase 4). Dev-dependency ⇒ ADR-058 records the adoption; this ledger entry
+is the build-vs-buy adjudication. Informational for the ADR-032 hook (it matches only `lib/` files;
+these live in `scripts/` + `package.json`). See ADR-058, ADR-008; `scripts/bdd-coverage.mjs`.

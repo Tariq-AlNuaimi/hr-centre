@@ -1431,6 +1431,14 @@ if (FULL) {
   report(docker);
   if (docker.warn) console.warn(`  note: docker -- ${docker.warn}`);
   if (!docker.ok) fail(docker);
+
+  // BDD story->scenario->step traceability gate (V2-207, ADR-058). Full-loop only —
+  // dormant (exit 0) until a fork writes tests/features/*.feature. RED on a story with
+  // no scenario, a scenario with no @US tag / no steps, or a step with no definition.
+  console.log("ship: phase B (full) -- bdd-coverage (story<->scenario traceability, ADR-058) ...");
+  const bdd = await run("bdd-coverage", "node", ["scripts/bdd-coverage.mjs"]);
+  report(bdd);
+  if (!bdd.ok) fail(bdd);
 }
 
 // Record the green-for-HEAD signal the auto-spawn guard trusts (session-automation

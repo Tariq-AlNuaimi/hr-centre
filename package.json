@@ -25,6 +25,7 @@
     "memory-digest": "node scripts/memory-digest.mjs --write",
     "hook-latency": "node scripts/hook-latency.mjs",
     "fan-out": "node scripts/fan-out.mjs",
+    "bdd-coverage": "node scripts/bdd-coverage.mjs",
     "test:components": "node --import tsx --import global-jsdom/register --import ./tests/components/setup.ts --test tests/components/*.test.tsx",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

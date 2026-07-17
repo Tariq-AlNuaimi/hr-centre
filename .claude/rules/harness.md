@@ -161,6 +161,8 @@ disable; if security-related, log in SECURITY.md §12.
 - `npm test` (contract suite) · `npm run uat` (Playwright; `UAT_BASE_URL` for deployed) ·
   `npm run lint` · `npm run prisma:migrate|:generate|:seed|:studio` · `make db-up` / `db-down`
 - `npm run tokens` (per-session/model spend report — ccusage, V2-106)
+- `npm run bdd-coverage` (story↔scenario↔step traceability gate — V2-207/ADR-058; dormant until a
+  fork writes `tests/features/*.feature`; enforced under `/ship --full`) · `npm run fan-out` (ADR-057)
 - Push = deploy: `main` → production, other branches → preview URL.
 
 ## Known traps (don't "fix")
