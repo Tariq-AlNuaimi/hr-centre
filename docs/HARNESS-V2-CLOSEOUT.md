@@ -93,7 +93,10 @@ Deliberately NOT done in harness-v2 — deferred with a `docs/findings-register.
 - ~~**P6 worktree recipe**~~ → **SHIPPED 2026-07-18** (post-close): the `/fan-out` skill gains a
   "Worktree isolation" recipe (native `Agent isolation: "worktree"` + the manual
   `git worktree add`/merge/remove wave), closing the attribution-limit gap the skill names.
-- **#17 SECURITY.md full rewrite** → a future pass (V2-506 noted the size review out of scope).
+- ~~**#17 SECURITY.md size review**~~ → **DONE 2026-07-18** (operator chose "reformat for
+  readability"): §11 (threat findings) + §13 (CVE remediations) reformatted from wide single-line
+  table cells into a lean index + per-item subsections — **zero content loss** (85/85 cells verified
+  verbatim), 104.6 KB → 87.3 KB. §6 (a genuine secrets lookup table) + §2 (prose) left as correct.
 - **#22 marketplace publication** → the plugin is publish-READY (V2-503) but the private posture
   holds (ADR-054); publishing is a config flip + a superseding ADR.
 - **#27 full bus-factor program** → V2-505 shipped the maintainer-runbook floor; the full program is
