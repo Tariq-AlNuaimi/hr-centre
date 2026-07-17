@@ -5,7 +5,7 @@
   "branch": "claude/harness-v2-kickoff-yhid26",
   "updated": "2026-07-16",
   "lastShip": {
-    "sha": "45c283e",
+    "sha": "c3834e9",
     "status": "green",
     "date": "2026-07-16"
   },
@@ -305,7 +305,7 @@
   ],
   "nextActions": [
     "RESUME Phase 1 at V2-104 (parallel-by-default standing instruction). V2-101/102/103 DONE+green. NOTE: constitution is at the 8KB ceiling (8190B) — V2-104 must add its terse binding line + trim, or put detail in .claude/rules/harness.md with a constitution pointer. V2-104 demo (a real 2+-unit parallel task) couples to running V2-106/V2-107 [P] as the parallel pair.",
-    "V2-102 CLOSED: senior-code-reviewer verified zero entry loss + clean watchdog removal; 5 findings (High boldOf prefix-collision + Medium count-drift + 3 Low) ALL fixed (10a4c86), logged in docs/findings-register.md. Hook suite 32 green.",
+    "V2-103 CLOSED: senior review confirmed ship/session-start warns fail-open; 3 findings (High hook-latency fictional-chain + Medium unchecked-spawn + Low rubric phrase) ALL fixed (c3834e9). hook-latency now measures per-turn chains (worst 374ms). Hook suite 34 green.",
     "V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.",
     "V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.",
     "Remaining Phase 1: V2-103 (velocity pillar — CONFIRMED rename Pillar 1 -> Speed & Velocity + 3 checks: context-tax done via scripts/context-tax.mjs, /ship wall-time >25% warn, hook-latency baseline), V2-104 (parallel-by-default constitution text), V2-105 (research native agent teams -> ADR-057 -> ASK verdict; build /fan-out only if custom), V2-106 [P] ccusage LEDGER + npm run tokens, V2-107 [P] permission friction (git branch -d, amend on unpushed).",
