@@ -19,7 +19,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (2): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
-- **Gotchas — browser QA & egress** (4): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
+- **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (2): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
 - **Conventions discovered** (2): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
@@ -177,6 +177,19 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — browser QA & egress
 
+- 2026-07-17 — **This web container CAN run the full app locally for real screenshots (no
+  Docker needed).** Native Postgres 16 is preinstalled: `pg_ctlcluster 16 main start` brings up
+  the `main` cluster on :5432. Then create the app role+db from `.env` creds (`CREATE ROLE app
+LOGIN PASSWORD '<pw>'` as `sudo -u postgres`; `createdb -O app app_db`). **Prisma CLI does NOT
+  read `.env`** — it falls back to a `placeholder` DSN (`prisma.config.ts`), so
+  `export DATABASE_URL=$(…parse .env…)` before `prisma migrate deploy`/seed. The
+  `pgvector_rag` migration needs the extension: `apt-get install -y postgresql-16-pgvector`, then
+  pre-create it as superuser (`sudo -u postgres psql -d app_db -c "CREATE EXTENSION vector"`) +
+  `prisma migrate resolve --rolled-back <name>` before re-deploy (the `app` role isn't superuser).
+  Seed (`npm run prisma:seed` → admin@example.com), `npm run dev`, then Playwright at
+  `/opt/pw-browsers`. **Login gotcha:** the login form is react-hook-form — `page.fill()` does NOT
+  fire its onChange (submit sees empty), so use `getByLabel(/email/i).pressSequentially(...)`; auth
+  then 200s and lands on `/en`. This is simpler than the deploy+bridge dance for LOCAL captures.
 - 2026-07-12 — **Headless Chromium can't reach any real site in a web session** (TLS-MITM
   egress proxy resets its BoringSSL ClientHello → ERR_CONNECTION_RESET; NOT a CA-trust
   issue). Fix is now automated: `make browser-up` starts a local mitmdump chain and the
