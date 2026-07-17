@@ -205,21 +205,29 @@ test("V2-309 build-vs-buy-gate gates components/shared + scripts and requires a 
     "new components/shared primitive must deny",
   );
   assert.ok(isDeny(runBvbAt(empty, "scripts/new-tool.mjs")), "new scripts tool must deny");
-  // (b) a covering entry WITH a Considered: line → ALLOW.
+  // (b) a SPECIFIC covering entry WITH a Considered: line → ALLOW.
   const good = ledgerFixture(
-    "# Ledger\n\nScope: components/shared/**\nConsidered: shadcn blocks vs a headless kit vs build.\nDecision: build.\n",
+    "# Ledger\n\nScope: components/shared/NewPrimitive.tsx\nConsidered: shadcn blocks vs a headless kit vs build.\nDecision: build.\n",
   );
   assert.equal(
     runBvbAt(good, "components/shared/NewPrimitive.tsx").decision,
     null,
-    "a covering Considered-bearing entry must allow",
+    "a specific Considered-bearing entry must allow",
   );
-  // (c) a covering Scope with NO Considered: line → DENY, and the reason names Considered:.
-  const bare = ledgerFixture("# Ledger\n\nScope: scripts/**\nDecision: build.\n");
+  // (c) a SPECIFIC Scope with NO Considered: line → DENY, and the reason names Considered:.
+  const bare = ledgerFixture("# Ledger\n\nScope: scripts/new-tool.mjs\nDecision: build.\n");
   const denyBare = runBvbAt(bare, "scripts/new-tool.mjs");
   assert.ok(isDeny(denyBare), "a Scope without a Considered: line must deny");
   assert.match(denyBare.json.hookSpecificOutput.permissionDecisionReason, /Considered/);
-  // (d) a test file on the new surface is excluded → ALLOW.
+  // (d) an OVER-BROAD Scope (even WITH a Considered: line) → DENY (V2-309 hygiene): a
+  // fork-wide "scripts/**" entry is a rubber stamp, not a decision for a specific file.
+  const broad = ledgerFixture(
+    "# Ledger\n\nScope: scripts/**\nConsidered: a vs b.\nDecision: build.\n",
+  );
+  const denyBroad = runBvbAt(broad, "scripts/new-tool.mjs");
+  assert.ok(isDeny(denyBroad), "a too-broad Scope must not count as coverage");
+  assert.match(denyBroad.json.hookSpecificOutput.permissionDecisionReason, /BROAD|SPECIFIC/);
+  // (e) a test file on the new surface is excluded → ALLOW.
   assert.equal(
     runBvbAt(empty, "scripts/foo.test.mjs").decision,
     null,

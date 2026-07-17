@@ -174,7 +174,7 @@ export function blueprintCovers(rel, root, now = new Date()) {
  * the gate can explain a Considered-less match distinctly from no match at all.
  */
 export function ledgerCoverInfo(rel, root) {
-  const info = { covered: false, sawScopeWithoutConsidered: false };
+  const info = { covered: false, sawScopeWithoutConsidered: false, sawBroadMatch: false };
   const ledger = resolve(root, "docs/build-vs-buy-ledger.md");
   if (!existsSync(ledger)) return info;
   let text = "";
@@ -189,13 +189,20 @@ export function ledgerCoverInfo(rel, root) {
   const blocks = text.split(/\n(?=Scope:)/i);
   const hasConsidered = /^[ \t]*Considered:/im;
   for (const block of blocks) {
-    const matches = scopeGlobs(block).some((g) => globToRe(g).test(rel));
-    if (!matches) continue;
+    const matching = scopeGlobs(block).filter((g) => globToRe(g).test(rel));
+    if (matching.length === 0) continue;
+    // Broad-glob hygiene (the other half of V2-309, mirroring blueprintCoverInfo): a
+    // fork-wide Scope (`lib/**`, `components/shared/**`, `scripts/**`, bare `**`) is a
+    // rubber stamp — it can't count as a real build-vs-buy decision for a specific file.
+    if (matching.every((g) => isGlobTooBroad(g))) {
+      info.sawBroadMatch = true;
+      continue;
+    }
     if (hasConsidered.test(block)) {
       info.covered = true;
-      return info; // a real, Considered-bearing cover
+      return info; // a real, specific, Considered-bearing cover
     }
-    info.sawScopeWithoutConsidered = true; // matched, but no alternatives named — keep looking
+    info.sawScopeWithoutConsidered = true; // matched specifically, but no alternatives named
   }
   return info;
 }

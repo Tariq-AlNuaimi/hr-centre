@@ -23,8 +23,9 @@
 // is tiny and tested (tests/harness or the ADR-032 verification steps).
 //
 // V2-001 F#3 (senior-review 2026-07-16): the Scope/ledger-coverage logic is now the single
-// shared implementation in lib/scope-cover.mjs (relPath / isGatedCapabilityFile / ledgerCovers),
-// so this Write-tool gate and the Bash-write gate can never diverge, and V2-309's coming
+// shared implementation in lib/scope-cover.mjs (relPath / isGatedCapabilityFile /
+// ledgerCoverInfo — now with the V2-309 broad-glob + Considered: hygiene),
+// so this Write-tool gate and the Bash-write gate can never diverge, and V2-309's
 // ledger-glob hygiene lands in one place. Behavior here is unchanged.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -48,24 +49,31 @@ try {
   const info = ledgerCoverInfo(rel, ROOT);
   if (info.covered) process.exit(0);
 
-  // A Scope matched but the entry named no alternatives (V2-309) → a targeted message.
-  const reason = info.sawScopeWithoutConsidered
-    ? `[build-vs-buy] Denied: '${rel}' has a matching Scope in docs/build-vs-buy-ledger.md, ` +
-      `but that entry has no "Considered:" line — a bare Scope is not a build-vs-buy decision ` +
-      `(V2-309/ADR-032). Add a "Considered:" line naming >=1 real alternative you weighed ` +
-      `(an existing primitive, a /scale-up recipe, an OSS/library option from ` +
-      `docs/oss-catalog.md) and why you chose build-vs-adopt. Recording it is not a bypass; ` +
-      `it IS the gate.`
-    : `[build-vs-buy] Denied: '${rel}' is a NEW hand-built capability (lib/, ` +
-      `components/shared/, or scripts/ — V2-309), but no build-vs-buy decision covers it. Do ` +
-      `the reuse scan BEFORE writing (ADR-032; CLAUDE.md "Market benchmark before building"): ` +
-      `(0) check docs/oss-catalog.md -- the seeded reuse catalog, step 0 (or run /adopt ` +
-      `<capability>, which reads it); (1) check docs/REPO-MAP.md and lib/ + components/shared/ ` +
-      `for an existing primitive; (2) check the /scale-up recipe table; (3) web-search for a ` +
-      `library/open-source fit. Then record the decision in docs/build-vs-buy-ledger.md -- a ` +
-      `"### <date> - <capability>" entry with a "Scope: ${rel.replace(/[^/]+$/, "**")}" glob, ` +
-      `a "Considered:" line naming the options, and why you're building vs adopting. Recording ` +
-      `it is not a bypass; it IS the gate. If a full blueprint applies, run /blueprint first.`;
+  // Three distinct deny reasons (V2-309): a too-broad Scope, a specific Scope missing a
+  // Considered: line, or no covering entry at all.
+  const reason = info.sawBroadMatch
+    ? `[build-vs-buy] Denied: '${rel}' is matched only by an OVER-BROAD Scope glob in ` +
+      `docs/build-vs-buy-ledger.md (a fork-wide "lib/**" / "components/shared/**" / "scripts/**" ` +
+      `entry is a rubber stamp, not a decision — V2-309/ADR-032). Add a SPECIFIC entry whose ` +
+      `"Scope: ${rel.replace(/[^/]+$/, "**")}" glob names this capability's own path, with a ` +
+      `"Considered:" line naming the alternatives you weighed.`
+    : info.sawScopeWithoutConsidered
+      ? `[build-vs-buy] Denied: '${rel}' has a matching Scope in docs/build-vs-buy-ledger.md, ` +
+        `but that entry has no "Considered:" line — a bare Scope is not a build-vs-buy decision ` +
+        `(V2-309/ADR-032). Add a "Considered:" line naming >=1 real alternative you weighed ` +
+        `(an existing primitive, a /scale-up recipe, an OSS/library option from ` +
+        `docs/oss-catalog.md) and why you chose build-vs-adopt. Recording it is not a bypass; ` +
+        `it IS the gate.`
+      : `[build-vs-buy] Denied: '${rel}' is a NEW hand-built capability (lib/, ` +
+        `components/shared/, or scripts/ — V2-309), but no build-vs-buy decision covers it. Do ` +
+        `the reuse scan BEFORE writing (ADR-032; CLAUDE.md "Market benchmark before building"): ` +
+        `(0) check docs/oss-catalog.md -- the seeded reuse catalog, step 0 (or run /adopt ` +
+        `<capability>, which reads it); (1) check docs/REPO-MAP.md and lib/ + components/shared/ ` +
+        `for an existing primitive; (2) check the /scale-up recipe table; (3) web-search for a ` +
+        `library/open-source fit. Then record the decision in docs/build-vs-buy-ledger.md -- a ` +
+        `"### <date> - <capability>" entry with a "Scope: ${rel.replace(/[^/]+$/, "**")}" glob, ` +
+        `a "Considered:" line naming the options, and why you're building vs adopting. Recording ` +
+        `it is not a bypass; it IS the gate. If a full blueprint applies, run /blueprint first.`;
 
   console.log(
     JSON.stringify({

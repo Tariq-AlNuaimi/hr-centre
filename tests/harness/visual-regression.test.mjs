@@ -60,12 +60,42 @@ test("visual-regression: a dimension change is always a regression", () => {
   assert.equal(res.pass, false, "a reflowed canvas fails");
 });
 
-test("visual-regression: maxDiffRatio tolerates sub-threshold noise", () => {
-  // Flip a single pixel — 1/3200 ≈ 0.03%, under the 0.1% default tolerance → still passes.
+test("visual-regression: a handful of noise pixels is within the default tolerance", () => {
+  // Flip a few pixels — under the default maxDiffPixels=100 floor → still passes.
   const baseline = canvasWithBlock(20);
   const noisy = PNG.sync.read(canvasWithBlock(20));
-  noisy.data[0] = 128; // nudge one pixel's red channel
+  for (let i = 0; i < 5; i++) noisy.data[i * 4] = 128; // nudge 5 red channels
   const res = compareImages(baseline, PNG.sync.write(noisy));
-  assert.ok(res.diffPixels >= 1, "one pixel changed");
-  assert.equal(res.pass, true, "a single-pixel nudge is within the default tolerance");
+  assert.ok(res.diffPixels >= 1 && res.diffPixels <= 100, "a few pixels, under the floor");
+  assert.equal(res.pass, true, "sub-floor noise passes");
+});
+
+// The V2-308 senior-review fix: the tolerance is an ABSOLUTE pixel count, not a ratio, so
+// a small real drift on a LARGE (screenshot-sized) canvas still fails — where a 0.1% ratio
+// (~1300px on 1440×900) would have silently passed a genuine element shift.
+function largeCanvasWithBlock(x, w = 1000, h = 800) {
+  const png = new PNG({ width: w, height: h });
+  for (let y = 0; y < h; y++) {
+    for (let px = 0; px < w; px++) {
+      const idx = (y * w + px) << 2;
+      const inBlock = px >= x && px < x + 120 && y >= 100 && y < 132; // a ~button-sized block
+      const v = inBlock ? 0 : 255;
+      png.data[idx] = v;
+      png.data[idx + 1] = v;
+      png.data[idx + 2] = v;
+      png.data[idx + 3] = 255;
+    }
+  }
+  return PNG.sync.write(png);
+}
+
+test("visual-regression: a real element shift on a screenshot-sized canvas FAILS (resolution-independent)", () => {
+  const baseline = largeCanvasWithBlock(300);
+  const shifted = largeCanvasWithBlock(304); // the button moved 4px right on an 800k-px frame
+  const res = compareImages(baseline, shifted);
+  // ~256 diff px on 800,000 = 0.032% — UNDER the old 0.1% ratio (would have passed), but
+  // well OVER the absolute maxDiffPixels=100 floor → correctly a regression.
+  assert.ok(res.ratio < 0.001, `the diff is a tiny fraction of the frame (${res.ratio})`);
+  assert.ok(res.diffPixels > 100, `but > 100 absolute px (${res.diffPixels})`);
+  assert.equal(res.pass, false, "a real element shift fails regardless of canvas size");
 });

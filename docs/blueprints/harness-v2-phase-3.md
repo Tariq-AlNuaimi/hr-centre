@@ -1,6 +1,6 @@
 # Blueprint — HARNESS-V2 Phase 3: "Shrink the decision space"
 
-Scope: CLAUDE.md, .claude/rules/design.md, .claude/rules/harness.md, .claude/skills/adopt/**, .claude/skills/design-qa/**, .claude/hooks/build-vs-buy-gate.mjs, .claude/hooks/bash-write-gate.mjs, .claude/hooks/lib/scope-cover.mjs, docs/decisions/ADR-060-rich-text-editor.md, eslint-rules/**, eslint.config.mjs, components/shared/PageShell.tsx, components/shared/StatGrid.tsx, components/shared/FormLayout.tsx, components/shared/BrandedStatus.tsx, components/layout/**, app/\*\*/style-guide/\*\*, messages/**, scripts/capture-screens.mjs, scripts/copy-check.mjs, scripts/visual-regression.mjs, scripts/ship.mjs, project.config.json, docs/design-references.md, docs/design-recipes.md, docs/oss-catalog.md, docs/verification/**, docs/build-vs-buy-ledger.md, docs/findings-register.md, docs/HARNESS-V2-EVIDENCE.md, docs/blueprints/harness-v2-phase-3.md, tests/eslint-rules/**, tests/harness/**, package.json
+Scope: CLAUDE.md, .claude/rules/design.md, .claude/rules/harness.md, .claude/skills/adopt/**, .claude/skills/design-qa/**, .claude/hooks/build-vs-buy-gate.mjs, .claude/hooks/bash-write-gate.mjs, .claude/hooks/lib/scope-cover.mjs, docs/decisions/ADR-060-rich-text-editor.md, eslint-rules/**, eslint.config.mjs, components/shared/PageShell.tsx, components/shared/StatGrid.tsx, components/shared/FormLayout.tsx, components/shared/BrandedStatus.tsx, components/layout/**, app/**/style-guide/**, app/global-error.tsx, app/not-found.tsx, messages/**, scripts/capture-screens.mjs, scripts/copy-check.mjs, scripts/visual-regression.mjs, scripts/ship.mjs, project.config.json, docs/design-references.md, docs/design-recipes.md, docs/oss-catalog.md, docs/verification/**, docs/build-vs-buy-ledger.md, docs/findings-register.md, docs/HARNESS-V2-EVIDENCE.md, docs/blueprints/harness-v2-phase-3.md, tests/eslint-rules/**, tests/harness/**, package.json
 
 Track: **Full** · Program: harness-v2 · Phase: 3 of 5 · Branch `claude/harness-v2-kickoff-yhid26`
 
@@ -85,7 +85,10 @@ per the tier contract.
   captures is invalid.
 - **Build-vs-buy (V2-306/309).** Happy: a new `components/shared/*` primitive with a
   ledger `Scope:` + `Considered:` line is allowed. Worst: the same file with no
-  `Considered:` line fails the gate.
+  `Considered:` line (or only an over-broad `scripts/**` Scope) fails the gate.
+- **Visual regression (V2-308).** Happy: a re-captured screen identical to its committed
+  baseline diffs to 0 regressions. Worst: a deliberate 4px element shift (or a dimension
+  change) exceeds the absolute pixel-count tolerance and produces a red diff + a `*.diff.png`.
 
 ## Architecture
 

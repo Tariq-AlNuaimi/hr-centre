@@ -23,7 +23,7 @@ import {
   isFeatureFile,
   isGatedCapabilityFile,
   blueprintCoverInfo,
-  ledgerCovers,
+  ledgerCoverInfo,
 } from "./lib/scope-cover.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
@@ -98,7 +98,8 @@ function firstUncoveredViolation(command) {
       const cover = blueprintCoverInfo(rel, ROOT);
       if (!cover.covered) return { rel, kind: "blueprint", cover };
     } else if (isGatedCapabilityFile(rel)) {
-      if (!ledgerCovers(rel, ROOT)) return { rel, kind: "ledger", cover: null };
+      const cover = ledgerCoverInfo(rel, ROOT);
+      if (!cover.covered) return { rel, kind: "ledger", cover };
     }
   }
   return null;
@@ -120,13 +121,20 @@ function blueprintReason(rel, cover) {
   );
 }
 
-function ledgerReason(rel) {
+function ledgerReason(rel, cover) {
+  const hygiene = cover?.sawBroadMatch
+    ? ` A ledger Scope matches '${rel}' but is TOO BROAD (a fork-wide lib/** / components/shared/** ` +
+      `/ scripts/** entry is a rubber stamp) — add a SPECIFIC entry for this path.`
+    : cover?.sawScopeWithoutConsidered
+      ? ` A ledger Scope matches '${rel}' but its entry has no "Considered:" line — add one naming ` +
+        `>=1 alternative you weighed (V2-309 requires it).`
+      : "";
   return (
     `[build-vs-buy] Denied (via bash-write-gate): the shell command writes '${rel}', a NEW ` +
     `hand-built capability (lib/, components/shared/, or scripts/ — V2-309) with no build-vs-buy ` +
-    `decision covering it (ADR-032; CLAUDE.md "Market benchmark before building"). Dropping to ` +
-    `Bash does not bypass the gate. Do the reuse scan — step 0 is docs/oss-catalog.md (the seeded ` +
-    `reuse catalog; or run /adopt <capability>, which reads it) — then record a ` +
+    `decision covering it (ADR-032; CLAUDE.md "Market benchmark before building").${hygiene} ` +
+    `Dropping to Bash does not bypass the gate. Do the reuse scan — step 0 is docs/oss-catalog.md ` +
+    `(the seeded reuse catalog; or run /adopt <capability>, which reads it) — then record a ` +
     `"### <date> - <capability>" entry in docs/build-vs-buy-ledger.md with a ` +
     `"Scope: ${rel.replace(/[^/]+$/, "**")}" glob AND a "Considered:" line naming >=1 alternative ` +
     `you weighed (V2-309 requires it).`
@@ -145,7 +153,7 @@ try {
           hookEventName: "PreToolUse",
           permissionDecision: "deny",
           permissionDecisionReason:
-            v.kind === "blueprint" ? blueprintReason(v.rel, v.cover) : ledgerReason(v.rel),
+            v.kind === "blueprint" ? blueprintReason(v.rel, v.cover) : ledgerReason(v.rel, v.cover),
         },
       }),
     );

@@ -44,8 +44,9 @@ the eyeball pass on a later change might miss:
    `docs/verification/v2-305-copy/baseline/` for a worked example).
 2. **Diff at QA time** — re-capture, then
    `npm run visual-regression -- --baseline docs/verification/<feature>/baseline --current docs/verification/<feature>`.
-   A per-image pixel diff beyond the tolerance (default 0.1%, or any dimension change) exits non-zero
-   and writes a `*.diff.png` for review — a red diff, not a silent regression.
+   A per-image pixel diff beyond the tolerance (default: an absolute 100 differing pixels — resolution-
+   independent, catches a real element shift where a % ratio wouldn't — or any dimension change) exits
+   non-zero and writes a `*.diff.png` for review — a red diff, not a silent regression.
 
 This runs at **QA time (`/design-qa` / `npm run uat:full`), never in the warm `/ship` loop** — a pixel
 diff needs a running app + a fresh capture, which the fast pre-push gate doesn't do. Built on

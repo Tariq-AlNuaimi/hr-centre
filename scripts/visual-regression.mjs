@@ -27,12 +27,17 @@ import pixelmatch from "pixelmatch";
  * width, height, diff (a PNG or null), pass }. A dimension change is always a regression
  * (the layout reflowed the canvas). `pass` = within tolerance.
  *   - threshold: pixelmatch per-pixel color sensitivity (0 strict … 1 lax).
- *   - maxDiffRatio: fraction of pixels allowed to differ before it's a regression.
+ *   - maxDiffPixels: ABSOLUTE count of differing pixels allowed before it's a regression.
+ *     Absolute, NOT a ratio — a ratio is scale-relative and, on a real ~1440×900 capture,
+ *     0.1% is ~1300px, which silently passes a genuine 4px shift of a button-sized element
+ *     (~345px). An absolute floor (default 100 — well below a real element shift, well above
+ *     pixelmatch's anti-alias-excluded noise) catches drift at any resolution (V2-308
+ *     senior-review fix). `ratio` is still reported for context.
  */
 export function compareImages(
   baselineBuf,
   currentBuf,
-  { threshold = 0.1, maxDiffRatio = 0.001 } = {},
+  { threshold = 0.1, maxDiffPixels = 100 } = {},
 ) {
   const a = PNG.sync.read(baselineBuf);
   const b = PNG.sync.read(currentBuf);
@@ -61,7 +66,7 @@ export function compareImages(
     width,
     height,
     diff,
-    pass: ratio <= maxDiffRatio,
+    pass: diffPixels <= maxDiffPixels,
   };
 }
 
@@ -81,11 +86,11 @@ if (isMain) {
   const currentDir = arg("current");
   if (!baselineDir || !currentDir) {
     console.error(
-      "usage: visual-regression.mjs --baseline <dir> --current <dir> [--max-diff-ratio 0.001] [--threshold 0.1]",
+      "usage: visual-regression.mjs --baseline <dir> --current <dir> [--max-diff-pixels 100] [--threshold 0.1]",
     );
     process.exit(2);
   }
-  const maxDiffRatio = Number(arg("max-diff-ratio", "0.001"));
+  const maxDiffPixels = Number(arg("max-diff-pixels", "100"));
   const threshold = Number(arg("threshold", "0.1"));
   if (!existsSync(baselineDir)) {
     console.error(
@@ -112,7 +117,7 @@ if (isMain) {
       readFileSync(currentPath),
       {
         threshold,
-        maxDiffRatio,
+        maxDiffPixels,
       },
     );
     if (!res.pass) {
@@ -133,7 +138,7 @@ if (isMain) {
     console.error(
       res.dimensionMismatch
         ? `  REGRESSION ${name}: dimensions changed (baseline ${res.width}x${res.height})`
-        : `  REGRESSION ${name}: ${res.diffPixels} px differ (${(res.ratio * 100).toFixed(3)}% > ${(maxDiffRatio * 100).toFixed(3)}%) — diff at ${path.join(outDir, name.replace(/\.png$/, ".diff.png"))}`,
+        : `  REGRESSION ${name}: ${res.diffPixels} px differ (> ${maxDiffPixels}; ${(res.ratio * 100).toFixed(3)}% of frame) — diff at ${path.join(outDir, name.replace(/\.png$/, ".diff.png"))}`,
     );
   }
   for (const name of missing)

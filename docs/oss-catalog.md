@@ -48,13 +48,13 @@ Verdict legend: **use** (in-stack, no decision) · **adopt-SaaS** (`/scale-up` r
 
 | Capability             | In-stack default                                   | Self-host (OSS, license)                 | SaaS option          | Verdict / pointer                                         |
 | ---------------------- | -------------------------------------------------- | ---------------------------------------- | -------------------- | --------------------------------------------------------- |
-| File uploads           | —                                                  | MinIO (Apache-2), S3-compatible          | Vercel Blob          | adopt — `/scale-up` (uploads → Vercel Blob)               |
+| File uploads           | —                                                  | MinIO (AGPL-3.0), S3-compatible          | Vercel Blob          | adopt — `/scale-up` (uploads → Vercel Blob)               |
 | Background jobs        | —                                                  | **pg-boss** (MIT, on Postgres)           | Inngest              | adopt-OSS — ledger `lib/queue/**`; no new datastore       |
 | Cron / scheduled       | —                                                  | node-cron                                | Vercel Cron          | adopt — `/scale-up`; audit-purge cron already ships       |
-| Realtime / websockets  | —                                                  | Soketi (MIT, Pusher-compatible)          | Pusher / Ably        | adopt — `/scale-up` (realtime → Pusher); Soketi to own it |
+| Realtime / websockets  | —                                                  | Soketi (AGPL-3.0, Pusher-compatible)     | Pusher / Ably        | adopt — `/scale-up` (realtime → Pusher); Soketi to own it |
 | Distributed rate limit | in-memory bucket (1 replica)                       | **rate-limiter-flexible** + Valkey (BSD) | Upstash              | adopt-OSS — ledger `lib/rate-limit/**`; ADR-035           |
 | Auth / SSO providers   | **Auth.js v5** (in-stack)                          | Keycloak (Apache-2) for enterprise SSO   | Auth.js OAuth apps   | use — add a provider via `/scale-up` (OAuth)              |
-| Feature flags          | —                                                  | Unleash (Apache-2), Flagsmith (BSD)      | Edge Config          | adopt — `/scale-up` (flags → Edge Config)                 |
+| Feature flags          | —                                                  | Unleash (AGPL-3.0), Flagsmith (BSD)      | Edge Config          | adopt — `/scale-up` (flags → Edge Config)                 |
 | Error tracking         | **@sentry/nextjs** (in-stack)                      | GlitchTip (MIT, Sentry-compatible)       | Sentry SaaS          | use — self-host swap = point DSN at GlitchTip             |
 | Observability / traces | **OpenTelemetry** (in-stack)                       | SigNoz (MIT) collector backend           | any OTLP vendor      | use — instrument once, swap the backend (ADR-040)         |
 | Transactional email    | **nodemailer** (in-stack)                          | self-host SMTP / Postal (MIT)            | Resend / Postmark    | use — `lib/email.ts` (SMTP; no-op until configured)       |
