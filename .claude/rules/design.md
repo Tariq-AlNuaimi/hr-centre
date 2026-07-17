@@ -23,6 +23,27 @@ the line. The operator signs off UAT.
 - **Tokens only** — `no-raw-hex-color` rule: colors/tokens come from `app/tokens.css` /
   `brand.config.ts` / `chart-palette.ts` (ADR-015). No raw hex in components.
 
+## Visual iteration loop (V2-301 — binding)
+
+**After building or altering ANY screen, you MUST look at it before affirming it.** The loop:
+
+1. **Run the app** and **capture** the screen — `npm run capture -- --feature <feature> --routes
+<p1,p2>` (harness: `scripts/capture-screens.mjs`). The matrix is **desktop + mobile × light +
+   dark × every enabled locale** (`ar`/`he`/`fa`/`ur` add an RTL variant when
+   `project.config.json` `locales` enables them; English-only forks capture `en`). Captures land in
+   `docs/verification/<feature>/`. (No app/DB in a fresh container? bring one up locally — the
+   native-Postgres recipe is in `docs/agent-memory.md` "browser QA & egress"; or point `--base` at a
+   deployed URL.)
+2. **VIEW the images** (Read them) and **self-critique against the 10-point rubric** (V2-307: grid
+   alignment · hierarchy · one primary action · state honesty · spacing rhythm · copy · RTL · dark ·
+   responsive · a11y).
+3. **Fix** what the critique found, **re-capture**, confirm the fix in the new images.
+4. **Affirmation without attached captures is invalid** (V2-301, was D9): "the screen looks good"
+   is not a claim you may make from the code — only from the pixels. Store the before/after set +
+   critique notes under `docs/verification/<feature>/` (see `docs/verification/asset-tracker/` for
+   the worked example). This is the `/design-qa` "during-build" mode; the full gated
+   `/design-qa` (bridge + axe) still runs at QA time.
+
 ## Known traps (don't "fix")
 
 - Locales are config-driven (`project.config.json` `locales`/`defaultLocale` → `i18n/config.ts`):

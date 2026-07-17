@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { assetStatusLabel, assetCategoryLabel } from "@/components/asset/asset-labels";
 
 interface AssetFormProps {
   initialValues?: Partial<{
@@ -202,10 +203,10 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="IN_STOCK">IN_STOCK</SelectItem>
-                  <SelectItem value="ASSIGNED">ASSIGNED</SelectItem>
-                  <SelectItem value="REPAIR">REPAIR</SelectItem>
-                  <SelectItem value="RETIRED">RETIRED</SelectItem>
+                  <SelectItem value="IN_STOCK">{assetStatusLabel("IN_STOCK")}</SelectItem>
+                  <SelectItem value="ASSIGNED">{assetStatusLabel("ASSIGNED")}</SelectItem>
+                  <SelectItem value="REPAIR">{assetStatusLabel("REPAIR")}</SelectItem>
+                  <SelectItem value="RETIRED">{assetStatusLabel("RETIRED")}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -225,10 +226,10 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="LAPTOP">LAPTOP</SelectItem>
-                  <SelectItem value="MONITOR">MONITOR</SelectItem>
-                  <SelectItem value="PHONE">PHONE</SelectItem>
-                  <SelectItem value="OTHER">OTHER</SelectItem>
+                  <SelectItem value="LAPTOP">{assetCategoryLabel("LAPTOP")}</SelectItem>
+                  <SelectItem value="MONITOR">{assetCategoryLabel("MONITOR")}</SelectItem>
+                  <SelectItem value="PHONE">{assetCategoryLabel("PHONE")}</SelectItem>
+                  <SelectItem value="OTHER">{assetCategoryLabel("OTHER")}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { ConfirmAction } from "@/components/shared/ConfirmAction";
+import { assetStatusLabel, assetCategoryLabel } from "@/components/asset/asset-labels";
 
 export interface AssetRecord {
   id: string;
@@ -113,13 +114,13 @@ export function getAssetColumns({
       sorter: true,
       render: (val: string | null) => {
         if (!val) return "-";
-        return <Badge variant={tone[val] ?? "default"}>{val}</Badge>;
+        return <Badge variant={tone[val] ?? "default"}>{assetStatusLabel(val)}</Badge>;
       },
       filters: [
-        { text: "IN_STOCK", value: "IN_STOCK" },
-        { text: "ASSIGNED", value: "ASSIGNED" },
-        { text: "REPAIR", value: "REPAIR" },
-        { text: "RETIRED", value: "RETIRED" },
+        { text: assetStatusLabel("IN_STOCK"), value: "IN_STOCK" },
+        { text: assetStatusLabel("ASSIGNED"), value: "ASSIGNED" },
+        { text: assetStatusLabel("REPAIR"), value: "REPAIR" },
+        { text: assetStatusLabel("RETIRED"), value: "RETIRED" },
       ],
       filterMultiple: false,
     },
@@ -130,13 +131,13 @@ export function getAssetColumns({
       sorter: true,
       render: (val: string | null) => {
         if (!val) return "-";
-        return <Badge variant={tone[val] ?? "default"}>{val}</Badge>;
+        return <Badge variant={tone[val] ?? "default"}>{assetCategoryLabel(val)}</Badge>;
       },
       filters: [
-        { text: "LAPTOP", value: "LAPTOP" },
-        { text: "MONITOR", value: "MONITOR" },
-        { text: "PHONE", value: "PHONE" },
-        { text: "OTHER", value: "OTHER" },
+        { text: assetCategoryLabel("LAPTOP"), value: "LAPTOP" },
+        { text: assetCategoryLabel("MONITOR"), value: "MONITOR" },
+        { text: assetCategoryLabel("PHONE"), value: "PHONE" },
+        { text: assetCategoryLabel("OTHER"), value: "OTHER" },
       ],
       filterMultiple: false,
     },

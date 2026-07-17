@@ -15,6 +15,24 @@ change app code. Owned by the front-end (the agent); it gates the next tier.
 > tier would flag never gets written. If you're seeing many findings here, the fix
 > is to start from `/design-system`, not to keep re-auditing.
 
+## During-build mode (V2-301 — the visual iteration loop)
+
+Between "build the screen" and "run the full gated `/design-qa`" there is a **mandatory,
+lightweight self-check on the screen you just touched** — you must **look at the pixels**, not
+just the code:
+
+1. `npm run capture -- --feature <feature> --routes <p1,p2>` (harness `scripts/capture-screens.mjs`)
+   — desktop + mobile × light + dark × every enabled locale, into `docs/verification/<feature>/`.
+   Bring an app up locally first (agent-memory "browser QA & egress" native-Postgres recipe) or
+   `--base` a deployed URL.
+2. **Read the captured images** and score them against the 10-point rubric (V2-307).
+3. **Fix + re-capture**; keep the before/after + notes under `docs/verification/<feature>/`.
+4. **Affirming a screen without attached captures is invalid** (V2-301) — "looks good" is a claim
+   about pixels, provable only by pixels. Worked example: `docs/verification/asset-tracker/`.
+
+This during-build loop is fast (no axe/bridge); the FULL `/design-qa` below (Chromium states, axe,
+scored deviations) still runs at QA time. The rule is in `.claude/rules/design.md`.
+
 **Every finding cites a pillar + an anchor** (`docs/uat-rubric.md`) — design-token
 violation, axe rule, or "Greenhouse does X here and we don't." No anchor → mark it a
 **judgment call** for the operator, don't bury it as a finding.

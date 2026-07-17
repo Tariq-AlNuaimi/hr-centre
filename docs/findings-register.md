@@ -274,6 +274,15 @@ the changed surface is still **open** (un-adjudicated).
   generator to accept a per-relation route override, or add a `/api/user` alias; low urgency — only
   bites relations pointing at the pre-existing pluralized routes. Discovered via the V2-210 pilot).
 
+- 2026-07-17 — [harness-v2 V2-301/design] visual-iteration critique of the Asset Tracker surfaced
+  UI polish beyond the one fix taken this pass (raw-enum humanization, fixed via
+  `components/asset/asset-labels.ts`) — owner: operator — status: scheduled: (a) the list/detail
+  **breadcrumb shows the raw route segment `asset`** (lowercase) instead of a label like "Assets" —
+  a route-segment humanization in the shared breadcrumb; (b) the enum-humanization should be
+  **scaffold-emitted** (`scripts/scaffold-entity.mjs` should generate a label map per enum so every
+  future entity gets it) and eventually flow through **next-intl messages** (V2-305 copy chokepoint)
+  rather than a per-feature map. Low urgency; captured in `docs/verification/asset-tracker/NOTES.md`.
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--
