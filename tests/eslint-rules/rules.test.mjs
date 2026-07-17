@@ -1,4 +1,4 @@
-// RuleTester coverage for the eleven local CLAUDE.md-enforcement rules in
+// RuleTester coverage for the thirteen local CLAUDE.md-enforcement rules in
 // eslint-rules/rules/*.mjs. These rules protect template invariants (see
 // CLAUDE.md "Local ESLint plugin") and ship at `error`, so they need their
 // own automated guard -- a regression here silently removes a security gate
@@ -775,6 +775,14 @@ ruleTest(
       { code: `const x = <div className="p-4" id="main" role="dialog" />;` },
       { code: `const x = <button type="submit" aria-label="close" />;` },
       { code: `const x = <div data-testid="row" />;` },
+      // A t() call reached through a ternary is OPAQUE — not flagged (the point).
+      { code: `const x = <span>{cond ? t("a") : t("b")}</span>;` },
+      // A literal in a NON-user-facing attribute expression container.
+      { code: `const x = <div className={cond ? "a" : "b"} />;` },
+      { code: `const x = <Foo bar={"literal"} />;` },
+      // A symbol/short token reached through an expression container is not copy.
+      { code: `const x = <span>{cond ? "—" : "•"}</span>;` },
+      { code: `const x = <span>{count}</span>;` },
     ],
     invalid: [
       {
@@ -796,6 +804,31 @@ ruleTest(
       {
         code: `const x = <div title="Tooltip" />;`,
         errors: [{ messageId: "literalAttr" }],
+      },
+      // The JSXExpressionContainer BYPASS (V2-305 senior-review High) — now caught:
+      {
+        // Ternary in a JSX child — BOTH literal branches are copy.
+        code: `const x = <span>{isActive ? "Active" : "Inactive"}</span>;`,
+        errors: [{ messageId: "literalText" }, { messageId: "literalText" }],
+      },
+      {
+        // A bare string wrapped in braces as a child.
+        code: `const x = <div>{"Hello world"}</div>;`,
+        errors: [{ messageId: "literalText" }],
+      },
+      {
+        // A template literal child.
+        code: "const x = <span>{`Loading items`}</span>;",
+        errors: [{ messageId: "literalText" }],
+      },
+      {
+        // A literal reached through a user-facing attribute expression container.
+        code: `const x = <input placeholder={"Search here"} />;`,
+        errors: [{ messageId: "literalAttr" }],
+      },
+      {
+        code: `const x = <div title={cond ? "Open" : "Closed"} />;`,
+        errors: [{ messageId: "literalAttr" }, { messageId: "literalAttr" }],
       },
     ],
   },

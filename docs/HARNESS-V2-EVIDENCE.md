@@ -584,10 +584,14 @@ digits/symbols, `code`/`pre`/`kbd` children, `aria-*`/`data-*`/structural attrib
 config layer — dev/reference pages (style-guide), the **context-free root boundaries**
 (`app/not-found.tsx`, `app/global-error.tsx` — they prerender outside `[locale]` with no next-intl
 provider per the design.md Next-16 trap, so they MUST ship literal fallback copy), and tests. Wired
-at `error` on `**/*.{jsx,tsx}`. **Product code lands at 0 violations** — the app was already fully
-next-intl'd; the only literals found (13) were exactly the exempt categories, confirming the rule's
-scope. RuleTester: 11 valid / 5 invalid (text + placeholder/title/alt fail; translated expression /
-symbols / code / aria / data / structural attrs pass).
+at `error` on `**/*.{jsx,tsx}`. It also catches literals reached through a `JSXExpressionContainer`
+— ternaries (`{cond ? "Active" : "Inactive"}`), braced strings (`{"Hi"}`), template literals,
+`placeholder={"x"}` — walking up only TRANSPARENT wrappers (ternary/logical/`+`) so a string inside a
+`t("…")` call stays correctly unflagged (the V2-305 senior-review bypass fix). **Product code lands
+at 0 violations** — the app was already fully next-intl'd; the only literals found were exactly the
+exempt categories (context-free root boundaries + tests), confirming the rule's scope. RuleTester:
+16 valid / 10 invalid (direct text + placeholder/title/alt + the expression-container bypass class
+fail; translated `t()` expressions / symbols / code / aria / data / non-user-facing-attr literals pass).
 
 **Half 2 — the copy-lint gate (`scripts/copy-check.mjs`, `/ship` phase-A `copy`).** Holds the
 source-locale copy to a deterministic house style: (1) no trailing period on a short label (ellipsis

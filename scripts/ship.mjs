@@ -112,26 +112,32 @@ function scanScalability() {
 // scripts/copy-check.mjs.
 function scanCopy() {
   const t0 = Date.now();
-  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
   let result;
   try {
     result = runCopyCheck();
   } catch (e) {
     // Fail-open on an unexpected checker error (never wedge /ship on the copy gate);
     // surface it as a warning so it's visible without blocking.
-    return { name: "copy", ok: true, out: "skipped", secs, warn: `copy-check error: ${e.message}` };
+    return {
+      name: "copy",
+      ok: true,
+      out: "skipped",
+      secs: secs(),
+      warn: `copy-check error: ${e.message}`,
+    };
   }
   if (result.ok)
     return {
       name: "copy",
       ok: true,
       out: `clean (${result.checked.map((c) => c.replace(/^messages\//, "")).join(", ") || "no locale files"})`,
-      secs,
+      secs: secs(),
     };
   return {
     name: "copy",
     ok: false,
-    secs,
+    secs: secs(),
     out:
       `${result.findings.length} copy issue(s) in source-locale messages (High-Quality pillar):\n` +
       result.findings.map((f) => `  - [${f.rule}] ${f.key} — ${f.message}`).join("\n") +

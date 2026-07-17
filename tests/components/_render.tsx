@@ -47,8 +47,8 @@ export const messages = {
     nextPage: "Next page",
     somethingWentWrong: "Something went wrong",
     unexpectedError: "An unexpected error occurred. Please try again.",
-    tryAgain: "Try Again",
-    backHome: "Back Home",
+    tryAgain: "Try again",
+    backHome: "Back home",
   },
   // Branded status pages (BrandedStatus) read this namespace.
   status: {

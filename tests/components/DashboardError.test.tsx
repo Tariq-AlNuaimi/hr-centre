@@ -13,7 +13,7 @@ test("DashboardError renders a generic message and never leaks error.message", (
   assert.equal(screen.queryByText("Boom happened"), null);
 });
 
-test("DashboardError fires reset when 'Try Again' is clicked", () => {
+test("DashboardError fires reset when 'Try again' is clicked", () => {
   let reset = 0;
   renderWithProviders(
     <DashboardError
@@ -24,6 +24,6 @@ test("DashboardError fires reset when 'Try Again' is clicked", () => {
     />,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Try Again" }));
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
   assert.equal(reset, 1);
 });

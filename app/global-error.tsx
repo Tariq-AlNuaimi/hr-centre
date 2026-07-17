@@ -69,7 +69,7 @@ export default function GlobalError({
               fontWeight: 500,
             }}
           >
-            Try Again
+            Try again
           </button>
         </div>
       </body>
