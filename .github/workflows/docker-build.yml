@@ -57,9 +57,11 @@ jobs:
           # pgvector image (NOT plain postgres): the entrypoint runs `prisma migrate
           # deploy` at boot, and migration 20260711120000_pgvector_rag does
           # `CREATE EXTENSION vector` — a plain postgres image lacks it and the boot fails.
+          # Pin the SAME major the production bundled-db runs (compose.prod.yaml: pg18)
+          # so the smoke test verifies against what tenants actually deploy.
           docker run -d --name pg --network ci-net \
             -e POSTGRES_USER=app -e POSTGRES_PASSWORD=app_secret -e POSTGRES_DB=app_db \
-            pgvector/pgvector:pg17
+            pgvector/pgvector:pg18
           # wait for postgres
           for i in $(seq 1 30); do
             docker exec pg pg_isready -U app -d app_db && break || sleep 2
