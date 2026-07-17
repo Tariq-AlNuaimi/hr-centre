@@ -97,10 +97,14 @@ Deliberately NOT done in harness-v2 — deferred with a `docs/findings-register.
   readability"): §11 (threat findings) + §13 (CVE remediations) reformatted from wide single-line
   table cells into a lean index + per-item subsections — **zero content loss** (85/85 cells verified
   verbatim), 104.6 KB → 87.3 KB. §6 (a genuine secrets lookup table) + §2 (prose) left as correct.
-- **#22 marketplace publication** → the plugin is publish-READY (V2-503) but the private posture
-  holds (ADR-054); publishing is a config flip + a superseding ADR.
-- **#27 full bus-factor program** → V2-505 shipped the maintainer-runbook floor; the full program is
-  larger.
+- ~~**#22 marketplace publication**~~ → **DONE 2026-07-18** (operator chose "prepare, don't
+  publish"): ADR-062 supersedes the ADR-054 private posture to **publication-ready but intentionally
+  unpublished**; `docs/plugin-publish-readiness.md` is the checklist; `plugin.json` `x-posture`
+  updated. Nothing published — publication stays a deliberate operator step.
+- ~~**#27 full bus-factor program**~~ → **bounded slice DONE 2026-07-18** (operator chose "bounded
+  slice now"): `docs/harness-orientation.md` — the mental-model map of the eight harness systems +
+  contributor onboarding, complementing the V2-505 maintainer-runbook floor. The full program (multi-
+  maintainer redundancy, CI activation) remains larger; this is the highest-value slice.
 - **Better Auth MIGRATION** → V2-501 recorded STAY FROZEN; a migration only starts if an ADR-056
   trigger fires, as its own blueprinted program.
 - **WS-5 embeddings-provider round-trip** → the pgvector SUBSTRATE is `fixed` (V2-402); the provider

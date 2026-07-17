@@ -8,6 +8,10 @@ the harness — the `.claude/` machinery, the `/ship` gates, the ESLint rules, t
 breaking an invariant or loosening security without a paper trail. The other runbooks in this
 folder are for operating a _deployment_; this one is for operating the _template itself_.
 
+> **New here? Read `docs/harness-orientation.md` first** (#27) — the mental model of the eight
+> harness systems and how they connect. This runbook is the _procedures_; that doc is the _map_ that
+> makes them make sense.
+
 Ground rule, above every procedure below: **a change that loosens an autonomous-agent boundary
 (what a hook denies, what a rule catches, what a permission allows) is security-sensitive — it
 needs an explicit human decision on the record (an ADR or a `docs/findings-register.md` line),

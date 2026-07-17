@@ -6,7 +6,7 @@
     "name": "Tariq Al-Naaimi"
   },
   "license": "UNLICENSED",
-  "x-posture": "private/internal — versioning + /handoff portability only; NOT published to any marketplace (ADR-054 amendment 2026-07-13). If a public/marketplace channel is ever adopted, relocate per the official plugin spec (.claude-plugin/plugin.json) and record a superseding ADR.",
+  "x-posture": "publication-READY but intentionally UNPUBLISHED (ADR-062, #22 — supersedes the ADR-054 private-posture amendment). Versioning + /handoff portability today; publishing is a deliberate operator step per docs/plugin-publish-readiness.md (relocate to .claude-plugin/plugin.json, pick a channel, decide license/branding, release via changesets) + its own superseding ADR. Do NOT flip this to a public value or publish without that step.",
   "x-versioning": "Bumps ride the @changesets flow already in the stack: `npm run changeset` per harness-visible change, `npm run changeset:version` at release, then mirror the bump here. Changelog = the generated CHANGELOG.md from changesets plus docs/decisions/ADR-054-harness-plugin-and-agent-eval.md (amendments).",
   "x-conformance": "All skills validated against the agentskills.io open standard via `npm run skill-check` (scripts/skill-standard-check.mjs, V2-503): required name (≤64, lowercase-hyphen, matches dir) + description (≤1024), only spec-known optional fields. Keeps the .claude/ layer portable + publish-ready (the extractable gate pattern) without publishing — a marketplace step is a config flip per x-posture, not a rewrite.",
   "x-components": {
