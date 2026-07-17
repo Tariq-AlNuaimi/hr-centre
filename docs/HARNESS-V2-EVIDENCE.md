@@ -73,7 +73,7 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 | V2-503 | 5     | pending | —         | —                                                                                                                                                                                                                                                                  | Skill-standard conformance                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | V2-504 | 5     | pending | —         | —                                                                                                                                                                                                                                                                  | Docs-currency skill                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | V2-505 | 5     | done    | (this)    | [detail](#phase-5-evidence--v2-505-doctrine-sync--maintainer-runbook-p) · `docs/decisions/ADR-TEMPLATE.md` · `docs/runbooks/maintainer.md` · `docs/runbooks/README.md`                                                                                             | Doctrine sync + maintainer runbook [P]: ADR-TEMPLATE gains a 'Platform doctrine sync' section (quarterly-refresh ADRs — keep/thin/retire each custom harness piece vs native platform features, cite V2-105→ADR-057 precedent); docs/runbooks/maintainer.md = the bus-factor floor (safe procedures for changing ESLint rules/hooks/ship gates/ADRs/permissions, each with verify step + loosening-needs-paper-trail), registered in the runbooks README                                                                                                                      |
-| V2-506 | 5     | pending | —         | —                                                                                                                                                                                                                                                                  | Fork doc-payload manifest                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| V2-506 | 5     | done    | (this)    | [detail](#phase-5-evidence--v2-506-fork-doc-payload-manifest-p) · `docs/doc-manifest.json` · `scripts/rebrand.mjs` · `.claude/skills/rebrand/SKILL.md`                                                                                                             | Fork doc-payload manifest [P]: docs/doc-manifest.json classifies every doc fork-inherited vs template-dev (first-match glob rules, catch-all→fork=safe-keep); `rebrand --prune-docs` (standalone, non-destructive) prints the prune list — verified 233 classified / 110 keep / 123 prune / 0 unmatched. Prune = MOVE to a template-history branch ref on a fork, never delete from template main (documented in the rebrand SKILL)                                                                                                                                           |
 | V2-507 | 5     | pending | —         | —                                                                                                                                                                                                                                                                  | Program closeout                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Phase 0 evidence detail
@@ -982,6 +982,28 @@ plan. V2-502 adopts the Renovate hosted app, which runs on its own schedule inde
   active bot when the app is installed, and `.github/dependabot.yml` carries a note pointing here
   (reactivates only if Renovate is removed). Policy mapping lives in the config's comments (the accept
   criterion).
+
+### Phase 5 evidence — V2-506 fork doc-payload manifest `[P]`
+
+A fork inherits the whole `docs/` tree — including the template's OWN development history (the
+harness-v2/enterprise program blueprints, research, deep-comparison, verification evidence) that a
+fork does not need. V2-506 classifies every doc so `/rebrand` can prune the dev-history from a fork.
+
+- **Classification (`docs/doc-manifest.json`).** First-match-wins glob rules label every doc `fork`
+  (inherited — ADRs, runbooks, recipes, benchmarks, rubrics, ledgers, operational reference) or
+  `template-dev` (the program artifacts). The catch-all defaults to **`fork` (KEEP)** — the safe
+  failure — so a new unclassified doc is never silently pruned; a new `template-dev` doc needs an
+  explicit rule above the catch-all.
+- **`rebrand --prune-docs` (standalone, non-destructive).** `scripts/rebrand.mjs` gains a mode that
+  walks `docs/**` + the root `HARNESS-V2-*.md` files, classifies each via the manifest, and prints the
+  **prune list**. Verified: **233 docs classified — 110 fork-inherited (kept), 123 template-dev
+  (prune), 0 unmatched.** Spot-checked the keep side (ADR-017, ADR-TEMPLATE, recipes, uat-rubric,
+  REPO-MAP, agent-memory, runbooks, ledgers, benchmarks all → `fork`).
+- **Prune semantics (documented, not executed).** On a fork the `template-dev` set is **MOVED to a
+  `template-history` branch reference and removed from the working tree — never deleted from template
+  main**. The dry-run LIST is the V2-506 deliverable (the destructive move is a fork-time git op,
+  guided in the rebrand SKILL.md). SECURITY.md size review stays out of scope (a future pass, per the
+  backlog).
 
 ### Phase 5 evidence — V2-505 doctrine sync + maintainer runbook `[P]`
 

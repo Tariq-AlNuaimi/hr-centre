@@ -8,8 +8,8 @@
 //   npm run rebrand -- --slug acme-portal --name "Acme Portal" --owner acme-corp
 //                      [--owner-name "Jane Doe"] [--dry-run]
 
-import { readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile, writeFile, readdir } from "node:fs/promises";
+import { join, sep } from "node:path";
 import { parseArgs } from "node:util";
 
 const ROOT = process.cwd();
@@ -21,9 +21,98 @@ const { values } = parseArgs({
     owner: { type: "string" },
     "owner-name": { type: "string" },
     "dry-run": { type: "boolean", default: false },
+    "prune-docs": { type: "boolean", default: false },
   },
   strict: true,
 });
+
+// --- Fork doc-payload prune list (V2-506) --------------------------------------------
+// A standalone mode: classify every doc via docs/doc-manifest.json (first-match-wins glob
+// rules) into fork-inherited vs template-dev-history, and print the prune list. NON-
+// destructive — it only LISTS; the actual prune on a fork MOVES the template-dev docs to an
+// archive branch reference, never deletes them from template main. Runs without --slug etc.
+if (values["prune-docs"]) {
+  await pruneDocsMode();
+  process.exit(0);
+}
+
+/** Glob → RegExp. Supports `**` (any path incl. `/`), `*` (any run except `/`), literal `.`. */
+function globToRegExp(glob) {
+  let re = "^";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*") {
+      if (glob[i + 1] === "*") {
+        re += ".*";
+        i++;
+      } else re += "[^/]*";
+    } else if (".+?^${}()|[]\\".includes(c)) re += "\\" + c;
+    else re += c;
+  }
+  return new RegExp(re + "$");
+}
+
+async function pruneDocsMode() {
+  const manifestPath = join(ROOT, "docs", "doc-manifest.json");
+  let manifest;
+  try {
+    manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  } catch (e) {
+    console.error(
+      `ERROR: cannot read docs/doc-manifest.json (${e?.message ?? e}). V2-506 classification is required for --prune-docs.`,
+    );
+    process.exit(1);
+  }
+  const rules = (manifest.rules ?? []).map((r) => ({ ...r, re: globToRegExp(r.glob) }));
+
+  // Collect every doc: all of docs/** plus the root-level HARNESS-V2-*.md program files.
+  const files = [];
+  async function walk(dir) {
+    for (const ent of await readdir(join(ROOT, dir), { withFileTypes: true })) {
+      const rel = dir ? `${dir}/${ent.name}` : ent.name;
+      if (ent.isDirectory()) await walk(rel);
+      else files.push(rel);
+    }
+  }
+  await walk("docs");
+  for (const ent of await readdir(ROOT, { withFileTypes: true })) {
+    if (ent.isFile() && /^HARNESS-V2-.*\.md$/.test(ent.name)) files.push(ent.name);
+  }
+  files.sort();
+
+  const prune = [];
+  const keep = [];
+  const unmatched = [];
+  for (const f of files) {
+    const norm = f.split(sep).join("/");
+    const hit = rules.find((r) => r.re.test(norm));
+    if (!hit) unmatched.push(norm);
+    else if (hit.inheritance === "template-dev") prune.push(norm);
+    else keep.push(norm);
+  }
+
+  console.log("--- Fork doc-payload prune list (V2-506, dry) ---");
+  console.log(
+    `Classified ${files.length} docs: ${keep.length} fork-inherited (kept), ${prune.length} template-dev (prune).`,
+  );
+  console.log("");
+  console.log(
+    `Template-dev docs a fork would MOVE to an archive branch ref (never delete from template main):`,
+  );
+  for (const p of prune) console.log(`  prune  ${p}`);
+  if (unmatched.length) {
+    console.log("");
+    console.log(
+      `WARNING: ${unmatched.length} doc(s) matched NO rule — defaulting to KEEP. Add a rule to docs/doc-manifest.json:`,
+    );
+    for (const u of unmatched) console.log(`  ??     ${u}`);
+  }
+  console.log("");
+  console.log(
+    "This is a LIST only. On a fork, archive the pruned set to a `template-history` branch",
+  );
+  console.log("reference, then remove from the working tree — never delete from template main.");
+}
 
 if (!values.slug || !values.name || !values.owner) {
   console.error("ERROR: --slug, --name, --owner are all required.");

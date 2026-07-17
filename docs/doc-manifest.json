@@ -1,0 +1,158 @@
+{
+  "note": "Fork doc-payload classification (V2-506). Every file under docs/ (and the root HARNESS-V2-* program docs) is one of: 'fork' — a fork operating this template INHERITS it (ADRs, runbooks, recipes, rubrics, ledgers, the operational reference); or 'template-dev' — the TEMPLATE's own development history (the harness-v2/enterprise program artifacts, research, deep-comparison, verification evidence) that a fork does not need. `npm run rebrand -- --prune-docs` reads this to print the prune list. Prune semantics: on a FORK the template-dev docs are MOVED to an archive branch reference, NEVER deleted from template main. Rules are FIRST-MATCH-WINS, top to bottom; the final catch-all defaults to 'fork' so an unclassified doc is KEPT (the safe failure), and adding a new template-dev doc means adding an explicit rule above it.",
+  "version": 1,
+  "roots": ["docs", "."],
+  "rules": [
+    {
+      "glob": "HARNESS-V2-*.md",
+      "inheritance": "template-dev",
+      "why": "harness-v2 program artifacts (backlog/evidence/closeout) — the template's own build record"
+    },
+    {
+      "glob": "docs/HARNESS-*.md",
+      "inheritance": "template-dev",
+      "why": "harness build history (evidence, problems, inventory)"
+    },
+    {
+      "glob": "docs/HANDOFF-NEXT-SESSION.md",
+      "inheritance": "template-dev",
+      "why": "template dev session handoff"
+    },
+    {
+      "glob": "docs/SESSION-HANDOFF.md",
+      "inheritance": "template-dev",
+      "why": "branch-only in-flight state; never reaches fork main"
+    },
+    {
+      "glob": "docs/INVENTORY-BY-OBJECTIVE.md",
+      "inheritance": "template-dev",
+      "why": "template build inventory"
+    },
+    {
+      "glob": "docs/REPO-INVENTORY.md",
+      "inheritance": "template-dev",
+      "why": "template build inventory"
+    },
+    { "glob": "docs/TRIALS.md", "inheritance": "template-dev", "why": "template experiment log" },
+    {
+      "glob": "docs/deferred-adoption-plan.md",
+      "inheritance": "template-dev",
+      "why": "template planning artifact"
+    },
+    {
+      "glob": "docs/enterprise-pivot-analysis.md",
+      "inheritance": "template-dev",
+      "why": "template planning artifact"
+    },
+    {
+      "glob": "docs/plugin-eval-*.md",
+      "inheritance": "template-dev",
+      "why": "template plugin evaluation"
+    },
+    {
+      "glob": "docs/claude-ecosystem-comparison*.md",
+      "inheritance": "template-dev",
+      "why": "template ecosystem research"
+    },
+    {
+      "glob": "docs/deep-comparison/**",
+      "inheritance": "template-dev",
+      "why": "the template's tool-comparison research"
+    },
+    {
+      "glob": "docs/research/**",
+      "inheritance": "template-dev",
+      "why": "the template's stack research"
+    },
+    {
+      "glob": "docs/verification/**",
+      "inheritance": "template-dev",
+      "why": "design-QA evidence for the template's own build (the pattern is inherited via the recipes/rubric, not the evidence)"
+    },
+    {
+      "glob": "docs/blueprints/harness-v2-*.md",
+      "inheritance": "template-dev",
+      "why": "harness-v2 program blueprints"
+    },
+    {
+      "glob": "docs/blueprints/harness-plugin-*.md",
+      "inheritance": "template-dev",
+      "why": "template harness-program blueprint"
+    },
+    {
+      "glob": "docs/blueprints/enterprise-*.md",
+      "inheritance": "template-dev",
+      "why": "the template's enterprise-build program blueprints"
+    },
+    {
+      "glob": "docs/blueprints/2026-07-*.md",
+      "inheritance": "template-dev",
+      "why": "the template's replatform program blueprint"
+    },
+    {
+      "glob": "docs/blueprints/c3.5-*.md",
+      "inheritance": "template-dev",
+      "why": "template replatform workstream blueprint"
+    },
+    {
+      "glob": "docs/blueprints/c4-*.md",
+      "inheritance": "template-dev",
+      "why": "template replatform workstream blueprint"
+    },
+    {
+      "glob": "docs/blueprints/wave-a2-*.md",
+      "inheritance": "template-dev",
+      "why": "template security-hardening wave blueprint"
+    },
+    {
+      "glob": "docs/blueprints/deferred-*.md",
+      "inheritance": "template-dev",
+      "why": "template deferred-item blueprint"
+    },
+    {
+      "glob": "docs/blueprints/react-compiler-*.md",
+      "inheritance": "template-dev",
+      "why": "template adoption blueprint"
+    },
+    {
+      "glob": "docs/blueprints/session-automation-*.md",
+      "inheritance": "template-dev",
+      "why": "template harness-automation blueprint"
+    },
+    {
+      "glob": "docs/blueprints/.fan-out.json",
+      "inheritance": "template-dev",
+      "why": "per-session fan-out scratch (gitignored in practice)"
+    },
+    {
+      "glob": "docs/blueprints/**",
+      "inheritance": "fork",
+      "why": "feature blueprints for capabilities the fork inherits (openapi seam, docs-site, egress bridge, style-guide, asset-tracker pilot, README)"
+    },
+    {
+      "glob": "docs/decisions/**",
+      "inheritance": "fork",
+      "why": "ADRs — the architectural decision record the fork operates under (incl. ADR-TEMPLATE)"
+    },
+    {
+      "glob": "docs/runbooks/**",
+      "inheritance": "fork",
+      "why": "operational + maintainer runbooks the fork inherits"
+    },
+    {
+      "glob": "docs/recipes/**",
+      "inheritance": "fork",
+      "why": "copy-paste implementation recipes"
+    },
+    {
+      "glob": "docs/benchmarks/**",
+      "inheritance": "fork",
+      "why": "seed parity matrices for the benchmark loop"
+    },
+    {
+      "glob": "docs/**",
+      "inheritance": "fork",
+      "why": "catch-all: operational reference (REPO-MAP, recipes, rubrics, ledgers, agent-memory, oss-catalog, token-policy, mcp, session-state, manifests) — default KEEP is the safe failure"
+    }
+  ]
+}

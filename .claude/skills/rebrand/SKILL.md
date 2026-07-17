@@ -48,3 +48,14 @@ The script never touches:
 ## Dry-run
 
 Pass `--dry-run` to preview the changes without writing. Useful when the operator is unsure about the slug.
+
+## Fork doc-payload prune (V2-506)
+
+`npm run rebrand -- --prune-docs` (standalone mode; needs no `--slug`/`--name`/`--owner`) reads
+`docs/doc-manifest.json` and prints the **prune list**: the `template-dev` docs (the harness-v2 /
+enterprise program artifacts, research, deep-comparison, verification evidence) that a FORK does not
+need, vs the `fork`-inherited docs it keeps (ADRs, runbooks, recipes, rubrics, ledgers). It is
+**non-destructive — a LIST only**. On a fork, archive the pruned set to a `template-history` branch
+reference and remove it from the working tree; **never delete from template main.** Classification is
+first-match-wins globs in the manifest with a catch-all defaulting to `fork` (KEEP is the safe
+failure) — a new `template-dev` doc needs an explicit rule added above the catch-all.
