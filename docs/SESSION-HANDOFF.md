@@ -4,7 +4,7 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (ac59bdf, 2026-07-17)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (4572574, 2026-07-17)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -13,7 +13,7 @@ _Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated
 | ✅ DONE | **H2-P2** harness-v2 Phase 2 — Complete the loop (V2-201..V2-210) | — | COMPLETE + on main (f905631). Phase 2 — complete the loop (V2-201..210). Retro in EVIDENCE. |
 | ✅ DONE | **H2-P3** harness-v2 Phase 3 — Shrink the decision space (V2-301..V2-309) | — | COMPLETE + on main (45a0500). Phase 3 — shrink the decision space (V2-301..309). Retro in EVIDENCE. |
 | ✅ DONE | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | — | COMPLETE + on main (8fb4737) + senior-reviewed+fixed. Phase 4 — verify what was waived (V2-401..409). WS-5 adjudicated SPLIT. Detail in EVIDENCE. |
-| ⬜ IN_PROGRESS | **H2-P5** harness-v2 Phase 5 — Stack & steady state (V2-501..V2-507) | senior review (in flight) | ALL 7 items done + pushed (ac59bdf, /ship+skill-check green). Phase 5 — stack & steady state (V2-501..507): auth STAY FROZEN, Renovate, skill-standard gate, docs-current, doctrine-sync+runbook, doc-manifest+prune, CLOSEOUT. senior review in flight → fix, land on main, CLOSE PROGRAM. Detail in EVIDENCE/CLOSEOUT. |
+| ✅ DONE | **H2-P5** harness-v2 Phase 5 — Stack & steady state (V2-501..V2-507) | — | COMPLETE + senior-reviewed+fixed (4572574, /ship green). Phase 5 — stack & steady state (V2-501..507). Review: 1 High (doc-manifest session-state prune gap) + counts + Scope, all fixed. Ready to land = harness-v2 CLOSED. Detail in EVIDENCE/CLOSEOUT. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -82,9 +82,8 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. Phase 5 pushed (ac59bdf); senior review running over 482b646..HEAD — fix findings, re-ship, FF-land Phase 5 on main = harness-v2 CLOSED.
-2. Capstone: docs/HARNESS-V2-CLOSEOUT.md. 8 deferrals carry register lines.
-3. No further phases.
+1. Phase 5 done+reviewed+fixed (4572574). FF-land on main = harness-v2 program CLOSED (all 6 phases + closeout on main).
+2. Capstone: docs/HARNESS-V2-CLOSEOUT.md. 8 deferrals carry register lines. No further phases.
 
 <!-- END:auto-status -->
 
