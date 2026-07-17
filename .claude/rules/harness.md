@@ -170,9 +170,28 @@ edit to an existing product file. Not one of the thirteen local rules — an ado
 (`docs/build-vs-buy-ledger.md`, V2-404). Escape: `// eslint-disable-next-line
 sonarjs/cognitive-complexity` for a justified one-off.
 
+## Warm `/ship` vs `ship:full` (V2-401, ADR-061)
+
+Two honest tiers — the constitution's "run `/ship` before every push" means the **warm** loop:
+
+- **Warm `/ship`** (`npm run ship`, ~60–80s, DB-free — a normal push): typecheck · lint (incl.
+  `sonarjs/cognitive-complexity`, V2-404) · format · contract/component/hook tests · scalability ·
+  copy · wave-offs · licenses · tier · blueprint(+content) · complexity · db-structure · knip ·
+  duplication · coverage · build · size-limit · gitleaks · npm-audit · ai-eval.
+- **`ship:full`** (`npm run ship:full` / `SHIP_FULL=1`; runs in `/deploy`, `/handoff`, CI): warm loop
+  **plus** the docker image-build + trivy scan (ADR-030), the BDD traceability gate (ADR-058), and
+  the **integration** gate — `scripts/test-integration.mjs` runs `tests/integration/*` against a real
+  Postgres (an existing `DATABASE_URL`, else an ephemeral `@testcontainers/postgresql` pgvector
+  container, else an honest skip; RED only on a genuine failure, degrade-to-WARN with no DB/Docker).
+  The app-dependent QA slices (`uat:lean`, `visual-regression`) stay with `/qa` / `uat:full` (they
+  need a live app + baseline). Warm green never implies the integration round-trips ran — `ship:full`
+  (or a dev box with a DB) is where that claim is proven.
+
 ## Commands
 
-- `npm run dev` · `npm run ship` (the gate) · `npm run scaffold -- --name <Pascal> --fields
+- `npm run dev` · `npm run ship` (the warm gate) · `npm run ship:full` (full gate — +docker/bdd/
+  integration; ADR-061) · `npm run test:integration` (testcontainers pgvector suite, V2-401) ·
+  `npm run scaffold -- --name <Pascal> --fields
 '<spec>' [--enums] [--relations] [--writes admin|editor|any]`
 - `npm run deploy -- --slug … --display-name … --owner … --admin-email …` · `npm run rebrand --
 --slug … --name … --owner …` · `npm run migrate-from -- …`

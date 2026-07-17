@@ -12,6 +12,18 @@
     "seq-queue": {
       "license": "UNKNOWN",
       "reason": "no license field published (pre-SPDX-era leaf util, transitive); documented exception per ADR-051, noted in the SBOM."
+    },
+    "ssh2": {
+      "license": "MIT",
+      "reason": "no `license` field in package.json but ships a verbatim MIT LICENSE file (Brian White/mscdex). DEV-only transitive via @testcontainers/postgresql -> testcontainers -> dockerode -> ssh2 (V2-401); never in the runtime bundle. Documented exception per ADR-051."
+    },
+    "cpu-features": {
+      "license": "MIT",
+      "reason": "no `license` field but ships a verbatim MIT LICENSE file (mscdex). DEV-only transitive via ssh2 (V2-401 testcontainers); documented exception per ADR-051."
+    },
+    "buildcheck": {
+      "license": "MIT",
+      "reason": "no `license` field but ships a verbatim MIT LICENSE file (mscdex). DEV-only transitive via ssh2 (V2-401 testcontainers); documented exception per ADR-051."
     }
   }
 }

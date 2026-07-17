@@ -326,3 +326,11 @@ here as pointers so they aren't re-litigated as new findings:
   `SELECT count(*) FROM "users" WHERE "passwordHash" LIKE '$2%';` (verified = 0 in the seeded DB
   2026-07-17); when durably 0, delete the bcrypt branch + `npm uninstall bcryptjs`. Annotated in
   `lib/password.ts`.
+- 2026-07-17 — [env constraint, V2-401/ADR-061] **testcontainers container-run acceptance**: the
+  `ship:full` integration gate provisions an ephemeral `pgvector/pgvector:pg16` container via
+  `@testcontainers/postgresql` when a Docker daemon is present. THIS build container has no daemon,
+  so the container path was verified by construction + the honest-skip path, while the actual suite
+  round-trips were verified against the persisted **native Postgres 16 + pgvector** DB
+  (`scripts/test-integration.mjs` path 1, 6/6). The container bring-up itself is "verified where
+  Docker present" (CI / a dev box with a daemon) — same degrade-to-WARN posture as the ADR-030
+  docker-image gate; not a deferral, an environmental constraint.

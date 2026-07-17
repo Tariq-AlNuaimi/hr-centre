@@ -1495,6 +1495,26 @@ if (FULL) {
   const bdd = await run("bdd-coverage", "node", ["scripts/bdd-coverage.mjs"]);
   report(bdd);
   if (!bdd.ok) fail(bdd);
+
+  // Integration gate (V2-401, ADR-061). The warm loop stays DB-free; the FULL loop runs the
+  // integration suite against a REAL Postgres. scripts/test-integration.mjs resolves the DB
+  // three ways: an existing DATABASE_URL, else an ephemeral @testcontainers/postgresql
+  // pgvector container (Docker), else an honest skip. It exits non-zero ONLY on a genuine
+  // test failure (a container/DB was present and a round-trip failed) → RED here; the
+  // no-DB/no-Docker skip exits 0 and DEGRADES to a WARN (mirrors the ADR-030 docker gate —
+  // a DB-less CI/sandbox can't provision a container, and that must not be a false RED).
+  console.log(
+    "ship: phase B (full) -- integration (testcontainers pgvector round-trip, ADR-061) ...",
+  );
+  const integration = await run("integration", "node", ["scripts/test-integration.mjs"]);
+  report(integration);
+  if (!integration.ok) fail(integration);
+  else if (/SKIP mode|self-skip|# skipped [1-9]/.test(integration.out))
+    console.warn(
+      "  note: integration -- suite ran in SKIP mode (no reachable DATABASE_URL and no Docker\n" +
+        "  daemon to provision an ephemeral pgvector container). The round-trips did NOT run here;\n" +
+        "  run `npm run test:integration` where Docker or a pgvector DATABASE_URL is available.",
+    );
 }
 
 // Record the green-for-HEAD signal the auto-spawn guard trusts (session-automation

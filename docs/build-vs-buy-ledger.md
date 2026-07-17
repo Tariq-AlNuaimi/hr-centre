@@ -394,3 +394,26 @@ current product-surface max (22, `lib/openapi/registry.ts`) + headroom; ratchet 
 default of 15 as the max drops via refactors (ADR-034 ratchet convention). Dev-dependency, no runtime
 bundle cost. Informational for the ADR-032 hook (config edit, not a new `lib/` file). See V2-404,
 ADR-034.
+
+### 2026-07-17 — Ephemeral-DB integration harness (@testcontainers/postgresql) — V2-401
+
+Scope: scripts/test-integration.mjs
+Considered: **a hand-rolled `docker run postgres` wrapper** (build — but then this repo owns
+port-wait/readiness polling, teardown-on-crash, image pinning, and pgvector provisioning: exactly the
+fragile plumbing testcontainers exists to remove; the reviewer paper-cuts on hand-rolled harness code
+are the warning), **docker-compose + a fixed dev DB** (`make db-up` already does this for LOCAL dev,
+but a shared fixed DB is stateful across runs and not ephemeral-per-run — wrong for a hermetic
+integration gate and for CI, and it can't run N isolated suites), **spin nothing / keep the native-
+Postgres skip path only** (the Phase-3 workaround — works in THIS container but doesn't provision a DB
+in CI, so the integration claim stays a warn), **@testcontainers/postgresql** (chosen — the standard
+ephemeral-container harness; a `pgvector/pgvector:pg16` image gives the vector extension out of the
+box; dev-dependency, 0 vulnerabilities).
+Decision: **ADOPT `@testcontainers/postgresql`** behind `scripts/test-integration.mjs`: if a real
+`DATABASE_URL` is already reachable (the native-Postgres path) run the suite against it; else if a
+Docker daemon is up, start an ephemeral `pgvector/pgvector:pg16` container, `prisma migrate deploy`
+into it, run `tests/integration/*.test.ts`, and tear it down; else print an HONEST skip notice (no
+Docker/DB — does not silently pass) and let the DB-guarded tests self-skip. Wired: `test:integration`
+→ the runner; `ship:full` (`SHIP_FULL=1`) adds it to `scripts/ship.mjs`'s FULL phase, degrade-to-WARN
+when no Docker (mirrors the ADR-030 docker gate), RED when a container IS present and a test fails.
+Dev-dependency, no runtime bundle. ADR-061; container-run acceptance "verified where Docker present"
+(this build container has no daemon) recorded in `docs/findings-register.md`. See V2-401.
