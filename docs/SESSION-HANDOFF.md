@@ -4,7 +4,7 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (4572574, 2026-07-17)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-18 · last /ship: **green** (153ac9d, 2026-07-18)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -82,8 +82,9 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. Phase 5 done+reviewed+fixed (4572574). FF-land on main = harness-v2 program CLOSED (all 6 phases + closeout on main).
-2. Capstone: docs/HARNESS-V2-CLOSEOUT.md. 8 deferrals carry register lines. No further phases.
+1. harness-v2 CLOSED (on main @ ee74b2f). Post-close DEFERRAL batch done + pushed (153ac9d): O5 SBOM license gate, P6 worktree recipe, #17 SECURITY.md reformat, #22 publish-readiness (prepare-not-publish, ADR-062), #27 harness-orientation map. senior-code-reviewer running over ee74b2f..HEAD — fix findings, FF-land the batch on main.
+2. Remaining deferrals (still register-tracked): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (stay-frozen per V2-501), uptime/Storybook recipes (catalog suffices).
+3. No open work after the batch lands.
 
 <!-- END:auto-status -->
 
