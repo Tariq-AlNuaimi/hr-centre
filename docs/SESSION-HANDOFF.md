@@ -9,7 +9,7 @@ _Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED. Now on branch yhid26 (fast-forwarded from 25kqc6). |
-| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | Blueprint CONFIRMED (docs/blueprints/harness-v2-phase-1.md). V2-101 DONE+PUSHED (b265104, /ship green): constitution split to 8184B + .claude/rules/*.md lazy-loaded via rules-injection.mjs; always-on tax 36868->19954B. NEXT: V2-102 (memory digest). Then V2-103 (velocity pillar, ASK confirmed=rename Speed&Velocity), V2-104 (parallel-by-default), V2-105 (ADR-057 native-teams, ASK verdict mid-phase), V2-106/107 [P] parallel demo pair. |
+| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | Blueprint CONFIRMED. V2-101 DONE (constitution split, always-on 36868->~19288B). V2-102 DONE (agent-memory digest + memory-digest.mjs budget). Context-watchdog REMOVED (operator). NEXT: V2-103 velocity pillar (rename Speed & Velocity + context-tax/ship-walltime/hook-latency checks). |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -78,7 +78,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. 2026-07-16: context-watchdog hook REMOVED fully (operator request) — deleted + unwired + current-state docs scrubbed + ADR-019 amended; historical records left as dated history. No automated context warnings; use statusline ctx% + judgment.
+1. RESUME Phase 1 at V2-103 (velocity pillar → Speed & Velocity, ASK-confirmed). V2-101 + V2-102 DONE+green. Then V2-104 (parallel-by-default), V2-105 (ADR-057 native-teams, ASK verdict), V2-106/107 [P].
 2. RESUME harness-v2 Phase 1 at V2-102 (memory retrieval-on-demand). Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md. Blueprint docs/blueprints/harness-v2-phase-1.md is CONFIRMED.
 3. V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.
 4. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.

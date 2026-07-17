@@ -243,6 +243,60 @@ test("session-stop BLOCKS on unpushed commits but only when not already stop-act
 });
 
 // ---------------------------------------------------------------------------
+// V2-102 — agent-memory retrieval-on-demand: digest present + budgets + lookup.
+// ---------------------------------------------------------------------------
+test("V2-102 agent-memory has a digest block and passes the budget check (--strict)", () => {
+  const mem = readFileSync(join(REPO, "docs", "agent-memory.md"), "utf8");
+  assert.match(mem, /<!-- BEGIN:digest[\s\S]*<!-- END:digest/, "digest block must exist");
+  const res = spawnSync("node", [join(REPO, "scripts", "memory-digest.mjs"), "--strict"], {
+    cwd: REPO,
+    encoding: "utf8",
+  });
+  assert.equal(res.status, 0, `memory-digest --strict must pass on the real file:\n${res.stdout}`);
+});
+
+test("V2-102 a full section is retrievable on demand (grep by heading)", () => {
+  const mem = readFileSync(join(REPO, "docs", "agent-memory.md"), "utf8");
+  // A digest line names 'gitleaks'; the full fact lives in a `## Gotchas —` section, not the digest.
+  const afterDigest = mem.split("<!-- END:digest -->")[1] ?? "";
+  assert.match(afterDigest, /## Gotchas — deploy, env & CI/, "themed section heading must exist");
+  assert.match(
+    afterDigest,
+    /gitleaks is NOT preinstalled/,
+    "full gotcha text retrievable below the digest",
+  );
+});
+
+test("V2-102 memory-digest --strict FAILS on a fixture with an over-budget section", () => {
+  const dir = mkdtempSync(join(tmpdir(), "hooks-mem-"));
+  try {
+    const bigSection = ["## Gotchas — huge", ""].concat(
+      Array.from({ length: 70 }, (_, i) => `- 2026-01-01 — filler entry ${i}`),
+    );
+    const fixture = [
+      "# mem",
+      "<!-- BEGIN:digest -->",
+      "## Digest",
+      "- **Gotchas — huge** (70): filler",
+      "<!-- END:digest -->",
+      "",
+      ...bigSection,
+    ].join("\n");
+    const file = join(dir, "agent-memory.md");
+    writeFileSync(file, fixture);
+    const res = spawnSync("node", [join(REPO, "scripts", "memory-digest.mjs"), "--strict"], {
+      cwd: REPO,
+      env: { ...process.env, MEMORY_FILE: file },
+      encoding: "utf8",
+    });
+    assert.equal(res.status, 1, `a 71-line section must breach the 60-line budget:\n${res.stdout}`);
+    assert.match(res.stdout, /60/, "warning should cite the section budget");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Smoke: EVERY hook survives a benign input and malformed stdin without crashing
 // (exit 0), so a broken hook can't silently brick a session.
 // ---------------------------------------------------------------------------

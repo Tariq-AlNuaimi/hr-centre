@@ -21,6 +21,7 @@
     "test:integration": "node --import tsx --test tests/integration/*.test.ts",
     "test:hooks": "node --test tests/harness/*.test.mjs",
     "context-tax": "node scripts/context-tax.mjs",
+    "memory-digest": "node scripts/memory-digest.mjs --write",
     "test:components": "node --import tsx --import global-jsdom/register --import ./tests/components/setup.ts --test tests/components/*.test.tsx",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

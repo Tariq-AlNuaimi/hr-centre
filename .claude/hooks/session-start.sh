@@ -107,14 +107,16 @@ fi
 # Surface durable cross-session memory (decisions/gotchas/conventions) into the
 # session up front. Whole file when within the context budget; otherwise the head
 # + a pointer, so an un-pruned file can't tax every session. Fail-open, advisory.
+# agent-memory is retrieval-on-demand (V2-102): surface ONLY the <!-- BEGIN/END:digest --> block
+# (section headers + one-liners); the full `##` sections are grep/read on demand. Then run the
+# mechanical budget check (warn only) so an over-budget digest/section surfaces without blocking.
 if [ -f docs/agent-memory.md ]; then
-  mem_lines="$( (wc -l < docs/agent-memory.md 2>/dev/null || echo 0) | tr -dc '0-9' )"
-  echo "[harness] agent memory (docs/agent-memory.md) -- durable cross-session notes:"
-  if [ "${mem_lines:-0}" -le 150 ]; then
-    cat docs/agent-memory.md
-  else
-    head -n 60 docs/agent-memory.md
-    echo "[harness] ...agent-memory.md is ${mem_lines} lines (over the ~150 budget) -- showing the head only; read the full file, then prune/promote per its curation rule"
+  echo "[harness] agent memory (docs/agent-memory.md) -- SessionStart digest (full sections on demand; V2-102):"
+  awk '/<!-- BEGIN:digest/{f=1} f{print} /<!-- END:digest/{f=0}' docs/agent-memory.md 2>/dev/null || true
+  memwarn="$(node scripts/memory-digest.mjs 2>/dev/null || true)"
+  if printf '%s' "$memwarn" | grep -q "BUDGET WARNINGS"; then
+    printf '%s\n' "$memwarn" | sed -n '/BUDGET WARNINGS/,$p'
+    echo "[harness] ...agent-memory over budget -- prune/promote per its curation rule, then 'npm run memory-digest'"
   fi
 fi
 # Warn when many MCP servers are configured (schemas cost context; prune via /mcp).

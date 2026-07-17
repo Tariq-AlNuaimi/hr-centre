@@ -38,12 +38,13 @@ function readSafe(p) {
 const constitution = readSafe("CLAUDE.md");
 const constitutionBytes = bytes(constitution);
 
-// 2. agent-memory surface -- replicate session-start.sh: whole file if <=150 lines, else head 60.
+// 2. agent-memory surface -- replicate session-start.sh: only the <!-- BEGIN/END:digest --> block
+// is surfaced (retrieval-on-demand, V2-102); full sections load on demand and are not a fixed tax.
 const memory = readSafe("docs/agent-memory.md");
 let memorySurface = "";
 if (memory) {
-  const lines = memory.split("\n");
-  memorySurface = lines.length <= 150 ? memory : lines.slice(0, 60).join("\n");
+  const m = /<!-- BEGIN:digest[\s\S]*?<!-- END:digest[^>]*>/.exec(memory);
+  memorySurface = m ? m[0] : memory; // digest block only; fall back to whole file if unmarked
 }
 const memoryBytes = bytes(memorySurface);
 
