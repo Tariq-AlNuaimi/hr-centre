@@ -28,6 +28,7 @@ import {
 } from "node:fs";
 import { resolve } from "node:path";
 import { evaluateLicenses, loadAllowlist } from "./license-gate.mjs";
+import { analyzeBlueprint } from "./lib/blueprint-content.mjs";
 // V2-002: the blueprint gate's Scope-glob hygiene, shared so /ship mirrors it.
 import { isGlobTooBroad } from "../.claude/hooks/lib/scope-cover.mjs";
 
@@ -402,6 +403,74 @@ function scanBlueprint() {
   return ok(`new feature surface, no blueprint (personal tier — recommended, not blocking)`, {
     warn: detail,
   });
+}
+
+// -- blueprint-content gate (V2-202 parity + V2-209 amendment-confirm) --------
+// Two content checks over committed docs/blueprints/*.md, tiered like scanBlueprint
+// (shared blocks, personal warns; both fail-open on read errors):
+//   V2-202 — a blueprint that references a SPECIFIC existing docs/benchmarks/<x>.md
+//     (its category has a benchmark) must carry a "## Feature parity" section OR an
+//     explicit "Feature parity: <n/a …>" opt-out line. Absent → the table-stakes matrix
+//     was never dispositioned at spec time.
+//   V2-209 — a blueprint carrying a REAL amendment delta row (| YYYY-MM-DD | …, not the
+//     template placeholder) with an EMPTY/placeholder "Confirmed:" line is drift the
+//     operator never re-signed.
+function scanBlueprintContent() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const name = "blueprint-content";
+  let files = [];
+  try {
+    files = readdirSync("docs/blueprints").filter((f) => f.endsWith(".md") && f !== "README.md");
+  } catch {
+    return { name, ok: true, out: "no blueprints dir", secs: secs() };
+  }
+  const benchmarkExists = (n) => existsSync(`docs/benchmarks/${n}.md`);
+  const parityGaps = [];
+  const amendGaps = [];
+  for (const f of files) {
+    let text = "";
+    try {
+      text = readFileSync(`docs/blueprints/${f}`, "utf8");
+    } catch {
+      continue;
+    }
+    const { parityGap, amendGap } = analyzeBlueprint(text, benchmarkExists);
+    if (parityGap) parityGaps.push(f);
+    if (amendGap) amendGaps.push(f);
+  }
+  if (parityGaps.length === 0 && amendGaps.length === 0)
+    return {
+      name,
+      ok: true,
+      out: `${files.length} blueprint(s): parity + confirm clean`,
+      secs: secs(),
+    };
+  const parts = [];
+  if (parityGaps.length)
+    parts.push(
+      `Feature-parity section missing (V2-202) — these reference a category benchmark but ` +
+        `don't disposition its table-stakes:\n` +
+        parityGaps.map((p) => `  - docs/blueprints/${p}`).join("\n") +
+        `\n  Add a "## Feature parity" section (or "Feature parity: n/a — <reason>").`,
+    );
+  if (amendGaps.length)
+    parts.push(
+      `Amended-but-unconfirmed (V2-209) — these carry an amendment delta with an empty ` +
+        `Confirmed: line:\n` +
+        amendGaps.map((p) => `  - docs/blueprints/${p}`).join("\n") +
+        `\n  Re-confirm the amended blueprint and fill its Confirmed: line.`,
+    );
+  const detail = parts.join("\n");
+  const tierVal = readCfg().tier ?? "personal";
+  if (tierVal === "shared") return { name, ok: false, out: detail, secs: secs() };
+  return {
+    name,
+    ok: true,
+    out: `blueprint-content gaps (personal — warn)`,
+    warn: detail,
+    secs: secs(),
+  };
 }
 
 // -- DB-structure gate (ADR-031 "mandatory structured database") -------------
@@ -1212,7 +1281,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | wave-offs | licenses | tier | blueprint | complexity | db-structure | knip | duplication | coverage) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | wave-offs | licenses | tier | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1221,6 +1290,7 @@ const waveoffs = scanWaveOffs();
 const licenses = scanLicenses();
 const tier = scanTier();
 const blueprint = scanBlueprint();
+const blueprintContent = scanBlueprintContent();
 const complexity = scanComplexity();
 
 const typecheck = () =>
@@ -1273,6 +1343,7 @@ for (const r of [
   licenses,
   tier,
   blueprint,
+  blueprintContent,
   complexity,
   dbStructure,
   knip,
@@ -1282,6 +1353,7 @@ for (const r of [
   report(r);
 if (licenses.warn) console.warn(`  note: licenses — ${licenses.warn}`);
 if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
+if (blueprintContent.warn) console.warn(`  note: blueprint-content —\n${blueprintContent.warn}`);
 if (dbStructure.warn) console.warn(`  note: db-structure — ${dbStructure.warn}`);
 if (knip.warn) console.warn(`  note: knip — ${knip.warn}`);
 if (duplication.warn) console.warn(`  note: duplication — ${duplication.warn}`);
@@ -1298,6 +1370,7 @@ const redA = [
   licenses,
   tier,
   blueprint,
+  blueprintContent,
   complexity,
   dbStructure,
   knip,

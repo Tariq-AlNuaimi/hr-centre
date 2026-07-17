@@ -646,3 +646,44 @@ test("V2-105 fan-out verify-scope: -uall granularity + baseline subtraction (tem
     rmSync(mdir, { recursive: true, force: true });
   }
 });
+
+// ── V2-202/209 blueprint-content gate (feature-parity + amendment-confirm) ───────
+const bpc = await import(resolve(REPO, "scripts", "lib", "blueprint-content.mjs"));
+const yes = () => true;
+const no = () => false;
+
+test("V2-202 analyzeBlueprint flags a benchmark-referencing blueprint with no parity section", () => {
+  const missing = "# BP\nSee docs/benchmarks/it-asset-management.md for scope.\n## Domain model\n";
+  assert.equal(bpc.analyzeBlueprint(missing, yes).parityGap, true, "ref + no parity → gap");
+  // a "## Feature parity" heading satisfies it
+  const withHeading = missing + "\n## Feature parity\n| T1 | IN | US1 |\n";
+  assert.equal(bpc.analyzeBlueprint(withHeading, yes).parityGap, false);
+  // an explicit opt-out line satisfies it
+  const withOptOut =
+    "# BP\ndocs/benchmarks/it-asset-management.md\nFeature parity: n/a — program bp\n";
+  assert.equal(bpc.analyzeBlueprint(withOptOut, yes).parityGap, false);
+  // no benchmark referenced → never a parity gap
+  assert.equal(bpc.analyzeBlueprint("# BP\nno benchmark here\n", yes).parityGap, false);
+  // references a benchmark that does NOT exist on disk → no gap
+  assert.equal(bpc.analyzeBlueprint(missing, no).parityGap, false);
+});
+
+test("V2-209 analyzeBlueprint flags a real amendment row with an empty Confirmed line", () => {
+  const amended = "# BP\nConfirmed: \n## Amendments\n| 2026-07-17 | Domain | a | b | fix |\n";
+  assert.equal(
+    bpc.analyzeBlueprint(amended, no).amendGap,
+    true,
+    "real amend + empty confirm → gap",
+  );
+  // placeholder Confirmed (<...>) also counts as empty
+  const ph = "# BP\nConfirmed: <operator/date>\n| 2026-07-17 | X | a | b | c |\n";
+  assert.equal(bpc.analyzeBlueprint(ph, no).amendGap, true);
+  // re-confirmed → no gap
+  const confirmed = "# BP\nConfirmed: Tariq 2026-07-17\n| 2026-07-17 | X | a | b | c |\n";
+  assert.equal(bpc.analyzeBlueprint(confirmed, no).amendGap, false);
+  // only the TEMPLATE placeholder row (<YYYY-MM-DD>, not a real date) → not a real amendment
+  const templateOnly = "# BP\nConfirmed: \n| <YYYY-MM-DD> | <section> | <was> | <now> | <why> |\n";
+  assert.equal(bpc.analyzeBlueprint(templateOnly, no).amendGap, false);
+  // no amendment row at all → no gap
+  assert.equal(bpc.analyzeBlueprint("# BP\nConfirmed: \nnothing\n", no).amendGap, false);
+});

@@ -109,6 +109,23 @@ Scope: <file globs this blueprint authorizes — e.g. app/api/<feature>/**, app/
 <1–3 existing products/libraries/starters checked (CLAUDE.md market-benchmark
 rule), with the trade-off that justifies building vs. adopting>
 
+## Feature parity (REQUIRED when a category benchmark exists — V2-202)
+
+<If `docs/benchmarks/<category>.md` exists for this feature's category (produced by
+`/benchmark`), disposition EVERY table-stakes row of that matrix here. Omit this whole
+section only when NO benchmark exists for the category — otherwise `/ship` warns (shared:
+blocks). Each row is IN / DEFERRED / N/A with the pointer that proves it:>
+
+| Benchmark row (table-stakes) | Disposition | Pointer                                                         |
+| ---------------------------- | ----------- | --------------------------------------------------------------- |
+| `<T1 — feature>`             | IN          | → US<n> / AC-<n.x>                                              |
+| `<T2 — feature>`             | DEFERRED    | → `docs/findings-register.md` line (dated, `status: scheduled`) |
+| `<T3 — feature>`             | N/A         | <one-line reason it doesn't apply to this fork>                 |
+
+(Differentiators/anti-features are NOT required here — table-stakes is the parity floor. A
+DEFERRED row without a register line, or an undispositioned table-stakes row, is a parity gap
+surfaced at spec time, not UAT.)
+
 ## Tier
 
 personal | shared — and the one reason. (Sets ceremony; never the security
@@ -201,6 +218,21 @@ grid — it maps one-to-one onto the scaffold flags:
 (Plain `flowchart` is an acceptable fallback if `C4Component` fights you —
 the requirement is a committed diagram, not a specific dialect.)
 
+## Universal app-floor checklist (V2-203 — check or N/A each; template floors pre-marked)
+
+The features every internal tool needs regardless of domain. Mark each `[x]` (in scope),
+`[~]` (deferred → register line), or `N/A` (+reason). Template-scaffolded floors are
+pre-marked `[x]` — `/scaffold-entity` already wires audit, soft-delete/restore, and the
+shared `DataTable`; don't re-plan them, just confirm.
+
+- **Per list** (each list/table screen): search · filter · sort · saved views · pagination ·
+  export · bulk actions · honest empty state.
+- **Per entity** (each entity): detail view · edit · audit trail `[x]` (auditExtension) ·
+  delete/restore `[x]` (soft-delete + recycling bin).
+- **Per app** (once): nav logic · notifications seam · settings · help/onboarding · activity feed.
+
+(A floor left unmarked is an omission `/qa` will find; N/A is a valid answer, silence is not.)
+
 ## The five pillars (how this honors each — CLAUDE.md "Five Pillars")
 
 - Speed · Maintainable · Scalable · Secure · High-Quality — one line each, or
@@ -209,6 +241,18 @@ the requirement is a committed diagram, not a specific dialect.)
 ## Open questions (RESOLVE via AskUserQuestion before building)
 
 - [ ] <question> → <answer once resolved>
+
+## Amendments (V2-209 — append a delta block per change to a signed blueprint; else "none")
+
+Confirmed: <operator/date of the current sign-off — this line is RESET (blanked) whenever an amendment is appended, and the operator re-confirms it>
+
+<!-- On any change to a SIGNED blueprint, append an OpenSpec-style delta here and blank the
+     Confirmed: line above. `/ship`'s blueprint check warns (shared: blocks) while a blueprint
+     has amendments but an empty Confirmed: line — drift you didn't re-sign. -->
+
+| Date         | Section             | Was     | Now   | Reason |
+| ------------ | ------------------- | ------- | ----- | ------ |
+| <YYYY-MM-DD> | <e.g. Domain model> | <prior> | <new> | <why>  |
 
 ```
 
@@ -231,11 +275,27 @@ steps, persisted as markdown so an ephemeral container can resume it. When
 Superpowers isn't installed, write the same shape by hand — an ordered `- [ ]`
 checklist committed next to the blueprint.
 
-Either way, **mark parallelizable steps with `[P]`** (spec-kit's convention): a
-step gets `[P]` only if it touches different files than, and has no dependency
-on, every other `[P]` step in its group. Un-marked steps run in blueprint order.
-Tasks cite the story they serve (`US1`, `AC-2.1`) so the plan inherits the
-blueprint's traceability instead of inventing its own.
+Either way, the plan is a **work DAG** (V2-205), not a flat list — emit it as a table so
+`/fan-out` (ADR-057) can consume it directly:
+
+| # | Task (cites its story) | P/S | File-ownership set (globs) | Role-lens |
+| - | ---------------------- | --- | -------------------------- | --------- |
+| 1 | <task — US1/AC-1.1>    | [P] | `lib/services/<x>/**`      | api       |
+| 2 | <task — US2>           | [P] | `app/**/<x>/**`            | ui        |
+| 3 | <task — US3>           | [S] after 1 | `app/api/<x>/**`   | api + auth |
+
+- **`[P]` / `[S]`** (spec-kit's convention): a step is `[P]` only if it touches **different
+  files than, and has no dependency on**, every other `[P]` step in its group; `[S]` names what
+  it waits on. Un-marked = blueprint order.
+- **File-ownership set** — the exact globs that step may write; it is the manifest `/fan-out
+  check-overlap` verifies is write-disjoint before a parallel wave, and `verify-scope` checks
+  after. Overlapping sets can't be a `[P]` group — serialize them.
+- **Role-lens** — which rule slice / context the implementing agent gets (ui / api / auth /
+  infra → the matching `.claude/rules/*.md`), so each unit rides the right context, not the whole
+  constitution. This is the input V2-105's `/fan-out` mechanism consumes.
+
+Tasks cite the story they serve (`US1`, `AC-2.1`) so the plan inherits the blueprint's
+traceability instead of inventing its own.
 
 ## Why this exists (the contract is reused downstream)
 

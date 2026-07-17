@@ -22,6 +22,10 @@ OSS benchmark). Each is _adopted as a concept, built native_ per ADR-022 — exc
 playwright-bdd, which is a real dependency (V2-207, ledger + ADR). Rationale for
 build-vs-adopt lives per-item in `docs/build-vs-buy-ledger.md`.
 
+Feature parity: n/a — this is the PROGRAM blueprint (it only names the pilot's
+category, `docs/benchmarks/it-asset-management.md`). The pilot's own feature blueprint
+(V2-210) carries the `## Feature parity` section that dispositions that matrix.
+
 ## Tier
 
 `personal` (matches `project.config.json`). Phase 2 adds skills/templates/gates —
