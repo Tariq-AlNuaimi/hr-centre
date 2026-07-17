@@ -80,6 +80,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 - `wasp` — wasp declarative-CRUD ergonomics study — trigger: over /scaffold-entity (cat 11)
 - `socket-harden-runner` — Socket + Harden-Runner CI slices (ADR-050/051) — trigger: operator creates the accounts
 - `sheetjs` — exceljs -> SheetJS swap (ADR-051) — trigger: exceljs CVE or a new export feature
+- `specialist-agent-seeds` — specialist-agent seeds (nextjs-pro/postgres-pro/prisma-expert) as one stack-aware review agent — trigger: cat 03 — if the generic review rail proves insufficient
 
 **Next actions**
 
@@ -110,8 +111,10 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 ## Operator hygiene (optional — a session cannot do these)
 
-- **Stale remote branches.** ~27 old `claude/*` program branches, plus now-orphaned
-  `dependabot/*` branches (Dependabot was retired 2026-07-17), still exist on the remote.
+- **Stale remote branches.** The old `claude/*` program branches (everything under `claude/*`
+  except the active working branch), plus the now-orphaned `dependabot/*` branches (Dependabot was
+  retired 2026-07-17), still exist on the remote. Enumerate the exact set with
+  `git ls-remote --heads origin` before deleting.
   A session cannot delete refs (the git bridge returns 403). Clean them via the GitHub
   Branches UI, or locally with `git push origin --delete <branch>`, leaving `main` (and any
   active working branch). Renovate's first branch (`renovate/minor-and-patch-dependencies`)

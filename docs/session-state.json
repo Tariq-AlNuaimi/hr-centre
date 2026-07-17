@@ -294,6 +294,11 @@
       "id": "sheetjs",
       "title": "exceljs -> SheetJS swap (ADR-051)",
       "trigger": "exceljs CVE or a new export feature"
+    },
+    {
+      "id": "specialist-agent-seeds",
+      "title": "specialist-agent seeds (nextjs-pro/postgres-pro/prisma-expert) as one stack-aware review agent",
+      "trigger": "cat 03 — if the generic review rail proves insufficient"
     }
   ],
   "inProgress": [

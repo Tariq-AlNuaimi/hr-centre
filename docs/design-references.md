@@ -12,13 +12,13 @@ operator's own additions (RSP/aptitude house style — fill the "Operator adds" 
 
 ## Anchors per archetype
 
-| Archetype     | Primary anchor                          | What to emulate                                                                                                                           | Secondary anchor            | Operator adds                  |
-| ------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------ |
-| **List**      | **Linear** (issues list)                | dense-but-legible rows, quiet zebra-free separators, one accent for status, sort/filter affordances that don't shout, instant empty state | **Stripe** (payments table) | **Height** (dense task list)   |
-| **Detail**    | **Linear** (issue detail)               | title + meta strip + primary content, right-rail secondary facts, no nested cards, generous line-height                                   | **Stripe** (payment detail) | **Notion** (page detail)       |
-| **Form**      | **Stripe** (checkout / dashboard forms) | one column, labels above fields, clear required affordance, inline validation, one primary button, humane copy                            | **Linear** (settings forms) | **Vercel** (new-project form)  |
-| **Dashboard** | **Vercel** (project overview)           | a calm stat row (no card soup), one chart with breathing room, real empty/loading states, restrained color                                | **Stripe** (home)           | **PlanetScale** (calm metrics) |
-| **Settings**  | **Vercel** (project settings)           | sectioned groups, description under each control, destructive actions visually separated + confirmed, no dead toggles                     | **Linear** (settings)       | **Stripe** (settings groups)   |
+| Archetype     | Primary anchor                          | What to emulate                                                                                                                           | Secondary anchor            | Operator adds                          |
+| ------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | -------------------------------------- |
+| **List**      | **Linear** (issues list)                | dense-but-legible rows, quiet zebra-free separators, one accent for status, sort/filter affordances that don't shout, instant empty state | **Stripe** (payments table) | _(awaiting operator house-style pick)_ |
+| **Detail**    | **Linear** (issue detail)               | title + meta strip + primary content, right-rail secondary facts, no nested cards, generous line-height                                   | **Stripe** (payment detail) | _(awaiting operator house-style pick)_ |
+| **Form**      | **Stripe** (checkout / dashboard forms) | one column, labels above fields, clear required affordance, inline validation, one primary button, humane copy                            | **Linear** (settings forms) | _(awaiting operator house-style pick)_ |
+| **Dashboard** | **Vercel** (project overview)           | a calm stat row (no card soup), one chart with breathing room, real empty/loading states, restrained color                                | **Stripe** (home)           | _(awaiting operator house-style pick)_ |
+| **Settings**  | **Vercel** (project settings)           | sectioned groups, description under each control, destructive actions visually separated + confirmed, no dead toggles                     | **Linear** (settings)       | _(awaiting operator house-style pick)_ |
 
 ## Cross-archetype anchors (all screens)
 
