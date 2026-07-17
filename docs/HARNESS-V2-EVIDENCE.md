@@ -61,7 +61,7 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 | V2-309 | 3     | done    | (this)    | [detail](#v2-309-evidence) · `.claude/hooks/lib/scope-cover.mjs` · `.claude/hooks/build-vs-buy-gate.mjs` · `tests/harness/hooks.test.mjs`                                             | Build-vs-buy completeness: gate surface widened from `lib/**` to also `components/shared/**` + `scripts/**` (same exclusions); a covering ledger entry must now carry a `Considered:` line AND a non-over-broad Scope (bare/broad Scope = rubber stamp — `isGlobTooBroad`). Both gate paths + 3 deny messages; 5 negative tests (deny new shared/scripts, allow specific+Considered, deny no-Considered, deny broad-Scope, exclude .test) green |
 | V2-401 | 4     | pending | —         | —                                                                                                                                                                                     | Testcontainers + /ship --full (LEDGER)                                                                                                                                                                                                                                                                                                                                                                                                          |
 | V2-402 | 4     | pending | —         | —                                                                                                                                                                                     | pgvector verification                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| V2-403 | 4     | pending | —         | —                                                                                                                                                                                     | Coverage floor                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| V2-403 | 4     | done    | (this)    | [detail](#v2-403-evidence) · `scripts/ship.mjs` (scanCoverage)                                                                                                                        | Coverage floor: node `--experimental-test-coverage` on the contract suite, `/ship` phase-A `coverage` gate ENFORCED (was ADOPT.md A1); ratcheted floors to lines 75 / funcs 78 / branch 88 (measured baseline 80.24/83.71/93.13) + ADR-034-style ratchet rule; PASS at floor, a synthetic floor of 99 → RED ("does not meet threshold", exit 1)                                                                                                 |
 | V2-404 | 4     | pending | —         | —                                                                                                                                                                                     | Cognitive complexity at error (LEDGER)                                                                                                                                                                                                                                                                                                                                                                                                          |
 | V2-405 | 4     | pending | —         | —                                                                                                                                                                                     | Mutation testing on invariants (LEDGER)                                                                                                                                                                                                                                                                                                                                                                                                         |
 | V2-406 | 4     | pending | —         | —                                                                                                                                                                                     | Invariant unit tests                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -704,6 +704,26 @@ and a later change that shifts pixels produces a red diff instead of slipping pa
   absolute 100-px floor → correctly FAILS. **Committed baseline + real CLI run:**
   `docs/verification/v2-305-copy/baseline/` diffed against the identical current set → `2
 baseline(s), 0 regression(s)`, exit 0.
+
+<a id="v2-403-evidence"></a>
+
+### Phase 4 evidence — V2-403 coverage floor
+
+The coverage-floor gate already existed (ADOPT.md A1): `/ship` phase A runs the contract suite under
+node's built-in `--experimental-test-coverage` scoped to `lib/**` and lets node enforce the
+threshold — zero extra deps, reds on a below-floor drop. V2-403 **verified and ratcheted** it:
+
+- **Measured baseline (2026-07-17):** `lib/**` = lines **80.24** / branch **93.13** / funcs **83.71**
+  (`# all files | 80.24 | 93.13 | 83.71`, 281 contract tests green).
+- **Ratcheted floors** from the old margin-heavy 65/70/80 to **lines 75 / funcs 78 / branch 88** —
+  a few points below the measured baseline (so a single uncovered helper doesn't flake the build, but
+  a real regression reds it) + a documented **ADR-034-style ratchet rule** in `scripts/ship.mjs`: the
+  floor only goes UP; never lower it to make a change pass (add tests or `coverageAck` + a register
+  line).
+- **Accept — the gate reds on a synthetic drop:** the same run with `--test-coverage-lines=99` exits
+  **non-zero** with `Error: 80.24% line coverage does not meet threshold of 99%` (verified). At the
+  real floors it PASSES (`exit 0`). Node < 22.13 degrades to a WARN (documented) — this container's
+  Node supports the threshold flags, so it's enforced.
 
 ## Per-phase retros
 

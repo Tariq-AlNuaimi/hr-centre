@@ -898,15 +898,20 @@ function scanComplexity() {
   );
 }
 
-// -- coverage-floor gate (ADOPT.md A1; cats 09, 16) --------------------------
+// -- coverage-floor gate (ADOPT.md A1; cats 09, 16; ratcheted V2-403) ---------
 // Runs the contract suite under node's built-in V8 coverage (zero extra deps)
 // and lets node enforce the floor: it exits non-zero if lib/** coverage drops
 // below the thresholds. Scoped to lib/** (the business logic the contract suite
 // is designed to cover) so a new untested lib file drags the aggregate down.
-// Baseline: lines 73.7 / funcs 83.1 / branch 95.0 -> floors set with margin
-// below. Degrades to a WARN on Node < 22.13 (no --test-coverage-* flags).
-// Waiver: coverageAck + register. Runs in phase A (parallel; ~3.8s).
-const COVERAGE_FLOORS = { lines: 65, functions: 70, branches: 80 };
+// Baseline (measured 2026-07-17, V2-403): lines 80.24 / funcs 83.71 / branch
+// 93.13. Floors are set a few points BELOW that so a single uncovered helper
+// doesn't flake the build, but close enough to catch a real regression.
+// RATCHET RULE (ADR-034 style): this floor only goes UP. When the measured
+// baseline rises durably, raise the floors toward it (leaving ~2-5pt headroom);
+// NEVER lower a floor to make a change pass — add tests, or waive with
+// "coverageAck" + an adjudicated docs/findings-register.md line. Degrades to a
+// WARN on Node < 22.13 (no --test-coverage-* flags). Runs in phase A (~3.8s).
+const COVERAGE_FLOORS = { lines: 75, functions: 78, branches: 88 };
 function nodeSupportsCoverageThreshold() {
   const m = /^v(\d+)\.(\d+)\./.exec(process.version);
   if (!m) return false;
