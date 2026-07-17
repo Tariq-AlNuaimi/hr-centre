@@ -1,6 +1,6 @@
 ---
 name: audit
-description: On-demand security scan of a target path -- gitleaks (secrets) + npm audit (dependency CVEs) + Semgrep (SAST). Mirrors the dormant CI security workflows so they run locally on any machine. Use before sharing anything externally, and as the FIRST step of /conform on foreign code. Trigger phrases: "audit", "security scan", "/audit", "scan this for secrets", "is this safe to share".
+description: On-demand security scan of a target path -- gitleaks (secrets) + npm audit (dependency CVEs) + Semgrep (SAST), plus optional deeper layers (osv-scanner lockfile-vs-OSV, trufflehog live-verified secrets, trivy image/config). Mirrors the dormant CI security workflows so they run locally on any machine. Use before sharing anything externally, and as the FIRST step of /conform on foreign code. Trigger phrases: "audit", "security scan", "/audit", "scan this for secrets", "is this safe to share".
 ---
 
 # /audit — On-demand security scan
@@ -61,7 +61,24 @@ the operator dropped foreign code into.
      (swap `--config auto` for the explicit `p/*` rulesets above to mirror `sast.yml`).
    - Reports findings with `file:line` and rule id.
 
-4. **Live-verified secrets — trufflehog (OPTIONAL pass; Wave A2, ADOPT 10-security).**
+4. **Dependency CVEs (deeper) — osv-scanner (OPTIONAL pass; V2-407).**
+   - `npm audit` (step 2) checks npm's own advisory DB, npm-only. `osv-scanner` checks the
+     **lockfile directly against Google's OSV database** (broader coverage, and it scans any
+     manifest a fork adds — not just npm): `osv-scanner scan source --lockfile <path>/package-lock.json`
+     (or `osv-scanner scan --recursive <path>` to sweep every manifest under the path). It
+     COMPLEMENTS npm audit, it doesn't replace it — run both.
+   - **Bootstrap first (self-install, like gitleaks — NEVER an npm dependency).** If `osv-scanner`
+     isn't on `PATH`, install the Go binary before skipping:
+     `command -v osv-scanner >/dev/null || GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest`
+     (`~/.local/bin` must be on `PATH`; the release binary from
+     https://github.com/google/osv-scanner/releases is the no-Go fallback).
+   - **Not installed / no Go → skip WITH a note** (optional layer, like trufflehog/trivy):
+     `osv-scanner: NOT RUN (optional; go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest, or a release binary)`.
+     A missing osv-scanner does **not** make the audit incomplete.
+   - **Needs egress** to the OSV database (`api.osv.dev`) to resolve advisories; if egress is
+     blocked, report `NOT RUN: egress blocked` rather than trusting an empty result.
+
+5. **Live-verified secrets — trufflehog (OPTIONAL pass; Wave A2, ADOPT 10-security).**
    - `trufflehog git file://<path> --only-verified --fail` (git history), and/or
      `trufflehog filesystem <path> --only-verified --fail` (working tree).
    - `--only-verified` calls the provider API to confirm a candidate credential is
@@ -78,7 +95,7 @@ trufflehog, or https://github.com/trufflesecurity/trufflehog/releases)`. Unlike
    - Needs egress to the credential providers' APIs to verify; if egress is blocked,
      report `NOT RUN: egress blocked` rather than trusting an empty result.
 
-5. **Container image + config — trivy (OPTIONAL pass; Wave A2, ADOPT 10-security; ADR-030).**
+6. **Container image + config — trivy (OPTIONAL pass; Wave A2, ADOPT 10-security; ADR-030).**
    - A standard build artifact is a **scanned** artifact (ADR-030): scan both the
      image and the IaC/Dockerfile.
    - **Image** (if a Docker image is available or buildable): `trivy image
@@ -113,16 +130,28 @@ A single report, grouped by scanner, each finding line-referenced and severity-t
 
 ```
 /audit report — <path>
-  Secrets (gitleaks):   <n findings | clean | NOT RUN: install gitleaks>
-  Dependencies (npm):   <n High+ CVEs | clean | NOT RUN: no lockfile / npm missing>
-  SAST (semgrep):       <n findings | clean | NOT RUN: install semgrep>
+  Secrets (gitleaks):    <n findings | clean | NOT RUN: install gitleaks>
+  Dependencies (npm):    <n High+ CVEs | clean | NOT RUN: no lockfile / npm missing>
+  Dependencies (osv):    <n vulns | clean | NOT RUN (optional) | NOT RUN: egress blocked>
+  SAST (semgrep):        <n findings | clean | NOT RUN: install semgrep>
   Verified (trufflehog): <n LIVE creds — ROTATE | clean | NOT RUN (optional)>
-  Container (trivy):    <n HIGH/CRITICAL image+config | clean | NOT RUN (optional)>
+  Container (trivy):     <n HIGH/CRITICAL image+config | clean | NOT RUN (optional)>
 
   <per-finding: file:line — rule — one-line description>
 ```
 
 Then a one-line verdict: **clean / findings to review / could not complete (tool missing)**.
+
+## CI slot evaluation — `anthropics/claude-code-security-review` (V2-407, deferred)
+
+Evaluated for the **dormant CI security slot** (alongside `secrets-scan.yml` / `sast.yml`):
+`anthropics/claude-code-security-review` is an AI-diff security reviewer (a GitHub Action that reasons
+over a PR diff for logic/authz/injection flaws the deterministic scanners miss). Verdict: **valuable
+and complementary, but deferred to CI activation** — it needs `ANTHROPIC_API_KEY` + Actions billing
+(the same trigger that activates `/ship`'s CI and the `senior-code-reviewer` workflow), and it is a
+_diff_ reviewer, not a local-path scanner, so it doesn't fit `/audit`'s "scan any folder offline"
+model. Wire it into the CI security workflows when the CI-activation trigger fires (ADR-020 /
+`.claude/rules/harness.md`); until then the local scanners above are the coverage.
 
 ## Do NOT in this skill
 

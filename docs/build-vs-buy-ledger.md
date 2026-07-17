@@ -435,3 +435,22 @@ suite, `mutate` scoped to the THREE security-invariant files — `lib/prisma/aud
 where line coverage can't. **/qa-tier, NOT warm `/ship`** (mutation runs re-execute the suite per
 mutant — minutes, not the ~60s warm loop); `npm run test:mutation`. Dev-dependency, no runtime
 bundle. Informational for the ADR-032 hook (config file, not a new `lib/` file). See V2-405.
+
+### 2026-07-17 — Local dependency+container security fallbacks (osv-scanner, trivy) — V2-407
+
+Scope: .claude/skills/audit/SKILL.md (osv-scanner + trivy passes)
+Considered: **rely on `npm audit` alone** (npm's advisory DB only, npm ecosystem only, no lockfile-
+level OSV coverage — misses advisories present in the broader OSV database and can't scan non-npm
+manifests a fork adds), **a paid SCA SaaS** (Snyk/Mend — account + egress + cost, wrong for a local/
+offline `/audit`), **GitHub Dependabot/Advanced-Security** (dormant on the free plan — the exact gap
+`/audit` exists to fill locally), **osv-scanner + trivy binaries** (chosen — Google's OSV scanner and
+Aqua's trivy, both OSS Go binaries installed the SAME self-install way as gitleaks/semgrep/trufflehog,
+NEVER npm dependencies; osv-scanner reads the lockfile against the OSV DB, trivy scans the image + IaC).
+Decision: **ADOPT `osv-scanner` + `trivy` as OPTIONAL `/audit` passes** (trivy was already wired for
+the image/config scan; V2-407 adds osv-scanner as a lockfile-vs-OSV pass and documents the Go self-
+install for both). Self-install pattern (`go install` / release binary), egress-gated: **NOT RUN
+(egress blocked)** or **NOT RUN (optional; install …)** rather than trusting an empty result — a
+missing optional scanner never marks a target "incomplete" (only the three CORE scans do). No runtime
+or dev dependency added (external binaries). Also **evaluated** `anthropics/claude-code-security-review`
+for the dormant CI security slot (noted in SKILL.md — an AI-diff security reviewer, complementary to
+the deterministic scanners; deferred to the CI-activation trigger, not wired now). See V2-407.
