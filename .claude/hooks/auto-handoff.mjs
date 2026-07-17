@@ -17,8 +17,7 @@
 // non-durable anyway (a fresh remote container clones only committed+pushed state) and
 // would only add working-tree drift -- so we don't.
 //
-// Wired to SessionEnd (operator's Q3: SessionEnd + watchdog-80%, NOT every Stop). The
-// context-watchdog invokes the same render at its 80% threshold. Fail-open by contract:
+// Wired to SessionEnd (operator's Q3: SessionEnd, NOT every Stop). Fail-open by contract:
 // every path exits 0, and the render runs with RENDER_HANDOFF_SOFT=1 so it can never
 // trap the session end.
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";

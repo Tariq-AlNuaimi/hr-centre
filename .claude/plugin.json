@@ -1,7 +1,7 @@
 {
   "name": "rihal-prototype-harness",
   "version": "0.1.0",
-  "description": "Rihal prototype-rail harness for the fullstack Next.js template: 27 lifecycle skills, 4 tiered agents (scout/senior-code-reviewer/security-architect/sre), 14 hooks (gate-quartet, watchdogs, push guard), skill-activation rules and settings. Versioned per ADR-054 so forks can pin and detect staleness.",
+  "description": "Rihal prototype-rail harness for the fullstack Next.js template: 27 lifecycle skills, 4 tiered agents (scout/senior-code-reviewer/security-architect/sre), 14 hooks (gate-quartet, push guard, skill-activation + path-lazy rule injection), and settings. Versioned per ADR-054 so forks can pin and detect staleness.",
   "author": {
     "name": "Tariq Al-Naaimi"
   },

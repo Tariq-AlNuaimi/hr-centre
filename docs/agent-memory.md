@@ -195,9 +195,9 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 - 2026-07-03 — **Session status is DATA, not prose.** `docs/session-state.json` is the
   single source; `SESSION-HANDOFF.md`'s two tables are RENDERED from it between
   `<!-- BEGIN/END:auto-status -->` markers via `scripts/render-handoff.mjs` (`--check`
-  fails on drift, wired into `/ship` as a WARN). Edit the JSON, not the tables. Hooks
-  (SessionEnd `auto-handoff.mjs` + context-watchdog 80%) re-render automatically;
-  SessionStart surfaces it first. Never hand-edit inside the markers. (session-automation,
+  fails on drift, wired into `/ship` as a WARN). Edit the JSON, not the tables. The
+  SessionEnd `auto-handoff.mjs` hook re-renders automatically; SessionStart surfaces it
+  first. Never hand-edit inside the markers. (session-automation,
   blueprint `docs/blueprints/session-automation-auto-handoff.md`.)
 - 2026-07-03 — **`/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`**
   (written by `scripts/ship.mjs` for the exact tree it verified), NOT `session-state.json.lastShip`

@@ -3,7 +3,7 @@
 The Claude Code harness for this template: skills (`skills/*/SKILL.md`, each
 self-documenting), agents (`agents/*.md` — `scout` for cheap read-only
 investigation, `senior-code-reviewer` for the post-push breadth pass), hooks
-(`hooks/` — SessionStart bootstrap, context watchdog, the Stop-hook push guard),
+(`hooks/` — SessionStart bootstrap, the Stop-hook push guard, path-lazy rule injection),
 and `settings.json` (permissions + hook bindings; an Ask-before surface — see
 CLAUDE.md). CLAUDE.md is the authority on how these compose; this README only
 covers what lives here.

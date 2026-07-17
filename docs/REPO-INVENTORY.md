@@ -81,7 +81,6 @@ runs in milliseconds per event.
 | `session-stop.mjs`        |    95 | Stop             | Hard-blocks ending the turn with unpushed commits.                          |
 | `dangerous-commands.mjs`  |    89 | PreToolUse       | Blocks destructive git/shell commands.                                      |
 | `pre-compact-refresh.mjs` |    88 | PreCompact       | Refreshes state before context compaction.                                  |
-| `context-watchdog.mjs`    |    61 | UserPromptSubmit | Warns at 60/80/90% token-window depth.                                      |
 | `session-receipt.mjs`     |    51 | SessionEnd       | Writes a session receipt.                                                   |
 | `verbose-guard.mjs`       |    40 | PreToolUse       | Guards against overly verbose output.                                       |
 

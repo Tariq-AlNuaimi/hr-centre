@@ -89,7 +89,7 @@ carry the haiku-tier reads.
 | Concern                      | Mechanism                                                                                                                                                                          |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Know the burn live           | statusline: `model \| ctx % \| msgs \| $` (.claude/statusline.mjs)                                                                                                                 |
-| Detect when to start fresh   | UserPromptSubmit watchdog warns at 60% / 80% context                                                                                                                               |
+| Detect when to start fresh   | statusline `ctx %` + judgment — run `/handoff-session` when a session gets long (the automated context-watchdog was removed 2026-07-16)                                            |
 | Hand off cheaply             | `/handoff-session` commits `docs/SESSION-HANDOFF.md` to the branch (survives a fresh remote container) AND prints the full handoff to paste — both carriers, works on web + laptop |
 | Stop token-bomb commands     | PreToolUse guard denies raw `npm test`/build/dev-server with the quiet alternative (override: prefix `VERBOSE=1`)                                                                  |
 | Cheap exploration            | `scout` agent (haiku, read-only, ≤30-line reports)                                                                                                                                 |

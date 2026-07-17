@@ -78,12 +78,13 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. RESUME harness-v2 Phase 1 at V2-102 (memory retrieval-on-demand). Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md. Blueprint docs/blueprints/harness-v2-phase-1.md is CONFIRMED.
-2. V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.
-3. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.
-4. Remaining Phase 1: V2-103 (velocity pillar — CONFIRMED rename Pillar 1 -> Speed & Velocity + 3 checks: context-tax done via scripts/context-tax.mjs, /ship wall-time >25% warn, hook-latency baseline), V2-104 (parallel-by-default constitution text), V2-105 (research native agent teams -> ADR-057 -> ASK verdict; build /fan-out only if custom), V2-106 [P] ccusage LEDGER + npm run tokens, V2-107 [P] permission friction (git branch -d, amend on unpushed).
-5. Per-session landmine: gitleaks NOT preinstalled + release egress-blocked — reinstall via `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest`, add ~/.local/bin to PATH before /ship. Run /ship WITHOUT NODE_ENV=production.
-6. Do NOT weaken any Phase 0/V2-101 gate to make a later change pass (KICKOFF §2.10). The context-tax --strict budget (8KB constitution / 20KB total) is now a hook-suite test — keep it green.
+1. 2026-07-16: context-watchdog hook REMOVED fully (operator request) — deleted + unwired + current-state docs scrubbed + ADR-019 amended; historical records left as dated history. No automated context warnings; use statusline ctx% + judgment.
+2. RESUME harness-v2 Phase 1 at V2-102 (memory retrieval-on-demand). Orient from HARNESS-V2-KICKOFF.md + HARNESS-V2-BACKLOG.md + docs/HARNESS-V2-EVIDENCE.md. Blueprint docs/blueprints/harness-v2-phase-1.md is CONFIRMED.
+3. V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.
+4. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.
+5. Remaining Phase 1: V2-103 (velocity pillar — CONFIRMED rename Pillar 1 -> Speed & Velocity + 3 checks: context-tax done via scripts/context-tax.mjs, /ship wall-time >25% warn, hook-latency baseline), V2-104 (parallel-by-default constitution text), V2-105 (research native agent teams -> ADR-057 -> ASK verdict; build /fan-out only if custom), V2-106 [P] ccusage LEDGER + npm run tokens, V2-107 [P] permission friction (git branch -d, amend on unpushed).
+6. Per-session landmine: gitleaks NOT preinstalled + release egress-blocked — reinstall via `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest`, add ~/.local/bin to PATH before /ship. Run /ship WITHOUT NODE_ENV=production.
+7. Do NOT weaken any Phase 0/V2-101 gate to make a later change pass (KICKOFF §2.10). The context-tax --strict budget (8KB constitution / 20KB total) is now a hook-suite test — keep it green.
 
 <!-- END:auto-status -->
 

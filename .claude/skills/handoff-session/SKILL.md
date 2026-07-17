@@ -1,6 +1,6 @@
 ---
 name: handoff-session
-description: Produce a session-handoff (committed to the branch AND printed inline) so work continues in a FRESH session instead of a degrading, expensive long one. Use when the context watchdog warns (60%/80%), when switching tasks, or before ending a long session. Trigger phrases - "handoff session", "/handoff-session", "wrap up this session", "prepare a fresh session".
+description: Produce a session-handoff (committed to the branch AND printed inline) so work continues in a FRESH session instead of a degrading, expensive long one. Use when a session is getting long, when switching tasks, or before ending a long session. Trigger phrases - "handoff session", "/handoff-session", "wrap up this session", "prepare a fresh session".
 ---
 
 # Session handoff (token thrift, ADR-019)

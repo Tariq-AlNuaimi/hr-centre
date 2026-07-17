@@ -13,10 +13,7 @@ try {
   // natural collection point -- the markers are written on warn/threshold paths
   // and would otherwise accumulate one-per-session on a persistent dev machine.
   if (input.session_id) {
-    for (const f of [
-      `/tmp/ctx-watchdog-${input.session_id}`,
-      `/tmp/session-guard-${input.session_id}`,
-    ]) {
+    for (const f of [`/tmp/session-guard-${input.session_id}`]) {
       try {
         if (existsSync(f)) unlinkSync(f);
       } catch {

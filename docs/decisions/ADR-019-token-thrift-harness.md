@@ -92,8 +92,17 @@ opt-in `MAX_THINKING_TOKENS`, LSP plugin install, weekly `/usage` review.
   cost statusline) supersedes the corresponding custom hook — delete ours then.
 - A second regular contributor: revisit per-user metering (ccusage/OTel).
 
+## Amendment (2026-07-16) — context-watchdog removed
+
+The `UserPromptSubmit` **context-watchdog** hook (which warned at 60/80/90% of the token window)
+was **removed at the operator's request** on 2026-07-16. The rest of ADR-019's token-thrift harness
+stands (scout routing, `verbose-guard`, `/handoff-session`, `/batch`, statusline `ctx %`, quiet
+gates). Live context awareness now relies on the statusline `ctx %` readout + operator/agent
+judgment to run `/handoff-session` when a session gets long, rather than an automated threshold
+warning.
+
 ## Related
 
-- `docs/token-policy.md` · `.claude/hooks/{context-watchdog,verbose-guard,session-receipt}.mjs`
+- `docs/token-policy.md` · `.claude/hooks/{verbose-guard,session-receipt}.mjs`
 - `.claude/statusline.mjs` · `.claude/agents/scout.md`
 - `.claude/skills/handoff-session/` · `.claude/skills/batch/` · `scripts/repo-map.mjs`

@@ -143,7 +143,7 @@
         "continue in a fresh session"
       ],
       "paths": ["docs/SESSION-HANDOFF.md"],
-      "reason": "When the context watchdog warns, hand off at the next milestone instead of degrading."
+      "reason": "When a session is getting long, hand off at the next milestone instead of degrading."
     },
     {
       "skill": "batch",

@@ -196,7 +196,6 @@ learned).
 | `session-stop.mjs`        | S3      | Hard-block ending with unpushed commits (Stop)         |   ✅   | Fired live repeatedly; the pushed-or-it-didn't-happen gate.    |
 | `auto-handoff.mjs`        | S3      | Auto-generate session handoff (SessionEnd/Stop)        |   🟡   | Wired; not directly triggered this session.                    |
 | `pre-compact-refresh.mjs` | S3      | Refresh state before compaction (PreCompact)           |   🟡   | Wired; no compaction occurred.                                 |
-| `context-watchdog.mjs`    | S3      | Warn at 60/80/90% token depth (UserPromptSubmit)       |   ✅   | Below-threshold → pass-through. Secondary: token thrift.       |
 | `session-receipt.mjs`     | S3      | Write a session receipt (SessionEnd)                   |   🟡   | Wired; session still open.                                     |
 | `render-handoff.mjs`      | S5      | Render the handoff status tables                       |   ✅   | 37ms, byte-stable.                                             |
 | `repo-map.mjs`            | S5      | Regenerate `docs/REPO-MAP.md`                          |   ✅   | 36ms, md5-stable.                                              |

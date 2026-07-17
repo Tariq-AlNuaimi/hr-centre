@@ -46,7 +46,7 @@ pass (ADR-048) adds ~10s to `/ship`'s build phase.
   unless it changed.
 - When compacting, always preserve: the modified-file list, last `/ship` status, open findings,
   and the operator's goal.
-- When the context watchdog warns, run `/handoff-session` at the next milestone; repetitive
+- When a session gets long, run `/handoff-session` at the next milestone; repetitive
   N-file jobs go through `/batch`, not one long session.
 - Durable cross-session knowledge (decisions/gotchas/conventions) lives in `docs/agent-memory.md`
   (a ≤30-line digest surfaced at SessionStart, sections retrieved on demand — V2-102) — add via
@@ -126,13 +126,6 @@ disable; if security-related, log in SECURITY.md §12.
 
 ## Known traps (don't "fix")
 
-- The context-watchdog fires per **session depth** (60/80/90% of the token window), not per repo —
-  there is no template-vs-fork gate in `.claude/hooks/context-watchdog.mjs`. A short fork session
-  simply hasn't crossed a threshold yet. If a fork's watchdog is genuinely silent, the cause is
-  missing wiring: `.claude/settings.json` (which binds the hook to `UserPromptSubmit`) is a
-  `/sync-from-template` REVIEW layer, so a fork that pulled the hook script but skipped the
-  settings diff has the script with no event binding. Reconcile `settings.json`, don't rewrite the
-  hook.
 - After large route deletions, a stale `.next` can break typecheck with TS2307 into `.next/types`
   — `npm run ship` auto-heals this.
 

@@ -21,7 +21,7 @@ Each objective is inferred from the tools built to serve it:
 | **O2** | **A security floor that never bends** — even a throwaway is secure-by-default                                     | 10 ESLint rules · auth wrappers (`api-helpers`) · audit + soft-delete Prisma extensions · zod boundaries · `protect-secrets`/`dangerous-commands` hooks · gitleaks |
 | **O3** | **Quality enforced as gates, not hoped for** — the Five Pillars (speed/secure/maintainable/scalable/high-quality) | `/ship` (18 gates) · `/qa` → `/design-qa` → `/uat` · `findings-register` wave-offs                                                                                 |
 | **O4** | **Enforcement over advice** — convert good-practice prose into machine checkpoints                                | build-vs-buy gate (ADR-032) · blueprint gate (ADR-033) · complexity gate (ADR-034) · tiered gates (ADR-025)                                                        |
-| **O5** | **Cost discipline / token thrift** — the operator iterates cheaply                                                | `scout` (haiku) · `verbose-guard` · `context-watchdog` · model-routing (ADR-022) · `/batch`                                                                        |
+| **O5** | **Cost discipline / token thrift** — the operator iterates cheaply                                                | `scout` (haiku) · `verbose-guard` · model-routing (ADR-022) · `/batch`                                                                                             |
 | **O6** | **Cross-session durability** — ephemeral containers never lose work                                               | `session-stop` hook (hard-block on unpushed) · `/handoff-session` · `agent-memory` · `pre-compact-refresh`                                                         |
 | **O7** | **Design quality on the first pass** — non-slop UI without a designer                                             | `/design-system` · shadcn/Radix primitives · `tokens.css` · `no-raw-hex-color` · `uat-rubric`                                                                      |
 | **O8** | **Graceful growth + clean exit** — prototype → production without restructuring                                   | `/scale-up` recipes · `/handoff` (to IT) · `/conform` · `/sync-from-template`                                                                                      |
@@ -117,7 +117,6 @@ flowchart LR
 
     subgraph LIFE[" Session lifecycle hooks "]
         START[session-start · bootstrap]
-        WATCH[context-watchdog · 60/80/90%]
         STOP[session-stop · BLOCK unpushed<br/>the one fail-CLOSED gate]
         COMPACT[pre-compact-refresh]
     end
@@ -148,7 +147,7 @@ The layer everything else answers to — read at SessionStart, enforced by the g
 
 ## How a single change flows through all five layers
 
-1. Operator prompts the **main agent** → the prompt passes `UserPromptSubmit` hooks (`skill-activation` suggests, `context-watchdog` warns). _(L4 + L3)_
+1. Operator prompts the **main agent** → the prompt passes `UserPromptSubmit` hooks (`skill-activation` suggests). _(L4 + L3)_
 2. Agent picks a **skill** from the lifecycle spine (e.g. `/scaffold-entity`), possibly delegating recon to **scout**. _(L1 + L4)_
 3. Agent writes code → each tool call passes **PreToolUse deny gates** (build-vs-buy, blueprint, etc.). _(L3)_
 4. Code lands in the **runtime app** along the enforced call chain, satisfying the **ESLint invariants**. _(L2)_

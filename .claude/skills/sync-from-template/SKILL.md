@@ -39,7 +39,7 @@ Backed by `scripts/sync-from-template.mjs`.
 > event (`SessionStart`/`UserPromptSubmit`/`Stop`/`PreCompact`) — is a REVIEW layer.
 > So a fork that pulls a NEW or changed hook script but skips the `settings.json`
 > diff ends up with the script on disk and **no event binding → the hook never
-> fires**. This is the usual cause of "the context-watchdog works in the template
+> fires**. This is the usual cause of "the hook works in the template
 > but not in my fork." After any sync that touches `.claude/hooks`, **always
 > reconcile the `settings.json` `hooks` block** from `.template-sync-review.diff`
 > and confirm every shipped hook is bound. (A self-check: the hook scripts present
