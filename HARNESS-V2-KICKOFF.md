@@ -1,5 +1,9 @@
 # HARNESS-V2 — Program Kickoff (Orchestrator Prompt)
 
+> **✅ CLOSED 2026-07-17.** The program ran to completion — all 48 items on `main`, re-audit
+> evidence in `docs/HARNESS-V2-EVIDENCE.md`, closeout in `docs/HARNESS-V2-CLOSEOUT.md`. This
+> kickoff prompt is retained as template-dev history (pruned from forks via the doc-manifest).
+
 **Repo:** fullstack-vibe-template · **Operator:** Tariq Al-Naaimi
 **Program:** Remediation + capability program derived from an external piece-level audit (July 2026).
 **Companion file:** `HARNESS-V2-BACKLOG.md` (the item register — the WHAT). This file is the HOW.

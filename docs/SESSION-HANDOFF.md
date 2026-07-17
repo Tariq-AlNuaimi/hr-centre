@@ -4,7 +4,7 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-18 · last /ship: **green** (f077a7a, 2026-07-18)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (972862a, 2026-07-17)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -37,6 +37,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 | EP — Enterprise pivot P0+P1+P2 (WS-1..8, ADR-035..048) | [x] | 4989347 · 2026-07-12 · All landed on main: WS-1 distroless Docker, WS-2 supply-chain+Argon2id, WS-3 Valkey limiter, WS-4 OTel backbone, WS-5 lib/ai + /scaffold-ai-endpoint + ai-eval gate + AI-Quality pillar + pgvector seam + Langfuse-via-OTel, WS-6 Ory Polis SSO/SCIM (closeout 4989347), WS-7 Node 24 + zod v4 + Prettier gate + React Compiler (ADR-048), WS-8 harness hardening. |
 | CW — Code wave items 1–8 (ADR-049..056) | [x] | f9f6c33 · 2026-07-13 · 1 .mcp.json pins · 2 OpenAPI seam (opt-in Scalar enabler) · 3 Fumadocs docs-site enabler · 4 account-free CI/supply-chain slice (zizmor, osv, license gate, --ignore-scripts) · 5 pg-boss queue seam · 7 harness-as-plugin + agent-eval v1 · 8 A.6 verdict table. Item 6 = no action (auth pin done; SheetJS trigger-gated). Batched senior review closed (44ac3e1). Socket/Harden-Runner deferred pending operator accounts. |
 | A.6 — frontend-design plugin adoption (top A.6 action) | [x] | 4ad32b5 · 2026-07-13 · Enabled project-wide, ordered AHEAD of /design-system (SKILL.md §0; repo tokens/primitives stay binding). TRIAL VERDICT PENDING on the next real UI build (agent-memory 2026-07-13). |
+| Finalize — Post-close finalization — WS-1 Docker verify+fix, Renovate cutover, doc refresh | [x] | 972862a · 2026-07-17 · WS-1 self-host distroless image built+booted+migrated+served for the FIRST time (a Docker daemon became available); 5 latent defects fixed (2378a91/4d8d111): build-time AUTH_SECRET, public/ dir, prod-pruned node_modules (Prisma 7 CLI closure), prisma.config.ts copy, pgvector smoke DB. findings-register WS-1 = fixed. Renovate app connected + dependabot.yml retired (972862a). Docs finalized: session-state/handoff re-stamped, agent-memory updated, dead scratch removed, superseded docs closed in place. |
 
 **22 comparison categories (directive D1 coverage)**
 
@@ -82,87 +83,39 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. harness-v2 CLOSED. Post-close DEFERRAL batch DONE + senior-reviewed + fixed + green (f077a7a): O5, P6, #17, #22 (ADR-062 prepare-not-publish), #27 (harness-orientation). Review: 3 findings (orientation gate-quartet accuracy, SBOM duplicate-name aggregation, fan-out octopus fallback) ALL fixed. FF-land on main.
-2. Only 3 deferrals remain, each blocked/gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (stay-frozen), uptime/Storybook (catalog suffices).
-3. No open work after the batch lands on main.
+1. harness-v2 CLOSED + all post-close work landed on main (972862a, /ship green). WS-1 Docker self-host image VERIFIED+FIXED in-session (5 latent defects — build AUTH_SECRET, public/, prod node_modules Prisma-CLI closure, prisma.config.ts copy, pgvector smoke DB); findings-register WS-1 = fixed. Renovate app connected + dependabot.yml retired.
+2. 3 deferrals remain, each gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (stay-frozen), uptime/Storybook (catalog suffices).
+3. TEMPLATE FINALIZED 2026-07-17 — main is the source of truth; no in-flight work. Docs refreshed, dead scratch removed, historical docs closed in place.
 
 <!-- END:auto-status -->
 
 ---
 
-# CURRENT STATE (2026-07-13) — programs complete; repo hygiene is the only open item
+# TEMPLATE FINALIZED (2026-07-17)
 
-> This handoff was collapsed on 2026-07-13: the replatform program, the enterprise
-> pivot (WS-1..8), and the code wave (items 1–8) are ALL COMPLETE and on `main`.
-> The full session-by-session history lives in git
-> (`git log --follow docs/SESSION-HANDOFF.md`, sections before 2026-07-13).
+> The template is finalized: `main` is the single source of truth. Every program is
+> complete and landed — the AntD→Tailwind replatform, the enterprise pivot (WS-1..8),
+> the code wave, and harness-v2 (Phases 0–5). Post-close, the WS-1 self-host Docker
+> image was verified + fixed end-to-end (it had never actually been built), and
+> Renovate replaced Dependabot as the dependency bot. Full history: `git log` +
+> `docs/HARNESS-V2-CLOSEOUT.md`.
 
 ## State
 
-- `main` = branch tip = everything landed. Last `/ship`: **green** (19 phases) on 2026-07-13.
-- Senior-review batch over code-wave items 4/5/7: retrieved + both findings fixed (`44ac3e1`).
-- A.6 P1 frontend-design plugin: adopted (`4ad32b5`), ordered ahead of `/design-system`.
-  **Trial verdict pending** — use it on the next real UI build, record the verdict in
-  agent-memory + `docs/research/a6-tool-shortlist-verdicts.md` (fallback: `impeccable`).
-- No work is in flight. Remaining backlog is trigger-gated only (see the deferred list
-  in the auto-status block + `docs/deferred-adoption-plan.md`).
+- `main` = branch tip = everything landed. Last `/ship`: **green** (`972862a`, 2026-07-17).
+- No work is in flight. Remaining backlog is trigger-gated only (see the deferred list in
+  the auto-status block above + `docs/findings-register.md`; 3 gated deferrals remain).
+- Durable landmines/gotchas live in `docs/agent-memory.md` (a digest is surfaced at
+  SessionStart; retrieve full sections on demand).
 
-## OPERATOR ACTION — delete the 18 stale remote branches
+## Operator hygiene (optional — a session cannot do these)
 
-Sessions cannot do this: the git bridge returns HTTP 403 on ref-deletion (re-verified
-2026-07-13) and the GitHub MCP has no delete-branch tool. Run locally (or use the
-GitHub Branches UI). Adjudication (2026-07-13, per-branch `merge-base` + unique-commit
-inspection):
-
-**Fully merged into main (8) — zero unique commits:**
-
-```sh
-git push origin --delete \
-  claude/enterprise-pivot-research-6t7euo \
-  claude/enterprise-pivot-research-ai8st1 \
-  claude/enterprise-pivot-research-kiaozb \
-  claude/enterprise-pivot-research-pfzaho \
-  claude/enterprise-ws-6-identity-r5jo7s \
-  claude/enterprise-ws-7-stack-bumps \
-  claude/go-6wma0m \
-  claude/next-patch-bump-main-1i0qvr
-```
-
-**Superseded doc-scratch only (6) — unique commits are handoff/REPO-MAP regens or
-code that was verified already landed on main (next 16.2.10 ✓, React Compiler +
-`react-hooks/incompatible-library` at error ✓, WS-8 /remember content ✓):**
-
-```sh
-git push origin --delete \
-  claude/enterprise-pivot-p2-3ws7rj \
-  claude/enterprise-ws-6-closeout-lh3me8 \
-  claude/enterprise-ws-8-harness \
-  claude/formfield-zod-v4-tests-2pv2ho \
-  claude/go-h3f21f \
-  claude/go-vshxj1
-```
-
-**Dead pre-replatform history (4) — no common ancestor with main (`merge-base` empty);
-their useful content was re-derived on the new history (complexity gate ADR-034,
-watchdog tuning, enterprise research v2, MCP wiring — all on main):**
-
-```sh
-git push origin --delete \
-  claude/claudecodeui-review-dwljgu \
-  claude/enterprise-pivot-research-cqdgsw \
-  claude/template-repo-integration-hi4598 \
-  claude/watchdog-session-context-waktf8
-```
-
-After this session's branch (`claude/git-integration-dlg383`) is merged/confirmed on
-main, delete it too — leaving only `main`.
-
-## Notes for the next session
-
-- Landmines are in `docs/agent-memory.md` (gitleaks reinstall via the Go proxy; run
-  `/ship` WITHOUT `NODE_ENV=production`; `make browser-up` before any real-site
-  browser work; AskUserQuestion "permission stream closed" → retry once).
-- Optional prod-DB hygiene: the axe-probe admin (`axe-probe@example.com`) from the
-  2026-07-03 dark-axe run still exists in the prod DB (soft-delete via user
-  management if unwanted); `SEED_ADMIN_PASSWORD` env still holds the probe value —
-  `admin@example.com` login is unaffected.
+- **Stale remote branches.** ~27 old `claude/*` program branches, plus now-orphaned
+  `dependabot/*` branches (Dependabot was retired 2026-07-17), still exist on the remote.
+  A session cannot delete refs (the git bridge returns 403). Clean them via the GitHub
+  Branches UI, or locally with `git push origin --delete <branch>`, leaving `main` (and any
+  active working branch). Renovate's first branch (`renovate/minor-and-patch-dependencies`)
+  is expected — keep it.
+- **Secrets.** If a live Vercel/Neon deployment exists, confirm `AUTH_SECRET` +
+  `SEED_ADMIN_PASSWORD` are the deployment's own values, not the seeded defaults
+  (SECURITY.md T-10).

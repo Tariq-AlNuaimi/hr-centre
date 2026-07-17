@@ -211,42 +211,27 @@ Per CLAUDE.md, each session ends pushed; each wave/workstream sub-feature gets i
 
 ---
 
-## TODO — finalize deferred decisions (do LAST, before declaring the program done)
+## Deferred decisions — RESOLVED (program CLOSED; adjudicated 2026-07-17)
 
-Everything deferred anywhere in this program is consolidated here so nothing is
-silently dropped and every deferral gets an explicit **adopt / drop** ruling at the
-end. This is the program's closeout gate: the program is not "done" until every row
-below is adjudicated (moved to an ADR line or a findings-register `dropped` entry).
-Source of truth for the live status is `docs/deep-comparison/ADOPT.md`; this list
-mirrors it plus the in-flight deferrals that surfaced during the build.
+The program is **closed**. Every deferral below was adjudicated as **DEFER (trigger-gated)** —
+none dropped silently, each re-promotable via `/blueprint` when its trigger fires. The LIVE,
+authoritative list is `docs/session-state.json` `deferred[]` (plus `docs/findings-register.md`
+for any pillar wave-offs); this section is the historical consolidation, not an open gate.
 
-**Deferred during the build (decide when the trigger fires):**
+**Deferred during the build (trigger-gated):**
 
-- [ ] **Tremor charts** — `@tremor/react@3.18.7` has a hard `react@^18` peer; deferred
-      (C2, 2026-07-03). Chart runs on recharts with a Tremor-style API. **Trigger:**
-      `@tremor/react` peer accepts React 19 → then adopt as a drop-in, or DROP Tremor
-      and keep recharts permanently (record which in ADR-029).
-- [ ] **Lighthouse-CI per-PR assertion** (A3) — config + `npm run lhci` shipped; the CI
-      gate stays dormant until Actions activate. **Trigger:** `/handoff` to a team with
-      Actions billing → wire `lighthouserc.cjs` into CI or DROP for ad-hoc only.
+- `[DEFER]` **Tremor charts** — `@tremor/react` has a hard `react@^18` peer; Chart runs on
+  recharts with a Tremor-style API. Trigger: the peer accepts React 19 → adopt as a drop-in, else
+  keep recharts permanently (record in ADR-029).
+- `[DEFER]` **Lighthouse-CI per-PR** (A3) — config + `npm run lhci` shipped; the CI gate stays
+  dormant until Actions activate (`/handoff` to a paid-Actions team).
 
-**Deferred backlog (from ADOPT.md "Deferred / future"; re-promote via `/blueprint`):**
+**Deferred backlog (re-promote via `/blueprint` on trigger; all `[DEFER]`):** claude-task-master,
+Backlog.md, fastmcp provider path, keploy record-replay, Vitest migration, citus / read-replicas,
+sonarqube-mcp (at `/handoff`), wasp declarative-CRUD study, specialist-agent seeds
+(`nextjs-pro`/`postgres-pro`/`prisma-expert`). Triggers tracked in `session-state.json` `deferred[]`.
 
-- [ ] claude-task-master (fork outgrows single-session planning)
-- [ ] Backlog.md (same trigger)
-- [ ] fastmcp provider path (we ship our own MCP server)
-- [ ] keploy record-replay (API-level test-gen alternative)
-- [ ] Vitest migration (test-runner swap; needs its own ADR)
-- [ ] citus / read-replicas (scale trigger, cat 07)
-- [ ] sonarqube-mcp at `/handoff` (IT team runs SonarQube)
-- [ ] wasp declarative-CRUD ergonomics study over `/scaffold-entity` (cat 11)
-- [ ] specialist-agent seeds (`nextjs-pro`/`postgres-pro`/`prisma-expert`) as one
-      optional stack-aware review agent (cat 03)
-
-**Closeout rule:** when the program's active waves (C3/C4, A1, A5) are all `[x]`, walk
-this list top-to-bottom with the operator and give each row a final verdict — none may
-remain `[ ]` at program close. A row kept unbuilt is a _decision to drop_ (logged), not
-an oversight.
+**Closeout:** all rows adjudicated (DEFER); none remain open. Nothing was silently dropped.
 
 ---
 

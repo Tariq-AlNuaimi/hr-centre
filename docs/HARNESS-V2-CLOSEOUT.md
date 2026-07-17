@@ -112,6 +112,27 @@ Deliberately NOT done in harness-v2 — deferred with a `docs/findings-register.
   SPLIT, 2026-07-17).
 - **uptime / Storybook recipes (#28)** → `docs/oss-catalog.md` catalog entries suffice for now.
 
+## Post-close finalization (2026-07-17)
+
+Three things landed after the program closed, then the repo was finalized as a clean template:
+
+- **WS-1 self-host Docker image — VERIFIED + FIXED.** The distroless image (`Dockerfile`, ADR-035)
+  had never actually been built (no daemon in prior sessions). A daemon became available; building +
+  booting it surfaced **five latent defects** — a missing build-time `AUTH_SECRET`, no `public/`
+  dir, the Prisma 7 CLI's runtime closure absent (only `prisma`+`@prisma` were copied →
+  `Cannot find module 'effect'`), `prisma.config.ts` not copied, and a plain-postgres smoke DB.
+  All fixed (ship the production-pruned `node_modules`, `public/.gitkeep`, copy `prisma.config.ts`,
+  `pgvector/pgvector:pg18` smoke DB); proven build→boot→migrate(7/7)→serve as nonroot. Image ~1.87 GB.
+  `findings-register.md` WS-1 = fixed. (`2378a91`/`4d8d111`)
+- **Renovate cutover.** The Renovate app was connected as the sole dependency bot; `.github/
+dependabot.yml` was retired (a present dependabot.yml is not dormant → duplicate PRs). (`972862a`)
+- **Template finalization.** In-flight state (`session-state.json`/`SESSION-HANDOFF.md`) re-stamped
+  to green `972862a`; `agent-memory.md` updated with the Docker + Renovate lessons; dead scratch
+  removed (`HANDOFF-NEXT-SESSION.md`); superseded docs closed in place (AntD-6 design blueprint →
+  ADR-029, the replatform TODO gate → resolved, root program docs → CLOSED banners); stale/placeholder
+  doc lines corrected. No `docs/archive/` introduced — the template keeps its history on `main`,
+  pruned from forks via `docs/doc-manifest.json`.
+
 ## Exit
 
 All 48 items complete, `/ship`-green, senior-reviewed, and landed on `main`. The evidence manifest

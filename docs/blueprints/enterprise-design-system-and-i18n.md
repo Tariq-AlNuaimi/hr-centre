@@ -1,7 +1,17 @@
 # Blueprint — Enterprise design-system overhaul + optional Arabic/RTL
 
-Status: **IN PROGRESS** — decisions signed off (1A config-flag English-only,
-2A full overhaul Phases 0–4, 3A one brand.config per client).
+> **SUPERSEDED / CLOSED (2026-07-17).** Retained as decision history. Two outcomes:
+> (1) the **Arabic/RTL-optional** part SHIPPED and is live — config-driven `locales`/
+> `defaultLocale` in `project.config.json` → `i18n/config.ts` (see `.claude/rules/design.md`
+> "Known traps"). (2) The **Ant Design 6 design-system** part (this doc's `antd-theme.ts` /
+> AntD-6 assumption, per ADR-027) was **REVERSED by ADR-029** — the UI replatformed to
+> Tailwind v4 + shadcn/Radix, so the AntD-specific plans here are obsolete. The current design
+> system lives in `/design-system` + `docs/design-recipes.md` + `app/tokens.css`. Do not build
+> from the AntD content below.
+
+Status: **SUPERSEDED (2026-07-17)** — i18n-optional part shipped; AntD-6 design-system part
+reversed by ADR-029 (Tailwind replatform). Originally: IN PROGRESS — decisions signed off
+(1A config-flag English-only, 2A full overhaul Phases 0–4, 3A one brand.config per client).
 
 ## Implementation status
 
@@ -13,13 +23,19 @@ Status: **IN PROGRESS** — decisions signed off (1A config-flag English-only,
   `/en`. `messages/ar.json` kept inert.
 - ✅ **Phase 0 — Brand contract & font.** `brand.config.ts` (white-label single
   source) feeds `antd-theme.ts` + layout; Inter loaded via `next/font`.
-- ⏳ Phases 1–4 — in progress.
+- ⛔ Phases 1–4 — NOT pursued as written; superseded by the ADR-029 Tailwind replatform
+  (see the banner at the top). The design-system goal was met via `/design-system` +
+  `docs/design-recipes.md`, not the AntD-6 path drafted here.
 
 ---
 
-(Original draft below.)
+(Original draft below — verbatim history. The 3 decisions were signed off long ago; this whole
+document is SUPERSEDED per the banner at the top. The "DRAFT / awaiting sign-off" line below is
+the original 2026-06-26 wording, kept for the record only.)
 
-Status: **DRAFT — awaiting operator sign-off on the 3 decisions below.**
+Status: ~~DRAFT — awaiting operator sign-off on the 3 decisions below.~~ **[RESOLVED — the 3
+decisions were signed off; this whole doc is SUPERSEDED, see the banner at the top. Line kept as
+verbatim 2026-06-26 history.]**
 Owner: Tariq Al-Naaimi. Created: 2026-06-26.
 Context: operator wants apps that look _enterprise-grade / sellable to clients_
 ("they look like amateur projects"), and wants Arabic/RTL **optional** ("I don't

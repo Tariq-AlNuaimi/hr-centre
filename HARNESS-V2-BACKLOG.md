@@ -1,5 +1,11 @@
 # HARNESS-V2 — Program Backlog
 
+> **✅ CLOSED 2026-07-17.** All 48 items complete, `/ship`-green, senior-reviewed, and on `main`.
+> The `[ ]`-style acceptance criteria below are the original register form — do not read them as
+> open work. Closeout + per-phase retro: `docs/HARNESS-V2-CLOSEOUT.md`; per-item evidence:
+> `docs/HARNESS-V2-EVIDENCE.md`. (This is template-dev history, pruned from forks via
+> `docs/doc-manifest.json`.)
+
 Derived from the July 2026 external audit (structural, enforcement, methodology, pillar,
 piece-level benchmark passes). 71 raw findings collapsed to 45 actions across 6 phases.
 IDs are stable and trace back to the audit conversation. `[P]` groups within a phase are

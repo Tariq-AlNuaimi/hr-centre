@@ -34,8 +34,8 @@ findings-register waiver wiring.
 - [x] **jscpd** — duplication threshold gate (cats 08, 13) — landed 2026-07-03 (`a0a9f61`; ≤3% over app/components/lib/hooks, baseline 0.40%, `jscpdAck`)
 - [x] **coverage floor** — test-coverage threshold in `/ship` (cats 09, 16) — landed 2026-07-03 (`a0a9f61`; node built-in `--test-coverage` over `lib/**`, lines65/funcs70/branch80, `coverageAck`)
 - [x] **size-limit** — bundle budget gate (cat 12) — landed 2026-07-03 (`a0a9f61`; 1.2MB gzip client JS, baseline 1.01MB, `sizeLimitAck`)
-- [x] **eslint-plugin-jsx-a11y** — static a11y in the lint gate (cat 22) — landed 2026-07-03 (`a0a9f61`; recommended set at error; 3 UI-layer rules held at warn w/ TODO(C4))
-- [x] **complexity metric** — quantified complexity threshold (cat 09) — landed 2026-07-03 (`a0a9f61`; cyclomatic ≤24 on product code, TODO tighten toward ~15 post-replatform)
+- [x] **eslint-plugin-jsx-a11y** — static a11y in the lint gate (cat 22) — landed 2026-07-03 (`a0a9f61`; recommended set at error). TODO(C4) CLOSED: the 3 UI-layer rules were promoted from warn to **error** (`eslint.config.mjs:146` — "every jsx-a11y rule is now error").
+- [x] **complexity metric** — quantified complexity threshold (cat 09) — landed 2026-07-03 (`a0a9f61`; cyclomatic ≤24 on product code). The "tighten toward ~15" plan is now the **`sonarjs/cognitive-complexity` gate at 25 with a documented ratchet-to-15** (V2-404, `eslint.config.mjs:121`; ADR-034 closed).
 - [x] **E-gate** — DB-structure check (ADR-031) — landed 2026-07-02 (`scanDbStructure` in
       `scripts/ship.mjs`: baseline-model check, migrations non-empty, shadow-DB sync check with
       graceful WARN degradation, `dbAck` + register adjudication)

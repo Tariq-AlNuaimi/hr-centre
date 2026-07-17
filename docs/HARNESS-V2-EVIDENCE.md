@@ -1,5 +1,10 @@
 # HARNESS-V2 — Evidence Manifest (Re-audit Contract)
 
+> **✅ PROGRAM CLOSED 2026-07-17.** All 48 rows carry evidence (zero empty-evidence cells for
+> non-deferred items — the V2-507 exit bar). The "Item count / all rows start pending" wording in
+> the Contract preamble below is the _format contract_, not live status. Closeout:
+> `docs/HARNESS-V2-CLOSEOUT.md`.
+
 This file is the re-audit contract defined in `HARNESS-V2-KICKOFF.md` §6. It is
 maintained from the first commit of the program. The post-program re-audit walks this
 table row by row: **an empty Evidence cell is a failed item regardless of the code.**

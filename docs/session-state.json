@@ -3,11 +3,11 @@
   "program": "harness-v2",
   "blueprint": "docs/blueprints/harness-v2-phase-0.md",
   "branch": "claude/harness-v2-kickoff-yhid26",
-  "updated": "2026-07-18",
+  "updated": "2026-07-17",
   "lastShip": {
-    "sha": "f077a7a",
+    "sha": "972862a",
     "status": "green",
-    "date": "2026-07-18"
+    "date": "2026-07-17"
   },
   "autoSpawn": {
     "enabled": false,
@@ -89,6 +89,15 @@
       "blockedBy": [],
       "date": "2026-07-13",
       "note": "Enabled project-wide, ordered AHEAD of /design-system (SKILL.md §0; repo tokens/primitives stay binding). TRIAL VERDICT PENDING on the next real UI build (agent-memory 2026-07-13)."
+    },
+    {
+      "id": "Finalize",
+      "title": "Post-close finalization — WS-1 Docker verify+fix, Renovate cutover, doc refresh",
+      "status": "done",
+      "commit": "972862a",
+      "blockedBy": [],
+      "date": "2026-07-17",
+      "note": "WS-1 self-host distroless image built+booted+migrated+served for the FIRST time (a Docker daemon became available); 5 latent defects fixed (2378a91/4d8d111): build-time AUTH_SECRET, public/ dir, prod-pruned node_modules (Prisma 7 CLI closure), prisma.config.ts copy, pgvector smoke DB. findings-register WS-1 = fixed. Renovate app connected + dependabot.yml retired (972862a). Docs finalized: session-state/handoff re-stamped, agent-memory updated, dead scratch removed, superseded docs closed in place."
     }
   ],
   "categories": [
@@ -332,8 +341,8 @@
     }
   ],
   "nextActions": [
-    "harness-v2 CLOSED. Post-close DEFERRAL batch DONE + senior-reviewed + fixed + green (f077a7a): O5, P6, #17, #22 (ADR-062 prepare-not-publish), #27 (harness-orientation). Review: 3 findings (orientation gate-quartet accuracy, SBOM duplicate-name aggregation, fan-out octopus fallback) ALL fixed. FF-land on main.",
-    "Only 3 deferrals remain, each blocked/gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (stay-frozen), uptime/Storybook (catalog suffices).",
-    "No open work after the batch lands on main."
+    "harness-v2 CLOSED + all post-close work landed on main (972862a, /ship green). WS-1 Docker self-host image VERIFIED+FIXED in-session (5 latent defects — build AUTH_SECRET, public/, prod node_modules Prisma-CLI closure, prisma.config.ts copy, pgvector smoke DB); findings-register WS-1 = fixed. Renovate app connected + dependabot.yml retired.",
+    "3 deferrals remain, each gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (stay-frozen), uptime/Storybook (catalog suffices).",
+    "TEMPLATE FINALIZED 2026-07-17 — main is the source of truth; no in-flight work. Docs refreshed, dead scratch removed, historical docs closed in place."
   ]
 }

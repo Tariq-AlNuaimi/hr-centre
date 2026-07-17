@@ -14,11 +14,6 @@
       "why": "harness build history (evidence, problems, inventory)"
     },
     {
-      "glob": "docs/HANDOFF-NEXT-SESSION.md",
-      "inheritance": "template-dev",
-      "why": "template dev session handoff"
-    },
-    {
       "glob": "docs/SESSION-HANDOFF.md",
       "inheritance": "template-dev",
       "why": "branch-only in-flight state; never reaches fork main"
