@@ -57,8 +57,24 @@ COPY . .
 ENV DOCKER_BUILD=1
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+# Build-only placeholder for AUTH_SECRET: lib/env.ts validates the full env with
+# zod at module load, which `next build` triggers while collecting page data (e.g.
+# /api/internal/audit-purge). AUTH_SECRET has no default and z.string().min(32),
+# so the build fails without one. This is NOT a secret and is NOT baked into the
+# runtime image — Next reads server env from process.env at runtime (non-public
+# vars are never inlined); the real AUTH_SECRET is injected at `docker run`, like
+# DATABASE_URL. On Vercel this never surfaced because AUTH_SECRET is configured there.
+ENV AUTH_SECRET="build-only-placeholder-not-a-secret-0000000"
 RUN npx prisma generate
 RUN npm run build
+# Prune devDependencies so the node_modules copied into the runtime is the full
+# PRODUCTION closure. `prisma` is a runtime dependency (the entrypoint runs
+# `prisma migrate deploy` at boot), and the Prisma 7 CLI loads @prisma/config →
+# effect/c12/jiti + iconv-lite etc. at runtime — a closure the Next standalone
+# trace does NOT include (it only traces the server's own imports, e.g.
+# @prisma/client). Copying just node_modules/prisma + @prisma is insufficient and
+# crashes at boot ("Cannot find module 'effect'").
+RUN npm prune --omit=dev
 
 # ---- runner: distroless, non-root, minimal runtime -------------------------
 # The distroless nodejs24 image's ENTRYPOINT is already `node` and it runs as
@@ -80,19 +96,18 @@ COPY --from=builder --chown=nonroot:nonroot /app/public ./public
 
 # Prisma generated client + engine (this repo's generator outputs to
 # `generated/prisma`, not node_modules/.prisma) plus schema/migrations so
-# `prisma migrate deploy` can run at start, and the Prisma CLI + its engine
-# packages (the standalone trace does not include the CLI).
+# `prisma migrate deploy` can run at start.
 COPY --from=builder --chown=nonroot:nonroot /app/generated ./generated
 COPY --from=builder --chown=nonroot:nonroot /app/prisma ./prisma
-COPY --from=builder --chown=nonroot:nonroot /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nonroot:nonroot /app/node_modules/@prisma ./node_modules/@prisma
-# NOTE: this repo's generator is `prisma-client` (Prisma 7) with output to
-# `generated/prisma` (copied above), so there is NO legacy `node_modules/.prisma`
-# client dir to copy. If a build ever shows the runtime resolving `.prisma/client`
-# (e.g. after a generator change), add:
-#   COPY --from=builder --chown=nonroot:nonroot /app/node_modules/.prisma ./node_modules/.prisma
-# A single non-matching COPY glob fails the build, so this is left as a comment,
-# not a defensive wildcard.
+# Prisma 7 resolves the datasource url from prisma.config.ts (schema.prisma has no
+# `url`), so `migrate deploy` needs it at runtime (the CLI loads it via jiti).
+COPY --from=builder --chown=nonroot:nonroot /app/prisma.config.ts ./prisma.config.ts
+# The full PRODUCTION node_modules (devDeps pruned in the builder). This overlays
+# the minimal set the standalone trace already emitted, adding the Prisma 7 CLI's
+# runtime closure (@prisma/config → effect/c12/jiti, iconv-lite, …) that
+# `migrate deploy` needs at boot. Cherry-picking prisma + @prisma alone is NOT
+# enough — the CLI crashes on the first missing transitive dep.
+COPY --from=builder --chown=nonroot:nonroot /app/node_modules ./node_modules
 
 # The distroless-safe startup script (no shell available): migrate then serve.
 COPY --from=builder --chown=nonroot:nonroot /app/docker/entrypoint.mjs ./docker/entrypoint.mjs

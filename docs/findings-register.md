@@ -101,6 +101,27 @@ the changed surface is still **open** (un-adjudicated).
   pgvector RAG wave-off above. The runtime-resolution risk stands unchanged. RE-OPENS when the
   `docker-build` CI workflow — or a build-capable machine — actually builds + boots the distroless
   image and confirms the Prisma 7 client/query-engine resolves at runtime)
+  — **UPDATE 2026-07-17: VERIFIED + FIXED in-session** (a Docker daemon became available this
+  session — `sudo dockerd`, overlayfs, registry egress OK — so the RE-OPEN condition was met).
+  Building + booting the image as-authored surfaced **five real latent defects** the never-run
+  build had hidden (Vercel masked them because AUTH_SECRET is a configured env there): (1) the
+  builder stage set a dummy `DATABASE_URL` but no `AUTH_SECRET`, so `next build`'s page-data
+  collection threw a zod error (`lib/env.ts` validates at module load); (2) no `public/` dir
+  existed, so the runner `COPY /app/public` failed the build; (3) the runner cherry-picked only
+  `node_modules/prisma` + `@prisma`, so the Prisma 7 CLI crashed at boot with `Cannot find module
+'effect'` (its runtime closure — @prisma/config → effect/c12/jiti, iconv-lite, … — was absent);
+  (4) `prisma.config.ts` (which supplies the datasource url in Prisma 7; schema.prisma has no
+  `url`) was not copied, so `migrate deploy` errored "datasource.url required"; (5) not a defect —
+  the pgvector migration needs a `vector`-capable Postgres (Neon/pgvector image), not plain
+  postgres. Fixes (operator-approved this session — robust variant): build-only placeholder
+  `AUTH_SECRET`, `public/.gitkeep`, ship the production-pruned `node_modules` (full Prisma CLI
+  closure) via `npm prune --omit=dev`, and copy `prisma.config.ts`; `docker-build.yml`'s smoke-test
+  Postgres switched to `pgvector/pgvector:pg17`. **Proven end-to-end:** the committed Dockerfile
+  builds (1.87 GB, from a non-booting 587 MB), boots as nonroot (uid 65532), applies all 7
+  migrations against pgvector, and serves (HTTP 307). The register's named highest-risk unknown is
+  answered: the Prisma 7 client/query-engine DOES resolve at runtime in distroless — but only with
+  the dependency-closure fix. The ~1.87 GB size is the known cost of in-image migration (the heavy
+  Prisma 7 CLI + Next standalone). — owner: operator — status: fixed(2026-07-17, operator-approved)
 - 2026-07-03 — [maintainable] deferred-adoption #11 (specialist-agents) — **drop REVERSED by
   operator same day; now ADOPT.** The earlier drop reasoned that a stack-aware _review_ seed would
   duplicate `senior-code-reviewer`. The operator redirected it: build it as a **build-time ADVISOR**
