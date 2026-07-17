@@ -70,6 +70,7 @@
     "test:mutation": "stryker run",
     "skill-check": "node scripts/skill-standard-check.mjs",
     "sbom": "cyclonedx-npm --omit dev --output-format JSON --output-file sbom.json",
+    "license:sbom": "node scripts/sbom-license-gate.mjs",
     "audit:warn": "npm audit --audit-level=moderate || true",
     "test:coverage": "node --experimental-test-coverage --import tsx --test tests/contracts/*.test.ts",
     "prepare": "husky"

@@ -180,10 +180,13 @@ Two honest tiers — the constitution's "run `/ship` before every push" means th
   duplication · coverage · skill-check (agentskills.io conformance, V2-503) · build · size-limit ·
   gitleaks · npm-audit · ai-eval.
 - **`ship:full`** (`npm run ship:full` / `SHIP_FULL=1`; runs in `/deploy`, `/handoff`, CI): warm loop
-  **plus** the docker image-build + trivy scan (ADR-030), the BDD traceability gate (ADR-058), and
-  the **integration** gate — `scripts/test-integration.mjs` runs `tests/integration/*` against a real
+  **plus** the docker image-build + trivy scan (ADR-030), the BDD traceability gate (ADR-058), the
+  **integration** gate — `scripts/test-integration.mjs` runs `tests/integration/*` against a real
   Postgres (an existing `DATABASE_URL`, else an ephemeral `@testcontainers/postgresql` pgvector
-  container, else an honest skip; RED only on a genuine failure, degrade-to-WARN with no DB/Docker).
+  container, else an honest skip; RED only on a genuine failure, degrade-to-WARN with no DB/Docker) —
+  and the **SBOM license gate** (`npm run license:sbom`, O5/ADR-051): regenerates the CycloneDX SBOM
+  and evaluates IT against the ADR-051 deny set + `license-allowlist.json` (the warm loop's fast
+  lock-scan stays warm; this validates the compliance artifact a `/handoff` ships).
   The app-dependent QA slices (`uat:lean`, `visual-regression`) stay with `/qa` / `uat:full` (they
   need a live app + baseline). Warm green never implies the integration round-trips ran — `ship:full`
   (or a dev box with a DB) is where that claim is proven.

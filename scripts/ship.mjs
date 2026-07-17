@@ -1532,6 +1532,15 @@ if (FULL) {
         "  daemon to provision an ephemeral pgvector container). The round-trips did NOT run here;\n" +
         "  run `npm run test:integration` where Docker or a pgvector DATABASE_URL is available.",
     );
+
+  // SBOM-based license gate (O5, ADR-051). The warm loop's fast lock-scan (phase A `licenses`)
+  // stays warm; this regenerates the CycloneDX SBOM (the compliance artifact a /handoff ships)
+  // and evaluates IT against the SAME ADR-051 deny set + election allowlist. Full-loop only --
+  // SBOM generation is ~seconds. RED on a denied, non-elected license in the shippable SBOM.
+  console.log("ship: phase B (full) -- license:sbom (CycloneDX SBOM license gate, O5/ADR-051) ...");
+  const sbomLicense = await run("license:sbom", "node", ["scripts/sbom-license-gate.mjs"]);
+  report(sbomLicense);
+  if (!sbomLicense.ok) fail(sbomLicense);
 }
 
 // Record the green-for-HEAD signal the auto-spawn guard trusts (session-automation

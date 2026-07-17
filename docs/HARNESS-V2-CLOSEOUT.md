@@ -87,7 +87,9 @@ The V2 program folded a number of earlier-planned items into stronger mechanisms
 
 Deliberately NOT done in harness-v2 — deferred with a `docs/findings-register.md` line, not dropped:
 
-- **O5 license gate** (SBOM-based check) → a future program.
+- ~~**O5 license gate** (SBOM-based check)~~ → **SHIPPED 2026-07-18** (post-close deferral work):
+  `scripts/sbom-license-gate.mjs` + `npm run license:sbom`, wired into `ship:full`; reuses the ADR-051
+  deny set + allowlist against the CycloneDX SBOM. `docs/build-vs-buy-ledger.md` (O5).
 - **P6 worktree recipe** → document post-V2-105.
 - **#17 SECURITY.md full rewrite** → a future pass (V2-506 noted the size review out of scope).
 - **#22 marketplace publication** → the plugin is publish-READY (V2-503) but the private posture

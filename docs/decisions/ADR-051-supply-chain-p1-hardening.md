@@ -126,6 +126,14 @@ a redistribution problem for a shipped template), via a checker such as
   = MIT OR CC0) require an explicit MIT-election allowlist entry so a valid permissive
   option isn't flagged; and 2 `UNKNOWN`-license leaf utils need a documented exception.
 
+**Follow-on (O5, 2026-07-18).** The chosen warm gate scans `package-lock.json`. A complementary
+**SBOM-based gate** (`scripts/sbom-license-gate.mjs`, `npm run license:sbom`, wired into `ship:full`)
+now evaluates the generated **CycloneDX SBOM** — the compliance artifact a `/handoff` ships — against
+the SAME deny set + `scripts/license-allowlist.json` elections (it reuses `license-gate.mjs`'s
+exported `DENY`/`evaluateLicenses`/`loadAllowlist`, so there is no second license taxonomy to drift).
+The lock-scan stays warm; the SBOM gate is full-loop only (SBOM generation is ~seconds). See the
+build-vs-buy ledger (O5).
+
 #### Option 2 — Manual license review at `/handoff` only
 
 Review licenses once, by hand, when handing a fork to the IT team.

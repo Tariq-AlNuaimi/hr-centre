@@ -509,3 +509,24 @@ graceful **WebSearch / `docs/recipes.md` fallback** when context7 is unreachable
 confident answer. Verified live: a Prisma 7.6.0 `$extends` client-extension lookup returned current
 `result`/`model`/`query` extension docs + the `Prisma.defineExtension` typing pattern. No dependency
 added (MCP server already connected). See V2-504.
+
+### 2026-07-18 — SBOM-based license gate (scripts/sbom-license-gate.mjs) — O5 (deferral)
+
+Scope: scripts/sbom-license-gate.mjs
+Considered: **a third-party SBOM/license scanner** (`license-checker`, `license-compliance`, FOSSA,
+Snyk — each brings its own license taxonomy + allowlist format, duplicating the ADR-051 DENY set +
+`scripts/license-allowlist.json` this repo already owns, and the SaaS ones need an account/egress),
+**extend the existing warm lock-scan only** (`scripts/license-gate.mjs` already gates package-lock —
+but that's not the STANDARD compliance artifact a `/handoff` ships, and CycloneDX resolves licenses
+from more sources than the lockfile's `license` field, so the SBOM can surface a license the lock
+scan missed), **build a thin evaluator over the SBOM we already generate** (chosen — `npm run sbom`
+= `cyclonedx-npm` already produces `sbom.json`; reuse `license-gate.mjs`'s exported `DENY` +
+`evaluateLicenses` + `loadAllowlist` verbatim so there is NO second license taxonomy to drift).
+Decision: **BUILD `scripts/sbom-license-gate.mjs`** — generate/read the CycloneDX SBOM, map each
+`components[].licenses` entry (`license.id` / `license.name` / `expression`, name from the `purl`) to
+a license string, feed a synthetic `{name:{license}}` map to the EXISTING `evaluateLicenses` so the
+ADR-051 deny set + the committed `license-allowlist.json` elections apply unchanged, and RED on a
+denied non-elected license in the shippable SBOM. `npm run license:sbom`; wired into `ship:full`
+(SBOM generation is ~seconds, too slow for the warm loop — the fast lock-scan stays warm). Zero new
+dependency (cyclonedx-npm already present). Informational for the ADR-032 hook (lives in `scripts/`).
+See O5, ADR-051.
