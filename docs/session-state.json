@@ -5,7 +5,7 @@
   "branch": "claude/harness-v2-kickoff-yhid26",
   "updated": "2026-07-17",
   "lastShip": {
-    "sha": "dcf12ca",
+    "sha": "ff3e8d5",
     "status": "green",
     "date": "2026-07-17"
   },
@@ -315,11 +315,18 @@
       "state": "done",
       "blockedBy": "",
       "next": "PHASE 3 COMPLETE + LANDED ON MAIN (main @ 45a0500, /ship green, ff from f905631). ALL 9/9 done + THREE senior-review rounds (V2-304 font-size-regex substring bug; V2-305 JSXExpressionContainer bypass; phase-3-close: 3 wrong OSS-catalog AGPL labels + ledger broad-glob hygiene + VR ratio-vs-absolute tolerance — all CONFIRMED, fixed, re-tested). Look: V2-301 visual loop + V2-307 anchors/rubric + V2-302 primitives + V2-303 archetypes + V2-304 no-arbitrary-className + V2-308 visual-regression. Copy: V2-305 no-literal-jsx-text chokepoint + /ship copy gate (22 labels → sentence case). Build-vs-buy: V2-306 oss-catalog + /adopt (ADR-060 demo) + V2-309 gate widened to components/shared+scripts, Considered: + broad-glob hygiene. 13 ESLint rules; tests 13/13 lint-rules + 59/59 hooks (incl 5/5 visual). Retro in HARNESS-V2-EVIDENCE.md."
+    },
+    {
+      "item": "H2-P4",
+      "title": "harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409)",
+      "state": "in_progress",
+      "blockedBy": "senior review (in flight)",
+      "next": "ALL 9 items done + pushed on yhid26 (ff3e8d5, /ship + ship:full green). V2-402/403/409 landed earlier; this session: V2-406 (extract routeDecision + unit-test SECURITY.md §15), V2-408 (protect-secrets guards Write/Edit), V2-404 (sonarjs cognitive-complexity @error thr 25), V2-401 (@testcontainers/postgresql + ship:full; verified 6/6 vs native pgvector), V2-405 (StrykerJS; caught real password.ts gaps, 70->82.5%), V2-407 (osv-scanner+trivy in /audit; osv v2.4.0 verified). senior-code-reviewer running over d1b29fd..HEAD — fix findings, THEN land Phase 4 on main."
     }
   ],
   "nextActions": [
-    "PHASES 0-3 COMPLETE + ON MAIN (main @ 45a0500, ff-landed 2026-07-17; all 3 senior-review rounds integrated). NEXT: Phase 4 — Verify what was waived: V2-401 (adopt @testcontainers/postgresql + pgvector image; test:integration on ephemeral container; new `ship:full` = warm /ship + integration + playwright-bdd/uat lean; CLAUDE.md states warm-vs-full green), V2-402 (pgvector verification — the RAG seam actually embeds+queries), V2-403 (coverage floor raised + enforced), V2-404 (cognitive-complexity ESLint rule @error). V2-308 visual-regression + V2-207 bdd-coverage both wire into ship:full here. Env unblocked (native Postgres recipe in agent-memory 2026-07-17).",
-    "Per-session landmine: gitleaks NOT preinstalled + release egress-blocked — reinstall via `GOBIN=$HOME/.local/bin GOTOOLCHAIN=auto go install github.com/zricethezav/gitleaks/v8@latest`, add ~/.local/bin to PATH before /ship. Run /ship WITHOUT NODE_ENV=production. For the visual loop / copy-check / capture: `export DATABASE_URL=$(parse .env)` (prisma CLI ignores .env).",
-    "Do NOT weaken any Phase 0/V2-101 gate to make a later change pass (KICKOFF §2.10). The context-tax --strict budget (8KB constitution / 20KB total) is a hook-suite test — keep green. Prettier hazard: a mid-sentence `-`/`+` at a wrapped-line start becomes a stray list marker, and a bare `*` (aria-*/data-*) becomes emphasis — reword or backtick."
+    "Phase 4 (V2-401..409) COMPLETE + pushed on yhid26 (ff3e8d5). senior-code-reviewer running over the batch (d1b29fd..HEAD) — resolve findings, re-ship green, then FAST-FORWARD LAND Phase 4 on main.",
+    "After landing: Phase 5 (final phase). Re-read the harness-v2 program doc for the Phase-5 item list; blueprint first.",
+    "V2-402 register wave-off flip (WS-5) to fixed() is OPERATOR adjudication — proposed, awaiting sign-off; do not self-adjudicate."
   ]
 }
