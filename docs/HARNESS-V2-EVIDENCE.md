@@ -347,6 +347,24 @@ Three checks, each demonstrated firing on a synthetic regression:
 prompt _keywords_ (intent) and `PreToolUse` matches the touched _file path_; removing either drops a
 real signal. Documented as intentional, not redundant.
 
+### V2-103 senior review (post-push, `senior-code-reviewer`)
+
+Confirmed the two wired-into-critical-paths pieces are correctly **fail-open** (the `ship.mjs`
+wall-time warn cannot red a green ship; the `session-start.sh` context block never blocks session
+start) and the constitution ≤8KB invariant holds. Three findings, **all fixed**:
+
+- **[High] `hook-latency.mjs` measured a fictional chain** — it summed mutually-exclusive PreToolUse
+  matcher groups (Edit+Bash+Read, 9 hooks that never co-fire) and fed Edit-shaped input to the
+  Bash-matcher hooks (which early-exit). FIXED: rewrote to measure **per-turn** chains separately
+  (edit-turn vs bash-turn, each with tool-shape-correct input) and baseline the **worst** turn;
+  re-recorded `hookChainMs` 591 → 374 (edit-turn 374ms, bash-turn 322ms — real numbers).
+- **[Medium] unchecked `spawnSync`** — a failed hook silently recorded ~0ms. FIXED: checks
+  `res.error`/`res.status`, prints an unreliable-measurement WARN, `--strict` exits 1 on it.
+- **[Low] `hardest-gated` not preserved** in the rubric after the constitution trim. FIXED: added
+  to the rubric's Secure pillar.
+
+All three logged in `docs/findings-register.md` (2026-07-16), status `fixed`. Hook suite stays 34 green.
+
 ## Per-phase retros
 
 ### Phase 0 retro — "Trust the gates" (V2-001 … V2-006)

@@ -176,6 +176,23 @@ the changed surface is still **open** (un-adjudicated).
   missing `bash-write-gate`/`routing-receipt` rows) — owner: operator — status: fixed(this commit)
   (sections re-sorted; SKILL updated to themed sections; inventory corrected to 15 + both rows added).
 
+- 2026-07-16 — [harness-v2 V2-103/correctness] `hook-latency.mjs` summed mutually-exclusive
+  PreToolUse matcher groups (Edit + Bash + Read) into one 9-hook "chain" that never co-fires, and
+  fed Edit-shaped input to the Bash-matcher hooks (which early-exit) — so the recorded baseline was
+  a fiction, not any real per-turn latency (senior-review 2026-07-16, confidence 92) — owner:
+  operator — status: fixed(this commit) (rewrote to measure per-turn chains separately — edit-turn
+  vs bash-turn, each with tool-shape-correct input — and baseline against the worst turn; re-recorded
+  hookChainMs 591→374).
+- 2026-07-16 — [harness-v2 V2-103/correctness] `hook-latency.mjs` discarded the `spawnSync` result,
+  so a mis-resolved/failed hook silently recorded near-zero instead of failing loud (senior-review
+  2026-07-16, confidence 82) — owner: operator — status: fixed(this commit) (now checks
+  `res.error`/`res.status`, prints an unreliable-measurement WARN, and `--strict` exits 1 on it).
+- 2026-07-16 — [harness-v2 V2-103/completeness] the `hardest-gated` qualifier trimmed from the
+  Secure pillar in `CLAUDE.md` was not preserved in `docs/uat-rubric.md` (senior-review 2026-07-16,
+  confidence 88) — owner: operator — status: fixed(this commit) (added it to the rubric's Secure
+  pillar). Note: the review confirmed the `ship.mjs` wall-time warn + `session-start.sh` context
+  block are correctly fail-open, and the two other trimmed pillar tails are intact in the rubric.
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--

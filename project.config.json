@@ -9,7 +9,7 @@
   "$comment": "tier governs project ceremony, NOT the security floor (which is identical for both). 'personal' = never shared with the company: no /handoff, no compliance section, no CI ceremony. 'shared' = company project that flows to an IT handoff and may carry PDPL/compliance obligations: adds /handoff, the compliance section in SECURITY.md, CI activation at handoff, formal findings register. Set during /first-fork. See CLAUDE.md 'Project tiers' for the full contract.",
   "$comment_locales": "locales is the single source of truth for which next-intl locales this fork ships (i18n/config.ts derives the routing, the URL prefix regex, and the <html dir> direction from it). Default is English-only ['en']; a fork that needs Arabic/RTL flips it to ['en','ar'] (or any subset) — messages/ar.json + all RTL code stay in the repo, inert until re-enabled. RTL direction is automatic for ar/he/fa/ur (see RTL_LOCALES in i18n/config.ts). The locale switcher hides when only one locale is configured. ADR-001 / blueprint enterprise-design-system-and-i18n.",
   "velocityBaselines": {
-    "hookChainMs": 591,
+    "hookChainMs": 374,
     "shipWarmSeconds": 90
   },
   "$comment_velocityBaselines": "Velocity-pillar warm baselines (V2-103). shipWarmSeconds: /ship warns when total > 125% (a warm cached build; cold/--full builds legitimately exceed). hookChainMs: UserPromptSubmit+PreToolUse chain, warns > 150% (npm run hook-latency --record to refresh on a representative machine). All three velocity checks are advisory/fail-open."

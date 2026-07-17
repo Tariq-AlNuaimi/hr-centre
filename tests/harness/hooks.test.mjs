@@ -309,7 +309,7 @@ test("V2-103 hook-latency --strict FAILS when the chain exceeds the baseline (sy
     encoding: "utf8",
   });
   assert.equal(res.status, 1, `a 1ms baseline must trip the latency warn:\n${res.stdout}`);
-  assert.match(res.stdout, /WARN: chain/, "should print the latency warning");
+  assert.match(res.stdout, /WARN: worst turn/, "should print the latency warning");
 });
 
 test("V2-103 hook-latency passes with a generous baseline", () => {
