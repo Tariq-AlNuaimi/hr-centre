@@ -107,12 +107,16 @@ wall-clock, and wall-clock is Pillar 1 (Speed & Velocity).
 The constitution names these; here is the full mechanism. All four follow one pattern: a gate +
 a committed adjudication artifact.
 
-- **Build-vs-buy (ADR-032).** Before hand-building a new capability under `lib/`, do the reuse
-  scan — check `docs/REPO-MAP.md` + `lib/` + `components/shared/` for an existing primitive, the
-  `/scale-up` recipe table, then web-search for a library/open-source fit — and record the
-  decision in `docs/build-vs-buy-ledger.md` (a `Scope:`-glob entry naming what you considered and
-  why build-vs-adopt). The `build-vs-buy-gate.mjs` PreToolUse hook **denies** the new file until
-  that entry exists. Recording the entry is not a bypass, it _is_ the scan.
+- **Build-vs-buy (ADR-032; surface widened by V2-309).** Before hand-building a new capability
+  under `lib/**`, `components/shared/**`, or `scripts/**` (a reusable primitive / a harness tool is
+  a build-vs-buy call too), do the reuse scan — **step 0 is `docs/oss-catalog.md`** (the seeded
+  reuse catalog; or `/adopt <capability>`, which reads it), then `docs/REPO-MAP.md` + `lib/` +
+  `components/shared/` for an existing primitive, the `/scale-up` recipe table, then a web search —
+  and record the decision in `docs/build-vs-buy-ledger.md`: a `Scope:`-glob entry that **must carry
+  a `Considered:` line** naming ≥1 real alternative (V2-309 — a bare Scope is a rubber stamp, not a
+  scan). The `build-vs-buy-gate.mjs` PreToolUse hook (and the `bash-write-gate.mjs` Bash path)
+  **denies** the new file until a Considered-bearing entry covers it. Recording the entry is not a
+  bypass, it _is_ the scan.
 - **Blueprint (ADR-033).** A new API route (`app/api/**/route.ts`) or page (`app/**/page.tsx`)
   requires a `docs/blueprints/<feature>.md` whose `Scope:` glob covers it — the
   `blueprint-gate.mjs` PreToolUse hook **denies** the new file until one exists. Both `/blueprint`

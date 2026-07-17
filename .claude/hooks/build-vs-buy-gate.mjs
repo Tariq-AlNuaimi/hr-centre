@@ -28,7 +28,7 @@
 // ledger-glob hygiene lands in one place. Behavior here is unchanged.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { relPath as relTo, isGatedCapabilityFile, ledgerCovers } from "./lib/scope-cover.mjs";
+import { relPath as relTo, isGatedCapabilityFile, ledgerCoverInfo } from "./lib/scope-cover.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
@@ -45,25 +45,34 @@ try {
   // Overwriting an existing file = a continuation, not a fresh build -> don't gate.
   if (existsSync(resolve(ROOT, fp))) process.exit(0);
   if (!isGatedCapabilityFile(rel)) process.exit(0);
-  if (ledgerCovers(rel, ROOT)) process.exit(0);
+  const info = ledgerCoverInfo(rel, ROOT);
+  if (info.covered) process.exit(0);
+
+  // A Scope matched but the entry named no alternatives (V2-309) → a targeted message.
+  const reason = info.sawScopeWithoutConsidered
+    ? `[build-vs-buy] Denied: '${rel}' has a matching Scope in docs/build-vs-buy-ledger.md, ` +
+      `but that entry has no "Considered:" line — a bare Scope is not a build-vs-buy decision ` +
+      `(V2-309/ADR-032). Add a "Considered:" line naming >=1 real alternative you weighed ` +
+      `(an existing primitive, a /scale-up recipe, an OSS/library option from ` +
+      `docs/oss-catalog.md) and why you chose build-vs-adopt. Recording it is not a bypass; ` +
+      `it IS the gate.`
+    : `[build-vs-buy] Denied: '${rel}' is a NEW hand-built capability (lib/, ` +
+      `components/shared/, or scripts/ — V2-309), but no build-vs-buy decision covers it. Do ` +
+      `the reuse scan BEFORE writing (ADR-032; CLAUDE.md "Market benchmark before building"): ` +
+      `(0) check docs/oss-catalog.md -- the seeded reuse catalog, step 0 (or run /adopt ` +
+      `<capability>, which reads it); (1) check docs/REPO-MAP.md and lib/ + components/shared/ ` +
+      `for an existing primitive; (2) check the /scale-up recipe table; (3) web-search for a ` +
+      `library/open-source fit. Then record the decision in docs/build-vs-buy-ledger.md -- a ` +
+      `"### <date> - <capability>" entry with a "Scope: ${rel.replace(/[^/]+$/, "**")}" glob, ` +
+      `a "Considered:" line naming the options, and why you're building vs adopting. Recording ` +
+      `it is not a bypass; it IS the gate. If a full blueprint applies, run /blueprint first.`;
 
   console.log(
     JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "deny",
-        permissionDecisionReason:
-          `[build-vs-buy] Denied: '${rel}' is a NEW hand-built capability, but no ` +
-          `build-vs-buy decision covers it. Do the reuse scan BEFORE writing (ADR-032; ` +
-          `CLAUDE.md "Market benchmark before building"): (0) check docs/oss-catalog.md ` +
-          `-- the seeded reuse catalog, step 0 (or run /adopt <capability>, which reads it); ` +
-          `(1) check docs/REPO-MAP.md and lib/ + components/shared/ for an existing ` +
-          `primitive; (2) check the /scale-up recipe table; (3) web-search for a library/ ` +
-          `open-source fit. Then record the ` +
-          `decision in docs/build-vs-buy-ledger.md -- a "### <date> - <capability>" entry ` +
-          `with a "Scope: ${rel.replace(/[^/]+$/, "**")}" glob, the options you considered, ` +
-          `and why you're building vs adopting. Recording it is not a bypass; it IS the ` +
-          `gate. If a full blueprint applies, run /blueprint (its ## Market scan) first.`,
+        permissionDecisionReason: reason,
       },
     }),
   );

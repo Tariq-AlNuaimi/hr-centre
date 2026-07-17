@@ -123,12 +123,13 @@ function blueprintReason(rel, cover) {
 function ledgerReason(rel) {
   return (
     `[build-vs-buy] Denied (via bash-write-gate): the shell command writes '${rel}', a NEW ` +
-    `hand-built lib/ capability with no build-vs-buy decision covering it (ADR-032; CLAUDE.md ` +
-    `"Market benchmark before building"). Dropping to Bash does not bypass the gate. Do the ` +
-    `reuse scan — step 0 is docs/oss-catalog.md (the seeded reuse catalog; or run /adopt ` +
-    `<capability>, which reads it) — then record a "### <date> - <capability>" entry in ` +
-    `docs/build-vs-buy-ledger.md with a "Scope: ${rel.replace(/[^/]+$/, "**")}" glob and the ` +
-    `options you considered.`
+    `hand-built capability (lib/, components/shared/, or scripts/ — V2-309) with no build-vs-buy ` +
+    `decision covering it (ADR-032; CLAUDE.md "Market benchmark before building"). Dropping to ` +
+    `Bash does not bypass the gate. Do the reuse scan — step 0 is docs/oss-catalog.md (the seeded ` +
+    `reuse catalog; or run /adopt <capability>, which reads it) — then record a ` +
+    `"### <date> - <capability>" entry in docs/build-vs-buy-ledger.md with a ` +
+    `"Scope: ${rel.replace(/[^/]+$/, "**")}" glob AND a "Considered:" line naming >=1 alternative ` +
+    `you weighed (V2-309 requires it).`
   );
 }
 

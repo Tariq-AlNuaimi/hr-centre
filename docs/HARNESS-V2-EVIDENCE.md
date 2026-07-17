@@ -58,7 +58,7 @@ _Item count: 48 (V2-001 … V2-507). All rows start `pending`._
 | V2-306 | 3     | done    | (this)    | [detail](#v2-306-evidence) · `docs/oss-catalog.md` · `.claude/skills/adopt/SKILL.md` · `docs/decisions/ADR-060-*.md`                                      | OSS catalog (feature-oracle products + capability adopt-or-build table) + `/adopt` skill (catalog lookup → AskUserQuestion trade-off → ledger + ADR stub → install); both build-vs-buy gate deny messages name the catalog as step 0; demoed on rich-text-editor (ADR-060 + ledger "entry ahead of build")                                                                   |
 | V2-307 | 3     | done    | e338a37   | `docs/design-references.md` · `.claude/rules/design.md` (10-point rubric)                                                                                 | Taste anchors (Linear/Vercel/Stripe + additions) per archetype; the numeric 0/1 10-point rubric wired into the visual loop + `/design-qa`; cite anchor+capture per deduction                                                                                                                                                                                                 |
 | V2-308 | 3     | pending | —         | —                                                                                                                                                         | Visual regression (LEDGER)                                                                                                                                                                                                                                                                                                                                                   |
-| V2-309 | 3     | pending | —         | —                                                                                                                                                         | Build-vs-buy completeness                                                                                                                                                                                                                                                                                                                                                    |
+| V2-309 | 3     | done    | (this)    | [detail](#v2-309-evidence) · `.claude/hooks/lib/scope-cover.mjs` · `.claude/hooks/build-vs-buy-gate.mjs` · `tests/harness/hooks.test.mjs`                 | Build-vs-buy completeness: gate surface widened from `lib/**` to also `components/shared/**` + `scripts/**` (same exclusions); a covering ledger entry must now carry a `Considered:` line (bare Scope = rubber stamp). Both gate paths + deny messages updated; 4 negative tests (deny new shared/scripts, allow Considered-bearing, deny bare-Scope, exclude .test) green  |
 | V2-401 | 4     | pending | —         | —                                                                                                                                                         | Testcontainers + /ship --full (LEDGER)                                                                                                                                                                                                                                                                                                                                       |
 | V2-402 | 4     | pending | —         | —                                                                                                                                                         | pgvector verification                                                                                                                                                                                                                                                                                                                                                        |
 | V2-403 | 4     | pending | —         | —                                                                                                                                                         | Coverage floor                                                                                                                                                                                                                                                                                                                                                               |
@@ -639,6 +639,34 @@ Makes reuse the DEFAULT by giving the build-vs-buy scan a step-0 catalog and a s
   (`Scope: lib/editor/**`, deferred — the "entry ahead of build" pattern, cf. pg-boss). No wasteful
   install; the artifacts the skill produces (ledger entry + ADR stub with the license/weight/self-host
   call made) are the demonstration.
+
+<a id="v2-309-evidence"></a>
+
+### Phase 3 evidence — V2-309 build-vs-buy completeness
+
+Closes the two gaps that let a build-vs-buy decision be skipped or rubber-stamped.
+
+- **Surface widened (`isGatedCapabilityFile`, `.claude/hooks/lib/scope-cover.mjs`).** The gate fired
+  only on new `lib/**` files; a new **reusable UI primitive** (`components/shared/**`) or a new
+  **harness tool** (`scripts/**`) is just as much a build-vs-buy call, and both slipped through.
+  Extended to all three surfaces with the same exclusion logic (never gate tests / `.d.ts` / the
+  hand-written `lib/validations` + `lib/prisma` seams), and widened the extension set to `.mjs` so
+  scripts are covered.
+- **`Considered:` now required (`ledgerCoverInfo`).** Coverage was a bare `Scope:`-glob match — an
+  entry could "cover" a file while naming zero alternatives, which is a rubber stamp, not a scan. The
+  ledger is now split into entry BLOCKS on the `Scope:` boundary, and a matching block counts as
+  coverage ONLY if it carries a `Considered:` line. `ledgerCoverInfo` returns
+  `sawScopeWithoutConsidered` so the gate distinguishes "Scope matched but no alternatives named"
+  (a targeted "add a Considered: line" message) from "no entry at all".
+- **Both gate paths + messages.** `build-vs-buy-gate.mjs` (Write) and `bash-write-gate.mjs` (the Bash
+  path — dropping to a heredoc doesn't bypass it) both use the shared logic; deny reasons now name the
+  widened surface and the `Considered:` requirement, and point at `docs/oss-catalog.md` as step 0.
+- **Negative tests (`tests/harness/hooks.test.mjs`, `npm run test:hooks` → 54/54).** A new V2-309 case
+  proves, against fixture ledgers: (a) a new `components/shared/*.tsx` and a new `scripts/*.mjs` are
+  DENIED with no covering entry; (b) a covering entry WITH a `Considered:` line ALLOWS; (c) a covering
+  `Scope:` with NO `Considered:` line is DENIED and the reason names `Considered`; (d) a `.test.mjs`
+  on the new surface is excluded (ALLOW). The existing `lib/`-deny / `lib/validations`-allow
+  regression case still passes unchanged.
 
 ## Per-phase retros
 

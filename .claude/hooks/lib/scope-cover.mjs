@@ -72,16 +72,26 @@ export function isFeatureFile(rel) {
   return false;
 }
 
-/** Is this new file on the build-vs-buy gated "new lib capability" surface (ADR-032)? */
+/**
+ * Is this new file on the build-vs-buy gated "new capability" surface (ADR-032)?
+ * V2-309 widened the surface from `lib/**` to also cover `components/shared/**` (a new
+ * reusable UI primitive is a capability too) and `scripts/**` (a new harness/tool). Same
+ * exclusion logic throughout: never gate tests, `.d.ts`, or the hand-written seams
+ * (`lib/validations/` zod, `lib/prisma/` — Ask-before already pauses there).
+ */
 export function isGatedCapabilityFile(rel) {
   if (!rel || rel.startsWith("..")) return false;
-  if (!/^lib\//.test(rel)) return false;
-  if (!/\.(ts|tsx)$/.test(rel)) return false;
-  if (/^lib\/validations\//.test(rel)) return false;
-  if (/^lib\/prisma\//.test(rel)) return false;
-  if (/\.(test|spec)\.(ts|tsx)$/.test(rel)) return false;
+  if (!/\.(ts|tsx|mjs|cjs|js)$/.test(rel)) return false; // scripts are .mjs; UI is .tsx
+  if (/\.(test|spec)\.(ts|tsx|mjs|cjs|js)$/.test(rel)) return false;
   if (/\.d\.ts$/.test(rel)) return false;
-  return true;
+  if (/^lib\//.test(rel)) {
+    if (/^lib\/validations\//.test(rel)) return false;
+    if (/^lib\/prisma\//.test(rel)) return false;
+    return true;
+  }
+  if (/^components\/shared\//.test(rel)) return true; // V2-309
+  if (/^scripts\//.test(rel)) return true; // V2-309
+  return false;
 }
 
 /** Parse `Expires: YYYY-MM-DD` from blueprint text; null if none/malformed. */
@@ -154,18 +164,43 @@ export function blueprintCovers(rel, root, now = new Date()) {
   return blueprintCoverInfo(rel, root, now).covered;
 }
 
-/** Ledger (build-vs-buy) coverage — no hygiene (ledger-glob hygiene is V2-309). */
-export function ledgerCovers(rel, root) {
+/**
+ * Ledger (build-vs-buy) coverage with V2-309 hygiene: a covering entry must also carry a
+ * `Considered:` line — recording a bare `Scope:` with no alternatives named is not a
+ * build-vs-buy decision, it's a rubber stamp. The ledger is split into ENTRY BLOCKS on the
+ * `Scope:` boundary (each block = a Scope line + its Considered/Decision lines, up to the
+ * next Scope line); a block whose Scope glob matches `rel` counts as coverage ONLY if that
+ * same block has a `Considered:` line. Returns { covered, sawScopeWithoutConsidered } so
+ * the gate can explain a Considered-less match distinctly from no match at all.
+ */
+export function ledgerCoverInfo(rel, root) {
+  const info = { covered: false, sawScopeWithoutConsidered: false };
   const ledger = resolve(root, "docs/build-vs-buy-ledger.md");
-  if (!existsSync(ledger)) return false;
+  if (!existsSync(ledger)) return info;
   let text = "";
   try {
     text = readFileSync(ledger, "utf8");
   } catch {
-    return false;
+    return info;
   }
-  for (const glob of scopeGlobs(text)) {
-    if (globToRe(glob).test(rel)) return true;
+  // Each block begins at a `Scope:` line and runs to just before the next one. The
+  // preamble (block[0], before the first Scope:) and the `### Entry template` fence use
+  // placeholder globs (`lib/<area>/**`) that never match a real path, so they're inert.
+  const blocks = text.split(/\n(?=Scope:)/i);
+  const hasConsidered = /^[ \t]*Considered:/im;
+  for (const block of blocks) {
+    const matches = scopeGlobs(block).some((g) => globToRe(g).test(rel));
+    if (!matches) continue;
+    if (hasConsidered.test(block)) {
+      info.covered = true;
+      return info; // a real, Considered-bearing cover
+    }
+    info.sawScopeWithoutConsidered = true; // matched, but no alternatives named — keep looking
   }
-  return false;
+  return info;
+}
+
+/** Convenience boolean: does a Considered-bearing ledger entry cover `rel`? (V2-309). */
+export function ledgerCovers(rel, root) {
+  return ledgerCoverInfo(rel, root).covered;
 }

@@ -317,3 +317,43 @@ Deferred (nothing installed yet); recorded now so the gate is ready — the "ent
 pattern (cf. pg-boss). This entry is the worked demonstration of `/adopt` (V2-306): catalog lookup →
 options weighed → ledger + ADR stub, no wasteful install. See ADR-060; docs/oss-catalog.md
 (rich-text-editor row).
+
+### 2026-07-17 — Copy-lint checker (scripts/copy-check.mjs) — V2-305
+
+Scope: scripts/copy-check.mjs
+Considered: **Vale** (prose linter — a separate binary + a YAML style config; heavyweight for a
+source-locale JSON house-style check, and it lints Markdown/prose, not a flat message catalog),
+**alex / write-good / textlint** (opinionated inclusive-language / readability linters — wrong target;
+they don't express "no trailing period on a label" / "sentence case" / a per-fork terminology map),
+**eslint-plugin-i18next** (lints code for untranslated strings — that's the chokepoint half
+`no-literal-jsx-text`, not the messages house-style half), **build a dependency-free checker** (chosen).
+Decision: **BUILD `scripts/copy-check.mjs`** — a ~150-line pure module (flatten → 3 deterministic
+checks: trailing-period / sentence-case with a proper-noun allowlist / a configurable terminology map)
+run as the `/ship` `copy` gate; zero dependency, unit-tested, config/waivers in `project.config.json`
+`copy`. A prose linter buys less than it costs for a flat-JSON house-style check. Informational for the
+ADR-032 hook (lives in `scripts/`; V2-309 brings `scripts/` under the gate). See V2-305; `docs/design-recipes.md` §1e.
+
+### 2026-07-17 — Visual-capture harness (scripts/capture-screens.mjs) — V2-301
+
+Scope: scripts/capture-screens.mjs
+Considered: **Storybook + a story-per-state** (a whole component-explorer stack + config to maintain,
+and it captures components, not real logged-in routes across the locale/theme matrix), **Chromatic /
+Percy** (SaaS visual-testing — external dependency + per-snapshot cost; the capture step should be
+free and local), **a raw Playwright script inline in each test** (duplicated login + matrix logic per
+feature), **build a thin reusable harness on the EXISTING @playwright/test** (chosen). Decision:
+**BUILD `scripts/capture-screens.mjs`** — reuses the already-adopted Playwright runner (ADR-008) to log
+in once and screenshot each route across {desktop,mobile}×{light,dark}×locales into
+`docs/verification/`; zero new dependency. The visual-regression DIFF tool is a separate, later call
+(V2-308). Informational for the ADR-032 hook (lives in `scripts/`). See V2-301; `.claude/rules/design.md`.
+
+### 2026-07-17 — Parallel-wave enforcer (scripts/fan-out.mjs) — V2-105
+
+Scope: scripts/fan-out.mjs
+Considered: **native in-message subagent dispatch alone** (ADR-057's _recommended_ option — works, but
+nothing enforces write-disjoint file-ownership or verifies post-wave scope), **a third-party task-runner
+/ orchestration framework** (heavy, none model this repo's file-ownership discipline), **build a thin
+enforcement layer OVER native dispatch** (chosen — the operator's ADR-057 verdict was _custom_).
+Decision: **BUILD `scripts/fan-out.mjs`** — `check-overlap` (sound segment-by-segment glob-intersection
+refusal) + `verify-scope` (every changed file landed in exactly one declared set) around native
+dispatch; it does not replace native, it guards it. Zero runtime dependency. Informational for the
+ADR-032 hook (lives in `scripts/`). See ADR-057, V2-105.

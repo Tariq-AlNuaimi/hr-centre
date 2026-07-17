@@ -51,6 +51,17 @@ function blueprintFixture(stubs) {
   return dir;
 }
 
+/** Build a throwaway repo-shaped fixture with a docs/build-vs-buy-ledger.md body (V2-309). */
+function ledgerFixture(body) {
+  const dir = mkdtempSync(join(tmpdir(), "hooks-ledger-"));
+  mkdirSync(join(dir, "docs"), { recursive: true });
+  writeFileSync(join(dir, "docs", "build-vs-buy-ledger.md"), body);
+  return dir;
+}
+/** Run the build-vs-buy gate for a Write, rooted at a fixture dir. */
+const runBvbAt = (dir, file) =>
+  runHook("build-vs-buy-gate.mjs", preWrite(file), { cwd: dir, env: { CLAUDE_PROJECT_DIR: dir } });
+
 // ---------------------------------------------------------------------------
 // V2-001 — bash-write-gate: shell writes hit the same gates as the Write tool.
 // ---------------------------------------------------------------------------
@@ -182,6 +193,38 @@ test("build-vs-buy-gate DENIES a new uncovered lib/ capability, ALLOWS excluded 
   // lib/validations/** is an expected-hand-written exclusion → allow.
   const allow = runHook("build-vs-buy-gate.mjs", preWrite("lib/validations/brandnew.ts"));
   assert.equal(allow.decision, null, `lib/validations exclusion should allow :: ${allow.stdout}`);
+});
+
+// V2-309: the gated surface extends to components/shared/** + scripts/**, and a covering
+// ledger entry must carry a "Considered:" line (a bare Scope is a rubber stamp, not a scan).
+test("V2-309 build-vs-buy-gate gates components/shared + scripts and requires a Considered: line", () => {
+  const empty = ledgerFixture("# Build-vs-Buy Ledger\n");
+  // (a) a NEW reusable primitive / harness tool on the widened surface → DENY.
+  assert.ok(
+    isDeny(runBvbAt(empty, "components/shared/NewPrimitive.tsx")),
+    "new components/shared primitive must deny",
+  );
+  assert.ok(isDeny(runBvbAt(empty, "scripts/new-tool.mjs")), "new scripts tool must deny");
+  // (b) a covering entry WITH a Considered: line → ALLOW.
+  const good = ledgerFixture(
+    "# Ledger\n\nScope: components/shared/**\nConsidered: shadcn blocks vs a headless kit vs build.\nDecision: build.\n",
+  );
+  assert.equal(
+    runBvbAt(good, "components/shared/NewPrimitive.tsx").decision,
+    null,
+    "a covering Considered-bearing entry must allow",
+  );
+  // (c) a covering Scope with NO Considered: line → DENY, and the reason names Considered:.
+  const bare = ledgerFixture("# Ledger\n\nScope: scripts/**\nDecision: build.\n");
+  const denyBare = runBvbAt(bare, "scripts/new-tool.mjs");
+  assert.ok(isDeny(denyBare), "a Scope without a Considered: line must deny");
+  assert.match(denyBare.json.hookSpecificOutput.permissionDecisionReason, /Considered/);
+  // (d) a test file on the new surface is excluded → ALLOW.
+  assert.equal(
+    runBvbAt(empty, "scripts/foo.test.mjs").decision,
+    null,
+    "a .test file on the new surface must be excluded",
+  );
 });
 
 // ---------------------------------------------------------------------------
