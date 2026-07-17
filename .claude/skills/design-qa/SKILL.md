@@ -33,6 +33,17 @@ just the code:
 This during-build loop is fast (no axe/bridge); the FULL `/design-qa` below (Chromium states, axe,
 scored deviations) still runs at QA time. The rule is in `.claude/rules/design.md`.
 
+## Taste anchors + scored verdict (V2-307)
+
+The verdict is a **numeric 10-point rubric** (grid · hierarchy · one-primary-action · state honesty
+· spacing · copy · RTL · dark · responsive · a11y), defined with pass/fail rows in
+**`docs/design-references.md`** — which also holds the **taste anchors** (Linear/Vercel/Stripe per
+archetype, + the operator's own). Every scored deduction **cites an anchor + a V2-301 capture**
+("hierarchy reads flat vs Linear's title/meta split", not "hierarchy could be better"); a finding
+with no anchor is a judgment call for the operator, not a deduction. Score → verdict: 10 = ship ·
+8–9 = ship + file the nits · ≤7 = red gate. The worked first run (Asset Tracker list) is in
+`design-references.md`.
+
 **Every finding cites a pillar + an anchor** (`docs/uat-rubric.md`) — design-token
 violation, axe rule, or "Greenhouse does X here and we don't." No anchor → mark it a
 **judgment call** for the operator, don't bury it as a finding.

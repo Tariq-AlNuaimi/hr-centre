@@ -36,7 +36,8 @@ the line. The operator signs off UAT.
    deployed URL.)
 2. **VIEW the images** (Read them) and **self-critique against the 10-point rubric** (V2-307: grid
    alignment · hierarchy · one primary action · state honesty · spacing rhythm · copy · RTL · dark ·
-   responsive · a11y).
+   responsive · a11y — scored 0/1 each, pass/fail rows + taste anchors in `docs/design-references.md`;
+   cite an anchor + a capture per deduction).
 3. **Fix** what the critique found, **re-capture**, confirm the fix in the new images.
 4. **Affirmation without attached captures is invalid** (V2-301, was D9): "the screen looks good"
    is not a claim you may make from the code — only from the pixels. Store the before/after set +

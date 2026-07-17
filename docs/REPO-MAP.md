@@ -4,6 +4,9 @@
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(dashboard)/asset/[id]/page.tsx
+- app/[locale]/(dashboard)/asset/new/page.tsx
+- app/[locale]/(dashboard)/asset/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
 - app/[locale]/(dashboard)/page.tsx
 - app/[locale]/(dashboard)/recycling-bin/page.tsx
@@ -15,6 +18,8 @@
 - app/[locale]/(dashboard)/users/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
+- app/api/asset/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/asset/route.ts  [GET,POST]
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
@@ -31,11 +36,12 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, assets
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
+- Asset: id, assetTag, name, serial, purchasedAt, status, category, assigneeId, assignee, createdAt, updatedAt, deletedAt, deletedBy
 
 ## lib/ exports
 - lib/ai/config.ts: AiAuthStyle, AiConfig, isAiConfigured, aiConfig, AiNotConfiguredError
@@ -73,12 +79,15 @@
 - lib/sso/config.ts: POLIS_PROVIDER_ID, PolisSsoConfig, isPolisSsoConfigured, polisSsoConfig, scimWebhookSecret, verifyScimSignature, SsoSignInRow, isFederatedSignInAllowed, SsoNotConfiguredError
 - lib/sso/scim.ts: ScimEventType, NormalizedScimEvent, ScimAction, normalizeDirectoryEvent, provisionDirectoryEvent
 - lib/utils.ts: cn
+- lib/validations/asset.ts: createAssetSchema, updateAssetSchema, CreateAssetInput, UpdateAssetInput, isLegalStatusTransition
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/sso.ts: normalizedScimEventSchema, NormalizedScimEventInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
 ## components/
+- components/asset/AssetColumns.tsx
+- components/asset/AssetForm.tsx
 - components/dashboard/DashboardContent.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx

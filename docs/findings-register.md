@@ -283,6 +283,14 @@ the changed surface is still **open** (un-adjudicated).
   future entity gets it) and eventually flow through **next-intl messages** (V2-305 copy chokepoint)
   rather than a per-feature map. Low urgency; captured in `docs/verification/asset-tracker/NOTES.md`.
 
+- 2026-07-17 — [harness-v2 V2-307/design] first scored `/design-qa` run (Asset Tracker list,
+  `docs/design-references.md`) scored 8/9 — the one deduction: **two competing "New Asset" primary
+  CTAs** (top-right toolbar + empty-state center), violating "one primary action per screen"
+  (criterion 3, anchored to Linear/Stripe) — owner: operator — status: scheduled (the empty-state
+  CTA is a standard pattern, so this is low-severity; resolve by demoting one to a secondary style,
+  or accept the empty-state CTA as the sanctioned exception. Scaffold-emitted, so a fix belongs in
+  `scripts/scaffold-entity.mjs`'s list template).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--
