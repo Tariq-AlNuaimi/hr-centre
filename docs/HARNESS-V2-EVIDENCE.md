@@ -468,3 +468,36 @@ env — a separate small fix; `/fan-out`'s own diff-verification does not depend
 - **Exit criteria (KICKOFF §3 row 0):** hook suite green in `/ship` phase A ✓; Bash heredoc→route
   DENIED (transcript) ✓; over-broad Scope globs rejected ✓; Superpowers enabled + presence check ✓;
   README + SECURITY §15 match reality ✓.
+
+### Phase 1 retro — "Cheapen every session" (V2-101 … V2-107)
+
+- **The win, measured (`scripts/context-tax.mjs`):** SessionStart always-on injection **36868B →
+  19751B (19.29KB)**, under the 20KB exit budget. Constitution **25098B → 8183B** (≤8KB). The
+  reduction is real load taken off every single session, not a one-time cost — the whole point of
+  the phase. Domain detail now loads lazily from `.claude/rules/*.md` only when a matching path is
+  touched (`rules-injection.mjs`), with a diff-accounted mapping table proving **zero rule-content
+  loss** (the V2-101 senior review caught two dropped ADRs + six under-matching globs here — fixed,
+  now guarded by a mechanical ADR-diff hook test).
+- **What worked:** every gate item got a negative test in the same commit (`hooks.test.mjs` grew
+  19 → 40), so "the budget is enforced" is a red-on-regression fact, not a claim. The review rail
+  paid for itself repeatedly — it caught a **real security hole** (V2-107 force-delete via flag
+  combo), a fictional 9-hook latency measurement (V2-103), and a prefix-collision in the digest
+  matcher (V2-102). Context depth was visibly taxing my own quality; the adversarial post-push pass
+  is what kept the phase honest.
+- **What broke / friction:** the **8KB constitution ceiling was the dominant friction** — nearly
+  every content addition pushed it over 8192B and needed trimming (dozens of micro-edits). Worth it
+  (the ceiling is the product), but the constitution is now near-saturated: future always-on
+  additions must evict something. The **handoff auto-status is the volatile budget-eater** (8797B of
+  the 19751B total, ~250B of headroom left) — a verbose `nextActions` run can breach 20KB, so it
+  needs periodic pruning (already trimmed once this phase). Routing receipts don't populate for
+  async background-Agent dispatch in this env (logged, scheduled).
+- **The V2-105 ASK — recommendation overridden, honestly recorded:** the analysis recommended
+  _native_ (no skill, ADR-034 grounds); the operator's verdict was _custom_. Both the recommendation
+  and the override are preserved in ADR-057 — the ASK is the operator's call to make, and `/fan-out`
+  shipped because they made it. `/fan-out` adds the one thing native genuinely lacks: **enforced**
+  file-ownership (overlap-refusal + post-wave scope-verify).
+- **Exit criteria (KICKOFF §3 row 1):** SessionStart context ≤20KB measured (19.29KB) ✓;
+  constitution split into constitution + path-globbed rule files with zero-loss mapping table ✓;
+  memory retrieval-on-demand (V2-102 digest) in place ✓; parallel-by-default live in the
+  constitution (V2-104) ✓; R9 native-agent-teams evaluation written up with a verdict (ADR-057,
+  verdict = custom, `/fan-out` built) ✓.

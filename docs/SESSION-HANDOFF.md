@@ -4,12 +4,12 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-16 · last /ship: **green** (c3834e9, 2026-07-16)._
+_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (f530185, 2026-07-17)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
 | ✅ DONE | **H2-P0** harness-v2 Phase 0 — Trust the gates (V2-001..V2-006) | — | COMPLETE + PUSHED. Now on branch yhid26 (fast-forwarded from 25kqc6). |
-| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | 6/7 Phase-1 items DONE + green (V2-101/102/103 senior-reviewed+fixed; V2-104/106/107 landed via a parallel subagent wave). Watchdog removed. NEXT + LAST: V2-105 — research Claude Code native agent teams vs a custom /fan-out, write ADR-057, ASK the operator for the build-vs-native verdict, build /fan-out ONLY if custom. Then Phase 1 exit retro. |
+| 🟡 IN PROGRESS | **H2-P1** harness-v2 Phase 1 — Cheapen every session (V2-101..V2-107) | — | ALL 7/7 Phase-1 items DONE + green (f530185). V2-105 CLOSED: ADR-057 written (native recommended), operator ASK verdict = CUSTOM, built /fan-out skill + scripts/fan-out.mjs (check-overlap + verify-scope) + 5 hook tests (40 green). Watchdog removed. REMAINING to close Phase 1: (a) senior-code-reviewer on V2-105 fan-out is running — fix any findings; (b) append Phase 1 exit retro to docs/HARNESS-V2-EVIDENCE.md; then Phase 1 is complete → land on main / start Phase 2 (V2-201..). |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -78,7 +78,7 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. RESUME Phase 1 at V2-105 (native agent-teams eval -> ADR-057, ASK verdict) — the LAST Phase-1 item. V2-101/102/103/104/106/107 all DONE+green. V2-104 demonstrated by the V2-106/107 parallel [P] subagent pair (disjoint diffs). V2-107 widened perms (allow safe git branch -d) — flagged for operator visibility.
+1. V2-105 DONE+PUSHED (f530185). ADR-057 parallel-execution mechanism: analysis recommended NATIVE (ADR-034 don't-over-engineer); operator ASK verdict = CUSTOM (override). Built /fan-out: .claude/skills/fan-out/SKILL.md + scripts/fan-out.mjs (npm run fan-out: check-overlap refuses colliding declared sets; verify-scope flags out-of-scope/non-disjoint writes) + skill-rules entry + gitignored scratch manifest + 5 hook tests (40 green). senior-code-reviewer on the change is RUNNING — fix findings then close. THEN: Phase 1 exit retro in HARNESS-V2-EVIDENCE.md = the only remaining Phase-1 close step.
 2. V2-103 CLOSED: senior review confirmed ship/session-start warns fail-open; 3 findings (High hook-latency fictional-chain + Medium unchecked-spawn + Low rubric phrase) ALL fixed (c3834e9). hook-latency now measures per-turn chains (worst 374ms). Hook suite 34 green.
 3. V2-101 DONE+PUSHED (b265104 + senior-review fixes 2bccb8f). Senior-code-reviewer CLOSED: 4 findings (2 High ADR-loss + glob-under-match, 1 Med overlap, 1 Low doc-drift) ALL fixed + logged in docs/findings-register.md. Hook suite 29 green.
 4. V2-102: restructure docs/agent-memory.md into indexed sections + <=30-line SessionStart digest (full sections on demand); /remember appends+regenerates digest; session-start warns when digest>30 lines or any section>60. NOTE: agent-memory is 223 lines (>150) so session-start already truncates to head-60 (3898B) — formalize into an intentional digest.
