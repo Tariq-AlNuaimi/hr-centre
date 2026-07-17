@@ -283,4 +283,22 @@ dependency** (wired at `error` on `**/*.{jsx,tsx}`, RuleTester-covered, single-l
 hatch). eslint-plugin-tailwindcss was uninstalled after evaluation — a scoped in-repo rule is both
 more precise (only the spacing/type axes) and lighter (zero devDependency, which knip enforces).
 Informational for the ADR-032 hook (it matches `lib/`; this lives in `eslint-rules/`). See CLAUDE.md
-"Local ESLint plugin" (now twelve rules); `eslint-rules/rules/no-arbitrary-className.mjs`.
+"Local ESLint plugin" (now thirteen rules); `eslint-rules/rules/no-arbitrary-className.mjs`.
+
+Scope: eslint-rules/rules/no-literal-jsx-text.mjs
+Considered: **eslint-plugin-i18next** (its `no-literal-string` rule is the mature off-the-shelf
+option for "flag untranslated JSX literals" — configurable `ignore`/`ignoreAttribute`/
+markup-only modes; evaluated as the buy), **eslint-plugin-formatjs** (react-intl-oriented,
+assumes the FormatJS `<FormattedMessage>` runtime rather than next-intl's `t()`; wrong runtime),
+**build a scoped local rule** (chosen — `no-literal-jsx-text`, sibling of the design-token rules:
+flags JSXText with a translatable word + a curated 3-attribute user-facing set placeholder/title/
+alt, exempts `aria-*`/`data-*`/code/pre and — at the config layer — dev pages, the context-free root
+boundaries, and tests). Decision: **BUILD the local rule, add NO dependency.** Rationale mirrors
+V2-304: (1) the repo already owns a 12-rule local ESLint plugin — a 13th rule is the idiomatic home
+and stays in-repo for forks; (2) no-literal-string's default surface is broad and its allowlist is
+inverted (opt-out attributes) where the house style wants opt-IN (only placeholder/title/alt ever
+flagged), so a scoped rule is more precise and lower-false-positive on this exact codebase (which is
+already fully next-intl'd — the rule lands at zero product-code violations); (3) knip enforces the
+no-dead-dependency floor, so a plugin kept "for later" would fail /ship (the V2-304 lesson).
+Informational for the ADR-032 hook (it matches `lib/`; this lives in `eslint-rules/`). See CLAUDE.md
+"Local ESLint plugin" (now thirteen rules); `scripts/copy-check.mjs` (the copy-lint half of V2-305).

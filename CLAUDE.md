@@ -29,7 +29,7 @@ Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Pri
 Every change is judged against five pillars (full definitions in `docs/uat-rubric.md`) — **gates**: `/ship`/`/qa` enforce them and a violation blocks like a security violation.
 
 1. **Speed & Velocity** — runtime (RSC, bounded payloads) + dev velocity (low context tax, warm `/ship`, parallel-by-default); rubric-gated.
-2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage (the twelve ESLint rules + Hard rules below).
+2. **Secure** — auth wrappers + zod on every route; Restricted data gated; audit on; no secret/PII leakage (the thirteen ESLint rules + Hard rules below).
 3. **Maintainable** — reuses existing primitives (check `docs/REPO-MAP.md` first); typed; no dead code; forward-compatible migrations.
 4. **Scalable** — list/read routes paginate or bound; no N+1; bulk paths not N×1; rate-limit-aware.
 5. **High-Quality** — correctness + UX fidelity; honest empty/loading/error states; axe-clean.
@@ -46,7 +46,7 @@ Every change is judged against five pillars (full definitions in `docs/uat-rubri
 - **Go through Prisma.** No raw SQL except `$queryRaw`/`$executeRaw` with placeholders; never `$executeRawUnsafe` on user input; no `SELECT *`; no raw UPDATE/DELETE without WHERE. Audit/soft-delete/SCRUB_FIELDS/naming in `.claude/rules/prisma.md`.
 - **UI → API route → service → Prisma.** Only server components and API routes touch `prisma` (`no-prisma-in-client`).
 - **Use the auth wrappers** (`lib/api-helpers.ts`) on every route; compose `withRateLimit` OUTSIDE them (wrapper table in `.claude/rules/api-routes.md`). **Validate at the boundary with zod** (`lib/validations/`); **never cast `session` to `any`** (`no-any-cast-on-session`).
-- **Twelve local ESLint rules, all at `error`** (`eslint-rules/`) are the security floor — roster + rationale in `.claude/rules/harness.md`. Suppressions: single-line disable; if security-related, log in SECURITY.md §12.
+- **Thirteen local ESLint rules, all at `error`** (`eslint-rules/`) are the security floor — roster + rationale in `.claude/rules/harness.md`. Suppressions: single-line disable; if security-related, log in SECURITY.md §12.
 - **UI Definition of Done** (honest empty/loading/error states, on-token, RTL/dark, axe-clean) — build it right first with `/design-system`; rubric in `.claude/rules/design.md` + `docs/uat-rubric.md`.
 
 ## Project tiers

@@ -130,7 +130,7 @@ a committed adjudication artifact.
 
 `project.config.json` `"tier": "personal" | "shared"` (default personal). Tier scales ceremony,
 **never the security floor**: auth wrappers on every route, no leaked secrets, zod at every
-boundary, no raw SQL, the twelve ESLint rules at `error`, audit log ON, `/ship` before every push —
+boundary, no raw SQL, the thirteen ESLint rules at `error`, audit log ON, `/ship` before every push —
 identical for both. `shared` adds: `/handoff` package, SECURITY.md §9 compliance, CI activation at
 handoff, formal findings register. `personal` skips those (audit log stays ON). **`/ship` enforces
 tier-vs-reality:** if the repo has ≥2 distinct human contributors (the same line that activates CI)
@@ -138,7 +138,7 @@ while tier is still the `personal` default, `/ship` fails — a multi-contributo
 shouldn't skip the shared-tier ceremony. Fix by setting `"tier": "shared"`, or record
 `"tierAck": "personal"` if it's genuinely still personal.
 
-## Local ESLint plugin (`eslint-rules/`, all twelve at `error`)
+## Local ESLint plugin (`eslint-rules/`, all thirteen at `error`)
 
 `no-prisma-in-client`, `no-any-cast-on-session`, `no-secret-env-in-console`,
 `no-bare-internal-route`, `no-raw-hex-color` (tokens from `app/tokens.css` / `brand.config.ts` /
@@ -151,8 +151,11 @@ does not cover exports; SECURITY.md §1), `no-prisma-unfiltered-import` (`prisma
 bypasses soft-delete + audit; allowlisted to auth/recycling-bin/maintenance files),
 `no-direct-anthropic-sdk` (see `.claude/rules/ai.md`; ADR-042), `no-arbitrary-className` (arbitrary
 Tailwind values on spacing `p/m/gap/space` + font-size `text-[…px]` drift off the 4px scale / type
-scale — the layout sibling of `no-raw-hex-color`; JSX/TSX-scoped; V2-304). Justified suppressions:
-single-line disable; if security-related, log in SECURITY.md §12.
+scale — the layout sibling of `no-raw-hex-color`; JSX/TSX-scoped; V2-304), `no-literal-jsx-text`
+(literal user-facing text in JSX — text nodes + `placeholder`/`title`/`alt` — must route through
+next-intl so `messages/*.json` stays the copy chokepoint; `aria-*`/`data-*`/code/pre + dev-pages/
+root-boundaries/tests exempt; V2-305). Justified suppressions: single-line disable; if
+security-related, log in SECURITY.md §12.
 
 ## Commands
 

@@ -23,7 +23,7 @@ you're about to write. It does **not**:
 
 - produce a severity-ranked review, lenses, or a findings list → that's
   `senior-code-reviewer` (post-push breadth) and `/code-review` (pre-push diff).
-- restate the twelve ESLint rules → they're enforced automatically at `error`; the
+- restate the thirteen ESLint rules → they're enforced automatically at `error`; the
   lint output is the authority. This skill carries the _positive_ patterns the
   rules can't teach ("prefer an RSC read over a client fetch — here's the shape").
 - re-document primitives → it **points at** `components/shared/*`, `lib/*`,

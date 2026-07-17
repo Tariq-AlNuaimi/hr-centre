@@ -34,7 +34,7 @@ to `/code-review` / senior-code-reviewer. You take the "is this the right shape.
 
 1. **Learn the project's security contract first.** Read `SECURITY.md` (data
    classes, threat model, findings register), `CLAUDE.md` (Hard rules, the auth
-   wrappers, the twelve ESLint rules, the Ask-before surface), `docs/decisions/`
+   wrappers, the thirteen ESLint rules, the Ask-before surface), `docs/decisions/`
    for prior security ADRs, and `lib/prisma/audit-extension.ts` +
    `soft-delete-extension.ts` (the invariants the codebase leans on). These define
    what "secure" already means here; measure the design against them, and flag

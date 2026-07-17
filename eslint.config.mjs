@@ -68,6 +68,33 @@ const eslintConfig = defineConfig([
     rules: { "rihal-template/no-arbitrary-className": "error" },
   },
 
+  // Copy chokepoint (V2-305) — every user-facing string goes THROUGH next-intl, so
+  // messages/*.json is the single place copy lives (the chokepoint the copy-lint gate
+  // then holds to a house style). A literal dropped into JSX (<span>Save</span>,
+  // placeholder="Search…") bypasses translation AND the copy gate. Scoped to JSX/TSX; at
+  // error so untranslated copy can't merge. aria-*/data-* attributes and text inside
+  // code/pre/kbd are exempt in-rule; dev/reference pages are turned off just below.
+  {
+    files: ["**/*.{jsx,tsx}"],
+    rules: { "rihal-template/no-literal-jsx-text": "error" },
+  },
+  // The style-guide is a DEV / reference page: it deliberately shows raw sample copy
+  // ("Heading 1", "Primary", archetype labels) that is NOT product UI and must not be
+  // translated. Turn the chokepoint off there (the V2-305 "dev pages" allowlist).
+  {
+    files: ["**/style-guide/**"],
+    rules: { "rihal-template/no-literal-jsx-text": "off" },
+  },
+  // The root not-found / global-error boundaries are DELIBERATELY context-free: Next 16
+  // prerenders /_not-found and /_global-error OUTSIDE the `[locale]` segment, with no
+  // next-intl provider in scope (see .claude/rules/design.md "known traps"). They
+  // therefore CANNOT call `t()` and must ship literal English fallback copy. Exempt them
+  // — routing copy through next-intl here would reintroduce the useContext build crash.
+  {
+    files: ["app/not-found.tsx", "app/global-error.tsx"],
+    rules: { "rihal-template/no-literal-jsx-text": "off" },
+  },
+
   // Static accessibility gate (ADOPT.md A1; cat 22). eslint-plugin-jsx-a11y's
   // recommended set catches the mechanical a11y regressions (missing alt text,
   // invalid ARIA, non-interactive elements with handlers, label-less controls)
@@ -195,6 +222,10 @@ const eslintConfig = defineConfig([
       // misreads as a React Hook. Test harness code is not React — the rule
       // doesn't apply here (ADR-058 BDD step fixtures).
       "react-hooks/rules-of-hooks": "off",
+      // Component tests render fixtures with literal JSX text/labels ("Submit",
+      // title="Users") on purpose — they're test data, not shipped copy. The copy
+      // chokepoint is for app/component runtime, not the test harness.
+      "rihal-template/no-literal-jsx-text": "off",
     },
   },
 

@@ -25,6 +25,7 @@ import noRestrictedExportColumn from "../../eslint-rules/rules/no-restricted-exp
 import noPrismaUnfilteredImport from "../../eslint-rules/rules/no-prisma-unfiltered-import.mjs";
 import noDirectAnthropicSdk from "../../eslint-rules/rules/no-direct-anthropic-sdk.mjs";
 import noArbitraryClassName from "../../eslint-rules/rules/no-arbitrary-className.mjs";
+import noLiteralJsxText from "../../eslint-rules/rules/no-literal-jsx-text.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -748,3 +749,55 @@ ruleTest("no-arbitrary-className", noArbitraryClassName, {
     },
   ],
 });
+
+// --- no-literal-jsx-text (V2-305) ------------------------------------------
+// The copy chokepoint: literal user-facing text in JSX (text nodes + placeholder/
+// title/alt) must go through next-intl. Exempt: pure whitespace/digits/symbols,
+// code/pre/kbd elements, aria-*/data-*/structural attributes, and (at the config
+// layer, not here) dev pages + context-free root boundaries + tests.
+ruleTest(
+  "no-literal-jsx-text",
+  noLiteralJsxText,
+  {
+    valid: [
+      // Translated text (an expression, not a literal) — exactly the goal.
+      { code: `const x = <button>{t("common.save")}</button>;` },
+      // Whitespace / digits / symbols alone are not copy.
+      { code: `const x = <div> </div>;` },
+      { code: `const x = <span>—</span>;` },
+      { code: `const x = <span>42</span>;` },
+      { code: `const x = <span>•</span>;` },
+      // Code samples are literal by nature.
+      { code: `const x = <code>const y = 1</code>;` },
+      { code: `const x = <pre>npm run ship</pre>;` },
+      // Translated / non-user-facing / exempt attributes.
+      { code: `const x = <input placeholder={t("common.search")} />;` },
+      { code: `const x = <div className="p-4" id="main" role="dialog" />;` },
+      { code: `const x = <button type="submit" aria-label="close" />;` },
+      { code: `const x = <div data-testid="row" />;` },
+    ],
+    invalid: [
+      {
+        code: `const x = <button>Save</button>;`,
+        errors: [{ messageId: "literalText" }],
+      },
+      {
+        code: `const x = <p>No results found</p>;`,
+        errors: [{ messageId: "literalText" }],
+      },
+      {
+        code: `const x = <input placeholder="Search" />;`,
+        errors: [{ messageId: "literalAttr" }],
+      },
+      {
+        code: `const x = <img alt="A cat" />;`,
+        errors: [{ messageId: "literalAttr" }],
+      },
+      {
+        code: `const x = <div title="Tooltip" />;`,
+        errors: [{ messageId: "literalAttr" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module", ecmaFeatures: { jsx: true } },
+);

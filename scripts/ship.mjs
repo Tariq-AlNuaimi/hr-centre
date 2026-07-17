@@ -29,6 +29,9 @@ import {
 import { resolve } from "node:path";
 import { evaluateLicenses, loadAllowlist } from "./license-gate.mjs";
 import { analyzeBlueprint } from "./lib/blueprint-content.mjs";
+// V2-305: the copy-lint gate — source-locale UI copy house style (sentence case,
+// no trailing period on labels, terminology). Shared so /ship mirrors the CLI.
+import { runCopyCheck } from "./copy-check.mjs";
 // V2-002: the blueprint gate's Scope-glob hygiene, shared so /ship mirrors it.
 import { isGlobTooBroad } from "../.claude/hooks/lib/scope-cover.mjs";
 
@@ -96,6 +99,44 @@ function scanScalability() {
       offenders.map((f) => `  - ${f}`).join("\n") +
       "\n  Fix: paginate via lib/pagination.ts (parsePagination/paginatedResponse).\n" +
       "  Or, if the table is bounded by domain: inline `// pillar:scalable-ok: <reason>` + a docs/findings-register.md line.",
+  };
+}
+
+// -- copy-lint gate (V2-305, High-Quality pillar) ---------------------------
+// The JSX-literal ESLint rule forces every UI string through next-intl, so
+// messages/*.json is the copy chokepoint. This gate holds the source-locale copy
+// to a small house style (sentence case, no trailing period on labels, house
+// terminology) so a considered voice can't drift string-by-string. Deterministic,
+// low-false-positive; a genuine exception is a project.config.json `copy.waivers`
+// key-path / `copy.properNouns` entry, not a silenced check. Full logic + rules in
+// scripts/copy-check.mjs.
+function scanCopy() {
+  const t0 = Date.now();
+  const secs = ((Date.now() - t0) / 1000).toFixed(1);
+  let result;
+  try {
+    result = runCopyCheck();
+  } catch (e) {
+    // Fail-open on an unexpected checker error (never wedge /ship on the copy gate);
+    // surface it as a warning so it's visible without blocking.
+    return { name: "copy", ok: true, out: "skipped", secs, warn: `copy-check error: ${e.message}` };
+  }
+  if (result.ok)
+    return {
+      name: "copy",
+      ok: true,
+      out: `clean (${result.checked.map((c) => c.replace(/^messages\//, "")).join(", ") || "no locale files"})`,
+      secs,
+    };
+  return {
+    name: "copy",
+    ok: false,
+    secs,
+    out:
+      `${result.findings.length} copy issue(s) in source-locale messages (High-Quality pillar):\n` +
+      result.findings.map((f) => `  - [${f.rule}] ${f.key} — ${f.message}`).join("\n") +
+      "\n  Fix the copy, or waive a genuine exception via project.config.json `copy.waivers`" +
+      " (a key-path) / `copy.properNouns`.",
   };
 }
 
@@ -1281,11 +1322,12 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | wave-offs | licenses | tier | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
+const copy = scanCopy();
 const waveoffs = scanWaveOffs();
 const licenses = scanLicenses();
 const tier = scanTier();
@@ -1339,6 +1381,7 @@ for (const r of [
   components,
   hooks,
   scalability,
+  copy,
   waveoffs,
   licenses,
   tier,
@@ -1351,6 +1394,7 @@ for (const r of [
   coverage,
 ])
   report(r);
+if (copy.warn) console.warn(`  note: copy — ${copy.warn}`);
 if (licenses.warn) console.warn(`  note: licenses — ${licenses.warn}`);
 if (blueprint.warn) console.warn(`  note: blueprint —\n${blueprint.warn}`);
 if (blueprintContent.warn) console.warn(`  note: blueprint-content —\n${blueprintContent.warn}`);
@@ -1366,6 +1410,7 @@ const redA = [
   components,
   hooks,
   scalability,
+  copy,
   waveoffs,
   licenses,
   tier,
@@ -1502,5 +1547,5 @@ try {
 }
 
 console.log(
-  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
+  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + copy + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
 );

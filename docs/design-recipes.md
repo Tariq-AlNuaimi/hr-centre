@@ -138,6 +138,29 @@ rendered at `/style-guide` (the "Page archetypes" section).
 card** — a card around one thing is the "card soup" tell (`uat-rubric.md` Tier-0). One accent, one
 primary action per archetype; destructive actions are visually separated + confirmed.
 
+## 1e. Copy chokepoint — every string through next-intl, house style enforced (V2-305)
+
+Copy is a design surface, so it's gated like spacing and color. **The chokepoint:** every
+user-facing string goes through `t("namespace.key")` with the text in `messages/*.json` — a
+literal dropped into JSX (`<span>Save</span>`, `placeholder="Search…"`) is blocked by
+`no-literal-jsx-text` (aria-\*/data-\*, `code`/`pre`, dev pages, and the context-free root
+boundaries are exempt). **The house style** (auto-gated on the source locale by `/ship`'s `copy`
+check — `scripts/copy-check.mjs`):
+
+- **Sentence case, not Title Case** — "Create user", "Change password", "Audit log" (only the
+  first word + proper nouns / acronyms capitalized). This is the Linear/Vercel voice
+  (`design-references.md`).
+- **No trailing period on a label/button** — "Save", not "Save." (an ellipsis "Search…" is fine —
+  it signals more-to-come).
+- **Terminology consistency** — one house term per concept (configurable banned→preferred map in
+  `project.config.json` `copy`).
+
+**Manual reviewer items** (judgement a regex would fake): **imperative button verbs** ("Create
+user", not "User creation" / "New") and a fuller terminology glossary. Check these in
+`/design-qa`; the automated gate covers the deterministic three above. Waive a genuine exception
+via `project.config.json` `copy.waivers` (a key-path) / `copy.properNouns`, never by silencing the
+check.
+
 ## 2. Page header — `PageHeader`
 
 The one title pattern: heading + optional one-sentence subtitle on the inline-start,

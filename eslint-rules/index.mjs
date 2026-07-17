@@ -16,6 +16,7 @@
 //   no-prisma-unfiltered-import prismaUnfiltered (raw client) imported outside its auth/recycling/maintenance allowlist.
 //   no-direct-anthropic-sdk   @anthropic-ai/sdk imported outside lib/ai/** -- model access must go through @/lib/ai (ADR-042).
 //   no-arbitrary-className    Arbitrary Tailwind values on spacing (p/m/gap/space) + font-size (text-[..px]) -- use the scale (V2-304).
+//   no-literal-jsx-text       Literal user-facing text in JSX (text nodes + placeholder/title/alt) -- route copy through next-intl (V2-305).
 //
 // See CLAUDE.md ‘Hard rules’ for the underlying invariants each rule protects.
 
@@ -31,6 +32,7 @@ import noRestrictedExportColumn from "./rules/no-restricted-export-column.mjs";
 import noPrismaUnfilteredImport from "./rules/no-prisma-unfiltered-import.mjs";
 import noDirectAnthropicSdk from "./rules/no-direct-anthropic-sdk.mjs";
 import noArbitraryClassName from "./rules/no-arbitrary-className.mjs";
+import noLiteralJsxText from "./rules/no-literal-jsx-text.mjs";
 
 const plugin = {
   meta: { name: "rihal-template", version: "1.0.0" },
@@ -47,6 +49,7 @@ const plugin = {
     "no-prisma-unfiltered-import": noPrismaUnfilteredImport,
     "no-direct-anthropic-sdk": noDirectAnthropicSdk,
     "no-arbitrary-className": noArbitraryClassName,
+    "no-literal-jsx-text": noLiteralJsxText,
   },
 };
 

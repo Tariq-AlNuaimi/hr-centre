@@ -304,7 +304,7 @@ Still deliberately not covered (would need disproportionate Prisma mocking for t
 ## 16. Shared-tier security checklist (at `/handoff`)
 
 The template's **security floor** (auth wrappers, no leaked secrets, zod at every
-boundary, no raw SQL, the twelve `rihal-template/*` ESLint rules, audit log ON, `/ship`
+boundary, no raw SQL, the thirteen `rihal-template/*` ESLint rules, audit log ON, `/ship`
 before every push) holds for **both** tiers from day zero — see `CLAUDE.md` → "Project
 tiers". A prototype that has only been reviewed by stakeholders via a shared URL is **not
 yet cleared to hold sensitive (Confidential / Restricted) production data.**
