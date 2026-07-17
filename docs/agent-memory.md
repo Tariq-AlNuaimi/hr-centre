@@ -21,8 +21,8 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (4): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (2): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
-- **Conventions** (2): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
-- **Operator directive** (binding): DESIGN BEFORE EXECUTION — architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
+- **Conventions discovered** (2): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
+- **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
 
 <!-- END:digest -->
 
@@ -99,6 +99,9 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
 - 2026-07-11 — **Run `npm run ship` WITHOUT `NODE_ENV=production` exported.** That flag
   loads production react-dom into jsdom and falsely fails the component tests — the gate
   goes red for a bogus reason. Leave NODE_ENV unset/development for the gate.
+- 2026-07-11 — **The Prettier `format` /ship gate (WS-7) fails RED on generator-owned docs.**
+  `docs/REPO-MAP.md` (SessionStart hook) + `docs/SESSION-HANDOFF.md` (render-handoff.mjs auto-status)
+  are regenerated each session, so they MUST stay in `.prettierignore` — Prettier must not fight the generators.
 - 2026-07-03 — `scripts/deploy.mjs` (and new-project.mjs/rebrand.mjs) set
   `project.config.json` `"pristine": false` in the LOCAL working tree as a side
   effect. On the TEMPLATE repo that must stay `true` (a fork clears it) — `/ship`'s
@@ -114,9 +117,6 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
 - 2026-06-24 — SessionStart hook installs deps / regenerates the Prisma client
   on **stale** (package.json or schema.prisma newer than node_modules/generated),
   not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit).
-- 2026-07-11 — **The Prettier `format` /ship gate (WS-7) fails RED on generator-owned docs.**
-  `docs/REPO-MAP.md` (SessionStart hook) + `docs/SESSION-HANDOFF.md` (render-handoff.mjs auto-status)
-  are regenerated each session, so they MUST stay in `.prettierignore` — Prettier must not fight the generators.
 
 ## Gotchas — git & landing to main
 
@@ -211,14 +211,14 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 
 ## Gotchas — subagents
 
+- 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
+  trusting it — agents sometimes return the report as the completion _message_ instead of
+  writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
 - 2026-07-03 — **Worktree subagents (`isolation:"worktree"`) can boot on a STALE base**
   even when the main checkout is on the tip. Fix that worked: run agents in the MAIN
   checkout scoped to DISJOINT file sets (forbid touching in-flight files); use a
   worktree only when agents truly mutate the SAME files, and verify its base
   (`git rev-parse HEAD`) first.
-- 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
-  trusting it — agents sometimes return the report as the completion _message_ instead of
-  writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
 
 ## Conventions discovered
 

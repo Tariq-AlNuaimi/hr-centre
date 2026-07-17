@@ -71,42 +71,45 @@ for (const s of content) {
     problems.push(`section "${s.rawName}" is ${n} lines (budget ${SECTION_BUDGET})`);
 }
 
-// A section "has a digest line" if `- **<bold>**` appears where the section heading starts with
-// <bold> (digest bold may be a terse prefix, e.g. "Conventions" → "Conventions discovered").
-const boldOf = (s) => {
-  const boldTexts = (dm ? dm[2].match(/- \*\*(.+?)\*\*/g) || [] : []).map((m) =>
-    m.replace(/^- \*\*|\*\*$/g, ""),
-  );
-  return boldTexts.find((b) => s.rawName.startsWith(b) || s.name === b) || null;
-};
+// Match a section to its digest line by EXACT bold text (== rawName, or the `(…)`-stripped name).
+// Exact — not prefix — matching avoids the collision where one theme name is a prefix of another
+// (senior-review V2-102 High). Returns the array of matching bold texts (0 = missing, >1 = dup).
+const digestBolds = dm
+  ? (dm[2].match(/- \*\*(.+?)\*\*/g) || []).map((m) => m.replace(/^- \*\*|\*\*$/g, ""))
+  : [];
+const boldsFor = (s) => digestBolds.filter((b) => b === s.rawName || b === s.name);
 
-// --write: refresh NUMERIC `(N)` counts in digest lines; leave non-numeric tags (e.g. "(binding)")
-// alone; flag sections with no digest line at all.
-if (write && dm) {
-  let block = dm[2];
-  const missing = [];
-  for (const s of content) {
-    const bold = boldOf(s);
-    if (!bold) {
-      missing.push(s.rawName);
-      continue;
-    }
-    const boldEsc = bold.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    block = block.replace(
-      new RegExp(`(- \\*\\*${boldEsc}\\*\\*\\s*)\\(\\d+\\)`),
-      `$1(${entryCount(s)})`,
+// One pass over content sections: flag missing/duplicate digest lines; `--write` refreshes the
+// NUMERIC `(N)` count (non-numeric tags like "(binding)" left alone); check-mode flags a count
+// that has DRIFTED from the live section (senior-review V2-102 Medium — drift was undetected).
+let block = dm ? dm[2] : "";
+const missing = [];
+for (const s of content) {
+  const matches = boldsFor(s);
+  if (matches.length === 0) {
+    missing.push(s.rawName);
+    continue;
+  }
+  if (matches.length > 1)
+    problems.push(`digest bold matches ${matches.length} lines for "${s.rawName}"`);
+  const boldEsc = matches[0].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const numRe = new RegExp(`(- \\*\\*${boldEsc}\\*\\*\\s*)\\((\\d+)\\)`);
+  const found = numRe.exec(block);
+  if (write) {
+    block = block.replace(numRe, `$1(${entryCount(s)})`);
+  } else if (found && Number(found[2]) !== entryCount(s)) {
+    problems.push(
+      `digest count for "${s.rawName}" says (${found[2]}) but the section has ${entryCount(s)} entries -- run 'npm run memory-digest'`,
     );
   }
-  if (missing.length) problems.push(`sections missing a digest line: ${missing.join(", ")}`);
+}
+if (missing.length) problems.push(`sections missing a digest line: ${missing.join(", ")}`);
+if (write && dm) {
   const next = text.replace(DIGEST_RE, `$1${block}$3`);
   if (next !== text) {
     writeFileSync(FILE, next);
     console.log("[memory-digest] refreshed digest entry-counts");
   }
-} else if (dm) {
-  // check-only: still flag missing digest lines.
-  const missing = content.filter((s) => !boldOf(s)).map((s) => s.rawName);
-  if (missing.length) problems.push(`sections missing a digest line: ${missing.join(", ")}`);
 }
 
 console.log(

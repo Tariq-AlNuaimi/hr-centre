@@ -297,6 +297,25 @@ Negative test + lookup (`tests/harness/hooks.test.mjs`, suite 29→32 green): a 
 below the digest, proving on-demand retrieval. `/remember` SKILL.md updated to append to a themed
 section + regenerate the digest.
 
+### V2-102 senior review (post-push, `senior-code-reviewer`)
+
+Ran on the V2-102 diff (+ the context-watchdog removal). **Verified zero entry loss** (all 31 dated
+entries preserved verbatim, digest counts matching live sections); watchdog removal confirmed clean
+(no dangling functional references). Five findings, **all fixed in the follow-up commit**:
+
+- **[High] `boldOf` prefix-match collision** in `memory-digest.mjs` — prefix matching could silently
+  corrupt two sections' digest counts with no warning. FIXED: exact bold↔section-name matching +
+  duplicate-match flag.
+- **[Medium] digest count could drift undetected** — only `--write` refreshed counts; check-mode
+  never validated. FIXED: check-mode/`--strict` now reds when a `(N)` mismatches the live
+  `entryCount` (demonstrated).
+- **[Low ×3]** newest-at-top order broken in 2 themed sections (re-sorted); `/remember` SKILL example
+  - promotion-tree still named the old `## Gotchas & landmines` (updated to themed sections);
+    `docs/harness-inventory.md` hook count inconsistent → corrected to 15 + added the `bash-write-gate`
+    and `routing-receipt` rows.
+
+All five logged in `docs/findings-register.md` (2026-07-16), status `fixed`. Hook suite stays 32 green.
+
 ## Per-phase retros
 
 ### Phase 0 retro — "Trust the gates" (V2-001 … V2-006)

@@ -42,8 +42,8 @@ for the former.
    - **A permanent rule** the codebase must always follow → put it in `CLAUDE.md`
      and leave a pointer in **Conventions discovered**.
    - **A costly gotcha** with a canonical fix → if the fix is architectural, write
-     an ADR and point **Gotchas & landmines** at it; otherwise keep the dated line
-     in **Gotchas & landmines** with a `file:line`.
+     an ADR and point the relevant **Gotchas — …** section at it; otherwise keep the
+     dated line in that themed **Gotchas — …** section with a `file:line`.
      Memory is for the in-between — facts not yet stable enough for CLAUDE.md/an ADR.
 5. **Commit on the working branch** (this file is meant to land on `main` via the
    normal merge): `git add docs/agent-memory.md && git commit -m "chore: remember <short summary>"`.
@@ -58,15 +58,15 @@ for the former.
 
 ## Examples
 
-Each fact lands under the section its kind maps to (the three section headers in
-`docs/agent-memory.md`):
+Each fact lands under the section its kind maps to (decisions · a themed `Gotchas — …` section ·
+conventions in `docs/agent-memory.md`):
 
 ```markdown
 ## Durable decisions
 
 2026-06-24 — Rate limiter stays in-memory until multi-instance; revisit via Upstash (see ADR-007).
 
-## Gotchas & landmines
+## Gotchas — browser QA & egress
 
 2026-06-24 — Adding a locale also needs the regex in middleware.ts updated (next-intl strips the prefix).
 

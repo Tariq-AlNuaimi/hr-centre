@@ -161,6 +161,21 @@ the changed surface is still **open** (un-adjudicated).
   the `rules-injection` row + corrected the hook count 13→14 in `docs/harness-inventory.md` §5 +
   overview table, and a `rules/*.md` section to `.claude/README.md`).
 
+- 2026-07-16 — [harness-v2 V2-102/correctness] `memory-digest.mjs` `boldOf` used prefix matching
+  (`rawName.startsWith(bold)`) → a section whose name is a prefix of another silently corrupted both
+  digest counts with no warning (senior-review 2026-07-16, confidence 92) — owner: operator —
+  status: fixed(this commit) (switched to EXACT bold↔section-name matching + duplicate-match flag;
+  reproduced-then-fixed).
+- 2026-07-16 — [harness-v2 V2-102/invariant] the digest `(N)` count could drift from a section's
+  real entry count on any path except `--write` — check-mode/`--strict`/session-start never noticed
+  (senior-review 2026-07-16, confidence 88) — owner: operator — status: fixed(this commit) (check-mode
+  now flags a `(N)` that mismatches the live `entryCount`; `--strict` reds on drift — demonstrated).
+- 2026-07-16 — [harness-v2 V2-102/quality] three doc nits from the same review — newest-at-top order
+  broken in 2 themed sections; `/remember` SKILL example + promotion-tree still named the old
+  `## Gotchas & landmines`; `docs/harness-inventory.md` hook count inconsistent (13 vs 14, actually 15,
+  missing `bash-write-gate`/`routing-receipt` rows) — owner: operator — status: fixed(this commit)
+  (sections re-sorted; SKILL updated to themed sections; inventory corrected to 15 + both rows added).
+
 ## Standing wave-offs promoted to documented trade-offs
 
 <!--
