@@ -4,8 +4,11 @@
   // comments. Runs via the hosted Renovate GitHub App on its own schedule, independent of GitHub
   // Actions (which are dormant on the free plan) — so dependency currency doesn't wait for CI.
   //
-  // MUTUALLY EXCLUSIVE with Dependabot (.github/dependabot.yml): both would open duplicate PRs.
-  // When the Renovate app is installed, it is the bot; dependabot.yml carries a note pointing here.
+  // Renovate and Dependabot are MUTUALLY EXCLUSIVE (both would open duplicate PRs). The Renovate
+  // GitHub App was installed 2026-07-17, so `.github/dependabot.yml` was REMOVED and Renovate is
+  // the sole dependency bot. (A present dependabot.yml is NOT dormant — GitHub runs Dependabot
+  // version updates on its own infra regardless of Actions billing — so keeping it would have
+  // duplicated every PR.) If Renovate is ever removed, restore dependabot.yml from git history.
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: [
     "config:recommended",
