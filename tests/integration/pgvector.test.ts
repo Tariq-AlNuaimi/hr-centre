@@ -18,7 +18,9 @@ import pg from "pg";
 
 // The dimension is config-driven (EMBEDDINGS_DIMENSIONS, default 1536) and MUST match the
 // pgvector column — the exact lockstep the 1024-model trap is about.
-const DIM = Number(process.env.EMBEDDINGS_DIMENSIONS ?? 1536);
+// `||` (not `??`) so a set-but-empty EMBEDDINGS_DIMENSIONS falls back to 1536 rather than
+// Number("") === 0 (the defensive parse lib/ai/embeddings.ts uses).
+const DIM = Number(process.env.EMBEDDINGS_DIMENSIONS || 1536);
 const NS = "__v2402_pgvector_test__";
 const HNSW_INDEX = "document_embedding_embedding_cosine_idx";
 
@@ -61,8 +63,16 @@ before(async () => {
     await c.end();
     return;
   }
+  // The table ships in the SAME migration as the extension, but guard anyway: if the
+  // extension exists without this app's migration, skip cleanly instead of leaking `c`.
+  try {
+    await c.query("DELETE FROM document_embedding WHERE namespace=$1", [NS]);
+  } catch (e) {
+    reason = `document_embedding not present (${(e as Error).message}) — migration unapplied; skipped`;
+    await c.end();
+    return;
+  }
   client = c;
-  await client.query("DELETE FROM document_embedding WHERE namespace=$1", [NS]);
 });
 
 after(async () => {

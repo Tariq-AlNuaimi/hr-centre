@@ -7,7 +7,7 @@ description: AI test-generation that closes coverage gaps to feed the /ship cove
 
 The A1 coverage floor (`scripts/ship.mjs` `scanCoverage`, ADOPT.md cats 09/16) runs
 the contract suite under **node's built-in V8 coverage** — zero extra deps — and
-hard-fails `/ship` when `lib/**` drops below **lines 65 / functions 70 / branches 80**.
+hard-fails `/ship` when `lib/**` drops below **lines 75 / functions 78 / branches 88** (ratcheted V2-403).
 The gate exists; the suite behind it is thin. `/cover` is the qodo-cover-style
 workflow that fills it — **built as a Claude-driven skill, not a dependency**
 (ADR-022 native-over-imported): no qodo-cover install, the discipline lives here.
@@ -27,7 +27,7 @@ throw it away and try a different uncovered path.
    designed to cover). Run the report to see per-file numbers:
    `npm run test:coverage` (report only, no floor) — or the floored form `/ship`
    itself runs:
-   `node --experimental-test-coverage --test-coverage-include=lib/** --test-coverage-lines=65 --test-coverage-functions=70 --test-coverage-branches=80 --experimental-test-module-mocks --import tsx --test tests/contracts/*.test.ts`
+   `node --experimental-test-coverage --test-coverage-include=lib/** --test-coverage-lines=75 --test-coverage-functions=78 --test-coverage-branches=88 --experimental-test-module-mocks --import tsx --test tests/contracts/*.test.ts`
    Read the per-file rows; target the lowest-covered lib files the change touched,
    not the whole tree.
 2. **Pick the right home + runner conventions.** This repo runs **`node --test`**
@@ -63,7 +63,7 @@ throw it away and try a different uncovered path.
   that `scanCoverage` degrades to a WARN and the floor is not enforced — generating
   tests still helps, but you can't rely on the gate to prove it locally.
 - **Don't chase 100%.** The floors are set with margin below the real baseline
-  (lines ~73.7 / funcs ~83.1 / branch ~95.0); the job is to keep touched files
+  (lines ~80.24 / funcs ~83.71 / branch ~93.13); the job is to keep touched files
   above the floor, not to gold-plate coverage on code the change didn't touch.
 - A real gap you choose not to close is a **wave-off**, never a silent floor-drop:
   set `"coverageAck": "<reason>"` in `project.config.json` **plus** an adjudicated
