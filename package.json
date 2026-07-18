@@ -48,6 +48,7 @@
     "repo-map": "node scripts/repo-map.mjs",
     "uat": "UAT_MODE=lean playwright test",
     "uat:full": "UAT_MODE=full playwright test",
+    "design-parity": "playwright test tests/uat/design-system.uat.ts",
     "uat:headed": "UAT_MODE=lean playwright test --headed",
     "uat:report": "playwright show-report uat-report",
     "uat:pdf": "node scripts/uat-pdf.mjs",

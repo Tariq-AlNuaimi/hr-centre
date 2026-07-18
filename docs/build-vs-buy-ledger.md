@@ -35,7 +35,22 @@ Decision: <build | adopt | build-thin-wrapper-around-X> because <reason>. See <b
 
 ## Decisions
 
-### 2026-07-10 — PDF export (seed example)
+### 2026-07-18 — AI-pattern primitives (components/shared/ai/\*\*)
+
+Scope: components/shared/ai/**
+Considered: **shadcn/ui blocks / a prebuilt "AI chat" kit** (e.g. the shadcn-registry AI blocks,
+Vercel `ai-elements`) — they target chat/completion UIs (message list, prompt box, tool calls), not
+the Rihal advisory pattern (a human-decides frame over a finding with confidence + citations), so
+adopting one means fighting its chat shape and pulling its dep tree; **Tremor** — charts/KPI only, no
+AI-advisory surface; **build thin on the shipped shadcn/Tailwind primitives** (chosen) — these are
+tiny presentational components (Badge/Card/Button + tokens) encoding MIGRATION.md's shared AI
+contract (royal ✦ mark, advisory framing, honest 503/loading states, human decides), reused across
+every AI-augmented fork.
+Decision: **BUILD `components/shared/ai/`** — `AiAssistPanel`, `AiStreaming`, `ConfidenceChip`,
+`CitationLink`, `ResponsibleAiBanner`, `AgentActivity` — thin, on-token, a11y/RTL-safe primitives on
+the existing shadcn layer (CommandPalette already exists in `components/layout/`). Zero new runtime
+dependency. Standardizes the AI-Quality pillar's UI surface (ADR-042; MIGRATION.md "AI pattern
+primitives"). Demoed on `/style-guide`.
 
 Scope: lib/pdf/**
 Considered: pdfkit (in-process; intentionally absent from lib/export.ts — fragile in

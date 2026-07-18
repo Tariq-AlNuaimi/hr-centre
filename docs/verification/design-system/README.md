@@ -29,12 +29,27 @@ Browser gates live in the `/qa`·`uat` tier by constitutional design (warm `/shi
 is deliberately DB-free); the source invariants run in warm `/ship`. So the
 enforcement is split to match the architecture:
 
-| Gate               | File                                          | Runs in                       | Enforces                                                                                                                                                                                                                                     |
-| ------------------ | --------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Static drift**   | `tests/contracts/design-system-drift.test.ts` | warm `/ship` (contract phase) | font family is single-source (no hardcoded name in tokens/globals — P1.4); chart series-1 == brand; brand-as-text ≠ raw brand; no `undefined/null/NaN` in token CSS; non-empty font fallback (P0.1/P1.5)                                     |
-| **Browser parity** | `tests/uat/design-system.uat.ts`              | `npm run uat` · `/qa`         | mounts clean (no console errors); printed hex == token value (P1.5); **hover changes paint** (P0.2); **`[data-theme]` flips `--background`**; **axe** serious/critical == 0 both themes (P3.10); **≤1.5% visual-diff** vs committed baseline |
+| Gate               | File                                          | Runs in                                 | Enforces                                                                                                                                                                                                                                     |
+| ------------------ | --------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Static drift**   | `tests/contracts/design-system-drift.test.ts` | warm `/ship` (contract phase)           | font family is single-source (no hardcoded name in tokens/globals — P1.4); chart series-1 == brand; brand-as-text ≠ raw brand; no `undefined/null/NaN` in token CSS; non-empty font fallback (P0.1/P1.5)                                     |
+| **Browser parity** | `tests/uat/design-system.uat.ts`              | `npm run uat` · `/qa` · **`ship:full`** | mounts clean (no console errors); printed hex == token value (P1.5); **hover changes paint** (P0.2); **`[data-theme]` flips `--background`**; **axe** serious/critical == 0 both themes (P3.10); **≤1.5% visual-diff** vs committed baseline |
 
 Baselines: `tests/uat/design-system.uat.ts-snapshots/style-guide-{light,dark}-chromium-linux.png`.
+
+`ship:full` (used by `/deploy`, `/handoff`, CI) runs the browser parity as a phase-B
+gate (`npm run design-parity`), degrading to an honest SKIP when no app is reachable
+(probes `UAT_BASE_URL` / `localhost:3000`) — same pattern as the docker + integration
+gates, so it never false-REDs a DB-less run, and is RED only on a genuine parity
+failure where an app IS up.
+
+## AI-pattern primitives (`components/shared/ai/*`)
+
+The MIGRATION.md shared AI contract, now real components (build-vs-buy ledger,
+2026-07-18): `AiAssistPanel` (advisory frame + ✦ mark), `AiStreaming` (honest
+loading), `ConfidenceChip` (bars + number from one value), `CitationLink`,
+`ResponsibleAiBanner`, `AgentActivity` (AI vs Human). Prop-driven (callers
+localize), on-token, a11y/RTL-safe. Demoed in the `/style-guide` "AI patterns"
+section; the command palette (⌘K) already lives in `components/layout/`.
 
 ## Verification run (this session)
 

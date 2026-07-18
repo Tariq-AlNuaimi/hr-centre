@@ -37,6 +37,13 @@ import {
 import { cn } from "@/lib/utils";
 import { brand } from "@/brand.config";
 import { chartPalette } from "@/components/shared/chart-palette";
+import {
+  AiAssistPanel,
+  AiStreaming,
+  CitationLink,
+  ResponsibleAiBanner,
+  AgentActivity,
+} from "@/components/shared/ai";
 import { OPEN_COMMAND_PALETTE } from "@/components/layout/CommandPalette";
 
 /* --- Inline icons (Preflight-off SVGs; replaces @ant-design/icons) --------- */
@@ -417,45 +424,67 @@ export default function StyleGuidePage() {
         </div>
       </Section>
 
-      <Section title="AI advisory pattern — assistive, never autonomous">
-        {/* Advisory frame: left brand accent, a confidence value that drives BOTH the
-            bar and its label, and an explicit human decision. No fake "streaming". */}
-        <div className="max-w-xl rounded-lg border border-l-2 border-border border-l-primary bg-card p-4 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-foreground">Auto-renewal clause</span>
-            <Badge variant="warning">Medium risk</Badge>
-            <span className="ms-auto font-mono text-xs text-muted-foreground">Clause 3</span>
+      <Section title="AI patterns — assistive, never autonomous">
+        {/* The shared components/shared/ai/* primitives (MIGRATION.md): the royal
+            ✦ mark, an advisory frame, honest loading state, a human deciding. The
+            ConfidenceChip inside the panel derives its bars + number from ONE
+            value, so they can't disagree. */}
+        <div className="flex max-w-2xl flex-col gap-4">
+          <AiAssistPanel
+            title="Auto-renewal clause"
+            risk="medium"
+            riskLabel="Medium risk"
+            confidence={aiConfidence}
+            confidenceLabel="Confidence"
+            meta="Clause 3"
+            actions={
+              <>
+                <Button size="sm">Accept</Button>
+                <Button size="sm" variant="outline">
+                  Reject
+                </Button>
+                <Button size="sm" variant="ghost">
+                  Edit
+                </Button>
+              </>
+            }
+          >
+            Policy requires <strong>mutual written agreement</strong> for renewal — a human approves
+            or rejects this suggestion.{" "}
+            <CitationLink href="#ai-patterns">Legal Manual §4.2</CitationLink>
+          </AiAssistPanel>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Honest loading state — a labelled shimmer, never a fake result. */}
+            <AiStreaming label="Generating…" lines={2} />
+            <ResponsibleAiBanner>
+              Scores are advisory and bias-checked. Never uses protected attributes; a human always
+              decides.
+            </ResponsibleAiBanner>
           </div>
-          <p className="mt-2 text-sm text-foreground">
-            Policy requires <strong>mutual written agreement</strong> for renewal. This is an
-            advisory suggestion — a human approves or rejects it.
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <span className="text-xs font-medium text-muted-foreground">Confidence</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${Math.round(aiConfidence * 100)}%` }}
-                role="progressbar"
-                aria-valuenow={Math.round(aiConfidence * 100)}
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-label="AI confidence"
-              />
-            </div>
-            <span className="font-mono text-xs text-primary-emphasis">
-              {aiConfidence.toFixed(2)}
-            </span>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button size="sm">Accept</Button>
-            <Button size="sm" variant="outline">
-              Reject
-            </Button>
-            <Button size="sm" variant="ghost">
-              Edit
-            </Button>
-          </div>
+
+          <AgentActivity
+            items={[
+              {
+                time: "10:24",
+                actor: "ai",
+                text: (
+                  <>
+                    CV parsed &amp; scored — <strong>Ahmed Al-Balushi</strong> · fit 4.2
+                  </>
+                ),
+              },
+              {
+                time: "11:03",
+                actor: "human",
+                text: (
+                  <>
+                    Offer approved (Tier 2) — <strong>Aisha Al-Saidi</strong>
+                  </>
+                ),
+              },
+            ]}
+          />
         </div>
       </Section>
 
