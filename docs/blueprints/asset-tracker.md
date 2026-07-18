@@ -1,6 +1,6 @@
 # Blueprint — IT Asset Tracker (Phase-2 pilot, V2-210)
 
-Scope: app/api/asset/**, app/**/asset/**, components/asset/**, lib/validations/asset.ts, app/api/category/**, app/**/category/**, components/category/**, lib/validations/category.ts, app/api/manufacturer/**, app/**/manufacturer/**, components/manufacturer/**, lib/validations/manufacturer.ts, app/api/asset-model/**, app/**/asset-model/**, components/asset-model/**, lib/validations/asset-model.ts, app/api/custom-field-def/**, components/asset/CustomFields.tsx, lib/validations/custom-field.ts, lib/csv.ts
+Scope: app/api/asset/**, app/**/asset/**, components/asset/**, lib/validations/asset.ts, app/api/category/**, app/**/category/**, components/category/**, lib/validations/category.ts, app/api/manufacturer/**, app/**/manufacturer/**, components/manufacturer/**, lib/validations/manufacturer.ts, app/api/asset-model/**, app/**/asset-model/**, components/asset-model/**, lib/validations/asset-model.ts, app/api/custom-field-def/**, app/[locale]/(dashboard)/custom-field-def/**, components/custom-field-def/**, components/asset/CustomFields.tsx, lib/validations/custom-field.ts, lib/csv.ts
 
 BDD: tests/features/asset-tracker.feature
 
@@ -22,20 +22,20 @@ template's `/scaffold-entity` is the closest same-stack path (ADR-059).
 
 ## Feature parity (dispositions the ITAM table-stakes — V2-202)
 
-| Benchmark row (table-stakes)      | Disposition  | Pointer                                                                                                                             |
-| --------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| T1 Unique asset tag               | IN           | → US1 / `assetTag` unique+immutable                                                                                                 |
-| T2 Model→Category→Manufacturer    | IN           | → `Category`/`Manufacturer`/`AssetModel` + `Asset.modelId` (2026-07-18)                                                             |
-| T3 Status/state labels            | IN           | → US4 `status` enum + transition rule                                                                                               |
-| T4 Assignee / location            | IN (partial) | → `assignee → User?` (location deferred)                                                                                            |
-| T5 Check-out / check-in           | IN           | → US4 status transitions (ASSIGNED)                                                                                                 |
-| T6 Purchase & warranty fields     | IN (partial) | → `purchasedAt` (warranty deferred)                                                                                                 |
-| T7 Depreciation                   | N/A          | out of pilot scope (reporting concern, not the CRUD slice)                                                                          |
-| T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                                                                                                  |
-| T9 Custom fields                  | IN (partial) | → `CustomFieldDef` + `Asset.customFields` (dynamic form + boundary validation); defs API/seed-managed, no admin UI yet (2026-07-18) |
-| T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                                                                                                      |
-| T11 Bulk import (CSV)             | IN           | → `POST /api/asset/import` (audited `$transaction`, not `createMany`; 2026-07-18)                                                   |
-| T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                                                                                                    |
+| Benchmark row (table-stakes)      | Disposition  | Pointer                                                                                                             |
+| --------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| T1 Unique asset tag               | IN           | → US1 / `assetTag` unique+immutable                                                                                 |
+| T2 Model→Category→Manufacturer    | IN           | → `Category`/`Manufacturer`/`AssetModel` + `Asset.modelId` (2026-07-18)                                             |
+| T3 Status/state labels            | IN           | → US4 `status` enum + transition rule                                                                               |
+| T4 Assignee / location            | IN (partial) | → `assignee → User?` (location deferred)                                                                            |
+| T5 Check-out / check-in           | IN           | → US4 status transitions (ASSIGNED)                                                                                 |
+| T6 Purchase & warranty fields     | IN (partial) | → `purchasedAt` (warranty deferred)                                                                                 |
+| T7 Depreciation                   | N/A          | out of pilot scope (reporting concern, not the CRUD slice)                                                          |
+| T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                                                                                  |
+| T9 Custom fields                  | IN           | → `CustomFieldDef` (full admin CRUD + nav) + `Asset.customFields` (dynamic form + boundary validation) (2026-07-18) |
+| T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                                                                                      |
+| T11 Bulk import (CSV)             | IN           | → `POST /api/asset/import` (audited `$transaction`, not `createMany`; 2026-07-18)                                   |
+| T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                                                                                    |
 
 (DEFERRED rows are tracked in `docs/findings-register.md`; anti-features A1–A5 from the benchmark —
 ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pilot an asset register.)
@@ -81,9 +81,9 @@ ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pil
     Category-entity picker.
   - **T9 custom fields** — was: fixed columns only. now: `CustomFieldDef` entity (label/key/type/
     required) + a `customFields Json?` column on `Asset`; the asset form renders defs dynamically and
-    the boundary validates them (required/type/unknown-key). Defs are currently API- + seed-managed
-    (`GET`/`POST /api/custom-field-def`, admin-write); a def-management admin UI (edit/delete/nav) is
-    NOT yet built — see the parity T9 "IN (partial)" note.
+    the boundary validates them (required/type/unknown-key). Defs have a full admin CRUD
+    surface (`GET/POST /api/custom-field-def` + `GET/PUT/DELETE .../[id]`, admin-write; list/new/edit
+    pages under `custom-field-def/**` + a "Custom fields" nav link). `key` is immutable after create.
   - **T11 bulk CSV import** — was: none. now: `POST /api/asset/import` (editor-auth, rate-limited)
     doing per-row **audited** `create` inside a `$transaction` (NOT `createMany` — ADR-010) + a bounded
     row cap + per-row error report; a list-page import panel with preview.

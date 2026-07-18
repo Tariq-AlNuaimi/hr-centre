@@ -16,6 +16,13 @@ export const createCustomFieldDefSchema = z.object({
 
 export type CreateCustomFieldDefInput = z.infer<typeof createCustomFieldDefSchema>;
 
+// `key` is immutable after create (it is the JSON key already stored on assets) — omitted.
+export const updateCustomFieldDefSchema = z.object({
+  label: z.string().min(1).max(255).optional(),
+  type: z.enum(["TEXT", "NUMBER", "DATE", "BOOLEAN"]).optional(),
+  required: z.boolean().optional(),
+});
+
 export type CustomFieldDefLite = {
   key: string;
   label: string;

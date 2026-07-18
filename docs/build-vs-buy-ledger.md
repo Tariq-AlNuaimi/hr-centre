@@ -604,3 +604,19 @@ ADR" Ask-before gate for a bounded, known-schema, ≤500-row asset import that n
   single-pass state machine handling `"quoted, fields"`, escaped `""`, and CR/LF; `parseCsvToObjects`
   — header-keyed rows). Zero runtime dep; scoped to the T11 import path. If a fork needs streaming or
   RFC-4180 edge cases at volume, `/scale-up` to `csv-parse` (a later ADR).
+
+## 2026-07-18 — Shared entity list-page (`components/shared/EntityListPage`)
+
+Scope: components/shared/EntityListPage.tsx
+Considered: **a table/CRUD-scaffold framework** (react-admin, Refine — rejected: they own routing/
+data/auth and would replace this repo's DataTable + use-entity-queries + next-intl seams wholesale
+for what is ~90 lines of glue), **leave the per-entity duplication** (rejected — every scaffolded
+list page re-opens the identical page/pageSize/search/sort state + params object + `useEntityList`
+
+- delete handler + `PageHeader`/`DataTable`/`EmptyState` wiring, which the jscpd Maintainable gate
+  flags once ≥4 simple entities exist). Decision: **BUILD a generic
+  `EntityListPage<T>({apiPath, basePath, t, buildColumns})`** on the shipped `DataTable`/`useEntityList`/
+  `useEntityMutations` primitives; each simple entity's list page collapses to a ~6-line call. Zero new
+  dependency; the page-level sibling of the `RowActions`/`RelationSelect`/`parseListQuery` extractions.
+  Entities with extra list features (asset: column filters + CSV import) keep their bespoke page. A
+  follow-up should teach `scaffold-entity` to emit the thin wrapper.

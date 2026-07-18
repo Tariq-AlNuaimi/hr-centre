@@ -92,6 +92,12 @@ export function AppSidebar() {
       onClick: () => router.push(`/${locale}/asset-model`),
     },
     {
+      key: "custom-field-def",
+      icon: <LayoutGrid className="h-4 w-4" />,
+      label: "Custom fields",
+      onClick: () => router.push(`/${locale}/custom-field-def`),
+    },
+    {
       key: "recycling-bin",
       icon: <Trash2 className="h-4 w-4" />,
       label: t("recyclingBin"),
