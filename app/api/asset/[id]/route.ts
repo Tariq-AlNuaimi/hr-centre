@@ -11,6 +11,14 @@ export const GET = withRateLimit(
       where: { id },
       include: {
         assignee: { select: { id: true, name: true } },
+        model: {
+          select: {
+            id: true,
+            name: true,
+            category: { select: { id: true, name: true } },
+            manufacturer: { select: { id: true, name: true } },
+          },
+        },
       },
     });
     if (!record) return notFound("Asset");

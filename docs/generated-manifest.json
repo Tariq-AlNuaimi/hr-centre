@@ -24,6 +24,78 @@
       ],
       "harnessVersion": "0.1.0",
       "date": "2026-07-17"
+    },
+    {
+      "generator": "scaffold-entity",
+      "name": "Category",
+      "files": [
+        "lib/validations/category.ts",
+        "app/api/category/route.ts",
+        "app/api/category/[id]/route.ts",
+        "components/category/CategoryColumns.tsx",
+        "components/category/CategoryForm.tsx",
+        "app/[locale]/(dashboard)/category/page.tsx",
+        "app/[locale]/(dashboard)/category/new/page.tsx",
+        "app/[locale]/(dashboard)/category/[id]/page.tsx"
+      ],
+      "patched": [
+        "prisma/schema.prisma",
+        "messages/en.json",
+        "messages/ar.json",
+        "lib/prisma/soft-delete-extension.ts",
+        "lib/prisma/recyclable.ts",
+        "components/layout/AppSidebar.tsx"
+      ],
+      "harnessVersion": "0.2.0",
+      "date": "2026-07-18"
+    },
+    {
+      "generator": "scaffold-entity",
+      "name": "Manufacturer",
+      "files": [
+        "lib/validations/manufacturer.ts",
+        "app/api/manufacturer/route.ts",
+        "app/api/manufacturer/[id]/route.ts",
+        "components/manufacturer/ManufacturerColumns.tsx",
+        "components/manufacturer/ManufacturerForm.tsx",
+        "app/[locale]/(dashboard)/manufacturer/page.tsx",
+        "app/[locale]/(dashboard)/manufacturer/new/page.tsx",
+        "app/[locale]/(dashboard)/manufacturer/[id]/page.tsx"
+      ],
+      "patched": [
+        "prisma/schema.prisma",
+        "messages/en.json",
+        "messages/ar.json",
+        "lib/prisma/soft-delete-extension.ts",
+        "lib/prisma/recyclable.ts",
+        "components/layout/AppSidebar.tsx"
+      ],
+      "harnessVersion": "0.2.0",
+      "date": "2026-07-18"
+    },
+    {
+      "generator": "scaffold-entity",
+      "name": "AssetModel",
+      "files": [
+        "lib/validations/asset-model.ts",
+        "app/api/asset-model/route.ts",
+        "app/api/asset-model/[id]/route.ts",
+        "components/asset-model/AssetModelColumns.tsx",
+        "components/asset-model/AssetModelForm.tsx",
+        "app/[locale]/(dashboard)/asset-model/page.tsx",
+        "app/[locale]/(dashboard)/asset-model/new/page.tsx",
+        "app/[locale]/(dashboard)/asset-model/[id]/page.tsx"
+      ],
+      "patched": [
+        "prisma/schema.prisma",
+        "messages/en.json",
+        "messages/ar.json",
+        "lib/prisma/soft-delete-extension.ts",
+        "lib/prisma/recyclable.ts",
+        "components/layout/AppSidebar.tsx"
+      ],
+      "harnessVersion": "0.2.0",
+      "date": "2026-07-18"
     }
   ]
 }

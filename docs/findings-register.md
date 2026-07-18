@@ -307,12 +307,16 @@ the changed surface is still **open** (un-adjudicated).
   — **UPDATE 2026-07-18 (repo-audit):** operator asked to build all three out now. Attempted — but
   the web container has **no Docker daemon, no native Postgres, no `DATABASE_URL`** (egress-restricted),
   so the required Prisma **migrations cannot be generated/applied or verified**, and T11's audited
-  bulk-create path cannot be exercised, here. Authoring unapplied/unverified migrations violates the
-  forward-compat rule, so T2/T9/T11 **stay `scheduled`**, delegated to a DB-capable env (dev box or
-  preview deploy) — same posture as the WS-1/WS-5 infra wave-offs. A full staged build spec (4 sub-
-  phases, migration-per-phase Ask-before, audited bulk-create for T11, blueprint amendments) is ready
-  to execute where a DB exists. The UI-polish slice that needed no DB — the one-primary-action CTA fix
-  — DID land (see the V2-307 line: `EmptyState` `actionVariant`, type/lint/build clean).
+  bulk-create path cannot be exercised, here. — **SUPERSEDED 2026-07-18:** a native Postgres 16 +
+  pgvector was stood up in-container (operator confirmed the env has access), so the DB blocker is
+  gone. **T2 (hierarchy) is now BUILT + verified** — `Category`/`Manufacturer`/`AssetModel` entities
+  (migration `20260718152957` applied + seeded), `Asset.modelId` FK, cascading Model picker on the
+  form, Model column on the list; captured live (`docs/verification/asset-tracker/`, real seeded
+  hierarchy renders) and `/ship`-green. Refactor extracted 3 shared primitives
+  (`RowActions`/`RelationSelect`/`parseListQuery`) to hold jscpd < 3%. **T9 (custom fields) + T11
+  (CSV import) remain `scheduled`** — the next sub-phases (5c/5d) on the same DB; the `customFields`
+  Json column already shipped in the T2 migration (inert until 5c wires it). See the V2-307 line for
+  the CTA fix that landed earlier.
 
 - 2026-07-17 — [harness-v2 V2-210/correctness] the pilot's two-stage senior review found 1 High + 2
   Medium + 1 Low in the hand-layered pilot code (Stage 1 confirmed scope-clean + caught the AC drift;

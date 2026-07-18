@@ -8,6 +8,7 @@ export const createAssetSchema = z.object({
   purchasedAt: z.coerce.date().optional(),
   status: z.nativeEnum(AssetStatus),
   category: z.nativeEnum(AssetCategory),
+  modelId: z.string().min(1).optional(),
   assigneeId: z.string().min(1).optional(),
 });
 
@@ -18,6 +19,7 @@ export const updateAssetSchema = z.object({
   purchasedAt: z.coerce.date().optional(),
   status: z.nativeEnum(AssetStatus).optional(),
   category: z.nativeEnum(AssetCategory).optional(),
+  modelId: z.string().min(1).nullable().optional(),
 });
 
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;

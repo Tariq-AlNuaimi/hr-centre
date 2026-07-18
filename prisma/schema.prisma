@@ -142,7 +142,13 @@ model Asset {
   serial      String?
   purchasedAt DateTime?
   status      AssetStatus @default(IN_STOCK)
+  // `category` enum RETAINED for forward-compat (never drop a column the running version reads);
+  // the real hierarchy is `model → AssetModel → {category, manufacturer}` (T2, 2026-07-18).
   category    AssetCategory @default(LAPTOP)
+  modelId     String?
+  model       AssetModel? @relation(fields: [modelId], references: [id])
+  // Per-entity custom-field values keyed by CustomFieldDef.key (T9, 2026-07-18).
+  customFields Json?
   assigneeId  String?
   assignee    User? @relation(fields: [assigneeId], references: [id])
   createdAt DateTime @default(now())
@@ -150,6 +156,51 @@ model Asset {
   deletedAt DateTime?
   deletedBy String?
   @@index([assigneeId])
+  @@index([modelId])
   @@index([deletedAt, createdAt])
   @@map("assets")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name        String @unique
+  description String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  deletedBy String?
+  assetModels AssetModel[]
+  @@index([deletedAt, createdAt])
+  @@map("categories")
+}
+
+model Manufacturer {
+  id        String   @id @default(cuid())
+  name        String @unique
+  website     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  deletedBy String?
+  assetModels AssetModel[]
+  @@index([deletedAt, createdAt])
+  @@map("manufacturers")
+}
+
+model AssetModel {
+  id        String   @id @default(cuid())
+  name        String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  manufacturerId String
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id])
+  assets      Asset[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  deletedBy String?
+  @@unique([manufacturerId, name])
+  @@index([categoryId])
+  @@index([deletedAt, createdAt])
+  @@map("asset_models")
 }

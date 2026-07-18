@@ -1,6 +1,6 @@
 # Blueprint — IT Asset Tracker (Phase-2 pilot, V2-210)
 
-Scope: app/api/asset/**, app/**/asset/**, components/asset/**, lib/validations/asset.ts
+Scope: app/api/asset/**, app/**/asset/**, components/asset/**, lib/validations/asset.ts, app/api/category/**, app/**/category/**, components/category/**, lib/validations/category.ts, app/api/manufacturer/**, app/**/manufacturer/**, components/manufacturer/**, lib/validations/manufacturer.ts, app/api/asset-model/**, app/**/asset-model/**, components/asset-model/**, lib/validations/asset-model.ts, lib/csv.ts
 
 BDD: tests/features/asset-tracker.feature
 
@@ -22,20 +22,20 @@ template's `/scaffold-entity` is the closest same-stack path (ADR-059).
 
 ## Feature parity (dispositions the ITAM table-stakes — V2-202)
 
-| Benchmark row (table-stakes)      | Disposition  | Pointer                                                    |
-| --------------------------------- | ------------ | ---------------------------------------------------------- |
-| T1 Unique asset tag               | IN           | → US1 / `assetTag` unique+immutable                        |
-| T2 Model→Category→Manufacturer    | DEFERRED     | → findings-register (pilot ships flat `category` enum)     |
-| T3 Status/state labels            | IN           | → US4 `status` enum + transition rule                      |
-| T4 Assignee / location            | IN (partial) | → `assignee → User?` (location deferred)                   |
-| T5 Check-out / check-in           | IN           | → US4 status transitions (ASSIGNED)                        |
-| T6 Purchase & warranty fields     | IN (partial) | → `purchasedAt` (warranty deferred)                        |
-| T7 Depreciation                   | N/A          | out of pilot scope (reporting concern, not the CRUD slice) |
-| T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                         |
-| T9 Custom fields                  | DEFERRED     | → findings-register (fieldset model is a later scale-up)   |
-| T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                             |
-| T11 Bulk import (CSV)             | DEFERRED     | → findings-register (`/scale-up` import recipe)            |
-| T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                           |
+| Benchmark row (table-stakes)      | Disposition  | Pointer                                                                 |
+| --------------------------------- | ------------ | ----------------------------------------------------------------------- |
+| T1 Unique asset tag               | IN           | → US1 / `assetTag` unique+immutable                                     |
+| T2 Model→Category→Manufacturer    | IN           | → `Category`/`Manufacturer`/`AssetModel` + `Asset.modelId` (2026-07-18) |
+| T3 Status/state labels            | IN           | → US4 `status` enum + transition rule                                   |
+| T4 Assignee / location            | IN (partial) | → `assignee → User?` (location deferred)                                |
+| T5 Check-out / check-in           | IN           | → US4 status transitions (ASSIGNED)                                     |
+| T6 Purchase & warranty fields     | IN (partial) | → `purchasedAt` (warranty deferred)                                     |
+| T7 Depreciation                   | N/A          | out of pilot scope (reporting concern, not the CRUD slice)              |
+| T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                                      |
+| T9 Custom fields                  | DEFERRED     | → findings-register (fieldset model is a later scale-up)                |
+| T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                                          |
+| T11 Bulk import (CSV)             | DEFERRED     | → findings-register (`/scale-up` import recipe)                         |
+| T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                                        |
 
 (DEFERRED rows are tracked in `docs/findings-register.md`; anti-features A1–A5 from the benchmark —
 ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pilot an asset register.)
@@ -66,7 +66,20 @@ ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pil
 
 ## Delta — was → now
 
-n/a — additive only (new entity, new routes; no existing behavior changes).
+- 2026-07-17 (pilot): n/a — additive only (new entity, new routes; no existing behavior changes).
+- **2026-07-18 (repo-audit, V2-209 amendment): graduate the pilot from flat register to real ITAM.**
+  Operator directive "do all now" authorized building the three DEFERRED table-stakes rows:
+  - **T2 hierarchy** — was: `category` flat enum. now: real `Category` + `Manufacturer` + `AssetModel`
+    entities (full CRUD, soft-delete, audit); `Asset` gains a nullable `modelId → AssetModel` (the
+    enum column is RETAINED this release for forward-compat — never drop a column the running version
+    reads). Form category `Select` → cascading Category→Manufacturer→Model `RelationSelect`s.
+  - **T9 custom fields** — was: fixed columns only. now: `CustomFieldDef` entity (label/key/type/
+    required) + a `customFields Json?` column on `Asset`; the form renders defs dynamically and the
+    boundary validates them.
+  - **T11 bulk CSV import** — was: none. now: `POST /api/asset/import` (editor-auth, rate-limited)
+    doing per-row **audited** `create` inside a `$transaction` (NOT `createMany` — ADR-010) + a bounded
+    row cap + per-row error report; a list-page import panel with preview.
+    Additive migrations only; each sub-phase re-confirmed below.
 
 ## Universal app-floor checklist (V2-203)
 
@@ -123,4 +136,4 @@ correctly serializes it; the parallel-wave demonstration for this program was Wa
 - [x] Build approach → `/scaffold-entity` + hand-added transition rule (ADR-059).
 - [x] Depreciation/custom-fields/bulk-import → DEFERRED to findings-register (out of pilot slice).
 
-Confirmed: Tariq Al-Naaimi 2026-07-17 (operator waved the interactive round; defaults recorded, re-confirmable).
+Confirmed: Tariq Al-Naaimi 2026-07-18 (operator directive "do all now" re-confirms the amended blueprint — the T2/T9/T11 graduation build-out authorized in the repo-audit session; 2026-07-17 pilot confirmation superseded).

@@ -2,7 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
-import { parsePagination, paginatedResponse } from "@/lib/pagination";
+import { paginatedResponse } from "@/lib/pagination";
+import { parseListQuery } from "@/lib/list-query";
 import { createAssetSchema } from "@/lib/validations/asset";
 import { AssetStatus, AssetCategory } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
@@ -17,16 +18,14 @@ const SORTABLE_COLUMNS = [
   "category",
   "createdAt",
 ] as const;
-type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
 export const GET = withRateLimit(
   withAuth(async (request: NextRequest) => {
     const { searchParams } = request.nextUrl;
-    const pagination = parsePagination(searchParams);
-
-    const search = searchParams.get("search") ?? undefined;
-    const where: Prisma.AssetWhereInput = {};
-    if (search) where.assetTag = { contains: search, mode: "insensitive" };
+    const { pagination, where, orderBy } = parseListQuery<Prisma.AssetWhereInput>(searchParams, {
+      searchField: "assetTag",
+      sortable: SORTABLE_COLUMNS,
+    });
     // Server-side status/category filters (wired to the DataTable column filters).
     const statusParam = searchParams.get("status");
     if (statusParam && statusParam in AssetStatus) where.status = statusParam as AssetStatus;
@@ -34,21 +33,22 @@ export const GET = withRateLimit(
     if (categoryParam && categoryParam in AssetCategory)
       where.category = categoryParam as AssetCategory;
 
-    const sortParam = searchParams.get("sort");
-    const sortField: SortableColumn =
-      sortParam && (SORTABLE_COLUMNS as readonly string[]).includes(sortParam)
-        ? (sortParam as SortableColumn)
-        : "createdAt";
-    const order: "asc" | "desc" = searchParams.get("order") === "asc" ? "asc" : "desc";
-
     const [data, total] = await Promise.all([
       prisma.asset.findMany({
         where,
         skip: pagination.skip,
         take: pagination.take,
-        orderBy: { [sortField]: order },
+        orderBy,
         include: {
           assignee: { select: { id: true, name: true } },
+          model: {
+            select: {
+              id: true,
+              name: true,
+              category: { select: { id: true, name: true } },
+              manufacturer: { select: { id: true, name: true } },
+            },
+          },
         },
       }),
       prisma.asset.count({ where }),
