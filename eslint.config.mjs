@@ -79,11 +79,14 @@ const eslintConfig = defineConfig([
     files: ["**/*.{jsx,tsx}"],
     rules: { "rihal-template/no-literal-jsx-text": "error" },
   },
-  // The style-guide is a DEV / reference page: it deliberately shows raw sample copy
-  // ("Heading 1", "Primary", archetype labels) that is NOT product UI and must not be
-  // translated. Turn the chokepoint off there (the V2-305 "dev pages" allowlist).
+  // DEV / reference pages: they deliberately show raw sample/brand copy ("Heading 1",
+  // "Primary", the Manzil design-system showcase's marketing copy) that is NOT product
+  // UI and that a fork rewrites wholesale — it must not be translated. Turn the
+  // chokepoint off there (the V2-305 "dev pages" allowlist). Same carve-out for both
+  // design-reference surfaces: /style-guide (component gallery) + /design-system (the
+  // branded design-system showcase; see docs/blueprints/design-system-showcase.md).
   {
-    files: ["**/style-guide/**"],
+    files: ["**/style-guide/**", "**/design-system/**"],
     rules: { "rihal-template/no-literal-jsx-text": "off" },
   },
   // The root not-found / global-error boundaries are DELIBERATELY context-free: Next 16

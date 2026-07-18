@@ -142,3 +142,47 @@ test.describe("design-system showcase — parity", () => {
     });
   }
 });
+
+// The flagship "Manzil" design-system showcase route (blueprint:
+// docs/blueprints/design-system-showcase.md) — the branded landing built from the
+// same tokens + AI primitives. Gated the same way so it can't drift silently.
+const SHOWCASE = `/${L}/design-system`;
+
+test.describe("design-system showcase route — parity", () => {
+  for (const theme of ["light", "dark"] as const) {
+    test(`axe clean (serious/critical) — ${theme}`, async ({ page }) => {
+      if (theme === "dark") {
+        await page.goto(`/${L}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+        await page.context().addCookies([{ name: "theme-mode", value: "dark", url: page.url() }]);
+      }
+      await page.goto(SHOWCASE, { waitUntil: "domcontentloaded" });
+      await page.waitForLoadState("networkidle").catch(() => {});
+      const results = await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze();
+      const blocking = results.violations.filter(
+        (v) => v.impact === "serious" || v.impact === "critical",
+      );
+      const detail = blocking
+        .map((v) => `  - ${v.id} (${v.impact}): ${v.help} @ ${v.nodes[0]?.target.join(" ")}`)
+        .join("\n");
+      expect(blocking, `serious/critical axe on design-system (${theme}):\n${detail}`).toEqual([]);
+    });
+  }
+
+  for (const theme of ["light", "dark"] as const) {
+    test(`visual parity vs baseline (<=1.5%) — ${theme}`, async ({ page }) => {
+      if (theme === "dark") {
+        await page.goto(`/${L}`, { waitUntil: "domcontentloaded" }).catch(() => {});
+        await page.context().addCookies([{ name: "theme-mode", value: "dark", url: page.url() }]);
+      }
+      await page.goto(SHOWCASE, { waitUntil: "networkidle" });
+      await page.evaluate(() => (document as unknown as { fonts: FontFaceSet }).fonts.ready);
+      await expect(page).toHaveScreenshot(`design-system-${theme}.png`, {
+        fullPage: true,
+        maxDiffPixelRatio: 0.015,
+        animations: "disabled",
+      });
+    });
+  }
+});

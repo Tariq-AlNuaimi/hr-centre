@@ -6,6 +6,21 @@ dark via the single `[data-theme="dark"]` swap) — a **value migration into the
 existing typed token architecture** (all `brand.config` consumers + the
 `design-tokens` contract test stay green).
 
+## The flagship showcase: `/design-system` (the "Manzil" landing)
+
+`app/[locale]/design-system/page.tsx` — the branded design-system landing from the
+original mockup, now a **real, full-bleed Next.js route** (authed, outside the
+dashboard `AppShell`; blueprint: `docs/blueprints/design-system-showcase.md`). It
+reproduces the living hero + AI contract-review card, and the Why / Color / Type /
+Components / **AI-patterns (built on `components/shared/ai/*`)** / Adoption sections
+— all on the royal/Geist tokens, every printed hex read from `brand.config.ts`. It
+is gated by the same browser-parity spec (axe both themes + ≤1.5% visual-diff;
+baselines `design-system-{light,dark}-chromium-linux.png`). Rendered captures:
+`showcase-route-{light,dark}.png`.
+
+The `/style-guide` route below stays the utilitarian component reference; the two
+are complementary.
+
 ## Source of truth: the real app route (not a generated file)
 
 The design-system showcase is the live, on-stack **`/style-guide`** route

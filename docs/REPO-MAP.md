@@ -16,6 +16,7 @@
 - app/[locale]/(dashboard)/users/[id]/page.tsx
 - app/[locale]/(dashboard)/users/new/page.tsx
 - app/[locale]/(dashboard)/users/page.tsx
+- app/[locale]/design-system/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
 - app/api/asset/[id]/route.ts  [GET,PUT,DELETE]
@@ -120,6 +121,13 @@
 - components/shared/StatCard.tsx
 - components/shared/StatGrid.tsx
 - components/shared/Toolbar.tsx
+- components/shared/ai/AgentActivity.tsx
+- components/shared/ai/AiAssistPanel.tsx
+- components/shared/ai/AiMark.tsx
+- components/shared/ai/AiStreaming.tsx
+- components/shared/ai/CitationLink.tsx
+- components/shared/ai/ConfidenceChip.tsx
+- components/shared/ai/ResponsibleAiBanner.tsx
 - components/ui/avatar.tsx
 - components/ui/badge.tsx
 - components/ui/button.tsx
