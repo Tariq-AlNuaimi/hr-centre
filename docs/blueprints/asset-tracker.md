@@ -72,13 +72,14 @@ ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pil
   - **T2 hierarchy** — was: `category` flat enum. now: real `Category` + `Manufacturer` + `AssetModel`
     entities (full CRUD, soft-delete, audit); `Asset` gains a nullable `modelId → AssetModel` (the
     enum column is RETAINED this release for forward-compat — never drop a column the running version
-    reads). The asset form keeps the legacy `category` **enum** `Select` (a different axis from the
-    Model→Category-entity relation) and ADDS a flat, searchable Model `RelationSelect` → `/api/asset-model`;
-    `AssetModel`'s own Category + Manufacturer are independent searchable pickers. NOTE: not a
-    parent→child _cascading_ picker (the retained enum and the Category entity are separate axes, so
-    cascading off the enum would be misleading) — the Model column/detail surface the resolved
-    manufacturer+category. A future increment could replace the enum axis with a cascading
-    Category-entity picker.
+    reads). The asset form keeps the legacy `category` **enum** `Select` as a coarse device tag (a
+    separate axis from the catalog entities) and adds a **cascading Model picker**: two transient
+    filter pickers — "Model category" (`/api/category`) and "Model manufacturer" (`/api/manufacturer`)
+    — narrow the Model `RelationSelect` (`/api/asset-model?categoryId=&manufacturerId=`), a faceted
+    cascade matching the data shape (an `AssetModel` links a category AND a manufacturer
+    independently). Changing a filter resets the chosen Model; the filters are transient (not
+    persisted — the chosen Model already implies both). `RelationSelect` gained a `filters` prop with
+    `useWatch`-driven refetch. The Model column/detail surface the resolved manufacturer+category.
   - **T9 custom fields** — was: fixed columns only. now: `CustomFieldDef` entity (label/key/type/
     required) + a `customFields Json?` column on `Asset`; the asset form renders defs dynamically and
     the boundary validates them (required/type/unknown-key). Defs have a full admin CRUD

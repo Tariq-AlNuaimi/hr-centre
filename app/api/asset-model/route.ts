@@ -12,10 +12,16 @@ const SORTABLE_COLUMNS = ["name", "createdAt"] as const;
 
 export const GET = withRateLimit(
   withAuth(async (request: NextRequest) => {
+    const { searchParams } = request.nextUrl;
     const { pagination, where, orderBy } = parseListQuery<Prisma.AssetModelWhereInput>(
-      request.nextUrl.searchParams,
+      searchParams,
       { searchField: "name", sortable: SORTABLE_COLUMNS },
     );
+    // Cascade filters: narrow the model catalog by the chosen category / manufacturer.
+    const categoryId = searchParams.get("categoryId");
+    if (categoryId) where.categoryId = categoryId;
+    const manufacturerId = searchParams.get("manufacturerId");
+    if (manufacturerId) where.manufacturerId = manufacturerId;
 
     const [data, total] = await Promise.all([
       prisma.assetModel.findMany({

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { z } from "zod";
+import { useWatch } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -59,6 +60,9 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
     status: z.enum(["IN_STOCK", "ASSIGNED", "REPAIR", "RETIRED"]),
     category: z.enum(["LAPTOP", "MONITOR", "PHONE", "OTHER"]),
     modelId: z.string().nullish(),
+    // Transient cascade filters for the Model picker — stripped before submit (not asset fields).
+    modelCategoryFilter: z.string().nullish(),
+    modelManufacturerFilter: z.string().nullish(),
     assigneeId: z.string().nullish(),
   });
 
@@ -71,14 +75,28 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
       status: initialValues?.status ?? "IN_STOCK",
       category: initialValues?.category ?? "LAPTOP",
       modelId: initialValues?.modelId ?? undefined,
+      modelCategoryFilter: undefined,
+      modelManufacturerFilter: undefined,
       assigneeId: initialValues?.assigneeId ?? undefined,
     },
+  });
+
+  // Subscribe to the cascade filters at the component top level (useWatch is reliable —
+  // form.watch() inside a Controller render does not re-subscribe) so the Model picker
+  // refetches when either filter changes.
+  const modelCategoryFilter = useWatch({ control: form.control, name: "modelCategoryFilter" });
+  const modelManufacturerFilter = useWatch({
+    control: form.control,
+    name: "modelManufacturerFilter",
   });
 
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((values) => onSubmit({ ...values, customFields }))}
+        onSubmit={form.handleSubmit(
+          ({ modelCategoryFilter: _c, modelManufacturerFilter: _m, ...values }) =>
+            onSubmit({ ...values, customFields }),
+        )}
         className="flex max-w-[500px] flex-col gap-4"
       >
         <TextField name="assetTag" label={t("assetTag")} />
@@ -135,6 +153,52 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
           )}
         />
 
+        {/* Cascade filters: narrow the Model picker by catalog category / manufacturer.
+            Changing either resets the chosen Model so a stale selection can't survive. */}
+        <FormField
+          name="modelCategoryFilter"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("modelCategory")}</FormLabel>
+              <RelationSelect
+                path="/api/category"
+                displayField="name"
+                placeholder={t("modelCategory")}
+                searchPlaceholder={t("searchRelation")}
+                emptyLabel={t("noRelationMatches")}
+                value={field.value ?? undefined}
+                onChange={(v) => {
+                  field.onChange(v);
+                  form.setValue("modelId", undefined);
+                }}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          name="modelManufacturerFilter"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{t("modelManufacturer")}</FormLabel>
+              <RelationSelect
+                path="/api/manufacturer"
+                displayField="name"
+                placeholder={t("modelManufacturer")}
+                searchPlaceholder={t("searchRelation")}
+                emptyLabel={t("noRelationMatches")}
+                value={field.value ?? undefined}
+                onChange={(v) => {
+                  field.onChange(v);
+                  form.setValue("modelId", undefined);
+                }}
+              />
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           name="modelId"
           render={({ field }) => (
@@ -148,6 +212,10 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
                 emptyLabel={t("noRelationMatches")}
                 value={field.value ?? undefined}
                 onChange={field.onChange}
+                filters={{
+                  categoryId: modelCategoryFilter ?? undefined,
+                  manufacturerId: modelManufacturerFilter ?? undefined,
+                }}
               />
               <FormMessage />
             </FormItem>

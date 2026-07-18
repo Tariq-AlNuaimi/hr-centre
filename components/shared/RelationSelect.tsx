@@ -20,6 +20,7 @@ export function RelationSelect({
   emptyLabel,
   value,
   onChange,
+  filters,
 }: {
   path: string;
   displayField: string;
@@ -28,7 +29,12 @@ export function RelationSelect({
   emptyLabel?: string;
   value?: string;
   onChange?: (v: string) => void;
+  /** Extra query params appended to the fetch (empty/undefined skipped) — lets a picker
+   *  cascade off parent selections, e.g. a Model picker scoped by `{ categoryId, manufacturerId }`. */
+  filters?: Record<string, string | undefined>;
 }) {
+  // Stable key so the debounce effect refetches when a parent filter changes.
+  const filterKey = JSON.stringify(filters ?? {});
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [options, setOptions] = useState<Array<{ value: string; label: string }>>([]);
@@ -41,6 +47,7 @@ export function RelationSelect({
     const timer = setTimeout(() => {
       const qs = new URLSearchParams({ pageSize: "50" });
       if (search) qs.set("search", search);
+      for (const [k, v] of Object.entries(filters ?? {})) if (v) qs.set(k, v);
       fetch(path + "?" + qs.toString())
         .then((r) => r.json())
         .then((j: { data?: { data?: Array<{ id: string } & Record<string, unknown>> } }) => {
@@ -56,7 +63,7 @@ export function RelationSelect({
         .catch(() => {});
     }, 250);
     return () => clearTimeout(timer);
-  }, [path, displayField, search, value]);
+  }, [path, displayField, search, value, filterKey]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

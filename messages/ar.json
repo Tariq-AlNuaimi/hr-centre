@@ -193,6 +193,8 @@
     "status": "Status",
     "category": "Category",
     "model": "Model",
+    "modelCategory": "Model category",
+    "modelManufacturer": "Model manufacturer",
     "assignee": "Assignee",
     "title": "Assets",
     "createNew": "New Asset",
