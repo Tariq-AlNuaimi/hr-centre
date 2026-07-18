@@ -9,6 +9,7 @@ import type { SortChange } from "@/components/shared/DataTable";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { getAssetColumns, type AssetRecord } from "@/components/asset/AssetColumns";
+import { AssetImport } from "@/components/asset/AssetImport";
 import { useEntityList, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 
@@ -41,6 +42,8 @@ export default function AssetsPage() {
   const [sort, setSort] = useState<SortChange>({});
   const [status, setStatus] = useState<string>();
   const [category, setCategory] = useState<string>();
+  // Bumped after a bulk import to re-key the list query so it refetches (the API ignores `_r`).
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const params: Record<string, string> = {
     page: String(page),
@@ -50,6 +53,7 @@ export default function AssetsPage() {
     ...(sort.order ? { order: sort.order === "ascend" ? "asc" : "desc" } : {}),
     ...(status ? { status } : {}),
     ...(category ? { category } : {}),
+    ...(refreshNonce ? { _r: String(refreshNonce) } : {}),
   };
 
   // Declarative data layer (ADR-021): the query caches + keeps the previous page
@@ -118,10 +122,12 @@ export default function AssetsPage() {
         emptyText={
           <EmptyState
             actionLabel={t("createNew")}
+            actionVariant="outline"
             onAction={() => router.push(`/${locale}/asset/new`)}
           />
         }
       />
+      <AssetImport onImported={() => setRefreshNonce((n) => n + 1)} />
     </>
   );
 }

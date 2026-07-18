@@ -19,6 +19,10 @@ export type RecyclableRecord = {
 export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
   User: { displayField: "name" },
   Asset: { displayField: "name" },
+  Category: { displayField: "name" },
+  Manufacturer: { displayField: "name" },
+  AssetModel: { displayField: "name" },
+  CustomFieldDef: { displayField: "label" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

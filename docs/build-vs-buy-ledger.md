@@ -545,3 +545,78 @@ denied non-elected license in the shippable SBOM. `npm run license:sbom`; wired 
 (SBOM generation is ~seconds, too slow for the warm loop — the fast lock-scan stays warm). Zero new
 dependency (cyclonedx-npm already present). Informational for the ADR-032 hook (lives in `scripts/`).
 See O5, ADR-051.
+
+## 2026-07-18 — Shared row-actions cell (`components/shared/RowActions`)
+
+Scope: components/shared/RowActions.tsx
+Considered: **a table/data-grid library's built-in action column** (TanStack Table row actions,
+AntD/MUI action cells — all rejected: this repo's `DataTable` already owns the table runtime and
+consumes plain column descriptors; pulling an action-cell abstraction from a grid lib would fight
+that seam and add surface), **a headless menu lib** (`@radix-ui/react-dropdown-menu` for a
+kebab menu — overkill for a fixed 2-button edit/delete cell, and the row already shows both inline),
+**leave the per-entity duplication** (rejected — every scaffolded entity's Columns file re-declares
+the same `EditIcon`/`DeleteIcon` SVGs + the identical ghost-edit + `ConfirmAction`-delete cell,
+which the jscpd Maintainable gate correctly flags once ≥3 entities exist). Decision: **BUILD a thin
+`components/shared/RowActions.tsx`** — an internal composition of the SHIPPED primitives (`Button` +
+`ConfirmAction`) exporting `EditIcon`, `DeleteIcon`, and `getRowActionsColumn({onEdit,onDelete,t})`
+returning the DataTable-shaped actions column. Zero new dependency; collapses the repeated cell +
+icons across every entity's Columns into one primitive (the layout sibling of the shared
+`EmptyState`/`ConfirmAction`). Informational for the ADR-032 hook.
+
+## 2026-07-18 — Shared relation-picker combobox (`components/shared/RelationSelect`)
+
+Scope: components/shared/RelationSelect.tsx
+Considered: **a combobox/command library** (`cmdk`, `downshift`, Radix `Combobox`, react-select —
+rejected: this repo already ships Radix `Popover` + `Button` + the `FormControl` seam, and a
+debounced server-search-over-`/api/<entity>` picker is ~110 lines on those primitives; adding a
+combobox dep duplicates what's shipped and drags styling off-token), **leave the inline copies**
+(rejected — `scaffold-entity` emits this exact debounced-fetch relation picker INLINE in every
+form that has a relation field, so `AssetForm` and `AssetModelForm` carried byte-identical ~144-line
+copies, which the jscpd Maintainable gate flags). Decision: **BUILD `components/shared/RelationSelect.tsx`**
+— lift the shipped inline picker verbatim into one shared primitive (Popover + debounced
+`fetch(path + ?search=)` reading the paginated `data.data[]` shape, `displayField`-labelled) that
+every form imports. Zero new dependency; the relation-field sibling of the shared `EmptyState` /
+`RowActions`. A follow-up should teach `scaffold-entity` to emit the import instead of the inline copy.
+
+## 2026-07-18 — Shared list-query parser (`lib/list-query.ts`)
+
+Scope: lib/list-query.ts
+Considered: **a query-builder / ORM-query lib** (Prisma already IS the query layer; a second
+query-string parser like `qs` + a filter DSL would duplicate the tiny search/sort/pagination parse
+this repo already open-codes), **leave it inline** (rejected — every scaffolded list `route.ts`
+re-opens the same ~10-line block: `parsePagination` + a `?search=` `contains` filter + an
+allowlisted `?sort=`/`?order=` parse, which the jscpd gate flags across `category`/`manufacturer`/
+`asset-model`/`asset`). Decision: **BUILD a 15-line generic `parseListQuery(searchParams, {searchField,
+sortable})`** returning `{ pagination, where, orderBy }` (where typed via a caller-supplied
+`Prisma.*WhereInput` generic so the routes stay type-safe and the sort allowlist stays injection-safe).
+Zero new dependency; reuses the shipped `parsePagination`. The list-route sibling of the shared
+`RowActions`/`RelationSelect` extractions.
+
+## 2026-07-18 — Minimal CSV parser (`lib/csv.ts`)
+
+Scope: lib/csv.ts
+Considered: **a CSV library** (`papaparse` ~45KB, `csv-parse`, `@fast-csv/parse` — all rejected:
+each is a runtime dep >50KB min or drags a stream API, tripping the "runtime dep >50KB needs an
+ADR" Ask-before gate for a bounded, known-schema, ≤500-row asset import that needs only quoted-field
+
+- CRLF handling), **`String.split(',')`** (rejected — breaks on quoted fields containing commas /
+  newlines, the classic CSV footgun). Decision: **BUILD a ~40-line `lib/csv.ts`** (`parseCsv` — a
+  single-pass state machine handling `"quoted, fields"`, escaped `""`, and CR/LF; `parseCsvToObjects`
+  — header-keyed rows). Zero runtime dep; scoped to the T11 import path. If a fork needs streaming or
+  RFC-4180 edge cases at volume, `/scale-up` to `csv-parse` (a later ADR).
+
+## 2026-07-18 — Shared entity list-page (`components/shared/EntityListPage`)
+
+Scope: components/shared/EntityListPage.tsx
+Considered: **a table/CRUD-scaffold framework** (react-admin, Refine — rejected: they own routing/
+data/auth and would replace this repo's DataTable + use-entity-queries + next-intl seams wholesale
+for what is ~90 lines of glue), **leave the per-entity duplication** (rejected — every scaffolded
+list page re-opens the identical page/pageSize/search/sort state + params object + `useEntityList`
+
+- delete handler + `PageHeader`/`DataTable`/`EmptyState` wiring, which the jscpd Maintainable gate
+  flags once ≥4 simple entities exist). Decision: **BUILD a generic
+  `EntityListPage<T>({apiPath, basePath, t, buildColumns})`** on the shipped `DataTable`/`useEntityList`/
+  `useEntityMutations` primitives; each simple entity's list page collapses to a ~6-line call. Zero new
+  dependency; the page-level sibling of the `RowActions`/`RelationSelect`/`parseListQuery` extractions.
+  Entities with extra list features (asset: column filters + CSV import) keep their bespoke page. A
+  follow-up should teach `scaffold-entity` to emit the thin wrapper.

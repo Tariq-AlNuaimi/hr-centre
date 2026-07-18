@@ -2,8 +2,10 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
-import { parsePagination, paginatedResponse } from "@/lib/pagination";
+import { paginatedResponse } from "@/lib/pagination";
+import { parseListQuery } from "@/lib/list-query";
 import { createAssetSchema } from "@/lib/validations/asset";
+import { validateCustomFields } from "@/lib/validations/custom-field";
 import { AssetStatus, AssetCategory } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -17,16 +19,14 @@ const SORTABLE_COLUMNS = [
   "category",
   "createdAt",
 ] as const;
-type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
 export const GET = withRateLimit(
   withAuth(async (request: NextRequest) => {
     const { searchParams } = request.nextUrl;
-    const pagination = parsePagination(searchParams);
-
-    const search = searchParams.get("search") ?? undefined;
-    const where: Prisma.AssetWhereInput = {};
-    if (search) where.assetTag = { contains: search, mode: "insensitive" };
+    const { pagination, where, orderBy } = parseListQuery<Prisma.AssetWhereInput>(searchParams, {
+      searchField: "assetTag",
+      sortable: SORTABLE_COLUMNS,
+    });
     // Server-side status/category filters (wired to the DataTable column filters).
     const statusParam = searchParams.get("status");
     if (statusParam && statusParam in AssetStatus) where.status = statusParam as AssetStatus;
@@ -34,21 +34,22 @@ export const GET = withRateLimit(
     if (categoryParam && categoryParam in AssetCategory)
       where.category = categoryParam as AssetCategory;
 
-    const sortParam = searchParams.get("sort");
-    const sortField: SortableColumn =
-      sortParam && (SORTABLE_COLUMNS as readonly string[]).includes(sortParam)
-        ? (sortParam as SortableColumn)
-        : "createdAt";
-    const order: "asc" | "desc" = searchParams.get("order") === "asc" ? "asc" : "desc";
-
     const [data, total] = await Promise.all([
       prisma.asset.findMany({
         where,
         skip: pagination.skip,
         take: pagination.take,
-        orderBy: { [sortField]: order },
+        orderBy,
         include: {
           assignee: { select: { id: true, name: true } },
+          model: {
+            select: {
+              id: true,
+              name: true,
+              category: { select: { id: true, name: true } },
+              manufacturer: { select: { id: true, name: true } },
+            },
+          },
         },
       }),
       prisma.asset.count({ where }),
@@ -67,6 +68,14 @@ export const POST = withRateLimit(
       return err(parsed.error.issues.map((i) => i.message).join(", "));
     }
 
+    // Validate custom-field VALUES against the active defs (T9) — required/type/unknown-key.
+    const defs = await prisma.customFieldDef.findMany({
+      select: { key: true, label: true, type: true, required: true },
+      take: 500, // CustomFieldDef is a small admin-bounded set; bound defensively.
+    });
+    const cf = validateCustomFields(defs, parsed.data.customFields ?? {});
+    if (!cf.ok) return err(cf.error);
+
     // assetTag is @unique + immutable — surface a duplicate as a clean 409, not a raw P2002 500
     // (mirrors app/api/users/route.ts's email pre-check).
     const existing = await prisma.asset.findUnique({
@@ -74,7 +83,9 @@ export const POST = withRateLimit(
     });
     if (existing) return err("Asset tag already in use", 409);
 
-    const asset = await prisma.asset.create({ data: parsed.data });
+    const asset = await prisma.asset.create({
+      data: { ...parsed.data, customFields: cf.value as Prisma.InputJsonValue },
+    });
 
     return created(asset);
   }),

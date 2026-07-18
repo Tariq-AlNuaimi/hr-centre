@@ -111,3 +111,6 @@ docs/blueprints/.fan-out.json.baseline
 # StrykerJS mutation-testing artifacts (V2-405) — sandbox + HTML report, regenerated per run
 /.stryker-tmp
 /reports/mutation
+
+# Playwright MCP session artifacts (snapshots/logs)
+.playwright-mcp/

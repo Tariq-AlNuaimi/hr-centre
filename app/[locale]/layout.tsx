@@ -118,8 +118,17 @@ export default async function LocaleLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* The inline theme script carries the per-request nonce (CSP script-src). */}
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* The inline theme script carries the per-request nonce (CSP script-src).
+            suppressHydrationWarning: React 19 does not echo the `nonce` value into the
+            SSR HTML (it applies the CSP nonce but blanks the attribute in the hydration
+            snapshot for security), so the server (nonce="") vs client (real nonce) diff
+            is expected and harmless. The <html> suppression does not reach this
+            two-levels-deep <script>, so scope the escape hatch to the script itself. */}
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
+        />
       </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>

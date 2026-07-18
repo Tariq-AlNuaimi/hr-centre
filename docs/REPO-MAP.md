@@ -4,10 +4,22 @@
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(dashboard)/asset-model/[id]/page.tsx
+- app/[locale]/(dashboard)/asset-model/new/page.tsx
+- app/[locale]/(dashboard)/asset-model/page.tsx
 - app/[locale]/(dashboard)/asset/[id]/page.tsx
 - app/[locale]/(dashboard)/asset/new/page.tsx
 - app/[locale]/(dashboard)/asset/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
+- app/[locale]/(dashboard)/category/[id]/page.tsx
+- app/[locale]/(dashboard)/category/new/page.tsx
+- app/[locale]/(dashboard)/category/page.tsx
+- app/[locale]/(dashboard)/custom-field-def/[id]/page.tsx
+- app/[locale]/(dashboard)/custom-field-def/new/page.tsx
+- app/[locale]/(dashboard)/custom-field-def/page.tsx
+- app/[locale]/(dashboard)/manufacturer/[id]/page.tsx
+- app/[locale]/(dashboard)/manufacturer/new/page.tsx
+- app/[locale]/(dashboard)/manufacturer/page.tsx
 - app/[locale]/(dashboard)/page.tsx
 - app/[locale]/(dashboard)/recycling-bin/page.tsx
 - app/[locale]/(dashboard)/settings/page.tsx
@@ -19,15 +31,24 @@
 - app/[locale]/design-system/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
+- app/api/asset-model/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/asset-model/route.ts  [GET,POST]
 - app/api/asset/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/asset/import/route.ts  [POST]
 - app/api/asset/route.ts  [GET,POST]
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
+- app/api/category/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/category/route.ts  [GET,POST]
+- app/api/custom-field-def/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/custom-field-def/route.ts  [GET,POST]
 - app/api/health/route.ts
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/scim/route.ts  [POST]
+- app/api/manufacturer/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/manufacturer/route.ts  [GET,POST]
 - app/api/openapi/route.ts  [GET]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
@@ -42,7 +63,11 @@
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
-- Asset: id, assetTag, name, serial, purchasedAt, status, category, assigneeId, assignee, createdAt, updatedAt, deletedAt, deletedBy
+- CustomFieldDef: id, label, key, type, required, createdAt, updatedAt, deletedAt, deletedBy
+- Asset: id, assetTag, name, serial, purchasedAt, status
+- Category: id, name, description, createdAt, updatedAt, deletedAt, deletedBy, assetModels
+- Manufacturer: id, name, website, createdAt, updatedAt, deletedAt, deletedBy, assetModels
+- AssetModel: id, name, categoryId, category, manufacturerId, manufacturer, assets, createdAt, updatedAt, deletedAt, deletedBy
 
 ## lib/ exports
 - lib/ai/config.ts: AiAuthStyle, AiConfig, isAiConfigured, aiConfig, AiNotConfiguredError
@@ -58,10 +83,12 @@
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
 - lib/client-ip.ts: clientIp
+- lib/csv.ts: parseCsv, parseCsvToObjects
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
+- lib/list-query.ts: parseListQuery
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -80,8 +107,12 @@
 - lib/sso/config.ts: POLIS_PROVIDER_ID, PolisSsoConfig, isPolisSsoConfigured, polisSsoConfig, scimWebhookSecret, verifyScimSignature, SsoSignInRow, isFederatedSignInAllowed, SsoNotConfiguredError
 - lib/sso/scim.ts: ScimEventType, NormalizedScimEvent, ScimAction, normalizeDirectoryEvent, provisionDirectoryEvent
 - lib/utils.ts: cn
+- lib/validations/asset-model.ts: createAssetModelSchema, updateAssetModelSchema, CreateAssetModelInput, UpdateAssetModelInput
 - lib/validations/asset.ts: createAssetSchema, updateAssetSchema, CreateAssetInput, UpdateAssetInput, isLegalStatusTransition
+- lib/validations/category.ts: createCategorySchema, updateCategorySchema, CreateCategoryInput, UpdateCategoryInput
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/custom-field.ts: createCustomFieldDefSchema, CreateCustomFieldDefInput, updateCustomFieldDefSchema, CustomFieldDefLite, validateCustomFields
+- lib/validations/manufacturer.ts: createManufacturerSchema, updateManufacturerSchema, CreateManufacturerInput, UpdateManufacturerInput
 - lib/validations/sso.ts: normalizedScimEventSchema, NormalizedScimEventInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
@@ -89,6 +120,14 @@
 ## components/
 - components/asset/AssetColumns.tsx
 - components/asset/AssetForm.tsx
+- components/asset/AssetImport.tsx
+- components/asset/CustomFields.tsx
+- components/asset-model/AssetModelColumns.tsx
+- components/asset-model/AssetModelForm.tsx
+- components/category/CategoryColumns.tsx
+- components/category/CategoryForm.tsx
+- components/custom-field-def/CustomFieldDefColumns.tsx
+- components/custom-field-def/CustomFieldDefForm.tsx
 - components/dashboard/DashboardContent.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx
@@ -100,6 +139,8 @@
 - components/layout/NotificationsMenu.tsx
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
+- components/manufacturer/ManufacturerColumns.tsx
+- components/manufacturer/ManufacturerForm.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/BrandedStatus.tsx
 - components/shared/Chart.impl.tsx
@@ -109,6 +150,7 @@
 - components/shared/DataView.tsx
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
+- components/shared/EntityListPage.tsx
 - components/shared/FormField.tsx
 - components/shared/FormLayout.tsx
 - components/shared/KanbanBoard.impl.tsx
@@ -116,6 +158,8 @@
 - components/shared/Modal.tsx
 - components/shared/PageHeader.tsx
 - components/shared/PageShell.tsx
+- components/shared/RelationSelect.tsx
+- components/shared/RowActions.tsx
 - components/shared/SectionCard.tsx
 - components/shared/Skeletons.tsx
 - components/shared/StatCard.tsx

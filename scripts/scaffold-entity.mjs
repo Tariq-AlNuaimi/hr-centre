@@ -120,15 +120,35 @@ const snake = (s) => s.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 // defaults in the i18n namespace merged into messages/en.json + messages/ar.json.
 const humanize = (s) =>
   s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
+// "AssetModel" -> "asset model" (spaced, all-lowercase words) for mid-sentence copy.
+const humanLower = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+// Sentence-case a phrase: "asset model" -> "Asset model".
+const sentenceCase = (s) => s.replace(/^./, (c) => c.toUpperCase());
+// English-pluralize the LAST word of a phrase: category -> categories, box -> boxes,
+// asset model -> asset models. (Enough for the scaffold's entity names; irregulars are
+// an operator edit in messages/*.json.)
+const pluralizeWords = (s) =>
+  s.replace(/(\w+)$/, (w) => {
+    if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + "ies";
+    if (/(s|x|z|ch|sh)$/i.test(w)) return w + "es";
+    return w + "s";
+  });
 
 const Pascal = Entity;
 const entityCamel = camel(Entity);
 const entityKebab = kebab(Entity);
 const entitySnake = snake(Entity);
-const entitySnakePlural = entitySnake + "s";
+// Correct English plurals (not a naive "+s") so table maps and namespaces read right:
+// Category -> categories, not "categorys".
+const entitySnakePlural = pluralizeWords(entitySnake);
+// Human-readable entity name forms for UI copy.
+const entityNameLower = humanLower(Entity); // "asset model", "category"
+const entityNameCap = sentenceCase(entityNameLower); // "Asset model", "Category"
+const entityNamePluralLower = pluralizeWords(entityNameLower); // "asset models", "categories"
+const entityNamePluralCap = sentenceCase(entityNamePluralLower); // "Asset models", "Categories"
 // next-intl namespace for this entity's UI strings. Mirrors the hand-written
-// `users` namespace in messages/*.json (camelCase + plural).
-const i18nNs = entityCamel + "s";
+// `users` namespace in messages/*.json (camelCase + correct English plural).
+const i18nNs = pluralizeWords(entityCamel);
 
 // ---------- Field parsing ----------
 
@@ -262,6 +282,30 @@ for (const p of [
   if (await pathExists(join(ROOT, p))) {
     console.error(`ERROR: ${p} already exists. Refusing to overwrite.`);
     process.exit(1);
+  }
+}
+
+// ---------- Resolve each relation's API route path from disk ----------
+// The RelationSelect picker must POST to the target's real route. Scaffolded entities expose
+// `/api/<singular-kebab>`, but a hand-built target can be pluralized (`User` → `/api/users`),
+// so probe the filesystem instead of assuming the singular-kebab convention — otherwise the
+// generated picker 404s against pluralized routes (repo-audit fix).
+for (const rel of relations) {
+  const singular = `/api/${rel.targetKebab}`;
+  if (await pathExists(join(ROOT, `app/api/${rel.targetKebab}/route.ts`))) {
+    rel.apiPath = singular;
+  } else if (await pathExists(join(ROOT, `app/api/${rel.targetKebab}s/route.ts`))) {
+    rel.apiPath = `/api/${rel.targetKebab}s`;
+    console.warn(
+      `NOTE: relation target "${rel.target}" is served at ${rel.apiPath} (pluralized route) — RelationSelect wired there.`,
+    );
+  } else {
+    rel.apiPath = singular;
+    console.warn(
+      `WARNING: no API route found for relation target "${rel.target}" (looked for ` +
+        `app/api/${rel.targetKebab}/route.ts and .../${rel.targetKebab}s/route.ts). ` +
+        `RelationSelect defaults to ${singular} and may 404 — set the correct path manually in the generated form.`,
+    );
   }
 }
 
@@ -802,7 +846,7 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
             <FormItem>
               <FormLabel>{t("${r.name}")}</FormLabel>
               <RelationSelect
-                path="/api/${r.targetKebab}"
+                path="${r.apiPath}"
                 displayField="${r.displayField}"
                 placeholder={t("${r.name}")}
                 searchPlaceholder={t("searchRelation")}
@@ -1279,22 +1323,25 @@ function entityMessageKeys() {
   for (const e of enums) keys[e.name] = humanize(e.name);
   for (const r of relations) keys[r.name] = humanize(r.name);
   // Fixed UI strings used by the generated columns/form/pages.
-  keys.title = `${Pascal}s`;
-  keys.createNew = `New ${Pascal}`;
-  keys.editTitle = `Edit ${Pascal}`;
+  // Human-readable copy: sentence-case at a sentence start, lowercase mid-sentence,
+  // proper English plurals (entityName* helpers) — never the raw Pascal/camel/naive-plural
+  // ("New asset model" / "Failed to load categories", NOT "New AssetModel" / "categorys").
+  keys.title = entityNamePluralCap;
+  keys.createNew = `New ${entityNameLower}`;
+  keys.editTitle = `Edit ${entityNameLower}`;
   keys.createdAt = "Created";
   keys.save = "Save";
   keys.cancel = "Cancel";
-  keys.editAction = `Edit ${entityCamel}`;
-  keys.deleteAction = `Delete ${entityCamel}`;
-  keys.deleteConfirm = `Are you sure you want to delete this ${entityCamel}?`;
-  keys.loadFailed = `Failed to load ${i18nNs}`;
-  keys.deleted = `${Pascal} deleted`;
-  keys.deleteFailed = `Failed to delete ${entityCamel}`;
-  keys.created = `${Pascal} created`;
-  keys.createFailed = `Failed to create ${entityCamel}`;
-  keys.updated = `${Pascal} updated`;
-  keys.updateFailed = `Failed to update ${entityCamel}`;
+  keys.editAction = `Edit ${entityNameLower}`;
+  keys.deleteAction = `Delete ${entityNameLower}`;
+  keys.deleteConfirm = `Are you sure you want to delete this ${entityNameLower}?`;
+  keys.loadFailed = `Failed to load ${entityNamePluralLower}`;
+  keys.deleted = `${entityNameCap} deleted`;
+  keys.deleteFailed = `Failed to delete ${entityNameLower}`;
+  keys.created = `${entityNameCap} created`;
+  keys.createFailed = `Failed to create ${entityNameLower}`;
+  keys.updated = `${entityNameCap} updated`;
+  keys.updateFailed = `Failed to update ${entityNameLower}`;
   // Relation-picker search box (RelationSelect) — only referenced when the entity
   // has relations, but emitting them unconditionally keeps the namespace stable.
   if (relations.length) {
