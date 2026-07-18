@@ -66,7 +66,7 @@ services:
 
   caddy:
     # Profile-independent: TLS + reverse proxy in every topology.
-    image: caddy:2.8.4
+    image: caddy:2.11.4
     restart: unless-stopped
     depends_on:
       - app
@@ -87,7 +87,7 @@ services:
     # unaffected. Bring it up with:
     #   docker compose -f compose.prod.yaml --profile observability up -d
     # Pin to a collector version your tenant has vetted; never `latest`.
-    image: otel/opentelemetry-collector-contrib:0.111.0
+    image: otel/opentelemetry-collector-contrib:0.156.0
     profiles:
       - observability
     restart: unless-stopped
@@ -108,7 +108,7 @@ services:
     # client id/secret from an SSO connection you create in Polis), and configure
     # Polis Directory Sync to POST /api/internal/scim with the SCIM_INTERNAL_SECRET
     # bearer. Pin to a version your tenant has vetted; never `latest`.
-    image: boxyhq/jackson:1.36.0
+    image: boxyhq/jackson:1.52.2
     profiles:
       - sso
     restart: unless-stopped
