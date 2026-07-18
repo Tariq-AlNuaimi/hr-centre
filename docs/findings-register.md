@@ -300,8 +300,9 @@ the changed surface is still **open** (un-adjudicated).
 - 2026-07-17 — [harness-v2 V2-210/parity] Asset Tracker pilot DEFERS three ITAM table-stakes rows
   from `docs/benchmarks/it-asset-management.md` (dispositioned in `docs/blueprints/asset-tracker.md`):
   T2 Model→Category→Manufacturer hierarchy (pilot ships a flat `category` enum), T9 Custom fields
-  (Fieldset model), T11 Bulk CSV import — owner: operator — status: scheduled (the pilot is a
-  table-stakes slice to exercise the loop, not a full ITAM suite; each is a `/scale-up` follow-up:
+  (Fieldset model), T11 Bulk CSV import — owner: operator — status: fixed(repo-audit — all three
+  built + verified 2026-07-18; see the UPDATE/SUPERSEDED notes below) (originally scheduled: the pilot is a
+  table-stakes slice to exercise the loop, not a full ITAM suite; each was a `/scale-up` follow-up:
   T2 via `--relations` to Model/Category models, T9 via a custom-field model, T11 via the import
   recipe. Re-open when the Asset Tracker graduates from pilot to a real tool).
   — **UPDATE 2026-07-18 (repo-audit):** operator asked to build all three out now. Attempted — but
