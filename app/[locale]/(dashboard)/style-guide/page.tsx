@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { brand } from "@/brand.config";
+import { chartPalette } from "@/components/shared/chart-palette";
 import { OPEN_COMMAND_PALETTE } from "@/components/layout/CommandPalette";
 
 /* --- Inline icons (Preflight-off SVGs; replaces @ant-design/icons) --------- */
@@ -150,6 +151,29 @@ export default function StyleGuidePage() {
     { name: "warning", className: "bg-amber-500" },
     { name: "error", className: "bg-destructive" },
   ];
+
+  // Brand palette — every hex is READ from the token source (brand.config.ts /
+  // chart-palette.ts), never hand-typed here, so the swatch fill and the printed
+  // label are the SAME value and cannot drift apart (fix-list P1.5). The fill
+  // uses that value inline; the label prints it.
+  const brandPalette: { name: string; hex: string; note: string }[] = [
+    { name: "Primary", hex: brand.colors.primary, note: "actions · active · focus ring" },
+    { name: "Accent", hex: brand.colors.accent, note: "highlights · single-series viz" },
+    {
+      name: "Brand-as-text · light",
+      hex: brand.colors.primaryEmphasis.light,
+      note: "links · active nav — AA on light",
+    },
+    {
+      name: "Brand-as-text · dark",
+      hex: brand.colors.primaryEmphasis.dark,
+      note: "brand-as-text — AA on the dark shell",
+    },
+  ];
+
+  // One number drives BOTH the confidence bar width and its printed label, so a
+  // static value can never claim one number while the bar shows another (P2.7).
+  const aiConfidence = 0.86;
 
   return (
     <>
@@ -337,10 +361,52 @@ export default function StyleGuidePage() {
           <div>
             <div className="text-lg font-semibold text-foreground">{brand.appName}</div>
             <p className="m-0 text-sm text-muted-foreground">
-              Font: {brand.font.family} · density: {brand.density}
+              Font: {brand.font.family} · mono: {brand.font.mono} · density: {brand.density}
             </p>
           </div>
         </div>
+
+        {/* Brand palette — swatch fill + printed hex both READ from brand.config.ts,
+            so they are the same value and cannot drift (P1.5). */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {brandPalette.map((p) => (
+            <div
+              key={p.name}
+              className="overflow-hidden rounded-lg border border-border bg-card shadow-sm"
+            >
+              <div className="h-14 w-full" style={{ backgroundColor: p.hex }} aria-hidden />
+              <div className="p-3">
+                <div className="text-sm font-semibold text-foreground">{p.name}</div>
+                <div className="font-mono text-xs text-muted-foreground">{p.hex}</div>
+                <div className="mt-1 text-xs text-muted-foreground">{p.note}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Chart palette (components/shared/chart-palette.ts) — series 1 is the brand;
+            each hex is read from the array, never re-typed. */}
+        <div className="mt-4">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Chart palette · series 1 = brand
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {chartPalette.map((hex, i) => (
+              <div key={hex} className="text-center">
+                <div
+                  className="h-10 w-10 rounded-md border border-border"
+                  style={{ backgroundColor: hex }}
+                  aria-hidden
+                />
+                <div className="mt-1 font-mono text-xs leading-tight text-muted-foreground">
+                  {i + 1}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Semantic swatches ride the token utilities (no raw hex). */}
         <div className="mt-4 flex flex-wrap gap-4">
           {swatches.map((s) => (
             <div key={s.name} className="text-center">
@@ -348,6 +414,48 @@ export default function StyleGuidePage() {
               <span className="text-xs text-muted-foreground">{s.name}</span>
             </div>
           ))}
+        </div>
+      </Section>
+
+      <Section title="AI advisory pattern — assistive, never autonomous">
+        {/* Advisory frame: left brand accent, a confidence value that drives BOTH the
+            bar and its label, and an explicit human decision. No fake "streaming". */}
+        <div className="max-w-xl rounded-lg border border-l-2 border-border border-l-primary bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">Auto-renewal clause</span>
+            <Badge variant="warning">Medium risk</Badge>
+            <span className="ms-auto font-mono text-xs text-muted-foreground">Clause 3</span>
+          </div>
+          <p className="mt-2 text-sm text-foreground">
+            Policy requires <strong>mutual written agreement</strong> for renewal. This is an
+            advisory suggestion — a human approves or rejects it.
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="text-xs font-medium text-muted-foreground">Confidence</span>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary"
+                style={{ width: `${Math.round(aiConfidence * 100)}%` }}
+                role="progressbar"
+                aria-valuenow={Math.round(aiConfidence * 100)}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="AI confidence"
+              />
+            </div>
+            <span className="font-mono text-xs text-primary-emphasis">
+              {aiConfidence.toFixed(2)}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button size="sm">Accept</Button>
+            <Button size="sm" variant="outline">
+              Reject
+            </Button>
+            <Button size="sm" variant="ghost">
+              Edit
+            </Button>
+          </div>
         </div>
       </Section>
 
@@ -513,8 +621,8 @@ export default function StyleGuidePage() {
             bg-primary
           </span>
           {/* Label rides text-primary-emphasis (the dark-safe brand-as-text token,
-              indigo-300 on the dark shell) rather than raw text-accent, which is
-              brand indigo and only clears ~3.2:1 on #030712. The border still
+              royal-300ish on the dark shell) rather than raw text-accent, which is
+              the raw brand royal and only clears ~3:1 on #030712. The border still
               demonstrates border-accent. */}
           <span className="rounded-lg border border-solid border-accent px-4 py-2 text-base text-primary-emphasis">
             border-accent

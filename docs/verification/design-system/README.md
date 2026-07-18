@@ -1,77 +1,64 @@
-# Design-system replacement — verification
+# Design-system replacement & verification
 
-**Change:** replaced the template-default design system (indigo `#4f46e5`, Inter)
-with the **Rihal Design System** (royal `#0165ff`, Geist / Geist Mono, neutral
-surfaces, dark via the single `[data-theme="dark"]` swap) from the attached
-drop-in files (`brand.config.ts` + `tokens.css` + `globals.css` + `MIGRATION.md`).
+Replaced the template-default design system (indigo `#4f46e5`, Inter) with the
+**Rihal Design System** (royal `#0165ff`, Geist / Geist Mono, neutral surfaces,
+dark via the single `[data-theme="dark"]` swap) — a **value migration into the
+existing typed token architecture** (all `brand.config` consumers + the
+`design-tokens` contract test stay green).
 
-Per `MIGRATION.md`'s `fullstack-vibe-template` checklist this is a **value
-migration into the existing typed token architecture** (keeping all 7
-`brand.config` consumers + the `design-tokens` contract test green), not a
-structural file swap.
+## Source of truth: the real app route (not a generated file)
 
-## What changed in the repo
+The design-system showcase is the live, on-stack **`/style-guide`** route
+(`app/[locale]/(dashboard)/style-guide/page.tsx`) — a real Next.js page on the
+shipped shadcn/Tailwind primitives + tokens. Every displayed value is **computed
+from the token source at render time** (imports `brand.config.ts` /
+`chart-palette.ts`), so a swatch fill and its printed hex are the _same_ value
+and cannot drift. Hover / focus / dark are genuinely live (real CSS, not inert
+attributes), and assets resolve because it runs inside the app.
 
-| File                                 | Change                                                                                                                                                                                |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `brand.config.ts`                    | `primary`/`accent` → `#0165ff`; `themeColor` → `#0165ff`; font → `Geist` + `Geist Mono`; added `colors.primaryEmphasis` (light `#0b53c9` / dark `#6ea8ff`) + `font.mono`/`monoCssVar` |
-| `app/[locale]/layout.tsx`            | `Inter` → `Geist` + `Geist_Mono` via `next/font/google`; bind `--font-sans` + `--font-mono`; emit `--brand-primary-emphasis`                                                          |
-| `app/tokens.css`                     | royal focus ring (`--shadow-ring`); `--primary-emphasis` / `--nav-active-foreground` are now AA-safe brand-as-text; added the `font-mono` utility                                     |
-| `app/globals.css`                    | royal `::selection`; dark `--primary-emphasis` + `--nav-active-foreground` → `#6ea8ff`; Noto Sans Arabic in the body fallback                                                         |
-| `components/shared/chart-palette.ts` | Rihal chart palette (royal series 1)                                                                                                                                                  |
+> An earlier iteration emitted a standalone `.dc.html` via a scratch generator.
+> That was retired: this repo has no Design-Component runtime (stack is locked to
+> Next.js + shadcn + Tailwind, ADR-001), and a code-gen'd artifact re-introduces
+> the whole class of drift bugs (`undefined` interpolation, inert `style-hover`,
+> missing assets). Rendering the design system _through the app_ removes them by
+> construction. `token-parity.md` (24/24) is kept as the token-contract proof.
 
-## Test 1 — token parity vs the attached files
+## The two gates (correct-by-construction, enforced)
 
-`token-parity.md` — a normalized value diff of the repo's three design files
-against the three attached drop-in files. **Result: 24 / 24 exact match, 0
-mismatches.** Every shared token (brand, brand-as-text emphasis, dark surfaces,
-radius scale, shadow ring, fonts, chart brand) is identical.
+Browser gates live in the `/qa`·`uat` tier by constitutional design (warm `/ship`
+is deliberately DB-free); the source invariants run in warm `/ship`. So the
+enforcement is split to match the architecture:
 
-## Test 2 — render the showcase & compare to the attached
+| Gate               | File                                          | Runs in                       | Enforces                                                                                                                                                                                                                                     |
+| ------------------ | --------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Static drift**   | `tests/contracts/design-system-drift.test.ts` | warm `/ship` (contract phase) | font family is single-source (no hardcoded name in tokens/globals — P1.4); chart series-1 == brand; brand-as-text ≠ raw brand; no `undefined/null/NaN` in token CSS; non-empty font fallback (P0.1/P1.5)                                     |
+| **Browser parity** | `tests/uat/design-system.uat.ts`              | `npm run uat` · `/qa`         | mounts clean (no console errors); printed hex == token value (P1.5); **hover changes paint** (P0.2); **`[data-theme]` flips `--background`**; **axe** serious/critical == 0 both themes (P3.10); **≤1.5% visual-diff** vs committed baseline |
 
-`showcase.html` is the attached `Rihal_Design_System.dc.html` re-generated as a
-static, browser-renderable page (Design-Craft `{{ }}` placeholders resolved to
-their finished state, `<sc-if>` conditionals expanded, the DC runtime wrapper
-stripped; the token style block kept verbatim). Rendered in Chromium at 1200px:
+Baselines: `tests/uat/design-system.uat.ts-snapshots/style-guide-{light,dark}-chromium-linux.png`.
 
-- `generated-light.png` — light mode
-- `generated-dark.png` — dark mode (`[data-theme="dark"]`)
+## Verification run (this session)
 
-Both match the attached design: royal `#0165ff` as the single accent, Geist type
-on a 4px grid, the color/type/component/AI-pattern/adoption sections, honest
-status colors, and a clean dark swap. (The top-left logo is a broken image only
-because the `assets/rihal-logo-*.png` files are not part of the token drop-in.)
+```
+tests/contracts/design-system-drift.test.ts   → 7/7 pass (warm /ship)
+tests/uat/design-system.uat.ts                → 9/9 pass (authed dev app):
+  ✓ mounts clean, no console errors
+  ✓ displayed hex values ARE the token-source values
+  ✓ primary button hover is live (paint changes)
+  ✓ dark swap is live: [data-theme] flips --background
+  ✓ axe clean (serious/critical) — light
+  ✓ axe clean (serious/critical) — dark
+  ✓ visual parity vs baseline (≤1.5%) — light
+  ✓ visual parity vs baseline (≤1.5%) — dark
+```
 
-Note: `showcase.html` keeps the attached demo's inlined token block verbatim, so
-it proves the _target_ renders — not yet that the repo's tokens produce it. Test
-3 closes that gap.
-
-## Test 3 — the showcase generated FROM the repo's own design system
-
-`showcase-from-system.html` is the same markup, but its styling is **driven by
-the repo's real design files, read at generation time**: `app/tokens.css` and the
-`[data-theme="dark"]` swap from `app/globals.css` are inlined verbatim, the brand
-vars are emitted from `brand.config.ts` exactly as `app/[locale]/layout.tsx` does
-on `<html>`, and the showcase's own variable names (`--brand`, `--fg`, `--r-md`,
-`--sh-md`, the status palette, …) are **bridged onto those tokens**. The few
-extended demo shades the template's lean semantic layer doesn't name (brand
-hover/press/soft, faint, border-soft, grid, `r-xl`/`2xl`/`pill`, `sh-xl`) are
-**derived from `--brand-primary` / the neutral scale via `color-mix`**, so they
-track the brand too. Change a token in the repo and re-run — the showcase changes
-with it.
-
-- `from-system-light.png` — light mode
-- `from-system-dark.png` — dark mode
-
-Both render identically to Test 2's reference — confirming the repo's design
-system reproduces the attached showcase, not just a copy of its values.
+The rendered light + dark route are the committed baseline PNGs above (viewed and
+self-critiqued during the run).
 
 ## Reproduce
 
 ```
-# from repo root, with the scratch scripts:
-node build-showcase.mjs        # → showcase.html            (attached, made renderable)
-node gen-from-system.mjs       # → showcase-from-system.html (driven by the repo tokens)
-node parity.mjs                # → token-parity.md          (24/24 value match)
-npx tsx --test tests/contracts/design-tokens.test.ts   # 9/9 pass
+npx tsx --test tests/contracts/design-system-drift.test.ts        # static gate
+# browser gate needs the app: native PG (docs/agent-memory.md recipe) + npm run dev, then:
+UAT_EMAIL=admin@example.com UAT_PASSWORD=changeme \
+  npx playwright test tests/uat/design-system.uat.ts              # 9/9
 ```

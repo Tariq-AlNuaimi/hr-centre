@@ -135,15 +135,17 @@
   --color-accent: var(--brand-accent);
 
   /* --- Font (utility: font-sans) -------------------------------------------
-   * Chains the next/font Inter variable (--font-sans, bound on <html> by
+   * Chains the next/font sans variable (--font-sans, bound on <html> by
    * app/[locale]/layout.tsx per brand.font.cssVar) ahead of the brand fallback
-   * stack (--font-sans-fallback, emitted from brand.font.fallback). */
+   * stack (--font-sans-fallback, emitted from brand.font.fallback). The family
+   * name lives ONLY in brand.config.ts — never named here, to avoid drift. */
   --font-sans: var(--font-sans), var(--font-sans-fallback);
 
   /* --- Mono font (utility: font-mono) --------------------------------------
-   * Chains the next/font Geist Mono variable (--font-mono, bound on <html> by
+   * Chains the next/font mono variable (--font-mono, bound on <html> by
    * app/[locale]/layout.tsx per brand.font.monoCssVar) ahead of a system mono
-   * stack. Used for IDs, codes, metrics and code. */
+   * stack. Used for IDs, codes, metrics and code. Family name lives ONLY in
+   * brand.config.ts (brand.font.mono) — never named here, to avoid drift. */
   --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* --- Spacing (p-*, m-*, gap-*…) ------------------------------------------
