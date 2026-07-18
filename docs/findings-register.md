@@ -304,6 +304,15 @@ the changed surface is still **open** (un-adjudicated).
   table-stakes slice to exercise the loop, not a full ITAM suite; each is a `/scale-up` follow-up:
   T2 via `--relations` to Model/Category models, T9 via a custom-field model, T11 via the import
   recipe. Re-open when the Asset Tracker graduates from pilot to a real tool).
+  — **UPDATE 2026-07-18 (repo-audit):** operator asked to build all three out now. Attempted — but
+  the web container has **no Docker daemon, no native Postgres, no `DATABASE_URL`** (egress-restricted),
+  so the required Prisma **migrations cannot be generated/applied or verified**, and T11's audited
+  bulk-create path cannot be exercised, here. Authoring unapplied/unverified migrations violates the
+  forward-compat rule, so T2/T9/T11 **stay `scheduled`**, delegated to a DB-capable env (dev box or
+  preview deploy) — same posture as the WS-1/WS-5 infra wave-offs. A full staged build spec (4 sub-
+  phases, migration-per-phase Ask-before, audited bulk-create for T11, blueprint amendments) is ready
+  to execute where a DB exists. The UI-polish slice that needed no DB — the one-primary-action CTA fix
+  — DID land (see the V2-307 line: `EmptyState` `actionVariant`, type/lint/build clean).
 
 - 2026-07-17 — [harness-v2 V2-210/correctness] the pilot's two-stage senior review found 1 High + 2
   Medium + 1 Low in the hand-layered pilot code (Stage 1 confirmed scope-clean + caught the AC drift;
@@ -337,10 +346,13 @@ the changed surface is still **open** (un-adjudicated).
 - 2026-07-17 — [harness-v2 V2-307/design] first scored `/design-qa` run (Asset Tracker list,
   `docs/design-references.md`) scored 8/9 — the one deduction: **two competing "New Asset" primary
   CTAs** (top-right toolbar + empty-state center), violating "one primary action per screen"
-  (criterion 3, anchored to Linear/Stripe) — owner: operator — status: scheduled (the empty-state
-  CTA is a standard pattern, so this is low-severity; resolve by demoting one to a secondary style,
-  or accept the empty-state CTA as the sanctioned exception. Scaffold-emitted, so a fix belongs in
-  `scripts/scaffold-entity.mjs`'s list template).
+  (criterion 3, anchored to Linear/Stripe) — owner: operator — status: fixed(repo-audit) (resolved
+  the way the note proposed: `components/shared/EmptyState.tsx` gained an optional
+  `actionVariant?: "default" | "outline"` (default preserves every other caller), and the Asset list's
+  empty state now passes `"outline"` so the always-visible PageHeader button is the single visual
+  primary. Type/lint/build-clean. NOTE: pixel confirmation via the V2-301 capture loop is delegated to
+  a DB-capable env — this container has no DB/app to run `npm run capture` (see the visual-QA infra
+  wave-off below). Propagating `actionVariant` into `scaffold-entity`'s list template is a follow-up).
 
 ## Standing wave-offs promoted to documented trade-offs
 

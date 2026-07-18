@@ -118,6 +118,7 @@ export default function AssetsPage() {
         emptyText={
           <EmptyState
             actionLabel={t("createNew")}
+            actionVariant="outline"
             onAction={() => router.push(`/${locale}/asset/new`)}
           />
         }

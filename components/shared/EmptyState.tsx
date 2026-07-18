@@ -7,6 +7,13 @@ interface EmptyStateProps {
   description?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /**
+   * Emphasis of the empty-state action. Defaults to `"default"` (primary). Pass
+   * `"outline"` when the screen already shows an always-visible primary action
+   * (e.g. a PageHeader "New" button) so the two don't compete for the single
+   * primary-action slot the design rubric allows (one primary per screen).
+   */
+  actionVariant?: "default" | "outline";
 }
 
 /**
@@ -15,7 +22,12 @@ interface EmptyStateProps {
  * primary action. On-token neutral palette with `dark:` pairs; RTL-safe
  * (centered, no physical spacing).
  */
-export function EmptyState({ description, actionLabel, onAction }: EmptyStateProps) {
+export function EmptyState({
+  description,
+  actionLabel,
+  onAction,
+  actionVariant = "default",
+}: EmptyStateProps) {
   const t = useTranslations("common");
 
   return (
@@ -33,7 +45,11 @@ export function EmptyState({ description, actionLabel, onAction }: EmptyStatePro
         <path d="M22 40h20" strokeLinecap="round" />
       </svg>
       <p className="text-sm text-muted-foreground">{description ?? t("noData")}</p>
-      {actionLabel && onAction && <Button onClick={onAction}>{actionLabel}</Button>}
+      {actionLabel && onAction && (
+        <Button variant={actionVariant} onClick={onAction}>
+          {actionLabel}
+        </Button>
+      )}
     </div>
   );
 }
