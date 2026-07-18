@@ -44,6 +44,7 @@ body {
     "Segoe UI",
     Roboto,
     "Helvetica Neue",
+    "Noto Sans Arabic",
     Arial,
     "Noto Sans",
     sans-serif;
@@ -57,9 +58,9 @@ body {
   box-sizing: border-box;
 }
 
-/* On-brand text selection (indigo wash, AA-legible in both modes). */
+/* On-brand text selection (royal wash, AA-legible in both modes). */
 ::selection {
-  background: rgba(79, 70, 229, 0.18);
+  background: rgba(1, 101, 255, 0.18);
 }
 
 /* Header command-search trigger: a search-field-styled button with a ⌘K hint.
@@ -142,10 +143,10 @@ body {
      token below so error text still reads on the dark shell. */
   --destructive: #dc2626; /* red-600 — white foreground clears AA on dark */
   --destructive-emphasis: #f87171; /* red-400 — red-as-text, AA on dark surfaces (>=5.3:1) */
-  --primary-emphasis: #a5b4fc; /* indigo-300 — brand-as-text, AA on the dark shell (>=8:1) */
+  --primary-emphasis: #6ea8ff; /* royal-300ish — brand-as-text, AA on the dark shell (matches brand.config primaryEmphasis.dark) */
   --popover: #1d2129; /* elevated overlay surface (dark) — above cards */
   --popover-foreground: #f9fafb; /* gray-50 (mirrors --card-foreground dark) */
-  --nav-active-foreground: #a5b4fc; /* indigo-300 — AA on the dark shell */
+  --nav-active-foreground: #6ea8ff; /* royal-300ish — AA on the dark shell */
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #3a4150;

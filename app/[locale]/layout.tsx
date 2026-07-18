@@ -1,7 +1,7 @@
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { directionForLocale } from "@/i18n/config";
 import { brand } from "@/brand.config";
@@ -22,16 +22,22 @@ const onVercel = Boolean(process.env.VERCEL);
 
 type ThemeMode = "light" | "dark" | "system";
 
-// The UI font, self-hosted at build time by next/font (no runtime Google
-// request, no layout-shift flash). next/font requires LITERAL option values
-// (build-time static analysis), so `variable` must be written out — it MUST
-// equal brand.config.ts `font.cssVar` ("--font-sans"), which everything else
-// (the AntD fontFamily token, globals.css body) references. A mismatch is
-// caught by tests/contracts/design-tokens.test.ts. To swap fonts, change this
-// import AND brand.config.ts `font`.
-const sans = Inter({
+// The UI font (Geist) + mono (Geist Mono), self-hosted at build time by
+// next/font (no runtime Google request, no layout-shift flash). next/font
+// requires LITERAL option values (build-time static analysis), so `variable`
+// must be written out — `sans` MUST equal brand.config.ts `font.cssVar`
+// ("--font-sans") and `mono` its `font.monoCssVar` ("--font-mono"), which
+// everything downstream (globals.css body, the `font-mono` utility) references.
+// A mismatch is caught by tests/contracts/design-tokens.test.ts. To swap fonts,
+// change these imports AND brand.config.ts `font`.
+const sans = Geist({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+const mono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -94,7 +100,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       dir={direction}
-      className={sans.variable}
+      className={`${sans.variable} ${mono.variable}`}
       // brand.config.ts → CSS custom properties. The Tailwind @theme block in
       // app/tokens.css consumes these (ADR-029 C1), so the white-label config
       // stays the single source of brand color + font-fallback values.
@@ -102,6 +108,10 @@ export default async function LocaleLayout({
         {
           "--brand-primary": brand.colors.primary,
           "--brand-accent": brand.colors.accent,
+          // Brand-as-text (links, active nav, brand icons) for the LIGHT theme —
+          // tokens.css binds --primary-emphasis to this; globals.css overrides it
+          // for dark. Split from --brand-primary so brand-as-text clears WCAG AA.
+          "--brand-primary-emphasis": brand.colors.primaryEmphasis.light,
           "--font-sans-fallback": brand.font.fallback,
         } as React.CSSProperties
       }

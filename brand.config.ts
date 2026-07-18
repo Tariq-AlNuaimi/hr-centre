@@ -1,4 +1,8 @@
-// brand.config.ts — the white-label contract.
+// brand.config.ts — the white-label contract (Rihal Design System, ADR-029).
+//
+// Brand: royal #0165ff (ONE accent, solid — no gradient on product surfaces),
+// Geist / Geist Mono, neutral surfaces, dark via the [data-theme="dark"] swap.
+// To rebrand a fork, edit ONLY the values below.
 //
 // ONE place a fork (or a per-client build) sets its visual identity: app name,
 // brand colors, corner radius, density, and the UI font. Everything downstream
@@ -33,6 +37,11 @@ export interface BrandConfig {
     primary: string;
     /** Accent for highlights/visualizations; defaults to primary if unsure. */
     accent: string;
+    /** Brand USED AS TEXT (links, active nav/sort, brand icons). Split per theme
+     *  for WCAG AA: raw royal is only ~3.9:1 on white and ~3:1 on the dark shell.
+     *  layout.tsx binds `light` to --brand-primary-emphasis (→ --primary-emphasis);
+     *  globals.css overrides --primary-emphasis to `dark` under [data-theme="dark"]. */
+    primaryEmphasis: { light: string; dark: string };
   };
   /** Base corner radius (px). Kept in lockstep with --radius-base in tokens.css. */
   radius: number;
@@ -46,6 +55,10 @@ export interface BrandConfig {
     family: string;
     /** System fallback stack appended after the loaded webfont. */
     fallback: string;
+    /** Monospace family for IDs, codes, metrics and code (bound to --font-mono). */
+    mono: string;
+    /** CSS variable next/font binds the mono family to (the `font-mono` utility). */
+    monoCssVar: `--${string}`;
   };
   /** <meta name="theme-color"> (browser chrome on mobile). */
   themeColor: string;
@@ -59,9 +72,12 @@ export const brand: BrandConfig = {
   monogram: appName.charAt(0).toUpperCase() || "A",
 
   colors: {
-    // Refined indigo — modern, premium, still reads as "enterprise blue".
-    primary: "#4f46e5",
-    accent: "#4f46e5",
+    // ONE accent — solid royal. No gradient on product surfaces: in operational
+    // tools the accent points, it does not decorate. (was #4f46e5 template default)
+    primary: "#0165ff",
+    accent: "#0165ff", // highlights / single-series viz
+    // Brand-as-text, per theme, for WCAG AA (raw royal fails AA as body text).
+    primaryEmphasis: { light: "#0b53c9", dark: "#6ea8ff" },
   },
 
   // Softer corners read more premium; lockstep with --radius-base in tokens.css
@@ -72,14 +88,18 @@ export const brand: BrandConfig = {
   density: "comfortable",
 
   font: {
-    // app/[locale]/layout.tsx loads Inter via next/font and binds it to this var.
+    // app/[locale]/layout.tsx loads Geist via next/font and binds it to this var.
+    // Geist = the engineered product grotesk (Vercel/Linear register).
     cssVar: "--font-sans",
-    family: "Inter",
+    family: "Geist",
     fallback:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans Arabic", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji"',
+    // Geist Mono for IDs, codes, metrics and code (bound to --font-mono in layout).
+    mono: "Geist Mono",
+    monoCssVar: "--font-mono",
   },
 
-  themeColor: "#4f46e5",
+  themeColor: "#0165ff",
 };
 
 /** The full CSS `font-family` value: the loaded webfont var, then the fallback. */

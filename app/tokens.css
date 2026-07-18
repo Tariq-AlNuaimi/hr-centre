@@ -55,7 +55,7 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07);
   --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.05);
-  --shadow-ring: 0 0 0 3px rgba(79, 70, 229, 0.2); /* focus-ring SHADOW (plain-CSS land); distinct from the --ring COLOR token in the @theme block below */
+  --shadow-ring: 0 0 0 3px rgba(1, 101, 255, 0.24); /* royal focus-ring SHADOW (plain-CSS land); distinct from the --ring COLOR token in the @theme block below */
 
   /* --- Motion (transition durations for the app) -------------------------- */
   --motion-fast: 0.1s;
@@ -84,9 +84,11 @@
   /* Brand used AS TEXT (links, active nav/sort/filter state, brand icons on
    * neutral/tinted surfaces). Split from the brand SURFACE (bg-primary buttons,
    * which keep --brand-primary): on light this IS the brand color (AA on white),
-   * but the dark override lightens it to indigo-300 so brand-as-text clears AA on
-   * dark surfaces (raw brand indigo is only ~3:1 there). bg-primary is untouched. */
-  --primary-emphasis: var(--brand-primary);
+   * but the dark override lightens it to royal-300 so brand-as-text clears AA on
+   * dark surfaces (raw royal is only ~3:1 there). bg-primary is untouched.
+   * Bound from brand.config.ts `colors.primaryEmphasis.light` via the
+   * --brand-primary-emphasis var layout.tsx emits on <html> (royal #0b53c9). */
+  --primary-emphasis: var(--brand-primary-emphasis, var(--brand-primary));
   --destructive: #dc2626; /* red-600 — the destructive SURFACE (bg-destructive); white foreground clears AA (4.83:1) */
   --destructive-foreground: #ffffff;
   /* Red used AS TEXT (error messages, destructive menu item, delete link). Split
@@ -105,7 +107,7 @@
    * item. Light = brand primary; dark needs a lighter indigo for AA contrast on
    * the dark shell (override in globals.css), so the migrated sidebar is
    * dark-correct by construction. */
-  --nav-active-foreground: var(--brand-primary);
+  --nav-active-foreground: var(--primary-emphasis);
 }
 
 /* ============================================================================
@@ -137,6 +139,12 @@
    * app/[locale]/layout.tsx per brand.font.cssVar) ahead of the brand fallback
    * stack (--font-sans-fallback, emitted from brand.font.fallback). */
   --font-sans: var(--font-sans), var(--font-sans-fallback);
+
+  /* --- Mono font (utility: font-mono) --------------------------------------
+   * Chains the next/font Geist Mono variable (--font-mono, bound on <html> by
+   * app/[locale]/layout.tsx per brand.font.monoCssVar) ahead of a system mono
+   * stack. Used for IDs, codes, metrics and code. */
+  --font-mono: var(--font-mono), ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* --- Spacing (p-*, m-*, gap-*…) ------------------------------------------
    * 4px multiplier = the --space-* ruler above (p-1 = 4px, p-4 = 16px), plus

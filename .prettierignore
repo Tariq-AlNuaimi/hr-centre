@@ -20,3 +20,7 @@ docs/SESSION-HANDOFF.md
 # is that these are preserved byte-for-byte as delivered; Prettier must not reflow them.
 HARNESS-V2-KICKOFF.md
 HARNESS-V2-BACKLOG.md
+# Generated verification render — a byte-faithful static copy of the attached
+# design-system showcase (docs/verification/design-system/README.md explains it);
+# Prettier must not reflow the reference markup.
+docs/verification/design-system/showcase.html
