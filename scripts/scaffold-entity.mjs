@@ -265,6 +265,30 @@ for (const p of [
   }
 }
 
+// ---------- Resolve each relation's API route path from disk ----------
+// The RelationSelect picker must POST to the target's real route. Scaffolded entities expose
+// `/api/<singular-kebab>`, but a hand-built target can be pluralized (`User` → `/api/users`),
+// so probe the filesystem instead of assuming the singular-kebab convention — otherwise the
+// generated picker 404s against pluralized routes (repo-audit fix).
+for (const rel of relations) {
+  const singular = `/api/${rel.targetKebab}`;
+  if (await pathExists(join(ROOT, `app/api/${rel.targetKebab}/route.ts`))) {
+    rel.apiPath = singular;
+  } else if (await pathExists(join(ROOT, `app/api/${rel.targetKebab}s/route.ts`))) {
+    rel.apiPath = `/api/${rel.targetKebab}s`;
+    console.warn(
+      `NOTE: relation target "${rel.target}" is served at ${rel.apiPath} (pluralized route) — RelationSelect wired there.`,
+    );
+  } else {
+    rel.apiPath = singular;
+    console.warn(
+      `WARNING: no API route found for relation target "${rel.target}" (looked for ` +
+        `app/api/${rel.targetKebab}/route.ts and .../${rel.targetKebab}s/route.ts). ` +
+        `RelationSelect defaults to ${singular} and may 404 — set the correct path manually in the generated form.`,
+    );
+  }
+}
+
 if (new RegExp(`^model ${Pascal}\\b`, "m").test(schemaSrc)) {
   console.error(`ERROR: model ${Pascal} already exists in prisma/schema.prisma.`);
   process.exit(1);
@@ -802,7 +826,7 @@ ${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectIt
             <FormItem>
               <FormLabel>{t("${r.name}")}</FormLabel>
               <RelationSelect
-                path="/api/${r.targetKebab}"
+                path="${r.apiPath}"
                 displayField="${r.displayField}"
                 placeholder={t("${r.name}")}
                 searchPlaceholder={t("searchRelation")}

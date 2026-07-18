@@ -20,6 +20,18 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+<!-- 2026-07-18 register reconciliation (repo-audit): the five HARNESS-V2 "explicit deferrals"
+     (BACKLOG §Explicit deferrals) were resolved post-close on 2026-07-18 and narrated in
+     HARNESS-V2-CLOSEOUT.md, but never carried register lines (they lived only in the backlog/
+     closeout deferral lists). Back-filled here so the ledger — not just the closeout prose —
+     is the audit trail the operator reviews. Each is a deferral-then-fixed record; the operator
+     still adjudicates. -->
+
+- 2026-07-18 — [supply-chain/O5] SBOM-based license gate was a HARNESS-V2 explicit deferral (superseded-items map: "O5 license gate DEFERRED → register line") that never got its register line — SHIPPED post-close: `scripts/sbom-license-gate.mjs` + `npm run license:sbom`, wired into `ship:full`, evaluates the CycloneDX SBOM against the ADR-051 deny set + `license-allowlist.json`. — owner: operator — status: fixed(94a89cb; senior-review fixes f077a7a)
+- 2026-07-18 — [harness/P6] Worktree-isolation recipe for parallel waves was an explicit deferral ("P6 worktree recipe DEFERRED → register line", document post-V2-105) with no register line — SHIPPED post-close: the `/fan-out` SKILL.md gained a "Worktree isolation" recipe (native `Agent isolation:"worktree"` + the manual `git worktree add`/merge/remove wave), closing the attribution-limit gap the skill names. — owner: operator — status: fixed(d7ec9c3)
+- 2026-07-18 — [docs/#17] SECURITY.md size review was an explicit deferral (full rewrite out of scope) with no register line — DONE post-close (operator chose "reformat for readability"): §11 (threat findings) + §13 (CVE remediations) reformatted from wide single-line table cells into a lean index + per-item subsections, zero content loss (85/85 cells verified verbatim), 104.6 KB → 88.1 KB. — owner: operator — status: fixed(0cb4353)
+- 2026-07-18 — [harness/#22] Marketplace publication was an explicit deferral ("#22 actual marketplace publication") with no register line — RESOLVED post-close (operator chose "prepare, don't publish"): ADR-062 supersedes the ADR-054 private posture to publication-READY-but-intentionally-unpublished; `docs/plugin-publish-readiness.md` is the checklist; `plugin.json` `x-posture` updated. Nothing published — publication stays a deliberate operator step. — owner: operator — status: fixed(153ac9d)
+- 2026-07-18 — [harness/#27] Bus-factor program was an explicit deferral (#27 full program out of scope) with no register line — bounded slice SHIPPED post-close (operator chose "bounded slice now"): `docs/harness-orientation.md` (mental-model map of the eight harness systems + contributor onboarding), complementing the V2-505 maintainer-runbook floor. The full multi-maintainer/CI-activation program remains larger and deliberately out of scope. — owner: operator — status: fixed(153ac9d; review f077a7a)
 - 2026-07-12 — [speed/size-limit] sizeLimitAck (ADR-025) — the OpenAPI contract seam (ADR-052) ships the Scalar API-reference UI (`@scalar/api-reference-react`) in the template, which adds ~0.67MB gzipped to the summed client-chunk budget (`.size-limit.json`: 1.87MB vs 1.2MB). Scalar is dynamically imported (`ssr:false`) and auth-gated on the dev-only `/api-reference` page, so it is NOT in the app's first-load/first-paint payload — but `.size-limit.json` globs `.next/static/chunks/**` and sums ALL route chunks, so a lazy chunk still counts. The dependency itself is operator-accepted in ADR-052 (Accepted 2026-07-12, Tariq Al-Naaimi); this line records the bundle-budget consequence of that locked decision. Fix path if the budget matters to a fork: gate the Scalar page behind a per-fork opt-in (a follow-up increment) so a non-`/api/v1` fork doesn't ship it. — owner: operator — status: fixed(item-2 closeout, 2026-07-12) (FIXED via the size-limit opt-in refactor the operator chose: `@scalar/api-reference-react` removed from package.json + the `/api-reference` page removed from `app/`, so the default template ships neither and the summed client-chunk budget is back under 1.2MB with `sizeLimitAck` removed. A fork that serves `/api/v1` opts in with `npm run enable:api-reference`, which writes the page + installs the dep and accepts the ~0.67MB cost for that fork only. Honors ADR-052's "zero-cost for non-consumer forks" claim.)
 - 2026-07-11 — [quality/ai] ai-eval /ship gate is DORMANT — the LLM-as-judge eval gate
   (`scripts/ai-eval.mjs`, wired into /ship phase B) is a no-op that exits 0 (SKIP) until a fork
@@ -279,9 +291,11 @@ the changed surface is still **open** (un-adjudicated).
   for async background-Agent dispatch in this web environment — observed twice (V2-106/107 wave and
   the V2-105 research wave). The parallel-wave evidence trail is git-diff disjointness +
   `/fan-out verify-scope`, neither of which depends on the receipt hook — owner: operator —
-  status: scheduled (a separate small fix: either wire the receipt to the async dispatch path or
-  document git-diff/verify-scope as the sanctioned trail. Low urgency — `/fan-out` enforcement is
-  independent of it; `routing-report.mjs` is observe-only. Not a `/fan-out` blocker).
+  status: fixed(repo-audit) (root cause: the hook + its PostToolUse matcher keyed on tool_name
+  `Task` only, but the Agent SDK / web environment dispatches subagents via the `Agent` tool.
+  Broadened BOTH the `.claude/settings.json` matcher (`Task|Agent`) and the hook guard to accept
+  either name; verified a synthetic `Agent` dispatch now writes a receipt row while `Task` still
+  works and unrelated tools are ignored. `routing-report.mjs` stays observe-only).
 
 - 2026-07-17 — [harness-v2 V2-210/parity] Asset Tracker pilot DEFERS three ITAM table-stakes rows
   from `docs/benchmarks/it-asset-management.md` (dispositioned in `docs/blueprints/asset-tracker.md`):
@@ -306,9 +320,10 @@ the changed surface is still **open** (un-adjudicated).
 - 2026-07-17 — [harness-v2 V2-210/scaffold] `scripts/scaffold-entity.mjs` emits a relation-picker
   `path="/api/<targetKebab>"` assuming every target model's routes are singular-kebab; that holds for
   scaffolded entities but not for hand-built pluralized routes (`User` → `/api/users`), so a
-  generated `RelationSelect` to such a target 404s — owner: operator — status: scheduled (fix the
-  generator to accept a per-relation route override, or add a `/api/user` alias; low urgency — only
-  bites relations pointing at the pre-existing pluralized routes. Discovered via the V2-210 pilot).
+  generated `RelationSelect` to such a target 404s — owner: operator — status: fixed(repo-audit) (the
+  generator now PROBES the filesystem for each relation target's real route — `app/api/<kebab>/route.ts`
+  then the pluralized `.../<kebab>s/route.ts` — and wires `RelationSelect` to whichever exists, warning
+  loudly and defaulting to the singular path when neither is found. Discovered via the V2-210 pilot).
 
 - 2026-07-17 — [harness-v2 V2-301/design] visual-iteration critique of the Asset Tracker surfaced
   UI polish beyond the one fix taken this pass (raw-enum humanization, fixed via

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
-// PostToolUse(Task) hook — routing-adherence receipt (ADR-054, observe-only v1).
+// PostToolUse(Task|Agent) hook — routing-adherence receipt (ADR-054, observe-only v1).
+// Matches the subagent-dispatch tool under BOTH names: `Task` (Claude Code CLI) and `Agent`
+// (the Agent SDK / web environment — the async background-dispatch path). Coupling to `Task`
+// alone silently dropped every receipt in web sessions (repo-audit fix).
 // Appends one JSONL row per subagent spawn to .claude/state/routing-receipts.jsonl
 // (gitignored, same precedent as usage-log.jsonl) so ADR-022's model-tier table
 // becomes an OBSERVED fact instead of advisory prose. No enforcement, no
@@ -11,7 +14,7 @@ const MAX_ROWS = 1000; // bounded local accounting, not history.
 
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
-  if (input.tool_name !== "Task") process.exit(0);
+  if (input.tool_name !== "Task" && input.tool_name !== "Agent") process.exit(0);
   const ti = input.tool_input ?? {};
   const row = {
     ts: new Date().toISOString(),

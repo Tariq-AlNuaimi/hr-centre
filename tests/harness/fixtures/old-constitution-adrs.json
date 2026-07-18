@@ -1,0 +1,26 @@
+{
+  "_comment": "Frozen set of every ADR the PRE-SPLIT constitution (CLAUDE.md at commit b265104^) referenced. V2-101 moved that content into CLAUDE.md + .claude/rules/*.md; test #46 asserts none of these ADRs was dropped in the split. Frozen as a committed fixture (not read from git history) so the test survives shallow clones and template forks, which have no history. When the b265104^ commit IS reachable, the test cross-checks this list against it; when it is not, it trusts the fixture. Do not edit by hand except to widen after a deliberate constitution change.",
+  "source": "b265104^:CLAUDE.md",
+  "adrs": [
+    "ADR-001",
+    "ADR-006",
+    "ADR-009",
+    "ADR-010",
+    "ADR-013",
+    "ADR-015",
+    "ADR-017",
+    "ADR-018",
+    "ADR-019",
+    "ADR-020",
+    "ADR-022",
+    "ADR-023",
+    "ADR-029",
+    "ADR-030",
+    "ADR-032",
+    "ADR-033",
+    "ADR-034",
+    "ADR-036",
+    "ADR-042",
+    "ADR-048"
+  ]
+}

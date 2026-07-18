@@ -636,20 +636,46 @@ test("V2-101 every .claude/rules/*.md has a parseable frontmatter glob that matc
 });
 
 test("V2-101 rule migration preserved every ADR referenced by the old constitution", () => {
-  // Mechanical ADR-\d+ set-diff old CLAUDE.md → new CLAUDE.md + rules (senior-review fix:
-  // a hand-picked keyword list missed ADR-020/048).
-  const oldClaude = execSync("git show b265104^:CLAUDE.md", { cwd: REPO, encoding: "utf8" });
+  // Mechanical ADR-\d+ set-diff: the pre-split constitution's ADR set vs the current
+  // CLAUDE.md + rules (senior-review fix: a hand-picked keyword list missed ADR-020/048).
+  //
+  // The old constitution's ADR set is FROZEN in a committed fixture rather than read from
+  // `git show b265104^:CLAUDE.md` live — a shallow clone or a "Use this template" fork (no
+  // git history at all) cannot reach that commit, and coupling this /ship phase-A gate to
+  // history made it error there instead of run. When the commit IS reachable we additionally
+  // cross-check the fixture against it, so the frozen list can't silently drift on the template.
+  const adrs = (s) => new Set(s.match(/ADR-\d+/g) || []);
+  const fixture = JSON.parse(
+    readFileSync(join(REPO, "tests", "harness", "fixtures", "old-constitution-adrs.json"), "utf8"),
+  );
+  const oldAdrs = new Set(fixture.adrs);
   const newAll =
     readFileSync(join(REPO, "CLAUDE.md"), "utf8") +
     readdirSync(join(REPO, ".claude", "rules"))
       .filter((f) => f.endsWith(".md"))
       .map((f) => readFileSync(join(REPO, ".claude", "rules", f), "utf8"))
       .join("\n");
-  const adrs = (s) => new Set(s.match(/ADR-\d+/g) || []);
-  const oldAdrs = adrs(oldClaude);
   const newAdrs = adrs(newAll);
   const missing = [...oldAdrs].filter((a) => !newAdrs.has(a));
   assert.deepEqual(missing, [], `ADRs dropped in the split: ${missing.join(", ")}`);
+
+  // Optional integrity cross-check: only when the historical commit is reachable (template
+  // main with full history). Skipped silently in shallow clones / forks — the fixture stands.
+  try {
+    const oldClaude = execSync("git show b265104^:CLAUDE.md", {
+      cwd: REPO,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "ignore"],
+    });
+    assert.deepEqual(
+      [...adrs(oldClaude)].sort(),
+      [...oldAdrs].sort(),
+      "the frozen old-constitution-adrs.json fixture has drifted from b265104^:CLAUDE.md",
+    );
+  } catch (err) {
+    // Re-throw a genuine drift assertion; swallow only the unreachable-commit case.
+    if (err instanceof assert.AssertionError) throw err;
+  }
 });
 
 test("V2-101 context-tax --strict FAILS when a fixture constitution blows the 8KB budget", () => {
