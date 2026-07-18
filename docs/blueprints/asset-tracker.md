@@ -34,7 +34,7 @@ template's `/scaffold-entity` is the closest same-stack path (ADR-059).
 | T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                                                         |
 | T9 Custom fields                  | IN           | → `CustomFieldDef` + `Asset.customFields` (dynamic form + boundary validation, 2026-07-18) |
 | T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                                                             |
-| T11 Bulk import (CSV)             | DEFERRED     | → findings-register (`/scale-up` import recipe)                                            |
+| T11 Bulk import (CSV)             | IN           | → `POST /api/asset/import` (audited `$transaction`, not `createMany`; 2026-07-18)          |
 | T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                                                           |
 
 (DEFERRED rows are tracked in `docs/findings-register.md`; anti-features A1–A5 from the benchmark —

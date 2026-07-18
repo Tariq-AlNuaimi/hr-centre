@@ -211,7 +211,13 @@
     "updated": "Asset updated",
     "updateFailed": "Failed to update asset",
     "searchRelation": "Search…",
-    "noRelationMatches": "No matches"
+    "noRelationMatches": "No matches",
+    "importTitle": "Import from CSV",
+    "importHint": "Columns: assetTag, name, serial, status, category",
+    "importAction": "Import",
+    "importing": "Importing…",
+    "importSuccess": "Imported {count} assets",
+    "importFailed": "Import failed"
   },
   "categorys": {
     "name": "Name",

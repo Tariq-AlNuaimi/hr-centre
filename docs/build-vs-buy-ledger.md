@@ -591,3 +591,16 @@ sortable})`** returning `{ pagination, where, orderBy }` (where typed via a call
 `Prisma.*WhereInput` generic so the routes stay type-safe and the sort allowlist stays injection-safe).
 Zero new dependency; reuses the shipped `parsePagination`. The list-route sibling of the shared
 `RowActions`/`RelationSelect` extractions.
+
+## 2026-07-18 — Minimal CSV parser (`lib/csv.ts`)
+
+Scope: lib/csv.ts
+Considered: **a CSV library** (`papaparse` ~45KB, `csv-parse`, `@fast-csv/parse` — all rejected:
+each is a runtime dep >50KB min or drags a stream API, tripping the "runtime dep >50KB needs an
+ADR" Ask-before gate for a bounded, known-schema, ≤500-row asset import that needs only quoted-field
+
+- CRLF handling), **`String.split(',')`** (rejected — breaks on quoted fields containing commas /
+  newlines, the classic CSV footgun). Decision: **BUILD a ~40-line `lib/csv.ts`** (`parseCsv` — a
+  single-pass state machine handling `"quoted, fields"`, escaped `""`, and CR/LF; `parseCsvToObjects`
+  — header-keyed rows). Zero runtime dep; scoped to the T11 import path. If a fork needs streaming or
+  RFC-4180 edge cases at volume, `/scale-up` to `csv-parse` (a later ADR).

@@ -317,8 +317,15 @@ the changed surface is still **open** (un-adjudicated).
   (5c): `CustomFieldDef` entity (migration `20260718161010`, admin-managed via `/api/custom-field-def`)
   - `Asset.customFields` Json; the form renders one input per active def (fetched live) and the API
     boundary validates values against the defs (required/type/unknown-key) via `validateCustomFields`;
-    captured live (seeded "Cost center"/"Warranty expiry" render on the form). **T11 (CSV import) remains
-    `scheduled`** — the final sub-phase (5d). See the V2-307 line for the CTA fix that landed earlier.
+    captured live (seeded "Cost center"/"Warranty expiry" render on the form). — **T11 (CSV import) is
+    now BUILT + verified** (5d): `POST /api/asset/import` (editor-gated, rate-limited) parses CSV via
+    the hand-rolled unit-tested `lib/csv.ts`, validates each row with `createAssetSchema`, and creates
+    them with per-row `prisma.asset.create` inside ONE `$transaction` — **NOT `createMany`** (ADR-010 /
+    `no-unaudited-bulk-write`), atomic + row-indexed errors + a ≤500 cap; a list-page panel drives it.
+    **Proven end-to-end in-browser**: a 2-row CSV (incl. a quoted-comma field) → 2 assets created (3→5)
+    → **both carry CREATE audit_logs rows** (runtime proof the audit path ran, not a bulk bypass). **All
+    three deferred rows T2/T9/T11 are DONE** — this V2-210/parity line is fully resolved. See V2-307 for
+    the CTA fix.
 
 - 2026-07-17 — [harness-v2 V2-210/correctness] the pilot's two-stage senior review found 1 High + 2
   Medium + 1 Low in the hand-layered pilot code (Stage 1 confirmed scope-clean + caught the AC drift;
