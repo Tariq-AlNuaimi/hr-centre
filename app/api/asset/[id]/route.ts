@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, withEditorAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { updateAssetSchema, isLegalStatusTransition } from "@/lib/validations/asset";
+import { validateCustomFields } from "@/lib/validations/custom-field";
+import type { Prisma } from "@/generated/prisma/client";
 
 export const GET = withRateLimit(
   withAuth(async (_request: NextRequest, ctx) => {
@@ -41,10 +43,21 @@ export const PUT = withRateLimit(
     if (parsed.data.status && !isLegalStatusTransition(existing.status, parsed.data.status)) {
       return err(`Illegal status transition: ${existing.status} → ${parsed.data.status}`);
     }
-    const updated = await prisma.asset.update({
-      where: { id },
-      data: parsed.data,
-    });
+
+    // Validate custom-field VALUES against the active defs (T9) when the payload sets them.
+    const { customFields, ...rest } = parsed.data;
+    const data: Prisma.AssetUpdateInput = { ...rest };
+    if (customFields !== undefined) {
+      const defs = await prisma.customFieldDef.findMany({
+        select: { key: true, label: true, type: true, required: true },
+        take: 500, // CustomFieldDef is a small admin-bounded set; bound defensively.
+      });
+      const cf = validateCustomFields(defs, customFields);
+      if (!cf.ok) return err(cf.error);
+      data.customFields = cf.value as Prisma.InputJsonValue;
+    }
+
+    const updated = await prisma.asset.update({ where: { id }, data });
     return ok(updated);
   }),
   { id: "asset-write", limit: 30, windowMs: 60000 },

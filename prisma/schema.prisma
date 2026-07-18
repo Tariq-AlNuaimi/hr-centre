@@ -135,6 +135,30 @@ enum AssetCategory {
   OTHER
 }
 
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+}
+
+// Admin-defined custom field for assets (T9). Values are stored per-asset in
+// `Asset.customFields` (JSON) keyed by `key`; the form renders one input per def
+// and the API boundary validates the value object against the active defs.
+model CustomFieldDef {
+  id        String   @id @default(cuid())
+  label     String
+  key       String   @unique
+  type      CustomFieldType @default(TEXT)
+  required  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  deletedBy String?
+  @@index([deletedAt, createdAt])
+  @@map("custom_field_defs")
+}
+
 model Asset {
   id        String   @id @default(cuid())
   assetTag    String @unique

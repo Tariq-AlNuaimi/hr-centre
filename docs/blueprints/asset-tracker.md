@@ -1,6 +1,6 @@
 # Blueprint — IT Asset Tracker (Phase-2 pilot, V2-210)
 
-Scope: app/api/asset/**, app/**/asset/**, components/asset/**, lib/validations/asset.ts, app/api/category/**, app/**/category/**, components/category/**, lib/validations/category.ts, app/api/manufacturer/**, app/**/manufacturer/**, components/manufacturer/**, lib/validations/manufacturer.ts, app/api/asset-model/**, app/**/asset-model/**, components/asset-model/**, lib/validations/asset-model.ts, lib/csv.ts
+Scope: app/api/asset/**, app/**/asset/**, components/asset/**, lib/validations/asset.ts, app/api/category/**, app/**/category/**, components/category/**, lib/validations/category.ts, app/api/manufacturer/**, app/**/manufacturer/**, components/manufacturer/**, lib/validations/manufacturer.ts, app/api/asset-model/**, app/**/asset-model/**, components/asset-model/**, lib/validations/asset-model.ts, app/api/custom-field-def/**, components/asset/CustomFields.tsx, lib/validations/custom-field.ts, lib/csv.ts
 
 BDD: tests/features/asset-tracker.feature
 
@@ -22,20 +22,20 @@ template's `/scaffold-entity` is the closest same-stack path (ADR-059).
 
 ## Feature parity (dispositions the ITAM table-stakes — V2-202)
 
-| Benchmark row (table-stakes)      | Disposition  | Pointer                                                                 |
-| --------------------------------- | ------------ | ----------------------------------------------------------------------- |
-| T1 Unique asset tag               | IN           | → US1 / `assetTag` unique+immutable                                     |
-| T2 Model→Category→Manufacturer    | IN           | → `Category`/`Manufacturer`/`AssetModel` + `Asset.modelId` (2026-07-18) |
-| T3 Status/state labels            | IN           | → US4 `status` enum + transition rule                                   |
-| T4 Assignee / location            | IN (partial) | → `assignee → User?` (location deferred)                                |
-| T5 Check-out / check-in           | IN           | → US4 status transitions (ASSIGNED)                                     |
-| T6 Purchase & warranty fields     | IN (partial) | → `purchasedAt` (warranty deferred)                                     |
-| T7 Depreciation                   | N/A          | out of pilot scope (reporting concern, not the CRUD slice)              |
-| T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                                      |
-| T9 Custom fields                  | DEFERRED     | → findings-register (fieldset model is a later scale-up)                |
-| T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                                          |
-| T11 Bulk import (CSV)             | DEFERRED     | → findings-register (`/scale-up` import recipe)                         |
-| T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                                        |
+| Benchmark row (table-stakes)      | Disposition  | Pointer                                                                                    |
+| --------------------------------- | ------------ | ------------------------------------------------------------------------------------------ |
+| T1 Unique asset tag               | IN           | → US1 / `assetTag` unique+immutable                                                        |
+| T2 Model→Category→Manufacturer    | IN           | → `Category`/`Manufacturer`/`AssetModel` + `Asset.modelId` (2026-07-18)                    |
+| T3 Status/state labels            | IN           | → US4 `status` enum + transition rule                                                      |
+| T4 Assignee / location            | IN (partial) | → `assignee → User?` (location deferred)                                                   |
+| T5 Check-out / check-in           | IN           | → US4 status transitions (ASSIGNED)                                                        |
+| T6 Purchase & warranty fields     | IN (partial) | → `purchasedAt` (warranty deferred)                                                        |
+| T7 Depreciation                   | N/A          | out of pilot scope (reporting concern, not the CRUD slice)                                 |
+| T8 Full audit history             | IN           | → auditExtension (auto, app-floor)                                                         |
+| T9 Custom fields                  | IN           | → `CustomFieldDef` + `Asset.customFields` (dynamic form + boundary validation, 2026-07-18) |
+| T10 Search + filter + list export | IN           | → shared DataTable (app-floor)                                                             |
+| T11 Bulk import (CSV)             | DEFERRED     | → findings-register (`/scale-up` import recipe)                                            |
+| T12 Role-based access             | IN           | → US2 `withEditorAuth` on writes                                                           |
 
 (DEFERRED rows are tracked in `docs/findings-register.md`; anti-features A1–A5 from the benchmark —
 ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pilot an asset register.)

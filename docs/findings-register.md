@@ -313,10 +313,12 @@ the changed surface is still **open** (un-adjudicated).
   (migration `20260718152957` applied + seeded), `Asset.modelId` FK, cascading Model picker on the
   form, Model column on the list; captured live (`docs/verification/asset-tracker/`, real seeded
   hierarchy renders) and `/ship`-green. Refactor extracted 3 shared primitives
-  (`RowActions`/`RelationSelect`/`parseListQuery`) to hold jscpd < 3%. **T9 (custom fields) + T11
-  (CSV import) remain `scheduled`** — the next sub-phases (5c/5d) on the same DB; the `customFields`
-  Json column already shipped in the T2 migration (inert until 5c wires it). See the V2-307 line for
-  the CTA fix that landed earlier.
+  (`RowActions`/`RelationSelect`/`parseListQuery`) to hold jscpd < 3%. **T9 (custom fields) is now BUILT + verified**
+  (5c): `CustomFieldDef` entity (migration `20260718161010`, admin-managed via `/api/custom-field-def`)
+  - `Asset.customFields` Json; the form renders one input per active def (fetched live) and the API
+    boundary validates values against the defs (required/type/unknown-key) via `validateCustomFields`;
+    captured live (seeded "Cost center"/"Warranty expiry" render on the form). **T11 (CSV import) remains
+    `scheduled`** — the final sub-phase (5d). See the V2-307 line for the CTA fix that landed earlier.
 
 - 2026-07-17 — [harness-v2 V2-210/correctness] the pilot's two-stage senior review found 1 High + 2
   Medium + 1 Low in the hand-layered pilot code (Stage 1 confirmed scope-clean + caught the AC drift;

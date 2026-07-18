@@ -10,6 +10,9 @@ export const createAssetSchema = z.object({
   category: z.nativeEnum(AssetCategory),
   modelId: z.string().min(1).optional(),
   assigneeId: z.string().min(1).optional(),
+  // Shape-only here; the VALUES are validated against the active CustomFieldDefs at the
+  // route boundary via validateCustomFields (lib/validations/custom-field.ts). (T9)
+  customFields: z.record(z.string(), z.unknown()).optional(),
 });
 
 // assetTag is immutable after create (US1 invariant) — deliberately NOT updatable.
@@ -20,6 +23,7 @@ export const updateAssetSchema = z.object({
   status: z.nativeEnum(AssetStatus).optional(),
   category: z.nativeEnum(AssetCategory).optional(),
   modelId: z.string().min(1).nullable().optional(),
+  customFields: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;

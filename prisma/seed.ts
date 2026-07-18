@@ -97,6 +97,17 @@ async function main() {
       if (!found) await prisma.asset.create({ data: a });
     }
     console.log(`Seeded ${demoAssets.length} demo assets.`);
+
+    // Demo custom-field definitions (T9), idempotent by key.
+    const demoDefs = [
+      { label: "Warranty expiry", key: "warranty_expiry", type: "DATE" as const, required: false },
+      { label: "Cost center", key: "cost_center", type: "TEXT" as const, required: false },
+    ];
+    for (const d of demoDefs) {
+      const found = await prisma.customFieldDef.findUnique({ where: { key: d.key } });
+      if (!found) await prisma.customFieldDef.create({ data: d });
+    }
+    console.log(`Seeded ${demoDefs.length} custom-field definitions.`);
   } finally {
     await prisma.$disconnect();
   }

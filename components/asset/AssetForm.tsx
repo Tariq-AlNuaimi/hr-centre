@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { RelationSelect } from "@/components/shared/RelationSelect";
+import { CustomFields } from "@/components/asset/CustomFields";
 import { assetStatusLabel, assetCategoryLabel } from "@/components/asset/asset-labels";
 
 interface AssetFormProps {
@@ -25,6 +27,7 @@ interface AssetFormProps {
     category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
     modelId?: string | null;
     assigneeId?: string | null;
+    customFields?: Record<string, unknown> | null;
   }>;
   onSubmit: (values: {
     assetTag: string;
@@ -35,6 +38,7 @@ interface AssetFormProps {
     category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
     modelId?: string | null;
     assigneeId?: string | null;
+    customFields?: Record<string, unknown>;
   }) => void;
   onCancel: () => void;
   loading?: boolean;
@@ -42,6 +46,9 @@ interface AssetFormProps {
 
 export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }: AssetFormProps) {
   const t = useTranslations("assets");
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>(
+    (initialValues?.customFields as Record<string, unknown>) ?? {},
+  );
 
   // The SAME shape guards the API route; client + server validation can't drift.
   const schema = z.object({
@@ -70,7 +77,10 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex max-w-[500px] flex-col gap-4">
+      <form
+        onSubmit={form.handleSubmit((values) => onSubmit({ ...values, customFields }))}
+        className="flex max-w-[500px] flex-col gap-4"
+      >
         <TextField name="assetTag" label={t("assetTag")} />
 
         <TextField name="name" label={t("name")} />
@@ -162,6 +172,8 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
             </FormItem>
           )}
         />
+
+        <CustomFields value={customFields} onChange={setCustomFields} />
 
         <div className="flex gap-2">
           <Button type="submit" disabled={loading}>
