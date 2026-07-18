@@ -14,6 +14,9 @@
 - app/[locale]/(dashboard)/category/[id]/page.tsx
 - app/[locale]/(dashboard)/category/new/page.tsx
 - app/[locale]/(dashboard)/category/page.tsx
+- app/[locale]/(dashboard)/custom-field-def/[id]/page.tsx
+- app/[locale]/(dashboard)/custom-field-def/new/page.tsx
+- app/[locale]/(dashboard)/custom-field-def/page.tsx
 - app/[locale]/(dashboard)/manufacturer/[id]/page.tsx
 - app/[locale]/(dashboard)/manufacturer/new/page.tsx
 - app/[locale]/(dashboard)/manufacturer/page.tsx
@@ -39,6 +42,7 @@
 - app/api/auth/reset-password/route.ts
 - app/api/category/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/category/route.ts  [GET,POST]
+- app/api/custom-field-def/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/custom-field-def/route.ts  [GET,POST]
 - app/api/health/route.ts
 - app/api/internal/audit-purge/route.ts  [GET,POST]
@@ -107,7 +111,7 @@
 - lib/validations/asset.ts: createAssetSchema, updateAssetSchema, CreateAssetInput, UpdateAssetInput, isLegalStatusTransition
 - lib/validations/category.ts: createCategorySchema, updateCategorySchema, CreateCategoryInput, UpdateCategoryInput
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
-- lib/validations/custom-field.ts: createCustomFieldDefSchema, CreateCustomFieldDefInput, CustomFieldDefLite, validateCustomFields
+- lib/validations/custom-field.ts: createCustomFieldDefSchema, CreateCustomFieldDefInput, updateCustomFieldDefSchema, CustomFieldDefLite, validateCustomFields
 - lib/validations/manufacturer.ts: createManufacturerSchema, updateManufacturerSchema, CreateManufacturerInput, UpdateManufacturerInput
 - lib/validations/sso.ts: normalizedScimEventSchema, NormalizedScimEventInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
@@ -122,6 +126,8 @@
 - components/asset-model/AssetModelForm.tsx
 - components/category/CategoryColumns.tsx
 - components/category/CategoryForm.tsx
+- components/custom-field-def/CustomFieldDefColumns.tsx
+- components/custom-field-def/CustomFieldDefForm.tsx
 - components/dashboard/DashboardContent.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx
@@ -144,6 +150,7 @@
 - components/shared/DataView.tsx
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
+- components/shared/EntityListPage.tsx
 - components/shared/FormField.tsx
 - components/shared/FormLayout.tsx
 - components/shared/KanbanBoard.impl.tsx
