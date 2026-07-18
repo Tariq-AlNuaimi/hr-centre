@@ -84,6 +84,54 @@ tests/uat/design-system.uat.ts                → 9/9 pass (authed dev app):
 The rendered light + dark route are the committed baseline PNGs above (viewed and
 self-critiqued during the run).
 
+## V2-301 capture matrix (2026-07-18) — the layout-primitive visual evidence
+
+Closes the V2-302 gap the harness re-audit named: the shared layout primitives
+existed and were ledger-covered, but had no committed **full** visual-iteration
+matrix (the prior `showcase-route-{light,dark}.png` were desktop-only, light+dark,
+en-only). Captured via `npm run capture -- --feature design-system --routes
+/design-system` against the authed dev app (native PG recipe), across the full
+V2-301 matrix — `{desktop, mobile} × {light, dark} × {en, ar}`:
+
+```
+design-system.desktop.light.en.png   design-system.desktop.dark.en.png
+design-system.mobile.light.en.png    design-system.mobile.dark.en.png
+design-system.desktop.light.ar.png   design-system.desktop.dark.ar.png   (RTL)
+design-system.mobile.light.ar.png    design-system.mobile.dark.ar.png    (RTL)
+```
+
+`ar` was enabled only for the capture run (`project.config.json` `locales`
+temporarily `["en","ar"]`, then reverted to the shipped English-only `["en"]`);
+`messages/ar.json` + the RTL code ship inert, so this proves the primitives' RTL
+capability without changing the fork's shipped locale set.
+
+### Self-critique vs the 10-point rubric (V2-307)
+
+Viewed all four corners of the matrix (en light/dark desktop, en light mobile, ar
+dark desktop). Score **9/10**:
+
+1. **Grid alignment** ✓ — consistent left rail + gutter; section eyebrows align.
+2. **Hierarchy** ✓ — h1 / eyebrow / body ladder is unambiguous.
+3. **One primary action** ✓ — hero pairs one primary ("Try the command bar") with
+   one secondary ("See the AI patterns").
+4. **State honesty** ✓ — real primitive states shown: Primary→Disabled buttons,
+   focus ring, error input, streaming skeleton, StatGrid, DataTable rows.
+5. **Spacing rhythm** ✓ — section rhythm holds on the 4px scale at both breakpoints.
+6. **Copy** ✓ — sentence case, no trailing periods on labels.
+7. **RTL** ✓ — `ar` variant fully mirrors: brand/nav to the right, hero
+   right-aligned, StatGrid + DataTable column order reversed, buttons mirrored.
+   Confirms the primitives use direction-aware logical properties, not hardcoded
+   left/right. (English glyphs stay LTR inside the RTL container — expected bidi;
+   the page copy is next-intl-exempt by design.)
+8. **Dark** ✓ — `[data-theme="dark"]` swap holds; accent + surfaces correct.
+9. **Responsive** ✓ — mobile collapses grids to 1–2 columns; nav + StatGrid reflow.
+10. **a11y** — not scored from pixels here; covered by the axe gate above
+    (serious/critical == 0 both themes). Focus ring is visibly on-token.
+
+Single deduction is a11y-from-pixels (deferred to the axe gate, which passes). The
+one non-design artifact in the frames — the red "2 Issues" badge, left-center — is
+the **Next.js dev-tools overlay** (dev-mode only), not part of the design.
+
 ## Reproduce
 
 ```
@@ -91,4 +139,6 @@ npx tsx --test tests/contracts/design-system-drift.test.ts        # static gate
 # browser gate needs the app: native PG (docs/agent-memory.md recipe) + npm run dev, then:
 UAT_EMAIL=admin@example.com UAT_PASSWORD=changeme \
   npx playwright test tests/uat/design-system.uat.ts              # 9/9
+# V2-301 capture matrix (temporarily enable ar in project.config.json for the RTL cells):
+npm run capture -- --feature design-system --routes /design-system
 ```
