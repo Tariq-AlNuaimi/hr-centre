@@ -24,3 +24,4 @@ HARNESS-V2-BACKLOG.md
 # design-system showcase (docs/verification/design-system/README.md explains it);
 # Prettier must not reflow the reference markup.
 docs/verification/design-system/showcase.html
+docs/verification/design-system/showcase-from-system.html

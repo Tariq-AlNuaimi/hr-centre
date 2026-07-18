@@ -42,11 +42,36 @@ on a 4px grid, the color/type/component/AI-pattern/adoption sections, honest
 status colors, and a clean dark swap. (The top-left logo is a broken image only
 because the `assets/rihal-logo-*.png` files are not part of the token drop-in.)
 
+Note: `showcase.html` keeps the attached demo's inlined token block verbatim, so
+it proves the _target_ renders — not yet that the repo's tokens produce it. Test
+3 closes that gap.
+
+## Test 3 — the showcase generated FROM the repo's own design system
+
+`showcase-from-system.html` is the same markup, but its styling is **driven by
+the repo's real design files, read at generation time**: `app/tokens.css` and the
+`[data-theme="dark"]` swap from `app/globals.css` are inlined verbatim, the brand
+vars are emitted from `brand.config.ts` exactly as `app/[locale]/layout.tsx` does
+on `<html>`, and the showcase's own variable names (`--brand`, `--fg`, `--r-md`,
+`--sh-md`, the status palette, …) are **bridged onto those tokens**. The few
+extended demo shades the template's lean semantic layer doesn't name (brand
+hover/press/soft, faint, border-soft, grid, `r-xl`/`2xl`/`pill`, `sh-xl`) are
+**derived from `--brand-primary` / the neutral scale via `color-mix`**, so they
+track the brand too. Change a token in the repo and re-run — the showcase changes
+with it.
+
+- `from-system-light.png` — light mode
+- `from-system-dark.png` — dark mode
+
+Both render identically to Test 2's reference — confirming the repo's design
+system reproduces the attached showcase, not just a copy of its values.
+
 ## Reproduce
 
 ```
-# from repo root, with the two scratch scripts:
-node build-showcase.mjs      # → docs/verification/design-system/showcase.html
-node parity.mjs              # → docs/verification/design-system/token-parity.md
+# from repo root, with the scratch scripts:
+node build-showcase.mjs        # → showcase.html            (attached, made renderable)
+node gen-from-system.mjs       # → showcase-from-system.html (driven by the repo tokens)
+node parity.mjs                # → token-parity.md          (24/24 value match)
 npx tsx --test tests/contracts/design-tokens.test.ts   # 9/9 pass
 ```
