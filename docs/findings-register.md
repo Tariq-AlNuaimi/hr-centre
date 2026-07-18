@@ -20,6 +20,19 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-18 — [quality/design, V2-302] Shared layout primitives lack a dedicated visual-verification
+  capture set — the `components/shared/*` primitives (PageShell, Section, Toolbar, FormLayout,
+  StatGrid, DetailList, EmptyState) exist and carry a build-vs-buy ledger entry, and the V2-301
+  visual-iteration loop (`npm run capture`) is wired and exercised on other surfaces (asset-tracker,
+  v2-305-copy). But V2-302's acceptance ("primitives exist with RTL+dark evidence captures") was met
+  by-construction, not by a committed before/after capture matrix for the primitives themselves under
+  `docs/verification/`. WHY waived here: generating the matrix needs a running app + DB (per
+  `.claude/rules/design.md`), which this container does not have up; the primitives are already
+  covered indirectly by the surfaces built on them. Fix path: run `npm run capture -- --feature
+design-system --routes /style-guide` on a box with the app + DB up, view + self-critique against the
+  10-point rubric, and store the set under `docs/verification/design-system/`. — owner: operator —
+  status: open
+
 <!-- 2026-07-18 register reconciliation (repo-audit): the five HARNESS-V2 "explicit deferrals"
      (BACKLOG §Explicit deferrals) were resolved post-close on 2026-07-18 and narrated in
      HARNESS-V2-CLOSEOUT.md, but never carried register lines (they lived only in the backlog/

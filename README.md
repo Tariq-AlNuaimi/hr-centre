@@ -143,7 +143,7 @@ hooks/                       # use-entity-queries (TanStack Query), useNotify, u
 lib/                         # Prisma client, auth, email, export, validations
 prisma/                      # Schema, migrations, seed
 docs/decisions/              # ADRs
-eslint-rules/                # Project-local ESLint plugin (11 hard rules)
+eslint-rules/                # Project-local ESLint plugin (thirteen hard rules)
 tests/contracts/             # Contract test suite (node:test)
 .github/workflows/           # verify, secrets-scan, sast, codeql, senior-review, uat, preview-uat, release, new-project (all dispatch-only on free plan)
 ```
