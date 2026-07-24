@@ -1,13 +1,20 @@
 #!/usr/bin/env node
 /**
- * /ship orchestrator -- the 7-step pre-push gate, optimized for wall time.
+ * /ship orchestrator -- the warm pre-push gate, optimized for wall time.
  *
- * Mirrors .claude/skills/ship/SKILL.md exactly:
- *   phase A (parallel): 1 typecheck · 2 lint · 3 contract tests · 4 component tests
- *   phase B (serial):   5 build · 6 gitleaks · 7 npm audit
+ * Mirrors .claude/skills/ship/SKILL.md. The pipeline is ~19 phases in two waves
+ * (see the phase-A banner string below for the authoritative, ordered list):
+ *   phase A (static/tests): typecheck · lint · format · contract tests ·
+ *     component tests · hooks · scalability · copy · wave-offs · licenses · tier ·
+ *     blueprint · blueprint-content · complexity · db-structure · knip ·
+ *     duplication · coverage · skill-check
+ *   phase B (build/scan): build · size-limit · gitleaks · npm audit · ai-eval
+ *   (ship:full/SHIP_FULL adds docker image-build + trivy + BDD + integration + SBOM.)
  *
  * Semantics preserved from the skill:
  *   - any phase-A failure blocks phase B (stop the line);
+ *   - a phase that DEGRADES (skips a check, tool not installed) prints `PASS*`
+ *     with a `note:` -- it is NOT a clean, fully-enforced PASS;
  *   - missing gitleaks is a FAILURE with install instructions, never a skip;
  *   - tsc cache + eslint cache make warm re-runs cheap; caches live under
  *     node_modules/.cache so a fresh clone (and CI) always runs cold;
@@ -1259,7 +1266,17 @@ function run(name, cmd, args, env = {}, replaceEnv = false) {
   });
 }
 
-const report = (r) => console.log(`  ${r.ok ? "PASS" : "FAIL"}  ${r.name} (${r.secs}s)`);
+// A phase that carries a `warn` passed but was DEGRADED (a check skipped, a tool
+// not installed, an env var unset) -- print `PASS*` so the banner line itself signals
+// "not fully enforced", not just a `note:` further down that scrolls past (V2
+// challenge-audit M4: db-structure's migrate-diff silently skips without
+// SHADOW_DATABASE_URL yet read as a clean PASS). The `*` maps to the note below.
+const report = (r) =>
+  console.log(
+    `  ${r.ok ? (r.warn ? "PASS*" : "PASS ") : "FAIL "} ${r.name} (${r.secs}s)${
+      r.ok && r.warn ? "  * partial/degraded — see note below" : ""
+    }`,
+  );
 
 // -- npm-audit evaluation with a scoped allowlist (audit-allowlist.json) -----
 // `npm audit --json` lists EVERY severity; we keep the old `--audit-level=high`

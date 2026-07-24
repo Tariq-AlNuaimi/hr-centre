@@ -58,4 +58,4 @@ the line. The operator signs off UAT.
 - The root `app/not-found.tsx` is deliberately context-free (no providers): Next 16 prerenders
   `/_not-found` outside `[locale]`. If a fork's build dies in `/_global-error` or `/_not-found`
   with a `useContext` TypeError, that's upstream Next regression #85668/#86178 — fix with a
-  context-free root file, never by editing the locale providers. Pinned next@16.2.9 builds clean.
+  context-free root file, never by editing the locale providers. Pinned next@16.2.10 builds clean.

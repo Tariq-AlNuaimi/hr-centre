@@ -76,6 +76,16 @@ ruleTest("no-prisma-in-client", noPrismaInClient, {
       code: `"use client";\nconst p = await import("@/lib/prisma");`,
       errors: [{ messageId: "noPrismaInClient" }],
     },
+    {
+      // V2 challenge-audit M5: the REAL generated client lives at generated/prisma.
+      code: `"use client";\nimport { PrismaClient } from "@/generated/prisma/client";`,
+      errors: [{ messageId: "noPrismaInClient" }],
+    },
+    {
+      // M5: relative path into the generated client.
+      code: `"use client";\nimport { PrismaClient } from "../../generated/prisma";`,
+      errors: [{ messageId: "noPrismaInClient" }],
+    },
   ],
 });
 
@@ -120,8 +130,13 @@ ruleTest("no-secret-env-in-console", noSecretEnvInConsole, {
     { code: `console.log(process.env.NODE_ENV);` },
     // Reading a restricted var WITHOUT logging it.
     { code: `const t = process.env.AUTH_SECRET;` },
-    // Restricted var passed to a non-console sink.
-    { code: `logger.info(process.env.API_TOKEN);` },
+    // Reading via the env wrapper WITHOUT logging it.
+    { code: `const s = env.AUTH_SECRET;` },
+    // PUBLIC base URLs are not secrets -- must stay loggable (V2 challenge-audit H1:
+    // the DANGEROUS pattern deliberately excludes AUTH_URL / NEXTAUTH_URL / VERCEL_URL).
+    { code: `console.log(process.env.AUTH_URL);` },
+    { code: `logger.info(env.NEXTAUTH_URL);` },
+    { code: `console.log(process.env.VERCEL_URL);` },
   ],
   invalid: [
     {
@@ -140,6 +155,32 @@ ruleTest("no-secret-env-in-console", noSecretEnvInConsole, {
     {
       // passwordHash pattern.
       code: `console.debug(process.env.USER_PASSWORD_HASH);`,
+      errors: [{ messageId: "noSecretEnvInConsole" }],
+    },
+    {
+      // V2 challenge-audit H1: a NON-console logger sink (pino/winston/logger) must
+      // now be caught -- this was previously asserted VALID, the actual leak path.
+      code: `logger.info(process.env.API_TOKEN);`,
+      errors: [{ messageId: "noSecretEnvInConsole" }],
+    },
+    {
+      // H1: the typed `@/lib/env` wrapper is the codebase idiom; env.X was invisible.
+      code: `console.log(env.AUTH_SECRET);`,
+      errors: [{ messageId: "noSecretEnvInConsole" }],
+    },
+    {
+      // H1: DATABASE_URL is a credential-bearing connection string (user:pass@host).
+      code: "logger.error(`db=${env.DATABASE_URL}`);",
+      errors: [{ messageId: "noSecretEnvInConsole" }],
+    },
+    {
+      // H1: process.env.DATABASE_URL to console -- the exact scenario the audit named.
+      code: `console.log(process.env.DATABASE_URL);`,
+      errors: [{ messageId: "noSecretEnvInConsole" }],
+    },
+    {
+      // H1: a log-level method on an arbitrary logger object + REDIS_URL.
+      code: `log.debug(process.env.REDIS_URL);`,
       errors: [{ messageId: "noSecretEnvInConsole" }],
     },
   ],

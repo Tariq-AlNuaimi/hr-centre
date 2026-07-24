@@ -69,7 +69,7 @@ const nextConfig: NextConfig = {
   // project.config.json lever above; a fork opts out with `"reactCompiler": false`.
   // Uses the stable Babel transform (babel-plugin-react-compiler, a build-time
   // devDep). The faster native `experimental.turbopackRustReactCompiler` Rust port
-  // is NOT in next@16.2.9's config type yet (canary-only) — revisit at the next
+  // is NOT in next@16.2.10's config type yet (canary-only) — revisit at the next
   // pinned-Next bump (ADR-048). The Babel pass adds ~35% to build time; the runtime
   // win is the trade. The compiler bails out safely on any component that violates
   // the Rules of React, so adoption is additive.

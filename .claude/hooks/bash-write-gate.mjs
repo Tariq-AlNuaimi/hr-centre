@@ -69,7 +69,13 @@ function writeTargets(command) {
     const verb = (toks[i] ?? "").replace(/^.*\//, ""); // basename of the command
     const operands = toks.slice(i + 1).map(unquote);
 
-    if (verb === "tee") {
+    if (verb === "touch") {
+      // `touch app/api/x/route.ts` CREATES the file, then a follow-up Write sees an
+      // existing file and the Write-tool gates exempt it -> a two-step bypass of the
+      // blueprint/ledger gate (V2 challenge-audit M3). Treat every non-flag operand as a
+      // gated write target so the create itself is checked.
+      for (const o of operands) if (!isFlag(o)) targets.add(o);
+    } else if (verb === "tee") {
       for (const o of operands) if (!isFlag(o)) targets.add(o);
     } else if (verb === "cp" || verb === "mv") {
       // destination is the last non-flag operand

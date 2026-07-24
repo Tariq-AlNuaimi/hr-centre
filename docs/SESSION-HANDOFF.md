@@ -4,7 +4,7 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated 2026-07-17 · last /ship: **green** (972862a, 2026-07-17)._
+_Program: **harness-v2** · branch `claude/repo-pending-sweep-129frj` · updated 2026-07-24 · last /ship: **green** (972862a, 2026-07-17)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -14,6 +14,7 @@ _Program: **harness-v2** · branch `claude/harness-v2-kickoff-yhid26` · updated
 | ✅ DONE | **H2-P3** harness-v2 Phase 3 — Shrink the decision space (V2-301..V2-309) | — | COMPLETE + on main (45a0500). Phase 3 — shrink the decision space (V2-301..309). Retro in EVIDENCE. |
 | ✅ DONE | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | — | COMPLETE + on main (8fb4737) + senior-reviewed+fixed. Phase 4 — verify what was waived (V2-401..409). WS-5 adjudicated SPLIT. Detail in EVIDENCE. |
 | ✅ DONE | **H2-P5** harness-v2 Phase 5 — Stack & steady state (V2-501..V2-507) | — | COMPLETE + senior-reviewed+fixed (4572574, /ship green). Phase 5 — stack & steady state (V2-501..507). Review: 1 High (doc-manifest session-state prune gap) + counts + Scope, all fixed. Ready to land = harness-v2 CLOSED. Detail in EVIDENCE/CLOSEOUT. |
+| 🟡 IN PROGRESS | **POST-CLOSE** Post-finalization work landed AFTER the 2026-07-17 'finalized' stamp | — | The 2026-07-17 'TEMPLATE FINALIZED / no in-flight work' claim is NOT the whole story — 27 commits followed 972862a: #90 (repo-audit remediation + Asset Tracker T2/T9/T11) and #91 (OPEN-ITEMS.md consolidation) landed on main; and a challenge-audit on branch claude/repo-pending-sweep-129frj (2026-07-24) found + fixed 15 doc/harness findings (secret-logging ESLint hole, dangerous-command + bash-write-gate gaps, ship banner honesty, stale handoff/register counts + dead commit hashes). See docs/findings-register.md (newest entries) and `git log`. |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -84,28 +85,36 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. harness-v2 CLOSED + all post-close work landed on main (972862a, /ship green). WS-1 Docker self-host image VERIFIED+FIXED in-session (5 latent defects — build AUTH_SECRET, public/, prod node_modules Prisma-CLI closure, prisma.config.ts copy, pgvector smoke DB); findings-register WS-1 = fixed. Renovate app connected + dependabot.yml retired.
-2. 3 deferrals remain, each gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (stay-frozen), uptime/Storybook (catalog suffices).
-3. TEMPLATE FINALIZED 2026-07-17 — main is the source of truth; no in-flight work. Docs refreshed, dead scratch removed, historical docs closed in place.
+1. STATE IS NOT FROZEN AT 2026-07-17. The template was finalized then, but post-close work continued: audit remediation (#90/#91) landed on main, and a 2026-07-24 challenge-audit is fixing 15 doc/harness findings on branch claude/repo-pending-sweep-129frj. Verify HEAD with `git log`, not this file's lastShip sha.
+2. harness-v2 CLOSED + its post-close finalization landed on main (972862a, /ship green): WS-1 Docker self-host image VERIFIED+FIXED (5 latent defects); Renovate app connected + dependabot.yml retired.
+3. 3 deferrals remain, each gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (operator chose to START the program — see OPEN-ITEMS #14), uptime/Storybook (catalog suffices).
+4. OPEN-ITEMS.md is the live backlog index; several items were picked up for build in the 2026-07-24 session (see that file + the findings register).
 
 <!-- END:auto-status -->
 
 ---
 
-# TEMPLATE FINALIZED (2026-07-17)
+# Programs finalized (2026-07-17) — but work continued after
 
-> The template is finalized: `main` is the single source of truth. Every program is
-> complete and landed — the AntD→Tailwind replatform, the enterprise pivot (WS-1..8),
-> the code wave, and harness-v2 (Phases 0–5). Post-close, the WS-1 self-host Docker
-> image was verified + fixed end-to-end (it had never actually been built), and
-> Renovate replaced Dependabot as the dependency bot. Full history: `git log` +
-> `docs/HARNESS-V2-CLOSEOUT.md`.
+> The four big programs finalized on 2026-07-17: the AntD→Tailwind replatform, the
+> enterprise pivot (WS-1..8), the code wave, and harness-v2 (Phases 0–5); the WS-1
+> self-host Docker image was verified + fixed end-to-end, and Renovate replaced
+> Dependabot. **That was NOT the last commit.** Work continued after the finalize
+> stamp: audit remediation + Asset Tracker T2/T9/T11 (#90) and the OPEN-ITEMS.md
+> backlog consolidation (#91) landed on `main`, and a 2026-07-24 challenge-audit
+> (branch `claude/repo-pending-sweep-129frj`) fixed 15 doc/harness findings. Treat
+> `git log` — not any "finalized" date here — as ground truth for HEAD. Full history:
+> `git log` + `docs/HARNESS-V2-CLOSEOUT.md`.
 
 ## State
 
-- `main` = branch tip = everything landed. Last `/ship`: **green** (`972862a`, 2026-07-17).
-- No work is in flight. Remaining backlog is trigger-gated only (see the deferred list in
-  the auto-status block above + `docs/findings-register.md`; 3 gated deferrals remain).
+- **`git log` is the source of truth for the branch tip**, not this file. `972862a`
+  (2026-07-17) was the last *re-stamped* green `/ship`; commits landed after it (see
+  above) without re-stamping `lastShip`.
+- Active/recent work is NOT zero: the 2026-07-24 challenge-audit remediation is the most
+  recent (see `docs/findings-register.md` newest entries + `docs/OPEN-ITEMS.md`). The
+  trigger-gated deferrals still stand (deferred list in the auto-status block above +
+  `docs/findings-register.md`).
 - Durable landmines/gotchas live in `docs/agent-memory.md` (a digest is surfaced at
   SessionStart; retrieve full sections on demand).
 

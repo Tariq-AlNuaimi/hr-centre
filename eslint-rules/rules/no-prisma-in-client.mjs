@@ -4,7 +4,16 @@
 // components call /api/*; the API handler is the only place that touches
 // Prisma. CLAUDE.md ‘Hard rules’: "UI -> API route -> service -> Prisma."
 
-const PRISMA_LIB_PATHS = ["@/lib/prisma", "@/lib/prisma/client"];
+// Both the barrel (`@/lib/prisma`) AND the generated client (`generated/prisma`,
+// where the real `PrismaClient` lives -- see .claude/rules/prisma.md). A
+// "use client" file importing `PrismaClient` from `@/generated/prisma/client`
+// was previously invisible to this rule (V2 challenge-audit M5).
+const PRISMA_LIB_PATHS = [
+  "@/lib/prisma",
+  "@/lib/prisma/client",
+  "@/generated/prisma",
+  "@/generated/prisma/client",
+];
 
 function isUseClientDirective(stmt) {
   if (!stmt || stmt.type !== "ExpressionStatement") return false;
@@ -33,7 +42,10 @@ export default {
       return (
         PRISMA_LIB_PATHS.includes(src) ||
         src.endsWith("/lib/prisma") ||
-        src.endsWith("/lib/prisma/client")
+        src.endsWith("/lib/prisma/client") ||
+        src.endsWith("/generated/prisma") ||
+        src.endsWith("/generated/prisma/client") ||
+        /(^|\/)generated\/prisma(\/client)?$/.test(src)
       );
     }
 

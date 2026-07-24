@@ -248,6 +248,51 @@ test("dangerous-commands is FAIL-CLOSED on a forced internal error (malformed st
   assert.ok(isDeny(r), `security guard must deny on error :: ${r.stdout}`);
 });
 
+// V2 challenge-audit M2 — destructive working-tree git ops must deny SEMANTICALLY,
+// even compounded (the settings.json deny-list is lexical-prefix only, so
+// `cd x && git reset --hard` slips it).
+test("dangerous-commands DENIES destructive git ops incl. compound forms (M2)", () => {
+  assert.ok(
+    isDeny(runHook("dangerous-commands.mjs", preBash("cd sub && git reset --hard HEAD~5"))),
+    "compound git reset --hard must deny",
+  );
+  assert.ok(
+    isDeny(runHook("dangerous-commands.mjs", preBash("git clean -fd"))),
+    "git clean -fd must deny",
+  );
+  assert.ok(
+    isDeny(runHook("dangerous-commands.mjs", preBash("git checkout ."))),
+    "git checkout . must deny",
+  );
+  assert.ok(
+    isDeny(runHook("dangerous-commands.mjs", preBash("git restore ."))),
+    "git restore . must deny",
+  );
+});
+
+test("dangerous-commands ALLOWS normal (non-destructive) git checkout (M2 no false-positive)", () => {
+  assert.equal(runHook("dangerous-commands.mjs", preBash("git checkout main")).decision, null);
+  assert.equal(
+    runHook("dangerous-commands.mjs", preBash("git checkout -b feature/x")).decision,
+    null,
+  );
+});
+
+// V2 challenge-audit M3 — `touch`-then-Write two-step must not bypass the blueprint gate:
+// the `touch` that CREATES a new gated file is itself a gated write.
+test("bash-write-gate DENIES a `touch` that creates a new uncovered gated file (M3)", () => {
+  const r = runHook("bash-write-gate.mjs", preBash("touch app/api/sneaky/route.ts"));
+  assert.ok(isDeny(r), `touch of a new uncovered route must deny :: ${r.stdout}`);
+  assert.match(r.json.hookSpecificOutput.permissionDecisionReason, /blueprint-gate/);
+});
+
+test("bash-write-gate ALLOWS `touch` on an EXISTING gated file (continuation, M3)", () => {
+  assert.equal(
+    runHook("bash-write-gate.mjs", preBash("touch app/api/health/route.ts")).decision,
+    null,
+  );
+});
+
 // ---------------------------------------------------------------------------
 // protect-secrets — FAIL-CLOSED security guard.
 // ---------------------------------------------------------------------------

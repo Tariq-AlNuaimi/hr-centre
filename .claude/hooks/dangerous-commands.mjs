@@ -77,6 +77,28 @@ function checkSegment(seg) {
     if (del && (force || shortLetters.includes("D")))
       return "`git branch` force-delete (`-D` / `-d --force`) drops a branch even with unmerged, unpushed commits; use the safe `git branch -d` (git refuses on an unmerged branch) or ask the operator";
   }
+  // 2.6. Destructive working-tree git ops (V2 challenge-audit M2). settings.json denies
+  // these LEXICALLY (`git reset --hard*`, `git clean -f*`, `git checkout .`/`--*`,
+  // `git restore .`/`--*`) -- a prefix match anchored at the string start, so a COMPOUND
+  // form (`cd sub && git reset --hard HEAD~5`) slips the lexical rule. This segment-aware
+  // semantic check mirrors that policy so the deny survives compounding. Bare
+  // `git checkout <branch>` / `git checkout -b <branch>` (a normal switch) is untouched.
+  if (cmd === "git" && args[0] === "reset" && args.includes("--hard"))
+    return "`git reset --hard` discards ALL uncommitted work (working tree + index) irrecoverably; commit/stash first or ask the operator (deny-listed policy)";
+  if (cmd === "git" && args[0] === "clean") {
+    const cleanFlags = args.filter((a) => a.startsWith("-"));
+    const force = cleanFlags.some((a) => a === "--force" || /^-[a-zA-Z]*f/.test(a));
+    if (force)
+      return "`git clean -f` permanently deletes untracked files (gone -- not in git); use `git clean -n` to preview or ask the operator (deny-listed policy)";
+  }
+  if (cmd === "git" && (args[0] === "checkout" || args[0] === "restore")) {
+    const rest = args.slice(1);
+    const discardsDot = rest.includes(".");
+    const longFlag = rest.some((a) => a.startsWith("--")); // `--`, `--force`, `--source=...`, `--staged`
+    const forceShort = rest.some((a) => a === "-f");
+    if (discardsDot || longFlag || forceShort)
+      return `\`git ${args[0]}\` discarding tracked-file changes (\`.\` / \`--\` / \`--force\`) throws away uncommitted work; commit/stash first or ask the operator (deny-listed policy)`;
+  }
   // 3. chmod 777 (incl. -R) -- world-writable
   if (cmd === "chmod" && args.some((a) => /^([ugoa=+-]*)?0?777$/.test(a) || a === "a+rwx"))
     return "`chmod 777` makes files world-writable; use the minimal mode needed";

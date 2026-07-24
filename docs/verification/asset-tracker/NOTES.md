@@ -1,11 +1,20 @@
 # Visual-iteration critique — Asset Tracker (V2-301 evidence)
 
 The V2-301 loop on the pilot's list + create-form screens: **capture → view → critique →
-fix → re-capture**. Captures live beside this file (`before/`, `after/`), matrix
-`{asset,asset-new} × {desktop,mobile} × {light,dark}` (en only — `ar` inert per
-`project.config.json` `locales: ["en"]`). Produced by `npm run capture -- --feature
-asset-tracker/<phase> --routes /asset,/asset/new` against a locally-run app (agent-memory
-"browser QA & egress" 2026-07-17 recipe).
+fix → re-capture**. Two distinct capture sets live beside this file (en only — `ar` inert per
+`project.config.json` `locales: ["en"]`):
+
+- **Full matrix (top level of this dir):** `{asset,asset-new} × {desktop,mobile} × {light,dark}`
+  — 8 files (`asset.desktop.light.png`, `asset.mobile.dark.png`, …). This is the complete
+  V2-301 matrix for the pilot.
+- **Focused before/after subset (`before/`, `after/`):** the DESKTOP-only pair used for the
+  specific enum-humanization fix comparison — `before/` = 2 files (`asset.desktop.light`,
+  `asset-new.desktop.light`), `after/` = 3 (`asset.desktop.{light,dark}`, `asset-new.desktop.light`).
+  These are deliberately a subset — one change, held to the desktop cells where the enum tokens
+  were visible — NOT the full matrix.
+
+Produced by `npm run capture -- --feature asset-tracker/<phase> --routes /asset,/asset/new`
+against a locally-run app (agent-memory "browser QA & egress" 2026-07-17 recipe).
 
 ## Self-critique of the BEFORE captures (10-point rubric, V2-307)
 
