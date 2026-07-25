@@ -34,7 +34,7 @@ Given("an editor session", async ({ world }) => {
 });
 When("they create an asset with tag {string}", async ({ request, world }, tag: string) => {
   world.response = await request.post("/api/asset", {
-    data: { assetTag: tag, name: "Test asset", status: "IN_STOCK", category: "LAPTOP" },
+    data: { assetTag: tag, name: "Test asset", status: "IN_STOCK" },
   });
 });
 Then("the asset is persisted and audited", async ({ world }) => {
@@ -51,7 +51,7 @@ Given("a viewer session", async ({ world }) => {
 });
 When("they attempt to create an asset", async ({ request, world }) => {
   world.response = await request.post("/api/asset", {
-    data: { assetTag: "VWR-1", name: "x", status: "IN_STOCK", category: "LAPTOP" },
+    data: { assetTag: "VWR-1", name: "x", status: "IN_STOCK" },
   });
 });
 Then("the request is rejected with 403", async ({ world }) => {
@@ -66,7 +66,7 @@ Then("no asset is written", async ({ request }) => {
 // US3 — invalid input rejected with the zod message, not a 500
 When("they create an asset with a blank tag", async ({ request, world }) => {
   world.response = await request.post("/api/asset", {
-    data: { assetTag: "", name: "x", status: "IN_STOCK", category: "LAPTOP" },
+    data: { assetTag: "", name: "x", status: "IN_STOCK" },
   });
 });
 Then("the request is rejected with the validation message", async ({ world }) => {

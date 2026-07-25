@@ -128,13 +128,6 @@ enum AssetStatus {
   RETIRED
 }
 
-enum AssetCategory {
-  LAPTOP
-  MONITOR
-  PHONE
-  OTHER
-}
-
 enum CustomFieldType {
   TEXT
   NUMBER
@@ -173,17 +166,6 @@ model Asset {
   warrantyExpiresAt DateTime?
   warrantyTerms     String?
   status      AssetStatus @default(IN_STOCK)
-  // DEPRECATED — the `category` enum axis was RETIRED in application code on 2026-07-25
-  // (OPEN-ITEMS item 7). NOTHING reads or writes it any more: an asset's category comes from
-  // `model → AssetModel.category → Category`, which is now the single source of truth.
-  //
-  // The COLUMN is deliberately still here. This is phase 1 of an expand/contract migration:
-  // `vercel.json` runs `prisma migrate deploy` on every build, so dropping the column in the
-  // same release that stops reading it would break any instance still running the old code
-  // mid-deploy. PHASE 2 (a later, separate release — safe once no running version reads it):
-  // delete this field + the `AssetCategory` enum below and ship the `DROP COLUMN` migration.
-  // New rows just take the @default until then.
-  category    AssetCategory @default(LAPTOP)
   modelId     String?
   model       AssetModel? @relation(fields: [modelId], references: [id])
   // Per-entity custom-field values keyed by CustomFieldDef.key (T9, 2026-07-18).

@@ -34,6 +34,7 @@
 - app/api/asset-model/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/asset-model/route.ts  [GET,POST]
 - app/api/asset/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/asset/bulk-delete/route.ts  [POST]
 - app/api/asset/import/route.ts  [POST]
 - app/api/asset/route.ts  [GET,POST]
 - app/api/audit-log/route.ts  [GET]
@@ -64,12 +65,13 @@
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 - CustomFieldDef: id, label, key, type, required, createdAt, updatedAt, deletedAt, deletedBy
-- Asset: id, assetTag, name, serial, location, purchasedAt, warrantyExpiresAt, warrantyTerms, status
+- Asset: id, assetTag, name, serial, location, purchasedAt, warrantyExpiresAt, warrantyTerms, status, category, modelId, model, customFields, assigneeId, assignee, createdAt, updatedAt, deletedAt, deletedBy
 - Category: id, name, description, createdAt, updatedAt, deletedAt, deletedBy, assetModels
 - Manufacturer: id, name, website, createdAt, updatedAt, deletedAt, deletedBy, assetModels
 - AssetModel: id, name, categoryId, category, manufacturerId, manufacturer, assets, createdAt, updatedAt, deletedAt, deletedBy
 
 ## lib/ exports
+- lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins, __resetLockoutForTests
 - lib/ai/config.ts: AiAuthStyle, AiConfig, isAiConfigured, aiConfig, AiNotConfiguredError
 - lib/ai/embeddings.ts: EmbeddingsProviderName, EmbeddingsProvider, isEmbeddingsConfigured, getEmbeddings, EmbeddingsNotConfiguredError
 - lib/ai/provider.ts: getAiClient
@@ -108,7 +110,7 @@
 - lib/sso/scim.ts: ScimEventType, NormalizedScimEvent, ScimAction, normalizeDirectoryEvent, provisionDirectoryEvent
 - lib/utils.ts: cn
 - lib/validations/asset-model.ts: createAssetModelSchema, updateAssetModelSchema, CreateAssetModelInput, UpdateAssetModelInput
-- lib/validations/asset.ts: createAssetSchema, updateAssetSchema, CreateAssetInput, UpdateAssetInput, isLegalStatusTransition
+- lib/validations/asset.ts: createAssetSchema, updateAssetSchema, bulkDeleteAssetSchema, CreateAssetInput, UpdateAssetInput, BulkDeleteAssetInput, isLegalStatusTransition
 - lib/validations/category.ts: createCategorySchema, updateCategorySchema, CreateCategoryInput, UpdateCategoryInput
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/custom-field.ts: createCustomFieldDefSchema, CreateCustomFieldDefInput, updateCustomFieldDefSchema, CustomFieldDefLite, validateCustomFields
@@ -118,6 +120,7 @@
 - lib/valkey.ts: getValkey
 
 ## components/
+- components/asset/AssetBulkActions.tsx
 - components/asset/AssetColumns.tsx
 - components/asset/AssetForm.tsx
 - components/asset/AssetImport.tsx

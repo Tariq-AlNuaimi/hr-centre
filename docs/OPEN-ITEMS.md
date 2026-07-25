@@ -74,10 +74,12 @@ single source of truth. The list column renders the derived name (`-` when an as
 and filters by category entity (`?categoryId=` → `where: { model: { categoryId } }`). Enum reads/
 writes are gone from validation, form, columns, list route, and CSV import.
 
-**Phase 2 still open:** the `Asset.category` COLUMN remains in the DB on purpose (expand/contract —
-`migrate deploy` runs on every build, so dropping it in the same release would break an instance
-still running the old code). The `DROP COLUMN` + enum removal is tracked in
-`docs/findings-register.md` for the next release. Captures/critique:
+**Phase 2 SHIPPED (same day).** With phase 1 confirmed unreleased — nothing was ever deployed
+running the pre-phase-1 code, so the one-deploy soak had nothing to wait for — the operator chose to
+drop immediately. Migration `20260725060000_drop_asset_category_enum_axis` removes the column then
+the `AssetCategory` type. Hand-written to keep out the `DROP TABLE "document_embedding"` that
+`migrate dev` proposes (the pgvector RAG store isn't a Prisma model, so the differ mis-reads it as
+drift); RAG table verified intact afterwards. Captures/critique:
 `docs/verification/asset-category-entity/`.
 
 ### 16. Atomic audit (Postgres triggers) — ✅ **VERIFIED + FIXED (2026-07-25)**

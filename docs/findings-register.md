@@ -62,11 +62,16 @@ the changed surface is still **open** (un-adjudicated).
   field + the `AssetCategory` enum from `prisma/schema.prisma` and ship the `DROP COLUMN`
   migration; the schema comment on the field carries the same instruction. Safe once no running
   version reads the column — i.e. one deploy after this one. Until then new rows take the
-  `@default(LAPTOP)`, which nothing consumes. — owner: operator — status: adjudicated(2026-07-25)
-  (operator chose "accept + schedule phase 2": the expand/contract split is accepted as the safe
-  path, and the `DROP COLUMN` + `AssetCategory` enum removal is SCHEDULED for the next release
-  after 2026-07-25. The column sits inert — nothing reads it — for exactly one deploy. Re-opens as
-  a task, not a risk, when that release is cut.)
+  `@default(LAPTOP)`, which nothing consumes. — owner: operator — status: **fixed** (phase 2 SHIPPED
+  2026-07-25, same session, operator chose "drop it now" once phase 1 was confirmed unreleased —
+  nothing was ever deployed running the pre-phase-1 code, so the one-deploy soak had no work to do).
+  Migration `20260725060000_drop_asset_category_enum_axis` drops the column then the type (that
+  order matters — Postgres refuses to drop a type still in use). **Hand-written deliberately:**
+  `prisma migrate dev` again proposed `DROP TABLE "document_embedding"` (the pgvector RAG store is a
+  raw-SQL migration, not a Prisma model, so the differ mis-reads it as drift) — that drop was kept
+  out, and the RAG table was verified still present after the migration ran. Verified: column gone,
+  `AssetCategory` type gone, `document_embedding` intact, clean from-scratch replay of all
+  migrations, typecheck green.
 
 - 2026-07-24 — [multi/challenge-audit] A two-agent adversarial audit (docs vs. code/harness, charged to
   disprove) found 15 findings; the operator adjudicated each and 13 were fixed this session (2 handled
