@@ -11,12 +11,13 @@ import type { Key as ReactKey, ReactNode } from "react";
  * read are modeled. `DataTable` converts these AntD-shaped columns into
  * @tanstack/react-table `ColumnDef`s internally.
  *
- * SUNSET (V2-409, debt): this AntD-shaped compatibility surface is transitional. Retire it
- * by re-authoring `DataTable`/`DataView` + the screens' column definitions directly against
- * @tanstack/react-table's `ColumnDef` (dropping the AntD `Column`/`Table` shape) — TARGET:
- * the next `DataTable` refactor. Removal condition: no screen imports from this module
- * (`git grep "from \"@/components/shared/table-types\""` returns nothing). Tracked:
- * docs/findings-register.md "documented trade-offs".
+ * NOT DEBT — KEPT DELIBERATELY (2026-07-25, operator decision; OPEN-ITEMS item 13 closed
+ * WON'T DO). This was previously annotated as a transitional shim to retire "at the next
+ * DataTable refactor". Retiring it was measured: a 605-line conversion core plus 11
+ * column-authoring sites re-authored against `ColumnDef`, and ~10 list screens visually
+ * re-verified — for ZERO user-visible change. 78 lines of working types are cheaper than
+ * that churn, so this is now a deliberate abstraction, not a sunset. If `DataTable` is ever
+ * rewritten for a real reason, this goes with it as a side effect.
  */
 
 /** A stable row / column key. Mirrors AntD's `Key` (React.Key). */

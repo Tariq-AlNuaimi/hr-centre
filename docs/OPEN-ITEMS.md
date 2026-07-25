@@ -8,26 +8,23 @@ When you resolve an item, update the source record; re-generate the gist here if
 **Legend** — Effort: S (hours) · M (a day) · L (multi-day/own program). Blocked-by tells you what
 gates it.
 
-| #   | Item                                                                          | Category        | Effort       | Blocked by                          |
-| --- | ----------------------------------------------------------------------------- | --------------- | ------------ | ----------------------------------- |
-| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment             | UI polish       | S            | —                                   |
-| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file     | Harness/i18n    | M            | —                                   |
-| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats              | Supply-chain    | S            | —                                   |
-| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                      | Feature         | S            | —                                   |
-| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                     | Feature         | S            | —                                   |
-| 6   | ✅ **DONE** (2026-07-25) — Asset list **bulk actions** (multi-select delete)  | Feature         | M            | —                                   |
-| 7   | ✅ **DONE** (2026-07-25) — Retired the `category` enum axis (Category entity) | Feature/UX      | M            | —                                   |
-| 8   | WS-5 embeddings **provider round-trip**                                       | AI/RAG          | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
-| 9   | `ai-eval` `/ship` gate (dormant)                                              | AI quality      | —            | a fork adds `AI_API_KEY` + fixtures |
-| 10  | SSO / Microsoft Entra (dormant)                                               | Auth            | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
-| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                     | CI/security     | —            | paid Actions / handoff              |
-| 12  | ✅ **DONE** (2026-07-25) — bcryptjs removed; Argon2id is the only algorithm   | Debt sunset     | S            | —                                   |
-| 13  | Retire the **antd type-shim**                                                 | Debt sunset     | S            | next DataTable refactor             |
-| 14  | **Better Auth** migration                                                     | Auth/program    | L            | ADR-056 trigger fires               |
-| 15  | Full **bus-factor** program (multi-maintainer, CI)                            | Harness/program | L            | team growth                         |
-| 16  | ✅ **VERIFIED+FIXED** (2026-07-25) — Atomic audit recipe (opt-in, now proven) | Security        | M            | —                                   |
-| 17  | ✅ **DONE** (2026-07-25) — Per-account lockout (limiter half already ADR-035) | Security        | M            | —                                   |
-| 18  | ✅ **DONE** (2026-07-25) — uptime recipe written; Storybook recipe de-staled  | Ops/DX          | M            | —                                   |
+| #   | Item                                                                          | Category     | Effort       | Blocked by                          |
+| --- | ----------------------------------------------------------------------------- | ------------ | ------------ | ----------------------------------- |
+| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment             | UI polish    | S            | —                                   |
+| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file     | Harness/i18n | M            | —                                   |
+| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats              | Supply-chain | S            | —                                   |
+| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                      | Feature      | S            | —                                   |
+| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                     | Feature      | S            | —                                   |
+| 6   | ✅ **DONE** (2026-07-25) — Asset list **bulk actions** (multi-select delete)  | Feature      | M            | —                                   |
+| 7   | ✅ **DONE** (2026-07-25) — Retired the `category` enum axis (Category entity) | Feature/UX   | M            | —                                   |
+| 8   | WS-5 embeddings **provider round-trip**                                       | AI/RAG       | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
+| 9   | `ai-eval` `/ship` gate (dormant)                                              | AI quality   | —            | a fork adds `AI_API_KEY` + fixtures |
+| 10  | SSO / Microsoft Entra (dormant)                                               | Auth         | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
+| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                     | CI/security  | —            | paid Actions / handoff              |
+| 12  | ✅ **DONE** (2026-07-25) — bcryptjs removed; Argon2id is the only algorithm   | Debt sunset  | S            | —                                   |
+| 16  | ✅ **VERIFIED+FIXED** (2026-07-25) — Atomic audit recipe (opt-in, now proven) | Security     | M            | —                                   |
+| 17  | ✅ **DONE** (2026-07-25) — Per-account lockout (limiter half already ADR-035) | Security     | M            | —                                   |
+| 18  | ✅ **DONE** (2026-07-25) — uptime recipe written; Storybook recipe de-staled  | Ops/DX       | M            | —                                   |
 
 ---
 
@@ -114,10 +111,8 @@ second set of credentials, and a duplicate degrade path (build-vs-buy ledger 202
 dependencies. Non-enumerable by construction: a miss and a bad password both count and both return
 `null`. 7 contract tests. SECURITY.md §16 row 4 + the A07 row updated.
 
-### 15 & 18. Bigger DX/ops slices — **L / M**
+### 18. uptime monitoring / Storybook — ✅ **DONE (2026-07-25)**
 
-- **Full bus-factor program** (#27): a bounded slice shipped (`docs/harness-orientation.md` + the
-  V2-505 maintainer runbook); the full program (multi-maintainer redundancy, CI activation) remains.
 - **uptime monitoring / Storybook** (#28): ✅ **DONE 2026-07-25.** Storybook already had a recipe
   (`docs/recipes/dx/1-storybook.md`) but it was **materially stale** — it described the shared
   components as **AntD** components and its decorator imported `ConfigProvider` from `antd`, which
@@ -153,21 +148,28 @@ work needed to "do" them; they light up on configuration.
 
 ---
 
-## C. Condition- / time-triggered debt sunsets
+## C. Closed — WON'T DO (2026-07-25, operator decision)
 
-- **12. bcryptjs** (`lib/password.ts`) — kept ONLY to verify pre-existing `$2*` hashes. Run the
-  count query in the sunset block; when durably **0 for 90 days**, delete the bcrypt branch +
-  `npm uninstall bcryptjs`. Register: `debt sunset V2-409`.
-- **13. antd type-shim** (`components/shared/table-types.ts`) — a compatibility shim; retire it
-  after the next DataTable refactor. Register: `debt sunset V2-409`.
+Removed from the backlog rather than deferred, because a deferred item comes back. None of the
+three changes anything for a person using the app; keeping them listed manufactured the appearance
+of pending work.
 
----
+- **13. antd type-shim** (`components/shared/table-types.ts`) — **KEEP THE SHIM.** 78 lines of
+  working types. Retiring it meant re-authoring a 605-line conversion core + 11 column-authoring
+  sites and visually re-verifying ~10 list screens, for zero user-visible change. It is no longer
+  "debt" — it is a deliberate, working abstraction. If `DataTable` is ever rewritten for a real
+  reason, the shim goes then, as a side effect.
+- **14. Better Auth migration** — **already decided by ADR-056** ("stay frozen"). Listing it here
+  re-opened a settled decision as apparent work every time the backlog was read. Auth.js v5 is in
+  the ADR-001 locked stack and works; account lockout (item 17) was just added to it. If a real
+  trigger ever fires, ADR-056 is the entry point — not this file.
+- **15. bus-factor program** — the bounded slice that matters shipped (`docs/harness-orientation.md`
+  - the V2-505 maintainer runbook). The rest is multi-maintainer redundancy and CI activation for a
+    **solo operator with no second maintainer and no paid Actions**. Re-open when a second maintainer
+    actually exists.
 
-## D. Decision-gated (needs an operator call before any work)
-
-- **14. Better Auth migration** — ADR-056 recorded **STAY FROZEN**; a migration (2FA/passkeys/
-  magic-link) only starts if an ADR-056 trigger fires, and then as its own blueprinted program. Not
-  pending work — a standing decision to revisit on a trigger.
+**12. bcryptjs** was in this section as a pending sunset — it SHIPPED 2026-07-25 (removed;
+Argon2id-only). See the register.
 
 ---
 

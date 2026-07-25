@@ -29,6 +29,25 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-25 — [process/scope] **OPEN-ITEMS 13, 14, 15 CLOSED as WON'T DO** (operator decision,
+  after a measured over-engineering review). The repo carries **69k lines of non-product**
+  (32k docs + 21k harness + 15k tests) against **16k lines of product** — a **4.2:1** ratio, with
+  63 ADRs, 34 skills, 214 doc files and 24 research documents supporting an app of **10 Prisma
+  models** whose own constitution calls it a prototype starter. The three remaining backlog items
+  were the clearest instance of that ratio generating its own work: **13** (re-author a working
+  78-line type shim across a 605-line core + 11 sites, zero user-visible change), **14** (swap a
+  working auth system that **ADR-056 had already frozen** — listing it re-opened a settled decision
+  as apparent work on every read), **15** (multi-maintainer + CI program for a solo operator with
+  no second maintainer and no paid Actions). None changes anything for a person using the app.
+  Deleted from the backlog rather than deferred, because a deferred item comes back. The AntD shim
+  is reclassified in-file from "debt" to a deliberate abstraction. **A full over-engineering
+  reduction pass is the agreed next work** — this entry is its starting evidence. Counter-note, so
+  the record is fair: the _automated_ gates earned their keep this session (the visual loop caught a
+  fix that shipped as dead code; build-vs-buy forced a reuse scan that avoided a needless Upstash
+  dependency; the wave-off gate forced a real operator call; knip caught dead exports). The cut
+  target is the prose apparatus and per-change ceremony, not the blocking gates. — owner: operator —
+  status: fixed (this branch; `docs/OPEN-ITEMS.md` §C)
+
 - 2026-07-25 — [secure/quality, item 16] The atomic-audit-triggers recipe
   (`docs/recipes/shared-security/4-atomic-audit-triggers.md`) had **never been executed** — 324
   lines of PL/pgSQL a `shared`-tier fork is told to paste in for tamper-evident, compliance-grade
@@ -498,11 +517,14 @@ here as pointers so they aren't re-litigated as new findings:
 - Rate limiter is in-memory per-instance (fine single-instance; Upstash via `/scale-up`).
 - CSP allows `'unsafe-inline'` script+style (AntD SSR + Next bootstrap).
   (See CLAUDE.md "Known traps" for the full list.)
-- 2026-07-17 — [debt sunset, V2-409] **AntD type-shim** (`components/shared/table-types.ts`): a
-  transitional AntD-shaped `Table`/`Column` type surface kept so the rebuilt `DataTable`/`DataView`
-  authoring shape survived the AntD removal (ADR-029, C4). SUNSET: re-author columns directly against
-  @tanstack/react-table `ColumnDef` at the next `DataTable` refactor; remove when
-  `git grep "@/components/shared/table-types"` is empty. Annotated in the file header.
+- 2026-07-17 — [debt sunset, V2-409] **AntD type-shim** (`components/shared/table-types.ts`) —
+  ✅ **CLOSED WON'T-DO 2026-07-25** (operator decision; OPEN-ITEMS item 13). Was listed as
+  transitional debt to retire "at the next DataTable refactor". Retirement was measured before
+  being attempted: a 605-line AntD→`ColumnDef` conversion core plus **11** column-authoring sites
+  re-authored, plus ~10 list screens visually re-verified under the binding V2-301 loop — for zero
+  user-visible change, on a surface that works. **Reclassified from debt to a deliberate
+  abstraction**; the file header now says so. Not deferred — deferral would keep re-surfacing it.
+  If `DataTable` is ever rewritten for a real reason, the shim goes with it as a side effect.
 - 2026-07-17 — [debt sunset, V2-409] **bcryptjs** (`lib/password.ts`) — ✅ **SUNSET COMPLETED
   2026-07-25** (OPEN-ITEMS item 12). Was kept ONLY to verify legacy `$2*` hashes and auto-upgrade
   them to Argon2id on next login. The stated condition was "0 legacy hashes for 90 days"; the
