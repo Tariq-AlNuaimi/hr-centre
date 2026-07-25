@@ -179,10 +179,17 @@ Two honest tiers — the constitution's "run `/ship` before every push" means th
   copy · wave-offs · licenses · tier · session-state · blueprint(+content) · complexity ·
   db-structure · knip · duplication · coverage · skill-check (agentskills.io conformance, V2-503) ·
   build · size-limit · gitleaks · npm-audit · ai-eval.
-  (**`session-state`** enforces the Memory-lifecycle rule above: RED when `docs/SESSION-HANDOFF.md`
-  or `docs/session-state.json` is tracked while on `main`. They are branch-only state; they had
-  leaked to `main`, so every fork inherited the template's own program status. Nothing breaks when
-  they are absent — the SessionStart hook writes a fresh skeleton, V2-006.)
+  (**`session-state`** enforces the Memory-lifecycle rule above. It asks whether **`origin/main`**
+  tracks `docs/SESSION-HANDOFF.md` / `docs/session-state.json` — not whether the current branch
+  does — because the leak happens at MERGE time and nobody runs `/ship` on `main` afterwards. RED
+  when `origin/main` tracks them **and** this branch does too; GREEN when this branch removes them
+  (it is the remediation), and GREEN in the normal steady state where a working branch tracks them
+  and `main` does not. Nothing breaks when they are absent — SessionStart writes a fresh skeleton
+  (V2-006).
+  **The trap that caused two recurrences:** `git rm --cached <file>` followed by `git add -A` in
+  the same commit **re-stages the file** and silently undoes the removal. Commit the paths
+  explicitly — `git commit -- docs/SESSION-HANDOFF.md docs/session-state.json` — and verify with
+  `git ls-tree -r --name-only origin/main -- docs/session-state.json` after pushing.)
 - **`ship:full`** (`npm run ship:full` / `SHIP_FULL=1`; runs in `/deploy`, `/handoff`, CI): warm loop
   **plus** the docker image-build + trivy scan (ADR-030), the BDD traceability gate (ADR-058), the
   **integration** gate — `scripts/test-integration.mjs` runs `tests/integration/*` against a real
