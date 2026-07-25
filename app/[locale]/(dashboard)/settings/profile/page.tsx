@@ -53,7 +53,7 @@ export default function ProfilePage() {
     } catch (e) {
       // Surface the server's reason (carried by ApiError) on a non-2xx; fall
       // back to the generic copy for a network/parse failure.
-      showError(e instanceof ApiError ? e.message : "Failed to change password");
+      showError(e instanceof ApiError ? e.message : t("passwordChangeFailed"));
     } finally {
       setLoading(false);
     }
