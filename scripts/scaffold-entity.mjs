@@ -120,6 +120,12 @@ const snake = (s) => s.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase();
 // defaults in the i18n namespace merged into messages/en.json + messages/ar.json.
 const humanize = (s) =>
   s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
+// Humanize a SCREAMING_SNAKE enum VALUE for display: "IN_STOCK" -> "In stock",
+// "LAPTOP" -> "Laptop". The UI must never surface the raw token (V2-301 design QA).
+const humanizeEnumValue = (v) => {
+  const s = v.replace(/_+/g, " ").trim().toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 // "AssetModel" -> "asset model" (spaced, all-lowercase words) for mid-sentence copy.
 const humanLower = (s) => s.replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
 // Sentence-case a phrase: "asset model" -> "Asset model".
@@ -569,6 +575,36 @@ function recordTypeFields() {
   ];
 }
 
+// Emits components/<kebab>/<Pascal>Labels.ts — a humanized display label per enum value
+// (IN_STOCK -> "In stock") so the list badges + filters and the form Select never surface a
+// raw enum token (V2-301 design QA). DB/API keep the enum VALUES; only display is humanized.
+// A fuller pass routes these through next-intl messages (V2-305 copy chokepoint) — until then
+// this per-entity map is the single source of truth the Columns + Form both import.
+function labelsFile() {
+  const blocks = enums
+    .map((e) => {
+      const CONST = `${e.name.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toUpperCase()}_LABELS`;
+      const entries = e.values
+        .map((v) => `  ${v}: ${JSON.stringify(humanizeEnumValue(v))},`)
+        .join("\n");
+      return `const ${CONST}: Record<string, string> = {
+${entries}
+};
+/** Display label for a ${e.name} value; falls back to the raw value if unmapped. */
+export function ${e.name}Label(value: string): string {
+  return ${CONST}[value] ?? value;
+}`;
+    })
+    .join("\n\n");
+  return `// Human-readable labels for the ${Pascal} enums (scaffold-emitted). The UI must not surface
+// raw enum tokens (e.g. "IN_STOCK"); the DB/API keep the enum VALUES, only display is humanized.
+// Single source of truth imported by ${Pascal}Columns + ${Pascal}Form. A fuller pass migrates
+// these into next-intl messages (V2-305 copy chokepoint).
+
+${blocks}
+`;
+}
+
 function columnsFile() {
   const recordType = `{ id: string; ${recordTypeFields().join("; ")}; createdAt: string; }`;
   // Round-robin over the shared Badge tones (was the AntD Tag color list). Since
@@ -600,9 +636,9 @@ function columnsFile() {
       sorter: true,
       render: (val: string | null) => {
         if (!val) return "-";
-        return <Badge variant={tone[val] ?? "default"}>{val}</Badge>;
+        return <Badge variant={tone[val] ?? "default"}>{${e.name}Label(val)}</Badge>;
       },
-      filters: [${e.values.map((v) => `{ text: "${v}", value: "${v}" }`).join(", ")}],
+      filters: [${e.values.map((v) => `{ text: ${e.name}Label("${v}"), value: "${v}" }`).join(", ")}],
       filterMultiple: false,
     },`,
   );
@@ -633,10 +669,14 @@ const tone: Record<string, BadgeProps["variant"]> = { ${toneEntries} };
 `
     : "";
 
+  const labelsImport = enums.length
+    ? `import { ${enums.map((e) => `${e.name}Label`).join(", ")} } from "@/components/${entityKebab}/${Pascal}Labels";\n`
+    : "";
+
   return `"use client";
 
 import { Button } from "@/components/ui/button";
-${badgeImports}import { ConfirmAction } from "@/components/shared/ConfirmAction";
+${badgeImports}${labelsImport}import { ConfirmAction } from "@/components/shared/ConfirmAction";
 
 export interface ${Pascal}Record ${recordType}
 ${toneConst}
@@ -830,7 +870,7 @@ function formFile() {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-${e.values.map((v) => `                  <SelectItem value="${v}">${v}</SelectItem>`).join("\n")}
+${e.values.map((v) => `                  <SelectItem value="${v}">{${e.name}Label("${v}")}</SelectItem>`).join("\n")}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -1058,7 +1098,11 @@ function RelationSelect({
 ${reactImport}import { z } from "zod";
 import { useTranslations } from "next-intl";
 ${fieldFieldImport}
-${formPrimitiveImport}${selectImport}${popoverImport}${switchImport}import { Button } from "@/components/ui/button";
+${formPrimitiveImport}${selectImport}${popoverImport}${switchImport}${
+    enums.length
+      ? `import { ${enums.map((e) => `${e.name}Label`).join(", ")} } from "@/components/${entityKebab}/${Pascal}Labels";\n`
+      : ""
+  }import { Button } from "@/components/ui/button";
 
 interface ${Pascal}FormProps {
   initialValues?: Partial<${valueType}>;
@@ -1444,6 +1488,7 @@ const write = (relPath, content) => writes.push({ path: join(ROOT, relPath), con
 write(`lib/validations/${entityKebab}.ts`, validationFile());
 write(`app/api/${entityKebab}/route.ts`, apiListRouteFile());
 write(`app/api/${entityKebab}/[id]/route.ts`, apiItemRouteFile());
+if (enums.length > 0) write(`components/${entityKebab}/${Pascal}Labels.ts`, labelsFile());
 write(`components/${entityKebab}/${Pascal}Columns.tsx`, columnsFile());
 write(`components/${entityKebab}/${Pascal}Form.tsx`, formFile());
 write(`app/[locale]/(dashboard)/${entityKebab}/page.tsx`, listPageFile());
