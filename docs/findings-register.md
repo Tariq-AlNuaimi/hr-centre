@@ -29,6 +29,27 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-25 — [secure/quality, item 16] The atomic-audit-triggers recipe
+  (`docs/recipes/shared-security/4-atomic-audit-triggers.md`) had **never been executed** — 324
+  lines of PL/pgSQL a `shared`-tier fork is told to paste in for tamper-evident, compliance-grade
+  audit, with no test, no migration, and no evidence anywhere in the repo referencing
+  `audit_row_change`. VERIFIED 2026-07-25 against real Postgres 16: the SQL was extracted verbatim,
+  applied over all template migrations, and exercised with a 12-case battery (now committed at
+  `docs/verification/atomic-audit-triggers/trigger-battery.sql`). **11/12 passed as written; ONE
+  REAL DEFECT found + FIXED:** `audit_logs.userId` is a FK to `users.id` and the trigger inserted
+  the `app.user_id` GUC unconditionally, so an unresolvable actor (an actor PERMANENTLY deleted via
+  the recycling bin while holding a live JWT, or an SSO subject that isn't a `users` row) raised
+  `foreign_key_violation` — and because the trigger runs in the caller's transaction, **the data
+  write itself failed**. An audit mechanism must never take down the application it observes; the
+  recipe now resolves the actor and degrades to a NULL (unattributed) actor instead, verified to
+  still write the audit row. Re-verified 12/12 after the fix. The recipe's atomicity claim
+  (`ROLLBACK` → 0 audit rows) and its bulk/`upsert` coverage — the cases the app-level extension
+  cannot see — are now proven, not asserted. **NOT made the template default** (deliberate):
+  ADR-010 accepts app-level audit for the prototype rail and the recipe itself says not to add
+  trigger ceremony to a throwaway; item 16's value was making the opt-in path trustworthy. —
+  owner: operator — status: fixed (this branch; evidence in
+  `docs/verification/atomic-audit-triggers/`)
+
 - 2026-07-25 — [maintainable/data, item 7 phase 2] The `Asset.category` COLUMN (+ the
   `AssetCategory` enum) is now DEAD but still in the database. OPEN-ITEMS item 7 retired the
   category enum axis in application code (operator decision: "drop the enum axis") — nothing reads

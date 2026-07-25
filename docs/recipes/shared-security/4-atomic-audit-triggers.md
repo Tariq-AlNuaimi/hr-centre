@@ -13,6 +13,17 @@
 > Postgres triggers fire **per affected row, inside the same transaction as the
 > DML**, regardless of how the DML was issued — closing both at once.
 
+> **VERIFIED 2026-07-25 against real Postgres 16** (OPEN-ITEMS item 16). This recipe had never
+> been executed — it was 324 lines of unrun PL/pgSQL that forks were told to paste in for
+> compliance-grade audit. The SQL below was extracted verbatim, applied to a database carrying
+> all template migrations, and exercised with a 12-case battery: single INSERT/UPDATE, scrubbing,
+> soft-delete→`DELETE`, restore→`RESTORE`, **multi-row INSERT**, **bulk UPDATE**, **upsert** (the
+> three the app-level extension misses), **`ROLLBACK` → zero audit rows** (the atomicity claim),
+> and actor-GUC capture. **11/12 passed as written; one real defect was found and is fixed below**
+> — a non-resolvable `app.user_id` raised `foreign_key_violation` and took down _the data write
+> itself_. Re-verified 12/12 after the fix. Evidence + the battery:
+> `docs/verification/atomic-audit-triggers/`.
+
 ## When to add it
 
 Add this when the fork is `shared`-tier and carries records that must be
@@ -97,6 +108,17 @@ DECLARE
   act         text;
   k           text;
 BEGIN
+  -- FAIL-OPEN ON ATTRIBUTION (verified 2026-07-25): audit_logs.userId is a FK to users.id.
+  -- If app.user_id holds an id with no matching row -- e.g. the actor was PERMANENTLY deleted
+  -- via the recycling bin while holding a live JWT, or a fork feeds an SSO subject that is not
+  -- a users row -- the trigger's INSERT raises foreign_key_violation and, because the trigger
+  -- runs in the caller's transaction, THE DATA WRITE ITSELF FAILS. An audit mechanism must
+  -- never take down the application it observes, so an unresolvable actor degrades to NULL
+  -- (an unattributed audit row) instead. Costs one PK lookup per audited row.
+  IF actor IS NOT NULL AND NOT EXISTS (SELECT 1 FROM users WHERE id = actor) THEN
+    actor := NULL;
+  END IF;
+
   IF (TG_OP = 'INSERT') THEN
     after_j := audit_scrub(to_jsonb(NEW));
     ent_id  := NEW.id;

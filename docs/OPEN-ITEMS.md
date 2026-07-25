@@ -25,7 +25,7 @@ gates it.
 | 13  | Retire the **antd type-shim**                                                 | Debt sunset     | S            | next DataTable refactor             |
 | 14  | **Better Auth** migration                                                     | Auth/program    | L            | ADR-056 trigger fires               |
 | 15  | Full **bus-factor** program (multi-maintainer, CI)                            | Harness/program | L            | team growth                         |
-| 16  | **Atomic audit** (Postgres triggers)                                          | Security        | M            | regulated data / handoff            |
+| 16  | ✅ **VERIFIED+FIXED** (2026-07-25) — Atomic audit recipe (opt-in, now proven) | Security        | M            | —                                   |
 | 17  | **Account lockout** / distributed rate limit                                  | Security        | M            | multi-instance / abuse              |
 | 18  | uptime monitoring / Storybook recipes (#28)                                   | Ops/DX          | M            | need arises                         |
 
@@ -80,12 +80,19 @@ still running the old code). The `DROP COLUMN` + enum removal is tracked in
 `docs/findings-register.md` for the next release. Captures/critique:
 `docs/verification/asset-category-entity/`.
 
-### 16. Atomic audit (Postgres triggers) — **M, for regulated data**
+### 16. Atomic audit (Postgres triggers) — ✅ **VERIFIED + FIXED (2026-07-25)**
 
-`ADR-010` accepted a non-atomic audit gap for the prototype rail (the audit row is written by the
-Prisma extension, not in the same DB transaction as the DML). For tamper-evident/regulated data,
-close it with DB triggers. Recipe: `docs/recipes/shared-security/4-atomic-audit-triggers.md`;
-`/handoff` offers to apply it. SECURITY.md §16 row 2.
+`ADR-010` accepted a non-atomic audit gap for the prototype rail. The closing recipe
+(`docs/recipes/shared-security/4-atomic-audit-triggers.md`) existed but had **never been run** —
+unrun PL/pgSQL for a control a fork would be asked to _prove_. Now executed verbatim against real
+Postgres 16 with a committed 12-case battery: atomicity (`ROLLBACK` → 0 audit rows) and the
+bulk/`upsert` coverage the app extension can't see are **proven**. Found + fixed one real defect —
+an unresolvable actor GUC raised an FK violation that **broke the data write itself**; it now
+degrades to an unattributed audit row. Evidence: `docs/verification/atomic-audit-triggers/`.
+
+**Still opt-in, deliberately** — NOT the template default. ADR-010 accepts app-level audit for the
+prototype rail and the recipe says not to add trigger ceremony to a throwaway. A fork that needs
+tamper-evident audit applies it (and, per the recipe, records its own ADR). SECURITY.md §16 row 2.
 
 ### 17. Account lockout / distributed rate limit — **M**
 
