@@ -276,6 +276,34 @@ test("dangerous-commands ALLOWS normal (non-destructive) git checkout (M2 no fal
     runHook("dangerous-commands.mjs", preBash("git checkout -b feature/x")).decision,
     null,
   );
+  // Benign LONG flags (2026-07-25 senior review). The original check denied any
+  // `--*`, so these four ordinary operations were all blocked despite discarding
+  // nothing -- `--staged` in particular only UNSTAGES, the least destructive
+  // restore form. Over-broad denials train the operator to wave the gate through.
+  for (const cmd of [
+    "git checkout --track origin/feature-x",
+    "git checkout --orphan gh-pages",
+    "git checkout --quiet main",
+    "git restore --staged lib/foo.ts",
+  ]) {
+    assert.equal(
+      runHook("dangerous-commands.mjs", preBash(cmd)).decision,
+      null,
+      `${cmd} discards nothing and must be allowed`,
+    );
+  }
+  // ...while the genuinely destructive forms stay denied.
+  for (const cmd of [
+    "git checkout -- lib/foo.ts",
+    "git checkout --force main",
+    "git restore --worktree lib/foo.ts",
+    "git restore --source=HEAD~1 lib/foo.ts",
+  ]) {
+    assert.ok(
+      isDeny(runHook("dangerous-commands.mjs", preBash(cmd))),
+      `${cmd} discards work and must deny`,
+    );
+  }
 });
 
 // V2 challenge-audit M3 — `touch`-then-Write two-step must not bypass the blueprint gate:

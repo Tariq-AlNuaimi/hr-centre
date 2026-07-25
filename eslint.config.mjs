@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
       "rihal-template/no-any-cast-on-session": "error",
       "rihal-template/no-secret-env-in-console": "error",
       "rihal-template/no-bare-internal-route": "error",
+      "rihal-template/no-bare-api-route": "error",
       // Design-token enforcement (ADR-015): color comes from the theme tokens /
       // CSS variables, never a raw hex literal in a component. At error so the
       // considered theme can't quietly drift back to generic as the app grows.

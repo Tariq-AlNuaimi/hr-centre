@@ -17,6 +17,7 @@ import noPrismaInClient from "../../eslint-rules/rules/no-prisma-in-client.mjs";
 import noAnyCastOnSession from "../../eslint-rules/rules/no-any-cast-on-session.mjs";
 import noSecretEnvInConsole from "../../eslint-rules/rules/no-secret-env-in-console.mjs";
 import noBareInternalRoute from "../../eslint-rules/rules/no-bare-internal-route.mjs";
+import noBareApiRoute from "../../eslint-rules/rules/no-bare-api-route.mjs";
 import noRawHexColor from "../../eslint-rules/rules/no-raw-hex-color.mjs";
 import noUnauditedBulkWrite from "../../eslint-rules/rules/no-unaudited-bulk-write.mjs";
 import noRawSqlUnsafe from "../../eslint-rules/rules/no-raw-sql-unsafe.mjs";
@@ -874,4 +875,69 @@ ruleTest(
     ],
   },
   { ecmaVersion: 2022, sourceType: "module", ecmaFeatures: { jsx: true } },
+);
+
+// --- no-bare-api-route -----------------------------------------------------
+// Widened from no-bare-internal-route (2026-07-25 security review): middleware
+// is NOT a sufficient backstop, because next.config.ts rewrites /api/v1/* onto
+// these same handlers and route-decision.ts passes that prefix through
+// unauthenticated. So EVERY handler needs a wrapper unless its route is on the
+// public allowlist. Filename is load-bearing -- each case sets an absolute path.
+const API_ROUTE = "/repo/app/api/reports/route.ts";
+ruleTest(
+  "no-bare-api-route",
+  noBareApiRoute,
+  {
+    valid: [
+      // Each auth wrapper satisfies the rule.
+      { filename: API_ROUTE, code: "export const GET = withAuth(async () => {});" },
+      { filename: API_ROUTE, code: "export const POST = withAdminAuth(async () => {});" },
+      { filename: API_ROUTE, code: "export const PUT = withEditorAuth(async () => {});" },
+      { filename: API_ROUTE, code: "export const GET = withApiAuth(async () => {});" },
+      // Composed with withRateLimit OUTSIDE (the required order) still counts.
+      {
+        filename: API_ROUTE,
+        code: "export const POST = withRateLimit(withAdminAuth(async () => {}), { limit: 5 });",
+      },
+      // Public allowlist: the auth surface and the health probe are public BY
+      // DESIGN and must not be forced to require a session.
+      { filename: "/repo/app/api/health/route.ts", code: "export async function GET() {}" },
+      {
+        filename: "/repo/app/api/auth/forgot-password/route.ts",
+        code: "export async function POST() {}",
+      },
+      // Outside app/api entirely -- rule must not fire.
+      { filename: "/repo/lib/helper.ts", code: "export function GET() {}" },
+      // A non-handler export in an api route is irrelevant.
+      { filename: API_ROUTE, code: "export const runtime = 'nodejs';" },
+    ],
+    invalid: [
+      // The exact shape that ships unauthenticated on the /api/v1 prefix.
+      {
+        filename: API_ROUTE,
+        code: "export async function GET() { return Response.json({}); }",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      // A const export with no wrapper at all.
+      {
+        filename: API_ROUTE,
+        code: "export const POST = async () => {};",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      // withRateLimit ALONE is not an auth gate -- throttling an unauthenticated
+      // endpoint still leaves it unauthenticated.
+      {
+        filename: API_ROUTE,
+        code: "export const GET = withRateLimit(async () => {}, { limit: 5 });",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      // Every handler verb is covered, not just GET/POST.
+      {
+        filename: API_ROUTE,
+        code: "export async function DELETE() {}",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" },
 );

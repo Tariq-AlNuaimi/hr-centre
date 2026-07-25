@@ -57,7 +57,12 @@ if ! command -v gitleaks >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/gitleaks" ]
   esac
   if [ -n "$gl_os" ] && [ -n "$gl_arch" ] && command -v curl >/dev/null 2>&1; then
     gl_url="https://github.com/gitleaks/gitleaks/releases/download/v${gl_version}/gitleaks_${gl_version}_${gl_os}_${gl_arch}.tar.gz"
-    mkdir -p "$HOME/.local/bin"
+    # `|| true` matters: this block is documented FAIL-OPEN, but a bare statement
+    # under `set -euo pipefail` aborts the WHOLE hook on failure (read-only $HOME,
+    # full disk, locked-down container) — skipping repo-map, the handoff surface,
+    # agent-memory, and the drift checks below. Never let a gitleaks convenience
+    # step take the session down.
+    mkdir -p "$HOME/.local/bin" 2>/dev/null || true
     if curl -fsSL --max-time 60 "$gl_url" 2>/dev/null | tar -xz -C "$HOME/.local/bin" gitleaks 2>/dev/null; then
       chmod +x "$HOME/.local/bin/gitleaks" 2>/dev/null || true
       echo "[harness] installed gitleaks v${gl_version} -> ~/.local/bin (npm run ship can now run the secret scan)"

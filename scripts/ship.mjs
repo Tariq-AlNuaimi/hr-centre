@@ -410,27 +410,65 @@ function scanSessionState() {
     return ok(`could not read ${ref} (skipped)`);
   }
   if (tracked.length === 0) return ok(`${ref} carries no branch-only session state — correct`);
-  // `ref` is dirty. Before going RED, ask whether THIS branch is the fix: if the
-  // working tree no longer tracks the files, landing this branch cleans main, and
-  // REDing here would block the very push that resolves the leak. The four cases:
+  // `ref` is dirty. Before going RED, ask whether THIS branch is the REMEDIATION —
+  // because REDing a branch that fixes the leak would block the very push that
+  // resolves it. The four cases:
   //   main clean + branch tracks them  -> green (the intended steady state)
   //   main clean + branch clean        -> green
-  //   main dirty + branch removes them -> green (this branch IS the remediation)
+  //   main dirty + branch REMOVED them -> green (this branch IS the remediation)
   //   main dirty + branch tracks them  -> RED   (leak stands, and you are not fixing it)
-  let hereToo = [];
-  try {
-    hereToo = execSync(`git ls-files -- ${BRANCH_ONLY_STATE.join(" ")}`, {
-      stdio: ["ignore", "pipe", "ignore"],
-    })
+  //
+  // "REMOVED them" must mean a real deletion since diverging, NOT mere absence.
+  // The first cut tested absence alone, which was a verified FALSE GREEN: a branch
+  // cut BEFORE the leak that never touched these paths reports zero tracked files
+  // and was told "land this" — but merging it leaves main just as dirty. During an
+  // active leak that describes almost every in-flight branch, so the gate failed
+  // open in exactly the window it exists to guard. Test the merge-base instead:
+  // the branch must have INHERITED the files and then dropped them.
+  const tracksHere = (rev) => {
+    const cmd = rev
+      ? `git ls-tree -r --name-only ${rev} -- ${BRANCH_ONLY_STATE.join(" ")}`
+      : `git ls-files -- ${BRANCH_ONLY_STATE.join(" ")}`;
+    return execSync(cmd, { stdio: ["ignore", "pipe", "ignore"] })
       .toString()
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
+  };
+  let hereToo = [];
+  let inheritedLeak = false;
+  try {
+    hereToo = tracksHere(null);
+    const mergeBase = execSync(`git merge-base ${ref} HEAD`, {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+    inheritedLeak = tracksHere(mergeBase).length > 0;
   } catch {
-    return ok(`could not list tracked files (skipped)`);
+    // Fail OPEN on an unevaluable check (ADR-047) rather than block a push on a
+    // shallow clone / missing merge-base.
+    return ok(`could not compare against ${ref} (skipped)`);
   }
-  if (hereToo.length === 0) {
+  if (hereToo.length === 0 && inheritedLeak) {
     return ok(`${ref} still tracks session state, but this branch removes it — land this`);
+  }
+  if (hereToo.length === 0 && !inheritedLeak) {
+    return {
+      name: "session-state",
+      ok: false,
+      secs: secs(),
+      out:
+        `${ref} tracks branch-only in-flight state, and this branch does NOT fix it:\n` +
+        tracked.map((f) => `  - ${f}`).join("\n") +
+        `\n  This branch never carried those paths (they are absent at its merge-base), so\n` +
+        `  landing it leaves ${ref} exactly as dirty. Absence here is not a remediation.\n` +
+        `  Fix: merge ${ref} into this branch, then remove them (see below), or do it on a\n` +
+        `  branch cut fresh from ${ref}.\n` +
+        `    git rm --cached ${tracked.join(" ")}\n` +
+        `    git commit    # via the INDEX -- 'git add -A' re-stages them, and\n` +
+        `                  # 'git commit -- <path>' re-adds the working-tree copy.`,
+    };
   }
   return {
     name: "session-state",
@@ -1760,5 +1798,8 @@ try {
 }
 
 console.log(
-  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + copy + wave-offs + licenses + tier + blueprint + db-structure + knip + duplication + coverage + skill-check + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
+  // Keep this list in lockstep with the phase-A banner and the `redA` array -- it
+  // previously omitted session-state, blueprint-content and complexity, all of which
+  // DO gate the push, so the success line under-reported what had actually run.
+  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + copy + wave-offs + licenses + tier + session-state + blueprint + blueprint-content + complexity + db-structure + knip + duplication + coverage + skill-check + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
 );

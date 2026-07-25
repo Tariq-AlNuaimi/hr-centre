@@ -1,12 +1,12 @@
 {
-  "note": "Fork doc-payload classification (V2-506). Every file under docs/ (and the root HARNESS-V2-* program docs) is one of: 'fork' — a fork operating this template INHERITS it (ADRs, runbooks, recipes, rubrics, ledgers, the operational reference); or 'template-dev' — the TEMPLATE's own development history that a fork does not need. `npm run rebrand -- --prune-docs` reads this to print the prune list. Rules are FIRST-MATCH-WINS, top to bottom; the final catch-all defaults to 'fork' so an unclassified doc is KEPT (the safe failure).\n\nUPDATED 2026-07-25 — the old note said template-dev docs are 'MOVED to an archive branch reference, NEVER deleted from template main'. That policy is SUPERSEDED: on 2026-07-25 the template-dev docs were REMOVED from main and pinned at the git tag `template-history-2026-07` (see docs/ARCHIVE.md). Reason: they were 65% of 3.23 MB of docs against 16k lines of product, and every session in this repo paid context tax on a closed program's build record. Git retains them at the tag; forks were never affected (they already pruned them). This manifest still classifies what remains, and still governs fork pruning. Two template-dev paths were deliberately KEPT in the tree: docs/verification/** (evidence backing live findings-register entries — deleting it would create dead evidence pointers) and docs/SESSION-HANDOFF.md + docs/session-state.json (live session state the SessionStart hook reads).\n\nUPDATED 2026-07-25 (template-cleanliness audit) — both of those carve-outs were revisited, and the prune stopped being advisory:\n(1) docs/verification/** is now SPLIT in practice, not by rule. The five sets photographing the removed Asset-Tracker demo domain went to the archive with the domain itself (they documented screens that no longer exist, so they were dead evidence either way); the sets documenting surviving surfaces — design-system/, v2-305-copy/, atomic-audit-triggers/ — stayed in the tree, and the two harness citations of a 'worked example' (.claude/rules/design.md, .claude/skills/design-qa/SKILL.md) were re-pointed at design-system/. The classification below still reads template-dev for the whole path, which is correct FOR A FORK: a fork inherits none of this template's evidence.\n(2) docs/SESSION-HANDOFF.md + docs/session-state.json were REMOVED from main. The 'live session state' rationale holds on a working BRANCH, not on main — .claude/rules/harness.md says branch-only, never merged to main, and they had leaked there, so every fork started life carrying this template's harness-v2 program status. Nothing breaks when they are absent: .claude/hooks/session-start.sh writes a fresh valid skeleton (V2-006). scripts/ship.mjs now has a `session-state` gate that goes RED if either path is tracked while on main, so the leak cannot silently recur.\n(3) `npm run rebrand -- --prune-docs` gained `--apply`, and a normal rebrand now runs it automatically (scripts/deploy.mjs shells out to it too). Before this, the prune was a list-only mode that no fork-creation path invoked — so every fork inherited the full template-dev payload regardless of this manifest.",
+  "note": "Fork doc-payload classification (V2-506). Every file under docs/ (and the root HARNESS-V2-* program docs) is one of: 'fork' \u2014 a fork operating this template INHERITS it (ADRs, runbooks, recipes, rubrics, ledgers, the operational reference); or 'template-dev' \u2014 the TEMPLATE's own development history that a fork does not need. `npm run rebrand -- --prune-docs` reads this to print the prune list. Rules are FIRST-MATCH-WINS, top to bottom; the final catch-all defaults to 'fork' so an unclassified doc is KEPT (the safe failure).\n\nUPDATED 2026-07-25 \u2014 the old note said template-dev docs are 'MOVED to an archive branch reference, NEVER deleted from template main'. That policy is SUPERSEDED: on 2026-07-25 the template-dev docs were REMOVED from main and pinned at the git tag `template-history-2026-07` (see docs/ARCHIVE.md). Reason: they were 65% of 3.23 MB of docs against 16k lines of product, and every session in this repo paid context tax on a closed program's build record. Git retains them at the tag; forks were never affected (they already pruned them). This manifest still classifies what remains, and still governs fork pruning. Two template-dev paths were deliberately KEPT in the tree: docs/verification/** (evidence backing live findings-register entries \u2014 deleting it would create dead evidence pointers) and docs/SESSION-HANDOFF.md + docs/session-state.json (live session state the SessionStart hook reads).\n\nUPDATED 2026-07-25 (template-cleanliness audit) \u2014 both of those carve-outs were revisited, and the prune stopped being advisory:\n(1) docs/verification/** is now SPLIT in practice, not by rule. The five sets photographing the removed Asset-Tracker demo domain went to the archive with the domain itself (they documented screens that no longer exist, so they were dead evidence either way); the sets documenting surviving surfaces \u2014 design-system/, v2-305-copy/, atomic-audit-triggers/ \u2014 stayed in the tree, and the two harness citations of a 'worked example' (.claude/rules/design.md, .claude/skills/design-qa/SKILL.md) were re-pointed at design-system/. The classification below still reads template-dev for the whole path, which is correct FOR A FORK: a fork inherits none of this template's evidence.\n(2) docs/SESSION-HANDOFF.md + docs/session-state.json were REMOVED from main. The 'live session state' rationale holds on a working BRANCH, not on main \u2014 .claude/rules/harness.md says branch-only, never merged to main, and they had leaked there, so every fork started life carrying this template's harness-v2 program status. Nothing breaks when they are absent: .claude/hooks/session-start.sh writes a fresh valid skeleton (V2-006). scripts/ship.mjs now has a `session-state` gate that goes RED if either path is tracked while on main, so the leak cannot silently recur.\n(3) `npm run rebrand -- --prune-docs` gained `--apply`, and a normal rebrand now runs it automatically (scripts/deploy.mjs shells out to it too). Before this, the prune was a list-only mode that no fork-creation path invoked \u2014 so every fork inherited the full template-dev payload regardless of this manifest.",
   "version": 1,
   "roots": ["docs", "."],
   "rules": [
     {
       "glob": "HARNESS-V2-*.md",
       "inheritance": "template-dev",
-      "why": "harness-v2 program artifacts (backlog/evidence/closeout) — the template's own build record"
+      "why": "harness-v2 program artifacts (backlog/evidence/closeout) \u2014 the template's own build record"
     },
     {
       "glob": "docs/HARNESS-*.md",
@@ -16,12 +16,12 @@
     {
       "glob": "docs/SESSION-HANDOFF.md",
       "inheritance": "template-dev",
-      "why": "in-flight session state — GITIGNORED since 2026-07-25 (local to the machine, never committed anywhere). The rule still classifies it so the on-disk prune sweeps the regenerated file out of a fork's tree; it can no longer reach any branch."
+      "why": "in-flight session state \u2014 GITIGNORED since 2026-07-25 (local to the machine, never committed anywhere). The rule still classifies it so the on-disk prune sweeps the regenerated file out of a fork's tree; it can no longer reach any branch."
     },
     {
       "glob": "docs/session-state.json",
       "inheritance": "template-dev",
-      "why": "per-session in-flight state (the SESSION-HANDOFF.md data source) — GITIGNORED since 2026-07-25 after leaking to main three times; local-only, regenerated as a skeleton at SessionStart (V2-006). The schema (session-state.schema.json) stays fork-inherited: a fork regenerates its own state against it."
+      "why": "per-session in-flight state (the SESSION-HANDOFF.md data source) \u2014 GITIGNORED since 2026-07-25 after leaking to main three times; local-only, regenerated as a skeleton at SessionStart (V2-006). The schema (session-state.schema.json) stays fork-inherited: a fork regenerates its own state against it."
     },
     {
       "glob": "docs/INVENTORY-BY-OBJECTIVE.md",
@@ -67,6 +67,21 @@
       "glob": "docs/research/**",
       "inheritance": "template-dev",
       "why": "the template's stack research"
+    },
+    {
+      "glob": "docs/verification/design-system/**",
+      "inheritance": "fork",
+      "why": "WORKED EXAMPLE \u2014 cited by .claude/rules/design.md ('see docs/verification/design-system/ for the worked example') and .claude/skills/design-qa/SKILL.md. Those two files are fork-inherited and NOT covered by this manifest (it only classifies docs/**), so pruning this path would break the citation in every fork at the moment of fork creation \u2014 /rebrand now runs the prune automatically. First-match-wins: this must stay ABOVE the docs/verification/** catch-all."
+    },
+    {
+      "glob": "docs/verification/v2-305-copy/**",
+      "inheritance": "fork",
+      "why": "WORKED EXAMPLE \u2014 holds the repo's only baseline/ directory, cited by .claude/skills/design-qa/SKILL.md as the visual-regression baseline example. Same fork-citation reasoning as design-system/."
+    },
+    {
+      "glob": "docs/verification/atomic-audit-triggers/**",
+      "inheritance": "fork",
+      "why": "LIVE EVIDENCE \u2014 backs the open SECURITY.md \u00a716 atomic-audit row and an adjudicated findings-register entry; the trigger battery is the runnable artifact a fork applies. Not template build history."
     },
     {
       "glob": "docs/verification/**",
@@ -136,7 +151,7 @@
     {
       "glob": "docs/decisions/**",
       "inheritance": "fork",
-      "why": "ADRs — the architectural decision record the fork operates under (incl. ADR-TEMPLATE)"
+      "why": "ADRs \u2014 the architectural decision record the fork operates under (incl. ADR-TEMPLATE)"
     },
     {
       "glob": "docs/runbooks/**",
@@ -156,7 +171,7 @@
     {
       "glob": "docs/**",
       "inheritance": "fork",
-      "why": "catch-all: operational reference (REPO-MAP, recipes, rubrics, ledgers, agent-memory, oss-catalog, token-policy, mcp, session-state, manifests) — default KEEP is the safe failure"
+      "why": "catch-all: operational reference (REPO-MAP, recipes, rubrics, ledgers, agent-memory, oss-catalog, token-policy, mcp, session-state, manifests) \u2014 default KEEP is the safe failure"
     }
   ]
 }
