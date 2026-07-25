@@ -131,7 +131,7 @@
     {
       "glob": "docs/blueprints/**",
       "inheritance": "fork",
-      "why": "feature blueprints for capabilities the fork inherits (openapi seam, docs-site, egress bridge, style-guide, asset-tracker pilot, README)"
+      "why": "feature blueprints for capabilities the fork inherits (openapi seam, docs-site, egress bridge, style-guide, README)"
     },
     {
       "glob": "docs/decisions/**",

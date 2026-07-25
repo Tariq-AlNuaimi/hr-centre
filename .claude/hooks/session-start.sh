@@ -70,9 +70,15 @@ if ! command -v gitleaks >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/gitleaks" ]
     echo "[harness] WARNING: no gitleaks and no supported fetch for $(uname -s)/$(uname -m); 'npm run ship' will be RED at the gitleaks phase."
   fi
 fi
-# Make a previously-fetched binary visible to this session's PATH.
+# A binary at ~/.local/bin is only useful if that directory is on the PATH the LATER
+# `npm run ship` process inherits. `export` here cannot do that -- the hook is its own
+# process -- so verify rather than assume (senior review, 2026-07-25). ~/.local/bin is
+# on PATH by default in the standard container; say so plainly when it is not, instead
+# of installing a binary that /ship will never find.
 if [ -x "$HOME/.local/bin/gitleaks" ] && ! command -v gitleaks >/dev/null 2>&1; then
-  export PATH="$HOME/.local/bin:$PATH"
+  echo "[harness] WARNING: gitleaks is at ~/.local/bin but that directory is NOT on PATH."
+  echo "[harness]          'npm run ship' will still be RED at the gitleaks phase. Add it:"
+  echo "[harness]          export PATH=\"\$HOME/.local/bin:\$PATH\"   (in your shell profile)"
 fi
 
 echo "[harness] ready -- run 'make db-up' to start dev containers when you need the DB"

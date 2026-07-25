@@ -381,7 +381,31 @@ function scanSessionState() {
   } catch {
     return ok("no git history (skipped)");
   }
-  if (branch !== "main") return ok(`branch=${branch} (branch-only state is allowed here)`);
+  // Detached HEAD reports the literal "HEAD", not a branch name -- which is how a CI
+  // runner that checks out main BY SHA appears. Taking that at face value would skip
+  // the gate exactly where it matters most (senior review, 2026-07-25), so resolve it:
+  // if the detached commit IS origin/main's commit, treat it as main. A detached HEAD
+  // sitting anywhere else is genuinely not main and stays exempt.
+  let onMain = branch === "main";
+  if (branch === "HEAD") {
+    try {
+      const head = execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
+        .toString()
+        .trim();
+      const mainSha = execSync("git rev-parse origin/main", {
+        stdio: ["ignore", "pipe", "ignore"],
+      })
+        .toString()
+        .trim();
+      onMain = head === mainSha;
+    } catch {
+      // No origin/main to compare against (shallow clone, no remote) -- stay exempt
+      // rather than fail a check we cannot evaluate. Fail-open matches the other
+      // governance gates (ADR-047: security guards fail closed, governance fails open).
+      return ok("detached HEAD, origin/main unresolvable (skipped)");
+    }
+  }
+  if (!onMain) return ok(`branch=${branch} (branch-only state is allowed here)`);
   let tracked = [];
   try {
     tracked = execSync(`git ls-files -- ${BRANCH_ONLY_STATE.join(" ")}`, {
