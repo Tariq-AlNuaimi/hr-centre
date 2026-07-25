@@ -27,7 +27,7 @@ gates it.
 | 15  | Full **bus-factor** program (multi-maintainer, CI)                            | Harness/program | L            | team growth                         |
 | 16  | ✅ **VERIFIED+FIXED** (2026-07-25) — Atomic audit recipe (opt-in, now proven) | Security        | M            | —                                   |
 | 17  | ✅ **DONE** (2026-07-25) — Per-account lockout (limiter half already ADR-035) | Security        | M            | —                                   |
-| 18  | uptime monitoring / Storybook recipes (#28)                                   | Ops/DX          | M            | need arises                         |
+| 18  | ✅ **DONE** (2026-07-25) — uptime recipe written; Storybook recipe de-staled  | Ops/DX          | M            | —                                   |
 
 ---
 
@@ -118,8 +118,16 @@ dependencies. Non-enumerable by construction: a miss and a bad password both cou
 
 - **Full bus-factor program** (#27): a bounded slice shipped (`docs/harness-orientation.md` + the
   V2-505 maintainer runbook); the full program (multi-maintainer redundancy, CI activation) remains.
-- **uptime monitoring / Storybook** (#28): `docs/oss-catalog.md` catalog entries suffice for now;
-  wire real ones when the need arises.
+- **uptime monitoring / Storybook** (#28): ✅ **DONE 2026-07-25.** Storybook already had a recipe
+  (`docs/recipes/dx/1-storybook.md`) but it was **materially stale** — it described the shared
+  components as **AntD** components and its decorator imported `ConfigProvider` from `antd`, which
+  ADR-029 uninstalled; following it produced `Cannot find module 'antd'` on the first run. Corrected
+  to the real `next-intl` + `DirectionProvider` + `dark`-class stack (5 stale references fixed).
+  Uptime had no recipe — wrote `docs/recipes/ops/1-uptime-monitoring.md`, grounded in the health
+  endpoint the template **already ships** (`/api/health`: public per `i18n/route-decision.ts`, real
+  `SELECT 1` DB check, honest 200/503). Includes the Neon free-tier auto-suspend trap and the
+  2-consecutive-failures rule. Neither recipe was executed (Storybook is a large devDependency
+  install; uptime is third-party SaaS config) — both state their verification status explicitly.
 
 ---
 

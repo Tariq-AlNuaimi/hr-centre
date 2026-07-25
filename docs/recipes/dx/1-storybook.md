@@ -3,8 +3,16 @@
 > `/scale-up` → developer-experience optimization **O7**.
 > Sets up **Storybook 8** to develop, document, and visually review the template's
 > shared components — `DataTable`, `Chart`, `KanbanBoard`, `EmptyState`,
-> `ConfirmAction` — in isolation, with the **AntD `ConfigProvider` + `next-intl`**
-> context they need to render.
+> `ConfirmAction` — in isolation, with the **`next-intl` + `ThemeProvider`** context
+> they need to render.
+>
+> **CORRECTED 2026-07-25 (OPEN-ITEMS item 18):** this recipe still described the shared
+> components as **AntD** components wrapped in `ConfigProvider`. AntD was removed in
+> **ADR-029** (the UI is Tailwind v4 + shadcn/Radix), so the decorator below imported a
+> package that is no longer installed — following it produced `Cannot find module 'antd'`
+> on the first run. The decorator now mirrors what `app/[locale]/layout.tsx` actually
+> provides. Not executed here (Storybook is a large devDependency install this container
+> shouldn't add on spec) — the correction is a code-vs-doc reconciliation, not a run.
 
 ## When to add it
 
@@ -54,49 +62,45 @@ npm install -D storybook@^8 @storybook/nextjs@^8 @storybook/addon-essentials@^8 
 
 ## The context decorator (the part that's template-specific)
 
-The shared components are **AntD** components that read `ConfigProvider` (theme +
-RTL `direction`) and several read `next-intl` translations via `useTranslations`
-(`DataTable`'s search placeholder + empty text, `EmptyState`, `ConfirmAction`).
-Rendered bare in a story they'd throw "No intl context found" / render
-unstyled. Wrap every story in a **global decorator** that supplies both — mirroring
-what `app/[locale]/layout.tsx` provides at runtime (`NextIntlClientProvider` →
-`AntdRegistry` → `ThemeProvider` which holds the `ConfigProvider`).
+The shared components are **Tailwind + shadcn/Radix** components (ADR-029). Several read
+`next-intl` translations via `useTranslations` (`DataTable`'s search placeholder + empty
+text, `EmptyState`, `ConfirmAction`), so rendered bare in a story they throw "No intl
+context found". Theming is **CSS-variable driven** — `app/tokens.css` plus a `dark` class
+on a wrapping element — not a JS theme object, so a story only needs the class toggled.
+RTL comes from the `dir` attribute (Radix reads it via `DirectionProvider`). Wrap every
+story in a **global decorator** mirroring what `app/[locale]/layout.tsx` provides at
+runtime (`NextIntlClientProvider` → `ThemeProvider` → `QueryProvider`).
 
 ```tsx
 // .storybook/decorators.tsx
 import React from "react";
 import type { Decorator } from "@storybook/react";
-import { ConfigProvider, theme, App } from "antd";
+import { DirectionProvider } from "@radix-ui/react-direction";
 import { NextIntlClientProvider } from "next-intl";
 import enMessages from "../messages/en.json";
-import arMessages from "../messages/ar.json";
+// Only import a second locale if the fork enabled one (project.config.json `locales`).
+// The default template ships English-only, so `messages/ar.json` stays inert.
+import "../app/globals.css"; // tokens.css + Tailwind — the actual styling source
 
-// Mirrors components/layout/ThemeProvider.tsx's ConfigProvider + next-intl, minus
-// the cookie/localStorage persistence (a story has no request to seed from). The
-// `dark` and `locale` values come from Storybook globals (toolbar) set below.
+// Mirrors app/[locale]/layout.tsx minus the cookie/localStorage persistence (a story has
+// no request to seed from). Theme is a CSS class, not a JS theme object: `dark` on a
+// wrapper flips every token in app/tokens.css. `theme` and `locale` come from the
+// Storybook globals (toolbar) configured below.
 export const withProviders: Decorator = (Story, context) => {
   const isDark = context.globals.theme === "dark";
-  const locale = (context.globals.locale as "en" | "ar") ?? "en";
-  const direction = locale === "ar" ? "rtl" : "ltr";
-  const messages = locale === "ar" ? arMessages : enMessages;
+  const locale = (context.globals.locale as string) ?? "en";
+  const direction = ["ar", "he", "fa", "ur"].includes(locale) ? "rtl" : "ltr";
 
   return (
-    <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
-      <ConfigProvider
-        direction={direction}
-        theme={{
-          algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-          token: { colorPrimary: "#1677ff", borderRadius: 6 },
-        }}
-      >
-        {/* AntD <App> provides the message/notification/modal context that
-            ConfirmAction and the use-notify hook rely on. */}
-        <App>
-          <div style={{ padding: 24 }}>
+    <NextIntlClientProvider locale={locale} messages={enMessages} timeZone="UTC">
+      <DirectionProvider dir={direction}>
+        <div className={isDark ? "dark" : undefined} dir={direction}>
+          {/* bg-background/text-foreground so the token surface is visible in both themes */}
+          <div className="bg-background text-foreground" style={{ padding: 24 }}>
             <Story />
           </div>
-        </App>
-      </ConfigProvider>
+        </div>
+      </DirectionProvider>
     </NextIntlClientProvider>
   );
 };
@@ -114,7 +118,7 @@ const preview: Preview = {
   decorators: [withProviders],
   globalTypes: {
     theme: {
-      description: "AntD theme",
+      description: "Theme (dark class on the wrapper)",
       defaultValue: "light",
       toolbar: {
         icon: "circlehollow",
@@ -261,7 +265,7 @@ export const Empty: Story = { args: { ...Default.args, dataSource: [], total: 0 
 > `KanbanBoard` and `ConfirmAction` get stories the same way — pass `columns` +
 > `items` + a `renderCard` for the board; render a trigger button + `onConfirm`
 > action for `ConfirmAction`. Both render fine under the decorator above
-> (`KanbanBoard` needs no extra context; `ConfirmAction` uses the AntD `<App>` modal
+> (`KanbanBoard` needs no extra context; `ConfirmAction` uses the Radix Dialog
 > context the decorator provides).
 
 > **`*.impl.tsx` split:** `Chart` and `KanbanBoard` ship as a thin wrapper +
@@ -289,7 +293,7 @@ Add to `package.json` (dev-only):
 | --------------------------------- | --------------------------------------------------------------------------- |
 | `.storybook/main.ts`              | **New** — framework + story glob                                            |
 | `.storybook/preview.tsx`          | **New** — global decorator + theme/locale toolbar                           |
-| `.storybook/decorators.tsx`       | **New** — AntD `ConfigProvider` + `next-intl` provider                      |
+| `.storybook/decorators.tsx`       | **New** — `next-intl` + `DirectionProvider` + `dark`-class theme decorator  |
 | `components/shared/*.stories.tsx` | **New** — one per shared component                                          |
 | `package.json`                    | add Storybook **devDependencies** + `storybook` / `build-storybook` scripts |
 | `.gitignore`                      | add `storybook-static/` (the `build-storybook` output)                      |
@@ -302,7 +306,7 @@ are untouched. Storybook reads them; it doesn't modify them.
 1. `npm run storybook` → opens `http://localhost:6006`; the sidebar lists
    `Shared/EmptyState`, `Shared/Chart`, `Shared/DataTable`, etc.
 2. Flip the **theme** toolbar to Dark → components re-render with the dark
-   algorithm (proves the `ConfigProvider` decorator is wired).
+   token surface (proves the `dark`-class decorator is wired).
 3. Flip the **locale** toolbar to العربية → the layout flips **RTL** and
    `next-intl`-driven strings (DataTable search placeholder, empty text) switch
    language (proves the `next-intl` decorator is wired).
