@@ -38,7 +38,8 @@ export const POST = withRateLimit(
         serial: r.serial || undefined,
         purchasedAt: r.purchasedAt || undefined,
         status: r.status || "IN_STOCK",
-        category: r.category || "LAPTOP",
+        // No `category`: the enum axis was retired (item 7) — an asset's category comes from
+        // its model. A CSV column named `category` is simply ignored by the schema.
       };
       const res = createAssetSchema.safeParse(candidate);
       if (!res.success) {

@@ -8,26 +8,26 @@ When you resolve an item, update the source record; re-generate the gist here if
 **Legend** — Effort: S (hours) · M (a day) · L (multi-day/own program). Blocked-by tells you what
 gates it.
 
-| #   | Item                                                                         | Category        | Effort       | Blocked by                          |
-| --- | ---------------------------------------------------------------------------- | --------------- | ------------ | ----------------------------------- |
-| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment            | UI polish       | S            | —                                   |
-| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file    | Harness/i18n    | M            | —                                   |
-| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats             | Supply-chain    | S            | —                                   |
-| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                     | Feature         | S            | —                                   |
-| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                    | Feature         | S            | —                                   |
-| 6   | ✅ **DONE** (2026-07-25) — Asset list **bulk actions** (multi-select delete) | Feature         | M            | —                                   |
-| 7   | Cascade: replace the `category` **enum axis** with a Category-entity picker  | Feature/UX      | M            | product decision                    |
-| 8   | WS-5 embeddings **provider round-trip**                                      | AI/RAG          | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
-| 9   | `ai-eval` `/ship` gate (dormant)                                             | AI quality      | —            | a fork adds `AI_API_KEY` + fixtures |
-| 10  | SSO / Microsoft Entra (dormant)                                              | Auth            | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
-| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                    | CI/security     | —            | paid Actions / handoff              |
-| 12  | Remove **bcryptjs**                                                          | Debt sunset     | S            | legacy `$2*` hashes = 0 for 90d     |
-| 13  | Retire the **antd type-shim**                                                | Debt sunset     | S            | next DataTable refactor             |
-| 14  | **Better Auth** migration                                                    | Auth/program    | L            | ADR-056 trigger fires               |
-| 15  | Full **bus-factor** program (multi-maintainer, CI)                           | Harness/program | L            | team growth                         |
-| 16  | **Atomic audit** (Postgres triggers)                                         | Security        | M            | regulated data / handoff            |
-| 17  | **Account lockout** / distributed rate limit                                 | Security        | M            | multi-instance / abuse              |
-| 18  | uptime monitoring / Storybook recipes (#28)                                  | Ops/DX          | M            | need arises                         |
+| #   | Item                                                                          | Category        | Effort       | Blocked by                          |
+| --- | ----------------------------------------------------------------------------- | --------------- | ------------ | ----------------------------------- |
+| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment             | UI polish       | S            | —                                   |
+| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file     | Harness/i18n    | M            | —                                   |
+| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats              | Supply-chain    | S            | —                                   |
+| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                      | Feature         | S            | —                                   |
+| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                     | Feature         | S            | —                                   |
+| 6   | ✅ **DONE** (2026-07-25) — Asset list **bulk actions** (multi-select delete)  | Feature         | M            | —                                   |
+| 7   | ✅ **DONE** (2026-07-25) — Retired the `category` enum axis (Category entity) | Feature/UX      | M            | —                                   |
+| 8   | WS-5 embeddings **provider round-trip**                                       | AI/RAG          | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
+| 9   | `ai-eval` `/ship` gate (dormant)                                              | AI quality      | —            | a fork adds `AI_API_KEY` + fixtures |
+| 10  | SSO / Microsoft Entra (dormant)                                               | Auth            | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
+| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                     | CI/security     | —            | paid Actions / handoff              |
+| 12  | Remove **bcryptjs**                                                           | Debt sunset     | S            | legacy `$2*` hashes = 0 for 90d     |
+| 13  | Retire the **antd type-shim**                                                 | Debt sunset     | S            | next DataTable refactor             |
+| 14  | **Better Auth** migration                                                     | Auth/program    | L            | ADR-056 trigger fires               |
+| 15  | Full **bus-factor** program (multi-maintainer, CI)                            | Harness/program | L            | team growth                         |
+| 16  | **Atomic audit** (Postgres triggers)                                          | Security        | M            | regulated data / handoff            |
+| 17  | **Account lockout** / distributed rate limit                                  | Security        | M            | multi-instance / abuse              |
+| 18  | uptime monitoring / Storybook recipes (#28)                                   | Ops/DX          | M            | need arises                         |
 
 ---
 
@@ -66,12 +66,19 @@ The pilot graduated to T2/T9/T11; these three remaining table-stakes sub-feature
   `no-unaudited-bulk-write`) — verified live (3 deletes → 3 DELETE `audit_logs` rows + all three
   soft-deleted/recoverable). Captures + critique: `docs/verification/asset-bulk-actions/`.
 
-### 7. Cascade: replace the enum axis — **M, product decision**
+### 7. Cascade: replace the enum axis — ✅ **DONE (2026-07-25)**
 
-The asset form keeps the legacy `category` **enum** (coarse device tag) AND a cascading catalog
-picker (Model category / Model manufacturer → Model). A future increment could drop the enum axis
-and make the Category **entity** the single category source. Needs a product call (the enum is a
-retained column; removing it is a forward-compat migration). Register/blueprint: T2 Delta note.
+Operator product call: **drop the enum axis.** The asset form's legacy `category` `Select` is
+removed; an asset's category is derived from `model → AssetModel.category → Category`, now the
+single source of truth. The list column renders the derived name (`-` when an asset has no model)
+and filters by category entity (`?categoryId=` → `where: { model: { categoryId } }`). Enum reads/
+writes are gone from validation, form, columns, list route, and CSV import.
+
+**Phase 2 still open:** the `Asset.category` COLUMN remains in the DB on purpose (expand/contract —
+`migrate deploy` runs on every build, so dropping it in the same release would break an instance
+still running the old code). The `DROP COLUMN` + enum removal is tracked in
+`docs/findings-register.md` for the next release. Captures/critique:
+`docs/verification/asset-category-entity/`.
 
 ### 16. Atomic audit (Postgres triggers) — **M, for regulated data**
 

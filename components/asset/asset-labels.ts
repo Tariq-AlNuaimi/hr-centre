@@ -10,17 +10,11 @@ const ASSET_STATUS_LABELS: Record<string, string> = {
   RETIRED: "Retired",
 };
 
-const ASSET_CATEGORY_LABELS: Record<string, string> = {
-  LAPTOP: "Laptop",
-  MONITOR: "Monitor",
-  PHONE: "Phone",
-  OTHER: "Other",
-};
+// NOTE: ASSET_CATEGORY_LABELS / assetCategoryLabel were removed with the `category` enum axis
+// (OPEN-ITEMS item 7, 2026-07-25). Categories are now Category ENTITIES with operator-authored
+// names, so there is nothing to humanize — the name renders as stored.
 
 /** Display label for an enum value; falls back to the raw value if unmapped. */
 export function assetStatusLabel(value: string): string {
   return ASSET_STATUS_LABELS[value] ?? value;
-}
-export function assetCategoryLabel(value: string): string {
-  return ASSET_CATEGORY_LABELS[value] ?? value;
 }

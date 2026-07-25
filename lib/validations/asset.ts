@@ -1,6 +1,13 @@
 import { z } from "zod";
-import { AssetStatus, AssetCategory } from "../../generated/prisma/client";
+import { AssetStatus } from "../../generated/prisma/client";
 
+// NOTE: the legacy `category` ENUM axis was RETIRED here (OPEN-ITEMS item 7, 2026-07-25).
+// An asset's category now comes from the catalog hierarchy — `Asset.model → AssetModel.category
+// → Category` — so `Category` is the single source of truth. The `Asset.category` COLUMN still
+// exists in the database on purpose: this is phase 1 of an expand/contract migration (stop
+// reading/writing), and dropping it in the same release would break any still-running instance
+// (`vercel.json` runs `prisma migrate deploy` on every build). Phase 2 drops the column — see
+// the schema comment on `Asset.category`.
 export const createAssetSchema = z.object({
   assetTag: z.string().min(1).max(255),
   name: z.string().min(1).max(255),
@@ -10,7 +17,6 @@ export const createAssetSchema = z.object({
   warrantyExpiresAt: z.coerce.date().optional(),
   warrantyTerms: z.string().min(1).max(1000).optional(),
   status: z.nativeEnum(AssetStatus),
-  category: z.nativeEnum(AssetCategory),
   modelId: z.string().min(1).optional(),
   assigneeId: z.string().min(1).optional(),
   // Shape-only here; the VALUES are validated against the active CustomFieldDefs at the
@@ -27,7 +33,6 @@ export const updateAssetSchema = z.object({
   warrantyExpiresAt: z.coerce.date().optional(),
   warrantyTerms: z.string().min(1).max(1000).optional(),
   status: z.nativeEnum(AssetStatus).optional(),
-  category: z.nativeEnum(AssetCategory).optional(),
   modelId: z.string().min(1).nullable().optional(),
   customFields: z.record(z.string(), z.unknown()).optional(),
 });

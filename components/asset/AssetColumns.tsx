@@ -3,7 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 import { getRowActionsColumn } from "@/components/shared/RowActions";
-import { assetStatusLabel, assetCategoryLabel } from "@/components/asset/asset-labels";
+import { assetStatusLabel } from "@/components/asset/asset-labels";
 
 export interface AssetRecord {
   id: string;
@@ -15,7 +15,6 @@ export interface AssetRecord {
   warrantyExpiresAt?: string | null;
   warrantyTerms?: string | null;
   status: "IN_STOCK" | "ASSIGNED" | "REPAIR" | "RETIRED";
-  category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
   modelId?: string | null;
   model?: {
     id: string;
@@ -28,15 +27,13 @@ export interface AssetRecord {
   createdAt: string;
 }
 
+// Status tones only — the LAPTOP/MONITOR/PHONE/OTHER entries went with the retired
+// `Asset.category` enum (item 7); catalog categories are open-ended so they render untoned.
 const tone: Record<string, BadgeProps["variant"]> = {
   IN_STOCK: "brand",
   ASSIGNED: "success",
   REPAIR: "warning",
   RETIRED: "danger",
-  LAPTOP: "default",
-  MONITOR: "brand",
-  PHONE: "success",
-  OTHER: "warning",
 };
 
 // The returned column objects are DataTable-shaped (title/dataIndex/render/
@@ -47,10 +44,13 @@ export function getAssetColumns({
   onEdit,
   onDelete,
   t,
+  categoryFilters = [],
 }: {
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
   t: (key: string) => string;
+  /** Category-entity filter options (id + name), fetched by the list page (item 7). */
+  categoryFilters?: Array<{ text: string; value: string }>;
 }) {
   return [
     {
@@ -96,20 +96,18 @@ export function getAssetColumns({
       filterMultiple: false,
     },
     {
+      // Category is DERIVED from the catalog hierarchy (model → AssetModel.category → Category),
+      // not from the retired `Asset.category` enum (item 7). Not sortable: `parseListQuery`'s
+      // SORTABLE_COLUMNS allowlist covers scalar columns only, and sorting on a nested relation
+      // would need a different orderBy shape. Filterable via the dynamic options passed in.
       title: t("category"),
-      dataIndex: "category",
       key: "category",
-      sorter: true,
-      render: (val: string | null) => {
-        if (!val) return "-";
-        return <Badge variant={tone[val] ?? "default"}>{assetCategoryLabel(val)}</Badge>;
+      render: (_: unknown, record: AssetRecord) => {
+        const name = record.model?.category?.name;
+        if (!name) return "-";
+        return <Badge variant="default">{name}</Badge>;
       },
-      filters: [
-        { text: assetCategoryLabel("LAPTOP"), value: "LAPTOP" },
-        { text: assetCategoryLabel("MONITOR"), value: "MONITOR" },
-        { text: assetCategoryLabel("PHONE"), value: "PHONE" },
-        { text: assetCategoryLabel("OTHER"), value: "OTHER" },
-      ],
+      filters: categoryFilters,
       filterMultiple: false,
     },
     {

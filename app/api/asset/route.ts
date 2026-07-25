@@ -6,7 +6,7 @@ import { paginatedResponse } from "@/lib/pagination";
 import { parseListQuery } from "@/lib/list-query";
 import { createAssetSchema } from "@/lib/validations/asset";
 import { validateCustomFields } from "@/lib/validations/custom-field";
-import { AssetStatus, AssetCategory } from "@/generated/prisma/client";
+import { AssetStatus } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
 // Allowlist of sortable columns -- prevents raw column injection via ?sort=.
@@ -16,7 +16,6 @@ const SORTABLE_COLUMNS = [
   "serial",
   "purchasedAt",
   "status",
-  "category",
   "createdAt",
 ] as const;
 
@@ -30,9 +29,10 @@ export const GET = withRateLimit(
     // Server-side status/category filters (wired to the DataTable column filters).
     const statusParam = searchParams.get("status");
     if (statusParam && statusParam in AssetStatus) where.status = statusParam as AssetStatus;
-    const categoryParam = searchParams.get("category");
-    if (categoryParam && categoryParam in AssetCategory)
-      where.category = categoryParam as AssetCategory;
+    // Category filters through the catalog hierarchy now (item 7): the retired `Asset.category`
+    // enum is no longer read — an asset's category IS its model's category.
+    const categoryIdParam = searchParams.get("categoryId");
+    if (categoryIdParam) where.model = { categoryId: categoryIdParam };
 
     const [data, total] = await Promise.all([
       prisma.asset.findMany({

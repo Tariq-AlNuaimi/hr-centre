@@ -29,6 +29,24 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-25 — [maintainable/data, item 7 phase 2] The `Asset.category` COLUMN (+ the
+  `AssetCategory` enum) is now DEAD but still in the database. OPEN-ITEMS item 7 retired the
+  category enum axis in application code (operator decision: "drop the enum axis") — nothing reads
+  or writes it any more; an asset's category comes from `model → AssetModel.category → Category`.
+  The column was deliberately NOT dropped in the same release: `vercel.json` runs
+  `prisma migrate deploy` on every build, so a `DROP COLUMN` shipped alongside the code that stops
+  reading it would break any instance still serving the previous version mid-deploy (the
+  `prisma.md` hard rule: "never drop columns the running version still reads"). This is phase 1 of
+  an expand/contract migration. **PHASE 2 (a later, separate release):** delete the `category`
+  field + the `AssetCategory` enum from `prisma/schema.prisma` and ship the `DROP COLUMN`
+  migration; the schema comment on the field carries the same instruction. Safe once no running
+  version reads the column — i.e. one deploy after this one. Until then new rows take the
+  `@default(LAPTOP)`, which nothing consumes. — owner: operator — status: adjudicated(2026-07-25)
+  (operator chose "accept + schedule phase 2": the expand/contract split is accepted as the safe
+  path, and the `DROP COLUMN` + `AssetCategory` enum removal is SCHEDULED for the next release
+  after 2026-07-25. The column sits inert — nothing reads it — for exactly one deploy. Re-opens as
+  a task, not a risk, when that release is cut.)
+
 - 2026-07-24 — [multi/challenge-audit] A two-agent adversarial audit (docs vs. code/harness, charged to
   disprove) found 15 findings; the operator adjudicated each and 13 were fixed this session (2 handled
   as: D5 produce-a-real-artifact, D7 convention-note-not-backfill). **Fixed — HARNESS/SECURITY:**

@@ -218,7 +218,7 @@
     "searchRelation": "Search…",
     "noRelationMatches": "No matches",
     "importTitle": "Import from CSV",
-    "importHint": "Columns: assetTag, name, serial, status, category",
+    "importHint": "Columns: assetTag, name, serial, status",
     "importAction": "Import",
     "importing": "Importing…",
     "importSuccess": "Imported {count} assets",

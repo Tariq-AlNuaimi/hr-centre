@@ -42,7 +42,9 @@ export default function AssetsPage() {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortChange>({});
   const [status, setStatus] = useState<string>();
-  const [category, setCategory] = useState<string>();
+  // Category now filters through the catalog hierarchy (item 7): the id of a Category entity,
+  // sent as ?categoryId= and resolved server-side via `model.categoryId`.
+  const [categoryId, setCategoryId] = useState<string>();
   // Bumped after a bulk import to re-key the list query so it refetches (the API ignores `_r`).
   const [refreshNonce, setRefreshNonce] = useState(0);
   // Multi-select for bulk actions (T-app-floor). Keys are asset ids (DataTable `rowKey="id"`).
@@ -55,7 +57,7 @@ export default function AssetsPage() {
     ...(sort.field ? { sort: sort.field } : {}),
     ...(sort.order ? { order: sort.order === "ascend" ? "asc" : "desc" } : {}),
     ...(status ? { status } : {}),
-    ...(category ? { category } : {}),
+    ...(categoryId ? { categoryId } : {}),
     ...(refreshNonce ? { _r: String(refreshNonce) } : {}),
   };
 
@@ -76,10 +78,20 @@ export default function AssetsPage() {
     }
   };
 
+  // Category filter options come from the Category entity (item 7) — the single source of
+  // truth now that the enum axis is retired. Bounded fetch; the picker is a small admin set.
+  const { data: categories } = useEntityList<{ id: string; name: string }>(
+    "/api/category",
+    { page: "1", pageSize: "100" },
+    t("loadFailed"),
+  );
+  const categoryFilters = (categories?.data ?? []).map((c) => ({ text: c.name, value: c.id }));
+
   const columns = getAssetColumns({
     onEdit: (id) => router.push(`/${locale}/asset/${id}`),
     onDelete: handleDelete,
     t,
+    categoryFilters,
   });
 
   return (
@@ -123,7 +135,7 @@ export default function AssetsPage() {
           const statusFilter = filters.status;
           const categoryFilter = filters.category;
           setStatus(statusFilter && statusFilter.length > 0 ? String(statusFilter[0]) : undefined);
-          setCategory(
+          setCategoryId(
             categoryFilter && categoryFilter.length > 0 ? String(categoryFilter[0]) : undefined,
           );
           setPage(1);

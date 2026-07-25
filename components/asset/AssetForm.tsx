@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { RelationSelect } from "@/components/shared/RelationSelect";
 import { CustomFields } from "@/components/asset/CustomFields";
-import { assetStatusLabel, assetCategoryLabel } from "@/components/asset/asset-labels";
+import { assetStatusLabel } from "@/components/asset/asset-labels";
 
 interface AssetFormProps {
   initialValues?: Partial<{
@@ -28,7 +28,6 @@ interface AssetFormProps {
     warrantyExpiresAt?: string | null;
     warrantyTerms?: string | null;
     status: "IN_STOCK" | "ASSIGNED" | "REPAIR" | "RETIRED";
-    category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
     modelId?: string | null;
     assigneeId?: string | null;
     customFields?: Record<string, unknown> | null;
@@ -42,7 +41,6 @@ interface AssetFormProps {
     warrantyExpiresAt?: string | null;
     warrantyTerms?: string | null;
     status: "IN_STOCK" | "ASSIGNED" | "REPAIR" | "RETIRED";
-    category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
     modelId?: string | null;
     assigneeId?: string | null;
     customFields?: Record<string, unknown>;
@@ -63,7 +61,6 @@ const assetFormSchema = z.object({
   warrantyExpiresAt: z.string().nullish(),
   warrantyTerms: z.string().nullish(),
   status: z.enum(["IN_STOCK", "ASSIGNED", "REPAIR", "RETIRED"]),
-  category: z.enum(["LAPTOP", "MONITOR", "PHONE", "OTHER"]),
   modelId: z.string().nullish(),
   // Transient cascade filters for the Model picker — stripped before submit (not asset fields).
   modelCategoryFilter: z.string().nullish(),
@@ -81,7 +78,6 @@ function makeDefaults(iv: AssetFormProps["initialValues"]) {
     warrantyExpiresAt: iv?.warrantyExpiresAt ?? "",
     warrantyTerms: iv?.warrantyTerms ?? "",
     status: iv?.status ?? ("IN_STOCK" as const),
-    category: iv?.category ?? ("LAPTOP" as const),
     modelId: iv?.modelId ?? undefined,
     modelCategoryFilter: undefined,
     modelManufacturerFilter: undefined,
@@ -145,29 +141,6 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
                   <SelectItem value="ASSIGNED">{assetStatusLabel("ASSIGNED")}</SelectItem>
                   <SelectItem value="REPAIR">{assetStatusLabel("REPAIR")}</SelectItem>
                   <SelectItem value="RETIRED">{assetStatusLabel("RETIRED")}</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          name="category"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>{t("category")}</FormLabel>
-              <Select value={field.value ?? undefined} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("category")} />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="LAPTOP">{assetCategoryLabel("LAPTOP")}</SelectItem>
-                  <SelectItem value="MONITOR">{assetCategoryLabel("MONITOR")}</SelectItem>
-                  <SelectItem value="PHONE">{assetCategoryLabel("PHONE")}</SelectItem>
-                  <SelectItem value="OTHER">{assetCategoryLabel("OTHER")}</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />

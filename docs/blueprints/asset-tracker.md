@@ -89,6 +89,22 @@ ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pil
     doing per-row **audited** `create` inside a `$transaction` (NOT `createMany` — ADR-010) + a bounded
     row cap + per-row error report; a list-page import panel with preview.
     Additive migrations only; each sub-phase re-confirmed below.
+- **2026-07-25 (OPEN-ITEMS items 4–7): fields + bulk actions + the category-axis decision.**
+  - **T4 location / T6 warranty** — `Asset` gains nullable `location`, `warrantyExpiresAt`,
+    `warrantyTerms` (one additive migration; on the form + record type).
+  - **Bulk actions** — multi-select on the list via the shared `DataTable`'s existing
+    `rowSelection`, driving `POST /api/asset/bulk-delete`: per-row **audited** `delete` inside one
+    `$transaction` (NOT `deleteMany` — ADR-010), so both the audit AND soft-delete extensions run.
+  - **T2 follow-up — the `category` ENUM AXIS IS RETIRED** (operator product decision, closing the
+    "Delta note" this blueprint left open). The dual-axis design above is now single-axis: the
+    asset form's legacy `category` `Select` is REMOVED, and an asset's category is derived from
+    `model → AssetModel.category → Category`, which is the single source of truth. The list's
+    Category column renders the derived name (`-` when an asset has no model — honest, and the
+    reason the old `LAPTOP` default was misleading) and filters via `?categoryId=` →
+    `where: { model: { categoryId } }`. Reads/writes of the enum are gone from validation, the
+    form, the columns, the list route, and the CSV import. **The COLUMN remains** — phase 1 of an
+    expand/contract migration; the `DROP COLUMN` is phase 2, tracked in `docs/findings-register.md`
+    (never drop a column the running version reads; `migrate deploy` runs every build).
 
 ## Universal app-floor checklist (V2-203)
 
