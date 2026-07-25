@@ -48,5 +48,47 @@ despite being closed-program: it holds the repo's only `baseline/` directory, wh
 
 - `docs/verification/**` — evidence backing **live** `findings-register.md` entries. Deleting it
   would create exactly the dead-evidence-pointer defect the 2026-07-24 challenge audit fixed.
-- `docs/SESSION-HANDOFF.md` + `docs/session-state.json` — live session state the SessionStart hook
-  reads, not history.
+  (Narrowed 2026-07-25 — see below: the sets photographing the removed demo domain went to the
+  archive; the sets documenting surviving surfaces stayed.)
+
+---
+
+## Second pass — the Asset-Tracker demo domain (2026-07-25)
+
+The template shipped the **V2-210 Asset Tracker pilot** as if it were product: `Asset`, `Category`,
+`Manufacturer`, `AssetModel`, `CustomFieldDef` — ~2,800 LOC hard-wired into the sidebar, inherited
+by every fork, never named in `README.md`'s feature list, with no documented removal path. It was
+built to exercise the harness loop (ADR-059), not to be a feature. Removed so the template boots
+baseline-only again; `/scaffold-entity` regenerates the shape in one command.
+
+**Archive point: commit `4b73206`** — the last commit where all of it existed in the tree. It is an
+ancestor of `main` and already on the remote, so everything is recoverable by SHA from any clone:
+
+```bash
+git show 4b73206:docs/blueprints/asset-tracker.md                    # the pilot blueprint
+git show 4b73206:docs/decisions/ADR-059-asset-tracker-architecture.md
+git show 4b73206:docs/benchmarks/it-asset-management.md              # the ITAM parity benchmark
+git show 4b73206 --stat -- prisma/schema.prisma                      # the domain models
+git checkout 4b73206 -- docs/verification/asset-tracker              # a whole capture set back
+```
+
+**What moved to the archive:**
+
+| Removed                                                                                                                                                           | Why                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 5 Prisma models + 5 migrations, 15 pages, 12 API routes, 12 components, 5 zod modules, sidebar nav, seed data, 33 message keys, 2 contract tests, the BDD feature | pilot residue; every fork paid a teardown to remove somebody else's app                                                 |
+| `lib/csv.ts` + `tests/contracts/csv.test.ts`, `components/shared/RelationSelect.tsx`                                                                              | zero consumers once the demo forms were gone — the scaffold emits its own inline picker (`scripts/scaffold-entity.mjs`) |
+| `docs/verification/{asset-tracker,asset-category-entity,asset-fields,asset-bulk-actions,custom-fields}/` (~3.4 MB)                                                | captures of screens that no longer exist                                                                                |
+| `docs/blueprints/asset-tracker.md`, `docs/benchmarks/it-asset-management.md`, `ADR-059`                                                                           | pilot-specific, but classified fork-inherited — they shipped to forks as if they were template guidance                 |
+
+**Kept in the tree:** `docs/verification/{design-system,v2-305-copy,atomic-audit-triggers}/` — they
+document surfaces that still exist and back live register entries. The two harness citations of a
+worked example (`.claude/rules/design.md`, `.claude/skills/design-qa/SKILL.md`) were re-pointed at
+`docs/verification/design-system/`.
+
+**Also removed from `main` in the same pass:** `docs/SESSION-HANDOFF.md` + `docs/session-state.json`.
+`.claude/rules/harness.md` ("Memory lifecycle") says both are branch-only and **never merged to
+`main`** — they were on `main` anyway, so every fork inherited this template's harness-v2 program
+state as its own starting point. They are not lost and nothing breaks: the SessionStart hook writes
+a fresh valid skeleton when `docs/session-state.json` is absent (V2-006,
+`.claude/hooks/session-start.sh`), which is exactly the intended fork experience.

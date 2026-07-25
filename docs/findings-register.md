@@ -29,6 +29,32 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-25 — [maintainable/scope] **Asset-Tracker demo domain REMOVED from the template**
+  (operator decision, template-cleanliness audit). The V2-210 pilot domain — `Asset`, `Category`,
+  `Manufacturer`, `AssetModel`, `CustomFieldDef` (~2,800 LOC: 5 models + 5 migrations, 15 pages,
+  12 API routes, 12 components, 5 zod modules, sidebar nav, seed data, 33 message keys) — was
+  built to exercise the harness loop (ADR-059), never advertised in `README.md`, and shipped to
+  every fork hard-wired into the sidebar with **no documented removal path**. A template that boots
+  as somebody else's app charges every fork a teardown; `/scaffold-entity` regenerates the same
+  shape in one command. Removed with it: `lib/csv.ts` + `tests/contracts/csv.test.ts` and
+  `components/shared/RelationSelect.tsx` (zero consumers once the demo forms were gone — the
+  scaffold generator emits its own inline picker, `scripts/scaffold-entity.mjs:976`).
+  `project.config.json "pristine": true` is now **truthful** — the schema is baseline-only again
+  and matches `BASELINE_MODELS` in `scripts/ship.mjs`. — owner: operator — status: adjudicated(2026-07-25)
+
+- 2026-07-25 — [process/evidence] **Asset-tracker verification captures moved to the archive tag.**
+  Five capture sets documenting the removed demo screens (`docs/verification/asset-tracker/`,
+  `asset-category-entity/`, `asset-fields/`, `asset-bulk-actions/`, `custom-fields/` — ~3.4 MB)
+  were deleted from the tree along with the domain they photographed. **Earlier register entries
+  in this file still cite those paths** (the T11 CSV-import audit proof, the T2 hierarchy capture,
+  the T9 enum-label note): those pointers now resolve through git, not the working tree — see
+  `docs/ARCHIVE.md` for the SHA and the `git show <sha>:<path>` recipe. The narratives are left
+  intact rather than rewritten, because editing a closed finding's evidence line would falsify the
+  record. Capture sets documenting **surviving** surfaces were kept in-tree
+  (`design-system/`, `v2-305-copy/`, `atomic-audit-triggers/`), and the two harness citations of a
+  worked example (`.claude/rules/design.md`, `.claude/skills/design-qa/SKILL.md`) were re-pointed at
+  `docs/verification/design-system/`. — owner: operator — status: adjudicated(2026-07-25)
+
 - 2026-07-25 — [process/scope] **OPEN-ITEMS 13, 14, 15 CLOSED as WON'T DO** (operator decision,
   after a measured over-engineering review). The repo carries **69k lines of non-product**
   (32k docs + 21k harness + 15k tests) against **16k lines of product** — a **4.2:1** ratio, with

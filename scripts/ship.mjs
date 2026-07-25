@@ -357,6 +357,58 @@ function scanTier() {
   };
 }
 
+// -- session-state gate (memory lifecycle, .claude/rules/harness.md) --------
+// `docs/SESSION-HANDOFF.md` + `docs/session-state.json` are BRANCH-ONLY in-flight
+// state: tracked on a working branch so a fresh remote container keeps a program's
+// context, NEVER merged to main, pruned from forks. They leaked onto main anyway
+// (template-cleanliness audit, 2026-07-25) — every fork then inherited THIS
+// template's harness-v2 program state as its own starting point. This gate is the
+// structural fix: on main, those paths must not be tracked. Nothing is lost when
+// they are absent — .claude/hooks/session-start.sh writes a fresh valid skeleton
+// (V2-006), which is precisely the intended fork/main experience.
+const BRANCH_ONLY_STATE = ["docs/SESSION-HANDOFF.md", "docs/session-state.json"];
+function scanSessionState() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const ok = (out) => ({ name: "session-state", ok: true, out, secs: secs() });
+  let branch = "";
+  try {
+    branch = execSync("git rev-parse --abbrev-ref HEAD", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    return ok("no git history (skipped)");
+  }
+  if (branch !== "main") return ok(`branch=${branch} (branch-only state is allowed here)`);
+  let tracked = [];
+  try {
+    tracked = execSync(`git ls-files -- ${BRANCH_ONLY_STATE.join(" ")}`, {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  } catch {
+    return ok("could not list tracked files (skipped)");
+  }
+  if (tracked.length === 0) return ok("main carries no branch-only session state — correct");
+  return {
+    name: "session-state",
+    ok: false,
+    secs: secs(),
+    out:
+      `main tracks branch-only in-flight state (.claude/rules/harness.md "Memory lifecycle"):\n` +
+      tracked.map((f) => `  - ${f}`).join("\n") +
+      `\n  These are per-program session state, not template content — a fork created from main\n` +
+      `  inherits this repo's program status as its own. They must never reach main.\n` +
+      `  Fix: git rm --cached ${tracked.join(" ")}\n` +
+      `  Nothing breaks: the SessionStart hook regenerates a fresh skeleton when absent (V2-006).`,
+  };
+}
+
 // -- blueprint structural gate (/blueprint full track) ----------------------
 // A real feature should ship its contract: /blueprint writes docs/blueprints/
 // <feature>.md BEFORE the code, and /qa, /uat, /manual-uat trace coverage
@@ -1350,7 +1402,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1359,6 +1411,7 @@ const copy = scanCopy();
 const waveoffs = scanWaveOffs();
 const licenses = scanLicenses();
 const tier = scanTier();
+const sessionState = scanSessionState();
 const blueprint = scanBlueprint();
 const blueprintContent = scanBlueprintContent();
 const complexity = scanComplexity();
@@ -1428,6 +1481,7 @@ for (const r of [
   waveoffs,
   licenses,
   tier,
+  sessionState,
   blueprint,
   blueprintContent,
   complexity,
@@ -1458,6 +1512,7 @@ const redA = [
   waveoffs,
   licenses,
   tier,
+  sessionState,
   blueprint,
   blueprintContent,
   complexity,

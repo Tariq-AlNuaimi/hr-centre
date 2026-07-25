@@ -117,6 +117,25 @@ try {
   );
 }
 
+// Prune the TEMPLATE's own build history from this fork (V2-506 classification in
+// docs/doc-manifest.json). /deploy is a fork-creation path like /rebrand, and a fork
+// that reached a live URL without ever running /rebrand would otherwise carry the
+// template-dev doc payload forever. Best-effort: never blocks the deploy.
+try {
+  const { execFileSync } = await import("node:child_process");
+  const out = execFileSync(process.execPath, ["scripts/rebrand.mjs", "--prune-docs", "--apply"], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const line = out.split("\n").find((l) => l.startsWith("Deleted "));
+  if (line) ok(P, `${line.trim()} (commit it with your next push).`);
+} catch (e) {
+  warn(
+    P,
+    `Could not prune template-dev docs: ${e.message} (run \`npm run rebrand -- --prune-docs --apply\` manually).`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Rollback bookkeeping.
 //

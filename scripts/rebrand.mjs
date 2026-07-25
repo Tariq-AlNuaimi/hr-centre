@@ -8,7 +8,7 @@
 //   npm run rebrand -- --slug acme-portal --name "Acme Portal" --owner acme-corp
 //                      [--owner-name "Jane Doe"] [--dry-run]
 
-import { readFile, writeFile, readdir } from "node:fs/promises";
+import { readFile, writeFile, readdir, rm } from "node:fs/promises";
 import { join, sep } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -22,6 +22,10 @@ const { values } = parseArgs({
     "owner-name": { type: "string" },
     "dry-run": { type: "boolean", default: false },
     "prune-docs": { type: "boolean", default: false },
+    // Actually DELETE the template-dev docs instead of only listing them. A normal
+    // rebrand (a fork-creation path) implies this; `--no-prune` opts out.
+    apply: { type: "boolean", default: false },
+    "no-prune": { type: "boolean", default: false },
   },
   strict: true,
 });
@@ -32,7 +36,7 @@ const { values } = parseArgs({
 // destructive — it only LISTS; the actual prune on a fork MOVES the template-dev docs to an
 // archive branch reference, never deletes them from template main. Runs without --slug etc.
 if (values["prune-docs"]) {
-  await pruneDocsMode();
+  await pruneDocsMode({ apply: values.apply, dryRun: values["dry-run"] });
   process.exit(0);
 }
 
@@ -52,7 +56,7 @@ function globToRegExp(glob) {
   return new RegExp(re + "$");
 }
 
-async function pruneDocsMode() {
+async function pruneDocsMode({ apply = false, dryRun = false } = {}) {
   const manifestPath = join(ROOT, "docs", "doc-manifest.json");
   let manifest;
   try {
@@ -91,7 +95,7 @@ async function pruneDocsMode() {
     else keep.push(norm);
   }
 
-  console.log("--- Fork doc-payload prune list (V2-506, dry) ---");
+  console.log(`--- Fork doc-payload prune (V2-506, ${apply && !dryRun ? "APPLY" : "dry"}) ---`);
   console.log(
     `Classified ${files.length} docs: ${keep.length} fork-inherited (kept), ${prune.length} template-dev (prune).`,
   );
@@ -106,13 +110,54 @@ async function pruneDocsMode() {
     for (const u of unmatched) console.log(`  ??     ${u}`);
   }
   console.log("");
-  console.log(
-    "This is a LIST only. Archive the pruned set (a tag or branch ref) before removing it,",
-  );
-  console.log(
-    "so it stays recoverable from git — the template itself did this at the tag\n" +
-      "`template-history-2026-07` on 2026-07-25; see docs/ARCHIVE.md.",
-  );
+  if (!apply || dryRun) {
+    console.log(
+      "This is a LIST only — re-run with --apply to delete. Archive the pruned set (a tag or",
+    );
+    console.log(
+      "branch ref) before removing it, so it stays recoverable from git — the template itself\n" +
+        "did this at the tag `template-history-2026-07` on 2026-07-25; see docs/ARCHIVE.md.",
+    );
+    return { prune, keep, deleted: 0 };
+  }
+
+  // APPLY. Safe by construction: a fork's template-dev docs are the TEMPLATE's build
+  // history, already preserved in the template repo's own git history — deleting them
+  // from the fork loses nothing that the fork ever owned. Deleting from the TEMPLATE
+  // itself is the case that needs an archive ref first, which the dry-run text says.
+  let deleted = 0;
+  for (const p of prune) {
+    try {
+      await rm(join(ROOT, ...p.split("/")), { force: true });
+      deleted++;
+    } catch (e) {
+      console.warn(`  WARN could not delete ${p}: ${e?.message ?? e}`);
+    }
+  }
+  // Sweep directories the prune just emptied (capture sets leave husks behind).
+  await removeEmptyDirs("docs");
+  console.log(`Deleted ${deleted} template-dev doc(s). ${keep.length} fork-inherited doc(s) kept.`);
+  console.log("Recoverable from the template repo's git history; see docs/ARCHIVE.md.");
+  return { prune, keep, deleted };
+}
+
+/** Depth-first removal of directories left empty by the prune. Never touches files. */
+async function removeEmptyDirs(rel) {
+  let entries;
+  try {
+    entries = await readdir(join(ROOT, rel), { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const ent of entries) {
+    if (ent.isDirectory()) await removeEmptyDirs(`${rel}/${ent.name}`);
+  }
+  try {
+    const left = await readdir(join(ROOT, rel));
+    if (left.length === 0) await rm(join(ROOT, rel), { recursive: true, force: true });
+  } catch {
+    /* non-fatal */
+  }
 }
 
 if (!values.slug || !values.name || !values.owner) {
@@ -228,6 +273,15 @@ if (DRY) {
 for (const d of diffs) {
   await writeFile(d.path, d.after);
   console.log(`~ ${d.path} (${d.changedRules} rule(s))`);
+}
+
+// A rebrand IS the fork-creation moment, so prune the template's own build history
+// here rather than leaving it to a step nobody runs. Before this was wired (2026-07-25)
+// the prune existed only as a list-only mode no fork path invoked, so every fork
+// inherited the template-dev doc payload. `--no-prune` opts out.
+if (!values["no-prune"]) {
+  console.log("");
+  await pruneDocsMode({ apply: true, dryRun: false });
 }
 
 console.log("");

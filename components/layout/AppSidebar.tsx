@@ -8,7 +8,6 @@ import {
   ClipboardCheck,
   Menu as MenuIcon,
   PanelLeftClose,
-  LayoutGrid,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
@@ -67,36 +66,8 @@ export function AppSidebar() {
           },
         ]
       : []),
-    {
-      key: "asset",
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: "Assets",
-      onClick: () => router.push(`/${locale}/asset`),
-    },
-    {
-      key: "category",
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: "Categories",
-      onClick: () => router.push(`/${locale}/category`),
-    },
-    {
-      key: "manufacturer",
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: "Manufacturers",
-      onClick: () => router.push(`/${locale}/manufacturer`),
-    },
-    {
-      key: "asset-model",
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: "Asset models",
-      onClick: () => router.push(`/${locale}/asset-model`),
-    },
-    {
-      key: "custom-field-def",
-      icon: <LayoutGrid className="h-4 w-4" />,
-      label: "Custom fields",
-      onClick: () => router.push(`/${locale}/custom-field-def`),
-    },
+    // Scaffolded entities land here — `/scaffold-entity` appends a nav item per
+    // entity, above the recycling bin.
     {
       key: "recycling-bin",
       icon: <Trash2 className="h-4 w-4" />,
