@@ -39,6 +39,11 @@ historical records citing the input that produced them, and rewriting ~70 files 
 references would have cost more than it returned. A path under `docs/research/`,
 `docs/deep-comparison/`, or a `HARNESS-V2-*` file means: it's at the tag above.
 
+**Verification captures.** Two closed-program capture sets were removed too (`v2-304-lint` 1.6 MB,
+`style-guide` 836 KB — nothing referenced them; same SHA recovers them). `v2-305-copy` was KEPT
+despite being closed-program: it holds the repo's only `baseline/` directory, which
+`.claude/skills/design-qa/SKILL.md` cites as the worked example for the visual-regression workflow.
+
 **Deliberately KEPT in the tree**, despite being `template-dev` by classification:
 
 - `docs/verification/**` — evidence backing **live** `findings-register.md` entries. Deleting it
