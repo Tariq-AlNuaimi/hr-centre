@@ -21,17 +21,46 @@ export const SCRUB_FIELDS = new Set([
   "api_key",
 ]);
 
-export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
-  if (!obj) return obj;
+/**
+ * Redact SCRUB_FIELDS anywhere in the payload — RECURSIVELY, through nested
+ * objects and arrays.
+ *
+ * It was one level deep until 2026-07-25, while its twin `scrubContext` in
+ * `lib/sentry.ts` already recursed over the same SCRUB_FIELDS set. That gap was
+ * silent but real: an audited write carrying a relation, e.g.
+ * `prisma.user.update({ where, data, include: { accounts: true } })`, wrote
+ * `after.accounts[0].access_token` / `refresh_token` / `id_token` VERBATIM into
+ * `audit_logs` — a table retained 365 days and served to admins by
+ * `GET /api/audit-log`. That reopened finding T-03 for any fork that includes a
+ * relation on an audited write. `tests/contracts/audit-scrub.test.ts` now asserts
+ * the nested case so it cannot regress silently again.
+ *
+ * Dates are passed through untouched (they are objects, but have no fields to
+ * redact and must survive as Dates for JSON serialization).
+ */
+function scrubValue(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(scrubValue);
+  if (v && typeof v === "object" && !(v instanceof Date)) {
+    return scrubObject(v as Record<string, unknown>);
+  }
+  return v;
+}
+
+function scrubObject(obj: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (SCRUB_FIELDS.has(k)) {
       out[k] = v == null ? v : "[redacted]";
     } else {
-      out[k] = v;
+      out[k] = scrubValue(v);
     }
   }
-  return out as T;
+  return out;
+}
+
+export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
+  if (!obj) return obj;
+  return scrubObject(obj) as T;
 }
 
 type AnyClient = {
@@ -102,7 +131,12 @@ export function computeChanges(
       if (SCRUB_FIELDS.has(key)) {
         changes[key] = { from: "[redacted]", to: "[redacted]" };
       } else {
-        changes[key] = { from: before[key], to: after[key] };
+        // Recurse into the value, not just the key. A top-level key like
+        // `accounts` is not itself Restricted, but the objects underneath it
+        // carry access_token/refresh_token — and `changes` is one of the fields
+        // GET /api/audit-log returns, so an unscrubbed nested value is served
+        // straight to the admin UI (2026-07-25 security review).
+        changes[key] = { from: scrubValue(before[key]), to: scrubValue(after[key]) };
       }
     }
   }

@@ -110,3 +110,58 @@ test("SCRUB_FIELDS includes all critical Restricted-class field names", () => {
     assert.ok(SCRUB_FIELDS.has(expected), `SCRUB_FIELDS must include "${expected}"`);
   }
 });
+
+// --- Nested-payload redaction (2026-07-25 security review) --------------------
+// `scrub` was one level deep while its twin `scrubContext` in lib/sentry.ts
+// already recursed. An audited write carrying a relation --
+// `prisma.user.update({ where, data, include: { accounts: true } })` -- wrote
+// OAuth tokens VERBATIM into audit_logs, a 365-day-retained table that
+// GET /api/audit-log serves to admins. These assertions are the regression guard
+// the original test file lacked, which is why the gap stayed silent.
+
+test("scrub redacts Restricted fields nested inside an object", () => {
+  const out = scrub({
+    id: "u1",
+    account: { provider: "polis", access_token: "at_secret", refresh_token: "rt_secret" },
+  });
+  const account = (out as unknown as Record<string, Record<string, unknown>>).account;
+  assert.equal(account.access_token, "[redacted]");
+  assert.equal(account.refresh_token, "[redacted]");
+  assert.equal(account.provider, "polis", "non-listed nested fields survive");
+});
+
+test("scrub redacts Restricted fields nested inside an array of objects", () => {
+  const out = scrub({
+    id: "u1",
+    accounts: [
+      { provider: "polis", access_token: "at_1", id_token: "id_1" },
+      { provider: "entra", access_token: "at_2" },
+    ],
+  });
+  const accounts = (out as unknown as Record<string, Record<string, unknown>[]>).accounts;
+  assert.equal(accounts[0].access_token, "[redacted]");
+  assert.equal(accounts[0].id_token, "[redacted]");
+  assert.equal(accounts[1].access_token, "[redacted]");
+  assert.equal(accounts[0].provider, "polis");
+});
+
+test("scrub preserves Date instances rather than flattening them to objects", () => {
+  const when = new Date("2026-07-25T00:00:00.000Z");
+  const out = scrub({ createdAt: when, nested: { updatedAt: when } });
+  assert.ok((out as unknown as Record<string, unknown>).createdAt instanceof Date);
+  assert.ok(
+    ((out as unknown as Record<string, Record<string, unknown>>).nested
+      .updatedAt as Date) instanceof Date,
+  );
+});
+
+test("computeChanges redacts Restricted values nested under a non-Restricted key", () => {
+  const changes = computeChanges(
+    { accounts: [{ provider: "polis", access_token: "old_secret" }] },
+    { accounts: [{ provider: "polis", access_token: "new_secret" }] },
+  );
+  const serialized = JSON.stringify(changes);
+  assert.ok(!serialized.includes("old_secret"), "before-value token must not appear in changes");
+  assert.ok(!serialized.includes("new_secret"), "after-value token must not appear in changes");
+  assert.ok(serialized.includes("[redacted]"));
+});

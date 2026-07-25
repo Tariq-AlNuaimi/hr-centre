@@ -70,7 +70,13 @@ test("scrub passes non-Restricted fields through byte-for-byte", () => {
       const out = scrub({ ...obj }) as Record<string, unknown>;
       for (const key of Object.keys(obj)) {
         if (SCRUB_FIELDS.has(key)) continue;
-        assert.equal(out[key], obj[key]);
+        // deepEqual, not equal: since 2026-07-25 `scrub` recurses, so a nested
+        // object/array comes back as a structurally identical COPY rather than
+        // the same reference (it has to — redacting a nested Restricted field
+        // means building a new object). Value-identity is the invariant this
+        // test is actually about; reference-identity was incidental to the old
+        // one-level implementation and is not something callers may rely on.
+        assert.deepEqual(out[key], obj[key]);
       }
     }),
   );

@@ -578,48 +578,27 @@ copies, which the jscpd Maintainable gate flags). Decision: **BUILD `components/
 every form imports. Zero new dependency; the relation-field sibling of the shared `EmptyState` /
 `RowActions`. A follow-up should teach `scaffold-entity` to emit the import instead of the inline copy.
 
-## 2026-07-18 — Shared list-query parser (`lib/list-query.ts`)
+## 2026-07-18 — Shared list-query parser + entity list-page — **RETIRED 2026-07-25**
 
-Scope: lib/list-query.ts
-Considered: **a query-builder / ORM-query lib** (Prisma already IS the query layer; a second
-query-string parser like `qs` + a filter DSL would duplicate the tiny search/sort/pagination parse
-this repo already open-codes), **leave it inline** (rejected — every scaffolded list `route.ts`
-re-opens the same ~10-line block: `parsePagination` + a `?search=` `contains` filter + an
-allowlisted `?sort=`/`?order=` parse, which the jscpd gate flags across `category`/`manufacturer`/
-`asset-model`/`asset`). Decision: **BUILD a 15-line generic `parseListQuery(searchParams, {searchField,
-sortable})`** returning `{ pagination, where, orderBy }` (where typed via a caller-supplied
-`Prisma.*WhereInput` generic so the routes stay type-safe and the sort allowlist stays injection-safe).
-Zero new dependency; reuses the shipped `parsePagination`. The list-route sibling of the shared
-`RowActions`/`RelationSelect` extractions.
+Scope: lib/list-query.ts · components/shared/EntityListPage.tsx
+Considered: (original entries — `parseListQuery` vs. hand-rolled per-route parsing; `EntityListPage<T>`
+vs. per-entity list pages — retained in git history at the commit that removed them.)
 
-## 2026-07-18 — Minimal CSV parser (`lib/csv.ts`)
+**Outcome: both BUILT, then DELETED unused.** Each entry closed with the same caveat — _"a follow-up
+should teach `scaffold-entity` to emit the thin wrapper"_ — and that follow-up never happened:
+`scripts/scaffold-entity.mjs` kept hand-rolling the identical ~90-line list page and importing
+`parsePagination`/`paginatedResponse` directly, so the only consumers these primitives ever had were
+the Asset-Tracker's own list pages. When that demo domain was removed (2026-07-25) both dropped to
+**zero importers**. `knip` could not see it — `components/shared/**` and `lib/**` are knip _entry_
+globs, so anything there is treated as a root, never as dead code.
 
-Scope: lib/csv.ts
-Considered: **a CSV library** (`papaparse` ~45KB, `csv-parse`, `@fast-csv/parse` — all rejected:
-each is a runtime dep >50KB min or drags a stream API, tripping the "runtime dep >50KB needs an
-ADR" Ask-before gate for a bounded, known-schema, ≤500-row asset import that needs only quoted-field
+**The reusable lesson, which is why this entry stays rather than being deleted:** a build-vs-buy
+_BUILD_ decision that depends on a follow-up to wire it is not finished when the code lands. Either
+wire the generator in the same change, or record the primitive as speculative. Extracting a shared
+abstraction whose only caller is the code you are about to delete produces exactly this outcome.
 
-- CRLF handling), **`String.split(',')`** (rejected — breaks on quoted fields containing commas /
-  newlines, the classic CSV footgun). Decision: **BUILD a ~40-line `lib/csv.ts`** (`parseCsv` — a
-  single-pass state machine handling `"quoted, fields"`, escaped `""`, and CR/LF; `parseCsvToObjects`
-  — header-keyed rows). Zero runtime dep; scoped to the T11 import path. If a fork needs streaming or
-  RFC-4180 edge cases at volume, `/scale-up` to `csv-parse` (a later ADR).
-
-## 2026-07-18 — Shared entity list-page (`components/shared/EntityListPage`)
-
-Scope: components/shared/EntityListPage.tsx
-Considered: **a table/CRUD-scaffold framework** (react-admin, Refine — rejected: they own routing/
-data/auth and would replace this repo's DataTable + use-entity-queries + next-intl seams wholesale
-for what is ~90 lines of glue), **leave the per-entity duplication** (rejected — every scaffolded
-list page re-opens the identical page/pageSize/search/sort state + params object + `useEntityList`
-
-- delete handler + `PageHeader`/`DataTable`/`EmptyState` wiring, which the jscpd Maintainable gate
-  flags once ≥4 simple entities exist). Decision: **BUILD a generic
-  `EntityListPage<T>({apiPath, basePath, t, buildColumns})`** on the shipped `DataTable`/`useEntityList`/
-  `useEntityMutations` primitives; each simple entity's list page collapses to a ~6-line call. Zero new
-  dependency; the page-level sibling of the `RowActions`/`RelationSelect`/`parseListQuery` extractions.
-  Entities with extra list features (asset: column filters + CSV import) keep their bespoke page. A
-  follow-up should teach `scaffold-entity` to emit the thin wrapper.
+A fork that wants either can recover it from git history; the durable fix is teaching
+`scaffold-entity` to emit the pattern, not re-adding an unused module.
 
 ## 2026-07-25 — Per-account brute-force lockout (`lib/account-lockout.ts`)
 

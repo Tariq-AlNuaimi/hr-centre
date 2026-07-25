@@ -12,12 +12,12 @@ Template-level security baseline. **When you fork this into a project, this file
 
 Every field carries one of four labels. Drives encryption, access, logging, retention. The template only ships the auth-and-audit surface; project-owned models inherit this framework.
 
-| Class            | Definition                                                      | Examples in the template                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ---------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Public**       | No harm if disclosed                                            | Static assets in `public/`, i18n message files in `messages/`, Sentry DSN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **Internal**     | No individual harm if leaked                                    | `audit_logs.action`, `audit_logs.entityType`, role definitions (`Role` enum), seed fixtures, `AUDIT_RETENTION_DAYS`, `RECYCLE_BIN_RETENTION_DAYS`                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **Confidential** | Disclosure harms individuals / contracts / competitive position | `users.email`, `users.name`, `users.image`, `users.lastLoginAt`, `audit_logs.before` / `after` / `changes` JSON blobs (they snapshot whatever entity you write — if the entity holds Confidential fields, the audit row inherits the label), `audit_logs.ipAddress`, `audit_logs.userAgent`, `DATABASE_URL` / `QUEUE_DATABASE_URL` (embed a DB credential; the latter only if the pg-boss queue seam is enabled)                                                                                                                                                                                                     |
-| **Restricted**   | Significant harm or legal liability                             | `AUTH_SECRET`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `CRON_SECRET`, `users.passwordHash` (Argon2id via `@node-rs/argon2`, legacy bcryptjs verified during the migration window — irreversible but still secret-equivalent if exfiltrated; ADR-039), Auth.js JWT cookies in transit, `accounts.refresh_token` / `access_token` / `id_token`, `AUTH_GOOGLE_SECRET` if OAuth is enabled, `SMTP_PASSWORD` if email is enabled, `AI_API_KEY` if the Claude-native AI layer is enabled (ADR-036), `POLIS_CLIENT_SECRET` / `SCIM_INTERNAL_SECRET` / `SCIM_WEBHOOK_SECRET` if enterprise SSO/SCIM is enabled (ADR-045) |
+| Class            | Definition                                                      | Examples in the template                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Public**       | No harm if disclosed                                            | Static assets in `public/`, i18n message files in `messages/`, Sentry DSN                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Internal**     | No individual harm if leaked                                    | `audit_logs.action`, `audit_logs.entityType`, role definitions (`Role` enum), seed fixtures, `AUDIT_RETENTION_DAYS`, `RECYCLE_BIN_RETENTION_DAYS`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Confidential** | Disclosure harms individuals / contracts / competitive position | `users.email`, `users.name`, `users.image`, `users.lastLoginAt`, `audit_logs.before` / `after` / `changes` JSON blobs (they snapshot whatever entity you write — if the entity holds Confidential fields, the audit row inherits the label), `audit_logs.ipAddress`, `audit_logs.userAgent`, `DATABASE_URL` / `QUEUE_DATABASE_URL` (embed a DB credential; the latter only if the pg-boss queue seam is enabled)                                                                                                                                                                                                                  |
+| **Restricted**   | Significant harm or legal liability                             | `AUTH_SECRET`, `SEED_ADMIN_PASSWORD`, `AUDIT_PURGE_TOKEN`, `CRON_SECRET`, `users.passwordHash` (Argon2id via `@node-rs/argon2` — the ONLY algorithm since the bcryptjs sunset completed 2026-07-25; irreversible but still secret-equivalent if exfiltrated; ADR-039), Auth.js JWT cookies in transit, `accounts.refresh_token` / `access_token` / `id_token`, `AUTH_GOOGLE_SECRET` if OAuth is enabled, `SMTP_PASSWORD` if email is enabled, `AI_API_KEY` if the Claude-native AI layer is enabled (ADR-036), `POLIS_CLIENT_SECRET` / `SCIM_INTERNAL_SECRET` / `SCIM_WEBHOOK_SECRET` if enterprise SSO/SCIM is enabled (ADR-045) |
 
 **Operational rules per class:**
 
@@ -32,9 +32,9 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 ## 2. Authentication — current
 
-🟢 **Auth.js v5 (next-auth beta) with Credentials provider, JWT session strategy.** Configuration lives in `lib/auth.ts`. Sign-in page: `/login` (per-locale). Middleware (`middleware.ts`) gates every non-public path and returns `401` on unauthenticated API calls.
+🟢 **Auth.js v5 (next-auth beta) with Credentials provider, JWT session strategy.** Configuration lives in `lib/auth.ts`. Sign-in page: `/login` (per-locale). Middleware (`middleware.ts`) gates every non-public path and returns `401` on unauthenticated API calls. **Public paths are defined in `i18n/route-decision.ts`, which is the authority** — currently `/login`, `/forgot-password`, `/reset-password`, `/api/auth/*`, `/api/health`, `/api/internal/*` (shared-secret gated instead) and `/api/v1/*`. **The `/api/v1/*` passthrough matters:** `next.config.ts` rewrites it onto the same `/api/*` handlers, so a handler reached via `/api/v1` does NOT get the middleware 401 — which is why the wrapper, not the middleware, is the real boundary (see Boundary checks below).
 
-- **Password hashing:** **Argon2id** (`@node-rs/argon2`, OWASP default; ADR-039) is the current algorithm — `hashPassword`/`verifyPassword` in `lib/password.ts`. Legacy **bcryptjs** hashes still verify during the migration window and are silently re-hashed to Argon2id on the next successful login (`needsRehash` also re-hashes an Argon2id hash weaker than the current params). Any project-introduced reset endpoint must use `lib/password.ts`. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2. Drop the bcrypt legacy-verify path once telemetry shows no bcrypt hashes remain (ADR-039 migration trigger).
+- **Password hashing:** **Argon2id** (`@node-rs/argon2`, OWASP default; ADR-039) is the current algorithm — `hashPassword`/`verifyPassword` in `lib/password.ts`. The bcryptjs migration window is **CLOSED** (completed 2026-07-25, OPEN-ITEMS 12): `verifyPassword` returns `false` for any hash that is not `$argon2*`. **Operational consequence** — a user whose row still carries a pre-ADR-039 bcrypt hash cannot log in at all and must go through `/forgot-password`; there is no silent upgrade path left. `needsRehash` still re-hashes an Argon2id hash weaker than the current params on successful login. Any project-introduced reset endpoint must use `lib/password.ts`. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2.
 - **Session payload:** JWT only. Carries `{id, role}` on the `token` and exposes them on `session.user` (typed via `types/index.ts`). The `sessions` table exists because the Prisma adapter is wired (needed for OAuth account linking), but JWT sessions are not written there.
 - **SSO / OAuth (ADR-024):** Microsoft Entra ID is wired into `lib/auth.ts` and is **dormant until both `AUTH_MICROSOFT_ENTRA_ID_ID` and `AUTH_MICROSOFT_ENTRA_ID_SECRET` are set** (then a "Sign in with Microsoft" button appears). `AUTH_ENFORCE_SSO=true` removes the credentials provider entirely so Entra (and its MFA) is the only way in — this closes T-02 for that deployment. New SSO users default to `VIEWER` (`mapSsoRole`, least privilege); an admin promotes them in-app. `allowDangerousEmailAccountLinking` is OFF, so an Entra email matching an existing password user is not auto-linked (anti-takeover). A Google stub remains commented for forks that want it. **Operational notes (ADR-024):** (1) Activation requires id + secret + **issuer** — issuer is mandatory so the provider can't silently fall back to the any-tenant `common` endpoint. (2) A `signIn` callback blocks **new** sign-ins by soft-deleted SSO users (the adapter path doesn't filter `deletedAt` like the credentials path does); an already-issued JWT still persists until `maxAge` — rotate `AUTH_SECRET` to revoke immediately (same accepted gap as credentials). (3) If an SSO user's email matches a **soft-deleted** credentials user, Auth.js returns `OAuthAccountNotLinked` and the SSO user is blocked until an admin **permanently** deletes the old account from the recycling bin.
 - **Public paths** (no session auth required) are listed in `middleware.ts`: `/login`, `/api/auth/*`, `/api/health`, `/api/internal/*`. Internal routes are gated by a shared secret via `withInternalAuth(tokenEnv, ...)`: the `x-internal-token` header, plus -- only on routes that opt in with `{ bearer: true }` -- `Authorization: Bearer` (needed by Vercel Cron, which cannot send custom headers; ADR-018). `x-internal-token`, when present, is authoritative. Internal routes compose `withRateLimit` so secret-guessing is throttled.
@@ -51,7 +51,7 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 🟢 Three-role enum: `ADMIN` / `EDITOR` / `VIEWER` (`prisma/schema.prisma` `Role`). Bound to `users.role`; the JWT carries it.
 
-- **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) or `withInternalAuth` (shared-secret) or `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) from `lib/api-helpers.ts`. UI gating is defense-in-depth, **not** the boundary.
+- **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) or `withEditorAuth` (ADMIN | EDITOR) or `withInternalAuth` (shared-secret) or `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) from `lib/api-helpers.ts` — **enforced by the `rihal-template/no-bare-api-route` ESLint rule at `error`**, which is what makes this a guarantee rather than a convention. Four handlers are deliberately public and allowlisted IN THAT RULE: `app/api/auth/[...nextauth]`, `app/api/auth/forgot-password`, `app/api/auth/reset-password` (these ARE the authentication surface) and `app/api/health` (liveness probe, returns only DB reachability). Adding a public route means editing the allowlist — a reviewable decision, not an omission. UI gating is defense-in-depth, **not** the boundary.
 - **Role wrappers:** `withAdminAuth` (ADMIN only) and `withEditorAuth` (ADMIN **or** EDITOR; rejects VIEWER) are both shipped in `lib/api-helpers.ts`. Use `withEditorAuth` on write routes editors should reach but viewers shouldn't. Finer-grained, per-resource permissions (a `can()` helper) remain a project-specific addition documented here.
 - **CSRF:** state-changing routes are same-origin + cookie-based; Auth.js sets `SameSite=Lax` session cookies, which blocks cross-site form/`fetch` POSTs from carrying the session. Custom POST/PUT/DELETE routes rely on this (no separate CSRF token). If a fork adds cross-origin browser clients or relaxes `SameSite`, add explicit CSRF protection (double-submit token or origin check) and note it here.
 - **Row-level scoping** (e.g. "users only see their own records") is project-specific. Add an explicit `WHERE` clause in every list / get query. Postgres RLS is not enabled by default.
@@ -63,14 +63,14 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 
 ## 4. Encryption — current
 
-| Layer                                  | State                                                                                                                                                                                                                                      |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| TLS in transit                         | 🟢 **Vercel terminates TLS automatically** for every `*.vercel.app` deployment and for custom domains added through the Vercel UI. No reverse proxy to manage. HSTS header is emitted by `next.config.ts` regardless.                      |
-| Disk encryption                        | Neon encrypts data at rest on its managed Postgres. The app itself is stateless on Vercel.                                                                                                                                                 |
-| Column encryption of Restricted fields | ⚠️ **None.** `passwordHash` is Argon2id-hashed (irreversible by design). If a downstream project introduces Restricted columns (salaries, API tokens), add pgcrypto or app-layer AES-256-GCM and a row here.                               |
-| Secrets in code                        | ✅ None. All in Vercel project env vars (prod) or local `.env` (gitignored). `.env.example` is in git; `.env` is in `.gitignore`. Enforced by gitleaks — run locally via `/ship` (and by `secrets-scan.yml` once CI is active at handoff). |
-| Password hashing                       | ✅ Argon2id (`@node-rs/argon2`, `lib/password.ts`; ADR-039), OWASP-baseline params. Legacy bcryptjs verified + auto-upgraded during the migration window. **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2.                                |
-| Auth.js JWT signing                    | ✅ `AUTH_SECRET` (Restricted). Rotation invalidates every session.                                                                                                                                                                         |
+| Layer                                  | State                                                                                                                                                                                                                                                                          |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TLS in transit                         | 🟢 **Vercel terminates TLS automatically** for every `*.vercel.app` deployment and for custom domains added through the Vercel UI. No reverse proxy to manage. HSTS header is emitted by `next.config.ts` regardless.                                                          |
+| Disk encryption                        | Neon encrypts data at rest on its managed Postgres. The app itself is stateless on Vercel.                                                                                                                                                                                     |
+| Column encryption of Restricted fields | ⚠️ **None.** `passwordHash` is Argon2id-hashed (irreversible by design). If a downstream project introduces Restricted columns (salaries, API tokens), add pgcrypto or app-layer AES-256-GCM and a row here.                                                                   |
+| Secrets in code                        | ✅ None. All in Vercel project env vars (prod) or local `.env` (gitignored). `.env.example` is in git; `.env` is in `.gitignore`. Enforced by gitleaks — run locally via `/ship` (and by `secrets-scan.yml` once CI is active at handoff).                                     |
+| Password hashing                       | ✅ Argon2id (`@node-rs/argon2`, `lib/password.ts`; ADR-039), OWASP-baseline params — the only accepted algorithm since the bcryptjs sunset completed 2026-07-25 (a surviving bcrypt hash fails closed; the user must reset). **Never** MD5 / SHA1 / raw SHA256 / plain PBKDF2. |
+| Auth.js JWT signing                    | ✅ `AUTH_SECRET` (Restricted). Rotation invalidates every session.                                                                                                                                                                                                             |
 
 **Default security headers:** the static ones (X-Frame-Options: DENY — matches the CSP `frame-ancestors 'none'`, the app is never framed; X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy, Strict-Transport-Security) are emitted by `next.config.ts`. **Content-Security-Policy is built per-request in `middleware.ts`** (a static header can't carry a nonce). `script-src` is **nonce-based** (`'self' 'nonce-<per-request>' 'strict-dynamic'`) — `'unsafe-inline'` is removed. Middleware sets the CSP (with the nonce) on both the request and response headers; Next.js reads the nonce from the request CSP header and auto-applies it to the scripts it emits, and the inline theme script in `app/[locale]/layout.tsx` carries it explicitly. `'unsafe-eval'` is added only in dev for HMR. `style-src` still allows `'unsafe-inline'` because the UI stack (ADR-029 — Radix overlay positioning, recharts SVG/ResponsiveContainer, sonner toasts, dnd-kit drag) emits dynamic **inline `style="..."` attributes** a nonce cannot cover (a nonce-per-style migration would require every one of those libraries to route styles through a nonced `<style>` — none do). The Sentry ingest origin is added to `connect-src` when `NEXT_PUBLIC_SENTRY_DSN` is set. See finding T-05 and recipe `shared-security/3-nonce-csp`.
 
@@ -141,7 +141,7 @@ Template-level baseline. Re-run per project on: scope expansion, new external in
 - **Who:** anyone with access to a user's mailbox or password manager
 - **Vector:** phishing; password reuse from another breach; insider sharing
 - **Blast:** full session at the user's role. ADMIN can mint users + change roles.
-- **Control:** Argon2id hashes (legacy bcrypt auto-upgraded; ADR-039) ✅; JWT signed with `AUTH_SECRET` ✅; audit log of every write incl. the login-time rehash (passwordHash scrubbed) ✅; soft-delete-aware login ✅; **10/min/IP rate limit on `/api/auth/*`, shared-state via Valkey when configured ✅**. **No MFA** — see **T-02**.
+- **Control:** Argon2id hashes (bcrypt sunset complete 2026-07-25 — a legacy hash fails closed, reset required; ADR-039) ✅; JWT signed with `AUTH_SECRET` ✅; audit log of every write incl. the login-time rehash (passwordHash scrubbed) ✅; soft-delete-aware login ✅; **10/min/IP rate limit on `/api/auth/*`, shared-state via Valkey when configured ✅**. **No MFA** — see **T-02**.
 
 ### T2 — Audit-log snapshot leak
 
@@ -214,18 +214,21 @@ ASVS Level 2 is a reasonable target once T-02 (MFA) is closed.
 
 _Summary index (at-a-glance); each finding's full note is its subsection below. Reformatted from wide single-line table cells for readability + diffability — content is verbatim (#17)._
 
-| ID   | Severity | Status                                                               | Title                                                       |
-| ---- | -------- | -------------------------------------------------------------------- | ----------------------------------------------------------- |
-| T-01 | High     | ✅ Closed (`e16a8c6`); multi-replica gap closed 2026-07-11 (ADR-035) | No rate limit on `/api/auth/*`                              |
-| T-02 | High     | Mitigation available (closed when SSO enforced)                      | No MFA                                                      |
-| T-03 | High     | ✅ Closed (`bb4918a`)                                                | `passwordHash` snapshotted into `audit_logs` on user update |
-| T-04 | Medium   | ✅ Closed (`104bc45`)                                                | Container image tag pinned to `:latest`                     |
-| T-05 | Medium   | ✅ Closed (`de555fb`); hardened (nonce on script-src)                | No CSP header                                               |
-| T-06 | Medium   | ✅ Closed (2026-06-12, ADR-018)                                      | No audit-log retention policy                               |
-| T-07 | Medium   | N/A — removed in ADR-006                                             | No encrypted backup pipeline                                |
-| T-08 | Low      | ✅ Closed (`bf5b542`)                                                | `session.user.role` typed as `any`                          |
-| T-09 | Low      | N/A — removed in ADR-006                                             | MinIO uses root credentials in the app                      |
-| T-10 | Medium   | ✅ Closed (2026-06-12)                                               | Staging secrets in `deployment-state` branch history        |
+| ID   | Severity | Status                                                               | Title                                                        |
+| ---- | -------- | -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| T-01 | High     | ✅ Closed (`e16a8c6`); multi-replica gap closed 2026-07-11 (ADR-035) | No rate limit on `/api/auth/*`                               |
+| T-20 | High     | ✅ Closed 2026-07-25 (`no-bare-api-route`)                           | Unwrapped API handler reachable via the `/api/v1` rewrite    |
+| T-21 | High     | ✅ Closed 2026-07-25 (recursive `scrub`)                             | Nested Restricted values reached `audit_logs` + the audit UI |
+| T-22 | Medium   | ✅ Closed 2026-07-25 (SHA-256 digest at rest)                        | Password-reset tokens stored in plaintext                    |
+| T-02 | High     | Mitigation available (closed when SSO enforced)                      | No MFA                                                       |
+| T-03 | High     | ✅ Closed (`bb4918a`)                                                | `passwordHash` snapshotted into `audit_logs` on user update  |
+| T-04 | Medium   | ✅ Closed (`104bc45`)                                                | Container image tag pinned to `:latest`                      |
+| T-05 | Medium   | ✅ Closed (`de555fb`); hardened (nonce on script-src)                | No CSP header                                                |
+| T-06 | Medium   | ✅ Closed (2026-06-12, ADR-018)                                      | No audit-log retention policy                                |
+| T-07 | Medium   | N/A — removed in ADR-006                                             | No encrypted backup pipeline                                 |
+| T-08 | Low      | ✅ Closed (`bf5b542`)                                                | `session.user.role` typed as `any`                           |
+| T-09 | Low      | N/A — removed in ADR-006                                             | MinIO uses root credentials in the app                       |
+| T-10 | Medium   | ✅ Closed (2026-06-12)                                               | Staging secrets in `deployment-state` branch history         |
 
 ### T-01 — No rate limit on `/api/auth/*`
 
@@ -290,6 +293,55 @@ Full-history gitleaks (2026-06-12, unshallowed clone) found 7 hits in `.deploy-s
 **No-High gate before sharing externally.** An open High finding should block an external share unless a time-bound risk acceptance is documented here by the project owner.
 
 ---
+
+### T-20 — Unwrapped API handler reachable unauthenticated via the `/api/v1` rewrite (High) ✅
+
+- **Found:** 2026-07-25, whole-repo security review (`security-architect`).
+- **Issue:** `next.config.ts` rewrites `/api/v1/:path*` → `/api/:path*` (ADR-013's versioning seam)
+  and `i18n/route-decision.ts` passes `/api/v1` through, so the SAME handler had two reachable paths
+  with DIFFERENT auth preconditions — `/api/reports` got middleware's JSON 401, `/api/v1/reports` got
+  nothing. Nothing forced a wrapper: `no-bare-internal-route` only covered `app/api/internal/**`.
+- **Reachability:** **Not exploitable in this tree** — all 13 routes were verified wrapped or
+  intentionally public. It was a latent trap: §2 told a fork author middleware gates every non-public
+  path, so the first unwrapped route a fork added would ship unauthenticated on the v1 prefix while
+  the author tested `/api/...`, saw a 401, and reasonably concluded it was protected.
+- **Outcome:** **Fixed.** New `rihal-template/no-bare-api-route` rule at `error` requires an auth
+  wrapper on every `app/api/**/route.ts` handler, with an explicit public allowlist in the rule file
+  (auth surface + health probe). Adding a public route is now a reviewable edit to a security file
+  rather than an omission. 13 RuleTester cases, including that `withRateLimit` alone does NOT count
+  as an auth gate. The fix does not depend on middleware, the rewrite, and route-decision.ts staying
+  in sync with one another.
+
+### T-21 — Nested Restricted values reached `audit_logs` and the admin audit UI (High) ✅
+
+- **Found:** 2026-07-25, whole-repo security review.
+- **Issue:** `scrub()` in `lib/prisma/audit-extension.ts` iterated one level deep, while its twin
+  `scrubContext` in `lib/sentry.ts` already recursed over the same `SCRUB_FIELDS`. An audited write
+  carrying a relation — `prisma.user.update({ where, data, include: { accounts: true } })` — wrote
+  `after.accounts[0].access_token` / `refresh_token` / `id_token` **verbatim**. `computeChanges`
+  compared by top-level key, so the whole relation also landed in `changes`, which
+  `GET /api/audit-log` returns to admins. `audit_logs` is retained 365 days by default.
+- **Reachability:** No such write exists in the shipped tree (the baseline schema has no audited
+  model with an `accounts` include), so this reopened T-03 **for any fork** that adds one.
+- **Outcome:** **Fixed.** `scrub` recurses through objects and arrays (Dates passed through intact);
+  `computeChanges` scrubs values, not just keys. Four regression assertions added to
+  `tests/contracts/audit-scrub.test.ts` — nested object, nested array, Date preservation, and a
+  `computeChanges` case asserting neither the before- nor after-token appears in the serialized
+  output. The absence of a nesting case is why this stayed invisible.
+
+### T-22 — Password-reset tokens stored in plaintext (Medium) ✅
+
+- **Found:** 2026-07-25, whole-repo security review.
+- **Issue:** `forgot-password` persisted `randomBytes(32)` raw and `reset-password` matched it by
+  equality, making `verification_tokens` a table of live bearer credentials. Any **read** of that
+  table — a Neon branch or snapshot, a backup, a support query, a future read-only SQL surface —
+  allowed completing a reset on any account with an outstanding token, no password required. That is
+  the capability Argon2-hashing `passwordHash` exists to deny, reintroduced for a 1-hour window.
+- **Outcome:** **Fixed.** Only `sha256(token)` is stored; the raw value goes in the email; lookup is
+  by digest. SHA-256 rather than Argon2 is correct here — the input is 32 bytes of CSPRNG output, not
+  a low-entropy human secret, so there is no dictionary to slow down. Same change also added the
+  `deletedAt: null` filter to `reset-password`'s user lookup, which `forgot-password` already applied
+  when issuing (an off-boarded account's hash could otherwise be rewritten inside the window).
 
 ## 12. Suppression log
 

@@ -94,9 +94,18 @@ function checkSegment(seg) {
   if (cmd === "git" && (args[0] === "checkout" || args[0] === "restore")) {
     const rest = args.slice(1);
     const discardsDot = rest.includes(".");
-    const longFlag = rest.some((a) => a.startsWith("--")); // `--`, `--force`, `--source=...`, `--staged`
+    // Match the flags that ACTUALLY discard work, not every `--*` (2026-07-25
+    // senior review). The previous `a.startsWith("--")` test denied `--track`,
+    // `--quiet`, `--orphan` and `git restore --staged` -- none of which throw
+    // anything away (`--staged` only UNSTAGES; it is the least destructive
+    // restore form). Over-broad denials train the operator to wave the gate
+    // through, which costs more safety than the extra coverage bought.
+    // `--` alone is the pathspec separator: `git checkout -- <path>` is the
+    // classic discard-my-edits form, so it stays denied.
+    const DESTRUCTIVE = new Set(["--", "--force", "--hard", "--ours", "--theirs", "--worktree"]);
+    const destructiveLong = rest.some((a) => DESTRUCTIVE.has(a) || a.startsWith("--source="));
     const forceShort = rest.some((a) => a === "-f");
-    if (discardsDot || longFlag || forceShort)
+    if (discardsDot || destructiveLong || forceShort)
       return `\`git ${args[0]}\` discarding tracked-file changes (\`.\` / \`--\` / \`--force\`) throws away uncommitted work; commit/stash first or ask the operator (deny-listed policy)`;
   }
   // 3. chmod 777 (incl. -R) -- world-writable

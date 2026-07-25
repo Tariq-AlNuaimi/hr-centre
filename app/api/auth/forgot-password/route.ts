@@ -1,5 +1,5 @@
 import { NextRequest, after } from "next/server";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { ok, err } from "@/lib/api-response";
@@ -62,9 +62,21 @@ export async function POST(req: NextRequest): Promise<Response> {
       // set, so this bulk delete is allowed and unaudited by design.
       await prismaUnfiltered.verificationToken.deleteMany({ where: { identifier: email } });
 
+      // The raw token goes in the EMAIL; only its SHA-256 digest is persisted.
+      // Storing the raw value made `verification_tokens` a table of live bearer
+      // credentials: anyone who could READ it -- a Neon branch or snapshot, a
+      // backup, a support query, a future read-only SQL surface -- could complete
+      // a reset on any account with an outstanding token, no password needed.
+      // That is precisely the capability Argon2-hashing `passwordHash` exists to
+      // deny, reintroduced for a 1-hour window per account (2026-07-25 review).
+      // A digest is sufficient because the lookup is by exact equality, not a
+      // range scan, and SHA-256 is right here (not Argon2) because the input is
+      // 32 bytes of CSPRNG output, not a low-entropy human secret -- there is no
+      // dictionary to slow down.
       const token = randomBytes(32).toString("base64url");
+      const tokenHash = createHash("sha256").update(token).digest("hex");
       await prismaUnfiltered.verificationToken.create({
-        data: { identifier: email, token, expires: new Date(Date.now() + TOKEN_TTL_MS) },
+        data: { identifier: email, token: tokenHash, expires: new Date(Date.now() + TOKEN_TTL_MS) },
       });
 
       const url = `${origin}/reset-password?token=${token}`;
