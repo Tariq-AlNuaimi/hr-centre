@@ -57,7 +57,6 @@
 - lib/env.ts: env
 - lib/export.ts: neutralizeFormula, ExportColumn, ToExcelOptions, toExcel, excelDownloadHeaders
 - lib/format.ts: formatDateTime, formatDate
-- lib/list-query.ts: parseListQuery
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -102,7 +101,6 @@
 - components/shared/DataView.tsx
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
-- components/shared/EntityListPage.tsx
 - components/shared/FormField.tsx
 - components/shared/FormLayout.tsx
 - components/shared/KanbanBoard.impl.tsx
