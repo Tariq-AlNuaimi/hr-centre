@@ -19,12 +19,20 @@ context tax on it; forks never received it anyway (`doc-manifest.json` classifie
 | `docs/INVENTORY-BY-OBJECTIVE.md`, `docs/REPO-INVENTORY.md`, `docs/harness-inventory.md`                              | three hand-maintained inventories of the same repo — superseded by the auto-generated `docs/REPO-MAP.md`, which cannot drift (one of them had drifted: it claimed 10 ESLint rules when there were 13) |
 | `docs/claude-ecosystem-comparison*.md`, `deferred-adoption-plan`, `enterprise-pivot-analysis`, `plugin-eval-2026-07` | point-in-time analyses, already acted on                                                                                                                                                              |
 
-**Retrieving anything:**
+**Retrieving anything.** The archive point is commit **`3e5a105`** — the last commit where these
+files existed in the tree. It is an **ancestor of this branch**, so the content is on the remote and
+recoverable by SHA from any clone:
 
 ```bash
-git show template-history-2026-07:docs/HARNESS-V2-EVIDENCE.md
-git show template-history-2026-07 --stat        # full file list
+git show 3e5a105:docs/HARNESS-V2-EVIDENCE.md   # one file
+git show 3e5a105 --stat                        # what was there
+git log --diff-filter=D --name-only -1 HEAD    # what this pass deleted
 ```
+
+> The local tag `template-history-2026-07` also points at `3e5a105`, but **it did not push** (the
+> git proxy refused tag pushes in that session), so do not rely on the tag name from a fresh clone
+> — **use the SHA**. Re-create the tag any time with
+> `git tag -a template-history-2026-07 3e5a105`.
 
 **If you hit a dead link.** ADRs and ledgers still cite these paths — deliberately. They are
 historical records citing the input that produced them, and rewriting ~70 files to strip the
