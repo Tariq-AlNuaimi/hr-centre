@@ -8,26 +8,26 @@ When you resolve an item, update the source record; re-generate the gist here if
 **Legend** — Effort: S (hours) · M (a day) · L (multi-day/own program). Blocked-by tells you what
 gates it.
 
-| #   | Item                                                                        | Category        | Effort       | Blocked by                          |
-| --- | --------------------------------------------------------------------------- | --------------- | ------------ | ----------------------------------- |
-| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment           | UI polish       | S            | —                                   |
-| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file   | Harness/i18n    | M            | —                                   |
-| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats            | Supply-chain    | S            | —                                   |
-| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                    | Feature         | S            | —                                   |
-| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                   | Feature         | S            | —                                   |
-| 6   | Asset Tracker: **bulk actions** on the list (T-app-floor)                   | Feature         | M            | nothing                             |
-| 7   | Cascade: replace the `category` **enum axis** with a Category-entity picker | Feature/UX      | M            | product decision                    |
-| 8   | WS-5 embeddings **provider round-trip**                                     | AI/RAG          | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
-| 9   | `ai-eval` `/ship` gate (dormant)                                            | AI quality      | —            | a fork adds `AI_API_KEY` + fixtures |
-| 10  | SSO / Microsoft Entra (dormant)                                             | Auth            | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
-| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                   | CI/security     | —            | paid Actions / handoff              |
-| 12  | Remove **bcryptjs**                                                         | Debt sunset     | S            | legacy `$2*` hashes = 0 for 90d     |
-| 13  | Retire the **antd type-shim**                                               | Debt sunset     | S            | next DataTable refactor             |
-| 14  | **Better Auth** migration                                                   | Auth/program    | L            | ADR-056 trigger fires               |
-| 15  | Full **bus-factor** program (multi-maintainer, CI)                          | Harness/program | L            | team growth                         |
-| 16  | **Atomic audit** (Postgres triggers)                                        | Security        | M            | regulated data / handoff            |
-| 17  | **Account lockout** / distributed rate limit                                | Security        | M            | multi-instance / abuse              |
-| 18  | uptime monitoring / Storybook recipes (#28)                                 | Ops/DX          | M            | need arises                         |
+| #   | Item                                                                         | Category        | Effort       | Blocked by                          |
+| --- | ---------------------------------------------------------------------------- | --------------- | ------------ | ----------------------------------- |
+| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment            | UI polish       | S            | —                                   |
+| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file    | Harness/i18n    | M            | —                                   |
+| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats             | Supply-chain    | S            | —                                   |
+| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                     | Feature         | S            | —                                   |
+| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                    | Feature         | S            | —                                   |
+| 6   | ✅ **DONE** (2026-07-25) — Asset list **bulk actions** (multi-select delete) | Feature         | M            | —                                   |
+| 7   | Cascade: replace the `category` **enum axis** with a Category-entity picker  | Feature/UX      | M            | product decision                    |
+| 8   | WS-5 embeddings **provider round-trip**                                      | AI/RAG          | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
+| 9   | `ai-eval` `/ship` gate (dormant)                                             | AI quality      | —            | a fork adds `AI_API_KEY` + fixtures |
+| 10  | SSO / Microsoft Entra (dormant)                                              | Auth            | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
+| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                    | CI/security     | —            | paid Actions / handoff              |
+| 12  | Remove **bcryptjs**                                                          | Debt sunset     | S            | legacy `$2*` hashes = 0 for 90d     |
+| 13  | Retire the **antd type-shim**                                                | Debt sunset     | S            | next DataTable refactor             |
+| 14  | **Better Auth** migration                                                    | Auth/program    | L            | ADR-056 trigger fires               |
+| 15  | Full **bus-factor** program (multi-maintainer, CI)                           | Harness/program | L            | team growth                         |
+| 16  | **Atomic audit** (Postgres triggers)                                         | Security        | M            | regulated data / handoff            |
+| 17  | **Account lockout** / distributed rate limit                                 | Security        | M            | multi-instance / abuse              |
+| 18  | uptime monitoring / Storybook recipes (#28)                                  | Ops/DX          | M            | need arises                         |
 
 ---
 
@@ -53,16 +53,18 @@ was already fixed 2026-07-18 — this is the remaining enum-label piece.)
 unpinned. Low blast radius (local dev-reporting), `npm audit` clean. Pin all three in one pass.
 Register: `V2-106/supply-chain`.
 
-### 4–6. Asset Tracker feature gaps — **S–M**
+### 4–6. Asset Tracker feature gaps — ✅ **ALL DONE (2026-07-25)**
 
-The pilot graduated to T2/T9/T11 but three table-stakes sub-features are still partial/deferred
-(`docs/blueprints/asset-tracker.md` parity table):
+The pilot graduated to T2/T9/T11; these three remaining table-stakes sub-features are now closed
+(`docs/blueprints/asset-tracker.md` parity table + app-floor checklist updated):
 
-- **T4 location** — `assignee → User?` is in; a location/site field is deferred.
-- **T6 warranty** — `purchasedAt` is in; warranty-expiry/terms fields deferred.
-- **Bulk actions** — the app-floor "bulk actions" checklist item is `[~]` deferred (the list has no
-  multi-select bulk delete/edit). Note: any bulk write MUST stay audited (per-row in a transaction,
-  never `createMany` — ADR-010 / `no-unaudited-bulk-write`), like the CSV import does.
+- **T4 location** — ✅ `Asset.location` (nullable, additive migration), on the form + record type.
+- **T6 warranty** — ✅ `Asset.warrantyExpiresAt` + `warrantyTerms` (same migration).
+- **Bulk actions** — ✅ multi-select on the list via the shared `DataTable`'s existing
+  `rowSelection`, driving `POST /api/asset/bulk-delete`. The bulk write stays audited: per-row
+  `prisma.asset.delete` inside ONE `$transaction`, never `deleteMany` (ADR-010 /
+  `no-unaudited-bulk-write`) — verified live (3 deletes → 3 DELETE `audit_logs` rows + all three
+  soft-deleted/recoverable). Captures + critique: `docs/verification/asset-bulk-actions/`.
 
 ### 7. Cascade: replace the enum axis — **M, product decision**
 

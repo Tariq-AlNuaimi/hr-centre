@@ -64,7 +64,7 @@
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, ipAddress, userAgent, timestamp
 - CustomFieldDef: id, label, key, type, required, createdAt, updatedAt, deletedAt, deletedBy
-- Asset: id, assetTag, name, serial, purchasedAt, status
+- Asset: id, assetTag, name, serial, location, purchasedAt, warrantyExpiresAt, warrantyTerms, status
 - Category: id, name, description, createdAt, updatedAt, deletedAt, deletedBy, assetModels
 - Manufacturer: id, name, website, createdAt, updatedAt, deletedAt, deletedBy, assetModels
 - AssetModel: id, name, categoryId, category, manufacturerId, manufacturer, assets, createdAt, updatedAt, deletedAt, deletedBy

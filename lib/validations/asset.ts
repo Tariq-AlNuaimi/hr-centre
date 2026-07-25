@@ -32,8 +32,15 @@ export const updateAssetSchema = z.object({
   customFields: z.record(z.string(), z.unknown()).optional(),
 });
 
+// Bulk-delete payload for the list's multi-select (T-app-floor). Bounded at the schema
+// level too, so an oversized batch is rejected at the boundary before any DB work.
+export const bulkDeleteAssetSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1).max(100),
+});
+
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;
 export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
+export type BulkDeleteAssetInput = z.infer<typeof bulkDeleteAssetSchema>;
 
 // Status lifecycle (US4 / ADR-059) — the invariant the schema alone can't state.
 // IN_STOCK↔ASSIGNED, IN_STOCK→REPAIR→IN_STOCK, any→RETIRED (terminal). A same-status

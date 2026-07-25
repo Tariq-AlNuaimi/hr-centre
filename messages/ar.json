@@ -222,7 +222,13 @@
     "importAction": "Import",
     "importing": "Importing…",
     "importSuccess": "Imported {count} assets",
-    "importFailed": "Import failed"
+    "importFailed": "Import failed",
+    "bulkSelected": "{count} selected",
+    "bulkDeleteAction": "Delete selected",
+    "bulkDeleting": "Deleting…",
+    "bulkDeleteConfirm": "Delete {count} selected assets? They move to the recycling bin.",
+    "bulkDeleted": "Deleted {count} assets",
+    "bulkDeleteFailed": "Bulk delete failed"
   },
   "categorys": {
     "name": "Name",

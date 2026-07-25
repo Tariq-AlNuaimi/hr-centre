@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { getAssetColumns, type AssetRecord } from "@/components/asset/AssetColumns";
 import { AssetImport } from "@/components/asset/AssetImport";
+import { AssetBulkActions } from "@/components/asset/AssetBulkActions";
 import { useEntityList, useEntityMutations } from "@/hooks/use-entity-queries";
 import { useNotify } from "@/hooks/use-notify";
 
@@ -44,6 +45,8 @@ export default function AssetsPage() {
   const [category, setCategory] = useState<string>();
   // Bumped after a bulk import to re-key the list query so it refetches (the API ignores `_r`).
   const [refreshNonce, setRefreshNonce] = useState(0);
+  // Multi-select for bulk actions (T-app-floor). Keys are asset ids (DataTable `rowKey="id"`).
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const params: Record<string, string> = {
     page: String(page),
@@ -90,10 +93,21 @@ export default function AssetsPage() {
           </Button>
         }
       />
+      <AssetBulkActions
+        selectedIds={selectedIds}
+        onDone={() => {
+          setSelectedIds([]);
+          setRefreshNonce((n) => n + 1);
+        }}
+      />
       <DataTable<AssetRecord>
         columns={columns}
         dataSource={data?.data ?? []}
         loading={isLoading}
+        rowSelection={{
+          selectedRowKeys: selectedIds,
+          onChange: (keys) => setSelectedIds(keys.map(String)),
+        }}
         total={data?.total ?? 0}
         page={page}
         pageSize={pageSize}

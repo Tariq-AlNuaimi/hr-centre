@@ -93,7 +93,9 @@ ticketing, ITIL, MDM, ledger, procurement — are explicitly OUT to keep the pil
 ## Universal app-floor checklist (V2-203)
 
 - Per list: search `[x]` · filter `[x]` · sort `[x]` · saved views `N/A` (pilot) · pagination `[x]` ·
-  export `[x]` · bulk actions `[~]` (deferred) · empty state `[x]` — all via the shared `DataTable`.
+  export `[x]` · bulk actions `[x]` (2026-07-25: multi-select via the shared `DataTable`'s
+  `rowSelection` + `POST /api/asset/bulk-delete`, per-row audited deletes in one `$transaction`,
+  NOT `deleteMany` — ADR-010) · empty state `[x]` — all via the shared `DataTable`.
 - Per entity: detail `[x]` · edit `[x]` · audit `[x]` (auditExtension) · delete/restore `[x]` (soft-delete + recycling bin).
 - Per app: nav `[x]` (scaffold adds sidebar link) · notifications `N/A` · settings `N/A` · help/onboarding `N/A` · activity `[x]` (audit feed).
 
