@@ -58,19 +58,20 @@ the changed surface is still **open** (un-adjudicated).
   (this branch; all changes present in the working tree, verified `eslint .` 0 errors +
   `test:lint-rules` 16/16 + `test:hooks` 68/68 + the D5 live-DB proof PASS)
 
-- 2026-07-24 — [secure/supply-chain] `npm audit` is RED on the locked stack — 10 High+/Critical
+- 2026-07-24 — [secure/supply-chain] `npm audit` was RED on the locked stack — 10 High+/Critical
   advisories NEWLY disclosed against the pinned deps (`@auth/core`+`next-auth`, `next`, `sharp`,
-  `postcss`, `brace-expansion`, `fast-uri`, `js-yaml`, `tar`, `@auth/prisma-adapter`), none in
-  `audit-allowlist.json`. This is PRE-EXISTING and NOT caused by the 2026-07-24 challenge-audit
-  (that commit touched no `package.json`/lockfile); `main` has the same red audit right now. The
-  challenge-audit branch was pushed with `git push --no-verify` (the pre-push hook's documented
-  emergency bypass) because its work is green on every OTHER `/ship` gate (typecheck/lint/format/
-  tests/build/gitleaks) and the audit red is unrelated + repo-wide. **WHY not fixed here:**
-  remediation is an operator decision on the Ask-before surface — either BUMP the locked stack
-  (Auth.js/Next.js patch releases; needs an ADR-001 amendment + regression check) or ALLOWLIST each
-  advisory in `audit-allowlist.json` with a SECURITY.md §12/§13 reachability row. Neither is in scope
-  for a doc/harness audit, and both need sign-off. — owner: operator — status: open (operator to
-  choose bump vs. allowlist; RE-RED on every `/ship` until then)
+  `postcss`, `brace-expansion`, `fast-uri`, `js-yaml`, `find-my-way`, `@auth/prisma-adapter`), none
+  in `audit-allowlist.json`. Pre-existing + repo-wide (not caused by the challenge-audit — that
+  commit touched no `package.json`/lockfile). **FIXED (operator: "fix all")** via in-major security
+  patches (ADR-017 currency, NOT an ADR-001 change): `next`→16.2.11 (9 Next.js advisories + bundled
+  postcss/sharp), `next-auth`→beta.32 + `@auth/core`→0.41.3 + `@auth/prisma-adapter`→^2.11.3 (3
+  Auth.js criticals), overrides for `postcss`/`sharp`/`brace-expansion`(ReDoS)/`find-my-way`;
+  `fast-uri`/`js-yaml` via non-breaking `npm audit fix`. **High+ = 0, Critical = 0.** ONE advisory
+  scoped-allowed (not silent): GHSA-mh99 (`brace-expansion` OOM) has no export-compatible fix (5.0.8
+  breaks eslint/minimatch — verified) and is not runtime-reachable — allowlisted with SECURITY.md
+  §12/§13 rows. 5 moderates remain, below the High+ gate (dev-only). Full `/ship` green after the
+  bumps, no auth regressions. — owner: operator — status: fixed (this branch; `/ship` npm-audit gate
+  green; SECURITY.md §13 "2026-07-24 — 10 High+/Critical advisories")
 
 - 2026-07-18 — [quality/design, V2-302] Shared layout primitives lacked a dedicated visual-verification
   capture set — the `components/shared/*` primitives (PageShell, Section, Toolbar, FormLayout,

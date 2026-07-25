@@ -1,4 +1,11 @@
 {
   "$comment": "Scoped npm-audit allowlist consumed by scripts/ship.mjs (the /ship gate). Each entry is a High+ advisory with NO non-breaking upstream fix, triaged as not reachable in this template. RULE: every id here MUST have a matching row in SECURITY.md §13 (tracked CVE remediations) and §12 (suppression log). Re-audit on every dependency bump; delete the entry the moment a fix ships or reachability changes. A High+ advisory NOT listed here still fails /ship.",
-  "advisories": []
+  "advisories": [
+    {
+      "id": "GHSA-mh99-v99m-4gvg",
+      "package": "brace-expansion",
+      "severity": "high",
+      "reason": "DoS (unbounded brace-expansion → OOM). Fixed only in brace-expansion 5.0.8, which CHANGED its module export shape (`expand is not a function`) and breaks the minimatch/glob versions bundled by eslint, eslint-config-next, archiver (exceljs), testcontainers, and node-gyp — so no export-compatible patched version exists (the 2.x line, pinned here at ^2.1.2, fixes the sibling ReDoS GHSA-3jxr but not this OOM). Not reachable in the app runtime: brace-expansion runs only inside build/lint/dev/test tooling (glob/minimatch file-matching) and the exceljs export path, none of which expand attacker-controlled brace patterns. Re-audit + drop this entry when eslint/minimatch upgrade to a new-export brace-expansion, or when a 2.x backport ships. SECURITY.md §12/§13."
+    }
+  ]
 }
