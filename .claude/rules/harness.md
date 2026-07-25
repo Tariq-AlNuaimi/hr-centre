@@ -90,9 +90,16 @@ wall-clock, and wall-clock is Pillar 1 (Speed & Velocity).
 ## Memory lifecycle (cross-session durability)
 
 - **In-flight state** → `docs/SESSION-HANDOFF.md` + its data source `docs/session-state.json` —
-  both committed to the working branch, **never merged to `main`**, pruned from forks; a
-  fork/checkout that lacks `session-state.json` gets a fresh skeleton regenerated at SessionStart
-  (V2-006).
+  **gitignored, local to the machine, never committed anywhere** (changed 2026-07-25). A
+  checkout that lacks `session-state.json` gets a fresh skeleton regenerated at SessionStart
+  (V2-006), so the status tooling always works.
+  The old rule was "committed to the working branch, never merged to `main`" — a state git cannot
+  hold, since staying off `main` depended on remembering to strip the files at every merge. It
+  failed three times (`4b73206` "D1 recurrence", then twice inside the 2026-07-25 cleanup itself),
+  each time shipping the template's own closed-program status to forks as their starting point.
+  **Consequence to internalize:** in-flight state now dies with the container. Anything worth
+  keeping past this session goes in `docs/agent-memory.md` (below) — that is the durable half of
+  this pair, and it is the answer to "but I need this next session," not a commit of these files.
 - **Durable decisions/gotchas/conventions** → `docs/agent-memory.md` — committed, reaches `main`,
   inherited by forks; a ≤30-line digest is surfaced at SessionStart with full sections retrieved on
   demand (V2-102). Add via `/remember`.

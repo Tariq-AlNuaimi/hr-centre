@@ -191,6 +191,13 @@ grid — it maps one-to-one onto the scaffold flags:
 
 ## Architecture sketch
 
+> **More than one plausible shape? Run `/explore` FIRST.** It diverges 2–3 materially
+> different approaches, scores them against the five pillars, recommends one, and drafts
+> the rejected options into an ADR stub — so the sketch below records a decision with its
+> alternatives on record, not the first idea that occurred. Skip it when the shape is
+> genuinely settled (a scaffolded CRUD entity on convention); reach for it when the sketch
+> would otherwise be a coin-flip you can't justify later.
+
 - Routes (method + path + auth wrapper) and the service/function each calls
 - Where state lives (DB / session / client) — and an explicit check that this
   does NOT duplicate an existing screen, setting, route, or service. Name the

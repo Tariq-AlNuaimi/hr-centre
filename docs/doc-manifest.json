@@ -16,12 +16,12 @@
     {
       "glob": "docs/SESSION-HANDOFF.md",
       "inheritance": "template-dev",
-      "why": "branch-only in-flight state; never reaches fork main"
+      "why": "in-flight session state — GITIGNORED since 2026-07-25 (local to the machine, never committed anywhere). The rule still classifies it so the on-disk prune sweeps the regenerated file out of a fork's tree; it can no longer reach any branch."
     },
     {
       "glob": "docs/session-state.json",
       "inheritance": "template-dev",
-      "why": "per-session in-flight state (the SESSION-HANDOFF.md data source) — never merged to main, pruned from forks (.claude/rules/harness.md Memory lifecycle). The schema (session-state.schema.json) stays fork-inherited: a fork regenerates its own state against it."
+      "why": "per-session in-flight state (the SESSION-HANDOFF.md data source) — GITIGNORED since 2026-07-25 after leaking to main three times; local-only, regenerated as a skeleton at SessionStart (V2-006). The schema (session-state.schema.json) stays fork-inherited: a fork regenerates its own state against it."
     },
     {
       "glob": "docs/INVENTORY-BY-OBJECTIVE.md",

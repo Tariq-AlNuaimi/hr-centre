@@ -29,6 +29,42 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-07-25 — [maintainable/harness] **Repo-wide audit: the harness is clean; the ratio is the
+  only real finding.** Swept for dead weight beyond the template-cleanliness pass. What came back
+  **clean**: every one of the 51 `scripts/*.mjs` is referenced by `package.json`, a hook, a skill,
+  or CI; 57 of 62 ADRs are cited by ID, and the 5 that aren't are 4 **superseded** records
+  (ADR-003/004/005 → ADR-006, ADR-016 extracted to its own repo — ADRs are historical records and
+  correctly stay) plus ADR-038, which is uncited by ID but **actively enforced**
+  (`package.json` `engines.node >= 24`, `.nvmrc`); `knip` is green on the TS surface.
+  The **one real finding**: the non-product ratio is **4.6:1** (13.7k product vs 22.2k harness +
+  15.0k tests + 25.9k text docs) — _worse_ than the 4.2:1 the 2026-07-25 WON'T-DO entry recorded,
+  because that pass deleted ~2.8k lines of PRODUCT (the demo domain) while non-product held flat.
+  Not re-litigated: the operator already adjudicated this ratio when closing OPEN-ITEMS 13/14/15,
+  and the test half (15.0k tests / 13.7k product, ≈1.1:1) is healthy by any standard. Recorded so
+  the number is honest rather than inherited from a stale measurement. — owner: operator —
+  status: adjudicated(2026-07-25)
+
+- 2026-07-25 — [maintainable/harness] **`/explore` was orphaned by archiving ADR-059.** The
+  deleted ADR was the ONLY file citing the skill (4 mentions); after the cleanup nothing in
+  `CLAUDE.md`, the rules, or any SKILL.md pointed at it, so a working skill became undiscoverable —
+  a self-inflicted regression from this session's own archival pass. Fixed by citing it where it
+  actually belongs: the Architecture-sketch section of `.claude/skills/blueprint/SKILL.md`, which
+  is the step `/explore` feeds. Generalizable lesson: archiving a doc can orphan a _tool_, not just
+  a citation — when removing a doc, grep what it was the sole referent for. — owner: operator —
+  status: fixed(this branch — see `.claude/skills/blueprint/SKILL.md` "Architecture sketch")
+
+- 2026-07-25 — [maintainable/process] **Session-state files are now GITIGNORED** (operator
+  decision). `.gitignore` previously mandated "TRACKED on working branches, never merged to
+  `main`" — a state git cannot hold, since staying off `main` depended on remembering to strip
+  them at every merge. It failed **three times**: `4b73206` ("D1 recurrence"), then twice inside
+  this cleanup, where `git rm --cached` + `git add -A` silently re-staged them and, on the retry,
+  `git commit -- <path>` re-added them from the working tree. Every generic tool pushes toward the
+  failure, including the Stop hook's untracked-file check. Given up: they no longer survive a fresh
+  remote container mid-program — mitigated because SessionStart regenerates a valid skeleton
+  (V2-006) and durable knowledge was never meant to live there (`docs/agent-memory.md` is the
+  tracked, fork-inherited half). `scripts/ship.mjs` keeps its `session-state` gate as the backstop
+  for clones that still have them tracked. — owner: operator — status: adjudicated(2026-07-25)
+
 - 2026-07-25 — [maintainable/scope] **Asset-Tracker demo domain REMOVED from the template**
   (operator decision, template-cleanliness audit). The V2-210 pilot domain — `Asset`, `Category`,
   `Manufacturer`, `AssetModel`, `CustomFieldDef` (~2,800 LOC: 5 models + 5 migrations, 15 pages,
