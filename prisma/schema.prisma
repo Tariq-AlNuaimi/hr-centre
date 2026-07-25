@@ -164,7 +164,14 @@ model Asset {
   assetTag    String @unique
   name        String
   serial      String?
+  // Physical site / location of the asset (T4). Free-text; a fork can promote it to a
+  // Location entity via /scaffold-entity + --relations if it needs structured sites.
+  location    String?
   purchasedAt DateTime?
+  // Warranty coverage (T6): expiry date + free-text terms/notes. Optional — nullable so the
+  // migration is forward-compatible (never drops a column the running version reads).
+  warrantyExpiresAt DateTime?
+  warrantyTerms     String?
   status      AssetStatus @default(IN_STOCK)
   // `category` enum RETAINED for forward-compat (never drop a column the running version reads);
   // the real hierarchy is `model → AssetModel → {category, manufacturer}` (T2, 2026-07-18).

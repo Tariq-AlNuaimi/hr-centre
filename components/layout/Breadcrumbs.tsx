@@ -66,11 +66,11 @@ export function Breadcrumbs() {
           try {
             label = tCommon(navKey);
           } catch {
-            label = segment;
+            label = humanizeSegment(segment);
           }
         }
       } else {
-        label = segment;
+        label = humanizeSegment(segment);
       }
 
       const isLast = index === segments.length - 1;

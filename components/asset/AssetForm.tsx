@@ -23,7 +23,10 @@ interface AssetFormProps {
     assetTag: string;
     name: string;
     serial?: string | null;
+    location?: string | null;
     purchasedAt?: string | null;
+    warrantyExpiresAt?: string | null;
+    warrantyTerms?: string | null;
     status: "IN_STOCK" | "ASSIGNED" | "REPAIR" | "RETIRED";
     category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
     modelId?: string | null;
@@ -34,7 +37,10 @@ interface AssetFormProps {
     assetTag: string;
     name: string;
     serial?: string | null;
+    location?: string | null;
     purchasedAt?: string | null;
+    warrantyExpiresAt?: string | null;
+    warrantyTerms?: string | null;
     status: "IN_STOCK" | "ASSIGNED" | "REPAIR" | "RETIRED";
     category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
     modelId?: string | null;
@@ -45,41 +51,51 @@ interface AssetFormProps {
   loading?: boolean;
 }
 
+// Module-level so the component body stays under the cyclomatic-complexity budget (ADR-034):
+// the SAME shape guards the API route, and the many `?? default` branches for the initial
+// values live here, not inside AssetForm.
+const assetFormSchema = z.object({
+  assetTag: z.string().min(1),
+  name: z.string().min(1),
+  serial: z.string().nullish(),
+  location: z.string().nullish(),
+  purchasedAt: z.string().nullish(),
+  warrantyExpiresAt: z.string().nullish(),
+  warrantyTerms: z.string().nullish(),
+  status: z.enum(["IN_STOCK", "ASSIGNED", "REPAIR", "RETIRED"]),
+  category: z.enum(["LAPTOP", "MONITOR", "PHONE", "OTHER"]),
+  modelId: z.string().nullish(),
+  // Transient cascade filters for the Model picker — stripped before submit (not asset fields).
+  modelCategoryFilter: z.string().nullish(),
+  modelManufacturerFilter: z.string().nullish(),
+  assigneeId: z.string().nullish(),
+});
+
+function makeDefaults(iv: AssetFormProps["initialValues"]) {
+  return {
+    assetTag: iv?.assetTag ?? "",
+    name: iv?.name ?? "",
+    serial: iv?.serial ?? "",
+    location: iv?.location ?? "",
+    purchasedAt: iv?.purchasedAt ?? "",
+    warrantyExpiresAt: iv?.warrantyExpiresAt ?? "",
+    warrantyTerms: iv?.warrantyTerms ?? "",
+    status: iv?.status ?? ("IN_STOCK" as const),
+    category: iv?.category ?? ("LAPTOP" as const),
+    modelId: iv?.modelId ?? undefined,
+    modelCategoryFilter: undefined,
+    modelManufacturerFilter: undefined,
+    assigneeId: iv?.assigneeId ?? undefined,
+  };
+}
+
 export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }: AssetFormProps) {
   const t = useTranslations("assets");
   const [customFields, setCustomFields] = useState<Record<string, unknown>>(
     (initialValues?.customFields as Record<string, unknown>) ?? {},
   );
 
-  // The SAME shape guards the API route; client + server validation can't drift.
-  const schema = z.object({
-    assetTag: z.string().min(1),
-    name: z.string().min(1),
-    serial: z.string().nullish(),
-    purchasedAt: z.string().nullish(),
-    status: z.enum(["IN_STOCK", "ASSIGNED", "REPAIR", "RETIRED"]),
-    category: z.enum(["LAPTOP", "MONITOR", "PHONE", "OTHER"]),
-    modelId: z.string().nullish(),
-    // Transient cascade filters for the Model picker — stripped before submit (not asset fields).
-    modelCategoryFilter: z.string().nullish(),
-    modelManufacturerFilter: z.string().nullish(),
-    assigneeId: z.string().nullish(),
-  });
-
-  const form = useZodForm(schema, {
-    defaultValues: {
-      assetTag: initialValues?.assetTag ?? "",
-      name: initialValues?.name ?? "",
-      serial: initialValues?.serial ?? "",
-      purchasedAt: initialValues?.purchasedAt ?? "",
-      status: initialValues?.status ?? "IN_STOCK",
-      category: initialValues?.category ?? "LAPTOP",
-      modelId: initialValues?.modelId ?? undefined,
-      modelCategoryFilter: undefined,
-      modelManufacturerFilter: undefined,
-      assigneeId: initialValues?.assigneeId ?? undefined,
-    },
-  });
+  const form = useZodForm(assetFormSchema, { defaultValues: makeDefaults(initialValues) });
 
   // Subscribe to the cascade filters at the component top level (useWatch is reliable —
   // form.watch() inside a Controller render does not re-subscribe) so the Model picker
@@ -105,7 +121,13 @@ export function AssetForm({ initialValues, onSubmit, onCancel, loading = false }
 
         <TextField name="serial" label={t("serial")} />
 
+        <TextField name="location" label={t("location")} />
+
         <TextField name="purchasedAt" label={t("purchasedAt")} type="date" />
+
+        <TextField name="warrantyExpiresAt" label={t("warrantyExpiresAt")} type="date" />
+
+        <TextField name="warrantyTerms" label={t("warrantyTerms")} />
 
         <FormField
           name="status"

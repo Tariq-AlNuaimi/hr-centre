@@ -10,7 +10,10 @@ export interface AssetRecord {
   assetTag: string;
   name: string;
   serial?: string | null;
+  location?: string | null;
   purchasedAt?: string | null;
+  warrantyExpiresAt?: string | null;
+  warrantyTerms?: string | null;
   status: "IN_STOCK" | "ASSIGNED" | "REPAIR" | "RETIRED";
   category: "LAPTOP" | "MONITOR" | "PHONE" | "OTHER";
   modelId?: string | null;
