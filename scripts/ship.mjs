@@ -360,55 +360,45 @@ function scanTier() {
 // -- session-state gate (memory lifecycle, .claude/rules/harness.md) --------
 // `docs/SESSION-HANDOFF.md` + `docs/session-state.json` are BRANCH-ONLY in-flight
 // state: tracked on a working branch so a fresh remote container keeps a program's
-// context, NEVER merged to main, pruned from forks. They leaked onto main anyway
-// (template-cleanliness audit, 2026-07-25) — every fork then inherited THIS
-// template's harness-v2 program state as its own starting point. This gate is the
-// structural fix: on main, those paths must not be tracked. Nothing is lost when
-// they are absent — .claude/hooks/session-start.sh writes a fresh valid skeleton
-// (V2-006), which is precisely the intended fork/main experience.
+// context, NEVER merged to main, pruned from forks. They leaked onto main anyway —
+// twice (commit 4b73206 "D1 recurrence", then again 2026-07-25) — and every fork
+// then inherited THIS template's program state as its own starting point.
+//
+// The gate asks about **origin/main**, deliberately, NOT about the current branch.
+// The first cut of this check only fired when you were sitting ON main, which is
+// useless: the leak happens at MERGE time, and nobody runs /ship on main afterwards.
+// It shipped green on a working branch whose every commit carried the files, and
+// they rode the merge onto main anyway. Asking "does origin/main track these?" is
+// answerable from any branch, so a normal pre-push /ship catches an existing leak
+// immediately -- and a branch that legitimately tracks them still passes, because
+// tracking them ON A BRANCH is the documented, intended behavior.
+//
+// Nothing is lost when they are absent from main: .claude/hooks/session-start.sh
+// writes a fresh valid skeleton (V2-006), which IS the intended fork experience.
 const BRANCH_ONLY_STATE = ["docs/SESSION-HANDOFF.md", "docs/session-state.json"];
 function scanSessionState() {
   const t0 = Date.now();
   const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
   const ok = (out) => ({ name: "session-state", ok: true, out, secs: secs() });
-  let branch = "";
-  try {
-    branch = execSync("git rev-parse --abbrev-ref HEAD", {
-      stdio: ["ignore", "pipe", "ignore"],
-    })
-      .toString()
-      .trim();
-  } catch {
-    return ok("no git history (skipped)");
-  }
-  // Detached HEAD reports the literal "HEAD", not a branch name -- which is how a CI
-  // runner that checks out main BY SHA appears. Taking that at face value would skip
-  // the gate exactly where it matters most (senior review, 2026-07-25), so resolve it:
-  // if the detached commit IS origin/main's commit, treat it as main. A detached HEAD
-  // sitting anywhere else is genuinely not main and stays exempt.
-  let onMain = branch === "main";
-  if (branch === "HEAD") {
+  // Prefer the remote ref (the thing forks are actually created from). Fall back to
+  // a local `main` when there is no remote, so a detached/offline clone still checks
+  // something real rather than silently passing.
+  let ref = "";
+  for (const candidate of ["origin/main", "main"]) {
     try {
-      const head = execSync("git rev-parse HEAD", { stdio: ["ignore", "pipe", "ignore"] })
-        .toString()
-        .trim();
-      const mainSha = execSync("git rev-parse origin/main", {
+      execSync(`git rev-parse --verify --quiet ${candidate}`, {
         stdio: ["ignore", "pipe", "ignore"],
-      })
-        .toString()
-        .trim();
-      onMain = head === mainSha;
+      });
+      ref = candidate;
+      break;
     } catch {
-      // No origin/main to compare against (shallow clone, no remote) -- stay exempt
-      // rather than fail a check we cannot evaluate. Fail-open matches the other
-      // governance gates (ADR-047: security guards fail closed, governance fails open).
-      return ok("detached HEAD, origin/main unresolvable (skipped)");
+      /* try the next candidate */
     }
   }
-  if (!onMain) return ok(`branch=${branch} (branch-only state is allowed here)`);
+  if (!ref) return ok("no main ref to check (skipped)");
   let tracked = [];
   try {
-    tracked = execSync(`git ls-files -- ${BRANCH_ONLY_STATE.join(" ")}`, {
+    tracked = execSync(`git ls-tree -r --name-only ${ref} -- ${BRANCH_ONLY_STATE.join(" ")}`, {
       stdio: ["ignore", "pipe", "ignore"],
     })
       .toString()
@@ -416,19 +406,45 @@ function scanSessionState() {
       .map((s) => s.trim())
       .filter(Boolean);
   } catch {
-    return ok("could not list tracked files (skipped)");
+    // Fail OPEN: governance gates must not RED on an unevaluable check (ADR-047).
+    return ok(`could not read ${ref} (skipped)`);
   }
-  if (tracked.length === 0) return ok("main carries no branch-only session state — correct");
+  if (tracked.length === 0) return ok(`${ref} carries no branch-only session state — correct`);
+  // `ref` is dirty. Before going RED, ask whether THIS branch is the fix: if the
+  // working tree no longer tracks the files, landing this branch cleans main, and
+  // REDing here would block the very push that resolves the leak. The four cases:
+  //   main clean + branch tracks them  -> green (the intended steady state)
+  //   main clean + branch clean        -> green
+  //   main dirty + branch removes them -> green (this branch IS the remediation)
+  //   main dirty + branch tracks them  -> RED   (leak stands, and you are not fixing it)
+  let hereToo = [];
+  try {
+    hereToo = execSync(`git ls-files -- ${BRANCH_ONLY_STATE.join(" ")}`, {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  } catch {
+    return ok(`could not list tracked files (skipped)`);
+  }
+  if (hereToo.length === 0) {
+    return ok(`${ref} still tracks session state, but this branch removes it — land this`);
+  }
   return {
     name: "session-state",
     ok: false,
     secs: secs(),
     out:
-      `main tracks branch-only in-flight state (.claude/rules/harness.md "Memory lifecycle"):\n` +
+      `${ref} tracks branch-only in-flight state (.claude/rules/harness.md "Memory lifecycle"):\n` +
       tracked.map((f) => `  - ${f}`).join("\n") +
       `\n  These are per-program session state, not template content — a fork created from main\n` +
       `  inherits this repo's program status as its own. They must never reach main.\n` +
-      `  Fix: git rm --cached ${tracked.join(" ")}\n` +
+      `  Fix (on a branch off main, then merge):\n` +
+      `    git rm --cached ${tracked.join(" ")}\n` +
+      `    git commit -- ${tracked.join(" ")}   # commit THESE PATHS, not 'git add -A' --\n` +
+      `                                          # add -A re-stages them and the removal is lost.\n` +
       `  Nothing breaks: the SessionStart hook regenerates a fresh skeleton when absent (V2-006).`,
   };
 }
