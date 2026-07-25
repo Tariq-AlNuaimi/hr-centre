@@ -96,9 +96,7 @@ async function pruneDocsMode() {
     `Classified ${files.length} docs: ${keep.length} fork-inherited (kept), ${prune.length} template-dev (prune).`,
   );
   console.log("");
-  console.log(
-    `Template-dev docs a fork would MOVE to an archive branch ref (never delete from template main):`,
-  );
+  console.log(`Template-dev docs a fork does not inherit (the template's own build history):`);
   for (const p of prune) console.log(`  prune  ${p}`);
   if (unmatched.length) {
     console.log("");
@@ -109,9 +107,12 @@ async function pruneDocsMode() {
   }
   console.log("");
   console.log(
-    "This is a LIST only. On a fork, archive the pruned set to a `template-history` branch",
+    "This is a LIST only. Archive the pruned set (a tag or branch ref) before removing it,",
   );
-  console.log("reference, then remove from the working tree — never delete from template main.");
+  console.log(
+    "so it stays recoverable from git — the template itself did this at the tag\n" +
+      "`template-history-2026-07` on 2026-07-25; see docs/ARCHIVE.md.",
+  );
 }
 
 if (!values.slug || !values.name || !values.owner) {

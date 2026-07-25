@@ -1,5 +1,5 @@
 {
-  "note": "Fork doc-payload classification (V2-506). Every file under docs/ (and the root HARNESS-V2-* program docs) is one of: 'fork' — a fork operating this template INHERITS it (ADRs, runbooks, recipes, rubrics, ledgers, the operational reference); or 'template-dev' — the TEMPLATE's own development history (the harness-v2/enterprise program artifacts, research, deep-comparison, verification evidence) that a fork does not need. `npm run rebrand -- --prune-docs` reads this to print the prune list. Prune semantics: on a FORK the template-dev docs are MOVED to an archive branch reference, NEVER deleted from template main. Rules are FIRST-MATCH-WINS, top to bottom; the final catch-all defaults to 'fork' so an unclassified doc is KEPT (the safe failure), and adding a new template-dev doc means adding an explicit rule above it.",
+  "note": "Fork doc-payload classification (V2-506). Every file under docs/ (and the root HARNESS-V2-* program docs) is one of: 'fork' — a fork operating this template INHERITS it (ADRs, runbooks, recipes, rubrics, ledgers, the operational reference); or 'template-dev' — the TEMPLATE's own development history that a fork does not need. `npm run rebrand -- --prune-docs` reads this to print the prune list. Rules are FIRST-MATCH-WINS, top to bottom; the final catch-all defaults to 'fork' so an unclassified doc is KEPT (the safe failure).\n\nUPDATED 2026-07-25 — the old note said template-dev docs are 'MOVED to an archive branch reference, NEVER deleted from template main'. That policy is SUPERSEDED: on 2026-07-25 the template-dev docs were REMOVED from main and pinned at the git tag `template-history-2026-07` (see docs/ARCHIVE.md). Reason: they were 65% of 3.23 MB of docs against 16k lines of product, and every session in this repo paid context tax on a closed program's build record. Git retains them at the tag; forks were never affected (they already pruned them). This manifest still classifies what remains, and still governs fork pruning. Two template-dev paths were deliberately KEPT in the tree: docs/verification/** (evidence backing live findings-register entries — deleting it would create dead evidence pointers) and docs/SESSION-HANDOFF.md + docs/session-state.json (live session state the SessionStart hook reads).",
   "version": 1,
   "roots": ["docs", "."],
   "rules": [
@@ -33,7 +33,11 @@
       "inheritance": "template-dev",
       "why": "template build inventory"
     },
-    { "glob": "docs/TRIALS.md", "inheritance": "template-dev", "why": "template experiment log" },
+    {
+      "glob": "docs/TRIALS.md",
+      "inheritance": "template-dev",
+      "why": "template experiment log"
+    },
     {
       "glob": "docs/deferred-adoption-plan.md",
       "inheritance": "template-dev",
