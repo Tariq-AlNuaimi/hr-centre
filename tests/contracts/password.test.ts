@@ -1,6 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import bcrypt from "bcryptjs";
 import { hash as argon2Hash } from "@node-rs/argon2";
 import { ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash } from "../../lib/password";
 
@@ -27,18 +26,20 @@ test("verifyPassword round-trips an Argon2id hash", async () => {
   assert.equal(await verifyPassword("wrong", hash), false);
 });
 
-test("verifyPassword still accepts a legacy bcrypt hash (silent migration)", async () => {
-  // A hash produced the OLD way must keep verifying, so existing users log in
-  // without a reset (ADR-039 legacy-verify window).
-  const legacy = await bcrypt.hash("old-password", 12);
-  assert.ok(legacy.startsWith("$2"), "sanity: bcrypt hash prefix");
-  assert.equal(await verifyPassword("old-password", legacy), true);
-  assert.equal(await verifyPassword("nope", legacy), false);
+// A real bcrypt hash, shape-valid, kept as a literal so the test needs no bcrypt dep.
+const LEGACY_BCRYPT = "$2b$12$K8y1p3Qh0oQ2u5r7t9v1cO9m4n6b8x0z2a4c6e8g0i2k4m6o8q0s2";
+
+test("verifyPassword REJECTS a legacy bcrypt hash (bcryptjs sunset, item 12)", async () => {
+  // Inverted 2026-07-25: bcryptjs was removed, so Argon2id is the only supported
+  // algorithm. A `$2*` hash is now a failed login (never a throw) — the affected user
+  // recovers through the password-reset flow. See lib/password.ts module header.
+  assert.ok(LEGACY_BCRYPT.startsWith("$2"), "sanity: bcrypt hash prefix");
+  assert.equal(await verifyPassword("old-password", LEGACY_BCRYPT), false);
+  assert.equal(await verifyPassword("nope", LEGACY_BCRYPT), false);
 });
 
 test("needsRehash flags legacy hashes and clears for Argon2id", async () => {
-  const legacy = await bcrypt.hash("x", 12);
-  assert.equal(needsRehash(legacy), true, "bcrypt hash must be upgraded");
+  assert.equal(needsRehash(LEGACY_BCRYPT), true, "bcrypt hash must be upgraded");
   const modern = await hashPassword("x");
   assert.equal(needsRehash(modern), false, "argon2 hash is current");
 });

@@ -1,14 +1,17 @@
-import bcrypt from "bcryptjs";
 import { hash as argon2Hash, verify as argon2Verify } from "@node-rs/argon2";
 
-// SUNSET (V2-409, debt): `bcryptjs` is kept ONLY to verify legacy `$2*` hashes and
-// silently upgrade them to Argon2id on next login (see verifyPassword + needsRehash).
-// New hashes are never bcrypt. Removal condition: no `$2*` hashes remain in the DB for
-// 90 days. Count remaining legacy hashes with (run via `make db-sql` / psql):
-//   SELECT count(*) AS legacy_bcrypt FROM "users" WHERE "passwordHash" LIKE '$2%';
-// When that is 0 (and has been for 90 days), delete this import + the bcrypt branch in
-// verifyPassword and `npm uninstall bcryptjs`. Tracked: docs/findings-register.md
-// "documented trade-offs".
+// SUNSET COMPLETED 2026-07-25 (OPEN-ITEMS item 12, V2-409 debt): `bcryptjs` is REMOVED.
+// Argon2id (ADR-039) is now the only supported algorithm.
+//
+// BREAKING FOR PRE-ADR-039 FORKS — read before syncing this change into an existing fork.
+// A legacy `$2*` (bcrypt) hash can no longer be verified, so any user who has NOT logged in
+// since the Argon2id migration cannot authenticate; `verifyPassword` returns false and they
+// must go through the password-reset flow (`/forgot-password`) to regain access. Nothing is
+// lost — the account and its data are untouched — but the login itself is unrecoverable
+// without a reset. Before adopting, a fork with pre-existing users should confirm:
+//   SELECT count(*) FROM "users" WHERE "passwordHash" LIKE '$2%';   -- must be 0
+// (Verified 0 in this template's seeded database; a fresh fork only ever writes Argon2id,
+// so this is a no-op for anything created from the template.)
 
 // Argon2id is the current algorithm (OWASP Password Storage default; ADR-039).
 // These params are the OWASP 2026 baseline — tune per deployment: raise
@@ -27,18 +30,20 @@ export function hashPassword(plain: string): Promise<string> {
 }
 
 /**
- * Verify a plaintext password against a stored hash, transparently handling
- * BOTH current Argon2id hashes (`$argon2…`) and any legacy bcrypt hash (`$2a/b/x/y$…`)
- * so an existing fork's users log in without a forced reset. Routing is by "is it
- * Argon2?" — the exact complement of needsRehash() — so every non-Argon2 hash goes
- * to bcrypt.compare (which handles all `$2*` variants), never to argon2Verify.
+ * Verify a plaintext password against a stored Argon2id hash.
+ *
+ * Argon2id is the ONLY supported algorithm since the bcrypt sunset (2026-07-25). A
+ * non-Argon2 hash — including a legacy `$2*` bcrypt one — is treated as a failed login
+ * (returns false), NOT an error: the affected user recovers via the password-reset flow.
+ * See the module header for the fork-migration caveat.
+ *
  * Returns false (never throws) on a malformed/unknown hash — a bad hash is a failed
- * login, not a 500. Pair with needsRehash() to upgrade a legacy hash after verify.
+ * login, not a 500.
  */
 export async function verifyPassword(plain: string, hash: string): Promise<boolean> {
   try {
-    if (hash.startsWith("$argon2")) return await argon2Verify(hash, plain);
-    return await bcrypt.compare(plain, hash);
+    if (!hash.startsWith("$argon2")) return false;
+    return await argon2Verify(hash, plain);
   } catch {
     return false;
   }

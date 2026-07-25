@@ -503,12 +503,19 @@ here as pointers so they aren't re-litigated as new findings:
   authoring shape survived the AntD removal (ADR-029, C4). SUNSET: re-author columns directly against
   @tanstack/react-table `ColumnDef` at the next `DataTable` refactor; remove when
   `git grep "@/components/shared/table-types"` is empty. Annotated in the file header.
-- 2026-07-17 — [debt sunset, V2-409] **bcryptjs** (`lib/password.ts`): kept ONLY to verify legacy
-  `$2*` hashes and auto-upgrade them to Argon2id on next login (new hashes are never bcrypt). SUNSET
-  condition: no `$2*` hashes remain for 90 days — count with
-  `SELECT count(*) FROM "users" WHERE "passwordHash" LIKE '$2%';` (verified = 0 in the seeded DB
-  2026-07-17); when durably 0, delete the bcrypt branch + `npm uninstall bcryptjs`. Annotated in
-  `lib/password.ts`.
+- 2026-07-17 — [debt sunset, V2-409] **bcryptjs** (`lib/password.ts`) — ✅ **SUNSET COMPLETED
+  2026-07-25** (OPEN-ITEMS item 12). Was kept ONLY to verify legacy `$2*` hashes and auto-upgrade
+  them to Argon2id on next login. The stated condition was "0 legacy hashes for 90 days"; the
+  **0 was verified** (`SELECT count(*) … LIKE '$2%'` = 0 against the seeded DB, 2026-07-25) but the
+  **90-day durability half could NOT be** — this container has no long-lived deployment to observe.
+  The operator was shown that gap explicitly and chose to remove now anyway; recorded here so the
+  waived half is not silent. Removed: the import + the bcrypt branch in `verifyPassword`,
+  `npm uninstall bcryptjs`, and the legacy-accepts test INVERTED to assert rejection.
+  **Consequence, deliberately accepted:** Argon2id is now the only supported algorithm, so a
+  pre-ADR-039 fork whose users have not logged in since the migration will find those logins
+  failing — recoverable only via the password-reset flow (no data loss). A fresh fork only ever
+  writes Argon2id, so this is a no-op for anything created from the template. The caveat is
+  documented at the top of `lib/password.ts` for anyone running `/sync-from-template`.
 - 2026-07-17 — [awareness, V2-405] **`qs` moderate advisory (dev-only)**: adopting
   `@stryker-mutator/core` (V2-405) pulled a transitive `qs` (via `typed-rest-client`) carrying a
   **Moderate** DoS advisory (GHSA — below `/ship`'s High+ npm-audit gate, so it does not red). Dev/

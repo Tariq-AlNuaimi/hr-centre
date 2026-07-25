@@ -21,7 +21,7 @@ gates it.
 | 9   | `ai-eval` `/ship` gate (dormant)                                              | AI quality      | —            | a fork adds `AI_API_KEY` + fixtures |
 | 10  | SSO / Microsoft Entra (dormant)                                               | Auth            | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
 | 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                     | CI/security     | —            | paid Actions / handoff              |
-| 12  | Remove **bcryptjs**                                                           | Debt sunset     | S            | legacy `$2*` hashes = 0 for 90d     |
+| 12  | ✅ **DONE** (2026-07-25) — bcryptjs removed; Argon2id is the only algorithm   | Debt sunset     | S            | —                                   |
 | 13  | Retire the **antd type-shim**                                                 | Debt sunset     | S            | next DataTable refactor             |
 | 14  | **Better Auth** migration                                                     | Auth/program    | L            | ADR-056 trigger fires               |
 | 15  | Full **bus-factor** program (multi-maintainer, CI)                            | Harness/program | L            | team growth                         |
