@@ -26,7 +26,7 @@ gates it.
 | 14  | **Better Auth** migration                                                     | Auth/program    | L            | ADR-056 trigger fires               |
 | 15  | Full **bus-factor** program (multi-maintainer, CI)                            | Harness/program | L            | team growth                         |
 | 16  | ✅ **VERIFIED+FIXED** (2026-07-25) — Atomic audit recipe (opt-in, now proven) | Security        | M            | —                                   |
-| 17  | **Account lockout** / distributed rate limit                                  | Security        | M            | multi-instance / abuse              |
+| 17  | ✅ **DONE** (2026-07-25) — Per-account lockout (limiter half already ADR-035) | Security        | M            | —                                   |
 | 18  | uptime monitoring / Storybook recipes (#28)                                   | Ops/DX          | M            | need arises                         |
 
 ---
@@ -94,11 +94,23 @@ degrades to an unattributed audit row. Evidence: `docs/verification/atomic-audit
 prototype rail and the recipe says not to add trigger ceremony to a throwaway. A fork that needs
 tamper-evident audit applies it (and, per the recipe, records its own ADR). SECURITY.md §16 row 2.
 
-### 17. Account lockout / distributed rate limit — **M**
+### 17. Account lockout / distributed rate limit — ✅ **DONE (2026-07-25)**
 
-No account-lockout / brute-force throttle across instances (A07). The in-memory rate limiter is
-per-instance (now shared when `VALKEY_URL` is set — ADR-035); full lockout is still deferred.
-`/scale-up` → "Rate limiter across instances" (Upstash). SECURITY.md §16 row 4.
+This item was **two things, and one was already built**:
+
+- **Distributed rate limit — already shipped (ADR-035).** `lib/rate-limit.ts` already uses shared
+  Valkey/Redis state when `VALKEY_URL`/`REDIS_URL` is set, degrading to in-memory otherwise. Nothing
+  to build; it activates on config. The backlog text understated this.
+- **Per-account lockout — genuinely missing, now built.** `lib/account-lockout.ts` counts failures
+  per EMAIL (the IP bucket structurally can't: an attacker rotating IPs stays under every bucket
+  while hammering one account) and is wired into `lib/auth.ts` `authorize()`. **ON by default** —
+  5 fails / 15 min window / 15 min lock, tunable via `ACCOUNT_LOCKOUT_*`.
+
+Built on the **already-shipped** `rate-limiter-flexible` + Valkey seam, NOT the recipe's Upstash
+pairing — the recipe predates ADR-035, and adopting it would have meant a second Redis vendor, a
+second set of credentials, and a duplicate degrade path (build-vs-buy ledger 2026-07-25). Zero new
+dependencies. Non-enumerable by construction: a miss and a bad password both count and both return
+`null`. 7 contract tests. SECURITY.md §16 row 4 + the A07 row updated.
 
 ### 15 & 18. Bigger DX/ops slices — **L / M**
 

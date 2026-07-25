@@ -620,3 +620,25 @@ list page re-opens the identical page/pageSize/search/sort state + params object
   dependency; the page-level sibling of the `RowActions`/`RelationSelect`/`parseListQuery` extractions.
   Entities with extra list features (asset: column filters + CSV import) keep their bespoke page. A
   follow-up should teach `scaffold-entity` to emit the thin wrapper.
+
+## 2026-07-25 — Per-account brute-force lockout (`lib/account-lockout.ts`)
+
+Scope: lib/account-lockout.ts
+Considered: **`@upstash/ratelimit` + `@upstash/redis`** — the pairing the shipped recipe
+`docs/recipes/shared-security/1-account-lockout.md` names (rejected as the default path: the recipe
+predates ADR-035's Valkey adoption, so adopting it now would mean a **second** Redis vendor, a
+second set of credentials an operator must create an account for, and a duplicate degrade path
+alongside `lib/rate-limit.ts` — a fork already running Valkey would be paying for two shared-state
+stores to throttle two things); **reuse `lib/rate-limit.ts` as-is** (rejected — it is an IP-bucket:
+it structurally cannot express "N bad passwords for THIS account", which is the whole A07 gap, since
+an attacker rotating IPs stays under every bucket); **a DB column** (`failedAttempts`/`lockedUntil`
+on `users`) (rejected — a schema migration plus a write on every failed login, i.e. an
+unauthenticated write amplification primitive, to store state that is inherently ephemeral);
+**`rate-limiter-flexible`'s own block/consume semantics on the EXISTING Valkey client** (chosen).
+Decision: **BUILD a ~90-line `lib/account-lockout.ts`** on primitives already in `package.json` —
+`rate-limiter-flexible` (`RateLimiterRedis`/`RateLimiterMemory`, whose `points` + `blockDuration`
+express lockout directly) over `lib/valkey.ts`'s existing client. **Zero new dependency, zero new
+SaaS account**, and it inherits `lib/rate-limit.ts`'s exact posture: shared across replicas when
+`VALKEY_URL` is set, in-memory otherwise, `insuranceLimiter` degrading to memory rather than failing
+open. A fork that prefers Upstash can still follow the recipe; this makes the default path work with
+what the template already ships.

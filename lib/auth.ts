@@ -7,6 +7,7 @@ import type { Adapter } from "next-auth/adapters";
 import type { Role } from "../generated/prisma/client";
 import { prisma, prismaUnfiltered } from "./prisma";
 import { verifyPassword, needsRehash, hashPassword } from "./password";
+import { isAccountLocked, recordFailedLogin, clearFailedLogins } from "./account-lockout";
 import {
   isPolisSsoConfigured,
   polisSsoConfig,
@@ -88,6 +89,13 @@ const credentialsProvider = Credentials({
     // on create; forgot-password lowercases on lookup) -- otherwise a
     // differently-cased login silently fails to match.
     const email = (credentials.email as string).toLowerCase().trim();
+
+    // Per-account brute-force lockout (OWASP A07). Checked BEFORE the lookup + password
+    // comparison so a locked account can't be probed and we don't burn an Argon2 verify
+    // on a locked email. The per-IP limiter on /api/auth/* cannot cover this: an attacker
+    // rotating IPs stays under every IP bucket while hammering one account.
+    if (await isAccountLocked(email)) return null;
+
     const user = await prismaUnfiltered.user.findUnique({
       where: {
         email,
@@ -95,10 +103,21 @@ const credentialsProvider = Credentials({
       },
     });
 
-    if (!user?.passwordHash) return null;
+    // A miss and a bad password BOTH count toward the lock and BOTH return null, so the
+    // response is indistinguishable either way — the login path stays non-enumerable.
+    if (!user?.passwordHash) {
+      await recordFailedLogin(email);
+      return null;
+    }
 
     const valid = await verifyPassword(credentials.password as string, user.passwordHash);
-    if (!valid) return null;
+    if (!valid) {
+      await recordFailedLogin(email);
+      return null;
+    }
+
+    // Authenticated: drop the failure counter so a later honest typo starts from zero.
+    await clearFailedLogins(email);
 
     // Update last login. lastLoginAt churns on every login, so keep it on the
     // unaudited client to avoid flooding the audit log with a row per sign-in.
