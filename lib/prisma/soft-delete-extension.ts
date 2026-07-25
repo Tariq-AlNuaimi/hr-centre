@@ -21,14 +21,7 @@ type SoftDeleteDelegate = {
 };
 
 // Models that have deletedAt/deletedBy fields
-const SOFT_DELETE_MODELS = new Set([
-  "User",
-  "Asset",
-  "Category",
-  "Manufacturer",
-  "AssetModel",
-  "CustomFieldDef",
-]);
+const SOFT_DELETE_MODELS = new Set(["User"]);
 
 /**
  * Whether this model participates in soft-delete filtering. Exposed so the

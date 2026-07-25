@@ -13,10 +13,7 @@ gates it.
 | 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment             | UI polish    | S            | —                                   |
 | 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file     | Harness/i18n | M            | —                                   |
 | 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats              | Supply-chain | S            | —                                   |
-| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                      | Feature      | S            | —                                   |
-| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                     | Feature      | S            | —                                   |
-| 6   | ✅ **DONE** (2026-07-25) — Asset list **bulk actions** (multi-select delete)  | Feature      | M            | —                                   |
-| 7   | ✅ **DONE** (2026-07-25) — Retired the `category` enum axis (Category entity) | Feature/UX   | M            | —                                   |
+| 4–7 | ⬜ **MOOT** (2026-07-25) — Asset Tracker feature work; demo domain removed    | Feature      | —            | —                                   |
 | 8   | WS-5 embeddings **provider round-trip**                                       | AI/RAG       | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
 | 9   | `ai-eval` `/ship` gate (dormant)                                              | AI quality   | —            | a fork adds `AI_API_KEY` + fixtures |
 | 10  | SSO / Microsoft Entra (dormant)                                               | Auth         | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
@@ -38,7 +35,8 @@ breadcrumb component. Register: `V2-301/design` (a).
 
 ### 2. Scaffold enum-humanization → next-intl — **M**
 
-`components/asset/asset-labels.ts` is a per-feature humanizer for enum values (LAPTOP → "Laptop").
+The pilot carried a per-feature humanizer for enum values (LAPTOP → "Laptop"); it went with the
+demo domain (2026-07-25), but the scaffold-side gap it described is the durable part.
 `scripts/scaffold-entity.mjs` should generate a label map per enum for every scaffolded entity, and
 ultimately route those labels through `messages/*.json` (V2-305 copy chokepoint) instead of a
 per-feature map. Register: `V2-301/design` (b). (The scaffold **copy** pluralization/humanization
@@ -50,34 +48,15 @@ was already fixed 2026-07-18 — this is the remaining enum-label piece.)
 unpinned. Low blast radius (local dev-reporting), `npm audit` clean. Pin all three in one pass.
 Register: `V2-106/supply-chain`.
 
-### 4–6. Asset Tracker feature gaps — ✅ **ALL DONE (2026-07-25)**
+### 4–7. Asset Tracker feature gaps — ⬜ **MOOT (2026-07-25)**
 
-The pilot graduated to T2/T9/T11; these three remaining table-stakes sub-features are now closed
-(`docs/blueprints/asset-tracker.md` parity table + app-floor checklist updated):
-
-- **T4 location** — ✅ `Asset.location` (nullable, additive migration), on the form + record type.
-- **T6 warranty** — ✅ `Asset.warrantyExpiresAt` + `warrantyTerms` (same migration).
-- **Bulk actions** — ✅ multi-select on the list via the shared `DataTable`'s existing
-  `rowSelection`, driving `POST /api/asset/bulk-delete`. The bulk write stays audited: per-row
-  `prisma.asset.delete` inside ONE `$transaction`, never `deleteMany` (ADR-010 /
-  `no-unaudited-bulk-write`) — verified live (3 deletes → 3 DELETE `audit_logs` rows + all three
-  soft-deleted/recoverable). Captures + critique: `docs/verification/asset-bulk-actions/`.
-
-### 7. Cascade: replace the enum axis — ✅ **DONE (2026-07-25)**
-
-Operator product call: **drop the enum axis.** The asset form's legacy `category` `Select` is
-removed; an asset's category is derived from `model → AssetModel.category → Category`, now the
-single source of truth. The list column renders the derived name (`-` when an asset has no model)
-and filters by category entity (`?categoryId=` → `where: { model: { categoryId } }`). Enum reads/
-writes are gone from validation, form, columns, list route, and CSV import.
-
-**Phase 2 SHIPPED (same day).** With phase 1 confirmed unreleased — nothing was ever deployed
-running the pre-phase-1 code, so the one-deploy soak had nothing to wait for — the operator chose to
-drop immediately. Migration `20260725060000_drop_asset_category_enum_axis` removes the column then
-the `AssetCategory` type. Hand-written to keep out the `DROP TABLE "document_embedding"` that
-`migrate dev` proposes (the pgvector RAG store isn't a Prisma model, so the differ mis-reads it as
-drift); RAG table verified intact afterwards. Captures/critique:
-`docs/verification/asset-category-entity/`.
+These four items tracked table-stakes gaps in the V2-210 **Asset Tracker pilot** (location,
+warranty, list bulk actions, retiring the `category` enum axis). All four shipped, and then the
+whole demo domain was **removed from the template** on 2026-07-25 — it was pilot residue that
+every fork inherited hard-wired into the sidebar, never advertised in `README.md`, with no
+removal path. The work, its blueprint, its benchmark, and its captures are recoverable from the
+archive tag (`docs/ARCHIVE.md`); the adjudication is in `docs/findings-register.md`. Nothing here
+is actionable — a fork that wants an asset tracker runs `/scaffold-entity`.
 
 ### 16. Atomic audit (Postgres triggers) — ✅ **VERIFIED + FIXED (2026-07-25)**
 

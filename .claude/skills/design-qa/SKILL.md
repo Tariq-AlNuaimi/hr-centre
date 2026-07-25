@@ -28,7 +28,8 @@ just the code:
 2. **Read the captured images** and score them against the 10-point rubric (V2-307).
 3. **Fix + re-capture**; keep the before/after + notes under `docs/verification/<feature>/`.
 4. **Affirming a screen without attached captures is invalid** (V2-301) — "looks good" is a claim
-   about pixels, provable only by pixels. Worked example: `docs/verification/asset-tracker/`.
+   about pixels, provable only by pixels. Worked example: `docs/verification/design-system/`
+   (full capture matrix + `token-parity.md` critique notes).
 
 This during-build loop is fast (no axe/bridge); the FULL `/design-qa` below (Chromium states, axe,
 scored deviations) still runs at QA time. The rule is in `.claude/rules/design.md`.

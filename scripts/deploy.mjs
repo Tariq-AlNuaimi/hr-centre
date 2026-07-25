@@ -99,10 +99,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // (the marker only mattered for the untouched template). Best-effort, idempotent
 // text edit (preserves comments/formatting); never blocks the deploy. Commit it
 // with your next push so the gate applies in CI too.
+// `wasPristine` is captured BEFORE the flag is cleared, because it is the only
+// in-tree evidence of "this working tree is the TEMPLATE, not a fork" -- and the
+// doc-prune below needs that answer after this block has already destroyed it.
+let wasPristine = false;
 try {
   if (existsSync("project.config.json")) {
     const raw = readFileSync("project.config.json", "utf8");
     if (/"pristine":\s*true/.test(raw)) {
+      wasPristine = true;
       writeFileSync("project.config.json", raw.replace(/"pristine":\s*true/, '"pristine": false'));
       ok(
         P,
@@ -115,6 +120,44 @@ try {
     P,
     `Could not clear pristine flag in project.config.json: ${e.message} (set "pristine": false manually before /ship).`,
   );
+}
+
+// Prune the TEMPLATE's own build history from this fork (V2-506 classification in
+// docs/doc-manifest.json). /deploy is a fork-creation path like /rebrand, and a fork
+// that reached a live URL without ever running /rebrand would otherwise carry the
+// template-dev doc payload forever. Best-effort: never blocks the deploy.
+//
+// GUARDED on `!wasPristine` (senior review, 2026-07-25). The pristine-clearing block
+// above assumes "a deployed repo is a fork" -- cheap when the consequence is a JSON
+// flag, NOT cheap when the consequence is deleting ~30 docs. The template itself has
+// no Vercel project, and CLAUDE.md tells an agent to offer /deploy exactly when there
+// is no Vercel project -- so running /deploy IN the template is a reachable path, not
+// a hypothetical. `pristine: true` is the one in-tree marker that says "untouched
+// template"; when it was set on entry, refuse the prune and say why. A real fork has
+// pristine:false (every fork-creation path stamps it) and prunes normally.
+if (wasPristine) {
+  warn(
+    P,
+    'Skipped the template-dev doc prune: project.config.json had "pristine": true on entry, ' +
+      "which marks this working tree as the TEMPLATE itself, not a fork. Pruning here would " +
+      "delete the template's own build history with no archive step. If this really is a fork " +
+      "that was never stamped, run `npm run rebrand -- --prune-docs --apply` deliberately.",
+  );
+} else {
+  try {
+    const { execFileSync } = await import("node:child_process");
+    const out = execFileSync(process.execPath, ["scripts/rebrand.mjs", "--prune-docs", "--apply"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const line = out.split("\n").find((l) => l.startsWith("Deleted "));
+    if (line) ok(P, `${line.trim()} (commit it with your next push).`);
+  } catch (e) {
+    warn(
+      P,
+      `Could not prune template-dev docs: ${e.message} (run \`npm run rebrand -- --prune-docs --apply\` manually).`,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

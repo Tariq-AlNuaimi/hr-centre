@@ -41,7 +41,7 @@ the line. The operator signs off UAT.
 3. **Fix** what the critique found, **re-capture**, confirm the fix in the new images.
 4. **Affirmation without attached captures is invalid** (V2-301, was D9): "the screen looks good"
    is not a claim you may make from the code — only from the pixels. Store the before/after set +
-   critique notes under `docs/verification/<feature>/` (see `docs/verification/asset-tracker/` for
+   critique notes under `docs/verification/<feature>/` (see `docs/verification/design-system/` for
    the worked example). This is the `/design-qa` "during-build" mode; the full gated
    `/design-qa` (bridge + axe) still runs at QA time.
 

@@ -577,6 +577,13 @@ const summary = [
   "1. Wait ~2 minutes for the first build to finish (Vercel runs migrate + seed automatically).",
   `2. Open ${customDomain ?? `${slug}.vercel.app`} and log in with the credentials above.`,
   `3. Start a Claude Code session on \`${owner}/${slug}\` and type \`/quickstart "<your idea>"\` to scaffold features.`,
+  // The generate API copies the template tree verbatim, so a repo made this way still
+  // carries the template's own build-history docs. /rebrand prunes them automatically
+  // (V2-506); this path can't -- deleting ~70 files over the Contents API would be ~70
+  // round-trips -- so name the one command that does it.
+  "4. In that session (or any clone), drop the template's build history from your fork:",
+  "   `npm run rebrand -- --prune-docs --apply` — keeps the ADRs/recipes/runbooks a fork",
+  "   inherits, removes the record of how the template itself was built.",
   "",
 ].join("\n");
 

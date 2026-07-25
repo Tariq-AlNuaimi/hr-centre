@@ -34,6 +34,53 @@ if [ ! -d generated/prisma ] || [ prisma/schema.prisma -nt generated/prisma ]; t
   DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate >/dev/null
 fi
 
+# 3b. Bootstrap gitleaks if MISSING. `npm run ship` treats an absent gitleaks as a
+#     hard FAILURE with install instructions (never a silent skip) -- correct, but in a
+#     fresh remote container the binary is never there, so every push hit a RED /ship
+#     for a reason that had nothing to do with the change and the honest workaround was
+#     `git push --no-verify`, which skips the WHOLE gate. Fetching it here keeps the
+#     secret scan a real gate instead of a routinely-bypassed one.
+#     FAIL-OPEN by design: no egress / a moved release URL must not block the session.
+#     /ship stays RED if this doesn't land, so the security floor is unchanged -- the
+#     only difference is you get a readable reason now instead of a surprise at push.
+if ! command -v gitleaks >/dev/null 2>&1 && [ ! -x "$HOME/.local/bin/gitleaks" ]; then
+  gl_version="8.30.0"
+  case "$(uname -s)" in
+    Linux) gl_os="linux" ;;
+    Darwin) gl_os="darwin" ;;
+    *) gl_os="" ;;
+  esac
+  case "$(uname -m)" in
+    x86_64 | amd64) gl_arch="x64" ;;
+    arm64 | aarch64) gl_arch="arm64" ;;
+    *) gl_arch="" ;;
+  esac
+  if [ -n "$gl_os" ] && [ -n "$gl_arch" ] && command -v curl >/dev/null 2>&1; then
+    gl_url="https://github.com/gitleaks/gitleaks/releases/download/v${gl_version}/gitleaks_${gl_version}_${gl_os}_${gl_arch}.tar.gz"
+    mkdir -p "$HOME/.local/bin"
+    if curl -fsSL --max-time 60 "$gl_url" 2>/dev/null | tar -xz -C "$HOME/.local/bin" gitleaks 2>/dev/null; then
+      chmod +x "$HOME/.local/bin/gitleaks" 2>/dev/null || true
+      echo "[harness] installed gitleaks v${gl_version} -> ~/.local/bin (npm run ship can now run the secret scan)"
+    else
+      echo "[harness] WARNING: could not fetch gitleaks (no egress, or the release URL moved)."
+      echo "[harness]          'npm run ship' will be RED at the gitleaks phase until it is on PATH:"
+      echo "[harness]          Linux/macOS: https://github.com/gitleaks/gitleaks/releases (or 'brew install gitleaks')"
+    fi
+  else
+    echo "[harness] WARNING: no gitleaks and no supported fetch for $(uname -s)/$(uname -m); 'npm run ship' will be RED at the gitleaks phase."
+  fi
+fi
+# A binary at ~/.local/bin is only useful if that directory is on the PATH the LATER
+# `npm run ship` process inherits. `export` here cannot do that -- the hook is its own
+# process -- so verify rather than assume (senior review, 2026-07-25). ~/.local/bin is
+# on PATH by default in the standard container; say so plainly when it is not, instead
+# of installing a binary that /ship will never find.
+if [ -x "$HOME/.local/bin/gitleaks" ] && ! command -v gitleaks >/dev/null 2>&1; then
+  echo "[harness] WARNING: gitleaks is at ~/.local/bin but that directory is NOT on PATH."
+  echo "[harness]          'npm run ship' will still be RED at the gitleaks phase. Add it:"
+  echo "[harness]          export PATH=\"\$HOME/.local/bin:\$PATH\"   (in your shell profile)"
+fi
+
 echo "[harness] ready -- run 'make db-up' to start dev containers when you need the DB"
 
 # 4. Drift check (advisory). If the current working branch has fallen behind

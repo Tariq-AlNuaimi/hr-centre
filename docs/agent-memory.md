@@ -14,7 +14,7 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
-- **Durable decisions** (8): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
+- **Durable decisions** (10): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (6): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (3): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
@@ -48,6 +48,16 @@ tax is the ≤30-line digest, not the whole file.
 
 <!-- choices made with the operator, so they are not relitigated -->
 
+- 2026-07-25 — **The template repo has NO Vercel project and NO Neon DB.** Zero Vercel projects
+  link to repoId `1241728413` (checked personal + `tariq-s-projects4`); `prj_PDhqr8z3g…` in the
+  2026-07-03 browser-axe note below is **DEAD**. That stale id will convince you the template is
+  deployed — it convinced one session into planning a Neon reset for a database that doesn't exist.
+  So template migrations have no deployed DB to stay compatible with and can be deleted outright.
+  **Forks are the opposite** — they have live DBs; never drop what the running version reads.
+- 2026-07-25 — **The template ships NO domain model, deliberately.** Baseline-only schema
+  (`User`/`Account`/`Session`/`VerificationToken`/`AuditLog`), so `"pristine": true` is truthful.
+  The Asset-Tracker domain was V2-210 pilot residue, removed 2026-07-25 (`docs/ARCHIVE.md`, point
+  `4b73206`). A bare dashboard is not a bug — the fork's first `/scaffold-entity` makes model #1.
 - 2026-07-17 — **Renovate is the sole dependency bot; Dependabot retired.** The Renovate GitHub
   App was connected (operator), so `.github/dependabot.yml` was REMOVED — a _present_ dependabot.yml
   is NOT dormant (GitHub runs its version updates on its own infra regardless of Actions billing), so

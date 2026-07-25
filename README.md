@@ -33,6 +33,19 @@ The audience is non-developer stakeholders. They review prototypes via shared UR
 - Health check endpoint
 - Thirteen local ESLint rules guarding the template's invariants
 
+## What it does NOT ship: a domain
+
+The schema is **baseline-only** — `User`, `Account`, `Session`, `VerificationToken`, `AuditLog`
+(auth + audit), and nothing else. There is no example domain to delete before you start: the
+dashboard boots with users, the audit log, the recycling bin, and settings, and the sidebar has
+room for whatever you scaffold next.
+
+That is deliberate. A template that arrives as somebody else's app charges every fork a teardown
+before it can be your app. Run `/quickstart "<your idea>"` or `/scaffold-entity` and the first
+model, its migration, zod schemas, API routes, pages, nav entry, and recycling-bin registration
+are generated on-convention in one command. (An IT asset-tracker demo domain used to ship here; it
+was pilot code, and it was removed on 2026-07-25 — see `docs/ARCHIVE.md`.)
+
 ## Claude Code
 
 `.claude/` ships with a permission allowlist, a SessionStart hook that boots dependencies, and these skills:
