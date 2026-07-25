@@ -4,7 +4,7 @@
 
 ## At-a-glance — IN PROGRESS / REMAINING (the fast status read)
 
-_Program: **harness-v2** · branch `claude/repo-pending-sweep-129frj` · updated 2026-07-24 · last /ship: **green** (972862a, 2026-07-17)._
+_Program: **harness-v2** · branch `main` · updated 2026-07-25 · last /ship: **green** (82339db, 2026-07-25)._
 
 | State | Item | Blocked by | Next action |
 |-------|------|-----------|-------------|
@@ -14,7 +14,7 @@ _Program: **harness-v2** · branch `claude/repo-pending-sweep-129frj` · updated
 | ✅ DONE | **H2-P3** harness-v2 Phase 3 — Shrink the decision space (V2-301..V2-309) | — | COMPLETE + on main (45a0500). Phase 3 — shrink the decision space (V2-301..309). Retro in EVIDENCE. |
 | ✅ DONE | **H2-P4** harness-v2 Phase 4 — Verify what was waived (V2-401..V2-409) | — | COMPLETE + on main (8fb4737) + senior-reviewed+fixed. Phase 4 — verify what was waived (V2-401..409). WS-5 adjudicated SPLIT. Detail in EVIDENCE. |
 | ✅ DONE | **H2-P5** harness-v2 Phase 5 — Stack & steady state (V2-501..V2-507) | — | COMPLETE + senior-reviewed+fixed (4572574, /ship green). Phase 5 — stack & steady state (V2-501..507). Review: 1 High (doc-manifest session-state prune gap) + counts + Scope, all fixed. Ready to land = harness-v2 CLOSED. Detail in EVIDENCE/CLOSEOUT. |
-| 🟡 IN PROGRESS | **POST-CLOSE** Post-finalization work landed AFTER the 2026-07-17 'finalized' stamp | — | The 2026-07-17 'TEMPLATE FINALIZED / no in-flight work' claim is NOT the whole story — 27 commits followed 972862a: #90 (repo-audit remediation + Asset Tracker T2/T9/T11) and #91 (OPEN-ITEMS.md consolidation) landed on main; and a challenge-audit on branch claude/repo-pending-sweep-129frj (2026-07-24) found + fixed 15 doc/harness findings (secret-logging ESLint hole, dangerous-command + bash-write-gate gaps, ship banner honesty, stale handoff/register counts + dead commit hashes). See docs/findings-register.md (newest entries) and `git log`. |
+| ✅ DONE | **POST-CLOSE** Post-finalization work landed AFTER the 2026-07-17 'finalized' stamp | — | COMPLETE 2026-07-25, merged to main (82339db). Challenge-audit (15 findings) fixed; npm-audit High+ 10->0; OPEN-ITEMS 1-7,12,16,17,18 shipped; 13/14/15 CLOSED won't-do; over-engineering pass cut docs 3.23MB->1.16MB (64%). Archive point: commit 3e5a105 (docs/ARCHIVE.md). |
 
 ## GRAND PROGRESS TABLE (built from docs/session-state.json)
 
@@ -85,10 +85,10 @@ Legend: `[x]` done · `[~]` partial · `[ ]` pending · `[-]` deferred/dropped.
 
 **Next actions**
 
-1. STATE IS NOT FROZEN AT 2026-07-17. The template was finalized then, but post-close work continued: audit remediation (#90/#91) landed on main, and a 2026-07-24 challenge-audit is fixing 15 doc/harness findings on branch claude/repo-pending-sweep-129frj. Verify HEAD with `git log`, not this file's lastShip sha.
-2. harness-v2 CLOSED + its post-close finalization landed on main (972862a, /ship green): WS-1 Docker self-host image VERIFIED+FIXED (5 latent defects); Renovate app connected + dependabot.yml retired.
-3. 3 deferrals remain, each gated (register lines): WS-5 provider round-trip (needs embeddings key/egress), Better Auth migration (operator chose to START the program — see OPEN-ITEMS #14), uptime/Storybook (catalog suffices).
-4. OPEN-ITEMS.md is the live backlog index; several items were picked up for build in the 2026-07-24 session (see that file + the findings register).
+1. NOTHING PENDING. Backlog is empty of actionable work: items 1-7,12,16,17,18 shipped; 13/14/15 closed WON'T DO (docs/OPEN-ITEMS.md §C); 8-11 are dormant-by-design and self-activate on config (embeddings key, AI_API_KEY, Entra creds, paid Actions) — no code to write. findings-register has 0 open entries.
+2. Ceremony now scales with RISK (CLAUDE.md): evidence artifacts only for security/data surfaces, Ask-before, migrations, wave-offs. Small changes get a commit message. Keep it that way.
+3. Template build history was archived out of the tree at commit 3e5a105 (docs/ARCHIVE.md) — recover by SHA, not by the tag name (the tag did not push).
+4. Optional follow-up, low value: push the local tag template-history-2026-07 from a machine whose git proxy allows tag pushes.
 
 <!-- END:auto-status -->
 
