@@ -10,11 +10,11 @@ gates it.
 
 | #   | Item                                                                        | Category        | Effort       | Blocked by                          |
 | --- | --------------------------------------------------------------------------- | --------------- | ------------ | ----------------------------------- |
-| 1   | Breadcrumb shows raw route segment (`asset` → "Assets")                     | UI polish       | S            | nothing                             |
-| 2   | Scaffold emits enum label maps + route through next-intl                    | Harness/i18n    | M            | nothing                             |
-| 3   | Pin `ccusage`/`scan`/`lhci` `@latest` floats                                | Supply-chain    | S            | nothing                             |
-| 4   | Asset Tracker: **location** field (T4)                                      | Feature         | S            | nothing                             |
-| 5   | Asset Tracker: **warranty** fields (T6)                                     | Feature         | S            | nothing                             |
+| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment           | UI polish       | S            | —                                   |
+| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file   | Harness/i18n    | M            | —                                   |
+| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats            | Supply-chain    | S            | —                                   |
+| 4   | ✅ **DONE** (2026-07-25) — Asset **location** field (T4)                    | Feature         | S            | —                                   |
+| 5   | ✅ **DONE** (2026-07-25) — Asset **warranty** fields (T6)                   | Feature         | S            | —                                   |
 | 6   | Asset Tracker: **bulk actions** on the list (T-app-floor)                   | Feature         | M            | nothing                             |
 | 7   | Cascade: replace the `category` **enum axis** with a Category-entity picker | Feature/UX      | M            | product decision                    |
 | 8   | WS-5 embeddings **provider round-trip**                                     | AI/RAG          | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
