@@ -75,6 +75,14 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  // Postgres does NOT auto-index FK columns (unlike MySQL), and the unique index
+  // above is keyed (provider, providerAccountId) — it cannot serve a userId-led
+  // lookup. The ADR-045 SSO takeover guard runs
+  // `account.findFirst({ where: { userId, provider } })` on EVERY Polis sign-in
+  // (lib/auth.ts), which without this index is a sequential scan of `accounts`
+  // that grows with the org. Composite so it covers both that query and a plain
+  // userId lookup. (2026-07-25 review.)
+  @@index([userId, provider])
   @@map("accounts")
 }
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // render-handoff.mjs -- Part 1 of session-automation (blueprint:
-// docs/blueprints/session-automation-auto-handoff.md).
+// docs/blueprints/session-automation-auto-handoff.md -- ARCHIVED, recover via
+// docs/ARCHIVE.md).
 //
 // docs/session-state.json is the single source of truth for program status.
 // This script renders it into the machine-owned sections of

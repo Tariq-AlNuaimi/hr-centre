@@ -60,7 +60,8 @@ const branch = git("rev-parse --abbrev-ref HEAD") || "the working branch";
 // handoff + state files live ONLY on the working branch (never merged to main).
 // Omitting this was the 2026-07-03 auto-spawn failure: the trigger fired, but the
 // successor (if it booted at all) landed on main with no program context and did
-// no work. See docs/blueprints/session-automation-auto-handoff.md "Auto-spawn
+// no work. See docs/blueprints/session-automation-auto-handoff.md (ARCHIVED --
+// recover via docs/ARCHIVE.md) "Auto-spawn
 // failure (2026-07-03) — root cause + fix".
 const prompt =
   `You are an AUTO-SPAWNED successor session for the ${program} program. You boot on a ` +

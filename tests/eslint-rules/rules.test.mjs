@@ -906,6 +906,18 @@ ruleTest(
         filename: "/repo/app/api/auth/forgot-password/route.ts",
         code: "export async function POST() {}",
       },
+      // Wrapped, then exported by specifier -- a legitimate idiom the bypass fix
+      // must NOT break.
+      {
+        filename: API_ROUTE,
+        code: "const GET = withAdminAuth(async () => {});\nexport { GET };",
+      },
+      // A sibling route whose name merely STARTS WITH the allowlisted prefix must
+      // still be guarded (`authors/` is not `auth/`).
+      {
+        filename: "/repo/app/api/authors/route.ts",
+        code: "export const GET = withAuth(async () => {});",
+      },
       // Outside app/api entirely -- rule must not fire.
       { filename: "/repo/lib/helper.ts", code: "export function GET() {}" },
       // A non-handler export in an api route is irrelevant.
@@ -916,6 +928,41 @@ ruleTest(
       {
         filename: API_ROUTE,
         code: "export async function GET() { return Response.json({}); }",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      // --- Export-form bypasses (2026-07-25 adversarial verification) ---------
+      // The first cut bailed on every specifier form (`if (!node.declaration) return`),
+      // so all of these were LIVE, wrapper-less handlers the rule could not see.
+      // Confirmed by RuleTester before the fix; these pin the closure.
+      {
+        filename: API_ROUTE,
+        code: "async function GET() {}\nexport { GET };",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      {
+        filename: API_ROUTE,
+        code: "async function h() {}\nexport { h as GET };",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      {
+        filename: API_ROUTE,
+        code: 'export { GET } from "./handlers";',
+        errors: [{ messageId: "noBareApiRouteReexport" }],
+      },
+      {
+        filename: API_ROUTE,
+        code: 'export * from "./handlers";',
+        errors: [{ messageId: "noBareApiRouteReexport" }],
+      },
+      {
+        filename: API_ROUTE,
+        code: "export const { GET } = mod;",
+        errors: [{ messageId: "noBareApiRouteReexport" }],
+      },
+      // Next also accepts route.js -- the original pattern only matched .tsx?
+      {
+        filename: "/repo/app/api/reports/route.js",
+        code: "export async function GET() {}",
         errors: [{ messageId: "noBareApiRoute" }],
       },
       // A const export with no wrapper at all.

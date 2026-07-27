@@ -5,7 +5,10 @@
 // provider factory + a thin native Tool-Runner wrapper, both a silent no-op until
 // AI_API_KEY is set. Deferred to follow-on WS-5 increments: /scaffold-ai-endpoint,
 // the ai-eval /ship gate + AI-Quality pillar, pgvector RAG + embeddings, and an
-// OpenAI-compatible provider path. See docs/blueprints/enterprise-ws5-ai-layer.md.
+// OpenAI-compatible provider path. Contract: ADR-036 (agent stack) + ADR-043
+// (pgvector RAG) + ADR-044 (GenAI tracing); AI-Quality pillar in
+// .claude/rules/ai.md. (The old pointer here named a blueprint that was never
+// committed -- corrected 2026-07-25.)
 
 export { isAiConfigured, aiConfig, AiNotConfiguredError } from "./config";
 export type { AiAuthStyle, AiConfig } from "./config";

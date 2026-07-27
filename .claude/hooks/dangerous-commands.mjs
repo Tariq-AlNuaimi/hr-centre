@@ -7,6 +7,16 @@
 // docs/deep-comparison/04-hooks.md disler + karanb192 rows). Both layers stay
 // -- defense in depth. Conservative by design: substrings inside quoted args
 // (`grep "rm -rf" docs/x`) do NOT trip it. No override (blueprint decision #1).
+//
+// KNOWN LIMITATION (2026-07-25). Segment splitting is textual — it does not parse
+// quotes or heredocs. So a command that *writes about* a destructive form, where
+// the quoted text itself contains a separator, can self-trip: a heredoc line
+// containing `cd sub &&` followed by a discarding git command splits into a
+// segment that looks like the real thing. Hit while adding the test cases below
+// this very rule. Fail-closed is the right default for a destructive-command
+// guard, so this is accepted, not fixed — but if you are editing a file that
+// documents these commands and the hook denies you, that is why: use the Edit
+// tool (which does not route through the Bash matcher) rather than a heredoc.
 import { readFileSync } from "node:fs";
 
 // Targets where `rm -rf` means catastrophe (root/home/repo-root/system dirs).
@@ -104,8 +114,33 @@ function checkSegment(seg) {
     // classic discard-my-edits form, so it stays denied.
     const DESTRUCTIVE = new Set(["--", "--force", "--hard", "--ours", "--theirs", "--worktree"]);
     const destructiveLong = rest.some((a) => DESTRUCTIVE.has(a) || a.startsWith("--source="));
-    const forceShort = rest.some((a) => a === "-f");
-    if (discardsDot || destructiveLong || forceShort)
+    // `-f` inside a COMBINED short cluster (`-fq`, `-qf`) is still --force. The
+    // old exact-match `a === "-f"` missed those.
+    const forceShort = rest.some((a) => /^-[A-Za-z]*f/.test(a) && !a.startsWith("--"));
+
+    // Forms that discard with NO flag at all -- the false negatives the narrowing
+    // pass missed because it only chased false POSITIVES (2026-07-25 probe):
+    //   `git restore <path>`        -- restore defaults to --worktree, i.e. DISCARDS
+    //   `git checkout HEAD <path>`  -- pathspec checkout, discards that path
+    const nonFlag = rest.filter((a) => !a.startsWith("-"));
+    const longs = rest.filter((a) => a.startsWith("--"));
+    let bareDiscard = false;
+    if (args[0] === "restore") {
+      // Only `--staged` alone leaves the working tree untouched; anything else
+      // that names a path writes over it.
+      const stagedOnly = longs.includes("--staged") && !longs.includes("--worktree");
+      bareDiscard = nonFlag.length > 0 && !stagedOnly;
+    } else {
+      // checkout: a branch-creating/switching form takes ONE ref and is safe
+      // (`-b`/`-B`/`--orphan`/`--track` may legitimately take a start-point too).
+      // Two or more bare operands with no branch flag is the `<tree-ish>
+      // <pathspec>` form, which overwrites the named paths.
+      const branchForm = rest.some(
+        (a) => a === "-b" || a === "-B" || a === "--orphan" || a === "--track",
+      );
+      bareDiscard = !branchForm && nonFlag.length >= 2;
+    }
+    if (discardsDot || destructiveLong || forceShort || bareDiscard)
       return `\`git ${args[0]}\` discarding tracked-file changes (\`.\` / \`--\` / \`--force\`) throws away uncommitted work; commit/stash first or ask the operator (deny-listed policy)`;
   }
   // 3. chmod 777 (incl. -R) -- world-writable

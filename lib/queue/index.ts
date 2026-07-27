@@ -2,7 +2,7 @@
 // Import from "@/lib/queue", not the sub-modules.
 //
 // pg-boss on the existing Postgres (build-vs-buy ledger 2026-07-11; blueprint
-// docs/blueprints/enterprise-queue-seam.md). Silent no-op until the operator
+// ADR-036's config-gated-seam pattern). Silent no-op until the operator
 // sets QUEUE_ENABLED="true" — guard optional job paths with isQueueConfigured();
 // unguarded use throws QueueNotConfiguredError before anything is constructed.
 

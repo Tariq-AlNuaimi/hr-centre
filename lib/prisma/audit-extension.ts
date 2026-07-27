@@ -38,29 +38,85 @@ export const SCRUB_FIELDS = new Set([
  * Dates are passed through untouched (they are objects, but have no fields to
  * redact and must survive as Dates for JSON serialization).
  */
-function scrubValue(v: unknown): unknown {
-  if (Array.isArray(v)) return v.map(scrubValue);
-  if (v && typeof v === "object" && !(v instanceof Date)) {
-    return scrubObject(v as Record<string, unknown>);
-  }
-  return v;
+// Recursion depth cap. Audit payloads are Prisma rows, not arbitrary graphs; 12
+// is far past any realistic include-depth while bounding a pathological input.
+const MAX_SCRUB_DEPTH = 12;
+
+/**
+ * Only PLAIN objects get rebuilt key-by-key. Everything else is passed through by
+ * reference so it serializes the way it would have before this function existed.
+ *
+ * This guard is why the first recursive cut was wrong: it treated every non-Date
+ * object as a record, so a Prisma `Decimal` was stored as its internal
+ * `{s,e,d}` form instead of "12.34", and a `Bytes` column (Uint8Array) became
+ * `{"0":1,"1":2,...}` — a 1 MB blob turning into a million-key JSON object in a
+ * 365-day-retained table. Neither type is in the baseline schema, so it was a
+ * fork-facing regression: `Decimal` is the single most common hand-added column
+ * type, and money is exactly the field an auditor reads.
+ */
+function isPlainObject(v: object): boolean {
+  if (Array.isArray(v)) return false;
+  if (v instanceof Date) return false;
+  if (ArrayBuffer.isView(v) || v instanceof ArrayBuffer) return false; // Bytes / Buffer
+  if (typeof (v as { toJSON?: unknown }).toJSON === "function") return false; // Decimal & friends
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
 }
 
-function scrubObject(obj: Record<string, unknown>): Record<string, unknown> {
+function scrubValue(v: unknown, seen: WeakSet<object>, depth: number): unknown {
+  if (!v || typeof v !== "object") return v;
+  const obj = v as object;
+  // Cycle guard. Prisma's own results are trees, but `recordAudit()` is exported
+  // and takes caller-supplied objects, so a cycle is reachable. Without this the
+  // RangeError propagates — and in the `update` path the row is ALREADY committed
+  // when scrub runs, so the failure mode was: data changed, no audit row, 500 to
+  // the caller. An audit gap must never be how a successful write fails.
+  if (seen.has(obj)) return "[circular]";
+  if (depth >= MAX_SCRUB_DEPTH) return "[truncated]";
+  if (Array.isArray(obj)) {
+    seen.add(obj);
+    const out = obj.map((item) => scrubValue(item, seen, depth + 1));
+    seen.delete(obj);
+    return out;
+  }
+  if (!isPlainObject(obj)) return v;
+  seen.add(obj);
+  const out = scrubObject(obj as Record<string, unknown>, seen, depth + 1);
+  seen.delete(obj);
+  return out;
+}
+
+function scrubObject(
+  obj: Record<string, unknown>,
+  seen: WeakSet<object>,
+  depth: number,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
-    if (SCRUB_FIELDS.has(k)) {
-      out[k] = v == null ? v : "[redacted]";
-    } else {
-      out[k] = scrubValue(v);
-    }
+    const value = SCRUB_FIELDS.has(k) ? (v == null ? v : "[redacted]") : scrubValue(v, seen, depth);
+    // defineProperty, not `out[k] = …`: a plain assignment with k === "__proto__"
+    // hits the prototype SETTER on the fresh object literal, so the key never
+    // becomes an own property and that slice of a user-controlled Json column
+    // silently VANISHES from the audit row while surviving in the DB. Scaffolded
+    // `json` fields validate with z.any(), so arbitrary keys do reach Prisma.
+    Object.defineProperty(out, k, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return out;
 }
 
 export function scrub<T extends Record<string, unknown> | null | undefined>(obj: T): T {
   if (!obj) return obj;
-  return scrubObject(obj) as T;
+  // Seed the ROOT into the cycle guard. Without this a self-reference
+  // (`node.self = node`) is not detected -- the guard only ever saw objects
+  // reached THROUGH a property, never the entry object itself.
+  const seen = new WeakSet<object>();
+  seen.add(obj);
+  return scrubObject(obj, seen, 0) as T;
 }
 
 type AnyClient = {
@@ -136,7 +192,10 @@ export function computeChanges(
         // carry access_token/refresh_token — and `changes` is one of the fields
         // GET /api/audit-log returns, so an unscrubbed nested value is served
         // straight to the admin UI (2026-07-25 security review).
-        changes[key] = { from: scrubValue(before[key]), to: scrubValue(after[key]) };
+        changes[key] = {
+          from: scrubValue(before[key], new WeakSet(), 0),
+          to: scrubValue(after[key], new WeakSet(), 0),
+        };
       }
     }
   }

@@ -157,7 +157,7 @@ const envSchema = z.object({
     .optional(),
 
   // Background job queue (optional; pg-boss seam -- see the build-vs-buy ledger
-  // 2026-07-11 + docs/blueprints/enterprise-queue-seam.md). The lib/queue/* seam
+  // 2026-07-11). The lib/queue/* seam
   // is a silent no-op unless QUEUE_ENABLED === "true" -- an EXPLICIT opt-in by
   // design: a Postgres URL is always present in this stack, so gating on the URL
   // alone would silently start pg-boss polling the app DB on every deploy.

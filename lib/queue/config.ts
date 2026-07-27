@@ -15,7 +15,7 @@
 // import-time parse. The QUEUE_* vars are still declared in lib/env.ts for the
 // env contract + loud boot-time validation (a typo'd QUEUE_ENABLED value or a
 // malformed QUEUE_DATABASE_URL fails startup there); this module is the runtime
-// source of truth. See docs/blueprints/enterprise-queue-seam.md and the
+// source of truth. See the
 // build-vs-buy ledger entry (2026-07-11 — Background job queue, pg-boss).
 
 /** Resolved queue config (only valid when configured). */

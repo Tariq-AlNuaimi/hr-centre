@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useNotify } from "@/hooks/use-notify";
 import { useSession } from "next-auth/react";
@@ -82,8 +82,16 @@ export default function RecyclingBinPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [total, setTotal] = useState(0);
 
+  // Monotonic request token — same race as the audit log: rapid page/page-size
+  // clicks fire overlapping requests, and a slow earlier response could
+  // overwrite a fast later one, showing the wrong page right before a
+  // restore/purge decision. Only the newest request commits state.
+  // (2026-07-25 review.)
+  const requestSeq = useRef(0);
+
   const fetchItems = useCallback(
     async (nextPage: number, nextPageSize: number) => {
+      const seq = ++requestSeq.current;
       setLoading(true);
       try {
         const qs = new URLSearchParams({
@@ -93,14 +101,17 @@ export default function RecyclingBinPage() {
         // apiClient unwraps the `ApiResponse` envelope, so this is the inner
         // paginated payload (`{ data, total, page, pageSize }`).
         const res = await apiClient.get<RecyclingBinResponse>(`/api/recycling-bin?${qs}`);
+        if (seq !== requestSeq.current) return; // superseded — drop this response
         setItems(res.data ?? []);
         setTotal(res.total ?? 0);
         setPage(res.page ?? nextPage);
         setPageSize(res.pageSize ?? nextPageSize);
       } catch {
+        if (seq !== requestSeq.current) return;
         showError(t("loadFailed"));
       } finally {
-        setLoading(false);
+        // Only the newest request owns the spinner.
+        if (seq === requestSeq.current) setLoading(false);
       }
     },
     [showError, t],

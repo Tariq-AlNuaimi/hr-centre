@@ -9,7 +9,8 @@
 // DORMANT BY DEFAULT (same posture as ai-eval): exits 0 with a note unless
 // AI_API_KEY is set AND fixture dirs exist, so the pristine template and every
 // fork stay green. Observe-only v1 — deliberately NOT a /ship phase (blueprint:
-// docs/blueprints/harness-plugin-agent-eval.md; promotion trigger in ADR-054:
+// docs/blueprints/harness-plugin-agent-eval.md (ARCHIVED -- recover via
+// docs/ARCHIVE.md); promotion trigger in ADR-054:
 // "a review agent regresses undetected in production").
 //
 // WHEN LIVE (AI_API_KEY set):

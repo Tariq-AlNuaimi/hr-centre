@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import type { ColumnsType } from "@/components/shared/table-types";
 import type { BadgeProps } from "@/components/ui/badge";
 import { useTranslations } from "next-intl";
@@ -48,7 +48,16 @@ export default function AuditLogClient() {
   const [entityType, setEntityType] = useState<string>();
   const [action, setAction] = useState<string>();
 
+  // Monotonic request token. Rapid filter/page changes fire overlapping requests,
+  // and responses can land out of order (different WHERE clauses have very
+  // different cost). Without this, a slow EARLIER response overwrites a fast
+  // LATER one and the table renders one filter's rows under another filter's
+  // label — on the compliance audit trail, where operators trust what is on
+  // screen. Only the newest request may commit state. (2026-07-25 review.)
+  const requestSeq = useRef(0);
+
   const fetchLogs = useCallback(async () => {
+    const seq = ++requestSeq.current;
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -63,12 +72,16 @@ export default function AuditLogClient() {
       const res = await apiClient.get<{ data: AuditEntry[]; total: number }>(
         `/api/audit-log?${params}`,
       );
+      if (seq !== requestSeq.current) return; // superseded — drop this response
       setData(res.data);
       setTotal(res.total);
     } catch {
+      if (seq !== requestSeq.current) return;
       showError(t("loadFailed"));
     } finally {
-      setLoading(false);
+      // Only the newest request owns the spinner; a superseded one must not
+      // clear it while the current request is still in flight.
+      if (seq === requestSeq.current) setLoading(false);
     }
   }, [page, pageSize, entityType, action, showError, t]);
 
