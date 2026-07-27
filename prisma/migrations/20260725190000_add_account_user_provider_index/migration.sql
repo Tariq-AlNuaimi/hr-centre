@@ -1,0 +1,14 @@
+-- Index the SSO account-linking lookup.
+--
+-- The ADR-045 Polis takeover guard runs, on EVERY federated sign-in:
+--   account.findFirst({ where: { userId, provider: "polis" } })   (lib/auth.ts)
+--
+-- Postgres does not auto-index foreign-key columns, and the pre-existing unique
+-- index on (provider, providerAccountId) cannot serve a userId-led predicate --
+-- so that query was a sequential scan of `accounts` on every SSO login, getting
+-- slower as an org's account count grows. Found by the 2026-07-25 review as the
+-- "activates on a config flag, discovered by the fork that flips it" class.
+--
+-- Additive and forward-compatible: creating an index never breaks a running
+-- version, so this is safe under `prisma migrate deploy` in the Vercel build.
+CREATE INDEX "accounts_userId_provider_idx" ON "accounts"("userId", "provider");
