@@ -285,6 +285,10 @@ test("dangerous-commands ALLOWS normal (non-destructive) git checkout (M2 no fal
     "git checkout --orphan gh-pages",
     "git checkout --quiet main",
     "git restore --staged lib/foo.ts",
+    // `-B <branch> <start-point>` takes TWO operands but creates/resets a BRANCH,
+    // not a path -- the two-operand pathspec heuristic must not catch it.
+    "git checkout -B feature/x origin/main",
+    "git checkout -b feature/x origin/main",
   ]) {
     assert.equal(
       runHook("dangerous-commands.mjs", preBash(cmd)).decision,
@@ -292,12 +296,20 @@ test("dangerous-commands ALLOWS normal (non-destructive) git checkout (M2 no fal
       `${cmd} discards nothing and must be allowed`,
     );
   }
-  // ...while the genuinely destructive forms stay denied.
+  // ...while the genuinely destructive forms stay denied. The last three carry NO
+  // destructive flag at all and were FALSE NEGATIVES until 2026-07-25: the
+  // narrowing pass chased false positives and never probed the other direction.
+  //   `git restore <path>`       -- restore DEFAULTS to --worktree, i.e. discards
+  //   `git checkout HEAD <path>` -- pathspec checkout, overwrites that path
+  //   `-fq`                      -- `-f` hiding inside a combined short cluster
   for (const cmd of [
     "git checkout -- lib/foo.ts",
     "git checkout --force main",
     "git restore --worktree lib/foo.ts",
     "git restore --source=HEAD~1 lib/foo.ts",
+    "git restore lib/foo.ts",
+    "git checkout HEAD lib/foo.ts",
+    "git checkout -fq main",
   ]) {
     assert.ok(
       isDeny(runHook("dangerous-commands.mjs", preBash(cmd))),
