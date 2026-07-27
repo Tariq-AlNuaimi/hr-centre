@@ -150,9 +150,17 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
 });
 
 /**
- * Register a model to participate in soft deletion.
- * Call this when adding new models with deletedAt/deletedBy fields.
+ * REMOVED 2026-07-25 — `registerSoftDeleteModel(name)` was a trap, not an API.
+ *
+ * It had zero callers: `/scaffold-entity` patches the `SOFT_DELETE_MODELS`
+ * literal above directly (scripts/scaffold-entity.mjs), in lockstep with
+ * `RECYCLABLE_ENTITY_TYPES` in ./recyclable.ts. But the exported function
+ * registered only ONE half of that pair — a fork that found it and called it
+ * would get a model whose rows are filtered out of every query (soft-deleted)
+ * yet absent from the recycling bin, so those rows become invisible AND are
+ * never GC'd by the retention cron. Deleting soft-delete rows without a bin is
+ * worse than not soft-deleting them at all.
+ *
+ * To add a model, edit BOTH literals — or let `/scaffold-entity` do it, which is
+ * why it patches both and throws if either marker is missing.
  */
-export function registerSoftDeleteModel(modelName: string) {
-  SOFT_DELETE_MODELS.add(modelName);
-}

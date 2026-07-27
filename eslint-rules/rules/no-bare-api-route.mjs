@@ -52,21 +52,35 @@ const PUBLIC_ROUTE_PATTERNS = [
   /[\\/]app[\\/]api[\\/]health[\\/]/,
 ];
 
-function wrapsWithAuth(node) {
+// Wrappers a real auth wrapper may legitimately be nested INSIDE. Recursing into
+// the arguments of an arbitrary call was unsound (2026-07-25 verification):
+// `noop(withAuth(handler))`, where `noop` discards its argument, satisfied the
+// rule while exporting an unwrapped handler. Only these compose.
+const COMPOSITION_WRAPPERS = new Set(["withRateLimit", "withSpan", "withAiRoute"]);
+
+const API_HELPERS = "@/lib/api-helpers";
+
+/**
+ * `authNames` is the set of auth-wrapper identifiers ACTUALLY IMPORTED from
+ * @/lib/api-helpers in this file. Matching on the bare name was a soundness gap:
+ * a local `function withAuth(h) { return h }`, or an import of `withAuth` from
+ * some other module, satisfied the rule while gating nothing. Requiring the
+ * binding to come from the real module closes it.
+ */
+function wrapsWithAuth(node, authNames, compNames) {
   if (!node) return false;
   if (node.type !== "CallExpression") return false;
   const callee = node.callee;
-  if (callee.type === "Identifier" && AUTH_WRAPPERS.has(callee.name)) return true;
+  if (callee.type === "Identifier" && authNames.has(callee.name)) return true;
   // `withX(...).something(...)` -- walk the outer call's callee.
   if (callee.type === "MemberExpression" && callee.object) {
-    return wrapsWithAuth(callee.object);
+    return wrapsWithAuth(callee.object, authNames, compNames);
   }
-  // Composed wrappers, e.g. `withRateLimit(withAdminAuth(handler), opts)`:
-  // recurse into the arguments to find the inner auth wrapper. This is the
-  // REQUIRED composition order (withRateLimit outside), enforced separately by
-  // no-rate-limit-inside-auth.
-  if (Array.isArray(node.arguments) && node.arguments.some(wrapsWithAuth)) {
-    return true;
+  // Composition, e.g. `withRateLimit(withAdminAuth(handler), opts)` -- the
+  // REQUIRED order (withRateLimit outside), enforced by no-rate-limit-inside-auth.
+  // Only recurse through a KNOWN composition wrapper.
+  if (callee.type === "Identifier" && compNames.has(callee.name) && Array.isArray(node.arguments)) {
+    return node.arguments.some((a) => wrapsWithAuth(a, authNames, compNames));
   }
   return false;
 }
@@ -97,8 +111,29 @@ export default {
     // Handler bindings declared in this module, so an `export { GET }` further
     // down can be resolved back to its initializer.
     const localHandlers = new Map(); // name -> { wrapped: boolean, node }
+    // Auth/composition wrapper names ACTUALLY imported from @/lib/api-helpers.
+    // A wrapper is only credited if its binding comes from the real module.
+    const authNames = new Set();
+    const compNames = new Set();
+    // NOTE on ordering: ESLint walks top-down, so `authNames` is populated by the
+    // time handlers below the import block are visited -- the only shape this
+    // repo (or Prettier's import ordering) produces. A handler declared ABOVE its
+    // own import would be judged against an empty set and reported. That is a
+    // false POSITIVE, not a false negative: it fails closed, which is the correct
+    // direction for an auth gate, and the fix is to move the import up.
+    const isWrapped = (init) => wrapsWithAuth(init, authNames, compNames);
 
     return {
+      ImportDeclaration(node) {
+        if (node.source.value !== API_HELPERS) return;
+        for (const spec of node.specifiers) {
+          if (spec.type !== "ImportSpecifier") continue;
+          const imported = spec.imported?.name;
+          const local = spec.local?.name;
+          if (AUTH_WRAPPERS.has(imported)) authNames.add(local);
+          if (COMPOSITION_WRAPPERS.has(imported)) compNames.add(local);
+        }
+      },
       // Record every top-level binding that COULD be exported as a handler later.
       // `async function GET() {}` is never wrapped; `const GET = withAuth(...)` is
       // wrapped only if its init says so.
@@ -107,7 +142,7 @@ export default {
       },
       VariableDeclarator(node) {
         if (node.id?.type === "Identifier") {
-          localHandlers.set(node.id.name, { wrapped: wrapsWithAuth(node.init), node });
+          localHandlers.set(node.id.name, { init: node.init, node });
         }
       },
       // `export * from "./handlers"` re-exports an unknown set of bindings; the
@@ -137,7 +172,7 @@ export default {
               continue;
             }
             const local = localHandlers.get(spec.local?.name);
-            if (local?.wrapped) continue;
+            if (local && isWrapped(local.init)) continue;
             context.report({
               node: spec,
               messageId: "noBareApiRoute",
@@ -162,7 +197,7 @@ export default {
             }
             if (!decl.id || decl.id.type !== "Identifier") continue;
             if (!HANDLER_NAMES.has(decl.id.name)) continue;
-            if (wrapsWithAuth(decl.init)) continue;
+            if (isWrapped(decl.init)) continue;
             context.report({
               node: decl,
               messageId: "noBareApiRoute",
