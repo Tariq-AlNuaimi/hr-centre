@@ -165,3 +165,61 @@ test("computeChanges redacts Restricted values nested under a non-Restricted key
   assert.ok(!serialized.includes("new_secret"), "after-value token must not appear in changes");
   assert.ok(serialized.includes("[redacted]"));
 });
+
+// --- Non-plain objects, cycles, and __proto__ (2026-07-25 adversarial pass) ---
+// The first recursive cut rebuilt EVERY non-Date object key-by-key, which broke
+// fidelity for types that must serialize via their own toJSON, and had no cycle
+// guard at all. In the `update` path the row is already committed when scrub
+// runs, so a throw here meant: data changed, no audit row, 500 to the caller.
+
+test("scrub passes a toJSON-bearing value (e.g. Prisma Decimal) through intact", () => {
+  const decimal = {
+    s: 1,
+    e: 1,
+    d: [12, 3400000],
+    toJSON() {
+      return "12.34";
+    },
+  };
+  const out = scrub({ price: decimal } as unknown as Record<string, unknown>);
+  const price = (out as unknown as Record<string, unknown>).price;
+  assert.equal(price, decimal, "must be the same reference, not a rebuilt plain object");
+  assert.equal(
+    JSON.stringify(price),
+    '"12.34"',
+    "money must serialize via toJSON, not as internal {s,e,d}",
+  );
+});
+
+test("scrub passes a typed array (a Bytes column) through as a typed array", () => {
+  const bytes = new Uint8Array([1, 2, 3, 4]);
+  const out = scrub({ blob: bytes } as unknown as Record<string, unknown>);
+  const blob = (out as unknown as Record<string, unknown>).blob;
+  assert.equal(blob, bytes, "must not be rebuilt key-by-key into an indexed object");
+  assert.ok(blob instanceof Uint8Array);
+});
+
+test("scrub survives a circular reference instead of throwing", () => {
+  const node: Record<string, unknown> = { name: "a" };
+  node.self = node;
+  const out = scrub(node) as Record<string, unknown>;
+  assert.equal(out.name, "a");
+  assert.equal(out.self, "[circular]");
+});
+
+test("scrub caps runaway depth instead of blowing the stack", () => {
+  let deep: Record<string, unknown> = { end: true };
+  for (let i = 0; i < 5000; i++) deep = { next: deep };
+  assert.doesNotThrow(() => scrub(deep));
+});
+
+test("scrub keeps a __proto__ key as own data instead of silently dropping it", () => {
+  // A user-controlled Json column can carry any key; scaffolded `json` fields
+  // validate with z.any(). A plain `out[k] = v` hits the prototype setter, so the
+  // key vanishes from the audit row while surviving in the DB — unauditable by
+  // choice of key name.
+  const payload = JSON.parse('{"id":"1","meta":{"__proto__":{"x":1},"keep":2}}');
+  const meta = (scrub(payload) as Record<string, Record<string, unknown>>).meta;
+  assert.deepEqual(Object.keys(meta).sort(), ["__proto__", "keep"]);
+  assert.equal(({} as Record<string, unknown>).x, undefined, "and no prototype pollution");
+});
