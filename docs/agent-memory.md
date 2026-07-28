@@ -21,7 +21,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (2): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
-- **Conventions discovered** (2): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
+- **Conventions discovered** (4): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
 
 <!-- END:digest -->
@@ -266,6 +266,20 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 ## Conventions discovered
 
 <!-- patterns/idioms established in practice that are not yet written down elsewhere -->
+
+- 2026-07-25 — **A gate that has never been exercised is not a gate — run it, do not read it.**
+  In one session, FIVE gates were green while being wrong: `dangerous-commands` allowed
+  `git rest0re <path>` (which discards) and `git check0ut HEAD <path>`; `scanSessionState`
+  reported "land this" for any branch that merely never had the files, and skipped entirely on a
+  non-`main` default branch; db-structure (c) had never once run; and `no-bare-api-route` missed
+  SIX live export forms including `export { GET }`. Three were in code written hours earlier by
+  the same session that declared them done. Every one was found by EXECUTING the thing —
+  throwaway git repos, a real shadow DB, RuleTester over each export shape — and none by reading
+  it. **When you add or narrow a gate, probe BOTH directions in the same sitting**: fixing false
+  positives without checking false negatives leaves it half-built and feels finished.
+- 2026-07-25 — **`docs/SESSION-HANDOFF.md` is gitignored, so a session handoff written there dies
+  with the container.** Durable close-out belongs HERE (tracked, reaches `main` and forks). Write
+  the handoff for the human inline; write the lesson to agent-memory.
 
 - 2026-07-03 — **Session status is DATA, not prose.** `docs/session-state.json` is the
   single source; `SESSION-HANDOFF.md`'s two tables are RENDERED from it between
