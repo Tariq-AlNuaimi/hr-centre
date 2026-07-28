@@ -28,6 +28,11 @@ const LIST_SELECT = {
   changes: true,
   timestamp: true,
   user: { select: { id: true, name: true, email: true } },
+  // The immutable label, returned ALONGSIDE the relation rather than instead of
+  // it. `user` is null once that account is permanently deleted (onDelete:
+  // SetNull), and before this column the row simply lost its actor. Rendering
+  // falls back to `actorEmail` so a deleted actor still reads as attributed.
+  actorEmail: true,
 } satisfies Prisma.AuditLogSelect;
 
 export const GET = withAdminAuth(async (request: NextRequest) => {

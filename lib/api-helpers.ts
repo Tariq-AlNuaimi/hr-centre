@@ -54,8 +54,16 @@ export function withAuth(handler: AuthedHandler) {
     const ipAddress = clientIp(req) ?? undefined;
     const userAgent = req.headers.get("user-agent") ?? undefined;
 
-    return withAuditContext({ userId: session.user.id, ipAddress, userAgent }, () =>
-      handler(req, { ...ctx, session }),
+    // actorEmail is denormalized onto each audit row so attribution survives the
+    // actor being permanently deleted (audit_logs.userId is onDelete: SetNull).
+    return withAuditContext(
+      {
+        userId: session.user.id,
+        actorEmail: session.user.email ?? undefined,
+        ipAddress,
+        userAgent,
+      },
+      () => handler(req, { ...ctx, session }),
     );
   };
 }

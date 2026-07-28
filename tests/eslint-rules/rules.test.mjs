@@ -884,20 +884,35 @@ ruleTest(
 // unauthenticated. So EVERY handler needs a wrapper unless its route is on the
 // public allowlist. Filename is load-bearing -- each case sets an absolute path.
 const API_ROUTE = "/repo/app/api/reports/route.ts";
+// The rule credits a wrapper only when its binding comes from @/lib/api-helpers,
+// so every VALID case must actually import it (soundness fix, 2026-07-25).
+const WRAP_IMPORT =
+  'import { withAuth, withAdminAuth, withEditorAuth, withApiAuth, withRateLimit } from "@/lib/api-helpers";\n';
 ruleTest(
   "no-bare-api-route",
   noBareApiRoute,
   {
     valid: [
       // Each auth wrapper satisfies the rule.
-      { filename: API_ROUTE, code: "export const GET = withAuth(async () => {});" },
-      { filename: API_ROUTE, code: "export const POST = withAdminAuth(async () => {});" },
-      { filename: API_ROUTE, code: "export const PUT = withEditorAuth(async () => {});" },
-      { filename: API_ROUTE, code: "export const GET = withApiAuth(async () => {});" },
+      { filename: API_ROUTE, code: WRAP_IMPORT + "export const GET = withAuth(async () => {});" },
+      {
+        filename: API_ROUTE,
+        code: WRAP_IMPORT + "export const POST = withAdminAuth(async () => {});",
+      },
+      {
+        filename: API_ROUTE,
+        code: WRAP_IMPORT + "export const PUT = withEditorAuth(async () => {});",
+      },
+      {
+        filename: API_ROUTE,
+        code: WRAP_IMPORT + "export const GET = withApiAuth(async () => {});",
+      },
       // Composed with withRateLimit OUTSIDE (the required order) still counts.
       {
         filename: API_ROUTE,
-        code: "export const POST = withRateLimit(withAdminAuth(async () => {}), { limit: 5 });",
+        code:
+          WRAP_IMPORT +
+          "export const POST = withRateLimit(withAdminAuth(async () => {}), { limit: 5 });",
       },
       // Public allowlist: the auth surface and the health probe are public BY
       // DESIGN and must not be forced to require a session.
@@ -910,13 +925,13 @@ ruleTest(
       // must NOT break.
       {
         filename: API_ROUTE,
-        code: "const GET = withAdminAuth(async () => {});\nexport { GET };",
+        code: WRAP_IMPORT + "const GET = withAdminAuth(async () => {});\nexport { GET };",
       },
       // A sibling route whose name merely STARTS WITH the allowlisted prefix must
       // still be guarded (`authors/` is not `auth/`).
       {
         filename: "/repo/app/api/authors/route.ts",
-        code: "export const GET = withAuth(async () => {});",
+        code: WRAP_IMPORT + "export const GET = withAuth(async () => {});",
       },
       // Outside app/api entirely -- rule must not fire.
       { filename: "/repo/lib/helper.ts", code: "export function GET() {}" },
@@ -965,6 +980,29 @@ ruleTest(
         code: "export async function GET() {}",
         errors: [{ messageId: "noBareApiRoute" }],
       },
+      // --- Soundness: the wrapper must be the REAL one ---------------------
+      // Matching on the bare NAME let a look-alike satisfy the rule while
+      // gating nothing. The binding must come from @/lib/api-helpers.
+      {
+        filename: API_ROUTE,
+        code: "function withAuth(h) { return h; }\nexport const GET = withAuth(async () => {});",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      {
+        filename: API_ROUTE,
+        code: 'import { withAuth } from "./mine";\nexport const GET = withAuth(async () => {});',
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      // Recursing into the arguments of an ARBITRARY call was unsound: `noop`
+      // discards its argument, so the handler ships unwrapped. Only known
+      // composition wrappers (withRateLimit/withSpan/withAiRoute) may nest one.
+      {
+        filename: API_ROUTE,
+        code:
+          'import { withAuth } from "@/lib/api-helpers";\n' +
+          "export const GET = noop(withAuth(async () => {}));",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
       // A const export with no wrapper at all.
       {
         filename: API_ROUTE,
@@ -975,7 +1013,7 @@ ruleTest(
       // endpoint still leaves it unauthenticated.
       {
         filename: API_ROUTE,
-        code: "export const GET = withRateLimit(async () => {}, { limit: 5 });",
+        code: WRAP_IMPORT + "export const GET = withRateLimit(async () => {}, { limit: 5 });",
         errors: [{ messageId: "noBareApiRoute" }],
       },
       // Every handler verb is covered, not just GET/POST.

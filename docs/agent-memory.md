@@ -14,7 +14,7 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
-- **Durable decisions** (10): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
+- **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (6): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (3): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
@@ -48,6 +48,10 @@ tax is the ≤30-line digest, not the whole file.
 
 <!-- choices made with the operator, so they are not relitigated -->
 
+- 2026-07-25 — **A gate that silently degrades is a gate nobody has tested.** `/ship`'s
+  db-structure (c) sub-check had never once run (it needs `SHADOW_DATABASE_URL`, which nothing
+  sets) and failed on first contact — on a deliberate design decision, not real drift. Fixed +
+  full local shadow-DB recipe in `.claude/rules/harness.md` ("Running db-structure (c) locally").
 - 2026-07-25 — **The template repo has NO Vercel project and NO Neon DB.** Zero Vercel projects
   link to repoId `1241728413` (checked personal + `tariq-s-projects4`); `prj_PDhqr8z3g…` in the
   2026-07-03 browser-axe note below is **DEAD**. That stale id will convince you the template is
@@ -64,17 +68,13 @@ tax is the ≤30-line digest, not the whole file.
   keeping both would duplicate every dependency PR. `renovate.json5` carries the richer equivalent
   policy (ADR-017 two tracks + ADR-056 next-auth freeze + ADR-001 major locks). Restore
   dependabot.yml from git history only if Renovate is ever removed. (972862a)
-- 2026-07-13 — **A.6 P1 adopted: official `frontend-design` plugin** enabled project-wide
-  (`.claude/settings.json` `extraKnownMarketplaces` + `enabledPlugins`
-  `frontend-design@claude-code-plugins`) and ordered AHEAD of `/design-system`
-  (SKILL.md §0: plugin = creative direction, repo tokens/primitives stay binding).
-  Fail-open if the marketplace is unreachable. TRIAL PENDING: on the next real UI
-  build, use it and record the verdict here; `impeccable` is the single sanctioned
-  fallback if the quality gap persists (a6-tool-shortlist-verdicts.md).
-- 2026-07-13 — **Enterprise pivot (WS-1..8) + code wave (ADR-049..056) are COMPLETE on
-  `main`.** Plan docs: `docs/research/v2/enterprise-benchmark-v2.html` +
-  `docs/research/v2/PHASE-2-BACKLOG.md`. Only trigger-gated deferred work remains
-  (`docs/session-state.json` deferred list + `docs/deferred-adoption-plan.md`).
+- 2026-07-13 — **`frontend-design` plugin adopted** (`.claude/settings.json`), ordered AHEAD of
+  `/design-system`: plugin = creative direction, repo tokens/primitives stay binding
+  (SKILL.md §0). Fail-open if the marketplace is unreachable. TRIAL STILL PENDING — record the
+  verdict here on the next real UI build; `impeccable` is the sanctioned fallback.
+- 2026-07-13 — **Enterprise pivot (WS-1..8) + code wave (ADR-049..056) are COMPLETE on `main`;**
+  only trigger-gated deferred work remains. Its plan docs were archived 2026-07-25 — the ADRs are
+  the surviving record (`docs/ARCHIVE.md` recovers the rest).
 - 2026-07-11 — **Next feature-bump trigger (ADR-048) has NOT fired.** The React
   Compiler Rust port + Turbopack persistent PRODUCTION build cache are **16.3-only**,
   and 16.3 is still `preview`/`canary` (npm `latest` = 16.2.10); the Rust compiler is

@@ -2,6 +2,13 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 export interface AuditContext {
   userId?: string;
+  /**
+   * Immutable actor label written onto every audit row alongside `userId`.
+   * The FK is `onDelete: SetNull`, so attribution that depends on the User row
+   * still existing is erasable by deleting that user — this is not.
+   * Confidential (SECURITY.md §1).
+   */
+  actorEmail?: string;
   ipAddress?: string;
   userAgent?: string;
 }

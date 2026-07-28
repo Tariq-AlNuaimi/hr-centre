@@ -177,6 +177,34 @@ edit to an existing product file. Not one of the thirteen local rules — an ado
 (`docs/build-vs-buy-ledger.md`, V2-404). Escape: `// eslint-disable-next-line
 sonarjs/cognitive-complexity` for a justified one-off.
 
+## Running db-structure (c) locally — the shadow-DB recipe (2026-07-25)
+
+The db-structure gate's third sub-check (**migrations ↔ schema in sync**) needs a disposable EMPTY
+Postgres to replay migrations into. Nothing in the repo sets `SHADOW_DATABASE_URL`, so it degraded
+to a WARN on **every run since it was written** — and the first time it actually ran it went RED on
+`document_embedding`, the pgvector table that `20260711120000_pgvector_rag` creates and
+`schema.prisma` deliberately does not model. No migration could ever have resolved that, so it is
+now allowlisted in `checkMigrationsInSync` (`RAW_SQL_TABLES`). Verified BOTH ways: allowlisted drift
+passes, an injected column still goes RED — an allowlist that swallows real drift would be worse
+than the degraded check it replaced.
+
+To run it for real in this container (**no Docker here** — `make db-up` fails):
+
+```bash
+pg_ctlcluster 16 main start                       # native Postgres 16 is preinstalled
+# as `sudo -u postgres`: CREATE ROLE app LOGIN PASSWORD '<from .env>' SUPERUSER
+#                        createdb -O app app_db && createdb -O app shadow_db
+apt-get install -y postgresql-16-pgvector
+sudo -u postgres psql -d shadow_db -c "CREATE EXTENSION vector"   # the RAG migration needs it
+export SHADOW_DATABASE_URL="<same DSN as DATABASE_URL, database swapped to shadow_db>"
+npm run ship                                       # db-structure now PASSES instead of PASS*
+```
+
+**Adding another raw-SQL-managed table?** Add it to `RAW_SQL_TABLES` in `scripts/ship.mjs` in the
+same commit, or (c) reports drift no migration can fix. **The general lesson:** a check that
+degrades quietly when a prerequisite is missing will read as green forever. When you add one, make
+the degraded state visibly distinct (`PASS*` + a `note:` here) and actually exercise it once.
+
 ## Warm `/ship` vs `ship:full` (V2-401, ADR-061)
 
 Two honest tiers — the constitution's "run `/ship` before every push" means the **warm** loop:

@@ -144,7 +144,8 @@
     "filterEntity": "Filter by entity",
     "filterAction": "Filter by action",
     "clearFilter": "Clear filter",
-    "loadFailed": "Failed to load audit log"
+    "loadFailed": "Failed to load audit log",
+    "deletedActorSuffix": "(deleted)"
   },
   "theme": {
     "light": "Light",

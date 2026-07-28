@@ -118,6 +118,17 @@ model AuditLog {
   changes    Json?
   userId     String?
   user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  // Immutable actor label, denormalized at write time. The FK above is
+  // `onDelete: SetNull`, so permanently deleting a User silently NULLs `userId`
+  // on EVERY audit row that user ever produced — an ADMIN could erase the
+  // attribution of their own history simply by deleting their account, and the
+  // daily recycling-bin GC does the same thing unattended. Attribution must not
+  // depend on the referenced row still existing, so it is captured here as plain
+  // text and never updated afterwards. Confidential (SECURITY.md §1): it is an
+  // email that deliberately OUTLIVES the user, which is the point of an audit
+  // trail — a fork with erasure obligations should scrub this column on request
+  // rather than rely on the cascade. (2026-07-25 review.)
+  actorEmail String?
   ipAddress  String?
   userAgent  String?
   timestamp  DateTime @default(now())

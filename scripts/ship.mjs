@@ -383,8 +383,23 @@ function scanSessionState() {
   // Prefer the remote ref (the thing forks are actually created from). Fall back to
   // a local `main` when there is no remote, so a detached/offline clone still checks
   // something real rather than silently passing.
+  // Resolve the remote's ACTUAL default branch first, so a fork that renamed
+  // `main` (to `trunk`, `master`, …) is still checked. Without this the candidate
+  // list missed, the gate returned "no main ref (skipped)", and such a fork was
+  // silently never guarded at all — a fail-open hole found by the 2026-07-25
+  // edge-case matrix, not by any test.
+  let defaultRef = "";
+  try {
+    defaultRef = execSync("git symbolic-ref --short --quiet refs/remotes/origin/HEAD", {
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+      .toString()
+      .trim();
+  } catch {
+    /* no origin/HEAD (never fetched, or no remote) — fall through to the list */
+  }
   let ref = "";
-  for (const candidate of ["origin/main", "main"]) {
+  for (const candidate of [defaultRef, "origin/main", "main", "master", "trunk"].filter(Boolean)) {
     try {
       execSync(`git rev-parse --verify --quiet ${candidate}`, {
         stdio: ["ignore", "pipe", "ignore"],
@@ -728,6 +743,37 @@ async function checkMigrationsInSync() {
     "--exit-code",
   ]);
   if (r.ok) return { sync: "ok" };
+
+  // Tables that migrations create but `schema.prisma` deliberately does NOT model,
+  // so `migrate diff` always reports them as "[-] Removed tables". These are raw-SQL
+  // managed on purpose:
+  //   document_embedding -- pgvector store (20260711120000_pgvector_rag). Prisma has
+  //     no native `vector` type; modelling it would mean Unsupported() columns that
+  //     no Prisma query can read anyway, and lib/ai/rag.ts talks to it through
+  //     parameterized $queryRaw by design (ADR-043).
+  // Without this allowlist the (c) sub-check reports drift that no migration can
+  // ever resolve. It went unnoticed because (c) requires SHADOW_DATABASE_URL, which
+  // nothing in the repo sets — so the FIRST time it actually ran (2026-07-25) it
+  // failed on a deliberate design decision rather than on real drift.
+  const RAW_SQL_TABLES = ["document_embedding"];
+  const driftLines = r.out
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^[-+[]/.test(l) || /^\s*- /.test(l));
+  const onlyRawSqlTables =
+    driftLines.length > 0 &&
+    driftLines.every(
+      (l) =>
+        /^\[[-+]\]/.test(l) || // the "[-] Removed tables" header itself
+        RAW_SQL_TABLES.some((t) => l.includes(t)),
+    );
+  if (onlyRawSqlTables) {
+    return {
+      sync: "ok",
+      note: `migrations match the schema (ignoring raw-SQL-managed ${RAW_SQL_TABLES.join(", ")})`,
+    };
+  }
+
   // --exit-code: 0 = no difference, 2 = difference, 1 = error. `run` only
   // exposes ok/out, so tell drift from an unreachable/broken shadow DB by the
   // output: a real diff prints schema-change lines, an error prints "Error:".
