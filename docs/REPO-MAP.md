@@ -20,7 +20,7 @@
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
-- app/api/health/route.ts
+- app/api/health/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/scim/route.ts  [POST]
 - app/api/openapi/route.ts  [GET]
@@ -65,7 +65,7 @@
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
-- lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension, registerSoftDeleteModel
+- lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
 - lib/prisma.ts: prisma, prismaUnfiltered
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/queue/client.ts: JobHandler, getQueue, sendJob, registerWorker, stopQueue

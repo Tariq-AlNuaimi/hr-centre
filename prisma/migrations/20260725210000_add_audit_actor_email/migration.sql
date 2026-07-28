@@ -1,0 +1,17 @@
+-- Immutable actor label on audit rows.
+--
+-- `audit_logs.userId` is `onDelete: SetNull`, so permanently deleting a User
+-- silently NULLs the actor on EVERY audit row that user ever produced. An ADMIN
+-- could therefore erase the attribution of their own history by deleting their
+-- own account, and the daily recycling-bin GC does the same thing unattended.
+-- Attribution must not depend on the referenced row still existing.
+--
+-- Nullable and additive: forward-compatible under the `prisma migrate deploy`
+-- that runs in every Vercel build, and rows written before this migration simply
+-- keep a NULL label (their `userId` is still whatever it was).
+--
+-- Deliberately NOT backfilled from `users`: a backfill would invent attribution
+-- for rows whose actor may already have been nulled, which is exactly the
+-- untrustworthy audit data this column exists to prevent. NULL honestly means
+-- "written before attribution was durable".
+ALTER TABLE "audit_logs" ADD COLUMN "actorEmail" TEXT;

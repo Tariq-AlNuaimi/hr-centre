@@ -144,7 +144,8 @@
     "filterEntity": "تصفية حسب الكيان",
     "filterAction": "تصفية حسب الإجراء",
     "clearFilter": "مسح التصفية",
-    "loadFailed": "فشل تحميل سجل التدقيق"
+    "loadFailed": "فشل تحميل سجل التدقيق",
+    "deletedActorSuffix": "(محذوف)"
   },
   "theme": {
     "light": "فاتح",

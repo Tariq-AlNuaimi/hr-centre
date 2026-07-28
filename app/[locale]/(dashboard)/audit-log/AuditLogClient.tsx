@@ -26,6 +26,10 @@ interface AuditEntry {
   action: string;
   changes: Record<string, unknown> | null;
   user: { id: string; name: string | null; email: string } | null;
+  // Immutable label captured at write time. `user` goes null when that account is
+  // permanently deleted (audit_logs.userId is onDelete: SetNull), so this is what
+  // keeps a deleted actor attributed.
+  actorEmail: string | null;
   timestamp: string;
 }
 
@@ -125,7 +129,13 @@ export default function AuditLogClient() {
         title: t("user"),
         dataIndex: "user",
         width: 180,
-        render: (user: AuditEntry["user"]) => (user ? (user.name ?? user.email) : "-"),
+        render: (user: AuditEntry["user"], row: AuditEntry) => {
+          if (user) return user.name ?? user.email;
+          // Actor deleted: fall back to the immutable label rather than showing
+          // "-", which read as "nobody did this" for a row that has an actor.
+          if (row.actorEmail) return `${row.actorEmail} ${t("deletedActorSuffix")}`;
+          return "-";
+        },
       },
       {
         title: t("changes"),

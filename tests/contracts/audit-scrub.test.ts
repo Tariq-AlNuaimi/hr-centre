@@ -223,3 +223,21 @@ test("scrub keeps a __proto__ key as own data instead of silently dropping it", 
   assert.deepEqual(Object.keys(meta).sort(), ["__proto__", "keep"]);
   assert.equal(({} as Record<string, unknown>).x, undefined, "and no prototype pollution");
 });
+
+// --- Actor label is NOT scrubbed (2026-07-25) --------------------------------
+// `actorEmail` exists precisely so attribution survives the actor row being
+// deleted. Adding "email" to SCRUB_FIELDS would silently defeat that, so pin the
+// asymmetry: the label is Confidential and kept, while a genuine credential in
+// the same payload is still redacted.
+test("scrub keeps actor/email fields while still redacting credentials", () => {
+  const out = scrub({
+    actorEmail: "admin@example.com",
+    email: "user@example.com",
+    passwordHash: "$argon2id$v=19$secret",
+  });
+  const r = out as unknown as Record<string, unknown>;
+  assert.equal(r.actorEmail, "admin@example.com", "audit attribution must survive scrubbing");
+  assert.equal(r.email, "user@example.com");
+  assert.equal(r.passwordHash, "[redacted]");
+  assert.ok(!SCRUB_FIELDS.has("actorEmail"), "actorEmail must never be added to SCRUB_FIELDS");
+});
