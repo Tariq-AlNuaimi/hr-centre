@@ -45,7 +45,7 @@ export function AppHeader() {
   const displayName = session?.user?.name ?? session?.user?.email;
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-6 shadow-sm">
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-6">
       <OrgSwitcher />
 
       <div className="flex items-center gap-4">

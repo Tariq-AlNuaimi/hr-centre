@@ -1,10 +1,14 @@
-/* Tailwind v4 foundation (ADR-029, Workstream C1). Theme + utilities ONLY —
-   preflight is deliberately NOT imported while AntD coexists (C1–C3): its base
-   reset would restyle every AntD screen. C4 swaps these two lines for the full
-   `@import "tailwindcss";` once AntD is removed. The @theme block itself lives
-   in tokens.css (the exempt token source). */
+/* Tailwind v4 foundation (ADR-029, Workstream C4 — base reset ENABLED).
+   Preflight was withheld during the AntD coexistence slice (C1–C3) so its base
+   reset wouldn't restyle AntD screens. AntD is fully removed, so C4 turns
+   preflight back on: it normalizes native form controls (the leaked "raised
+   button" chrome on unstyled <button>s) and the base element resets the app was
+   already written to expect — every native-element primitive carries
+   `appearance-none` for exactly this moment. The @theme block itself lives in
+   tokens.css (the exempt token source). */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "./tokens.css";
 

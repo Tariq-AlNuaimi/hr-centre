@@ -106,8 +106,8 @@ export function AppSidebar() {
                 "flex items-center gap-3 rounded-md px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
                 collapsed && "justify-center",
                 isActive
-                  ? "bg-muted font-medium text-nav-active-foreground"
-                  : "text-foreground hover:bg-muted",
+                  ? "bg-accent-subtle font-medium text-nav-active-foreground"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
               <span className="inline-flex shrink-0">{item.icon}</span>

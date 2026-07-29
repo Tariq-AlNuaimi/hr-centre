@@ -149,7 +149,13 @@ export function Chart<T extends Record<string, unknown>>({
             nameKey={nameKey}
             cx="50%"
             cy="50%"
+            // Donut, not a full pie: an inner cutout reads as a modern KPI ring
+            // and stays legible when a single category fills the whole circle
+            // (the old full pie showed a bare wedge). paddingAngle separates
+            // adjacent slices with a hairline gap.
+            innerRadius="58%"
             outerRadius="80%"
+            paddingAngle={data.length > 1 ? 2 : 0}
             label
             // No leader label-lines (Workstream D a11y): recharts forwards Cell
             // props to BOTH the sector AND its leader line, so each slice was

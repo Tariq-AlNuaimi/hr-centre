@@ -48,7 +48,7 @@ export function AiAssistPanel({
   return (
     <div
       className={cn(
-        "rounded-lg border border-l-2 border-border border-l-primary bg-card p-4 shadow-sm",
+        "rounded-lg border border-s-2 border-border border-s-primary bg-card p-4 shadow-sm",
         className,
       )}
     >
