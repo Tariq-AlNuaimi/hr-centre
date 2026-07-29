@@ -30,7 +30,11 @@ export default function GlobalError({
           justifyContent: "center",
           alignItems: "center",
           minHeight: "100vh",
-          fontFamily: "sans-serif",
+          margin: 0,
+          background: "rgb(251, 251, 252)",
+          color: "rgb(17, 24, 39)",
+          fontFamily: brand.font.fallback,
+          WebkitFontSmoothing: "antialiased",
         }}
       >
         <div style={{ textAlign: "center", maxWidth: 420, padding: 24 }}>
@@ -52,14 +56,25 @@ export default function GlobalError({
           >
             {brand.monogram}
           </span>
-          <h2 style={{ margin: "0 0 8px" }}>Something went wrong</h2>
-          <p style={{ margin: "0 0 20px", color: "rgb(102, 102, 102)" }}>
+          <h2
+            style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 600, letterSpacing: "-0.01em" }}
+          >
+            Something went wrong
+          </h2>
+          <p
+            style={{
+              margin: "0 0 24px",
+              color: "rgb(91, 100, 114)",
+              fontSize: 14,
+              lineHeight: 1.5,
+            }}
+          >
             An unexpected error occurred. Please try again.
           </p>
           <button
             onClick={reset}
             style={{
-              padding: "8px 20px",
+              padding: "9px 20px",
               cursor: "pointer",
               background: brand.colors.primary,
               color: "rgb(255, 255, 255)",
