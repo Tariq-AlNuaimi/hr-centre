@@ -100,7 +100,12 @@ export function LoginForm({
               autoComplete="current-password"
             />
             <div className="-mt-1 text-end">
-              <Link href={`/${locale}/forgot-password`}>{t("forgotPasswordLink")}</Link>
+              <Link
+                href={`/${locale}/forgot-password`}
+                className="font-medium text-primary-emphasis underline-offset-4 hover:underline"
+              >
+                {t("forgotPasswordLink")}
+              </Link>
             </div>
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
               {t("signIn")}

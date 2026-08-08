@@ -60,7 +60,12 @@ export default function ForgotPasswordPage() {
               {t("sendResetLink")}
             </Button>
             <div className="text-center">
-              <Link href={`/${locale}/login`}>{t("login")}</Link>
+              <Link
+                href={`/${locale}/login`}
+                className="font-medium text-primary-emphasis underline-offset-4 hover:underline"
+              >
+                {t("login")}
+              </Link>
             </div>
           </form>
         </Form>
