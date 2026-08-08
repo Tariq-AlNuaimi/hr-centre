@@ -93,6 +93,7 @@
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
 - components/providers/QueryProvider.tsx
+- components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx
 - components/shared/Chart.impl.tsx
 - components/shared/Chart.tsx
