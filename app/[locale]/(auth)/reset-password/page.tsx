@@ -8,7 +8,7 @@ import { z } from "zod";
 import { apiClient } from "@/lib/api-client";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { AuthCard } from "@/components/shared/AuthCard";
 import { useNotify } from "@/hooks/use-notify";
 
 function ResetPasswordForm() {
@@ -38,20 +38,15 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <Card className="w-full max-w-[400px]">
-        <CardContent className="p-6">
-          <h1 className="mb-6 text-center text-h4 font-semibold text-card-foreground">
-            {t("resetPassword")}
-          </h1>
-          <p className="text-center text-card-foreground">{t("resetInvalidOrExpired")}</p>
-          <Link
-            href={`/${locale}/forgot-password`}
-            className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
-          >
-            {t("requestNewLink")}
-          </Link>
-        </CardContent>
-      </Card>
+      <AuthCard title={t("resetPassword")}>
+        <p className="text-center text-card-foreground">{t("resetInvalidOrExpired")}</p>
+        <Link
+          href={`/${locale}/forgot-password`}
+          className={buttonVariants({ variant: "outline", size: "lg" }) + " w-full"}
+        >
+          {t("requestNewLink")}
+        </Link>
+      </AuthCard>
     );
   }
 
@@ -75,32 +70,27 @@ function ResetPasswordForm() {
   }
 
   return (
-    <Card className="w-full max-w-[400px]">
-      <CardContent className="p-6">
-        <h1 className="mb-6 text-center text-h4 font-semibold text-card-foreground">
-          {t("resetPassword")}
-        </h1>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-            <TextField
-              name="newPassword"
-              label={t("password")}
-              type="password"
-              autoComplete="new-password"
-            />
-            <TextField
-              name="confirmPassword"
-              label={t("confirmPassword")}
-              type="password"
-              autoComplete="new-password"
-            />
-            <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {t("resetPassword")}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+    <AuthCard title={t("resetPassword")}>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <TextField
+            name="newPassword"
+            label={t("password")}
+            type="password"
+            autoComplete="new-password"
+          />
+          <TextField
+            name="confirmPassword"
+            label={t("confirmPassword")}
+            type="password"
+            autoComplete="new-password"
+          />
+          <Button type="submit" size="lg" className="w-full" disabled={loading}>
+            {t("resetPassword")}
+          </Button>
+        </form>
+      </Form>
+    </AuthCard>
   );
 }
 

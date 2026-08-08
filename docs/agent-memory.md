@@ -17,7 +17,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (6): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
-- **Gotchas — stack & build** (3): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
+- **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (2): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
@@ -162,6 +162,13 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — stack & build
 
+- 2026-08-08 — **Preflight/C4 re-enable is the single highest-leverage design fix.** Tailwind
+  Preflight was withheld during the AntD-coexistence slice (`app/globals.css` imported theme +
+  utilities only) and was never re-enabled after AntD was removed, so native `<button>`/form-control
+  chrome leaked app-wide (the "chunky raised" sidebar buttons). Fix: add
+  `@import "tailwindcss/preflight.css" layer(base)` in `app/globals.css`. Safe because every
+  native-element primitive (`ui/button|input|select`) already carried `appearance-none` for exactly
+  this moment. A fork whose UI looks dated/heavy should confirm preflight is on first.
 - 2026-07-17 — **Self-host distroless image (`Dockerfile`, ADR-035) — the build recipe, learned
   the hard way.** The image had NEVER actually been built (no daemon in prior sessions); the first
   real build+boot surfaced 5 latent defects, all masked on Vercel (where env is configured): (1) the
