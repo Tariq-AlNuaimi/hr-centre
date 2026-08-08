@@ -621,3 +621,22 @@ SaaS account**, and it inherits `lib/rate-limit.ts`'s exact posture: shared acro
 `VALKEY_URL` is set, in-memory otherwise, `insuranceLimiter` degrading to memory rather than failing
 open. A fork that prefers Upstash can still follow the recipe; this makes the default path work with
 what the template already ships.
+
+## 2026-08-08 — Shared auth-card wrapper (`components/shared/AuthCard`)
+
+Scope: components/shared/AuthCard.tsx
+Considered: **a prebuilt auth-UI kit** (shadcn login-blocks, Clerk/Auth0 hosted UI, NextAuth's
+default sign-in pages — rejected: each brings its own styling/routing/dep tree and would fight the
+shipped split-screen `(auth)/layout.tsx` + the `Card`/`CardContent` + `FormField` primitives the
+three auth pages already compose; the sign-in logic itself stays on Auth.js), **a headless card/form
+lib** (rejected — the shadcn `Card` primitive is already shipped; a card wrapper needs no new
+dependency), **leave the wrapper inline** (rejected — the identical
+`<Card className="w-full max-w-[400px]"><CardContent className="p-6"><h1 …>` header is repeated 4×
+across login / forgot-password / reset-password [+ its no-token state], the per-page drift the jscpd
+duplication gate + the Maintainable pillar exist to stop), **BUILD a thin `AuthCard` on the shipped
+`Card`/`CardContent`** (chosen).
+Decision: **BUILD `components/shared/AuthCard.tsx`** — a ~15-line presentational wrapper
+(`{ title, children }`) that owns the auth card's fixed width, padding, and centered `<h1>` on the
+shipped shadcn `Card`/`CardContent`. Zero new dependency; the auth-form sibling of the existing
+shared `SectionCard`/`FormLayout`. Collapses the 4 duplicated card headers into one primitive so the
+three auth pages (and any fork's new auth screen) stay consistent. Informational for the ADR-032 hook.

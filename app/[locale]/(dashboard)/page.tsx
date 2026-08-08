@@ -81,6 +81,33 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
     timestamp: row.timestamp.toISOString(),
   }));
 
+  // Real 14-day new-user series for the Total-users sparkline + trend. Honest
+  // data only: 14 bounded COUNT queries (no row transfer, no N-per-row), one per
+  // UTC-day bucket, run in parallel and cached with the rest of the aggregate.
+  // With the seed's single admin the series is near-flat — it comes alive as a
+  // fork gains users, which is the point (no fabricated demo numbers).
+  const dayMs = 86_400_000;
+  const now = new Date();
+  const startOfToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const newUsers14d = await Promise.all(
+    Array.from({ length: 14 }, (_, i) => {
+      const from = new Date(startOfToday - (13 - i) * dayMs);
+      const to = new Date(from.getTime() + dayMs);
+      return prisma.user.count({ where: { createdAt: { gte: from, lt: to } } });
+    }),
+  );
+  const last7 = newUsers14d.slice(7).reduce((a, b) => a + b, 0);
+  const prior7 = newUsers14d.slice(0, 7).reduce((a, b) => a + b, 0);
+  const usersTrend =
+    prior7 === 0
+      ? last7 > 0
+        ? { value: 100, direction: "up" as const }
+        : undefined
+      : {
+          value: Math.round(((last7 - prior7) / prior7) * 100),
+          direction: last7 >= prior7 ? ("up" as const) : ("down" as const),
+        };
+
   return {
     totalUsers,
     roleDistribution: usersByRole.map((g) => ({
@@ -89,6 +116,8 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
     })),
     softDeletedTotal,
     recentAudit,
+    newUsers14d,
+    usersTrend,
   };
 }
 

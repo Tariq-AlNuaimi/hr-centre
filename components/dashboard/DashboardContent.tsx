@@ -34,6 +34,10 @@ export interface DashboardData {
   roleDistribution: { name: string; value: number }[];
   softDeletedTotal: number;
   recentAudit: RecentAudit[];
+  /** Real 14-day new-user counts (oldest → newest) for the Total-users sparkline. */
+  newUsers14d: number[];
+  /** 7-day-vs-prior-7-day change in new users; undefined when there's no prior signal. */
+  usersTrend?: { value: number; direction: "up" | "down" };
 }
 
 interface DashboardContentProps {
@@ -119,7 +123,8 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
     );
   }
 
-  const { totalUsers, roleDistribution, softDeletedTotal, recentAudit } = data;
+  const { totalUsers, roleDistribution, softDeletedTotal, recentAudit, newUsers14d, usersTrend } =
+    data;
 
   const recentColumns: ColumnsType<RecentAudit> = [
     {
@@ -148,7 +153,13 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
       <PageHeader title={t("home")} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title={tDash("totalUsers")} value={totalUsers} icon={<UserIcon />} />
+        <StatCard
+          title={tDash("totalUsers")}
+          value={totalUsers}
+          icon={<UserIcon />}
+          spark={newUsers14d}
+          trend={usersTrend}
+        />
         <StatCard title={tDash("deletedRecords")} value={softDeletedTotal} icon={<TrashIcon />} />
         <StatCard
           title={tDash("rolesInUse")}
