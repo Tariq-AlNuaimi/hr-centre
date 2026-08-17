@@ -113,22 +113,39 @@ the drift check wouldn't go red. A dormant feature forced a permanent exception 
 | API: `internal/scim`                                  | 1                 | dormant SSO   | **MOVE**                                       |
 | API: `openapi`                                        | 1                 | v1 seam       | **TRIM**                                       |
 
-**Shared components with no real consumer.** These are used _only_ by the style-guide demo, or by
-nothing:
+**Shared components with no real consumer.**
 
-| Component               | Lines | Used by                          |
-| ----------------------- | ----: | -------------------------------- |
-| `KanbanBoard` + `.impl` |   193 | **nothing**                      |
-| `OrgSwitcher`           |    51 | **nothing**                      |
-| `NotificationsMenu`     |    55 | **nothing**                      |
-| `DataView`              |     — | style-guide only                 |
-| `Toolbar`               |     — | style-guide only                 |
-| `CommandPalette`        |     — | style-guide only                 |
-| 7× `shared/ai/*`        |   343 | design-system + style-guide only |
+> **⚠ CORRECTED 2026-08-17.** The first version of this table listed `OrgSwitcher`,
+> `NotificationsMenu` and `CommandPalette` as unused. **That was wrong — all three are live.**
+> The table was built from a grep matching only `shared/<Name>` / `layout/<Name>` import
+> spellings, and `AppHeader` imports them **relatively** (`./OrgSwitcher`), so the consumer was
+> missed. The chain is `app/[locale]/(dashboard)/layout.tsx` → `AppShell` → `AppHeader`, so they
+> render as chrome on **every dashboard page**; deleting them would have broken the app.
+> Both the corrected import-graph trace (§1) and the knip differential (§5.1) omitted these
+> three — **the report contradicted its own tool output, and the tools were right.**
+> Verified-correct table below.
 
-A shared-primitive library whose primitives are demonstrated but not used is a **catalogue, not a
-library**. It costs every fork the maintenance surface and gives back nothing until someone
-happens to need a Kanban board.
+| Component               | Lines | Used by                                        | Safe to delete? |
+| ----------------------- | ----: | ---------------------------------------------- | --------------- |
+| `KanbanBoard` + `.impl` |   193 | **nothing**                                    | **yes**         |
+| `Modal`                 |    64 | **nothing**                                    | **yes**         |
+| `PageShell`             |    31 | **nothing**                                    | **yes**         |
+| `DataView`              |     — | style-guide demo only                          | with the demo   |
+| `Toolbar`               |     — | style-guide demo + `PageShell`                 | with the demo   |
+| 7× `shared/ai/*`        |   343 | design-system + style-guide demos only         | with the demos  |
+| ~~`OrgSwitcher`~~       |    51 | **`AppHeader` — live on every dashboard page** | **NO**          |
+| ~~`NotificationsMenu`~~ |    55 | **`AppHeader` — live on every dashboard page** | **NO**          |
+| ~~`CommandPalette`~~    |     — | **`AppHeader` + `AppShell` — live**            | **NO**          |
+
+So the real dead-primitive set is ~288 lines (`KanbanBoard`, `Modal`, `PageShell`) plus whatever
+the demo pages exclusively hold — not the ~500 lines first claimed. The "catalogue, not a library"
+point still stands for `DataView`/`Toolbar`/`shared/ai`, which exist to be demonstrated rather than
+used; it does **not** apply to the app chrome.
+
+**Method note, since this is the second time the same blind spot bit:** an earlier reachability
+trace in this audit also missed relative imports and was rebuilt. The lesson is to match **every**
+import spelling — relative, aliased, and JSX usage — and to prefer tool output over a hand-built
+summary table.
 
 ### 2.4 The dormant enterprise layer — 4,702 lines, 48 files
 
@@ -327,19 +344,19 @@ same flaw.
 
 ## 6. Consolidated cut list
 
-| #      | Cut                                                                                                                                 | Removes                                                                        | Risk                     |
-| ------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------ |
-| **A1** | Move the dormant enterprise layer to `/scale-up` recipes — AI/RAG, queue, SSO/SCIM, Sentry/OTel, Valkey, export                     | **4,702 lines · 48 files · 8 runtime deps · 12 contract tests · 2 migrations** | low — nothing imports it |
-| **A2** | Delete `KanbanBoard`, `OrgSwitcher`, `NotificationsMenu`; move `DataView`/`Toolbar`/`CommandPalette` behind a real consumer or drop | ~500 lines + `@dnd-kit`                                                        | low                      |
-| **A3** | Move the two demo pages out of the app                                                                                              | 890 lines                                                                      | low                      |
-| **A4** | Retire mutation testing, BDD traceability, SBOM, jscpd, visual-regression, changesets from the default rail                         | ~10 dev deps, ~15 npm scripts, 4 ADRs                                          | low                      |
-| **B1** | Stop the eager rules load; split `harness.md`; cut `AGENTS.md` to a pointer; prune MCP                                              | **~11.5K tokens/session**                                                      | low                      |
-| **B2** | Fix the three blind gates (§5) — or delete them                                                                                     | —                                                                              | low, high value          |
-| **B3** | 34 skills → ~18; 68 npm scripts → ~35; 51 scripts → ~30; 16 hooks → ~10                                                             | ~7 KB always-on                                                                | medium                   |
-| **C1** | 6.7 MB of PNGs out of git                                                                                                           | **61% of repo bytes**                                                          | medium                   |
-| **C2** | Warm `/ship` 25 phases → ~12 (all security stays warm)                                                                              | ~35s per loop                                                                  | medium                   |
-| **C3** | Downgrade build-vs-buy and blueprint gates from **deny** to warn for `/quickstart`-tier work                                        | unblocks the 10-minute promise                                                 | **needs your call**      |
-| **C4** | Archive cold governance docs; merge the three map docs; file superseded ADRs                                                        | ~1,400 lines                                                                   | low                      |
+| #      | Cut                                                                                                                                                                                                                                     | Removes                                                                        | Risk                     |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------ |
+| **A1** | Move the dormant enterprise layer to `/scale-up` recipes — AI/RAG, queue, SSO/SCIM, Sentry/OTel, Valkey, export                                                                                                                         | **4,702 lines · 48 files · 8 runtime deps · 12 contract tests · 2 migrations** | low — nothing imports it |
+| **A2** | Delete `KanbanBoard`, `Modal`, `PageShell` (verified zero consumers); `DataView`/`Toolbar`/`shared/ai` go with the demo pages. **NOT `OrgSwitcher`/`NotificationsMenu`/`CommandPalette` — live app chrome, see the correction in §2.3** | ~288 lines + `@dnd-kit`                                                        | low                      |
+| **A3** | Move the two demo pages out of the app                                                                                                                                                                                                  | 890 lines                                                                      | low                      |
+| **A4** | Retire mutation testing, BDD traceability, SBOM, jscpd, visual-regression, changesets from the default rail                                                                                                                             | ~10 dev deps, ~15 npm scripts, 4 ADRs                                          | low                      |
+| **B1** | Stop the eager rules load; split `harness.md`; cut `AGENTS.md` to a pointer; prune MCP                                                                                                                                                  | **~11.5K tokens/session**                                                      | low                      |
+| **B2** | Fix the three blind gates (§5) — or delete them                                                                                                                                                                                         | —                                                                              | low, high value          |
+| **B3** | 34 skills → ~18; 68 npm scripts → ~35; 51 scripts → ~30; 16 hooks → ~10                                                                                                                                                                 | ~7 KB always-on                                                                | medium                   |
+| **C1** | 6.7 MB of PNGs out of git                                                                                                                                                                                                               | **61% of repo bytes**                                                          | medium                   |
+| **C2** | Warm `/ship` 25 phases → ~12 (all security stays warm)                                                                                                                                                                                  | ~35s per loop                                                                  | medium                   |
+| **C3** | Downgrade build-vs-buy and blueprint gates from **deny** to warn for `/quickstart`-tier work                                                                                                                                            | unblocks the 10-minute promise                                                 | **needs your call**      |
+| **C4** | Archive cold governance docs; merge the three map docs; file superseded ADRs                                                                                                                                                            | ~1,400 lines                                                                   | low                      |
 
 **Projected:** product stays at ~14,500 lines. Harness + docs drops from 38,700 to roughly 20,000.
 Repo from 11.0 MB to ~4.3 MB. Runtime deps from 41 to ~30. Always-on context from ~18,900 tokens
