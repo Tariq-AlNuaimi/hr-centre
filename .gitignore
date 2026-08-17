@@ -113,6 +113,13 @@ sbom.json
 # consumes it to fire create_trigger. Transient, machine-local, never work product.
 .claude/state/
 
+# Per-machine Claude Code settings (red-team R5). Third-party plugin enablement
+# lives HERE, not in the committed settings.json: a marketplace entry pulls code
+# from someone else's GitHub repo and runs it with the agent's full privileges,
+# so each fork -- and the IT team receiving a /handoff -- should opt in
+# deliberately rather than inherit it. See .claude/settings.local.json.example.
+.claude/settings.local.json
+
 # fumadocs generated collections (enable-docs-site, ADR-053)
 /.source
 

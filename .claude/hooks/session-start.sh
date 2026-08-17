@@ -214,16 +214,22 @@ fi
 # Superpowers plugin. That reference is only trustworthy if the plugin is actually loaded,
 # so verify it at SessionStart and warn LOUDLY when it is absent (fail-open: never blocks).
 # Ground truth = an installed/enabled "superpowers" entry in the plugin config or settings.
+# Since red-team R5 the enablement lives in the GITIGNORED .claude/settings.local.json, not in
+# the committed settings.json: a marketplace entry runs third-party code with the agent's full
+# privileges, so each fork opts in deliberately instead of inheriting it (and /handoff no longer
+# ships it to the receiving team). Check both, so this stays truthful either way.
 # Override the config path for testing via SUPERPOWERS_PLUGIN_CONFIG.
 sp_config="${SUPERPOWERS_PLUGIN_CONFIG:-$HOME/.claude/plugins/installed_plugins.json}"
 if grep -qi 'superpowers' "$sp_config" 2>/dev/null ||
+  grep -qi '"superpowers[@"]' "$CLAUDE_PROJECT_DIR/.claude/settings.local.json" 2>/dev/null ||
   grep -qi '"superpowers[@"]' "$CLAUDE_PROJECT_DIR/.claude/settings.json" 2>/dev/null; then
   echo "[harness] Superpowers plugin: present (verified)."
 else
-  echo "[harness] WARNING: Superpowers plugin NOT detected this session. CLAUDE.md routes real"
-  echo "          multi-file features (brainstorm -> spec -> plan -> TDD) through it. Install it"
-  echo "          (/plugin marketplace add <superpowers-source> && /plugin install superpowers),"
-  echo "          or fall back to the built-in /blueprint + writing-plans path for planning."
+  echo "[harness] NOTE: Superpowers plugin not enabled for this checkout. CLAUDE.md routes real"
+  echo "          multi-file features (brainstorm -> spec -> plan -> TDD) through it. It is now"
+  echo "          OPT-IN per fork (red-team R5): copy .claude/settings.local.json.example to"
+  echo "          .claude/settings.local.json (gitignored) and pin the marketplace, or fall back"
+  echo "          to the built-in /blueprint + writing-plans path for planning."
 fi
 
 # --- template drift (advisory; forks only) ---

@@ -219,23 +219,5 @@
   "statusLine": {
     "type": "command",
     "command": "node $CLAUDE_PROJECT_DIR/.claude/statusline.mjs"
-  },
-  "extraKnownMarketplaces": {
-    "claude-code-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-code"
-      }
-    },
-    "superpowers": {
-      "source": {
-        "source": "github",
-        "repo": "obra/superpowers"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "frontend-design@claude-code-plugins": true,
-    "superpowers@superpowers": true
   }
 }
