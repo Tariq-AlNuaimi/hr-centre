@@ -29,6 +29,18 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+2026-08-17 — [security/harness] `.claude/settings.json` `permissions.allow`/`deny` narrowed
+(red-team R2) — CLAUDE.md requires a register note for any change to the permission arrays. This
+change **narrows** capability rather than widening it: `Bash(npx prisma *)` → verb-scoped
+(`generate`, `migrate dev|deploy|status`, `studio`, `db seed`); `Bash(find . *)` → read-only forms;
+`Bash(git push *)` → `claude/*` refspecs; `Bash(docker compose down*)` → no flags. Destructive
+verbs (`migrate reset`, `db execute`, `db push`, `find -delete/-exec`, `down -v`, pushes to `main`,
+`shred`) moved to deny. **Residual risk accepted:** deny patterns are prefix-lexical and therefore
+evadable by spelling; `dangerous-commands.mjs` is the semantic backstop (R2b) and
+`tests/harness/guard-probe.mjs` proves both layers. **Operator-approved** — see
+`docs/AUDIT-DECISIONS.md` Phase 1 R2 — Tariq Al-Naaimi — status: fixed(see branch
+`claude/security-phase1`; evidence `tests/harness/guard-probe.mjs`)
+
 - 2026-07-25 — [maintainable/harness] **Repo-wide audit: the harness is clean; the ratio is the
   only real finding.** Swept for dead weight beyond the template-cleanliness pass. What came back
   **clean**: every one of the 51 `scripts/*.mjs` is referenced by `package.json`, a hook, a skill,

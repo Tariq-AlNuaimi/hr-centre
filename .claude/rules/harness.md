@@ -21,10 +21,20 @@ self-documenting. Most used: `/quickstart`, `/scaffold-entity`, `/ship`, `/deplo
 - **sre** (sonnet — operational-readiness / observability / runbook / deploy-rollback review).
 
 Route to the tier that fits the work (ADR-022, `docs/token-policy.md`). The permission allowlist
-pre-approves npm/prisma/docker/make/non-destructive git; destructive git ops are deny-listed. The
-SessionStart hook bootstraps `.env`/deps/client and warns when the branch is behind `origin/main`.
-Read access to `.next/`, `node_modules/`, `generated/` is denied — work from source + `lib/`
-types, not build artifacts.
+pre-approves npm/docker/make/non-destructive git and a **verb-scoped** slice of prisma; destructive
+git ops are deny-listed. The SessionStart hook bootstraps `.env`/deps/client and warns when the
+branch is behind `origin/main`. Read access to `.next/`, `node_modules/`, `generated/` is denied —
+work from source + `lib/` types, not build artifacts.
+
+**Every wildcard in `permissions.allow` is a capability grant (red-team R2, 2026-08-17).** A
+wildcard over a CLI grants every subcommand that CLI will ever have — `Bash(npx prisma *)` silently
+granted `migrate reset` (drops the database) and `db execute` (arbitrary SQL). The allowlist is now
+verb-scoped: prisma is limited to `generate` / `migrate dev|deploy|status` / `studio` / `db seed`;
+`find` to read-only forms; `git push` to `claude/*` refspecs; `docker compose down` without flags.
+The destructive verbs are additionally deny-listed **and** covered semantically in
+`dangerous-commands.mjs`, because the deny-list is prefix-lexical and prefix patterns alone are not
+a control. **When you add an allow entry, add the matching semantic check** — that pairing is the
+rule the original design missed.
 
 ## Review rail — CI path & portability (ADR-020)
 
