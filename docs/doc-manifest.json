@@ -171,7 +171,7 @@
     {
       "glob": "docs/**",
       "inheritance": "fork",
-      "why": "catch-all: operational reference (REPO-MAP, recipes, rubrics, ledgers, agent-memory, oss-catalog, token-policy, mcp, session-state, manifests) \u2014 default KEEP is the safe failure"
+      "why": "catch-all: operational reference (REPO-MAP, recipes, rubrics, ledgers, agent-memory, oss-catalog, ARCHITECTURE, mcp, session-state, manifests) \u2014 default KEEP is the safe failure"
     }
   ]
 }

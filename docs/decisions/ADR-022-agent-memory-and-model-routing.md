@@ -24,7 +24,7 @@ citations.
 
 What the template already has: tiered subagents (`scout` = haiku for read-only
 exploration), a transient `docs/SESSION-HANDOFF.md` carrier for _in-flight_ state
-(working-branch only, never merged to `main`), and `docs/token-policy.md` +
+(working-branch only, never merged to `main`), and `docs/ARCHITECTURE.md` §7 +
 ADR-019 documenting model tiering as operator habit. What it lacks: a **durable**
 store of long-lived knowledge (decisions, gotchas, conventions) that accumulates
 across sessions and — because forks are generated from `main` — propagates to
@@ -46,7 +46,7 @@ Adopt the two _ideas_, not the tool, using the lightest on-template mechanism.
    promoting its "Decisions" section. No daemon, no external store, no vector DB,
    no added network egress.
 
-2. **Model routing = a documented tier table** added to `docs/token-policy.md`
+2. **Model routing = a documented tier table** added to `docs/ARCHITECTURE.md` §7
    (haiku → search/orientation/repetitive codemods; sonnet → review breadth &
    moderate edits; opus/fable → architecture, ambiguous/high-blast-radius,
    security-sensitive), with subagent `model:` frontmatter as the enforcement
@@ -108,5 +108,5 @@ ADR; or memory needs per-entity/audited structure → a Prisma-backed store via
 - ADR-001 — locked stack (single Claude provider; superseding ADR required to change)
 - ADR-019 — token-thrift harness (scout/haiku tiering, handoff, REPO-MAP)
 - ADR-020 — mandatory senior code review
-- `docs/token-policy.md` — model-routing tier table lives here
+- `docs/ARCHITECTURE.md` §7 — model-routing tier table lives here
 - `docs/agent-memory.md` — the memory file this ADR introduces

@@ -31,11 +31,32 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { relPath as relTo, isGatedCapabilityFile, ledgerCoverInfo } from "./lib/scope-cover.mjs";
 
+// C3 (tiered friction): a hard DENY on every fork contradicted /quickstart's "idea → live
+// URL in ~10 minutes" promise. The gate is now tiered off the EXISTING project.config.json
+// `tier` key (no new config), matching scripts/ship.mjs's own blueprint check: `"shared"`
+// keeps `permissionDecision: "deny"`; the `"personal"` default gets an advisory
+// `additionalContext` naming the same missing artifact and the same remedy. Rationale
+// (red-team R6): a PROCESS gate whose artifact is agent-writable should apply friction
+// proportionate to blast radius — the nudge stays, the wall moves to shared-tier work.
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
 /** Project-relative, forward-slashed path for a Write target (abs or relative). */
 function relPath(fp) {
   return relTo(fp, ROOT);
+}
+
+/**
+ * Is this a `"tier": "shared"` project (the hard-gate tier)? Anything else — the
+ * `"personal"` default, a missing/unreadable/malformed config, a disposable /quickstart
+ * fork — reads as personal and gets the advisory path. Fail-open by construction: an
+ * unreadable config can never ESCALATE a warn into a deny.
+ */
+function isSharedTier() {
+  try {
+    return JSON.parse(readFileSync(resolve(ROOT, "project.config.json"), "utf8")).tier === "shared";
+  } catch {
+    return false;
+  }
 }
 
 try {
@@ -51,20 +72,22 @@ try {
 
   // Three distinct deny reasons (V2-309): a too-broad Scope, a specific Scope missing a
   // Considered: line, or no covering entry at all.
-  const reason = info.sawBroadMatch
-    ? `[build-vs-buy] Denied: '${rel}' is matched only by an OVER-BROAD Scope glob in ` +
+  // Body = WHAT is missing + HOW to satisfy it. Identical in both tiers (C3) so the
+  // discipline survives the downgrade; only the enforcement verb/prefix changes below.
+  const body = info.sawBroadMatch
+    ? `'${rel}' is matched only by an OVER-BROAD Scope glob in ` +
       `docs/build-vs-buy-ledger.md (a fork-wide "lib/**" / "components/shared/**" / "scripts/**" ` +
       `entry is a rubber stamp, not a decision — V2-309/ADR-032). Add a SPECIFIC entry whose ` +
       `"Scope: ${rel.replace(/[^/]+$/, "**")}" glob names this capability's own path, with a ` +
       `"Considered:" line naming the alternatives you weighed.`
     : info.sawScopeWithoutConsidered
-      ? `[build-vs-buy] Denied: '${rel}' has a matching Scope in docs/build-vs-buy-ledger.md, ` +
+      ? `'${rel}' has a matching Scope in docs/build-vs-buy-ledger.md, ` +
         `but that entry has no "Considered:" line — a bare Scope is not a build-vs-buy decision ` +
         `(V2-309/ADR-032). Add a "Considered:" line naming >=1 real alternative you weighed ` +
         `(an existing primitive, a /scale-up recipe, an OSS/library option from ` +
         `docs/oss-catalog.md) and why you chose build-vs-adopt. Recording it is not a bypass; ` +
         `it IS the gate.`
-      : `[build-vs-buy] Denied: '${rel}' is a NEW hand-built capability (lib/, ` +
+      : `'${rel}' is a NEW hand-built capability (lib/, ` +
         `components/shared/, or scripts/ — V2-309), but no build-vs-buy decision covers it. Do ` +
         `the reuse scan BEFORE writing (ADR-032; CLAUDE.md "Market benchmark before building"): ` +
         `(0) check docs/oss-catalog.md -- the seeded reuse catalog, step 0 (or run /adopt ` +
@@ -76,13 +99,28 @@ try {
         `it is not a bypass; it IS the gate. If a full blueprint applies, run /blueprint first.`;
 
   console.log(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: reason,
-      },
-    }),
+    JSON.stringify(
+      isSharedTier()
+        ? {
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              permissionDecision: "deny",
+              permissionDecisionReason: `[build-vs-buy] Denied: ${body}`,
+            },
+          }
+        : {
+            // Advisory path (personal / disposable tier): nudge, don't block — same
+            // `additionalContext`-only contract as rules-injection.mjs.
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              additionalContext:
+                `[build-vs-buy] ADVISORY — allowed, not blocked (project.config.json tier ` +
+                `is "personal"/unset, so /quickstart keeps its idea→URL speed): ${body} ` +
+                `Record the ledger entry before this ships; on a "tier": "shared" project ` +
+                `this same write is DENIED.`,
+            },
+          },
+    ),
   );
 } catch {
   // fail-open RETAINED (WS-8 audit): governance gate, not a security guard — a hook error must not block all writes; only the security guards (protect-secrets, dangerous-commands) fail closed.

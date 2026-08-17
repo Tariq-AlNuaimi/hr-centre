@@ -2,7 +2,7 @@
 // PreToolUse hook (Edit|Write|MultiEdit) -- path-lazy rule loading (harness-v2 V2-101).
 //
 // The constitution (CLAUDE.md) is the always-on floor; domain detail lives in
-// `.claude/rules/*.md`, each carrying a frontmatter `globs:` header. When the agent edits a
+// `docs/rules/*.md`, each carrying a frontmatter `globs:` header. When the agent edits a
 // file whose path matches a rule file's globs, this hook injects that rule file's body as
 // `additionalContext` so the relevant rules are present WITHOUT taxing every session's
 // SessionStart context. Mirrors `skill-activation.mjs` (same glob/relPath logic, same advisory
@@ -11,11 +11,19 @@
 //
 // Data-driven: the rule files ARE the source of truth (add a file with a `globs:` header and it
 // participates, no code change). Dedupes within a single fire.
+//
+// WHY `docs/rules/` AND NOT `.claude/rules/` (B1, 2026-08-17): Claude Code auto-discovers
+// markdown under `.claude/` as project-instruction files and loads it into EVERY session. The
+// six rule files therefore cost ~32.8KB (~8.2K tokens) of ALWAYS-ON context — exactly the tax
+// this path-lazy hook exists to avoid, so the design was defeated by its own location. Moving
+// them under `docs/` (not auto-discovered) makes the laziness real. Do NOT move them back.
+// `scripts/context-tax.mjs` fails --strict if a `.claude/rules/*.md` file reappears.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR || process.cwd();
-const RULES_DIR = join(ROOT, ".claude", "rules");
+const RULES_REL = "docs/rules";
+const RULES_DIR = join(ROOT, "docs", "rules");
 
 /** Minimal glob -> RegExp (supports **, *, literal segments) -- identical to skill-activation. */
 function globToRegExp(glob) {
@@ -98,7 +106,7 @@ try {
   if (matched.length === 0) process.exit(0);
 
   const blocks = matched
-    .map((r) => `--- .claude/rules/${r.name}${r.title ? ` — ${r.title}` : ""} ---\n${r.body}`)
+    .map((r) => `--- ${RULES_REL}/${r.name}${r.title ? ` — ${r.title}` : ""} ---\n${r.body}`)
     .join("\n\n");
   const context =
     `[rules-injection] Editing \`${file}\` — the following path-scoped rule file(s) apply ` +

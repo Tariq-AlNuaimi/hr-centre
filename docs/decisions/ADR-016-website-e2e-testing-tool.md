@@ -1,5 +1,7 @@
 # ADR-016 — "Vibe Inspector": website E2E testing tool (extracted to its own repo)
 
+> **SUPERSEDED — product extracted** to [`Tariq-AlNuaimi/vibe-inspector`](https://github.com/Tariq-AlNuaimi/vibe-inspector). Nothing in this repo implements it; the ADR is kept as the record of why it left.
+
 **Status:** Superseded — product extracted to [`Tariq-AlNuaimi/vibe-inspector`](https://github.com/Tariq-AlNuaimi/vibe-inspector)
 **Date:** 2026-06-10 (accepted) · 2026-06-12 (extracted)
 **Decision owner:** Tariq Al-Naaimi

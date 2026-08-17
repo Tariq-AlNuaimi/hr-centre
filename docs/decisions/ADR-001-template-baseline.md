@@ -1,5 +1,7 @@
 # ADR-001 — Template baseline stack and invariants
 
+> **PARTIALLY SUPERSEDED** — by [ADR-006](ADR-006-pivot-to-vercel-neon.md) (drops the `output: "standalone"` Docker baseline, the GHCR/Portainer CI/CD line, and the MinIO baseline), by [ADR-029](ADR-029-ui-replatform-antd-to-tailwind-shadcn.md) (the UI line: Ant Design 6 → Tailwind v4 + shadcn/ui), and by [ADR-046](ADR-046-ws7-stack-bumps-node24-zod4-prettier.md) (the Node and zod major pins). The rest of the locked stack and its invariants still stand.
+
 **Status:** Accepted (partially superseded by ADR-006)
 **Date:** 2026-05-17
 **Decision owner:** Tariq Al-Naaimi

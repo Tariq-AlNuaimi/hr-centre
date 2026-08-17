@@ -188,7 +188,7 @@ fi
 # makes the subshell exit non-zero, so `|| echo 0` can append a second line.
 mcp_count=$( ( (cat .mcp.json "$HOME/.claude.json" 2>/dev/null | grep -o '"command"' | wc -l) || echo 0 ) | tr -dc '0-9' )
 if [ "${mcp_count:-0}" -gt 3 ]; then
-  echo "[harness] NOTE: ~$mcp_count MCP server entries configured -- each loads tool schemas into context; disable unused ones via /mcp (docs/token-policy.md)"
+  echo "[harness] NOTE: ~$mcp_count MCP server entries configured -- each loads tool schemas into context; disable unused ones via /mcp (docs/ARCHITECTURE.md)"
 fi
 
 # --- Superpowers plugin presence (harness-v2 V2-004) ---

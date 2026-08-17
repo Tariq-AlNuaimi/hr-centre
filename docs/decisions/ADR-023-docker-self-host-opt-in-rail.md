@@ -1,5 +1,7 @@
 # ADR-023 — Docker as an opt-in self-host rail
 
+> **PARTIALLY SUPERSEDED by [ADR-030](ADR-030-docker-standard-build-artifact.md)** — the **opt-in stance** is superseded (Docker is now a standard, mandatory build artifact gated at `ship:full` / `/deploy` / `/handoff`). ADR-023's Dockerfile / compose / Make-target implementation is kept and still current.
+
 **Status:** Superseded in part by ADR-030 (2026-07-02) — the **opt-in stance** is superseded
 (Docker is now a standard build artifact, gated at `/ship --full`/`/deploy`/`/handoff`/CI);
 the implementation this ADR shipped (DOCKER_BUILD gate, Dockerfile, compose, Make targets,

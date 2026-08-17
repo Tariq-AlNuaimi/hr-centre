@@ -16,6 +16,12 @@
 // dangerous-commands.mjs / protect-secrets.mjs security guards): any parse/internal error
 // stays silent and ALLOWS. It never denies a legitimate write on error, and it does not
 // touch the destructive-command logic in dangerous-commands.mjs (a sibling Bash hook).
+//
+// C3 (tiered friction): this hook MIRRORS the two Write-tool gates, so it mirrors their
+// tiering too — `"tier": "shared"` in project.config.json keeps the hard
+// `permissionDecision: "deny"`; the `"personal"` default emits an advisory
+// `additionalContext` instead. Keeping the tiering identical is the whole point: dropping
+// to Bash must be neither a bypass (looser) nor a trap (stricter) versus Write/Edit.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import {
@@ -27,6 +33,21 @@ import {
 } from "./lib/scope-cover.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+
+/**
+ * Is this a `"tier": "shared"` project (the hard-gate tier)? Anything else — the
+ * `"personal"` default, a missing/unreadable/malformed config, a disposable /quickstart
+ * fork — reads as personal and gets the advisory path. Fail-open by construction: an
+ * unreadable config can never ESCALATE a warn into a deny. Identical to the helper in
+ * blueprint-gate.mjs / build-vs-buy-gate.mjs so the three gates cannot diverge.
+ */
+function isSharedTier() {
+  try {
+    return JSON.parse(readFileSync(resolve(ROOT, "project.config.json"), "utf8")).tier === "shared";
+  } catch {
+    return false;
+  }
+}
 
 /** Strip one layer of matching surrounding quotes from a shell token. */
 function unquote(tok) {
@@ -111,7 +132,10 @@ function firstUncoveredViolation(command) {
   return null;
 }
 
-function blueprintReason(rel, cover) {
+// The two body builders below return WHAT is missing + HOW to satisfy it, with NO
+// enforcement verb — the caller prefixes "Denied:" or the advisory lead-in (C3), so both
+// tiers carry the identical remedy and only the friction level differs.
+function blueprintBody(rel, cover) {
   const hygiene = cover?.sawBroadMatch
     ? ` A blueprint's Scope glob matches '${rel}' but is TOO BROAD (a whole structural ` +
       `root like app/**, app/api/**, or lib/**) — narrow it to the specific feature so it counts.`
@@ -119,15 +143,16 @@ function blueprintReason(rel, cover) {
       ? ` A blueprint whose Scope matches '${rel}' is an EXPIRED stub — refresh it so it counts.`
       : "";
   return (
-    `[blueprint-gate] Denied (via bash-write-gate): the shell command writes '${rel}', ` +
+    `the shell command writes '${rel}', ` +
     `new feature code with no blueprint covering it (ADR-033; CLAUDE.md "Blueprint before ` +
-    `building").${hygiene} Dropping to Bash does not bypass the gate. Run /blueprint FIRST ` +
+    `building").${hygiene} Dropping to Bash does not skip this check — the Write-tool gate ` +
+    `applies the same one. Run /blueprint FIRST ` +
     `(user stories + happy/worst scenarios + open questions via AskUserQuestion), then add a ` +
     `"Scope:" line covering this file — e.g. "Scope: ${rel.replace(/[^/]+$/, "**")}".`
   );
 }
 
-function ledgerReason(rel, cover) {
+function ledgerBody(rel, cover) {
   const hygiene = cover?.sawBroadMatch
     ? ` A ledger Scope matches '${rel}' but is TOO BROAD (a fork-wide lib/** / components/shared/** ` +
       `/ scripts/** entry is a rubber stamp) — add a SPECIFIC entry for this path.`
@@ -136,10 +161,11 @@ function ledgerReason(rel, cover) {
         `>=1 alternative you weighed (V2-309 requires it).`
       : "";
   return (
-    `[build-vs-buy] Denied (via bash-write-gate): the shell command writes '${rel}', a NEW ` +
+    `the shell command writes '${rel}', a NEW ` +
     `hand-built capability (lib/, components/shared/, or scripts/ — V2-309) with no build-vs-buy ` +
     `decision covering it (ADR-032; CLAUDE.md "Market benchmark before building").${hygiene} ` +
-    `Dropping to Bash does not bypass the gate. Do the reuse scan — step 0 is docs/oss-catalog.md ` +
+    `Dropping to Bash does not skip this check — the Write-tool gate applies the same one. ` +
+    `Do the reuse scan — step 0 is docs/oss-catalog.md ` +
     `(the seeded reuse catalog; or run /adopt <capability>, which reads it) — then record a ` +
     `"### <date> - <capability>" entry in docs/build-vs-buy-ledger.md with a ` +
     `"Scope: ${rel.replace(/[^/]+$/, "**")}" glob AND a "Considered:" line naming >=1 alternative ` +
@@ -153,15 +179,33 @@ try {
   const command = input.tool_input?.command ?? "";
   const v = firstUncoveredViolation(command);
   if (v) {
+    const tag = v.kind === "blueprint" ? "[blueprint-gate]" : "[build-vs-buy]";
+    const body =
+      v.kind === "blueprint" ? blueprintBody(v.rel, v.cover) : ledgerBody(v.rel, v.cover);
+    const artifact = v.kind === "blueprint" ? "Scope'd blueprint" : "ledger entry";
     console.log(
-      JSON.stringify({
-        hookSpecificOutput: {
-          hookEventName: "PreToolUse",
-          permissionDecision: "deny",
-          permissionDecisionReason:
-            v.kind === "blueprint" ? blueprintReason(v.rel, v.cover) : ledgerReason(v.rel, v.cover),
-        },
-      }),
+      JSON.stringify(
+        isSharedTier()
+          ? {
+              hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: `${tag} Denied (via bash-write-gate): ${body}`,
+              },
+            }
+          : {
+              // Advisory path (personal / disposable tier): nudge, don't block — mirrors
+              // the Write-tool gates exactly, so Bash is neither looser nor stricter.
+              hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                additionalContext:
+                  `${tag} ADVISORY via bash-write-gate — allowed, not blocked ` +
+                  `(project.config.json tier is "personal"/unset, so /quickstart keeps its ` +
+                  `idea→URL speed): ${body} Record the ${artifact} before this ships; on a ` +
+                  `"tier": "shared" project this same write is DENIED.`,
+              },
+            },
+      ),
     );
   }
 } catch {

@@ -25,6 +25,15 @@
 // V2-002 (Scope-glob hygiene): coverage now runs through the shared scope-cover helper,
 // which ignores over-broad Scope globs (`app/**`, `app/api/**`, `lib/**`, bare `**`) and
 // expired stubs — so a lazy one-line stub can't wave a whole feature area past this gate.
+//
+// C3 (tiered friction): a hard DENY on every fork contradicted /quickstart's "idea → live
+// URL in ~10 minutes" promise. The gate is now tiered exactly like scripts/ship.mjs's own
+// `blueprint` check, which has always blocked on `"tier": "shared"` and merely warned on the
+// `"personal"` default: shared-tier work still gets `permissionDecision: "deny"`; personal /
+// disposable work gets an advisory `additionalContext` naming the same missing artifact and
+// the same remedy. The signal is the EXISTING project.config.json `tier` key — no new config.
+// Rationale (red-team R6): this is a PROCESS gate, not a security control (its artifact is
+// agent-writable), so the friction should be proportionate to the blast radius, not uniform.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { relPath as relTo, isFeatureFile, blueprintCoverInfo } from "./lib/scope-cover.mjs";
@@ -34,6 +43,20 @@ const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 /** Project-relative, forward-slashed path (abs or relative input). */
 function relPath(fp) {
   return relTo(fp, ROOT);
+}
+
+/**
+ * Is this a `"tier": "shared"` project (the hard-gate tier)? Anything else — the
+ * `"personal"` default, a missing/unreadable/malformed config, a disposable /quickstart
+ * fork — reads as personal and gets the advisory path. Fail-open by construction: an
+ * unreadable config can never ESCALATE a warn into a deny.
+ */
+function isSharedTier() {
+  try {
+    return JSON.parse(readFileSync(resolve(ROOT, "project.config.json"), "utf8")).tier === "shared";
+  } catch {
+    return false;
+  }
 }
 
 try {
@@ -56,22 +79,42 @@ try {
         `"Expires:" date) — refresh it (or write a full blueprint) so it counts.`
       : "";
 
+  // WHAT is missing + HOW to satisfy it — identical in both tiers, so the discipline
+  // survives the downgrade; only the enforcement verb changes (C3).
+  const what =
+    `'${rel}' is new feature code with no blueprint covering it ` +
+    `(ADR-033; CLAUDE.md "Blueprint before building").${hygiene}`;
+  const how =
+    ` Run /blueprint FIRST: pin down user stories, happy + worst-path scenarios, and ` +
+    `resolve open questions with AskUserQuestion (don't guess the requirements). Then ` +
+    `ensure the blueprint carries a "Scope:" line covering this file — e.g. ` +
+    `"Scope: ${rel.replace(/[^/]+$/, "**")}". Lightweight/quickstart work still writes ` +
+    `a minimal Scope'd stub under docs/blueprints/. The blueprint is the contract ` +
+    `/qa and /uat trace against; building without it is the rebuild this gate prevents.`;
+
   console.log(
-    JSON.stringify({
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason:
-          `[blueprint-gate] Denied: '${rel}' is new feature code with no blueprint ` +
-          `covering it (ADR-033; CLAUDE.md "Blueprint before building").${hygiene} Run ` +
-          `/blueprint FIRST: pin down user stories, happy + worst-path scenarios, and ` +
-          `resolve open questions with AskUserQuestion (don't guess the requirements). Then ` +
-          `ensure the blueprint carries a "Scope:" line covering this file — e.g. ` +
-          `"Scope: ${rel.replace(/[^/]+$/, "**")}". Lightweight/quickstart work still writes ` +
-          `a minimal Scope'd stub under docs/blueprints/. The blueprint is the contract ` +
-          `/qa and /uat trace against; building without it is the rebuild this gate prevents.`,
-      },
-    }),
+    JSON.stringify(
+      isSharedTier()
+        ? {
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              permissionDecision: "deny",
+              permissionDecisionReason: `[blueprint-gate] Denied: ${what}${how}`,
+            },
+          }
+        : {
+            // Advisory path (personal / disposable tier): nudge, don't block — same
+            // `additionalContext`-only contract as rules-injection.mjs.
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              additionalContext:
+                `[blueprint-gate] ADVISORY — allowed, not blocked (project.config.json ` +
+                `tier is "personal"/unset, so /quickstart keeps its idea→URL speed): ` +
+                `${what}${how} Write the Scope'd stub before this ships; on a ` +
+                `"tier": "shared" project this same write is DENIED.`,
+            },
+          },
+    ),
   );
 } catch {
   // fail-open RETAINED (WS-8 audit): governance gate, not a security guard — a hook error must not block all writes; only the security guards (protect-secrets, dangerous-commands) fail closed.

@@ -52,6 +52,32 @@ const FULL =
   process.env.SHIP_FULL === "1" ||
   process.env.SHIP_FULL === "true";
 
+/**
+ * Run a hygiene/quality gate only under `--full` (C2, 2026-08-17).
+ *
+ * The warm loop runs before EVERY push, so it carries every security-bearing
+ * check and nothing else. The gates wrapped in this helper are real and stay
+ * enforced -- just at `ship:full` time (/deploy, /handoff, CI) rather than on
+ * each push. None of them is a security control.
+ *
+ * The skip is deliberately VISIBLE (`SKIP*` + a note), never a silent pass: this
+ * repo has already been bitten three times by checks that degraded quietly and
+ * therefore read as green forever (knip's entry config, context-tax measuring a
+ * third of its inputs, db-structure without a shadow DB). A gate you cannot see
+ * skipping is worse than one you removed.
+ */
+async function fullOnly(name, fn) {
+  if (FULL) return fn();
+  return {
+    name,
+    ok: true,
+    skipped: true,
+    out: "skipped in the warm loop -- runs under `npm run ship:full`",
+    secs: 0,
+    warn: `${name}: NOT RUN (warm loop). Runs in ship:full / deploy / handoff / CI.`,
+  };
+}
+
 // -- scalability pillar gate (CLAUDE.md "Five Pillars") ----------------------
 // A list/read route that calls findMany WITHOUT a bound (take / skip / cursor /
 // parsePagination) loads the whole table -- the failure that only surfaces at
@@ -1387,6 +1413,11 @@ async function scanDocker() {
 // failing case, an unreachable app) is RED. Fork/CI-activated; recorded as a
 // dormancy wave-off in docs/findings-register.md.
 async function scanAiEval() {
+  // A1 (2026-08-17): lib/ai and scripts/ai-eval.mjs were moved out to a /scale-up
+  // recipe. The gate stays defined so a fork that re-adopts the AI rail gets it
+  // back by restoring the runner -- but with no runner present it is inert.
+  if (!existsSync("scripts/ai-eval.mjs"))
+    return { name: "ai-eval", ok: true, out: "inert -- no AI rail in this fork (A1)", secs: 0 };
   const r = await run("ai-eval", process.execPath, ["scripts/ai-eval.mjs"]);
   const skipped = /(^|\n)ai-eval:\s*SKIP\b/.test(r.out);
   if (r.ok) {
@@ -1572,17 +1603,18 @@ let [
   // hooks: the harness-v2 hook test suite (V2-003) — asserts every .claude/hooks
   // gate's deny/allow/block/warn decisions + fail-open vs fail-closed on error.
   run("hooks", "npm", ["run", "test:hooks"]),
-  scanDbStructure(),
-  // A1 deterministic gates (ADOPT.md): dead-code (knip), duplication (jscpd),
-  // coverage floor (node built-in). All fast + parallel; each degrades to a WARN
-  // when its tool is absent and carries an ADR-025 <gate>Ack + register waiver.
-  scanKnip(),
-  scanDuplication(),
-  scanCoverage(),
-  // Skill-standard conformance (V2-503): every .claude/skills/*/SKILL.md frontmatter
-  // must satisfy the agentskills.io open standard (name/description + only spec fields).
-  // Fast, dependency-free; keeps the portable .claude/ layer from drifting.
-  run("skill-check", "node", ["scripts/skill-standard-check.mjs"]),
+  // WARM vs FULL (C2, 2026-08-17). The warm loop is what runs before every push,
+  // so it carries EVERY security-bearing check and nothing else: typecheck, lint,
+  // format, tests, build, gitleaks, npm-audit, scalability, complexity, blueprint,
+  // tier, wave-offs. The hygiene/quality gates below are real but slow, and none
+  // of them is a security control -- they move to `ship:full` (/deploy, /handoff,
+  // CI). Rationale: a faster loop means more loops, which means fewer regressions.
+  // That is Pillar 1, and 25 phases at ~60s was pushing operators to batch pushes.
+  fullOnly("db-structure", scanDbStructure),
+  fullOnly("knip", scanKnip),
+  fullOnly("duplication", scanDuplication),
+  fullOnly("coverage", scanCoverage),
+  fullOnly("skill-check", () => run("skill-check", "node", ["scripts/skill-standard-check.mjs"])),
 ]);
 
 // stale .next/types trap: TS2307 pointing into .next means the build cache is
@@ -1705,7 +1737,10 @@ if (FULL) {
   // dormant (exit 0) until a fork writes tests/features/*.feature. RED on a story with
   // no scenario, a scenario with no @US tag / no steps, or a step with no definition.
   console.log("ship: phase B (full) -- bdd-coverage (story<->scenario traceability, ADR-058) ...");
-  const bdd = await run("bdd-coverage", "node", ["scripts/bdd-coverage.mjs"]);
+  // A4 (2026-08-17): BDD traceability retired from the default rail.
+  const bdd = existsSync("scripts/bdd-coverage.mjs")
+    ? await run("bdd-coverage", "node", ["scripts/bdd-coverage.mjs"])
+    : { name: "bdd-coverage", ok: true, out: "retired from the default rail (A4)", secs: 0 };
   report(bdd);
   if (!bdd.ok) fail(bdd);
 
@@ -1734,7 +1769,10 @@ if (FULL) {
   // and evaluates IT against the SAME ADR-051 deny set + election allowlist. Full-loop only --
   // SBOM generation is ~seconds. RED on a denied, non-elected license in the shippable SBOM.
   console.log("ship: phase B (full) -- license:sbom (CycloneDX SBOM license gate, O5/ADR-051) ...");
-  const sbomLicense = await run("license:sbom", "node", ["scripts/sbom-license-gate.mjs"]);
+  // A4 (2026-08-17): the CycloneDX SBOM gate retired from the default rail.
+  const sbomLicense = existsSync("scripts/sbom-license-gate.mjs")
+    ? await run("license:sbom", "node", ["scripts/sbom-license-gate.mjs"])
+    : { name: "license:sbom", ok: true, out: "retired from the default rail (A4)", secs: 0 };
   report(sbomLicense);
   if (!sbomLicense.ok) fail(sbomLicense);
 

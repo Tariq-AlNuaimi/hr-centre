@@ -233,7 +233,7 @@ Considered: **ccusage** (chosen — reads the local `~/.claude/projects/**/*.jso
 logs, per-session/model/daily spend + cost tables, zero runtime dep — run via `npx -y
 ccusage@latest session`, no install), building an in-repo log-analyzer (would re-implement
 ccusage's JSONL parsing + model price table + cost math, ongoing upkeep as the log schema and
-prices move — no unique-to-us value), leaning on `docs/token-policy.md` prose + the observe-only
+prices move — no unique-to-us value), leaning on `docs/ARCHITECTURE.md` §7 prose + the observe-only
 `routing-report` receipts alone (guidance/tier-adherence only, no actual $ spend accounting —
 they answer "did recon run on haiku", not "what did this program cost").
 Decision: **adopt ccusage as a dev-tool, invoked via `npx` (no dependency added to package.json's
@@ -242,7 +242,7 @@ deps/devDeps)** — smallest maintained surface for real per-session spend, and 
 from observe-only to a soft `/ship` gate). Dev-tool run via npx ⇒ no runtime dep ⇒ no ADR
 required; this ledger entry is the adjudication. This entry is informational for the gate (ADR-032
 matches only `lib/` files; the command lives in `package.json`). See ADR-054 (routing-adherence /
-budget-line trigger); `docs/token-policy.md`.
+budget-line trigger); `docs/ARCHITECTURE.md` §7.
 <!-- Verified 2026-07-17: `npm run tokens` (npx -y ccusage@latest session) produced a real
      per-session/model spend report from this container's local Claude Code logs (egress to the
      npm registry was available). On an egress-blocked machine the npx fetch fails — run ccusage

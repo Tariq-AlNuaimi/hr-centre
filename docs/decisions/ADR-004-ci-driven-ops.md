@@ -1,5 +1,7 @@
 # ADR-004 — CI-driven ops (Claude proposes, GitHub Actions executes)
 
+> **SUPERSEDED by [ADR-006](ADR-006-pivot-to-vercel-neon.md)** — the GitHub-Actions ops surface (deploy/promote/rollback/restore/release against DigitalOcean, Cloudflare, Portainer, Better Uptime) was deleted; Vercel deploys natively. Historical record only.
+
 - **Status:** Superseded by ADR-006
 - **Date:** 2026-05-18
 - **Supersedes:** none (extends the operational model implied by ADR-001 / ADR-002 / ADR-003)

@@ -1,5 +1,7 @@
 # ADR-003 — Release process: `/release` after `/promote`
 
+> **SUPERSEDED by [ADR-006](ADR-006-pivot-to-vercel-neon.md)** — the `/promote` + Portainer + `prod-YYYYMMDD-HHmm` release flow no longer exists; Vercel owns deploys (push to `main` → production, revert the commit to roll back). Historical record only.
+
 **Status:** Superseded by ADR-006
 **Date:** 2026-05-18
 **Decision owner:** Tariq AlNuaimi

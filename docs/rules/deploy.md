@@ -1,5 +1,5 @@
 ---
-globs: scripts/deploy.mjs, scripts/new-project.mjs, scripts/rebrand.mjs, scripts/migrate-from.mjs, lib/email.ts, lib/export.ts, vercel.json, next.config.ts, docker-compose*.yml, Dockerfile*, .github/**
+globs: scripts/deploy.mjs, scripts/new-project.mjs, scripts/rebrand.mjs, scripts/migrate-from.mjs, lib/email.ts, vercel.json, next.config.ts, docker-compose*.yml, Dockerfile*, .github/**
 title: Deploy & ops — Vercel/Neon, Docker, growth path
 ---
 
@@ -34,8 +34,7 @@ Sentry, distributed rate limit → Upstash). None require restructuring.
 
 - Rate limiter is in-memory per-instance — fine until multi-instance; then Upstash via `/scale-up`.
 - `sendEmail` returns `{ sent: false }` when `SMTP_HOST` unset — it does NOT throw.
-- File uploads are not wired (ADR-006); PDF export is intentionally absent from `lib/export.ts`
-  (pdfkit fragile in serverless).
+- File uploads are not wired (ADR-006). Excel export moved out to a `/scale-up` recipe (A1).
 - Docker is a **standard, mandatory build artifact** (ADR-030, supersedes ADR-023's opt-in
   stance): the image build is a gate at `/ship --full`, `/deploy`, `/handoff`, and CI (the fast
   `/ship` loop stays image-free). The `DOCKER_BUILD=1` gate in `next.config.ts` is **unchanged** —
@@ -47,4 +46,4 @@ Sentry, distributed rate limit → Upstash). None require restructuring.
 
 ## Ask before (deploy surface)
 
-Touching `lib/email.ts`, `lib/export.ts`; pushing to `main` directly when branch protection is on.
+Touching `lib/email.ts`; pushing to `main` directly when branch protection is on.
