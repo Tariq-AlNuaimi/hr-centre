@@ -5,11 +5,35 @@ import { rateLimit } from "../../lib/rate-limit";
 // These exercise the in-memory backend (the default; no VALKEY_URL in the test
 // env). rateLimit() is async since the shared-state (Valkey) path is a network
 // round-trip, so every call is awaited even on the synchronous in-memory path.
+//
+// CLIENT-IP CONTRACT (red-team R1, 2026-08-17). lib/client-ip.ts fails CLOSED:
+// no forwarding header is trusted unless RATE_LIMIT_TRUSTED_IP_HEADER names it.
+// The tests below are split accordingly:
+//   - UNCONFIGURED  -> every request shares the "unknown" bucket. Strict, and
+//                      critically NOT escapable by rotating a header.
+//   - CONFIGURED    -> only the named header keys the bucket; every other
+//                      forwarding header is ignored even if present.
+// The previous suite asserted "x-real-ip is honored" and "x-real-ip is preferred
+// over XFF" -- that WAS the vulnerability (Caddy does not set X-Real-IP, so a
+// client could supply it), so those expectations are inverted here on purpose.
 
+/** A request carrying spoofable forwarding headers and nothing trustworthy. */
 function req(ip = "1.2.3.4"): Request {
   return new Request("http://localhost/test", {
     headers: { "x-forwarded-for": ip },
   });
+}
+
+/** Run `fn` with RATE_LIMIT_TRUSTED_IP_HEADER set, restoring it afterwards. */
+async function withTrustedHeader(name: string, fn: () => Promise<void>) {
+  const prev = process.env.RATE_LIMIT_TRUSTED_IP_HEADER;
+  process.env.RATE_LIMIT_TRUSTED_IP_HEADER = name;
+  try {
+    await fn();
+  } finally {
+    if (prev === undefined) delete process.env.RATE_LIMIT_TRUSTED_IP_HEADER;
+    else process.env.RATE_LIMIT_TRUSTED_IP_HEADER = prev;
+  }
 }
 
 test("allows up to `limit` requests within the window", async () => {
@@ -43,51 +67,46 @@ test("separate buckets per `id` -- /auth limit does not affect /foo", async () =
   assert.equal(foo.ok, true);
 });
 
-test("separate buckets per client IP", async () => {
-  const id = `rl-${Math.random()}`;
-  for (let i = 0; i < 5; i++) {
-    await rateLimit(req("10.0.0.4"), { id, limit: 5, windowMs: 60_000 });
-  }
-  const blocked = await rateLimit(req("10.0.0.4"), { id, limit: 5, windowMs: 60_000 });
-  assert.equal(blocked.ok, false);
+// --- R1 regression: the exploit, now closed ---------------------------------
 
-  // Different IP still allowed
-  const other = await rateLimit(req("10.0.0.5"), { id, limit: 5, windowMs: 60_000 });
-  assert.equal(other.ok, true);
-});
-
-test("x-real-ip is honored when x-forwarded-for is absent", async () => {
+test("R1: rotating x-real-ip does NOT escape the bucket when unconfigured", async () => {
   const id = `rl-${Math.random()}`;
-  const realIpReq = new Request("http://localhost/test", {
-    headers: { "x-real-ip": "172.16.0.1" },
-  });
-  const r = await rateLimit(realIpReq, { id, limit: 1, windowMs: 60_000 });
-  assert.equal(r.ok, true);
-  const r2 = await rateLimit(realIpReq, { id, limit: 1, windowMs: 60_000 });
-  assert.equal(r2.ok, false);
-});
-
-test("x-real-ip is preferred over a (spoofable) x-forwarded-for[0]", async () => {
-  const id = `rl-${Math.random()}`;
-  // Same trusted x-real-ip, but different spoofed XFF each call: both must land
-  // in the SAME bucket (keyed by x-real-ip), so the 2nd is blocked at limit 1.
   const mk = (spoof: string) =>
-    new Request("http://localhost/test", {
-      headers: { "x-forwarded-for": spoof, "x-real-ip": "203.0.113.9" },
-    });
-  assert.equal((await rateLimit(mk("1.1.1.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
+    new Request("http://localhost/test", { headers: { "x-real-ip": spoof } });
+
+  assert.equal((await rateLimit(mk("203.0.113.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
   assert.equal(
-    (await rateLimit(mk("2.2.2.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+    (await rateLimit(mk("203.0.113.2"), { id, limit: 1, windowMs: 60_000 })).ok,
     false,
-    "rotating the spoofable XFF must NOT escape the x-real-ip bucket",
+    "a fresh x-real-ip must NOT mint a fresh bucket -- that was the R1 bypass",
   );
 });
 
-test("RATE_LIMIT_TRUSTED_IP_HEADER, when set, is trusted over x-real-ip / XFF", async () => {
+test("R1: rotating x-forwarded-for does NOT escape the bucket when unconfigured", async () => {
   const id = `rl-${Math.random()}`;
-  const prev = process.env.RATE_LIMIT_TRUSTED_IP_HEADER;
-  process.env.RATE_LIMIT_TRUSTED_IP_HEADER = "cf-connecting-ip";
-  try {
+  assert.equal((await rateLimit(req("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
+  assert.equal(
+    (await rateLimit(req("198.51.100.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+    false,
+    "a fresh XFF must NOT mint a fresh bucket",
+  );
+});
+
+test("R1: unconfigured deployments share one bucket -- strict, never bypassable", async () => {
+  const id = `rl-${Math.random()}`;
+  // Two entirely different clients, no trusted header configured: they share the
+  // "unknown" bucket. Throttling HARDER than per-IP is the correct direction to
+  // fail; the wrong direction is letting a header mint unlimited buckets.
+  await rateLimit(req("10.0.0.4"), { id, limit: 1, windowMs: 60_000 });
+  const other = await rateLimit(req("10.0.0.5"), { id, limit: 1, windowMs: 60_000 });
+  assert.equal(other.ok, false, "unattributable requests must share one bucket");
+});
+
+// --- configured behaviour ----------------------------------------------------
+
+test("the named trusted header keys the bucket, and only it", async () => {
+  const id = `rl-${Math.random()}`;
+  await withTrustedHeader("cf-connecting-ip", async () => {
     const mk = (cf: string) =>
       new Request("http://localhost/test", {
         headers: {
@@ -96,7 +115,6 @@ test("RATE_LIMIT_TRUSTED_IP_HEADER, when set, is trusted over x-real-ip / XFF", 
           "x-forwarded-for": "8.8.8.8",
         },
       });
-    // Keyed by cf-connecting-ip: different value -> different bucket.
     assert.equal(
       (await rateLimit(mk("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok,
       true,
@@ -110,10 +128,38 @@ test("RATE_LIMIT_TRUSTED_IP_HEADER, when set, is trusted over x-real-ip / XFF", 
       true,
       "a different cf-connecting-ip is a different bucket",
     );
-  } finally {
-    if (prev === undefined) delete process.env.RATE_LIMIT_TRUSTED_IP_HEADER;
-    else process.env.RATE_LIMIT_TRUSTED_IP_HEADER = prev;
-  }
+  });
+});
+
+test("when x-real-ip IS the declared trusted header, a rotating XFF cannot escape", async () => {
+  const id = `rl-${Math.random()}`;
+  await withTrustedHeader("x-real-ip", async () => {
+    // The Caddy/nginx/Vercel topology: the proxy guarantees x-real-ip, so it is
+    // trusted; XFF stays client-controlled and must be ignored.
+    const mk = (spoof: string) =>
+      new Request("http://localhost/test", {
+        headers: { "x-forwarded-for": spoof, "x-real-ip": "203.0.113.9" },
+      });
+    assert.equal((await rateLimit(mk("1.1.1.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
+    assert.equal(
+      (await rateLimit(mk("2.2.2.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+      false,
+      "rotating the spoofable XFF must NOT escape the trusted x-real-ip bucket",
+    );
+  });
+});
+
+test("a missing trusted header falls back to the shared bucket, not to XFF", async () => {
+  const id = `rl-${Math.random()}`;
+  await withTrustedHeader("cf-connecting-ip", async () => {
+    // Trusted header absent but XFF present: XFF must NOT be consulted.
+    assert.equal((await rateLimit(req("172.16.0.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
+    assert.equal(
+      (await rateLimit(req("172.16.0.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+      false,
+      "absent trusted header must not silently fall back to a spoofable one",
+    );
+  });
 });
 
 test("window expiry resets the bucket", async () => {

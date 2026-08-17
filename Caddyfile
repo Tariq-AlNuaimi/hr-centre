@@ -22,7 +22,17 @@
 		-Server
 	}
 
-	reverse_proxy app:3000
+	# Client-IP trust boundary (red-team R1). Caddy sets the X-Forwarded-* family
+	# but NOT X-Real-IP, and forwards a client-supplied one untouched. The app
+	# throttles and audits on this header, so a spoofed value would defeat every
+	# rate limit and forge `audit_logs.ipAddress`. Strip whatever the client sent,
+	# then set it from the real peer address. Pair with
+	# RATE_LIMIT_TRUSTED_IP_HEADER=x-real-ip (lib/client-ip.ts ignores the header
+	# entirely unless that env var names it).
+	reverse_proxy app:3000 {
+		header_up -X-Real-IP
+		header_up X-Real-IP {http.request.remote.host}
+	}
 }
 
 # Enterprise SSO ingress (ADR-045, WS-6) — ONLY meaningful under the `sso` compose
