@@ -1,283 +1,369 @@
-# Template complexity audit — where the weight is and what to cut
+# Template audit — every layer, judged against the objective
 
 **Date:** 2026-08-17 · **Branch:** `claude/template-complexity-audit-dqxq52` · **Scope:** every
-tracked file in the repo (590 files, 10.99 MB).
-
-**The complaint being investigated:** the template has grown heavy enough that agents lose the
-thread — context fills with governance, and regressions follow.
-
-**The verdict:** the complaint is correct and measurable. The template spends **~18.9K tokens of
-every context window before the operator types a word**, and its own context meter reports only
-**2.9K** of that — a **6.4× under-report**. The governance layer is now **2.7× the size of the
-product it governs**. Three specific mechanisms (below) account for most of it, and all three are
-fixable without giving up the security floor.
+tracked file (590 files, 10.99 MB), judged against what this template says it is for.
 
 ---
 
-## 1. The headline numbers
+## 0. The yardstick
 
-| Measure                                                 | Value                      | Comment                                   |
-| ------------------------------------------------------- | -------------------------- | ----------------------------------------- |
-| Tracked files                                           | **590**                    | —                                         |
-| Tracked bytes                                           | **10.99 MB**               | 6.7 MB (61%) is committed PNG screenshots |
-| Product code (`app`+`components`+`lib`+`i18n`+`prisma`) | **14,466 lines**           | the thing a fork actually ships           |
-| Harness code (`.claude`+`scripts`+`eslint-rules`+CI)    | **23,860 lines**           | 1.6× the product                          |
-| Docs (markdown)                                         | **14,872 lines**           | 1.0× the product                          |
-| Tests                                                   | **15,534 lines**           | 1.1× the product                          |
-| **Harness + docs ÷ product**                            | **2.7×**                   | **the core finding**                      |
-| True always-on context tax                              | **75.6 KB ≈ 18.9K tokens** | measured below                            |
-| What `scripts/context-tax.mjs` reports                  | 11.8 KB ≈ 2.9K tokens      | **under-reports by 6.4×**                 |
+The template states its own objective in three places, consistently:
 
-The product surface a fork inherits is genuinely small: **15 pages, 13 API routes, 60 components,
-26 lib modules, 5 Prisma models**. Everything else is machinery around those 119 files.
+> "Rihal internal-tool **prototype** starter … Non-dev stakeholders review via shared URLs; the
+> operator iterates, then `/handoff` gives production to IT." — `CLAUDE.md`
 
----
+> "A **prototype rail**: a reusable Next.js starter that lets a _non-developer operator_ turn an
+> idea into a secure, quality, shareable live URL by iterating with Claude — then hand production
+> to an IT team." — `docs/repo-architecture.md`
 
-## 2. The real always-on context tax
+> "Turn one paragraph of an idea into a live URL … in ~10 minutes." — `/quickstart`
 
-This is what is present in the model's window at turn zero, before any file is read. Empirically
-verified against this session's own system prompt.
+And it defines a growth model: **`/scale-up` adds capability on demand** — uploads, cron,
+background jobs, realtime, observability, flags, distributed rate limiting. The rail ships thin;
+capabilities arrive when a project needs them.
 
-| Source                                             | Bytes      | ~Tokens    | Counted by `context-tax.mjs`? |
-| -------------------------------------------------- | ---------- | ---------- | ----------------------------- |
-| `.claude/rules/*.md` — **all six, loaded eagerly** | 32,788     | 8,197      | ❌ **no**                     |
-| 34 skill descriptions (frontmatter)                | 16,024     | 4,006      | ❌ no                         |
-| MCP: 4 servers / ~160 tools (names + instructions) | ~9,000     | ~2,250     | ❌ no                         |
-| `CLAUDE.md` (constitution)                         | 8,185      | 2,046      | ✅ yes                        |
-| `AGENTS.md`                                        | 3,411      | 852        | ❌ no                         |
-| `agent-memory.md` digest                           | 2,772      | 693        | ✅ yes                        |
-| SessionStart banner + handoff status tables        | 2,036      | 509        | ✅ yes (partial)              |
-| 4 agent definitions (name + description)           | ~1,400     | ~350       | ❌ no                         |
-| **TOTAL**                                          | **75,616** | **18,904** | **3 of 8 sources**            |
-
-### 2.1 The single biggest defect: lazy rules aren't lazy
-
-`.claude/rules/*.md` was designed as **path-lazy** loading — `rules-injection.mjs` injects the
-matching rule file as `additionalContext` when you edit a matching path, explicitly so the rules
-do not "tax every session's SessionStart context" (the hook's own comment says exactly this).
-
-**It does not work.** Claude Code auto-discovers `.claude/rules/*.md` as project-instruction files
-and loads **all six** into the system prompt at session start — verified in this session's own
-system prompt, where all six appear labelled `(project instructions, checked into the codebase)`.
-
-Two consequences:
-
-1. The 32.8 KB the design was built to avoid is paid **on every session anyway** — it is the
-   **largest single line item**, bigger than the constitution it was split out of.
-2. `rules-injection.mjs` then injects the same rule file **a second time** on every matching
-   `Edit`/`Write`. Frequently-edited surfaces (`app/**/*.tsx` → `design.md`, 4.1 KB) get
-   **double-billed** repeatedly through a session.
-
-`harness.md` alone is **19,883 bytes / 275 lines** — bigger than `CLAUDE.md`, and it loads
-unconditionally even for a session that never touches the harness.
-
-### 2.2 The meter is blind
-
-`context-tax.mjs` measures `CLAUDE.md` + memory digest + handoff tables, and reports **"OK vs
-20KB"**. It sees none of the rules, skills, MCP, or agent surface. **The gauge reads green while
-the tank is 6× over.** This is the same "degrades quietly, reads green forever" failure the harness
-already documented for `db-structure` — the lesson was written down and then repeated.
+Everything below is judged against that. Not against "is this good engineering" — most of it is
+good engineering — but against **"does a prototype rail need this on day one?"**
 
 ---
 
-## 3. Full inventory
+## 1. Verdict
 
-### 3.1 `.claude/` — the harness (65 files, 481 KB, 8,713 lines)
+**The template no longer matches its objective.** It has drifted from a prototype rail into an
+enterprise platform skeleton, and the drift shows up in four measurable ways:
 
-| Component          | Count  | Size                | Notes                                                   |
-| ------------------ | ------ | ------------------- | ------------------------------------------------------- |
-| Skills             | **34** | 304 KB              | 16 KB of descriptions always-on                         |
-| Hooks              | **16** | 92 KB / 1,753 lines | 6 can **deny** a tool call                              |
-| Rules              | 6      | 32.8 KB             | all eagerly loaded (§2.1)                               |
-| Agents             | 4      | 385 lines           | scout · senior-code-reviewer · security-architect · sre |
-| `settings.json`    | 1      | 5.5 KB              | 46 allow + 18 deny permission entries                   |
-| `skill-rules.json` | 1      | 7.8 KB              | skill-activation glob table                             |
+| Finding                                               | Evidence                                                                                                                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **It pre-ships what `/scale-up` exists to add later** | 4,702 lines / 48 files of dormant enterprise features — AI/RAG, job queue, SSO/SCIM, OpenAPI, OTel/Sentry, Excel export, Valkey — all inherited by every fork |
+| **1,450 lines are unreachable from the app at all**   | `lib/ai/**` (792), `lib/queue/**` (211), `lib/export.ts` (135), `KanbanBoard` (193) — verified by import-graph trace from `app/**`                            |
+| **The product it actually ships is tiny**             | 5 Prisma models, **4 of them Auth.js boilerplate**. One domain concept: `AuditLog`. Zero business entities                                                    |
+| **The governance layer is 2.7× the product**          | 14,466 lines of product vs 23,860 harness + 14,872 docs                                                                                                       |
 
-**Hooks firing per turn:** 1 `UserPromptSubmit`, **5 on every Edit/Write**, **4 on every Bash**,
-2 `PostToolUse`, 1 `Stop`, 1 `PreCompact`, 2 `SessionEnd`.
-
-**Skills by size** (body loads on invoke; description always-on):
-
-| Skill           |    Body | Skill                                                                                                                          |     Body | Skill        |   Body |
-| --------------- | ------: | ------------------------------------------------------------------------------------------------------------------------------ | -------: | ------------ | -----: |
-| blueprint       | 22.8 KB | new-project                                                                                                                    |  10.3 KB | migrate-from | 4.7 KB |
-| manual-uat      | 22.1 KB | audit                                                                                                                          |  10.3 KB | retro        | 4.5 KB |
-| scale-up        | 21.1 KB | qa                                                                                                                             |   9.7 KB | adopt        | 4.4 KB |
-| uat             | 19.8 KB | deploy                                                                                                                         |   8.6 KB | ai-eval      | 4.2 KB |
-| handoff         | 16.3 KB | explore                                                                                                                        |   8.2 KB | benchmark    | 4.2 KB |
-| ship            | 14.0 KB | fan-out                                                                                                                        |   8.2 KB | docs-current | 3.9 KB |
-| design-qa       | 13.1 KB | stack-advisor                                                                                                                  |   8.1 KB | rebrand      | 3.6 KB |
-| scaffold-entity | 12.4 KB | first-fork                                                                                                                     |   8.1 KB | adr          | 2.7 KB |
-|                 |         | quickstart / design-system / scaffold-ai-endpoint / sync-from-template / handoff-session / conform / remember / cover / docker | 5–7.5 KB | batch        | 2.7 KB |
-
-### 3.2 `docs/` — 138 files, 5.91 MB, 14,872 lines
-
-| Item                          | Count / size              | Assessment                                  |
-| ----------------------------- | ------------------------- | ------------------------------------------- |
-| `docs/verification/**` PNGs   | **4.81 MB**               | committed screenshots; cloned by every fork |
-| `docs/decisions/` ADRs        | **62 files, 475 KB**      | ADR-001…ADR-062, no `superseded/` split     |
-| `docs/recipes/**`             | 15 files, **4,655 lines** | opt-in recipes, none wired by default       |
-| `docs/findings-register.md`   | 615 lines, 59 KB          | **0 open wave-offs** — all history          |
-| `docs/build-vs-buy-ledger.md` | 642 lines, 49 KB          | **42 entries** for 26 lib modules           |
-| `docs/design-recipes.md`      | 557 lines                 |                                             |
-| `docs/uat-rubric.md`          | 243 lines                 |                                             |
-| `docs/OPEN-ITEMS.md`          | 166 lines                 | ~half the rows are `✅ DONE` / `MOOT`       |
-| `docs/repo-architecture.md`   | 158 lines                 | overlaps orientation + REPO-MAP             |
-| `docs/REPO-MAP.md`            | 143 lines                 |                                             |
-| `docs/token-policy.md`        | 114 lines                 | overlaps `harness.md`                       |
-| `docs/harness-orientation.md` | 98 lines                  | overlaps repo-architecture                  |
-| `docs/ARCHIVE.md`             | 94 lines                  |                                             |
-| `docs/oss-catalog.md`         | 81 lines                  |                                             |
-| `docs/blueprints/`            | 7 files, 51 KB            |                                             |
-| `docs/runbooks/`              | 7 files, 42 KB            |                                             |
-
-### 3.3 `scripts/` — 51 files, 12,037 lines
-
-| Script                     |     Lines | Script                  |        Lines |
-| -------------------------- | --------: | ----------------------- | -----------: |
-| `ship.mjs`                 | **1,851** | `fan-out.mjs`           |          283 |
-| `scaffold-entity.mjs`      |     1,587 | `ai-eval.mjs`           |          242 |
-| `deploy.mjs`               |       669 | `render-handoff.mjs`    |          227 |
-| `uat-pdf.mjs`              |       633 | `copy-check.mjs`        |          196 |
-| `new-project.mjs`          |       591 | `agent-eval.mjs`        |          190 |
-| `rbac-matrix.mjs`          |       454 | `bdd-coverage.mjs`      |          182 |
-| `enable-docs-site.mjs`     |       362 | `capture-screens.mjs`   |          154 |
-| `browser-bridge.mjs`       |       344 | `auto-spawn-guard.mjs`  |          151 |
-| `scaffold-ai-endpoint.mjs` |       340 | `sbom-license-gate.mjs` |          148 |
-| `uat-recommend.mjs`        |       336 | `visual-regression.mjs` |          147 |
-| `sync-from-template.mjs`   |       334 | + 30 more               | 100–145 each |
-
-### 3.4 Gates — the enforcement surface
-
-| Gate                           | Mechanism       | Blocks?  | Required artifact                      |
-| ------------------------------ | --------------- | -------- | -------------------------------------- |
-| build-vs-buy (ADR-032)         | PreToolUse hook | **deny** | ledger entry + `Considered:` line      |
-| blueprint (ADR-033)            | PreToolUse hook | **deny** | `docs/blueprints/<f>.md` with `Scope:` |
-| bash-write-gate                | PreToolUse hook | **deny** | mirrors the two above for Bash writes  |
-| dangerous-commands             | PreToolUse hook | **deny** | —                                      |
-| protect-secrets                | PreToolUse hook | **deny** | —                                      |
-| verbose-guard                  | PreToolUse hook | **deny** | —                                      |
-| complexity (ADR-034)           | `/ship` phase   | RED      | `complexityAck` + register line        |
-| ai-eval (ADR-036/042)          | `/ship` phase   | RED      | dormant without `AI_API_KEY`           |
-| 13 local ESLint rules          | lint            | error    | —                                      |
-| `sonarjs/cognitive-complexity` | lint            | error    | —                                      |
-| `/code-review` (2-stage)       | pre-push        | blocking | —                                      |
-| `senior-code-reviewer`         | post-push       | advisory | —                                      |
-
-**`/ship` warm loop runs ~22 phases**: typecheck · lint · format · tests · scalability · copy ·
-wave-offs · licenses · tier · session-state · blueprint · blueprint-content · complexity ·
-db-structure · knip · duplication · coverage · skill-check · build · size-limit · gitleaks ·
-npm-audit · ai-eval. `ship:full` adds docker · trivy · BDD · integration · SBOM.
-
-### 3.5 Other
-
-| Item                 | Count                                                                                               |
-| -------------------- | --------------------------------------------------------------------------------------------------- |
-| npm scripts          | **68**                                                                                              |
-| runtime dependencies | 41                                                                                                  |
-| devDependencies      | 37                                                                                                  |
-| ADRs                 | 62                                                                                                  |
-| GitHub workflows     | 13 (most dormant)                                                                                   |
-| MCP servers / tools  | 4 / ~160                                                                                            |
-| Test files           | 74 (29 contract, 16 uat, 9 agent-eval, 8 component, 5 harness, 3 property, 2 integration, 2 eslint) |
+And underneath that, a second class of problem: **three gates are configured so they cannot
+fail**, which is worse than not having them.
 
 ---
 
-## 4. Where the fat actually is
+## 2. Layer-by-layer
 
-Five structural problems, in order of damage to the agent:
+Judgment key: **KEEP** · **TRIM** (keep, reduce) · **MOVE** (out of the template, into `/scale-up`
+or a recipe) · **CUT**.
 
-**F1 — Eager rules (8.2K tokens/session).** §2.1. The lazy design is defeated and the cost is
-double-billed. This is the highest-value fix in the repo.
+### 2.1 Tech stack & runtime dependencies — 41 runtime, 37 dev
 
-**F2 — The instruction layer restates itself 4–6 times.** The same hard rules appear in
-`CLAUDE.md`, `AGENTS.md`, `.claude/rules/*.md`, `docs/harness-orientation.md`,
-`docs/repo-architecture.md`, `docs/token-policy.md`, and each SKILL.md preamble. `AGENTS.md`
-is explicitly "a pointer, not the source of truth" yet re-states the auth/Prisma/zod/secrets/audit
-rules verbatim in 3.4 KB of always-on context. Redundancy is not free: an agent reading the same
-rule in six phrasings spends tokens reconciling them, and drifts when they disagree.
+| Dependency group                                                                                 | What for             | Reachable? | Judgment                                              |
+| ------------------------------------------------------------------------------------------------ | -------------------- | ---------- | ----------------------------------------------------- |
+| `next` · `react` · `react-dom` · `typescript`                                                    | the stack (ADR-001)  | yes        | **KEEP**                                              |
+| `prisma` · `@prisma/client` · `@prisma/adapter-pg` · `pg`                                        | data layer           | yes        | **KEEP**                                              |
+| `next-auth@5.0.0-beta.32` · `@auth/prisma-adapter` · `@node-rs/argon2`                           | auth                 | yes        | **KEEP** — but see §4                                 |
+| `zod` · `@hookform/resolvers` · `react-hook-form`                                                | validation/forms     | yes        | **KEEP**                                              |
+| `tailwindcss` · 7× `@radix-ui/*` · `clsx` · `cva` · `tailwind-merge` · `lucide-react` · `sonner` | UI (ADR-029)         | yes        | **KEEP**                                              |
+| `next-intl`                                                                                      | i18n + RTL           | yes        | **KEEP** (but see §3.2)                               |
+| `@tanstack/react-query` · `@tanstack/react-table` · `recharts`                                   | data UI              | yes        | **KEEP**                                              |
+| `@anthropic-ai/sdk`                                                                              | `lib/ai` only        | **no**     | **MOVE** — runtime dep for a dead feature             |
+| `pg-boss`                                                                                        | `lib/queue` only     | **no**     | **MOVE** — `/scale-up` already lists Inngest for jobs |
+| `ioredis`                                                                                        | `lib/valkey.ts` only | **no**     | **MOVE** — `/scale-up` already lists Upstash          |
+| `@dnd-kit/core`                                                                                  | `KanbanBoard` only   | **no**     | **CUT** — no consumer anywhere                        |
+| `exceljs`                                                                                        | `lib/export.ts` only | **no**     | **MOVE** — no caller in the product                   |
+| `@sentry/nextjs` · `@vercel/otel` · `@opentelemetry/api`                                         | observability        | partial    | **MOVE** — `/scale-up` already lists Sentry           |
+| `zod-openapi`                                                                                    | `/api/openapi`       | yes        | **TRIM** — a v1 API seam on a prototype               |
+| `nodemailer`                                                                                     | `lib/email.ts`       | yes        | **KEEP**                                              |
+| `@vercel/speed-insights`                                                                         | telemetry            | yes        | **TRIM**                                              |
 
-**F3 — 34 skills is past the discrimination limit.** 16 KB of always-on descriptions, and the set
-overlaps heavily: `qa` / `design-qa` / `uat` / `manual-uat` / `cover` are five entry points to
-testing; `blueprint` / `explore` / `benchmark` / `adopt` are four to pre-build analysis;
-`deploy` / `new-project` / `first-fork` / `quickstart` are four to provisioning. Every extra
-description both costs tokens and makes routing less accurate.
+**Dev-dependency bloat, same test:** `@stryker-mutator/core` (mutation testing),
+`playwright-bdd` (BDD traceability), `@cyclonedx/cyclonedx-npm` (SBOM), `jscpd` (copy-paste
+detection), `knip`, `size-limit`, `pixelmatch` + `pngjs` (visual regression), `fast-check`
+(property tests), `@changesets/cli`, `@testcontainers/postgresql`, `style-dictionary`,
+`@neondatabase/serverless`.
 
-**F4 — Ceremony that no longer discriminates.** 42 build-vs-buy ledger entries against 26 lib
-modules means the gate fires more often than it finds anything; a gate that is always satisfied by
-writing a line is a tax, not a filter. `findings-register.md` carries **0 open wave-offs** in 615
-lines — it is a 59 KB archive occupying a hot path. Half of `OPEN-ITEMS.md` is `DONE`/`MOOT`.
+Every one is a legitimate tool. **None belongs in a starter a non-developer forks to build an
+internal tool in an afternoon.** Mutation testing and BDD traceability are practices mature teams
+adopt after finding a specific problem — pre-installing them means every fork carries the config,
+the npm scripts, the docs, and the ADR whether or not anyone runs them.
 
-**F5 — 6.7 MB of committed binaries.** `docs/verification/**` (4.81 MB) + UAT snapshots (1.9 MB)
-are **61% of the repo by bytes** and are cloned into every fork forever. The visual-iteration loop
-(V2-301) is sound; committing its full output matrix to the template's permanent history is not.
+> **41 runtime dependencies to ship a users table and an audit log.**
+
+### 2.2 Data model — 5 models, 140 schema lines
+
+| Model                                       | Origin                            | Judgment            |
+| ------------------------------------------- | --------------------------------- | ------------------- |
+| `User`                                      | product + Auth.js                 | **KEEP**            |
+| `Account` · `Session` · `VerificationToken` | Auth.js boilerplate               | **KEEP** (required) |
+| `AuditLog`                                  | the template's one domain concept | **KEEP**            |
+| `Role` enum                                 | RBAC                              | **KEEP**            |
+
+This is the honest core, and it is **right-sized**. The problem is what surrounds it: 8 migrations
+for 5 models, two of which (`pgvector_rag`, `scim_external_id`) exist for features with no reachable
+code. The pgvector migration creates a `document_embedding` table that `schema.prisma`
+**deliberately does not model** — which then required a `RAW_SQL_TABLES` allowlist in `ship.mjs` so
+the drift check wouldn't go red. A dormant feature forced a permanent exception into a gate.
+
+**Judgment: CUT both migrations** with the features they serve.
+
+### 2.3 Product surface — 15 pages, 13 API routes, 60 components
+
+| Surface                                               | Count             | Notes         | Judgment                                       |
+| ----------------------------------------------------- | ----------------- | ------------- | ---------------------------------------------- |
+| Auth pages (login, forgot, reset)                     | 3                 | real          | **KEEP**                                       |
+| Dashboard, users (list/new/detail), profile, settings | 6                 | real          | **KEEP**                                       |
+| Audit log, recycling bin                              | 2                 | real          | **KEEP**                                       |
+| Error pages (forbidden, maintenance)                  | 2                 | real          | **KEEP**                                       |
+| **`design-system` + `style-guide` demo pages**        | **2 · 890 lines** | showcase only | **MOVE** to a docs site or strip on `/rebrand` |
+| API: users, audit-log, recycling-bin, auth, health    | 10                | real          | **KEEP**                                       |
+| API: `internal/scim`                                  | 1                 | dormant SSO   | **MOVE**                                       |
+| API: `openapi`                                        | 1                 | v1 seam       | **TRIM**                                       |
+
+**Shared components with no real consumer.** These are used _only_ by the style-guide demo, or by
+nothing:
+
+| Component               | Lines | Used by                          |
+| ----------------------- | ----: | -------------------------------- |
+| `KanbanBoard` + `.impl` |   193 | **nothing**                      |
+| `OrgSwitcher`           |    51 | **nothing**                      |
+| `NotificationsMenu`     |    55 | **nothing**                      |
+| `DataView`              |     — | style-guide only                 |
+| `Toolbar`               |     — | style-guide only                 |
+| `CommandPalette`        |     — | style-guide only                 |
+| 7× `shared/ai/*`        |   343 | design-system + style-guide only |
+
+A shared-primitive library whose primitives are demonstrated but not used is a **catalogue, not a
+library**. It costs every fork the maintenance surface and gives back nothing until someone
+happens to need a Kanban board.
+
+### 2.4 The dormant enterprise layer — 4,702 lines, 48 files
+
+This is the single largest block of fat in the repo, and the clearest case of mission drift.
+
+| Feature                |  Files |     Lines | Reachable from app? | Env vars needed (none in `.env.example`)                                                        | Judgment |
+| ---------------------- | -----: | --------: | ------------------- | ----------------------------------------------------------------------------------------------- | -------- |
+| AI / RAG / tracing     |     20 |     1,948 | **no**              | `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`, `AI_AUTH_STYLE`, `AI_TRACE_CONTENT`, `EMBEDDINGS_*` ×5 | **MOVE** |
+| SSO / SCIM             |      6 |       999 | partial             | Entra/Polis vars                                                                                | **MOVE** |
+| Observability / Sentry |      7 |       492 | partial             | `OTEL_*` ×2                                                                                     | **MOVE** |
+| Job queue (pg-boss)    |      4 |       405 | **no**              | `QUEUE_ENABLED`, `QUEUE_DATABASE_URL`                                                           | **MOVE** |
+| Excel export           |      3 |       315 | **no**              | —                                                                                               | **MOVE** |
+| OpenAPI seam           |      5 |       311 | yes                 | —                                                                                               | **TRIM** |
+| Kanban (dnd-kit)       |      2 |       193 | **no**              | —                                                                                               | **CUT**  |
+| Valkey / Redis         |      1 |        39 | **no**              | `REDIS_URL`, `VALKEY_URL`                                                                       | **MOVE** |
+| **Total**              | **48** | **4,702** |                     | **17 undocumented env vars**                                                                    |          |
+
+Three things make this worse than ordinary dead code:
+
+1. **It is tested.** `tests/contracts/` contains `ai.test.ts`, `ai-embeddings`, `ai-rag`,
+   `ai-route`, `ai-tracing`, `queue`, `sso`, `observability`, `openapi`, `sentry-scrub`,
+   `export`, `export-column-completeness`. The template maintains a test suite for code nothing
+   calls.
+2. **It is governed.** `no-direct-anthropic-sdk` is one of the ESLint rules at `error`, guarding
+   `lib/ai/**` — a directory with no importers. `no-restricted-export-column` guards
+   `lib/export.ts` — which has no caller. `lib/export.ts` is also on the **Ask-before** list, so
+   an agent must stop and ask before touching a file nobody uses.
+3. **It contradicts `/scale-up`.** The skill's own recipe table lists _"jobs → Inngest, realtime →
+   Pusher, errors → Sentry, distributed rate limit → Upstash"_ — capabilities the template has
+   **already pre-installed** in a different, dormant form. The growth model and the shipped code
+   disagree.
+
+### 2.5 Harness — rules, skills, hooks, gates
+
+Covered in depth in §3 (context) and §5 (integrity). Summary judgment:
+
+| Component             |                  Count | Judgment                                                                                       |
+| --------------------- | ---------------------: | ---------------------------------------------------------------------------------------------- |
+| Skills                |                     34 | **TRIM → ~18.** Five entry points to testing, four to pre-build analysis, four to provisioning |
+| Hooks                 |                     16 | **TRIM → ~10.** 5 fire on every Edit/Write, 4 on every Bash                                    |
+| Rules                 |            6 (32.8 KB) | **TRIM.** `harness.md` alone is 19.9 KB — a maintainer manual loaded as a rule                 |
+| Agents                |                      4 | **KEEP** — cheap, well-scoped, genuinely useful                                                |
+| Enforcement quartet   |                4 gates | **TRIM** — see §5                                                                              |
+| `/ship` phases (warm) |                     25 | **TRIM → ~12**                                                                                 |
+| npm scripts           |                     68 | **TRIM → ~35**                                                                                 |
+| `scripts/`            | 51 files, 12,037 lines | **TRIM → ~30**                                                                                 |
+
+### 2.6 ESLint rules — the security floor
+
+| Rule                          | Guards                 | Still earns it?      |
+| ----------------------------- | ---------------------- | -------------------- |
+| `no-prisma-in-client`         | architecture boundary  | **yes**              |
+| `no-bare-api-route`           | every route wrapped    | **yes**              |
+| `no-bare-internal-route`      | internal routes        | **yes**              |
+| `no-any-cast-on-session`      | session typing         | **yes**              |
+| `no-secret-env-in-console`    | secret leakage         | **yes**              |
+| `no-raw-sql-unsafe`           | SQL injection          | **yes**              |
+| `no-rate-limit-inside-auth`   | throttle ordering      | **yes**              |
+| `no-unaudited-bulk-write`     | audit completeness     | **yes**              |
+| `no-prisma-unfiltered-import` | soft-delete bypass     | **yes**              |
+| `no-raw-hex-color`            | design tokens          | **yes**              |
+| `no-restricted-export-column` | `lib/export.ts`        | **guards dead code** |
+| `no-direct-anthropic-sdk`     | `lib/ai/**`            | **guards dead code** |
+| `no-arbitrary-className`      | 4px spacing scale      | **limits** — see §4  |
+| `no-literal-jsx-text`         | copy through next-intl | **limits** — see §4  |
+
+The nine security rules are the genuinely valuable core and should not be touched. But note:
+
+> **There are 14 rules. `CLAUDE.md`, `harness.md`, and every doc say "thirteen."**
+> `no-bare-api-route` is registered in `eslint-rules/index.mjs`, enabled at `error` in
+> `eslint.config.mjs`, and absent from the roster that defines the security floor. The document
+> that specifies the floor **miscounts the floor**.
+
+### 2.7 Documentation — 138 files, 5.91 MB, 14,872 lines
+
+| Item                                                         | Size        | Judgment                                                         |
+| ------------------------------------------------------------ | ----------- | ---------------------------------------------------------------- |
+| `docs/verification/**` PNGs                                  | **4.81 MB** | **CUT from git** — 44% of the repo, cloned by every fork         |
+| UAT snapshot PNGs                                            | 1.9 MB      | **CUT from git**                                                 |
+| 62 ADRs                                                      | 475 KB      | **TRIM** — 19 mention supersession, none are filed as superseded |
+| `docs/recipes/**`                                            | 4,655 lines | **TRIM** — 8 of 15 are referenced exactly once (by the index)    |
+| `findings-register.md`                                       | 615 lines   | **ARCHIVE** — 0 open wave-offs                                   |
+| `build-vs-buy-ledger.md`                                     | 642 lines   | **ARCHIVE** — 42 entries, 0 reversals                            |
+| `OPEN-ITEMS.md`                                              | 166 lines   | **TRIM** — half the rows are DONE/MOOT                           |
+| `repo-architecture` + `harness-orientation` + `token-policy` | 370 lines   | **MERGE** — three overlapping maps                               |
+| `AGENTS.md`                                                  | 3.4 KB      | **TRIM** — calls itself a pointer, restates the rules verbatim   |
+| `REPO-MAP.md` · `SECURITY.md` · `README.md`                  | —           | **KEEP**                                                         |
+
+### 2.8 Tests — 74 files, 15,534 lines
+
+| Suite                                  |           Files | Judgment                                                                         |
+| -------------------------------------- | --------------: | -------------------------------------------------------------------------------- |
+| `tests/contracts`                      |              29 | **TRIM** — 12 of them test dormant features (§2.4)                               |
+| `tests/uat`                            |              16 | **TRIM** — 4 are committed PNG baselines (1.9 MB)                                |
+| `tests/harness`                        | 5 (1,479 lines) | **TRIM** — `hooks.test.mjs` alone is 1,057 lines testing the harness's own hooks |
+| `tests/agent-evals`                    |               9 | **CUT** — two fixture dirs are empty                                             |
+| `tests/components`                     |               8 | **KEEP**                                                                         |
+| `tests/eslint-rules`                   | 2 (1,028 lines) | **KEEP** — these guard the real floor                                            |
+| `tests/property` · `tests/integration` |               5 | **TRIM**                                                                         |
+
+The harness has more test code testing _itself_ (2,507 lines across `harness` + `eslint-rules` +
+`agent-evals`) than the product has in `lib/` (2,283 lines).
 
 ---
 
-## 5. Cut list — prioritized
+## 3. The context cost (the original complaint)
 
-Ordered by (context saved) ÷ (risk). **Nothing here touches the security floor**: the auth
-wrappers, zod boundary, 13 ESLint rules, audit log, gitleaks, and `/ship`-before-push all stay
-exactly as they are.
+Measured separately because it compounds everything above.
 
-### Tier 1 — do these first (~11.5K tokens/session, ~60% of the tax, near-zero risk)
+| Source                                             |      Bytes |    ~Tokens | Metered by `context-tax.mjs`? |
+| -------------------------------------------------- | ---------: | ---------: | ----------------------------- |
+| `.claude/rules/*.md` — all six, loaded **eagerly** |     32,788 |      8,197 | **no**                        |
+| 34 skill descriptions                              |     16,024 |      4,006 | **no**                        |
+| MCP — 4 servers / ~160 tools                       |     ~9,000 |     ~2,250 | **no**                        |
+| `CLAUDE.md`                                        |      8,185 |      2,046 | yes                           |
+| `AGENTS.md`                                        |      3,411 |        852 | **no**                        |
+| `agent-memory.md` digest                           |      2,772 |        693 | yes                           |
+| SessionStart banner + handoff tables               |      2,036 |        509 | yes                           |
+| 4 agent definitions                                |     ~1,400 |       ~350 | **no**                        |
+| **Total**                                          | **75,616** | **18,904** | **3 of 8 sources**            |
 
-| #      | Cut                                                | Saves             | How                                                                                                                                                                                                                                                                                                                                                            |
-| ------ | -------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **C1** | **Stop the eager rules load**                      | **~8.2K tok**     | Move `.claude/rules/*.md` out of auto-discovery — rename to `.claude/rules/*.rule.md` or relocate to `docs/rules/`, and point `rules-injection.mjs` at the new path. The hook already does the lazy injection correctly; it just needs the CLI to stop pre-loading the same files. **Verify by inspecting the next session's system prompt, not by assuming.** |
-| **C2** | **Split `harness.md` (19.9 KB)**                   | folds into C1     | It is a maintainer manual, not a rule. Keep ~40 lines of genuinely binding rules; move the rest (shadow-DB recipe, ship-tier tables, ESLint rationale, memory-lifecycle history) to `docs/runbooks/maintainer.md`, loaded on demand.                                                                                                                           |
-| **C3** | **Delete `AGENTS.md`'s duplicated rules**          | ~850 tok          | Reduce to a genuine 15-line pointer: "read `CLAUDE.md` and `SECURITY.md`." It says it is a pointer; make it one.                                                                                                                                                                                                                                               |
-| **C4** | **Prune MCP servers to what a session needs**      | ~1.5–2K tok       | 4 servers / ~160 tools load schema surface every session. `chrome-devtools` and `playwright` are near-duplicates for browser QA — keep one. Move `shadcn` + `context7` to opt-in. The SessionStart banner already warns about this; act on the warning.                                                                                                        |
-| **C5** | **Fix `context-tax.mjs` to measure all 8 sources** | 0 tok, high value | Without this you cannot tell whether C1–C4 worked. Add rules, skill descriptions, agent definitions, MCP surface, and `AGENTS.md`. Set the budget to a number the repo actually meets — and **make the degraded state visibly distinct**, per the repo's own db-structure lesson.                                                                              |
+**The rules are not lazy.** `rules-injection.mjs` was written to serve rule files on demand,
+"WITHOUT taxing every session's SessionStart context" — its own comment. But Claude Code
+auto-discovers `.claude/rules/*.md` as project instructions and loads **all six** at session start
+(verified in this session's system prompt, each labelled _project instructions_). So the 32.8 KB is
+paid anyway — and the hook then injects the same file **again** on matching edits.
 
-### Tier 2 — consolidation (~3K tokens/session, low risk)
-
-| #      | Cut                                             | Saves           | How                                                                                                                                                                                                                                                                                                                                                          |
-| ------ | ----------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **C6** | **34 skills → ~18**                             | ~7 KB desc      | Merge: `qa` absorbs `design-qa`+`uat`+`manual-uat`+`cover` as modes; `blueprint` absorbs `explore`+`benchmark`+`adopt`; `deploy` absorbs `new-project`+`first-fork`; `handoff` absorbs `handoff-session`. Fold `adr`, `remember`, `rebrand`, `batch`, `docs-current` into the skills that call them. Modes are a flag, not a separate always-on description. |
-| **C7** | **Archive the cold governance docs**            | ~1 KB + clarity | `findings-register.md` → keep open items only, move 615 lines of resolved history to `docs/archive/`. Same for `OPEN-ITEMS.md` (drop DONE/MOOT rows) and `build-vs-buy-ledger.md`.                                                                                                                                                                           |
-| **C8** | **Merge the three overlapping map docs**        | clarity         | `repo-architecture.md` + `harness-orientation.md` + `token-policy.md` → one `docs/ARCHITECTURE.md`. Keep `REPO-MAP.md` separate (it is the cheap "where is X" lookup and earns its place).                                                                                                                                                                   |
-| **C9** | **Split ADRs into `active/` and `superseded/`** | clarity         | 62 ADRs with no supersession structure; ADR-023 is already superseded by ADR-030, ADR-027 by ADR-029. An agent searching ADRs currently reads dead decisions as live ones.                                                                                                                                                                                   |
-
-### Tier 3 — structural (highest long-term payoff, needs your decision)
-
-| #       | Cut                                              | Rationale                                                                                                                                                                                                                                                                                                                           |
-| ------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **C10** | **Move the 6.7 MB of PNGs out of git**           | Keep the visual-iteration loop; stop committing its full matrix. Keep one reference set for `design-system`; write the rest to a gitignored `docs/verification/` and retain only the `CRITIQUE.md` text. Forks stop inheriting 6.7 MB of someone else's screenshots.                                                                |
-| **C11** | **Collapse `/ship` from ~22 phases to ~12 warm** | Move `knip`, `duplication`, `coverage`, `skill-check`, `size-limit`, `db-structure`, `copy` to `ship:full`. Warm `/ship` should be: typecheck · lint · format · tests · build · gitleaks · npm-audit · scalability · complexity · blueprint · tier · wave-offs. Faster loop = more loops = fewer regressions (Pillar 1).            |
-| **C12** | **Retire the build-vs-buy hook gate**            | 42 entries / 26 modules, all with `Considered:` lines, 0 recorded reversals. The _scan_ is valuable; the _deny_ is theater. Downgrade to a `/ship` warning, or scope the deny to new **runtime dependencies** only — which is where build-vs-buy actually bites.                                                                    |
-| **C13** | **Cut `scripts/` from 51 to ~30**                | Candidates to fold or drop: `agent-eval.mjs`, `auto-spawn-guard.mjs`, `auto-spawn-fire.mjs`, `hook-latency.mjs`, `routing-report.mjs`, `uat-recommend.mjs`, `uat-benchmark.mjs`, `enable-docs-site.mjs`, `enable-api-reference.mjs`, `install-senior-review.mjs`. Each carries an npm script, docs, and a mention in some SKILL.md. |
-| **C14** | **68 npm scripts → ~35**                         | Follows from C11 + C13.                                                                                                                                                                                                                                                                                                             |
-| **C15** | **Reduce Edit/Write hooks from 5 to 2–3**        | Five hooks fire on every single edit. `skill-activation` + `rules-injection` can merge (the code comments note they share glob/relPath logic verbatim); `build-vs-buy-gate` folds into `bash-write-gate`'s pattern or goes away with C12.                                                                                           |
-
-### Projected result
-
-|                        |     Now | After Tier 1 | After Tier 1+2 | After all |
-| ---------------------- | ------: | -----------: | -------------: | --------: |
-| Always-on tokens       | ~18,900 |       ~7,400 |         ~4,500 |    ~4,000 |
-| Skills                 |      34 |           34 |             18 |        18 |
-| Warm `/ship` phases    |      22 |           22 |             22 |        12 |
-| Repo bytes             | 11.0 MB |      11.0 MB |        11.0 MB |   ~4.3 MB |
-| Harness+docs ÷ product |    2.7× |         2.7× |          ~2.2× |     ~1.5× |
-
-**Tier 1 alone recovers ~11.5K tokens per session** — roughly 60% of the tax — and is mostly file
-moves plus one hook path change.
+`context-tax.mjs` measures 3 of 8 sources and reports **"OK vs 20KB"** at 75.6 KB.
 
 ---
 
-## 6. The principle worth adopting
+## 4. Where the harness limits the fork
 
-Every mechanism in this repo was individually justified — each has an ADR, each closed a real gap.
-The failure is that **nothing was ever removed**, and no mechanism had to prove it was still
-earning its cost. Three guardrails would have prevented this audit:
+You asked whether things _limit_. These do — and several contradict the template's own promises.
 
-1. **A budget that is actually measured.** `context-tax.mjs` had a 20 KB budget and reported
-   "OK" at 75 KB because it measured a third of the inputs. A budget you cannot measure honestly
-   is worse than no budget — it manufactures false confidence. (C5.)
-2. **Gates must discriminate.** A gate satisfied 42 times out of 42 by writing a line is a toll
-   booth. Track how often each gate _changes an outcome_; retire the ones that never do. (C12.)
-3. **Every addition names what it replaces.** New ADR, new skill, new hook, new doc — say what it
-   supersedes or delete-by. Without that, the harness only grows.
+| Constraint                                                                       | The friction                                | Against the objective                                                                                                       |
+| -------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Blueprint gate denies new pages/routes** until `docs/blueprints/<f>.md` exists | Creating a page is blocked on writing a doc | `/quickstart` promises **idea → live URL in 10 minutes**. The gate makes the first file creation stop and demand a contract |
+| **Build-vs-buy gate denies new `lib/` files** until a ledger entry exists        | Every new primitive stops the turn          | 42 entries, 0 reversals — it has never changed an outcome                                                                   |
 
-The security floor is not the problem here and should not be touched. **The governance layer
-around it is, and it is roughly 3× larger than it needs to be.**
+> **Observed live during this audit.** Writing a two-line throwaway probe file to `lib/` — to be
+> deleted seconds later in the same command — was **denied** by `bash-write-gate`, which demanded a
+> reuse scan, an `oss-catalog.md` lookup, and a `Considered:`-bearing ledger entry first. The gate
+> cannot distinguish a new shared primitive from a temp file. I proved the same point via an
+> alternate knip config instead, but that is the friction tax in one observation: **the gate fired,
+> cost a turn, and protected nothing.**
+> | **`no-literal-jsx-text` at `error`** | Every user-facing string must route through next-intl | The template **ships English-only by default**. A prototype operator pays full i18n ceremony for a language set of one |
+> | **`no-arbitrary-className` at `error`** | No arbitrary Tailwind spacing/font values | Reasonable at scale; friction when iterating on a throwaway screen |
+> | **Docker is a mandatory build artifact** (ADR-030) | Image build gates `/ship --full`, `/deploy`, `/handoff` | Vercel is the deploy path (ADR-006) and ignores the image entirely |
+> | **Locked stack** (ADR-001) | Changing it requires a superseding ADR | Correct for a shared standard; heavy for a prototype rail |
+> | **Tier enforcement** | ≥2 contributors on `personal` fails `/ship` | Fine — cheap and real |
+> | **Visual-iteration loop** (V2-301) | Any screen change requires capture + view + critique + re-capture | Right instinct, but the matrix is desktop+mobile × light+dark × every locale = 8+ images per screen |
+
+The pattern: **the harness is calibrated for a shared, long-lived, multi-contributor production
+system. The product objective is a disposable prototype an operator ships in an afternoon.** Both
+are coherent designs. They are not the same design, and the template is currently trying to be
+both.
+
+---
+
+## 5. Gates that cannot fail
+
+Three integrity failures. Each reads green permanently, which is worse than absence — absence is
+visible.
+
+**5.1 `knip` cannot find dead code where dead code lives.** `knip.json` declares
+`lib/**`, `components/shared/**`, `components/ui/**`, `hooks/**` as **entry points**. An entry
+point is by definition reachable, so the dead-code gate is structurally blind to the entire `lib/`
+and shared-component surface — exactly where the dead code is.
+
+**Verified empirically.** Same repo, same code, only the `entry` array changed:
+
+| Config                      | `entry` includes `lib/**`, `components/shared/**`? | knip output                                                  |
+| --------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| **A — as shipped**          | yes                                                | **nothing. Clean.**                                          |
+| **B — those globs removed** | no                                                 | **5 unused files · 1 unused dependency · 31 unused exports** |
+
+Config B surfaces `KanbanBoard` + `.impl`, `Modal`, `PageShell`, `lib/sso/index.ts`, the
+`@dnd-kit/core` dependency, and 31 dead exports including `ragUpsert`, `ragQuery`,
+`isAiConfigured`, and `AiNotConfiguredError`. **All of it is invisible to the gate as configured.**
+
+**A second, compounding blindness:** `tests/**` is also an entry point, so any dead product file
+imported by its own contract test is reachable by definition. `lib/ai/**` survives even config B for
+this reason — the 12 contract tests written for the dormant features are precisely what hide those
+features from dead-code detection. **The tests keep their own subject alive.**
+
+**5.2 `context-tax.mjs` measures a third of its own budget.** §3.
+
+**5.3 `db-structure` degrades silently.** It reported `PASS*` in my run — the migrations-in-sync
+sub-check is skipped whenever `SHADOW_DATABASE_URL` is unset, which nothing in the repo sets. The
+harness already documented this exact lesson in `harness.md` ("a check that degrades quietly when a
+prerequisite is missing will read as green forever") — and then two more gates were built with the
+same flaw.
+
+---
+
+## 6. Consolidated cut list
+
+| #      | Cut                                                                                                                                 | Removes                                                                        | Risk                     |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------ |
+| **A1** | Move the dormant enterprise layer to `/scale-up` recipes — AI/RAG, queue, SSO/SCIM, Sentry/OTel, Valkey, export                     | **4,702 lines · 48 files · 8 runtime deps · 12 contract tests · 2 migrations** | low — nothing imports it |
+| **A2** | Delete `KanbanBoard`, `OrgSwitcher`, `NotificationsMenu`; move `DataView`/`Toolbar`/`CommandPalette` behind a real consumer or drop | ~500 lines + `@dnd-kit`                                                        | low                      |
+| **A3** | Move the two demo pages out of the app                                                                                              | 890 lines                                                                      | low                      |
+| **A4** | Retire mutation testing, BDD traceability, SBOM, jscpd, visual-regression, changesets from the default rail                         | ~10 dev deps, ~15 npm scripts, 4 ADRs                                          | low                      |
+| **B1** | Stop the eager rules load; split `harness.md`; cut `AGENTS.md` to a pointer; prune MCP                                              | **~11.5K tokens/session**                                                      | low                      |
+| **B2** | Fix the three blind gates (§5) — or delete them                                                                                     | —                                                                              | low, high value          |
+| **B3** | 34 skills → ~18; 68 npm scripts → ~35; 51 scripts → ~30; 16 hooks → ~10                                                             | ~7 KB always-on                                                                | medium                   |
+| **C1** | 6.7 MB of PNGs out of git                                                                                                           | **61% of repo bytes**                                                          | medium                   |
+| **C2** | Warm `/ship` 25 phases → ~12 (all security stays warm)                                                                              | ~35s per loop                                                                  | medium                   |
+| **C3** | Downgrade build-vs-buy and blueprint gates from **deny** to warn for `/quickstart`-tier work                                        | unblocks the 10-minute promise                                                 | **needs your call**      |
+| **C4** | Archive cold governance docs; merge the three map docs; file superseded ADRs                                                        | ~1,400 lines                                                                   | low                      |
+
+**Projected:** product stays at ~14,500 lines. Harness + docs drops from 38,700 to roughly 20,000.
+Repo from 11.0 MB to ~4.3 MB. Runtime deps from 41 to ~30. Always-on context from ~18,900 tokens
+to ~4,000.
+
+---
+
+## 7. The structural diagnosis
+
+Three separate failure modes produced this, and they need different fixes.
+
+**7.1 Mission drift.** Enterprise features were added to a prototype rail — each with a real ADR,
+each defensible alone — without anyone asking whether the rail was still a rail. `/scale-up` was
+built as the mechanism for exactly this, and then bypassed. **Fix: enforce the growth model. If a
+capability has a `/scale-up` recipe, it does not ship pre-installed.**
+
+**7.2 Nothing was ever removed.** 62 ADRs, zero filed as superseded. 34 skills, none retired. 51
+scripts, none deleted. The harness is append-only. **Fix: every addition names what it replaces or
+carries a delete-by date.**
+
+**7.3 Gates were trusted instead of tested.** Three of them cannot fail. The `db-structure` lesson
+was written down in `harness.md` and then repeated twice. **Fix: every gate needs a test that
+proves it goes red — the `eslint-rules` suite already does this correctly and is the model.**
+
+The security floor — auth wrappers, zod at the boundary, the nine security ESLint rules, the audit
+log, gitleaks, `/ship` before push — is sound, proportionate, and should survive all of this
+untouched. **It is roughly 10% of the harness. The other 90% is what drifted.**
