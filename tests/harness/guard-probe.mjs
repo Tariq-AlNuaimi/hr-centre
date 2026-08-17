@@ -108,6 +108,22 @@ const LEGITIMATE = [
   ["read a normal file", "cat package.json", secret],
   ["read the example env", "cat .env.example", secret],
   ["grep the source", "grep -r useState components/", secret],
+  // R3 added ARCHIVE_CMDS / COPY_CMDS / curl / interpreter checks -- each is a
+  // fresh chance to over-block ordinary work, so each gets a counter-case.
+  ["copy a normal file", "cp package.json /tmp/backup.json", secret],
+  ["copy a directory", "cp -r docs/ /tmp/docs-backup/", secret],
+  ["rename a source file", "mv old-name.ts new-name.ts", secret],
+  ["archive the docs", "tar czf backup.tar.gz docs/", secret],
+  ["zip components", "zip -r out.zip components/", secret],
+  ["checksum the lockfile", "sha256sum package-lock.json", secret],
+  ["plain GET", "curl https://api.example.com/health", secret],
+  ["POST inline JSON", "curl -X POST -d '{\"a\":1}' https://api.example.com", secret],
+  ["download to a file", "curl -o out.json https://example.com/data.json", secret],
+  ["interpreter naming .env.example", "node -e \"console.log('.env.example')\"", secret],
+  ["interpreter requiring a module", "node -e \"require('./lib/utils.ts')\"", secret],
+  ["generate a random key", "openssl rand -base64 32", secret],
+  ["rsync a source tree", "rsync -a src/ dest/", secret],
+  ["symlink", "ln -s ../shared ./link", secret],
 ];
 
 // --- run ---------------------------------------------------------------------
