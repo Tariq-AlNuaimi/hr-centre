@@ -5,6 +5,30 @@ tracked file (590 files, 10.99 MB), judged against what this template says it is
 
 ---
 
+## Corrections log
+
+This audit was written fast and then acted on. **Four claims were wrong**, all from one habit:
+summary tables hand-built from path-spelling greps instead of the corrected import-graph trace.
+Every one was caught by re-verifying before deleting, not by the report reviewing itself.
+
+| #   | Wrong claim                             | Reality                                                                                                  | Where |
+| --- | --------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----- |
+| 1   | `OrgSwitcher` has no consumer           | `AppHeader` — live on every dashboard page                                                               | §2.3  |
+| 2   | `NotificationsMenu` has no consumer     | `AppHeader` — live                                                                                       | §2.3  |
+| 3   | `CommandPalette` is style-guide only    | `AppHeader` **and** `AppShell` — live                                                                    | §2.3  |
+| 4   | 4,702 lines of dormant enterprise layer | **1,162.** `valkey`, `sentry`, `observability` are all live; the figure was a glob-sum, not reachability | §2.4  |
+
+Acting on 1–3 or on the `valkey`/`sentry`/`observability` rows would have **broken running code**
+— `valkey` backs the rate limiter and `observability` is the only importer of `lib/env.ts`.
+
+**The method rule that follows:** match every import spelling — relative, aliased, and JSX usage —
+and prefer tool output over a hand-built summary. Both the corrected trace and the knip differential
+had these right; the prose contradicted them.
+
+Read the section tables, not this document's headline numbers, where the two disagree.
+
+---
+
 ## 0. The yardstick
 
 The template states its own objective in three places, consistently:
@@ -32,12 +56,12 @@ good engineering — but against **"does a prototype rail need this on day one?"
 **The template no longer matches its objective.** It has drifted from a prototype rail into an
 enterprise platform skeleton, and the drift shows up in four measurable ways:
 
-| Finding                                               | Evidence                                                                                                                                                      |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **It pre-ships what `/scale-up` exists to add later** | 4,702 lines / 48 files of dormant enterprise features — AI/RAG, job queue, SSO/SCIM, OpenAPI, OTel/Sentry, Excel export, Valkey — all inherited by every fork |
-| **1,450 lines are unreachable from the app at all**   | `lib/ai/**` (792), `lib/queue/**` (211), `lib/export.ts` (135), `KanbanBoard` (193) — verified by import-graph trace from `app/**`                            |
-| **The product it actually ships is tiny**             | 5 Prisma models, **4 of them Auth.js boilerplate**. One domain concept: `AuditLog`. Zero business entities                                                    |
-| **The governance layer is 2.7× the product**          | 14,466 lines of product vs 23,860 harness + 14,872 docs                                                                                                       |
+| Finding                                               | Evidence                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **It pre-ships what `/scale-up` exists to add later** | **1,162 lines / 13 files** unreachable from the app (AI/RAG, job queue, Excel export) plus a demo-only component set — every fork inherits them. _(Originally stated as 4,702/48; corrected in §2.4 — that figure was a glob-sum, not a reachability measure.)_ |
+| **1,162 lines are unreachable from the app at all**   | `lib/ai/**` (792), `lib/queue/**` (211), `lib/export.ts` (135), `lib/sso/index.ts` (24) — import-graph trace from `app/**`, cross-checked against knip                                                                                                          |
+| **The product it actually ships is tiny**             | 5 Prisma models, **4 of them Auth.js boilerplate**. One domain concept: `AuditLog`. Zero business entities                                                                                                                                                      |
+| **The governance layer is 2.7× the product**          | 14,466 lines of product vs 23,860 harness + 14,872 docs                                                                                                                                                                                                         |
 
 And underneath that, a second class of problem: **three gates are configured so they cannot
 fail**, which is worse than not having them.
@@ -147,21 +171,37 @@ trace in this audit also missed relative imports and was rebuilt. The lesson is 
 import spelling — relative, aliased, and JSX usage — and to prefer tool output over a hand-built
 summary table.
 
-### 2.4 The dormant enterprise layer — 4,702 lines, 48 files
+### 2.4 The dormant enterprise layer — 1,162 lines, 13 files
 
-This is the single largest block of fat in the repo, and the clearest case of mission drift.
+> **⚠ CORRECTED 2026-08-17 (the fourth correction, same root cause).** This section first
+> claimed **4,702 lines / 48 files**. That number was a **glob-sum of feature directories**
+> — it summed whole folders including their tests and their _reachable_ files — not a
+> reachability measure. An import-graph trace from `app/**` puts the genuinely-unreachable
+> set at **13 files / 1,162 lines**. Three entries below were **wrong**, and removing them
+> would have broken live code:
+>
+> | Wrongly listed as dormant | Actually                                                                                                                                                                                                    |
+> | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | `lib/valkey.ts`           | imported by `lib/rate-limit.ts` **and** `lib/account-lockout.ts` — the shared-state limiter backend that closes the multi-replica gap (T-01, ADR-035). **A security control.**                              |
+> | `lib/sentry.ts`           | imported by `lib/api-helpers.ts` — `setUserContext()` runs on **every authenticated request**                                                                                                               |
+> | `lib/observability/**`    | `instrumentation.ts` registers it at boot **and is the only import of `lib/env.ts`** — removing it turns a misconfigured `DATABASE_URL`/`AUTH_SECRET` from a fail-fast boot error into a late runtime crash |
+>
+> Same cause as the §2.3 correction: a summary table built from path-spelling greps rather
+> than the corrected trace. Verified-correct table below.
 
-| Feature                |  Files |     Lines | Reachable from app? | Env vars needed (none in `.env.example`)                                                        | Judgment |
-| ---------------------- | -----: | --------: | ------------------- | ----------------------------------------------------------------------------------------------- | -------- |
-| AI / RAG / tracing     |     20 |     1,948 | **no**              | `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL`, `AI_AUTH_STYLE`, `AI_TRACE_CONTENT`, `EMBEDDINGS_*` ×5 | **MOVE** |
-| SSO / SCIM             |      6 |       999 | partial             | Entra/Polis vars                                                                                | **MOVE** |
-| Observability / Sentry |      7 |       492 | partial             | `OTEL_*` ×2                                                                                     | **MOVE** |
-| Job queue (pg-boss)    |      4 |       405 | **no**              | `QUEUE_ENABLED`, `QUEUE_DATABASE_URL`                                                           | **MOVE** |
-| Excel export           |      3 |       315 | **no**              | —                                                                                               | **MOVE** |
-| OpenAPI seam           |      5 |       311 | yes                 | —                                                                                               | **TRIM** |
-| Kanban (dnd-kit)       |      2 |       193 | **no**              | —                                                                                               | **CUT**  |
-| Valkey / Redis         |      1 |        39 | **no**              | `REDIS_URL`, `VALKEY_URL`                                                                       | **MOVE** |
-| **Total**              | **48** | **4,702** |                     | **17 undocumented env vars**                                                                    |          |
+| Module                           |  Files |     Lines | Reachable from `app/**`?  | Verdict                       |
+| -------------------------------- | -----: | --------: | ------------------------- | ----------------------------- |
+| `lib/ai/**`                      |      8 |       792 | **no**                    | **MOVE** — done               |
+| `lib/queue/**` (pg-boss)         |      3 |       211 | **no**                    | **MOVE** — done               |
+| `lib/export.ts` (exceljs)        |      1 |       135 | **no**                    | **MOVE** — done               |
+| `lib/sso/index.ts` (dead barrel) |      1 |        24 | **no**                    | **CUT** — done                |
+| **Total genuinely unreachable**  | **13** | **1,162** |                           |                               |
+| `components/shared/ai/**`        |      7 |       343 | demo pages only           | **CUT** with the demos — done |
+| `lib/sso/config.ts` + `scim.ts`  |      2 |       366 | **yes** — SCIM route      | **KEEP**                      |
+| `lib/observability/**`           |      2 |        82 | **yes** — instrumentation | **KEEP**                      |
+| `lib/sentry.ts`                  |      1 |        99 | **yes** — api-helpers     | **KEEP**                      |
+| `lib/valkey.ts`                  |      1 |        39 | **yes** — rate limiter    | **KEEP**                      |
+| OpenAPI seam                     |      5 |       311 | **yes** — `/api/openapi`  | **TRIM** — not removed        |
 
 Three things make this worse than ordinary dead code:
 
@@ -344,19 +384,19 @@ same flaw.
 
 ## 6. Consolidated cut list
 
-| #      | Cut                                                                                                                                                                                                                                     | Removes                                                                        | Risk                     |
-| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------ |
-| **A1** | Move the dormant enterprise layer to `/scale-up` recipes — AI/RAG, queue, SSO/SCIM, Sentry/OTel, Valkey, export                                                                                                                         | **4,702 lines · 48 files · 8 runtime deps · 12 contract tests · 2 migrations** | low — nothing imports it |
-| **A2** | Delete `KanbanBoard`, `Modal`, `PageShell` (verified zero consumers); `DataView`/`Toolbar`/`shared/ai` go with the demo pages. **NOT `OrgSwitcher`/`NotificationsMenu`/`CommandPalette` — live app chrome, see the correction in §2.3** | ~288 lines + `@dnd-kit`                                                        | low                      |
-| **A3** | Move the two demo pages out of the app                                                                                                                                                                                                  | 890 lines                                                                      | low                      |
-| **A4** | Retire mutation testing, BDD traceability, SBOM, jscpd, visual-regression, changesets from the default rail                                                                                                                             | ~10 dev deps, ~15 npm scripts, 4 ADRs                                          | low                      |
-| **B1** | Stop the eager rules load; split `harness.md`; cut `AGENTS.md` to a pointer; prune MCP                                                                                                                                                  | **~11.5K tokens/session**                                                      | low                      |
-| **B2** | Fix the three blind gates (§5) — or delete them                                                                                                                                                                                         | —                                                                              | low, high value          |
-| **B3** | 34 skills → ~18; 68 npm scripts → ~35; 51 scripts → ~30; 16 hooks → ~10                                                                                                                                                                 | ~7 KB always-on                                                                | medium                   |
-| **C1** | 6.7 MB of PNGs out of git                                                                                                                                                                                                               | **61% of repo bytes**                                                          | medium                   |
-| **C2** | Warm `/ship` 25 phases → ~12 (all security stays warm)                                                                                                                                                                                  | ~35s per loop                                                                  | medium                   |
-| **C3** | Downgrade build-vs-buy and blueprint gates from **deny** to warn for `/quickstart`-tier work                                                                                                                                            | unblocks the 10-minute promise                                                 | **needs your call**      |
-| **C4** | Archive cold governance docs; merge the three map docs; file superseded ADRs                                                                                                                                                            | ~1,400 lines                                                                   | low                      |
+| #      | Cut                                                                                                                                                                                                                                     | Removes                                                                                                | Risk                     |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------ |
+| **A1** | Move the dormant enterprise layer to `/scale-up` recipes — AI/RAG, queue, SSO/SCIM, Sentry/OTel, Valkey, export                                                                                                                         | **1,162 lines · 13 files · 3 runtime deps · 8 contract tests** (migrations excluded — applied history) | low — nothing imports it |
+| **A2** | Delete `KanbanBoard`, `Modal`, `PageShell` (verified zero consumers); `DataView`/`Toolbar`/`shared/ai` go with the demo pages. **NOT `OrgSwitcher`/`NotificationsMenu`/`CommandPalette` — live app chrome, see the correction in §2.3** | ~288 lines + `@dnd-kit`                                                                                | low                      |
+| **A3** | Move the two demo pages out of the app                                                                                                                                                                                                  | 890 lines                                                                                              | low                      |
+| **A4** | Retire mutation testing, BDD traceability, SBOM, jscpd, visual-regression, changesets from the default rail                                                                                                                             | ~10 dev deps, ~15 npm scripts, 4 ADRs                                                                  | low                      |
+| **B1** | Stop the eager rules load; split `harness.md`; cut `AGENTS.md` to a pointer; prune MCP                                                                                                                                                  | **~11.5K tokens/session**                                                                              | low                      |
+| **B2** | Fix the three blind gates (§5) — or delete them                                                                                                                                                                                         | —                                                                                                      | low, high value          |
+| **B3** | 34 skills → ~18; 68 npm scripts → ~35; 51 scripts → ~30; 16 hooks → ~10                                                                                                                                                                 | ~7 KB always-on                                                                                        | medium                   |
+| **C1** | 6.7 MB of PNGs out of git                                                                                                                                                                                                               | **61% of repo bytes**                                                                                  | medium                   |
+| **C2** | Warm `/ship` 25 phases → ~12 (all security stays warm)                                                                                                                                                                                  | ~35s per loop                                                                                          | medium                   |
+| **C3** | Downgrade build-vs-buy and blueprint gates from **deny** to warn for `/quickstart`-tier work                                                                                                                                            | unblocks the 10-minute promise                                                                         | **needs your call**      |
+| **C4** | Archive cold governance docs; merge the three map docs; file superseded ADRs                                                                                                                                                            | ~1,400 lines                                                                                           | low                      |
 
 **Projected:** product stays at ~14,500 lines. Harness + docs drops from 38,700 to roughly 20,000.
 Repo from 11.0 MB to ~4.3 MB. Runtime deps from 41 to ~30. Always-on context from ~18,900 tokens
