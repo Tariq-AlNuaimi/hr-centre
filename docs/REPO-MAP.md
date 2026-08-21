@@ -20,7 +20,6 @@
 - app/api/auth/reset-password/route.ts
 - app/api/health/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
-- app/api/internal/scim/route.ts  [POST]
 - app/api/openapi/route.ts  [GET]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
@@ -42,7 +41,6 @@
 - lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
-- lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
@@ -60,11 +58,8 @@
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
-- lib/sso/config.ts: POLIS_PROVIDER_ID, PolisSsoConfig, isPolisSsoConfigured, polisSsoConfig, scimWebhookSecret, verifyScimSignature, SsoSignInRow, isFederatedSignInAllowed, SsoNotConfiguredError
-- lib/sso/scim.ts: ScimEventType, NormalizedScimEvent, ScimAction, normalizeDirectoryEvent, provisionDirectoryEvent
 - lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
-- lib/validations/sso.ts: normalizedScimEventSchema, NormalizedScimEventInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 

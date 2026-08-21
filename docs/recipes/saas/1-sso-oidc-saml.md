@@ -355,3 +355,25 @@ JIT-provision + role-mapping behaviour as OIDC.
   ADR-worthy decision.
 - Run **`/code-review`** before pushing (this touches `lib/auth.ts`, an "Ask before" file)
   and **`/ship`** (typecheck → lint → tests → build → gitleaks → npm audit).
+
+## The `signIn` guard is already in `lib/auth.ts` — do not remove it
+
+`lib/auth.ts` keeps a `signIn` callback that denies a federated sign-in when the linked
+`users` row is soft-deleted. With no OAuth provider registered it never fires, so it can
+look like dead code worth deleting. It is not:
+
+- the Credentials `authorize()` filters `deletedAt: null`, but the federated path goes
+  through `PrismaAdapter(prismaUnfiltered)`, which does **not**;
+- so without the guard, an off-boarded (soft-deleted) SSO user keeps signing in
+  indefinitely — the exact failure a directory-sync integration is supposed to prevent.
+
+The moment you register a provider by following this recipe, that branch becomes live and
+correct. It matches both `"oauth"` and `"oidc"` account types, because Auth.js labels an
+OIDC account's type `"oidc"` and keying on `"oauth"` alone silently misses every OIDC
+provider. Existing JWTs persist until `session.maxAge`; rotate `AUTH_SECRET` to revoke
+immediately (SECURITY.md §2).
+
+If you also enable email account-linking (`allowDangerousEmailAccountLinking`), pair it
+with a check that the matched row is passwordless — otherwise a spoofable email claim can
+link to a real password user. The removed implementation scoped that flag to the SAML
+bridge only, for that reason.

@@ -122,19 +122,19 @@ test("SCRUB_FIELDS includes all critical Restricted-class field names", () => {
 test("scrub redacts Restricted fields nested inside an object", () => {
   const out = scrub({
     id: "u1",
-    account: { provider: "polis", access_token: "at_secret", refresh_token: "rt_secret" },
+    account: { provider: "oidc-provider", access_token: "at_secret", refresh_token: "rt_secret" },
   });
   const account = (out as unknown as Record<string, Record<string, unknown>>).account;
   assert.equal(account.access_token, "[redacted]");
   assert.equal(account.refresh_token, "[redacted]");
-  assert.equal(account.provider, "polis", "non-listed nested fields survive");
+  assert.equal(account.provider, "oidc-provider", "non-listed nested fields survive");
 });
 
 test("scrub redacts Restricted fields nested inside an array of objects", () => {
   const out = scrub({
     id: "u1",
     accounts: [
-      { provider: "polis", access_token: "at_1", id_token: "id_1" },
+      { provider: "oidc-provider", access_token: "at_1", id_token: "id_1" },
       { provider: "entra", access_token: "at_2" },
     ],
   });
@@ -142,7 +142,7 @@ test("scrub redacts Restricted fields nested inside an array of objects", () => 
   assert.equal(accounts[0].access_token, "[redacted]");
   assert.equal(accounts[0].id_token, "[redacted]");
   assert.equal(accounts[1].access_token, "[redacted]");
-  assert.equal(accounts[0].provider, "polis");
+  assert.equal(accounts[0].provider, "oidc-provider");
 });
 
 test("scrub preserves Date instances rather than flattening them to objects", () => {
@@ -157,8 +157,8 @@ test("scrub preserves Date instances rather than flattening them to objects", ()
 
 test("computeChanges redacts Restricted values nested under a non-Restricted key", () => {
   const changes = computeChanges(
-    { accounts: [{ provider: "polis", access_token: "old_secret" }] },
-    { accounts: [{ provider: "polis", access_token: "new_secret" }] },
+    { accounts: [{ provider: "oidc-provider", access_token: "old_secret" }] },
+    { accounts: [{ provider: "oidc-provider", access_token: "new_secret" }] },
   );
   const serialized = JSON.stringify(changes);
   assert.ok(!serialized.includes("old_secret"), "before-value token must not appear in changes");

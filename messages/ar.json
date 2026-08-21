@@ -55,9 +55,7 @@
     "resetInvalidOrExpired": "رابط إعادة التعيين غير صالح أو منتهي الصلاحية.",
     "requestNewLink": "طلب رابط جديد",
     "genericError": "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
-    "or": "أو",
-    "signInWithMicrosoft": "تسجيل الدخول باستخدام Microsoft",
-    "ssoOnlyHint": "سجّل الدخول باستخدام حساب مؤسستك."
+    "or": "أو"
   },
   "dashboard": {
     "usersDescription": "إدارة مستخدمي التطبيق وأدوارهم",

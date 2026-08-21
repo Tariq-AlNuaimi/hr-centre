@@ -160,44 +160,6 @@ const envSchema = z.object({
       },
     )
     .optional(),
-
-  // Enterprise SSO via the Ory Polis SAML→OIDC sidecar (optional; ADR-045, WS-6).
-  // All dormant by default: the generic OIDC provider registers only when issuer +
-  // id + secret are ALL set (the require-together gate lives in lib/sso/config.ts,
-  // which reads process.env directly so it is Edge-safe; these declarations give
-  // the loud boot validation + the env contract). POLIS_ISSUER points at Polis's
-  // OIDC discovery base (e.g. http://polis:5225) — an absolute http(s) URL with a
-  // real host, so a scheme-less typo fails LOUD at boot rather than silently never
-  // discovering (same reasoning as OTEL_EXPORTER_OTLP_ENDPOINT / EMBEDDINGS_BASE_URL).
-  POLIS_ISSUER: z
-    .url()
-    .refine(
-      (v) => {
-        try {
-          const u = new URL(v);
-          return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.length > 0;
-        } catch {
-          return false;
-        }
-      },
-      { message: "must be an absolute http(s) URL with a host, e.g. http://polis:5225" },
-    )
-    .optional(),
-  POLIS_CLIENT_ID: z.string().optional(),
-  POLIS_CLIENT_SECRET: z.string().optional(),
-  // Optional Polis SAML connection selectors (deploy-per-tenant bakes these).
-  POLIS_SAML_TENANT: z.string().optional(),
-  POLIS_SAML_PRODUCT: z.string().optional(),
-
-  // SCIM 2.0 directory provisioning (optional; ADR-045). SCIM_INTERNAL_SECRET is
-  // the withInternalAuth bearer that gates POST /api/internal/scim (dormant until
-  // set → 200 {skipped:true}); same 32-char strength floor as CRON_SECRET.
-  // SCIM_WEBHOOK_SECRET, when set, additionally verifies the BoxyHQ dsync HMAC
-  // signature on the raw body (the native Polis Directory-Sync contract).
-  SCIM_INTERNAL_SECRET: z.string().min(32).optional(),
-  // Strength floor on the HMAC secret too — it is defense-in-depth, but a weak
-  // value undermines the exact protection it adds (senior-review 2026-07-11).
-  SCIM_WEBHOOK_SECRET: z.string().min(16).optional(),
 });
 
 export const env = envSchema.parse(process.env);

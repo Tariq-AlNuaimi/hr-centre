@@ -184,7 +184,7 @@ export function withRateLimit(handler: RouteHandler, opts: RateLimitOptions): Ro
 }
 
 /**
- * SSO/handoff SEAM: gates a route for external/machine API consumers via a
+ * HANDOFF SEAM: gates a route for external/machine API consumers via a
  * Bearer token (`Authorization: Bearer <token>`) matched against the env var
  * named by `tokenEnv`. Returns 503 if unset, 401 on missing/bad token.
  *
