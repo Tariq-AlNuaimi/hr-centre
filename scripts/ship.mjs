@@ -1735,16 +1735,12 @@ if (FULL) {
   if (docker.warn) console.warn(`  note: docker -- ${docker.warn}`);
   if (!docker.ok) fail(docker);
 
-  // BDD story->scenario->step traceability gate (V2-207, ADR-058). Full-loop only —
-  // dormant (exit 0) until a fork writes tests/features/*.feature. RED on a story with
-  // no scenario, a scenario with no @US tag / no steps, or a step with no definition.
-  console.log("ship: phase B (full) -- bdd-coverage (story<->scenario traceability, ADR-058) ...");
-  // A4 (2026-08-17): BDD traceability retired from the default rail.
-  const bdd = existsSync("scripts/bdd-coverage.mjs")
-    ? await run("bdd-coverage", "node", ["scripts/bdd-coverage.mjs"])
-    : { name: "bdd-coverage", ok: true, out: "retired from the default rail (A4)", secs: 0 };
-  report(bdd);
-  if (!bdd.ok) fail(bdd);
+  // REMOVED 2026-08-21: the bdd-coverage (ADR-058) and license:sbom (O5/ADR-051) blocks.
+  // Their scripts were deleted in the A4 cut, so each block fell to its `existsSync` else-branch
+  // and reported `ok: true` -- printing "PASS bdd-coverage (0s)" / "PASS license:sbom (0s)" with
+  // no warning, for a gate that could not fail. Two of the docker/integration skips at least SAY
+  // they skipped; these read as coverage the loop did not have. A gate whose script does not exist
+  // is not a gate. Restoring either means restoring its script, and then this block, together.
 
   // Integration gate (V2-401, ADR-061). The warm loop stays DB-free; the FULL loop runs the
   // integration suite against a REAL Postgres. scripts/test-integration.mjs resolves the DB
@@ -1765,18 +1761,6 @@ if (FULL) {
         "  daemon to provision an ephemeral pgvector container). The round-trips did NOT run here;\n" +
         "  run `npm run test:integration` where Docker or a pgvector DATABASE_URL is available.",
     );
-
-  // SBOM-based license gate (O5, ADR-051). The warm loop's fast lock-scan (phase A `licenses`)
-  // stays warm; this regenerates the CycloneDX SBOM (the compliance artifact a /handoff ships)
-  // and evaluates IT against the SAME ADR-051 deny set + election allowlist. Full-loop only --
-  // SBOM generation is ~seconds. RED on a denied, non-elected license in the shippable SBOM.
-  console.log("ship: phase B (full) -- license:sbom (CycloneDX SBOM license gate, O5/ADR-051) ...");
-  // A4 (2026-08-17): the CycloneDX SBOM gate retired from the default rail.
-  const sbomLicense = existsSync("scripts/sbom-license-gate.mjs")
-    ? await run("license:sbom", "node", ["scripts/sbom-license-gate.mjs"])
-    : { name: "license:sbom", ok: true, out: "retired from the default rail (A4)", secs: 0 };
-  report(sbomLicense);
-  if (!sbomLicense.ok) fail(sbomLicense);
 }
 
 // Record the green-for-HEAD signal the auto-spawn guard trusts (session-automation

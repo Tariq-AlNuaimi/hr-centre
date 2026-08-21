@@ -40,11 +40,15 @@ the changed surface is still **open** (un-adjudicated).
   `otel/opentelemetry-collector-contrib` at `0.159.0` (was 0.156.0, `compose.prod.yaml`). Neither
   was exercised. First because `ship:full` was RED at phase A (knip) and never reached phase B; then,
   once phase A went green, because **the phase-B gates that would cover them SKIP rather than fail
-  without a Docker daemon** — `docker` degrades to a WARN by ADR-030 ("never a false RED") and
-  `integration` runs in SKIP mode with no reachable `DATABASE_URL`. So a green `ship:full` on a
-  machine without Docker does **not** mean the image builds; it means nobody asked. That is the
-  correct design — a false RED trains people to ignore the gate — but it does mean the green is
-  narrower than it reads. Risk is low (patch/minor bumps to a SHA-era pinned base image and a sidecar that
+  without a Docker daemon** — `docker` degrades to a WARN by ADR-030 ("never a false RED"). So a
+  green `ship:full` on a machine without Docker does **not** mean the image builds; it means nobody
+  asked. That is the correct design — a false RED trains people to ignore the gate — but it does
+  mean the green is narrower than it reads.
+  **Narrowed 2026-08-21:** the `integration` half is now genuinely covered. That gate also used to
+  skip here, but only because nobody had tried the native-Postgres path it resolves FIRST; the web
+  container turns out to ship a real PostgreSQL 16 (see `docs/agent-memory.md`), so it now runs 6
+  tests with 0 skipped. **What is left is strictly the Docker image itself** — the `Dockerfile`
+  base image and the collector sidecar — which needs the daemon and nothing else will substitute. Risk is low (patch/minor bumps to a SHA-era pinned base image and a sidecar that
   is inert unless the observability profile is up) but it is not zero and it is not measured: a base
   image bump can change the glibc/OpenSSL under Prisma's engines, which is exactly the class of
   break a build would catch and a unit test would not. **What closes this:** one `npm run ship:full`

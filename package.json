@@ -134,6 +134,7 @@
     "fast-check": "^4.9.0",
     "global-jsdom": "^25.0.0",
     "husky": "^9.1.7",
+    "jscpd": "^5.0.16",
     "jsdom": "^25.0.1",
     "knip": "^6.26.0",
     "prettier": "3.9.6",
