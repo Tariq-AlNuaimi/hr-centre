@@ -37,14 +37,14 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 
 ## lib/ exports
-- lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins, __resetLockoutForTests
+- lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
 - lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
-- lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
+- lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
-- lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
+- lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
