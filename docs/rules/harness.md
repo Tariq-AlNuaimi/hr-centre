@@ -106,3 +106,29 @@ locked stack (write a superseding ADR first); **editing `.claude/settings.json`'
 a human in the loop is security-sensitive (V2-107): get explicit operator sign-off and note it in
 `docs/findings-register.md`. The semantic backstop under the lexical deny-list is
 `dangerous-commands.mjs` (fail-closed) — extend IT, don't rely on prefix patterns alone.
+
+## knip scope — why `components/ui/**` is excluded (B2, 2026-08-17)
+
+`knip.json` used to declare `lib/**`, `components/shared/**`, `components/ui/**` and `hooks/**`
+as **entry points**. An entry point is reachable by definition, so the dead-code gate was
+**structurally incapable** of reporting dead code in the two directories where it accumulates.
+Proven by differential run: as shipped it reported nothing; with those globs removed it reported
+5 unused files, an unused dependency and 31 unused exports.
+
+`lib/**`, `components/shared/**` and `hooks/**` are now honestly checked. `components/ui/**` is
+**ignored instead**, and the distinction matters:
+
+- it is **vendored shadcn/ui**, not first-party code;
+- its export completeness is the _point_ — a fork building a form will want `CardFooter`,
+  `DialogDescription`, `SelectLabel`. Pruning to current usage would gut the kit and force every
+  fork to re-add parts by hand;
+- so this is an **explicit, reasoned exclusion**, not the blanket blindness B2 removed.
+
+The rationale lives here because `knip.json` is schema-validated and rejects a `$comment` key.
+
+**If you add a vendored library elsewhere, ignore it the same way — but never re-add `lib/**` or
+`components/shared/**` to `entry`.** That is the blindness, and it read green for a long time.
+
+> **Open at time of writing:** `ship:full` is RED on 27 first-party knip findings (12 unused
+> exports, 15 unused types). They are a mix of genuinely dead exports and deliberate primitive
+> API; resolving them needs an operator decision, not a guess. Warm `/ship` is unaffected.
