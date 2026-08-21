@@ -1,6 +1,14 @@
 # ADR-024 — MFA via Microsoft Entra ID SSO (flag-enforced)
 
-**Status:** Accepted
+**Status:** **SUPERSEDED (2026-08-21)** — the implementation was removed as the last
+unexecuted item of the audit's A1 dormant-layer cut (operator-approved; see
+`docs/AUDIT-DECISIONS.md` A1 and the Round 13 entry in `docs/findings-register.md`).
+The decision recorded below is kept verbatim as the historical record of what was built
+and why. It is NOT the current state of the tree. To re-adopt, follow
+`docs/recipes/saas/1-sso-oidc-saml.md` (SSO) and `docs/recipes/saas/4-scim-provisioning.md`
+(SCIM), which carry the same design.
+
+_Original status: Accepted._
 **Date:** 2026-06-24
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

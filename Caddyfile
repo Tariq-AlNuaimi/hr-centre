@@ -54,38 +54,3 @@
 		header_up X-Real-IP {http.request.client_ip}
 	}
 }
-
-# Enterprise SSO ingress (ADR-045, WS-6) — ONLY meaningful under the `sso` compose
-# profile. Ory Polis's OIDC endpoints (/.well-known, /oauth/authorize, /oauth/token)
-# and SAML ACS callback must be reachable by the user's browser AND the tenant's
-# IdP, so Polis needs PUBLIC ingress. It gets its OWN hostname rather than a path on
-# the app domain: Polis serves its own /.well-known and /api/* paths, which would
-# collide with the app's.
-#   - Set POLIS_DOMAIN to a real hostname (e.g. sso.tenant.example.com); Caddy
-#     obtains a Let's Encrypt cert and reverse-proxies to the polis sidecar on :5225.
-#   - POLIS_EXTERNAL_URL (compose.prod.yaml) MUST equal https://<POLIS_DOMAIN> so
-#     Polis emits issuer/callback URLs that match this served host.
-#   - Left at the default `:5226` (an UNPUBLISHED port — the caddy service maps only
-#     80/443), this block is inert: correct when the `sso` profile is not running.
-{$POLIS_DOMAIN::5226} {
-	encode gzip zstd
-
-	header {
-		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
-		X-Content-Type-Options "nosniff"
-		X-Frame-Options "DENY"
-		Referrer-Policy "strict-origin-when-cross-origin"
-		-Server
-	}
-
-	# Same trust boundary as the app block. Polis is the SSO ingress -- it handles
-	# SAML ACS callbacks and OIDC token exchange, the highest-value unauthenticated
-	# surface in the deployment -- so leaving a client-supplied X-Real-IP intact
-	# here would feed forged addresses to its own logs and to anything downstream
-	# that reads them. The first cut hardened only the app block and left this one
-	# untouched, which meant the harder-to-reach half of the finding stayed open.
-	reverse_proxy polis:5225 {
-		header_up -X-Real-IP
-		header_up X-Real-IP {http.request.client_ip}
-	}
-}

@@ -1,8 +1,7 @@
-import { ssoConfigured, ssoEnforced } from "@/lib/auth";
 import { LoginForm } from "./LoginForm";
 
-// Server component: reads the SSO flags from server-side env (lib/auth) and hands
-// the client form plain booleans — the Entra client id/secret never reach the client.
+// Server component. SSO was removed on 2026-08-21 (audit A1), so there are no
+// server-derived provider flags left to pass down; the form is credentials-only.
 export default function LoginPage() {
-  return <LoginForm ssoConfigured={ssoConfigured} ssoEnforced={ssoEnforced} />;
+  return <LoginForm />;
 }

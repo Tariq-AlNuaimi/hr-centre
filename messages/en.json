@@ -55,9 +55,7 @@
     "resetInvalidOrExpired": "This reset link is invalid or has expired.",
     "requestNewLink": "Request a new link",
     "genericError": "Something went wrong. Please try again.",
-    "or": "or",
-    "signInWithMicrosoft": "Sign in with Microsoft",
-    "ssoOnlyHint": "Sign in with your organization account."
+    "or": "or"
   },
   "dashboard": {
     "usersDescription": "Manage application users and roles",
