@@ -151,6 +151,29 @@ The rationale lives here because `knip.json` is schema-validated and rejects a `
 **If you add a vendored library elsewhere, ignore it the same way — but never re-add `lib/**` or
 `components/shared/**` to `entry`.** That is the blindness, and it read green for a long time.
 
-> **Open at time of writing:** `ship:full` is RED on 27 first-party knip findings (12 unused
-> exports, 15 unused types). They are a mix of genuinely dead exports and deliberate primitive
-> API; resolving them needs an operator decision, not a guess. Warm `/ship` is unaffected.
+### Resolved 2026-08-21 — how the 27 findings were closed
+
+That mix is now separated at the DEFINITION SITE rather than by widening the gate's blind spots:
+
+- **Deliberate fork-facing API** carries a `@public` TSDoc tag, and `knip.json` sets
+  `"tags": ["-public"]`. Same reasoning as the `components/ui/**` exclusion above — a fork
+  building a dashboard wants `LineChart`, `EditIcon`, `idParamSchema`, `CreateUserInput` —
+  but scoped to the individual export instead of a whole directory, so nothing else in that
+  file goes unchecked. The tag sits next to the thing it describes, so it is visible to
+  whoever next edits it.
+- **Three were not dead code at all**, only dead _exports_: `entityKeys`, `auditStorage` and
+  `recipientLabel` are each used inside their own module. They are now module-private. For
+  two of them the export was an active liability: a caller holding the raw `auditStorage`
+  `AsyncLocalStorage` could `.run()` an unbounded context past the bounding its wrappers
+  apply, and `recipientLabel` offered outside callers a formatter for recipient data when
+  the point of it is that this file logs a COUNT and never an address.
+- **One was genuinely dead:** `__resetLockoutForTests`, a test seam no test ever called.
+  Deleted.
+
+**When you add a fork-facing export, tag it `@public` in the same commit.** Untagged and
+unreferenced means knip is right and the export should not exist.
+
+Two `Configuration hints` remain (`jscpd`, `@stryker-mutator/command-runner` in
+`ignoreDependencies`). Left deliberately: both are OPTIONAL devDeps the ship loop invokes only
+if installed, so the entries are dormant rather than wrong, and knip exits 0 on hints — the
+gate keys on exit code. Warm `/ship` is unaffected.

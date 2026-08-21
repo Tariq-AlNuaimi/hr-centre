@@ -64,7 +64,10 @@ export function isEmailEnabled(): boolean {
 // Recipient addresses are Confidential (SECURITY.md §1) -- never log them
 // verbatim, not even a single `to`. Summarize as a count so the log line stays
 // useful (did we attempt a send, to how many?) without leaking who.
-export function recipientLabel(to: string | string[]): string {
+// Module-private: it exists so THIS file's log lines can name a count instead of an
+// address. Exporting it offers callers a formatter for recipient data, which is the
+// opposite of the point (SECURITY.md: never log recipient addresses).
+function recipientLabel(to: string | string[]): string {
   const n = Array.isArray(to) ? to.length : 1;
   return `${n} recipient${n === 1 ? "" : "s"}`;
 }

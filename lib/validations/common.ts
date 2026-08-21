@@ -7,6 +7,7 @@ export const paginationSchema = z.object({
   order: z.enum(["asc", "desc"]).default("desc"),
 });
 
+/** @public */
 export const idParamSchema = z.object({
   id: z.string().min(1),
 });

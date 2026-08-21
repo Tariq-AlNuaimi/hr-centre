@@ -15,5 +15,7 @@ export const updateUserSchema = z.object({
   role: z.enum(["ADMIN", "EDITOR", "VIEWER"]).optional(),
 });
 
+/** @public */
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+/** @public */
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

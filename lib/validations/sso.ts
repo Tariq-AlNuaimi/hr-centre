@@ -17,4 +17,5 @@ export const normalizedScimEventSchema = z.object({
   externalId: z.string().nullable(),
 });
 
+/** @public */
 export type NormalizedScimEventInput = z.infer<typeof normalizedScimEventSchema>;

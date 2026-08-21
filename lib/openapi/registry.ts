@@ -10,9 +10,11 @@ import type { ZodOpenApiOperationObject, ZodOpenApiPathsObject } from "zod-opena
 // `paths` of the generated OpenAPI 3.1 document.
 
 /** HTTP methods a route registration may declare. */
+/** @public */
 export type RegisteredMethod = "get" | "post" | "put" | "patch" | "delete";
 
 /** One response entry: its description + an optional JSON-body zod schema. */
+/** @public */
 export interface RegisteredResponse {
   description: string;
   /** zod schema for the `application/json` body; omit for empty responses. */

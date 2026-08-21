@@ -27,6 +27,7 @@ export type Key = ReactKey;
 export type FilterValue = (Key | boolean)[];
 
 /** One option in a column's filter menu (AntD `ColumnFilterItem` subset). */
+/** @public */
 export interface ColumnFilterItem {
   text: ReactNode;
   value: Key | boolean;
@@ -57,9 +58,11 @@ export interface ColumnType<T> {
 export type ColumnsType<T> = ColumnType<T>[];
 
 /** How a selection change was triggered (AntD `RowSelectMethod` subset). */
+/** @public */
 export type RowSelectMethod = "all" | "none" | "invert" | "single" | "multiple";
 
 /** Row-selection config. Mirrors the AntD `rowSelection` subset used here. */
+/** @public */
 export interface TableRowSelection<T> {
   selectedRowKeys?: Key[];
   onChange?: (selectedRowKeys: Key[], selectedRows: T[], info: { type: RowSelectMethod }) => void;

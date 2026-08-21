@@ -2,8 +2,10 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** Local size union (matches the old AntD `DescriptionsProps["size"]`). */
+/** @public */
 export type DescriptionListSize = "default" | "middle" | "small";
 
+/** @public */
 export interface DescriptionItem {
   key: string;
   label: ReactNode;

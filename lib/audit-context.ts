@@ -13,7 +13,10 @@ export interface AuditContext {
   userAgent?: string;
 }
 
-export const auditStorage = new AsyncLocalStorage<AuditContext>();
+// Module-private ON PURPOSE. runWithAuditContext / getAuditContext below are the only
+// sanctioned way in and out; a caller holding the raw AsyncLocalStorage could `.run()`
+// an unbounded context straight past the bounding those wrappers apply.
+const auditStorage = new AsyncLocalStorage<AuditContext>();
 
 // ipAddress / userAgent are header-derived (client-influenced). Cap their length
 // before they reach the DB so a request with a multi-kilobyte User-Agent (or a

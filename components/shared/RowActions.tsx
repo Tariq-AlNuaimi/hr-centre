@@ -12,6 +12,7 @@ import { ConfirmAction } from "@/components/shared/ConfirmAction";
  * 2026-07-18), an internal composition of the shipped `Button` + `ConfirmAction` primitives.
  */
 
+/** @public */
 export function EditIcon() {
   return (
     <svg
@@ -30,6 +31,7 @@ export function EditIcon() {
   );
 }
 
+/** @public */
 export function DeleteIcon() {
   return (
     <svg
