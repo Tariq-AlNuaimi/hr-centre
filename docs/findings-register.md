@@ -35,6 +35,59 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-21 — [secure/harness] **Four guard defects introduced by this session's own
+  hardening, found by senior review, all fixed.** Recorded because two were CRITICAL bypasses
+  of what CLAUDE.md calls the security floor and they existed on `main` for part of the day; a
+  fork auditing these guards deserves the history, not just the fixed end state. The review's
+  diagnosis is the durable part: **each hardening pass closed the specific gap its commit
+  message named while reintroducing the same CLASS of gap one level over.**
+  - **CRITICAL — brace expansion defeated `protect-secrets` entirely.** `cat .{e,x}nv` read
+    `.env`. Brace expansion is a separate, EARLIER shell stage than globbing, and the rewritten
+    glob check only looked for `*?[]`; the token was neither a glob nor the literal `.env`.
+    Every caller funnels through `secretPath()`, so the archive/copy/curl/interpreter checks
+    fell with it. Fixed by EXPANDING braces and checking each alternative — not by banning `{`,
+    since `cat file.{ts,tsx}` is ordinary work and over-blocking a fail-closed guard is its own
+    harm.
+  - **CRITICAL — the two interpreter lists in `dangerous-commands` had diverged.** Round 8
+    widened the per-segment `Set` with bun/npx/tsx/ts-node/sh/bash/zsh and left the
+    whole-command regex untouched. That regex exists because the segment splitter is not quote
+    aware, so a destructive call after a `;` was caught by neither. `node -e` with the identical
+    body WAS denied, which is how it hid. Fixed by deriving both from one list — the duplication
+    was the defect.
+  - **HIGH — `bash-write-gate` heredoc stripping swallowed real writes.** The round-8 fix for a
+    real false positive assumed heredoc bodies are inert data; for `bash <<'OUTER'` the body is
+    a script, so a nested write to a new gated route was invisible. Now scanned when the opener
+    is an interpreter, still stripped for data sinks.
+  - **HIGH — `/ship`'s verdict counted silent skips as "ran".** Twelve early-returns said "I
+    checked nothing" only in `out`, so they printed under `ran (N)`. Two are enforcement-quartet
+    gates whose skip path is the normal state of a shallow clone. The first fix sniffed `out`
+    and mislabelled `contract tests` as degraded — the mirror-image error, reverted. Every skip
+    path now sets `warn`, guarded by a static invariant test, **which then found two more skip
+    paths the review had not listed**.
+    — owner: operator — status: fixed(see PR #116; evidence `tests/harness/guard-probe.mjs`,
+    `tests/harness/hooks.test.mjs`, `tests/harness/ship-gates.test.mjs`)
+
+- 2026-08-21 — [secure/harness] **The review's three UNCERTAIN items, settled by execution.**
+  The reviewer rated these 55–65 and could not confirm them; all three were checked rather than
+  left as folklore.
+  - **CONFIRMED and fixed — `git push --all` / `--mirror` bypassed the protected-branch check.**
+    Both push every branch, `main` included, without ever naming it, so a check that inspects
+    ref tokens never saw them. Verified allowed beforehand, denied after.
+  - **DISMISSED, deliberately — the case-sensitive `main`/`master` match is CORRECT.** Git
+    branch names are case-sensitive, so `Main` is a different branch and pushing to it does not
+    touch `main`. Denying it would add a false positive to a fail-closed guard. A repo whose
+    default branch is literally `Main` would be unprotected; that is not this repo, and the
+    fix would be to name the branch in the check rather than to match case-insensitively. A
+    probe case records the dismissal so it is not re-raised as a bug.
+  - **CONFIRMED and fixed — `retryAfter` reported the wrong reset when both buckets denied.**
+    `rateLimit` returned the IP bucket's value whenever both denied, so a caller who waited
+    exactly that long was still refused by the subject bucket — a `Retry-After` header that
+    sends the client into a second 429. The two buckets share `windowMs` but not their start
+    times (the subject bucket accumulates across IPs, which is the case it exists for). Now the
+    later of the two. Correctness/UX, not a security gap: the denial itself always held.
+    — owner: operator — status: fixed(tree evidence: `.claude/hooks/dangerous-commands.mjs`
+    `--all`/`--mirror` branch, `lib/rate-limit.ts` `Math.max` on retryAfter)
+
 - 2026-08-21 — [scalable/ops] **Docker base image + otel collector bumps — merged unverified,
   now verified and CLOSED.** #106 landed the node base image at `24.19.0` (was 24.18.0,
   `Dockerfile`) and `otel/opentelemetry-collector-contrib` at `0.159.0` (was 0.156.0,

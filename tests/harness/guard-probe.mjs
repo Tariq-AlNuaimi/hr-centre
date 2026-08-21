@@ -91,6 +91,12 @@ export const DESTRUCTIVE = [
     "ts-node -e, call after &&",
     "ts-node -e \"console.log(1) && require('fs').rmSync('lib',{recursive:true})\"",
   ],
+  // Senior review U1, settled by execution 2026-08-21: `--all`/`--mirror` push EVERY
+  // branch, main included, without ever naming it -- so the destination check, which
+  // inspects ref tokens, never saw them.
+  ["git push --all", "git push --all origin"],
+  ["git push --all (no remote)", "git push --all"],
+  ["git push --mirror", "git push --mirror origin"],
 ];
 
 export const SECRETS = [
@@ -193,6 +199,10 @@ export const LEGITIMATE = [
   ["brace over extensions", "cat file.{ts,tsx}", secret],
   ["brace over dirs", "ls {app,lib}/index.ts", secret],
   ["harmless bun -e with a semicolon", 'bun -e "console.log(1); console.log(2)"', bash],
+  // U2 was DISMISSED, not fixed, and this records why: git branch names are
+  // case-sensitive, so `Main` is a DIFFERENT branch from `main`. Denying it would be a
+  // false positive on a fail-closed guard, not a closed bypass.
+  ["push to a branch named Main", "git push origin Main", bash],
 ];
 
 // --- run ---------------------------------------------------------------------
