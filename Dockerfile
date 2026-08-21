@@ -17,7 +17,7 @@
 # Prisma client/CLI, not the full dev dependency tree.
 
 # ---- deps: install with a warm, cacheable layer ----------------------------
-FROM node:24.18.0-bookworm-slim AS deps
+FROM node:24.19.0-bookworm-slim AS deps
 WORKDIR /app
 # openssl + ca-certificates so the Prisma engine download/generate is reliable
 # on the slim base (slim strips these); cheap, cached, and build-only.
@@ -44,7 +44,7 @@ RUN npm ci --no-audit --no-fund --ignore-scripts \
   && npm rebuild @prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver @parcel/watcher
 
 # ---- builder: generate Prisma client + standalone Next build ---------------
-FROM node:24.18.0-bookworm-slim AS builder
+FROM node:24.19.0-bookworm-slim AS builder
 WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
