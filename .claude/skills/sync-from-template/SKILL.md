@@ -20,7 +20,7 @@ Backed by `scripts/sync-from-template.mjs`.
   `--template <url>`), fetches `main`.
 - **OWNED layers** (pulled, then unstaged for review): `.claude/skills`,
   `.claude/agents`, `.claude/hooks`, `.claude/statusline.mjs`, `eslint-rules`,
-  `scripts`, `docs/decisions`, `docs/token-policy.md`, `docs/recipes.md`,
+  `scripts`, `docs/decisions`, `docs/ARCHITECTURE.md`, `docs/recipes.md`,
   `docs/uat-rubric.md`, `.gitleaks.toml`, `eslint.config.mjs`. Path-scoped
   checkout is additive — fork-only files at these paths are preserved.
 - **REVIEW layers** (diff only, NEVER auto-applied): `lib`, `CLAUDE.md`,

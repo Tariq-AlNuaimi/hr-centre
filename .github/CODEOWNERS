@@ -32,5 +32,11 @@
 /docs/agent-memory.md                 @Tariq-AlNuaimi
 /.claude/settings.json                @Tariq-AlNuaimi
 /.claude/hooks/                       @Tariq-AlNuaimi
+# The path-scoped rule files live in docs/rules/ -- they moved OUT of .claude/
+# precisely because .claude/** is auto-loaded, and the move would otherwise have
+# dropped them off this list. Still injected by the rules-injection hook, so
+# still the boundary this block protects: the location changed, the threat did
+# not. The .claude/rules/ line stays as a tripwire in case anything is put back.
+/docs/rules/                          @Tariq-AlNuaimi
 /.claude/rules/                       @Tariq-AlNuaimi
 /AGENTS.md                            @Tariq-AlNuaimi

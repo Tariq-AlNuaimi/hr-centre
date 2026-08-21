@@ -134,7 +134,7 @@ new mechanism:
 ## References
 
 - ADR-022 — agent memory + model routing (the opus/sonnet tiering the two role-agents
-  follow); `docs/token-policy.md` tier-routing table.
+  follow); `docs/ARCHITECTURE.md` §7 tier-routing table.
 - ADR-034 — complexity-budget gate (the "enforcement trio" this extends to a quartet).
 - ADR-036 / ADR-042 — AI-agent stack + the AI-Quality pillar; the `ai-eval` `/ship`
   gate (`scripts/ship.mjs`, phase B) that is the fourth governance gate.

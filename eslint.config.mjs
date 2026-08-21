@@ -92,7 +92,7 @@ const eslintConfig = defineConfig([
   },
   // The root not-found / global-error boundaries are DELIBERATELY context-free: Next 16
   // prerenders /_not-found and /_global-error OUTSIDE the `[locale]` segment, with no
-  // next-intl provider in scope (see .claude/rules/design.md "known traps"). They
+  // next-intl provider in scope (see docs/rules/design.md "known traps"). They
   // therefore CANNOT call `t()` and must ship literal English fallback copy. Exempt them
   // — routing copy through next-intl here would reintroduce the useContext build crash.
   {

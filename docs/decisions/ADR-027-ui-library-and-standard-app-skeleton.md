@@ -1,5 +1,7 @@
 # ADR-027 — UI library direction & standard app skeleton
 
+> **PARTIALLY SUPERSEDED by [ADR-029](ADR-029-ui-replatform-antd-to-tailwind-shadcn.md)** — Part 1 ("keep AntD, elevate at the token layer") is superseded by the replatform to Tailwind v4 + shadcn/ui. Part 2 (the standard app skeleton) still stands.
+
 **Status:** Part 1 (UI library — "keep AntD") **superseded by ADR-029** (2026-07-02: replatform
 to Tailwind v4 + shadcn/ui + Tremor). Part 2 (standard app skeleton) remains Accepted.
 **Date:** 2026-06-25

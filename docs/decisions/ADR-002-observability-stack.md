@@ -1,5 +1,7 @@
 # ADR-002 — Observability stack: Sentry SaaS + Better Uptime SaaS
 
+> **PARTIALLY SUPERSEDED** — by [ADR-006](ADR-006-pivot-to-vercel-neon.md) (the Better-Uptime / self-hosted `/deploy` ops half) and reframed by [ADR-040](ADR-040-otel-observability-backbone.md) (an OpenTelemetry backbone + SigNoz replaces the SaaS-only posture for self-host forks). The Sentry half remains Accepted.
+
 **Status:** Accepted (Sentry half); **Better-Uptime / `/deploy` integration partially superseded by ADR-006**
 **Date:** 2026-05-18
 **Decision owner:** Tariq AlNuaimi

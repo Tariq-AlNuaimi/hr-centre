@@ -161,20 +161,6 @@ const envSchema = z.object({
     )
     .optional(),
 
-  // Background job queue (optional; pg-boss seam -- see the build-vs-buy ledger
-  // 2026-07-11). The lib/queue/* seam
-  // is a silent no-op unless QUEUE_ENABLED === "true" -- an EXPLICIT opt-in by
-  // design: a Postgres URL is always present in this stack, so gating on the URL
-  // alone would silently start pg-boss polling the app DB on every deploy.
-  // QUEUE_DATABASE_URL optionally points the job tables at a dedicated DB/role;
-  // unset -> falls back to DATABASE_URL. Declared here for the env contract +
-  // loud boot validation (the enum rejects a typo'd "1"/"yes" at startup; a
-  // malformed URL fails here too); the runtime gate lives in lib/queue/config.ts,
-  // which reads process.env at call time (like the OTel/AI gates) and owns the
-  // fallback default -- one owner per concern.
-  QUEUE_ENABLED: z.enum(["true", "false"]).optional(),
-  QUEUE_DATABASE_URL: z.url().optional(),
-
   // Enterprise SSO via the Ory Polis SAML→OIDC sidecar (optional; ADR-045, WS-6).
   // All dormant by default: the generic OIDC provider registers only when issuer +
   // id + secret are ALL set (the require-together gate lives in lib/sso/config.ts,

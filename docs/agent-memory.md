@@ -70,7 +70,7 @@ tax is the ≤30-line digest, not the whole file.
 - 2026-07-25 — **A gate that silently degrades is a gate nobody has tested.** `/ship`'s
   db-structure (c) sub-check had never once run (it needs `SHADOW_DATABASE_URL`, which nothing
   sets) and failed on first contact — on a deliberate design decision, not real drift. Fixed +
-  full local shadow-DB recipe in `.claude/rules/harness.md` ("Running db-structure (c) locally").
+  full local shadow-DB recipe in `docs/rules/harness.md` ("Running db-structure (c) locally").
 - 2026-07-25 — **The template repo has NO Vercel project and NO Neon DB.** Zero Vercel projects
   link to repoId `1241728413` (checked personal + `tariq-s-projects4`); `prj_PDhqr8z3g…` in the
   2026-07-03 browser-axe note below is **DEAD**. That stale id will convince you the template is

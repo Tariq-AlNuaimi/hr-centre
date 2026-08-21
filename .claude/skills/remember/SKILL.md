@@ -34,7 +34,7 @@ for the former.
 3. **Honor the curation rule (act proactively, don't wait for the wall).** Each `##` section is
    bounded at **≤60 lines**; only the digest (≤30 lines) is a recurring context tax. **When a
    section nears 60 lines, do NOT just append** — first promote any now-stable entry out (to
-   CLAUDE.md / a `.claude/rules/*.md` file / an ADR) and delete it here, so the add lands under
+   CLAUDE.md / a `docs/rules/*.md` file / an ADR) and delete it here, so the add lands under
    budget. Bounded sections in, bounded sections out; curate early rather than at overflow.
 4. **Decide whether it belongs here at all** — the promotion decision tree:
    - **A choice made with the operator** (an architectural decision) → write an

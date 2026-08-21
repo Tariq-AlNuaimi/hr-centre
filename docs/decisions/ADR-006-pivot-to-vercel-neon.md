@@ -1,6 +1,8 @@
 # ADR-006 — Pivot to Vercel + Neon; template is a prototype rail, not a production rail
 
-**Status:** Accepted
+> **PARTIALLY SUPERSEDED by [ADR-035](ADR-035-docker-first-enterprise-delivery.md)** — for enterprise self-host forks, Vercel + Neon is demoted from the _deploy default_ to an opt-in prototype/preview option (the Vercel build path itself is retained). ADR-006 still governs the prototype rail, which is the template's default (`docs/rules/deploy.md`).
+
+**Status:** Accepted (deploy-default half partially superseded by ADR-035)
 **Date:** 2026-05-21
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —

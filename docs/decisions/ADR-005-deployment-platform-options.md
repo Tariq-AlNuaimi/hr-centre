@@ -1,5 +1,7 @@
 # ADR-005 — Deployment platform options: keep the droplet path; document the PaaS alternative
 
+> **SUPERSEDED by [ADR-006](ADR-006-pivot-to-vercel-neon.md)** — the droplet-vs-PaaS trade-off this ADR left open was decided in favour of Vercel + Neon. Historical record only.
+
 **Status:** Superseded by ADR-006
 **Date:** 2026-05-21
 **Decision owner:** Tariq Al-Naaimi

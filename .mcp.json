@@ -1,25 +1,34 @@
 {
+  "//": [
+    "PRUNED 2026-08-17 (B1 context-tax cut). Every configured MCP server loads its full tool",
+    "schema into EVERY session; the SessionStart hook already warns above 3 servers. NOTE: that",
+    "warning counts occurrences of the literal command key in this file, so never paste a raw",
+    "server entry into this note — describe it in prose instead (as below).",
+    "",
+    "KEPT: playwright — @playwright/mcp@0.0.76, run via the same `sh -c` wrapper below that opts",
+    "into the browser-egress bridge when ~/.browser-bridge/up exists. It drives /design-qa, /uat,",
+    "/manual-uat and `npm run capture`; it is the only browser server a skill actually depends on.",
+    "",
+    "REMOVED (re-add by writing a fresh entry in mcpServers below; re-read ADR-049's trust tiers",
+    "first, and re-pin to a current version rather than reusing the stale pin named here):",
+    "  chrome-devtools — was chrome-devtools-mcp@1.5.0 behind the same bridge wrapper, with",
+    "    --executablePath pointed at the pinned /opt/pw-browsers chromium and the bridge flags",
+    "    spelled --proxyServer/--acceptInsecureCerts. Dropped: a near-duplicate of playwright for",
+    "    browser QA (CDP perf tracing was the only delta) and never wired to any skill.",
+    "  context7 — was `npx -y @upstash/context7-mcp@3.2.3`. Dropped: the /docs-current skill was",
+    "    its only consumer and already documents a WebSearch + docs/recipes.md fallback, which is",
+    "    now its primary path. ADR-049 also classed it an untrusted-content source.",
+    "  shadcn — was `npx shadcn@4.13.0 mcp`. Dropped: docs/design-recipes.md plus the shipped",
+    "    components/shared + components/ui primitives cover the same ground offline.",
+    "",
+    "See docs/mcp.md, ADR-049 (MCP trust policy), docs/runbooks/maintainer.md."
+  ],
   "mcpServers": {
     "playwright": {
       "command": "sh",
       "args": [
         "-c",
         "BRIDGE=\"\"; [ -f \"$HOME/.browser-bridge/up\" ] && BRIDGE=\"--proxy-server http://127.0.0.1:8080 --ignore-https-errors --no-sandbox\"; exec npx -y @playwright/mcp@0.0.76 --isolated --browser chromium --executable-path \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\" $BRIDGE"
-      ]
-    },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@3.2.3"]
-    },
-    "shadcn": {
-      "command": "npx",
-      "args": ["shadcn@4.13.0", "mcp"]
-    },
-    "chrome-devtools": {
-      "command": "sh",
-      "args": [
-        "-c",
-        "BRIDGE=\"\"; [ -f \"$HOME/.browser-bridge/up\" ] && BRIDGE=\"--proxyServer http://127.0.0.1:8080 --acceptInsecureCerts\"; exec npx -y chrome-devtools-mcp@1.5.0 --executablePath \"$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome 2>/dev/null | sort -V | tail -1)\" $BRIDGE"
       ]
     }
   }

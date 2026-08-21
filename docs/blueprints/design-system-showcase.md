@@ -1,3 +1,11 @@
+> **ARCHIVED — the scope this blueprint covers no longer exists in the tree.**
+> the rendered showcase route, its `design-parity` npm script and its `tests/uat/design-system.uat.ts` spec was removed in the 2026-08-21 dormant-layer cut (`app/[locale]/design-system/**`).
+> Kept because it records what was built and why it was dropped; git history at that
+> commit has the code. **Not a live contract:** do not treat its `Scope:` as covering a
+> file you are about to create — the blueprint gate matches on the glob, not on whether
+> the spec still describes anything real, so a resurrected path would silently inherit a
+> stale contract. Building any of this again starts with a NEW blueprint.
+
 # Blueprint — Manzil design-system showcase route
 
 Scope: app/[locale]/design-system/**

@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation.mjs"
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/context-injection.mjs"
           }
         ]
       }
@@ -26,11 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/skill-activation.mjs"
-          },
-          {
-            "type": "command",
-            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/rules-injection.mjs"
+            "command": "node $CLAUDE_PROJECT_DIR/.claude/hooks/context-injection.mjs"
           },
           {
             "type": "command",

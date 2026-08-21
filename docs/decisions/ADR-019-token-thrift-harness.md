@@ -4,7 +4,7 @@
 **Date:** 2026-06-12
 **Decision owner:** Tariq Al-Naaimi
 **Reviewers:** —
-**Relates to:** ADR-007 (solo rail), `docs/token-policy.md` (the operating policy)
+**Relates to:** ADR-007 (solo rail), `docs/ARCHITECTURE.md` §7 (the operating policy)
 
 ## Context
 
@@ -19,7 +19,7 @@ them instead.
 
 ## Decision
 
-Ship token discipline as code in `.claude/` (full mapping: `docs/token-policy.md`):
+Ship token discipline as code in `.claude/` (full mapping: `docs/ARCHITECTURE.md` §7):
 
 1. **CLAUDE.md ≤ ~200 lines** (done: 382 → ~80): binding rules inline, everything
    else behind pointers (`docs/recipes.md`, SKILL.mds, `docs/REPO-MAP.md`).
@@ -40,7 +40,7 @@ Ship token discipline as code in `.claude/` (full mapping: `docs/token-policy.md
    risking an under-powered architecture/review session — the dimension where
    capability matters most. Subagents still tier down where it's pure win
    (scout = haiku, retrieval only). The operator drops to `/model sonnet` for
-   mechanical sessions by choice; `docs/token-policy.md` documents this.
+   mechanical sessions by choice; `docs/ARCHITECTURE.md` §7 documents this.
 7. **Metering**: statusline (model | ctx% | msgs | $), SessionEnd receipt to
    `.claude/usage-log.jsonl` (gitignored), SessionStart warning when >3 MCP
    servers are configured.
@@ -48,7 +48,7 @@ Ship token discipline as code in `.claude/` (full mapping: `docs/token-policy.md
    loops (max-turns, ≤2 attempts/file, cost logged) — never one long session.
 
 Operator-only actions (cannot be repo-automated) are tabled in
-`docs/token-policy.md`: `/mcp` pruning, `/usage-credits` cap, `/btw`,
+`docs/ARCHITECTURE.md` §7: `/mcp` pruning, `/usage-credits` cap, `/btw`,
 opt-in `MAX_THINKING_TOKENS`, LSP plugin install, weekly `/usage` review.
 
 ## Consequences
@@ -103,6 +103,6 @@ warning.
 
 ## Related
 
-- `docs/token-policy.md` · `.claude/hooks/{verbose-guard,session-receipt}.mjs`
+- `docs/ARCHITECTURE.md` §7 · `.claude/hooks/{verbose-guard,session-receipt}.mjs`
 - `.claude/statusline.mjs` · `.claude/agents/scout.md`
 - `.claude/skills/handoff-session/` · `.claude/skills/batch/` · `scripts/repo-map.mjs`

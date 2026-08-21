@@ -1,107 +1,30 @@
 # Open items — the "come back to this later" backlog
 
-**Snapshot: 2026-07-18.** One place to see everything deferred, waived, dormant, or scheduled in
+**Snapshot: 2026-08-17.** One place to see everything deferred, waived, dormant, or scheduled in
 the repo, so you can pick any of it up cold. This is a **convenience index** — the authoritative
-records stay in `docs/findings-register.md`, `docs/HARNESS-V2-CLOSEOUT.md`, and `SECURITY.md §15/§16`.
-When you resolve an item, update the source record; re-generate the gist here if useful.
+records stay in `docs/findings-register.md` and `SECURITY.md §15/§16`. When you resolve an item,
+update the source record; re-generate the gist here if useful.
+
+> **Closed rows live in [`docs/archive/open-items-2026.md`](archive/open-items-2026.md)** (archived
+> 2026-08-17). Twelve items closed ✅ DONE / ⬜ MOOT / ❌ WON'T-DO in 2026 moved there so this file
+> shows only what is genuinely still open. Nothing was deleted.
 
 **Legend** — Effort: S (hours) · M (a day) · L (multi-day/own program). Blocked-by tells you what
 gates it.
 
-| #   | Item                                                                          | Category     | Effort       | Blocked by                          |
-| --- | ----------------------------------------------------------------------------- | ------------ | ------------ | ----------------------------------- |
-| 1   | ✅ **DONE** (2026-07-25) — Breadcrumb humanizes raw route segment             | UI polish    | S            | —                                   |
-| 2   | ✅ **DONE** (2026-07-25) — Scaffold emits a per-enum humanized label file     | Harness/i18n | M            | —                                   |
-| 3   | ✅ **DONE** (2026-07-25) — Pinned `ccusage`/`scan`/`lhci` floats              | Supply-chain | S            | —                                   |
-| 4–7 | ⬜ **MOOT** (2026-07-25) — Asset Tracker feature work; demo domain removed    | Feature      | —            | —                                   |
-| 8   | WS-5 embeddings **provider round-trip**                                       | AI/RAG       | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
-| 9   | `ai-eval` `/ship` gate (dormant)                                              | AI quality   | —            | a fork adds `AI_API_KEY` + fixtures |
-| 10  | SSO / Microsoft Entra (dormant)                                               | Auth         | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
-| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review)                     | CI/security  | —            | paid Actions / handoff              |
-| 12  | ✅ **DONE** (2026-07-25) — bcryptjs removed; Argon2id is the only algorithm   | Debt sunset  | S            | —                                   |
-| 16  | ✅ **VERIFIED+FIXED** (2026-07-25) — Atomic audit recipe (opt-in, now proven) | Security     | M            | —                                   |
-| 17  | ✅ **DONE** (2026-07-25) — Per-account lockout (limiter half already ADR-035) | Security     | M            | —                                   |
-| 18  | ✅ **DONE** (2026-07-25) — uptime recipe written; Storybook recipe de-staled  | Ops/DX       | M            | —                                   |
+| #   | Item                                                      | Category    | Effort       | Blocked by                          |
+| --- | --------------------------------------------------------- | ----------- | ------------ | ----------------------------------- |
+| 8   | WS-5 embeddings **provider round-trip**                   | AI/RAG      | S once keyed | `EMBEDDINGS_API_KEY` + egress       |
+| 9   | `ai-eval` `/ship` gate (dormant)                          | AI quality  | —            | a fork adds `AI_API_KEY` + fixtures |
+| 10  | SSO / Microsoft Entra (dormant)                           | Auth        | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
+| 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review) | CI/security | —            | paid Actions / handoff              |
 
 ---
 
 ## A. Actionable now (no external dependency)
 
-### 1. Breadcrumb route-segment humanization — **S**
-
-The dashboard breadcrumb renders the raw path segment (`asset`, `custom-field-def`) instead of a
-label ("Assets", "Custom fields"). Add a segment→label lookup (or next-intl key) in the shared
-breadcrumb component. Register: `V2-301/design` (a).
-
-### 2. Scaffold enum-humanization → next-intl — **M**
-
-The pilot carried a per-feature humanizer for enum values (LAPTOP → "Laptop"); it went with the
-demo domain (2026-07-25), but the scaffold-side gap it described is the durable part.
-`scripts/scaffold-entity.mjs` should generate a label map per enum for every scaffolded entity, and
-ultimately route those labels through `messages/*.json` (V2-305 copy chokepoint) instead of a
-per-feature map. Register: `V2-301/design` (b). (The scaffold **copy** pluralization/humanization
-was already fixed 2026-07-18 — this is the remaining enum-label piece.)
-
-### 3. Pin the `@latest` dev-tool floats — **S**
-
-`npm run tokens` (`ccusage@latest`), plus the pre-existing `scan` and `lhci` `@latest` floats, are
-unpinned. Low blast radius (local dev-reporting), `npm audit` clean. Pin all three in one pass.
-Register: `V2-106/supply-chain`.
-
-### 4–7. Asset Tracker feature gaps — ⬜ **MOOT (2026-07-25)**
-
-These four items tracked table-stakes gaps in the V2-210 **Asset Tracker pilot** (location,
-warranty, list bulk actions, retiring the `category` enum axis). All four shipped, and then the
-whole demo domain was **removed from the template** on 2026-07-25 — it was pilot residue that
-every fork inherited hard-wired into the sidebar, never advertised in `README.md`, with no
-removal path. The work, its blueprint, its benchmark, and its captures are recoverable from the
-archive tag (`docs/ARCHIVE.md`); the adjudication is in `docs/findings-register.md`. Nothing here
-is actionable — a fork that wants an asset tracker runs `/scaffold-entity`.
-
-### 16. Atomic audit (Postgres triggers) — ✅ **VERIFIED + FIXED (2026-07-25)**
-
-`ADR-010` accepted a non-atomic audit gap for the prototype rail. The closing recipe
-(`docs/recipes/shared-security/4-atomic-audit-triggers.md`) existed but had **never been run** —
-unrun PL/pgSQL for a control a fork would be asked to _prove_. Now executed verbatim against real
-Postgres 16 with a committed 12-case battery: atomicity (`ROLLBACK` → 0 audit rows) and the
-bulk/`upsert` coverage the app extension can't see are **proven**. Found + fixed one real defect —
-an unresolvable actor GUC raised an FK violation that **broke the data write itself**; it now
-degrades to an unattributed audit row. Evidence: `docs/verification/atomic-audit-triggers/`.
-
-**Still opt-in, deliberately** — NOT the template default. ADR-010 accepts app-level audit for the
-prototype rail and the recipe says not to add trigger ceremony to a throwaway. A fork that needs
-tamper-evident audit applies it (and, per the recipe, records its own ADR). SECURITY.md §16 row 2.
-
-### 17. Account lockout / distributed rate limit — ✅ **DONE (2026-07-25)**
-
-This item was **two things, and one was already built**:
-
-- **Distributed rate limit — already shipped (ADR-035).** `lib/rate-limit.ts` already uses shared
-  Valkey/Redis state when `VALKEY_URL`/`REDIS_URL` is set, degrading to in-memory otherwise. Nothing
-  to build; it activates on config. The backlog text understated this.
-- **Per-account lockout — genuinely missing, now built.** `lib/account-lockout.ts` counts failures
-  per EMAIL (the IP bucket structurally can't: an attacker rotating IPs stays under every bucket
-  while hammering one account) and is wired into `lib/auth.ts` `authorize()`. **ON by default** —
-  5 fails / 15 min window / 15 min lock, tunable via `ACCOUNT_LOCKOUT_*`.
-
-Built on the **already-shipped** `rate-limiter-flexible` + Valkey seam, NOT the recipe's Upstash
-pairing — the recipe predates ADR-035, and adopting it would have meant a second Redis vendor, a
-second set of credentials, and a duplicate degrade path (build-vs-buy ledger 2026-07-25). Zero new
-dependencies. Non-enumerable by construction: a miss and a bad password both count and both return
-`null`. 7 contract tests. SECURITY.md §16 row 4 + the A07 row updated.
-
-### 18. uptime monitoring / Storybook — ✅ **DONE (2026-07-25)**
-
-- **uptime monitoring / Storybook** (#28): ✅ **DONE 2026-07-25.** Storybook already had a recipe
-  (`docs/recipes/dx/1-storybook.md`) but it was **materially stale** — it described the shared
-  components as **AntD** components and its decorator imported `ConfigProvider` from `antd`, which
-  ADR-029 uninstalled; following it produced `Cannot find module 'antd'` on the first run. Corrected
-  to the real `next-intl` + `DirectionProvider` + `dark`-class stack (5 stale references fixed).
-  Uptime had no recipe — wrote `docs/recipes/ops/1-uptime-monitoring.md`, grounded in the health
-  endpoint the template **already ships** (`/api/health`: public per `i18n/route-decision.ts`, real
-  `SELECT 1` DB check, honest 200/503). Includes the Neon free-tier auto-suspend trap and the
-  2-consecutive-failures rule. Neither recipe was executed (Storybook is a large devDependency
-  install; uptime is third-party SaaS config) — both state their verification status explicitly.
+**Empty.** Every item that was actionable without an external dependency has shipped — see
+`docs/archive/open-items-2026.md`. New items land here as they are raised.
 
 ---
 
@@ -127,40 +50,16 @@ work needed to "do" them; they light up on configuration.
 
 ---
 
-## C. Closed — WON'T DO (2026-07-25, operator decision)
-
-Removed from the backlog rather than deferred, because a deferred item comes back. None of the
-three changes anything for a person using the app; keeping them listed manufactured the appearance
-of pending work.
-
-- **13. antd type-shim** (`components/shared/table-types.ts`) — **KEEP THE SHIM.** 78 lines of
-  working types. Retiring it meant re-authoring a 605-line conversion core + 11 column-authoring
-  sites and visually re-verifying ~10 list screens, for zero user-visible change. It is no longer
-  "debt" — it is a deliberate, working abstraction. If `DataTable` is ever rewritten for a real
-  reason, the shim goes then, as a side effect.
-- **14. Better Auth migration** — **already decided by ADR-056** ("stay frozen"). Listing it here
-  re-opened a settled decision as apparent work every time the backlog was read. Auth.js v5 is in
-  the ADR-001 locked stack and works; account lockout (item 17) was just added to it. If a real
-  trigger ever fires, ADR-056 is the entry point — not this file.
-- **15. bus-factor program** — the bounded slice that matters shipped (`docs/harness-orientation.md`
-  - the V2-505 maintainer runbook). The rest is multi-maintainer redundancy and CI activation for a
-    **solo operator with no second maintainer and no paid Actions**. Re-open when a second maintainer
-    actually exists.
-
-**12. bcryptjs** was in this section as a pending sunset — it SHIPPED 2026-07-25 (removed;
-Argon2id-only). See the register.
-
----
-
 ## Not included here (intentional, not debt)
 
 - Scaffold/template **stub TODOs** (`scripts/scaffold-ai-endpoint.mjs` prompt-crafting comments,
   `uat-pdf.mjs` `TODO(P#)` report-section anchors) are template placeholders a fork fills in per use,
   not repo backlog.
-- The HARNESS-V2 program itself is **CLOSED** (all 48 items done; `docs/HARNESS-V2-CLOSEOUT.md`).
+- The HARNESS-V2 program itself is **CLOSED** (all 48 items done; its closeout record is pinned at
+  the archive tag — see `docs/ARCHIVE.md`).
 
 ## How to pick something up
 
 1. Read the source record (the register/SECURITY/blueprint pointer on the item).
-2. `/blueprint` if it's a real multi-file feature (items 4–7, 15–17); act directly for the S items.
+2. `/blueprint` if it's a real multi-file feature; act directly for the S items.
 3. Land it green (`/ship`), update the source record's status, and refresh this index.

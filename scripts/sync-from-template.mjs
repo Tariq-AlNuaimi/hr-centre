@@ -65,7 +65,7 @@ const OWNED = [
   "eslint-rules",
   "scripts",
   "docs/decisions",
-  "docs/token-policy.md",
+  "docs/ARCHITECTURE.md",
   "docs/recipes.md",
   "docs/uat-rubric.md",
   ".gitleaks.toml",

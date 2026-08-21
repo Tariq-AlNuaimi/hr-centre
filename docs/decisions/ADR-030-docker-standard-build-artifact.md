@@ -51,7 +51,7 @@ The open strictness question (blueprint Q2) was answered by the operator on
    becomes the canonical local full-stack, aligning with ADR-031 (every app has
    a structured DB).
 5. **Docs follow:** CLAUDE.md "Known traps" drops the "Docker is opt-in" note;
-   `docs/token-policy.md` gains a thrift note if the gate's cost warrants one.
+   `docs/ARCHITECTURE.md` §7 gains a thrift note if the gate's cost warrants one.
 
 ## Consequences
 

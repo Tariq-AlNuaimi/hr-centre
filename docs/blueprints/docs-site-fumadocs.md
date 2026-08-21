@@ -1,3 +1,11 @@
+> **ARCHIVED — the scope this blueprint covers no longer exists in the tree.**
+> the whole Fumadocs docs-site layer, its content tree and its enable script was removed in the 2026-08-21 dormant-layer cut (`app/[locale]/docs/**, content/docs/**, lib/docs/**`).
+> Kept because it records what was built and why it was dropped; git history at that
+> commit has the code. **Not a live contract:** do not treat its `Scope:` as covering a
+> file you are about to create — the blueprint gate matches on the glob, not on whether
+> the spec still describes anything real, so a resurrected path would silently inherit a
+> stale contract. Building any of this again starts with a NEW blueprint.
+
 # Blueprint — Docs site (Fumadocs, mounted in the Next app)
 
 Scope: app/[locale]/docs/**, app/api/docs-search/**, app/fumadocs-tokens.css, content/docs/**, lib/docs/**, source.config.ts, scripts/enable-docs-site.mjs, scripts/templates/docs-site/**
