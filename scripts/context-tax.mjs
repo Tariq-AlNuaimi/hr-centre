@@ -204,13 +204,24 @@ if (startHook === null) {
   add("banner", "SessionStart banner", b, "counted", "upper bound — branch-dependent");
 }
 
+// The auto-status block is always-on only if SessionStart PRINTS it. It stopped doing
+// that on 2026-08-21 (the standing directive + tables were removed), so counting the
+// file's bytes would over-report a cost no session actually pays -- and this meter
+// existing to under-report by 3-of-8 sources is precisely why it was rebuilt. Measured
+// from the HOOK, not the file, so it self-corrects if the surfacing ever returns.
+const sessionStartSh = readSafe(".claude/hooks/session-start.sh") ?? "";
+const handoffSurfaced = /BEGIN:auto-status/.test(sessionStartSh);
 const handoff = readSafe("docs/SESSION-HANDOFF.md");
 add(
   "handoff",
   "handoff auto-status block",
-  handoff === null ? 0 : bytes(block(handoff, "auto-status")),
+  !handoffSurfaced || handoff === null ? 0 : bytes(block(handoff, "auto-status")),
   "counted",
-  handoff === null ? "absent (gitignored in-flight state)" : "",
+  !handoffSurfaced
+    ? "not surfaced by SessionStart (removed 2026-08-21) -- costs nothing"
+    : handoff === null
+      ? "absent (gitignored in-flight state)"
+      : "",
 );
 
 // ---------------------------------------------------------------------------

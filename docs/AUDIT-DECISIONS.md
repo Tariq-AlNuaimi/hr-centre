@@ -157,3 +157,26 @@ question and were two.
 
 **Still an operator action, not mine:** merging #103, #104 and #105, and deleting the withdrawn
 red-team artifact at `claude.ai/code/artifacts`.
+
+---
+
+## Round 10 — a reversal, recorded (2026-08-21)
+
+**A4 approved retiring six tools, `jscpd` among them. It is back.** Later the same day the
+operator chose to install it, so `/ship`'s `duplication` gate would stop reporting PASS while
+skipping. Both calls were the operator's; the contradiction is that nothing said so, and a
+decision record that silently disagrees with the tree is worse than no record. Noting it here
+rather than editing A4 — A4 is what was decided then, and rewriting it would erase the fact that
+the decision changed.
+
+| Item                                                                       | A4 (2026-08-17) | Now                             | Why it changed                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------------------------- | --------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `jscpd`                                                                    | Retire          | **Reinstalled** (devDependency) | A4 retired it as unused ceremony. It later turned out the `duplication` gate did not FAIL without it — it printed `PASS*` and skipped, so the loop advertised copy-paste detection it was not doing. Running costs ~0.3s and it is genuinely clean (110 files, 5 clones, 0.81% against a 3% threshold). A gate that skips is worse than a gate that costs 0.3s. |
+| StrykerJS, `playwright-bdd`, CycloneDX SBOM, visual-regression, changesets | Retire          | Still retired                   | The `bdd-coverage` and `license:sbom` **gate blocks** were also deleted on 2026-08-21 — their scripts were already gone, so both blocks fell to an `existsSync` else-branch and printed `PASS (0s)` for gates that could not fail. Not independently re-verified beyond those two; the operator declined a full re-check.                                       |
+
+**Also removed 2026-08-21, and worth recording as a decision rather than a tidy-up:** the
+SessionStart `STANDING DIRECTIVE` and its two status tables. The harness-v2 program they described
+has ended, so both tables rendered empty into every session — a standing instruction that every
+session necessarily ignored. An instruction agents learn to skip is a harness-wide cost, not
+cosmetic noise. The machinery (`render-handoff.mjs`, `auto-handoff.mjs`, `/ship`'s leak gate) is
+kept, so a session that genuinely runs a program can still use it.
