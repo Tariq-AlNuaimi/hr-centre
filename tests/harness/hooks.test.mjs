@@ -647,31 +647,35 @@ const preEdit = (file_path) => ({ tool_name: "Edit", tool_input: { file_path } }
 const injectedContext = (r) => r.json?.hookSpecificOutput?.additionalContext ?? "";
 
 test("V2-101 rules-injection surfaces prisma.md when editing a prisma path", () => {
-  const r = runHook("rules-injection.mjs", preEdit("prisma/schema.prisma"));
+  const r = runHook("context-injection.mjs", preEdit("prisma/schema.prisma"));
   const ctx = injectedContext(r);
   assert.match(ctx, /docs\/rules\/prisma\.md/, `expected prisma.md, got: ${ctx.slice(0, 120)}`);
   assert.match(ctx, /SCRUB_FIELDS/, "prisma rule body must be present");
 });
 
 test("V2-101 rules-injection surfaces api-routes.md when editing an API route", () => {
-  const ctx = injectedContext(runHook("rules-injection.mjs", preEdit("app/api/widgets/route.ts")));
+  const ctx = injectedContext(
+    runHook("context-injection.mjs", preEdit("app/api/widgets/route.ts")),
+  );
   assert.match(ctx, /docs\/rules\/api-routes\.md/);
   assert.match(ctx, /withRateLimit/, "auth-wrapper detail must be present");
 });
 
 test("V2-101 rules-injection surfaces design.md when editing a component", () => {
-  const ctx = injectedContext(runHook("rules-injection.mjs", preEdit("components/shared/Foo.tsx")));
+  const ctx = injectedContext(
+    runHook("context-injection.mjs", preEdit("components/shared/Foo.tsx")),
+  );
   assert.match(ctx, /docs\/rules\/design\.md/);
 });
 
 test("V2-101 rules-injection injects NOTHING for a non-matching path", () => {
-  const r = runHook("rules-injection.mjs", preEdit("README.md"));
+  const r = runHook("context-injection.mjs", preEdit("README.md"));
   assert.equal(injectedContext(r), "", "README.md matches no rule glob → no injection");
   assert.equal(r.code, 0);
 });
 
 test("V2-101 rules-injection ignores non-edit tools (e.g. Bash)", () => {
-  const r = runHook("rules-injection.mjs", preBash("echo hi"));
+  const r = runHook("context-injection.mjs", preBash("echo hi"));
   assert.equal(injectedContext(r), "");
   assert.equal(r.code, 0);
 });
@@ -694,7 +698,7 @@ test("V2-101 rules-injection covers the high-blast-radius lib/ + middleware file
     ["lib/email.ts", /deploy\.md/],
   ];
   for (const [file, re] of cases) {
-    const ctx = injectedContext(runHook("rules-injection.mjs", preEdit(file)));
+    const ctx = injectedContext(runHook("context-injection.mjs", preEdit(file)));
     assert.match(ctx, re, `${file} must inject a rule matching ${re}`);
   }
 });
@@ -710,7 +714,7 @@ test("V2-101 every docs/rules/*.md has a parseable frontmatter glob that matches
     "harness.md": "scripts/ship.mjs",
   };
   for (const [name, path] of Object.entries(reps)) {
-    const ctx = injectedContext(runHook("rules-injection.mjs", preEdit(path)));
+    const ctx = injectedContext(runHook("context-injection.mjs", preEdit(path)));
     assert.match(ctx, new RegExp(name.replace(".", "\\.")), `${name} must inject on ${path}`);
   }
 });

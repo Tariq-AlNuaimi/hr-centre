@@ -30,24 +30,10 @@ import {
   isGatedCapabilityFile,
   blueprintCoverInfo,
   ledgerCoverInfo,
+  isSharedTier,
 } from "./lib/scope-cover.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
-
-/**
- * Is this a `"tier": "shared"` project (the hard-gate tier)? Anything else — the
- * `"personal"` default, a missing/unreadable/malformed config, a disposable /quickstart
- * fork — reads as personal and gets the advisory path. Fail-open by construction: an
- * unreadable config can never ESCALATE a warn into a deny. Identical to the helper in
- * blueprint-gate.mjs / build-vs-buy-gate.mjs so the three gates cannot diverge.
- */
-function isSharedTier() {
-  try {
-    return JSON.parse(readFileSync(resolve(ROOT, "project.config.json"), "utf8")).tier === "shared";
-  } catch {
-    return false;
-  }
-}
 
 /** Strip one layer of matching surrounding quotes from a shell token. */
 function unquote(tok) {
@@ -185,7 +171,7 @@ try {
     const artifact = v.kind === "blueprint" ? "Scope'd blueprint" : "ledger entry";
     console.log(
       JSON.stringify(
-        isSharedTier()
+        isSharedTier(ROOT)
           ? {
               hookSpecificOutput: {
                 hookEventName: "PreToolUse",

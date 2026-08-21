@@ -4,6 +4,11 @@
   "roots": ["docs", "."],
   "rules": [
     {
+      "match": "docs/archive/**",
+      "audience": "template-dev",
+      "why": "Resolved findings/ledger history for THIS template. A fork inheriting it would start life owning another project's closed decisions (C4, 2026-08-17)."
+    },
+    {
       "glob": "HARNESS-V2-*.md",
       "inheritance": "template-dev",
       "why": "harness-v2 program artifacts (backlog/evidence/closeout) \u2014 the template's own build record"

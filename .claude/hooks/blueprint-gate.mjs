@@ -36,27 +36,18 @@
 // agent-writable), so the friction should be proportionate to the blast radius, not uniform.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { relPath as relTo, isFeatureFile, blueprintCoverInfo } from "./lib/scope-cover.mjs";
+import {
+  relPath as relTo,
+  isFeatureFile,
+  blueprintCoverInfo,
+  isSharedTier,
+} from "./lib/scope-cover.mjs";
 
 const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
 /** Project-relative, forward-slashed path (abs or relative input). */
 function relPath(fp) {
   return relTo(fp, ROOT);
-}
-
-/**
- * Is this a `"tier": "shared"` project (the hard-gate tier)? Anything else — the
- * `"personal"` default, a missing/unreadable/malformed config, a disposable /quickstart
- * fork — reads as personal and gets the advisory path. Fail-open by construction: an
- * unreadable config can never ESCALATE a warn into a deny.
- */
-function isSharedTier() {
-  try {
-    return JSON.parse(readFileSync(resolve(ROOT, "project.config.json"), "utf8")).tier === "shared";
-  } catch {
-    return false;
-  }
 }
 
 try {
@@ -94,7 +85,7 @@ try {
 
   console.log(
     JSON.stringify(
-      isSharedTier()
+      isSharedTier(ROOT)
         ? {
             hookSpecificOutput: {
               hookEventName: "PreToolUse",

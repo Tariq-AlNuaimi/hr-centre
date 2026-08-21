@@ -13,7 +13,7 @@
     "types/**/*.{ts,tsx}",
     "brand.config.ts"
   ],
-  "ignore": [],
+  "ignore": ["components/ui/**"],
   "ignoreDependencies": [
     "playwright",
     "@typescript-eslint/parser",

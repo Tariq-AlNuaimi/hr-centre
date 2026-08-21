@@ -211,3 +211,26 @@ export function ledgerCoverInfo(rel, root) {
 export function ledgerCovers(rel, root) {
   return ledgerCoverInfo(rel, root).covered;
 }
+
+/**
+ * Is this project on the `shared` tier? (C3, 2026-08-17)
+ *
+ * The governance gates branch on this: `shared` DENIES an uncovered write,
+ * anything else (personal / key absent / no config / unreadable) ADVISES so
+ * /quickstart keeps its idea-to-URL speed.
+ *
+ * It lives HERE rather than in each hook because it decides DENY-vs-advise, and
+ * three verbatim copies of that decision is exactly the drift this module was
+ * created to prevent (V2-001 F#3) -- if one copy diverges, one gate silently
+ * enforces a different policy than the other two and nothing catches it.
+ *
+ * FAIL-OPEN by construction: any throw returns false, so an unreadable config
+ * can only ever de-escalate to a warn, never escalate to a deny.
+ */
+export function isSharedTier(root) {
+  try {
+    return JSON.parse(readFileSync(join(root, "project.config.json"), "utf8")).tier === "shared";
+  } catch {
+    return false;
+  }
+}

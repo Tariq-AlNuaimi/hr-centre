@@ -1562,7 +1562,8 @@ console.log(
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
 const scalability = scanScalability();
-const copy = scanCopy();
+// C2: house-style copy check -- real, but not security-bearing. ship:full.
+const copy = await fullOnly("copy", scanCopy);
 const waveoffs = scanWaveOffs();
 const licenses = scanLicenses();
 const tier = scanTier();
@@ -1688,7 +1689,8 @@ if (!build.ok) fail(build);
 
 // size-limit runs AFTER the build (it measures .next/static/chunks). A1 bundle-
 // budget gate (ADOPT.md; cat 12); degrades to a WARN when absent, sizeLimitAck waiver.
-const sizeLimit = await scanSizeLimit();
+// C2: bundle-size budget -- not security-bearing. ship:full.
+const sizeLimit = await fullOnly("size-limit", scanSizeLimit);
 report(sizeLimit);
 if (sizeLimit.warn) console.warn(`  note: size-limit — ${sizeLimit.warn}`);
 if (!sizeLimit.ok) fail(sizeLimit);

@@ -29,7 +29,12 @@
 // ledger-glob hygiene lands in one place. Behavior here is unchanged.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { relPath as relTo, isGatedCapabilityFile, ledgerCoverInfo } from "./lib/scope-cover.mjs";
+import {
+  relPath as relTo,
+  isGatedCapabilityFile,
+  ledgerCoverInfo,
+  isSharedTier,
+} from "./lib/scope-cover.mjs";
 
 // C3 (tiered friction): a hard DENY on every fork contradicted /quickstart's "idea → live
 // URL in ~10 minutes" promise. The gate is now tiered off the EXISTING project.config.json
@@ -43,20 +48,6 @@ const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 /** Project-relative, forward-slashed path for a Write target (abs or relative). */
 function relPath(fp) {
   return relTo(fp, ROOT);
-}
-
-/**
- * Is this a `"tier": "shared"` project (the hard-gate tier)? Anything else — the
- * `"personal"` default, a missing/unreadable/malformed config, a disposable /quickstart
- * fork — reads as personal and gets the advisory path. Fail-open by construction: an
- * unreadable config can never ESCALATE a warn into a deny.
- */
-function isSharedTier() {
-  try {
-    return JSON.parse(readFileSync(resolve(ROOT, "project.config.json"), "utf8")).tier === "shared";
-  } catch {
-    return false;
-  }
 }
 
 try {
@@ -100,7 +91,7 @@ try {
 
   console.log(
     JSON.stringify(
-      isSharedTier()
+      isSharedTier(ROOT)
         ? {
             hookSpecificOutput: {
               hookEventName: "PreToolUse",
