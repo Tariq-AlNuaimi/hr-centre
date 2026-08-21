@@ -74,9 +74,20 @@ function checkSegment(seg) {
     // names this ("pushing to `main` directly when branch protection is on"), but
     // the ALLOW-list auto-approved `Bash(git push *)` -- so the machine permitted
     // exactly what the constitution forbade (red-team R2). Denying here makes the
-    // rule enforced rather than aspirational. Covers `origin main`, `HEAD:main`
-    // and `<src>:main` alike; feature-branch pushes fall through untouched.
-    if (args.some((a) => !a.startsWith("-") && /(^|:)(main|master)$/.test(a)))
+    // rule enforced rather than aspirational. Feature-branch pushes fall through.
+    //
+    // Judge the DESTINATION ref, not the raw token. The first cut tested the whole
+    // refspec against /(^|:)(main|master)$/, which only ever saw the short spelling:
+    // `HEAD:refs/heads/main` and `refs/heads/main` both end in `main` but not at a
+    // `:` boundary, so the two most natural full-refspec forms walked straight past
+    // the deny (review round 8). Take the half after the last `:`, then its last
+    // path segment -- that is the branch git will actually update.
+    const pushesToProtected = args.some((a) => {
+      if (a.startsWith("-")) return false;
+      const dest = a.includes(":") ? a.slice(a.lastIndexOf(":") + 1) : a;
+      return /(^|\/)(main|master)$/.test(dest);
+    });
+    if (pushesToProtected)
       return "pushing directly to `main`/`master` is an Ask-before action (CLAUDE.md); push a feature branch and open a PR, or get explicit operator sign-off";
   }
   // 2.5. git branch FORCE-delete (semantic, any flag spelling/order) -- V2-107 senior-review High.
@@ -184,7 +195,25 @@ function checkSegment(seg) {
   // are denied -- an interpreter one-liner is an ordinary tool, so a blanket
   // deny here would be exactly the over-broad rule that trains people to wave
   // the gate through (see the checkout/restore narrowing above).
-  const INTERPRETERS = new Set(["node", "nodejs", "python", "python3", "ruby", "perl", "deno"]);
+  // The list must name every runner this repo can reach, not just the POSIX classics:
+  // `npx tsx -e`, `bun -e` and `ts-node -e` call `fs.rmSync` exactly as `node -e` does,
+  // and `sh -c` / `bash -c` wrap any of them one level deeper (review round 8).
+  const INTERPRETERS = new Set([
+    "node",
+    "nodejs",
+    "python",
+    "python3",
+    "ruby",
+    "perl",
+    "deno",
+    "bun",
+    "npx",
+    "tsx",
+    "ts-node",
+    "sh",
+    "bash",
+    "zsh",
+  ]);
   if (INTERPRETERS.has(cmd)) {
     const inlineIdx = args.findIndex((a) => a === "-e" || a === "-c" || a === "--eval");
     if (inlineIdx !== -1) {
@@ -201,7 +230,14 @@ function checkSegment(seg) {
   // lexically too; this survives compounding and flag reordering.
   if ((cmd === "npx" || cmd === "prisma" || cmd === "pnpm") && args.length) {
     const verbs = args.filter((a) => !a.startsWith("-"));
-    const at = verbs.indexOf("prisma");
+    // Match a VERSION-PINNED or path-qualified spec too, not just the bare word.
+    // `verbs.indexOf("prisma")` returned -1 for `npx prisma@6 migrate reset`, and
+    // the -1 branch then treated the whole arg list as the subcommand -- so sub[0]
+    // was "prisma@6" instead of "migrate" and the destructive verb sailed through.
+    // Pinning a version is the most natural thing an agent does when a command
+    // fails, which made this the likeliest spelling to hit in practice, not the
+    // least (review round 8).
+    const at = verbs.findIndex((v) => /^(?:.*\/)?prisma(?:@[^\s]+)?$/.test(v));
     const sub = at === -1 ? verbs : verbs.slice(at + 1);
     if (sub[0] === "migrate" && sub[1] === "reset")
       return "`prisma migrate reset` DROPS and recreates the database, destroying all data; ask the operator (deny-listed policy)";

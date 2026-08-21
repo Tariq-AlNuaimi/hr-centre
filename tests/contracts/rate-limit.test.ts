@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rateLimit } from "../../lib/rate-limit";
+import { ipTrustIsConfigured } from "../../lib/client-ip";
 
 // These exercise the in-memory backend (the default; no VALKEY_URL in the test
 // env). rateLimit() is async since the shared-state (Valkey) path is a network
@@ -9,13 +10,22 @@ import { rateLimit } from "../../lib/rate-limit";
 // CLIENT-IP CONTRACT (red-team R1, 2026-08-17). lib/client-ip.ts fails CLOSED:
 // no forwarding header is trusted unless RATE_LIMIT_TRUSTED_IP_HEADER names it.
 // The tests below are split accordingly:
-//   - UNCONFIGURED  -> every request shares the "unknown" bucket. Strict, and
-//                      critically NOT escapable by rotating a header.
 //   - CONFIGURED    -> only the named header keys the bucket; every other
 //                      forwarding header is ignored even if present.
-// The previous suite asserted "x-real-ip is honored" and "x-real-ip is preferred
-// over XFF" -- that WAS the vulnerability (Caddy does not set X-Real-IP, so a
-// client could supply it), so those expectations are inverted here on purpose.
+//   - UNCONFIGURED  -> the client-supplied header still PARTITIONS the buckets,
+//                      marked `untrusted:` so it can never collide with a trusted
+//                      key. Rotating it evades your own throttle; it cannot drag
+//                      anyone else into your bucket.
+//
+// That second bullet is the reverse of what this suite asserted between
+// 2026-08-17 and review round 8, and the flip is deliberate. The strict version
+// keyed everything unattributable into one shared "unknown" bucket, which read as
+// "throttles harder, the safe direction to fail" -- but auth buckets are small
+// (login 10/min, reset 5/min) and process-wide, so eleven requests from one
+// stranger locked EVERY user out of signing in. Header spoofing costs the spoofer
+// their own throttle; a shared bucket costs everyone the application. Attribution
+// (audit_logs.ipAddress, via clientIp) still fails closed -- a forged forensic
+// record is worse than an absent one. Only throttling changed.
 
 /** A request carrying spoofable forwarding headers and nothing trustworthy. */
 function req(ip = "1.2.3.4"): Request {
@@ -67,39 +77,118 @@ test("separate buckets per `id` -- /auth limit does not affect /foo", async () =
   assert.equal(foo.ok, true);
 });
 
-// --- R1 regression: the exploit, now closed ---------------------------------
+// --- unconfigured: partition, never collapse (review round 8) ----------------
 
-test("R1: rotating x-real-ip does NOT escape the bucket when unconfigured", async () => {
+test("rotating x-real-ip mints its own bucket when unconfigured -- and only its own", async () => {
   const id = `rl-${Math.random()}`;
   const mk = (spoof: string) =>
     new Request("http://localhost/test", { headers: { "x-real-ip": spoof } });
 
   assert.equal((await rateLimit(mk("203.0.113.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
   assert.equal(
-    (await rateLimit(mk("203.0.113.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+    (await rateLimit(mk("203.0.113.1"), { id, limit: 1, windowMs: 60_000 })).ok,
     false,
-    "a fresh x-real-ip must NOT mint a fresh bucket -- that was the R1 bypass",
+    "the same claimed IP must reuse its bucket",
   );
-});
-
-test("R1: rotating x-forwarded-for does NOT escape the bucket when unconfigured", async () => {
-  const id = `rl-${Math.random()}`;
-  assert.equal((await rateLimit(req("198.51.100.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
   assert.equal(
-    (await rateLimit(req("198.51.100.2"), { id, limit: 1, windowMs: 60_000 })).ok,
-    false,
-    "a fresh XFF must NOT mint a fresh bucket",
+    (await rateLimit(mk("203.0.113.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+    true,
+    "a different claimed IP gets a different bucket -- evasion by the spoofer, " +
+      "not an outage for everyone else",
   );
 });
 
-test("R1: unconfigured deployments share one bucket -- strict, never bypassable", async () => {
+test("one caller's flood cannot exhaust another caller's bucket when unconfigured", async () => {
+  // The DoS this replaced: two unrelated clients used to share the `unknown`
+  // bucket, so either one could lock the other out of /api/auth with a handful
+  // of requests. This is the regression test for that outage.
   const id = `rl-${Math.random()}`;
-  // Two entirely different clients, no trusted header configured: they share the
-  // "unknown" bucket. Throttling HARDER than per-IP is the correct direction to
-  // fail; the wrong direction is letting a header mint unlimited buckets.
-  await rateLimit(req("10.0.0.4"), { id, limit: 1, windowMs: 60_000 });
-  const other = await rateLimit(req("10.0.0.5"), { id, limit: 1, windowMs: 60_000 });
-  assert.equal(other.ok, false, "unattributable requests must share one bucket");
+  for (let i = 0; i < 10; i++) {
+    await rateLimit(req("10.0.0.4"), { id, limit: 3, windowMs: 60_000 });
+  }
+  const victim = await rateLimit(req("10.0.0.5"), { id, limit: 3, windowMs: 60_000 });
+  assert.equal(victim.ok, true, "a second client must not inherit the first client's exhaustion");
+});
+
+test("an untrusted claim cannot collide with a trusted bucket", async () => {
+  // An attacker who sends `X-Real-IP: <victim>` while the deployment trusts
+  // cf-connecting-ip must land in `untrusted:<victim>`, not in the victim's
+  // `ip:<victim>` bucket -- otherwise the prefix would not be buying anything.
+  const id = `rl-${Math.random()}`;
+  await withTrustedHeader("cf-connecting-ip", async () => {
+    const victim = new Request("http://localhost/test", {
+      headers: { "cf-connecting-ip": "192.0.2.7" },
+    });
+    const attacker = new Request("http://localhost/test", {
+      headers: { "x-real-ip": "192.0.2.7" },
+    });
+    assert.equal((await rateLimit(attacker, { id, limit: 1, windowMs: 60_000 })).ok, true);
+    assert.equal(
+      (await rateLimit(attacker, { id, limit: 1, windowMs: 60_000 })).ok,
+      false,
+      "attacker exhausts their own untrusted bucket",
+    );
+    assert.equal(
+      (await rateLimit(victim, { id, limit: 1, windowMs: 60_000 })).ok,
+      true,
+      "the victim's trusted bucket is untouched",
+    );
+  });
+});
+
+test("a request with no forwarding headers at all shares the unattributed bucket", async () => {
+  // Nothing is knowable here (a direct connection -- local dev, or a container
+  // reached without a proxy). One shared bucket is the only option; it is not an
+  // internet-facing shape, so the collapse is acceptable HERE and nowhere else.
+  const id = `rl-${Math.random()}`;
+  const bare = () => new Request("http://localhost/test");
+  assert.equal((await rateLimit(bare(), { id, limit: 1, windowMs: 60_000 })).ok, true);
+  assert.equal((await rateLimit(bare(), { id, limit: 1, windowMs: 60_000 })).ok, false);
+});
+
+// --- subject-keyed buckets ---------------------------------------------------
+
+test("the subject bucket caps one account across rotating IPs", async () => {
+  // This is the control that survives header rotation: the IP key is fresh every
+  // request, so only the account-keyed bucket stops a distributed run.
+  const id = `rl-${Math.random()}`;
+  const opts = { id, limit: 2, windowMs: 60_000, subject: "victim@example.com" };
+  assert.equal((await rateLimit(req("10.1.0.1"), opts)).ok, true);
+  assert.equal((await rateLimit(req("10.1.0.2"), opts)).ok, true);
+  assert.equal(
+    (await rateLimit(req("10.1.0.3"), opts)).ok,
+    false,
+    "a third IP must still hit the account's own quota",
+  );
+});
+
+test("subject buckets do not leak across accounts", async () => {
+  const id = `rl-${Math.random()}`;
+  const base = { id, limit: 1, windowMs: 60_000 };
+  assert.equal((await rateLimit(req("10.2.0.1"), { ...base, subject: "a@x.com" })).ok, true);
+  assert.equal(
+    (await rateLimit(req("10.2.0.2"), { ...base, subject: "b@x.com" })).ok,
+    true,
+    "a different account is a different bucket",
+  );
+});
+
+test("the subject key is case- and whitespace-insensitive", async () => {
+  const id = `rl-${Math.random()}`;
+  const base = { id, limit: 1, windowMs: 60_000 };
+  assert.equal((await rateLimit(req("10.3.0.1"), { ...base, subject: "Sam@X.com" })).ok, true);
+  assert.equal(
+    (await rateLimit(req("10.3.0.2"), { ...base, subject: "  sam@x.com " })).ok,
+    false,
+    "normalising the subject stops trivial casing/padding variants minting buckets",
+  );
+});
+
+test("ipTrustIsConfigured reports the unconfigured state", async () => {
+  assert.equal(ipTrustIsConfigured(), false, "no trusted header and not on Vercel in tests");
+  await withTrustedHeader("cf-connecting-ip", async () => {
+    assert.equal(ipTrustIsConfigured(), true);
+  });
 });
 
 // --- configured behaviour ----------------------------------------------------
@@ -149,15 +238,23 @@ test("when x-real-ip IS the declared trusted header, a rotating XFF cannot escap
   });
 });
 
-test("a missing trusted header falls back to the shared bucket, not to XFF", async () => {
+test("a missing trusted header degrades to an untrusted key, not to a shared bucket", async () => {
   const id = `rl-${Math.random()}`;
   await withTrustedHeader("cf-connecting-ip", async () => {
-    // Trusted header absent but XFF present: XFF must NOT be consulted.
+    // Trusted header absent (a request that bypassed the CDN, or a misconfigured
+    // proxy) but XFF present. The XFF must not be treated as TRUSTED -- and the
+    // untrusted-bucket test above proves it cannot collide with one -- but it
+    // must still partition, or a single bypassing client takes the app down.
     assert.equal((await rateLimit(req("172.16.0.1"), { id, limit: 1, windowMs: 60_000 })).ok, true);
     assert.equal(
       (await rateLimit(req("172.16.0.2"), { id, limit: 1, windowMs: 60_000 })).ok,
+      true,
+      "a distinct client must not inherit another client's exhaustion",
+    );
+    assert.equal(
+      (await rateLimit(req("172.16.0.1"), { id, limit: 1, windowMs: 60_000 })).ok,
       false,
-      "absent trusted header must not silently fall back to a spoofable one",
+      "...but each claimed value is still capped",
     );
   });
 });

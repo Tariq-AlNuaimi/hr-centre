@@ -100,6 +100,42 @@ const ARCHIVE_CMDS = new Set([
 // guard, so deny at the copy rather than at the later read (red-team R3).
 const COPY_CMDS = new Set(["cp", "mv", "install", "rsync", "scp", "ln"]);
 
+// Representative secret basenames a glob could expand onto. This is the ONLY thing the
+// glob check consults, so it must cover every shape `secretPath` would reject literally.
+const SECRET_NAME_SAMPLES = [
+  ".env",
+  ".env.local",
+  ".env.production",
+  ".env.development.local",
+  ...SECRET_BASENAMES,
+  ...KEY_EXTENSIONS.map((e) => `server${e}`),
+];
+
+/** Compile a BASENAME glob (`*`, `?`, `[...]`) to an anchored RegExp. No `**` — basenames only. */
+function basenameGlobToRegExp(glob) {
+  let out = "^";
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === "*") out += "[^/]*";
+    else if (c === "?") out += "[^/]";
+    else if (c === "[") {
+      const end = glob.indexOf("]", i + 1);
+      if (end === -1) {
+        out += "\\[";
+        continue;
+      }
+      const cls = glob.slice(i + 1, end).replace(/\\/g, "\\\\");
+      out += "[" + (cls.startsWith("!") ? "^" + cls.slice(1) : cls) + "]";
+      i = end;
+    } else out += c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  try {
+    return new RegExp(out + "$");
+  } catch {
+    return /(?:)/; // unparseable class -> match everything -> deny (fail-closed)
+  }
+}
+
 /** Is this path/token secret-bearing? Returns a reason string or null. */
 function secretPath(raw) {
   if (!raw) return null;
@@ -115,12 +151,16 @@ function secretPath(raw) {
   // on its shape. `.env.example` is exempt only when named literally; a glob is
   // never precise enough to earn that exemption.
   if (/[*?[\]]/.test(base)) {
-    const literal = base.replace(/[*?].*$/, "").replace(/\[.*$/, "");
+    // Decide on EXPANSION, not on a prefix. The first cut compared the glob's literal
+    // prefix with `".env".startsWith(literal)`, and for `*.ts` that prefix is the empty
+    // string -- `"".startsWith` is always true, so every `cat *.ts` / `grep foo *.js` was
+    // denied. Compile the pattern instead and ask whether it can actually expand onto a
+    // secret NAME. Shell dotglob semantics apply: a pattern that does not start with `.`
+    // never matches a dotfile, which is what makes `*.ts` safe and `.en*` not.
+    const globRe = basenameGlobToRegExp(base);
+    const dotOk = base.startsWith(".");
     const globCouldHitSecret =
-      ".env".startsWith(literal) ||
-      literal.startsWith(".env") ||
-      KEY_EXTENSIONS.some((e) => base.endsWith(e)) ||
-      [...SECRET_BASENAMES].some((b) => b.startsWith(literal) && literal.length > 0) ||
+      SECRET_NAME_SAMPLES.some((c) => (c.startsWith(".") && !dotOk ? false : globRe.test(c))) ||
       /(^|\/)\.ssh\//.test(p) ||
       /(^|\/)\.aws\//.test(p);
     if (globCouldHitSecret)
@@ -228,7 +268,14 @@ function scanBash(cmd) {
   // equivalent check in dangerous-commands.mjs: the segment splitter above has no
   // quote awareness, so an inline body containing `;` or `|` is torn apart and
   // neither piece looks like a read.
-  if (/\b(node|nodejs|python3?|ruby|perl|deno)\b[^|;&\n]*\s(-e|-c|--eval)\b/.test(cmd)) {
+  // The runner list must cover every way this repo can execute JS/TS ad hoc, not just the
+  // POSIX classics: `npx tsx -e`, `bun -e`, `ts-node -e` all reach `readFileSync` exactly
+  // like `node -e` does, and `sh -c`/`bash -c` wrap any of them one level deeper.
+  if (
+    /\b(node|nodejs|python3?|ruby|perl|deno|bun|npx|tsx|ts-node|sh|bash|zsh)\b[^|;&\n]*\s(-e|-c|--eval)\b/.test(
+      cmd,
+    )
+  ) {
     // Do NOT try to pull out quoted strings: real bodies nest and alternate quote
     // styles (`readFileSync('.env','utf8')` inside a "..." argument), so the pairs
     // misalign and the interesting operand falls between two matches. Instead scan

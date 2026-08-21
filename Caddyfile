@@ -9,6 +9,19 @@
 #
 # All traffic is reverse-proxied to the `app` service on the compose network.
 
+# Global options. `trusted_proxies` is what makes `{http.request.client_ip}`
+# meaningful: without it Caddy has no basis to believe any X-Forwarded-For entry,
+# and client_ip degrades to the direct peer. `private_ranges` trusts only RFC1918 /
+# loopback / link-local peers -- i.e. another proxy on the compose network or a
+# same-host LB, never the public internet -- so a client cannot talk its way into
+# being believed. Set this to your CDN's published ranges instead if Caddy sits
+# behind Cloudflare/Fastly rather than at the edge.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 {$APP_DOMAIN::80} {
 	encode gzip zstd
 
@@ -26,12 +39,19 @@
 	# but NOT X-Real-IP, and forwards a client-supplied one untouched. The app
 	# throttles and audits on this header, so a spoofed value would defeat every
 	# rate limit and forge `audit_logs.ipAddress`. Strip whatever the client sent,
-	# then set it from the real peer address. Pair with
-	# RATE_LIMIT_TRUSTED_IP_HEADER=x-real-ip (lib/client-ip.ts ignores the header
-	# entirely unless that env var names it).
+	# then set it ourselves. Pair with RATE_LIMIT_TRUSTED_IP_HEADER=x-real-ip
+	# (lib/client-ip.ts ignores the header entirely unless that env var names it).
+	#
+	# `{http.request.client_ip}`, not `{http.request.remote.host}`: remote.host is
+	# the DIRECT PEER, which is correct only while Caddy is the outermost hop. Put
+	# a CDN or a load balancer in front and every request's peer becomes that hop,
+	# so every user collapses onto one IP -- one shared rate-limit bucket and an
+	# audit log that records the proxy instead of the client. client_ip resolves
+	# through the trusted_proxies chain above and falls back to the peer when the
+	# peer is not trusted, so it is correct in BOTH topologies.
 	reverse_proxy app:3000 {
 		header_up -X-Real-IP
-		header_up X-Real-IP {http.request.remote.host}
+		header_up X-Real-IP {http.request.client_ip}
 	}
 }
 
@@ -58,5 +78,14 @@
 		-Server
 	}
 
-	reverse_proxy polis:5225
+	# Same trust boundary as the app block. Polis is the SSO ingress -- it handles
+	# SAML ACS callbacks and OIDC token exchange, the highest-value unauthenticated
+	# surface in the deployment -- so leaving a client-supplied X-Real-IP intact
+	# here would feed forged addresses to its own logs and to anything downstream
+	# that reads them. The first cut hardened only the app block and left this one
+	# untouched, which meant the harder-to-reach half of the finding stayed open.
+	reverse_proxy polis:5225 {
+		header_up -X-Real-IP
+		header_up X-Real-IP {http.request.client_ip}
+	}
 }
