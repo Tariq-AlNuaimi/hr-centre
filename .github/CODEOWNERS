@@ -23,3 +23,14 @@
 /.github/CODEOWNERS                   @Tariq-AlNuaimi
 /docs/decisions/                      @Tariq-AlNuaimi
 /vercel.json                          @Tariq-AlNuaimi
+
+# Agent trust boundary (red-team R4). These are not ordinary docs: they are
+# injected into every agent session as context, and they reach forks. A commit
+# that changes them can plant standing instructions for every future session in
+# every fork -- the only vector in this repo with worm-like propagation, and it
+# needs only a merged PR. Review them like lib/auth.ts, not like a README.
+/docs/agent-memory.md                 @Tariq-AlNuaimi
+/.claude/settings.json                @Tariq-AlNuaimi
+/.claude/hooks/                       @Tariq-AlNuaimi
+/.claude/rules/                       @Tariq-AlNuaimi
+/AGENTS.md                            @Tariq-AlNuaimi

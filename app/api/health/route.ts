@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaUnfiltered } from "@/lib/prisma";
 import { withRateLimit } from "@/lib/api-helpers";
+import { ipTrustIsConfigured } from "@/lib/client-ip";
 
 // PUBLIC by design (allowlisted in rihal-template/no-bare-api-route): an uptime
 // probe cannot require a session. It stays bare of an AUTH wrapper, but not of a
@@ -24,10 +25,22 @@ export const GET = withRateLimit(
 
     const allOk = Object.values(checks).every((v) => v === "ok");
 
+    // Rate limiting is only as good as the IP header it keys on. With neither
+    // RATE_LIMIT_TRUSTED_IP_HEADER nor a platform that overwrites the header, the
+    // key comes from a client-supplied value and per-IP limits are evadable by
+    // rotating it. That is a deliberate choice -- the alternative collapsed every
+    // caller into one shared bucket and handed strangers a global auth outage
+    // (review round 8) -- but it must not degrade SILENTLY, so it is reported.
+    // It is a WARNING, deliberately kept out of `checks`: the app is serving
+    // correctly, only the throttle is weaker, and an uptime monitor must not be
+    // paged (or the deploy rolled back) over a configuration advisory.
+    const warnings = ipTrustIsConfigured() ? [] : ["ip-trust-unconfigured"];
+
     return NextResponse.json(
       {
         status: allOk ? "ok" : "degraded",
         checks,
+        ...(warnings.length > 0 ? { warnings } : {}),
         timestamp: new Date().toISOString(),
       },
       { status: allOk ? 200 : 503 },

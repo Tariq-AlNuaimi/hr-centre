@@ -135,7 +135,9 @@
       "Bash(tail *)",
       "Bash(grep *)",
       "Bash(rg *)",
-      "Bash(find . *)",
+      "Bash(find . -name *)",
+      "Bash(find . -type *)",
+      "Bash(find . -maxdepth *)",
       "Bash(test *)",
       "Bash(git status*)",
       "Bash(git diff*)",
@@ -147,7 +149,8 @@
       "Bash(git pull*)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)",
+      "Bash(git push -u origin claude/*)",
+      "Bash(git push origin claude/*)",
       "Bash(git checkout *)",
       "Bash(git stash list*)",
       "Bash(git rev-parse*)",
@@ -158,7 +161,12 @@
       "Bash(npm test*)",
       "Bash(npm audit*)",
       "Bash(npm outdated*)",
-      "Bash(npx prisma *)",
+      "Bash(npx prisma generate*)",
+      "Bash(npx prisma migrate dev*)",
+      "Bash(npx prisma migrate deploy*)",
+      "Bash(npx prisma migrate status*)",
+      "Bash(npx prisma studio*)",
+      "Bash(npx prisma db seed*)",
       "Bash(npx tsc *)",
       "Bash(npx tsx *)",
       "Bash(npx eslint *)",
@@ -167,7 +175,7 @@
       "Bash(docker compose ps*)",
       "Bash(docker compose logs*)",
       "Bash(docker compose up -d*)",
-      "Bash(docker compose down*)",
+      "Bash(docker compose down)",
       "Bash(docker compose build*)",
       "Bash(docker compose restart*)",
       "Bash(docker ps*)",
@@ -189,6 +197,20 @@
       "Bash(git clean -d*)",
       "Bash(git rebase -i*)",
       "Bash(git commit --amend*)",
+      "Bash(git push origin main*)",
+      "Bash(git push * HEAD:main*)",
+      "Bash(git push *:main)",
+      "Bash(npx prisma migrate reset*)",
+      "Bash(npx prisma db execute*)",
+      "Bash(npx prisma db push*)",
+      "Bash(prisma migrate reset*)",
+      "Bash(docker compose down -v*)",
+      "Bash(docker compose down --volumes*)",
+      "Bash(find * -delete*)",
+      "Bash(find * -exec*)",
+      "Bash(find * -execdir*)",
+      "Bash(find * -ok*)",
+      "Bash(shred *)",
       "Read(./.next/**)",
       "Read(./node_modules/**)",
       "Read(./generated/**)"
@@ -197,23 +219,5 @@
   "statusLine": {
     "type": "command",
     "command": "node $CLAUDE_PROJECT_DIR/.claude/statusline.mjs"
-  },
-  "extraKnownMarketplaces": {
-    "claude-code-plugins": {
-      "source": {
-        "source": "github",
-        "repo": "anthropics/claude-code"
-      }
-    },
-    "superpowers": {
-      "source": {
-        "source": "github",
-        "repo": "obra/superpowers"
-      }
-    }
-  },
-  "enabledPlugins": {
-    "frontend-design@claude-code-plugins": true,
-    "superpowers@superpowers": true
   }
 }

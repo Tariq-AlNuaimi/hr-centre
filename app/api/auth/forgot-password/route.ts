@@ -22,15 +22,29 @@ const schema = z.object({ email: z.email() });
 const TOKEN_TTL_MS = 60 * 60 * 1000;
 
 export async function POST(req: NextRequest): Promise<Response> {
-  const limit = await rateLimit(req, { id: "auth-reset", limit: 5, windowMs: 60_000 });
-  if (!limit.ok) {
-    return err("Too many requests", 429);
-  }
-
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
   // Neutral response regardless of validity (no enumeration / no error oracle).
   const neutral = ok({ message: "If that email exists, a reset link was sent." });
+
+  // Throttle AFTER parsing so the requested address can key its own bucket. The
+  // per-IP key is derived from a header that, on a deployment with no trusted
+  // proxy, the caller controls -- rotating it mints a fresh IP bucket per request
+  // and the reset limit stops meaning anything. The address survives rotation, so
+  // it is what actually caps reset-spam aimed at one mailbox (review round 8).
+  // Parsing before throttling costs one JSON.parse of a bounded body; a 429 here
+  // is driven purely by request volume, never by whether the account exists, so
+  // the anti-enumeration property is unchanged.
+  const limit = await rateLimit(req, {
+    id: "auth-reset",
+    limit: 5,
+    windowMs: 60_000,
+    subject: parsed.success ? parsed.data.email.toLowerCase() : undefined,
+  });
+  if (!limit.ok) {
+    return err("Too many requests", 429);
+  }
+
   if (!parsed.success) return neutral;
 
   const email = parsed.data.email.toLowerCase();

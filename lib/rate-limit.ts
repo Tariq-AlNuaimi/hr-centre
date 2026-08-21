@@ -11,7 +11,7 @@
 
 import { RateLimiterRedis, RateLimiterMemory, type RateLimiterRes } from "rate-limiter-flexible";
 import { getValkey } from "./valkey";
-import { clientIp } from "./client-ip";
+import { throttleKey } from "./client-ip";
 
 export interface RateLimitOptions {
   /** Stable bucket name; included in the key so /api/auth and /api/foo have separate quotas. */
@@ -20,6 +20,19 @@ export interface RateLimitOptions {
   limit: number;
   /** Window length in milliseconds. */
   windowMs: number;
+  /**
+   * Optional per-ACCOUNT bucket, consumed IN ADDITION to the per-IP one (both
+   * must pass). The IP key is only as good as the header it derives from, and on
+   * a deployment with no trusted proxy header that header is client-supplied --
+   * an attacker rotating it gets a fresh IP bucket every request. A subject key
+   * (an email, a user id) survives that rotation, so it is the control that
+   * actually caps credential-stuffing and reset-spam against one account.
+   *
+   * The tradeoff is a targeted lockout: anyone who knows the address can burn
+   * that account's bucket. Bounded by `windowMs`, so keep the window short and
+   * use it where distributed abuse of ONE account is the threat you care about.
+   */
+  subject?: string;
 }
 
 export interface RateLimitResult {
@@ -106,9 +119,27 @@ function getValkeyLimiter(opts: RateLimitOptions): RateLimiterRedis | null {
  * throws: an unexpected backend error fails safe to the in-memory decision.
  */
 export async function rateLimit(req: Request, opts: RateLimitOptions): Promise<RateLimitResult> {
-  // Bucket on the resolved client IP; unattributable requests share one bucket.
-  const key = `${opts.id}:${clientIp(req) ?? "unknown"}`;
+  // Bucket on the throttle key, NOT on clientIp(). clientIp is the attribution
+  // source and returns null on an unconfigured deployment, which collapsed every
+  // caller into one shared "unknown" bucket -- a global auth outage triggerable by
+  // any stranger (review round 8). throttleKey always partitions; see client-ip.ts.
+  const ipResult = await consume(`${opts.id}:${throttleKey(req)}`, opts);
+  if (!opts.subject) return ipResult;
 
+  // Per-account bucket. Consumed even when the IP bucket already said no, so the
+  // two stay in step: skipping it would let an attacker spread a stuffing run over
+  // rotated IP keys and never touch the account's own quota.
+  const subjectResult = await consume(
+    `${opts.id}:subject:${opts.subject.trim().toLowerCase()}`,
+    opts,
+  );
+  if (ipResult.ok && subjectResult.ok) return ipResult;
+  const denied = !ipResult.ok ? ipResult : subjectResult;
+  return { ...denied, remaining: Math.min(ipResult.remaining, subjectResult.remaining) };
+}
+
+/** Consume one unit from a single fully-qualified bucket key. */
+async function consume(key: string, opts: RateLimitOptions): Promise<RateLimitResult> {
   const limiter = getValkeyLimiter(opts);
   if (!limiter) return rateLimitInMemory(key, opts);
 

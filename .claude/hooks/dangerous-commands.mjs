@@ -70,6 +70,25 @@ function checkSegment(seg) {
       return "`git push --force` rewrites remote history (deny-listed policy; use a new branch instead)";
     if (args.some((a) => /^\+\S/.test(a)))
       return "`git push +<ref>` is a force push by refspec (rewrites remote history)";
+    // Direct push to the protected branch. CLAUDE.md's Ask-before list already
+    // names this ("pushing to `main` directly when branch protection is on"), but
+    // the ALLOW-list auto-approved `Bash(git push *)` -- so the machine permitted
+    // exactly what the constitution forbade (red-team R2). Denying here makes the
+    // rule enforced rather than aspirational. Feature-branch pushes fall through.
+    //
+    // Judge the DESTINATION ref, not the raw token. The first cut tested the whole
+    // refspec against /(^|:)(main|master)$/, which only ever saw the short spelling:
+    // `HEAD:refs/heads/main` and `refs/heads/main` both end in `main` but not at a
+    // `:` boundary, so the two most natural full-refspec forms walked straight past
+    // the deny (review round 8). Take the half after the last `:`, then its last
+    // path segment -- that is the branch git will actually update.
+    const pushesToProtected = args.some((a) => {
+      if (a.startsWith("-")) return false;
+      const dest = a.includes(":") ? a.slice(a.lastIndexOf(":") + 1) : a;
+      return /(^|\/)(main|master)$/.test(dest);
+    });
+    if (pushesToProtected)
+      return "pushing directly to `main`/`master` is an Ask-before action (CLAUDE.md); push a feature branch and open a PR, or get explicit operator sign-off";
   }
   // 2.5. git branch FORCE-delete (semantic, any flag spelling/order) -- V2-107 senior-review High.
   // The settings deny-list only allows the SAFE `git branch -d` (git refuses on an unmerged
@@ -150,6 +169,93 @@ function checkSegment(seg) {
   if (/^mkfs(\.\w+)?$/.test(cmd)) return "`mkfs` formats a filesystem";
   if (cmd === "dd" && args.some((a) => /^of=\/dev\//.test(a)))
     return "`dd of=/dev/...` overwrites a raw device";
+
+  // ---- red-team R2b (2026-08-17): the gaps the allow-list exposed ----------
+  // This guard covered `rm` but not the many ways to delete without it. The
+  // settings deny-list carries lexical twins for these; prefix patterns are
+  // evadable by spelling, so the semantic check is the real control.
+
+  // 5. `find ... -delete` / `-exec` -- mass deletion, and the route by which
+  // `rm -rf` re-enters after check 1 (`find . -exec rm -rf {} \;`). `find` is
+  // allow-listed in its read-only forms, so this is the backstop that matters.
+  if (cmd === "find") {
+    if (args.includes("-delete"))
+      return "`find -delete` mass-deletes every matching file with no confirmation and no undo; list the matches first (drop `-delete`), then delete deliberately";
+    const execIdx = args.findIndex((a) => a === "-exec" || a === "-execdir" || a === "-ok");
+    if (execIdx !== -1)
+      return `\`find ${args[execIdx]}\` runs an arbitrary command over every match (\`-exec rm -rf {}\` is mass deletion, and reaches rm without tripping the rm check); list the matches first, then act deliberately`;
+  }
+
+  // 6. `shred` -- overwrites in place; strictly less recoverable than rm.
+  if (cmd === "shred")
+    return "`shred` overwrites file contents in place -- unrecoverable even from a backup that reads the same path; use `rm` if deletion is what you mean, or ask the operator";
+
+  // 7. Interpreter one-liners. The guard covered `rm` while `node -e` and
+  // `python3 -c` make `rm` unnecessary. Only the DESTRUCTIVE filesystem calls
+  // are denied -- an interpreter one-liner is an ordinary tool, so a blanket
+  // deny here would be exactly the over-broad rule that trains people to wave
+  // the gate through (see the checkout/restore narrowing above).
+  // The list must name every runner this repo can reach, not just the POSIX classics:
+  // `npx tsx -e`, `bun -e` and `ts-node -e` call `fs.rmSync` exactly as `node -e` does,
+  // and `sh -c` / `bash -c` wrap any of them one level deeper (review round 8).
+  const INTERPRETERS = new Set([
+    "node",
+    "nodejs",
+    "python",
+    "python3",
+    "ruby",
+    "perl",
+    "deno",
+    "bun",
+    "npx",
+    "tsx",
+    "ts-node",
+    "sh",
+    "bash",
+    "zsh",
+  ]);
+  if (INTERPRETERS.has(cmd)) {
+    const inlineIdx = args.findIndex((a) => a === "-e" || a === "-c" || a === "--eval");
+    if (inlineIdx !== -1) {
+      const body = args.slice(inlineIdx + 1).join(" ");
+      const DESTRUCTIVE_CALLS =
+        /\b(rmSync|rmdirSync|unlinkSync|rm\(|rmdir\(|unlink\(|rmtree|removedirs|remove_tree|truncateSync|ftruncate)\b/;
+      if (DESTRUCTIVE_CALLS.test(body))
+        return `\`${cmd} ${args[inlineIdx]}\` calling a filesystem-removal API deletes without touching \`rm\`, so the rm guard never sees it; put the script in a file and run it deliberately, or ask the operator`;
+    }
+  }
+
+  // 8. Destructive subcommands of otherwise-safe tools. A wildcard over a CLI
+  // grants every verb it will ever have -- the R2 lesson. These are deny-listed
+  // lexically too; this survives compounding and flag reordering.
+  if ((cmd === "npx" || cmd === "prisma" || cmd === "pnpm") && args.length) {
+    const verbs = args.filter((a) => !a.startsWith("-"));
+    // Match a VERSION-PINNED or path-qualified spec too, not just the bare word.
+    // `verbs.indexOf("prisma")` returned -1 for `npx prisma@6 migrate reset`, and
+    // the -1 branch then treated the whole arg list as the subcommand -- so sub[0]
+    // was "prisma@6" instead of "migrate" and the destructive verb sailed through.
+    // Pinning a version is the most natural thing an agent does when a command
+    // fails, which made this the likeliest spelling to hit in practice, not the
+    // least (review round 8).
+    const at = verbs.findIndex((v) => /^(?:.*\/)?prisma(?:@[^\s]+)?$/.test(v));
+    const sub = at === -1 ? verbs : verbs.slice(at + 1);
+    if (sub[0] === "migrate" && sub[1] === "reset")
+      return "`prisma migrate reset` DROPS and recreates the database, destroying all data; ask the operator (deny-listed policy)";
+    if (sub[0] === "db" && sub[1] === "execute")
+      return "`prisma db execute` runs arbitrary SQL against the live database (including DROP); ask the operator (deny-listed policy)";
+    if (sub[0] === "db" && sub[1] === "push")
+      return "`prisma db push` rewrites the live schema with no migration record and can drop columns; use `prisma migrate dev` or ask the operator (deny-listed policy)";
+  }
+
+  // 9. `docker compose down -v` -- removes named volumes, i.e. the dev database.
+  if (cmd === "docker" && args[0] === "compose" && args.includes("down")) {
+    const volumes = args.some(
+      (a) => a === "--volumes" || (/^-[a-zA-Z]*v/.test(a) && !a.startsWith("--")),
+    );
+    if (volumes)
+      return "`docker compose down -v` deletes named volumes -- that is the dev database and its data, not just the containers; drop `-v` to stop the stack, or ask the operator";
+  }
+
   return null;
 }
 
@@ -167,6 +273,25 @@ try {
   )
     why = "executing a downloaded script without review runs unreviewed remote code";
   else if (/:\(\)\s*\{\s*:\|:&\s*\}\s*;\s*:/.test(command)) why = "fork bomb";
+  // Interpreter one-liner calling a filesystem-removal API. WHOLE-COMMAND, like
+  // the curl|sh checks above: the segment splitter breaks on `;` `|` `&&` with no
+  // quote awareness, so `python3 -c "import shutil;shutil.rmtree('x')"` is torn in
+  // half and neither piece looks dangerous. Bodies routinely contain separators,
+  // so this pattern spans segments by nature (red-team R2b).
+  else if (
+    /\b(node|nodejs|python3?|ruby|perl|deno)\b[^|;&\n]*\s(-e|-c|--eval)\b/.test(command) &&
+    /\b(rmSync|rmdirSync|unlinkSync|rmtree|removedirs|remove_tree|truncateSync)\b|\b(?:fs|os|shutil|FileUtils)\.\s*(?:rm|rmdir|unlink|remove)\s*\(/.test(
+      command,
+    )
+  )
+    why =
+      "an interpreter one-liner calling a filesystem-removal API deletes without touching `rm`, so the rm guard never sees it; put the script in a file and run it deliberately, or ask the operator";
+  // Bare redirect truncation (`> path` with NO command before it) empties a file
+  // in place. `echo x > path` and friends are ordinary and stay allowed -- only
+  // the commandless form, which is unambiguous truncation, is denied.
+  else if (/(^|[;&|]\s*)>\|?\s*[^\s;&|<>]+\s*$/.test(command))
+    why =
+      "a bare `> file` redirect truncates that file to zero bytes in place; if you mean to replace its contents, write it with the Write tool, or ask the operator";
   else {
     for (const seg of command.split(/(?:\|\||&&|;|\||\n)/)) {
       why = checkSegment(seg);

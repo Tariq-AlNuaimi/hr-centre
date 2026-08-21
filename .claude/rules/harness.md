@@ -21,10 +21,20 @@ self-documenting. Most used: `/quickstart`, `/scaffold-entity`, `/ship`, `/deplo
 - **sre** (sonnet — operational-readiness / observability / runbook / deploy-rollback review).
 
 Route to the tier that fits the work (ADR-022, `docs/token-policy.md`). The permission allowlist
-pre-approves npm/prisma/docker/make/non-destructive git; destructive git ops are deny-listed. The
-SessionStart hook bootstraps `.env`/deps/client and warns when the branch is behind `origin/main`.
-Read access to `.next/`, `node_modules/`, `generated/` is denied — work from source + `lib/`
-types, not build artifacts.
+pre-approves npm/docker/make/non-destructive git and a **verb-scoped** slice of prisma; destructive
+git ops are deny-listed. The SessionStart hook bootstraps `.env`/deps/client and warns when the
+branch is behind `origin/main`. Read access to `.next/`, `node_modules/`, `generated/` is denied —
+work from source + `lib/` types, not build artifacts.
+
+**Every wildcard in `permissions.allow` is a capability grant (red-team R2, 2026-08-17).** A
+wildcard over a CLI grants every subcommand that CLI will ever have — `Bash(npx prisma *)` silently
+granted `migrate reset` (drops the database) and `db execute` (arbitrary SQL). The allowlist is now
+verb-scoped: prisma is limited to `generate` / `migrate dev|deploy|status` / `studio` / `db seed`;
+`find` to read-only forms; `git push` to `claude/*` refspecs; `docker compose down` without flags.
+The destructive verbs are additionally deny-listed **and** covered semantically in
+`dangerous-commands.mjs`, because the deny-list is prefix-lexical and prefix patterns alone are not
+a control. **When you add an allow entry, add the matching semantic check** — that pairing is the
+rule the original design missed.
 
 ## Review rail — CI path & portability (ADR-020)
 
@@ -88,6 +98,25 @@ wall-clock, and wall-clock is Pillar 1 (Speed & Velocity).
   truthful. (Native was _recommended_ in ADR-057; the operator chose the enforced skill.)
 
 ## Memory lifecycle (cross-session durability)
+
+- **Recovering a past session's "missing" work** (moved here from CLAUDE.md, 2026-08-17, to keep
+  the constitution inside its 8KB budget — the rule is unchanged): work a previous session
+  appears to have lost is usually an **unpushed commit**, not lost access. Check
+  `git log --all`, `git reflog`, and the remote branches before concluding anything —
+  **recover it, don't claim "no access."**
+
+### The enforcement quartet is PROCESS, not a control (red-team R6, 2026-08-17)
+
+`CLAUDE.md` used to call the four gates "hard gates". Two of them (`build-vs-buy-gate.mjs`,
+`blueprint-gate.mjs`) fail **OPEN** by ADR-047 design — malformed input returns allow, verified by
+feeding them non-JSON — so a corrupted ledger silently switches the gate off. And the artifact each
+one checks is **agent-writable**: an agent blocked by build-vs-buy can write its own
+`Considered:` ledger entry and proceed. That is intended ("recording the entry _is_ the scan"), but
+it means these gates **prompt deliberation; they cannot stop a determined change**. Evidence: 42
+ledger entries, zero reversals. Treat them as process documentation with a blocking UI. The things
+that actually hold are the security floor — auth wrappers, zod at the boundary, the ESLint rules,
+the audit log, gitleaks, and the fail-CLOSED guards (`dangerous-commands`, `protect-secrets`,
+`bash-write-gate`).
 
 - **In-flight state** → `docs/SESSION-HANDOFF.md` + its data source `docs/session-state.json` —
   **gitignored, local to the machine, never committed anywhere** (changed 2026-07-25). A
