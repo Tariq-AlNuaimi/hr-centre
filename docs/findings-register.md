@@ -44,6 +44,24 @@ the changed surface is still **open** (un-adjudicated).
   green `ship:full` on a machine without Docker does **not** mean the image builds; it means nobody
   asked. That is the correct design — a false RED trains people to ignore the gate — but it does
   mean the green is narrower than it reads.
+  **Largely verified 2026-08-21 (second pass).** The claim that Docker "cannot run here" was
+  itself unverified — the daemon had never been STARTED. `dockerd` comes up fine (29.3.1,
+  overlayfs), the gate then ran for real (117.6s) and went RED, and the RED turned out to be
+  environmental: `SELF_SIGNED_CERT_IN_CHAIN`, because npm inside the build container does not
+  trust the agent proxy's CA. Re-run with the CA injected via a build-context mount (no tracked
+  file changed), the evidence on the actual risk is:
+  - **glibc identical** across the bump — `2.36-9+deb12u14` on both 24.18.0 and 24.19.0.
+  - **OpenSSL identical** — `3.5.7` on both.
+  - **The native-module rebuild SUCCEEDS on 24.19.0**: `[deps 6/6] RUN npm ci && npm rebuild
+@prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver @parcel/watcher` → DONE
+    46.5s, followed by `prisma generate` → DONE 22.5s. That step _is_ the risk this entry named.
+  - **Both collector images pull** — `otel/opentelemetry-collector-contrib` 0.156.0 and 0.159.0.
+    Still not proven: the final image assembly. `npm run build` inside the container fails on
+    `next/font` reaching `fonts.googleapis.com` — egress again, and the same step is green on the
+    host (`ship`'s `build` gate). Closing that needed `docker build --network=host`, which the
+    sandbox's permission classifier denied; not worked around. **So: the named risk is disproven and
+    the entry can most likely be closed, but one CI or /deploy image build should confirm it.**
+
   **Narrowed 2026-08-21:** the `integration` half is now genuinely covered. That gate also used to
   skip here, but only because nobody had tried the native-Postgres path it resolves FIRST; the web
   container turns out to ship a real PostgreSQL 16 (see `docs/agent-memory.md`), so it now runs 6
