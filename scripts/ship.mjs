@@ -1572,7 +1572,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check | repo-map) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1602,6 +1602,7 @@ let [
   duplication,
   coverage,
   skillCheck,
+  repoMap,
 ] = await Promise.all([
   typecheck(),
   // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
@@ -1631,6 +1632,15 @@ let [
   fullOnly("duplication", scanDuplication),
   fullOnly("coverage", scanCoverage),
   fullOnly("skill-check", () => run("skill-check", "node", ["scripts/skill-standard-check.mjs"])),
+  // repo-map drift (2026-08-21). docs/REPO-MAP.md is the "where is X" index every
+  // session reads before non-trivial work, and it went stale TWICE in two days --
+  // once when a cut removed components, once when three lib/ exports were made
+  // module-private. Both times the only signal was an uncommitted modification at
+  // SessionStart, which reads as noise; and both times the stale entries advertised
+  // symbols that had just been deliberately un-exported, so the index argued against
+  // the change that had been made. Warm-loop, because it is a sub-second read and a
+  // stale index misleads the very next session, not just the deploy.
+  run("repo-map", "node", ["scripts/repo-map.mjs", "--check"]),
 ]);
 
 // stale .next/types trap: TS2307 pointing into .next means the build cache is
@@ -1662,6 +1672,7 @@ for (const r of [
   duplication,
   coverage,
   skillCheck,
+  repoMap,
 ])
   report(r);
 if (copy.warn) console.warn(`  note: copy — ${copy.warn}`);
@@ -1693,6 +1704,7 @@ const redA = [
   duplication,
   coverage,
   skillCheck,
+  repoMap,
 ].find((r) => !r.ok);
 if (redA) fail(redA);
 
