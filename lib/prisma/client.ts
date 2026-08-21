@@ -7,4 +7,5 @@ function createBaseClient() {
 }
 
 export { createBaseClient };
+/** @public */
 export type { PrismaClient };

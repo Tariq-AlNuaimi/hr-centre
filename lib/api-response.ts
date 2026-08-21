@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+/** @public */
 export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
@@ -26,6 +27,7 @@ export function forbidden(message = "Forbidden") {
   return err(message, 403);
 }
 
+/** @public */
 export function unauthorized(message = "Unauthorized") {
   return err(message, 401);
 }

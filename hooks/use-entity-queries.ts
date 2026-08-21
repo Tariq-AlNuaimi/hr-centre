@@ -16,7 +16,10 @@ import type { PaginatedResponse } from "@/types";
 // Query-key factory for a REST entity rooted at `basePath` (e.g. "/api/users").
 // Centralizing the keys lets a mutation invalidate exactly the right cache
 // entries instead of every call site re-deriving the shape.
-export function entityKeys(basePath: string) {
+// Module-private: the three hooks below are the public surface, and each derives its
+// own keys through this. Exporting it invited a call site to build a key by hand and
+// drift from what the hooks invalidate -- the exact failure centralizing them prevents.
+function entityKeys(basePath: string) {
   return {
     all: [basePath] as const,
     lists: () => [basePath, "list"] as const,

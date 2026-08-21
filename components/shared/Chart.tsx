@@ -9,6 +9,7 @@
 import dynamic from "next/dynamic";
 import type { ChartProps, ChartType } from "./Chart.impl";
 
+/** @public */
 export type { ChartProps, ChartType };
 
 // `dynamic` erases the generic signature, so re-assert it on the exported binding.
@@ -25,15 +26,19 @@ export const Chart = dynamic(() => import("./Chart.impl").then((m) => m.Chart), 
 // single declarative `Chart`, so callers can pick either style.
 type NamedChartProps<T extends Record<string, unknown>> = Omit<ChartProps<T>, "type">;
 
+/** @public */
 export function LineChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="line" {...props} />;
 }
+/** @public */
 export function BarChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="bar" {...props} />;
 }
+/** @public */
 export function AreaChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="area" {...props} />;
 }
+/** @public */
 export function PieChart<T extends Record<string, unknown>>(props: NamedChartProps<T>) {
   return <Chart type="pie" {...props} />;
 }

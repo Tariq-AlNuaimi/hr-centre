@@ -107,8 +107,3 @@ export async function clearFailedLogins(email: string): Promise<void> {
     /* best-effort: a stale counter expires on its own within the window */
   }
 }
-
-/** Test seam — drops the cached backend so a test can re-evaluate the env. */
-export function __resetLockoutForTests(): void {
-  valkeyLimiter = undefined;
-}

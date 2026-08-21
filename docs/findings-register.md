@@ -35,6 +35,24 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-21 — [scalable/ops] **Docker base image + otel collector merged UNVERIFIED.** #106 landed
+  the node base image at `24.19.0` (was 24.18.0, `Dockerfile`) and
+  `otel/opentelemetry-collector-contrib` at `0.159.0` (was 0.156.0, `compose.prod.yaml`). Neither
+  was exercised. First because `ship:full` was RED at phase A (knip) and never reached phase B; then,
+  once phase A went green, because **the phase-B gates that would cover them SKIP rather than fail
+  without a Docker daemon** — `docker` degrades to a WARN by ADR-030 ("never a false RED") and
+  `integration` runs in SKIP mode with no reachable `DATABASE_URL`. So a green `ship:full` on a
+  machine without Docker does **not** mean the image builds; it means nobody asked. That is the
+  correct design — a false RED trains people to ignore the gate — but it does mean the green is
+  narrower than it reads. Risk is low (patch/minor bumps to a SHA-era pinned base image and a sidecar that
+  is inert unless the observability profile is up) but it is not zero and it is not measured: a base
+  image bump can change the glibc/OpenSSL under Prisma's engines, which is exactly the class of
+  break a build would catch and a unit test would not. **What closes this:** one `npm run ship:full`
+  on a machine with a Docker daemon, reaching phase B green — or the first successful `/docker`
+  build or self-host deploy, whichever comes first. Recorded rather than fixed because the
+  operator merged the bumps deliberately after being told they were unverified. — owner: operator —
+  status: adjudicated(2026-08-21) (accepted: verify at the next ship:full-with-Docker or /deploy)
+
 - 2026-08-17 — [security/harness] `.claude/settings.json` `permissions.allow`/`deny` narrowed
   (red-team R2) — CLAUDE.md requires a register note for any change to the permission arrays. This
   change **narrows** capability rather than widening it: `Bash(npx prisma *)` → verb-scoped

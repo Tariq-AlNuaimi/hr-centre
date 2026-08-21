@@ -34,7 +34,7 @@ tax is the ≤30-line digest, not the whole file.
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
-- **Gotchas — deploy, env & CI** (6): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
+- **Gotchas — deploy, env & CI** (7): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
@@ -125,6 +125,22 @@ tax is the ≤30-line digest, not the whole file.
 ## Gotchas — deploy, env & CI
 
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
+
+- 2026-08-21 — **`ship:full` has an INTERMITTENT phase-A test-gate failure. Do not read a
+  single RED as a regression.** Observed across four consecutive `npm run ship:full` runs on the
+  same clean commit: run 1 failed `contract tests`, run 2 failed `coverage`, runs 3 and 4 failed
+  neither. Both gates pass in isolation (`npm test` → 228+17 pass; the coverage gate's exact
+  command → 213 pass, lines 78.88 / branches 91.54 / funcs 87.50, all above floor), and the
+  failure did NOT reproduce when phase A's eight-way concurrency was replicated by hand.
+  **Unconfirmed hypothesis, recorded as a hypothesis:** phase A runs every gate through one
+  `Promise.all`, and under `SHIP_FULL` the `coverage` gate re-runs `tests/contracts/*.test.ts`
+  _concurrently with_ the `contract tests` gate running the same specs — two node:test processes
+  over one spec set, plus six other gates competing for CPU. That would explain why it alternates
+  between exactly those two gates and never touches the others. NOT proven — do not "fix" it on
+  this theory without reproducing first. **What to do when you hit it:** re-run once; if the same
+  gate fails twice running, it is real. If you want to settle it, the cheap experiment is to
+  serialise those two gates and see whether the flake disappears over ~10 runs. The operator's
+  standing call (2026-08-21) is RECORD, don't chase.
 
 - 2026-07-11 — **gitleaks is NOT preinstalled in the web container; `/ship` phase B goes
   RED ("gitleaks is not on PATH") until you reinstall it EACH session.** The GitHub release
