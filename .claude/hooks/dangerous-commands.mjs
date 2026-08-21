@@ -70,6 +70,32 @@ const INLINE_RUNNER_ALT = INLINE_RUNNERS.map((r) => r.replace(/[.*+?^${}()|[\]\\
   "|",
 );
 
+// Does an inline one-liner BODY call a filesystem-removal API?
+//
+// This used to OR two independent whole-command regexes: "a runner with -e/-c appears
+// somewhere" AND "a removal call appears somewhere". Widening the runner list to include
+// sh/bash/zsh made that combination fire on ordinary work -- `grep -n "os.remove(" x.py
+// && sh -e ./run-tests.sh` was DENIED, because the grep pattern supplied the removal
+// text and the unrelated `sh -e` supplied the runner. On a guard with no tiering and no
+// override, that is a hard block on an everyday command, which is precisely the
+// over-broad denial that teaches operators to route around the gate.
+//
+// So bind the two together: find the runner's inline flag, take the QUOTED BODY that
+// follows, and look for the removal call only inside it. That keeps the whole-command
+// check doing its actual job (a body containing `;` or `&&` is torn apart by the
+// quote-unaware segment splitter, so it must be examined whole) without letting text
+// from an unrelated segment stand in for the body.
+const DESTRUCTIVE_CALLS =
+  /\b(rmSync|rmdirSync|unlinkSync|rmtree|removedirs|remove_tree|truncateSync)\b|\b(?:fs|os|shutil|FileUtils)\.\s*(?:rm|rmdir|unlink|remove)\s*\(/;
+function hasDestructiveInlineBody(command) {
+  const re = new RegExp(
+    `\\b(?:${INLINE_RUNNER_ALT})\\b[^|;&\\n]*?\\s(?:-e|-c|--eval)\\s+(['"\`])([\\s\\S]*?)\\1`,
+    "g",
+  );
+  for (const m of command.matchAll(re)) if (DESTRUCTIVE_CALLS.test(m[2])) return true;
+  return false;
+}
+
 function checkSegment(seg) {
   const tokens = seg.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return null;
@@ -296,12 +322,7 @@ try {
   // quote awareness, so `python3 -c "import shutil;shutil.rmtree('x')"` is torn in
   // half and neither piece looks dangerous. Bodies routinely contain separators,
   // so this pattern spans segments by nature (red-team R2b).
-  else if (
-    new RegExp(`\\b(?:${INLINE_RUNNER_ALT})\\b[^|;&\\n]*\\s(?:-e|-c|--eval)\\b`).test(command) &&
-    /\b(rmSync|rmdirSync|unlinkSync|rmtree|removedirs|remove_tree|truncateSync)\b|\b(?:fs|os|shutil|FileUtils)\.\s*(?:rm|rmdir|unlink|remove)\s*\(/.test(
-      command,
-    )
-  )
+  else if (hasDestructiveInlineBody(command))
     why =
       "an interpreter one-liner calling a filesystem-removal API deletes without touching `rm`, so the rm guard never sees it; put the script in a file and run it deliberately, or ask the operator";
   // Bare redirect truncation (`> path` with NO command before it) empties a file
