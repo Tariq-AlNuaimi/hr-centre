@@ -134,8 +134,19 @@ export async function rateLimit(req: Request, opts: RateLimitOptions): Promise<R
     opts,
   );
   if (ipResult.ok && subjectResult.ok) return ipResult;
+  // Report the LATER reset, not whichever bucket was checked first. Taking the IP
+  // bucket's `retryAfter` whenever both denied under-reported: a caller who waited
+  // exactly that long was still refused by the subject bucket, so the Retry-After
+  // header sent them back into a second 429 (senior review, uncertain-item U3,
+  // 2026-08-21). Both buckets share `windowMs`, but not their start times -- the
+  // subject bucket accumulates across IPs, so the two desync in exactly the case the
+  // subject bucket exists for.
   const denied = !ipResult.ok ? ipResult : subjectResult;
-  return { ...denied, remaining: Math.min(ipResult.remaining, subjectResult.remaining) };
+  return {
+    ...denied,
+    remaining: Math.min(ipResult.remaining, subjectResult.remaining),
+    retryAfter: Math.max(ipResult.retryAfter, subjectResult.retryAfter),
+  };
 }
 
 /** Consume one unit from a single fully-qualified bucket key. */

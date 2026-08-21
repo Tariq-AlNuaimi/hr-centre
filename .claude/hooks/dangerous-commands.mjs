@@ -99,6 +99,13 @@ function checkSegment(seg) {
       return "`git push --force` rewrites remote history (deny-listed policy; use a new branch instead)";
     if (args.some((a) => /^\+\S/.test(a)))
       return "`git push +<ref>` is a force push by refspec (rewrites remote history)";
+    // `--all` / `--mirror` push EVERY local branch, main included, without ever naming
+    // it -- so the destination check below (which inspects ref tokens) never sees it.
+    // Confirmed allowed before this line existed (senior review, uncertain-item U1,
+    // settled by execution 2026-08-21). `--mirror` additionally deletes remote refs that
+    // are absent locally, which is a force-push-shaped operation in its own right.
+    if (args.some((a) => a === "--all" || a === "--mirror"))
+      return "`git push --all` / `--mirror` pushes EVERY branch including `main` without naming it -- pushing to `main` is an Ask-before action (CLAUDE.md); push the one branch you mean";
     // Direct push to the protected branch. CLAUDE.md's Ask-before list already
     // names this ("pushing to `main` directly when branch protection is on"), but
     // the ALLOW-list auto-approved `Bash(git push *)` -- so the machine permitted
