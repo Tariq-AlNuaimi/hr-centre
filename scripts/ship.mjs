@@ -1777,50 +1777,6 @@ if (FULL) {
     : { name: "license:sbom", ok: true, out: "retired from the default rail (A4)", secs: 0 };
   report(sbomLicense);
   if (!sbomLicense.ok) fail(sbomLicense);
-
-  // Design-system parity gate (browser tier, folded into the FULL loop). The warm loop
-  // enforces the SOURCE invariants browser-free (phase A contract tests →
-  // tests/contracts/design-system-drift.test.ts); THIS runs the RENDERED parity spec
-  // (tests/uat/design-system.uat.ts) against the real app — mounts-clean, computed-hex,
-  // hover changes paint, [data-theme] flips --background, axe both themes, ≤1.5%
-  // visual-diff vs the committed baseline. App-dependent, so it DEGRADES to a skip when
-  // no app can run (no DATABASE_URL / no admin creds) — exactly like the docker + integration
-  // gates above — and is RED only on a genuine parity failure where an app COULD run.
-  console.log(
-    "ship: phase B (full) -- design-parity (rendered showcase: mount/hover/dark/axe/visual, V2-301) ...",
-  );
-  // Degrade on REACHABILITY, not env-presence: a bare ship:full may carry
-  // DATABASE_URL + SEED_ADMIN_* in .env yet have no app actually serving, which
-  // would false-RED. So probe the target app; only run when it truly answers AND
-  // admin creds exist (auth.setup needs them). No reachable app / no creds ->
-  // honest SKIP-WARN, exactly like the docker + integration gates. This never
-  // starts a server itself; CI/deploy brings the app up (or points UAT_BASE_URL
-  // at a preview) before the full loop, and the spec reuses it.
-  const parityBase = process.env.UAT_BASE_URL ?? "http://localhost:3000";
-  const parityCreds = Boolean(
-    (process.env.UAT_EMAIL || process.env.SEED_ADMIN_EMAIL) &&
-    (process.env.UAT_PASSWORD || process.env.SEED_ADMIN_PASSWORD),
-  );
-  let parityReachable = false;
-  try {
-    const r = await fetch(parityBase, { signal: AbortSignal.timeout(2500), redirect: "manual" });
-    parityReachable = r.status > 0;
-  } catch {
-    parityReachable = false;
-  }
-  if (!parityReachable || !parityCreds) {
-    const why = !parityReachable ? `no app answering at ${parityBase}` : "no admin creds";
-    console.warn(
-      `  note: design-parity -- skipped (${why}). The rendered hover/dark/axe/visual-diff checks\n` +
-        "  did NOT run here; they run in `/qa`, `npm run uat`, and CI/deploy where the app is up\n" +
-        "  (set UAT_BASE_URL to a preview, or start the app + seed an admin). The design-system\n" +
-        "  SOURCE invariants DID run in phase A (contract tests: design-system-drift).",
-    );
-  } else {
-    const parity = await run("design-parity", "npm", ["run", "design-parity"]);
-    report(parity);
-    if (!parity.ok) fail(parity);
-  }
 }
 
 // Record the green-for-HEAD signal the auto-spawn guard trusts (session-automation

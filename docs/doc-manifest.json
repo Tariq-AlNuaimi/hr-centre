@@ -4,8 +4,8 @@
   "roots": ["docs", "."],
   "rules": [
     {
-      "match": "docs/archive/**",
-      "audience": "template-dev",
+      "glob": "docs/archive/**",
+      "inheritance": "template-dev",
       "why": "Resolved findings/ledger history for THIS template. A fork inheriting it would start life owning another project's closed decisions (C4, 2026-08-17)."
     },
     {

@@ -1,0 +1,36 @@
+{
+  "_comment": [
+    "OPT-IN, PER-FORK plugin enablement (red-team R5). Copy this file to",
+    ".claude/settings.local.json -- which is gitignored -- to turn the plugins on for",
+    "YOUR checkout. It is deliberately not committed: `enabledPlugins` plus",
+    "`extraKnownMarketplaces` makes every fork of this template fetch and run code from",
+    "third-party GitHub repos at session start, with no one having chosen that. A fork",
+    "operator opting in is a decision; a fork operator inheriting it is a supply chain.",
+    "",
+    "Pin the marketplace refs before trusting them. `source.repo` tracks the default",
+    "branch, so what you run is whatever those repos hold the day your session starts.",
+    "CLAUDE.md routes real multi-file features through Superpowers (brainstorm -> spec ->",
+    "plan -> TDD); with the plugin off, the built-in /blueprint + writing-plans path",
+    "covers the same ground.",
+    "",
+    "Remove this _comment key in your own copy -- it is documentation, not settings."
+  ],
+  "extraKnownMarketplaces": {
+    "claude-code-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-code"
+      }
+    },
+    "superpowers": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-code-plugins": true,
+    "superpowers@superpowers": true
+  }
+}

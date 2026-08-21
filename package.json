@@ -53,7 +53,7 @@
     "audit:warn": "npm audit --audit-level=moderate || true",
     "test:coverage": "node --experimental-test-coverage --import tsx --test tests/contracts/*.test.ts",
     "prepare": "husky",
-    "uat:full": "playwright test tests/uat --grep @full",
+    "uat:full": "UAT_MODE=full playwright test",
     "uat:recommend": "node scripts/uat-recommend.mjs",
     "uat:benchmark": "node scripts/uat-benchmark.mjs"
   },

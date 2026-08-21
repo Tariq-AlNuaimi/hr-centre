@@ -23,3 +23,20 @@
 /.github/CODEOWNERS                   @Tariq-AlNuaimi
 /docs/decisions/                      @Tariq-AlNuaimi
 /vercel.json                          @Tariq-AlNuaimi
+
+# Agent trust boundary (red-team R4). These are not ordinary docs: they are
+# injected into every agent session as context, and they reach forks. A commit
+# that changes them can plant standing instructions for every future session in
+# every fork -- the only vector in this repo with worm-like propagation, and it
+# needs only a merged PR. Review them like lib/auth.ts, not like a README.
+/docs/agent-memory.md                 @Tariq-AlNuaimi
+/.claude/settings.json                @Tariq-AlNuaimi
+/.claude/hooks/                       @Tariq-AlNuaimi
+# The path-scoped rule files live in docs/rules/ -- they moved OUT of .claude/
+# precisely because .claude/** is auto-loaded, and the move would otherwise have
+# dropped them off this list. Still injected by the rules-injection hook, so
+# still the boundary this block protects: the location changed, the threat did
+# not. The .claude/rules/ line stays as a tripwire in case anything is put back.
+/docs/rules/                          @Tariq-AlNuaimi
+/.claude/rules/                       @Tariq-AlNuaimi
+/AGENTS.md                            @Tariq-AlNuaimi

@@ -40,7 +40,7 @@ Every change is judged against five pillars (full definitions in `docs/uat-rubri
 ## Hard rules
 
 - **The Five Pillars are gates, not vibes** (above): unfixed concern → **wave-off in `docs/findings-register.md`**, `/ship` RED until adjudicated. Never silently dropped.
-- **The enforcement quartet — hard gates:** build-vs-buy (ADR-032), blueprint (ADR-033), complexity (ADR-034), ai-eval (ADR-036/042). Each = a gate + a committed adjudication artifact; a new gated file (`lib/**`, `app/api/**/route.ts`, `app/**/page.tsx`) or over-budget file is **denied/RED** until its ledger/blueprint/ack entry exists (Bash writes too). Mechanism in `docs/rules/harness.md`.
+- **The enforcement quartet — process gates, NOT controls:** build-vs-buy (ADR-032), blueprint (ADR-033), complexity (ADR-034), ai-eval (ADR-036/042). Each = a gate + a committed adjudication artifact; a new gated file (`lib/**`, `app/api/**/route.ts`, `app/**/page.tsx`) or over-budget file is **denied/RED** until its ledger/blueprint/ack entry exists (Bash writes too). They fail open; the security floor below is what holds. Mechanism in `docs/rules/harness.md`.
 - **Never commit `.env`** (Restricted; SECURITY.md §1; gitleaks gates every push). **Never log** any Restricted env var (`no-secret-env-in-console`; `lib/email.ts` logs metadata only — never `opts.text`/`opts.html`).
 - **Go through Prisma.** No raw SQL except `$queryRaw`/`$executeRaw` with placeholders; never `$executeRawUnsafe` on user input; no `SELECT *`; no raw UPDATE/DELETE without WHERE. Audit/soft-delete/SCRUB_FIELDS/naming in `docs/rules/prisma.md`.
 - **UI → API route → service → Prisma.** Only server components and API routes touch `prisma` (`no-prisma-in-client`).
