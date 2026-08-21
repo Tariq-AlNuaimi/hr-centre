@@ -1,5 +1,7 @@
 # ADR-028 — Enterprise design-system overhaul + optional Arabic/RTL
 
+> **PARTIALLY SUPERSEDED by [ADR-029](ADR-029-ui-replatform-antd-to-tailwind-shadcn.md)** — Part 2's AntD-specific layers (`antd-theme.ts`, per-component AntD token overrides) are superseded. Part 1 (optional Arabic/RTL) still stands.
+
 **Status:** Part 1 (optional Arabic/RTL) remains Accepted. Part 2's **AntD-specific layers**
 (`antd-theme.ts`, per-component AntD token overrides) **superseded by ADR-029** (2026-07-02);
 Part 2's concepts (brand contract, chrome, branded HOCs, living style guide) survive and are

@@ -1,62 +1,20 @@
 # AGENTS.md — cross-tool AI-assistant pointer
 
-This file orients **any** AI coding assistant (Cursor, GitHub Copilot, Windsurf,
-Aider, etc.) working in this repository. It is a pointer, not the source of truth.
+Orients **any** AI coding assistant (Cursor, Copilot, Windsurf, Aider, …) in this repo.
+This file is a pointer only — it deliberately restates **nothing**, so there is exactly one
+copy of every rule and no chance of a stale duplicate.
 
-## Authoritative rules live elsewhere — read them first
+- [`CLAUDE.md`](./CLAUDE.md) — **the contract.** Stack, hard rules (auth wrappers, Prisma-only
+  data access, zod at every boundary, no secrets in logs/commits, audit invariants), the five
+  pillars, the "Ask before" list, project tiers.
+- [`SECURITY.md`](./SECURITY.md) — data classification, authz model, threat model, secrets
+  handling, findings register.
+- `docs/rules/*.md` — path-scoped detail (Prisma · API routes · UI · deploy · AI · harness).
+  Read the file matching what you are editing; its frontmatter `globs:` says which paths it covers.
+- [`docs/REPO-MAP.md`](./docs/REPO-MAP.md) — "where is X".
 
-- [`CLAUDE.md`](./CLAUDE.md) — the full project rules: stack, hard rules, "ask
-  before" list, commands, known traps. **This is the contract.**
-- [`SECURITY.md`](./SECURITY.md) — data classification, auth/authorization model,
-  audit invariants, secrets, threat model, findings register.
+Read `CLAUDE.md` before non-trivial work. Run `npm run ship` before every push; do not push red.
+After pushing code, run the post-push breadth review (`.claude/agents/senior-code-reviewer.md`,
+ADR-020; CI path `.github/workflows/senior-review.yml`).
 
-If anything here conflicts with `CLAUDE.md` / `SECURITY.md`, those files win.
-
-## Top hard rules (summary — see `CLAUDE.md` for the full text)
-
-- **Auth wrappers on every API route.** Wrap each handler with one of
-  `withAuth` / `withAdminAuth` / `withEditorAuth` / `withInternalAuth` /
-  `withApiAuth` from `lib/api-helpers.ts`; compose `withRateLimit` outside the
-  auth wrapper to throttle. Never ship a bare route handler.
-- **Go through Prisma.** No raw SQL except `prisma.$queryRaw` with parameter
-  placeholders; never `$executeRawUnsafe` on user input. UI → API route →
-  service → Prisma. Only server components and API routes touch `prisma`.
-- **Validate at the API boundary with zod.** Schemas live in `lib/validations/`.
-- **Never log or commit secrets.** No Restricted env var (`*SECRET*`,
-  `*PASSWORD*`, `*TOKEN*`, `*KEY*`, `passwordHash`, …) in logs; never commit
-  `.env`. gitleaks gates every push.
-- **Audit is automatic.** The Prisma audit extension records every per-row
-  `create` / `update` / `delete` outside the EXCLUDE set. Don't add models to
-  that set without an ADR. Note: bulk `updateMany` / `createMany` and `upsert`
-  are NOT auto-audited (Prisma doesn't decompose `upsert` into create/update the
-  extension can see) — loop per-row or write an explicit `recordAudit()` row (see
-  ADR-010 / SECURITY.md §5).
-- **Soft-delete is opt-in** and must be wired in lockstep with the model.
-- **Never cast `session` to `any`** — `session.user.role` is already typed `Role`.
-- **Run `/ship` before every push** (typecheck → lint → tests → component tests →
-  build → gitleaks → npm audit). Do not push on a red `/ship`.
-
-<!-- BEGIN senior-code-review (managed) -->
-
-## Mandatory: senior code review (post-push)
-
-Every push of code MUST be followed by a senior-code-reviewer pass. It is the
-**async, post-push breadth review** — it catches cross-cutting invariant gaps,
-threat-model holes, and operational drift that a fast diff review misses.
-
-- **CI (preferred):** `.github/workflows/senior-review.yml` runs it on PRs and
-  posts findings. Non-blocking — it never delays your push. Activate by setting
-  the `ANTHROPIC_API_KEY` secret and restoring the triggers in that file.
-- **In-session fallback (when CI is off):** after pushing, invoke the
-  `senior-code-reviewer` agent on the change before considering the work done.
-
-This does NOT replace your pre-push checks (`/ship` + the `/code-review` diff
-gate). It layers on top: fast diff gate before push, breadth review after. See
-ADR-020 and `tools/senior-review/README.md`.
-<!-- END senior-code-review (managed) -->
-
-## When in doubt
-
-Stop and ask. The "Ask before" section of `CLAUDE.md` lists changes (auth, schema,
-`lib/` internals, role enum, new public routes, dependency adds) that require
-explicit sign-off before you make them.
+When in doubt, stop and ask — see the "Ask before" section of `CLAUDE.md`.

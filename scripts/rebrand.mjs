@@ -67,7 +67,29 @@ async function pruneDocsMode({ apply = false, dryRun = false } = {}) {
     );
     process.exit(1);
   }
-  const rules = (manifest.rules ?? []).map((r) => ({ ...r, re: globToRegExp(r.glob) }));
+  // Validate before compiling. A rule with a mistyped key (`match`/`audience`
+  // instead of `glob`/`inheritance`) used to reach globToRegExp as undefined and
+  // die with a raw TypeError stack -- on the fork-creation path, where the person
+  // reading it is setting up their first project and has no reason to know this
+  // file exists. Name the offending rule and what it is missing instead.
+  const malformed = (manifest.rules ?? [])
+    .map((r, i) => ({ i, r }))
+    .filter(({ r }) => typeof r?.glob !== "string" || typeof r?.inheritance !== "string");
+  if (malformed.length > 0) {
+    console.error("ERROR: docs/doc-manifest.json has malformed rule(s). Each needs a string");
+    console.error('`glob` and a string `inheritance` ("fork" | "template-dev").');
+    for (const { i, r } of malformed) {
+      const missing = [
+        typeof r?.glob !== "string" ? "glob" : null,
+        typeof r?.inheritance !== "string" ? "inheritance" : null,
+      ].filter(Boolean);
+      console.error(
+        `  rules[${i}]: missing/non-string ${missing.join(" + ")} -- ${JSON.stringify(r)}`,
+      );
+    }
+    process.exit(1);
+  }
+  const rules = manifest.rules.map((r) => ({ ...r, re: globToRegExp(r.glob) }));
 
   // Collect every doc: all of docs/** plus the root-level HARNESS-V2-*.md program files.
   const files = [];

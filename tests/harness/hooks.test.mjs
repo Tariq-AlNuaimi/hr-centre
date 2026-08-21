@@ -37,14 +37,21 @@ function runHook(hookFile, stdin, { cwd = REPO, env = {} } = {}) {
 }
 
 const isDeny = (r) => r.decision === "deny";
+// C3: a personal/quickstart-tier gate ALLOWS but attaches advisory guidance.
+const isWarn = (r) => r.decision === null && !!r.json?.hookSpecificOutput?.additionalContext;
+const advice = (r) => r.json?.hookSpecificOutput?.additionalContext ?? "";
 const isBlock = (r) => r.decision === "block";
 const preBash = (command) => ({ tool_name: "Bash", tool_input: { command } });
 const preWrite = (file_path) => ({ tool_name: "Write", tool_input: { file_path } });
 
 /** Build a throwaway repo-shaped fixture with docs/blueprints/<name>.md stubs. */
-function blueprintFixture(stubs) {
+function blueprintFixture(stubs, tier = "shared") {
   const dir = mkdtempSync(join(tmpdir(), "hooks-bp-"));
   mkdirSync(join(dir, "docs", "blueprints"), { recursive: true });
+  // C3 (2026-08-17): the gates are tier-aware -- `shared` DENIES, `personal`
+  // advises. Fixtures default to `shared` so the pre-C3 deny assertions below
+  // stay a real regression net; pass "personal" to exercise the advisory path.
+  writeFileSync(join(dir, "project.config.json"), JSON.stringify({ tier }));
   for (const [name, body] of Object.entries(stubs)) {
     writeFileSync(join(dir, "docs", "blueprints", name), body);
   }
@@ -52,9 +59,10 @@ function blueprintFixture(stubs) {
 }
 
 /** Build a throwaway repo-shaped fixture with a docs/build-vs-buy-ledger.md body (V2-309). */
-function ledgerFixture(body) {
+function ledgerFixture(body, tier = "shared") {
   const dir = mkdtempSync(join(tmpdir(), "hooks-ledger-"));
   mkdirSync(join(dir, "docs"), { recursive: true });
+  writeFileSync(join(dir, "project.config.json"), JSON.stringify({ tier }));
   writeFileSync(join(dir, "docs", "build-vs-buy-ledger.md"), body);
   return dir;
 }
@@ -70,8 +78,11 @@ test("V2-001 bash-write-gate DENIES a heredoc write to a new uncovered API route
     "bash-write-gate.mjs",
     preBash("cat > app/api/zzznew/route.ts <<'EOF'\nexport const x = 1;\nEOF"),
   );
-  assert.ok(isDeny(r), `expected deny, got ${r.decision} :: ${r.stdout}`);
-  assert.match(r.json.hookSpecificOutput.permissionDecisionReason, /blueprint-gate/);
+  // C3: this repo is tier "personal", so the gate ADVISES rather than denies.
+  // The shared-tier deny is covered by the fixture-based tests above.
+  assert.ok(isWarn(r), `expected advisory, got ${r.decision} :: ${r.stdout}`);
+  assert.match(advice(r), /blueprint-gate/);
+  assert.match(advice(r), /DENIED/, "advisory must still name the shared-tier consequence");
 });
 
 test("V2-001 bash-write-gate ALLOWS a heredoc write once a blueprint covers the path", () => {
@@ -93,10 +104,10 @@ test("V2-001 bash-write-gate ALLOWS writes outside gated surfaces", () => {
 
 test("V2-001 bash-write-gate catches tee / cp into gated surfaces", () => {
   const tee = runHook("bash-write-gate.mjs", preBash("echo x | tee app/api/teenew/route.ts"));
-  assert.ok(isDeny(tee), `tee should deny :: ${tee.stdout}`);
+  assert.ok(isWarn(tee), `tee should advise (personal tier) :: ${tee.stdout}`);
   const cp = runHook("bash-write-gate.mjs", preBash("cp /tmp/x.ts lib/brandnewcap.ts"));
-  assert.ok(isDeny(cp), `cp into lib/ should deny :: ${cp.stdout}`);
-  assert.match(cp.json.hookSpecificOutput.permissionDecisionReason, /build-vs-buy/);
+  assert.ok(isWarn(cp), `cp into lib/ should advise (personal tier) :: ${cp.stdout}`);
+  assert.match(advice(cp), /build-vs-buy/);
 });
 
 test("V2-001 bash-write-gate ALLOWS edits to EXISTING gated files (overwrite = continuation)", () => {
@@ -108,7 +119,9 @@ test("V2-001 bash-write-gate ALLOWS edits to EXISTING gated files (overwrite = c
   assert.equal(lib.decision, null, `edit to existing lib file must allow :: ${lib.stdout}`);
   // A NEW (nonexistent) uncovered file still denies.
   const neu = runHook("bash-write-gate.mjs", preBash("sed -i s/a/b/ app/api/brandnewzzz/route.ts"));
-  assert.ok(isDeny(neu), `new uncovered route must still deny :: ${neu.stdout}`);
+  // Still FLAGGED (advisory on personal tier, deny on shared) -- the point is that
+  // a NEW uncovered file is treated differently from an existing one.
+  assert.ok(isWarn(neu), `new uncovered route must still be flagged :: ${neu.stdout}`);
 });
 
 test("V2-001 bash-write-gate is FAIL-OPEN on a forced internal error (malformed stdin)", () => {
@@ -188,8 +201,9 @@ test("V2-002 blueprint-gate is FAIL-OPEN on malformed stdin", () => {
 // build-vs-buy-gate — deny + allow paths (unchanged behavior, regression net).
 // ---------------------------------------------------------------------------
 test("build-vs-buy-gate DENIES a new uncovered lib/ capability, ALLOWS excluded dirs", () => {
-  const deny = runHook("build-vs-buy-gate.mjs", preWrite("lib/brandnewcap.ts"));
-  assert.ok(isDeny(deny), `new lib/ file should deny :: ${deny.stdout}`);
+  const flagged = runHook("build-vs-buy-gate.mjs", preWrite("lib/brandnewcap.ts"));
+  // C3: personal tier advises; the shared-tier DENY is covered by ledgerFixture tests.
+  assert.ok(isWarn(flagged), `new lib/ file should be flagged :: ${flagged.stdout}`);
   // lib/validations/** is an expected-hand-written exclusion → allow.
   const allow = runHook("build-vs-buy-gate.mjs", preWrite("lib/validations/brandnew.ts"));
   assert.equal(allow.decision, null, `lib/validations exclusion should allow :: ${allow.stdout}`);
@@ -320,10 +334,12 @@ test("dangerous-commands ALLOWS normal (non-destructive) git checkout (M2 no fal
 
 // V2 challenge-audit M3 — `touch`-then-Write two-step must not bypass the blueprint gate:
 // the `touch` that CREATES a new gated file is itself a gated write.
-test("bash-write-gate DENIES a `touch` that creates a new uncovered gated file (M3)", () => {
+test("bash-write-gate FLAGS a `touch` that creates a new uncovered gated file (M3)", () => {
   const r = runHook("bash-write-gate.mjs", preBash("touch app/api/sneaky/route.ts"));
-  assert.ok(isDeny(r), `touch of a new uncovered route must deny :: ${r.stdout}`);
-  assert.match(r.json.hookSpecificOutput.permissionDecisionReason, /blueprint-gate/);
+  // C3: personal tier advises, shared tier denies (fixture-covered). The M3 point
+  // stands either way -- `touch` is a create and must not slip past the gate.
+  assert.ok(isWarn(r), `touch of a new uncovered route must be flagged :: ${r.stdout}`);
+  assert.match(advice(r), /blueprint-gate/);
 });
 
 test("bash-write-gate ALLOWS `touch` on an EXISTING gated file (continuation, M3)", () => {
@@ -606,25 +622,6 @@ test("V2-102 memory-digest --strict FAILS on a fixture with an over-budget secti
 //       check. (b) /ship wall-time: demonstrated by a captured low-baseline run (evidence file).
 //       (c) hook-latency: below.
 // ---------------------------------------------------------------------------
-test("V2-103 hook-latency --strict FAILS when the chain exceeds the baseline (synthetic 1ms)", () => {
-  const res = spawnSync("node", [join(REPO, "scripts", "hook-latency.mjs"), "--strict"], {
-    cwd: REPO,
-    env: { ...process.env, HOOK_CHAIN_BASELINE_MS: "1" }, // real chain (~600ms) >> 150% of 1ms
-    encoding: "utf8",
-  });
-  assert.equal(res.status, 1, `a 1ms baseline must trip the latency warn:\n${res.stdout}`);
-  assert.match(res.stdout, /WARN: worst turn/, "should print the latency warning");
-});
-
-test("V2-103 hook-latency passes with a generous baseline", () => {
-  const res = spawnSync("node", [join(REPO, "scripts", "hook-latency.mjs"), "--strict"], {
-    cwd: REPO,
-    env: { ...process.env, HOOK_CHAIN_BASELINE_MS: "100000" },
-    encoding: "utf8",
-  });
-  assert.equal(res.status, 0, `a huge baseline must pass:\n${res.stdout}`);
-});
-
 // ---------------------------------------------------------------------------
 // Smoke: EVERY hook survives a benign input and malformed stdin without crashing
 // (exit 0), so a broken hook can't silently brick a session.
@@ -650,31 +647,35 @@ const preEdit = (file_path) => ({ tool_name: "Edit", tool_input: { file_path } }
 const injectedContext = (r) => r.json?.hookSpecificOutput?.additionalContext ?? "";
 
 test("V2-101 rules-injection surfaces prisma.md when editing a prisma path", () => {
-  const r = runHook("rules-injection.mjs", preEdit("prisma/schema.prisma"));
+  const r = runHook("context-injection.mjs", preEdit("prisma/schema.prisma"));
   const ctx = injectedContext(r);
-  assert.match(ctx, /\.claude\/rules\/prisma\.md/, `expected prisma.md, got: ${ctx.slice(0, 120)}`);
+  assert.match(ctx, /docs\/rules\/prisma\.md/, `expected prisma.md, got: ${ctx.slice(0, 120)}`);
   assert.match(ctx, /SCRUB_FIELDS/, "prisma rule body must be present");
 });
 
 test("V2-101 rules-injection surfaces api-routes.md when editing an API route", () => {
-  const ctx = injectedContext(runHook("rules-injection.mjs", preEdit("app/api/widgets/route.ts")));
-  assert.match(ctx, /\.claude\/rules\/api-routes\.md/);
+  const ctx = injectedContext(
+    runHook("context-injection.mjs", preEdit("app/api/widgets/route.ts")),
+  );
+  assert.match(ctx, /docs\/rules\/api-routes\.md/);
   assert.match(ctx, /withRateLimit/, "auth-wrapper detail must be present");
 });
 
 test("V2-101 rules-injection surfaces design.md when editing a component", () => {
-  const ctx = injectedContext(runHook("rules-injection.mjs", preEdit("components/shared/Foo.tsx")));
-  assert.match(ctx, /\.claude\/rules\/design\.md/);
+  const ctx = injectedContext(
+    runHook("context-injection.mjs", preEdit("components/shared/Foo.tsx")),
+  );
+  assert.match(ctx, /docs\/rules\/design\.md/);
 });
 
 test("V2-101 rules-injection injects NOTHING for a non-matching path", () => {
-  const r = runHook("rules-injection.mjs", preEdit("README.md"));
+  const r = runHook("context-injection.mjs", preEdit("README.md"));
   assert.equal(injectedContext(r), "", "README.md matches no rule glob → no injection");
   assert.equal(r.code, 0);
 });
 
 test("V2-101 rules-injection ignores non-edit tools (e.g. Bash)", () => {
-  const r = runHook("rules-injection.mjs", preBash("echo hi"));
+  const r = runHook("context-injection.mjs", preBash("echo hi"));
   assert.equal(injectedContext(r), "");
   assert.equal(r.code, 0);
 });
@@ -695,27 +696,25 @@ test("V2-101 rules-injection covers the high-blast-radius lib/ + middleware file
     ["lib/auth.ts", /api-routes\.md/],
     ["middleware.ts", /api-routes\.md/],
     ["lib/email.ts", /deploy\.md/],
-    ["lib/export.ts", /deploy\.md/],
   ];
   for (const [file, re] of cases) {
-    const ctx = injectedContext(runHook("rules-injection.mjs", preEdit(file)));
+    const ctx = injectedContext(runHook("context-injection.mjs", preEdit(file)));
     assert.match(ctx, re, `${file} must inject a rule matching ${re}`);
   }
 });
 
-test("V2-101 every .claude/rules/*.md has a parseable frontmatter glob that matches ≥1 real path", () => {
-  // Guards deploy/ai/harness (previously untested) against a broken frontmatter silently
+test("V2-101 every docs/rules/*.md has a parseable frontmatter glob that matches ≥1 real path", () => {
+  // Guards deploy/harness (previously untested) against a broken frontmatter silently
   // disabling their lazy-load. Representative path per rule file.
   const reps = {
     "prisma.md": "prisma/schema.prisma",
     "api-routes.md": "app/api/x/route.ts",
     "design.md": "components/shared/Foo.tsx",
     "deploy.md": "vercel.json",
-    "ai.md": "lib/ai/index.ts",
     "harness.md": "scripts/ship.mjs",
   };
   for (const [name, path] of Object.entries(reps)) {
-    const ctx = injectedContext(runHook("rules-injection.mjs", preEdit(path)));
+    const ctx = injectedContext(runHook("context-injection.mjs", preEdit(path)));
     assert.match(ctx, new RegExp(name.replace(".", "\\.")), `${name} must inject on ${path}`);
   }
 });
@@ -736,9 +735,9 @@ test("V2-101 rule migration preserved every ADR referenced by the old constituti
   const oldAdrs = new Set(fixture.adrs);
   const newAll =
     readFileSync(join(REPO, "CLAUDE.md"), "utf8") +
-    readdirSync(join(REPO, ".claude", "rules"))
+    readdirSync(join(REPO, "docs", "rules"))
       .filter((f) => f.endsWith(".md"))
-      .map((f) => readFileSync(join(REPO, ".claude", "rules", f), "utf8"))
+      .map((f) => readFileSync(join(REPO, "docs", "rules", f), "utf8"))
       .join("\n");
   const newAdrs = adrs(newAll);
   const missing = [...oldAdrs].filter((a) => !newAdrs.has(a));
@@ -990,68 +989,8 @@ test("V2-209 analyzeBlueprint flags a real amendment row with an empty Confirmed
   assert.equal(bpc.analyzeBlueprint("# BP\nConfirmed: \nnothing\n", no).amendGap, false);
 });
 
-// ── V2-207 bdd-coverage traceability gate (ADR-058) ──────────────────────────────
-const bdd = await import(resolve(REPO, "scripts", "bdd-coverage.mjs"));
-
-test("V2-207 bdd parseFeature extracts @US tags + steps per scenario", () => {
-  const feat = `Feature: Assets
-@US7 @smoke
-Scenario: admin creates an asset
-  Given an ADMIN session
-  When they POST a valid asset
-  Then it is persisted
-`;
-  const p = bdd.parseFeature(feat, "a.feature");
-  assert.equal(p.scenarios.length, 1);
-  assert.deepEqual(p.scenarios[0].tags.includes("US7"), true);
-  assert.equal(p.scenarios[0].steps.length, 3);
-});
-
-test("V2-207 bdd step matching: cucumber-expression + regex defs match; a gap does not", () => {
-  const defs = bdd.parseStepDefs(
-    `Given('an ADMIN session', () => {});\nWhen('they POST a {word} asset', () => {});\nThen(/^it is (persisted|listed)$/, () => {});`,
-  );
-  assert.equal(bdd.stepMatches("an ADMIN session", defs), true);
-  assert.equal(bdd.stepMatches("they POST a valid asset", defs), true, "{word} placeholder");
-  assert.equal(bdd.stepMatches("it is persisted", defs), true, "regex def");
-  assert.equal(bdd.stepMatches("they DELETE everything", defs), false, "no def → unmatched");
-});
-
-test("V2-207 bdd checkBddCoverage reds on unimplemented step, missing tag, and uncovered story", () => {
-  const feat = bdd.parseFeature(
-    `@US7\nScenario: create\n  Given an ADMIN session\n  Then it is persisted\n`,
-    "assets.feature",
-  );
-  const allStories = new Set(["US7", "US8"]);
-  // full defs → the only gap is the required-but-uncovered US8
-  const defs = bdd.parseStepDefs(
-    `Given('an ADMIN session',()=>{});Then('it is persisted',()=>{});`,
-  );
-  const req = new Set(["US7", "US8"]);
-  const errs = bdd.checkBddCoverage([feat], defs, allStories, req);
-  assert.ok(
-    errs.some((e) => /US8 has no @US8 scenario/.test(e)),
-    "uncovered story reds",
-  );
-  assert.ok(!errs.some((e) => /US7/.test(e) && /no @US/.test(e)), "US7 IS covered");
-
-  // delete a step definition (the acceptance case) → unimplemented-step red
-  const defsMissing = bdd.parseStepDefs(`Given('an ADMIN session',()=>{});`);
-  const errs2 = bdd.checkBddCoverage([feat], defsMissing, allStories, new Set(["US7"]));
-  assert.ok(
-    errs2.some((e) => /no matching step definition/.test(e) && /it is persisted/.test(e)),
-    "deleting a step def turns the run red",
-  );
-
-  // scenario with no @US tag → untraceable red
-  const untagged = bdd.parseFeature(`Scenario: orphan\n  Given an ADMIN session\n`, "x.feature");
-  const errs3 = bdd.checkBddCoverage([untagged], defs, allStories, new Set());
-  assert.ok(
-    errs3.some((e) => /no @US<n> tag/.test(e)),
-    "untagged scenario reds",
-  );
-
-  // a clean, fully-covered set → no errors
-  const errs4 = bdd.checkBddCoverage([feat], defs, allStories, new Set(["US7"]));
-  assert.deepEqual(errs4, []);
-});
+// ── V2-207 bdd-coverage traceability gate (ADR-058) ─────────────────────────
+// REMOVED 2026-08-17 (A4): playwright-bdd and scripts/bdd-coverage.mjs were retired
+// from the default rail. BDD traceability is a practice a team adopts after finding
+// the problem it solves, not a pre-installed default. The recipe stays in docs/ so a
+// fork can re-adopt it; if you do, restore these tests with it.

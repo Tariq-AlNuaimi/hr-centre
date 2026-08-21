@@ -39,7 +39,7 @@ settled pattern is slop" note); real divergence is a fork you'd actually argue a
    | **B — <name>** | ✅ single fetch         | ⚠️ new trust boundary     | ⚠️ new primitive to own  | ❌ N+1 risk at scale | ⚠️ more error paths    |
 
    (Pillars per `CLAUDE.md` → Five Pillars / `docs/uat-rubric.md`. An AI-endpoint fork
-   adds the conditional 6th column, AI-Quality — see `.claude/rules/ai.md`.)
+   adds the conditional 6th column, AI-Quality — see `docs/rules/ai.md`.)
 
 4. **Name the Reference consulted** — the studied _same-stack_ OSS codebase (repo +
    what you took from it), the `/scale-up` recipe, or the checked library. If nothing

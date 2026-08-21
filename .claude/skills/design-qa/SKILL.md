@@ -32,7 +32,7 @@ just the code:
    (full capture matrix + `token-parity.md` critique notes).
 
 This during-build loop is fast (no axe/bridge); the FULL `/design-qa` below (Chromium states, axe,
-scored deviations) still runs at QA time. The rule is in `.claude/rules/design.md`.
+scored deviations) still runs at QA time. The rule is in `docs/rules/design.md`.
 
 ## Visual regression against a baseline (V2-308)
 

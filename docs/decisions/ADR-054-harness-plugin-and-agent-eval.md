@@ -294,7 +294,7 @@ Revisit this decision when any of these fire:
   docker-first deploy); this ADR is the distribution/governance layer ON TOP of that
   hardened harness.
 - ADR-022 — agent memory + model-tier routing; this moves the tier table from advisory
-  to observed (the adherence-check amendment ADR-022 anticipated). `docs/token-policy.md`
+  to observed (the adherence-check amendment ADR-022 anticipated). `docs/ARCHITECTURE.md` §7
   tier-routing table + the Agent-SDK credit-split note.
 - ADR-036 / ADR-042 — the `ai-eval` gate + AI-Quality pillar; the agent-eval golden-set
   is the exact mirror, one layer up (product AI → harness agents).

@@ -1,6 +1,6 @@
 ---
 name: docs-current
-description: Pull CURRENT documentation for the locked stack (Next.js 16, Prisma 7, Tailwind v4, Auth.js v5, Playwright, zod, next-intl) before answering a version-sensitive question, so a stale training answer doesn't ship. Routes through the context7 MCP (live, version-pinned library docs) with a WebSearch / docs/recipes.md fallback. Use when the answer depends on an exact API/config that may have changed across versions, when the user asks "what's the current way to X in <stack lib>", before writing code against a fast-moving API, or when unsure whether a remembered API still exists. Trigger phrases: "docs-current", "current docs", "is this still the API", "check the latest docs", "did this change in <version>".
+description: Pull CURRENT documentation for the locked stack (Next.js 16, Prisma 7, Tailwind v4, Auth.js v5, Playwright, zod, next-intl) before answering a version-sensitive question, so a stale training answer doesn't ship. Uses WebSearch + docs/recipes.md. (The context7 MCP was removed from .mcp.json in B1 to cut the always-on tool-schema tax; re-add it there and it becomes the preferred path again.) Use when the answer depends on an exact API/config that may have changed across versions, when the user asks "what's the current way to X in <stack lib>", before writing code against a fast-moving API, or when unsure whether a remembered API still exists. Trigger phrases: "docs-current", "current docs", "is this still the API", "check the latest docs", "did this change in <version>".
 ---
 
 # /docs-current — version-correct stack docs before you answer
@@ -9,6 +9,13 @@ The stack is LOCKED (ADR-001) at specific majors: **Next.js 16 · Prisma 7 · Ta
 v5 (next-auth 5.0.0-beta.31, frozen — ADR-056) · Playwright · zod v4 · next-intl v4**. Training data
 lags real releases, so a remembered API can be wrong for the pinned version. This skill pulls the
 CURRENT docs first, then answers.
+
+> **STATUS 2026-08-17 (B1).** The **context7 MCP was removed from `.mcp.json`** to cut the
+> always-on tool-schema tax — four servers / ~160 tools were loading into every session. The
+> steps below that call `context7 resolve-library-id` / `query-docs` therefore **do not run as
+> written** unless you re-add the server. **Today this skill runs on its documented fallback**
+> (WebSearch + `docs/recipes.md`), which is step 4 onward. Re-add context7 in `.mcp.json` and the
+> steps work again unchanged.
 
 Build-vs-buy: `docs/build-vs-buy-ledger.md` (V2-504) — adopts the already-connected **context7 MCP**
 (purpose-built, version-pinned library-doc lookup) over a hand-built fetch-and-cache skill.

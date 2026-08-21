@@ -21,11 +21,16 @@ const envSchema = z.object({
   // deleted PII does not linger in the bin forever.
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 
-  // Rate limiting (optional). Names the proxy's trusted real-client-IP header so
-  // lib/rate-limit.ts can stop trusting the spoofable x-forwarded-for[0] -- e.g.
-  // "cf-connecting-ip" (Cloudflare) or "x-real-ip" (Vercel/nginx). Unset = fall
-  // back to x-real-ip then x-forwarded-for. Declared here for the env contract;
-  // consumed in lib/rate-limit.ts. See .env.example + SECURITY.md finding T-01.
+  // Rate limiting (optional). Names the real-client-IP header your proxy
+  // GUARANTEES -- e.g. "cf-connecting-ip" (Cloudflare) or "x-real-ip" (Vercel,
+  // nginx, the bundled Caddyfile). Consumed in lib/client-ip.ts, which splits the
+  // two uses that used to share one answer:
+  //   - ATTRIBUTION (audit_logs.ipAddress) fails CLOSED. Unset means no IP is
+  //     recorded at all; a forged forensic record is worse than an absent one.
+  //   - THROTTLING falls back to the client-supplied header, marked untrusted so
+  //     it can never collide with a trusted key. Rotating it evades your own
+  //     limit; it cannot pull anyone else into your bucket.
+  // Declared here for the env contract. See .env.example + SECURITY.md T-01.
   RATE_LIMIT_TRUSTED_IP_HEADER: z.string().optional(),
 
   // Audit retention (ADR-018) -- two secrets gate /api/internal/audit-purge,
@@ -155,20 +160,6 @@ const envSchema = z.object({
       },
     )
     .optional(),
-
-  // Background job queue (optional; pg-boss seam -- see the build-vs-buy ledger
-  // 2026-07-11). The lib/queue/* seam
-  // is a silent no-op unless QUEUE_ENABLED === "true" -- an EXPLICIT opt-in by
-  // design: a Postgres URL is always present in this stack, so gating on the URL
-  // alone would silently start pg-boss polling the app DB on every deploy.
-  // QUEUE_DATABASE_URL optionally points the job tables at a dedicated DB/role;
-  // unset -> falls back to DATABASE_URL. Declared here for the env contract +
-  // loud boot validation (the enum rejects a typo'd "1"/"yes" at startup; a
-  // malformed URL fails here too); the runtime gate lives in lib/queue/config.ts,
-  // which reads process.env at call time (like the OTel/AI gates) and owns the
-  // fallback default -- one owner per concern.
-  QUEUE_ENABLED: z.enum(["true", "false"]).optional(),
-  QUEUE_DATABASE_URL: z.url().optional(),
 
   // Enterprise SSO via the Ory Polis SAML→OIDC sidecar (optional; ADR-045, WS-6).
   // All dormant by default: the generic OIDC provider registers only when issuer +

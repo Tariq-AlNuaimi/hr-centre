@@ -92,3 +92,55 @@ worked example (`.claude/rules/design.md`, `.claude/skills/design-qa/SKILL.md`) 
 state as its own starting point. They are not lost and nothing breaks: the SessionStart hook writes
 a fresh valid skeleton when `docs/session-state.json` is absent (V2-006,
 `.claude/hooks/session-start.sh`), which is exactly the intended fork experience.
+
+---
+
+## Third pass — cold governance documentation (2026-08-17)
+
+Unlike the two passes above, **nothing left the working tree here.** The governance docs were
+carrying their entire resolved history on the hot path — `docs/findings-register.md` was 615 lines
+with **zero open wave-offs**, and `docs/OPEN-ITEMS.md` listed twelve already-closed rows. Resolved
+content moved into `docs/archive/`, in-tree and committed, so it stays greppable.
+
+| Moved from                                   | To                                       | What moved                                                                                                                  |
+| -------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `docs/findings-register.md` (615 → 90 lines) | `docs/archive/findings-register-2026.md` | 40 resolved entries (`status: fixed(...)` / `adjudicated(...)` with no pending work). 7 unresolved/re-openable entries stay |
+| `docs/OPEN-ITEMS.md` (166 → 78 lines)        | `docs/archive/open-items-2026.md`        | 12 rows closed ✅ DONE / ⬜ MOOT / ❌ WON'T-DO. Items 8–11 (dormant, blocked on external config) stay                       |
+
+**The `/ship` `wave-offs` gate is unaffected.** It parses `docs/findings-register.md` only, splitting
+it into entry blocks on the `\n- YYYY-MM-DD` boundary and flagging any block carrying
+`status: open`. Every archived entry was already resolved, so the gate's verdict is identical
+(0 open, before and after). The live file keeps its header, its format rules, and its trailer
+verbatim.
+
+**Still do not delete `docs/verification/**`** — those capture sets are the evidence behind entries
+that now live in `docs/archive/findings-register-2026.md`. Archiving the narrative did not archive
+its proof.
+
+### Three overlapping map docs merged into one
+
+`docs/repo-architecture.md` (158 lines), `docs/harness-orientation.md` (98) and
+`docs/token-policy.md` (114) restated each other — the same layers, the same gates, the same
+model-tier table, three times. They are now **`docs/ARCHITECTURE.md`**, which preserves every unique
+fact: the O1–O8 objective table, both mermaid diagrams, the five layers, the eight harness systems,
+contributor onboarding, and the full token policy (repo side, session habits, the ADR-022 routing
+tiers, the automation table, the operator-only table).
+
+**Path map for any link you find in older text:**
+
+| Old path                      | New location                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| `docs/repo-architecture.md`   | `docs/ARCHITECTURE.md` §1–§3, §5                                                   |
+| `docs/harness-orientation.md` | `docs/ARCHITECTURE.md` §4, §6                                                      |
+| `docs/token-policy.md`        | `docs/ARCHITECTURE.md` §7 (7a repo side · 7b habits · 7c tiers · 7d/7e automation) |
+
+The three originals are recoverable from git history; the merge commit is the archive point.
+
+### ADR supersession is now labelled
+
+`docs/decisions/` held 61 ADRs with **no file marked superseded**, so dead decisions read as live.
+No ADR was moved or renamed (that would break links repo-wide). Instead: ten ADRs with in-file
+evidence of supersession gained a banner directly under the title, and
+**`docs/decisions/README.md`** is the new status index (🟢 current / 🟡 partially superseded /
+🔴 superseded) plus a supersession map. Decisions that are _re-targeted_ or _reframed_ rather than
+superseded (ADR-015, ADR-011, ADR-030) are explicitly called out as NOT superseded.

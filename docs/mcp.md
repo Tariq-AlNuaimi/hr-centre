@@ -1,7 +1,7 @@
 # MCP servers — what's wired and why
 
 Project-level MCP config lives in `.mcp.json`. Keep the set small: the token
-policy (`docs/token-policy.md`) warns at >3 configured servers — every server's
+policy (`docs/ARCHITECTURE.md`) warns at >3 configured servers — every server's
 tool schemas are a per-session context tax. Evidence layer for these choices:
 `docs/deep-comparison/05-mcp.md` (cat 05) and `07-scalability.md` (cat 07).
 
