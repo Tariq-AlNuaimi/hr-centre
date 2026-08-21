@@ -40,6 +40,8 @@ type ThemeMode = "light" | "dark" | "system";
 // vercel/geist-font, SIL OFL 1.1); the package itself is NOT a dependency, since
 // two static assets do not need one.
 //
+// The rule and the sweep behind it: docs/decisions/ADR-063.
+//
 // next/font requires LITERAL option values (build-time static analysis), so
 // `variable` must be written out — `sans` MUST equal brand.config.ts `font.cssVar`
 // ("--font-sans") and `mono` its `font.monoCssVar` ("--font-mono"), which
