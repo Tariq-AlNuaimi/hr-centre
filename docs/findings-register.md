@@ -35,45 +35,36 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
-- 2026-08-21 — [scalable/ops] **Docker base image + otel collector merged UNVERIFIED.** #106 landed
-  the node base image at `24.19.0` (was 24.18.0, `Dockerfile`) and
-  `otel/opentelemetry-collector-contrib` at `0.159.0` (was 0.156.0, `compose.prod.yaml`). Neither
-  was exercised. First because `ship:full` was RED at phase A (knip) and never reached phase B; then,
-  once phase A went green, because **the phase-B gates that would cover them SKIP rather than fail
-  without a Docker daemon** — `docker` degrades to a WARN by ADR-030 ("never a false RED"). So a
-  green `ship:full` on a machine without Docker does **not** mean the image builds; it means nobody
-  asked. That is the correct design — a false RED trains people to ignore the gate — but it does
-  mean the green is narrower than it reads.
-  **Largely verified 2026-08-21 (second pass).** The claim that Docker "cannot run here" was
-  itself unverified — the daemon had never been STARTED. `dockerd` comes up fine (29.3.1,
-  overlayfs), the gate then ran for real (117.6s) and went RED, and the RED turned out to be
-  environmental: `SELF_SIGNED_CERT_IN_CHAIN`, because npm inside the build container does not
-  trust the agent proxy's CA. Re-run with the CA injected via a build-context mount (no tracked
-  file changed), the evidence on the actual risk is:
-  - **glibc identical** across the bump — `2.36-9+deb12u14` on both 24.18.0 and 24.19.0.
-  - **OpenSSL identical** — `3.5.7` on both.
-  - **The native-module rebuild SUCCEEDS on 24.19.0**: `[deps 6/6] RUN npm ci && npm rebuild
-@prisma/engines @sentry/cli sharp @swc/core esbuild unrs-resolver @parcel/watcher` → DONE
-    46.5s, followed by `prisma generate` → DONE 22.5s. That step _is_ the risk this entry named.
-  - **Both collector images pull** — `otel/opentelemetry-collector-contrib` 0.156.0 and 0.159.0.
-    Still not proven: the final image assembly. `npm run build` inside the container fails on
-    `next/font` reaching `fonts.googleapis.com` — egress again, and the same step is green on the
-    host (`ship`'s `build` gate). Closing that needed `docker build --network=host`, which the
-    sandbox's permission classifier denied; not worked around. **So: the named risk is disproven and
-    the entry can most likely be closed, but one CI or /deploy image build should confirm it.**
-
-  **Narrowed 2026-08-21:** the `integration` half is now genuinely covered. That gate also used to
-  skip here, but only because nobody had tried the native-Postgres path it resolves FIRST; the web
-  container turns out to ship a real PostgreSQL 16 (see `docs/agent-memory.md`), so it now runs 6
-  tests with 0 skipped. **What is left is strictly the Docker image itself** — the `Dockerfile`
-  base image and the collector sidecar — which needs the daemon and nothing else will substitute. Risk is low (patch/minor bumps to a SHA-era pinned base image and a sidecar that
-  is inert unless the observability profile is up) but it is not zero and it is not measured: a base
-  image bump can change the glibc/OpenSSL under Prisma's engines, which is exactly the class of
-  break a build would catch and a unit test would not. **What closes this:** one `npm run ship:full`
-  on a machine with a Docker daemon, reaching phase B green — or the first successful `/docker`
-  build or self-host deploy, whichever comes first. Recorded rather than fixed because the
-  operator merged the bumps deliberately after being told they were unverified. — owner: operator —
-  status: adjudicated(2026-08-21) (accepted: verify at the next ship:full-with-Docker or /deploy)
+- 2026-08-21 — [scalable/ops] **Docker base image + otel collector bumps — merged unverified,
+  now verified and CLOSED.** #106 landed the node base image at `24.19.0` (was 24.18.0,
+  `Dockerfile`) and `otel/opentelemetry-collector-contrib` at `0.159.0` (was 0.156.0,
+  `compose.prod.yaml`) without either being exercised, because `ship:full` never reached the
+  gates that would cover them. Two successive "this cannot run here" claims turned out to be
+  "nobody tried":
+  - **The DB gates.** `db-structure` and `integration` were assumed to need Docker. The web
+    container ships a real PostgreSQL 16 natively (recipe in `docs/agent-memory.md`), and
+    `scripts/test-integration.mjs` resolves a reachable `DATABASE_URL` FIRST — a native-Postgres
+    path written for exactly this and never used. `integration` now runs 6 tests, 0 skipped.
+  - **The docker gate.** Assumed unavailable; the daemon had simply never been STARTED. `dockerd`
+    comes up fine (29.3.1). The gate then ran for real and went RED on `SELF_SIGNED_CERT_IN_CHAIN`
+    — the build container not trusting the agent proxy's CA, i.e. environmental, not a defect.
+    With the CA injected via a build-context mount (no tracked file changed), the risk this entry
+    named — "a base image bump can change the glibc/OpenSSL under Prisma's engines" — is disproven:
+    **glibc identical** (`2.36-9+deb12u14`), **OpenSSL identical** (`3.5.7`), and the native-module
+    rebuild **succeeds** on 24.19.0 (`npm ci && npm rebuild @prisma/engines @sentry/cli sharp
+@swc/core esbuild unrs-resolver @parcel/watcher` → DONE 46.5s, then `prisma generate` → DONE
+    22.5s). Both collector images pull.
+    The last gap was the final image assembly: `npm run build` inside the container failed on
+    `next/font` reaching `fonts.googleapis.com`. **The operator's read was the right one** — that is
+    not a sandbox artifact to work around, it is a real BUILD-TIME network dependency that every
+    air-gapped, proxied or offline build hits. `next/font/google` is self-hosted at RUNTIME but
+    fetches font files at BUILD time; the code comment asserted the former and was silent on the
+    latter, which is why it went unnoticed. Replaced with `next/font/local` over two variable
+    `.woff2` files vendored into `app/fonts/` (from the official `geist` package, SIL OFL 1.1; the
+    package itself is NOT a dependency — two static assets do not need one). Verified: `npm run
+build` succeeds with `HTTPS_PROXY` unset, and the **full Docker image builds end to end (exit 0)** on the node 24.19.0 base, with both fonts baked in as hashed static assets and the image
+    running. — owner: operator — status: fixed(tree evidence: `app/fonts/*.woff2` +
+    `app/[locale]/layout.tsx` using `next/font/local`)
 
 - 2026-08-17 — [security/harness] `.claude/settings.json` `permissions.allow`/`deny` narrowed
   (red-team R2) — CLAUDE.md requires a register note for any change to the permission arrays. This
@@ -94,8 +85,12 @@ the changed surface is still **open** (un-adjudicated).
   85; observed live — a verification command this session was itself denied). WHY not fixed now:
   the fix (strip heredoc bodies / model shell-syntax vs data before scanning) is real parser work,
   risky at the session's context limit. Interim mitigation: avoid embedding literal gated-path
-  redirect text in Bash commands. — owner: operator — status: adjudicated(2026-07-16) (scheduled:
-  fix early next session per operator)
+  redirect text in Bash commands. — owner: operator — **status: fixed(2026-08-21)** — heredoc
+  BODIES are now stripped before anything scans for writes (the opener still redirects and is
+  still gated), and the redirection scan is quote-aware, so a `>` inside a quoted string is text
+  rather than a redirect. The feared "real parser work" turned out to be a small line-wise
+  heredoc strip plus a character scanner that tracks quote state — no shell grammar needed.
+  Regression tests in `tests/harness/hooks.test.mjs`, verified to FAIL against the pre-fix hook.
 
 - 2026-07-16 — [harness-v2 V2-001/secure] `bash-write-gate.mjs` is evadable by writes that avoid a
   literal `>`/`tee`/`cp`/`sed -i` token: a shell variable holding the path (`F=…; cat > "$F" …`) or
@@ -103,8 +98,14 @@ the changed surface is still **open** (un-adjudicated).
   uncovered gated file without tripping the gate (senior-review 2026-07-16, confidence 88). WHY not
   fixed now: the hook is best-effort by design (its header says so) and the Write-tool gates still
   catch the normal path; closing these needs variable-tracking / interpreter-verb heuristics. —
-  owner: operator — status: adjudicated(2026-07-16) (scheduled: add hardening heuristics in a later
-  phase per operator; add negative tests documenting the gap)
+  owner: operator — **status: fixed(2026-08-21)** — both spellings close. Literal single-line
+  `VAR=value` assignments are collected and `$VAR` / `${VAR}` expanded in every candidate target,
+  so `F=app/api/x/route.ts; cat > "$F"` resolves. Interpreter one-liners are scanned for path-shaped
+  string literals, but ONLY when the body also contains a write call (`writeFileSync`,
+  `appendFileSync`, `createWriteStream`, `write_text`, …) — that condition is what keeps a one-liner
+  which merely READS a gated path from being denied, and it has its own counter-case test. Still
+  deliberately not a shell: multi-line or computed assignments are out of scope, and the hook stays
+  fail-OPEN. Regression tests verified to FAIL against the pre-fix hook.
 
 - 2026-07-11 — [quality/ai] ai-eval /ship gate is DORMANT — the LLM-as-judge eval gate
   (`scripts/ai-eval.mjs`, wired into /ship phase B) is a no-op that exits 0 (SKIP) until a fork
