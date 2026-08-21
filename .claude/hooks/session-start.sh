@@ -149,11 +149,21 @@ if [ ! -f docs/session-state.json ] && [ -d docs ]; then
 SEED
   echo "[harness] docs/session-state.json was absent -- wrote a fresh skeleton (branch-only in-flight state; V2-006)."
 fi
-if [ -f docs/SESSION-HANDOFF.md ]; then
-  node scripts/render-handoff.mjs >/dev/null 2>&1 || true
-  echo "[harness] session handoff (docs/SESSION-HANDOFF.md) -- STANDING DIRECTIVE: show BOTH status tables (compact IN PROGRESS/REMAINING + full GRAND PROGRESS TABLE) before any work, then continue at Next actions:"
-  awk '/<!-- BEGIN:auto-status/{f=1} f{print} /<!-- END:auto-status/{f=0}' docs/SESSION-HANDOFF.md 2>/dev/null || true
-fi
+# REMOVED 2026-08-21: the STANDING DIRECTIVE + the two rendered status tables.
+# They were a harness-v2 program surface, and that program ended. With no program in
+# flight, session-state.json is the regenerated skeleton, so both tables rendered
+# COMPLETELY EMPTY into every session -- a standing instruction ("show both tables
+# before any work") that every session necessarily ignored. That is worse than noise:
+# an instruction agents learn to skip teaches them that standing instructions are
+# optional, which is a harness-wide cost paid for a surface carrying no information.
+# Live state lives in docs/findings-register.md, docs/agent-memory.md and the PR
+# history. Reclaims ~836B of the always-on budget.
+#
+# The MACHINERY is deliberately kept: scripts/render-handoff.mjs still renders the
+# block, .claude/hooks/auto-handoff.mjs still maintains it, and /ship still gates the
+# leak of these branch-only files onto main. A session that genuinely runs a program
+# can still write docs/SESSION-HANDOFF.md and use them; it just is not forced on every
+# session that does not.
 
 # --- agent memory (ADR-022) ---
 # Surface durable cross-session memory (decisions/gotchas/conventions) into the
