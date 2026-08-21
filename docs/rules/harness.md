@@ -173,7 +173,8 @@ That mix is now separated at the DEFINITION SITE rather than by widening the gat
 **When you add a fork-facing export, tag it `@public` in the same commit.** Untagged and
 unreferenced means knip is right and the export should not exist.
 
-Two `Configuration hints` remain (`jscpd`, `@stryker-mutator/command-runner` in
-`ignoreDependencies`). Left deliberately: both are OPTIONAL devDeps the ship loop invokes only
-if installed, so the entries are dormant rather than wrong, and knip exits 0 on hints — the
-gate keys on exit code. Warm `/ship` is unaffected.
+One `Configuration hint` remains (`@stryker-mutator/command-runner` in `ignoreDependencies`).
+Left deliberately: it is an OPTIONAL devDep the ship loop invokes only if installed, so the entry
+is dormant rather than wrong, and knip exits 0 on hints — the gate keys on exit code. (`jscpd` was
+on this list too until 2026-08-21, when installing it made the entry live and the hint went away
+on its own — which is what a dormant entry is supposed to do.) Warm `/ship` is unaffected.
