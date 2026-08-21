@@ -127,6 +127,30 @@ test("V2-001 the heredoc OPENER is still gated (the fix must not blind the gate)
   assert.ok(isWarn(r), `opener must still be caught :: ${r.decision} ${r.stdout}`);
 });
 
+test("V2-001 a heredoc fed to an INTERPRETER is scanned, not stripped as data", () => {
+  // Senior review 2026-08-21. stripHeredocBodies fixed a real false positive by treating
+  // a heredoc body as inert data -- true for `cat > f <<EOF`, FALSE when the target is an
+  // interpreter, where the body is a script the shell executes. A real write nested inside
+  // `bash <<'OUTER'` was discarded as "body" and never reached writeTargets(), reopening
+  // the exact drop-to-the-shell hole this gate exists to close.
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash("bash <<'OUTER'\ncat > app/api/zzznew/route.ts <<'X'\nexport const x = 1;\nX\nOUTER"),
+  );
+  assert.ok(isWarn(r), `nested heredoc write must be seen :: ${r.decision} ${r.stdout}`);
+});
+
+test("V2-001 a DATA heredoc still is not scanned (the false-positive fix must survive)", () => {
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(
+      "cat > /tmp/msg.txt <<'EOF'\nWe considered writing > app/api/zzznew/route.ts here.\nEOF",
+    ),
+  );
+  assert.equal(r.decision, null, `data body must stay unscanned :: ${r.stdout}`);
+  assert.ok(!isWarn(r), `expected no advisory :: ${advice(r)}`);
+});
+
 test("V2-001 a path held in a shell VARIABLE does not evade the gate", () => {
   // The evasion: no literal gated path appeared next to any redirect token.
   const r = runHook(

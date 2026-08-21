@@ -136,8 +136,49 @@ function basenameGlobToRegExp(glob) {
   }
 }
 
+/**
+ * Expand shell BRACE groups into their alternatives: `.{e,x}nv` -> [".env", ".xnv"].
+ *
+ * Brace expansion is a SEPARATE, earlier shell stage than globbing, and the glob check
+ * below only ever looked for `*?[]`. So `cat .{e,x}nv` contained no glob metacharacter,
+ * was not the literal string ".env", and fell through to allow -- while bash happily
+ * expanded it to `cat .env .xnv` (senior review, 2026-08-21). Every caller funnels
+ * through secretPath(), so the same one-token idiom bypassed the archive, copy, curl and
+ * interpreter checks too.
+ *
+ * Expanding rather than denying `{` outright: `cat file.{ts,tsx}` is ordinary work, and
+ * an over-broad rule on a fail-CLOSED guard is its own harm. Bounded to keep a
+ * pathological pattern from exploding.
+ */
+function expandBraces(str, depth = 0) {
+  const m = /\{([^{}]*)\}/.exec(str);
+  if (!m || depth > 6) return [str];
+  const out = [];
+  for (const alt of m[1].split(",")) {
+    const next = str.slice(0, m.index) + alt + str.slice(m.index + m[0].length);
+    for (const e of expandBraces(next, depth + 1)) {
+      if (out.length < 64) out.push(e);
+    }
+  }
+  return out.length ? out : [str];
+}
+
 /** Is this path/token secret-bearing? Returns a reason string or null. */
 function secretPath(raw) {
+  if (!raw) return null;
+  // Check every brace alternative; ANY of them being secret-bearing denies the whole token.
+  const withBraces = String(raw);
+  if (withBraces.includes("{") && withBraces.includes("}")) {
+    for (const alt of expandBraces(withBraces)) {
+      const why = secretPathLiteral(alt);
+      if (why) return why;
+    }
+    return null;
+  }
+  return secretPathLiteral(withBraces);
+}
+
+function secretPathLiteral(raw) {
   if (!raw) return null;
   const p = String(raw)
     .replace(/^["']|["']$/g, "")

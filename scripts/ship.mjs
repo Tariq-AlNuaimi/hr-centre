@@ -205,7 +205,13 @@ function scanWaveOffs() {
   try {
     src = readFileSync(file, "utf8");
   } catch {
-    return { name: "wave-offs", ok: true, out: "unreadable register (skipped)", secs: secs() };
+    return {
+      name: "wave-offs",
+      ok: true,
+      out: "unreadable register (skipped)",
+      secs: secs(),
+      warn: "wave-off check skipped: docs/findings-register.md is unreadable",
+    };
   }
   // Split on the start-of-entry boundary: a newline followed by a dash + an ISO
   // date. Continuation lines (indented, or bullets without a leading date) stay
@@ -338,13 +344,18 @@ function isBotAuthor(email, name) {
 function scanTier() {
   const t0 = Date.now();
   const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
-  const ok = (out) => ({ name: "tier", ok: true, out, secs: secs() });
-  if (!existsSync("project.config.json")) return ok("no project.config.json (skipped)");
+  const ok = (out, extra = {}) => ({ name: "tier", ok: true, out, secs: secs(), ...extra });
+  if (!existsSync("project.config.json"))
+    return ok("no project.config.json (skipped)", {
+      warn: "tier check skipped: no project.config.json to read",
+    });
   let cfg;
   try {
     cfg = JSON.parse(readFileSync("project.config.json", "utf8"));
   } catch {
-    return ok("project.config.json unparseable (skipped)");
+    return ok("project.config.json unparseable (skipped)", {
+      warn: "tier check skipped: project.config.json is unparseable",
+    });
   }
   const tier = cfg.tier ?? "personal";
   if (tier !== "personal") return ok(`tier=${tier} (no escalation check needed)`);
@@ -359,7 +370,9 @@ function scanTier() {
       stdio: ["ignore", "pipe", "ignore"],
     }).toString();
   } catch {
-    return ok("no git history (skipped)");
+    return ok("no git history (skipped)", {
+      warn: "tier check skipped: no git history to count contributors from",
+    });
   }
   const humans = new Set();
   for (const line of raw.split("\n")) {
@@ -405,7 +418,13 @@ const BRANCH_ONLY_STATE = ["docs/SESSION-HANDOFF.md", "docs/session-state.json"]
 function scanSessionState() {
   const t0 = Date.now();
   const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
-  const ok = (out) => ({ name: "session-state", ok: true, out, secs: secs() });
+  const ok = (out, extra = {}) => ({
+    name: "session-state",
+    ok: true,
+    out,
+    secs: secs(),
+    ...extra,
+  });
   // Prefer the remote ref (the thing forks are actually created from). Fall back to
   // a local `main` when there is no remote, so a detached/offline clone still checks
   // something real rather than silently passing.
@@ -436,7 +455,10 @@ function scanSessionState() {
       /* try the next candidate */
     }
   }
-  if (!ref) return ok("no main ref to check (skipped)");
+  if (!ref)
+    return ok("no main ref to check (skipped)", {
+      warn: "session-state leak check skipped: no main ref available",
+    });
   let tracked = [];
   try {
     tracked = execSync(`git ls-tree -r --name-only ${ref} -- ${BRANCH_ONLY_STATE.join(" ")}`, {
@@ -448,7 +470,9 @@ function scanSessionState() {
       .filter(Boolean);
   } catch {
     // Fail OPEN: governance gates must not RED on an unevaluable check (ADR-047).
-    return ok(`could not read ${ref} (skipped)`);
+    return ok(`could not read ${ref} (skipped)`, {
+      warn: `session-state leak check skipped: could not read ${ref}`,
+    });
   }
   if (tracked.length === 0) return ok(`${ref} carries no branch-only session state — correct`);
   // `ref` is dirty. Before going RED, ask whether THIS branch is the REMEDIATION —
@@ -489,7 +513,9 @@ function scanSessionState() {
   } catch {
     // Fail OPEN on an unevaluable check (ADR-047) rather than block a push on a
     // shallow clone / missing merge-base.
-    return ok(`could not compare against ${ref} (skipped)`);
+    return ok(`could not compare against ${ref} (skipped)`, {
+      warn: `session-state leak check skipped: could not compare against ${ref}`,
+    });
   }
   if (hereToo.length === 0 && inheritedLeak) {
     return ok(`${ref} still tracks session state, but this branch removes it — land this`);
@@ -553,11 +579,16 @@ function scanBlueprint() {
       .toString()
       .trim();
   } catch {
-    return ok("no origin/main base (skipped)");
+    return ok("no origin/main base (skipped)", {
+      warn: "no origin/main base -- nothing to diff, so nothing was checked",
+    });
   }
   // git merge-base always returns a 40-char hex SHA; validate before interpolating
   // into the diff command so a corrupted repo state can't surprise us.
-  if (!/^[0-9a-f]{40}$/.test(base)) return ok("no valid diff base (skipped)");
+  if (!/^[0-9a-f]{40}$/.test(base))
+    return ok("no valid diff base (skipped)", {
+      warn: "no valid diff base -- nothing to diff, so nothing was checked",
+    });
   let names = "";
   try {
     // Added files across committed (base..HEAD) AND the working tree.
@@ -565,7 +596,7 @@ function scanBlueprint() {
       stdio: ["ignore", "pipe", "ignore"],
     }).toString();
   } catch {
-    return ok("diff failed (skipped)");
+    return ok("diff failed (skipped)", { warn: "git diff failed -- nothing was checked" });
   }
   const added = names
     .split("\n")
@@ -1046,7 +1077,7 @@ const CX_DIRS = /^(app|lib|components|hooks)\//;
 function scanComplexity() {
   const t0 = Date.now();
   const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
-  const ok = (out) => ({ name: "complexity", ok: true, out, secs: secs() });
+  const ok = (out, extra = {}) => ({ name: "complexity", ok: true, out, secs: secs(), ...extra });
   const red = (out) => ({ name: "complexity", ok: false, out, secs: secs() });
   const w = ackWaiver(readCfg(), "complexityAck", "complexity");
   if (w) return w.ok ? ok(`complexity budget waived: ${w.reason}`) : red(w.out);
@@ -1056,16 +1087,21 @@ function scanComplexity() {
       .toString()
       .trim();
   } catch {
-    return ok("no origin/main base (skipped)");
+    return ok("no origin/main base (skipped)", {
+      warn: "no origin/main base -- nothing to diff, so nothing was checked",
+    });
   }
-  if (!/^[0-9a-f]{40}$/.test(base)) return ok("no valid diff base (skipped)");
+  if (!/^[0-9a-f]{40}$/.test(base))
+    return ok("no valid diff base (skipped)", {
+      warn: "no valid diff base -- nothing to diff, so nothing was checked",
+    });
   let names = "";
   try {
     names = execSync(`git diff --name-status --diff-filter=A ${base}`, {
       stdio: ["ignore", "pipe", "ignore"],
     }).toString();
   } catch {
-    return ok("diff failed (skipped)");
+    return ok("diff failed (skipped)", { warn: "git diff failed -- nothing was checked" });
   }
   const added = names
     .split("\n")
@@ -1492,7 +1528,17 @@ const report = (r) => {
   // own dishonesty: the warm loop DEFERS the slow hygiene gates to ship:full by design
   // (C2) -- that is scope, not degradation -- whereas db-structure without a shadow DB
   // or docker without a daemon genuinely could not check what it exists to check.
-  if (r.ok) (r.warn ? (/warm loop/i.test(r.warn) ? DEFERRED : SKIPPED) : RAN).push(r.name);
+  // A gate signals "I checked nothing" two ways, and the first cut of this only knew
+  // one. Most degraded gates set `warn`, but ten early-returns across scanBlueprint,
+  // scanComplexity, scanTier, scanSessionState and scanWaveOffs say it ONLY in `out`
+  // -- `ok("no origin/main base (skipped)")`, with no warn -- so they were counted as
+  // RAN and printed under `ran (N)` exactly as if they had executed. Two of those are
+  // enforcement-quartet gates, and their skip path is the NORMAL state of a shallow
+  // clone or a detached-HEAD CI checkout. That is the same "reports success without
+  // doing the work" bug this accumulator was built to kill, reintroduced inside it
+  // (senior review, 2026-08-21). Classify on both signals.
+  if (!r.ok) return;
+  (r.warn ? (/warm loop/i.test(r.warn) ? DEFERRED : SKIPPED) : RAN).push(r.name);
   console.log(
     `  ${r.ok ? (r.warn ? "PASS*" : "PASS ") : "FAIL "} ${r.name} (${r.secs}s)${
       r.ok && r.warn ? "  * partial/degraded — see note below" : ""
