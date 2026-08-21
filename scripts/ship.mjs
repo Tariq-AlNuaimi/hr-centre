@@ -1478,12 +1478,27 @@ function run(name, cmd, args, env = {}, replaceEnv = false) {
 // "not fully enforced", not just a `note:` further down that scrolls past (V2
 // challenge-audit M4: db-structure's migrate-diff silently skips without
 // SHADOW_DATABASE_URL yet read as a clean PASS). The `*` maps to the note below.
-const report = (r) =>
+// Every gate funnels through report(), so this is also where the final verdict gets
+// its facts. It used to be a hand-maintained string listing every gate name, which
+// had ALREADY drifted once (it omitted session-state, blueprint-content and
+// complexity, under-reporting what gated the push) and, worse, listed degraded gates
+// under "all pass" -- so a loop where four gates skipped without testing anything
+// still signed off with the same sentence as a loop where they all ran. Derive it.
+const RAN = [];
+const SKIPPED = [];
+const DEFERRED = [];
+const report = (r) => {
+  // Two different reasons a gate can pass without running, and conflating them is its
+  // own dishonesty: the warm loop DEFERS the slow hygiene gates to ship:full by design
+  // (C2) -- that is scope, not degradation -- whereas db-structure without a shadow DB
+  // or docker without a daemon genuinely could not check what it exists to check.
+  if (r.ok) (r.warn ? (/warm loop/i.test(r.warn) ? DEFERRED : SKIPPED) : RAN).push(r.name);
   console.log(
     `  ${r.ok ? (r.warn ? "PASS*" : "PASS ") : "FAIL "} ${r.name} (${r.secs}s)${
       r.ok && r.warn ? "  * partial/degraded — see note below" : ""
     }`,
   );
+};
 
 // -- npm-audit evaluation with a scoped allowlist (audit-allowlist.json) -----
 // `npm audit --json` lists EVERY severity; we keep the old `--audit-level=high`
@@ -1823,9 +1838,18 @@ try {
   /* velocity warn is best-effort; never fail a green ship on it */
 }
 
-console.log(
-  // Keep this list in lockstep with the phase-A banner and the `redA` array -- it
-  // previously omitted session-state, blueprint-content and complexity, all of which
-  // DO gate the push, so the success line under-reported what had actually run.
-  `\nship: green -- typecheck + lint + format + tests + component tests + hooks + scalability + copy + wave-offs + licenses + tier + session-state + blueprint + blueprint-content + complexity + db-structure + knip + duplication + coverage + skill-check + build + size-limit + gitleaks + npm audit + ai-eval${FULL ? " + docker" : ""} all pass (${totalSec}s total)`,
-);
+// Built from what report() actually saw, so it cannot drift from the gates that ran
+// and cannot describe a skipped gate as a pass.
+console.log(`\nship: green (${totalSec}s total)`);
+console.log(`  ran (${RAN.length}): ${RAN.join(" + ")}`);
+if (DEFERRED.length > 0) {
+  console.log(`  deferred to ship:full (${DEFERRED.length}): ${DEFERRED.join(" + ")}`);
+}
+if (SKIPPED.length > 0) {
+  console.log(
+    `  DEGRADED (${SKIPPED.length}): ${SKIPPED.join(" + ")}` +
+      `\n  ^ passed WITHOUT checking what they exist to check (missing tool, daemon or env --` +
+      `\n    see the note for each above). Green here means "nothing failed", not "everything` +
+      `\n    was checked".`,
+  );
+}

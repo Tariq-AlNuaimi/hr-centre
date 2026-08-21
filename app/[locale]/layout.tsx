@@ -1,7 +1,7 @@
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { routing } from "@/i18n/routing";
 import { directionForLocale } from "@/i18n/config";
 import { brand } from "@/brand.config";
@@ -22,21 +22,39 @@ const onVercel = Boolean(process.env.VERCEL);
 
 type ThemeMode = "light" | "dark" | "system";
 
-// The UI font (Geist) + mono (Geist Mono), self-hosted at build time by
-// next/font (no runtime Google request, no layout-shift flash). next/font
-// requires LITERAL option values (build-time static analysis), so `variable`
-// must be written out — `sans` MUST equal brand.config.ts `font.cssVar`
+// The UI font (Geist) + mono (Geist Mono), served from files VENDORED IN THIS REPO
+// (`app/fonts/*.woff2`) via next/font/local.
+//
+// These were `next/font/google` until 2026-08-21. That is self-hosted at RUNTIME —
+// the browser never talks to Google — but it fetches the font files from
+// fonts.googleapis.com at BUILD time, which made the network a build dependency.
+// The old comment here said "no runtime Google request" and was silent on that,
+// which is why it went unnoticed until a Docker build failed with "There was an
+// issue establishing a connection while requesting fonts.googleapis.com". Any
+// air-gapped, proxied or offline build hit the same wall; the sandbox just found it
+// first. Vendoring removes the dependency instead of accommodating it.
+//
+// One variable file per family (weight 100..900), which is exactly what the Google
+// import requested via `wght@100..900` — same bytes the browser used to download,
+// now same-origin. Files come from the official `geist` npm package (v1.7.2,
+// vercel/geist-font, SIL OFL 1.1); the package itself is NOT a dependency, since
+// two static assets do not need one.
+//
+// next/font requires LITERAL option values (build-time static analysis), so
+// `variable` must be written out — `sans` MUST equal brand.config.ts `font.cssVar`
 // ("--font-sans") and `mono` its `font.monoCssVar` ("--font-mono"), which
 // everything downstream (globals.css body, the `font-mono` utility) references.
 // A mismatch is caught by tests/contracts/design-tokens.test.ts. To swap fonts,
-// change these imports AND brand.config.ts `font`.
-const sans = Geist({
-  subsets: ["latin"],
+// replace the files below AND brand.config.ts `font`.
+const sans = localFont({
+  src: "../fonts/Geist-Variable.woff2",
+  weight: "100 900",
   variable: "--font-sans",
   display: "swap",
 });
-const mono = Geist_Mono({
-  subsets: ["latin"],
+const mono = localFont({
+  src: "../fonts/GeistMono-Variable.woff2",
+  weight: "100 900",
   variable: "--font-mono",
   display: "swap",
 });

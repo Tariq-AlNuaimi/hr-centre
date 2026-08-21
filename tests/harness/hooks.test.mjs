@@ -94,6 +94,66 @@ test("V2-001 bash-write-gate ALLOWS a heredoc write once a blueprint covers the 
   assert.equal(r.decision, null, `expected allow, got deny :: ${r.stdout}`);
 });
 
+// --- 2026-08-21: the two register items from 2026-07-16, both now closed. -------
+
+test("V2-001 a heredoc that merely MENTIONS a gated path is not a write", () => {
+  // The false-positive: the redirection scan ran over the whole command string, so a
+  // heredoc BODY quoting a gated path read as a write to it. Hit twice in one session
+  // writing commit messages, and a fail-closed feel on a fail-open gate is how operators
+  // learn to wave gates through. The body is data; only the OPENER redirects.
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(
+      "cat > /tmp/msg.txt <<'EOF'\nWe considered writing > app/api/zzznew/route.ts here.\nEOF",
+    ),
+  );
+  assert.equal(r.decision, null, `heredoc body must not be scanned :: ${r.stdout}`);
+  assert.ok(!isWarn(r), `expected no advisory either :: ${advice(r)}`);
+});
+
+test("V2-001 a gated path inside a quoted string is not a write", () => {
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(`git commit -m "route lives > app/api/zzznew/route.ts now"`),
+  );
+  assert.equal(r.decision, null, `quoted '>' is text, not redirection :: ${r.stdout}`);
+});
+
+test("V2-001 the heredoc OPENER is still gated (the fix must not blind the gate)", () => {
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash("cat > app/api/zzznew/route.ts <<'EOF'\nexport const x = 1;\nEOF"),
+  );
+  assert.ok(isWarn(r), `opener must still be caught :: ${r.decision} ${r.stdout}`);
+});
+
+test("V2-001 a path held in a shell VARIABLE does not evade the gate", () => {
+  // The evasion: no literal gated path appeared next to any redirect token.
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash('F=app/api/zzznew/route.ts; echo "export const x = 1;" > "$F"'),
+  );
+  assert.ok(isWarn(r), `expected the expanded target to be gated :: ${r.decision} ${r.stdout}`);
+});
+
+test("V2-001 an interpreter one-liner writing a gated file does not evade the gate", () => {
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(`node -e "require('fs').writeFileSync('app/api/zzznew/route.ts','x')"`),
+  );
+  assert.ok(isWarn(r), `writeFileSync target must be gated :: ${r.decision} ${r.stdout}`);
+});
+
+test("V2-001 an interpreter one-liner that only READS a gated path is untouched", () => {
+  // The counter-case: the write-call requirement is what keeps this from over-blocking.
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(`node -e "console.log(require('fs').readFileSync('app/api/zzznew/route.ts','utf8'))"`),
+  );
+  assert.equal(r.decision, null, `a read must not be gated :: ${r.stdout}`);
+  assert.ok(!isWarn(r), `expected no advisory :: ${advice(r)}`);
+});
+
 test("V2-001 bash-write-gate ALLOWS writes outside gated surfaces", () => {
   assert.equal(
     runHook("bash-write-gate.mjs", preBash("echo hi > /tmp/scratch.txt")).decision,
