@@ -41,6 +41,35 @@ const RM_FATAL_TARGETS = new Set([
 ]);
 const SYSTEM_DIR = /^\/(bin|boot|dev|etc|home|lib|lib64|opt|root|sbin|srv|sys|usr|var)\/?\*?$/;
 
+// Every runner that can execute an inline one-liner. ONE list, deliberately: this was
+// two independently-maintained copies -- a per-segment Set and a whole-command regex --
+// and when the Set was widened with bun/npx/tsx/ts-node/sh/bash/zsh the regex was not.
+// The result was a live bypass: an inline body whose destructive call sat after a `;`
+// was torn in half by the segment splitter (no quote awareness), and the whole-command
+// check that exists to catch exactly that did not recognise the newer runners (senior
+// review, 2026-08-21). The classic runners were in BOTH lists, which is how the
+// divergence hid -- the same body via `node` was correctly denied. Add a runner here
+// and both checks see it.
+const INLINE_RUNNERS = [
+  "node",
+  "nodejs",
+  "python",
+  "python3",
+  "ruby",
+  "perl",
+  "deno",
+  "bun",
+  "npx",
+  "tsx",
+  "ts-node",
+  "sh",
+  "bash",
+  "zsh",
+];
+const INLINE_RUNNER_ALT = INLINE_RUNNERS.map((r) => r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join(
+  "|",
+);
+
 function checkSegment(seg) {
   const tokens = seg.trim().split(/\s+/).filter(Boolean);
   if (tokens.length === 0) return null;
@@ -195,25 +224,7 @@ function checkSegment(seg) {
   // are denied -- an interpreter one-liner is an ordinary tool, so a blanket
   // deny here would be exactly the over-broad rule that trains people to wave
   // the gate through (see the checkout/restore narrowing above).
-  // The list must name every runner this repo can reach, not just the POSIX classics:
-  // `npx tsx -e`, `bun -e` and `ts-node -e` call `fs.rmSync` exactly as `node -e` does,
-  // and `sh -c` / `bash -c` wrap any of them one level deeper (review round 8).
-  const INTERPRETERS = new Set([
-    "node",
-    "nodejs",
-    "python",
-    "python3",
-    "ruby",
-    "perl",
-    "deno",
-    "bun",
-    "npx",
-    "tsx",
-    "ts-node",
-    "sh",
-    "bash",
-    "zsh",
-  ]);
+  const INTERPRETERS = new Set(INLINE_RUNNERS);
   if (INTERPRETERS.has(cmd)) {
     const inlineIdx = args.findIndex((a) => a === "-e" || a === "-c" || a === "--eval");
     if (inlineIdx !== -1) {
@@ -279,7 +290,7 @@ try {
   // half and neither piece looks dangerous. Bodies routinely contain separators,
   // so this pattern spans segments by nature (red-team R2b).
   else if (
-    /\b(node|nodejs|python3?|ruby|perl|deno)\b[^|;&\n]*\s(-e|-c|--eval)\b/.test(command) &&
+    new RegExp(`\\b(?:${INLINE_RUNNER_ALT})\\b[^|;&\\n]*\\s(?:-e|-c|--eval)\\b`).test(command) &&
     /\b(rmSync|rmdirSync|unlinkSync|rmtree|removedirs|remove_tree|truncateSync)\b|\b(?:fs|os|shutil|FileUtils)\.\s*(?:rm|rmdir|unlink|remove)\s*\(/.test(
       command,
     )

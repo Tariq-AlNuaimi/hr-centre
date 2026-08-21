@@ -52,6 +52,26 @@ const isFlag = (t) => t.startsWith("-");
  * design: a false miss is caught by the Write-tool gates; a false hit only affects gated
  * repo paths (a non-repo target resolves outside ROOT and is ignored downstream).
  */
+// Runners whose heredoc body is a SCRIPT, not data -- see stripHeredocBodies.
+const INTERPRETER_VERBS = new Set([
+  "sh",
+  "bash",
+  "zsh",
+  "dash",
+  "ksh",
+  "node",
+  "nodejs",
+  "npx",
+  "tsx",
+  "ts-node",
+  "bun",
+  "deno",
+  "python",
+  "python3",
+  "ruby",
+  "perl",
+]);
+
 /**
  * Remove heredoc BODIES, keeping the command line that opens them.
  *
@@ -70,9 +90,21 @@ function stripHeredocBodies(cmd) {
     out.push(line);
     // <<EOF | <<-EOF | <<"EOF" | <<'EOF' -- possibly several on one line.
     const opens = [...line.matchAll(/<<-?\s*(["']?)([A-Za-z_][A-Za-z0-9_]*)\1/g)].map((m) => m[2]);
+    // A heredoc body is inert DATA only when something CONSUMES it (`cat > f <<EOF`).
+    // When the target is an INTERPRETER (`bash <<'OUTER'`), the body is a script the
+    // shell executes -- so stripping it hid real writes: an inner
+    // `cat > app/api/x/route.ts <<'X'` nested inside `bash <<'OUTER'` was discarded as
+    // "body" and never reached writeTargets(), reopening the exact drop-to-the-shell
+    // hole this gate exists to close (senior review, 2026-08-21). Keep such a body so
+    // the loop walks into it and sees the nested commands.
+    const verb = (line.trim().split(/\s+/)[0] ?? "").replace(/^.*\//, "");
+    const bodyIsExecuted = INTERPRETER_VERBS.has(verb);
     i++;
     for (const tag of opens) {
-      while (i < lines.length && lines[i].trim() !== tag) i++;
+      while (i < lines.length && lines[i].trim() !== tag) {
+        if (bodyIsExecuted) out.push(lines[i]);
+        i++;
+      }
       if (i < lines.length) i++; // consume the terminator itself
     }
   }

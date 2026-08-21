@@ -74,6 +74,23 @@ export const DESTRUCTIVE = [
   ["prisma@6 migrate reset", "npx prisma@6 migrate reset --force"],
   ["prisma@latest db push", "npx -y prisma@latest db push"],
   ["pnpm dlx prisma@7 db execute", 'pnpm dlx prisma@7 db execute --stdin <<< "DROP TABLE users;"'],
+  // Senior review 2026-08-21: the per-segment runner Set and the whole-command regex
+  // were two independently-maintained copies. Widening the Set with bun/npx/tsx/
+  // ts-node/sh/bash/zsh left the regex untouched, so a destructive call placed AFTER a
+  // `;` -- torn in half by the quote-unaware segment splitter -- was caught by neither.
+  // The classic runners were in both lists, which is exactly how the divergence hid.
+  [
+    "bun -e, call after a semicolon",
+    "bun -e \"console.log(1); require('fs').rmSync('lib',{recursive:true,force:true})\"",
+  ],
+  [
+    "npx tsx -e, call after a semicolon",
+    "npx tsx -e \"console.log(1); require('fs').rmSync('lib',{recursive:true,force:true})\"",
+  ],
+  [
+    "ts-node -e, call after &&",
+    "ts-node -e \"console.log(1) && require('fs').rmSync('lib',{recursive:true})\"",
+  ],
 ];
 
 export const SECRETS = [
@@ -111,6 +128,15 @@ export const SECRETS = [
   ["bun -e", "bun -e \"console.log(require('fs').readFileSync('.env','utf8'))\""],
   ["ts-node -e", "ts-node -e \"require('fs').readFileSync('.env','utf8')\""],
   ["sh -c wrapper", "sh -c 'cat .env.local'"],
+  // Senior review 2026-08-21: brace expansion is a SEPARATE, earlier shell stage than
+  // globbing, and the glob check only looked for *?[]. `cat .{e,x}nv` had no glob
+  // metacharacter and was not the literal ".env", so it fell through to allow while
+  // bash expanded it to `cat .env .xnv`. Every caller funnels through secretPath(),
+  // so archive/copy/curl/interpreter checks were bypassed by the same one token.
+  ["brace expansion", "cat .{e,x}nv"],
+  ["brace expansion (word)", "cat .{env,foo}"],
+  ["brace expansion via cp", "cp .{e,x}nv /tmp/x"],
+  ["brace expansion in a tar", "tar cf - .{e,x}nv | base64"],
 ];
 
 // --- must stay ALLOWED -------------------------------------------------------
@@ -162,6 +188,11 @@ export const LEGITIMATE = [
   ["run a tsx script", "npx tsx scripts/seed.ts", secret],
   ["harmless npx tsx -e", 'npx tsx -e "console.log(1)"', secret],
   ["shell wrapper, no secret", "sh -c 'npm run build'", secret],
+  // Counter-cases for the brace fix: expanding rather than denying `{` outright is the
+  // whole point -- these are ordinary work and must stay allowed.
+  ["brace over extensions", "cat file.{ts,tsx}", secret],
+  ["brace over dirs", "ls {app,lib}/index.ts", secret],
+  ["harmless bun -e with a semicolon", 'bun -e "console.log(1); console.log(2)"', bash],
 ];
 
 // --- run ---------------------------------------------------------------------

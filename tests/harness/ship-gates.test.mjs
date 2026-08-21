@@ -166,3 +166,39 @@ test("rebrand --apply deletes template-dev docs without escaping the tree", () =
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// The verdict accumulator's classification contract (senior review, 2026-08-21).
+// ---------------------------------------------------------------------------
+// `report()` decides `ran` vs `DEGRADED` purely from the presence of `warn`. Ten
+// early-returns across scanBlueprint/scanComplexity/scanTier/scanSessionState/
+// scanWaveOffs said "I checked nothing" ONLY in their `out` string, so they were
+// counted as having RUN and printed under `ran (N)` -- the exact "reports success
+// without doing the work" bug the accumulator was built to kill, reintroduced
+// inside it. Two of them are enforcement-quartet gates whose skip path is the
+// NORMAL state of a shallow clone or a detached-HEAD CI checkout.
+//
+// Asserted over the SOURCE rather than by driving each gate into its skip state:
+// the invariant is "no result object claims (skipped) without a warn", and that is
+// a property of the text. A regex fix in report() was tried first and rejected --
+// sniffing `out` mislabelled `contract tests` as degraded, because TAP output
+// contains skip words. `warn` is the signal; this keeps every skip path setting it.
+test("every (skipped) ship result also sets `warn` (else the verdict counts it as ran)", () => {
+  const src = readFileSync(join(REPO, "scripts", "ship.mjs"), "utf8");
+  const offenders = [];
+  const lines = src.split("\n");
+  lines.forEach((line, i) => {
+    if (!/\(skipped\)/.test(line)) return;
+    if (!/^\s*(return|.*=>)/.test(line) && !/name:\s*"/.test(line)) return;
+    // The result may be built across a couple of lines; look at a small window.
+    const window = lines.slice(i, i + 3).join(" ");
+    if (!/\bwarn\b/.test(window)) offenders.push(`${i + 1}: ${line.trim()}`);
+  });
+  assert.deepEqual(
+    offenders,
+    [],
+    "these ship.mjs results say (skipped) but set no `warn`, so the final verdict " +
+      "would list them under `ran` as if they had executed:\n  " +
+      offenders.join("\n  "),
+  );
+});
