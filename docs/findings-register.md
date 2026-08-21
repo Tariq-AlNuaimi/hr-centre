@@ -35,6 +35,18 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-17 — [security/harness] `.claude/settings.json` `permissions.allow`/`deny` narrowed
+  (red-team R2) — CLAUDE.md requires a register note for any change to the permission arrays. This
+  change **narrows** capability rather than widening it: `Bash(npx prisma *)` → verb-scoped
+  (`generate`, `migrate dev|deploy|status`, `studio`, `db seed`); `Bash(find . *)` → read-only forms;
+  `Bash(git push *)` → `claude/*` refspecs; `Bash(docker compose down*)` → no flags. Destructive
+  verbs (`migrate reset`, `db execute`, `db push`, `find -delete/-exec`, `down -v`, pushes to `main`,
+  `shred`) moved to deny. **Residual risk accepted:** deny patterns are prefix-lexical and therefore
+  evadable by spelling; `dangerous-commands.mjs` is the semantic backstop (R2b) and
+  `tests/harness/guard-probe.mjs` proves both layers. **Operator-approved** — see
+  `docs/AUDIT-DECISIONS.md` Phase 1 R2 — Tariq Al-Naaimi — status: fixed(see branch
+  `claude/security-phase1`; evidence `tests/harness/guard-probe.mjs`)
+
 - 2026-07-16 — [harness-v2 V2-001/correctness] `bash-write-gate.mjs`'s redirection regex scans
   the WHOLE command string including heredoc bodies / quoted example text, so a Bash command that
   merely MENTIONS a gated path (`> app/api/foo/route.ts` in documentation text, a `git commit -m`

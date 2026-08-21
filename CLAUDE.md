@@ -18,7 +18,7 @@ Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Pri
 - **Run `/ship` before every push** (`npm run ship`, ~55s warm) — the active gate; CI is dormant on the free plan (triggers + cadence: `docs/rules/harness.md`, ADR-017).
 - **Review rail** (two-stage — spec-compliance then quality; detail in `docs/rules/harness.md`): before any push touching auth, schemas, API routes, or `lib/`, run `/code-review` (blocking) and resolve findings; **after** every code push invoke the `senior-code-reviewer` (breadth).
 - **Market benchmark before building.** Web-search existing products/libraries first.
-- Real multi-file features: **Superpowers** (brainstorm → spec → plan → TDD). Disposable idea-to-URL: `/quickstart`.
+- Real multi-file features: **Superpowers** (brainstorm → spec → plan → TDD; opt-in per fork — `.claude/settings.local.json.example`). Disposable idea-to-URL: `/quickstart`.
 - **Blueprint before building (pre-build gate).** `/blueprint` first: **lightweight** for `/quickstart`; **full** (committed `docs/blueprints/<feature>.md`: stories + happy/worst scenarios + architecture + open questions) for multi-file or Ask-before work — the contract `/qa`/`/uat` trace against.
 - **Auto-plan high blast-radius / ambiguous work.** Call `EnterPlanMode` (await sign-off) when ANY holds: multi-file/multi-step; Ask-before surface; ambiguous requirements; unfamiliar code; hard to reverse. Pair with `/blueprint`. Act directly for read-only lookups, low-risk single-file edits, typos/renames.
 - **Ceremony scales with RISK (binding).** Evidence artifacts only for security/data surfaces, Ask-before, migrations, wave-offs; everything else gets a commit message. Always verify; document selectively (`docs/ARCHIVE.md`).

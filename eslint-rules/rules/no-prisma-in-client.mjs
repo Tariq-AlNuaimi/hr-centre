@@ -5,7 +5,7 @@
 // Prisma. CLAUDE.md ‘Hard rules’: "UI -> API route -> service -> Prisma."
 
 // Both the barrel (`@/lib/prisma`) AND the generated client (`generated/prisma`,
-// where the real `PrismaClient` lives -- see .claude/rules/prisma.md). A
+// where the real `PrismaClient` lives -- see docs/rules/prisma.md). A
 // "use client" file importing `PrismaClient` from `@/generated/prisma/client`
 // was previously invisible to this rule (V2 challenge-audit M5).
 const PRISMA_LIB_PATHS = [

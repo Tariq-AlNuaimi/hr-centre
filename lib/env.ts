@@ -21,11 +21,16 @@ const envSchema = z.object({
   // deleted PII does not linger in the bin forever.
   RECYCLE_BIN_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 
-  // Rate limiting (optional). Names the proxy's trusted real-client-IP header so
-  // lib/rate-limit.ts can stop trusting the spoofable x-forwarded-for[0] -- e.g.
-  // "cf-connecting-ip" (Cloudflare) or "x-real-ip" (Vercel/nginx). Unset = fall
-  // back to x-real-ip then x-forwarded-for. Declared here for the env contract;
-  // consumed in lib/rate-limit.ts. See .env.example + SECURITY.md finding T-01.
+  // Rate limiting (optional). Names the real-client-IP header your proxy
+  // GUARANTEES -- e.g. "cf-connecting-ip" (Cloudflare) or "x-real-ip" (Vercel,
+  // nginx, the bundled Caddyfile). Consumed in lib/client-ip.ts, which splits the
+  // two uses that used to share one answer:
+  //   - ATTRIBUTION (audit_logs.ipAddress) fails CLOSED. Unset means no IP is
+  //     recorded at all; a forged forensic record is worse than an absent one.
+  //   - THROTTLING falls back to the client-supplied header, marked untrusted so
+  //     it can never collide with a trusted key. Rotating it evades your own
+  //     limit; it cannot pull anyone else into your bucket.
+  // Declared here for the env contract. See .env.example + SECURITY.md T-01.
   RATE_LIMIT_TRUSTED_IP_HEADER: z.string().optional(),
 
   // Audit retention (ADR-018) -- two secrets gate /api/internal/audit-purge,

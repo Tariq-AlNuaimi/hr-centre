@@ -383,7 +383,7 @@ function scanTier() {
   };
 }
 
-// -- session-state gate (memory lifecycle, .claude/rules/harness.md) --------
+// -- session-state gate (memory lifecycle, docs/rules/harness.md) --------
 // `docs/SESSION-HANDOFF.md` + `docs/session-state.json` are BRANCH-ONLY in-flight
 // state: tracked on a working branch so a fresh remote container keeps a program's
 // context, NEVER merged to main, pruned from forks. They leaked onto main anyway —
@@ -516,7 +516,7 @@ function scanSessionState() {
     ok: false,
     secs: secs(),
     out:
-      `${ref} tracks branch-only in-flight state (.claude/rules/harness.md "Memory lifecycle"):\n` +
+      `${ref} tracks branch-only in-flight state (docs/rules/harness.md "Memory lifecycle"):\n` +
       tracked.map((f) => `  - ${f}`).join("\n") +
       `\n  These are per-program session state, not template content — a fork created from main\n` +
       `  inherits this repo's program status as its own. They must never reach main.\n` +

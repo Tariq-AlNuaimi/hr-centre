@@ -359,7 +359,7 @@ feature), **build a thin reusable harness on the EXISTING @playwright/test** (ch
 **BUILD `scripts/capture-screens.mjs`** — reuses the already-adopted Playwright runner (ADR-008) to log
 in once and screenshot each route across {desktop,mobile}×{light,dark}×locales into
 `docs/verification/`; zero new dependency. The visual-regression DIFF tool is a separate, later call
-(V2-308). Informational for the ADR-032 hook (lives in `scripts/`). See V2-301; `.claude/rules/design.md`.
+(V2-308). Informational for the ADR-032 hook (lives in `scripts/`). See V2-301; `docs/rules/design.md`.
 
 ### 2026-07-17 — Parallel-wave enforcer (scripts/fan-out.mjs) — V2-105
 

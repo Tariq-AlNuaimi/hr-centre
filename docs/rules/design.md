@@ -53,7 +53,15 @@ the line. The operator signs off UAT.
   imported by middleware + chrome), and the switcher visibility all follow — no hand-edited
   `(en|ar)` regex anymore. RTL is automatic for `ar`/`he`/`fa`/`ur`. Default ships English-only;
   `messages/ar.json` + RTL code stay inert until a fork sets `"locales": ["en","ar"]`.
-- CSP allows `'unsafe-inline'` script+style (AntD SSR + Next bootstrap). Vercel auto-injects
+- CSP is **nonce-based** for scripts: `middleware.ts` mints a per-request nonce and sends
+  `script-src 'self' 'nonce-…' 'strict-dynamic'`, deliberately **omitting `'unsafe-inline'`**
+  (browsers ignore it when a nonce is present). `'unsafe-inline'` survives on **`style-src` only**,
+  because Radix overlays, recharts and sonner emit dynamic inline `style=""` attributes a nonce
+  can't cover. **Do not "fix" a CSP problem by adding `'unsafe-inline'` to `script-src`** — that is
+  an XSS regression, not a fix. (This bullet previously claimed the CSP allowed inline script+style
+  "for AntD SSR"; both halves were false — AntD was replaced in ADR-029 and scripts were already
+  nonced. A rule that understates the CSP invites exactly that regression. Red-team R8.)
+  Vercel auto-injects
   `AUTH_URL`; don't set it manually unless wiring a custom domain first.
 - The root `app/not-found.tsx` is deliberately context-free (no providers): Next 16 prerenders
   `/_not-found` outside `[locale]`. If a fork's build dies in `/_global-error` or `/_not-found`

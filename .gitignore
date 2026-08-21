@@ -113,11 +113,11 @@ sbom.json
 # consumes it to fire create_trigger. Transient, machine-local, never work product.
 .claude/state/
 
-# Per-checkout plugin enablement (red-team R5). `enabledPlugins` +
-# `extraKnownMarketplaces` makes a session fetch and run code from third-party
-# GitHub repos at startup. A fork operator opting in is a decision; a fork
-# operator INHERITING it is a supply chain, so this never gets committed.
-# `.claude/settings.local.json.example` is the copy-me template.
+# Per-machine Claude Code settings (red-team R5). Third-party plugin enablement
+# lives HERE, not in the committed settings.json: a marketplace entry pulls code
+# from someone else's GitHub repo and runs it with the agent's full privileges,
+# so each fork -- and the IT team receiving a /handoff -- should opt in
+# deliberately rather than inherit it. See .claude/settings.local.json.example.
 .claude/settings.local.json
 
 # fumadocs generated collections (enable-docs-site, ADR-053)

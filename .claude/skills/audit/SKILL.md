@@ -151,7 +151,7 @@ and complementary, but deferred to CI activation** — it needs `ANTHROPIC_API_K
 (the same trigger that activates `/ship`'s CI and the `senior-code-reviewer` workflow), and it is a
 _diff_ reviewer, not a local-path scanner, so it doesn't fit `/audit`'s "scan any folder offline"
 model. Wire it into the CI security workflows when the CI-activation trigger fires (ADR-020 /
-`.claude/rules/harness.md`); until then the local scanners above are the coverage.
+`docs/rules/harness.md`); until then the local scanners above are the coverage.
 
 ## Do NOT in this skill
 

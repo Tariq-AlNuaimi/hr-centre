@@ -19,6 +19,15 @@ investigation) · **senior-code-reviewer** (sonnet — post-push breadth) · **s
 (opus — threat model / trust boundaries / data classification) · **sre** (sonnet — operational
 readiness). Read access to `.next/`, `node_modules/`, `generated/` is denied — work from source.
 
+**Every wildcard in `permissions.allow` is a capability grant (red-team R2).** A wildcard over a CLI
+grants every subcommand that CLI will ever have — `Bash(npx prisma *)` silently granted
+`migrate reset` (drops the database) and `db execute` (arbitrary SQL). The allowlist is verb-scoped:
+prisma to `generate` / `migrate dev|deploy|status` / `studio` / `db seed`; `find` to read-only forms;
+`git push` to `claude/*` refspecs; `docker compose down` without flags. The destructive verbs are
+deny-listed **and** covered semantically in `dangerous-commands.mjs`, because the deny-list is
+prefix-lexical and prefix patterns alone are not a control. **When you add an allow entry, add the
+matching semantic check** — that pairing is the rule the original design missed.
+
 ## Review rail — two-stage, binding (ADR-020, V2-206)
 
 Both the pre-push `/code-review` diff gate and the post-push `senior-code-reviewer` run **STAGE 1
@@ -55,10 +64,23 @@ confirms every changed file landed in exactly one declared set.
   to the machine, never committed anywhere.** It dies with the container by design; SessionStart
   regenerates a skeleton (V2-006). Anything worth keeping goes to `docs/agent-memory.md` — that is
   the answer to "but I need this next session", not a commit of these files.
+- **Work a past session appears to have lost is usually an unpushed commit, not lost access.**
+  Check `git log --all`, `git reflog` and the remote branches before concluding anything —
+  **recover it, don't claim "no access."**
 - The `Stop` hook **hard-blocks** turn-end on **unpushed commits**; uncommitted WIP is a warning only.
 - Close call on blast radius → default to `EnterPlanMode` **and name the trigger** that justified it.
 
 ## The enforcement quartet — mechanism (CLAUDE.md states the rule)
+
+**They are PROCESS, not controls (red-team R6).** Two of them (`build-vs-buy-gate.mjs`,
+`blueprint-gate.mjs`) fail **OPEN** by ADR-047 design — malformed input returns allow, verified by
+feeding them non-JSON — so a corrupted ledger silently switches the gate off. And the artifact each
+one checks is **agent-writable**: an agent blocked by build-vs-buy can write its own `Considered:`
+entry and proceed. That is intended, but it means these gates **prompt deliberation; they cannot
+stop a determined change** (evidence: 42 ledger entries, zero reversals). Treat them as process
+documentation with a blocking UI. What actually holds is the security floor — auth wrappers, zod at
+the boundary, the ESLint rules, the audit log, gitleaks, and the fail-CLOSED guards
+(`dangerous-commands`, `protect-secrets`, `bash-write-gate`).
 
 Each gate **denies/REDs** until its committed adjudication artifact exists; recording the artifact
 IS the scan, not a bypass. Artifacts: build-vs-buy → a `docs/build-vs-buy-ledger.md` entry whose

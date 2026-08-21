@@ -110,12 +110,12 @@ Hooks gate what the agent reads/runs/writes at tool-time. The two **deny** hooks
 
 # Harness reference
 
-**Moved here 2026-08-17 (B1)** from `.claude/rules/harness.md`, which had grown to 19.9 KB —
+**Moved here 2026-08-17 (B1)** from `docs/rules/harness.md`, which had grown to 19.9 KB —
 larger than the constitution — and was being loaded into every session (see § Why the rule files
 live under `docs/`, below). `docs/rules/harness.md` keeps the **binding rules**; everything below
 is the **reference detail** behind them. Nothing was deleted in the split — this is the other half.
 
-## Why the rule files live under `docs/rules/`, not `.claude/rules/`
+## Why the rule files live under `docs/rules/`, not `docs/rules/`
 
 Claude Code auto-discovers markdown under `.claude/` as project-instruction files and loads it into
 **every** session. The six rule files therefore cost ~32.8 KB (~8.2K tokens) of always-on context —
@@ -125,7 +125,7 @@ file reaches the model only when a PreToolUse edit matches its frontmatter `glob
 
 The frontmatter contract is unchanged and is the source of truth — add a `docs/rules/*.md` with a
 `globs:` header and it participates, no code change. **Do not move these files back under
-`.claude/`.** `scripts/context-tax.mjs` fails `--strict` if a `.claude/rules/*.md` file reappears.
+`.claude/`.** `scripts/context-tax.mjs` fails `--strict` if a `docs/rules/*.md` file reappears.
 
 ## Local ESLint plugin — per-rule rationale (`eslint-rules/`, all thirteen at `error`)
 

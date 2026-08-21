@@ -43,7 +43,7 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
 - lib/audit-context.ts: AuditContext, auditStorage, withAuditContext, getAuditContext
 - lib/auth.ts: mapSsoRole, ssoProviderPlan, ssoConfigured, ssoEnforced
-- lib/client-ip.ts: clientIp
+- lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, recipientLabel, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate

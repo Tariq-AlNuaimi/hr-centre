@@ -298,7 +298,7 @@ Either way, the plan is a **work DAG** (V2-205), not a flat list — emit it as 
   check-overlap` verifies is write-disjoint before a parallel wave, and `verify-scope` checks
   after. Overlapping sets can't be a `[P]` group — serialize them.
 - **Role-lens** — which rule slice / context the implementing agent gets (ui / api / auth /
-  infra → the matching `.claude/rules/*.md`), so each unit rides the right context, not the whole
+  infra → the matching `docs/rules/*.md`), so each unit rides the right context, not the whole
   constitution. This is the input V2-105's `/fan-out` mechanism consumes.
 
 Tasks cite the story they serve (`US1`, `AC-2.1`) so the plan inherits the blueprint's

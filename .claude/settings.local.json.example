@@ -1,20 +1,25 @@
 {
-  "_comment": [
-    "OPT-IN, PER-FORK plugin enablement (red-team R5). Copy this file to",
-    ".claude/settings.local.json -- which is gitignored -- to turn the plugins on for",
-    "YOUR checkout. It is deliberately not committed: `enabledPlugins` plus",
-    "`extraKnownMarketplaces` makes every fork of this template fetch and run code from",
-    "third-party GitHub repos at session start, with no one having chosen that. A fork",
-    "operator opting in is a decision; a fork operator inheriting it is a supply chain.",
+  "$comment": [
+    "PER-MACHINE Claude Code settings. Copy to `.claude/settings.local.json` (gitignored)",
+    "and edit. Anything here is YOUR machine's choice and never reaches a fork or a /handoff.",
     "",
-    "Pin the marketplace refs before trusting them. `source.repo` tracks the default",
-    "branch, so what you run is whatever those repos hold the day your session starts.",
-    "CLAUDE.md routes real multi-file features through Superpowers (brainstorm -> spec ->",
-    "plan -> TDD); with the plugin off, the built-in /blueprint + writing-plans path",
-    "covers the same ground.",
+    "WHY plugins live here rather than in the committed settings.json (red-team R5, 2026-08-17):",
+    "a marketplace entry pulls code from someone else's GitHub repository and runs it with the",
+    "agent's full privileges in this repo -- the same privileges as the permission allowlist.",
+    "`superpowers` is a third-party PERSONAL repository (obra/superpowers) and was previously",
+    "auto-enabled in committed settings with no commit pin, so every fork inherited a",
+    "third-party dependency it never chose, upstream changes flowed in silently, and /handoff",
+    "shipped it to the receiving IT team as part of the package.",
     "",
-    "Remove this _comment key in your own copy -- it is documentation, not settings."
+    "Enabling it is a reasonable choice -- it is a genuinely useful plugin and the operator",
+    "adopted it deliberately. It should just be a choice each fork makes knowingly.",
+    "",
+    "PIN IT if you enable it. A marketplace without a pin tracks its upstream default branch,",
+    "so a compromised or simply changed upstream reaches you on the next session with no review.",
+    "Claude Code resolves marketplace sources at install time; re-run `/plugin` after changing",
+    "this file. Review what you are enabling first -- plugin code is not sandboxed from the repo."
   ],
+
   "extraKnownMarketplaces": {
     "claude-code-plugins": {
       "source": {
@@ -29,6 +34,7 @@
       }
     }
   },
+
   "enabledPlugins": {
     "frontend-design@claude-code-plugins": true,
     "superpowers@superpowers": true

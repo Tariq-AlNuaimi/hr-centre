@@ -139,9 +139,28 @@ Use this structure:
 - Next.js 16 (App Router) + React 19 + TypeScript
 - Postgres via Prisma 7
 - Auth.js v5 (Credentials provider; <list any OAuth providers wired>)
-- Ant Design 6 + next-intl (en, ar)
+- Tailwind v4 + shadcn/Radix (ADR-029) + next-intl (<list the locales actually enabled in
+  `project.config.json`; the template default is English-only>)
 - Vercel (hosting) + Neon (Postgres)
 - <list any /scale-up additions actually wired: Inngest, Vercel Blob, Pusher, Sentry, Upstash>
+
+### Known pre-release dependency — please read before go-live
+
+`next-auth` is pinned at **`5.0.0-beta.32`** — a pre-release, in the authentication path.
+This is deliberate and recorded in ADR-056 (the v5 beta is the only line supporting the App
+Router patterns this template is built on), but the receiving team should make an informed
+call rather than discover it during their own review:
+
+- No stability guarantee across beta bumps; breaking changes can land in a patch.
+- Security fixes ship on a pre-release cadence.
+- Pin is exact (no `^`), so it will not move without a deliberate bump.
+
+<Check whether v5 has since gone stable. If it has, say so and recommend the upgrade as the
+first maintenance task; if not, note the pin and move on.>
+
+<Also list any third-party Claude Code plugins the operator enabled locally. Since red-team R5
+these live in the gitignored `.claude/settings.local.json`, so the handoff package does NOT
+carry them by default — say so explicitly, and name any the team would need to re-enable.>
 
 ## Data model
 
