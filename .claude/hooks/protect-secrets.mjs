@@ -137,42 +137,86 @@ function basenameGlobToRegExp(glob) {
 }
 
 /**
- * Expand shell BRACE groups into their alternatives: `.{e,x}nv` -> [".env", ".xnv"].
+ * Expand shell BRACE groups. Returns { alts, complete }.
  *
- * Brace expansion is a SEPARATE, earlier shell stage than globbing, and the glob check
- * below only ever looked for `*?[]`. So `cat .{e,x}nv` contained no glob metacharacter,
- * was not the literal string ".env", and fell through to allow -- while bash happily
- * expanded it to `cat .env .xnv` (senior review, 2026-08-21). Every caller funnels
- * through secretPath(), so the same one-token idiom bypassed the archive, copy, curl and
- * interpreter checks too.
+ * Round 11 added this for the comma form (`.{e,x}nv`) and stopped there. Two things
+ * were still wrong, both found by re-review:
  *
- * Expanding rather than denying `{` outright: `cat file.{ts,tsx}` is ordinary work, and
- * an over-broad rule on a fail-CLOSED guard is its own harm. Bounded to keep a
- * pathological pattern from exploding.
+ *  1. Bash also has a RANGE form -- `{a..z}`, `{0..9}` -- with no comma in it. Splitting
+ *     on "," produced the single "alternative" `a..z`, so `cat .{a..z}nv` never yielded
+ *     `.env` and was ALLOWED. A one-token, entirely natural idiom that read the secret.
+ *  2. Both bounds FAILED OPEN. Past depth 6 the still-unexpanded string was returned as
+ *     if checked; past 64 alternatives the rest were silently dropped -- so
+ *     `.{x,{x,{x,{x,{x,{x,{x,env}}}}}}}` and a 71-item list with `env` last both walked
+ *     through. Bounds on a fail-CLOSED guard must deny what they cannot evaluate, which
+ *     is why this now reports `complete` instead of quietly truncating.
  */
 function expandBraces(str, depth = 0) {
   const m = /\{([^{}]*)\}/.exec(str);
-  if (!m || depth > 6) return [str];
+  if (!m) return { alts: [str], complete: true };
+  if (depth > 6) return { alts: [str], complete: false };
+
+  const inner = m[1];
+  let pieces;
+  if (inner.includes(",")) {
+    pieces = inner.split(",");
+  } else {
+    // Range form. Single-char alphabetic or integer; anything else is unrecognised
+    // and must not be treated as expanded.
+    const r = /^(-?\w+)\.\.(-?\w+)(?:\.\.(-?\d+))?$/.exec(inner);
+    if (!r) return { alts: [str], complete: !inner.includes("..") };
+    pieces = expandRange(r[1], r[2]);
+    if (pieces === null) return { alts: [str], complete: false };
+  }
+
   const out = [];
-  for (const alt of m[1].split(",")) {
+  let complete = true;
+  for (const alt of pieces) {
     const next = str.slice(0, m.index) + alt + str.slice(m.index + m[0].length);
-    for (const e of expandBraces(next, depth + 1)) {
-      if (out.length < 64) out.push(e);
+    const sub = expandBraces(next, depth + 1);
+    if (!sub.complete) complete = false;
+    for (const e of sub.alts) {
+      if (out.length < 512) out.push(e);
+      else complete = false; // dropped an alternative -> cannot claim "checked"
     }
   }
-  return out.length ? out : [str];
+  return { alts: out.length ? out : [str], complete };
+}
+
+/** `a`..`z` / `0`..`9` range members, or null if the range is not one we understand. */
+function expandRange(lo, hi) {
+  const out = [];
+  if (/^-?\d+$/.test(lo) && /^-?\d+$/.test(hi)) {
+    let [a, b] = [Number(lo), Number(hi)];
+    if (Math.abs(b - a) > 512) return null;
+    const step = a <= b ? 1 : -1;
+    for (let i = a; step > 0 ? i <= b : i >= b; i += step) out.push(String(i));
+    return out;
+  }
+  if (/^[A-Za-z]$/.test(lo) && /^[A-Za-z]$/.test(hi)) {
+    let [a, b] = [lo.charCodeAt(0), hi.charCodeAt(0)];
+    const step = a <= b ? 1 : -1;
+    for (let i = a; step > 0 ? i <= b : i >= b; i += step) out.push(String.fromCharCode(i));
+    return out;
+  }
+  return null;
 }
 
 /** Is this path/token secret-bearing? Returns a reason string or null. */
 function secretPath(raw) {
   if (!raw) return null;
-  // Check every brace alternative; ANY of them being secret-bearing denies the whole token.
   const withBraces = String(raw);
   if (withBraces.includes("{") && withBraces.includes("}")) {
-    for (const alt of expandBraces(withBraces)) {
+    const { alts, complete } = expandBraces(withBraces);
+    for (const alt of alts) {
       const why = secretPathLiteral(alt);
       if (why) return why;
     }
+    // Could not fully evaluate the brace expression -- deny rather than pass it
+    // through as clean. This guard fails CLOSED; a bound that drops coverage
+    // silently is the same defect as no bound at all.
+    if (!complete)
+      return `'${withBraces}' contains a brace expression this guard cannot fully expand, so it cannot be cleared -- name the exact file you need`;
     return null;
   }
   return secretPathLiteral(withBraces);

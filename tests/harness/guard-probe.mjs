@@ -143,6 +143,19 @@ export const SECRETS = [
   ["brace expansion (word)", "cat .{env,foo}"],
   ["brace expansion via cp", "cp .{e,x}nv /tmp/x"],
   ["brace expansion in a tar", "tar cf - .{e,x}nv | base64"],
+  // Re-review 2026-08-21: round 11 generalised the COMMA form and stopped there.
+  // Bash also has a RANGE form with no comma in it, so `cat .{a..z}nv` produced the
+  // single "alternative" `a..z`, never yielded .env, and was allowed.
+  ["brace range", "cat .{a..z}nv"],
+  ["brace range via grep", "grep TOKEN .{a..z}nv"],
+  // ...and both bounds FAILED OPEN: past depth 6 the unexpanded string was returned as
+  // if checked, and past the alternative cap the rest were silently dropped. A bound on
+  // a fail-CLOSED guard must deny what it cannot evaluate.
+  ["brace nested past the depth bound", "cat .{x,{x,{x,{x,{x,{x,{x,env}}}}}}}"],
+  [
+    "brace list past the count bound",
+    "cat .{x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11,x12,x13,x14,x15,x16,x17,x18,x19,x20,x21,x22,x23,x24,x25,x26,x27,x28,x29,x30,x31,x32,x33,x34,x35,x36,x37,x38,x39,x40,x41,x42,x43,x44,x45,x46,x47,x48,x49,x50,x51,x52,x53,x54,x55,x56,x57,x58,x59,x60,x61,x62,x63,x64,x65,x66,x67,x68,x69,env}",
+  ],
 ];
 
 // --- must stay ALLOWED -------------------------------------------------------
@@ -203,6 +216,20 @@ export const LEGITIMATE = [
   // case-sensitive, so `Main` is a DIFFERENT branch from `main`. Denying it would be a
   // false positive on a fail-closed guard, not a closed bypass.
   ["push to a branch named Main", "git push origin Main", bash],
+  // Re-review 2026-08-21: unifying the runner list put sh/bash/zsh into a WHOLE-COMMAND
+  // regex that was OR'd against a separate removal-call regex, so an unrelated grep
+  // pattern supplied the removal text and an unrelated `sh -e` supplied the runner. A
+  // hard deny on an everyday command, on a guard with no tiering and no override.
+  [
+    "grep for a removal call then run a script",
+    'grep -n "os.remove(" src/x.py && sh -e ./run-tests.sh',
+    bash,
+  ],
+  ["plain strict-mode script", "sh -e ./deploy.sh", bash],
+  // Counter-cases for the brace RANGE fix: ranges that cannot reach a secret name, and
+  // ordinary brace use, must stay allowed -- expanding rather than banning `{` is the point.
+  ["uppercase range cannot reach .env", "cat .{A..Z}nv", secret],
+  ["numeric range over source files", "cat page{1..3}.tsx", secret],
 ];
 
 // --- run ---------------------------------------------------------------------

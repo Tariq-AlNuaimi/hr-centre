@@ -140,6 +140,33 @@ test("V2-001 a heredoc fed to an INTERPRETER is scanned, not stripped as data", 
   assert.ok(isWarn(r), `nested heredoc write must be seen :: ${r.decision} ${r.stdout}`);
 });
 
+test("V2-001 a heredoc PIPED to an interpreter is scanned too", () => {
+  // Re-review 2026-08-21: round 11 detected the interpreter from the opening line's
+  // FIRST word, which only ever matched `bash <<'OUTER'`. `cat <<'OUTER' | bash` has
+  // first word `cat`, and bash still executes the body -- the same hole, one level over.
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(
+      "cat <<'OUTER' | bash\ncat > app/api/zzznew/route.ts <<'X'\nexport const x = 1;\nX\nOUTER",
+    ),
+  );
+  assert.ok(isWarn(r), `piped interpreter heredoc must be seen :: ${r.decision} ${r.stdout}`);
+});
+
+test("V2-001 a DATA heredoc NESTED inside an executed body stays unscanned", () => {
+  // Re-review 2026-08-21: keeping an executed body copied it verbatim, sweeping the
+  // nested data heredoc's CONTENT back into the scanned text and resurrecting the exact
+  // false positive stripHeredocBodies exists to prevent. Only `safe.ts` is written here.
+  const r = runHook(
+    "bash-write-gate.mjs",
+    preBash(
+      "bash <<'OUTER'\ncat > safe.ts <<'X'\nwe discussed writing > app/api/zzzevil/route.ts here\nX\nOUTER",
+    ),
+  );
+  assert.equal(r.decision, null, `nested data body must not be scanned :: ${r.stdout}`);
+  assert.ok(!isWarn(r), `expected no advisory :: ${advice(r)}`);
+});
+
 test("V2-001 a DATA heredoc still is not scanned (the false-positive fix must survive)", () => {
   const r = runHook(
     "bash-write-gate.mjs",

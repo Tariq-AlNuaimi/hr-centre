@@ -81,7 +81,7 @@ const INTERPRETER_VERBS = new Set([
  * it and denied. The opening line (`cat > f <<EOF`) is a real redirection and is kept;
  * everything between it and the terminator is DATA and must never be scanned.
  */
-function stripHeredocBodies(cmd) {
+function stripHeredocBodies(cmd, depth = 0) {
   const lines = cmd.split("\n");
   const out = [];
   let i = 0;
@@ -91,21 +91,32 @@ function stripHeredocBodies(cmd) {
     // <<EOF | <<-EOF | <<"EOF" | <<'EOF' -- possibly several on one line.
     const opens = [...line.matchAll(/<<-?\s*(["']?)([A-Za-z_][A-Za-z0-9_]*)\1/g)].map((m) => m[2]);
     // A heredoc body is inert DATA only when something CONSUMES it (`cat > f <<EOF`).
-    // When the target is an INTERPRETER (`bash <<'OUTER'`), the body is a script the
-    // shell executes -- so stripping it hid real writes: an inner
-    // `cat > app/api/x/route.ts <<'X'` nested inside `bash <<'OUTER'` was discarded as
-    // "body" and never reached writeTargets(), reopening the exact drop-to-the-shell
-    // hole this gate exists to close (senior review, 2026-08-21). Keep such a body so
-    // the loop walks into it and sees the nested commands.
-    const verb = (line.trim().split(/\s+/)[0] ?? "").replace(/^.*\//, "");
-    const bodyIsExecuted = INTERPRETER_VERBS.has(verb);
+    // When it is fed to an INTERPRETER the body is a script, so stripping it hid real
+    // writes. Round 11 fixed that by checking the line's FIRST word -- which only ever
+    // recognised `bash <<'OUTER'` and missed every indirect delivery of the same body:
+    // `cat <<'OUTER' | bash` has first word `cat`, and bash still executes the body.
+    // Ask the semantic question instead: does ANY stage of this line's pipeline run an
+    // interpreter? Conservative on purpose -- a false "executed" only means the body
+    // gets scanned, and nested DATA bodies inside it are still stripped by the
+    // recursion below.
+    const bodyIsExecuted = line
+      .split(/\||&&|;/)
+      .some((seg) =>
+        INTERPRETER_VERBS.has((seg.trim().split(/\s+/)[0] ?? "").replace(/^.*\//, "")),
+      );
     i++;
     for (const tag of opens) {
+      const body = [];
       while (i < lines.length && lines[i].trim() !== tag) {
-        if (bodyIsExecuted) out.push(lines[i]);
+        body.push(lines[i]);
         i++;
       }
       if (i < lines.length) i++; // consume the terminator itself
+      // Keeping an executed body must NOT keep the data bodies nested inside it.
+      // Round 11 copied the body verbatim, which swept a nested `cat > f <<'X'`'s
+      // CONTENT back into the scanned text -- resurrecting the exact false positive
+      // stripHeredocBodies exists to prevent, this time for interpreter heredocs.
+      if (bodyIsExecuted && depth < 4) out.push(stripHeredocBodies(body.join("\n"), depth + 1));
     }
   }
   return out.join("\n");

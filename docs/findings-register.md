@@ -35,6 +35,39 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-21 — [secure/harness] **Round 12: the re-review found the FIFTH instance of the
+  pattern, plus four more.** A second senior pass was commissioned specifically to hunt for a
+  same-class gap introduced BY the round-11 fixes. It found five, all execution-verified. The
+  pattern is now established beyond doubt: **each fix keyed off the SYNTACTIC SHAPE of the
+  previous proof-of-concept rather than the SEMANTIC property it needed to enforce.**
+  - **CRITICAL — `cat .{a..z}nv` read the live env file.** Round 11's brace fix split on commas.
+    Bash's RANGE form has no comma, so the single "alternative" was the literal `a..z` and the
+    secret name was never produced. Fixed by expanding alphabetic and numeric ranges.
+  - **HIGH — both brace bounds FAILED OPEN.** Past depth 6 the unexpanded string was returned
+    as if checked; past the alternative cap the remainder was silently dropped. Deep-nested and
+    71-item payloads both walked through. A bound on a fail-closed guard must DENY what it
+    cannot evaluate; `expandBraces` now reports completeness and an incomplete expansion denies.
+  - **HIGH — a heredoc piped to an interpreter bypassed the write gate.** Round 11 read the
+    interpreter from the opening line's FIRST word, so it recognised the direct form and nothing
+    else; piping the same body into a shell has a different first word. Now the whole pipeline
+    is examined.
+  - **MEDIUM-HIGH — keeping an executed body resurrected the original false positive.** The body
+    was copied verbatim, sweeping a nested DATA heredoc's content back into the scanned text —
+    the precise bug `stripHeredocBodies` exists to prevent. Now recursive.
+  - **MEDIUM-HIGH — a NEW false-positive denial on ordinary work.** Unifying the runner list put
+    `sh`/`bash`/`zsh` into a whole-command regex OR'd against a separate removal-call regex, so
+    a grep for a removal call followed by an unrelated strict-mode script run was hard-denied:
+    the grep pattern supplied the removal text, the script run supplied the runner. On a guard
+    with no tiering and no override. The destructive scan is now bound to the runner's quoted
+    inline BODY, which is what the whole-command check was for in the first place.
+    The reviewer also confirmed the `ship.mjs` accumulator fix as the one solidly-scoped repair of
+    the four. **What this says about the method:** every round so far was caught by an independent
+    pass, never by the author, and each round's fix was verified against its own PoC and shipped
+    green. Regression tests are necessary and have not been sufficient — the tests encode the
+    known shape, and the next gap is always the unknown one.
+    — owner: operator — status: fixed(guard-probe 31+36+48 all clear; 77 hook tests; evidence
+    `tests/harness/guard-probe.mjs`, `tests/harness/hooks.test.mjs`)
+
 - 2026-08-21 — [secure/harness] **Four guard defects introduced by this session's own
   hardening, found by senior review, all fixed.** Recorded because two were CRITICAL bypasses
   of what CLAUDE.md calls the security floor and they existed on `main` for part of the day; a
