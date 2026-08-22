@@ -1305,3 +1305,57 @@ test("qa-gate denies a deploy when a narrow QA receipt misses a shipped file", (
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// review-gate: the /quickstart exemption must be RECORDED and SCOPED, not ambient.
+// The first version read process.env.QUICKSTART: unscoped to the push, invisible in git,
+// persistent across every later push from that shell -- and /quickstart never set it, so
+// it did not even serve its own purpose. It is now a `Quickstart:` commit trailer.
+// ---------------------------------------------------------------------------
+test("review-gate: /quickstart exemption requires a recorded trailer, not an env var", () => {
+  const dir = mkdtempSync(join(tmpdir(), "qs-exempt-"));
+  const git = (...a) => execSync(`git ${a.join(" ")}`, { cwd: dir, stdio: "pipe" }).toString();
+  const gate = (env = {}) =>
+    spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~1..HEAD"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir, ...env },
+    });
+  try {
+    git("init -q");
+    git("config user.email t@t.t");
+    git("config user.name t");
+    mkdirSync(join(dir, "lib"), { recursive: true });
+    writeFileSync(join(dir, "README.md"), "seed\n");
+    git("add -A");
+    git("commit -q -m seed");
+
+    // A gated change with no receipt and no exemption -> must be REJECTED.
+    writeFileSync(join(dir, "lib", "thing.ts"), "export const x = 1;\n");
+    git("add -A");
+    git('commit -q -m "add gated file"');
+    assert.equal(gate().status, 1, "gated change without a receipt must be rejected");
+
+    // The OLD mechanism must no longer work: ambient env grants nothing.
+    assert.equal(
+      gate({ QUICKSTART: "1" }).status,
+      1,
+      "an ambient QUICKSTART env var must NOT exempt — it is unscoped and unrecorded",
+    );
+
+    // The trailer, recorded on a commit in the push range, does exempt.
+    git('commit -q --allow-empty -m "quickstart push" -m "Quickstart: disposable prototype"');
+    const r = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~2..HEAD"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    });
+    assert.equal(
+      r.status,
+      0,
+      `a recorded Quickstart: trailer must exempt. Got: ${r.stderr.slice(0, 200)}`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

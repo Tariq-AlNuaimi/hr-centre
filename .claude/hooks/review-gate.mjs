@@ -160,30 +160,38 @@ try {
   const ranges = resolveRanges();
   if (ranges.length === 0) process.exit(0); // nothing being pushed
 
-  // AC-1.4 extended to review-gate. The /quickstart exemption was written for qa-gate
-  // only, because until the scope inverted to a safe-set denylist review-gate never
-  // touched app/ or components/. It does now -- 89 of 89 of them -- and /quickstart
-  // deploys by `git push`, so without this the ~10-minute idea-to-URL promise runs
-  // through the full review rail. Disposable prototype output shared for feedback is
-  // exactly what the qa-gate carve-out already exempts, for the same reason.
-  // A gate that fires on every prototype push trains `git push --no-verify`, which takes
-  // gitleaks and the whole /ship gate down with it -- a far worse trade than the reviews
-  // it would have collected.
-  const truthy = (v) => v === "1" || v === "true";
-  if (truthy(process.env.QUICKSTART) || truthy(process.env.CLAUDE_QUICKSTART)) {
-    console.error(
-      "[review-gate] /quickstart push — review receipt not required (AC-1.4). " +
-        "This exemption is for DISPOSABLE prototype work only; a fork that has graduated " +
-        "past /quickstart should not be setting QUICKSTART=1.",
-    );
-    process.exit(0);
-  }
+  // AC-1.4 extended to review-gate, as a RECORDED TRAILER -- not an env var.
+  //
+  // The first attempt read process.env.QUICKSTART. Breadth review round 4 killed it, and
+  // it was right on both counts: (a) ambient environment is not scoped to the push being
+  // evaluated, so one `export QUICKSTART=1` silently disabled a control CLAUDE.md calls
+  // binding for every later push from that shell, with nothing in git history to show it;
+  // (b) /quickstart never set the variable anyway, so the exemption did not even serve the
+  // workflow it was added for. An unrecorded, indefinitely-persistent kill switch that does
+  // not solve its own problem is worse than no exemption.
+  //
+  // A `Quickstart: <reason>` trailer is scoped to a commit in this push, permanent in
+  // history, and auditable -- the same shape as Gate-Skip, minus the /ship RED, because
+  // this is a designed exemption rather than a bypass of one.
 
   for (const range of ranges) {
     const inScope = [...new Set(range.changed.filter(isInReviewScope))].sort();
 
     // --- AC-1.2: nothing gated in this push -> no receipt required, no friction.
     if (inScope.length === 0) continue;
+
+    // Disposable /quickstart work: exempt when a commit in THIS range says so.
+    const quickstart = range.commits
+      ?.map((sha) => commitMessage(sha, { root: ROOT }))
+      .find((m) => m && /^Quickstart:\s*\S/m.test(m));
+    if (quickstart) {
+      console.error(
+        `[review-gate] /quickstart push — review receipt not required (AC-1.4).\n` +
+          `  Recorded on the commit, not in the environment, so it is scoped to this push\n` +
+          `  and visible in git history forever. For DISPOSABLE prototype work only.`,
+      );
+      continue;
+    }
 
     // --- AC-4.1: recorded-ack bypass, loud and permanent.
     const skips = [];

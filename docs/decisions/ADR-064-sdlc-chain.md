@@ -117,6 +117,13 @@ ADR-047's split onto two new hooks rather than restating or superseding it.
 - `/quickstart`'s ~10-minute idea-to-URL path is untouched: it deploys via `git push`
   (Vercel auto-build), which `qa-gate.mjs` deliberately does not match, and an explicit
   `QUICKSTART=1` prefix is honoured if the provisioner is ever invoked directly.
+  (Superseded 2026-08-22, breadth review round 4: the review-gate half of this
+  exemption is a `Quickstart: <reason>` COMMIT TRAILER, not an env var. Ambient
+  environment is not scoped to the push being evaluated -- one `export QUICKSTART=1`
+  silently disabled a binding control for every later push from that shell, with
+  nothing in git history to show for it, and `/quickstart` never set the variable
+  anyway. The trailer is scoped, recorded and auditable. `qa-gate` keeps its
+  command-string form, which was already correctly scoped to one invocation.)
 
 ### Negative / risk
 

@@ -48,7 +48,10 @@ that order, and never lets a flawless Stage-2 pass paper over a Stage-1 failure.
 > **The gate's scope is code, not this prose.** `REVIEW_SCOPE_GLOBS` in
 > `.claude/hooks/lib/receipt.mjs` is authoritative; this list is a readable copy that has
 > already gone stale once. When they disagree, the code wins -- check with
-> `node -e 'import("./.claude/hooks/lib/receipt.mjs").then(m=>console.log(m.REVIEW_SCOPE_GLOBS))'`.
+> `node -e 'import("./.claude/hooks/lib/receipt.mjs").then(m=>console.log(m.isInReviewScope("<path>")))'`
+> — ask the predicate about a path rather than printing a list. The list was renamed once
+> and this command silently printed `undefined` for a while, which is worse than an error:
+> a stale copy of a name fails loudly, a stale _reader_ of one does not.
 
 ## Steps
 

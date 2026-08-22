@@ -122,9 +122,17 @@ quickstart push on it.
 
 ```sh
 git add -A
-git commit -m "feat: scaffold <entity-list> for <one-line-purpose>"
+git commit -m "feat: scaffold <entity-list> for <one-line-purpose>" \
+           -m "Quickstart: disposable prototype for team feedback"
 git push
 ```
+
+The `Quickstart:` trailer is what exempts this push from the review rail
+(`review-gate.mjs`, AC-1.4). It is a **trailer, not an environment variable**, on
+purpose: it is scoped to this push and permanent in git history, so an exemption
+can never quietly persist into later, non-disposable work. Leave it off and the
+push is gated like any other — which is the right outcome once a fork has grown
+past `/quickstart`.
 
 Vercel auto-builds (~90s). If the user has set up branch previews, a push to
 a non-main branch produces a preview URL; a push to `main` updates production.

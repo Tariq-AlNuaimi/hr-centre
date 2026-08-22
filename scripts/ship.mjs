@@ -248,15 +248,26 @@ function scanWaveOffs() {
  * (round-3 breadth finding). Shared so the three cannot drift apart again.
  */
 function ackAdjudicated(token) {
-  const re = new RegExp(
-    `^-\\s*\\d{4}-\\d{2}-\\d{2}\\b.*\\b${token}\\b.*\\bstatus:\\s*adjudicated`,
-    "i",
-  );
+  // ENTRY-BLOCK, not single-line -- the lesson scanWaveOffs already records a few
+  // functions above, which this originally ignored. Real register entries wrap: the date
+  // and category open the entry and `status:` lands on a continuation line, so a
+  // single-physical-line regex rejected every adjudication written in the file's own
+  // dominant style. It failed CLOSED (an operator who correctly adjudicated still got RED)
+  // -- the safe direction, but exactly the friction that trains --no-verify.
   let reg = "";
   try {
     reg = readFileSync("docs/findings-register.md", "utf8");
   } catch {}
-  return reg.split("\n").some((l) => re.test(l));
+  const named = new RegExp(`\\b${token}\\b`);
+  return reg
+    .split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/)
+    .some(
+      (b) =>
+        /^-\s*\d{4}-\d{2}-\d{2}\b/.test(b.trimStart()) &&
+        named.test(b) &&
+        /\bstatus:\s*adjudicated\b/i.test(b) &&
+        !/\bstatus:\s*open\b/i.test(b),
+    );
 }
 
 // -- Gate-Skip adjudication gate (AC-4.1; sdlc-chain blueprint) --------------
