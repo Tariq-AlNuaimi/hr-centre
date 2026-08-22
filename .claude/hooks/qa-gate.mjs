@@ -226,11 +226,22 @@ try {
   let prevQaFound = false; // distinct from `shipping.length` -- see below
   try {
     const log = gitTry(["log", "--format=%H%x00%B%x1e", "-n", "200", head], { root: ROOT }) ?? "";
+    // TRIM the sha. `--format=...%x1e` appends git's own trailing newline after EVERY
+    // record, so splitting on \x1e glues a leading "\n" onto every sha after the first.
+    // That malformed sha went straight into `${prevQa}..${head}`, git rejected the range,
+    // gitTry swallowed it, and `shipping` came back [] every time a prior QA point existed
+    // -- i.e. in normal steady-state use. Combined with the round-2 change from
+    // `shipping.length > 0` to `prevQaFound`, that turned an always-DENY bug (safe, merely
+    // annoying) into an always-ALLOW one: any syntactically valid narrow receipt shipped
+    // anything, silently, with no denial and no audit trail. Validated to hex so a
+    // malformed sha can never reach a git range again.
+    const HEX = /^[0-9a-f]{7,64}$/;
     const prevQa = log
       .split("\x1e")
       .map((e) => e.split("\x00"))
+      .map(([sha, body]) => [(sha ?? "").trim(), body])
       .slice(1)
-      .find(([, body]) => body && parseReceipts(body, "QA").length > 0)?.[0];
+      .find(([sha, body]) => HEX.test(sha) && body && parseReceipts(body, "QA").length > 0)?.[0];
     if (prevQa) {
       prevQaFound = true;
       shipping = (gitTry(["diff", "--name-only", `${prevQa}..${head}`], { root: ROOT }) ?? "")

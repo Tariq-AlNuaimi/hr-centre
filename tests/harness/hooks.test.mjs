@@ -1146,12 +1146,16 @@ test("review-gate.mjs fails OPEN on unusable input and allows an empty range", (
   // the original five cases did exactly that, so they passed only while the checkout
   // happened to have nothing unreviewed in scope: the same ambient-state fragility the
   // comment above warns about, reintroduced in the test written to replace it.
+  // A fifth case ("empty range with garbage stdin", ["HEAD..HEAD"]) was removed: because
+  // the CLI range is resolved BEFORE stdin is read, it never reached the stdin path, took
+  // the ordinary empty-range exit instead of failOpen(), and — proven by mutation — stayed
+  // green even with fail-open handling entirely removed. It duplicated the empty-range
+  // assertion above while advertising coverage it did not have.
   for (const [label, args, input] of [
     ["garbage range arg", ["definitely..not..a..range"], ""],
     ["nonexistent base ref", ["no-such-ref..HEAD"], ""],
     ["nonexistent head ref", ["HEAD..no-such-ref"], ""],
     ["both refs nonexistent", ["nope-a..nope-b"], ""],
-    ["empty range with garbage stdin", ["HEAD..HEAD"], "not json at all"],
   ]) {
     const r = run(args, input);
     assert.equal(r.status, 0, `review-gate should fail OPEN on ${label} (got ${r.status})`);
@@ -1235,4 +1239,69 @@ test("isSkipAdjudicated: recognises the documented form and nothing else", async
     false,
     "a named skip must not adjudicate the * alias",
   );
+});
+
+// ---------------------------------------------------------------------------
+// qa-gate: a NARROW receipt must not satisfy a deploy once a prior QA point exists.
+//
+// This is the round-3 CRITICAL. `git log --format=...%x1e` appends git's own newline
+// after every record, so splitting on \x1e glued "\n" onto every sha but the first;
+// the malformed sha produced a bad diff range, gitTry swallowed it, `shipping` came back
+// empty, and the allow branch fired unconditionally. Any syntactically valid narrow
+// receipt shipped anything, silently. No prior test caught it because every fixture had
+// only ONE QA-carrying commit -- the bug needs a SECOND one to trigger.
+// ---------------------------------------------------------------------------
+test("qa-gate denies a deploy when a narrow QA receipt misses a shipped file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "qa-gate-fixture-"));
+  const git = (...a) => execSync(`git ${a.join(" ")}`, { cwd: dir, stdio: "pipe" }).toString();
+  const receipt = (args) =>
+    spawnSync("node", [join(HOOKS, "lib", "receipt.mjs"), ...args], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    }).stdout.trim();
+  try {
+    git("init -q");
+    git("config user.email t@t.t");
+    git("config user.name t");
+    mkdirSync(join(dir, "lib"), { recursive: true });
+
+    // Cycle 1: a genuine whole-tree QA point.
+    writeFileSync(join(dir, "lib", "foo.ts"), "export const a = 1;\n");
+    git("add -A");
+    git('commit -q -m "seed"');
+    const whole = receipt(["trailer", "--key", "QA", "."]);
+    git(`commit -q --allow-empty -m "qa cycle 1${"\n\n"}${whole}"`);
+
+    // Cycle 2: two files change, but the new receipt names only one of them.
+    writeFileSync(join(dir, "lib", "foo.ts"), "export const a = 2;\n");
+    writeFileSync(join(dir, "lib", "bar.ts"), "export const b = 1;\n");
+    git("add -A");
+    git('commit -q -m "change foo and bar"');
+    const narrow = receipt(["trailer", "--key", "QA", "lib/foo.ts"]);
+    assert.match(
+      narrow,
+      /^QA: lib\/foo\.ts [0-9a-f]{40,64}$/,
+      "fixture must produce a valid narrow receipt",
+    );
+    git(`commit -q --allow-empty -m "narrow qa${"\n\n"}${narrow}"`);
+
+    // A narrow, INTERNALLY VALID receipt must not certify a deploy that also ships bar.ts.
+    const r = spawnSync("node", [join(HOOKS, "qa-gate.mjs")], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      input: JSON.stringify({
+        tool_name: "Bash",
+        tool_input: { command: "node scripts/deploy.mjs" },
+      }),
+    });
+    const out = `${r.stdout}${r.stderr}`;
+    assert.ok(
+      /deny|Denied/i.test(out),
+      `narrow receipt must NOT satisfy the deploy gate (lib/bar.ts uncovered). Got: ${out.slice(0, 300)}`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

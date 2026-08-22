@@ -82,6 +82,24 @@ export const REVIEW_SCOPE_GLOBS = [
   "package.json",
   "eslint.config.mjs",
   "eslint-rules/**",
+  // Round 3: the class STILL was not closed. Each of these can switch off a
+  // security-relevant /ship gate with no receipt, verified against the real matcher:
+  //   findings-register.md -- the trust anchor every OTHER escape hatch reads. One edit
+  //     marks any gate-skip, pillar wave-off or *Ack as adjudicated, defeating all of
+  //     them at once. The most powerful file in the set.
+  //   audit-allowlist.json -- loadAuditAllowlist only checks the JSON parses; adding a
+  //     real GHSA id silently clears a High/Critical npm audit finding.
+  //   next.config.ts -- carries the app's static security headers (HSTS, X-Frame-Options,
+  //     Referrer-Policy...). No ship phase or test asserts them; weakening one is silent.
+  //   tsconfig.json -- typecheck runs `tsc --noEmit` with no include override, so this
+  //     file's `exclude` decides what is typechecked at all (reproduced: adding
+  //     "app/api/**" to exclude made a real type error pass).
+  //   .npmrc -- `omit=dev` makes `npm audit` report 0 for a real dev CVE (reproduced).
+  "docs/findings-register.md",
+  "audit-allowlist.json",
+  "next.config.ts",
+  "tsconfig.json",
+  ".npmrc",
 ];
 
 /**
