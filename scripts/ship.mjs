@@ -313,13 +313,24 @@ function scanGateSkips() {
     register = "";
   }
   const blocks = register.split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/);
-  const adjudicatedFor = (gate) =>
-    blocks.some(
+  // ANCHORED, not a substring test (breadth-review finding). `b.includes(gate)` matched
+  // any prose containing the gate name, so the universal skip aliases `all` and `*` --
+  // which receipt.mjs's skipMatchesGate() explicitly defines as valid, documented values
+  // -- were reported "adjudicated" because unrelated closed entries happened to contain
+  // "install" or "all clear". A blanket `Gate-Skip: all` therefore bypassed both gates
+  // AND this backstop, silently, contradicting AC-4.1's literal text. The register must
+  // now name the gate the same way the trailer does. Escaped, because `*` is a valid
+  // gate value and a regex metacharacter.
+  const adjudicatedFor = (gate) => {
+    const esc = gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const names = new RegExp(`Gate-Skip:\\s*${esc}(?![\\w-])`);
+    return blocks.some(
       (b) =>
-        b.includes(gate) &&
+        names.test(b) &&
         /\bstatus:\s*(adjudicated|fixed)\b/i.test(b) &&
         !/\bstatus:\s*open\b/i.test(b),
     );
+  };
   const open = skips.filter((sk) => !adjudicatedFor(sk.gate));
   if (open.length === 0)
     return { name: NAME, ok: true, out: `${skips.length} skip(s), all adjudicated`, secs: secs() };

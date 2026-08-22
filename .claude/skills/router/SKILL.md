@@ -62,9 +62,13 @@ else (absent included) means run `/ship` before trusting green.
 
 ```bash
 # committed-but-unpushed (what review-gate.mjs will actually see at push time)
-git diff --name-only @{u}..HEAD 2>/dev/null | grep -E '^(lib/|app/api/|prisma/schema\.prisma$|middleware\.ts$|auth\.ts$|auth\.config\.ts$)'
+git diff --name-only @{u}..HEAD 2>/dev/null | node -e 'const c=[];process.stdin.on("data",d=>c.push(d)).on("end",async()=>{ \
+  const m=await import("./.claude/hooks/lib/receipt.mjs"); \
+  c.join("").split("\n").filter(Boolean).filter(m.isInReviewScope).forEach(p=>console.log(p));})'
 # plus anything still uncommitted, if you're about to commit it
-git status --short | awk '{print $2}' | grep -E '^(lib/|app/api/|prisma/schema\.prisma$|middleware\.ts$|auth\.ts$|auth\.config\.ts$)'
+git status --short | awk '{print $2}' | node -e 'const c=[];process.stdin.on("data",d=>c.push(d)).on("end",async()=>{ \
+  const m=await import("./.claude/hooks/lib/receipt.mjs"); \
+  c.join("").split("\n").filter(Boolean).filter(m.isInReviewScope).forEach(p=>console.log(p));})'
 ```
 
 This regex approximates `REVIEW_SCOPE_GLOBS` in `.claude/hooks/lib/receipt.mjs`
@@ -112,6 +116,11 @@ touched. This is the exact function that gate uses, reused not re-approximated.
 
 State current step, next step, and blockers only from what steps 1-5 showed
 you — a signal you didn't run is a signal you don't report on.
+
+> **Why the import, not a regex.** An earlier draft hard-coded the scope as a `grep -E`
+> pattern. The scope was then widened (`.claude/hooks/**`, `scripts/**`, `.claude/settings.json`,
+> `.husky/**`) and the copy silently went stale — two implementations of one invariant, which is
+> the drift `path-match.mjs`'s own header warns about. `isInReviewScope` is the single source.
 
 ## The two rails
 

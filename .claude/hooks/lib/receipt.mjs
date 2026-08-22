@@ -38,6 +38,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { globToRegExp, relPath } from "./path-match.mjs";
 
 /** The empty git tree -- what an in-scope set with no surviving files hashes to. */
@@ -62,6 +63,15 @@ export const REVIEW_SCOPE_GLOBS = [
   // these carry at least the blast radius of lib/. (AC-1.1, amended 2026-08-22.)
   ".claude/hooks/**",
   "scripts/**",
+  // The WIRING, added after a breadth review found the widening above stopped one
+  // level short: `.claude/hooks/**` protects the guards' CODE, but `settings.json`
+  // is what REGISTERS them and `.husky/pre-push` is what INVOKES review-gate. Deleting
+  // one line from either silently and permanently disables the mechanism -- including
+  // the fail-closed guards (protect-secrets, dangerous-commands, bash-write-gate) --
+  // with no receipt demanded and no banner. The two files most capable of switching
+  // everything off were the two outside its protection.
+  ".claude/settings.json",
+  ".husky/**",
 ];
 
 /** Scope tokens that mean "the whole tree" rather than a path list. */
@@ -386,7 +396,11 @@ function cli(argv) {
   return 2;
 }
 
-if (process.argv[1] && process.argv[1].endsWith("receipt.mjs")) {
+// Entry-module guard. Was `argv[1].endsWith("receipt.mjs")`, which fired whenever ANY
+// argument merely ended in that filename -- so importing this module from a script that
+// happened to be passed the path `.claude/hooks/lib/receipt.mjs` hijacked it into CLI
+// mode and printed usage instead of exporting. Compare the resolved entry URL instead.
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   try {
     process.exit(cli(process.argv.slice(2)));
   } catch (e) {

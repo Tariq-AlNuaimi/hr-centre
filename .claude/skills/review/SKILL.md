@@ -1,6 +1,6 @@
 ---
 name: review
-description: Runs the binding pre-push review rail over the current diff and, when clean, writes the Reviewed trailer the push gate requires. Use before pushing changes to auth files, prisma/schema.prisma, app/api/**, or lib/** -- to review a diff or check a change for correctness before it goes out.
+description: Runs the binding pre-push review rail over the current diff and, when clean, writes the Reviewed trailer the push gate requires. Use before pushing changes to auth files, prisma/schema.prisma, app/api/**, lib/**, or harness code (hooks, scripts, settings) -- to review a diff or check a change before it goes out.
 ---
 
 # Review
@@ -24,7 +24,8 @@ that order, and never lets a flawless Stage-2 pass paper over a Stage-1 failure.
 ## When to use
 
 - Before pushing any change touching auth files, `prisma/schema.prisma`,
-  `app/api/**`, or `lib/**` -- this is where CLAUDE.md and `docs/rules/harness.md`
+  `app/api/**`, `lib/**`, or the harness itself (`.claude/hooks/**`, `scripts/**`,
+  `.claude/settings.json`, `.husky/**`) -- this is where CLAUDE.md and `docs/rules/harness.md`
   make review **blocking**, and where the push gate (AC-1.1) will look for the
   receipt this skill emits.
 - Whenever asked to "review my changes", "check this diff", "is this ready to
@@ -43,6 +44,11 @@ that order, and never lets a flawless Stage-2 pass paper over a Stage-1 failure.
 - To decide _what_ to build or _whether_ an architecture is sound before code
   exists -- that is `/blueprint` / `/explore`. This skill reviews a diff against
   a blueprint that already exists; it does not write one.
+
+> **The gate's scope is code, not this prose.** `REVIEW_SCOPE_GLOBS` in
+> `.claude/hooks/lib/receipt.mjs` is authoritative; this list is a readable copy that has
+> already gone stale once. When they disagree, the code wins -- check with
+> `node -e 'import("./.claude/hooks/lib/receipt.mjs").then(m=>console.log(m.REVIEW_SCOPE_GLOBS))'`.
 
 ## Steps
 
@@ -138,14 +144,14 @@ is re-demanded, rather than silently certifying stale content.
 
 ## Common Rationalizations
 
-| Rationalization                                            | Reality                                                                                                                                                                                        |
-| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "The plugin `/code-review` already looked at it."          | The plugin reads the raw diff; it has no notion of a blueprint `Scope:` or an AC. It is Stage 1's diff-reading step, not Stage 1 itself -- run it, then apply the spec-compliance lens on top. |
-| "It's my own code, I know it's right."                     | Authors are blind to their own assumptions -- the entire reason this rail is binding rather than optional. Self-review still runs both stages.                                                 |
-| "Stage 2 came back clean, that's good enough."             | A flawless Stage-2 pass on a Stage-1 failure is still a Stage-1 failure. An uncovered file or a contradicted AC fails the review regardless of code quality.                                   |
-| "I'll just amend the commit after review to fix a typo."   | Any amend to an in-scope path changes its blob sha and invalidates the trailer (AC-1.6) -- that's the design, not a bug. Re-run review after the amend.                                        |
-| "It's outside `lib/**`/`app/api/**`, so no review needed." | The receipt is only _required_ in that scope (AC-1.2); running the rail on other changes you have doubts about is still worthwhile, just not gated.                                            |
-| "The push gate will catch it if I'm wrong."                | The gate fails open on error (ADR-047) and only checks trailer presence/hash -- it cannot judge quality. It enforces that review happened, not that it was done well.                          |
+| Rationalization                                                                                                              | Reality                                                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "The plugin `/code-review` already looked at it."                                                                            | The plugin reads the raw diff; it has no notion of a blueprint `Scope:` or an AC. It is Stage 1's diff-reading step, not Stage 1 itself -- run it, then apply the spec-compliance lens on top. |
+| "It's my own code, I know it's right."                                                                                       | Authors are blind to their own assumptions -- the entire reason this rail is binding rather than optional. Self-review still runs both stages.                                                 |
+| "Stage 2 came back clean, that's good enough."                                                                               | A flawless Stage-2 pass on a Stage-1 failure is still a Stage-1 failure. An uncovered file or a contradicted AC fails the review regardless of code quality.                                   |
+| "I'll just amend the commit after review to fix a typo."                                                                     | Any amend to an in-scope path changes its blob sha and invalidates the trailer (AC-1.6) -- that's the design, not a bug. Re-run review after the amend.                                        |
+| "It's outside `lib/**`/`app/api/**`, so no review needed." (the harness counts too -- hooks, scripts, settings.json, .husky) | The receipt is only _required_ in that scope (AC-1.2); running the rail on other changes you have doubts about is still worthwhile, just not gated.                                            |
+| "The push gate will catch it if I'm wrong."                                                                                  | The gate fails open on error (ADR-047) and only checks trailer presence/hash -- it cannot judge quality. It enforces that review happened, not that it was done well.                          |
 
 ## Red Flags
 

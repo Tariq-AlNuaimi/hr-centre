@@ -43,6 +43,7 @@ import { readFileSync } from "node:fs";
 import {
   commitMessage,
   gitTry,
+  norm,
   parseGateSkips,
   parseReceipts,
   skipMatchesGate,
@@ -211,17 +212,70 @@ try {
   stage = "verify-receipt";
   const receipts = parseReceipts(message, "QA");
   let stale = null;
-  for (const r of receipts) {
-    const v = verifyReceipt(r, { root: ROOT, ref: head });
-    if (v.valid) process.exit(0); // QA'd -> deploy proceeds
-    stale = { ...r, ...v };
+
+  // COVERAGE, not mere validity (breadth-review finding). Accepting ANY valid receipt
+  // meant a `QA: package.json <sha>` trailer -- a normal artifact, since /qa's own
+  // re-run scoping encourages narrow receipts -- unlocked a full production deploy.
+  // review-gate already intersects a receipt's scope against what actually changed;
+  // this half of the chain did not. A deploy ships the whole app, so the shipping
+  // surface here is everything changed since the last commit that carried a QA
+  // receipt (no prior QA point -> nothing partial can cover it, so whole-tree only).
+  const SHIPS = (p) =>
+    !/^(docs|tests|evals)\//.test(p) && !p.startsWith(".claude/") && !p.startsWith(".husky/");
+  let shipping = [];
+  try {
+    const log = gitTry(["log", "--format=%H%x00%B%x1e", "-n", "200", head], { root: ROOT }) ?? "";
+    const prevQa = log
+      .split("\x1e")
+      .map((e) => e.split("\x00"))
+      .slice(1)
+      .find(([, body]) => body && parseReceipts(body, "QA").length > 0)?.[0];
+    if (prevQa) {
+      shipping = (gitTry(["diff", "--name-only", `${prevQa}..${head}`], { root: ROOT }) ?? "")
+        .split("\n")
+        .filter(Boolean)
+        .filter(SHIPS);
+    }
+  } catch {
+    shipping = []; // cannot determine -> treat as "no prior QA point" (strictest)
   }
 
-  const staleNote = stale
-    ? ` A 'QA:' trailer IS present but its tree-sha no longer matches the content it certifies ` +
-      `(receipt ${stale.expected}, current ${stale.actual}) — the code changed after QA ran, so the ` +
-      `receipt self-invalidated instead of certifying untested content (AC-1.6).`
-    : "";
+  for (const r of receipts) {
+    const v = verifyReceipt(r, { root: ROOT, ref: head });
+    if (!v.valid) {
+      stale = { ...r, ...v };
+      continue;
+    }
+    if (r.wholeTree) process.exit(0); // certifies everything -> covers any deploy
+    const covered = new Set(r.scope.map((x) => norm(x, ROOT)));
+    const uncovered = shipping.filter((x) => !covered.has(x));
+    if (shipping.length > 0 && uncovered.length === 0) process.exit(0);
+    stale = {
+      ...r,
+      ...v,
+      narrow: true,
+      uncovered: uncovered.slice(0, 8),
+      noPrevQa: shipping.length === 0,
+    };
+  }
+
+  const narrowNote =
+    stale && stale.narrow
+      ? ` A VALID 'QA:' trailer is present but it certifies only [${stale.scope.join(", ")}], which does ` +
+        (stale.noPrevQa
+          ? `not cover this deploy: no earlier QA receipt exists in history, so only a whole-tree receipt ` +
+            `(QA: . <tree-sha>) can certify a first deploy.`
+          : `not cover everything shipping since the last QA'd commit — still uncovered: ` +
+            `${stale.uncovered.join(", ")}.`) +
+        ` A narrow receipt records a partial re-run; it does not certify the whole app.`
+      : "";
+  const staleNote = narrowNote
+    ? narrowNote
+    : stale
+      ? ` A 'QA:' trailer IS present but its tree-sha no longer matches the content it certifies ` +
+        `(receipt ${stale.expected}, current ${stale.actual}) — the code changed after QA ran, so the ` +
+        `receipt self-invalidated instead of certifying untested content (AC-1.6).`
+      : "";
 
   deny(
     `[${GATE}] Denied: this is a deploy invocation and HEAD (${head.slice(0, 12)}) carries no valid ` +

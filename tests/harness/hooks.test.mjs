@@ -746,7 +746,8 @@ test("every .mjs hook exits 0 on benign input and on malformed stdin", () => {
   // whether the working tree happened to hold unreviewed in-scope changes: it passed
   // only while the review scope matched nothing dirty, and started failing the moment
   // the scope widened to scripts/** (AC-1.1). Their own fail-open behaviour is covered
-  // by the review-gate tests below; this sweep is about session hooks bricking a session.
+  // by the dedicated review-gate test that follows; this sweep is about session hooks
+  // bricking a session.
   const notSessionHooks = new Set(["review-gate.mjs"]);
   for (const f of readdirSync(HOOKS).filter((n) => n.endsWith(".mjs") && !notSessionHooks.has(n))) {
     const benign = runHook(f, preBash("echo hello"));
@@ -1114,3 +1115,36 @@ test("V2-209 analyzeBlueprint flags a real amendment row with an empty Confirmed
 // from the default rail. BDD traceability is a practice a team adopts after finding
 // the problem it solves, not a pre-installed default. The recipe stays in docs/ so a
 // fork can re-adopt it; if you do, restore these tests with it.
+
+// ---------------------------------------------------------------------------
+// review-gate.mjs is a git pre-push gate, not a session hook, so it is exempt from
+// the PreToolUse sweep above. That exemption previously cited "the review-gate tests
+// below" -- which did not exist, leaving this file's fail-open contract (ADR-047's
+// core promise for it) entirely untested. This is that test, invoking the gate the
+// way git actually does: a `base..head` range argument.
+//
+// It asserts ONLY state-independent properties. Deliberately NOT asserted: that a
+// range containing unreviewed gated files exits 1. That is true right now, but it
+// depends on whether the working branch happens to carry a receipt -- and a test whose
+// outcome moves with ambient repo state is exactly the defect that made the original
+// sweep pass for the wrong reason.
+// ---------------------------------------------------------------------------
+test("review-gate.mjs fails OPEN on unusable input and allows an empty range", () => {
+  const gate = join(HOOKS, "review-gate.mjs");
+  const run = (args, input) =>
+    spawnSync("node", [gate, ...args], { cwd: REPO, input: input ?? "", encoding: "utf8" });
+
+  // An empty range has no changed paths -> nothing gated -> allow.
+  assert.equal(run(["HEAD..HEAD"]).status, 0, "empty range should allow");
+
+  // Unusable input must ALLOW, never wedge a push (ADR-047: governance gates fail open).
+  for (const [label, args, input] of [
+    ["garbage range arg", ["definitely not a range"], ""],
+    ["garbage stdin, no arg", [], "not json at all"],
+    ["empty stdin, no arg", [], ""],
+    ["ref that does not exist", ["no-such-ref..HEAD"], ""],
+  ]) {
+    const r = run(args, input);
+    assert.equal(r.status, 0, `review-gate should fail OPEN on ${label} (got ${r.status})`);
+  }
+});
