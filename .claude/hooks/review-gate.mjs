@@ -181,9 +181,20 @@ try {
     if (inScope.length === 0) continue;
 
     // Disposable /quickstart work: exempt when a commit in THIS range says so.
+    // Match ONLY in the trailer block (the final paragraph), via git's own parser.
+    // Every other trailer in this chain is matched line-wise, which is fine for them: a
+    // prose line starting "Reviewed:" still needs a valid hash, and a stray "Gate-Skip:"
+    // fails SAFE (it REDs /ship). Quickstart is the one whose false positive fails OPEN --
+    // it exempts -- so a commit message that merely discusses the mechanism at line start
+    // must not grant an exemption. This repo's own messages discuss it at length.
     const quickstart = range.commits
-      ?.map((sha) => commitMessage(sha, { root: ROOT }))
-      .find((m) => m && /^Quickstart:\s*\S/m.test(m));
+      ?.map((sha) =>
+        gitTry(["interpret-trailers", "--parse"], {
+          root: ROOT,
+          input: commitMessage(sha, { root: ROOT }) ?? "",
+        }),
+      )
+      .find((t) => t && /^Quickstart:\s*\S/m.test(t));
     if (quickstart) {
       console.error(
         `[review-gate] /quickstart push — review receipt not required (AC-1.4).\n` +

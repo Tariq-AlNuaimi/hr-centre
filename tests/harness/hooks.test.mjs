@@ -1355,6 +1355,24 @@ test("review-gate: /quickstart exemption requires a recorded trailer, not an env
       0,
       `a recorded Quickstart: trailer must exempt. Got: ${r.stderr.slice(0, 200)}`,
     );
+
+    // A commit that merely DISCUSSES the mechanism must not exempt. Quickstart is the one
+    // trailer whose false positive fails OPEN, so it is matched only in the trailer block
+    // (git interpret-trailers --parse), not line-wise like the others.
+    writeFileSync(join(dir, "lib", "other.ts"), "export const y = 2;\n");
+    git("add -A");
+    execSync("git commit -q -F -", {
+      cwd: dir,
+      stdio: ["pipe", "pipe", "pipe"],
+      input:
+        "explain the exemption\n\nQuickstart: prose at line start, not a trailer\n\ntrailing body keeps it out of the trailer block\n",
+    });
+    const prose = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~1..HEAD"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    });
+    assert.equal(prose.status, 1, "prose merely mentioning Quickstart: must NOT exempt");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
