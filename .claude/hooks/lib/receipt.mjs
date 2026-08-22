@@ -55,6 +55,13 @@ export const REVIEW_SCOPE_GLOBS = [
   "middleware.ts",
   "auth.ts",
   "auth.config.ts",
+  // Harness code, added after this gate's own wave shipped three hooks, a receipt
+  // library and two gates WITHOUT a review receipt -- because harness paths were out
+  // of scope. A hook change can switch a fail-closed guard (protect-secrets,
+  // dangerous-commands, bash-write-gate) off, and scripts/ship.mjs IS the gate, so
+  // these carry at least the blast radius of lib/. (AC-1.1, amended 2026-08-22.)
+  ".claude/hooks/**",
+  "scripts/**",
 ];
 
 /** Scope tokens that mean "the whole tree" rather than a path list. */

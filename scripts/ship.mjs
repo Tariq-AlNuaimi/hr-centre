@@ -238,6 +238,104 @@ function scanWaveOffs() {
   };
 }
 
+// -- Gate-Skip adjudication gate (AC-4.1; sdlc-chain blueprint) --------------
+// A `Gate-Skip: <gate> <reason>` trailer is how the operator deliberately bypasses
+// a receipt gate (review-gate / qa-gate) -- recorded rather than silent, which is
+// the whole point. But RECORDED is only half the guarantee: a skip nobody reports
+// quietly becomes permanent. So an unadjudicated skip makes /ship RED, exactly the
+// way an open pillar wave-off does (scanWaveOffs above is the precedent this
+// mirrors deliberately -- same register, same adjudication vocabulary).
+//
+// Adjudicate by adding a docs/findings-register.md entry naming the gate, then
+// flipping it to `status: adjudicated(<date>)` or `status: fixed(<commit>)`.
+// Scans only commits not yet on the upstream branch: once work is pushed and
+// merged, its skips are history, not an open decision.
+function scanGateSkips() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const NAME = "gate-skips";
+  let msgs = [];
+  try {
+    // Unpushed commits only. No upstream (fresh branch) -> nothing to adjudicate.
+    // spawnSync, not execFileSync: only spawn/spawnSync/execSync are imported here.
+    // execFileSync would throw ReferenceError, the catch below would swallow it, and
+    // this gate would fail OPEN forever while still appearing in the check list --
+    // the exact "a harness bug silently switches the gate off" failure docs/rules/
+    // harness.md warns about for governance gates.
+    const g = (args) => {
+      const r = spawnSync("git", args, { encoding: "utf8" });
+      if (r.error || r.status !== 0) throw new Error(`git ${args[0]} failed`);
+      return r.stdout;
+    };
+    // Range choice matters for the guarantee. `@{u}..HEAD` (unpushed only) means
+    // PUSHING a skip makes the gate forget it -- skip, push, never see RED again,
+    // which is most of AC-4.1 undone. Scan back to the default branch instead, so a
+    // skip stays RED until the work actually merges. Fall back to the upstream range
+    // only when there is no origin/main to compare against.
+    let range;
+    try {
+      range = g(["rev-list", "origin/main..HEAD"]);
+    } catch {
+      range = g(["rev-list", "@{u}..HEAD"]);
+    }
+    range = range.split("\n").filter(Boolean);
+    for (const sha of range) {
+      msgs.push({ sha: sha.slice(0, 8), body: g(["log", "-1", "--format=%B", sha]) });
+    }
+  } catch {
+    // No upstream, detached HEAD, not a repo -- governance check, fail OPEN
+    // (ADR-047): a harness bug must never wedge the loop.
+    return {
+      name: NAME,
+      ok: true,
+      out: "no upstream range (skipped)",
+      secs: secs(),
+      // A skipped result MUST carry `warn` or the verdict counts it as having RUN --
+      // the harness invariant that caught this. A governance gate that reports a
+      // clean pass it never performed is worse than one that admits it was skipped.
+      warn: "gate-skip check skipped: no upstream range (fresh branch or detached HEAD)",
+    };
+  }
+  const skips = [];
+  for (const { sha, body } of msgs) {
+    for (const line of body.split("\n")) {
+      const m = /^Gate-Skip:\s*(\S+)\s*(.*)$/.exec(line.trim());
+      if (m) skips.push({ sha, gate: m[1], reason: (m[2] || "").trim() });
+    }
+  }
+  if (skips.length === 0) return { name: NAME, ok: true, out: "clean (no skips)", secs: secs() };
+
+  // Adjudicated == the register carries an entry naming that gate which is NOT open.
+  let register = "";
+  try {
+    register = readFileSync("docs/findings-register.md", "utf8");
+  } catch {
+    register = "";
+  }
+  const blocks = register.split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/);
+  const adjudicatedFor = (gate) =>
+    blocks.some(
+      (b) =>
+        b.includes(gate) &&
+        /\bstatus:\s*(adjudicated|fixed)\b/i.test(b) &&
+        !/\bstatus:\s*open\b/i.test(b),
+    );
+  const open = skips.filter((sk) => !adjudicatedFor(sk.gate));
+  if (open.length === 0)
+    return { name: NAME, ok: true, out: `${skips.length} skip(s), all adjudicated`, secs: secs() };
+  return {
+    name: NAME,
+    ok: false,
+    secs: secs(),
+    out:
+      `${open.length} UNADJUDICATED gate skip(s) in unpushed commits — a recorded skip is only half the guarantee (AC-4.1):\n` +
+      open
+        .map((sk) => `  ${sk.sha}  Gate-Skip: ${sk.gate} — ${sk.reason || "(no reason given)"}`)
+        .join("\n") +
+      `\n  Add a docs/findings-register.md entry naming the gate, then flip it to status: adjudicated(<date>) or fixed(<commit>).`,
+  };
+}
+
 // -- license-allowlist gate (ADR-051 §2; Five Pillars: Secure/Maintainable) --
 // The template is REDISTRIBUTED: forks inherit the whole dependency tree, so an
 // AGPL / SSPL / BUSL / Elastic / GPL-only license resolving ANYWHERE in the tree
@@ -1626,6 +1724,7 @@ const scalability = scanScalability();
 // C2: house-style copy check -- real, but not security-bearing. ship:full.
 const copy = await fullOnly("copy", scanCopy);
 const waveoffs = scanWaveOffs();
+const gateSkips = scanGateSkips();
 const licenses = scanLicenses();
 const tier = scanTier();
 const sessionState = scanSessionState();
@@ -1685,7 +1784,11 @@ let [
   // must stay free of near-duplicate descriptions. --min-rank1 ratchets the
   // measured rank-1 rate (87.8% at authoring time) so an unrelated
   // description edit doesn't immediately turn this gate red.
-  fullOnly("evals", () => run("evals", "node", ["scripts/run-evals.mjs", "--min-rank1", "80"])),
+  // WARM, not fullOnly (AC-5.1, amended 2026-08-22): 326ms against a ~65s ship.
+  // As a fullOnly check the ratchet never ran on the path every push actually takes,
+  // so a routing regression survived every ordinary push -- and the description pass
+  // is exactly the change that introduces one.
+  run("evals", "node", ["scripts/run-evals.mjs", "--min-rank1", "80"]),
   // repo-map drift (2026-08-21). docs/REPO-MAP.md is the "where is X" index every
   // session reads before non-trivial work, and it went stale TWICE in two days --
   // once when a cut removed components, once when three lib/ exports were made
@@ -1715,6 +1818,7 @@ for (const r of [
   scalability,
   copy,
   waveoffs,
+  gateSkips,
   licenses,
   tier,
   sessionState,
@@ -1748,6 +1852,7 @@ const redA = [
   scalability,
   copy,
   waveoffs,
+  gateSkips,
   licenses,
   tier,
   sessionState,

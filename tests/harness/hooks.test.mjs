@@ -739,7 +739,16 @@ test("V2-102 memory-digest --strict FAILS on a fixture with an over-budget secti
 // ---------------------------------------------------------------------------
 test("every .mjs hook exits 0 on benign input and on malformed stdin", () => {
   const failClosed = new Set(["dangerous-commands.mjs", "protect-secrets.mjs"]);
-  for (const f of readdirSync(HOOKS).filter((n) => n.endsWith(".mjs"))) {
+  // NOT session hooks: invoked by git (.husky/pre-push) with ref-updates on stdin,
+  // never by Claude Code with a PreToolUse payload. Feeding them `preBash(...)` and
+  // demanding exit 0 is a category error -- they evaluate REPO STATE and exit non-zero
+  // to reject a push, which is their job. Worse, it made this test's outcome depend on
+  // whether the working tree happened to hold unreviewed in-scope changes: it passed
+  // only while the review scope matched nothing dirty, and started failing the moment
+  // the scope widened to scripts/** (AC-1.1). Their own fail-open behaviour is covered
+  // by the review-gate tests below; this sweep is about session hooks bricking a session.
+  const notSessionHooks = new Set(["review-gate.mjs"]);
+  for (const f of readdirSync(HOOKS).filter((n) => n.endsWith(".mjs") && !notSessionHooks.has(n))) {
     const benign = runHook(f, preBash("echo hello"));
     assert.equal(benign.code, 0, `${f} should exit 0 on benign input`);
     const garbage = runHook(f, "definitely not json");
