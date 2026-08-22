@@ -47,6 +47,7 @@ import { readFileSync } from "node:fs";
 import {
   commitMessage,
   gitTry,
+  isQuickstartExempt,
   norm,
   parseGateSkips,
   parseReceipts,
@@ -182,11 +183,10 @@ try {
   const message = commitMessage(head, { root: ROOT });
 
   // AC-1.4 -- /quickstart's idea-to-URL path is exempt, on a RECORDED trailer only.
-  // Parsed out of the trailer BLOCK (git interpret-trailers), not matched anywhere in the
-  // message, so a line quoting the token inside prose cannot exempt a real deploy.
+  // The matcher lives in receipt.mjs so both gates share one implementation -- see the
+  // two guards documented there (trailer-block only, fixed literal only).
   stage = "quickstart-exempt";
-  const trailers = gitTry(["interpret-trailers", "--parse"], { root: ROOT, input: message ?? "" });
-  if (trailers && /^Quickstart:[ \t]*exempt[ \t]*$/im.test(trailers)) {
+  if (isQuickstartExempt(message, { root: ROOT })) {
     advise(
       `[${GATE}] ADVISORY — allowed: HEAD (${head.slice(0, 12)}) carries a recorded ` +
         `\`Quickstart: exempt\` trailer, so the QA receipt is not required (AC-1.4; the ` +

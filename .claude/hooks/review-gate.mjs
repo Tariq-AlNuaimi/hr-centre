@@ -45,6 +45,7 @@ import {
   git,
   gitTry,
   isInReviewScope,
+  isQuickstartExempt,
   norm,
   parseGateSkips,
   parseReceipts,
@@ -199,14 +200,9 @@ try {
     // fails SAFE (it REDs /ship). Quickstart is the one whose false positive fails OPEN --
     // it exempts -- so a commit message that merely discusses the mechanism at line start
     // must not grant an exemption. This repo's own messages discuss it at length.
-    const quickstart = range.commits
-      ?.map((sha) =>
-        gitTry(["interpret-trailers", "--parse"], {
-          root: ROOT,
-          input: commitMessage(sha, { root: ROOT }) ?? "",
-        }),
-      )
-      .find((t) => t && /^Quickstart:[ \t]*exempt[ \t]*$/im.test(t));
+    const quickstart = range.commits?.some((sha) =>
+      isQuickstartExempt(commitMessage(sha, { root: ROOT }), { root: ROOT }),
+    );
     if (quickstart) {
       console.error(
         `[review-gate] /quickstart push — review receipt not required (AC-1.4).\n` +
