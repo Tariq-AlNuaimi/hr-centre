@@ -14,4 +14,9 @@ npm run ship
 # hard-rejects on an actually-missing or stale receipt. Deliberate skip: a
 # `Gate-Skip: review-gate <reason>` trailer (recorded, loud, and permanent in git history).
 # Per-link backout: delete this one line to disable this link; nothing else depends on it.
-node .claude/hooks/review-gate.mjs
+# HELD FOR THE MAIN LANDING. The review gate's code ships but is not invoked. Three
+# adversarial breadth passes found 15 defects in the gate code -- the skills, evals,
+# descriptions, router and docs drew zero -- including a silent fail-open that shipped
+# unreviewed code. Forks inherit main, so the gates stay inert here until a pass comes
+# back clean. Enabling is exactly this one line: uncomment it.
+# node .claude/hooks/review-gate.mjs
