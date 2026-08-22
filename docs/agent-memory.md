@@ -35,7 +35,7 @@ tax is the ≤30-line digest, not the whole file.
 
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (8): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
-- **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
+- **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
@@ -183,6 +183,15 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
   not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit).
 
 ## Gotchas — git & landing to main
+
+- 2026-08-22 — **An UNQUOTED heredoc executes backticks in a commit message.** `git commit -F - <<MSG`
+  (unquoted, so `$TRAILER` expands) also runs any `` `backticked` `` text in the prose as a command and
+  substitutes the output — silently gutting sentences ("I put above ,"). Then you cannot fix it:
+  `git push --force`/`--force-with-lease` is DENIED by `dangerous-commands.mjs`, so an already-pushed
+  message is permanent. Fix: build the message in a file (python/`printf`) and `git commit -F <file>`,
+  or quote the delimiter (`<<'MSG'`) and interpolate nothing. Recovering from a local amend you cannot
+  push: `git reset --soft origin/<branch>` restores parity without discarding the tree (`git reset
+--hard` and `git checkout --` are deny-listed).
 
 - 2026-07-11 — **Landing a working-branch commit on `main` when a generator-docs commit
   (REPO-MAP/SESSION-HANDOFF regen) sits between `main` and it: use cherry-pick, NOT
