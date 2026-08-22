@@ -80,7 +80,9 @@ entry and proceed. That is intended, but it means these gates **prompt deliberat
 stop a determined change** (evidence: 42 ledger entries, zero reversals). Treat them as process
 documentation with a blocking UI. What actually holds is the security floor — auth wrappers, zod at
 the boundary, the ESLint rules, the audit log, gitleaks, and the fail-CLOSED guards
-(`dangerous-commands`, `protect-secrets`, `bash-write-gate`).
+(`dangerous-commands`, `protect-secrets` — those two only; `bash-write-gate` sits beside them
+on the Bash matcher but is fail-OPEN by its own header and an empty catch, so an internal
+error there ALLOWS the write).
 
 Each gate **denies/REDs** until its committed adjudication artifact exists; recording the artifact
 IS the scan, not a bypass. Artifacts: build-vs-buy → a `docs/build-vs-buy-ledger.md` entry whose

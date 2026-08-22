@@ -56,9 +56,18 @@ Reviewed: lib/auth.ts app/api/users/route.ts 3f2a1c9e…
 You never hand-write these. The skills emit them, and if you need the value yourself:
 
 ```bash
+# What receipt should I write for what is on disk right now?
 node .claude/hooks/lib/receipt.mjs trailer --key Reviewed lib/auth.ts app/api/users/route.ts
-node .claude/hooks/lib/receipt.mjs verify  --key QA .
+
+# Is the receipt already on a commit still good for that commit's content?
+node .claude/hooks/lib/receipt.mjs verify --key QA            # defaults to HEAD
+node .claude/hooks/lib/receipt.mjs verify --key QA --ref abc1234
 ```
+
+`verify` takes no paths — it reads the receipt off the commit and re-derives the hash
+over the scope the receipt itself names. `trailer` is the one that takes paths, and with
+no `--ref` it hashes your **working tree**, which is what you want when you are about to
+commit. The two therefore disagree by design while you have uncommitted edits.
 
 ### A valid receipt is not automatically a sufficient one
 
@@ -207,11 +216,19 @@ These are **governance gates**, and per [ADR-047](../decisions/ADR-047-ws8-harne
 they **fail open**: a malformed input, a git failure, a detached HEAD, any throw at
 all → the operation is allowed, with a warning naming the gate that failed.
 
-That is deliberate, and it is the opposite of the security guards
-(`protect-secrets`, `dangerous-commands`, `bash-write-gate`), which fail **closed**.
-A broken governance gate must never wedge a session; a broken security guard must
-never let something through. "Cannot evaluate" and "evaluated, the answer is no" are
-different axes — a _missing receipt_ still hard-denies.
+That is deliberate, and it is the opposite of the two fail-**closed** security guards,
+`protect-secrets` and `dangerous-commands`, which emit an explicit `deny` from their own
+catch blocks. A broken governance gate must never wedge a session; a broken security
+guard must never let something through. "Cannot evaluate" and "evaluated, the answer is
+no" are different axes — a _missing receipt_ still hard-denies.
+
+`bash-write-gate` is easy to miscount as a third security guard, and this runbook said so
+in its first draft. It is not: its own header calls it fail-open, and its catch block is
+empty, so an internal error there silently **allows** a Bash-driven write to a gated
+surface. It can still hard-deny a violation it actually _detects_ (on `shared` tier;
+advisory on `personal`) — but detected-and-denied and errored-and-allowed are the two
+axes above, and only the first one is its job. Don't under-invest in its error handling
+on the assumption that a crash there is safe by default.
 
 So: **if you see a fail-open warning, the gate is broken, not satisfied.** Fix it —
 that is `maintainer.md`'s territory — and do not treat the allowed push as reviewed.

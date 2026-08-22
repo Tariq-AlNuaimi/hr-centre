@@ -209,7 +209,9 @@ it to IT along with everything else.
 ### R6 — Governance gates fail open and are self-service · MEDIUM
 
 ADR-047's split is deliberate and mostly right: **security guards fail closed** (verified —
-`dangerous-commands`, `protect-secrets`, `bash-write-gate` all deny on error), **governance gates
+`dangerous-commands` and `protect-secrets` deny on error; **corrected 2026-08-22** — this line
+previously named `bash-write-gate` as a third, which its own header and empty catch block
+contradict: it is fail-OPEN. The original "verified" claim did not cover it), **governance gates
 fail open**. But two properties compound:
 
 1. **Malformed input silently disables them.** Feeding `NOT-JSON{{{` to `build-vs-buy-gate` and

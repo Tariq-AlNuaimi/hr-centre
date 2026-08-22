@@ -74,7 +74,8 @@ and closed before this wave shipped.
 routes, or `lib/`" wording — **plus `.claude/hooks/**` and `scripts/**`**, added after this
 wave shipped its own three hooks, a receipt library and two gates with no review receipt
 at all, because harness paths were outside every prior `Scope:`. A hook change can switch
-a fail-closed guard (`protect-secrets`, `dangerous-commands`, `bash-write-gate`) off, and
+a fail-closed guard (`protect-secrets`, `dangerous-commands` — and `bash-write-gate`, which
+is fail-OPEN but still the only thing standing between a Bash heredoc and a gated file) off, and
 `scripts/ship.mjs` **is** the gate, so this code carries at least the blast radius of
 `lib/**` and is reviewed the same way.
 
