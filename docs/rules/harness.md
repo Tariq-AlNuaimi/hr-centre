@@ -89,6 +89,47 @@ IS the scan, not a bypass. Artifacts: build-vs-buy → a `docs/build-vs-buy-ledg
 `complexityAck` + an adjudicated `docs/findings-register.md` line. Hooks: `build-vs-buy-gate.mjs`,
 `blueprint-gate.mjs`, and `bash-write-gate.mjs` (Bash writes to gated paths are covered too).
 
+## The SDLC chain — mechanism (ADR-064; extends the quartet above)
+
+Six links, each the same shape as the quartet above: a step emits a durable token, the
+next step's gate requires it. Links 1 and 3 predate ADR-064; links 2, 4, 5 and 6 are its
+subject. Full context (problem, hash algorithm, alternatives): ADR-064.
+
+| Link                     | Emits                                                                    | Enforced by                                                      | Status                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| blueprint → code         | committed `Scope:` glob (`/blueprint`)                                   | `blueprint-gate.mjs` (PreToolUse, ADR-033)                       | fail-open guard, hard-deny on missing scope                                                                             |
+| code → review → push     | `Reviewed: <scope> <tree-sha>` trailer (`/review`)                       | `review-gate.mjs` (`.husky/pre-push`, after `npm run ship`)      | fail-open guard, hard-deny on missing/stale receipt                                                                     |
+| ship green → push        | `last-green-sha` state token (`/ship`)                                   | `.husky/pre-push`                                                | pre-existing, unchanged by ADR-064                                                                                      |
+| qa → deploy              | `QA: <scope> <tree-sha>` trailer (`/qa`)                                 | `qa-gate.mjs` (PreToolUse on `Bash`, matches deploy invocations) | fail-open guard, hard-deny on missing/stale receipt; `/quickstart` exempt by design                                     |
+| push → session end       | unpushed ref (any commit not on `@{u}`)                                  | `session-stop.mjs` (Stop hook)                                   | pre-existing, unchanged by ADR-064                                                                                      |
+| gate-skip → adjudication | `Gate-Skip: <gate> <reason>` trailer (recorded ack on either gate above) | `scanGateSkips()` in `scripts/ship.mjs` (warm loop)              | new; REDs `/ship` until a `docs/findings-register.md` entry for that gate reads `adjudicated(<date>)`/`fixed(<commit>)` |
+
+Both new gates (`review-gate.mjs`, `qa-gate.mjs`) share `.claude/hooks/lib/receipt.mjs`:
+the trailer's tree-sha is computed over the CURRENT content of its own scope (a temporary
+git index holding only the in-scope paths at their blobs, then `git write-tree`), so a
+rebase or amend that changes a reviewed/QA'd path invalidates the receipt instead of
+letting it certify content nobody looked at. Same fail-open/fail-closed split as the
+quartet: a hook that **cannot evaluate** the request (malformed input, a git failure) fails
+OPEN with a warning; a hook that evaluates fine and finds **no valid receipt** hard-DENIES
+— those are different axes, not one blurred posture (ADR-047, ADR-064). Per-link backout:
+each gate is one file plus one invocation line, removable independently of the others.
+
+The review gate's scope is `lib/**`, `app/api/**`, `prisma/schema.prisma`, `middleware.ts`,
+`auth.ts`, `auth.config.ts`, **plus `.claude/hooks/**` and `scripts/**`** — widened after
+this chain's own wave shipped three hooks and a receipt library with no review receipt,
+because harness code carries at least the blast radius of `lib/**` (it can switch a
+fail-closed guard off, and `scripts/ship.mjs` is itself a gate).
+
+**Known limitation, stated plainly (ADR-064):** the trailer can be scoped narrower than
+what actually changed — `/review` certifies whatever paths it's told to, nothing forces
+that set to equal the full diff. Same agent-writable caveat the quartet above already
+carries: the receipt is a governance record, not a proof.
+
+`/ship`'s warm loop is now **21 checks** (up from 19): `scanGateSkips()` is new, and the
+Tier-2 routing eval (`evals`, `--min-rank1 80`) moved from `ship:full` into the warm loop
+— at ~326ms against a ~65s run, keeping it `fullOnly` meant a routing regression could
+survive every ordinary push, which defeats a ratchet meant to catch exactly that.
+
 ## Project tiers — mechanism
 
 `/ship` enforces tier-vs-reality: ≥2 distinct human contributors (the same line that activates CI)
