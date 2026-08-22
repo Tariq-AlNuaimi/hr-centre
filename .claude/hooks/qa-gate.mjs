@@ -223,6 +223,7 @@ try {
   const SHIPS = (p) =>
     !/^(docs|tests|evals)\//.test(p) && !p.startsWith(".claude/") && !p.startsWith(".husky/");
   let shipping = [];
+  let prevQaFound = false; // distinct from `shipping.length` -- see below
   try {
     const log = gitTry(["log", "--format=%H%x00%B%x1e", "-n", "200", head], { root: ROOT }) ?? "";
     const prevQa = log
@@ -231,6 +232,7 @@ try {
       .slice(1)
       .find(([, body]) => body && parseReceipts(body, "QA").length > 0)?.[0];
     if (prevQa) {
+      prevQaFound = true;
       shipping = (gitTry(["diff", "--name-only", `${prevQa}..${head}`], { root: ROOT }) ?? "")
         .split("\n")
         .filter(Boolean)
@@ -243,20 +245,33 @@ try {
   for (const r of receipts) {
     const v = verifyReceipt(r, { root: ROOT, ref: head });
     if (!v.valid) {
-      stale = { ...r, ...v };
+      if (!stale) stale = { ...r, ...v };
       continue;
     }
     if (r.wholeTree) process.exit(0); // certifies everything -> covers any deploy
     const covered = new Set(r.scope.map((x) => norm(x, ROOT)));
     const uncovered = shipping.filter((x) => !covered.has(x));
-    if (shipping.length > 0 && uncovered.length === 0) process.exit(0);
-    stale = {
+    // `shipping.length === 0` has TWO causes and conflating them denied a legitimate
+    // deploy with a false reason: (a) no prior QA point exists -> nothing partial can
+    // cover a first deploy, require whole-tree; (b) a prior QA point exists and nothing
+    // shipping changed since -> there is nothing left to cover, so allow. Keying on
+    // prevQaFound separates them instead of inferring one from the other.
+    if (prevQaFound && uncovered.length === 0) process.exit(0);
+    const candidate = {
       ...r,
       ...v,
       narrow: true,
       uncovered: uncovered.slice(0, 8),
-      noPrevQa: shipping.length === 0,
+      noPrevQa: !prevQaFound,
     };
+    // Keep the MOST ACTIONABLE diagnostic rather than simply the last one processed: a
+    // receipt that misses fewer paths tells the operator more than one that misses all.
+    if (
+      !stale ||
+      !stale.narrow ||
+      candidate.uncovered.length < (stale.uncovered?.length ?? Infinity)
+    )
+      stale = candidate;
   }
 
   const narrowNote =

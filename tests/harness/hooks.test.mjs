@@ -1138,11 +1138,20 @@ test("review-gate.mjs fails OPEN on unusable input and allows an empty range", (
   assert.equal(run(["HEAD..HEAD"]).status, 0, "empty range should allow");
 
   // Unusable input must ALLOW, never wedge a push (ADR-047: governance gates fail open).
+  //
+  // EVERY case below contains ".." on purpose. review-gate only treats an argument as a
+  // range when it includes ".."; without it the arg is ignored and the gate falls through
+  // to its live `@{u}..HEAD` fallback -- meaning the assertion would silently measure the
+  // RUNNING MACHINE's unpushed review state instead of the malformed-input path. Three of
+  // the original five cases did exactly that, so they passed only while the checkout
+  // happened to have nothing unreviewed in scope: the same ambient-state fragility the
+  // comment above warns about, reintroduced in the test written to replace it.
   for (const [label, args, input] of [
-    ["garbage range arg", ["definitely not a range"], ""],
-    ["garbage stdin, no arg", [], "not json at all"],
-    ["empty stdin, no arg", [], ""],
-    ["ref that does not exist", ["no-such-ref..HEAD"], ""],
+    ["garbage range arg", ["definitely..not..a..range"], ""],
+    ["nonexistent base ref", ["no-such-ref..HEAD"], ""],
+    ["nonexistent head ref", ["HEAD..no-such-ref"], ""],
+    ["both refs nonexistent", ["nope-a..nope-b"], ""],
+    ["empty range with garbage stdin", ["HEAD..HEAD"], "not json at all"],
   ]) {
     const r = run(args, input);
     assert.equal(r.status, 0, `review-gate should fail OPEN on ${label} (got ${r.status})`);

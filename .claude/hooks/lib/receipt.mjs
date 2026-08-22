@@ -72,6 +72,16 @@ export const REVIEW_SCOPE_GLOBS = [
   // everything off were the two outside its protection.
   ".claude/settings.json",
   ".husky/**",
+  // Second breadth review: the widening above fixed the two NAMED files but not the
+  // CLASS. `.husky/pre-push` runs `npm run ship`, which resolves through package.json --
+  // editing that one script to `true` no-ops typecheck, lint, tests, gitleaks, the
+  // gate-skip backstop, everything, while requiring no receipt. And CLAUDE.md calls the
+  // thirteen ESLint rules "the security floor"; eslint.config.mjs is their registration
+  // file, exactly what settings.json is for hooks. Both are at least as capable of
+  // switching everything off as the two that prompted the first widening.
+  "package.json",
+  "eslint.config.mjs",
+  "eslint-rules/**",
 ];
 
 /** Scope tokens that mean "the whole tree" rather than a path list. */

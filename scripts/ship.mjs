@@ -339,11 +339,20 @@ function scanGateSkips() {
     ok: false,
     secs: secs(),
     out:
-      `${open.length} UNADJUDICATED gate skip(s) in unpushed commits — a recorded skip is only half the guarantee (AC-4.1):\n` +
+      `${open.length} UNADJUDICATED gate skip(s) since origin/main — a recorded skip is only half the guarantee (AC-4.1):\n` +
       open
         .map((sk) => `  ${sk.sha}  Gate-Skip: ${sk.gate} — ${sk.reason || "(no reason given)"}`)
         .join("\n") +
-      `\n  Add a docs/findings-register.md entry naming the gate, then flip it to status: adjudicated(<date>) or fixed(<commit>).`,
+      // The check is an ANCHORED match, so the message must name the exact literal it
+      // wants. Saying only "an entry naming the gate" (the previous wording) let an
+      // operator write a perfectly reasonable English adjudication that the regex could
+      // never recognise -- wedging /ship RED with no way to discover the magic string.
+      // Trading a false positive for an undiscoverable false negative is not a fix.
+      `\n  To clear: add a docs/findings-register.md entry that contains the LITERAL text` +
+      open.map((sk) => `\n      Gate-Skip: ${sk.gate}`).join("") +
+      `\n  (that exact prefix — the check matches it, not prose about it), and set` +
+      `\n      status: adjudicated(<date>)   or   status: fixed(<commit>)` +
+      `\n  in the same entry.`,
   };
 }
 

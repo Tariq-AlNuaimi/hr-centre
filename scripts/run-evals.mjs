@@ -82,16 +82,23 @@ function main() {
 
   const skipped = [];
   const skills = loadSkills(SKILLS_DIR, { skipped });
-  for (const why of skipped) {
-    console.log(`  \u26a0  unreadable skill excluded from the corpus -- ${why}`);
-    warnings++;
-  }
   const cases = loadCases();
   const corpus = buildCorpus(skills);
   const skillNames = new Set(skills.map((s) => s.name));
 
   let errors = 0;
   let warnings = 0;
+
+  // Reported AFTER `warnings` is declared. An earlier attempt put this loop above the
+  // declaration -- a temporal dead zone that threw ReferenceError on the ONLY path that
+  // runs when a skill is already malformed, i.e. it replaced the diagnostic with a crash
+  // in exactly the case the diagnostic exists for. It shipped because the "behavioural
+  // verification" was `npm run evals | grep unreadable`, which matched the console.log
+  // and hid the stack trace that followed. Check exit codes, not grep hits.
+  for (const why of skipped) {
+    console.log(`  \u26a0  unreadable skill excluded from the corpus -- ${why}`);
+    warnings++;
+  }
   let passed = 0;
   let rank1 = 0;
   let positives = 0;
