@@ -1,6 +1,6 @@
 ---
 name: api-and-interface-design
-description: Designs stable, hard-to-misuse interfaces before code is written -- route shapes, error contracts, pagination, TS type boundaries. Use when adding or changing an API route, a service signature, or a zod schema's shape, before /stack-advisor. Not for the auth/zod/rate-limit rules themselves (docs/rules/api-routes.md).
+description: Designs the shape of a new API route, service signature, or zod schema before it's written -- endpoint shape, error contracts, pagination, TS type boundaries. Use when adding or changing an API route's design; not the auth/zod/rate-limit rules themselves (docs/rules/api-routes.md).
 ---
 
 # API and Interface Design

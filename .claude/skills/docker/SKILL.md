@@ -1,6 +1,6 @@
 ---
 name: docker
-description: Containerize the CURRENT app for self-hosting -- build a small standalone image, run it against a Postgres/Neon URL, or bring up the full local app+DB stack. Wraps the opt-in Docker self-host rail (ADR-023). Use when the user says "dockerize this", "/docker", "containerize the app", "build a docker image", "run it in docker", "self-host this", "hand IT a runnable image".
+description: Containerizes the current app for self-hosting -- builds a small standalone image, runs it against Postgres/Neon, or brings up the full local app+DB stack. Use to package this app as a container image, self-host instead of Vercel, or hand IT a runnable image.
 ---
 
 # /docker — Containerize the app (opt-in self-host rail)

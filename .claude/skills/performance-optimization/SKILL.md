@@ -1,6 +1,6 @@
 ---
 name: performance-optimization
-description: Diagnoses real performance problems -- it's slow, page load, Core Web Vitals below target, N+1 or unbounded query, "why is this query slow", bundle size growth. Measures with this repo's tools (Lighthouse CI, size-limit, timed queries) before and after any fix. Not a substitute for /stack-advisor's build-time query shapes.
+description: Diagnoses real performance problems -- slow pages, Core Web Vitals below target, an N+1 or unbounded query, bundle size growth -- measuring with this repo's own tools (Lighthouse CI, size-limit, timed queries) before and after the fix. Use when something is measurably slow, not for build-time query shapes (that's /stack-advisor).
 ---
 
 # Performance Optimization

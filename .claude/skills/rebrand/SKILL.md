@@ -1,6 +1,6 @@
 ---
 name: rebrand
-description: Sweep the template's hardcoded identity defaults (package name, app display name, CLAUDE.md / README headers) and replace them with the fork's identity. Backed by scripts/rebrand.mjs. Use after forking the template, or when the user says "rebrand", "rename the project", "set the project name", "/rebrand".
+description: Sweeps the template's hardcoded identity defaults -- package name, app display name, CLAUDE.md/README headers -- and replaces them with the fork's own identity. Use after forking the template to rename it, or to swap the placeholder name and branding for the real one.
 ---
 
 # /rebrand — Project rename sweep

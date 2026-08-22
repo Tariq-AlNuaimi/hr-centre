@@ -1,6 +1,6 @@
 ---
 name: first-fork
-description: One-time setup after forking the template. Walks the operator through signing up at Vercel + Neon, connecting the repo, pasting two env vars, and getting the first live URL. Targets non-developer audiences -- the operator iterates with Claude, the team reviews via shared URLs, the IT team takes over later via /handoff. Use when the user says "set up a new project", "fork bootstrap", "first-fork", "I just cloned the template", "/first-fork".
+description: One-time setup after forking the template -- walks a non-developer through signing up for Vercel and Neon, connecting the repo, and getting the first live URL. Use the first time a fork is set up, or to sign up for Vercel and Neon for the first time. Later redeploys are /deploy; branding is /rebrand.
 ---
 
 # /first-fork — New project bootstrap (Vercel + Neon)

@@ -1,6 +1,6 @@
 ---
 name: design-qa
-description: Design-fidelity QA (Tier 1 of the QA system). Drives Chromium (Playwright) to screenshot every screen AND every component state (hover/focus/disabled/loading/empty/error), runs axe for accessibility, and diffs the result against the design source of truth (design/* mockups + tokens.css / the AntD theme). Scores each screen 0-5 on the design-QA heuristics in docs/uat-rubric.md and reports cited, severity-ranked deviations -- per-component first, then per-screen. Use BEFORE functional QA. Trigger phrases: "design qa", "design review", "fidelity check", "does it match the design", "/design-qa", "ui audit", "accessibility audit", "a11y check", "visual regression".
+description: Design-fidelity QA that runs AFTER a screen is built -- screenshots every screen and component state, runs an axe accessibility audit, and diffs against the mockups and tokens, scoring deviations. Use to check whether built UI matches the design, run an accessibility audit, or catch visual/dark-mode drift already shipped.
 ---
 
 # /design-qa — design fidelity, before functional QA

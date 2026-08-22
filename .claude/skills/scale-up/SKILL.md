@@ -1,6 +1,6 @@
 ---
 name: scale-up
-description: Add a capability the prototype rail doesn't ship with -- file uploads, background jobs, cron, realtime, custom domain, bigger DB, feature flags, observability, live DB tuning, load testing, performance measurement. Each item has a "when to add it" trigger and a recipe. Suggests; doesn't auto-install. Use when the user says "the project needs X", "we need to add file uploads / cron / background jobs / realtime / custom domain", "this is getting bigger", "scale-up", "/scale-up".
+description: Adds a capability the prototype rail doesn't ship with -- file uploads, background jobs, cron, realtime, a custom domain, a bigger database, feature flags, or observability -- each with a when-to-add trigger and a recipe. Suggests, doesn't auto-install. Use when the project needs a new capability or is outgrowing the starter rail.
 ---
 
 # /scale-up — Growth path for the prototype rail

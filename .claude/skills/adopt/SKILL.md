@@ -1,6 +1,6 @@
 ---
 name: adopt
-description: Adopt an external capability the reuse-first way. Looks it up in docs/oss-catalog.md (step 0 of the build-vs-buy scan, ADR-032), surfaces the in-stack / self-host-OSS / SaaS / build-thin trade-off via AskUserQuestion (license, weight, data-egress, self-host), then on the operator's choice writes the docs/build-vs-buy-ledger.md entry + an ADR stub for a runtime dep and installs per the recipe. Use when the user says "adopt X", "should we use <library> for Y", "/adopt", or when a build-vs-buy gate denies a new lib/ file.
+description: Adopts an external library or SaaS tool the reuse-first way instead of building it in-house -- checks docs/oss-catalog.md, weighs the build-vs-buy trade-offs, and logs the decision to the ledger before installing. Use when the user wants to pull in a library, use an off-the-shelf tool, or a build-vs-buy gate blocks a new lib/ file.
 ---
 
 # /adopt — reuse before you build, on the record

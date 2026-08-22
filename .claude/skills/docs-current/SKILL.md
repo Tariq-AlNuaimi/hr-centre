@@ -1,6 +1,6 @@
 ---
 name: docs-current
-description: Pull CURRENT documentation for the locked stack (Next.js 16, Prisma 7, Tailwind v4, Auth.js v5, Playwright, zod, next-intl) before answering a version-sensitive question, so a stale training answer doesn't ship. Uses WebSearch + docs/recipes.md. (The context7 MCP was removed from .mcp.json in B1 to cut the always-on tool-schema tax; re-add it there and it becomes the preferred path again.) Use when the answer depends on an exact API/config that may have changed across versions, when the user asks "what's the current way to X in <stack lib>", before writing code against a fast-moving API, or when unsure whether a remembered API still exists. Trigger phrases: "docs-current", "current docs", "is this still the API", "check the latest docs", "did this change in <version>".
+description: Pulls current documentation for this stack (Next.js, Prisma, Tailwind, Auth.js, Playwright, zod, next-intl) via web search before answering a version-sensitive question, so a stale training answer doesn't ship. Use when unsure if a remembered API still works, a config option may have changed in a newer release, or before coding against a fast-moving API.
 ---
 
 # /docs-current — version-correct stack docs before you answer

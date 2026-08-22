@@ -1,6 +1,6 @@
 ---
 name: remember
-description: Append a durable, dated entry to docs/agent-memory.md so a decision, gotcha, or convention survives across sessions and forks. Use when something is learned that the next session must not rediscover or relitigate. Trigger phrases - "/remember", "remember that ...", "note this for next time", "don't forget X", "add to agent memory".
+description: Appends a durable, dated entry to docs/agent-memory.md so a decision, gotcha, or convention survives across sessions and forks. Use when something is learned that must not be rediscovered or relitigated later -- a one-line note, not a full retro or session handoff.
 ---
 
 # /remember — write to cross-session agent memory (ADR-022)

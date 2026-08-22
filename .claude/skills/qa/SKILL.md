@@ -1,6 +1,6 @@
 ---
 name: qa
-description: The QA orchestrator. Decomposes a change into per-component -> per-screen -> per-flow scope and runs the three QA tiers IN GATED ORDER -- design QA (/design-qa) -> functional QA (/ship + a risk-based case matrix) -> UAT (/uat) -- against the rubric in docs/uat-rubric.md, anchored to the 5 pillars (speed/secure/maintainable/scalable/high-quality). A red gate stops the line and reports; it never barrels ahead. Collects a scorecard per screen/feature into one release-readiness verdict. This is the "don't fire off a granular mega-task" control. Trigger phrases: "qa", "/qa", "run qa", "full qa", "is this ready to ship", "release readiness", "quality gate", "audit the app properly".
+description: The QA orchestrator -- runs the three QA tiers in gated order (design QA, functional QA, UAT) against the pillars rubric and collects one release-readiness verdict; a red gate stops the line. Use for the complete quality gate across design, function, and UAT before a release, not the fast pre-push checks (that's /ship).
 ---
 
 # /qa — the gated QA orchestrator

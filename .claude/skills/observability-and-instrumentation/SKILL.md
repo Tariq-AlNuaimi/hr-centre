@@ -1,6 +1,6 @@
 ---
 name: observability-and-instrumentation
-description: Instruments a feature with this repo's own primitives (withSpan tracing, captureError, structured non-secret logs) as it's built, not after. Use when adding logging, tracing, metrics, or an alert; asking "why did this fail in production" or "we can't tell what happened"; or reviewing a PR with new I/O and zero telemetry.
+description: Instruments a feature with this repo's own primitives -- tracing, error capture, structured non-secret logs -- as it's built, not after. Use when adding logging or tracing, wiring an alert, or when you can't tell what happened in production and need to debug an incident after the fact.
 ---
 
 # Observability and Instrumentation

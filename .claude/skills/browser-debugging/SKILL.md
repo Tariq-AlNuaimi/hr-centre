@@ -1,6 +1,6 @@
 ---
 name: browser-debugging
-description: Drives the Playwright MCP against a running page to debug it while building — read console errors, inspect the DOM, check a network request, evaluate an expression, or see why the page is blank or won't render. Build-time debugging only, not an audit; route fidelity/RBAC checks to design-qa or manual-uat instead.
+description: Drives the Playwright MCP against a running page while building it -- reads console errors, inspects the DOM, checks a network request, evaluates an expression, or shows why the page is blank or won't render. Not an audit; route fidelity/RBAC checks to design-qa or manual-uat instead.
 ---
 
 # Browser Debugging

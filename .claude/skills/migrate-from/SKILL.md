@@ -1,6 +1,6 @@
 ---
 name: migrate-from
-description: Pull data + schema from a source Postgres database into a freshly scaffolded fork. Claude proposes a column→field mapping, operator reviews, the script dumps + transforms + generates a prisma seed for the target. Use when the user says "migrate from <repo>", "port the staffing module", "move this data", "/migrate-from", or describes carving a feature out of an existing monolith.
+description: Pulls data and schema from a source Postgres database into a freshly scaffolded fork -- proposes a column-to-field mapping, then dumps, transforms, and generates a Prisma seed for the target. Use to migrate data from an old database, carve a module out of a monolith, or map an old schema onto new Prisma models.
 ---
 
 # /migrate-from — Source DB → fresh fork

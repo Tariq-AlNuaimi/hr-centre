@@ -1,6 +1,6 @@
 ---
 name: review
-description: Runs the binding pre-push review rail over the current diff and, when clean, writes a content-bound Reviewed trailer the push gate requires. Use before pushing changes to auth files, prisma/schema.prisma, app/api/**, or lib/**. Trigger phrases -- review my changes, before I push, check this diff, is this ready, run the review rail.
+description: Runs the binding pre-push review rail over the current diff and, when clean, writes the Reviewed trailer the push gate requires. Use before pushing changes to auth files, prisma/schema.prisma, app/api/**, or lib/** -- to review a diff or check a change for correctness before it goes out.
 ---
 
 # Review

@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: Provision Neon + Vercel for the CURRENT repo and ship it to a live URL from a Claude Code web session (or any machine with egress + tokens). Use when the user says "deploy this", "ship it live", "/deploy", "put it on Vercel", "get me a URL" -- for a fork that already exists on GitHub but has never been connected to Vercel/Neon. For a brand-new repo from the template, use /new-project (Actions) or /first-fork (manual).
+description: Provisions Neon + Vercel for a repo that already exists on GitHub but isn't connected yet, and ships it to a live URL. Use to get an existing fork online, connect it to Vercel and Neon, or get a shareable URL. For a brand-new repo use /new-project; for a first-ever setup use /first-fork.
 ---
 
 # /deploy — Existing fork → live URL, headless

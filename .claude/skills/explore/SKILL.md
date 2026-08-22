@@ -1,6 +1,6 @@
 ---
 name: explore
-description: BEFORE the blueprint locks architecture, generate 2-3 materially different approaches, build a pillars-aligned trade-off table, recommend one, and auto-draft the losing options into an ADR stub so the decision is archaeologically recorded. Feeds the blueprint's Architecture sketch + the "Reference consulted" line. Use when the user says "explore approaches", "what are the options", "diverge before committing", "/explore".
+description: Before the blueprint locks architecture, generates 2-3 materially different approaches, builds a trade-off table, and recommends one, drafting the losing options into an ADR stub. Use when the user wants a few different approaches, wants to weigh trade-offs, or wants to diverge on architecture before committing.
 ---
 
 # /explore — Diverge on architecture BEFORE the blueprint locks it

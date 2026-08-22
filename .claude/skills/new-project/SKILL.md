@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: One-prompt provisioner for a brand-new prototype. Creates a GitHub repo from this template, a Neon Postgres project, a Vercel project (with env vars set), and a Cloudflare CNAME for a custom domain -- in ~3 minutes. Use when the user says "new project", "start a project for ...", "spin up X", "/new-project", or describes a brand-new prototype they want to share with their team.
+description: One-prompt provisioner for a brand-new prototype -- creates a GitHub repo from this template, a Neon Postgres project, a Vercel project, and a custom-domain CNAME, in about 3 minutes. Use to spin up a brand-new project, or create a repo, database, and Vercel project together for a fresh idea.
 ---
 
 # /new-project — Idea → live URL on a custom domain, in one workflow run

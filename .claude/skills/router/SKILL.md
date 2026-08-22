@@ -1,6 +1,6 @@
 ---
 name: router
-description: Entry point for this repo's SDLC chain. Reports, from LIVE git/receipt state, which step you're on, what's next, and what's blocking: unpushed commits, missing Reviewed:/QA: trailers, gated-scope changes, uncovered blueprint Scope. Use first, or when lost: where am I, what's next, which skill.
+description: Entry point for this repo's SDLC chain -- reports, from live git/receipt state, which step you're on, what's next, and what's blocking: unpushed commits, missing Reviewed/QA trailers, gated-scope changes, uncovered blueprint scope. Use first, or when lost: where am I, what's next, which skill.
 ---
 
 # Router

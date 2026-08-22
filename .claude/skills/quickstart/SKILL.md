@@ -1,6 +1,6 @@
 ---
 name: quickstart
-description: Turn one paragraph of an idea into a live URL the operator can share with their team in ~10 minutes. Combines /scaffold-entity for the data model with a guided commit + push so Vercel deploys the result. Use when the user says "I have an idea for X", "start a tracker for ...", "new feature: ...", "quickstart", "/quickstart", or pastes a sketch / screenshot from their team describing what to build.
+description: Turns one paragraph of an idea into a live URL in about 10 minutes -- scaffolds the data model, then commits and pushes so Vercel deploys it. Use for a quick idea or a tracker to share with the team fast, turning a paragraph into a working URL -- not the full scaffold or blueprint alone.
 ---
 
 # /quickstart — Idea → live URL

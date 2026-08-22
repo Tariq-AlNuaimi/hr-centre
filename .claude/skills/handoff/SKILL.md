@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Produce a clean handoff package for the IT team that owns production. Generates a HANDOFF.md with the project's current state, env-var list, schema overview, route inventory, and run-locally instructions. Optionally exports a sanitized tarball. Use when the user says "we're done", "ship to IT", "handoff", "the team approved it", "/handoff", "give this to <name>".
+description: Produces a clean handoff package for the IT team that owns production -- a HANDOFF.md with project state, env vars, schema, route inventory, and run-locally instructions. Use when the team has signed off and production ownership passes to IT.
 ---
 
 # /handoff — Hand the approved project to the IT team

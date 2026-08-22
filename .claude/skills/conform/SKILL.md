@@ -1,6 +1,6 @@
 ---
 name: conform
-description: Bring foreign code (built in another tool, or in an old Claude Code project that never used this template) up to this template's standard, then push it to a new repo created from the template. Security-scans first, reports gaps against the hard-rules, fixes ONLY what the operator approves, never silently. Use when the user says "make this match my standard", "conform this code", "/conform", "I built this elsewhere, bring it up to standard", or drops a folder of foreign code.
+description: Brings foreign code -- built elsewhere, or an old project that never used this template -- up to this template's standard, then pushes it to a new repo. Security-scans first and fixes only what's approved. Use when code came from outside this template and needs to match its conventions.
 ---
 
 # /conform — Bring foreign code up to the template standard

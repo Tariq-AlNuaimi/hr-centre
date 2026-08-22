@@ -1,0 +1,14 @@
+{
+  "skill_name": "router",
+  "trigger": {
+    "positive": [
+      { "prompt": "where am I in all this and what comes next", "top_k": 3 },
+      { "prompt": "I lost track — what step is this change on right now", "top_k": 3 },
+      { "prompt": "which skill should I be using for this", "top_k": 3 }
+    ],
+    "negative": [
+      { "prompt": "run the pre-commit checks and tell me if it is green", "owner": "ship" },
+      { "prompt": "check this diff for correctness before it goes out", "owner": "review" }
+    ]
+  }
+}

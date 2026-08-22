@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: Build good UI on the FIRST pass instead of fixing it at QA. The proactive front half of the design system -- declare the design read, pick the right pattern from the vetted recipes, and emit on-token, RTL/dark-correct, accessible markup using the shipped shared primitives. Use BEFORE building or changing any screen/component, when the user says "build the UI for X", "make this screen", "the design looks bad", "/design-system", "design this", or whenever scaffolding a page. The reactive complement is /design-qa (audits after); this prevents the findings /design-qa would raise.
+description: Builds UI right on the first pass -- picks the right layout pattern from the vetted recipes and emits markup using this repo's shared primitives and tokens. Use BEFORE building or changing any screen or component: building a UI, choosing a layout pattern, or scaffolding a page. Proactive counterpart to /design-qa, which audits after.
 ---
 
 # /design-system — design it right the first time

@@ -1,6 +1,6 @@
 ---
 name: fan-out
-description: Orchestrate a write-disjoint task as a parallel subagent wave with ENFORCED file-ownership. Use when a task splits into ≥2 units that touch non-overlapping file sets and you want them run concurrently with a hard disjointness check. Trigger phrases - "/fan-out", "fan this out", "parallelize these", "run these in parallel", "split across agents".
+description: Orchestrates a write-disjoint task as a parallel subagent wave with enforced file-ownership. Use when a task splits into 2+ units touching non-overlapping files and should run at the same time instead of one after another.
 ---
 
 # Parallel fan-out with enforced file-ownership (ADR-057)

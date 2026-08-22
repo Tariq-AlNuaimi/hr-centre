@@ -1,6 +1,6 @@
 ---
 name: batch
-description: Run a repetitive per-file job (codemod, migration, annotation) as capped headless claude -p runs instead of one giant interactive session. Use for "apply X to every file", "migrate all Y", 10+ similar files. Trigger phrases - "/batch", "batch this across", "do this for every file".
+description: Runs a repetitive per-file job -- codemod, migration, annotation -- as capped headless claude -p runs across many files instead of one giant interactive session. Use for applying the same change, codemod, or rename across 10+ similar files.
 ---
 
 # Headless batch runner (token thrift, ADR-019)

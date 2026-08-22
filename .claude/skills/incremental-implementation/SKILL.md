@@ -1,6 +1,6 @@
 ---
 name: incremental-implementation
-description: Slices one signed-off task into thin vertical increments so every step ends green (`npm run ship`) and committed, instead of one large uncommitted diff. Use while executing a `/blueprint` work-DAG task or any multi-file change; not for deciding what to build or for parallelizing disjoint units.
+description: Slices one signed-off task into thin vertical increments so every step ends green (npm run ship) and committed, instead of one large uncommitted diff. Use while executing a blueprint task or any multi-file change -- not for deciding what to build or for parallelizing disjoint units.
 ---
 
 # Incremental Implementation

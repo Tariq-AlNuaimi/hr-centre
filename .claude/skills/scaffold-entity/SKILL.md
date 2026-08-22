@@ -1,6 +1,6 @@
 ---
 name: scaffold-entity
-description: Scaffold a new CRUD entity end-to-end -- Prisma model (with enums + FK relations) + zod validation + API routes + dashboard pages + sidebar nav + recycling-bin registration. Backed by scripts/scaffold-entity.mjs. Use when the user says "add a new entity", "scaffold X", "new model for Y", or "/scaffold-entity".
+description: Scaffolds a new CRUD entity end-to-end -- Prisma model with enums and FK relations, zod validation, API routes, dashboard pages, sidebar nav, and recycling-bin registration. Use to add a new entity, scaffold a model with its routes, or generate the Prisma model, zod schema, and dashboard page together.
 ---
 
 # Scaffold Entity

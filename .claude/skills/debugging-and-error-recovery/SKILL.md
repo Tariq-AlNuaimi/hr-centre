@@ -1,6 +1,6 @@
 ---
 name: debugging-and-error-recovery
-description: Systematic root-cause debugging for a build failing, a type error, a test failing, a stack trace, "it worked before", or "why is this broken" -- diagnoses against this repo's own gates and known traps instead of guesswork. Use whenever npm run ship or any check goes red.
+description: Systematic root-cause debugging for a failing build, a type error, a failing test, or code that worked yesterday and is broken now -- diagnoses against this repo's own gates and known traps instead of guesswork. Use whenever npm run ship or any check goes red.
 ---
 
 # Debugging and Error Recovery

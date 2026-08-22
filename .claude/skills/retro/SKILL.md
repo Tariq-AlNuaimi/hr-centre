@@ -1,6 +1,6 @@
 ---
 name: retro
-description: After /qa or a phase end, run a structured retro (what broke / what was learned / what was missing) and turn it into durable one-line agent-memory entries; any "missing feature" finding is appended back to the relevant docs/benchmarks/<category>.md so the omission re-surfaces next time. Trigger phrases - "/retro", "retrospective", "phase retro", "what did we learn".
+description: After /qa or a phase ends, runs a structured retro -- what broke, what was learned, what was missing -- and turns it into durable agent-memory entries, feeding missing-feature findings back into the relevant benchmark. Use for a phase retrospective, not a single one-off gotcha (that's /remember).
 ---
 
 # /retro — structured retrospective + omission feedback loop

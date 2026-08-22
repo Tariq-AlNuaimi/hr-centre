@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Pre-commit verification -- typecheck + lint + tests + production build + secret scan + dependency audit. The active security gate for a solo operator on the free plan (replaces CI / branch protection, runs on any machine). Stops on the first failure with the file:line so the next edit is targeted. Trigger phrases: "ship", "verify", "is this green", "ready to push", "/ship".
+description: Pre-commit verification -- typecheck, lint, tests, production build, secret scan, dependency audit. The active security gate for a solo operator, replacing CI/branch protection. Use to check if it's ready to push, run the pre-commit checks, or verify everything is green before shipping -- not the full release QA (that's /qa).
 ---
 
 # Ship

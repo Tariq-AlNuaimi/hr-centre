@@ -1,6 +1,6 @@
 ---
 name: uat
-description: Browser-driven User Acceptance Testing with two modes -- LEAN (fast smoke: every screen loads, screenshot each) and FULL (a phased deep audit: permission matrix, per-entity CRUD journeys, UI/UX sweep, logic+UX recommendations, peer+enterprise benchmark, and a PDF report). On every /uat, ASK the operator "Lean or Full?" (lean is the default). Runs against a deployed URL (preferred) or local dev; can also run online via the dormant uat.yml workflow. Produces BOTH an HTML report and a PDF. The solo-dev replacement for clicking through the app by hand before sharing it. Trigger phrases: "uat", "acceptance test", "click through the app", "walk the flows", "/uat", "test it in the browser", "screenshot the app", "what features are missing", "benchmark the app", "full uat", "deep audit".
+description: Browser-driven acceptance testing with two modes -- LEAN (fast smoke: every screen loads) and FULL (a phased deep audit: permission matrix, CRUD journeys, and what's missing compared to competitor products). Produces an HTML and PDF report. Use to click through every screen, run a full acceptance test, or smoke test the app before sharing it -- canned complement to exploratory /manual-uat.
 ---
 
 # /uat — User Acceptance Testing through Chrome

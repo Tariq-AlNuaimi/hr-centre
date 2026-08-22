@@ -1,6 +1,6 @@
 ---
 name: manual-uat
-description: Agent-driven MANUAL user acceptance testing -- the agent opens a real browser (Playwright MCP) and acts like a real user, typing real data, deliberately triggering input/validation errors, switching role logins, and confirming the live RBAC behavior matches what the code actually enforces. Every flow gets a HAPPY path (valid data, intended journey) AND a WORST path (invalid/adversarial input, boundary values, unauthorized access, role-crossing). Captures real UI/UX issues, real input errors, action/audit monitoring, and per-role user stories. The exploratory, judgment-driven complement to the canned /uat. Trigger phrases: "manual uat", "walk through it like a real user", "exploratory uat", "test it by hand", "check the RBAC live", "verify permissions per role", "/manual-uat", "drive the app as each role", "happy path and worst path".
+description: Agent-driven MANUAL acceptance testing -- opens a real browser (Playwright MCP) and acts like a user: real data, validation errors, role logins, confirming live RBAC matches what the code enforces via HAPPY and WORST paths per flow. Use to log in as each role and click through live, break a form with bad input, or verify permissions actually work. Complements canned /uat.
 ---
 
 # /manual-uat — manual, role-by-role acceptance testing through a live browser

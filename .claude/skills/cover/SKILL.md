@@ -1,6 +1,6 @@
 ---
 name: cover
-description: AI test-generation that closes coverage gaps to feed the /ship coverage floor -- Claude writes ONLY tests that both PASS and raise lib/** coverage, targeting the node:test runner this repo uses (not Jest). Use when the user says "/cover", "raise coverage", "generate tests for this", "the coverage gate failed", "close the coverage gap", "cover this file".
+description: AI test-generation that closes coverage gaps -- writes only tests that pass and raise lib/** coverage, targeting this repo's node:test runner (not Jest). Use when the coverage gate fails, or to generate tests that raise coverage on a file or folder.
 ---
 
 # /cover — close the coverage gap that fails the `/ship` floor

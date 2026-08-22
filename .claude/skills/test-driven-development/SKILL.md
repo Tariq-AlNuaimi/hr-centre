@@ -1,6 +1,6 @@
 ---
 name: test-driven-development
-description: Drives new behavior and bug fixes with a failing test first, using this repo's node:test runner and test tree. Use when implementing any logic in lib/** or app/api/**, fixing a bug, or changing existing behavior -- never as a substitute for /cover, which only back-fills the coverage floor on code that already works.
+description: Drives new behavior and bug fixes with a failing test first, using this repo's node:test runner. Use when implementing logic in lib/** or app/api/**, fixing a bug, or changing existing behavior -- never a substitute for /cover, which only back-fills coverage on code that already works.
 ---
 
 # Test-Driven Development

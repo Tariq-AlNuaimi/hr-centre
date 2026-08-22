@@ -1,6 +1,6 @@
 ---
 name: doubt-driven-development
-description: Materializes a fresh-context reviewer biased to disprove a non-trivial decision before it stands, while reversing course is still cheap. Trigger on "am I sure", "double-check this", "stress-test my reasoning", "what if I'm wrong", or verifying before committing -- not a diff verdict, design audit, or approach-divergence session.
+description: Spins up a fresh-context reviewer biased to disprove a non-trivial decision before it ships, for when you're not sure you're right and reversing course is still cheap. Trigger on doubting a decision, wanting it stress-tested, or double-checking reasoning before committing -- not a diff review, design audit, or approach-comparison session.
 ---
 
 # Doubt-Driven Development

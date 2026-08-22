@@ -1,6 +1,6 @@
 ---
 name: blueprint
-description: The pre-build gate. Before building any feature, pin down what's being built and why -- user stories, happy + worst-path scenarios, a data/architecture sketch, the tier, and the open questions -- so the build starts from a contract instead of guesses. Tiered: a lightweight confirm for disposable /quickstart work, a full committed blueprint for real multi-file features. Use when the user says "build X", "add a feature for Y", "/blueprint", or at the start of /quickstart and /scaffold-entity. Trigger phrases: "blueprint", "spec this", "plan the feature", "what are we building".
+description: The pre-build gate -- pins down what's being built and why before code starts: user stories, happy and worst-path scenarios, a data/architecture sketch, and open questions. Use when the user wants to build a feature, spec something out, or pin down what's being made before writing code.
 ---
 
 # /blueprint — Pin down WHAT before building HOW

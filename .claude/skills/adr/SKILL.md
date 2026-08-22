@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Create a new Architecture Decision Record under docs/decisions/ using the template format. Use when the user says "add an ADR", "document this decision", "new ADR for X", "/adr". Mirrors the rihal-ops-portal ADR convention.
+description: Creates a new Architecture Decision Record under docs/decisions/ documenting why an approach was chosen. Use when the user wants an ADR, to document a decision, or to write up why an architectural choice was made.
 ---
 
 # /adr — New Architecture Decision Record

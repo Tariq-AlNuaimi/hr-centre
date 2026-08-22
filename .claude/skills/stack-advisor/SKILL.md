@@ -1,6 +1,6 @@
 ---
 name: stack-advisor
-description: Build-time stack expert for this template's locked stack (Next.js 16 RSC + Prisma 7 + Postgres). Pull it in WHILE writing a route, query, or component to get framework-correct positive patterns — the right RSC read shape, a bounded/index-aware Prisma query, the Postgres access pattern — pointing at THIS repo's recipes and shared primitives. Advice only; it shapes code as it's written and never reviews finished code (that's /code-review + senior-code-reviewer). Use when the user says "what's the right way to build X", "best RSC pattern for Y", "how should I query Z", "stack-advisor", "/stack-advisor", "am I fetching this right", "index/query shape for this route".
+description: Build-time stack expert for this template's locked stack -- Next.js 16 RSC, Prisma 7, Postgres. Gives the framework-correct pattern for RSC data-fetching, a bounded/index-aware Prisma query, or a component while it's being written. Advice only, not a review of finished code (that's /code-review). Use while writing a route, query, or component -- the right way to fetch or query something.
 ---
 
 # /stack-advisor — build it right, at build time
