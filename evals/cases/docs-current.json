@@ -1,0 +1,29 @@
+{
+  "skill_name": "docs-current",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "check whether this next.js api still works the same in the version we're on",
+        "top_k": 3
+      },
+      {
+        "prompt": "pull the latest docs before I write against this library",
+        "top_k": 3
+      },
+      {
+        "prompt": "did this config option change in the newest release",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "what's the right pattern for this query in our stack",
+        "owner": "stack-advisor"
+      },
+      {
+        "prompt": "double check my reasoning before I commit to this approach",
+        "owner": "doubt-driven-development"
+      }
+    ]
+  }
+}

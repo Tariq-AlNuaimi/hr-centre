@@ -14,7 +14,7 @@ A confident answer is not a correct one. Long sessions quietly turn assumptions 
 a fresh-context reviewer — biased to **disprove**, not approve — before a non-trivial
 decision stands, while the decision is still cheap to unwind.
 
-This is **in-flight**, not a gate on finished work: it runs *during* the session, on a
+This is **in-flight**, not a gate on finished work: it runs _during_ the session, on a
 decision you are about to lock in, not after the diff is done or the code is pushed.
 
 ## When to use
@@ -27,7 +27,7 @@ reverse (migration, public API, an Ask-before surface).
 
 Apply it when: about to lock an architecture pick under uncertainty; about to claim a
 non-obvious fact ("this is safe", "this scales", "this matches the blueprint"); working
-in unfamiliar code; a gate went green and that green is the *only* thing making you
+in unfamiliar code; a gate went green and that green is the _only_ thing making you
 confident.
 
 **When NOT to use** — do not doubt trivia; that is just slow:
@@ -42,21 +42,21 @@ confident.
 
 This template already has four things that look adjacent. None of them is this:
 
-- **`/code-review`** is a verdict on a *finished* diff — spec-compliance then quality,
-  blocking before push. Doubt-driven runs *before* the thing is finished, on a decision
+- **`/code-review`** is a verdict on a _finished_ diff — spec-compliance then quality,
+  blocking before push. Doubt-driven runs _before_ the thing is finished, on a decision
   still being formed.
-- **`senior-code-reviewer`** is the ADR-020 breadth pass that runs *after* a push,
+- **`senior-code-reviewer`** is the ADR-020 breadth pass that runs _after_ a push,
   looking for cross-cutting drift across the whole codebase. Doubt-driven is scoped to
   one decision, mid-session, before any push exists to review.
 - **`security-architect`** is a design-level security review — trust boundaries, STRIDE,
   data classification — its own opus-tier persona. Doubt-driven is generic: it doubts
-  *any* non-trivial claim, security or not. If the claim is specifically about trust
+  _any_ non-trivial claim, security or not. If the claim is specifically about trust
   boundaries or data classification, invoke `security-architect` as the reviewer in
   Step 3 below rather than a generic one.
-- **`/explore`** diverges on *approaches* **before** the blueprint locks the architecture
+- **`/explore`** diverges on _approaches_ **before** the blueprint locks the architecture
   — it generates 2–3 options and scores them. Doubt-driven doubts a decision **already
   taken** — one option already won, and this checks whether the winner actually holds up.
-- **`EnterPlanMode`** gets the *operator's* sign-off on a plan via a round-trip. Doubt-driven
+- **`EnterPlanMode`** gets the _operator's_ sign-off on a plan via a round-trip. Doubt-driven
   is self-applied — no operator turn required — and can run any number of times inside
   a session the operator already approved the plan for.
 
@@ -129,7 +129,7 @@ A gate passing is **not** evidence the claim survives this step. The enforcement
 ack silently lets a gated change through — and its own adjudication artifacts are
 agent-writable, so an agent blocked by a gate can write its own entry and proceed. Green
 `/ship` output is real (typecheck/lint/tests/build/secrets/audit did run), but a passing
-*governance* gate is process, not proof; don't let it stand in for Step 3.
+_governance_ gate is process, not proof; don't let it stand in for Step 3.
 
 ### Step 4 — RECONCILE: fold findings back
 
@@ -165,16 +165,16 @@ doesn't have to doubt the same thing from zero.
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "I already checked it" | Checking it once, under the same context that produced the claim, is not independent review — that context is exactly what's biased. A fresh-context pass is a different check, not a repeat of the same one. |
-| "The tests pass so it must be right" | `npm run ship` green means the code you wrote matches the tests you wrote — both written under the same assumption. It's the objective floor, not proof the assumption itself was correct. |
-| "I'm confident, skip the doubt step" | Confidence tracks familiarity, not correctness, on novel problems — moments of certainty are exactly where blind spots hide. |
-| "Dispatching a reviewer is expensive" | Debugging this after it's merged and deployed costs more. The check is bounded (Step 5); the bug isn't. |
-| "The reviewer will just nitpick" | Only if unscoped — constrain it to "issues that break this specific contract," not "is this good." |
-| "I'll doubt it at `/code-review` time instead" | `/code-review` is a finished-diff gate. By then the direction is set; doubt-driven catches a wrong direction while it's still one edit to fix, not a revert. |
-| "The gate went green, that's enough" | Two of the four enforcement gates fail open by design (ADR-047) and their artifacts are agent-writable — green there is process completing, not the claim being sound. |
-| "If I doubt every step I'll never ship" | The skill is scoped to non-trivial decisions (see When to use / When NOT). Re-read the boundary before assuming it applies everywhere. |
+| Rationalization                                | Reality                                                                                                                                                                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "I already checked it"                         | Checking it once, under the same context that produced the claim, is not independent review — that context is exactly what's biased. A fresh-context pass is a different check, not a repeat of the same one. |
+| "The tests pass so it must be right"           | `npm run ship` green means the code you wrote matches the tests you wrote — both written under the same assumption. It's the objective floor, not proof the assumption itself was correct.                    |
+| "I'm confident, skip the doubt step"           | Confidence tracks familiarity, not correctness, on novel problems — moments of certainty are exactly where blind spots hide.                                                                                  |
+| "Dispatching a reviewer is expensive"          | Debugging this after it's merged and deployed costs more. The check is bounded (Step 5); the bug isn't.                                                                                                       |
+| "The reviewer will just nitpick"               | Only if unscoped — constrain it to "issues that break this specific contract," not "is this good."                                                                                                            |
+| "I'll doubt it at `/code-review` time instead" | `/code-review` is a finished-diff gate. By then the direction is set; doubt-driven catches a wrong direction while it's still one edit to fix, not a revert.                                                  |
+| "The gate went green, that's enough"           | Two of the four enforcement gates fail open by design (ADR-047) and their artifacts are agent-writable — green there is process completing, not the claim being sound.                                        |
+| "If I doubt every step I'll never ship"        | The skill is scoped to non-trivial decisions (see When to use / When NOT). Re-read the boundary before assuming it applies everywhere.                                                                        |
 
 ## Red Flags
 
@@ -215,8 +215,8 @@ dismissed:
   breadth pass; a different lane, not a substitute reviewer for Step 3.
 - `security-architect` (`.claude/agents/security-architect.md`) — the reviewer to pick
   in Step 3 when the claim is specifically about trust boundaries or data classification.
-- `/explore` — diverges on approaches *before* the blueprint locks architecture; doubt-driven
-  doubts the *winner* of that divergence, or any other decision already taken.
+- `/explore` — diverges on approaches _before_ the blueprint locks architecture; doubt-driven
+  doubts the _winner_ of that divergence, or any other decision already taken.
 - `EnterPlanMode` — gets the operator's sign-off on a plan; doubt-driven is self-applied
   and needs no operator round-trip.
 - `docs/rules/harness.md` — known-traps list; check it before trusting a "that's noise" call.

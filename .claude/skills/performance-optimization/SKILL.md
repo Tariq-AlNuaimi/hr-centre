@@ -78,12 +78,12 @@ there's no user-facing symptom and no gate failing, there's nothing to measure y
 
 5. **Keep or revert, strictly:**
 
-   | Result vs. baseline | Action |
-   |---|---|
-   | Past the threshold, `/ship` still green | **Keep.** Put the before/after numbers in the commit message. |
-   | Within noise (no measurable change) | **Revert.** |
-   | Worse | **Revert.** |
-   | Improved, but a test or `/ship` gate went red | **Revert.** A regression wearing a win's clothing. |
+   | Result vs. baseline                           | Action                                                        |
+   | --------------------------------------------- | ------------------------------------------------------------- |
+   | Past the threshold, `/ship` still green       | **Keep.** Put the before/after numbers in the commit message. |
+   | Within noise (no measurable change)           | **Revert.**                                                   |
+   | Worse                                         | **Revert.**                                                   |
+   | Improved, but a test or `/ship` gate went red | **Revert.** A regression wearing a win's clothing.            |
 
    "Didn't help much, but it doesn't hurt" is a revert, not a keep — code you keep, you maintain
    forever, and an unmeasured neutral change is exactly how the codebase accretes complexity that
@@ -96,15 +96,15 @@ there's no user-facing symptom and no gate failing, there's nothing to measure y
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "This is obviously the slow part" | If you didn't measure it, you don't know. `/ship`'s scan and `/stack-advisor`'s shapes catch the obvious cases already — what's left needs a profile, not a hunch. |
-| "The `/ship` scalability scan already checked this" | It greps `findMany(` in route files only. A service-layer loop, a `count()`/`groupBy` without a `where`, or a client-side slice all pass it silently. |
-| "We'll optimize later" | Fine for genuine premature optimization (step 0's "when not to"). Not fine once there's a real symptom or a failing gate — that's not later, that's now. |
-| "It didn't help much, but it doesn't hurt to keep it" | Neutral is a revert. Maintenance cost forever, zero payback. |
-| "Small dependency, I'll just add it" | Anything >50 KB minified is Ask-before in CLAUDE.md regardless of how small the perf win looks — surface it. |
-| "The improvement is obvious, no need to re-measure" | Then re-measuring is cheap and proves it. An unmeasured "obvious win" is how a regression ships as a fix. |
-| "Three fixes landed together, the number moved, good enough" | One number, three changes — you can't attribute it, and can't safely revert just the one that didn't pay off. |
+| Rationalization                                              | Reality                                                                                                                                                            |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| "This is obviously the slow part"                            | If you didn't measure it, you don't know. `/ship`'s scan and `/stack-advisor`'s shapes catch the obvious cases already — what's left needs a profile, not a hunch. |
+| "The `/ship` scalability scan already checked this"          | It greps `findMany(` in route files only. A service-layer loop, a `count()`/`groupBy` without a `where`, or a client-side slice all pass it silently.              |
+| "We'll optimize later"                                       | Fine for genuine premature optimization (step 0's "when not to"). Not fine once there's a real symptom or a failing gate — that's not later, that's now.           |
+| "It didn't help much, but it doesn't hurt to keep it"        | Neutral is a revert. Maintenance cost forever, zero payback.                                                                                                       |
+| "Small dependency, I'll just add it"                         | Anything >50 KB minified is Ask-before in CLAUDE.md regardless of how small the perf win looks — surface it.                                                       |
+| "The improvement is obvious, no need to re-measure"          | Then re-measuring is cheap and proves it. An unmeasured "obvious win" is how a regression ships as a fix.                                                          |
+| "Three fixes landed together, the number moved, good enough" | One number, three changes — you can't attribute it, and can't safely revert just the one that didn't pay off.                                                      |
 
 ## Red Flags
 
@@ -122,7 +122,7 @@ there's no user-facing symptom and no gate failing, there's nothing to measure y
 - [ ] The actual bottleneck was identified (route/query/component named), not assumed
 - [ ] The fix does not touch the security floor: auth wrapper intact, zod validation intact, no `select`/`SELECT *` widened, no `session as any`
 - [ ] Any new runtime dep >50 KB or schema/index change was surfaced as Ask-before, not landed quietly
-- [ ] An AFTER measurement exists, from the *same* method/command/conditions as the BEFORE
+- [ ] An AFTER measurement exists, from the _same_ method/command/conditions as the BEFORE
 - [ ] The delta is justified against run-to-run noise, not just a single before/after pair
 - [ ] `npm run ship` is still green (or `npm run ship -- --full` if `size-limit`/Docker phases are relevant)
 - [ ] A neutral or worse result was reverted, not kept
@@ -130,7 +130,7 @@ there's no user-facing symptom and no gate failing, there's nothing to measure y
 
 ## Related
 
-- `.claude/skills/stack-advisor/SKILL.md` — the bounded/index-aware query SHAPE, used *while writing* the route; this skill is measure-then-fix *after*.
+- `.claude/skills/stack-advisor/SKILL.md` — the bounded/index-aware query SHAPE, used _while writing_ the route; this skill is measure-then-fix _after_.
 - `.claude/skills/ship/SKILL.md` — step 4b (scalability scan), step 8 (`size-limit` in `--full`); the gate this skill's fixes must stay green against.
 - `docs/rules/prisma.md` — no `SELECT *`, no N+1, bulk paths not N×1.
 - `lighthouserc.cjs`, `.size-limit.json` — the measurement configs this skill runs against, not replaces.

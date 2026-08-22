@@ -1,0 +1,29 @@
+{
+  "skill_name": "retro",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "let's do a retro now that qa is done",
+        "top_k": 3
+      },
+      {
+        "prompt": "what broke and what did we learn this phase",
+        "top_k": 3
+      },
+      {
+        "prompt": "turn this phase's lessons into durable notes",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "just jot down this one gotcha for next time",
+        "owner": "remember"
+      },
+      {
+        "prompt": "give me a full release-readiness verdict across all three qa tiers before we ship",
+        "owner": "qa"
+      }
+    ]
+  }
+}

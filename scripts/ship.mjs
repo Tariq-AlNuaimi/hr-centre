@@ -1618,7 +1618,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check | repo-map) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check | evals | repo-map) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1648,6 +1648,7 @@ let [
   duplication,
   coverage,
   skillCheck,
+  evals,
   repoMap,
 ] = await Promise.all([
   typecheck(),
@@ -1678,6 +1679,13 @@ let [
   fullOnly("duplication", scanDuplication),
   fullOnly("coverage", scanCoverage),
   fullOnly("skill-check", () => run("skill-check", "node", ["scripts/skill-standard-check.mjs"])),
+  // Tier-2 skill-routing eval (deterministic, no tokens/network): every
+  // evals/cases/<skill>.json positive prompt must rank its skill within
+  // top_k, negatives must not outrank the declared owner, and the catalog
+  // must stay free of near-duplicate descriptions. --min-rank1 ratchets the
+  // measured rank-1 rate (87.8% at authoring time) so an unrelated
+  // description edit doesn't immediately turn this gate red.
+  fullOnly("evals", () => run("evals", "node", ["scripts/run-evals.mjs", "--min-rank1", "80"])),
   // repo-map drift (2026-08-21). docs/REPO-MAP.md is the "where is X" index every
   // session reads before non-trivial work, and it went stale TWICE in two days --
   // once when a cut removed components, once when three lib/ exports were made
@@ -1718,6 +1726,7 @@ for (const r of [
   duplication,
   coverage,
   skillCheck,
+  evals,
   repoMap,
 ])
   report(r);
@@ -1750,6 +1759,7 @@ const redA = [
   duplication,
   coverage,
   skillCheck,
+  evals,
   repoMap,
 ].find((r) => !r.ok);
 if (redA) fail(redA);

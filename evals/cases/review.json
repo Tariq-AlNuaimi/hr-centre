@@ -1,0 +1,29 @@
+{
+  "skill_name": "review",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "review this diff before I push it",
+        "top_k": 3
+      },
+      {
+        "prompt": "check this change for correctness before it goes out",
+        "top_k": 3
+      },
+      {
+        "prompt": "run the review rail on my auth changes",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "scan for leaked secrets and vulnerable dependencies",
+        "owner": "audit"
+      },
+      {
+        "prompt": "double check whether this decision is actually sound before committing",
+        "owner": "doubt-driven-development"
+      }
+    ]
+  }
+}

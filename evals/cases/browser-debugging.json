@@ -1,0 +1,29 @@
+{
+  "skill_name": "browser-debugging",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "the page is rendering blank, can you check the console for errors",
+        "top_k": 3
+      },
+      {
+        "prompt": "inspect the DOM to see why this element isn't showing up",
+        "top_k": 3
+      },
+      {
+        "prompt": "check what this network request is actually returning while I'm building this",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "screenshot every screen and check it against the design mockups",
+        "owner": "design-qa"
+      },
+      {
+        "prompt": "log in as each role and confirm permissions actually work",
+        "owner": "manual-uat"
+      }
+    ]
+  }
+}

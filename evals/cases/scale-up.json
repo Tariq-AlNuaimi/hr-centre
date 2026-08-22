@@ -1,0 +1,29 @@
+{
+  "skill_name": "scale-up",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "we need file uploads now, how do we add that",
+        "top_k": 3
+      },
+      {
+        "prompt": "the project is growing, help me add background jobs",
+        "top_k": 3
+      },
+      {
+        "prompt": "add a custom domain and bigger database as we scale",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "should we just adopt an existing library for this instead",
+        "owner": "adopt"
+      },
+      {
+        "prompt": "containerize this so we can self-host it",
+        "owner": "docker"
+      }
+    ]
+  }
+}

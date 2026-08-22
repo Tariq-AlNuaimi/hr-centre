@@ -1,0 +1,29 @@
+{
+  "skill_name": "quickstart",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "I have an idea for a tracker, get it live for the team in a few minutes",
+        "top_k": 3
+      },
+      {
+        "prompt": "turn this paragraph into a working url",
+        "top_k": 3
+      },
+      {
+        "prompt": "start a quick tracker for this idea",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "scaffold just the CRUD model and routes for this entity",
+        "owner": "scaffold-entity"
+      },
+      {
+        "prompt": "pin down the full blueprint before building this properly",
+        "owner": "blueprint"
+      }
+    ]
+  }
+}

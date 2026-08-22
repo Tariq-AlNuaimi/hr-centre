@@ -1,0 +1,29 @@
+{
+  "skill_name": "benchmark",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "what features do mature tools in this category actually have",
+        "top_k": 3
+      },
+      {
+        "prompt": "research competitor products before we design this feature",
+        "top_k": 3
+      },
+      {
+        "prompt": "give me a feature comparison against mature tools in this space",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "walk through the app and tell me what's missing compared to competitors",
+        "owner": "uat"
+      },
+      {
+        "prompt": "pin down the user stories before we build this",
+        "owner": "blueprint"
+      }
+    ]
+  }
+}

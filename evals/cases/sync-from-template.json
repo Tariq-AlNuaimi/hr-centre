@@ -1,0 +1,29 @@
+{
+  "skill_name": "sync-from-template",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "pull the latest template updates into this fork",
+        "top_k": 3
+      },
+      {
+        "prompt": "get the newer template enhancements into our project",
+        "top_k": 3
+      },
+      {
+        "prompt": "is our fork behind the template, update it",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "bring this foreign codebase up to our standard",
+        "owner": "conform"
+      },
+      {
+        "prompt": "update the package name and app display name to match our brand",
+        "owner": "rebrand"
+      }
+    ]
+  }
+}

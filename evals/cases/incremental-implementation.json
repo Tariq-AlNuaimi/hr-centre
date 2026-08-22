@@ -1,0 +1,29 @@
+{
+  "skill_name": "incremental-implementation",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "break this signed-off task into small green committed steps",
+        "top_k": 3
+      },
+      {
+        "prompt": "don't give me one giant diff, slice this into steps that each ship clean",
+        "top_k": 3
+      },
+      {
+        "prompt": "implement this piece by piece so every step passes ship",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "split this task across multiple agents working at once",
+        "owner": "fan-out"
+      },
+      {
+        "prompt": "write a failing test before implementing this behavior",
+        "owner": "test-driven-development"
+      }
+    ]
+  }
+}

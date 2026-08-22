@@ -1,0 +1,29 @@
+{
+  "skill_name": "migrate-from",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "pull the data out of our old database into this new fork",
+        "top_k": 3
+      },
+      {
+        "prompt": "carve the staffing module out of the old monolith and bring it here",
+        "top_k": 3
+      },
+      {
+        "prompt": "map the old schema's columns onto our new prisma models",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "scaffold a brand new entity with its own model and routes",
+        "owner": "scaffold-entity"
+      },
+      {
+        "prompt": "bring this externally-built code up to our conventions",
+        "owner": "conform"
+      }
+    ]
+  }
+}

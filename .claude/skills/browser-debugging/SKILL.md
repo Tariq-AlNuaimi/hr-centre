@@ -31,13 +31,14 @@ and acceptance auditing live elsewhere (see When NOT to use, and `## Related`).
 - Confirming a fix actually works after the edit (reload, re-check, don't just assume from the diff).
 
 **When NOT to use — this is not an audit:**
+
 - Scored design fidelity, component-state sweeps (hover/focus/disabled/loading/empty/error),
   or axe accessibility runs are `/design-qa`'s job, not this skill's.
 - Role-by-role RBAC walks, happy/worst-path acceptance testing, or "does this meet the business
   need" is `/manual-uat`'s job, not this skill's.
 - If the task is "screenshot every screen" or "score this against the rubric," stop and route to
   `/design-qa` or `/manual-uat` instead of improvising an audit here.
-- Once you have runtime evidence of a bug and need to find *why* it's happening in source and fix
+- Once you have runtime evidence of a bug and need to find _why_ it's happening in source and fix
   it correctly, hand off to `debugging-and-error-recovery` for that root-cause discipline — this
   skill's job ends at "here's what the browser actually did."
 
@@ -79,14 +80,14 @@ and acceptance auditing live elsewhere (see When NOT to use, and `## Related`).
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "I can tell what's wrong from the code." | Hydration timing, the actual response shape, and post-JS DOM state routinely differ from what source suggests. Open the page and read it. |
-| "Console is probably fine, I didn't check." | `browser_console_messages` is one call. An unread console is not a clean console. |
-| "The network tab would just confirm what I already know." | It regularly doesn't — wrong payload shape, an unexpected 4xx, a request that never fired at all. Read it before assuming. |
-| "It's a minor visual thing, not worth a screenshot." | If the actual question is "what does this render as," a screenshot answers it directly; guessing doesn't. |
-| "I already fixed it, no need to reload." | The fix lives in source until the running page proves it. Reload and re-check the same repro. |
-| "This is basically a design-qa pass while I'm in here." | Scored, per-state, per-screen auditing is `/design-qa`'s contract, not this skill's — don't improvise one here. |
+| Rationalization                                           | Reality                                                                                                                                   |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| "I can tell what's wrong from the code."                  | Hydration timing, the actual response shape, and post-JS DOM state routinely differ from what source suggests. Open the page and read it. |
+| "Console is probably fine, I didn't check."               | `browser_console_messages` is one call. An unread console is not a clean console.                                                         |
+| "The network tab would just confirm what I already know." | It regularly doesn't — wrong payload shape, an unexpected 4xx, a request that never fired at all. Read it before assuming.                |
+| "It's a minor visual thing, not worth a screenshot."      | If the actual question is "what does this render as," a screenshot answers it directly; guessing doesn't.                                 |
+| "I already fixed it, no need to reload."                  | The fix lives in source until the running page proves it. Reload and re-check the same repro.                                             |
+| "This is basically a design-qa pass while I'm in here."   | Scored, per-state, per-screen auditing is `/design-qa`'s contract, not this skill's — don't improvise one here.                           |
 
 ## Red Flags
 

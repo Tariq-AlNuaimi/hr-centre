@@ -1,0 +1,29 @@
+{
+  "skill_name": "rebrand",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "swap out the template's placeholder name for our real project name",
+        "top_k": 3
+      },
+      {
+        "prompt": "update the app's display name and headers to match our brand",
+        "top_k": 3
+      },
+      {
+        "prompt": "rename this from the template defaults to our own identity",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "walk me through getting this fork live for the first time",
+        "owner": "first-fork"
+      },
+      {
+        "prompt": "create a brand new repo and project for this idea",
+        "owner": "new-project"
+      }
+    ]
+  }
+}

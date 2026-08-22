@@ -1,0 +1,29 @@
+{
+  "skill_name": "observability-and-instrumentation",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "add tracing and logging as I build this feature",
+        "top_k": 3
+      },
+      {
+        "prompt": "we can't tell what happened in production, add instrumentation",
+        "top_k": 3
+      },
+      {
+        "prompt": "add logging and tracing to this new feature so we can tell what happened",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "the build is red and I don't know why",
+        "owner": "debugging-and-error-recovery"
+      },
+      {
+        "prompt": "the page is loading slowly, measure it and speed it up",
+        "owner": "performance-optimization"
+      }
+    ]
+  }
+}

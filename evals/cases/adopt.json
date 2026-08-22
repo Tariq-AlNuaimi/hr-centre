@@ -1,0 +1,29 @@
+{
+  "skill_name": "adopt",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "should we just pull in a library for this instead of building it ourselves",
+        "top_k": 3
+      },
+      {
+        "prompt": "should we use an existing library instead of writing our own rate limiter",
+        "top_k": 3
+      },
+      {
+        "prompt": "can we use an off-the-shelf tool for this rather than writing it from scratch",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "spin up a brand new project from the template",
+        "owner": "new-project"
+      },
+      {
+        "prompt": "add a bigger capability like background jobs to the app",
+        "owner": "scale-up"
+      }
+    ]
+  }
+}

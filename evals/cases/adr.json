@@ -1,0 +1,29 @@
+{
+  "skill_name": "adr",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "write up a decision record for switching databases",
+        "top_k": 3
+      },
+      {
+        "prompt": "document why we picked this approach architecturally",
+        "top_k": 3
+      },
+      {
+        "prompt": "we need an ADR for this choice",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "generate a few different approaches before we lock the architecture",
+        "owner": "explore"
+      },
+      {
+        "prompt": "spec out the feature before building it",
+        "owner": "blueprint"
+      }
+    ]
+  }
+}

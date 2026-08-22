@@ -1,0 +1,29 @@
+{
+  "skill_name": "batch",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "add this same annotation to every file in the components folder",
+        "top_k": 3
+      },
+      {
+        "prompt": "run this codemod across all the routes",
+        "top_k": 3
+      },
+      {
+        "prompt": "apply this rename to fifteen similar files",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "split this task into parallel subagents with separate file ownership",
+        "owner": "fan-out"
+      },
+      {
+        "prompt": "generate more tests to raise coverage",
+        "owner": "cover"
+      }
+    ]
+  }
+}

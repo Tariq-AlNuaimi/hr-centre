@@ -1,0 +1,29 @@
+{
+  "skill_name": "docker",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "package this app into a container image",
+        "top_k": 3
+      },
+      {
+        "prompt": "let's self-host this instead of vercel",
+        "top_k": 3
+      },
+      {
+        "prompt": "build me a runnable image I can hand to IT",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "generate the handoff package for the IT team",
+        "owner": "handoff"
+      },
+      {
+        "prompt": "add a background job runner to the app",
+        "owner": "scale-up"
+      }
+    ]
+  }
+}

@@ -30,26 +30,29 @@ that order, and never lets a flawless Stage-2 pass paper over a Stage-1 failure.
 - Whenever asked to "review my changes", "check this diff", "is this ready to
   push", or before invoking `/ship` on a change in that scope.
 - On any change you have doubts about, even outside the gated scope -- the
-  receipt is only *required* there, not *useful* only there.
+  receipt is only _required_ there, not _useful_ only there.
 
 **When NOT to use:**
+
 - **After** a push, for cross-cutting breadth (audit completeness, operational
   drift, architecture-wide invariants) -- that is the `senior-code-reviewer`
   agent's job, run post-push per ADR-020. This skill is the pre-push diff gate;
   it does not replace the breadth pass.
 - For UI/accessibility/visual fidelity -- that is `/design-qa`.
 - For feature acceptance against user-facing behavior -- that is `/qa` / `/uat`.
-- To decide *what* to build or *whether* an architecture is sound before code
+- To decide _what_ to build or _whether_ an architecture is sound before code
   exists -- that is `/blueprint` / `/explore`. This skill reviews a diff against
   a blueprint that already exists; it does not write one.
 
 ## Steps
 
 ### 0. Scope the diff
+
 Diff against the `origin/main` merge-base (or staged/unstaged changes if
 uncommitted). List every changed file with its path.
 
 ### 1. STAGE 1 -- spec compliance (runs first, always)
+
 1. For every changed file, find the `docs/blueprints/*.md` whose `Scope:` line
    covers it (glob match, same convention `blueprint-gate.mjs` uses).
 2. **Gated-file check:** any changed `app/api/**/route.ts`, `app/**/page.tsx`,
@@ -72,8 +75,10 @@ uncommitted). List every changed file with its path.
    stop.
 
 ### 2. STAGE 2 -- quality (only once Stage 1 is clean)
+
 Five lenses, in order of leverage -- correctness, readability, architecture,
 security, performance:
+
 - **Correctness** -- edge cases, error paths, do the tests actually test this.
 - **Readability** -- can another engineer follow it without the diff author
   explaining it; no bolted-on conditionals in an unrelated flow.
@@ -89,12 +94,14 @@ security, performance:
   4b scans for), missing pagination.
 
 ### 3. Report
+
 Lead with Stage 1: either the findings that stopped the review, or an explicit
 **"Stage 1 clean"** line before any Stage-2 content. Label Stage-2 findings
 Critical / Required / Nit as in the upstream checklist. Order by leverage --
 one real Stage-2 issue outweighs ten nits.
 
 ### 4. Emit the receipt (only when both stages are clean)
+
 On a clean review -- no unresolved Stage-1 finding, no unresolved Critical or
 Required Stage-2 finding -- add a git trailer to the commit being reviewed:
 
@@ -104,11 +111,19 @@ Reviewed: <scope> <tree-sha>
 
 - **`<scope>`** -- the sorted, comma-joined list of reviewed paths (the changed
   files from step 0 that fall in the gate scope below).
-- **`<tree-sha>`** -- a git tree hash over exactly those paths' *current*
-  blob content, not the whole commit tree: build a temporary index containing
-  only the in-scope paths at their current blobs (`git read-tree --empty`,
-  `git update-index --add --cacheinfo <mode>,<blob-sha>,<path>` per file), then
-  `git write-tree` against it. That write-tree hash is `<tree-sha>`.
+- **`<tree-sha>`** -- a git tree hash over exactly those paths' _current_
+  blob content, not the whole commit tree.
+
+**Do NOT compute this by hand.** `.claude/hooks/lib/receipt.mjs` is the single
+source of truth for the hash, and the push gate verifies with the same code that
+writes it -- so emitter and verifier cannot drift. Generate the whole trailer:
+
+```bash
+node .claude/hooks/lib/receipt.mjs trailer --key Reviewed <path> [<path>...]
+```
+
+Two independent implementations of one invariant is how a receipt quietly stops
+matching and the gate becomes either always-deny or decorative. There is one.
 
 Amend it onto the reviewed commit (`git commit --amend`) if not yet pushed, or
 include it when creating the commit.
@@ -116,21 +131,21 @@ include it when creating the commit.
 **Why content-bound (AC-1.6):** a bare `Reviewed: <scope>` trailer would
 certify code nobody looked at the moment someone rebases or amends after the
 fact -- the message survives, the diff underneath doesn't. Binding the trailer
-to a hash of the *current* content of the scope means a later edit to any
+to a hash of the _current_ content of the scope means a later edit to any
 in-scope path changes its blob sha, which changes the tree-sha, which makes
 the trailer's hash no longer match -- the receipt self-invalidates and review
 is re-demanded, rather than silently certifying stale content.
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "The plugin `/code-review` already looked at it." | The plugin reads the raw diff; it has no notion of a blueprint `Scope:` or an AC. It is Stage 1's diff-reading step, not Stage 1 itself -- run it, then apply the spec-compliance lens on top. |
-| "It's my own code, I know it's right." | Authors are blind to their own assumptions -- the entire reason this rail is binding rather than optional. Self-review still runs both stages. |
-| "Stage 2 came back clean, that's good enough." | A flawless Stage-2 pass on a Stage-1 failure is still a Stage-1 failure. An uncovered file or a contradicted AC fails the review regardless of code quality. |
-| "I'll just amend the commit after review to fix a typo." | Any amend to an in-scope path changes its blob sha and invalidates the trailer (AC-1.6) -- that's the design, not a bug. Re-run review after the amend. |
-| "It's outside `lib/**`/`app/api/**`, so no review needed." | The receipt is only *required* in that scope (AC-1.2); running the rail on other changes you have doubts about is still worthwhile, just not gated. |
-| "The push gate will catch it if I'm wrong." | The gate fails open on error (ADR-047) and only checks trailer presence/hash -- it cannot judge quality. It enforces that review happened, not that it was done well. |
+| Rationalization                                            | Reality                                                                                                                                                                                        |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "The plugin `/code-review` already looked at it."          | The plugin reads the raw diff; it has no notion of a blueprint `Scope:` or an AC. It is Stage 1's diff-reading step, not Stage 1 itself -- run it, then apply the spec-compliance lens on top. |
+| "It's my own code, I know it's right."                     | Authors are blind to their own assumptions -- the entire reason this rail is binding rather than optional. Self-review still runs both stages.                                                 |
+| "Stage 2 came back clean, that's good enough."             | A flawless Stage-2 pass on a Stage-1 failure is still a Stage-1 failure. An uncovered file or a contradicted AC fails the review regardless of code quality.                                   |
+| "I'll just amend the commit after review to fix a typo."   | Any amend to an in-scope path changes its blob sha and invalidates the trailer (AC-1.6) -- that's the design, not a bug. Re-run review after the amend.                                        |
+| "It's outside `lib/**`/`app/api/**`, so no review needed." | The receipt is only _required_ in that scope (AC-1.2); running the rail on other changes you have doubts about is still worthwhile, just not gated.                                            |
+| "The push gate will catch it if I'm wrong."                | The gate fails open on error (ADR-047) and only checks trailer presence/hash -- it cannot judge quality. It enforces that review happened, not that it was done well.                          |
 
 ## Red Flags
 
@@ -165,7 +180,7 @@ is re-demanded, rather than silently certifying stale content.
       the commit whenever the push touches auth files (`lib/auth.ts`,
       `middleware.ts`, Auth.js callback/session config), `prisma/schema.prisma`,
       `app/api/**`, or `lib/**` -- outside that scope no receipt is required.
-- [ ] The tree-sha was computed over the *current* content of exactly the
+- [ ] The tree-sha was computed over the _current_ content of exactly the
       reviewed paths, so a later edit to any of them invalidates it (AC-1.6).
 - [ ] `npm run ship` still runs and is green before the push -- this skill
       replaces neither `/ship`'s automated checks nor the five-pillars

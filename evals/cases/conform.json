@@ -1,0 +1,29 @@
+{
+  "skill_name": "conform",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "I built this in another tool, bring it up to our standard",
+        "top_k": 3
+      },
+      {
+        "prompt": "make this old project match our template conventions",
+        "top_k": 3
+      },
+      {
+        "prompt": "this code came from somewhere else, get it in line with our rules",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "just run the secret and dependency scan on it",
+        "owner": "audit"
+      },
+      {
+        "prompt": "pull the newer template improvements into this fork",
+        "owner": "sync-from-template"
+      }
+    ]
+  }
+}

@@ -33,7 +33,7 @@ work over TIME.
 - Deciding what to build, or resolving open questions — that's `/blueprint`. This
   skill starts after a task already exists.
 - ≥2 write-disjoint units that could run concurrently — that's `/fan-out`. Reach
-  for that first when the DAG has parallel `[P]` tasks; use this skill *inside*
+  for that first when the DAG has parallel `[P]` tasks; use this skill _inside_
   each dispatched unit.
 - 10+ near-identical per-file edits (a codemod/migration) — that's `/batch`.
 - A single-file, single-function edit, a typo, a rename — scope is already
@@ -49,7 +49,7 @@ work over TIME.
 
 2. **Check the gated paths before writing anything.** `lib/**`,
    `app/api/**/route.ts`, and `app/**/page.tsx` are watched by
-   `blueprint-gate.mjs` (ADR-033) — a *new* file there is denied unless a
+   `blueprint-gate.mjs` (ADR-033) — a _new_ file there is denied unless a
    committed blueprint `Scope:` already covers it. If the blueprint isn't
    committed yet, **committing it is increment 1**
    (`git commit -m "docs: blueprint <feature>"`) before any code lands, or
@@ -73,7 +73,7 @@ work over TIME.
    else worth fixing rather than fixing it in passing (a pillar concern
    becomes a `docs/findings-register.md` wave-off, not a silent detour).
 
-6. **Run `npm run ship`.** This is the exit gate for *this increment*, not
+6. **Run `npm run ship`.** This is the exit gate for _this increment_, not
    only for the final push — 19 phases warm (26 with `--full`): typecheck,
    lint, contract + component tests, the scalability/wave-off/tier/blueprint/
    db-structure static gates, build, gitleaks, npm audit. Stop on the first
@@ -97,14 +97,14 @@ work over TIME.
 
 ## Common Rationalizations
 
-| Rationalization | Reality (this repo) |
-|---|---|
-| "I'll build the whole task, then run `/ship` once at the end." | A red `/ship` against an 800-line diff gives one `file:line` in a haystack. Each green increment already isolated where a break would be. |
-| "It's just a prototype / personal tier — I can skip the ceremony." | Tier scales ceremony, never the security floor. `/ship` before every push is the bar for `personal` and `shared` alike (CLAUDE.md "Project tiers"). |
+| Rationalization                                                                                               | Reality (this repo)                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "I'll build the whole task, then run `/ship` once at the end."                                                | A red `/ship` against an 800-line diff gives one `file:line` in a haystack. Each green increment already isolated where a break would be.                                             |
+| "It's just a prototype / personal tier — I can skip the ceremony."                                            | Tier scales ceremony, never the security floor. `/ship` before every push is the bar for `personal` and `shared` alike (CLAUDE.md "Project tiers").                                   |
 | "`blueprint-gate.mjs` only warns on `personal`, so I'll build the route first and write the blueprint after." | A warn today is a block the moment this fork sets `"tier": "shared"`, and a post-hoc blueprint is a changelog wearing a costume — it can't catch the divergence it exists to prevent. |
-| "These two increments are tiny, I'll commit them together." | Small commits are free; a bundled commit turns `git revert` into an all-or-nothing bet on both changes being right. |
-| "I ran `/ship` five minutes ago, it's still green." | Green describes a commit, not a session. Re-run after any edit since — the tsc/eslint caches make a truly-unchanged re-run nearly free anyway. |
-| "I'll push everything at the end of the session." | The `Stop` hook doesn't wait for "the end" — it hard-blocks on any unpushed commit the moment a turn tries to close. Push each increment as it lands. |
+| "These two increments are tiny, I'll commit them together."                                                   | Small commits are free; a bundled commit turns `git revert` into an all-or-nothing bet on both changes being right.                                                                   |
+| "I ran `/ship` five minutes ago, it's still green."                                                           | Green describes a commit, not a session. Re-run after any edit since — the tsc/eslint caches make a truly-unchanged re-run nearly free anyway.                                        |
+| "I'll push everything at the end of the session."                                                             | The `Stop` hook doesn't wait for "the end" — it hard-blocks on any unpushed commit the moment a turn tries to close. Push each increment as it lands.                                 |
 
 ## Red Flags
 

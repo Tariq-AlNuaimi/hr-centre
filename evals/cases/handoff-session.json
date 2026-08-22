@@ -1,0 +1,29 @@
+{
+  "skill_name": "handoff-session",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "this conversation is getting really long, let's start fresh",
+        "top_k": 3
+      },
+      {
+        "prompt": "write up a session handoff before we switch tasks",
+        "top_k": 3
+      },
+      {
+        "prompt": "prepare notes so the next session can pick this up",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "the project is done, produce the package for IT",
+        "owner": "handoff"
+      },
+      {
+        "prompt": "note this gotcha down so we don't relearn it next time",
+        "owner": "remember"
+      }
+    ]
+  }
+}

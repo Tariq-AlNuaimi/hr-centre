@@ -44,7 +44,7 @@ you what to turn on. This skill tells you what to actually write once it's on.
 - Diagnosing a failure happening right now, with a live stack trace or failing
   `/ship` step in front of you — use `debugging-and-error-recovery` (good
   instrumentation is what makes that skill fast next session)
-- Deciding *whether* to turn Sentry/OTel on, or picking env vars — that's
+- Deciding _whether_ to turn Sentry/OTel on, or picking env vars — that's
   `/scale-up` item 8 and `/first-fork`'s optional extras
 - Auditing who-changed-what on a Prisma model — that's the audit extension
   (`docs/rules/prisma.md`), already automatic; don't reinvent it with ad hoc logs
@@ -72,11 +72,11 @@ everything in `try/catch` and learn nothing when it fires.
 This repo ships exactly three telemetry primitives. Use them; don't add pino,
 winston, or a second tracing SDK.
 
-| Need | Primitive | Where |
-|---|---|---|
-| "Where did time go?" | `withSpan(name, fn)` | `lib/observability/index.ts` (ADR-040) |
-| "What broke, with safe context?" | `captureError(err, context)` | `lib/sentry.ts` (ADR-002) |
-| "What happened in this one case?" | Structured `console.error`/`.warn` | inline, at the failure site |
+| Need                              | Primitive                          | Where                                  |
+| --------------------------------- | ---------------------------------- | -------------------------------------- |
+| "Where did time go?"              | `withSpan(name, fn)`               | `lib/observability/index.ts` (ADR-040) |
+| "What broke, with safe context?"  | `captureError(err, context)`       | `lib/sentry.ts` (ADR-002)              |
+| "What happened in this one case?" | Structured `console.error`/`.warn` | inline, at the failure site            |
 
 `withSpan` wraps a unit of work in an OTel span and is a genuine no-op when
 `OTEL_EXPORTER_OTLP_ENDPOINT` is unset — wrap the service call unconditionally,
@@ -146,11 +146,11 @@ the floor wins, full stop:**
   log that an email was attempted, never its content.
 - **Restricted / Confidential data classes are defined in `SECURITY.md` §1.**
   `SCRUB_FIELDS` (`lib/prisma/audit-extension.ts`) is what `captureError` scrubs
-  by name-matching keys — it protects field *names* it knows about, not every
+  by name-matching keys — it protects field _names_ it knows about, not every
   shape you might pass. Don't hand it a raw Prisma row or request body as
   context; pick the specific fields you actually need to debug.
 - **`no-restricted-export-column` and the audit extension already exist** for
-  write-side data protection — this skill is about *ad hoc* telemetry you add
+  write-side data protection — this skill is about _ad hoc_ telemetry you add
   yourself, which has no scrubbing gate except the one you write into the call
   site. Treat every argument to `console.*`/`captureError`/a span attribute as
   something that will be read by someone outside the app.
@@ -165,15 +165,15 @@ the actual output — see Verification below.
 
 ## Common Rationalizations
 
-| Rationalization | Reality |
-|---|---|
-| "I'll add logging when something breaks" | That's exactly when it's too late — the bug already happened uninstrumented, and now you're debugging blind *and* adding telemetry at the same time. |
-| "console.log is fine, it's just a quick fix" | An unstructured string can't be filtered or correlated later, and it's the easiest place to accidentally interpolate a token or password. Five extra minutes now, one grep later. |
-| "It's wrapped in try/catch, so it's handled" | Handled ≠ observed. A swallowed catch with no `captureError` is a failure nobody will ever see. |
+| Rationalization                                                   | Reality                                                                                                                                                                                      |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "I'll add logging when something breaks"                          | That's exactly when it's too late — the bug already happened uninstrumented, and now you're debugging blind _and_ adding telemetry at the same time.                                         |
+| "console.log is fine, it's just a quick fix"                      | An unstructured string can't be filtered or correlated later, and it's the easiest place to accidentally interpolate a token or password. Five extra minutes now, one grep later.            |
+| "It's wrapped in try/catch, so it's handled"                      | Handled ≠ observed. A swallowed catch with no `captureError` is a failure nobody will ever see.                                                                                              |
 | "Sentry/OTel isn't configured on this fork, so it doesn't matter" | `withSpan` and `captureError` are safe no-ops when unconfigured (AC-5.1) — call them anyway. The moment a project turns the endpoint on, every already-instrumented path lights up for free. |
-| "This route is too simple to need telemetry" | Simple routes are also the ones nobody thinks to check first when they're the actual cause. |
-| "I'll just log the whole request body, it's easier" | That's how a Restricted field ends up in a log line. Pick named fields; `no-secret-env-in-console` catches env vars, not a raw body dump. |
-| "The audit log already covers this" | The audit extension records Prisma writes for compliance, not "why did this external call fail." They answer different questions — you likely need both. |
+| "This route is too simple to need telemetry"                      | Simple routes are also the ones nobody thinks to check first when they're the actual cause.                                                                                                  |
+| "I'll just log the whole request body, it's easier"               | That's how a Restricted field ends up in a log line. Pick named fields; `no-secret-env-in-console` catches env vars, not a raw body dump.                                                    |
+| "The audit log already covers this"                               | The audit extension records Prisma writes for compliance, not "why did this external call fail." They answer different questions — you likely need both.                                     |
 
 ## Red Flags
 

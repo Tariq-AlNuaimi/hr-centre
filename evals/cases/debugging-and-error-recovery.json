@@ -1,0 +1,29 @@
+{
+  "skill_name": "debugging-and-error-recovery",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "the build is failing and I don't know why",
+        "top_k": 3
+      },
+      {
+        "prompt": "this type error makes no sense, help me figure out the root cause",
+        "top_k": 3
+      },
+      {
+        "prompt": "it worked yesterday and now it's broken",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "the query is slow, help me measure and fix it",
+        "owner": "performance-optimization"
+      },
+      {
+        "prompt": "add tracing so we can tell what happened in production",
+        "owner": "observability-and-instrumentation"
+      }
+    ]
+  }
+}
