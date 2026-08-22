@@ -52,6 +52,30 @@ that order, and never lets a flawless Stage-2 pass paper over a Stage-1 failure.
 
 ## Steps
 
+### 0. Pick the depth (do this first)
+
+Review depth scales with blast radius; the receipt is the same either way, the work is not.
+
+```bash
+git diff --name-only <base>..HEAD | node -e 'const c=[];process.stdin.on("data",d=>c.push(d)).on("end",async()=>{ \
+  const m=await import("./.claude/hooks/lib/receipt.mjs"); \
+  const r=m.reviewDepthFor(c.join("").split("\n").filter(Boolean)); \
+  console.log(r.depth, r.deep.length?"-> "+r.deep.join(", "):"");})'
+```
+
+- **`deep`** — any high-risk path changed (`lib/**`, `app/api/**`, `prisma/**`, auth,
+  the harness, `package.json`, the ESLint floor, `findings-register.md`, `CLAUDE.md`).
+  Run the full two-stage rail below: Stage 1 spec-compliance, then Stage 2 quality.
+- **`fast`** — everything else in scope (a component, a page, a test). One correctness
+  pass: does it do what it claims, does it break anything adjacent, does it violate a
+  rule in `docs/rules/*.md`? Then emit the receipt.
+
+**Why depth is scaled at all:** the review scope covers ~67% of tracked files, including
+every UI change. Demanding the full rail for a two-line CSS fix is how `--no-verify`
+becomes muscle memory — and that flag skips gitleaks and the entire `/ship` gate, not just
+review. A proportionate review that actually happens beats a thorough one that gets
+bypassed.
+
 ### 0. Scope the diff
 
 Diff against the `origin/main` merge-base (or staged/unstaged changes if

@@ -137,6 +137,44 @@ export function gitTry(args, opts) {
   }
 }
 
+/**
+ * HIGH-RISK paths -- these get the full two-stage rail (spec-compliance, then quality).
+ * Everything else in scope gets a fast correctness pass.
+ *
+ * This is the OLD allowlist, repurposed. It was the wrong shape for deciding WHETHER a
+ * change needs review (it lost three rounds of "you missed a file"), but it is the right
+ * shape for deciding HOW DEEP that review goes: enumerating what is dangerous is exactly
+ * what a depth heuristic wants, and a miss here costs a shallower review rather than no
+ * review at all. Ceremony scaling with blast radius is what the five pillars already say.
+ */
+export const REVIEW_DEEP_GLOBS = [
+  "lib/**",
+  "app/api/**",
+  "prisma/**",
+  "middleware.ts",
+  "auth.ts",
+  "auth.config.ts",
+  ".claude/hooks/**",
+  ".claude/settings.json",
+  ".husky/**",
+  "scripts/**",
+  "package.json",
+  "eslint.config.mjs",
+  "eslint-rules/**",
+  "docs/findings-register.md",
+  "audit-allowlist.json",
+  "next.config.ts",
+  "tsconfig.json",
+  ".npmrc",
+  "CLAUDE.md",
+];
+
+/** "deep" (full two-stage rail) or "fast" (correctness pass) for a set of changed paths. */
+export function reviewDepthFor(paths) {
+  const deep = (paths ?? []).filter((p) => REVIEW_DEEP_GLOBS.some((g) => globToRegExp(g).test(p)));
+  return { depth: deep.length ? "deep" : "fast", deep };
+}
+
 /** Is this repo-relative path inside the review gate's scope? (i.e. NOT in the safe set) */
 export function isInReviewScope(rel) {
   if (!rel) return false;

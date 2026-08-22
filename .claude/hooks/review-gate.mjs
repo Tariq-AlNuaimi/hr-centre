@@ -160,6 +160,25 @@ try {
   const ranges = resolveRanges();
   if (ranges.length === 0) process.exit(0); // nothing being pushed
 
+  // AC-1.4 extended to review-gate. The /quickstart exemption was written for qa-gate
+  // only, because until the scope inverted to a safe-set denylist review-gate never
+  // touched app/ or components/. It does now -- 89 of 89 of them -- and /quickstart
+  // deploys by `git push`, so without this the ~10-minute idea-to-URL promise runs
+  // through the full review rail. Disposable prototype output shared for feedback is
+  // exactly what the qa-gate carve-out already exempts, for the same reason.
+  // A gate that fires on every prototype push trains `git push --no-verify`, which takes
+  // gitleaks and the whole /ship gate down with it -- a far worse trade than the reviews
+  // it would have collected.
+  const truthy = (v) => v === "1" || v === "true";
+  if (truthy(process.env.QUICKSTART) || truthy(process.env.CLAUDE_QUICKSTART)) {
+    console.error(
+      "[review-gate] /quickstart push — review receipt not required (AC-1.4). " +
+        "This exemption is for DISPOSABLE prototype work only; a fork that has graduated " +
+        "past /quickstart should not be setting QUICKSTART=1.",
+    );
+    process.exit(0);
+  }
+
   for (const range of ranges) {
     const inScope = [...new Set(range.changed.filter(isInReviewScope))].sort();
 
