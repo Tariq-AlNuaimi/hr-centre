@@ -1,6 +1,6 @@
 ---
 name: design-qa
-description: Design-fidelity QA (Tier 1 of the QA system). Drives Chromium (Playwright) to screenshot every screen AND every component state (hover/focus/disabled/loading/empty/error), runs axe for accessibility, and diffs the result against the design source of truth (design/* mockups + tokens.css / the AntD theme). Scores each screen 0-5 on the design-QA heuristics in docs/uat-rubric.md and reports cited, severity-ranked deviations -- per-component first, then per-screen. Use BEFORE functional QA. Trigger phrases: "design qa", "design review", "fidelity check", "does it match the design", "/design-qa", "ui audit", "accessibility audit", "a11y check", "visual regression".
+description: Design-fidelity QA that runs AFTER a screen is built -- screenshots every screen and component state, runs an axe accessibility audit, and diffs against the mockups and tokens, scoring deviations. Use to check whether built UI matches the design, run an accessibility audit, or catch visual/dark-mode drift already shipped.
 ---
 
 # /design-qa — design fidelity, before functional QA
@@ -168,3 +168,19 @@ save the shot, move on.
 - Don't call a run green if the browser/creds couldn't launch — that's "could not run."
 - Visual-regression needs a baseline: greenfield uses the mockups; never silently
   accept drift as the new baseline without the operator's nod.
+
+## Verification
+
+Before calling this done:
+
+- [ ] every screen + component state captured to `docs/verification/<feature>/`
+      (desktop + mobile × light/dark × each enabled locale)
+- [ ] axe run on each screen, with serious/critical violations recorded
+- [ ] every captured screenshot actually opened and eyeballed against the
+      mockup/rubric — not inferred from axe + load checks alone
+- [ ] a scorecard emitted per screen citing `docs/uat-rubric.md` heuristics,
+      with deviations ranked by severity
+- [ ] a visual-regression diff run against the committed baseline (when one
+      exists), with no unexplained `*.diff.png`
+
+**Emits:** per-screen scores + captured screenshots + axe results; severity-ranked deviations.

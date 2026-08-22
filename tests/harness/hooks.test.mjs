@@ -739,7 +739,17 @@ test("V2-102 memory-digest --strict FAILS on a fixture with an over-budget secti
 // ---------------------------------------------------------------------------
 test("every .mjs hook exits 0 on benign input and on malformed stdin", () => {
   const failClosed = new Set(["dangerous-commands.mjs", "protect-secrets.mjs"]);
-  for (const f of readdirSync(HOOKS).filter((n) => n.endsWith(".mjs"))) {
+  // NOT session hooks: invoked by git (.husky/pre-push) with ref-updates on stdin,
+  // never by Claude Code with a PreToolUse payload. Feeding them `preBash(...)` and
+  // demanding exit 0 is a category error -- they evaluate REPO STATE and exit non-zero
+  // to reject a push, which is their job. Worse, it made this test's outcome depend on
+  // whether the working tree happened to hold unreviewed in-scope changes: it passed
+  // only while the review scope matched nothing dirty, and started failing the moment
+  // the scope widened to scripts/** (AC-1.1). Their own fail-open behaviour is covered
+  // by the dedicated review-gate test that follows; this sweep is about session hooks
+  // bricking a session.
+  const notSessionHooks = new Set(["review-gate.mjs"]);
+  for (const f of readdirSync(HOOKS).filter((n) => n.endsWith(".mjs") && !notSessionHooks.has(n))) {
     const benign = runHook(f, preBash("echo hello"));
     assert.equal(benign.code, 0, `${f} should exit 0 on benign input`);
     const garbage = runHook(f, "definitely not json");
@@ -1105,3 +1115,285 @@ test("V2-209 analyzeBlueprint flags a real amendment row with an empty Confirmed
 // from the default rail. BDD traceability is a practice a team adopts after finding
 // the problem it solves, not a pre-installed default. The recipe stays in docs/ so a
 // fork can re-adopt it; if you do, restore these tests with it.
+
+// ---------------------------------------------------------------------------
+// review-gate.mjs is a git pre-push gate, not a session hook, so it is exempt from
+// the PreToolUse sweep above. That exemption previously cited "the review-gate tests
+// below" -- which did not exist, leaving this file's fail-open contract (ADR-047's
+// core promise for it) entirely untested. This is that test, invoking the gate the
+// way git actually does: a `base..head` range argument.
+//
+// It asserts ONLY state-independent properties. Deliberately NOT asserted: that a
+// range containing unreviewed gated files exits 1. That is true right now, but it
+// depends on whether the working branch happens to carry a receipt -- and a test whose
+// outcome moves with ambient repo state is exactly the defect that made the original
+// sweep pass for the wrong reason.
+// ---------------------------------------------------------------------------
+test("review-gate.mjs fails OPEN on unusable input and allows an empty range", () => {
+  const gate = join(HOOKS, "review-gate.mjs");
+  const run = (args, input) =>
+    spawnSync("node", [gate, ...args], { cwd: REPO, input: input ?? "", encoding: "utf8" });
+
+  // An empty range has no changed paths -> nothing gated -> allow.
+  assert.equal(run(["HEAD..HEAD"]).status, 0, "empty range should allow");
+
+  // Unusable input must ALLOW, never wedge a push (ADR-047: governance gates fail open).
+  //
+  // EVERY case below contains ".." on purpose. review-gate only treats an argument as a
+  // range when it includes ".."; without it the arg is ignored and the gate falls through
+  // to its live `@{u}..HEAD` fallback -- meaning the assertion would silently measure the
+  // RUNNING MACHINE's unpushed review state instead of the malformed-input path. Three of
+  // the original five cases did exactly that, so they passed only while the checkout
+  // happened to have nothing unreviewed in scope: the same ambient-state fragility the
+  // comment above warns about, reintroduced in the test written to replace it.
+  // A fifth case ("empty range with garbage stdin", ["HEAD..HEAD"]) was removed: because
+  // the CLI range is resolved BEFORE stdin is read, it never reached the stdin path, took
+  // the ordinary empty-range exit instead of failOpen(), and — proven by mutation — stayed
+  // green even with fail-open handling entirely removed. It duplicated the empty-range
+  // assertion above while advertising coverage it did not have.
+  for (const [label, args, input] of [
+    ["garbage range arg", ["definitely..not..a..range"], ""],
+    ["nonexistent base ref", ["no-such-ref..HEAD"], ""],
+    ["nonexistent head ref", ["HEAD..no-such-ref"], ""],
+    ["both refs nonexistent", ["nope-a..nope-b"], ""],
+  ]) {
+    const r = run(args, input);
+    assert.equal(r.status, 0, `review-gate should fail OPEN on ${label} (got ${r.status})`);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// isSkipAdjudicated -- the Gate-Skip adjudication predicate (AC-4.1).
+//
+// This logic shipped two OPPOSITE bugs in consecutive rounds, both because it lived
+// inline in ship.mjs where nothing could unit-test it:
+//   round 1: unanchored `includes(gate)` -> `Gate-Skip: all` was "adjudicated" by the
+//            word "install" in an unrelated closed entry, so a blanket skip bypassed
+//            both gates AND this backstop, silently.
+//   round 2: over-anchored -> a reasonable English adjudication was never recognised,
+//            wedging /ship RED with no way to discover the required literal.
+// Both directions are asserted here so neither can come back.
+// ---------------------------------------------------------------------------
+test("isSkipAdjudicated: recognises the documented form and nothing else", async () => {
+  const { isSkipAdjudicated: adj } = await import(join(HOOKS, "lib", "receipt.mjs"));
+  const entry = (body) => `- 2026-08-22 — [harness] ${body}\n`;
+
+  // --- must NOT adjudicate -------------------------------------------------
+  // The round-1 bug: prose merely CONTAINING the gate name.
+  assert.equal(
+    adj(entry("run `npm install` to set up — status: fixed(abc1234)"), "all"),
+    false,
+    "the word 'install' must not adjudicate Gate-Skip: all",
+  );
+  assert.equal(
+    adj(entry("all clear after the sweep — status: adjudicated(2026-08-22)"), "all"),
+    false,
+    "the phrase 'all clear' must not adjudicate Gate-Skip: all",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — status: open"), "qa-gate"),
+    false,
+    "status: open is not adjudicated",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — no status line at all"), "qa-gate"),
+    false,
+    "missing status is not adjudicated",
+  );
+  assert.equal(adj("", "qa-gate"), false, "empty register adjudicates nothing");
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — status: fixed(abc)"), ""),
+    false,
+    "empty gate name adjudicates nothing",
+  );
+  // Prefix collision: a longer gate name must not be adjudicated by a shorter one.
+  assert.equal(
+    adj(entry("Gate-Skip: qa — status: fixed(abc1234)"), "qa-gate"),
+    false,
+    "Gate-Skip: qa must not adjudicate the distinct gate qa-gate",
+  );
+
+  // --- must adjudicate -----------------------------------------------------
+  // The round-2 bug: the documented literal has to actually work.
+  assert.equal(
+    adj(
+      entry("Gate-Skip: qa-gate for an emergency hotfix — status: adjudicated(2026-08-22)"),
+      "qa-gate",
+    ),
+    true,
+    "the literal the deny message prints must be accepted",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: review-gate — status: fixed(deadbee)"), "review-gate"),
+    true,
+    "status: fixed(<commit>) adjudicates too",
+  );
+  // `*` is a legal gate value AND a regex metacharacter -- escaping must hold.
+  assert.equal(
+    adj(entry("Gate-Skip: * blanket skip — status: adjudicated(2026-08-22)"), "*"),
+    true,
+    "the * alias must adjudicate itself",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — status: adjudicated(2026-08-22)"), "*"),
+    false,
+    "a named skip must not adjudicate the * alias",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// qa-gate: a NARROW receipt must not satisfy a deploy once a prior QA point exists.
+//
+// This is the round-3 CRITICAL. `git log --format=...%x1e` appends git's own newline
+// after every record, so splitting on \x1e glued "\n" onto every sha but the first;
+// the malformed sha produced a bad diff range, gitTry swallowed it, `shipping` came back
+// empty, and the allow branch fired unconditionally. Any syntactically valid narrow
+// receipt shipped anything, silently. No prior test caught it because every fixture had
+// only ONE QA-carrying commit -- the bug needs a SECOND one to trigger.
+// ---------------------------------------------------------------------------
+test("qa-gate denies a deploy when a narrow QA receipt misses a shipped file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "qa-gate-fixture-"));
+  const git = (...a) => execSync(`git ${a.join(" ")}`, { cwd: dir, stdio: "pipe" }).toString();
+  const receipt = (args) =>
+    spawnSync("node", [join(HOOKS, "lib", "receipt.mjs"), ...args], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    }).stdout.trim();
+  try {
+    git("init -q");
+    git("config user.email t@t.t");
+    git("config user.name t");
+    mkdirSync(join(dir, "lib"), { recursive: true });
+
+    // Cycle 1: a genuine whole-tree QA point.
+    writeFileSync(join(dir, "lib", "foo.ts"), "export const a = 1;\n");
+    git("add -A");
+    git('commit -q -m "seed"');
+    const whole = receipt(["trailer", "--key", "QA", "."]);
+    git(`commit -q --allow-empty -m "qa cycle 1${"\n\n"}${whole}"`);
+
+    // Cycle 2: two files change, but the new receipt names only one of them.
+    writeFileSync(join(dir, "lib", "foo.ts"), "export const a = 2;\n");
+    writeFileSync(join(dir, "lib", "bar.ts"), "export const b = 1;\n");
+    git("add -A");
+    git('commit -q -m "change foo and bar"');
+    const narrow = receipt(["trailer", "--key", "QA", "lib/foo.ts"]);
+    assert.match(
+      narrow,
+      /^QA: lib\/foo\.ts [0-9a-f]{40,64}$/,
+      "fixture must produce a valid narrow receipt",
+    );
+    git(`commit -q --allow-empty -m "narrow qa${"\n\n"}${narrow}"`);
+
+    // A narrow, INTERNALLY VALID receipt must not certify a deploy that also ships bar.ts.
+    const r = spawnSync("node", [join(HOOKS, "qa-gate.mjs")], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      input: JSON.stringify({
+        tool_name: "Bash",
+        tool_input: { command: "node scripts/deploy.mjs" },
+      }),
+    });
+    const out = `${r.stdout}${r.stderr}`;
+    assert.ok(
+      /deny|Denied/i.test(out),
+      `narrow receipt must NOT satisfy the deploy gate (lib/bar.ts uncovered). Got: ${out.slice(0, 300)}`,
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// review-gate: the /quickstart exemption must be RECORDED and SCOPED, not ambient.
+// The first version read process.env.QUICKSTART: unscoped to the push, invisible in git,
+// persistent across every later push from that shell -- and /quickstart never set it, so
+// it did not even serve its own purpose. It is now a `Quickstart:` commit trailer.
+// ---------------------------------------------------------------------------
+test("review-gate: /quickstart exemption requires a recorded trailer, not an env var", () => {
+  const dir = mkdtempSync(join(tmpdir(), "qs-exempt-"));
+  const git = (...a) => execSync(`git ${a.join(" ")}`, { cwd: dir, stdio: "pipe" }).toString();
+  const gate = (env = {}) =>
+    spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~1..HEAD"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir, ...env },
+    });
+  try {
+    git("init -q");
+    git("config user.email t@t.t");
+    git("config user.name t");
+    mkdirSync(join(dir, "lib"), { recursive: true });
+    writeFileSync(join(dir, "README.md"), "seed\n");
+    git("add -A");
+    git("commit -q -m seed");
+
+    // A gated change with no receipt and no exemption -> must be REJECTED.
+    writeFileSync(join(dir, "lib", "thing.ts"), "export const x = 1;\n");
+    git("add -A");
+    git('commit -q -m "add gated file"');
+    assert.equal(gate().status, 1, "gated change without a receipt must be rejected");
+
+    // The OLD mechanism must no longer work: ambient env grants nothing.
+    assert.equal(
+      gate({ QUICKSTART: "1" }).status,
+      1,
+      "an ambient QUICKSTART env var must NOT exempt — it is unscoped and unrecorded",
+    );
+
+    // The trailer, recorded on a commit in the push range, does exempt.
+    git('commit -q --allow-empty -m "quickstart push" -m "Quickstart: exempt"');
+    const r = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~2..HEAD"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    });
+    assert.equal(
+      r.status,
+      0,
+      `a recorded Quickstart: trailer must exempt. Got: ${r.stderr.slice(0, 200)}`,
+    );
+
+    // A commit that merely DISCUSSES the mechanism must not exempt. Quickstart is the one
+    // trailer whose false positive fails OPEN, so it is matched only in the trailer block
+    // (git interpret-trailers --parse), not line-wise like the others.
+    writeFileSync(join(dir, "lib", "other.ts"), "export const y = 2;\n");
+    git("add -A");
+    execSync("git commit -q -F -", {
+      cwd: dir,
+      stdio: ["pipe", "pipe", "pipe"],
+      input:
+        "explain the exemption\n\nQuickstart: prose at line start, not a trailer\n\ntrailing body keeps it out of the trailer block\n",
+    });
+    const prose = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~1..HEAD"], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    });
+    assert.equal(prose.status, 1, "prose merely mentioning Quickstart: must NOT exempt");
+
+    // Round-5 finding: a docs commit whose LAST line is a well-formed EXAMPLE trailer.
+    // Trailer-block parsing alone cannot tell an illustration from an intent, so the value
+    // must be the fixed literal `exempt` -- which the natural ways to write ABOUT the
+    // mechanism ("<reason>", "disposable prototype") do not match.
+    for (const example of ["Quickstart: disposable prototype", "Quickstart: <reason>"]) {
+      writeFileSync(join(dir, "lib", `ex${example.length}.ts`), "export const z = 3;\n");
+      git("add -A");
+      execSync("git commit -q -F -", {
+        cwd: dir,
+        stdio: ["pipe", "pipe", "pipe"],
+        input: `docs: document the format\n\nUse this on disposable pushes:\n\n${example}\n`,
+      });
+      const ex = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~1..HEAD"], {
+        cwd: dir,
+        encoding: "utf8",
+        env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      });
+      assert.equal(ex.status, 1, `an EXAMPLE trailer (${example}) must not exempt a gated change`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

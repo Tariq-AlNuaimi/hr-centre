@@ -1,6 +1,6 @@
 ---
 name: cover
-description: AI test-generation that closes coverage gaps to feed the /ship coverage floor -- Claude writes ONLY tests that both PASS and raise lib/** coverage, targeting the node:test runner this repo uses (not Jest). Use when the user says "/cover", "raise coverage", "generate tests for this", "the coverage gate failed", "close the coverage gap", "cover this file".
+description: AI test-generation that closes coverage gaps -- writes only tests that pass and raise lib/** coverage, targeting this repo's node:test runner (not Jest). Use when the coverage gate fails, or to generate tests that raise coverage on a file or folder.
 ---
 
 # /cover — close the coverage gap that fails the `/ship` floor
@@ -76,3 +76,19 @@ throw it away and try a different uncovered path.
   surface, nothing for the floor to score.
 - `/ship`'s coverage step is already green on the touched files — don't add tests
   that pass without raising the number (that's exactly what the discipline discards).
+
+## Verification
+
+Before calling this done:
+
+- [ ] Every kept test both passes and raised coverage on the file it targets —
+      no test kept that was red or flat
+- [ ] The touched `lib/**` files clear the `/ship` floor (lines 75 / functions 78
+      / branches 88), via `npm run test:coverage` or `/ship`'s `scanCoverage` step
+- [ ] Any new Restricted field still has its `SCRUB_FIELDS` assertion (e.g. in
+      `audit-scrub.test.ts`) — coverage didn't substitute for the contract test
+- [ ] `npm run ship` is green
+- [ ] A genuinely un-testable gap has a logged `coverageAck` + `docs/findings-register.md`
+      line, not a silent floor-drop
+
+**Emits:** new passing tests raising `lib/**` coverage toward the `/ship` floor.

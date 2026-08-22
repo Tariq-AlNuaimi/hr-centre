@@ -1,6 +1,6 @@
 ---
 name: qa
-description: The QA orchestrator. Decomposes a change into per-component -> per-screen -> per-flow scope and runs the three QA tiers IN GATED ORDER -- design QA (/design-qa) -> functional QA (/ship + a risk-based case matrix) -> UAT (/uat) -- against the rubric in docs/uat-rubric.md, anchored to the 5 pillars (speed/secure/maintainable/scalable/high-quality). A red gate stops the line and reports; it never barrels ahead. Collects a scorecard per screen/feature into one release-readiness verdict. This is the "don't fire off a granular mega-task" control. Trigger phrases: "qa", "/qa", "run qa", "full qa", "is this ready to ship", "release readiness", "quality gate", "audit the app properly".
+description: The QA orchestrator -- runs the three QA tiers in gated order (design QA, functional QA, UAT) against the pillars rubric and collects one release-readiness verdict; a red gate stops the line. Use for the complete quality gate across design, function, and UAT before a release, not the fast pre-push checks (that's /ship).
 ---
 
 # /qa — the gated QA orchestrator
@@ -56,6 +56,30 @@ Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scala
 5. **Collect + verdict.** Assemble one **scorecard per screen/feature** (rubric
    template) into a single **release-readiness** verdict: _ship_ or _fix-first_ with the
    blocker list. Every finding cites a **pillar + anchor**.
+6. **Emit the receipt (only on a clean, green run).** If the verdict is _ship_ —
+   no red gate anywhere in the pipeline, no open un-adjudicated
+   `docs/findings-register.md` entry on the in-scope surface — add a git trailer
+   to the commit being QA'd:
+
+   ```
+   QA: <scope> <tree-sha>
+   ```
+
+   **Do NOT compute this by hand.** `.claude/hooks/lib/receipt.mjs` is the single
+   source of truth for the hash — generate the whole trailer:
+
+   ```bash
+   node .claude/hooks/lib/receipt.mjs trailer --key QA <path> [<path>...]
+   ```
+
+   This is the receipt `.claude/hooks/qa-gate.mjs` checks before allowing a real
+   deploy invocation (`npm run deploy`, `scripts/deploy.mjs`, `vercel --prod`, …):
+   it denies the deploy unless HEAD carries a valid `QA:` trailer. The hash is
+   content-bound — a later edit to any covered path changes that path's blob sha,
+   which invalidates the trailer, so QA is re-demanded instead of certifying stale
+   content. `/quickstart` is exempt: it deploys by `git push`, a command
+   `qa-gate.mjs` never matches (Vercel auto-builds on push), so this step never
+   blocks the idea-to-URL path.
 
 ## Gating rules
 
@@ -108,3 +132,23 @@ Tie-breaker across all three: the **5 pillars** (speed/secure/maintainable/scala
   _code_ scanning is `/audit`; live-app pentest is the future `/vapt`.
 - Needs a running app + seed data + test login for tiers 1 and 3 (same env contract as
   `/uat`). On a fresh container, bring up the local DB + seed before running.
+
+## Verification
+
+Before calling this done:
+
+- [ ] All three tiers ran in **gated order** and any red gate stopped the line and
+      was reported — no tier ran ahead of a failed predecessor.
+- [ ] Tier 1/3 entry gates (green build + running app + seeded test creds) were
+      actually met; a "could not run" was reported as **blocked**, never as a pass.
+- [ ] No **open** (un-adjudicated) `docs/findings-register.md` entry touches the
+      in-scope surface.
+- [ ] A scorecard per screen/feature was produced, each finding citing a pillar +
+      an anchor, rolled up into one release-readiness verdict (ship / fix-first).
+- [ ] On a clean, green run, a `QA: <scope> <tree-sha>` trailer was emitted on the
+      commit via `.claude/hooks/lib/receipt.mjs` (skipped, with the reason stated,
+      on anything short of a clean pass).
+
+**Emits:** a content-bound `QA: <scope> <tree-sha>` git trailer on the commit —
+the receipt `.claude/hooks/qa-gate.mjs` requires before it allows a real deploy
+invocation (`/quickstart`'s `git push` path is exempt and never checked).

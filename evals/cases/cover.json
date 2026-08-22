@@ -1,0 +1,29 @@
+{
+  "skill_name": "cover",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "the coverage gate is failing, write some tests to close the gap",
+        "top_k": 3
+      },
+      {
+        "prompt": "generate tests for this file so we hit the coverage floor",
+        "top_k": 3
+      },
+      {
+        "prompt": "raise test coverage on the lib folder",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "write a failing test first before fixing this bug",
+        "owner": "test-driven-development"
+      },
+      {
+        "prompt": "batch this test-writing job across many files as headless runs",
+        "owner": "batch"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: deploy
-description: Provision Neon + Vercel for the CURRENT repo and ship it to a live URL from a Claude Code web session (or any machine with egress + tokens). Use when the user says "deploy this", "ship it live", "/deploy", "put it on Vercel", "get me a URL" -- for a fork that already exists on GitHub but has never been connected to Vercel/Neon. For a brand-new repo from the template, use /new-project (Actions) or /first-fork (manual).
+description: Provisions Neon + Vercel for a repo that already exists on GitHub but isn't connected yet, and ships it to a live URL. Use to get an existing fork online, connect it to Vercel and Neon, or get a shareable URL. For a brand-new repo use /new-project; for a first-ever setup use /first-fork.
 ---
 
 # /deploy — Existing fork → live URL, headless
@@ -143,3 +143,19 @@ create duplicates.
   cause is blocked egress — the preflight distinguishes the two; report which.
 - Do **not** use this for a brand-new repo that doesn't exist yet — that's
   `/new-project` (Actions) or `/first-fork` (manual).
+
+## Verification
+
+Before calling this done:
+
+- [ ] `npm run ship` passed before the provisioner ran — never a red build
+- [ ] HEAD carries a valid `QA: <scope> <tree-sha>` trailer (or a recorded
+      `Gate-Skip: qa-gate <reason>`) — `qa-gate.mjs` hard-denies the deploy
+      invocation without one
+- [ ] the preflight printed `Egress OK.` and the provisioner completed without
+      a mid-provision failure (or the cleanup report was verified against the
+      Neon/Vercel dashboards)
+- [ ] the production URL responds (curled or opened) and the admin was seeded
+      (`npx prisma db seed` ran against the Neon direct connection string)
+
+**Emits:** a live URL, plus the Vercel/Neon project wiring.

@@ -1,6 +1,6 @@
 ---
 name: conform
-description: Bring foreign code (built in another tool, or in an old Claude Code project that never used this template) up to this template's standard, then push it to a new repo created from the template. Security-scans first, reports gaps against the hard-rules, fixes ONLY what the operator approves, never silently. Use when the user says "make this match my standard", "conform this code", "/conform", "I built this elsewhere, bring it up to standard", or drops a folder of foreign code.
+description: Brings foreign code -- built elsewhere, or an old project that never used this template -- up to this template's standard, then pushes it to a new repo. Security-scans first and fixes only what's approved. Use when code came from outside this template and needs to match its conventions.
 ---
 
 # /conform — Bring foreign code up to the template standard
@@ -108,3 +108,20 @@ and push. Vercel deploys from there.
   must be rotated, because it is already in that code's history.
 - Do **not** mark the result conformed until `/audit` is clean (or accepted) and `/ship`
   is green.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `/audit` ran against the incoming code before any edit or deep read
+- [ ] The conformance report covers every hard-rule + ESLint-rule item, each
+      line-referenced (`file:line`)
+- [ ] An explicit operator approval line (e.g. `Approve: 1,3,5` / `APPROVE ALL`)
+      exists before step 6 touched anything
+- [ ] Only approved changes were applied; `/audit` and `/ship` are both green
+      after aligning
+- [ ] The conformed code is pushed to a new repo created from the template
+
+**Emits:** a new repo (created from the template) with the approved changes
+committed and pushed — the conformance report and approval trail are relayed
+inline and are not themselves persisted to a file.

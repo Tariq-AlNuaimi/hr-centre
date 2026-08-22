@@ -1,6 +1,6 @@
 ---
 name: migrate-from
-description: Pull data + schema from a source Postgres database into a freshly scaffolded fork. Claude proposes a column→field mapping, operator reviews, the script dumps + transforms + generates a prisma seed for the target. Use when the user says "migrate from <repo>", "port the staffing module", "move this data", "/migrate-from", or describes carving a feature out of an existing monolith.
+description: Pulls data and schema from a source Postgres database into a freshly scaffolded fork -- proposes a column-to-field mapping, then dumps, transforms, and generates a Prisma seed for the target. Use to migrate data from an old database, carve a module out of a monolith, or map an old schema onto new Prisma models.
 ---
 
 # /migrate-from — Source DB → fresh fork
@@ -112,3 +112,24 @@ The transform layer is project-specific. Even with Claude reasoning, the operato
 - `scripts/migrate-from.mjs`
 - `prisma/seed.ts` (target's existing seed pattern)
 - `lib/prisma/audit-extension.ts` (so the operator knows what auto-writes)
+
+## Verification
+
+Before calling this done:
+
+- [ ] `/tmp/migrate.json` was written by Claude from the source schema + target
+      model, then reviewed/edited by the operator before the dumper ran.
+- [ ] Any Restricted-looking source column (`password*`, `*token*`, `secret`,
+      `api*key`, `salary`, `ssn`) triggered the explicit written-approval gate
+      before it was carried into the map.
+- [ ] `npm run migrate-from` completed and produced `/tmp/migrate/seed.ts` plus
+      the per-table CSVs.
+- [ ] The generated seed was applied against the target `DATABASE_URL`
+      (`npx prisma db seed`) and ran without error.
+- [ ] Row counts (source vs. target, using `prismaUnfiltered` to account for
+      soft-deleted rows), a sampled-row diff, and FK integrity were checked and
+      reported to the operator.
+
+**Emits:** a generated Prisma seed (`/tmp/migrate/seed.ts` + per-table CSVs) plus
+the reviewed column→field mapping (`/tmp/migrate.json`) the operator signed off
+on before any data landed in the target.

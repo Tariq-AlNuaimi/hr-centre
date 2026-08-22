@@ -1,0 +1,29 @@
+{
+  "skill_name": "uat",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "click through every screen and confirm the app works",
+        "top_k": 3
+      },
+      {
+        "prompt": "run a full acceptance test with a pdf report",
+        "top_k": 3
+      },
+      {
+        "prompt": "smoke test the app before we share it",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "log in as each role and try to break the form live",
+        "owner": "manual-uat"
+      },
+      {
+        "prompt": "research what competing products include",
+        "owner": "benchmark"
+      }
+    ]
+  }
+}

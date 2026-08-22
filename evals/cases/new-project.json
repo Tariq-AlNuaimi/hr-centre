@@ -1,0 +1,29 @@
+{
+  "skill_name": "new-project",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "spin up a brand new project for this idea",
+        "top_k": 3
+      },
+      {
+        "prompt": "create a fresh repo, database and vercel project for this in one go",
+        "top_k": 3
+      },
+      {
+        "prompt": "start a project called X from the template",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "this repo isn't connected to vercel yet, connect it",
+        "owner": "deploy"
+      },
+      {
+        "prompt": "swap the placeholder name for our real project name",
+        "owner": "rebrand"
+      }
+    ]
+  }
+}

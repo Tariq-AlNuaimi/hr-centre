@@ -1,6 +1,6 @@
 ---
 name: docker
-description: Containerize the CURRENT app for self-hosting -- build a small standalone image, run it against a Postgres/Neon URL, or bring up the full local app+DB stack. Wraps the opt-in Docker self-host rail (ADR-023). Use when the user says "dockerize this", "/docker", "containerize the app", "build a docker image", "run it in docker", "self-host this", "hand IT a runnable image".
+description: Containerizes the current app for self-hosting -- builds a small standalone image, runs it against Postgres/Neon, or brings up the full local app+DB stack. Use to package this app as a container image, self-host instead of Vercel, or hand IT a runnable image.
 ---
 
 # /docker — Containerize the app (opt-in self-host rail)
@@ -72,6 +72,22 @@ install:
   self-host (on-prem / air-gapped / k8s).
 - Keep the image lean: the build is multi-stage and traces only the standalone
   runtime; don't add dev dependencies or build tooling to the runtime stage.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docker version` confirmed available (or the environment limit was
+      reported plainly and the run stopped, rather than claiming success)
+- [ ] `.env` confirmed absent from the built image — secrets passed only via
+      `--env-file` / runtime env vars, never baked in
+- [ ] the matching `make docker-*` target completed (build/run/up/down)
+- [ ] the running container answers on `http://localhost:3000` and
+      `prisma migrate deploy` applied cleanly on startup
+- [ ] for a `/handoff` use, HANDOFF.md records the image tag, required
+      runtime env vars, and the `make docker-run` / `docker run` invocation
+
+**Emits:** a built image / running container.
 
 ## Related
 

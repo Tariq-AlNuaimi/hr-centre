@@ -1,0 +1,29 @@
+{
+  "skill_name": "audit",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "scan the repo for leaked secrets before we share this",
+        "top_k": 3
+      },
+      {
+        "prompt": "run a security check for known CVEs in our dependencies",
+        "top_k": 3
+      },
+      {
+        "prompt": "is it safe to send this codebase to a client",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "bring this outside code up to our template standard",
+        "owner": "conform"
+      },
+      {
+        "prompt": "review this diff for correctness before pushing",
+        "owner": "review"
+      }
+    ]
+  }
+}

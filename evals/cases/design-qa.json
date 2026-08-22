@@ -1,0 +1,29 @@
+{
+  "skill_name": "design-qa",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "screenshot every screen and check it against the mockups",
+        "top_k": 3
+      },
+      {
+        "prompt": "run an accessibility audit on the dashboard",
+        "top_k": 3
+      },
+      {
+        "prompt": "does this match our design tokens and dark mode correctly",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "pick the right UI pattern before I build this screen",
+        "owner": "design-system"
+      },
+      {
+        "prompt": "log in as each role and click through the real flows",
+        "owner": "manual-uat"
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "skill_name": "doubt-driven-development",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "am I actually sure about this architecture choice",
+        "top_k": 3
+      },
+      {
+        "prompt": "poke holes in this decision before we lock it in",
+        "top_k": 3
+      },
+      {
+        "prompt": "stress test my reasoning on this migration plan",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "give me two or three different approaches to weigh",
+        "owner": "explore"
+      },
+      {
+        "prompt": "review the diff for bugs before I push",
+        "owner": "review"
+      }
+    ]
+  }
+}

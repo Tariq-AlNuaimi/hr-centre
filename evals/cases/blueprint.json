@@ -1,0 +1,29 @@
+{
+  "skill_name": "blueprint",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "before we start building, let's pin down what we're actually making",
+        "top_k": 3
+      },
+      {
+        "prompt": "spec out the happy path and edge cases for this feature",
+        "top_k": 3
+      },
+      {
+        "prompt": "what are we building here, write it up first",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "give me a few different architectures to choose from first",
+        "owner": "explore"
+      },
+      {
+        "prompt": "scan mature competitor products for feature parity",
+        "owner": "benchmark"
+      }
+    ]
+  }
+}

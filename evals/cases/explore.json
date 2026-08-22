@@ -1,0 +1,29 @@
+{
+  "skill_name": "explore",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "give me a few genuinely different ways to build this before we commit",
+        "top_k": 3
+      },
+      {
+        "prompt": "what are the trade-offs between these approaches",
+        "top_k": 3
+      },
+      {
+        "prompt": "diverge on architecture options before the blueprint locks it in",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "spec out the user stories and open questions for this feature",
+        "owner": "blueprint"
+      },
+      {
+        "prompt": "double check whether this decision is actually sound",
+        "owner": "doubt-driven-development"
+      }
+    ]
+  }
+}

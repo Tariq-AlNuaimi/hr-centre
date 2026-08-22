@@ -1,6 +1,6 @@
 ---
 name: fan-out
-description: Orchestrate a write-disjoint task as a parallel subagent wave with ENFORCED file-ownership. Use when a task splits into ≥2 units that touch non-overlapping file sets and you want them run concurrently with a hard disjointness check. Trigger phrases - "/fan-out", "fan this out", "parallelize these", "run these in parallel", "split across agents".
+description: Orchestrates a write-disjoint task as a parallel subagent wave with enforced file-ownership. Use when a task splits into 2+ units touching non-overlapping files and should run at the same time instead of one after another.
 ---
 
 # Parallel fan-out with enforced file-ownership (ADR-057)
@@ -139,3 +139,20 @@ overlap gate + one shared tree is cheaper.
   fan-out of distinct units.
 - **Visibly-coordinated agents that message each other** → native Agent Teams territory;
   `/fan-out` is for independent write-disjoint units, not a shared task list.
+
+## Verification
+
+Before calling this done:
+
+- [ ] a manifest exists at `docs/blueprints/.fan-out.json` with a disjoint
+      file-glob set + tier per unit
+- [ ] `npm run fan-out -- check-overlap docs/blueprints/.fan-out.json` exited
+      zero before the wave was dispatched
+- [ ] the wave was dispatched as parallel subagents in one message, each told
+      to write only its declared file set
+- [ ] `npm run fan-out -- verify-scope docs/blueprints/.fan-out.json` reports
+      every changed file matching exactly one declared set (no 0-match or
+      ≥2-match files)
+- [ ] one `npm run ship` ran over the combined result, green, before commit + push
+
+**Emits:** the `docs/blueprints/.fan-out.json` manifest plus a clean `verify-scope` result.

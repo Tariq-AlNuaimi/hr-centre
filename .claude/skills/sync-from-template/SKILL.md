@@ -1,6 +1,6 @@
 ---
 name: sync-from-template
-description: Pull later template enhancements into a fork that was generated from this template (GitHub "Use this template" -> no shared git history). Path-scoped, additive checkout of template-owned layers only; mixed files (lib/, CLAUDE.md, Ask-before files) get a review diff, never an auto-overwrite. Records a version marker so a fork can tell when it is behind. Use when the user says "pull template updates", "sync from template", "update from upstream", "get the latest template changes", "/sync-from-template", or asks how to make existing projects follow new template enhancements.
+description: Pulls later template enhancements into a fork with no shared git history -- a path-scoped, additive checkout of template-owned files; mixed files get a review diff, never an auto-overwrite. Use to pull template updates, get the newer enhancements into a fork, or check whether a fork is behind the template.
 ---
 
 # /sync-from-template — propagate template enhancements into an existing fork
@@ -112,3 +112,15 @@ hook or CI step later.
 - Foreign code built outside the template — use `/conform` (uplifts external code
   to the standard and pushes to a new repo).
 - Porting **data** from another database — use `/migrate-from`.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `npm run sync-template -- --check` was run first so the sync is against a known "how far behind" baseline
+- [ ] The OWNED layers pulled cleanly and were reviewed (`git diff`), and the REVIEW layers were hand-merged from `.template-sync-review.diff` rather than auto-applied
+- [ ] Any Ask-before file touched (`lib/api-helpers.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/prisma/*`, `middleware.ts`) was reconciled by hand and, if changed, ran through `/code-review`
+- [ ] `.claude/hooks` and `.claude/settings.json`'s `hooks` block were reconciled together (a new/changed hook script has a matching event binding)
+- [ ] `npm run ship` is green and the commit includes the updated `.template-sync.json`, named with the template commit hash it recorded
+
+**Emits:** updated template-owned layers (the OWNED paths) plus a recorded version marker (`.template-sync.json`, committed) naming the template commit the fork is now based on.

@@ -1,0 +1,29 @@
+{
+  "skill_name": "scaffold-entity",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "scaffold a new model with its routes and pages for this entity",
+        "top_k": 3
+      },
+      {
+        "prompt": "add a new CRUD entity end to end",
+        "top_k": 3
+      },
+      {
+        "prompt": "generate the prisma model, zod schema and dashboard page for this",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "turn this idea into a live url in ten minutes",
+        "owner": "quickstart"
+      },
+      {
+        "prompt": "pull the schema and data from our old database instead",
+        "owner": "migrate-from"
+      }
+    ]
+  }
+}

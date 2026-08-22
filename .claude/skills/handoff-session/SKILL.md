@@ -1,6 +1,6 @@
 ---
 name: handoff-session
-description: Produce a session-handoff (committed to the branch AND printed inline) so work continues in a FRESH session instead of a degrading, expensive long one. Use when a session is getting long, when switching tasks, or before ending a long session. Trigger phrases - "handoff session", "/handoff-session", "wrap up this session", "prepare a fresh session".
+description: Produces a session handoff -- committed to the branch and printed inline -- so work continues in a fresh session instead of a long, degrading one. Use when a session is getting long, before switching tasks, or to prepare notes for the next session to pick up.
 ---
 
 # Session handoff (token thrift, ADR-019)
@@ -94,3 +94,22 @@ the branch AND prints the full content for the operator to paste.
 - `docs/SESSION-HANDOFF.md` is working-branch scratch — keep it off `main`.
 - Total under 80 lines. If it wants to be longer, the session waited too long to
   hand off; tighten "Done" first.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/SESSION-HANDOFF.md` has all seven sections (Goal, State, Done, In
+      flight, Decisions, Landmines, Next steps) and is committed on the working
+      branch — never merged to `main`.
+- [ ] Durable **Decisions**/**Landmines** were promoted to `docs/agent-memory.md`
+      in their own commit, or there genuinely were none to promote.
+- [ ] `git push` ran and `git rev-list --count @{u}..HEAD` prints `0` — the
+      commit(s) actually reached the remote, not just the local branch.
+- [ ] The full handoff content was printed inline in one fenced block, prefixed
+      with the "New session: …" pointer line.
+- [ ] The handoff is under 80 lines total.
+
+**Emits:** a session handoff committed to `docs/SESSION-HANDOFF.md` on the
+working branch AND printed inline in the chat — the next session's resume
+point.

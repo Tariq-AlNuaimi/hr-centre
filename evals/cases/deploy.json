@@ -1,0 +1,29 @@
+{
+  "skill_name": "deploy",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "get this fork live on a URL",
+        "top_k": 3
+      },
+      {
+        "prompt": "connect this repo to vercel and neon and ship it",
+        "top_k": 3
+      },
+      {
+        "prompt": "put this project online so the team can see it",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "this is a brand new repo, set up vercel neon and a domain in one go",
+        "owner": "new-project"
+      },
+      {
+        "prompt": "walk me through connecting vercel and neon for the very first time",
+        "owner": "first-fork"
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "skill_name": "handoff",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "we're done, package this up for the IT team",
+        "top_k": 3
+      },
+      {
+        "prompt": "generate the handoff doc with env vars and route inventory",
+        "top_k": 3
+      },
+      {
+        "prompt": "the team signed off, hand production over now",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "this session is getting long, wrap it up so a fresh one can continue",
+        "owner": "handoff-session"
+      },
+      {
+        "prompt": "containerize this so IT can run it anywhere",
+        "owner": "docker"
+      }
+    ]
+  }
+}

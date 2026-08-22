@@ -1,6 +1,6 @@
 ---
 name: batch
-description: Run a repetitive per-file job (codemod, migration, annotation) as capped headless claude -p runs instead of one giant interactive session. Use for "apply X to every file", "migrate all Y", 10+ similar files. Trigger phrases - "/batch", "batch this across", "do this for every file".
+description: Runs a repetitive per-file job -- codemod, migration, annotation -- as capped headless claude -p runs across many files instead of one giant interactive session. Use for applying the same change, codemod, or rename across 10+ similar files.
 ---
 
 # Headless batch runner (token thrift, ADR-019)
@@ -47,3 +47,17 @@ retries instead of one session dragging the whole history through N files.
     rewrite a handler to use an auth wrapper + zod, untangle a type error.
 - Run from a clean tree so a bad batch is one `git checkout -- .` away
   (ask the operator before that revert, as always).
+
+## Verification
+
+Before calling this done:
+
+- [ ] Every file in the list is accounted for as done or parked — none silently
+      dropped from the report
+- [ ] Parked files (2 failed attempts) are named explicitly, not folded into "done"
+- [ ] `npm run ship` is green after the run (a red `/ship` means a parked file
+      remains — fix or `git checkout -- <file>` it)
+- [ ] The report states files done / parked / total cost
+
+**Emits:** the per-file diffs applied to the tree — no separate log artifact
+persists (`/tmp/batch-costs.log` is ephemeral scratch, not a committed receipt).

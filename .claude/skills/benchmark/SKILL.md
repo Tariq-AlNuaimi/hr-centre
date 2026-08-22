@@ -1,6 +1,6 @@
 ---
 name: benchmark
-description: Given an app category, research 3-5 mature products (>=1 OSS; mine its routes/schema/settings for the true feature list, not marketing pages) and output docs/benchmarks/<category>.md -- a sourced parity matrix (table-stakes / differentiators / anti-features), each row citing its source product/repo. Feeds the blueprint's Feature-Parity section (V2-202). Use when the user says "benchmark this category", "what do mature X tools have", or "/benchmark".
+description: Researches 3-5 mature products in a category and writes a sourced feature-parity matrix (table-stakes / differentiators / anti-features) to docs/benchmarks/. Use when asked what mature tools in a category actually have, or for a competitor feature comparison before designing a feature.
 ---
 
 # /benchmark — Know what "complete" means before building
@@ -61,6 +61,20 @@ against.
 - A one-off throwaway that will never be benchmarked or re-built — a `/quickstart`
   toy with no category leaders to learn from. (A real category app is never this;
   don't use "it's a prototype" to skip the parity check.)
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/benchmarks/<category>.md` is committed with a `Refreshed: YYYY-MM-DD`
+      line near the top
+- [ ] ≥1 OSS product is mined for real — named repo, with the schema/route/docs
+      anchor cited, not just its marketing page
+- [ ] Every row cites a source (product name or `owner/repo`) — no unsourced rows
+- [ ] The three labeled groups (table-stakes / differentiators / anti-features)
+      are all present
+
+**Emits:** a committed `docs/benchmarks/<category>.md`.
 
 ## Related
 

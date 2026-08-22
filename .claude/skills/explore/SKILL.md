@@ -1,6 +1,6 @@
 ---
 name: explore
-description: BEFORE the blueprint locks architecture, generate 2-3 materially different approaches, build a pillars-aligned trade-off table, recommend one, and auto-draft the losing options into an ADR stub so the decision is archaeologically recorded. Feeds the blueprint's Architecture sketch + the "Reference consulted" line. Use when the user says "explore approaches", "what are the options", "diverge before committing", "/explore".
+description: Before the blueprint locks architecture, generates 2-3 materially different approaches, builds a trade-off table, and recommends one, drafting the losing options into an ADR stub. Use when the user wants a few different approaches, wants to weigh trade-offs, or wants to diverge on architecture before committing.
 ---
 
 # /explore — Diverge on architecture BEFORE the blueprint locks it
@@ -90,6 +90,23 @@ settled pattern is slop" note); real divergence is a fork you'd actually argue a
 | "There's only one way to build this."                               | If that's genuinely true, **Skip when** covers you — say so in one line. But most "only one way" is unexamined; force the second option and see if it dies honestly or teaches you something.                                                           |
 | "The blueprint has an Architecture sketch — that's the same thing." | The sketch documents the _chosen_ approach; it has no slot for the rejected ones or the trade-off that killed them. `/explore` is the divergence _before_ that convergence — skip it and the blueprint records a decision with no visible alternatives. |
 | "Writing an ADR for the losers is ceremony."                        | The losers are the expensive part to reconstruct later. A one-paragraph stub now is cheaper than re-deriving "we tried async and it failed the bounded-cost pillar" from scratch when someone proposes it again.                                        |
+
+## Verification
+
+Before calling this done:
+
+- [ ] the architectural fork was stated in one sentence, or the skip was
+      explicitly invoked with a reason (per "Skip when")
+- [ ] 2–3 materially different options were scored against all five pillars
+      in one table, each cell carrying a reason, not a bare score
+- [ ] a Reference consulted was named (same-stack repo, `/scale-up` recipe, or
+      library), or explicitly "none exists — greenfield"
+- [ ] a winner was recommended with its deciding pillar named
+- [ ] an ADR stub was drafted under `docs/decisions/` recording the losing
+      options' Good/Bad, each tied to the pillar it failed
+
+**Emits:** a trade-off table + an ADR stub drafted for the rejected options,
+feeding the blueprint's Architecture sketch.
 
 ## Related
 

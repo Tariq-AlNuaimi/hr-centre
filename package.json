@@ -50,6 +50,7 @@
     "ship": "node scripts/ship.mjs",
     "ship:full": "SHIP_FULL=1 node scripts/ship.mjs",
     "skill-check": "node scripts/skill-standard-check.mjs",
+    "evals": "node scripts/run-evals.mjs",
     "audit:warn": "npm audit --audit-level=moderate || true",
     "test:coverage": "node --experimental-test-coverage --import tsx --test tests/contracts/*.test.ts",
     "prepare": "husky",

@@ -1,6 +1,6 @@
 ---
 name: quickstart
-description: Turn one paragraph of an idea into a live URL the operator can share with their team in ~10 minutes. Combines /scaffold-entity for the data model with a guided commit + push so Vercel deploys the result. Use when the user says "I have an idea for X", "start a tracker for ...", "new feature: ...", "quickstart", "/quickstart", or pastes a sketch / screenshot from their team describing what to build.
+description: Turns one paragraph of an idea into a live URL in about 10 minutes -- scaffolds the data model, then commits and pushes so Vercel deploys it. Use for a quick idea or a tracker to share with the team fast, turning a paragraph into a working URL -- not the full scaffold or blueprint alone.
 ---
 
 # /quickstart — Idea → live URL
@@ -122,9 +122,19 @@ quickstart push on it.
 
 ```sh
 git add -A
-git commit -m "feat: scaffold <entity-list> for <one-line-purpose>"
+git commit -m "feat: scaffold <entity-list> for <one-line-purpose>" \
+           -m "Quickstart: exempt"
 git push
 ```
+
+The `Quickstart: exempt` trailer is what exempts this push from the review rail
+(`review-gate.mjs`, AC-1.4). It is a **trailer, not an environment variable**, on
+purpose: it is scoped to this push and permanent in git history, so an exemption
+can never quietly persist into later, non-disposable work. The value is the fixed
+literal `exempt`, not a free-form reason: that way a commit message _describing_
+this mechanism (`Quickstart: <reason>`, `Quickstart: disposable prototype`) cannot
+trip it by accident. Leave the trailer off and the push is gated like any other —
+the right outcome once a fork has grown past `/quickstart`.
 
 Vercel auto-builds (~90s). If the user has set up branch previews, a push to
 a non-main branch produces a preview URL; a push to `main` updates production.
@@ -159,3 +169,23 @@ prompts you can suggest to the operator:
 - The user is asking about an existing feature (not a new one).
 - The user is asking for production-grade changes (use `/scale-up` instead).
 - The user wants to deliver to IT (use `/handoff`).
+
+## Verification
+
+Before calling this done:
+
+- [ ] The lightweight `/blueprint` round confirmed entities/fields with the
+      operator, and a stub `docs/blueprints/<feature>.md` carrying a `Scope:`
+      line is committed.
+- [ ] Every entity was scaffolded via `/scaffold-entity` and
+      `npx prisma migrate dev` ran clean locally.
+- [ ] A local smoke (`npm run dev`, create one row, confirm it appears) succeeded
+      before pushing.
+- [ ] `npm run ship` is green — required before every push, no exceptions for a
+      scaffold.
+- [ ] The commit was pushed to the branch Vercel builds from, and a live
+      (production or preview) URL was handed to the operator.
+
+**Emits:** a live shareable URL, backed by the committed lightweight blueprint
+stub carrying its `Scope:` line — the input `blueprint-gate.mjs` reads to allow
+the scaffolded route/page files through.

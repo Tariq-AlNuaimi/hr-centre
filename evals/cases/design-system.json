@@ -1,0 +1,29 @@
+{
+  "skill_name": "design-system",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "help me build the UI for this new screen using our components",
+        "top_k": 3
+      },
+      {
+        "prompt": "what's the right layout pattern for this form",
+        "top_k": 3
+      },
+      {
+        "prompt": "make this page look right the first time, not after a review",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "audit the screens we already built for design drift",
+        "owner": "design-qa"
+      },
+      {
+        "prompt": "what's the right RSC data-fetching shape for this page",
+        "owner": "stack-advisor"
+      }
+    ]
+  }
+}

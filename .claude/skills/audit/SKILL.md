@@ -1,6 +1,6 @@
 ---
 name: audit
-description: On-demand security scan of a target path -- gitleaks (secrets) + npm audit (dependency CVEs) + Semgrep (SAST), plus optional deeper layers (osv-scanner lockfile-vs-OSV, trufflehog live-verified secrets, trivy image/config). Mirrors the dormant CI security workflows so they run locally on any machine. Use before sharing anything externally, and as the FIRST step of /conform on foreign code. Trigger phrases: "audit", "security scan", "/audit", "scan this for secrets", "is this safe to share".
+description: On-demand security scan of a path -- gitleaks for secrets, npm audit for dependency CVEs, Semgrep for SAST, with optional deeper layers. Use before sharing code externally or sending it to a client, to check it is safe, for leaked secrets, or vulnerable dependencies.
 ---
 
 # /audit — On-demand security scan
@@ -161,3 +161,16 @@ model. Wire it into the CI security workflows when the CI-activation trigger fir
   say "incomplete." (A skipped optional trufflehog pass does not block "clean"; note
   it as NOT RUN.)
 - Do **not** run foreign code to test it as part of auditing it.
+
+## Verification
+
+Before calling this done:
+
+- [ ] All three core scanners (gitleaks, npm audit, Semgrep) either ran or are
+      reported `NOT RUN: <reason>` — none silently skipped
+- [ ] Every finding is line-referenced (`file:line`) and severity-tagged
+- [ ] The report ends with an explicit verdict: clean / findings to review /
+      incomplete
+- [ ] Any accepted suppression is logged in `SECURITY.md` §12, not just noted in chat
+
+**Emits:** the scan report output; any suppression logged in `SECURITY.md` §12.

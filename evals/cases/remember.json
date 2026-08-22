@@ -1,0 +1,29 @@
+{
+  "skill_name": "remember",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "note this gotcha down so we don't hit it again next session",
+        "top_k": 3
+      },
+      {
+        "prompt": "add this convention to our durable memory",
+        "top_k": 3
+      },
+      {
+        "prompt": "don't let us relitigate this decision later, write it down",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "run a structured retro on what we learned this phase",
+        "owner": "retro"
+      },
+      {
+        "prompt": "write up a handoff note before this session ends",
+        "owner": "handoff-session"
+      }
+    ]
+  }
+}

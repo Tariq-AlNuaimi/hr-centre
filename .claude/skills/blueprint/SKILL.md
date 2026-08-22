@@ -1,6 +1,6 @@
 ---
 name: blueprint
-description: The pre-build gate. Before building any feature, pin down what's being built and why -- user stories, happy + worst-path scenarios, a data/architecture sketch, the tier, and the open questions -- so the build starts from a contract instead of guesses. Tiered: a lightweight confirm for disposable /quickstart work, a full committed blueprint for real multi-file features. Use when the user says "build X", "add a feature for Y", "/blueprint", or at the start of /quickstart and /scaffold-entity. Trigger phrases: "blueprint", "spec this", "plan the feature", "what are we building".
+description: The pre-build gate -- pins down what's being built and why before code starts: user stories, happy and worst-path scenarios, a data/architecture sketch, and open questions. Use when the user wants to build a feature, spec something out, or pin down what's being made before writing code.
 ---
 
 # /blueprint — Pin down WHAT before building HOW
@@ -348,6 +348,23 @@ blueprint, or set `"blueprintAck": "<reason>"` in `project.config.json`.
 | "A diagram is ceremony — the sketch prose says the same thing." | The Mermaid block is where duplicate screens/services get caught (you can't draw the second settings page next to the first and not notice). Prose hides topology; the diagram is the anti-duplication check working. |
 | "I'll model the schema as I code — I know the entities already." | Then the domain-model grid costs you two minutes to write down what you "already know" — and its columns map straight onto the `/scaffold-entity` flags. The redo you avoid is the mid-scaffold "this needs another relation" migration. |
 | "I've read the docs before — I don't need to grill this ask against them." | You've read them; you haven't checked *this* requirement against them. The grill is where a silent collision with a Hard rule, a locked ADR, or an existing model becomes a question now instead of a `/code-review` block later. |
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/blueprints/<feature>.md` is committed (full doc, or the lightweight
+      stub) and carries a `Scope:` line covering the files this feature touches
+- [ ] Full track only: the Domain model grid is non-empty (ADR-031)
+- [ ] Every open question was resolved via `AskUserQuestion` — none left as an
+      assumed answer
+- [ ] Operator sign-off was obtained and the `Confirmed:` line is set (not blank)
+      before any build started
+- [ ] `npm run ship`'s blueprint-gate check is green (no denial on a new
+      route/page/migration against this `Scope:`)
+
+**Emits:** a committed `docs/blueprints/<feature>.md` carrying a `Scope:` line —
+the input `blueprint-gate.mjs` reads to allow writes to gated paths.
 
 ## Related
 - `/quickstart` and `/scaffold-entity` call the lightweight track as their step 0.

@@ -6,3 +6,17 @@
 # Emergency bypass: `git push --no-verify` (use sparingly; CI will still gate
 # once active at /handoff).
 npm run ship
+
+# Receipt gate — review-before-push (ADR-064 / docs/blueprints/sdlc-chain.md, AC-1.1/1.2/1.6): require a
+# content-bound `Reviewed: <scope> <tree-sha>` trailer for pushes that touch auth files,
+# prisma/schema.prisma, app/api/** or lib/**. Runs AFTER `npm run ship` so a red build still
+# fails first. Governance gate -- it fails OPEN on its own error (ADR-047) and only ever
+# hard-rejects on an actually-missing or stale receipt. Deliberate skip: a
+# `Gate-Skip: review-gate <reason>` trailer (recorded, loud, and permanent in git history).
+# Per-link backout: delete this one line to disable this link; nothing else depends on it.
+# HELD FOR THE MAIN LANDING. The review gate's code ships but is not invoked. Three
+# adversarial breadth passes found 15 defects in the gate code -- the skills, evals,
+# descriptions, router and docs drew zero -- including a silent fail-open that shipped
+# unreviewed code. Forks inherit main, so the gates stay inert here until a pass comes
+# back clean. Enabling is exactly this one line: uncomment it.
+# node .claude/hooks/review-gate.mjs

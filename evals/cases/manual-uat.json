@@ -1,0 +1,29 @@
+{
+  "skill_name": "manual-uat",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "log in as each role and click through the app like a real user",
+        "top_k": 3
+      },
+      {
+        "prompt": "try to break the form with bad input and see what happens",
+        "top_k": 3
+      },
+      {
+        "prompt": "confirm the permissions actually work by trying them live",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "run the fast smoke test across every screen",
+        "owner": "uat"
+      },
+      {
+        "prompt": "screenshot the components and check them against the mockups",
+        "owner": "design-qa"
+      }
+    ]
+  }
+}

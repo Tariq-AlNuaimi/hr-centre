@@ -1,0 +1,29 @@
+{
+  "skill_name": "fan-out",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "split this work across a few agents running at the same time",
+        "top_k": 3
+      },
+      {
+        "prompt": "these three tasks don't touch the same files, run them in parallel",
+        "top_k": 3
+      },
+      {
+        "prompt": "parallelize this instead of doing it one file at a time",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "run this same small edit across every file in the repo",
+        "owner": "batch"
+      },
+      {
+        "prompt": "wrap up this long session with a handoff note",
+        "owner": "handoff-session"
+      }
+    ]
+  }
+}

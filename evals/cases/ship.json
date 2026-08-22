@@ -1,0 +1,29 @@
+{
+  "skill_name": "ship",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "is this ready to push",
+        "top_k": 3
+      },
+      {
+        "prompt": "run the pre-commit checks before I commit",
+        "top_k": 3
+      },
+      {
+        "prompt": "verify everything is green before I ship this",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "walk through the app like a real user",
+        "owner": "manual-uat"
+      },
+      {
+        "prompt": "give me a full release-readiness verdict across all three qa tiers",
+        "owner": "qa"
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: retro
-description: After /qa or a phase end, run a structured retro (what broke / what was learned / what was missing) and turn it into durable one-line agent-memory entries; any "missing feature" finding is appended back to the relevant docs/benchmarks/<category>.md so the omission re-surfaces next time. Trigger phrases - "/retro", "retrospective", "phase retro", "what did we learn".
+description: After /qa or a phase ends, runs a structured retro -- what broke, what was learned, what was missing -- and turns it into durable agent-memory entries, feeding missing-feature findings back into the relevant benchmark. Use for a phase retrospective, not a single one-off gotcha (that's /remember).
 ---
 
 # /retro — structured retrospective + omission feedback loop
@@ -65,6 +65,18 @@ artifacts (memory entries + benchmark rows) — never session-specific noise.
 - Nothing durable was learned and no omission surfaced (don't invent memory lines
   or benchmark rows to look thorough — that's noise, and it's a permanent tax).
 - A trivial change (typo, rename, one-line fix) with no retro value.
+
+## Verification
+
+Before calling this done:
+
+- [ ] The retro names one explicit scope (a `/qa` run, a phase/program milestone, or a single feature) — not a sweep of the whole project
+- [ ] All three prompts (what broke, what was learned, what was missing) were answered explicitly, even if one is "nothing"
+- [ ] Every durable "what was learned" fact landed as a dated line in the correct `##` section of `docs/agent-memory.md`, and `npm run memory-digest` was re-run
+- [ ] Every "missing feature" omission was appended to the matching `docs/benchmarks/<category>.md` (a new row, or a dated gaps-found note)
+- [ ] A program/phase retro also appended its What-broke/What-learned/What-missing summary to the program's evidence file
+
+**Emits:** agent-memory entries, plus any "missing feature" finding appended back to `docs/benchmarks/<category>.md`.
 
 ## Related
 

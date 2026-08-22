@@ -1,6 +1,6 @@
 ---
 name: design-system
-description: Build good UI on the FIRST pass instead of fixing it at QA. The proactive front half of the design system -- declare the design read, pick the right pattern from the vetted recipes, and emit on-token, RTL/dark-correct, accessible markup using the shipped shared primitives. Use BEFORE building or changing any screen/component, when the user says "build the UI for X", "make this screen", "the design looks bad", "/design-system", "design this", or whenever scaffolding a page. The reactive complement is /design-qa (audits after); this prevents the findings /design-qa would raise.
+description: Builds UI right on the first pass -- picks the right layout pattern from the vetted recipes and emits markup using this repo's shared primitives and tokens. Use BEFORE building or changing any screen or component: building a UI, choosing a layout pattern, or scaffolding a page. Proactive counterpart to /design-qa, which audits after.
 ---
 
 # /design-system — design it right the first time
@@ -95,6 +95,26 @@ defer goes in `docs/findings-register.md` (a logged wave-off, not a silent skip)
 For a living component showcase to diff against, the Storybook DX recipe
 (`docs/recipes/dx/1-storybook.md`, via `/scale-up`) renders each primitive in all
 its states.
+
+## Verification
+
+Before calling this done:
+
+- [ ] the design read (surface/audience/tone/density/primary action/accent)
+      was declared in the response before any markup was written
+- [ ] the screen was built from the matching `docs/design-recipes.md` recipe
+      and the shipped shared primitives — not hand-rolled
+- [ ] the non-negotiables hold: on-token spacing/color, one accent, one
+      primary action, no nested Cards, no emoji-as-icons
+- [ ] real empty, loading, AND error states are implemented, not just the
+      happy full-data view
+- [ ] RTL (`ar`, `dir="rtl"`) and dark mode were checked
+- [ ] `/design-qa` was run on the new surface and passed, or any finding was
+      logged to `docs/findings-register.md`
+
+**Emits:** the changed component/page files (on-token, RTL/dark-correct
+markup) committed to the repo — no separate evidence artifact of its own;
+`/design-qa`'s captures are the receipt that verifies it actually holds.
 
 ## Related
 

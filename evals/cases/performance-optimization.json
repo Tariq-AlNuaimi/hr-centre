@@ -1,0 +1,29 @@
+{
+  "skill_name": "performance-optimization",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "the dashboard is slow, figure out why and fix it",
+        "top_k": 3
+      },
+      {
+        "prompt": "our lighthouse score tanked, diagnose it",
+        "top_k": 3
+      },
+      {
+        "prompt": "this query looks like it's doing an N+1, measure it",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "what's the right query shape to write while building this route",
+        "owner": "stack-advisor"
+      },
+      {
+        "prompt": "the build itself is failing, help me debug it",
+        "owner": "debugging-and-error-recovery"
+      }
+    ]
+  }
+}

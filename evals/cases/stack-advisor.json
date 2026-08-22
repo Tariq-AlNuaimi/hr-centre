@@ -1,0 +1,29 @@
+{
+  "skill_name": "stack-advisor",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "what's the right way to fetch this data in an RSC",
+        "top_k": 3
+      },
+      {
+        "prompt": "how should I write this prisma query so it's index-aware",
+        "top_k": 3
+      },
+      {
+        "prompt": "am I querying postgres the right way here",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "pull the current docs for this library before I write against it",
+        "owner": "docs-current"
+      },
+      {
+        "prompt": "design the shape of this new api route before I write it",
+        "owner": "api-and-interface-design"
+      }
+    ]
+  }
+}

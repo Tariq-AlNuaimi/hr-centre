@@ -1,6 +1,6 @@
 ---
 name: adopt
-description: Adopt an external capability the reuse-first way. Looks it up in docs/oss-catalog.md (step 0 of the build-vs-buy scan, ADR-032), surfaces the in-stack / self-host-OSS / SaaS / build-thin trade-off via AskUserQuestion (license, weight, data-egress, self-host), then on the operator's choice writes the docs/build-vs-buy-ledger.md entry + an ADR stub for a runtime dep and installs per the recipe. Use when the user says "adopt X", "should we use <library> for Y", "/adopt", or when a build-vs-buy gate denies a new lib/ file.
+description: Adopts an external library or SaaS tool the reuse-first way instead of building it in-house -- checks docs/oss-catalog.md, weighs the build-vs-buy trade-offs, and logs the decision to the ledger before installing. Use when the user wants to pull in a library, use an off-the-shelf tool, or a build-vs-buy gate blocks a new lib/ file.
 ---
 
 # /adopt — reuse before you build, on the record
@@ -70,3 +70,15 @@ AskUserQuestion picks self-host OSS for data-residency → ledger entry
 `Scope: lib/rate-limit/**` with the `Considered:` line + ADR-035 → `npm i
 rate-limiter-flexible`, thin `lib/valkey.ts` client, `withRateLimit` composed outside
 the auth wrapper → `/ship` green.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/oss-catalog.md` has the row (found, or added when it was a miss)
+- [ ] `docs/build-vs-buy-ledger.md` has the new entry: a `Scope:` glob covering the
+      new file(s) and a `Considered:` line naming ≥1 real alternative
+- [ ] For a runtime dependency, an ADR stub exists in `docs/decisions/`
+- [ ] `npm run ship` is green (ledger/ADR gates + knip's no-dead-dependency floor pass)
+
+**Emits:** an entry in `docs/build-vs-buy-ledger.md` (+ an ADR stub for a runtime dep).

@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Produce a clean handoff package for the IT team that owns production. Generates a HANDOFF.md with the project's current state, env-var list, schema overview, route inventory, and run-locally instructions. Optionally exports a sanitized tarball. Use when the user says "we're done", "ship to IT", "handoff", "the team approved it", "/handoff", "give this to <name>".
+description: Produces a clean handoff package for the IT team that owns production -- a HANDOFF.md with project state, env vars, schema, route inventory, and run-locally instructions. Use when the team has signed off and production ownership passes to IT.
 ---
 
 # /handoff — Hand the approved project to the IT team
@@ -378,3 +378,27 @@ Show the operator:
 - Do **not** push the `HANDOFF.md` automatically. Operator reviews first.
 - Do **not** include `.env` contents in the tarball.
 - Do **not** include any sentry / inngest / pusher API keys in the document.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `project.config.json` `"tier"` is `shared` — a `personal`-tier project stops
+      at the refusal message and no `HANDOFF.md` is generated.
+- [ ] The operator's answer on open bugs/TODOs, open GitHub issues, and any
+      notable `TODO`/`FIXME` grep hits are folded into the "Open issues / known
+      TODOs" section — a deliberate "none open" if there truly are none.
+- [ ] `make docker-build` (or `npm run ship -- --full`) was run and succeeded, or
+      its failure is recorded as a `"dockerAck"` in `project.config.json` plus an
+      adjudicated `docs/findings-register.md` line.
+- [ ] `HANDOFF.md` exists at the repo root with every section populated (Status,
+      Stack, Data model, API surface, Environment variables, Running locally,
+      Deploying, Pre-handoff checklist, Security notes, Open issues, Contacts).
+- [ ] The `shared`-tier security checklist (`SECURITY.md` §16) is reflected item
+      by item as Done / Risk-accepted (with the §11 reference) / Not done — no
+      unstarted item marked Done.
+
+**Emits:** a generated `HANDOFF.md` at the repo root (+ an optional sanitized
+tarball when explicitly requested or the target is airgapped) — the operator
+commits, reviews, and pushes it themselves; this skill never does so
+automatically.

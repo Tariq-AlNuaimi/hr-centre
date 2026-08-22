@@ -1,0 +1,29 @@
+{
+  "skill_name": "qa",
+  "trigger": {
+    "positive": [
+      {
+        "prompt": "run the complete quality gate across design, function and uat before this goes out",
+        "top_k": 3
+      },
+      {
+        "prompt": "run the full quality gate on this change before release",
+        "top_k": 3
+      },
+      {
+        "prompt": "give me a release-readiness verdict across design, function, and uat",
+        "top_k": 3
+      }
+    ],
+    "negative": [
+      {
+        "prompt": "just run the fast pre-push checks",
+        "owner": "ship"
+      },
+      {
+        "prompt": "screenshot every screen against the mockups",
+        "owner": "design-qa"
+      }
+    ]
+  }
+}

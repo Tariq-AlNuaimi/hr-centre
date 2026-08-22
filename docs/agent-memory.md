@@ -35,12 +35,12 @@ tax is the ≤30-line digest, not the whole file.
 
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (8): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
-- **Gotchas — git & landing to main** (5): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
+- **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
-- **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
+- **Gotchas — security, auth & hooks** (7): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
-- **Gotchas — subagents** (2): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
-- **Conventions discovered** (4): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
+- **Gotchas — subagents** (3): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
+- **Conventions discovered** (7): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
 
 <!-- END:digest -->
@@ -184,6 +184,15 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
 
 ## Gotchas — git & landing to main
 
+- 2026-08-22 — **An UNQUOTED heredoc executes backticks in a commit message.** `git commit -F - <<MSG`
+  (unquoted, so `$TRAILER` expands) also runs any `` `backticked` `` text in the prose as a command and
+  substitutes the output — silently gutting sentences ("I put above ,"). Then you cannot fix it:
+  `git push --force`/`--force-with-lease` is DENIED by `dangerous-commands.mjs`, so an already-pushed
+  message is permanent. Fix: build the message in a file (python/`printf`) and `git commit -F <file>`,
+  or quote the delimiter (`<<'MSG'`) and interpolate nothing. Recovering from a local amend you cannot
+  push: `git reset --soft origin/<branch>` restores parity without discarding the tree (`git reset
+--hard` and `git checkout --` are deny-listed).
+
 - 2026-07-11 — **Landing a working-branch commit on `main` when a generator-docs commit
   (REPO-MAP/SESSION-HANDOFF regen) sits between `main` and it: use cherry-pick, NOT
   `git push origin HEAD:main`.** A plain FF would drag the generator-docs commit onto main,
@@ -247,6 +256,33 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — security, auth & hooks
 
+- 2026-08-22 — **For gate scope, enumerate what is SAFE, not what is DANGEROUS.** An allowlist
+  of gated paths missed a gate-disabling file in three consecutive breadth reviews
+  (settings.json/.husky, then package.json/eslint.config, then findings-register/
+  audit-allowlist/next.config/tsconfig/.npmrc). Enumerating danger is open-ended and every
+  miss is a SILENT hole; enumerating safety is closed-ended and every miss is visible
+  friction someone reports. Inverted to a safe-set denylist; the old allowlist was kept as
+  the review-DEPTH classifier, where a miss costs a shallower review rather than none.
+- 2026-08-22 — **Changing a guard's condition can convert a fail-SAFE bug into a fail-OPEN
+  one.** qa-gate's `shipping` array was always empty (a malformed sha from
+  `git log --format=…%x1e`, whose trailing newline glues onto every sha but the first).
+  Under `shipping.length > 0 && …` that made the allow branch unreachable — it always
+  denied: annoying, safe. "Fixing" the annoyance by switching to `prevQaFound && …` made
+  `uncovered` always empty, so it always ALLOWED — silently shipping unreviewed code.
+  Before changing a guard condition, ask what the OLD one was accidentally protecting.
+
+- 2026-08-22 — **Fail-open governance gates mask the AUTHOR's bugs, not just runtime ones.** Four
+  separate times a gate used a helper it never imported (`execFileSync`, `norm`, `isSkipAdjudicated`,
+  and one more); each would have thrown `ReferenceError`, been swallowed by the fail-open handler,
+  and left the gate permanently OFF while still listed as a passing check. Fail-open is correct per
+  ADR-047 — it also means gate code needs stronger verification than its own runtime behaviour
+  provides. Run an import audit over every hook after editing one.
+- 2026-08-22 — **Two rounds of self-reviewed gate patches were not enough** (SDLC-chain wave). Round
+  1 breadth review: 6 findings. Round 2, reviewing round 1's fixes: 5 more, including a live crash
+  certified as "verified" in a commit message. All 11 landed in the GATE code; the skills, evals,
+  descriptions, router and docs drew zero. Budget adversarial review for harness/gate work at a much
+  higher rate than for product code, and treat "the author checked it" as no evidence.
+
 - 2026-07-11 — **Security guard hooks fail-CLOSED, governance gates fail-OPEN (ADR-047).**
   `protect-secrets`+`dangerous-commands` deny on internal error; `blueprint-gate`+`build-vs-buy-gate`
   stay fail-open (a crash must not block all writes). A PERSISTENT fault in a fail-closed guard denies its
@@ -309,6 +345,14 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 
 ## Gotchas — subagents
 
+- 2026-08-22 — **A file appearing on disk during a wave does NOT mean the agent finished.**
+  Wait for the completion notification, not for the path to exist. In the sdlc-chain wave the
+  router's `SKILL.md` appeared, was formatted, `/ship`-ed and COMMITTED while its agent was
+  still refining it; the agent's remaining edits then landed as uncommitted changes on top of
+  the commit. Impact was low (prose tightening only) but it could as easily have been a
+  half-written Steps section that passed format and lint. The gates check shape, not
+  completeness — only the notification does. Corollary: mid-wave `git status` is not a
+  progress bar.
 - 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
   trusting it — agents sometimes return the report as the completion _message_ instead of
   writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
@@ -319,6 +363,24 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
   (`git rev-parse HEAD`) first.
 
 ## Conventions discovered
+
+- 2026-08-22 — **Mutation-test every regression test: a test that cannot fail is not a test.**
+  Three tests written this session were vacuous until proven otherwise — one asserted
+  fail-open on inputs that never reached the fail-open path (they lacked `..`, so review-gate
+  ignored the arg and measured ambient repo state instead). The check is cheap: reintroduce
+  the bug, confirm the test goes red, restore. Do it for every test guarding a defect class,
+  and never write "verified" in a commit message without it.
+
+- 2026-08-22 — **Verify by EXIT CODE, never by grepping for a success string.** `npm run evals |
+grep unreadable` matched the `console.log` and hid the `ReferenceError` thrown on the very next
+  line; the run exited 1 and I reported it as verified, then committed that claim. A grep for what
+  you hope to see cannot detect what went wrong after it. Capture `$?`, or redirect to a file and
+  read the tail.
+- 2026-08-22 — **A denied Bash call skips EVERYTHING in it, not just the offending part.** A
+  compound call containing a `python3` fix plus an `rm -rf` was denied for the `rm -rf`; the fix
+  never ran, and later greps "confirmed" behaviour the fix was supposed to produce. After any
+  denial, re-check that the edits you believed landed actually did (`grep` the file, don't assume).
+  Keep destructive commands OUT of calls that also make edits.
 
 <!-- patterns/idioms established in practice that are not yet written down elsewhere -->
 

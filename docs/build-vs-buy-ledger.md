@@ -640,3 +640,39 @@ Decision: **BUILD `components/shared/AuthCard.tsx`** — a ~15-line presentation
 shipped shadcn `Card`/`CardContent`. Zero new dependency; the auth-form sibling of the existing
 shared `SectionCard`/`FormLayout`. Collapses the 4 duplicated card headers into one primitive so the
 three auth pages (and any fork's new auth screen) stay consistent. Informational for the ADR-032 hook.
+
+### 2026-08-22 — Nine build-loop skills + Tier-2 routing-eval design (ADR-064)
+
+Scope: .claude/skills/{test-driven-development,debugging-and-error-recovery,incremental-implementation,review,api-and-interface-design,observability-and-instrumentation,doubt-driven-development,browser-debugging,performance-optimization}/**, scripts/run-evals.mjs, scripts/lib/skill-*.mjs
+Considered: **build each discipline thin from scratch** — rejected, ignores a vetted MIT
+corpus and ADR-032's reuse-first scan for exactly the kind of generic-but-solid process
+prose (TDD loop, systematic debugging, incremental slicing) that doesn't benefit from being
+reinvented; **vendor `addyosmani/agent-skills` near-verbatim** (e.g. a git submodule or a
+straight copy of its `SKILL.md` files) — rejected, it is stack-agnostic prose written for no
+particular repo: zero enforcement (3 hooks vs. this template's 14), no reference to `npm run
+ship`, the five pillars, or `docs/blueprints/*.md` `Scope:` language, so verbatim import
+would read as generic advice sitting beside a harness that actually enforces things, and a
+verbatim copy could quietly contradict this repo's own ESLint floor (e.g. weaker input-
+validation guidance than the zod-at-the-boundary rule already requires); **reference-only,
+no copies** (link to the upstream repo from `docs/recipes.md` instead of adopting) —
+rejected, a link does not close the measured gap (BUILD 758 lines / VERIFY 79 / REVIEW 0
+against the reference catalogue's 4,342) or give any of the nine disciplines a receipt-
+emitting exit criterion, which is the actual defect (`docs/blueprints/sdlc-chain.md`
+Problem & outcome); **rewrite in house style, MIT attribution retained** (chosen).
+Decision: **ADOPT, rewritten** — nine skills (`test-driven-development`,
+`debugging-and-error-recovery`, `incremental-implementation`, `review`,
+`api-and-interface-design`, `observability-and-instrumentation`, `doubt-driven-development`,
+`browser-debugging`, `performance-optimization`) from `addyosmani/agent-skills` (MIT,
+v0.6.7), each REWRITTEN against this repo's primitives per ADR-022's built-not-imported
+convention — citing `npm run ship`, the `harness.md` known-traps, the five pillars, and
+`docs/blueprints/*.md` `Scope:` language in place of the upstream's generic equivalents —
+with MIT attribution retained in each file. `review` additionally emits the
+`Reviewed: <scope> <tree-sha>` receipt `.claude/hooks/review-gate.mjs` requires (ADR-064),
+which has no upstream equivalent since the source repo has no enforcement layer to feed.
+Also adopted: the **Tier-2 routing-eval design** (`evals/cases/*.json` positive/negative
+prompts, rank-1 + near-duplicate-description checks) — sourced from the shape of Anthropic
+skill-creator's `evals.json`, not from `addyosmani/agent-skills`, and ported into
+`scripts/run-evals.mjs` / `scripts/lib/skill-*.mjs` on this repo's own skill catalogue; it
+now gates the warm `/ship` loop (`--min-rank1 80`) rather than `ship:full`, so a routing
+regression from adding nine skills' worth of description surface cannot land silently. See
+`docs/blueprints/sdlc-chain.md` (Market scan, Work DAG task 1/2) and ADR-064.

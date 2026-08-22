@@ -36,6 +36,7 @@ import {
 import { resolve } from "node:path";
 import { evaluateLicenses, loadAllowlist } from "./license-gate.mjs";
 import { analyzeBlueprint } from "./lib/blueprint-content.mjs";
+import { isSkipAdjudicated } from "../.claude/hooks/lib/receipt.mjs";
 // V2-305: the copy-lint gate — source-locale UI copy house style (sentence case,
 // no trailing period on labels, terminology). Shared so /ship mirrors the CLI.
 import { runCopyCheck } from "./copy-check.mjs";
@@ -238,6 +239,142 @@ function scanWaveOffs() {
   };
 }
 
+/**
+ * Is an `<key>Ack` escape hatch adjudicated in the findings register?
+ *
+ * dbAck and ackWaiver() already required this; tierAck and blueprintAck did not, so a
+ * single edit to project.config.json silenced either gate with no corroborating evidence
+ * -- inconsistent with the "never silent" intent stated elsewhere in this same file
+ * (round-3 breadth finding). Shared so the three cannot drift apart again.
+ */
+function ackAdjudicated(token) {
+  // ENTRY-BLOCK, not single-line -- the lesson scanWaveOffs already records a few
+  // functions above, which this originally ignored. Real register entries wrap: the date
+  // and category open the entry and `status:` lands on a continuation line, so a
+  // single-physical-line regex rejected every adjudication written in the file's own
+  // dominant style. It failed CLOSED (an operator who correctly adjudicated still got RED)
+  // -- the safe direction, but exactly the friction that trains --no-verify.
+  let reg = "";
+  try {
+    reg = readFileSync("docs/findings-register.md", "utf8");
+  } catch {}
+  const named = new RegExp(`\\b${token}\\b`);
+  return reg
+    .split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/)
+    .some(
+      (b) =>
+        /^-\s*\d{4}-\d{2}-\d{2}\b/.test(b.trimStart()) &&
+        named.test(b) &&
+        /\bstatus:\s*adjudicated\b/i.test(b) &&
+        !/\bstatus:\s*open\b/i.test(b),
+    );
+}
+
+// -- Gate-Skip adjudication gate (AC-4.1; sdlc-chain blueprint) --------------
+// A `Gate-Skip: <gate> <reason>` trailer is how the operator deliberately bypasses
+// a receipt gate (review-gate / qa-gate) -- recorded rather than silent, which is
+// the whole point. But RECORDED is only half the guarantee: a skip nobody reports
+// quietly becomes permanent. So an unadjudicated skip makes /ship RED, exactly the
+// way an open pillar wave-off does (scanWaveOffs above is the precedent this
+// mirrors deliberately -- same register, same adjudication vocabulary).
+//
+// Adjudicate by adding a docs/findings-register.md entry naming the gate, then
+// flipping it to `status: adjudicated(<date>)` or `status: fixed(<commit>)`.
+// Scans only commits not yet on the upstream branch: once work is pushed and
+// merged, its skips are history, not an open decision.
+function scanGateSkips() {
+  const t0 = Date.now();
+  const secs = () => ((Date.now() - t0) / 1000).toFixed(1);
+  const NAME = "gate-skips";
+  let msgs = [];
+  try {
+    // Unpushed commits only. No upstream (fresh branch) -> nothing to adjudicate.
+    // spawnSync, not execFileSync: only spawn/spawnSync/execSync are imported here.
+    // execFileSync would throw ReferenceError, the catch below would swallow it, and
+    // this gate would fail OPEN forever while still appearing in the check list --
+    // the exact "a harness bug silently switches the gate off" failure docs/rules/
+    // harness.md warns about for governance gates.
+    const g = (args) => {
+      const r = spawnSync("git", args, { encoding: "utf8" });
+      if (r.error || r.status !== 0) throw new Error(`git ${args[0]} failed`);
+      return r.stdout;
+    };
+    // Range choice matters for the guarantee. `@{u}..HEAD` (unpushed only) means
+    // PUSHING a skip makes the gate forget it -- skip, push, never see RED again,
+    // which is most of AC-4.1 undone. Scan back to the default branch instead, so a
+    // skip stays RED until the work actually merges. Fall back to the upstream range
+    // only when there is no origin/main to compare against.
+    let range;
+    try {
+      range = g(["rev-list", "origin/main..HEAD"]);
+    } catch {
+      range = g(["rev-list", "@{u}..HEAD"]);
+    }
+    range = range.split("\n").filter(Boolean);
+    for (const sha of range) {
+      msgs.push({ sha: sha.slice(0, 8), body: g(["log", "-1", "--format=%B", sha]) });
+    }
+  } catch {
+    // No upstream, detached HEAD, not a repo -- governance check, fail OPEN
+    // (ADR-047): a harness bug must never wedge the loop.
+    return {
+      name: NAME,
+      ok: true,
+      out: "no upstream range (skipped)",
+      secs: secs(),
+      // A skipped result MUST carry `warn` or the verdict counts it as having RUN --
+      // the harness invariant that caught this. A governance gate that reports a
+      // clean pass it never performed is worse than one that admits it was skipped.
+      warn: "gate-skip check skipped: no upstream range (fresh branch or detached HEAD)",
+    };
+  }
+  const skips = [];
+  for (const { sha, body } of msgs) {
+    for (const line of body.split("\n")) {
+      const m = /^Gate-Skip:\s*(\S+)\s*(.*)$/.exec(line.trim());
+      if (m) skips.push({ sha, gate: m[1], reason: (m[2] || "").trim() });
+    }
+  }
+  if (skips.length === 0) return { name: NAME, ok: true, out: "clean (no skips)", secs: secs() };
+
+  // Adjudicated == the register carries an entry naming that gate which is NOT open.
+  let register = "";
+  try {
+    register = readFileSync("docs/findings-register.md", "utf8");
+  } catch {
+    register = "";
+  }
+  const blocks = register.split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/);
+  // Delegates to receipt.mjs's isSkipAdjudicated -- the same module that parses the
+  // trailers, and the only place this predicate is testable. It shipped two opposite
+  // bugs while it lived inline here (unanchored substring, then an anchored literal the
+  // deny message never taught), both because nothing could unit-test it.
+  const adjudicatedFor = (gate) => isSkipAdjudicated(register, gate);
+  const open = skips.filter((sk) => !adjudicatedFor(sk.gate));
+  if (open.length === 0)
+    return { name: NAME, ok: true, out: `${skips.length} skip(s), all adjudicated`, secs: secs() };
+  return {
+    name: NAME,
+    ok: false,
+    secs: secs(),
+    out:
+      `${open.length} UNADJUDICATED gate skip(s) since origin/main — a recorded skip is only half the guarantee (AC-4.1):\n` +
+      open
+        .map((sk) => `  ${sk.sha}  Gate-Skip: ${sk.gate} — ${sk.reason || "(no reason given)"}`)
+        .join("\n") +
+      // The check is an ANCHORED match, so the message must name the exact literal it
+      // wants. Saying only "an entry naming the gate" (the previous wording) let an
+      // operator write a perfectly reasonable English adjudication that the regex could
+      // never recognise -- wedging /ship RED with no way to discover the magic string.
+      // Trading a false positive for an undiscoverable false negative is not a fix.
+      `\n  To clear: add a docs/findings-register.md entry that contains the LITERAL text` +
+      open.map((sk) => `\n      Gate-Skip: ${sk.gate}`).join("") +
+      `\n  (that exact prefix — the check matches it, not prose about it), and set` +
+      `\n      status: adjudicated(<date>)   or   status: fixed(<commit>)` +
+      `\n  in the same entry.`,
+  };
+}
+
 // -- license-allowlist gate (ADR-051 §2; Five Pillars: Secure/Maintainable) --
 // The template is REDISTRIBUTED: forks inherit the whole dependency tree, so an
 // AGPL / SSPL / BUSL / Elastic / GPL-only license resolving ANYWHERE in the tree
@@ -359,7 +496,16 @@ function scanTier() {
   }
   const tier = cfg.tier ?? "personal";
   if (tier !== "personal") return ok(`tier=${tier} (no escalation check needed)`);
-  if (cfg.tierAck === "personal") return ok("tier=personal (acknowledged despite contributors)");
+  if (cfg.tierAck === "personal") {
+    if (ackAdjudicated("tierAck"))
+      return ok("tier=personal (acknowledged, adjudicated in docs/findings-register.md)");
+    return red(
+      `"tierAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED tierAck line.\n` +
+        `  The escape hatch is never silent (matches dbAck / ackWaiver): add a register line\n` +
+        `  \`- YYYY-MM-DD — [tier] tierAck: <why this stays personal> — <owner> — status: adjudicated(<date>)\`\n` +
+        `  or set "tier": "shared".`,
+    );
+  }
 
   // Count distinct human authors across history.
   let raw = "";
@@ -647,7 +793,16 @@ function scanBlueprint() {
   }
 
   const cfg = readCfg();
-  if (cfg.blueprintAck) return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck}`);
+  if (cfg.blueprintAck) {
+    if (ackAdjudicated("blueprintAck"))
+      return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck} (adjudicated)`);
+    return red(
+      `"blueprintAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED blueprintAck line.\n` +
+        `  The escape hatch is never silent (matches dbAck / ackWaiver): add a register line\n` +
+        `  \`- YYYY-MM-DD — [process] blueprintAck: <why no blueprint> — <owner> — status: adjudicated(<date>)\`\n` +
+        `  or add docs/blueprints/<feature>.md.`,
+    );
+  }
   const tierVal = cfg.tier ?? "personal";
   const detail =
     `New feature surface with no committed docs/blueprints/*.md in this change:\n` +
@@ -1618,7 +1773,7 @@ const fail = (r) => {
 
 const t0 = Date.now();
 console.log(
-  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check | repo-map) ...",
+  "ship: phase A (typecheck | lint | format | contract tests | component tests | hooks | scalability | copy | wave-offs | licenses | tier | session-state | blueprint | blueprint-content | complexity | db-structure | knip | duplication | coverage | skill-check | evals | repo-map) ...",
 );
 
 // Synchronous, sub-millisecond static gates -- run alongside phase A.
@@ -1626,6 +1781,7 @@ const scalability = scanScalability();
 // C2: house-style copy check -- real, but not security-bearing. ship:full.
 const copy = await fullOnly("copy", scanCopy);
 const waveoffs = scanWaveOffs();
+const gateSkips = scanGateSkips();
 const licenses = scanLicenses();
 const tier = scanTier();
 const sessionState = scanSessionState();
@@ -1648,6 +1804,7 @@ let [
   duplication,
   coverage,
   skillCheck,
+  evals,
   repoMap,
 ] = await Promise.all([
   typecheck(),
@@ -1677,7 +1834,22 @@ let [
   fullOnly("knip", scanKnip),
   fullOnly("duplication", scanDuplication),
   fullOnly("coverage", scanCoverage),
-  fullOnly("skill-check", () => run("skill-check", "node", ["scripts/skill-standard-check.mjs"])),
+  // WARM alongside `evals` (172ms). They are two halves of one catalogue check: evals
+  // reports that routing got worse, skill-check names the malformed skill that caused
+  // it. Splitting them across tiers meant the warm loop could show the symptom and never
+  // the cause.
+  run("skill-check", "node", ["scripts/skill-standard-check.mjs"]),
+  // Tier-2 skill-routing eval (deterministic, no tokens/network): every
+  // evals/cases/<skill>.json positive prompt must rank its skill within
+  // top_k, negatives must not outrank the declared owner, and the catalog
+  // must stay free of near-duplicate descriptions. --min-rank1 ratchets the
+  // measured rank-1 rate (87.8% at authoring time) so an unrelated
+  // description edit doesn't immediately turn this gate red.
+  // WARM, not fullOnly (AC-5.1, amended 2026-08-22): 326ms against a ~65s ship.
+  // As a fullOnly check the ratchet never ran on the path every push actually takes,
+  // so a routing regression survived every ordinary push -- and the description pass
+  // is exactly the change that introduces one.
+  run("evals", "node", ["scripts/run-evals.mjs", "--min-rank1", "80"]),
   // repo-map drift (2026-08-21). docs/REPO-MAP.md is the "where is X" index every
   // session reads before non-trivial work, and it went stale TWICE in two days --
   // once when a cut removed components, once when three lib/ exports were made
@@ -1707,6 +1879,7 @@ for (const r of [
   scalability,
   copy,
   waveoffs,
+  gateSkips,
   licenses,
   tier,
   sessionState,
@@ -1718,6 +1891,7 @@ for (const r of [
   duplication,
   coverage,
   skillCheck,
+  evals,
   repoMap,
 ])
   report(r);
@@ -1739,6 +1913,7 @@ const redA = [
   scalability,
   copy,
   waveoffs,
+  gateSkips,
   licenses,
   tier,
   sessionState,
@@ -1750,6 +1925,7 @@ const redA = [
   duplication,
   coverage,
   skillCheck,
+  evals,
   repoMap,
 ].find((r) => !r.ok);
 if (redA) fail(redA);
