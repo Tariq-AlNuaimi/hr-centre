@@ -11,8 +11,8 @@ The skill catalogue is densely cross-linked but has no entry point: 34 of 41
 skills carry no declared station on the stated lifecycle (`/rebrand` →
 `/first-fork`/`/new-project`/`/deploy` → `/quickstart` → `/scale-up` →
 `/handoff`), so a cold-opened session has "the tools but not the path"
-(`docs/blueprints/sdlc-chain.md`, US3). This skill is the root: invoke it
-first, or whenever you don't know where you are.
+(`docs/blueprints/sdlc-chain.md`, US3). This skill is the root: invoke it first
+or whenever you don't know where you are.
 
 It does not gate, build, or review anything itself. It **reads live state**
 (git, receipts, blueprint Scope) and reports three things (AC-3.1): **where
@@ -104,10 +104,9 @@ node -e "import('./.claude/hooks/lib/scope-cover.mjs').then(m => \
   console.log(m.blueprintCovers('<path>', process.cwd())))"
 ```
 
-`true` means a committed `docs/blueprints/*.md` `Scope:` line covers it —
-`false` means the blueprint gate (`blueprint-gate.mjs`) will flag it as an
-uncovered gated file next time it's touched. This is the exact function
-`blueprint-gate.mjs` uses, reused rather than re-approximated.
+`true`/`false` on whether a committed `docs/blueprints/*.md` `Scope:` line
+covers it — `false` is what `blueprint-gate.mjs` will flag next time it's
+touched. This is the exact function that gate uses, reused not re-approximated.
 
 ### 6. Synthesize
 
@@ -117,8 +116,8 @@ you — a signal you didn't run is a signal you don't report on.
 ## The two rails
 
 Every skill sits on the **lifecycle rail** (which milestone the artifact is
-at) or the **discipline rail** (which verb you're doing right now). A skill
-that fits neither goes under **meta/harness** rather than being dropped.
+at) or the **discipline rail** (which verb you're doing right now); a skill
+fitting neither goes under **meta/harness** rather than being dropped.
 
 ### Lifecycle rail (milestone-indexed) — 7 skills
 
@@ -144,8 +143,7 @@ that fits neither goes under **meta/harness** rather than being dropped.
 
 `fan-out` (parallel-dispatch mechanism) · `batch` (capped headless per-file
 runner) — both are _how_ a step executes at scale, not a rail station.
-
-7 (lifecycle) + 34 (discipline + meta) = 41. Every skill accounted for.
+7 (lifecycle) + 34 (discipline + meta) = 41 — every skill accounted for.
 
 ## Common Rationalizations
 
@@ -159,10 +157,10 @@ runner) — both are _how_ a step executes at scale, not a rail station.
 
 ## Red Flags
 
-- Reporting a position ("you're at review") without having run the command
-  that signal depends on this turn — a stale guess is worse than "unknown."
+- Reporting a position ("you're at review") without running the command that
+  signal depends on this turn — a stale guess is worse than "unknown."
 - Treating an absent `.claude/state/last-green-sha` as "ship hasn't run" in a
-  fresh container — it's gitignored, so absence there is expected, not a verdict.
+  fresh container — gitignored, so absence there is expected, not a verdict.
 - Reporting "reviewed" or "QA'd" from memory of a prior turn instead of
   re-running `receipt.mjs verify` — state moves (rebase, amend, new commit).
 - Naming a blocker generically ("something's unreviewed") instead of the
@@ -191,11 +189,10 @@ the receipts it reads are written by `/review` and `/qa`, not by this skill.
 ## Related
 
 - **`.claude/hooks/lib/receipt.mjs`** — trailer hash/parse/verify CLI this
-  skill reads from; never reimplement the hash.
-- **`.claude/hooks/review-gate.mjs`** / **`qa-gate.mjs`** — the actual
-  enforcement this skill previews; they are the authority, this is a look-ahead.
-- **`.claude/hooks/lib/scope-cover.mjs`** — `blueprintCovers()`, reused in
-  step 5 rather than re-approximated.
+  reads from (never reimplement the hash); **`scope-cover.mjs`** —
+  `blueprintCovers()`, reused in step 5 rather than re-approximated.
+- **`review-gate.mjs`** / **`qa-gate.mjs`** — the actual enforcement this
+  skill previews; they are the authority, this is a look-ahead.
 - **`/review`**, **`/qa`** — emit the `Reviewed:`/`QA:` trailers read above;
   **`/blueprint`** writes the `Scope:` step 5 checks against.
 - **`docs/blueprints/sdlc-chain.md`** — the signed contract this implements

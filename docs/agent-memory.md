@@ -39,7 +39,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (3): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
-- **Gotchas — subagents** (2): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
+- **Gotchas — subagents** (3): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
 - **Conventions discovered** (4): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
 
@@ -309,6 +309,14 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 
 ## Gotchas — subagents
 
+- 2026-08-22 — **A file appearing on disk during a wave does NOT mean the agent finished.**
+  Wait for the completion notification, not for the path to exist. In the sdlc-chain wave the
+  router's `SKILL.md` appeared, was formatted, `/ship`-ed and COMMITTED while its agent was
+  still refining it; the agent's remaining edits then landed as uncommitted changes on top of
+  the commit. Impact was low (prose tightening only) but it could as easily have been a
+  half-written Steps section that passed format and lint. The gates check shape, not
+  completeness — only the notification does. Corollary: mid-wave `git status` is not a
+  progress bar.
 - 2026-07-11 — **Always Glob-verify a subagent actually WROTE its output file** before
   trusting it — agents sometimes return the report as the completion _message_ instead of
   writing to disk (the v2 C13 research agent did exactly this). Re-run if the file is absent.
