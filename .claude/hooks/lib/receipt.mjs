@@ -49,58 +49,33 @@ export const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
  * routes, or lib/"). `lib/**` already covers lib/auth.ts and lib/prisma/**; the auth
  * files listed separately are the ones that live outside lib/.
  */
-export const REVIEW_SCOPE_GLOBS = [
-  "lib/**",
-  "app/api/**",
-  "prisma/schema.prisma",
-  "middleware.ts",
-  "auth.ts",
-  "auth.config.ts",
-  // Harness code, added after this gate's own wave shipped three hooks, a receipt
-  // library and two gates WITHOUT a review receipt -- because harness paths were out
-  // of scope. A hook change can switch a fail-closed guard (protect-secrets,
-  // dangerous-commands, bash-write-gate) off, and scripts/ship.mjs IS the gate, so
-  // these carry at least the blast radius of lib/. (AC-1.1, amended 2026-08-22.)
-  ".claude/hooks/**",
-  "scripts/**",
-  // The WIRING, added after a breadth review found the widening above stopped one
-  // level short: `.claude/hooks/**` protects the guards' CODE, but `settings.json`
-  // is what REGISTERS them and `.husky/pre-push` is what INVOKES review-gate. Deleting
-  // one line from either silently and permanently disables the mechanism -- including
-  // the fail-closed guards (protect-secrets, dangerous-commands, bash-write-gate) --
-  // with no receipt demanded and no banner. The two files most capable of switching
-  // everything off were the two outside its protection.
-  ".claude/settings.json",
-  ".husky/**",
-  // Second breadth review: the widening above fixed the two NAMED files but not the
-  // CLASS. `.husky/pre-push` runs `npm run ship`, which resolves through package.json --
-  // editing that one script to `true` no-ops typecheck, lint, tests, gitleaks, the
-  // gate-skip backstop, everything, while requiring no receipt. And CLAUDE.md calls the
-  // thirteen ESLint rules "the security floor"; eslint.config.mjs is their registration
-  // file, exactly what settings.json is for hooks. Both are at least as capable of
-  // switching everything off as the two that prompted the first widening.
-  "package.json",
-  "eslint.config.mjs",
-  "eslint-rules/**",
-  // Round 3: the class STILL was not closed. Each of these can switch off a
-  // security-relevant /ship gate with no receipt, verified against the real matcher:
-  //   findings-register.md -- the trust anchor every OTHER escape hatch reads. One edit
-  //     marks any gate-skip, pillar wave-off or *Ack as adjudicated, defeating all of
-  //     them at once. The most powerful file in the set.
-  //   audit-allowlist.json -- loadAuditAllowlist only checks the JSON parses; adding a
-  //     real GHSA id silently clears a High/Critical npm audit finding.
-  //   next.config.ts -- carries the app's static security headers (HSTS, X-Frame-Options,
-  //     Referrer-Policy...). No ship phase or test asserts them; weakening one is silent.
-  //   tsconfig.json -- typecheck runs `tsc --noEmit` with no include override, so this
-  //     file's `exclude` decides what is typechecked at all (reproduced: adding
-  //     "app/api/**" to exclude made a real type error pass).
-  //   .npmrc -- `omit=dev` makes `npm audit` report 0 for a real dev CVE (reproduced).
-  "docs/findings-register.md",
-  "audit-allowlist.json",
-  "next.config.ts",
-  "tsconfig.json",
-  ".npmrc",
+/**
+ * SAFE set -- the inverse of the old allowlist. Everything NOT matching these needs a
+ * review receipt.
+ *
+ * The allowlist shape lost three rounds running: each breadth review found another file
+ * that could switch a gate off and was not enumerated (settings.json/.husky, then
+ * package.json/eslint.config.mjs, then findings-register/audit-allowlist/next.config/
+ * tsconfig/.npmrc). Enumerating what is DANGEROUS is an open-ended problem and every miss
+ * is a silent hole; enumerating what is SAFE is closed-ended and every miss is visible
+ * friction -- someone is asked for a receipt they did not expect, and says so.
+ *
+ * Membership test: could editing this file alone change what any gate, test, build or
+ * scan does? If yes it is not safe, however harmless it looks. docs/findings-register.md
+ * is the standout: it is prose, but it is the trust anchor every other escape hatch reads.
+ */
+export const REVIEW_SAFE_GLOBS = [
+  "docs/**", // except the findings register -- see REVIEW_ALWAYS_GLOBS below
+  ".claude/skills/**", // skill prose; the hooks and scripts they describe are NOT safe
+  "README.md",
+  "CHANGELOG.md",
+  "messages/**", // i18n strings
+  "public/**",
+  "design/**",
 ];
+
+/** Never safe, even when a broader safe glob would otherwise match them. */
+export const REVIEW_ALWAYS_GLOBS = ["docs/findings-register.md"];
 
 /**
  * Is a `Gate-Skip: <gate>` adjudicated in the findings-register text?
@@ -162,10 +137,11 @@ export function gitTry(args, opts) {
   }
 }
 
-/** Is this repo-relative path inside the review gate's scope? */
+/** Is this repo-relative path inside the review gate's scope? (i.e. NOT in the safe set) */
 export function isInReviewScope(rel) {
   if (!rel) return false;
-  return REVIEW_SCOPE_GLOBS.some((g) => globToRegExp(g).test(rel));
+  if (REVIEW_ALWAYS_GLOBS.some((g) => globToRegExp(g).test(rel))) return true;
+  return !REVIEW_SAFE_GLOBS.some((g) => globToRegExp(g).test(rel));
 }
 
 /** Normalise a raw path to repo-relative, forward-slashed (reuses path-match.mjs). */

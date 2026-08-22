@@ -239,6 +239,26 @@ function scanWaveOffs() {
   };
 }
 
+/**
+ * Is an `<key>Ack` escape hatch adjudicated in the findings register?
+ *
+ * dbAck and ackWaiver() already required this; tierAck and blueprintAck did not, so a
+ * single edit to project.config.json silenced either gate with no corroborating evidence
+ * -- inconsistent with the "never silent" intent stated elsewhere in this same file
+ * (round-3 breadth finding). Shared so the three cannot drift apart again.
+ */
+function ackAdjudicated(token) {
+  const re = new RegExp(
+    `^-\\s*\\d{4}-\\d{2}-\\d{2}\\b.*\\b${token}\\b.*\\bstatus:\\s*adjudicated`,
+    "i",
+  );
+  let reg = "";
+  try {
+    reg = readFileSync("docs/findings-register.md", "utf8");
+  } catch {}
+  return reg.split("\n").some((l) => re.test(l));
+}
+
 // -- Gate-Skip adjudication gate (AC-4.1; sdlc-chain blueprint) --------------
 // A `Gate-Skip: <gate> <reason>` trailer is how the operator deliberately bypasses
 // a receipt gate (review-gate / qa-gate) -- recorded rather than silent, which is
@@ -465,7 +485,16 @@ function scanTier() {
   }
   const tier = cfg.tier ?? "personal";
   if (tier !== "personal") return ok(`tier=${tier} (no escalation check needed)`);
-  if (cfg.tierAck === "personal") return ok("tier=personal (acknowledged despite contributors)");
+  if (cfg.tierAck === "personal") {
+    if (ackAdjudicated("tierAck"))
+      return ok("tier=personal (acknowledged, adjudicated in docs/findings-register.md)");
+    return red(
+      `"tierAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED tierAck line.\n` +
+        `  The escape hatch is never silent (matches dbAck / ackWaiver): add a register line\n` +
+        `  \`- YYYY-MM-DD — [tier] tierAck: <why this stays personal> — <owner> — status: adjudicated(<date>)\`\n` +
+        `  or set "tier": "shared".`,
+    );
+  }
 
   // Count distinct human authors across history.
   let raw = "";
@@ -753,7 +782,16 @@ function scanBlueprint() {
   }
 
   const cfg = readCfg();
-  if (cfg.blueprintAck) return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck}`);
+  if (cfg.blueprintAck) {
+    if (ackAdjudicated("blueprintAck"))
+      return ok(`new feature surface; blueprint waived: ${cfg.blueprintAck} (adjudicated)`);
+    return red(
+      `"blueprintAck" is set in project.config.json but docs/findings-register.md has no ADJUDICATED blueprintAck line.\n` +
+        `  The escape hatch is never silent (matches dbAck / ackWaiver): add a register line\n` +
+        `  \`- YYYY-MM-DD — [process] blueprintAck: <why no blueprint> — <owner> — status: adjudicated(<date>)\`\n` +
+        `  or add docs/blueprints/<feature>.md.`,
+    );
+  }
   const tierVal = cfg.tier ?? "personal";
   const detail =
     `New feature surface with no committed docs/blueprints/*.md in this change:\n` +
