@@ -37,10 +37,10 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — deploy, env & CI** (8): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
-- **Gotchas — security, auth & hooks** (5): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
+- **Gotchas — security, auth & hooks** (7): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (3): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
-- **Conventions discovered** (6): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
+- **Conventions discovered** (7): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
 
 <!-- END:digest -->
@@ -256,6 +256,21 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — security, auth & hooks
 
+- 2026-08-22 — **For gate scope, enumerate what is SAFE, not what is DANGEROUS.** An allowlist
+  of gated paths missed a gate-disabling file in three consecutive breadth reviews
+  (settings.json/.husky, then package.json/eslint.config, then findings-register/
+  audit-allowlist/next.config/tsconfig/.npmrc). Enumerating danger is open-ended and every
+  miss is a SILENT hole; enumerating safety is closed-ended and every miss is visible
+  friction someone reports. Inverted to a safe-set denylist; the old allowlist was kept as
+  the review-DEPTH classifier, where a miss costs a shallower review rather than none.
+- 2026-08-22 — **Changing a guard's condition can convert a fail-SAFE bug into a fail-OPEN
+  one.** qa-gate's `shipping` array was always empty (a malformed sha from
+  `git log --format=…%x1e`, whose trailing newline glues onto every sha but the first).
+  Under `shipping.length > 0 && …` that made the allow branch unreachable — it always
+  denied: annoying, safe. "Fixing" the annoyance by switching to `prevQaFound && …` made
+  `uncovered` always empty, so it always ALLOWED — silently shipping unreviewed code.
+  Before changing a guard condition, ask what the OLD one was accidentally protecting.
+
 - 2026-08-22 — **Fail-open governance gates mask the AUTHOR's bugs, not just runtime ones.** Four
   separate times a gate used a helper it never imported (`execFileSync`, `norm`, `isSkipAdjudicated`,
   and one more); each would have thrown `ReferenceError`, been swallowed by the fail-open handler,
@@ -348,6 +363,13 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
   (`git rev-parse HEAD`) first.
 
 ## Conventions discovered
+
+- 2026-08-22 — **Mutation-test every regression test: a test that cannot fail is not a test.**
+  Three tests written this session were vacuous until proven otherwise — one asserted
+  fail-open on inputs that never reached the fail-open path (they lacked `..`, so review-gate
+  ignored the arg and measured ambient repo state instead). The check is cheap: reintroduce
+  the bug, confirm the test goes red, restore. Do it for every test guarding a defect class,
+  and never write "verified" in a commit message without it.
 
 - 2026-08-22 — **Verify by EXIT CODE, never by grepping for a success string.** `npm run evals |
 grep unreadable` matched the `console.log` and hid the `ReferenceError` thrown on the very next
