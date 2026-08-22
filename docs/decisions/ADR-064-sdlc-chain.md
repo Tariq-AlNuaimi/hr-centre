@@ -115,15 +115,20 @@ ADR-047's split onto two new hooks rather than restating or superseding it.
   adjudicated in `docs/findings-register.md` — the same rule CLAUDE.md already applies to
   pillar wave-offs.
 - `/quickstart`'s ~10-minute idea-to-URL path is untouched: it deploys via `git push`
-  (Vercel auto-build), which `qa-gate.mjs` deliberately does not match, and an explicit
-  `QUICKSTART=1` prefix is honoured if the provisioner is ever invoked directly.
-  (Superseded 2026-08-22, breadth review round 4: the review-gate half of this
-  exemption is a `Quickstart: <reason>` COMMIT TRAILER, not an env var. Ambient
-  environment is not scoped to the push being evaluated -- one `export QUICKSTART=1`
-  silently disabled a binding control for every later push from that shell, with
-  nothing in git history to show for it, and `/quickstart` never set the variable
-  anyway. The trailer is scoped, recorded and auditable. `qa-gate` keeps its
-  command-string form, which was already correctly scoped to one invocation.)
+  (Vercel auto-build), which `qa-gate.mjs` deliberately does not match. If the provisioner
+  is ever invoked directly, the exemption is the fixed commit trailer `Quickstart: exempt`
+  — the same mechanism, the same fixed literal, in both gates.
+  (Amended twice. Round 4: the first form read `process.env.QUICKSTART`, which is not
+  scoped to the push being evaluated — one `export QUICKSTART=1` silently disabled a
+  binding control for every later push from that shell with nothing in git to show for
+  it, and `/quickstart` never set the variable anyway. Round 5 pinned the value to a
+  fixed literal after a docs commit whose last line was a well-formed EXAMPLE trailer
+  exempted a real gated change. Round 6, found while arming the gates: `qa-gate` had been
+  left on a `QUICKSTART=1` command prefix, on the reasoning that a prefix is already
+  scoped to one invocation. Scoped is not the same as recorded — AC-1.4 requires "a
+  recorded trailer", and a prefix leaves nothing behind, so afterwards a deploy that
+  skipped QA was indistinguishable from one that did not. Both gates now read the same
+  trailer.)
 
 ### Negative / risk
 
