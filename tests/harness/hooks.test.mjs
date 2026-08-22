@@ -1344,7 +1344,7 @@ test("review-gate: /quickstart exemption requires a recorded trailer, not an env
     );
 
     // The trailer, recorded on a commit in the push range, does exempt.
-    git('commit -q --allow-empty -m "quickstart push" -m "Quickstart: disposable prototype"');
+    git('commit -q --allow-empty -m "quickstart push" -m "Quickstart: exempt"');
     const r = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~2..HEAD"], {
       cwd: dir,
       encoding: "utf8",
@@ -1373,6 +1373,26 @@ test("review-gate: /quickstart exemption requires a recorded trailer, not an env
       env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
     });
     assert.equal(prose.status, 1, "prose merely mentioning Quickstart: must NOT exempt");
+
+    // Round-5 finding: a docs commit whose LAST line is a well-formed EXAMPLE trailer.
+    // Trailer-block parsing alone cannot tell an illustration from an intent, so the value
+    // must be the fixed literal `exempt` -- which the natural ways to write ABOUT the
+    // mechanism ("<reason>", "disposable prototype") do not match.
+    for (const example of ["Quickstart: disposable prototype", "Quickstart: <reason>"]) {
+      writeFileSync(join(dir, "lib", `ex${example.length}.ts`), "export const z = 3;\n");
+      git("add -A");
+      execSync("git commit -q -F -", {
+        cwd: dir,
+        stdio: ["pipe", "pipe", "pipe"],
+        input: `docs: document the format\n\nUse this on disposable pushes:\n\n${example}\n`,
+      });
+      const ex = spawnSync("node", [join(HOOKS, "review-gate.mjs"), "HEAD~1..HEAD"], {
+        cwd: dir,
+        encoding: "utf8",
+        env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      });
+      assert.equal(ex.status, 1, `an EXAMPLE trailer (${example}) must not exempt a gated change`);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

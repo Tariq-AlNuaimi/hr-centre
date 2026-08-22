@@ -181,7 +181,19 @@ try {
     if (inScope.length === 0) continue;
 
     // Disposable /quickstart work: exempt when a commit in THIS range says so.
-    // Match ONLY in the trailer block (the final paragraph), via git's own parser.
+    // Match ONLY in the trailer block (git's own parser), AND only the fixed literal
+    // `Quickstart: exempt`. Two guards, because one was not enough:
+    //   - trailer-block parsing alone still let a docs commit whose LAST line happened to
+    //     be a well-formed example (`Quickstart: disposable prototype`) exempt a real
+    //     gated change -- confirmed by repro. Git sees a valid trailer; it cannot know the
+    //     author meant it as an illustration.
+    //   - a fixed token means the natural way to WRITE ABOUT this ("Quickstart: <reason>",
+    //     "Quickstart: disposable prototype") no longer matches, so the accident needs
+    //     someone to type the exact opt-in string as their final line.
+    // This mirrors how `Reviewed:` defends itself -- parseReceipts requires the value's
+    // last token to be a real hex sha precisely so prose cannot masquerade as a receipt.
+    // A deliberate copy is still indistinguishable from intent; that is the fabrication
+    // risk the blueprint already records as accepted (US1-fabricated), not a new hole.
     // Every other trailer in this chain is matched line-wise, which is fine for them: a
     // prose line starting "Reviewed:" still needs a valid hash, and a stray "Gate-Skip:"
     // fails SAFE (it REDs /ship). Quickstart is the one whose false positive fails OPEN --
@@ -194,7 +206,7 @@ try {
           input: commitMessage(sha, { root: ROOT }) ?? "",
         }),
       )
-      .find((t) => t && /^Quickstart:\s*\S/m.test(t));
+      .find((t) => t && /^Quickstart:[ \t]*exempt[ \t]*$/im.test(t));
     if (quickstart) {
       console.error(
         `[review-gate] /quickstart push — review receipt not required (AC-1.4).\n` +
