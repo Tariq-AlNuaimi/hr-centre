@@ -173,3 +173,15 @@ model User {
   assignedTasks Task[] @relation("TaskAssignee")
 }
 ```
+
+## Verification
+
+Before calling this done:
+
+- [ ] `prisma/schema.prisma` has the new model (+ any enums + back-refs), and `npm run prisma:migrate -- --name add_<snake>` produced a new `prisma/migrations/` directory
+- [ ] `npm run prisma:generate` ran without error
+- [ ] The entity's `<entityCamel>s` namespace is merged into both `messages/en.json` and `messages/ar.json` (Arabic actually translated, not left as the English placeholder), and `messages/_scaffold-<kebab>.json` has been deleted
+- [ ] If any field holds Restricted data, `SCRUB_FIELDS` in `lib/prisma/audit-extension.ts` and its assertion in `tests/contracts/audit-scrub.test.ts` were extended in the same change
+- [ ] `npm run ship` passes on the generated routes/pages
+
+**Emits:** a Prisma model + zod validation + API routes + dashboard pages + nav + recycling-bin registration; a new migration directory, which is what `/ship`'s blueprint check keys on.

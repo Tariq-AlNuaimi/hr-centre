@@ -96,6 +96,26 @@ For a living component showcase to diff against, the Storybook DX recipe
 (`docs/recipes/dx/1-storybook.md`, via `/scale-up`) renders each primitive in all
 its states.
 
+## Verification
+
+Before calling this done:
+
+- [ ] the design read (surface/audience/tone/density/primary action/accent)
+      was declared in the response before any markup was written
+- [ ] the screen was built from the matching `docs/design-recipes.md` recipe
+      and the shipped shared primitives — not hand-rolled
+- [ ] the non-negotiables hold: on-token spacing/color, one accent, one
+      primary action, no nested Cards, no emoji-as-icons
+- [ ] real empty, loading, AND error states are implemented, not just the
+      happy full-data view
+- [ ] RTL (`ar`, `dir="rtl"`) and dark mode were checked
+- [ ] `/design-qa` was run on the new surface and passed, or any finding was
+      logged to `docs/findings-register.md`
+
+**Emits:** the changed component/page files (on-token, RTL/dark-correct
+markup) committed to the repo — no separate evidence artifact of its own;
+`/design-qa`'s captures are the receipt that verifies it actually holds.
+
 ## Related
 
 - `docs/design-recipes.md` — the copy-paste patterns (the heart of this skill).

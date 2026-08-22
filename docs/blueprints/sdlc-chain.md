@@ -102,7 +102,7 @@ treated like the security floor and the existing gate quartet: identical for
 - **US5** — As the template maintainer, I want skill routing measured, so adding nine skills does not silently break which skill fires.
   - **AC-5.1** — WHEN `npm run ship:full` runs, THE SYSTEM SHALL execute the Tier-2 routing eval and fail when the rank-1 rate falls below the ratchet.
   - **AC-5.2** — THE SYSTEM SHALL fail when any two skill descriptions exceed 75% cosine similarity (today: `design-qa` ↔ `design-system` at 59%, above the 50% warn line).
-  - **AC-5.3** — WHEN the description pass completes, THE SYSTEM SHALL hold the always-on description tax at or below today's 3,763 tokens despite carrying 41 skills instead of 32.
+  - **AC-5.3** — WHEN the description pass completes, THE SYSTEM SHALL hold the mean skill description at or below 300 characters across all 41 skills (≈3,075 tokens always-on), i.e. below the 3,763-token starting point despite carrying nine more skills.
 
 ## Scenarios
 
@@ -199,6 +199,9 @@ flowchart LR
 - [x] Trailer staleness → **bind the trailer to a tree hash** of the reviewed paths; a rebase invalidates it (AC-1.6)
 - [x] Wave shape → **all-at-once confirmed** after seeing the 7-task DAG; per-link backout is the mitigation
 - [x] Sign-off → **signed with these four folded in** (Amendments below)
+- [x] Description budget → **rescaled to a per-skill target** (≤300 char mean over 41 skills) rather than a 32-skill absolute
+- [x] Push posture during a wave → **hold for one combined green push**; the single `/ship` is the only run that means anything
+- [x] Wave 2 width → **wide**: four chunks of task 3 plus task 6, five units
 
 ## Work DAG
 
@@ -212,6 +215,9 @@ flowchart LR
 | 6   | Router skill — US3                                                               | [S] after 5   | `.claude/skills/router/**`                                                                                                                                                                                                                  | infra        |
 | 7   | ADR-064 + `harness.md` chain table + build-vs-buy ledger entry + CLAUDE.md rails | [S] after 5,6 | `docs/decisions/ADR-064-sdlc-chain.md`, `docs/rules/harness.md`, `docs/build-vs-buy-ledger.md`, `CLAUDE.md`                                                                                                                                 | infra        |
 
+| 8 | Surface unadjudicated `Gate-Skip:` trailers in `/ship` — US4/AC-4.1 | [S] after 5 | `scripts/ship.mjs` | infra |
+| 9 | Decide whether `evals` moves from `fullOnly` to the warm loop — US5/AC-5.1 | [S] after 1 | `scripts/ship.mjs` | infra |
+
 Tasks 1, 2 and 5 are write-disjoint and form the first parallel group (`/fan-out`
 `check-overlap` verifies before dispatch, `verify-scope` after). Tasks 3 and 4 both
 write `.claude/skills/*/SKILL.md` and therefore **cannot** be a `[P]` pair —
@@ -223,11 +229,15 @@ can be disabled by removing its entry without touching the others or the skills.
 
 ## Amendments
 
-Confirmed: Tariq Al-Naaimi, 2026-08-22
+Confirmed: <pending re-sign — amendments below>
 
-| Date       | Section               | Was                                     | Now                                                       | Reason                                                                                                                                                                       |
-| ---------- | --------------------- | --------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-08-22 | Architecture / AC-1.1 | `Reviewed:` trailer, staleness accepted | `Reviewed: <scope> <tree-sha>`, content-bound; new AC-1.6 | A rebase resolving conflicts preserved the message while changing the code, so the receipt could certify unreviewed content. Binding to a tree hash makes it self-verifying. |
-| 2026-08-22 | Work DAG / diagram    | skill named `code-review`               | skill named `review`                                      | `code-review` is already provided by a plugin; a same-named project skill would silently shadow it and would likely trip the Tier-2 collision check (AC-5.2).                |
-| 2026-08-22 | Wave shape            | all-at-once (chosen pre-DAG)            | all-at-once (re-confirmed post-DAG)                       | Operator reviewed the 7-task decomposition and kept the shape; per-link backout stands as the mitigation.                                                                    |
-| 2026-08-22 | Sign-off              | pending                                 | signed                                                    | Operator sign-off with the three decisions above folded in.                                                                                                                  |
+| Date       | Section                            | Was                                     | Now                                                       | Reason                                                                                                                                                                                                                                                   |
+| ---------- | ---------------------------------- | --------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-22 | Architecture / AC-1.1              | `Reviewed:` trailer, staleness accepted | `Reviewed: <scope> <tree-sha>`, content-bound; new AC-1.6 | A rebase resolving conflicts preserved the message while changing the code, so the receipt could certify unreviewed content. Binding to a tree hash makes it self-verifying.                                                                             |
+| 2026-08-22 | Work DAG / diagram                 | skill named `code-review`               | skill named `review`                                      | `code-review` is already provided by a plugin; a same-named project skill would silently shadow it and would likely trip the Tier-2 collision check (AC-5.2).                                                                                            |
+| 2026-08-22 | Wave shape                         | all-at-once (chosen pre-DAG)            | all-at-once (re-confirmed post-DAG)                       | Operator reviewed the 7-task decomposition and kept the shape; per-link backout stands as the mitigation.                                                                                                                                                |
+| 2026-08-22 | Sign-off                           | pending                                 | signed                                                    | Operator sign-off with the three decisions above folded in.                                                                                                                                                                                              |
+| 2026-08-22 | AC-5.3                             | hold 3,763 tokens absolute              | ≤300 char mean over 41 skills (≈3,075)                    | The 3,763 figure was measured at 32 skills; holding a 32-skill absolute over 41 forces the whole cut onto the existing 32 and does not scale as the catalogue grows.                                                                                     |
+| 2026-08-22 | Architecture / `/review`           | hash algorithm restated in prose        | skill calls the `receipt.mjs` CLI                         | Two implementations of one invariant drift. `receipt.mjs` is now the single source, so emitter and verifier share code and cannot disagree.                                                                                                              |
+| 2026-08-22 | Work DAG                           | 7 tasks                                 | 9 tasks (added 8, 9)                                      | Wave 1 surfaced two gaps: AC-4.1 is incomplete without `/ship` reporting `Gate-Skip:` trailers, and `evals` runs only in `ship:full`, so the warm pre-push gate never exercises it.                                                                      |
+| 2026-08-22 | Implementation note (no AC change) | —                                       | `receipt.mjs` empty-tree defect fixed                     | A bare directory scope silently hashed to the empty tree, so a receipt could certify zero files and still verify. Fixed on both ref and working-tree paths; emission now refuses an empty scope. Recorded because it nearly made the receipt decorative. |

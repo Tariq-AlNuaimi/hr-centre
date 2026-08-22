@@ -139,3 +139,20 @@ overlap gate + one shared tree is cheaper.
   fan-out of distinct units.
 - **Visibly-coordinated agents that message each other** → native Agent Teams territory;
   `/fan-out` is for independent write-disjoint units, not a shared task list.
+
+## Verification
+
+Before calling this done:
+
+- [ ] a manifest exists at `docs/blueprints/.fan-out.json` with a disjoint
+      file-glob set + tier per unit
+- [ ] `npm run fan-out -- check-overlap docs/blueprints/.fan-out.json` exited
+      zero before the wave was dispatched
+- [ ] the wave was dispatched as parallel subagents in one message, each told
+      to write only its declared file set
+- [ ] `npm run fan-out -- verify-scope docs/blueprints/.fan-out.json` reports
+      every changed file matching exactly one declared set (no 0-match or
+      ≥2-match files)
+- [ ] one `npm run ship` ran over the combined result, green, before commit + push
+
+**Emits:** the `docs/blueprints/.fan-out.json` manifest plus a clean `verify-scope` result.

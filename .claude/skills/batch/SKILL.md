@@ -47,3 +47,17 @@ retries instead of one session dragging the whole history through N files.
     rewrite a handler to use an auth wrapper + zod, untangle a type error.
 - Run from a clean tree so a bad batch is one `git checkout -- .` away
   (ask the operator before that revert, as always).
+
+## Verification
+
+Before calling this done:
+
+- [ ] Every file in the list is accounted for as done or parked — none silently
+      dropped from the report
+- [ ] Parked files (2 failed attempts) are named explicitly, not folded into "done"
+- [ ] `npm run ship` is green after the run (a red `/ship` means a parked file
+      remains — fix or `git checkout -- <file>` it)
+- [ ] The report states files done / parked / total cost
+
+**Emits:** the per-file diffs applied to the tree — no separate log artifact
+persists (`/tmp/batch-costs.log` is ephemeral scratch, not a committed receipt).

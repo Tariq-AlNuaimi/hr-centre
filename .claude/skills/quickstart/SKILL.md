@@ -159,3 +159,23 @@ prompts you can suggest to the operator:
 - The user is asking about an existing feature (not a new one).
 - The user is asking for production-grade changes (use `/scale-up` instead).
 - The user wants to deliver to IT (use `/handoff`).
+
+## Verification
+
+Before calling this done:
+
+- [ ] The lightweight `/blueprint` round confirmed entities/fields with the
+      operator, and a stub `docs/blueprints/<feature>.md` carrying a `Scope:`
+      line is committed.
+- [ ] Every entity was scaffolded via `/scaffold-entity` and
+      `npx prisma migrate dev` ran clean locally.
+- [ ] A local smoke (`npm run dev`, create one row, confirm it appears) succeeded
+      before pushing.
+- [ ] `npm run ship` is green — required before every push, no exceptions for a
+      scaffold.
+- [ ] The commit was pushed to the branch Vercel builds from, and a live
+      (production or preview) URL was handed to the operator.
+
+**Emits:** a live shareable URL, backed by the committed lightweight blueprint
+stub carrying its `Scope:` line — the input `blueprint-gate.mjs` reads to allow
+the scaffolded route/page files through.

@@ -574,3 +574,15 @@ in via a recipe.
 When in doubt, ask: "Is this for validation, or for the IT team's
 production version?" If validation, add it. If production, defer to the
 IT team's setup at handoff.
+
+## Verification
+
+Before calling this done:
+
+- [ ] The chosen capability matches a numbered item in this skill (its trigger and recipe were followed, not improvised)
+- [ ] The operator explicitly confirmed before anything was installed — this skill suggests, it does not auto-install
+- [ ] If a runtime dependency > 50 KB was added, it's reflected in `package.json`/`package-lock.json` and, if it contradicts the ADR-001 locked stack, a superseding ADR was written first
+- [ ] Any new env var is added to `.env.example` (and `lib/env.ts`'s zod schema, where applicable)
+- [ ] `npm run ship` still passes after the change
+
+**Emits:** depends on the item chosen — this skill suggests rather than auto-installs, so the durable artifact (a new dependency, an env var, a `vercel.json` cron entry, a recipe file copied in, etc.) is whatever the operator approved and the recipe added, not something this skill leaves on its own.

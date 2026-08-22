@@ -70,3 +70,15 @@ AskUserQuestion picks self-host OSS for data-residency → ledger entry
 `Scope: lib/rate-limit/**` with the `Considered:` line + ADR-035 → `npm i
 rate-limiter-flexible`, thin `lib/valkey.ts` client, `withRateLimit` composed outside
 the auth wrapper → `/ship` green.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/oss-catalog.md` has the row (found, or added when it was a miss)
+- [ ] `docs/build-vs-buy-ledger.md` has the new entry: a `Scope:` glob covering the
+      new file(s) and a `Considered:` line naming ≥1 real alternative
+- [ ] For a runtime dependency, an ADR stub exists in `docs/decisions/`
+- [ ] `npm run ship` is green (ledger/ADR gates + knip's no-dead-dependency floor pass)
+
+**Emits:** an entry in `docs/build-vs-buy-ledger.md` (+ an ADR stub for a runtime dep).

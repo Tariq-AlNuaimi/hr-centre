@@ -161,3 +161,16 @@ model. Wire it into the CI security workflows when the CI-activation trigger fir
   say "incomplete." (A skipped optional trufflehog pass does not block "clean"; note
   it as NOT RUN.)
 - Do **not** run foreign code to test it as part of auditing it.
+
+## Verification
+
+Before calling this done:
+
+- [ ] All three core scanners (gitleaks, npm audit, Semgrep) either ran or are
+      reported `NOT RUN: <reason>` — none silently skipped
+- [ ] Every finding is line-referenced (`file:line`) and severity-tagged
+- [ ] The report ends with an explicit verdict: clean / findings to review /
+      incomplete
+- [ ] Any accepted suppression is logged in `SECURITY.md` §12, not just noted in chat
+
+**Emits:** the scan report output; any suppression logged in `SECURITY.md` §12.

@@ -73,6 +73,22 @@ install:
 - Keep the image lean: the build is multi-stage and traces only the standalone
   runtime; don't add dev dependencies or build tooling to the runtime stage.
 
+## Verification
+
+Before calling this done:
+
+- [ ] `docker version` confirmed available (or the environment limit was
+      reported plainly and the run stopped, rather than claiming success)
+- [ ] `.env` confirmed absent from the built image — secrets passed only via
+      `--env-file` / runtime env vars, never baked in
+- [ ] the matching `make docker-*` target completed (build/run/up/down)
+- [ ] the running container answers on `http://localhost:3000` and
+      `prisma migrate deploy` applied cleanly on startup
+- [ ] for a `/handoff` use, HANDOFF.md records the image tag, required
+      runtime env vars, and the `make docker-run` / `docker run` invocation
+
+**Emits:** a built image / running container.
+
 ## Related
 
 - `/deploy` — the default live-URL path (Vercel + Neon). Prefer this for sharing.

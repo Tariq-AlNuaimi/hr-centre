@@ -349,6 +349,23 @@ blueprint, or set `"blueprintAck": "<reason>"` in `project.config.json`.
 | "I'll model the schema as I code — I know the entities already." | Then the domain-model grid costs you two minutes to write down what you "already know" — and its columns map straight onto the `/scaffold-entity` flags. The redo you avoid is the mid-scaffold "this needs another relation" migration. |
 | "I've read the docs before — I don't need to grill this ask against them." | You've read them; you haven't checked *this* requirement against them. The grill is where a silent collision with a Hard rule, a locked ADR, or an existing model becomes a question now instead of a `/code-review` block later. |
 
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/blueprints/<feature>.md` is committed (full doc, or the lightweight
+      stub) and carries a `Scope:` line covering the files this feature touches
+- [ ] Full track only: the Domain model grid is non-empty (ADR-031)
+- [ ] Every open question was resolved via `AskUserQuestion` — none left as an
+      assumed answer
+- [ ] Operator sign-off was obtained and the `Confirmed:` line is set (not blank)
+      before any build started
+- [ ] `npm run ship`'s blueprint-gate check is green (no denial on a new
+      route/page/migration against this `Scope:`)
+
+**Emits:** a committed `docs/blueprints/<feature>.md` carrying a `Scope:` line —
+the input `blueprint-gate.mjs` reads to allow writes to gated paths.
+
 ## Related
 - `/quickstart` and `/scaffold-entity` call the lightweight track as their step 0.
 - Plan mode / `EnterPlanMode` — the blueprint is the requirements half of a plan.

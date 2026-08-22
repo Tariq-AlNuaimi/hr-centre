@@ -32,3 +32,18 @@ Create a new ADR in `docs/decisions/` following the project's numbering and temp
 
 User: "Add an ADR for using Redis for the rate limiter."
 -> Find next number (say 007). Write `docs/decisions/ADR-007-use-redis-for-rate-limiter.md` with the template skeleton, today's date, and the user's name as decision owner.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/decisions/ADR-<NNN>-<kebab-title>.md` exists on disk with `<NNN>` one
+      higher than every other `ADR-???-*.md` in `docs/decisions/`
+- [ ] `Status`, `Date`, and `Decision owner` are filled in — not the template's
+      placeholder text
+- [ ] If this ADR changes the ADR-001 locked stack or relaxes a Hard rule, it is
+      `Proposed` pending operator sign-off, not `Accepted`
+- [ ] If superseding a prior ADR, that ADR's `Status` line is updated to
+      `Superseded by ADR-<NNN>`
+
+**Emits:** a committed `docs/decisions/ADR-<NNN>-<kebab-title>.md`.

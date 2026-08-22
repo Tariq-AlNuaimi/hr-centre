@@ -175,3 +175,20 @@ new args. That delete-then-re-run is the idempotency boundary.
 - You want a self-hosted droplet deploy — that flow was removed in ADR-006.
 - You're handing off to the IT team — use `/handoff` instead, which produces a
   clean tarball + docs.
+
+## Verification
+
+Before calling this done:
+
+- [ ] The run summary shows a GitHub repo URL, a Neon project URL, a Vercel
+      project URL, and a production URL (`https://<slug>.<apex>` or
+      `https://<slug>.vercel.app`).
+- [ ] The live URL was opened and the seeded admin credentials actually log in.
+- [ ] `project.config.json` `"tier"` was set (`personal`/`shared`) and committed + pushed on the new repo.
+- [ ] `make docker-build` was run once against the fresh repo and either
+      succeeded, or its failure was recorded as a `"dockerAck"` + an adjudicated
+      `docs/findings-register.md` line.
+
+**Emits:** a provisioned GitHub repo + Neon project + Vercel project + live URL
+(production and/or `.vercel.app` preview), with the seeded admin email/password
+surfaced in the run summary for rotation.

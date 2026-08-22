@@ -117,6 +117,17 @@ version via the context7 MCP (Prisma 7 / Next 16 / Tailwind v4 / Auth.js / Playw
 WebSearch fallback — so a build-time pattern is framework-correct for what the repo actually runs, not
 a stale remembered signature.
 
+## Verification
+
+Before calling this done:
+
+- [ ] The advice given points at this repo's real primitives (`lib/pagination.ts`, `lib/api-helpers.ts`, `lib/validations/*`, `app/api/users/route.ts`, `docs/design-recipes.md`) rather than a generic pattern
+- [ ] Every route/query/component the advice touches keeps an auth wrapper + zod boundary validation and never casts `session` to `any`
+- [ ] No advice proposes a new runtime dep > 50 KB, raw SQL, or an Ask-before change (auth, `lib/prisma/*`, schema/migrations, `middleware.ts`) without routing it through the Ask-before gate first
+- [ ] The advice stayed advisory — no severity-ranked review or findings list was produced (that's `/code-review` / `senior-code-reviewer`)
+
+**Emits:** nothing — this step leaves no receipt. It's advice only; it shapes the code as it's written and reviews nothing, so the durable artifact (if any) is whatever the resulting code/PR contains, not this skill itself.
+
 ## Related
 
 - `/docs-current` — version-correct stack docs before answering (V2-504).

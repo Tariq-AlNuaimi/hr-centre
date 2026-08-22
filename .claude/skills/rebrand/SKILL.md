@@ -59,3 +59,23 @@ need, vs the `fork`-inherited docs it keeps (ADRs, runbooks, recipes, rubrics, l
 reference and remove it from the working tree; **never delete from template main.** Classification is
 first-match-wins globs in the manifest with a catch-all defaulting to `fork` (KEEP is the safe
 failure) — a new `template-dev` doc needs an explicit rule added above the catch-all.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `npm run rebrand -- --dry-run ...` was shown to and confirmed by the
+      operator before the real run.
+- [ ] The script's changed-file report was reviewed — `package.json` name,
+      `.env.example`'s `NEXT_PUBLIC_APP_NAME`, `CLAUDE.md`'s H1 + tagline, and
+      `README.md`'s H1 all match the new slug/display name/owner.
+- [ ] A **no-changes** result was explained (already rebranded, or a
+      slug/display-name mismatch against the script's match targets) rather than
+      reported as a silent success.
+- [ ] None of the hard-preserved paths (`.claude/`, `docs/decisions/`,
+      `prisma/schema.prisma`, `lib/`, `tests/`, `SECURITY.md`) were touched.
+- [ ] The result was committed and pushed, ready for `/first-fork` to run next.
+
+**Emits:** the swept identity defaults (`package.json` name, `.env.example`
+`NEXT_PUBLIC_APP_NAME`, `CLAUDE.md` header, `README.md` H1) — the input the rest
+of the fork lifecycle (`/first-fork`, `/new-project`) assumes is already correct.

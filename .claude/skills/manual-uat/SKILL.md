@@ -366,3 +366,25 @@ per step blows the budget the token-thrift policy sets. Keep the walk lean:
   login couldn't be set up, say "could not run" and how to fix it, not "green."
 - Artifacts (`uat-results/`) are gitignored — sessions, screenshots, the matrix,
   and the report stay out of git.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `uat-results/rbac-expected.json` was generated (`npm run manual-uat:matrix`)
+      before the browser walk, and — for a capability-model fork — reconciled
+      against the live `GET /api/admin/permissions` grants.
+- [ ] Every cell of the entity × operation × role × track matrix has a verdict
+      (pass / fail / N/A-with-reason) — none left untested by omission — and the
+      exact `<tested>/<total>` coverage number is reported.
+- [ ] Both HAPPY and WORST paths were walked for every role, including both the
+      UI-navigation and direct-API authorization probes.
+- [ ] `uat-results/manual-uat-report.md` exists with Verdict, Coverage, RBAC
+      findings, Worst-path findings, Happy-path gaps, UI/UX findings, and
+      Cross-role findings sections.
+- [ ] Any `UAT —` tagged test data created during the walk was cleaned up.
+
+**Emits:** per-role findings (`uat-results/manual-uat-report.md`, gitignored)
+covering happy AND worst paths, traced to the blueprint's `US`/`AC` ids where one
+exists — plus, when a flow was promoted, a committed `tests/uat/<flow>.uat.ts`
+regression spec.

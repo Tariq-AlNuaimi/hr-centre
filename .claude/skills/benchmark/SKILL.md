@@ -62,6 +62,20 @@ against.
   toy with no category leaders to learn from. (A real category app is never this;
   don't use "it's a prototype" to skip the parity check.)
 
+## Verification
+
+Before calling this done:
+
+- [ ] `docs/benchmarks/<category>.md` is committed with a `Refreshed: YYYY-MM-DD`
+      line near the top
+- [ ] ≥1 OSS product is mined for real — named repo, with the schema/route/docs
+      anchor cited, not just its marketing page
+- [ ] Every row cites a source (product name or `owner/repo`) — no unsourced rows
+- [ ] The three labeled groups (table-stakes / differentiators / anti-features)
+      are all present
+
+**Emits:** a committed `docs/benchmarks/<category>.md`.
+
 ## Related
 
 - `/blueprint` (full track) — consumes this matrix as its Feature-Parity source

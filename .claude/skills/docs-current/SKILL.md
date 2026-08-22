@@ -61,3 +61,17 @@ Never answer from stale memory when the lookup fails. In order:
   do not recommend upgrading it (a bump is a decision gated by ADR-056's triggers, not a docs answer).
 - Quarterly stack-refresh ADRs (ADR-017 track 2) should run this skill on each held major to confirm
   the current API before deciding keep/thin/upgrade (the ADR-TEMPLATE "Platform doctrine sync" hook).
+
+## Verification
+
+Before calling this done:
+
+- [ ] the exact pinned version was read from `package.json` before any lookup ran
+- [ ] the answer cites a source — the resolved context7 doc version, an
+      official docs URL, or `docs/recipes.md` / `docs/design-recipes.md` —
+      never bare memory
+- [ ] if both context7 and WebSearch were unreachable, the answer explicitly
+      flagged itself as possibly-stale training data instead of presenting it
+      as current
+
+**Emits:** nothing — this step leaves no receipt.

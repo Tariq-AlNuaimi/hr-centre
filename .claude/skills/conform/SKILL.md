@@ -108,3 +108,20 @@ and push. Vercel deploys from there.
   must be rotated, because it is already in that code's history.
 - Do **not** mark the result conformed until `/audit` is clean (or accepted) and `/ship`
   is green.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `/audit` ran against the incoming code before any edit or deep read
+- [ ] The conformance report covers every hard-rule + ESLint-rule item, each
+      line-referenced (`file:line`)
+- [ ] An explicit operator approval line (e.g. `Approve: 1,3,5` / `APPROVE ALL`)
+      exists before step 6 touched anything
+- [ ] Only approved changes were applied; `/audit` and `/ship` are both green
+      after aligning
+- [ ] The conformed code is pushed to a new repo created from the template
+
+**Emits:** a new repo (created from the template) with the approved changes
+committed and pushed — the conformance report and approval trail are relayed
+inline and are not themselves persisted to a file.

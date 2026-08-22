@@ -112,3 +112,15 @@ hook or CI step later.
 - Foreign code built outside the template — use `/conform` (uplifts external code
   to the standard and pushes to a new repo).
 - Porting **data** from another database — use `/migrate-from`.
+
+## Verification
+
+Before calling this done:
+
+- [ ] `npm run sync-template -- --check` was run first so the sync is against a known "how far behind" baseline
+- [ ] The OWNED layers pulled cleanly and were reviewed (`git diff`), and the REVIEW layers were hand-merged from `.template-sync-review.diff` rather than auto-applied
+- [ ] Any Ask-before file touched (`lib/api-helpers.ts`, `lib/rate-limit.ts`, `lib/email.ts`, `lib/export.ts`, `lib/prisma/*`, `middleware.ts`) was reconciled by hand and, if changed, ran through `/code-review`
+- [ ] `.claude/hooks` and `.claude/settings.json`'s `hooks` block were reconciled together (a new/changed hook script has a matching event binding)
+- [ ] `npm run ship` is green and the commit includes the updated `.template-sync.json`, named with the template commit hash it recorded
+
+**Emits:** updated template-owned layers (the OWNED paths) plus a recorded version marker (`.template-sync.json`, committed) naming the template commit the fork is now based on.

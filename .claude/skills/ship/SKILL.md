@@ -95,3 +95,15 @@ The "Skip when" list above is the ONLY sanctioned reduction. These are not:
 | "I only changed one line — it can't break the build."           | The stale-`.next/types` trap, a Prisma-generate drift, and a `messages/` key mismatch have each broken builds from one-line diffs. The gate exists because "can't break" is a prediction, not a check. |
 | "It was green ten minutes ago and I barely touched it since."   | Green describes a commit, not a session. The gate is cached — a truly-unchanged re-run is nearly free, so run it.                                                                                      |
 | "gitleaks isn't installed, I'll skip that step just this once." | That's the explicitly-forbidden case in step 6: not-installed = **not green**. Install it or stop; a skipped secret scan is how a Restricted credential lands in permanent history.                    |
+
+## Verification
+
+Before calling this done:
+
+- [ ] `npm run ship` was actually run for this change (not assumed from an earlier pass) and exited green, printing the "ship: green" summary
+- [ ] Any failure was fixed and the gate re-run — no step was skipped except via the one sanctioned "Skip when" reduction, and even then steps 2 + 6 still ran
+- [ ] The five pillars were affirmed in one line each (Speed · Secure · Maintainable · Scalable · High-Quality); any pillar not affirmed was logged as a wave-off in `docs/findings-register.md`, not silently passed
+- [ ] `.claude/state/last-green-sha` was written for the current HEAD (this file is gitignored — it exists only in this container, not on the remote, so a fresh clone never inherits a stale green)
+- [ ] If any of the 8 checks `ship:full` alone runs (copy, db-structure, knip, duplication, coverage, skill-check, evals, size-limit) matter for this change, `npm run ship -- --full` was run — a warm green does **not** mean those ran
+
+**Emits:** `.claude/state/last-green-sha`, the gitignored green-for-HEAD signal that `.husky/pre-push` depends on — local to this container only, never committed, so it does not travel with the repo.

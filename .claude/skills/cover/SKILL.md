@@ -76,3 +76,19 @@ throw it away and try a different uncovered path.
   surface, nothing for the floor to score.
 - `/ship`'s coverage step is already green on the touched files — don't add tests
   that pass without raising the number (that's exactly what the discipline discards).
+
+## Verification
+
+Before calling this done:
+
+- [ ] Every kept test both passes and raised coverage on the file it targets —
+      no test kept that was red or flat
+- [ ] The touched `lib/**` files clear the `/ship` floor (lines 75 / functions 78
+      / branches 88), via `npm run test:coverage` or `/ship`'s `scanCoverage` step
+- [ ] Any new Restricted field still has its `SCRUB_FIELDS` assertion (e.g. in
+      `audit-scrub.test.ts`) — coverage didn't substitute for the contract test
+- [ ] `npm run ship` is green
+- [ ] A genuinely un-testable gap has a logged `coverageAck` + `docs/findings-register.md`
+      line, not a silent floor-drop
+
+**Emits:** new passing tests raising `lib/**` coverage toward the `/ship` floor.

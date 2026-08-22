@@ -172,3 +172,20 @@ When done, the operator should be able to confirm:
 - Neon project URL (database dashboard).
 - First seeded admin email + (rotated) password.
 - One screenshot or short note: "this is live, my team can review it now."
+
+## Verification
+
+Before calling this done:
+
+- [ ] the rebrand + tier commit was pushed (`npm run rebrand` and the
+      `project.config.json` tier landed in the same commit)
+- [ ] the Neon project exists and its pooled connection string is set as
+      `DATABASE_URL` in Vercel
+- [ ] the Vercel deploy is green after the redeploy and reachable at
+      `https://<slug>.vercel.app`
+- [ ] the admin was seeded (`npx prisma db seed` against the Neon direct URL)
+      and first login was confirmed
+- [ ] the loop was confirmed end-to-end: a tiny pushed change appeared live
+      within ~90s
+
+**Emits:** a live URL and a configured fork (Vercel + Neon wired to the repo).

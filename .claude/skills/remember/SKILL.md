@@ -85,3 +85,15 @@ cross-reference line, not a fresh fact — see step 0).
 - This file is surfaced at every SessionStart — treat every line as a recurring
   context tax, same as CLAUDE.md. When in doubt, promote-and-prune over append.
 - Never put secrets/Restricted values here (it's tracked and inherited by forks).
+
+## Verification
+
+Before calling this done:
+
+- [ ] The new line lives in exactly one `##` section of `docs/agent-memory.md`, dated `YYYY-MM-DD`, added newest-first in that section
+- [ ] Step 0's dedupe search ran first (CLAUDE.md + `docs/decisions/` grepped for the same fact) before the line was added
+- [ ] `npm run memory-digest` was run and the digest's `(N)` counts reflect the new entry (a new section also got a digest line)
+- [ ] No section now exceeds ~60 lines and the digest stays ≤30 lines — an entry that would have overflowed was promoted-and-pruned instead
+- [ ] `git log` shows a commit touching `docs/agent-memory.md`, and it has reached the remote (`git rev-list --count @{u}..HEAD` → `0`)
+
+**Emits:** a dated entry appended to `docs/agent-memory.md` (and the regenerated digest).

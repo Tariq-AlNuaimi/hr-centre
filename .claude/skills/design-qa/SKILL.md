@@ -168,3 +168,19 @@ save the shot, move on.
 - Don't call a run green if the browser/creds couldn't launch — that's "could not run."
 - Visual-regression needs a baseline: greenfield uses the mockups; never silently
   accept drift as the new baseline without the operator's nod.
+
+## Verification
+
+Before calling this done:
+
+- [ ] every screen + component state captured to `docs/verification/<feature>/`
+      (desktop + mobile × light/dark × each enabled locale)
+- [ ] axe run on each screen, with serious/critical violations recorded
+- [ ] every captured screenshot actually opened and eyeballed against the
+      mockup/rubric — not inferred from axe + load checks alone
+- [ ] a scorecard emitted per screen citing `docs/uat-rubric.md` heuristics,
+      with deviations ranked by severity
+- [ ] a visual-regression diff run against the committed baseline (when one
+      exists), with no unexplained `*.diff.png`
+
+**Emits:** per-screen scores + captured screenshots + axe results; severity-ranked deviations.

@@ -143,3 +143,19 @@ create duplicates.
   cause is blocked egress — the preflight distinguishes the two; report which.
 - Do **not** use this for a brand-new repo that doesn't exist yet — that's
   `/new-project` (Actions) or `/first-fork` (manual).
+
+## Verification
+
+Before calling this done:
+
+- [ ] `npm run ship` passed before the provisioner ran — never a red build
+- [ ] HEAD carries a valid `QA: <scope> <tree-sha>` trailer (or a recorded
+      `Gate-Skip: qa-gate <reason>`) — `qa-gate.mjs` hard-denies the deploy
+      invocation without one
+- [ ] the preflight printed `Egress OK.` and the provisioner completed without
+      a mid-provision failure (or the cleanup report was verified against the
+      Neon/Vercel dashboards)
+- [ ] the production URL responds (curled or opened) and the admin was seeded
+      (`npx prisma db seed` ran against the Neon direct connection string)
+
+**Emits:** a live URL, plus the Vercel/Neon project wiring.
