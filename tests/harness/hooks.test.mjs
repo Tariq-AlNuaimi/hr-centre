@@ -1157,3 +1157,82 @@ test("review-gate.mjs fails OPEN on unusable input and allows an empty range", (
     assert.equal(r.status, 0, `review-gate should fail OPEN on ${label} (got ${r.status})`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// isSkipAdjudicated -- the Gate-Skip adjudication predicate (AC-4.1).
+//
+// This logic shipped two OPPOSITE bugs in consecutive rounds, both because it lived
+// inline in ship.mjs where nothing could unit-test it:
+//   round 1: unanchored `includes(gate)` -> `Gate-Skip: all` was "adjudicated" by the
+//            word "install" in an unrelated closed entry, so a blanket skip bypassed
+//            both gates AND this backstop, silently.
+//   round 2: over-anchored -> a reasonable English adjudication was never recognised,
+//            wedging /ship RED with no way to discover the required literal.
+// Both directions are asserted here so neither can come back.
+// ---------------------------------------------------------------------------
+test("isSkipAdjudicated: recognises the documented form and nothing else", async () => {
+  const { isSkipAdjudicated: adj } = await import(join(HOOKS, "lib", "receipt.mjs"));
+  const entry = (body) => `- 2026-08-22 — [harness] ${body}\n`;
+
+  // --- must NOT adjudicate -------------------------------------------------
+  // The round-1 bug: prose merely CONTAINING the gate name.
+  assert.equal(
+    adj(entry("run `npm install` to set up — status: fixed(abc1234)"), "all"),
+    false,
+    "the word 'install' must not adjudicate Gate-Skip: all",
+  );
+  assert.equal(
+    adj(entry("all clear after the sweep — status: adjudicated(2026-08-22)"), "all"),
+    false,
+    "the phrase 'all clear' must not adjudicate Gate-Skip: all",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — status: open"), "qa-gate"),
+    false,
+    "status: open is not adjudicated",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — no status line at all"), "qa-gate"),
+    false,
+    "missing status is not adjudicated",
+  );
+  assert.equal(adj("", "qa-gate"), false, "empty register adjudicates nothing");
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — status: fixed(abc)"), ""),
+    false,
+    "empty gate name adjudicates nothing",
+  );
+  // Prefix collision: a longer gate name must not be adjudicated by a shorter one.
+  assert.equal(
+    adj(entry("Gate-Skip: qa — status: fixed(abc1234)"), "qa-gate"),
+    false,
+    "Gate-Skip: qa must not adjudicate the distinct gate qa-gate",
+  );
+
+  // --- must adjudicate -----------------------------------------------------
+  // The round-2 bug: the documented literal has to actually work.
+  assert.equal(
+    adj(
+      entry("Gate-Skip: qa-gate for an emergency hotfix — status: adjudicated(2026-08-22)"),
+      "qa-gate",
+    ),
+    true,
+    "the literal the deny message prints must be accepted",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: review-gate — status: fixed(deadbee)"), "review-gate"),
+    true,
+    "status: fixed(<commit>) adjudicates too",
+  );
+  // `*` is a legal gate value AND a regex metacharacter -- escaping must hold.
+  assert.equal(
+    adj(entry("Gate-Skip: * blanket skip — status: adjudicated(2026-08-22)"), "*"),
+    true,
+    "the * alias must adjudicate itself",
+  );
+  assert.equal(
+    adj(entry("Gate-Skip: qa-gate — status: adjudicated(2026-08-22)"), "*"),
+    false,
+    "a named skip must not adjudicate the * alias",
+  );
+});

@@ -84,6 +84,36 @@ export const REVIEW_SCOPE_GLOBS = [
   "eslint-rules/**",
 ];
 
+/**
+ * Is a `Gate-Skip: <gate>` adjudicated in the findings-register text?
+ *
+ * Lives here, not inline in ship.mjs, because it was UNTESTABLE there -- and that is
+ * exactly how it shipped two opposite bugs in a row: first an unanchored `includes()`
+ * that let `Gate-Skip: all` match the word "install" in unrelated closed entries, then an
+ * anchored regex whose required literal the deny message never named. Both directions are
+ * now covered by tests in tests/harness/hooks.test.mjs.
+ *
+ * A block adjudicates a gate when it (a) contains the literal `Gate-Skip: <gate>` with a
+ * word boundary after it, (b) carries status: adjudicated(...) or fixed(...), and (c) does
+ * NOT also carry status: open.
+ *
+ * @param {string} registerText full docs/findings-register.md contents
+ * @param {string} gate gate name from the trailer (may be `*`, hence the escaping)
+ */
+export function isSkipAdjudicated(registerText, gate) {
+  if (!registerText || !gate) return false;
+  const esc = gate.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = new RegExp(`Gate-Skip:\\s*${esc}(?![\\w-])`);
+  return registerText
+    .split(/\n(?=-\s*\d{4}-\d{2}-\d{2}\b)/)
+    .some(
+      (b) =>
+        names.test(b) &&
+        /\bstatus:\s*(adjudicated|fixed)\b/i.test(b) &&
+        !/\bstatus:\s*open\b/i.test(b),
+    );
+}
+
 /** Scope tokens that mean "the whole tree" rather than a path list. */
 const WHOLE_TREE_TOKENS = new Set([".", "*", "**", "<all>", "all"]);
 
