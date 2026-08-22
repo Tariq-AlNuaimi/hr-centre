@@ -79,7 +79,8 @@ treated like the security floor and the existing gate quartet: identical for
 ## User stories
 
 - **US1** — As the operator, I want each SDLC step to require the previous step's receipt, so I cannot skip review or QA by accident.
-  - **AC-1.1** — WHEN a push contains changes under `lib/**`, `app/api/**`, `prisma/schema.prisma`, or auth files AND no commit in the push carries a `Reviewed:` trailer, THE SYSTEM SHALL reject the push naming the unreviewed paths.
+  - **AC-1.1** — WHEN a push contains changes under `lib/**`, `app/api/**`, `prisma/schema.prisma`, or auth files AND no commit in the push carries a `Reviewed: <scope> <tree-sha>` trailer whose tree-sha matches the current content of those paths, THE SYSTEM SHALL reject the push naming the unreviewed paths.
+  - **AC-1.6** — IF a rebase, amend, or later edit changes the content of a reviewed path AFTER the trailer was written THEN THE SYSTEM SHALL treat the receipt as invalid (tree-sha mismatch) and re-demand review.
   - **AC-1.2** — WHEN a push contains only changes outside that scope, THE SYSTEM SHALL allow it without a review receipt.
   - **AC-1.3** — WHEN `/deploy` runs AND no commit at HEAD carries a `QA:` trailer, THE SYSTEM SHALL refuse to deploy and name `/qa` as the next step.
   - **AC-1.4** — WHEN `/quickstart` deploys, THE SYSTEM SHALL NOT require a QA receipt (the ~10-minute idea-to-URL path is preserved).
@@ -106,7 +107,7 @@ treated like the security floor and the existing gate quartet: identical for
 ## Scenarios
 
 - **US1-happy** — Given a change to `lib/services/foo.ts` reviewed via the new review skill, When the operator pushes, Then the pre-push gate finds the `Reviewed:` trailer and the push proceeds (AC-1.1).
-- **US1-worst** — Given the same change with no review, When the operator pushes, Then the push is rejected naming `lib/services/foo.ts`, and **not** with a generic "gate failed" (AC-1.1). Given instead a corrupted receipt parser, When the operator pushes, Then the push succeeds with a warning rather than wedging the session (AC-1.5).
+- **US1-worst** — Given the same change with no review, When the operator pushes, Then the push is rejected naming `lib/services/foo.ts`, and **not** with a generic "gate failed" (AC-1.1). Given instead a corrupted receipt parser, When the operator pushes, Then the push succeeds with a warning rather than wedging the session (AC-1.5). Given a reviewed commit later rebased with conflict resolution, When the operator pushes, Then the tree-sha no longer matches and review is re-demanded rather than silently certified (AC-1.6).
 - **US2-happy** — Given a failing typecheck, When the operator asks for help, Then the debugging skill routes first and its exit criteria require a root cause, not a guess (AC-2.1).
 - **US2-worst** — Given an adopted skill whose generic advice is weaker than the ESLint floor (e.g. input validation), When it is applied, Then the house-style rewrite has already pinned it to `lib/validations/` + zod so the floor is not softened (AC-2.3).
 - **US3-happy** — Given mid-feature work, When the router runs, Then it reports step, next step, and missing receipts from git (AC-3.1).
@@ -118,14 +119,14 @@ treated like the security floor and the existing gate quartet: identical for
 
 ## Delta — was → now
 
-| Surface                 | Was                               | Now                                                  | Who notices the break?                              |
-| ----------------------- | --------------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
-| `.husky/pre-push`       | runs `npm run ship`               | also requires a `Reviewed:` trailer for scoped paths | anyone pushing auth/schema/route/lib changes        |
-| `/deploy`               | deploys on demand                 | refuses without a `QA:` trailer at HEAD              | operator deploying an unQA'd app                    |
-| `/quickstart`           | idea → URL in ~10 min             | unchanged — explicitly exempt from the QA gate       | nobody (deliberate carve-out)                       |
-| 41 skill descriptions   | mean 470 chars, one 59% collision | tightened toward ~271 mean, collision resolved       | routing changes for every skill; measured by AC-5.1 |
-| `/ship`                 | 19 warm / 26 full checks          | `ship:full` gains the routing eval                   | anyone running the full gate                        |
-| `CLAUDE.md` review rail | prose, unenforced                 | prose + a mechanism that reads the receipt           | anyone who was skipping it                          |
+| Surface                 | Was                               | Now                                                                | Who notices the break?                              |
+| ----------------------- | --------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| `.husky/pre-push`       | runs `npm run ship`               | also requires a content-bound `Reviewed:` trailer for scoped paths | anyone pushing auth/schema/route/lib changes        |
+| `/deploy`               | deploys on demand                 | refuses without a `QA:` trailer at HEAD                            | operator deploying an unQA'd app                    |
+| `/quickstart`           | idea → URL in ~10 min             | unchanged — explicitly exempt from the QA gate                     | nobody (deliberate carve-out)                       |
+| 41 skill descriptions   | mean 470 chars, one 59% collision | tightened toward ~271 mean, collision resolved                     | routing changes for every skill; measured by AC-5.1 |
+| `/ship`                 | 19 warm / 26 full checks          | `ship:full` gains the routing eval                                 | anyone running the full gate                        |
+| `CLAUDE.md` review rail | prose, unenforced                 | prose + a mechanism that reads the receipt                         | anyone who was skipping it                          |
 
 ## Architecture sketch
 
@@ -137,9 +138,12 @@ consumed by `session-stop.mjs`. The three new links copy it.
 
 **Receipts are git trailers** (decision 13), not `.claude/state` files: they travel
 with the work, survive the ephemeral containers this repo runs in, need no
-separate store, and add no branch churn. Known caveat recorded here: a rebase that
-resolves conflicts changes content while preserving the message, so a trailer can
-certify code it never saw — same staleness class as `last-green-sha`, accepted.
+separate store, and add no branch churn. The trailer is **content-bound** (decision 17): it carries the tree hash of the
+reviewed paths, `Reviewed: <scope> <tree-sha>`. A rebase or amend that changes
+those paths changes the hash, so the gate detects the mismatch and re-demands
+review instead of honouring a receipt for code nobody saw. This makes the receipt
+self-verifying rather than self-asserting, and closes the staleness hole the
+draft had accepted.
 
 **Reuse, not duplication** (`docs/REPO-MAP.md` checked): the gates follow
 `blueprint-gate.mjs`'s PreToolUse pattern and reuse `.claude/hooks/lib/path-match.mjs`
@@ -152,8 +156,8 @@ untouched); the eval runner is dependency-free.
 flowchart LR
   BP["/blueprint"] -->|"Scope: in committed md"| G1{{"blueprint-gate.mjs<br/>PreToolUse"}}
   G1 --> CODE["write code<br/>(9 build-loop skills)"]
-  CODE --> RV["/code-review (repo-owned)"]
-  RV -->|"Reviewed: trailer"| G2{{"pre-push gate<br/>auth|schema|api|lib"}}
+  CODE --> RV["/review (repo-owned)"]
+  RV -->|"Reviewed: scope+tree-sha"| G2{{"pre-push gate<br/>auth|schema|api|lib"}}
   CODE --> SH["/ship"]
   SH -->|"last-green-sha"| G2
   G2 --> PUSH["git push"]
@@ -191,18 +195,22 @@ flowchart LR
 - [x] Hook error behavior → **fail open** (ADR-047 governance split preserved)
 - [x] Ask-before on hooks/settings.json → **approved in this blueprint's Scope**
 - [x] Fork inheritance → **on by default**, like the security floor and the quartet
+- [x] Review skill name → **`/review`** (avoids shadowing the plugin `/code-review`, which stays available as the raw diff-reader underneath)
+- [x] Trailer staleness → **bind the trailer to a tree hash** of the reviewed paths; a rebase invalidates it (AC-1.6)
+- [x] Wave shape → **all-at-once confirmed** after seeing the 7-task DAG; per-link backout is the mitigation
+- [x] Sign-off → **signed with these four folded in** (Amendments below)
 
 ## Work DAG
 
-| #   | Task (cites its story)                                                           | P/S           | File-ownership set                                                                                                                                                                                                                               | Role-lens    |
-| --- | -------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| 1   | Port Tier-2 routing eval + cases; wire into `ship:full` — US5                    | [P]           | `scripts/run-evals.mjs`, `scripts/lib/skill-*.mjs`, `evals/**`, `package.json`, `scripts/ship.mjs`                                                                                                                                               | infra        |
-| 2   | Rewrite 9 adopted skills in house style — US2/AC-2.3                             | [P]           | `.claude/skills/{test-driven-development,debugging-and-error-recovery,incremental-implementation,code-review,api-and-interface-design,observability-and-instrumentation,doubt-driven-development,browser-debugging,performance-optimization}/**` | api + ui     |
-| 3   | Verification sections on the existing 32 — US2/AC-2.2                            | [S] after 2   | `.claude/skills/*/SKILL.md` (existing 32 only)                                                                                                                                                                                                   | infra        |
-| 4   | Description tightening pass, all 41 — US5/AC-5.2,5.3                             | [S] after 2,3 | same as 3 + the 9 from 2                                                                                                                                                                                                                         | infra        |
-| 5   | Three receipt gates + ack path — US1/US4                                         | [P]           | `.claude/hooks/**`, `.claude/settings.json`, `.husky/pre-push`                                                                                                                                                                                   | auth + infra |
-| 6   | Router skill — US3                                                               | [S] after 5   | `.claude/skills/router/**`                                                                                                                                                                                                                       | infra        |
-| 7   | ADR-064 + `harness.md` chain table + build-vs-buy ledger entry + CLAUDE.md rails | [S] after 5,6 | `docs/decisions/ADR-064-sdlc-chain.md`, `docs/rules/harness.md`, `docs/build-vs-buy-ledger.md`, `CLAUDE.md`                                                                                                                                      | infra        |
+| #   | Task (cites its story)                                                           | P/S           | File-ownership set                                                                                                                                                                                                                          | Role-lens    |
+| --- | -------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| 1   | Port Tier-2 routing eval + cases; wire into `ship:full` — US5                    | [P]           | `scripts/run-evals.mjs`, `scripts/lib/skill-*.mjs`, `evals/**`, `package.json`, `scripts/ship.mjs`                                                                                                                                          | infra        |
+| 2   | Rewrite 9 adopted skills in house style — US2/AC-2.3                             | [P]           | `.claude/skills/{test-driven-development,debugging-and-error-recovery,incremental-implementation,review,api-and-interface-design,observability-and-instrumentation,doubt-driven-development,browser-debugging,performance-optimization}/**` | api + ui     |
+| 3   | Verification sections on the existing 32 — US2/AC-2.2                            | [S] after 2   | `.claude/skills/*/SKILL.md` (existing 32 only)                                                                                                                                                                                              | infra        |
+| 4   | Description tightening pass, all 41 — US5/AC-5.2,5.3                             | [S] after 2,3 | same as 3 + the 9 from 2                                                                                                                                                                                                                    | infra        |
+| 5   | Three receipt gates + ack path — US1/US4                                         | [P]           | `.claude/hooks/**`, `.claude/settings.json`, `.husky/pre-push`                                                                                                                                                                              | auth + infra |
+| 6   | Router skill — US3                                                               | [S] after 5   | `.claude/skills/router/**`                                                                                                                                                                                                                  | infra        |
+| 7   | ADR-064 + `harness.md` chain table + build-vs-buy ledger entry + CLAUDE.md rails | [S] after 5,6 | `docs/decisions/ADR-064-sdlc-chain.md`, `docs/rules/harness.md`, `docs/build-vs-buy-ledger.md`, `CLAUDE.md`                                                                                                                                 | infra        |
 
 Tasks 1, 2 and 5 are write-disjoint and form the first parallel group (`/fan-out`
 `check-overlap` verifies before dispatch, `verify-scope` after). Tasks 3 and 4 both
@@ -215,8 +223,11 @@ can be disabled by removing its entry without touching the others or the skills.
 
 ## Amendments
 
-Confirmed: <pending operator sign-off>
+Confirmed: Tariq Al-Naaimi, 2026-08-22
 
-| Date | Section | Was | Now | Reason   |
-| ---- | ------- | --- | --- | -------- |
-| —    | —       | —   | —   | none yet |
+| Date       | Section               | Was                                     | Now                                                       | Reason                                                                                                                                                                       |
+| ---------- | --------------------- | --------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-22 | Architecture / AC-1.1 | `Reviewed:` trailer, staleness accepted | `Reviewed: <scope> <tree-sha>`, content-bound; new AC-1.6 | A rebase resolving conflicts preserved the message while changing the code, so the receipt could certify unreviewed content. Binding to a tree hash makes it self-verifying. |
+| 2026-08-22 | Work DAG / diagram    | skill named `code-review`               | skill named `review`                                      | `code-review` is already provided by a plugin; a same-named project skill would silently shadow it and would likely trip the Tier-2 collision check (AC-5.2).                |
+| 2026-08-22 | Wave shape            | all-at-once (chosen pre-DAG)            | all-at-once (re-confirmed post-DAG)                       | Operator reviewed the 7-task decomposition and kept the shape; per-link backout stands as the mitigation.                                                                    |
+| 2026-08-22 | Sign-off              | pending                                 | signed                                                    | Operator sign-off with the three decisions above folded in.                                                                                                                  |
