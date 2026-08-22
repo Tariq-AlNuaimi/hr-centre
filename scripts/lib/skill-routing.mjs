@@ -148,7 +148,15 @@ export function rankSkills(prompt, corpus) {
 // ---------- loading the live skill catalog ----------
 
 /** Read every skill's `SKILL.md` frontmatter (name, description) under skillsDir. */
-export function loadSkills(skillsDir) {
+export function loadSkills(skillsDir, { skipped } = {}) {
+  // `skipped` (optional array) collects a reason per unreadable skill. Silently dropping
+  // a malformed skill matters more now that `evals` runs in the WARM loop while
+  // `skill-check` used to run only in ship:full: the skill would vanish from the corpus
+  // and surface only as a lowered rank-1 rate, never named. Degrading measurably beats
+  // degrading silently, but naming the cause beats both.
+  const note = (name, why) => {
+    if (Array.isArray(skipped)) skipped.push(`${name}: ${why}`);
+  };
   const skills = [];
   if (!existsSync(skillsDir)) return skills;
   for (const dir of readdirSync(skillsDir, { withFileTypes: true })) {
@@ -157,11 +165,16 @@ export function loadSkills(skillsDir) {
     if (!existsSync(file)) continue;
     const src = readFileSync(file, "utf8");
     const m = src.match(/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/);
-    if (!m) continue;
+    if (!m) {
+      note(dir.name, "no parseable YAML frontmatter block");
+      continue;
+    }
     const name = (m[1].match(/^name:\s*(.+)$/m) || [])[1];
     const description = (m[1].match(/^description:\s*(.+)$/m) || [])[1];
     if (name && description) {
       skills.push({ name: name.trim(), description: description.trim() });
+    } else {
+      note(dir.name, `frontmatter missing ${!name ? "name" : "description"}`);
     }
   }
   return skills;

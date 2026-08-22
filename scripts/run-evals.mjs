@@ -80,7 +80,12 @@ function parseArgs(argv) {
 function main() {
   const { minRank1 } = parseArgs(process.argv.slice(2));
 
-  const skills = loadSkills(SKILLS_DIR);
+  const skipped = [];
+  const skills = loadSkills(SKILLS_DIR, { skipped });
+  for (const why of skipped) {
+    console.log(`  \u26a0  unreadable skill excluded from the corpus -- ${why}`);
+    warnings++;
+  }
   const cases = loadCases();
   const corpus = buildCorpus(skills);
   const skillNames = new Set(skills.map((s) => s.name));

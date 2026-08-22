@@ -1788,7 +1788,11 @@ let [
   fullOnly("knip", scanKnip),
   fullOnly("duplication", scanDuplication),
   fullOnly("coverage", scanCoverage),
-  fullOnly("skill-check", () => run("skill-check", "node", ["scripts/skill-standard-check.mjs"])),
+  // WARM alongside `evals` (172ms). They are two halves of one catalogue check: evals
+  // reports that routing got worse, skill-check names the malformed skill that caused
+  // it. Splitting them across tiers meant the warm loop could show the symptom and never
+  // the cause.
+  run("skill-check", "node", ["scripts/skill-standard-check.mjs"]),
   // Tier-2 skill-routing eval (deterministic, no tokens/network): every
   // evals/cases/<skill>.json positive prompt must rank its skill within
   // top_k, negatives must not outrank the declared owner, and the catalog
