@@ -82,8 +82,8 @@ One family, one scale, no exceptions. Family names live **only** in `brand.confi
 | `--font-size-lg` → `text-lg`     | 16px | Emphasized body                    |
 | `--font-size-h5` → `text-h5`     | 16px | Minor headings                     |
 | `--font-size-h4` → `text-h4`     | 20px | Card/section titles                |
-| `--font-size-h3` → `text-h3`     | 24px | Page section headings              |
-| `--font-size-h2` → `text-h2`     | 30px | Page titles                        |
+| `--font-size-h3` → `text-h3`     | 24px | Page titles (`PageHeader` default) |
+| `--font-size-h2` → `text-h2`     | 30px | Large numerals (KPI values)        |
 | `--font-size-h1` → `text-h1`     | 38px | Rare — top-level hero only         |
 
 **Principles:** 14px body base (internal-tool density, not marketing 16px). Body measure caps at
@@ -96,8 +96,9 @@ humanize them. Every user-facing string goes through `next-intl` messages.
 Build from the shipped primitives in `components/shared/*` (shadcn/Radix base, ADR-029) — **compose,
 don't hand-roll**. Recipes with copy-paste markup: `docs/design-recipes.md`.
 
-- **`PageHeader`** — title (`text-h2`) + optional description + the screen's **one** primary
-  action, right-aligned (start-aligned in RTL). Every page starts with it.
+- **`PageHeader`** — a real `<h{level}>` title (default h2, styled `text-h3` 24px — the app name
+  owns the h1) + optional muted subtitle, with the screen's **one** primary action in the
+  inline-end slot (mirrors under RTL). Every page starts with it.
 - **Button, primary** — `bg-primary text-primary-foreground`, radius `rounded-md` (8px), solid
   royal, no gradient. Exactly **one per screen**.
 - **Button, secondary/ghost** — neutral surface + `border-input` hairline; quiet hover via
@@ -107,13 +108,13 @@ don't hand-roll**. Recipes with copy-paste markup: `docs/design-recipes.md`.
   mono for IDs/metrics, sort/filter affordances that don't shout; ships with its own empty state.
   List routes paginate or bound — always.
 - **`FormField` / forms** — one column, labels **above** fields, one message slot per field fed by
-  zod at the boundary; inline validation, one primary submit. Inputs: `bg-card` fill,
-  `border-input` stroke, focus = royal ring (`--shadow-ring`), ≥40px tap height.
+  zod at the boundary; inline validation, one primary submit. Inputs: `border-input` stroke,
+  focus = royal ring (`--shadow-ring`), comfortable tap height.
 - **`SectionCard`** — the standard content panel: `bg-card`, `rounded-md`, `shadow-sm`,
   `p-density-card`. **Never nest cards.**
-- **`StatCard`** — KPI tile: label (`text-muted-foreground text-xs`), value (`text-h3`,
-  `font-mono` for numerics), optional `bg-accent-subtle` icon chip. A calm stat row, never card
-  soup.
+- **`StatCard`** — KPI tile: muted `text-sm` label, bold `text-h2` value, optional 40px icon chip
+  on a 10% brand wash (`bg-primary/10 text-primary-emphasis`), optional semantic trend pill +
+  sparkline. A calm stat row, never card soup.
 - **`EmptyState` / `Skeletons` / error states** — the **state triad**: every data surface ships
   real empty (a sentence + one action, never a blank void), loading (skeleton, not spinner-only),
   and error (honest message, no green toast over a failure).
@@ -185,8 +186,8 @@ deceleration curve `cubic-bezier(0.22, 1, 0.36, 1)` (`ease-out`).
 - **Collapse, don't hide:** the header search trigger collapses to its icon below 576px (label +
   ⌘K kbd hide); the split-screen auth brand panel drops below 768px so the form owns mobile; card
   grids and stat rows stack to one column.
-- **Touch targets:** interactive controls ≥40px tap height; focus states always visible (royal
-  ring), never suppressed.
+- **Touch targets:** interactive controls keep comfortable tap heights on touch screens; focus
+  states always visible (royal ring), never suppressed.
 - **Tables** scroll horizontally inside their panel on narrow screens rather than reflowing into
   ambiguity; the page body never scrolls sideways.
 - **RTL is a responsive axis too:** every layout must mirror under `dir="rtl"` with no LTR
