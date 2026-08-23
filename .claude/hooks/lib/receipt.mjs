@@ -78,6 +78,39 @@ export const REVIEW_SAFE_GLOBS = [
 export const REVIEW_ALWAYS_GLOBS = ["docs/findings-register.md"];
 
 /**
+ * AC-1.4 -- the /quickstart exemption, in ONE place because both gates honour it.
+ *
+ * Two guards, both load-bearing, both earned by a reproduced defect:
+ *
+ *   1. The token is matched only inside the TRAILER BLOCK (`git interpret-trailers
+ *      --parse`), never anywhere in the message. This repo's own commit messages discuss
+ *      the mechanism at length, and a line-wise match would let prose exempt real work.
+ *   2. The value is the FIXED literal `exempt`. Trailer-block parsing alone still let a
+ *      docs commit whose last line was a well-formed EXAMPLE (`Quickstart: disposable
+ *      prototype`) exempt a gated change -- confirmed by repro. Git sees a valid trailer;
+ *      it cannot know the author meant it as an illustration. A fixed token means the
+ *      natural ways to WRITE ABOUT this no longer match.
+ *
+ * Quickstart is the one trailer in this chain whose false positive fails OPEN -- it
+ * exempts -- which is why it is defended harder than `Reviewed:` (already protected by
+ * needing a real hex sha) or `Gate-Skip:` (fails SAFE; it REDs /ship).
+ *
+ * Deliberate copying is still indistinguishable from intent; that is the fabrication risk
+ * the blueprint records as accepted (US1-fabricated), not a hole this can close.
+ *
+ * Lives here rather than inline in each gate because the blueprint's own amendment says
+ * so: "Two implementations of one invariant drift."
+ *
+ * @param {string|null|undefined} message a raw commit message
+ * @param {{root?: string}} [opts]
+ * @returns {boolean} true when the message's trailer block carries `Quickstart: exempt`
+ */
+export function isQuickstartExempt(message, { root } = {}) {
+  const trailers = gitTry(["interpret-trailers", "--parse"], { root, input: message ?? "" });
+  return Boolean(trailers) && /^Quickstart:[ \t]*exempt[ \t]*$/im.test(trailers);
+}
+
+/**
  * Is a `Gate-Skip: <gate>` adjudicated in the findings-register text?
  *
  * Lives here, not inline in ship.mjs, because it was UNTESTABLE there -- and that is

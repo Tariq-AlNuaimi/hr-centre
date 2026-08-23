@@ -1307,6 +1307,85 @@ test("qa-gate denies a deploy when a narrow QA receipt misses a shipped file", (
 });
 
 // ---------------------------------------------------------------------------
+// qa-gate: the /quickstart exemption must be a RECORDED trailer, not a command prefix.
+//
+// AC-1.4 says the exemption "is a recorded trailer, never ambient state, and its value is
+// a fixed literal". qa-gate shipped honouring `QUICKSTART=1 npm run deploy` instead --
+// per-invocation, so not quite ambient, but invisible in git: afterwards a deploy that
+// skipped QA was indistinguishable from one that did not. Found by reading the gate before
+// arming it, so these three cases pin all three halves of the criterion at once.
+// ---------------------------------------------------------------------------
+test("qa-gate: /quickstart exemption requires a fixed recorded trailer, not a command prefix", () => {
+  const dir = mkdtempSync(join(tmpdir(), "qa-gate-quickstart-"));
+  const git = (...a) => execSync(`git ${a.join(" ")}`, { cwd: dir, stdio: "pipe" }).toString();
+  const gate = (command) =>
+    spawnSync("node", [join(HOOKS, "qa-gate.mjs")], {
+      cwd: dir,
+      encoding: "utf8",
+      env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+      input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }),
+    });
+  const denied = (r) => /deny|Denied/i.test(`${r.stdout}${r.stderr}`);
+  try {
+    git("init -q");
+    git("config user.email t@t.t");
+    git("config user.name t");
+    writeFileSync(join(dir, "app.ts"), "export const a = 1;\n");
+    git("add -A");
+    git('commit -q -m "seed"');
+
+    // (a) No receipt, no trailer -> denied. Establishes the gate actually engages here;
+    // without this the two negative cases below could pass for the wrong reason.
+    assert.ok(
+      denied(gate("node scripts/deploy.mjs")),
+      "a bare deploy with no QA receipt must deny",
+    );
+
+    // (b) The OLD form. An unrecorded command prefix must no longer exempt anything.
+    assert.ok(
+      denied(gate("QUICKSTART=1 node scripts/deploy.mjs")),
+      "an unrecorded QUICKSTART=1 command prefix must NOT exempt — it leaves no trace in git",
+    );
+    assert.ok(
+      denied(gate("node scripts/deploy.mjs --quickstart")),
+      "a --quickstart flag must NOT exempt — same reason",
+    );
+
+    // (c) A FREE-FORM trailer must not exempt: the value is a fixed literal precisely so a
+    // commit describing the mechanism cannot trip it (the review-gate docs-commit defect).
+    git(
+      'commit -q --allow-empty -m "write about the mechanism" -m "Quickstart: disposable prototype"',
+    );
+    assert.ok(
+      denied(gate("node scripts/deploy.mjs")),
+      "a free-form Quickstart: trailer must NOT exempt — only the fixed literal counts",
+    );
+
+    // (d) The token in the BODY rather than the trailer block must not exempt either.
+    git('commit -q --allow-empty -m "body mentions Quickstart: exempt in prose" -m "Refs: #1"');
+    assert.ok(
+      denied(gate("node scripts/deploy.mjs")),
+      "the token in prose must NOT exempt — it is parsed out of the trailer block only",
+    );
+
+    // (e) The real thing.
+    git('commit -q --allow-empty -m "quickstart deploy" -m "Quickstart: exempt"');
+    const ok = gate("node scripts/deploy.mjs");
+    assert.ok(
+      !denied(ok),
+      `a recorded 'Quickstart: exempt' trailer must exempt. Got: ${ok.stdout.slice(0, 300)}`,
+    );
+    assert.match(
+      ok.stdout,
+      /NOT QA-verified/,
+      "the exemption must stay loud — it allows an unverified deploy",
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // review-gate: the /quickstart exemption must be RECORDED and SCOPED, not ambient.
 // The first version read process.env.QUICKSTART: unscoped to the push, invisible in git,
 // persistent across every later push from that shell -- and /quickstart never set it, so

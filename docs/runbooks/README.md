@@ -15,8 +15,9 @@ gives the IT team that takes over production (ADR-006). Decision of record:
 | [`incident-response.md`](./incident-response.md)     | It's 3am and something paged — what do I do in the first 15 minutes?                                         | Operator   | 2026-07-11    |
 | [`database-operations.md`](./database-operations.md) | How do I run a migration / touch data / handle connection exhaustion safely?                                 | Operator   | 2026-07-11    |
 | [`maintainer.md`](./maintainer.md)                   | How do I evolve the harness (gates / hooks / ESLint rules / ADRs / permissions) without weakening the floor? | Maintainer | 2026-07-17    |
+| [`build-loop-gates.md`](./build-loop-gates.md)       | A receipt gate just blocked my push — what is it, and how do I get out of it legitimately?                   | Operator   | 2026-08-22    |
 
-_The first four operate a **deployment**; `maintainer.md` operates the **template itself** (V2-505, the bus-factor floor) — a different audience (the harness maintainer, not the on-call operator)._
+_The first four operate a **deployment**; `maintainer.md` and `build-loop-gates.md` operate the **template itself** — `maintainer.md` for the harness maintainer evolving the gates (V2-505, the bus-factor floor), `build-loop-gates.md` for the operator who just hit one (ADR-064)._
 
 ## How runbooks are used
 

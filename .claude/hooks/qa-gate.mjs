@@ -20,10 +20,14 @@
 //   * `prisma migrate deploy` — the word "deploy" in an unrelated verb.
 //   * read-only vercel subcommands (env, logs, ls, link, whoami, inspect, ...).
 //
-// EXPLICIT QUICKSTART ESCAPE (AC-1.4): if /quickstart ever does reach the provisioner,
-// `QUICKSTART=1 npm run deploy ...` (or a `--quickstart` flag) is honoured as an
-// exemption with an advisory note, so the fast path can never be the thing this gate
-// breaks.
+// EXPLICIT QUICKSTART ESCAPE (AC-1.4): if /quickstart ever does reach the provisioner, a
+// `Quickstart: exempt` trailer on the HEAD commit is honoured with an advisory note, so the
+// fast path can never be the thing this gate breaks. It is a RECORDED trailer, never
+// ambient state and never a command-line prefix -- AC-1.4 says so in as many words, and an
+// earlier `QUICKSTART=1 npm run deploy` form violated it: it left no trace in git, so a
+// deploy that skipped QA was indistinguishable afterwards from one that did not. The value
+// is the fixed literal `exempt`, matching review-gate.mjs, so a commit that merely
+// DESCRIBES the mechanism cannot exempt itself.
 //
 // AC-4.1/4.2 (recorded ack): `Gate-Skip: qa-gate <reason>` on the HEAD commit ALLOWS the
 // deploy and emits a loud, unmissable notice naming the gate and the reason. That is the
@@ -43,6 +47,7 @@ import { readFileSync } from "node:fs";
 import {
   commitMessage,
   gitTry,
+  isQuickstartExempt,
   norm,
   parseGateSkips,
   parseReceipts,
@@ -160,10 +165,6 @@ function isDeployCommand(command) {
     .some(segmentIsDeploy);
 }
 
-const isQuickstartExempt = (command) =>
-  /(^|\s)(QUICKSTART|CLAUDE_QUICKSTART)=(1|true)\b/.test(command) ||
-  /\s--quickstart\b/.test(command);
-
 // --- main -------------------------------------------------------------------------
 
 let stage = "read-input";
@@ -175,20 +176,24 @@ try {
   stage = "detect-deploy-intent";
   if (!isDeployCommand(command)) process.exit(0);
 
-  // AC-1.4 -- /quickstart's idea-to-URL path is exempt.
-  if (isQuickstartExempt(command)) {
-    advise(
-      `[${GATE}] ADVISORY — allowed: /quickstart is explicitly exempt from the QA receipt gate ` +
-        `(AC-1.4; the ~10-minute idea-to-URL path is preserved). This deploy is NOT QA-verified — ` +
-        `run /qa before anyone treats the URL as more than a demo.`,
-    );
-  }
-
   stage = "read-HEAD";
   if (gitTry(["rev-parse", "--git-dir"], { root: ROOT }) === null) process.exit(0); // no repo -> allow
   const head = gitTry(["rev-parse", "--verify", "HEAD"], { root: ROOT })?.trim();
   if (!head) process.exit(0); // no commits yet -> nothing to evaluate -> allow
   const message = commitMessage(head, { root: ROOT });
+
+  // AC-1.4 -- /quickstart's idea-to-URL path is exempt, on a RECORDED trailer only.
+  // The matcher lives in receipt.mjs so both gates share one implementation -- see the
+  // two guards documented there (trailer-block only, fixed literal only).
+  stage = "quickstart-exempt";
+  if (isQuickstartExempt(message, { root: ROOT })) {
+    advise(
+      `[${GATE}] ADVISORY — allowed: HEAD (${head.slice(0, 12)}) carries a recorded ` +
+        `\`Quickstart: exempt\` trailer, so the QA receipt is not required (AC-1.4; the ` +
+        `~10-minute idea-to-URL path is preserved). This deploy is NOT QA-verified — run /qa ` +
+        `before anyone treats the URL as more than a demo.`,
+    );
+  }
 
   // AC-4.1 -- recorded-ack bypass, loud and permanent.
   stage = "gate-skip";
@@ -311,8 +316,9 @@ try {
       `    QA: <scope> <tree-sha>\n` +
       `on the commit, which is what this gate reads; compute the value with\n` +
       `    node .claude/hooks/lib/receipt.mjs trailer --key QA .\n` +
-      `EXEMPT: /quickstart's push-to-deploy path is not gated at all (AC-1.4), and an explicit ` +
-      `QUICKSTART=1 prefix on this command is honoured.\n` +
+      `EXEMPT: /quickstart's push-to-deploy path is not gated at all (AC-1.4), and a recorded ` +
+      `"Quickstart: exempt" trailer on the HEAD commit is honoured. An unrecorded QUICKSTART=1 ` +
+      `command prefix is NOT — the exemption has to survive in git history.\n` +
       `DELIBERATE SKIP: add a trailer "Gate-Skip: ${GATE} <reason>" to the HEAD commit — the deploy then ` +
       `proceeds with a loud recorded notice that stays in git history and must be adjudicated in ` +
       `docs/findings-register.md (AC-4.1). Do not work around this gate any other way.`,
