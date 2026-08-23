@@ -11,7 +11,7 @@
         "top_k": 3
       },
       {
-        "prompt": "put this project online so the team can see it",
+        "prompt": "get this existing repo online with a shareable URL",
         "top_k": 3
       }
     ],

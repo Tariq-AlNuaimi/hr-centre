@@ -15,7 +15,7 @@
 // No network, no tokens, no dependencies -- Node built-ins only, mirroring
 // scripts/skill-standard-check.mjs.
 
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 // ---------- tiny text pipeline (ported faithfully) ----------
@@ -160,7 +160,17 @@ export function loadSkills(skillsDir, { skipped } = {}) {
   const skills = [];
   if (!existsSync(skillsDir)) return skills;
   for (const dir of readdirSync(skillsDir, { withFileTypes: true })) {
-    if (!dir.isDirectory()) continue;
+    // Dirent.isDirectory() is false for symlinked skills (npx skills add vendors to
+    // .agents/skills/ and symlinks here) — stat through the link or they leave the corpus.
+    if (
+      !dir.isDirectory() &&
+      !(
+        dir.isSymbolicLink() &&
+        existsSync(join(skillsDir, dir.name)) &&
+        statSync(join(skillsDir, dir.name)).isDirectory()
+      )
+    )
+      continue;
     const file = join(skillsDir, dir.name, "SKILL.md");
     if (!existsSync(file)) continue;
     const src = readFileSync(file, "utf8");

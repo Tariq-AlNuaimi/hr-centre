@@ -34,7 +34,7 @@ tax is the ≤30-line digest, not the whole file.
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
-- **Gotchas — deploy, env & CI** (8): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
+- **Gotchas — deploy, env & CI** (9): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (7): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
@@ -126,18 +126,18 @@ tax is the ≤30-line digest, not the whole file.
 
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
 
+- 2026-08-23 — **`npx skills add` can die silently before copying** (re-run + verify files landed); vendored packs = `.agents/skills/` + `.claude/skills/` symlinks, Prettier-ignored, gates stat through symlinks — decision + pointers: `docs/blueprints/vendored-skills.md`.
 - 2026-08-21 — **The web container HAS a real PostgreSQL 16 natively — `db-structure` and
-  `integration` need not skip here.** "No Docker daemon, so no DB" is half right: the `docker`
-  binary is on PATH but the daemon is unreachable, so testcontainers truly cannot run. But
-  `/usr/lib/postgresql/16` ships with a `main` cluster sitting `down`. As root:
-  `pg_ctlcluster 16 main start`; `apt-get install -y postgresql-16-pgvector` (`vector` is NOT
-  available by default); set a password on the `postgres` role; `createdb` an app + shadow DB;
-  `CREATE EXTENSION vector`; `prisma migrate deploy`. Then run the loop with `DATABASE_URL` +
-  `SHADOW_DATABASE_URL` set (throwaway local creds). Verified: `db-structure` 0.1s-degraded →
-  9.5s REAL, `integration` SKIP-mode → 6 tests / 0 skipped incl. the pgvector HNSW index-plan
-  check. `scripts/test-integration.mjs` resolves a reachable `DATABASE_URL` FIRST — that
-  "native-Postgres path" exists for exactly this and had never been used. Only the `docker`
-  image-build gate truly cannot run here. **Don't claim "no DB in a web session" without trying.**
+  `integration` need not skip here.** "No Docker daemon, so no DB" is half right: `docker` is on
+  PATH but the daemon is unreachable (testcontainers can't run), yet `/usr/lib/postgresql/16`
+  ships a `main` cluster sitting `down`. As root: `pg_ctlcluster 16 main start`;
+  `apt-get install -y postgresql-16-pgvector` (`vector` NOT default); set a `postgres` password;
+  `createdb` app + shadow DB; `CREATE EXTENSION vector`; `prisma migrate deploy`; run with
+  `DATABASE_URL` + `SHADOW_DATABASE_URL` (throwaway creds). Verified: `db-structure`
+  0.1s-degraded → 9.5s REAL; `integration` 6/6 incl. the pgvector HNSW index-plan check.
+  `scripts/test-integration.mjs` resolves a reachable `DATABASE_URL` FIRST — that path exists for
+  exactly this. Only the `docker` image-build gate truly cannot run here. **Don't claim "no DB in
+  a web session" without trying.**
 
 - 2026-08-21 — **`ship:full` has an INTERMITTENT phase-A test-gate failure. Do not read a
   single RED as a regression.** Observed across four consecutive `npm run ship:full` runs on the

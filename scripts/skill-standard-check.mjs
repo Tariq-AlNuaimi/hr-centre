@@ -17,7 +17,7 @@
 // Exit 0 = all conformant; exit 1 = drift (each problem printed as `<skill>: <field> — <why>`).
 // Run: `npm run skill-check`.
 
-import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 const SKILLS_DIR = join(process.cwd(), ".claude", "skills");
@@ -94,8 +94,16 @@ function main() {
     console.error(`skill-check: no ${SKILLS_DIR} directory — nothing to validate.`);
     process.exit(0);
   }
+  // Dirent.isDirectory() is false for symlinked skills (npx skills add vendors to
+  // .agents/skills/ and symlinks here) — stat through the link or they skip the gate.
   const dirs = readdirSync(SKILLS_DIR, { withFileTypes: true })
-    .filter((d) => d.isDirectory())
+    .filter(
+      (d) =>
+        d.isDirectory() ||
+        (d.isSymbolicLink() &&
+          existsSync(join(SKILLS_DIR, d.name)) &&
+          statSync(join(SKILLS_DIR, d.name)).isDirectory()),
+    )
     .map((d) => d.name)
     .sort();
 
