@@ -22,6 +22,10 @@ the line. The operator signs off UAT.
 
 - **Tokens only** — `no-raw-hex-color` rule: colors/tokens come from `app/tokens.css` /
   `brand.config.ts` / `chart-palette.ts` (ADR-015). No raw hex in components.
+- **Code-level checklist** — `/web-design-guidelines <files>` reviews UI source against the
+  vendored Vercel Web Interface Guidelines (a11y, focus, forms, motion, typography, hydration);
+  static and browser-free, it slots between building and the capture loop below. Where it
+  conflicts with these rules, these rules win.
 
 ## Visual iteration loop (V2-301 — binding)
 
