@@ -11,7 +11,7 @@
         "top_k": 3
       },
       {
-        "prompt": "make this page look right the first time, not after a review",
+        "prompt": "scaffold this page with our shared primitives and tokens so it is right on the first pass",
         "top_k": 3
       }
     ],
