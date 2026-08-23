@@ -8,6 +8,8 @@ title: UI — Definition of Done, design system, i18n/RTL
 Loaded when you touch `components/**`, `app/**/*.tsx`, styles, or `messages/**`. Full rubric:
 `docs/uat-rubric.md`. Copy-paste design patterns: `docs/design-recipes.md` (page header, table,
 form, filter bar, modal, state triad, a11y) + the slop gate — driven by `/design-system`.
+One-file distillation of the whole system (Stitch DESIGN.md format — theme, tokens, components,
+do/don'ts, agent guide): root `DESIGN.md`. It documents; the token sources + gates enforce.
 
 ## Build it right the first time with `/design-system`
 
