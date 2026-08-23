@@ -8,6 +8,8 @@ title: UI — Definition of Done, design system, i18n/RTL
 Loaded when you touch `components/**`, `app/**/*.tsx`, styles, or `messages/**`. Full rubric:
 `docs/uat-rubric.md`. Copy-paste design patterns: `docs/design-recipes.md` (page header, table,
 form, filter bar, modal, state triad, a11y) + the slop gate — driven by `/design-system`.
+One-file distillation of the whole system (Stitch DESIGN.md format — theme, tokens, components,
+do/don'ts, agent guide): root `DESIGN.md`. It documents; the token sources + gates enforce.
 
 ## Build it right the first time with `/design-system`
 
@@ -22,6 +24,10 @@ the line. The operator signs off UAT.
 
 - **Tokens only** — `no-raw-hex-color` rule: colors/tokens come from `app/tokens.css` /
   `brand.config.ts` / `chart-palette.ts` (ADR-015). No raw hex in components.
+- **Code-level checklist** — `/web-design-guidelines <files>` reviews UI source against the
+  vendored Vercel Web Interface Guidelines (a11y, focus, forms, motion, typography, hydration);
+  static and browser-free, it slots between building and the capture loop below. Where it
+  conflicts with these rules, these rules win.
 
 ## Visual iteration loop (V2-301 — binding)
 
