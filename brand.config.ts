@@ -68,7 +68,7 @@ const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || "My App";
 
 export const brand: BrandConfig = {
   appName,
-  description: "Fullstack Next.js application",
+  description: "Performance management for Rihal Group",
   monogram: appName.charAt(0).toUpperCase() || "A",
 
   colors: {

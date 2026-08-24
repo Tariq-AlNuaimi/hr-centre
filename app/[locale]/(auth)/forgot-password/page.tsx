@@ -54,7 +54,11 @@ export default function ForgotPasswordPage() {
         </>
       ) : (
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <form
+            method="post"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
+          >
             <TextField name="email" label={t("email")} type="email" autoComplete="email" />
             <Button type="submit" size="lg" className="w-full" disabled={loading}>
               {t("sendResetLink")}

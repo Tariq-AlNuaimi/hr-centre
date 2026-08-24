@@ -227,11 +227,82 @@ The last row also resolves the deploy script's own probe, which reported
 `! Inconclusive audit-purge probe (HTTP 200 without the skip marker)` because it ran before the
 build was live.
 
-## 11. Still not verified
+## 11. Accessibility — the axe pass, and the two defects it led to
 
-- **A formal axe accessibility audit.** The screens use semantic tables, associated labels,
-  real links rather than click-handlers on rows, and `role="alert"` on error text — but no
-  automated axe pass was run. `/design-qa` against the deployed URL is the next step.
+This is the gap §12 previously listed as unverified and that `docs/findings-register.md`
+scheduled as the first post-deploy action. Run with `@axe-core/playwright` (WCAG 2.0/2.1 A + AA)
+at 1440×900, authenticated as an HR Super Admin, **light and dark**, against a local instance on
+the demo fixture. Local rather than the deployed URL so the run needed no production credentials;
+accessibility is a client-side property and the screens are the same build.
+
+| Screen            | Light                  | Dark                   |
+| ----------------- | ---------------------- | ---------------------- |
+| People directory  | 0 violations (28 pass) | 0 violations (28 pass) |
+| Org tree          | 0 violations (22 pass) | 0 violations (22 pass) |
+| Admin → import    | 0 violations (25 pass) | 0 violations (25 pass) |
+| Admin → org setup | 0 violations (26 pass) | 0 violations (26 pass) |
+| Login             | 0 violations (21 pass) | 0 violations (21 pass) |
+
+**Zero violations is not the same as zero problems**, and this run is the demonstration. The
+login screen also returned five `color-contrast` results as **`incomplete`** — axe cannot score
+text over a gradient background, so it declines to judge rather than failing. Chasing those down
+produced two real defects:
+
+### 11a. Two WCAG AA contrast failures, hidden behind "incomplete"
+
+Measured directly: hide each text node, screenshot its box to photograph the pure background,
+composite the text colour at its actual alpha, and take the worst pixel.
+
+| Element                   | Before (worst case)                | Requirement | After  |
+| ------------------------- | ---------------------------------- | ----------- | ------ |
+| Monogram "R"              | 4.74:1 light / 4.96:1 dark         | 4.5:1       | 4.88:1 |
+| Panel heading (30px bold) | 4.10:1 light / 5.29:1 dark         | 3:1 (large) | 4.88:1 |
+| Value line (14px, /80)    | **3.17:1** light / **3.99:1** dark | 4.5:1       | 4.88:1 |
+| Copyright (14px, /60)     | **2.26:1** light / **3.01:1** dark | 4.5:1       | 4.88:1 |
+
+The gradient was `from-primary to-primary/80`, whose faded end blends toward the page
+background — so the panel was **lightest exactly where the smallest text sat**. Raising the alpha
+alone would not have fixed it: white at /80 on solid primary is 3.60:1. The fade and the
+transparency both had to go. The panel is now solid `bg-primary` with full-opacity foregrounds,
+which is what `brand.config.ts` asks for anyway ("ONE accent, solid — no gradient on product
+surfaces"); hierarchy is carried by size and weight. axe's unresolved count went 5 → 1, and the
+one that remains is the `aria-hidden` monogram, which axe skips as too-short content and which
+measures 4.88:1.
+
+Also fixed in the same pass: the panel and the page metadata still read **"Fullstack Next.js
+application"** — a rebrand leftover sitting on the product's own login page.
+
+### 11b. A pre-hydration submit put the password in the URL
+
+The axe run's own login step failed, with the credentials visible in the address bar. That was
+not a test bug. A `<form>` whose only submit path is a React `onSubmit` handler still submits
+**natively** if the user gets there before hydration, and a native submit on a form with no
+`method` is a **GET** — so the values land in the URL, in browser history, and in any `Referer`
+the next navigation sends.
+
+Reproduced deliberately with a 900 ms delay on script delivery:
+
+```
+http://…/en/login?email=victim%40example.com&password=not-a-real-password-probe
+```
+
+Same shape on three more forms: `reset-password` (worse — a new password beside the reset
+token), `forgot-password` (an email), and `components/users/UserForm.tsx`.
+
+Fixed with `method="post"` on all four, so even a submit that slips past the gate carries values
+in a body rather than a URL, plus the submit button gated on a `hydrated` flag on the two
+password forms. The same reproduction now ends on a clean `/en/login`, and the full authenticated
+axe pass still logs in normally afterwards.
+
+Both defects are template-authored surfaces, so **every fork of this template carries them**.
+Recorded in `docs/findings-register.md` with the upstream fix owed.
+
+## 12. Still not verified
+
 - **The apply step through the browser UI.** Apply was exercised end-to-end against the
   database (§5a above) and the confirm button was rendered and enabled, but the final click
   was not taken in the browser session.
+- **Visual regression baseline.** The four captures in this directory are evidence, not a
+  committed `baseline/` set, so `npm run visual-regression` has nothing to diff against yet.
+- **RTL.** This fork is English-only (`project.config.json` `locales: ["en"]`), so the Arabic
+  path is inert by design — see §8.
