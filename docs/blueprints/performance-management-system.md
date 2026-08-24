@@ -302,24 +302,45 @@ Resolved with the operator before build:
 - **Q: Excel contract — match an existing export, or define one?** → Define it from §3.3's
   eleven fields and ship a downloadable `.xlsx` template plus a validation report, so HR maps
   their Odoo export onto it.
-- **Q: Live URL for HR review?** → Yes, deploy once Phase 1 is green.
+- **Q: Live URL for HR review?** → Yes, deploy once Phase 1 is green (via a PR into `main`).
 
-Still open, and **not blocking Phase 1** — they land with the phase that needs them:
+Resolved with the operator after Phase 1, before the phases that consume them:
 
-- **Corporate/Departmental score entry (§8.4).** The Strategy team has no system access and HR
-  keys their scores in. Is that one score per entity/department per year, or can it be revised
-  after entry? Assumption: revisable until the calibration gate opens, with every revision
-  audited. _Needed by Phase 5._
-- **Grace window length (§5.5).** "Still unresolved after a grace window → HR intervenes." The
-  spec does not fix the duration. Assumption: an HR-configurable setting per cycle, defaulting
-  to 3 working days. _Needed by Phase 2._
-- **360 anonymity floor (§13.1).** Comments are consolidated and unattributed, but with exactly
-  3 raters (one of them always the line manager, §9.4) a reader can often infer the source.
-  Flagged for HR: is that acceptable, or should manager feedback be presented separately from
-  the two anonymous raters? _Needed by Phase 4._
+- **Grace window length (§5.5)** → **HR-configurable per cycle, defaulting to 3 working days**
+  after the missed deadline. Configurable because goal-setting (December) and year-end may
+  warrant different patience; 3 days because a longer window on a December deadline pushes HR's
+  intervention past the cycle boundary. _Builds in Phase 2._
+
+- **360 anonymity (§13.1 / §9.4)** → **Line-manager feedback is presented as the manager's;
+  the peer and third rater are pooled anonymously.**
+
+  The spec asks for all comments consolidated and unattributed, but §9.4 fixes exactly three
+  raters and one is _always_ the line manager — so an employee can usually deduce which comment
+  is theirs. Pooling all three would promise an anonymity the structure cannot deliver, and a
+  promise that visibly fails costs more trust than one never made. Separating the manager (whose
+  feedback the employee already receives directly in the review conversation) leaves the two
+  genuinely anonymous voices genuinely anonymous.
+
+  **This is a deliberate, operator-approved divergence from §13.1's literal wording** — the only
+  one in the blueprint. Appendix A's "the system mirrors the existing manual process" still
+  holds in substance: the manual process never hid manager feedback either. _Builds in Phase 4._
+
+- **Bonus rounding (§11.4)** → **Round half-up to 3 decimal places** (OMR baisa). The schema
+  already stores `basicSalary` as `Decimal(14,3)`, so the money path stays exact end to end with
+  no representation loss, and rounding is neither systematically generous nor systematically
+  short. Implemented as a **single configurable step** so matching a different payroll
+  convention later is one change, not a rework. _Builds in Phase 5._
+
+- **Corporate/Departmental score entry (§8.4)** → **Revisable until the calibration gate opens,
+  then locked**; every revision audited. This matches §10.7's sequencing ("no calibration until
+  all raw scores are in") and treats a mistyped score as a typo rather than a formal override.
+  After the gate opens, a change would silently invalidate the distribution HR calibrated
+  against — so it becomes an audited HR Super Admin override with a mandatory reason, on the
+  same footing as a calibration adjustment. _Builds in Phase 5._
+
+Still open — **not blocking any phase before 6**:
+
 - **Transfer mid-cycle + 360 (§12.3).** 360 runs once from wherever the employee sits at
   year-end, but their KPI score is day-weighted across two departments. Confirm the 360
   component is **not** day-weighted. Assumption: not weighted, per §12.3's "done once". _Needed
   by Phase 6._
-- **Bonus rounding (§11.4).** `(coefficient × salary) × (workDays ÷ 365)` will rarely land on a
-  whole unit. Payroll's rounding convention is unstated. _Needed by Phase 5._
