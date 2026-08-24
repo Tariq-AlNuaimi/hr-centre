@@ -89,6 +89,11 @@
       "why": "LIVE EVIDENCE \u2014 backs the open SECURITY.md \u00a716 atomic-audit row and an adjudicated findings-register entry; the trigger battery is the runnable artifact a fork applies. Not template build history."
     },
     {
+      "glob": "docs/verification/pms-phase1/**",
+      "inheritance": "fork",
+      "why": "LIVE EVIDENCE \u2014 this PRODUCT's Phase 1 verification record (migration against real PostgreSQL 16, 12/12 DB invariants, the recursive-CTE chain walk, the import pipeline end-to-end, and the permission matrix asserted on live API payloads), plus the four screenshots the README cites by filename. It backs an adjudicated findings-register entry and is not template build history. First-match-wins: this must stay ABOVE the docs/verification/** catch-all. Added after the catch-all deleted this set TWICE \u2014 once via /rebrand and again via the prune scripts/deploy.mjs shells out to."
+    },
+    {
       "glob": "docs/verification/**",
       "inheritance": "template-dev",
       "why": "design-QA evidence for the template's own build (the pattern is inherited via the recipes/rubric, not the evidence)"
