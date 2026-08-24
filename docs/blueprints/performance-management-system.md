@@ -1,6 +1,6 @@
 # Blueprint — Performance Management System (PMS)
 
-Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, components/pms/**, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
+Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, app/api/cycles/**, app/api/internal/cycle-sweep/**, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, components/pms/**, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
 
 > Source of truth: `Performance_Management_System.docx` v1.0 (2026-08-24), supplied by the
 > operator's HR team. Section references (§) throughout this document point at that
@@ -313,6 +313,135 @@ the COO logs in and sees org-wide with salary, read-only.
    query; import is batched, not row-by-row round trips.
 5. **High-Quality** — honest empty/loading/error states; the import preview _is_ the error
    surface (rejects shown with reasons and row numbers); axe-clean; dark mode and RTL.
+
+---
+
+## Phase 2 — Cycles, goal-setting, sign-offs & escalation (§2, §5)
+
+Clause text was re-read from the source specification for this phase, so the rules below are
+quoted behaviour, not reconstruction.
+
+### The rules being implemented
+
+| Clause | Rule                                                                                                                                                                                                                                                                                                                              |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §2     | Annual cycle, three touchpoints: goal-setting (December of prior year), mid-year (June/July, **no scoring**), year-end (December). HR sets each stage's deadline; deadlines are **hard locks**.                                                                                                                                   |
+| §5.1   | HR opens cycle → manager drafts → employee reviews → **both** sign (agreement) → HR reviews and approves → **HR approval is the lock**. Sign-off is agreement, never the lock.                                                                                                                                                    |
+| §5.2   | Per KPI: description, weightage %, and **five** level descriptors — Outstanding 5, Excellent 4, Target 3, Almost Achieved 2, Unsatisfactory 1.                                                                                                                                                                                    |
+| §5.3   | **No reject button.** Unsigned _is_ the disagreement signal; discussion is offline. KPIs cannot be signed or locked unless weightages total **exactly 100%**.                                                                                                                                                                     |
+| §5.4   | After a deadline the relevant party can no longer act. Employee misses → locks with status "Employee did not sign", set moves to HR review.                                                                                                                                                                                       |
+| §5.5   | Ladder: approaching deadline → escalating reminders to the manager; **deadline missed → skip-level AND HR notified in parallel**, compliance logging begins; still unresolved **after the grace window** → HR intervenes formally. Manager's own sign-off step follows the same logic, status "employee signed, manager did not". |
+| §5.6   | Log manager name, what was missed, by how long, and whether skip-level or HR intervention was required. Feeds §11.2.                                                                                                                                                                                                              |
+| §8.3   | **C-Level skip goal-setting entirely.**                                                                                                                                                                                                                                                                                           |
+| §12.2  | Manager-of-record is **whoever holds the relationship at the time of each action**; a new manager inherits signed KPIs, and signed work stays locked and valid.                                                                                                                                                                   |
+
+### Data model (Phase 2)
+
+```prisma
+enum CycleStatus    { DRAFT  OPEN  CLOSED }
+enum CycleStageKind { GOAL_SETTING  MID_YEAR  YEAR_END }        // §2's three touchpoints
+enum SignOffParty   { EMPLOYEE  MANAGER }                       // §5.1 — exactly two parties
+enum ComplianceKind { REMINDER_SENT  DEADLINE_MISSED  ESCALATED_SKIP_LEVEL
+                      ESCALATED_HR  HR_EXTENDED_DEADLINE  HR_MARKED_NON_COMPLIANT }
+
+model PerformanceCycle { id, year @unique, status, openedById, openedAt }
+model CycleStage       { id, cycleId, kind, opensAt, deadline, graceDays @default(3)
+                         @@unique([cycleId, kind]) }
+model CycleParticipant { id, cycleId, employeeId, goalsApprovedAt?, goalsApprovedById?
+                         @@unique([cycleId, employeeId]) }
+model Kpi              { id, participantId, description, weightage Decimal(5,2),
+                         descriptorOutstanding, descriptorExcellent, descriptorTarget,
+                         descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex }
+model SignOff          { id, participantId, party, signedByEmployeeId, signedAt
+                         @@unique([participantId, party]) }
+model ComplianceEvent  { id, cycleId, stageKind, subjectEmployeeId, managerEmployeeId?,
+                         kind, missedByHours?, detail, occurredAt }
+```
+
+### Three design decisions
+
+- **Five descriptors are five columns, not a child table.** §5.2 fixes exactly five levels.
+  Columns make "exactly five" true by construction; a child table would permit four or six and
+  then need a constraint to forbid what the schema should not have been able to express.
+- **`CycleParticipant` does not snapshot `managerId`.** §12.2 defines manager-of-record as
+  whoever holds the relationship _at the time of each action_, so the manager is resolved live
+  from `Employee.managerId` and only the _signer_ is recorded, on the `SignOff` row.
+  Snapshotting would leave a reassigned manager unable to act on their own reports, and §12.2 is
+  explicit that a new manager picks up from wherever things stand.
+- **No `REJECTED` state anywhere.** §5.3 is explicit that unsigned is the signal. A reject action
+  would invent process the spec deliberately omits, and would give an employee a button whose
+  real-world meaning ("we have not agreed yet") the absence of a signature already carries.
+
+### User stories & acceptance criteria (Phase 2)
+
+**US-9 — HR opens a performance year.**
+_Accepts when:_ HR Super Admin or HRBP creates a cycle for a year, sets a deadline for each of
+the three stages, and opens it; every ACTIVE employee becomes a participant; re-running
+enrolment after an import adds only the joiners (§3.5) and disturbs nobody.
+
+**US-10 — A manager drafts KPIs for a direct report.**
+_Accepts when:_ a line manager can author KPIs — description, weightage, all five descriptors —
+for a **direct report only**; a report two levels down is view-only (§4.2); a C-Level employee
+has no goal-setting step at all (§8.3).
+
+**US-11 — Weightages must total exactly 100% to sign.**
+_Accepts when:_ a draft may sit at any total while being edited, and sign-off is refused at
+99.99% with the gap stated (§5.3).
+
+**US-12 — Both parties sign; HR's approval is what locks.**
+_Accepts when:_ employee and manager sign independently, in either order; neither signature
+prevents further edits; **HR approval** freezes the KPI set, after which an edit is refused
+(§5.1).
+
+**US-13 — A deadline is a hard lock.**
+_Accepts when:_ one second past a stage deadline the party can no longer act; an employee who
+did not sign shows "Employee did not sign" and their set moves to HR review (§5.4).
+
+**US-14 — A missed manager deadline reaches HR and the skip-level at the same moment.**
+_Accepts when:_ the sweep emits `DEADLINE_MISSED`, `ESCALATED_SKIP_LEVEL` and `ESCALATED_HR` in
+the **same** run — not staged behind the grace window — and the grace window gates only HR's
+formal intervention (§5.5). Re-running the sweep never double-logs.
+
+**US-15 — The compliance record answers §11.2's question.**
+_Accepts when:_ each event records the manager, what was missed, by how long, and whether it
+required skip-level or HR intervention (§5.6).
+
+**US-16 — HR grants HR roles through the UI.**
+_Accepts when:_ an HR Super Admin can grant and revoke `pmsRoles` on the employee record,
+retiring the seed-time bootstrap in `prisma/seed-pms.ts` (the Phase 1 stopgap recorded there).
+
+### Scenarios
+
+**Happy path.** HR opens 2027 with three deadlines → the Engineering Director drafts four KPIs
+for each direct report, weightages summing to 100 → each employee reads the descriptors and
+signs → the manager signs → HR approves → the set is locked and visible to the chain, without
+salary anywhere near it.
+
+**Worst paths.**
+
+- **Manager never drafts.** Employee is blocked through no fault of their own (§5.5's stated
+  principle). Reminders escalate; at the deadline the skip-level director and HR are notified
+  together; after the grace window HR extends, intervenes, or marks formal non-compliance —
+  each of those a logged event.
+- **Employee never signs.** The stage locks, status reads "Employee did not sign", and the set
+  moves to HR review. Responsibility sits with the employee (§5.4) — the manager is not marked
+  non-compliant for it.
+- **Employee signed, manager did not.** Flagged to HR and skip-level with that exact status
+  string (§5.5).
+- **Weightages total 95%.** Draft saves; sign-off refuses and says which 5% is missing (§5.3).
+- **Manager leaves mid-cycle.** Reports roll up one level (§12.1); the new manager inherits the
+  signed baseline and does not re-draft (§12.2); signatures already given stay valid.
+- **HR approves, then a manager tries to "just fix a typo".** Refused — approval is the lock
+  (§5.1). The correction path is Phase 3's change request (§6.2), which is where an audited
+  amendment belongs.
+- **The sweep runs twice in a day** (a retry, or a manual invocation). Idempotent per
+  participant/stage/kind, so the compliance record stays honest.
+
+### Out of Phase 2
+
+Mid-year change requests and KPI version history (§6, Phase 3); any scoring (§2 is explicit that
+scoring happens once, at year-end); 360 (§9); calibration and bonus (§10, §11); and §12.3's
+mid-cycle transfer split, which needs `EmployeeAssignmentPeriod` from Phase 6.
 
 ## Open questions
 

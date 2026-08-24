@@ -35,6 +35,17 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [scalable/pillar] **Two unbounded `findMany` calls in
+  `app/api/cycles/[id]/stages/route.ts`, marked `pillar:scalable-ok`.** Both read
+  `cycle_stages` for one cycle. The table is bounded by the domain rather than by a `take`: §2
+  fixes exactly three touchpoints, `CycleStageKind` has exactly three members, and
+  `@@unique([cycleId, kind])` makes a fourth row for a cycle unrepresentable. The `kind: { in: kinds }`
+  filter is additionally capped at 3 by zod (`updateCycleStagesSchema`). Paginating a
+  three-row read would add a cursor to a list that cannot grow, and would make the
+  three-deadlines-together UI fetch in pages. Re-examine if a later phase adds a stage kind —
+  the bound is the enum, so it moves when the enum does. — Tariq Al-Naaimi — status:
+  adjudicated(2026-08-24)
+
 - 2026-08-24 — [secure/data] **`employees.basicSalary` is plaintext at rest — options written
   up, DECISION OWED before real data.** The column is Restricted (SECURITY.md §1) and every
   control on it today is access-layer: omitted from the `select` for unentitled actors, scrubbed

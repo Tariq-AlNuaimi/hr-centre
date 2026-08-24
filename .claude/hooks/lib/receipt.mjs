@@ -144,6 +144,47 @@ export function isSkipAdjudicated(registerText, gate) {
 const WHOLE_TREE_TOKENS = new Set([".", "*", "**", "<all>", "all"]);
 
 /** Run git, throwing on failure. Callers fail open on the throw. */
+/**
+ * The repository a hook should evaluate.
+ *
+ * Every receipt gate used to resolve `process.env.CLAUDE_PROJECT_DIR ?? process.cwd()`.
+ * Hooks run in the HARNESS process, so that names the session's primary working
+ * directory — which is only the repo being acted on when the session has exactly
+ * one checkout. It does not, the moment a session forks a product out of this
+ * template and runs commands in the second clone: a real `npm run deploy` was
+ * denied while citing an entirely unrelated repository's HEAD.
+ *
+ * It failed CLOSED there, which is the safe direction. The dangerous direction is
+ * the mirror: a receipt trailer sitting on the primary dir's HEAD SATISFIES the
+ * gate for a deploy of a different, unreviewed repo — and receipts are bound to a
+ * tree-sha, so it would be checking one repo's tree against another repo's gate.
+ *
+ * So prefer the git toplevel of the directory the tool call actually ran in, when
+ * the harness tells us what that was. When it does not, behaviour is exactly what
+ * it was before — this can only ever make a gate look at a MORE correct repo,
+ * never a less correct one.
+ */
+/**
+ * The repository a GIT hook should evaluate.
+ *
+ * A pre-push hook is, by definition, already running inside the repo being
+ * pushed — so its own cwd is the authority and `CLAUDE_PROJECT_DIR` taking
+ * precedence is the hazard, not the fallback. Inverted here relative to
+ * `resolveRoot`, deliberately.
+ */
+export function resolveRootFromCwd() {
+  const top = gitTry(["rev-parse", "--show-toplevel"], { root: process.cwd() })?.trim();
+  return top || process.env.CLAUDE_PROJECT_DIR || process.cwd();
+}
+
+export function resolveRoot(input) {
+  const fallback = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+  const cwd = typeof input?.cwd === "string" && input.cwd.trim() ? input.cwd : null;
+  if (!cwd) return fallback;
+  const top = gitTry(["rev-parse", "--show-toplevel"], { root: cwd })?.trim();
+  return top || fallback;
+}
+
 export function git(args, { root = process.cwd(), env = {}, input } = {}) {
   const r = spawnSync("git", args, {
     cwd: root,

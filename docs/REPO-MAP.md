@@ -23,6 +23,10 @@
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
+- app/api/cycles/[id]/route.ts  [GET,PUT]
+- app/api/cycles/[id]/stages/route.ts  [PUT]
+- app/api/cycles/route.ts  [GET,POST]
+- app/api/employees/[id]/pms-roles/route.ts  [PUT]
 - app/api/employees/[id]/route.ts  [GET,PUT]
 - app/api/employees/route.ts  [GET]
 - app/api/health/route.ts  [GET]
@@ -49,9 +53,15 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, roleTrack, pmsRoles, basicSalary, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
+- PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt
+- CycleStage: id, cycleId, cycle, kind, opensAt, deadline, graceDays, createdAt, updatedAt
+- CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, createdAt, updatedAt
+- ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, occurredAt
+- SignOff: id, participantId, participant, party, signedByEmployeeId, signedByEmployee, signedAt, createdAt
+- Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, deletedAt, deletedBy, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -70,6 +80,7 @@
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/pms/actor.ts: ResolvedActor, resolveActor
+- lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders
 - lib/pms/import/checks/employment.ts: checkSalary, checkLastWorkingDay, checkUnpaidLeave
@@ -92,6 +103,7 @@
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
