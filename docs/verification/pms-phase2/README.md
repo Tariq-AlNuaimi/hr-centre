@@ -99,7 +99,72 @@ HR authority is now granted by a person, to a person, on the record, through the
 seed bootstrap still runs on a fixture-only database so a fresh deploy has a first way in, and
 still refuses the moment real org data is present.
 
-## 7. Still not verified in 2a
+## 7. Phase 2b / 2c / screens — built as three parallel units
+
+Three write-disjoint units ran concurrently against a shared seam (`lib/pms/kpi.ts`,
+`lib/validations/kpi.ts`) written first so §5.3's exactly-100% rule has ONE implementation that
+the drafting UI, the sign-off route and HR's approval all consume.
+
+| Unit               | Owned                                                                 | Tests |
+| ------------------ | --------------------------------------------------------------------- | ----- |
+| KPI drafting       | `app/api/kpis/**`, participants roster                                | 26    |
+| Sign-offs + ladder | `lib/pms/signoff.ts`, `compliance.ts`, sign-off/approve/sweep routes  | 24    |
+| Screens            | `admin/cycles`, `admin/roles`, `components/pms/Cycle*`, sidebar, i18n | —     |
+
+**135 contract tests pass** across the phase. Full `npm run ship` green with all three integrated.
+
+### 7a. Four defects the parallel units surfaced — all fixed
+
+1. **`updateKpiSchema` reset KPI order on every partial edit.** `z.object({...}).partial()` does
+   NOT strip a `.default()`, so `safeParse({})` succeeded with `{ orderIndex: 0 }`. A manager
+   rewording a KPI would have silently moved it to the top of their list, and the "Nothing to
+   update" guard could never fire. Rebuilt the update schema from an undefaulted field shape;
+   create keeps its default. Pinned in `pms-weightage.test.ts` and `pms-kpi.test.ts`.
+2. **`GET /api/employees` never returned `pmsRoles`.** The column was selected in Prisma since
+   Phase 1 but dropped by `serializeEmployee`, so the HR-roles screen could not display the roles
+   it was editing — every row would have read "Unknown". Carried through now, for every actor:
+   §4.5's field-level restriction names salary and bonus specifically, and §5.5's escalation
+   ladder depends on people being able to tell who HR is. Visible working in `02-roles.png`.
+3. **The `admin` breadcrumb linked to a page that does not exist.** `/admin/import`,
+   `/admin/org-setup`, `/admin/cycles` and `/admin/roles` all exist; `/admin` does not. Every one
+   of those screens rendered a clickable "Admin" crumb pointing at a 404, and Next prefetched it
+   on render — so the 404 fired whether or not anyone clicked. **Predates Phase 2** and affected
+   the Phase 1 admin screens identically. Grouping segments now render as plain text. Verified:
+   all three admin routes report zero failing requests where they previously reported one each.
+4. **Duplicated KPI select and serialiser across two route files.** A Next route module may only
+   export HTTP verbs, so the two KPI routes could not share helpers; extracted to
+   `lib/pms/kpi-select.ts` beside `employee-select.ts`.
+
+### 7b. Screens — looked at, not assumed
+
+Captured at 1440×900, light and dark, authenticated as HR Super Admin.
+
+| Screen          | axe (light)                | axe (dark)                 |
+| --------------- | -------------------------- | -------------------------- |
+| `/admin/cycles` | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
+| `/admin/roles`  | 0 violations, 1 unresolved | 0 violations, 1 unresolved |
+
+The unresolved item is `color-contrast` on **row 10 only**, reported as "background could not be
+determined because it's partially obscured by another element" — the sticky-header overlap
+artifact. The identical elements in the other nineteen rows scored clean, which is what makes it
+an artifact rather than a finding.
+
+`01-cycles.png` shows the three touchpoints with **opens and locks times**, not just dates — §5.4
+makes a deadline a hard lock, so the time is the fact. A CLOSED cycle offers "no further changes"
+rather than controls that would 409.
+
+`02-roles.png` shows the additive roles rendering as badges (§4.3), and is the proof that defect
+2 above is fixed.
+
+## 8. Still not verified
+
+- **The KPI drafting and sign-off screens.** 2b and 2c ship their APIs and domain logic with
+  contract tests; the manager-facing drafting UI and the My Tasks split (§4.4) are the next
+  increment.
+- **The escalation sweep against a live database.** Its ladder is a pure function with 24 tests
+  including the §5.5 ordering and idempotency, and the DB-level idempotency constraint was
+  proven in §3 above (invariant 13) — but the cron has not yet been run end to end against a
+  seeded cycle with a rolled-forward clock.
 
 - **Screens.** 2a ships the API and domain layer; the HR cycle-admin and role-admin screens land
   with the browser pass, alongside 2b's KPI drafting UI.

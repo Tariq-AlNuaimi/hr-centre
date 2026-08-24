@@ -35,6 +35,25 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [maintainable/correctness] **`Kpi` is not registered in `SOFT_DELETE_MODELS`,
+  and two independent Phase 2 units hit it.** `lib/prisma/soft-delete-extension.ts` filters
+  `User`, `Employee`, `Department`, `OrgEntity`. `Kpi` carries `deletedAt`/`deletedBy` but is
+  absent, so `prisma.kpi.delete()` is a HARD delete and `prisma.kpi.findMany` returns withdrawn
+  rows. The sharpest consequence named: **a soft-deleted KPI counted toward the §5.3 total would
+  let a set sign at a weightage the employee cannot see.** Both units worked around it
+  independently with an explicit `deletedAt: null` on every KPI read, and `weightageSummary` in
+  `lib/pms/kpi-select.ts` does the same, so the shipped code is correct today.
+  **An important qualification:** registering `Kpi` would fix top-level reads but NOT the case
+  that actually matters here. That file's own comment records that the extension filters the
+  top-level `where` only — a relation pulled via `include`/`select` (which is exactly how
+  `weightageSummary` reads `participant.kpis`) still surfaces soft-deleted children. So the
+  explicit filters are the real fix in both worlds, and registration is defence in depth plus
+  recycling-bin visibility, not a substitute.
+  **Not applied:** `lib/prisma/**` is an Ask-before surface (CLAUDE.md). — status:
+  adjudicated(2026-08-24), decision SCHEDULED with the operator; safe in the interim because
+  every KPI read in Phase 2 filters explicitly, pinned by the tests in
+  `tests/contracts/pms-kpi.test.ts`
+
 - 2026-08-24 — [scalable/pillar] **Two unbounded `findMany` calls in
   `app/api/cycles/[id]/stages/route.ts`, marked `pillar:scalable-ok`.** Both read
   `cycle_stages` for one cycle. The table is bounded by the domain rather than by a `take`: §2

@@ -38,7 +38,9 @@
     "people": "People",
     "org": "Org chart",
     "employeeImport": "Employee import",
-    "orgSetup": "Org setup"
+    "orgSetup": "Org setup",
+    "cycles": "Performance cycles",
+    "hrRoles": "HR roles"
   },
   "auth": {
     "login": "Login",
@@ -303,6 +305,107 @@
       "loadFailed": "Could not load org setup.",
       "notPermitted": "Org setup is available to the HR Super Admin only.",
       "entityCodePlaceholder": "RIHAL"
+    },
+    "cycles": {
+      "title": "Performance cycles",
+      "subtitle": "One cycle per performance year, with the three touchpoints HR sets deadlines for.",
+      "notPermitted": "Performance cycles are managed by HR. Your own deadlines appear on your own screens.",
+      "loadFailed": "Could not load the performance cycles.",
+      "retry": "Try again",
+      "newAction": "New cycle",
+      "createAction": "Create cycle",
+      "saveDeadlines": "Save deadlines",
+      "saving": "Saving…",
+      "year": "Year",
+      "participants": "Participants",
+      "actions": "Actions",
+      "enrolledAtOpen": "Enrolled when the cycle opens",
+      "openedBy": "Opened by {name}",
+      "stage": {
+        "GOAL_SETTING": "Goal setting",
+        "MID_YEAR": "Mid-year",
+        "YEAR_END": "Year-end"
+      },
+      "stageNotSet": "Not set",
+      "opensValue": "Opens {date}",
+      "deadlineValue": "Locks {datetime}",
+      "graceValue": "{days} days grace",
+      "statusValue": {
+        "DRAFT": "Draft",
+        "OPEN": "Open",
+        "CLOSED": "Closed"
+      },
+      "empty": "No cycles yet. Create the performance year with its three deadlines to get started.",
+      "emptyViewer": "No performance cycles have been created yet.",
+      "openAction": "Open cycle",
+      "openConfirmTitle": "Open the {year} cycle?",
+      "openConfirmBody": "Opening enrolls every active employee as a participant and makes the year live. A cycle cannot go back to draft.",
+      "closeAction": "Close cycle",
+      "closeConfirmTitle": "Close the {year} cycle?",
+      "closeConfirmBody": "Closing ends the year. A closed cycle cannot be reopened, and its deadlines can no longer change.",
+      "closedNote": "Closed — no further changes",
+      "editAction": "Edit deadlines",
+      "extendAction": "Extend deadlines",
+      "createTitle": "New performance cycle",
+      "createNote": "Set the year and all three touchpoints together. The cycle starts as a draft, so nothing is live until you open it.",
+      "editTitle": "Edit the {year} deadlines",
+      "editNote": "The cycle is still a draft, so these dates are not binding on anyone yet.",
+      "extendTitle": "Extend the {year} deadlines",
+      "extendNote": "Moving a deadline on an open cycle is a formal extension. It is recorded in the audit trail with your name on it.",
+      "created": "The {year} cycle was created as a draft.",
+      "deadlinesSaved": "The deadlines for {year} were updated.",
+      "opened": "The {year} cycle is open. {count} participants enrolled.",
+      "closed": "The {year} cycle is closed.",
+      "saveFailed": "Could not save the cycle.",
+      "statusFailed": "Could not change the cycle status.",
+      "form": {
+        "year": "Year",
+        "yearHelp": "The performance year, for example 2026. Goal setting for it usually happens in December of the year before.",
+        "opensAt": "Opens",
+        "opensHelp": "Opens at 00:00 on this day.",
+        "deadline": "Deadline",
+        "deadlineHelp": "Locks at 23:59 on this day.",
+        "graceDays": "Grace days",
+        "graceHelp": "Days after the deadline for HR to intervene. Three by default."
+      },
+      "validation": {
+        "year": "Enter a year between 2000 and 2100.",
+        "dateRequired": "Pick a date for this stage.",
+        "deadlineBeforeOpens": "The deadline cannot be before the day the stage opens.",
+        "graceRange": "Grace days must be a whole number between 0 and 30."
+      }
+    },
+    "roles": {
+      "title": "HR roles",
+      "subtitle": "Who holds HR authority. Roles are additive — a person may hold more than one.",
+      "notPermitted": "Only an HR Super Admin can grant or revoke HR roles.",
+      "loadFailed": "Could not load the employee directory.",
+      "retry": "Try again",
+      "currentRoles": "HR roles",
+      "actions": "Actions",
+      "manageAction": "Manage roles",
+      "noRoles": "None",
+      "rolesUnknown": "Unknown",
+      "rolesUnknownNote": "The directory does not report existing HR roles yet, so this list starts empty. Saving replaces this person's whole role set — tick every role they should keep.",
+      "noEmployees": "No employees yet. Import the employee sheet first.",
+      "noMatches": "No employees match that search.",
+      "dialogTitle": "HR roles for {name}",
+      "dialogNote": "Ticking a box grants the role; unticking revokes it. The whole set is saved at once.",
+      "roleName": {
+        "HR_SUPER_ADMIN": "HR super admin",
+        "HRBP": "HRBP",
+        "EXECUTIVE_VIEWER": "Executive viewer"
+      },
+      "roleHint": {
+        "HR_SUPER_ADMIN": "Everything: configuration, calibration, the master export, and granting these roles.",
+        "HRBP": "Runs the cycle org-wide, but does not configure the organization.",
+        "EXECUTIVE_VIEWER": "Sees the whole organization, read-only, and acts on nothing."
+      },
+      "ownSuperAdminNote": "You cannot remove your own HR Super Admin role — it is the only role that can grant itself. Ask another Super Admin to do it.",
+      "saveAction": "Save roles",
+      "saving": "Saving…",
+      "saved": "HR roles updated for {name}.",
+      "saveFailed": "Could not update the HR roles."
     }
   }
 }
