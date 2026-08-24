@@ -79,7 +79,7 @@
 - lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_ROWS, MAX_SHEETS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
 - lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, ReconcilePlan, reconcile
 - lib/pms/import/run.ts: previewImport, applyImport
-- lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor
+- lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor

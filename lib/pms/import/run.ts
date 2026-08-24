@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { loadEmployeesFromXlsx } from "./loaders/xlsx";
 import { reconcile, type ExistingEmployee, type ReconcileContext } from "./reconcile";
 import { validateRows, type ValidationContext } from "./validate";
-import { countsFor, type ImportPreview, type ValidatedRow } from "./types";
+import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
 
 /**
  * Import orchestration — spec §3.
@@ -114,6 +114,9 @@ async function loadContext(): Promise<{
       departmentsByName,
       entitiesByKey,
       existingOdooIds: new Set(existing.keys()),
+      // Lower-cased to match how checkNameAndEmail normalises the source row;
+      // built from the same `employees` read, so this costs no extra query.
+      emailOwners: new Map(employees.map((e) => [e.email.trim().toLowerCase(), e.odooId] as const)),
     },
     reconcile: { existing, departmentNames, entityCodes },
   };
@@ -146,6 +149,7 @@ export async function previewImport(params: {
   };
 
   const counts = countsFor(preview);
+  const digest = planDigest(validRows);
 
   const batch = await prisma.importBatch.create({
     data: {
@@ -163,6 +167,10 @@ export async function previewImport(params: {
         updates: preview.updates,
         absent: preview.absent,
         issues: preview.issues,
+        // Fingerprint of the rows this plan would WRITE. Persisted here rather
+        // than in a column so no migration is needed; re-checked at apply so a
+        // different file cannot pass as the reviewed one (see planDigest).
+        planDigest: digest,
       } as object,
       issues: {
         create: preview.issues.map((i) => ({
@@ -202,7 +210,14 @@ export async function applyImport(params: {
 }): Promise<{ created: number; updated: number }> {
   const batch = await prisma.importBatch.findUnique({
     where: { id: params.batchId },
-    select: { id: true, status: true, rowsCreated: true, rowsUpdated: true, rowsRejected: true },
+    select: {
+      id: true,
+      status: true,
+      rowsCreated: true,
+      rowsUpdated: true,
+      rowsRejected: true,
+      previewJson: true,
+    },
   });
   if (!batch) throw new Error("Import batch not found");
   if (batch.status !== "PREVIEWED") {
@@ -232,6 +247,33 @@ export async function applyImport(params: {
     throw new Error(
       "The organization changed since this preview was generated, so the plan no longer " +
         "matches what was reviewed. Upload the file again to get a fresh preview.",
+    );
+  }
+
+  // The counts above catch the org moving underneath a plan — another admin
+  // adding someone turns a create into an update. They do NOT catch a different
+  // FILE: two sheets with one create each produce identical counts while writing
+  // entirely different people. The digest is what makes "confirm exactly what
+  // you reviewed" true rather than aspirational.
+  const reviewedDigest =
+    batch.previewJson && typeof batch.previewJson === "object" && !Array.isArray(batch.previewJson)
+      ? (batch.previewJson as Record<string, unknown>).planDigest
+      : undefined;
+
+  if (typeof reviewedDigest !== "string") {
+    // A batch previewed before digests existed. Refusing is the conservative
+    // read: this batch cannot be shown to match what was reviewed, and a fresh
+    // preview costs one upload.
+    throw new Error(
+      "This preview predates content verification and cannot be confirmed. " +
+        "Upload the file again to get a fresh preview.",
+    );
+  }
+
+  if (planDigest(validRows) !== reviewedDigest) {
+    throw new Error(
+      "The file submitted for confirmation is not the one that was previewed — its contents " +
+        "differ from the plan that was reviewed. Upload it again to get a fresh preview.",
     );
   }
 

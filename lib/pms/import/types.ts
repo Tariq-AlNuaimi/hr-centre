@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { EmployeeStatus, RoleTrack } from "@/generated/prisma/client";
 
 /**
@@ -197,10 +198,17 @@ export type AbsentEmployee = {
 export type PlannedChange = PlannedCreate | PlannedUpdate;
 
 /**
- * The complete dry run. Persisted to `ImportBatch.previewJson` so the apply step
- * replays what a human reviewed rather than re-parsing an uploaded file — the
- * operator confirms exactly what they were shown, and the file itself (which
- * carries Restricted salary data) is never retained.
+ * The complete dry run.
+ *
+ * The human-facing half is persisted to `ImportBatch.previewJson`; `validRows`
+ * is NOT, because it carries Restricted salary figures and that column is read
+ * back by any HR user who can see the batch. So the apply step does not replay a
+ * stored plan — it re-parses the file the operator re-submits and re-derives the
+ * rows against a live org.
+ *
+ * That re-derivation is what makes "the operator confirms exactly what they were
+ * shown" a claim needing enforcement rather than a structural fact, which is why
+ * `planDigest` below is persisted next to the plan and re-checked at apply.
  */
 export type ImportPreview = {
   filename: string;
@@ -233,4 +241,44 @@ export function countsFor(preview: ImportPreview): ImportCounts {
     ).size,
     rowsAbsent: preview.absent.length,
   };
+}
+
+/**
+ * A content fingerprint of the rows an apply will actually write.
+ *
+ * The two-step preview→confirm flow exists so the operator "confirms exactly
+ * what they were shown". Comparing the three aggregate COUNTS does not deliver
+ * that: a different file with coincidentally the same shape — one create, no
+ * updates, no rejects — passes the comparison and gets written. That is not a
+ * contrived case; the ordinary way to hit it is to re-upload a newer export at
+ * the confirm step and have it happen to add the same number of people.
+ *
+ * So the plan is fingerprinted at preview time and re-checked at apply. The
+ * digest covers every field that will be written, over rows sorted by the stable
+ * key so file ORDER alone cannot change it (§3.2 — reordering a sheet is not a
+ * different plan).
+ *
+ * `basicSalary` is included. The digest is one-way, and anyone who can read it
+ * back can read the salary column itself far more easily, so hashing it costs no
+ * confidentiality and omitting it would let a substituted file change pay
+ * undetected — the single most sensitive thing an import can do.
+ */
+export function planDigest(validRows: ValidatedRow[]): string {
+  const canonical = [...validRows]
+    .sort((a, b) => (a.odooId < b.odooId ? -1 : a.odooId > b.odooId ? 1 : 0))
+    .map((r) => [
+      r.odooId,
+      r.name,
+      r.email,
+      r.departmentId ?? "",
+      r.entityId,
+      r.managerOdooId ?? "",
+      r.roleTrack,
+      r.basicSalary ?? "",
+      r.status,
+      // Date | null — serialise as a stable calendar day, not a locale string.
+      r.lastWorkingDay ? r.lastWorkingDay.toISOString().slice(0, 10) : "",
+      String(r.unpaidLeaveDays),
+    ]);
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }

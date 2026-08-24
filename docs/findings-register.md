@@ -35,6 +35,58 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [secure/correctness] **Import apply confirmed the SHAPE of a plan, not its
+  contents — FIXED.** Found by the post-push `senior-code-reviewer` breadth pass and reproduced
+  independently before fixing. `applyImport` re-parses the file submitted at confirm time (it
+  must — the rows carry Restricted salary, so they are deliberately not persisted in
+  `previewJson`) and compared only three integers against the reviewed batch: `rowsCreated`,
+  `rowsUpdated`, `rowsRejected`. Two different sheets with one create each produce identical
+  counts, so a substituted file was written as though it were the reviewed one. The whole reason
+  the two-step preview→confirm flow exists is "the operator confirms exactly what they were
+  shown"; that was aspiration, not enforcement. The realistic trigger is mundane, not
+  adversarial: re-uploading a newer export at the confirm step that happens to add the same
+  number of people. **Fix:** a `planDigest` — SHA-256 over every field the plan would write,
+  sorted by `odooId` so file order is not content — persisted inside `previewJson` at preview
+  and re-checked at apply. Salary is inside the digest deliberately: it is the most sensitive
+  thing an import can change, and a one-way hash costs no confidentiality to anyone who could
+  read it back. The count check is KEPT alongside it — the two catch different things (counts
+  catch the org moving under a plan; the digest catches a different file). **Verified end to end
+  against PostgreSQL 16:** previewing `export-v1.xlsx` (1 create) then confirming with a
+  different 1-create file is refused, headcount unchanged 37→37, the substituted person not
+  written; re-confirming with the correct file still applies. Three contract tests pin it,
+  including that reordering the same rows does NOT change the digest (§3.2). — status:
+  fixed(this commit)
+
+- 2026-08-24 — [high-quality/correctness] **A duplicate email passed preview, then rolled back
+  the whole batch at apply — FIXED.** Also from the breadth pass. `Employee.email` is `@unique`,
+  but nothing checked it: not within the file, and not against the database. A sheet containing
+  a repeated address — a typo, or a leaver's address reused for a new hire — previewed as "0
+  rejected", and then `tx.employee.create` threw a raw P2002 inside the batch transaction,
+  rolling back **every other create and update in the file** and surfacing as an opaque 500 with
+  no indication of which row or why. Exactly inverted from §3.4's promise that a row failing a
+  rule is rejected with a reason. **Fix:** two batch-level rules in `validate.ts` —
+  `email_duplicate` (repeated within the file) and `email_in_use` (held by a different existing
+  employee, named in the message). A row keeping its OWN email on re-import is correctly not a
+  clash (§3.2's stable-key update path). Placed in `validate.ts` rather than `checks/identity.ts`
+  to keep that module's stated "none of these consult the database" property true. The
+  `emailOwners` map is built from the employee read `loadContext` already performs, so it costs
+  no extra query. **Verified end to end:** a two-row file where the second collides now previews
+  as 1 create / 1 reject naming the holder, applies the legitimate row, and leaves the colliding
+  one unwritten — no batch-wide rollback. — status: fixed(this commit)
+
+- 2026-08-24 — [harness/gates] **The pre-push lint gate passed a warning it later rejected.**
+  `npm run ship` reported green immediately before the a11y commit (`3f10367`), which introduced
+  `useEffect(() => setHydrated(true), [])` in two auth forms; the very next `ship` on an
+  unrelated change went RED on `react-hooks/set-state-in-effect` for those same lines. The most
+  likely cause is ESLint's cache not invalidating for files changed within the same session. The
+  consequence is real: code that trips a lint rule reached `main` behind a green gate. The
+  offending pattern has been replaced with `useSyncExternalStore` (the correct hook for a value
+  that differs between the server and client snapshot, and no cascading render), so the tree is
+  clean either way. **Fix owed:** confirm whether `scripts/ship.mjs` passes `--cache` to ESLint
+  and, if so, whether its cache key covers mtime reliably; a gate that can pass stale is worse
+  than a slower one. — status: adjudicated(2026-08-24), fix SCHEDULED in the template repo where
+  `scripts/ship.mjs` is maintained
+
 - 2026-08-24 — [secure/high-quality] **Pre-hydration submit put credentials in the URL on four
   forms — FIXED.** Found while running the axe pass that closed the Phase 1 QA gap; the axe run's
   own login step failed with the password sitting in the query string, which is how this

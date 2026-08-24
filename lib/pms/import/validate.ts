@@ -44,6 +44,63 @@ export type ValidationResult = {
  * present and unique" needs every other row's ID, and manager resolution must
  * accept a manager who appears later in the same file.
  */
+/**
+ * Email uniqueness — §3.4, batch level.
+ *
+ * `Employee.email` is `@unique`, so a collision is not a style problem: the
+ * write fails. And because apply runs the whole batch in ONE transaction, an
+ * uncaught collision rolls back every other create and update in the file —
+ * after a preview that reported no rejections. Catching it here turns that into
+ * an ordinary, row-scoped rejection carrying a reason, which is what §3.4 asks
+ * for ("a row failing any rule is rejected/flagged, never silently accepted").
+ *
+ * Lives here rather than in `checks/identity.ts` for two reasons: the in-file
+ * duplicate rule needs every other row, and the in-use rule consults the
+ * database — and identity.ts's checks are deliberately all pure.
+ */
+function checkEmailUniqueness(
+  row: EmployeeSourceRow,
+  email: string,
+  odooId: string,
+  ctx: {
+    duplicateEmails: Set<string>;
+    emailCounts: Map<string, number[]>;
+    emailOwners: Map<string, string>;
+  },
+): ImportIssue[] {
+  if (!email) return [];
+
+  if (ctx.duplicateEmails.has(email)) {
+    const where = (ctx.emailCounts.get(email) ?? []).join(", ");
+    return [
+      issue(
+        row,
+        "email",
+        "email_duplicate",
+        `Email "${email}" appears on more than one row (rows ${where}). ` +
+          `Each employee needs their own address.`,
+      ),
+    ];
+  }
+
+  // Only meaningful once this row has an ID of its own: a row whose ID is blank
+  // is already rejected, and a "belongs to someone else" clash reported against
+  // an empty ID would be noise.
+  const owner = ctx.emailOwners.get(email);
+  if (!odooId || !owner || owner === odooId) return [];
+
+  return [
+    issue(
+      row,
+      "email",
+      "email_in_use",
+      `Email "${email}" already belongs to employee ${owner}. ` +
+        `Give this person their own address, or correct the Employee ID ` +
+        `if this is the same person.`,
+    ),
+  ];
+}
+
 export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext): ValidationResult {
   const issues: ImportIssue[] = [];
   const validRows: ValidatedRow[] = [];
@@ -66,6 +123,25 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
   );
   const idsInFile = new Set(idCounts.keys());
 
+  // Email uniqueness, same batch-level shape as the ID rule above and here for
+  // the same reason: it cannot be answered a row at a time. `Employee.email` is
+  // `@unique`, so a collision is not a style problem — the write fails. Because
+  // apply runs the whole batch in ONE transaction, an uncaught collision rolls
+  // back every other create and update in the file, after a preview that
+  // reported no rejections. Catching it here turns that into an ordinary,
+  // row-scoped rejection with a reason, which is what §3.4 asks for.
+  const emailCounts = new Map<string, number[]>();
+  for (const row of rows) {
+    const email = row.email?.trim().toLowerCase() ?? "";
+    if (!email) continue;
+    const seen = emailCounts.get(email);
+    if (seen) seen.push(row.rowNumber);
+    else emailCounts.set(email, [row.rowNumber]);
+  }
+  const duplicateEmails = new Set(
+    [...emailCounts.entries()].filter(([, rowNumbers]) => rowNumbers.length > 1).map(([e]) => e),
+  );
+
   // --- Pass 2: per-row rules ------------------------------------------------
   const accepted = new Map<string, ValidatedRow>();
 
@@ -80,9 +156,16 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
     const lastWorkingDay = checkLastWorkingDay(row, status.value);
     const unpaidLeave = checkUnpaidLeave(row);
 
+    const emailIssues = checkEmailUniqueness(row, identity.value.email, id.value, {
+      duplicateEmails,
+      emailCounts,
+      emailOwners: ctx.emailOwners,
+    });
+
     const rowIssues = [
       ...id.issues,
       ...identity.issues,
+      ...emailIssues,
       ...track.issues,
       ...status.issues,
       ...placement.issues,

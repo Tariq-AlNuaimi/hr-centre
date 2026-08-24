@@ -57,6 +57,16 @@ export type ValidationContext = {
   entitiesByKey: Map<string, { id: string; code: string }>;
   /** Odoo IDs already in the employees table — a manager may be an existing row. */
   existingOdooIds: Set<string>;
+  /**
+   * Normalised email → the odooId of the employee who already holds it.
+   *
+   * `Employee.email` is `@unique` in the schema, so a row claiming an address
+   * that belongs to a DIFFERENT employee cannot be written. Without this map the
+   * collision is invisible until apply, where it surfaces as a raw constraint
+   * violation inside the batch transaction and rolls back every other row —
+   * after a preview that reported no rejections. See validate.ts.
+   */
+  emailOwners: Map<string, string>;
 };
 
 export function issue(

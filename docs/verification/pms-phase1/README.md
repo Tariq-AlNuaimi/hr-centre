@@ -297,7 +297,71 @@ axe pass still logs in normally afterwards.
 Both defects are template-authored surfaces, so **every fork of this template carries them**.
 Recorded in `docs/findings-register.md` with the upstream fix owed.
 
-## 12. Still not verified
+## 12. Post-push senior review — two real defects, both fixed
+
+A `senior-code-reviewer` breadth pass ran against `main` after the deploy. It confirmed the
+parts this document already evidenced (salary never reaching an unentitled payload; the
+recursive CTE parameterised, depth-capped and soft-delete-aware; no employee-delete path
+anywhere in the shipped surface) and found two genuine defects in the import layer. Both were
+reproduced independently before fixing, and both are now pinned by contract tests.
+
+### 12a. Apply confirmed the shape of a plan, not its contents
+
+`applyImport` compared three integers — `rowsCreated`, `rowsUpdated`, `rowsRejected` — against
+the reviewed batch. Two different sheets with one create each produce identical counts, so a
+substituted file was written as though it were the reviewed one. The two-step flow's entire
+purpose is "the operator confirms exactly what they were shown", and that was aspiration.
+
+The trigger is mundane rather than adversarial: re-uploading a newer export at the confirm step
+that happens to add the same number of people.
+
+Fixed with a `planDigest` — SHA-256 over every field the plan would write, sorted by `odooId` so
+file order is not content — persisted in `previewJson` at preview and re-checked at apply.
+
+| Scenario, run against PostgreSQL 16                                         | Result                                        |
+| --------------------------------------------------------------------------- | --------------------------------------------- |
+| Preview `export-v1.xlsx` (1 create), confirm with a different 1-create file | **refused** ✅                                |
+| Headcount after that refusal                                                | 37 → 37, substituted person not written ✅    |
+| Re-confirm with the correct file                                            | applies, 1 created ✅                         |
+| Same rows in a different order                                              | same digest — reordering is not a new plan ✅ |
+| Salary changed, nothing else                                                | different digest ✅                           |
+
+The count check is kept alongside the digest: they catch different things. Counts catch the org
+moving under a plan (another admin adding someone turns a create into an update); the digest
+catches a different file.
+
+Salary is inside the digest deliberately. It is the most sensitive thing an import can change,
+and a one-way hash costs no confidentiality against anyone who can already read the column.
+
+### 12b. A duplicate email passed preview, then rolled back the whole batch
+
+`Employee.email` is `@unique`, but nothing checked it — not within the file, not against the
+database. A sheet with a repeated address (a typo, or a leaver's address reused for a new hire)
+previewed as **0 rejected**, then threw a raw P2002 inside the batch transaction, rolling back
+**every other create and update in the file** and surfacing as an opaque 500. That is §3.4's
+promise exactly inverted.
+
+Fixed with two batch-level rules, `email_duplicate` and `email_in_use`. Verified end to end: a
+two-row file whose second row collides with seeded employee `1000` now previews as
+
+```
+1 create, 1 reject
+   row 3: email_in_use — Email "salim.alharthy@rihal.example" already belongs to employee 1000.
+```
+
+applies the legitimate row, and leaves the colliding one unwritten — no batch-wide rollback.
+
+A row keeping its OWN email on re-import is correctly not a clash: that is §3.2's stable-key
+update path.
+
+### 12c. One documentation defect
+
+The blueprint and the `ImportPreview` doc comment both claimed the confirm step "re-reads the
+reviewed diff rather than re-parsing an uploaded file". It cannot — the rows carry Restricted
+salary and are deliberately not persisted. Both corrected, and the blueprint now explains what
+actually enforces the guarantee.
+
+## 13. Still not verified
 
 - **The apply step through the browser UI.** Apply was exercised end-to-end against the
   database (§5a above) and the confirm button was rendered and enabled, but the final click
