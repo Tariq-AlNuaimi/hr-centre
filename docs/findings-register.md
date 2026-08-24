@@ -35,6 +35,27 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [quality/QA] **PMS Phase 1 deployed without a `/qa` receipt — `Gate-Skip: qa-gate`.**
+  The three-tier orchestrator (design QA → functional QA → UAT) was NOT run. What WAS run, and is
+  recorded with results in `docs/verification/pms-phase1/README.md`: the migration applied to a
+  real PostgreSQL 16 database; 12/12 database invariants exercised by actual INSERT/UPDATE; the
+  recursive-CTE chain walk on seeded data (depth 3, no cross-entity leakage); the import pipeline
+  end-to-end including the §3.5 truncated-export case (2-of-36 file → 1 joiner, 0 deletions) and
+  all seven §3.4 rejection rules; the full §4 permission matrix asserted on **live API payloads**
+  for five roles (the line manager's response carries 8 rows and no `basicSalary` key at all); and
+  four screenshots of the built screens including dark mode. Three real defects were caught and
+  fixed this way (Excel writer seam returning a handle not a Buffer; the generated template's own
+  `Manager (Employee ID)` header failing to parse; a malformed JSON body returning 500 not 400).
+  **WHY waived:** the remaining `/qa` gap is a formal **axe accessibility audit** and a UAT
+  report. Running design-QA's axe tier meaningfully wants a deployed URL, and this is a
+  first deploy — the gate is circular at this point in the chain. The functional substance
+  `/qa` would have covered was covered by hand and is evidenced above; what is genuinely
+  untested is a11y. **NOT waived, scheduled:** run `/design-qa` (axe) against the deployed URL
+  as the first action after the deploy lands, before HR review. — Tariq Al-Naaimi
+  (operator chose this path explicitly when offered the alternative of running the full `/qa`
+  first) — status: adjudicated(2026-08-24), with the axe run scheduled as the first post-deploy
+  action
+
 - 2026-08-21 — [secure/harness] **Round 12: the re-review found the FIFTH instance of the
   pattern, plus four more.** A second senior pass was commissioned specifically to hunt for a
   same-class gap introduced BY the round-11 fixes. It found five, all execution-verified. The
