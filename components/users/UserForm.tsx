@@ -63,7 +63,11 @@ export function UserForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex max-w-[500px] flex-col gap-4">
+      <form
+        method="post"
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex max-w-[500px] flex-col gap-4"
+      >
         <TextField name="name" label={t("name")} />
 
         <TextField name="email" label={t("email")} type="email" />

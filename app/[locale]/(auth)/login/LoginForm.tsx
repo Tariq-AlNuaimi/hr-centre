@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,15 @@ export function LoginForm() {
   const locale = useLocale();
   const notify = useNotify();
   const [loading, setLoading] = useState(false);
+  // Submission is gated on hydration. A <form> whose only submit path is an
+  // onSubmit handler still submits NATIVELY if the user gets there before React
+  // attaches — and a native submit on a method-less form is a GET, which puts
+  // the password in the query string, in browser history, and in any Referer.
+  // Reproduced with a 900ms script delay; see the QA notes. `method="post"`
+  // below is the belt (credentials go in a body even if this gate is bypassed by
+  // implicit submission); this is the braces.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   const form = useZodForm(loginSchema, {
     defaultValues: { email: "", password: "" },
@@ -57,7 +66,11 @@ export function LoginForm() {
     <AuthCard title={t("login")}>
       {
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <form
+            method="post"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex flex-col gap-4"
+          >
             <TextField name="email" label={t("email")} type="email" autoComplete="email" />
             <TextField
               name="password"
@@ -73,7 +86,7 @@ export function LoginForm() {
                 {t("forgotPasswordLink")}
               </Link>
             </div>
-            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+            <Button type="submit" size="lg" className="w-full" disabled={loading || !hydrated}>
               {t("signIn")}
             </Button>
           </form>

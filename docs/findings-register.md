@@ -35,6 +35,39 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [secure/high-quality] **Pre-hydration submit put credentials in the URL on four
+  forms — FIXED.** Found while running the axe pass that closed the Phase 1 QA gap; the axe run's
+  own login step failed with the password sitting in the query string, which is how this
+  surfaced. A `<form>` whose only submit path is a React `onSubmit` handler still submits
+  **natively** if the user gets there before hydration, and a native submit on a form with no
+  `method` is a **GET** — so the field values land in the URL, in browser history, and in any
+  `Referer` the next navigation sends. Reproduced deliberately with a 900 ms script delay:
+  `/en/login?email=victim%40example.com&password=not-a-real-password-probe`. Same shape on
+  `reset-password` (worse — a NEW password beside the reset token), `forgot-password` (an email),
+  and `components/users/UserForm.tsx`. **Fix:** `method="post"` on all four, so even a submit that
+  slips past the gate carries values in a body rather than a URL; plus the submit button gated on
+  a `hydrated` flag on the two password forms. Re-ran the same reproduction: URL clean, and the
+  normal login path still works (the full axe pass authenticated fine afterwards). — status:
+  fixed(pending-commit)
+
+- 2026-08-24 — [high-quality/a11y] **Two WCAG AA contrast failures on the login brand panel —
+  FIXED.** The `/design-qa` axe tier that `docs/findings-register.md` scheduled as the first
+  post-deploy action found the four PMS screens clean (0 violations, light and dark) but returned
+  five `color-contrast` **incomplete** results on the login panel — axe cannot score text over a
+  gradient, so these were never reported as violations. Measured by sampling the rendered pixels
+  with the text hidden: the value line was **3.17:1** and the copyright **2.26:1** against a
+  4.5:1 requirement. The gradient (`from-primary to-primary/80`) fades toward the page
+  background, so the panel was **lightest exactly where the smallest text sat**. Raising the
+  alpha alone does not fix it — white at /80 on solid primary is 3.60:1. **Fix:** solid
+  `bg-primary` and full-opacity foregrounds, which is what `brand.config.ts` asks for anyway
+  ("ONE accent, solid — no gradient on product surfaces"); hierarchy now carried by size and
+  weight. Re-measured: **4.88:1 on all four elements in both themes**, and axe's unresolved count
+  dropped 5 → 1 (the remaining one is the `aria-hidden` monogram, measured 4.88:1). **Also fixed
+  in the same pass:** the login panel and page metadata still read "Fullstack Next.js
+  application" — a rebrand leftover. **Note for the template:** this panel is template-authored,
+  so every fork carries both the contrast bug and the placeholder tagline. — status:
+  fixed(pending-commit) in this fork; template fix owed upstream
+
 - 2026-08-24 — [harness/gates] **`qa-gate` (and its sibling receipt gates) evaluate
   `CLAUDE_PROJECT_DIR`'s HEAD, not the HEAD of the repository actually being deployed.**
   `.claude/hooks/qa-gate.mjs:59` resolves `const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()`.

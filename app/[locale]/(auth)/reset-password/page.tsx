@@ -3,7 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { z } from "zod";
 import { apiClient } from "@/lib/api-client";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
@@ -19,6 +19,11 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
   const [loading, setLoading] = useState(false);
+  // Same pre-hydration native-submit hazard as LoginForm, and worse here: a
+  // method-less GET would put the NEW password in the URL next to the reset
+  // token. `method="post"` on the form is the belt; this is the braces.
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
 
   // Mirrors the /api/auth/reset-password contract (newPassword: 8..128) plus a
   // client-only confirm field; the cross-field match keeps its i18n message.
@@ -72,7 +77,7 @@ function ResetPasswordForm() {
   return (
     <AuthCard title={t("resetPassword")}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form method="post" onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <TextField
             name="newPassword"
             label={t("password")}
@@ -85,7 +90,7 @@ function ResetPasswordForm() {
             type="password"
             autoComplete="new-password"
           />
-          <Button type="submit" size="lg" className="w-full" disabled={loading}>
+          <Button type="submit" size="lg" className="w-full" disabled={loading || !hydrated}>
             {t("resetPassword")}
           </Button>
         </form>
