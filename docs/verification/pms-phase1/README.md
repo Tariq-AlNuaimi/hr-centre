@@ -361,7 +361,72 @@ reviewed diff rather than re-parsing an uploaded file". It cannot — the rows c
 salary and are deliberately not persisted. Both corrected, and the blueprint now explains what
 actually enforces the guarantee.
 
-## 13. Still not verified
+## 13. The review's two unconfirmed items — both chased to a conclusion
+
+The senior pass listed two findings it could not confirm (55 and 60 confidence). Both were
+reproduced against a real database. One turned out to be bigger than reported; one turned out
+exactly as reasoned.
+
+### 13a. Platform ADMIN → HR Super Admin — confirmed, and via TWO routes
+
+| Actor / step                                                                 | Rows    | `basicSalary` | Roles                |
+| ---------------------------------------------------------------------------- | ------- | ------------- | -------------------- |
+| `Role.ADMIN`, no `Employee` record (the resting state)                       | 0       | absent        | —                    |
+| After `POST /api/users` on the unclaimed HR Super Admin's email, then login  | 20/page | **present**   | `["HR_SUPER_ADMIN"]` |
+| After `PUT /api/users/[id]` password reset on the **already linked** account | 20/page | **present**   | `["HR_SUPER_ADMIN"]` |
+
+The review found route 1. Route 2 matters more: it works against an account that was
+legitimately onboarded, so **closing the email auto-link alone would have been theatre**. That
+is why nothing was patched here — the fix is deciding who holds `Role.ADMIN`, not code.
+
+ADR-065 and the `unlinkedActor` docstring both claimed "platform administration does not confer
+HR authority". Corrected in both places to state the resting state accurately and the boundary
+honestly.
+
+**Audit trail, read out of `audit_logs` after the run:**
+
+| Step                        | Row                                                               |
+| --------------------------- | ----------------------------------------------------------------- |
+| Admin creates the login     | `CREATE User` ✅                                                  |
+| First-login auto-link fires | `UPDATE Employee` `{"userId": {"from": null, "to": "<user>"}}` ✅ |
+| Admin resets a password     | `UPDATE User`, **`changes: null`** ⚠️                             |
+
+The last row is the actionable remainder: `passwordHash` is scrubbed (correctly — the hash must
+never land in an audit row), but the scrub drops the whole diff, so a credential takeover and a
+display-name typo fix are byte-identical. Detection is the only control that survives a hostile
+admin, and it is blind to the one action that matters. Proposed fix and its Ask-before status
+are in `docs/findings-register.md`.
+
+### 13b. Concurrent double-apply — confirmed, and the reasoning about it was right
+
+Two simultaneous `applyImport` calls on one PREVIEWED batch. The review predicted no data damage
+and an ugly failure for the loser. Both held:
+
+```
+apply #1: OK {"created":2,"updated":0}
+apply #2: threw -> Invalid `tx.employee.create()` invocation in
+          /home/user/.../lib/pms/import/run.ts:292:25 ...
+headcount 39 -> 41 (expected 41)   duplicates written: none
+```
+
+Data intact; the loser got a stack trace and an internal path, surfacing as a 500.
+
+Fixed by claiming the batch as the **first** statement in the transaction with a conditional
+update, so the status flip is the point of contention rather than a read that does not
+serialise. After:
+
+```
+apply #1: OK {"created":2,"updated":0}
+apply #2: ImportAlreadyAppliedError (409-mappable: true) -> "This import has already been applied."
+headcount 41 -> 43 (expected 43)   rows written for this file: 2
+re-apply later: ImportConflictError -> "Import batch is APPLIED; only a PREVIEWED batch can be applied."
+```
+
+**A defect of my own that this surfaced:** the apply route decided 409-vs-500 with a regex over
+the message text, so the two digest checks added earlier the same day were returning **500**.
+Replaced with a typed `ImportConflictError`; a contract test now pins the hierarchy.
+
+## 14. Still not verified
 
 - **The apply step through the browser UI.** Apply was exercised end-to-end against the
   database (§5a above) and the confirm button was rendered and enabled, but the final click

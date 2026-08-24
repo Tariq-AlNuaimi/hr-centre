@@ -131,6 +131,40 @@ confidentiality (§4.5) is enforced in `lib/pms/employee-select.ts`, which build
 - Two tables to keep linked; a `resolveActor` lookup on every PMS request.
 - An employee's `User.email` can drift from `Employee.email` after an Odoo email change.
 - Some code paths need both records in hand, which is more ceremony than a single `session.user`.
+- **The separation is least-privilege-by-default, NOT a boundary against a hostile platform
+  admin.** See the section below; this was originally stated too strongly and is corrected here.
+
+### What this separation does and does not buy (corrected 2026-08-24)
+
+The `unlinkedActor` docstring in `lib/pms/actor.ts` said "platform administration does not confer
+HR authority". As an accurate description of the _resting state_ that is true, and it was
+verified on live payloads: a `Role.ADMIN` with no `Employee` record sees **0 employees and no
+`basicSalary` key**. As a security claim about what an admin can _reach_, it was wrong. A
+post-deploy review raised it, and both routes were then reproduced end to end:
+
+1. **Provision-and-claim.** `POST /api/users` lets an admin choose the email _and_ the password.
+   Creating a login on an unclaimed HR Super Admin's address and signing in linked the accounts
+   via `resolveActor`'s first-login email match, yielding `pmsRoles: ["HR_SUPER_ADMIN"]`,
+   `viewCompensation: true`, and 20 employees per page **with salary**.
+2. **Password takeover.** `PUT /api/users/[id]` lets an admin set any user's password. Against an
+   _already linked_ HR Super Admin — the state a legitimately onboarded user is in — this granted
+   the same access. Closing route 1 alone would therefore have been theatre.
+
+This is not a defect in the two-table design; it is what "the platform admin manages credentials"
+means anywhere. It is recorded rather than fixed because the fix is not code: it is deciding who
+holds `Role.ADMIN`. **The separation still earns its place** — it makes HR authority explicit and
+grantable, keeps the no-login population representable, and means an admin who has not taken
+either action above genuinely cannot read pay.
+
+What makes the risk _manageable_ is that both routes are audited. Verified in `audit_logs`:
+route 1 writes `CREATE User` and then an `UPDATE Employee` carrying
+`{"userId": {"from": null, "to": "<the new user>"}}` — an explicit, readable record of an
+identity being claimed. Route 2 is the weak spot: `passwordHash` is in `SCRUB_FIELDS`, so the row
+lands with `changes: null` and an admin resetting someone's credentials is indistinguishable from
+an admin fixing a typo in their name. Recorded in `docs/findings-register.md` with the proposed
+fix (log scrubbed field _names_ with redacted values, the way the import preview already renders
+`basicSalary: [redacted] → [redacted]`) pending operator sign-off, because
+`lib/prisma/audit-extension.ts` is an Ask-before surface.
 
 ### Mitigations
 

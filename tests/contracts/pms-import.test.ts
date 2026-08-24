@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { buildImportTemplate } from "../../lib/pms/export/xlsx";
+import { ImportAlreadyAppliedError, ImportConflictError } from "../../lib/pms/import/run";
 import {
   ImportFileError,
   loadEmployeesFromXlsx,
@@ -635,4 +636,24 @@ test("an employee keeping their OWN email on a re-import is not a collision", ()
     "§3.2 — a stable odooId re-importing itself is the update path, not a clash",
   );
   assert.equal(result.validRows.length, 1);
+});
+
+// --- Conflict errors must stay 409-mappable ---------------------------------
+//
+// The apply route used to decide 409-vs-500 with a regex over the message text,
+// which silently turned every newly added conflict into a 500 (the digest checks
+// landed that way). It now switches on the type, so the hierarchy is a contract.
+
+test("every apply conflict is an ImportConflictError the route can map to 409", () => {
+  const alreadyApplied = new ImportAlreadyAppliedError();
+  assert.ok(
+    alreadyApplied instanceof ImportConflictError,
+    "a lost apply race must map to 409, not 500",
+  );
+  assert.ok(alreadyApplied instanceof Error);
+  assert.match(alreadyApplied.message, /already been applied/);
+  assert.ok(
+    !/\bError:|at .*\.ts:\d+/.test(alreadyApplied.message),
+    "conflict messages are shown to the operator — no stack or internal path",
+  );
 });

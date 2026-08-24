@@ -78,7 +78,7 @@
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
 - lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_ROWS, MAX_SHEETS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
 - lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, ReconcilePlan, reconcile
-- lib/pms/import/run.ts: previewImport, applyImport
+- lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
