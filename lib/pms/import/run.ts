@@ -190,6 +190,30 @@ export async function previewImport(params: {
 }
 
 /**
+ * A confirm that cannot proceed because the world disagrees with the plan — the
+ * batch is spent, the org moved, or the file is not the one that was reviewed.
+ *
+ * Typed rather than matched on message text: the route used to decide 409-vs-500
+ * with a regex over the message, which silently mis-classified every new failure
+ * mode added afterwards (the digest checks landed as 500s). Every message on this
+ * class is written for the operator and is safe to surface.
+ */
+export class ImportConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ImportConflictError";
+  }
+}
+
+/** A batch someone else applied while this confirm was in flight. */
+export class ImportAlreadyAppliedError extends ImportConflictError {
+  constructor() {
+    super("This import has already been applied.");
+    this.name = "ImportAlreadyAppliedError";
+  }
+}
+
+/**
  * Apply a previously previewed batch.
  *
  * The same file is re-parsed and re-planned rather than replaying a stored row
@@ -221,7 +245,9 @@ export async function applyImport(params: {
   });
   if (!batch) throw new Error("Import batch not found");
   if (batch.status !== "PREVIEWED") {
-    throw new Error(`Import batch is ${batch.status}; only a PREVIEWED batch can be applied.`);
+    throw new ImportConflictError(
+      `Import batch is ${batch.status}; only a PREVIEWED batch can be applied.`,
+    );
   }
 
   const { rows } = await loadEmployeesFromXlsx(params.buffer);
@@ -244,7 +270,7 @@ export async function applyImport(params: {
     fresh.rowsUpdated !== batch.rowsUpdated ||
     fresh.rowsRejected !== batch.rowsRejected
   ) {
-    throw new Error(
+    throw new ImportConflictError(
       "The organization changed since this preview was generated, so the plan no longer " +
         "matches what was reviewed. Upload the file again to get a fresh preview.",
     );
@@ -264,14 +290,14 @@ export async function applyImport(params: {
     // A batch previewed before digests existed. Refusing is the conservative
     // read: this batch cannot be shown to match what was reviewed, and a fresh
     // preview costs one upload.
-    throw new Error(
+    throw new ImportConflictError(
       "This preview predates content verification and cannot be confirmed. " +
         "Upload the file again to get a fresh preview.",
     );
   }
 
   if (planDigest(validRows) !== reviewedDigest) {
-    throw new Error(
+    throw new ImportConflictError(
       "The file submitted for confirmation is not the one that was previewed — its contents " +
         "differ from the plan that was reviewed. Upload it again to get a fresh preview.",
     );
@@ -280,6 +306,28 @@ export async function applyImport(params: {
   const byOdooId = new Map(validRows.map((r) => [r.odooId, r]));
 
   await prisma.$transaction(async (tx) => {
+    // Claim the batch BEFORE writing anything.
+    //
+    // The status check above is a read, so two confirms racing each other both
+    // pass it. Flipping the status at the END of the transaction (where this
+    // used to live) left the whole write window open: both transactions ran the
+    // creates, and the loser died on a raw unique-constraint violation that
+    // reached the operator as an opaque 500 with a stack trace in it.
+    //
+    // A conditional update makes the flip the point of contention instead. The
+    // second transaction blocks on this row until the first commits, then
+    // matches nothing and throws P2025 before touching an employee. Prisma's
+    // extended `where` keeps this a single-row update, so it still audits like
+    // one (no bulk-write escape hatch).
+    try {
+      await tx.importBatch.update({
+        where: { id: batch.id, status: "PREVIEWED" },
+        data: { status: "APPLIED", appliedAt: new Date() },
+      });
+    } catch {
+      throw new ImportAlreadyAppliedError();
+    }
+
     // Pass 1 — creates and updates WITHOUT manager links.
     //
     // A file may name a manager who is created by the same file, and Postgres
@@ -347,11 +395,6 @@ export async function applyImport(params: {
         await tx.employee.update({ where: { id: employeeId }, data: { managerId } });
       }
     }
-
-    await tx.importBatch.update({
-      where: { id: batch.id },
-      data: { status: "APPLIED", appliedAt: new Date() },
-    });
   });
 
   return { created: plan.creates.length, updated: plan.updates.length };

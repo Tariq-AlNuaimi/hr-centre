@@ -35,6 +35,69 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [secure/architecture] **A platform ADMIN can reach full HR Super Admin access,
+  by TWO independent routes. Reproduced; recorded, not "fixed", because the fix is not code.**
+  The post-push review raised route 1 at ~55 confidence and could not confirm it. Both routes
+  were then reproduced end to end against a real database and live wire payloads.
+  **Baseline (holds):** a `Role.ADMIN` with no `Employee` record gets **0 employees and no
+  `basicSalary` key** — least privilege by default is real.
+  **Route 1 — provision-and-claim.** `POST /api/users` takes the email _and_ the password. An
+  admin created a login on the unclaimed HR Super Admin's address (`1100`, Fatma Al-Rashdi),
+  signed in, and `resolveActor`'s first-login email match linked them: `GET /api/pms/me` returned
+  `pmsRoles: ["HR_SUPER_ADMIN"]` with `orgWide`, `configure`, `viewCompensation`, `applyImport`,
+  `runCalibration` and `exportMasterResults` all true, and `GET /api/employees` returned 20 rows
+  per page **carrying `basicSalary`**.
+  **Route 2 — password takeover.** `PUT /api/users/[id]` sets any user's password. Run against
+  the _already linked_ account — the state a legitimately onboarded HR Super Admin is in — it
+  granted the same access. **This is why route 1 was not simply patched:** narrowing the email
+  auto-link would have left route 2 wide open and produced a false sense of closure.
+  **WHY recorded rather than fixed:** this is what "the platform admin manages credentials" means
+  in any system; you cannot code around an actor who can set passwords. The decision is _who
+  holds `Role.ADMIN`_, and that is the operator's. ADR-065 and the `unlinkedActor` docstring both
+  overstated the guarantee ("platform administration does not confer HR authority") and have been
+  corrected to say what is actually true.
+  **Compensating control, verified:** both routes are audited. Route 1 writes `CREATE User` plus
+  an `UPDATE Employee` carrying `{"userId": {"from": null, "to": "<new user>"}}` — an explicit
+  record of an identity being claimed. — Tariq Al-Naaimi — status: adjudicated(2026-08-24), with
+  the audit gap below carved out as the actionable remainder
+
+- 2026-08-24 — [secure/observability] **An admin password reset is audited as an
+  indistinguishable blank.** Falls out of the finding above. `passwordHash` is in `SCRUB_FIELDS`,
+  correctly — the hash must never reach an audit row. But the scrub drops the whole diff, so the
+  row lands as `UPDATE | User | <admin> | changes: null`. An admin taking over an HR Super
+  Admin's credentials and an admin fixing a typo in someone's display name are byte-identical in
+  the audit trail. Since detection is the _only_ control that survives against a hostile admin
+  (see above), the one control that matters is blind to the one action that matters.
+  **Proposed fix:** log scrubbed field NAMES with redacted values —
+  `{"passwordHash": {"from": "[redacted]", "to": "[redacted]"}}` — exactly the shape the import
+  preview already uses for `basicSalary`. Field names are not secrets; values are. That makes
+  "an admin changed someone else's password" queryable and alertable without ever storing a hash.
+  **Not applied:** `lib/prisma/audit-extension.ts` is an Ask-before surface (CLAUDE.md), so this
+  needs operator sign-off. — Tariq Al-Naaimi — status: adjudicated(2026-08-24), decision
+  SCHEDULED and BLOCKING on real data: the operator has been shown the reproduction and the
+  proposed patch, and this must be settled before real employee records are imported, because
+  its whole value is retrospective — an audit trail that was blind on the day of an incident
+  cannot be repaired afterwards. Accepted in the interim only because the demo fixture holds no
+  real person's pay.
+
+- 2026-08-24 — [high-quality/correctness] **A concurrent double-apply killed the loser with a raw
+  Prisma error — FIXED.** The review flagged this at ~60 confidence without reproducing it. Two
+  simultaneous `applyImport` calls on one PREVIEWED batch: both passed the `status !== "PREVIEWED"`
+  read (it is a read, so it does not serialise), both ran the creates, and the loser died on a
+  unique-constraint violation whose message carried a stack trace and an internal source path —
+  reaching the operator as an opaque 500. The review's reasoning that data stays intact was
+  **correct** (verified: headcount moved by exactly the 2 expected, no duplicates), so this was a
+  UX and diagnosability defect, not corruption.
+  **Fix:** claim the batch as the FIRST statement inside the transaction with a conditional
+  update (`where: { id, status: "PREVIEWED" }`), so the flip is the point of contention. The
+  second transaction blocks on that row, then matches nothing and aborts before touching an
+  employee. Prisma's extended `where` keeps it a single-row update, so it still audits like one.
+  **Also fixed, and this one was mine:** the route decided 409-vs-500 by regex over the message
+  text, so the two digest checks added earlier the same day landed as **500s**. Replaced with a
+  typed `ImportConflictError`, pinned by a contract test. Verified: winner applies 2, loser gets
+  `ImportAlreadyAppliedError` ("This import has already been applied."), exactly 2 rows written,
+  and a later re-apply is a clean conflict too. — status: fixed(this commit)
+
 - 2026-08-24 — [secure/correctness] **Import apply confirmed the SHAPE of a plan, not its
   contents — FIXED.** Found by the post-push `senior-code-reviewer` breadth pass and reproduced
   independently before fixing. `applyImport` re-parses the file submitted at confirm time (it

@@ -25,8 +25,15 @@ export type ResolvedActor = PmsActor & {
  * An actor with a session but no employee record. A legitimate state, not an
  * error: a platform ADMIN maintaining the application may never appear in the
  * HR org data, and the two authority systems are deliberately separate
- * (ADR-065). Such an actor sees nothing in the PMS and can configure nothing —
- * platform administration does not confer HR authority.
+ * (ADR-065). Such an actor sees nothing in the PMS and can configure nothing.
+ *
+ * That is a statement about the RESTING state, not a security boundary. A
+ * platform admin controls credentials — they can provision a login on an
+ * unclaimed employee's email and let the first-login match below link it, or
+ * simply reset an already-linked user's password. Both were reproduced; both are
+ * audited. See ADR-065 "What this separation does and does not buy". Do not
+ * restate this as "platform administration does not confer HR authority": it
+ * confers it by default, and withholds it only from an admin who does not act.
  */
 function unlinkedActor(userId: string): ResolvedActor {
   const base: PmsActor = { userId, employeeId: null, pmsRoles: [], isLineManager: false };

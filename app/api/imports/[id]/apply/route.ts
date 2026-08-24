@@ -4,7 +4,7 @@ import { err, forbidden, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { ImportFileError, MAX_UPLOAD_BYTES } from "@/lib/pms/import/loaders/xlsx";
-import { applyImport } from "@/lib/pms/import/run";
+import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 
 /**
  * Confirm and apply a previewed import — spec §3.5.
@@ -58,11 +58,11 @@ export const POST = withRateLimit(
       return ok(result);
     } catch (error) {
       if (error instanceof ImportFileError) return err(error.message, 422);
-      // applyImport throws a plain Error for the plan-divergence and
-      // wrong-status cases; both are operator-facing and safe to surface.
-      if (error instanceof Error && /no longer matches|only a PREVIEWED/.test(error.message)) {
-        return err(error.message, 409);
-      }
+      // Every ImportConflictError message is written for the operator: the batch
+      // is spent, the org moved, or the file is not the one that was reviewed.
+      // Typed rather than pattern-matched on the message — the regex this
+      // replaced silently turned each newly added conflict into a 500.
+      if (error instanceof ImportConflictError) return err(error.message, 409);
       throw error;
     }
   }),
