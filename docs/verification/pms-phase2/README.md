@@ -156,7 +156,139 @@ rather than controls that would 409.
 `02-roles.png` shows the additive roles rendering as badges (§4.3), and is the proof that defect
 2 above is fixed.
 
-## 8. Still not verified
+## 8. The §5.5 escalation sweep, against a real database
+
+The ladder had 24 unit tests and had never met a database. Run against PostgreSQL 16 with the
+seeded 37-person fixture, a cycle whose GOAL_SETTING deadline sits **10 days in the past**, and
+four participants hand-placed into the four states §5.5 distinguishes.
+
+| Who  | State                            | Events written                                              | `managerEmployeeId` | Detail                                                         |
+| ---- | -------------------------------- | ----------------------------------------------------------- | ------------------- | -------------------------------------------------------------- |
+| 1100 | manager never drafted            | `DEADLINE_MISSED` + `ESCALATED_SKIP_LEVEL` + `ESCALATED_HR` | 1001                | "Manager did not draft KPIs before the goal-setting deadline." |
+| 1101 | employee signed, manager did not | all three                                                   | 1100                | exactly `employee signed, manager did not`                     |
+| 1102 | manager signed, employee did not | **`DEADLINE_MISSED` only**                                  | **NULL**            | exactly `Employee did not sign`                                |
+| 1110 | both signed                      | **none**                                                    | —                   | nobody was non-compliant                                       |
+
+1102 is the row that matters most. §5.4 puts an unsigned employee's responsibility on the
+employee, so it must not appear in the manager's compliance record — and it does not: the event
+carries a null manager and never reaches rungs two or three.
+
+`missedByHours` reads **240** on every one, which is the 10 days, floored (§5.6's "by how long").
+
+### Idempotency, proven rather than argued
+
+| Run | `eventsWritten` | `duplicatesSkipped` | Totals after                 |
+| --- | --------------- | ------------------- | ---------------------------- |
+| 1st | 32 / 30 / 31    | 0                   | 32 / 30 / 31                 |
+| 2nd | **{}**          | **93**              | **32 / 30 / 31** — unchanged |
+
+A retry, or a manual invocation on the same day, cannot inflate a manager's miss count. That
+matters because §11.2 reads this table as an objective accountability report.
+
+### Cron authorisation
+
+| Request                         | Expected | Got    |
+| ------------------------------- | -------- | ------ |
+| `POST` with no token            | 401      | 401 ✅ |
+| `GET` with a wrong bearer token | 401      | 401 ✅ |
+
+## 9. The two Ask-before changes, with the operator's approval
+
+### 9a. An admin password reset was audited as an indistinguishable blank — FIXED
+
+Recorded earlier as `UPDATE | User | changes: null`. The cause was not the scrub, which already
+redacts values while keeping keys. **`computeChanges` iterates the keys of `after`, and `after` is
+whatever the CALLER selected.** `PUT /api/users/[id]` returns six columns, none of them
+`passwordHash`, so the changed column was never present to be compared.
+
+This is a general defect, not a PMS one: any audited update with a narrow `select` under-reports
+what changed.
+
+The audit extension now re-reads the full row before diffing (`before` was already fetched
+unselected, so this makes the pair symmetric). Verified against PostgreSQL:
+
+```
+audit #1  {"passwordHash":{"from":"[redacted]","to":"[redacted]"},"passwordChangedAt":{...}}
+audit #2  {"name":{"from":"Admin","to":"Renamed Person"}}
+```
+
+The hash is still never stored — only the _fact_ of the change, which is now queryable and
+distinguishable from a rename. That is what makes ADR-065's compensating control real: that ADR
+accepts a platform admin can reach HR Super Admin access and names the audit trail as the control,
+so the trail has to be able to show the action that grants it.
+
+A null re-read means the update soft-deleted the row and the extension filtered it; the caller's
+projection is kept and behaviour is exactly what it was. Cost: one indexed lookup per audited
+update.
+
+### 9b. `Kpi` registered in `SOFT_DELETE_MODELS` — FIXED
+
+Two Phase 2 units hit this independently. Verified after registration:
+
+| Path                              | Row survives | Soft-deleted | Audit action  |
+| --------------------------------- | ------------ | ------------ | ------------- |
+| `prisma.kpi.delete()`             | yes ✅       | yes ✅       | **DELETE** ✅ |
+| hand-rolled `update({deletedAt})` | yes ✅       | yes ✅       | UPDATE ⚠️     |
+
+Normal reads return **0 of 2** withdrawn KPIs. The route's DELETE now uses `delete()`, which is
+the difference between an audit trail that says a KPI was withdrawn and one that says it was
+edited — the extension infers a soft delete by comparing `deletedAt` across before/after, and this
+route's narrow select hides it.
+
+**Registration is not the whole fix, and the code does not pretend it is.** That extension filters
+the TOP-LEVEL `where` only — its own documented and test-asserted limitation — and the KPI read
+that decides §5.3's total pulls `participant.kpis` through a nested select, which it cannot reach.
+Every KPI read keeps its explicit `deletedAt: null` for that reason.
+
+## 10. Manager drafting + the §4.4 home split
+
+Built as a fourth parallel unit. Two gaps it flagged but could not close from its own files were
+closed here.
+
+### 10a. The guard chain had two implementations — now one
+
+The drafting page is an RSC reading through Prisma (the template's blessed pattern), so it could
+not go through `POST /api/kpis`. It therefore restated the whole refusal chain — §4.2 → §8.3 →
+§2 → §5.4/§5.1 — in the same order, with **two of the sentences copied as string literals**. Two
+copies of a security ordering drift; two copies of a sentence drift faster.
+
+`kpiSetAccessRefusal` in `lib/pms/kpi.ts` is now the single implementation, and both callers use
+it. `visible` is passed IN rather than recomputed, because the route resolves it from a
+descendant set and the page already has one — both correct, and neither belongs inside the shared
+function. `POST /api/kpis` dropped from 194 to 137 lines in the process.
+
+### 10b. "My Tasks" was a sample presented as a list — now exact
+
+§4.4 is explicit that the personal action space is _"driven by assignment, not hierarchy or role
+name"_. There was no assignment filter, so the home screen assembled its task list from **page 1
+of the whole roster plus a name search** for the viewer's own row. That is exact at 37 people and
+silently wrong at 500: the viewer's own row falls off page 2 and their task list quietly loses
+entries — the worst failure mode a task list has, because nothing looks broken.
+
+`scope=mine` on the participants route is that filter, server-side. Verified on live payloads:
+
+| Actor            | no scope        | `scope=mine`                    |
+| ---------------- | --------------- | ------------------------------- |
+| HR Super Admin   | 37              | **1** (own set only)            |
+| Line manager     | 8 (whole chain) | **3** (self + 2 direct reports) |
+| Individual       | 3               | 3 — it NARROWS, it never widens |
+| `scope=everyone` | —               | **400**                         |
+
+The home screen is one request now, and the count it shows is the truth rather than a sample.
+
+### 10c. Screens
+
+| Screen                      | axe (light)                | axe (dark)                 |
+| --------------------------- | -------------------------- | -------------------------- |
+| Home — My Tasks / Oversight | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
+| Goal-setting roster         | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
+
+No failing requests, no page errors. `03-home.png` shows a line manager's view: **My tasks** with
+exactly the three `scope=mine` items — their own set plus two direct reports — each carrying
+§5.4's refusal sentence verbatim; **Oversight** scoped to their chain; and a sidebar with no admin
+entries, because the capability gates are doing their job.
+
+## 11. Still not verified
 
 - **The KPI drafting and sign-off screens.** 2b and 2c ship their APIs and domain logic with
   contract tests; the manager-facing drafting UI and the My Tasks split (§4.4) are the next

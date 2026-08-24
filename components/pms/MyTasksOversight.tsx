@@ -1,0 +1,488 @@
+"use client";
+
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { useQuery } from "@tanstack/react-query";
+import { Building2, Eye, Network, Users } from "lucide-react";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { SectionCard } from "@/components/shared/SectionCard";
+import { TableSkeleton } from "@/components/shared/Skeletons";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import type { PerformanceCycle } from "@/components/pms/CycleList";
+import type { ParticipantRow, RosterResponse } from "@/components/pms/ParticipantList";
+import type { GoalStage } from "@/components/pms/StageBanner";
+import { usePmsActor, type PmsCapabilities } from "@/hooks/use-pms-actor";
+import { apiClient } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+/**
+ * §4.4 — "Every user's interface separates: **My Tasks** (personal action
+ * space): everything assigned to me to do, regardless of which role generated
+ * it… Driven by assignment, not hierarchy or role name. **Oversight** (view
+ * space): everything I'm entitled to see but not necessarily act on."
+ *
+ * Three properties the split has to have, and how each is made true here:
+ *
+ *   ONE OF EACH, NOT ONE PER ROLE. §4.3 makes PMS roles additive ("most access
+ *   wins"), so an HRBP who also manages three people gets ONE My Tasks holding
+ *   her own signature and her three reports' drafts, and ONE Oversight holding
+ *   both the org-wide view and her chain. Nothing here is keyed on a "primary"
+ *   role, because there is no such thing.
+ *
+ *   ASSIGNMENT, NOT HIERARCHY. A row lands in My Tasks because of what it is
+ *   waiting on — my signature, my drafting — never because of what I am called.
+ *   The predicates are `employee.id === me` and `employee.managerId === me`,
+ *   which is exactly the edge §4.2 reserves to the direct line manager.
+ *
+ *   URGENCY IS THE ORDER. §5.4 makes the stage deadline a hard lock, so tasks
+ *   sort against it: a locked stage first (it is already too late, and that has
+ *   to be visible rather than discovered on submit), then a deadline inside
+ *   three days, then the rest — and within a band, the set with nothing drafted
+ *   before the one that only needs a signature.
+ *
+ * WHAT THIS CANNOT DO EXACTLY, AND SAYS SO. `GET /api/cycles/[id]/participants`
+ * has no "my direct reports" filter, so My Tasks is assembled from the first
+ * page of the roster (100 rows, the API's own ceiling) plus a targeted lookup of
+ * the viewer's OWN row by name — which is what stops a person's own signature
+ * falling off page 2 in a large org. When the roster runs longer than one page
+ * the section says so rather than implying the list is complete.
+ */
+
+/** Rows per roster page — the API's own ceiling (`parsePagination`). */
+const ROSTER_PAGE_SIZE = 100;
+const DUE_SOON_MS = 3 * 24 * 60 * 60 * 1000;
+
+type TaskTone = "overdue" | "dueSoon" | "notYetOpen" | "open";
+
+const TONE_VARIANT: Record<TaskTone, BadgeProps["variant"]> = {
+  overdue: "danger",
+  dueSoon: "warning",
+  notYetOpen: "outline",
+  open: "success",
+};
+
+interface Task {
+  key: string;
+  titleKey: string;
+  titleParams?: Record<string, string>;
+  detailKey: string;
+  actionKey: string;
+  href: string;
+  /** Lower sorts first. Stage urgency dominates; task kind breaks the tie. */
+  rank: number;
+  /** The server's own sentence for why this set cannot be edited, if it cannot. */
+  blockedReason: string | null;
+}
+
+/**
+ * The clock, as a subscription rather than a render-time read.
+ *
+ * `Date.now()` during render is impure, and would make the server and client
+ * renders disagree. §5.4's LOCK never depends on it — `stage.state` is the
+ * SERVER's answer, so a slow client clock can never invent or hide a lock. The
+ * only thing this decides is the softer "due soon" band, which is also why it
+ * ticks: a screen left open overnight should cross that boundary rather than
+ * keep yesterday's answer.
+ */
+const CLOCK_TICK_MS = 60_000;
+
+function useNowMs(): number | null {
+  const [now, setNow] = useState<number | null>(null);
+  useEffect(() => {
+    const read = () => setNow(Date.now());
+    const first = setTimeout(read, 0);
+    const timer = setInterval(read, CLOCK_TICK_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, []);
+  return now;
+}
+
+function toneForStage(stage: GoalStage | null, nowMs: number | null): TaskTone {
+  if (!stage) return "notYetOpen";
+  if (stage.state === "LOCKED") return "overdue";
+  if (stage.state === "NOT_YET_OPEN") return "notYetOpen";
+  if (nowMs !== null && new Date(stage.deadline).getTime() - nowMs <= DUE_SOON_MS) {
+    return "dueSoon";
+  }
+  return "open";
+}
+
+const STAGE_RANK: Record<TaskTone, number> = {
+  overdue: 0,
+  dueSoon: 1,
+  open: 2,
+  notYetOpen: 3,
+};
+
+/** My own goal-setting step, if it is still waiting on me (§5.1). */
+function ownTask(row: ParticipantRow, href: string, stageRank: number): Task | null {
+  if (row.signOff.employeeSignedAt) return null;
+  // §5.3 — a set can only be signed at exactly 100%. Until it is there the ball
+  // is with the manager, so the card says so instead of offering a button the
+  // route would refuse.
+  const signable = row.weightageComplete;
+  return {
+    key: `own-${row.participantId}`,
+    titleKey: "ownSetTitle",
+    detailKey: signable ? "ownSetSign" : "ownSetWaiting",
+    actionKey: signable ? "ownSetAction" : "ownSetView",
+    href,
+    rank: stageRank * 10 + (signable ? 2 : 0),
+    blockedReason: null,
+  };
+}
+
+/** A direct report's set, if it still needs drafting or my signature (§4.2, §5.1). */
+function reportTask(row: ParticipantRow, href: string, stageRank: number): Task | null {
+  const needsDrafting = !row.weightageComplete;
+  const needsSignature = row.weightageComplete && !row.signOff.managerSignedAt;
+  if (!needsDrafting && !needsSignature) return null;
+  const detailKey = needsDrafting
+    ? row.kpiCount === 0
+      ? "reportDraftEmpty"
+      : "reportDraft"
+    : "reportSign";
+  return {
+    key: `report-${row.participantId}`,
+    titleKey: "reportDraftTitle",
+    titleParams: { name: row.employee.name },
+    detailKey,
+    actionKey: "reportAction",
+    href,
+    rank: stageRank * 10 + (row.kpiCount === 0 ? 0 : needsDrafting ? 1 : 2),
+    blockedReason: row.editBlockedReason,
+  };
+}
+
+function buildTasks(params: {
+  rows: ParticipantRow[];
+  employeeId: string | null;
+  stageRank: number;
+  hrefFor: (row: ParticipantRow) => string;
+  locale: string;
+}): Task[] {
+  const { rows, employeeId, stageRank, hrefFor, locale } = params;
+  const tasks: Task[] = [];
+  for (const row of rows) {
+    // §8.3 — a C-Level participant has no goal-setting step, so no task exists.
+    if (row.goalSettingExempt || employeeId === null) continue;
+    const href = hrefFor(row);
+    const own = row.employee.id === employeeId ? ownTask(row, href, stageRank) : null;
+    if (own) tasks.push(own);
+    const report = row.employee.managerId === employeeId ? reportTask(row, href, stageRank) : null;
+    if (report) tasks.push(report);
+  }
+  return tasks.sort((a, b) => a.rank - b.rank || a.key.localeCompare(b.key, locale));
+}
+
+/** The queries behind both sections, kept in one place so they stay in step. */
+function useGoalSettingSnapshot() {
+  const cycles = useQuery({
+    queryKey: ["pms", "cycles"],
+    queryFn: () => apiClient.get<PerformanceCycle[]>("/api/cycles"),
+  });
+
+  // §2 — one cycle per year, and exactly one of them is the year being run.
+  const openCycle = (cycles.data ?? []).find((c) => c.status === "OPEN") ?? null;
+
+  // §4.4 — "driven by assignment, not hierarchy or role name". `scope=mine` is
+  // that filter, server-side: my own set plus the sets I owe a manager's action
+  // on, and nothing else.
+  //
+  // This was assembled client-side from a page of the whole roster plus a
+  // targeted name lookup, because no such filter existed. That is exact for a
+  // 37-person fixture and silently wrong at 500: the viewer's own row falls off
+  // page 2 and their task list quietly loses entries — the worst failure mode a
+  // task list has, because nothing looks broken. One request now, and the count
+  // is the truth rather than a sample.
+  const roster = useQuery({
+    queryKey: ["pms", "home-roster", openCycle?.id, "mine"],
+    queryFn: () =>
+      apiClient.get<RosterResponse>(
+        `/api/cycles/${openCycle?.id}/participants?page=1&pageSize=${ROSTER_PAGE_SIZE}&scope=mine`,
+      ),
+    enabled: openCycle !== null,
+  });
+
+  const byId = new Map<string, ParticipantRow>();
+  for (const row of roster.data?.data ?? []) {
+    byId.set(row.participantId, row);
+  }
+
+  return {
+    cycles,
+    roster,
+    openCycle,
+    rows: [...byId.values()],
+    isLoading: cycles.isLoading || (openCycle !== null && roster.isLoading),
+    isError: cycles.isError || roster.isError,
+    refetch: () => {
+      cycles.refetch();
+      roster.refetch();
+    },
+  };
+}
+
+function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: GoalStage | null }) {
+  const t = useTranslations("pms.home");
+
+  const dueLabel =
+    tone === "overdue"
+      ? t("overdue")
+      : tone === "dueSoon"
+        ? t("dueSoon")
+        : tone === "open" && stage
+          ? t("dueLabel", { datetime: formatDateTime(stage.deadline) })
+          : t("notYetOpen");
+
+  return (
+    <li className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0">
+      <div className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-foreground">
+            {t(task.titleKey, task.titleParams)}
+          </span>
+          <Badge variant={TONE_VARIANT[tone]}>{dueLabel}</Badge>
+        </div>
+        <p className="max-w-prose text-xs text-muted-foreground">{t(task.detailKey)}</p>
+        {/* The server's own sentence, quoted: it names WHICH rule closed the
+            door (§4.2 / §5.4 / §5.1). */}
+        {task.blockedReason ? (
+          <p className="max-w-prose text-xs text-muted-foreground">{task.blockedReason}</p>
+        ) : null}
+      </div>
+      <Link href={task.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
+        {t(task.actionKey)}
+      </Link>
+    </li>
+  );
+}
+
+function MyTasksBody(props: {
+  loading: boolean;
+  failed: boolean;
+  onRetry: () => void;
+  hasEmployeeRecord: boolean;
+  openYear: number | null;
+  tasks: Task[];
+  tone: TaskTone;
+  stage: GoalStage | null;
+  truncation: { shown: number; total: number } | null;
+}) {
+  const t = useTranslations("pms.home");
+  const tGoal = useTranslations("pms.goalSetting");
+
+  if (props.loading) return <TableSkeleton rows={3} />;
+  if (props.failed) {
+    return (
+      <div className="space-y-3">
+        <p role="alert" className="text-sm text-destructive">
+          {t("loadFailed")}
+        </p>
+        <Button variant="outline" onClick={props.onRetry}>
+          {t("retry")}
+        </Button>
+      </div>
+    );
+  }
+  if (!props.hasEmployeeRecord) return <EmptyState description={t("noEmployeeRecord")} />;
+  if (props.openYear === null) return <EmptyState description={t("noOpenCycle")} />;
+  if (props.tasks.length === 0) {
+    return <EmptyState description={t("empty", { year: props.openYear })} />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {props.truncation ? (
+        <p className="text-xs text-muted-foreground">{tGoal("truncated", props.truncation)}</p>
+      ) : null}
+      <ul className="flex list-none flex-col gap-4 p-0">
+        {props.tasks.map((task) => (
+          <TaskRow key={task.key} task={task} tone={props.tone} stage={props.stage} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/**
+ * One entitlement, stated as what it lets the viewer SEE. Not a nested Card — a
+ * bordered peer in a grid of ≥2, which is the density rule's one sanctioned use
+ * of a card-shaped surface.
+ */
+function OversightCard(props: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+  actionLabel?: string;
+  href?: string;
+  value?: number | null;
+  valueLabel?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-border p-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 shrink-0 text-muted-foreground">{props.icon}</span>
+        <div className="min-w-0 space-y-1">
+          <p className="text-sm font-medium text-foreground">{props.title}</p>
+          <p className="text-xs text-muted-foreground">{props.body}</p>
+        </div>
+      </div>
+      {props.value != null && props.valueLabel ? (
+        <div className="flex items-baseline gap-2">
+          <span className="text-h5 font-semibold text-foreground">{props.value}</span>
+          <span className="text-xs text-muted-foreground">{props.valueLabel}</span>
+        </div>
+      ) : null}
+      {props.actionLabel && props.href ? (
+        <Link
+          href={props.href}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "self-start")}
+        >
+          {props.actionLabel}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function RoleBadges({ roles, isLineManager }: { roles: string[]; isLineManager: boolean }) {
+  const t = useTranslations("pms.home");
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs text-muted-foreground">{t("myRolesTitle")}</span>
+      {roles.length === 0 && !isLineManager ? (
+        <Badge variant="outline">{t("noPmsRoles")}</Badge>
+      ) : null}
+      {roles.map((role) => (
+        <Badge key={role} variant="brand">
+          {t(`roleValue.${role}`)}
+        </Badge>
+      ))}
+      {isLineManager ? <Badge variant="brand">{t("roleValue.LINE_MANAGER")}</Badge> : null}
+    </div>
+  );
+}
+
+function OversightBody({
+  capabilities,
+  locale,
+  visible,
+}: {
+  capabilities: PmsCapabilities;
+  locale: string;
+  visible: number | null;
+}) {
+  const t = useTranslations("pms.home");
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {capabilities.lineManager ? (
+        <OversightCard
+          icon={<Network aria-hidden className="h-4 w-4" />}
+          title={t("chainTitle")}
+          body={t("chainBody")}
+          actionLabel={t("chainAction")}
+          href={`/${locale}/goal-setting`}
+          value={visible}
+          valueLabel={t("participantsCount")}
+        />
+      ) : null}
+
+      {capabilities.orgWide && !capabilities.readOnly ? (
+        <OversightCard
+          icon={<Building2 aria-hidden className="h-4 w-4" />}
+          title={t("orgTitle")}
+          body={t("orgBody")}
+          actionLabel={t("orgAction")}
+          href={`/${locale}/admin/cycles`}
+          value={visible}
+          valueLabel={t("participantsCount")}
+        />
+      ) : null}
+
+      {capabilities.readOnly ? (
+        // §4.1 — the executive viewer sees everything and acts on nothing, so
+        // this card deliberately carries no action.
+        <OversightCard
+          icon={<Eye aria-hidden className="h-4 w-4" />}
+          title={t("readOnlyTitle")}
+          body={t("readOnlyBody")}
+          value={visible}
+          valueLabel={t("participantsCount")}
+        />
+      ) : null}
+
+      <OversightCard
+        icon={<Users aria-hidden className="h-4 w-4" />}
+        title={t("directoryTitle")}
+        body={t("directoryBody")}
+        actionLabel={t("directoryAction")}
+        href={`/${locale}/people`}
+      />
+    </div>
+  );
+}
+
+export function MyTasksOversight() {
+  const t = useTranslations("pms.home");
+  const locale = useLocale();
+  const nowMs = useNowMs();
+  const { actor, capabilities, isLoading: actorLoading, isError: actorError } = usePmsActor();
+  const snapshot = useGoalSettingSnapshot();
+
+  const stage = snapshot.roster.data?.stage ?? null;
+  const tone = toneForStage(stage, nowMs);
+
+  const tasks = buildTasks({
+    rows: snapshot.rows,
+    employeeId: actor?.employeeId ?? null,
+    stageRank: STAGE_RANK[tone],
+    hrefFor: (row) =>
+      `/${locale}/goal-setting/${snapshot.openCycle?.id}/participants/${row.participantId}`,
+    locale,
+  });
+
+  const rosterData = snapshot.roster.data;
+  const truncation =
+    rosterData && rosterData.totalPages > 1
+      ? { shown: rosterData.data.length, total: rosterData.total }
+      : null;
+
+  return (
+    <>
+      <SectionCard title={t("myTasksTitle")} subtitle={t("myTasksSubtitle")}>
+        <MyTasksBody
+          loading={actorLoading || snapshot.isLoading}
+          failed={actorError || snapshot.isError}
+          onRetry={snapshot.refetch}
+          hasEmployeeRecord={!!actor?.employeeId}
+          openYear={snapshot.openCycle?.year ?? null}
+          tasks={tasks}
+          tone={tone}
+          stage={stage}
+          truncation={truncation}
+        />
+      </SectionCard>
+
+      <SectionCard
+        title={t("oversightTitle")}
+        subtitle={t("oversightSubtitle")}
+        actions={
+          <RoleBadges roles={actor?.pmsRoles ?? []} isLineManager={capabilities.lineManager} />
+        }
+      >
+        <OversightBody
+          capabilities={capabilities}
+          locale={locale}
+          visible={rosterData?.total ?? null}
+        />
+      </SectionCard>
+    </>
+  );
+}

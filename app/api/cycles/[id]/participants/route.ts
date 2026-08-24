@@ -46,6 +46,16 @@ import { visibleEmployeeIds } from "@/lib/pms/org-tree";
 // lib/validations/.
 const participantQuerySchema = z.object({
   search: z.string().trim().min(1).max(200).optional(),
+  /**
+   * §4.4's "My Tasks" filter: the participants whose goal-setting is assigned to
+   * ME — my own set, plus my direct reports'. Deliberately not a role filter;
+   * §4.4 is explicit that the personal action space is "driven by assignment,
+   * not hierarchy or role name", so an HR Super Admin who also manages a team
+   * gets exactly their own five rows here, not the whole org.
+   *
+   * It NARROWS the visibility set computed above; it never widens it.
+   */
+  scope: z.enum(["mine"]).optional(),
 });
 
 /**
@@ -74,11 +84,12 @@ export const GET = withRateLimit(
     const pagination = parsePagination(searchParams);
     const parsedQuery = participantQuerySchema.safeParse({
       search: searchParams.get("search") ?? undefined,
+      scope: searchParams.get("scope") ?? undefined,
     });
     if (!parsedQuery.success) {
       return err(parsedQuery.error.issues.map((i) => i.message).join(", "));
     }
-    const { search } = parsedQuery.data;
+    const { search, scope } = parsedQuery.data;
 
     const cycle = await prisma.performanceCycle.findUnique({
       where: { id: cycleId },
@@ -118,9 +129,22 @@ export const GET = withRateLimit(
       });
     }
 
+    // §4.4 — "My Tasks (personal action space): everything assigned to me to do…
+    // Driven by assignment, not hierarchy or role name."
+    //
+    // Without this the home screen has to fetch a page of the whole org and
+    // filter client-side, which is exact at 37 people and silently wrong at 500:
+    // the viewer's own row falls off page 2 and their task list quietly loses
+    // entries. `scope=mine` is the assignment filter §4.4 describes — my own set,
+    // plus the sets I owe a manager's action on.
+    const assignedTo = scope === "mine" && actor.employeeId ? actor.employeeId : null;
+
     const where: Prisma.CycleParticipantWhereInput = {
       cycleId,
       ...(visibleIds !== null ? { employeeId: { in: [...visibleIds] } } : {}),
+      ...(assignedTo
+        ? { OR: [{ employeeId: assignedTo }, { employee: { managerId: assignedTo } }] }
+        : {}),
       ...(search
         ? {
             employee: {

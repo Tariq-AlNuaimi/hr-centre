@@ -21,6 +21,7 @@ import {
   type DashboardData,
   type RecentAudit,
 } from "@/components/dashboard/DashboardContent";
+import { MyTasksOversight } from "@/components/pms/MyTasksOversight";
 
 // The page stays dynamic for the per-request auth gate; the heavy aggregate
 // below is what's cached, not the page.
@@ -118,5 +119,24 @@ export default async function DashboardPage() {
   const isAdmin = session?.user?.role === "ADMIN";
   const data = isAdmin ? await getDashboardData() : null;
 
-  return <DashboardContent isAdmin={isAdmin} data={data} />;
+  // §4.4 — "Every user's interface separates My Tasks (personal action space)
+  // from Oversight (view space)". That split is the home page's substance, and
+  // it is the same two sections for everyone: PMS authority lives on the
+  // Employee record (ADR-065), so the island resolves it per request rather
+  // than reading it off the session the platform gate above uses.
+  //
+  // ORDER. `DashboardContent` owns this page's one <PageHeader> (and, for a
+  // platform ADMIN, the template's operational aggregate above), so the PMS
+  // sections follow it rather than competing with a second page heading. The
+  // two authority systems are deliberately separate — a platform admin is not
+  // an HR role and vice versa — so both can be present and neither implies the
+  // other.
+  return (
+    <>
+      <DashboardContent isAdmin={isAdmin} data={data} />
+      <div className="mt-6 space-y-6">
+        <MyTasksOversight />
+      </div>
+    </>
+  );
 }

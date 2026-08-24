@@ -8,6 +8,7 @@ import {
   Upload,
   Building2,
   CalendarDays,
+  ClipboardList,
   ShieldCheck,
   Settings,
   Trash2,
@@ -110,6 +111,23 @@ export function AppSidebar() {
       label: t("org"),
       onClick: () => router.push(`/${locale}/org`),
     },
+    // Goal setting (§5) is the LINE MANAGER's workspace, so it is gated on the
+    // relationship — `capabilities.lineManager` is derived from
+    // `Employee.managerId` edges, not from a role name (§4.2) — plus HR's
+    // org-wide override (§4.1). Roles are additive, so this is an OR (§4.3).
+    // An employee with no reports has no roster to work: their own KPI set
+    // reaches them through My Tasks on the home page, not through a nav item
+    // that would open an empty screen.
+    ...(capabilities.lineManager || pmsRoles.includes("HR_SUPER_ADMIN") || pmsRoles.includes("HRBP")
+      ? [
+          {
+            key: "goal-setting",
+            icon: <ClipboardList className="h-4 w-4" />,
+            label: t("goalSetting"),
+            onClick: () => router.push(`/${locale}/goal-setting`),
+          },
+        ]
+      : []),
     // The cycle console. §4.1 gives BOTH HR flavours "runs the cycle org-wide"
     // (`canRunCycle` at the route), which is wider than `capabilities.configure`
     // — so it is read off the actor's own roles, not a capability flag.

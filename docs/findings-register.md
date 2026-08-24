@@ -49,10 +49,14 @@ the changed surface is still **open** (un-adjudicated).
   `weightageSummary` reads `participant.kpis`) still surfaces soft-deleted children. So the
   explicit filters are the real fix in both worlds, and registration is defence in depth plus
   recycling-bin visibility, not a substitute.
-  **Not applied:** `lib/prisma/**` is an Ask-before surface (CLAUDE.md). — status:
-  adjudicated(2026-08-24), decision SCHEDULED with the operator; safe in the interim because
-  every KPI read in Phase 2 filters explicitly, pinned by the tests in
-  `tests/contracts/pms-kpi.test.ts`
+  **FIXED 2026-08-24** with the operator's approval for the Ask-before surface. `Kpi` is now in
+  `SOFT_DELETE_MODELS`, and the KPI route's DELETE switched from a hand-rolled `update` to
+  `prisma.kpi.delete()` — verified against PostgreSQL, that path logs the audit action as
+  **DELETE** where the hand-rolled one logged **UPDATE**, because the extension infers a soft
+  delete by comparing `deletedAt` across before/after and the route's narrow select hid it. Both
+  paths keep the row; normal reads return 0 of 2 withdrawn KPIs. The explicit `deletedAt: null`
+  filters stay at every call site, for the nested-include reason above. — status:
+  fixed(this commit)
 
 - 2026-08-24 — [scalable/pillar] **Two unbounded `findMany` calls in
   `app/api/cycles/[id]/stages/route.ts`, marked `pillar:scalable-ok`.** Both read
@@ -113,17 +117,20 @@ the changed surface is still **open** (un-adjudicated).
   Admin's credentials and an admin fixing a typo in someone's display name are byte-identical in
   the audit trail. Since detection is the _only_ control that survives against a hostile admin
   (see above), the one control that matters is blind to the one action that matters.
-  **Proposed fix:** log scrubbed field NAMES with redacted values —
-  `{"passwordHash": {"from": "[redacted]", "to": "[redacted]"}}` — exactly the shape the import
-  preview already uses for `basicSalary`. Field names are not secrets; values are. That makes
-  "an admin changed someone else's password" queryable and alertable without ever storing a hash.
-  **Not applied:** `lib/prisma/audit-extension.ts` is an Ask-before surface (CLAUDE.md), so this
-  needs operator sign-off. — Tariq Al-Naaimi — status: adjudicated(2026-08-24), decision
-  SCHEDULED and BLOCKING on real data: the operator has been shown the reproduction and the
-  proposed patch, and this must be settled before real employee records are imported, because
-  its whole value is retrospective — an audit trail that was blind on the day of an incident
-  cannot be repaired afterwards. Accepted in the interim only because the demo fixture holds no
-  real person's pay.
+  **FIXED 2026-08-24, and the diagnosis above was wrong in an instructive way.** The scrub was
+  never the cause: `computeChanges` already emitted `{"from":"[redacted]","to":"[redacted]"}` for a
+  scrubbed field that changed. The real cause is that **`computeChanges` iterates the keys of
+  `after`, and `after` is whatever the CALLER selected** — `PUT /api/users/[id]` returns six
+  columns, none of them `passwordHash`, so the changed column was never present to be compared.
+  That makes it a GENERAL defect: any audited update with a narrow `select` under-reports what
+  changed. The audit extension now re-reads the full row before diffing (`before` was already
+  fetched unselected, so the pair is now symmetric); a null re-read means the update soft-deleted
+  the row, and the caller's projection is kept. Verified against PostgreSQL: a password reset logs
+  `{"passwordHash":{"from":"[redacted]","to":"[redacted]"},"passwordChangedAt":{...}}` and a rename
+  logs only `name`. Pinned by three tests in `tests/contracts/audit-scrub.test.ts`, one of which
+  documents the hazard itself.
+  — Tariq Al-Naaimi (approved the Ask-before change to `lib/prisma/audit-extension.ts`) —
+  status: fixed(this commit)
 
 - 2026-08-24 — [high-quality/correctness] **A concurrent double-apply killed the loser with a raw
   Prisma error — FIXED.** The review flagged this at ~60 confidence without reproducing it. Two
