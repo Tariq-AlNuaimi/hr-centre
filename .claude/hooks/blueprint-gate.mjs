@@ -42,8 +42,12 @@ import {
   blueprintCoverInfo,
   isSharedTier,
 } from "./lib/scope-cover.mjs";
+import { resolveRoot } from "./lib/receipt.mjs";
 
-const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+// Reassigned from the tool call's own cwd once the payload is parsed — see
+// resolveRoot in lib/receipt.mjs. This default stands only when the harness
+// does not tell us where the command ran.
+let ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
 /** Project-relative, forward-slashed path (abs or relative input). */
 function relPath(fp) {
@@ -52,6 +56,7 @@ function relPath(fp) {
 
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
+  ROOT = resolveRoot(input);
   if ((input.tool_name ?? "") !== "Write") process.exit(0);
   const fp = input.tool_input?.file_path ?? "";
   const rel = relPath(fp);

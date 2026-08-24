@@ -35,6 +35,7 @@ import {
   ledgerCoverInfo,
   isSharedTier,
 } from "./lib/scope-cover.mjs";
+import { resolveRoot } from "./lib/receipt.mjs";
 
 // C3 (tiered friction): a hard DENY on every fork contradicted /quickstart's "idea → live
 // URL in ~10 minutes" promise. The gate is now tiered off the EXISTING project.config.json
@@ -43,7 +44,10 @@ import {
 // `additionalContext` naming the same missing artifact and the same remedy. Rationale
 // (red-team R6): a PROCESS gate whose artifact is agent-writable should apply friction
 // proportionate to blast radius — the nudge stays, the wall moves to shared-tier work.
-const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+// Reassigned from the tool call's own cwd once the payload is parsed — see
+// resolveRoot in lib/receipt.mjs. This default stands only when the harness
+// does not tell us where the command ran.
+let ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
 /** Project-relative, forward-slashed path for a Write target (abs or relative). */
 function relPath(fp) {
@@ -52,6 +56,7 @@ function relPath(fp) {
 
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
+  ROOT = resolveRoot(input);
   if ((input.tool_name ?? "") !== "Write") process.exit(0); // only new-file creation
   const fp = input.tool_input?.file_path ?? "";
   const rel = relPath(fp);

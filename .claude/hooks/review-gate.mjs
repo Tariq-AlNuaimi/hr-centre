@@ -49,12 +49,17 @@ import {
   norm,
   parseGateSkips,
   parseReceipts,
+  resolveRootFromCwd,
   skipMatchesGate,
   verifyReceipt,
 } from "./lib/receipt.mjs";
 
 const GATE = "review-gate";
-const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+// A pre-push hook already runs inside the repo being pushed, so cwd wins here.
+// CLAUDE_PROJECT_DIR would name the session's PRIMARY checkout, which is a
+// different repository the moment a session works in two clones — and receipts
+// are bound to a tree-sha, so it would check one repo's tree against another's.
+const ROOT = resolveRootFromCwd();
 const ZERO = /^0{40,64}$/;
 
 /** Fail-open exit: allow the push, but say which gate could not evaluate (AC-1.5). */

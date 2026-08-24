@@ -46,9 +46,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  auditLogs     AuditLog[]
+  accounts  Account[]
+  sessions  Session[]
+  auditLogs AuditLog[]
 
   // PMS (ADR-065). Optional on purpose: a User is a login identity, an Employee
   // is an org-data record, and the two populations only overlap. Most Users will
@@ -294,6 +294,14 @@ model Employee {
   manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
   reports   Employee[] @relation("EmployeeManager")
 
+  // --- Phase 2 back-relations (spec §2, §5) --------------------------------
+  cyclesOpened      PerformanceCycle[] @relation("CycleOpenedBy")
+  cycleParticipants CycleParticipant[] @relation("ParticipantEmployee")
+  goalsApproved     CycleParticipant[] @relation("GoalsApprovedBy")
+  signOffs          SignOff[]          @relation("SignOffSigner")
+  complianceAbout   ComplianceEvent[]  @relation("ComplianceSubject")
+  complianceAgainst ComplianceEvent[]  @relation("ComplianceManager")
+
   roleTrack RoleTrack // §1.3
   pmsRoles  PmsRole[] // §4.3 additive; empty for a plain employee
 
@@ -409,4 +417,238 @@ model ImportRowIssue {
 
   @@index([batchId, severity])
   @@map("import_row_issues")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 — the performance cycle (spec §2, §5)
+// ---------------------------------------------------------------------------
+
+// §2 — "The cycle is annual, with three touchpoints." A cycle is DRAFT while HR
+// sets the deadlines, OPEN once it is running, CLOSED when the year is done.
+// Nothing is actionable in DRAFT, which is what lets HR set three deadlines as
+// one deliberate act rather than having a half-configured cycle go live.
+enum CycleStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+// §2's three touchpoints. Scoring happens ONCE, at year-end — mid-year is
+// explicitly "a course-correction only", which is why there is no score field
+// anywhere in Phase 2.
+enum CycleStageKind {
+  GOAL_SETTING
+  MID_YEAR
+  YEAR_END
+}
+
+// §5.1 — "both employee and manager sign off (acknowledgment of agreement)".
+// Exactly two parties, and neither of them is HR: HR's approval is a different
+// act (the lock), recorded on CycleParticipant, not as a third signature.
+enum SignOffParty {
+  EMPLOYEE
+  MANAGER
+}
+
+// §5.5's ladder + §5.6's record. One enum for both because the compliance record
+// IS the ladder's output — §5.6 asks for "every deadline miss and escalation
+// event", so a separate notification log would be the same rows written twice.
+enum ComplianceKind {
+  REMINDER_SENT // approaching deadline, to the manager
+  DEADLINE_MISSED // the moment it passes; logging begins here
+  ESCALATED_SKIP_LEVEL // manager's manager — "authority to compel action"
+  ESCALATED_HR // HR in PARALLEL with skip-level, not after it
+  HR_EXTENDED_DEADLINE // one of §5.5's three formal interventions
+  HR_MARKED_NON_COMPLIANT // another; the third (intervene directly) is an edit
+}
+
+// §2 — one cycle per performance year.
+model PerformanceCycle {
+  id     String      @id @default(cuid())
+  year   Int         @unique // the performance year, e.g. 2027 (goal-set in Dec 2026)
+  status CycleStatus @default(DRAFT)
+
+  // Who opened it. An Employee, not a User: §4 talks about HR people, and the
+  // audit question is "which HR person", which outlives their login.
+  openedById String?   @map("opened_by_id")
+  openedBy   Employee? @relation("CycleOpenedBy", fields: [openedById], references: [id])
+  openedAt   DateTime? @map("opened_at")
+
+  stages           CycleStage[]
+  participants     CycleParticipant[]
+  complianceEvents ComplianceEvent[]
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([status, year])
+  @@index([deletedAt, createdAt])
+  @@map("performance_cycles")
+}
+
+// §2 "HR sets deadlines for each stage" + §5.4 "All stage deadlines are hard
+// locks. After a deadline passes, the relevant party can no longer act on that
+// stage."
+//
+// `graceDays` is NOT an extension of the ability to act — that would contradict
+// §5.4. It is §5.5's third rung: how long after a miss before HR intervenes
+// formally. Configurable per stage because December's patience and June's are
+// not the same (operator decision, recorded in this blueprint's open questions).
+model CycleStage {
+  id      String           @id @default(cuid())
+  cycleId String           @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  kind      CycleStageKind
+  opensAt   DateTime       @map("opens_at")
+  deadline  DateTime
+  graceDays Int            @default(3) @map("grace_days")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cycleId, kind])
+  @@index([cycleId, deadline])
+  @@map("cycle_stages")
+}
+
+// One employee's participation in one cycle.
+//
+// §3.5 — "New rows → create the employee, pull them into the cycle", so
+// enrolment is idempotent and re-runs after every import.
+//
+// There is deliberately NO managerId snapshot here. §12.2 fixes manager-of-record
+// as "whoever currently holds the relationship at the time of each action", and
+// a snapshot would leave a reassigned manager unable to act on their own report
+// while a departed one still could. The signer is recorded on SignOff instead.
+model CycleParticipant {
+  id      String           @id @default(cuid())
+  cycleId String           @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  employeeId String   @map("employee_id")
+  employee   Employee @relation("ParticipantEmployee", fields: [employeeId], references: [id])
+
+  // §5.1 — "HR approval LOCKS the KPIs as the agreed baseline." This pair IS the
+  // lock; there is no separate boolean to drift out of step with it.
+  goalsApprovedAt   DateTime? @map("goals_approved_at")
+  goalsApprovedById String?   @map("goals_approved_by_id")
+  goalsApprovedBy   Employee? @relation("GoalsApprovedBy", fields: [goalsApprovedById], references: [id])
+
+  kpis     Kpi[]
+  signOffs SignOff[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cycleId, employeeId])
+  @@index([employeeId])
+  @@index([cycleId, goalsApprovedAt])
+  @@map("cycle_participants")
+}
+
+// §5.6 — "Every deadline miss and escalation event is logged automatically:
+// manager name, what was missed, by how long, whether it required skip-level or
+// HR intervention." Feeds §11.2's manager-accountability report.
+//
+// The unique constraint is what makes the daily sweep idempotent: a retry, or a
+// manual invocation on the same day, must not inflate a manager's miss count.
+model ComplianceEvent {
+  id      String           @id @default(cuid())
+  cycleId String           @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  stageKind CycleStageKind @map("stage_kind")
+
+  // Whose KPI set was affected — the employee is the one disadvantaged by a
+  // missed manager deadline (§5.5's stated principle).
+  subjectEmployeeId String   @map("subject_employee_id")
+  subjectEmployee   Employee @relation("ComplianceSubject", fields: [subjectEmployeeId], references: [id])
+
+  // Who controlled the missed action. Null when the miss was the employee's own
+  // (§5.4 — that is not manager non-compliance and must not pollute their record).
+  managerEmployeeId String?   @map("manager_employee_id")
+  managerEmployee   Employee? @relation("ComplianceManager", fields: [managerEmployeeId], references: [id])
+
+  kind          ComplianceKind
+  missedByHours Int?           @map("missed_by_hours") // §5.6 "by how long"
+  detail        String
+
+  occurredAt DateTime @default(now()) @map("occurred_at")
+
+  @@unique([cycleId, stageKind, subjectEmployeeId, kind])
+  @@index([cycleId, kind])
+  @@index([managerEmployeeId, occurredAt])
+  @@map("compliance_events")
+}
+
+// §5.1 — "both employee and manager sign off (acknowledgment of agreement)".
+//
+// §5.3 is explicit that there is no reject: "If the employee does not agree,
+// they simply do not sign. There is no 'reject' button — the unsigned state is
+// the signal." So this table records only signatures; the absence of a row IS
+// the disagreement, and there is deliberately no status column to hold a
+// "rejected" value that the process does not have.
+//
+// The signer is recorded here rather than on CycleParticipant because §12.2
+// makes manager-of-record time-dependent: the question worth answering later is
+// "who actually signed", not "who would sign today".
+model SignOff {
+  id            String           @id @default(cuid())
+  participantId String           @map("participant_id")
+  participant   CycleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  party SignOffParty
+
+  signedByEmployeeId String   @map("signed_by_employee_id")
+  signedByEmployee   Employee @relation("SignOffSigner", fields: [signedByEmployeeId], references: [id])
+  signedAt           DateTime @default(now()) @map("signed_at")
+
+  createdAt DateTime @default(now())
+
+  @@unique([participantId, party])
+  @@index([signedByEmployeeId])
+  @@map("sign_offs")
+}
+
+// §5.2 — "For each KPI, the manager authors: KPI description, Weightage (%),
+// Five level descriptors."
+//
+// The five descriptors are five COLUMNS, not a child table. §5.2 fixes exactly
+// five levels with fixed names and fixed numeric values (Outstanding=5 …
+// Unsatisfactory=1), so columns make "exactly five" true by construction. A
+// child table would permit four or six and then need a constraint to forbid what
+// the schema should never have been able to express.
+//
+// §5.3 — weightages must total exactly 100% to sign off or lock. That is a
+// SET-level rule, so it lives in lib/pms/kpi.ts and is checked at sign-off, not
+// as a per-row constraint: a draft mid-edit is legitimately at 80%.
+model Kpi {
+  id            String           @id @default(cuid())
+  participantId String           @map("participant_id")
+  participant   CycleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  description String
+  // Percent, 0.00–100.00. Decimal not Float: these are summed and compared
+  // against exactly 100, and binary floating point cannot promise that.
+  weightage   Decimal @db.Decimal(5, 2)
+
+  descriptorOutstanding    String @map("descriptor_outstanding") // = 5
+  descriptorExcellent      String @map("descriptor_excellent") // = 4
+  descriptorTarget         String @map("descriptor_target") // = 3
+  descriptorAlmostAchieved String @map("descriptor_almost_achieved") // = 2
+  descriptorUnsatisfactory String @map("descriptor_unsatisfactory") // = 1
+
+  orderIndex Int @default(0) @map("order_index")
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([participantId, orderIndex])
+  @@index([deletedAt, createdAt])
+  @@map("kpis")
 }

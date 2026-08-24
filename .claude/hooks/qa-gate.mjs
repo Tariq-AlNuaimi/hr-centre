@@ -53,10 +53,14 @@ import {
   parseReceipts,
   skipMatchesGate,
   verifyReceipt,
+  resolveRoot,
 } from "./lib/receipt.mjs";
 
 const GATE = "qa-gate";
-const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
+// Reassigned from the tool call's own cwd once the payload is parsed — see
+// resolveRoot in lib/receipt.mjs. This default stands only when the harness
+// does not tell us where the command ran.
+let ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
 
 /** PreToolUse "say something, allow anyway" -- the same additionalContext-only contract
  * rules-injection.mjs and the advisory path of blueprint-gate.mjs use. */
@@ -170,6 +174,7 @@ function isDeployCommand(command) {
 let stage = "read-input";
 try {
   const input = JSON.parse(readFileSync(0, "utf8"));
+  ROOT = resolveRoot(input);
   if ((input.tool_name ?? "") !== "Bash") process.exit(0);
   const command = input.tool_input?.command ?? "";
 

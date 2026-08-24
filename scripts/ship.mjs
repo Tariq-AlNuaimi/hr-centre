@@ -24,6 +24,7 @@
  * Usage: npm run ship
  */
 import { spawn, spawnSync, execSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
   existsSync,
   readFileSync,
@@ -44,6 +45,47 @@ import { runCopyCheck } from "./copy-check.mjs";
 import { isGlobTooBroad } from "../.claude/hooks/lib/scope-cover.mjs";
 
 const CACHE = "node_modules/.cache";
+
+/**
+ * ESLint cache directory, keyed on everything that decides a lint RESULT but
+ * that `--cache` does not itself track.
+ *
+ * `--cache` keys on the linted file's content plus the config file's hash. It
+ * does NOT track the source of imported rule plugins, nor the resolved
+ * dependency tree. Both have produced a gate that passed something it rejected
+ * moments later:
+ *
+ *   - Editing a rule under `eslint-rules/` leaves stale entries, so a fixed rule
+ *     looks green and a newly-strict rule looks clean. (Previously handled by a
+ *     comment telling you to clear the cache by hand.)
+ *   - An `npm install` between two runs changed plugin resolution, and a
+ *     `react-hooks` warning that the first run reported green failed the second.
+ *     Code reached `main` behind a green gate that way.
+ *
+ * Folding the lockfile, the config and the local rule sources into the cache
+ * PATH means any of those changing starts a fresh cache automatically. A stale
+ * directory is just garbage in `node_modules/.cache`, which npm already owns.
+ */
+function eslintCacheDir() {
+  const h = createHash("sha256");
+  for (const f of ["package-lock.json", "eslint.config.mjs"]) {
+    h.update(f).update(existsSync(f) ? readFileSync(f) : Buffer.alloc(0));
+  }
+  const rulesDir = "eslint-rules";
+  if (existsSync(rulesDir)) {
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+        a.name < b.name ? -1 : 1,
+      )) {
+        const full = `${dir}/${entry.name}`;
+        if (entry.isDirectory()) walk(full);
+        else h.update(full).update(readFileSync(full));
+      }
+    };
+    walk(rulesDir);
+  }
+  return `${CACHE}/eslint-${h.digest("hex").slice(0, 16)}/`;
+}
 
 // --full loop (ADR-030): the docker image-build + trivy scan gate runs ONLY in
 // the full loop (`npm run ship -- --full`, or SHIP_FULL=1 for CI/deploy/handoff),
@@ -1808,11 +1850,10 @@ let [
   repoMap,
 ] = await Promise.all([
   typecheck(),
-  // NOTE: ESLint's --cache keys on the LINTED file's content + the config file
-  // hash, NOT on the source of imported rule plugins. After editing a rule under
-  // eslint-rules/, clear `node_modules/.cache/eslint/` or the cache can serve a
-  // STALE result (a fixed rule looks green; a newly-strict rule looks clean).
-  run("lint", "npx", ["eslint", "--cache", "--cache-location", `${CACHE}/eslint/`]),
+  // Cache location is keyed on the lockfile, the config and eslint-rules/ — see
+  // eslintCacheDir. Anything that can change a lint RESULT without changing a
+  // linted file starts a fresh cache, so this gate cannot pass stale.
+  run("lint", "npx", ["eslint", "--cache", "--cache-location", eslintCacheDir()]),
   // Prettier formatting gate (WS-7): `prettier --check .` respects .prettierignore
   // and fails RED on any file not in Prettier style. The repo was normalized once
   // (`prettier --write .`) at adoption, so this stays green unless a new/edited
