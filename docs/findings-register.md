@@ -35,6 +35,21 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [secure/data] **`employees.basicSalary` is plaintext at rest — options written
+  up, DECISION OWED before real data.** The column is Restricted (SECURITY.md §1) and every
+  control on it today is access-layer: omitted from the `select` for unentitled actors, scrubbed
+  from audit rows, banned as an export column, redacted in the SQL diagnostics helper, rendered
+  `[redacted]` in import previews. All verified on live payloads. **None of them survive direct
+  database read** — a connection string, a support export or a backup yields every salary in one
+  `SELECT`. **ADR-067** lays out four options with real costs and recommends accepting plaintext
+  now, targeting "don't store it at all, read from Odoo at bonus time" for Phase 5, and taking
+  app-level AES only if policy requires it. One correction the write-up makes explicit, because
+  it is the easiest thing to get wrong here: encryption at rest would NOT close the platform-admin
+  path in the finding above — that is an application-path disclosure and the app would decrypt for
+  them. **Not decided by me:** accepting a risk about real colleagues' pay is the operator's
+  signature. — Tariq Al-Naaimi — status: adjudicated(2026-08-24), decision SCHEDULED and BLOCKING
+  on the first real import; interim posture accepted because the fixture holds no real person's pay
+
 - 2026-08-24 — [secure/architecture] **A platform ADMIN can reach full HR Super Admin access,
   by TWO independent routes. Reproduced; recorded, not "fixed", because the fix is not code.**
   The post-push review raised route 1 at ~55 confidence and could not confirm it. Both routes

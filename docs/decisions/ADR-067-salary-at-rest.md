@@ -1,0 +1,162 @@
+# ADR-067 — Encryption at rest for `employees.basicSalary`
+
+- **Status:** Proposed — **awaiting operator decision. Blocking on real employee data.**
+- **Date:** 2026-08-24
+- **Deciders:** Tariq Al-Naaimi (operator)
+- **Related:** SECURITY.md §1 (data classes), §7 (encryption posture row), §12; ADR-065
+  (identity & roles); ADR-006 (Vercel + Neon); spec §4.5, §11.3, §11.6, §11.7
+
+## Context
+
+`employees.basicSalary` is classified **Restricted** — the same class as `AUTH_SECRET` and
+`users.passwordHash`. It is stored as a plaintext `Decimal` column in Neon Postgres.
+
+The controls around it today are real, and all of them are **access-layer**:
+
+| Control                                                | Where                                           |
+| ------------------------------------------------------ | ----------------------------------------------- |
+| Omitted from the Prisma `select` for unentitled actors | `lib/pms/employee-select.ts`                    |
+| Scrubbed from every audit row                          | `SCRUB_FIELDS`, `lib/prisma/audit-extension.ts` |
+| Banned as an export column                             | `no-restricted-export-column` ESLint rule       |
+| Redacted in the SQL diagnostics helper                 | `scripts/neon-sql.mjs` `REDACT_FIELDS`          |
+| Rendered as `[redacted]` in import preview diffs       | `lib/pms/import/reconcile.ts`                   |
+
+Those were verified on live wire payloads: a line manager's `GET /api/employees` response does
+not contain the key at all, for anyone, including their own direct reports (§4.5).
+
+**What none of them protect against is someone who reads the database directly.** A Neon
+connection string, a support export, a backup, or a compromised `DATABASE_URL` yields every
+salary in the company in one `SELECT`. SECURITY.md §7 anticipated exactly this row before the
+column existed; it now exists.
+
+A second fact, established the same day and relevant here: a platform `Role.ADMIN` can reach HR
+Super Admin access by two routes (ADR-065, "What this separation does and does not buy"). That
+is an _application_-path disclosure, so **encryption at rest would not stop it** — the app would
+decrypt for them. Encryption addresses the database-access threat only. Conflating the two is
+the main way this decision gets made badly.
+
+## Decision drivers
+
+1. **Real Omani salary figures for named employees.** Not a generic PII column: this is the
+   payload where "the database dump is the breach" applies most sharply, and where the people
+   affected are the operator's own colleagues.
+2. **Phase 5 computes money from it** (§11.3 bonus, §11.4 ÷365 pro-ration, §11.7 payroll export).
+   Whatever is chosen has to survive that.
+3. **Scale is small.** The org is three entities and on the order of hundreds of employees (the
+   fixture is 43). This matters more than it first appears: it is what makes Option 2's usual
+   objection — "you lose SQL ordering and aggregation" — much weaker here than it sounds.
+4. **This is a prototype rail** (ADR-006, Vercel + Neon, `git push` deploys). Operator-managed
+   key infrastructure is explicitly out of scope for this rail; SECURITY.md's own preamble says
+   forks needing operator-managed encryption keys "belong on the IT team's stack from day zero".
+5. **`/handoff` is the destination** (ADR-006 §6). Whatever is decided has to be something IT can
+   take ownership of, not a bespoke scheme only this codebase understands.
+
+## Options
+
+### Option 1 — Accept plaintext, with the access-layer controls, and record it
+
+Keep today's posture. Write the accepted risk into SECURITY.md §7 and the threat model as a
+decision rather than an oversight, and tighten the operational controls around database access:
+restrict who holds the Neon connection string, turn on Neon's audit/history features, and treat
+`DATABASE_URL` rotation as a real runbook step.
+
+- **Good:** zero engineering cost; nothing about Phase 5 changes; queryable, sortable and
+  summable in SQL; no key management; no migration; IT inherits a boring Postgres column.
+- **Good:** honest about what the real residual threat is — an insider or a leaked connection
+  string — and puts effort where that threat actually lives (credential handling), rather than
+  buying a cryptographic control that a compromised app would decrypt anyway.
+- **Bad:** a database dump is a total compensation breach. Neon's at-rest disk encryption does
+  not help here — it protects the physical media, not a legitimate `SELECT`.
+- **Bad:** if Rihal has, or later adopts, a policy requiring column-level encryption for
+  compensation data, this fails it and the migration cost only grows.
+
+### Option 2 — Application-level AES-256-GCM on the column
+
+Encrypt in the service layer, store ciphertext in a `String` column, decrypt in
+`employee-select.ts`'s entitled path. Key in a Vercel env var (Restricted, rotatable).
+
+- **Good:** a database dump yields ciphertext. This is the control that actually addresses the
+  stated threat.
+- **Good:** **cheaper here than the usual objection implies.** The standard argument against it
+  is "you lose ordering, ranges and aggregation in SQL". Check that against what this system
+  actually does: §11.3 computes a bonus **per employee** from that employee's own salary, and
+  §11.4 pro-rates it per employee. Neither is a cross-row SQL operation. §11.7's payroll export
+  is a per-employee row list. At a few hundred employees, decrypting the entitled set in
+  application code is microseconds and bounded.
+- **Bad:** key management on a rail that has none. A lost key is unrecoverable salary data; a
+  rotated key needs a re-encryption pass. This is the whole cost, and it is not small — it is an
+  operational commitment that outlives this session.
+- **Bad:** breaks any future "sort the directory by salary" or "sum payroll by department"
+  feature done in SQL, which would then have to move into app code with a full-set decrypt.
+- **Bad:** contradicts SECURITY.md's own stated boundary for this rail (see driver 4). Taking
+  this option should probably come with a superseding note on that.
+- **Bad:** the migration is a data migration on Restricted values, which is the least forgiving
+  kind to get wrong.
+
+### Option 3 — `pgcrypto` (encrypt/decrypt inside Postgres)
+
+- **Good:** less app-side plumbing than Option 2.
+- **Bad:** **does not address the stated threat.** If the key travels in the SQL statement, then
+  anyone with database access can decrypt — which is precisely the actor Option 2 exists to stop.
+  It defends against a stolen _disk_, which Neon already handles. Listed for completeness and to
+  be explicitly rejected, because it is the option that most looks like a solution without being
+  one.
+
+### Option 4 — Do not store salary at all; fetch it at bonus time
+
+Keep only what the PMS needs to _display_ (nothing — §4.5 means almost nobody may see it), and
+have Phase 5 pull salary from Odoo/payroll at computation time.
+
+- **Good:** the strongest posture. Data you never hold cannot leak, and payroll is already the
+  system of record (§3.1 names Odoo as the source).
+- **Good:** aligns with the import layer's existing design — `Employee` is already a projection
+  of Odoo, not the master.
+- **Bad:** requires an Odoo integration that does not exist yet (the v2 loader seam in
+  `lib/pms/import/loaders/` is documented but unimplemented), so it converts a Phase 5 decision
+  into a Phase 5 _dependency_ on another team's system and its availability at computation time.
+- **Bad:** §11.6 wants the salary that applied at a point in time; live-fetching gives today's,
+  which is wrong for a cycle that closed last month. Would need a snapshot — which is storing it
+  again, just later and with more moving parts.
+
+## Recommendation
+
+**Option 1 now, with Option 4 as the Phase 5 design target, and Option 2 only if a policy
+requires it.**
+
+Reasoning, in order of weight:
+
+1. The threat encryption addresses (direct database read) is narrower than it feels, and the
+   threat that is _actually_ live — a platform admin reaching HR access through the app — is
+   untouched by every cryptographic option here. Spending the effort on encryption while that
+   path exists would be buying the wrong control. The audit-visibility fix recorded in
+   `docs/findings-register.md` is worth more per unit of effort, and it is a much smaller change.
+2. Option 2's real cost is not the code — it is owning a key on a rail explicitly designed not
+   to own keys, all the way through `/handoff`. That is a commitment to make deliberately, not
+   as a reflex to the word "salary".
+3. Option 4 is genuinely better than both and becomes available when the Odoo loader lands. It
+   should be recorded as the intended end state so Phase 5 is designed toward it rather than
+   away from it.
+
+**This recommendation is not self-executing.** Option 1 means writing down an accepted risk about
+real people's pay, and that is the operator's signature to give, not mine.
+
+## Consequences if Option 1 is chosen
+
+- SECURITY.md §7's "Column encryption of Restricted fields" row changes from a flagged gap to a
+  recorded, dated, owned acceptance, and the threat model gains a row for database-read
+  disclosure with its compensating controls named.
+- The operational controls become load-bearing and must be treated as such: who holds
+  `DATABASE_URL`, how it rotates, and whether Neon's history/audit features are on.
+- Phase 5 is designed so the salary read is funnelled through **one** service function, so that
+  moving to Option 2 or Option 4 later is a change in one place rather than a hunt.
+
+## Migration triggers
+
+Revisit if any of these become true:
+
+- Rihal adopts a policy requiring column-level encryption for compensation data.
+- The Odoo loader lands, making Option 4 real.
+- The system moves off the prototype rail to IT-managed infrastructure with existing key
+  management (`/handoff`), where Option 2's main cost is already paid by someone else.
+- Salary needs to be sorted, ranged or aggregated **in SQL** by a real feature — which would
+  raise the cost of Option 2 and should be weighed at that moment, not assumed away now.
