@@ -57,7 +57,7 @@
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
 - lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
-- lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized
+- lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail

@@ -117,12 +117,78 @@ Both were invisible to `tsc` and to the unit tests as first written:
    itself emits — failed to map, silently dropping every reporting line on import. Fixed by
    normalising punctuation; the round-trip test now asserts all 11 columns map.
 
-## 7. Not yet verified (and why)
+## 7. Live RBAC — the §4 permission matrix on real wire payloads
 
-- **Browser/visual QA and axe** — not run. The screens are built from the vetted
-  `components/shared/*` primitives with logical properties throughout, but per
-  `docs/rules/design.md` a visual claim is only valid with captures attached, and none were
-  taken. `/design-qa` on the deployed URL is the next step, before HR review.
-- **Live RBAC click-through** (`/manual-uat`) — the permission matrix is proven at the unit
-  and query layer (19 contract tests, salary absent from the SELECT), but not yet by logging
-  in as each of the four roles in a browser.
+The app was run locally (Next dev against the Postgres above), one login created per role,
+and `GET /api/employees` fetched with each session's real cookie. This asserts on the JSON
+that actually crosses the wire, which is stronger than any rendering check for §4.5.
+
+| Role                            | Rows returned          | `basicSalary` key present | The word "salary" anywhere in the payload |
+| ------------------------------- | ---------------------- | ------------------------- | ----------------------------------------- |
+| HR Super Admin                  | 36 (all)               | yes                       | yes                                       |
+| HRBP                            | 36 (all)               | yes                       | yes                                       |
+| Executive viewer (Ops Director) | 36 (all)               | yes                       | yes                                       |
+| **Line manager** (Eng Director) | **8** (self + 7 chain) | **no**                    | **no**                                    |
+| **Individual contributor**      | **1** (self only)      | **no**                    | **no**                                    |
+
+§4.5 says line managers never see salary "even for their own direct reports". The field is
+not hidden in the manager's response — it is **not in it**.
+
+Negative paths, same sessions:
+
+| Check                                                            | Expected                            | Got    |
+| ---------------------------------------------------------------- | ----------------------------------- | ------ |
+| Line manager reads an employee outside their chain               | 404 (not 403 — no existence oracle) | 404 ✅ |
+| Line manager reads an employee inside their chain                | 200                                 | 200 ✅ |
+| HR Super Admin reads that same employee                          | 200                                 | 200 ✅ |
+| Individual creates an entity                                     | 403                                 | 403 ✅ |
+| **HRBP** creates an entity (§4.1: configure is Super-Admin-only) | 403                                 | 403 ✅ |
+| HR Super Admin creates an entity                                 | 201                                 | 201 ✅ |
+| HR Super Admin creates a duplicate entity code                   | 409                                 | 409 ✅ |
+| Invalid entity code format                                       | 400                                 | 400 ✅ |
+| Individual downloads the import template                         | 403                                 | 403 ✅ |
+| HRBP downloads the import template (preview is theirs)           | 200                                 | 200 ✅ |
+| Unauthenticated `GET /api/employees`                             | 401                                 | 401 ✅ |
+
+### A third defect this pass caught
+
+A **malformed JSON request body returned 500 instead of 400**. `await request.json()` throws
+on bad input and an unhandled throw in a route handler surfaces as a server error — but a body
+the client failed to encode is the client's fault, and reporting it as 500 both misleads the
+integrator and fills error monitoring with noise no operator can act on. Fixed by adding
+`readJsonBody()` to `lib/api-response.ts` and using it on every PMS write route; re-verified
+400 for a malformed body, 201 still for a valid one.
+
+_(The 500 first showed up in a check whose own shell quoting had mangled the JSON — so the
+test was wrong AND the behaviour was wrong. Both were fixed.)_
+
+## 8. Screens — looked at, not assumed
+
+Captured at 1440×900 against the seeded org (`docs/verification/pms-phase1/*.png`):
+
+- **`01-hr-directory.png`** — HR view: 36 people, one primary action ("Import employees"),
+  status filter, salary column present, C-Level rows showing "—" for department (§1.2).
+- **`02-org-chart.png`** — the reporting tree five levels deep with logical-property indent
+  guides, role-track badges, entity·department labels.
+- **`03-import-preview.png`** — a real truncated 4-row export uploaded through the UI. Shows
+  1 to create / 1 to update / **2 rejected** / **35 untouched**; each rejection with its row
+  number and reason; the salary change rendered as `basicSalary: [redacted] → [redacted]`;
+  and all 35 absent people listed under "Nothing happens to these people. A missing row is
+  never treated as someone leaving."
+- **`04-import-preview-dark.png`** — the same screen in dark mode; every token swaps, nothing
+  hardcoded leaks through.
+
+RTL was not captured because this fork is English-only (`project.config.json` `locales: ["en"]`),
+so the Arabic path is inert by design. The screens are built entirely on logical properties
+(`ms-*`, `ps-*`, `border-s-*`, flex) and `messages/ar.json` is at full key parity with `en.json`,
+so enabling `ar` is a config change, not a rewrite — but that claim is untested until a fork
+turns the locale on.
+
+## 9. Still not verified
+
+- **A formal axe accessibility audit.** The screens use semantic tables, associated labels,
+  real links rather than click-handlers on rows, and `role="alert"` on error text — but no
+  automated axe pass was run. `/design-qa` against the deployed URL is the next step.
+- **The apply step through the browser UI.** Apply was exercised end-to-end against the
+  database (§5a above) and the confirm button was rendered and enabled, but the final click
+  was not taken in the browser session.

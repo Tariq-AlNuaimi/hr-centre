@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
-import { err, forbidden, notFound, ok } from "@/lib/api-response";
+import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { employeeSelect, serializeEmployee } from "@/lib/pms/employee-select";
@@ -55,7 +55,8 @@ export const PUT = withRateLimit(
     // §4.1 "Configures? HR Super Admin: Yes — full", everyone else "No".
     if (!actor.capabilities.configure) return forbidden();
 
-    const body = await request.json();
+    const body = await readJsonBody(request);
+    if (body === null) return err("Request body must be valid JSON");
     const parsed = updateEmployeeSchema.safeParse(body);
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));

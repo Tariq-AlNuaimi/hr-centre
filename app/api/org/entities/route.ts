@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
-import { created, err, forbidden, ok } from "@/lib/api-response";
+import { created, err, forbidden, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { createEntitySchema } from "@/lib/validations/employee";
@@ -37,7 +37,8 @@ export const POST = withRateLimit(
     const actor = await resolveActor(session);
     if (!actor.capabilities.configure) return forbidden();
 
-    const body = await request.json();
+    const body = await readJsonBody(request);
+    if (body === null) return err("Request body must be valid JSON");
     const parsed = createEntitySchema.safeParse(body);
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
