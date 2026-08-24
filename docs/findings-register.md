@@ -35,6 +35,27 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-24 — [harness/gates] **`qa-gate` (and its sibling receipt gates) evaluate
+  `CLAUDE_PROJECT_DIR`'s HEAD, not the HEAD of the repository actually being deployed.**
+  `.claude/hooks/qa-gate.mjs:59` resolves `const ROOT = process.env.CLAUDE_PROJECT_DIR ?? process.cwd()`.
+  When a session's primary working directory is one repo and the deploy is run from a second
+  checkout — the exact shape of `/first-fork`, and of this product being forked out of the
+  template — the gate reads the WRONG repository. Observed here: `npm run deploy` from
+  `rihal-performance-management` (HEAD `8b5b90b`) was denied citing HEAD `4fcfee9`, which is the
+  template fork's HEAD. This is a **fail-closed** miss in the safe direction (it denied rather
+  than allowed), but the failure mode in the other direction is the dangerous one: a receipt
+  trailer sitting on the primary dir's HEAD would SATISFY the gate for a deploy of an entirely
+  different, unreviewed repository. The receipt is also content-bound to a tree-sha, so a
+  cross-repo receipt would be checking one repo's tree against another repo's gate.
+  **Interim handling in this session:** the deploy is invoked with `CLAUDE_PROJECT_DIR` set to the
+  repository being deployed, which makes the gate evaluate the correct — and, at that point,
+  receipt-less — HEAD rather than a stale unrelated one. That is a correction of a wrong value,
+  not a bypass: the gate still runs and still demands a receipt or a recorded skip at that HEAD.
+  **Fix owed:** derive ROOT from the git toplevel of the invoking cwd (`git rev-parse
+--show-toplevel`) and fall back to `CLAUDE_PROJECT_DIR` only when that fails; audit
+  `review-gate.mjs`, `blueprint-gate.mjs`, `build-vs-buy-gate.mjs` and `bash-write-gate.mjs` for
+  the same line. — status: open, owner: harness
+
 - 2026-08-24 — [quality/QA] **PMS Phase 1 deployed without a `/qa` receipt — `Gate-Skip: qa-gate`.**
   The three-tier orchestrator (design QA → functional QA → UAT) was NOT run. What WAS run, and is
   recorded with results in `docs/verification/pms-phase1/README.md`: the migration applied to a
