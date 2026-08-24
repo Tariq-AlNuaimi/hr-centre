@@ -3,13 +3,31 @@
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { apiClient } from "@/lib/api-client";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { AuthCard } from "@/components/shared/AuthCard";
 import { useNotify } from "@/hooks/use-notify";
+
+/**
+ * True only once React has hydrated on the client; false during SSR and the
+ * first client render.
+ *
+ * `useSyncExternalStore` rather than a `useState` + `useEffect` pair: React's
+ * own lint rule rejects setState-in-an-effect (cascading renders), and this is
+ * exactly the case the hook exists for — reading a value that genuinely differs
+ * between the server snapshot and the client one.
+ */
+const NEVER_CHANGES = () => () => {};
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    NEVER_CHANGES,
+    () => true,
+    () => false,
+  );
+}
 
 function ResetPasswordForm() {
   const t = useTranslations("auth");
@@ -22,8 +40,7 @@ function ResetPasswordForm() {
   // Same pre-hydration native-submit hazard as LoginForm, and worse here: a
   // method-less GET would put the NEW password in the URL next to the reset
   // token. `method="post"` on the form is the belt; this is the braces.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useHydrated();
 
   // Mirrors the /api/auth/reset-password contract (newPassword: 8..128) plus a
   // client-only confirm field; the cross-field match keeps its i18n message.

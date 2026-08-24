@@ -13,7 +13,12 @@ import {
   type ExistingEmployee,
   type ReconcileContext,
 } from "../../lib/pms/import/reconcile";
-import { countsFor, type EmployeeSourceRow, type ImportPreview } from "../../lib/pms/import/types";
+import {
+  countsFor,
+  planDigest,
+  type EmployeeSourceRow,
+  type ImportPreview,
+} from "../../lib/pms/import/types";
 
 /**
  * Contract tests for the PMS employee import — spec §3.
@@ -52,6 +57,7 @@ function ctx(overrides: Partial<ValidationContext> = {}): ValidationContext {
     departmentsByName,
     entitiesByKey,
     existingOdooIds: new Set<string>(),
+    emailOwners: new Map<string, string>(),
     ...overrides,
   };
 }
@@ -507,4 +513,126 @@ test("a WARNING does not count as a rejected row", () => {
     validRows: [],
   };
   assert.equal(countsFor(preview).rowsRejected, 0);
+});
+
+// --- The apply step must confirm CONTENT, not just shape --------------------
+//
+// The senior review demonstrated that comparing the three aggregate counts lets
+// a different file pass as the reviewed one. These pin the fix.
+
+const cLevel = {
+  roleTrack: "C-Level",
+  entity: "Rihal",
+  department: null,
+  managerOdooId: null,
+} as const;
+
+test("planDigest: two different files with identical counts produce different digests", () => {
+  const shared = ctx();
+  const fileA = validateRows(
+    [
+      row({
+        ...cLevel,
+        odooId: "9001",
+        name: "Alice CEO",
+        email: "alice@rihal.example",
+        basicSalary: "5000",
+      }),
+    ],
+    shared,
+  );
+  const fileB = validateRows(
+    [
+      row({
+        ...cLevel,
+        odooId: "9002",
+        name: "Bob Attacker-Controlled",
+        email: "bob@rihal.example",
+        basicSalary: "999999",
+      }),
+    ],
+    shared,
+  );
+
+  assert.equal(fileA.validRows.length, 1, "file A should validate");
+  assert.equal(fileB.validRows.length, 1, "file B should validate");
+
+  // The exact collision the review reproduced: identical plan SHAPE.
+  const planA = reconcile(fileA.validRows, reconcileCtx([]));
+  const planB = reconcile(fileB.validRows, reconcileCtx([]));
+  assert.equal(planA.creates.length, planB.creates.length);
+  assert.equal(planA.updates.length, planB.updates.length);
+
+  // ...and yet they are not the same plan.
+  assert.notEqual(planDigest(fileA.validRows), planDigest(fileB.validRows));
+});
+
+test("planDigest: a salary change alone changes the digest", () => {
+  const shared = ctx();
+  const person = { ...cLevel, odooId: "9001", name: "Alice", email: "alice@rihal.example" };
+  const cheap = validateRows([row({ ...person, basicSalary: "1000" })], shared);
+  const dear = validateRows([row({ ...person, basicSalary: "9000" })], shared);
+  assert.notEqual(
+    planDigest(cheap.validRows),
+    planDigest(dear.validRows),
+    "pay is the most sensitive thing an import can change; it must be covered",
+  );
+});
+
+test("planDigest: reordering the same rows does NOT change the digest", () => {
+  const shared = ctx();
+  const a = { ...cLevel, odooId: "9001", name: "Alice", email: "alice@rihal.example" };
+  const b = { ...cLevel, odooId: "9002", name: "Bilal", email: "bilal@rihal.example" };
+  const forward = validateRows([row(a), row(b)], shared);
+  const reversed = validateRows([row(b), row(a)], shared);
+  assert.equal(
+    planDigest(forward.validRows),
+    planDigest(reversed.validRows),
+    "§3.2 — sorting a sheet differently is not a different plan",
+  );
+});
+
+// --- Email uniqueness (§3.4) ------------------------------------------------
+//
+// Employee.email is @unique, and apply runs the whole batch in one transaction,
+// so an unchecked collision rolls back every OTHER row after a preview that
+// reported no rejections.
+
+test("two rows sharing an email are rejected, not left for the database", () => {
+  const result = validateRows(
+    [
+      row({ ...cLevel, odooId: "9001", name: "Alice", email: "shared@rihal.example" }),
+      row({ ...cLevel, odooId: "9002", name: "Bilal", email: "shared@rihal.example" }),
+    ],
+    ctx(),
+  );
+  const dupes = result.issues.filter((i) => i.rule === "email_duplicate");
+  assert.equal(dupes.length, 2, "both rows should be flagged");
+  assert.ok(dupes.every((i) => i.severity === "REJECT"));
+  assert.equal(result.validRows.length, 0, "neither row may reach the database");
+});
+
+test("an email already held by a DIFFERENT employee is rejected with the owner named", () => {
+  const result = validateRows(
+    [row({ ...cLevel, odooId: "9002", name: "New Hire", email: "taken@rihal.example" })],
+    ctx({ emailOwners: new Map([["taken@rihal.example", "1001"]]) }),
+  );
+  const clash = result.issues.filter((i) => i.rule === "email_in_use");
+  assert.equal(clash.length, 1);
+  assert.equal(clash[0].severity, "REJECT");
+  assert.match(clash[0].message, /1001/, "the message should name the current holder");
+  assert.equal(result.validRows.length, 0);
+});
+
+test("an employee keeping their OWN email on a re-import is not a collision", () => {
+  const result = validateRows(
+    [row({ ...cLevel, odooId: "1001", name: "Same Person", email: "taken@rihal.example" })],
+    ctx({ emailOwners: new Map([["taken@rihal.example", "1001"]]) }),
+  );
+  assert.equal(
+    result.issues.filter((i) => i.rule === "email_in_use").length,
+    0,
+    "§3.2 — a stable odooId re-importing itself is the update path, not a clash",
+  );
+  assert.equal(result.validRows.length, 1);
 });

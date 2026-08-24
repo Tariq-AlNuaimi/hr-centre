@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { z } from "zod";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,24 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 // Credentials-only since 2026-08-21 (audit A1 removed the SSO providers), so this
 // component takes no provider flags. The /scale-up SSO recipe re-adds both.
+/**
+ * True only once React has hydrated on the client; false during SSR and the
+ * first client render.
+ *
+ * `useSyncExternalStore` rather than a `useState` + `useEffect` pair: React's
+ * own lint rule rejects setState-in-an-effect (cascading renders), and this is
+ * exactly the case the hook exists for — reading a value that genuinely differs
+ * between the server snapshot and the client one.
+ */
+const NEVER_CHANGES = () => () => {};
+function useHydrated(): boolean {
+  return useSyncExternalStore(
+    NEVER_CHANGES,
+    () => true,
+    () => false,
+  );
+}
+
 export function LoginForm() {
   const t = useTranslations("auth");
   const router = useRouter();
@@ -35,8 +53,7 @@ export function LoginForm() {
   // Reproduced with a 900ms script delay; see the QA notes. `method="post"`
   // below is the belt (credentials go in a body even if this gate is bypassed by
   // implicit submission); this is the braces.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => setHydrated(true), []);
+  const hydrated = useHydrated();
 
   const form = useZodForm(loginSchema, {
     defaultValues: { email: "", password: "" },

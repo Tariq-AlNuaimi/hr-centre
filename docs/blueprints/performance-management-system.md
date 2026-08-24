@@ -211,11 +211,27 @@ UI → API route → service → Prisma; no component touches `prisma`.
 
 ### Where state lives
 
-Postgres is the only durable store. Import previews persist as `ImportBatch.previewJson` so
-the confirm step re-reads the reviewed diff rather than re-parsing an uploaded file — the
-operator confirms exactly what they were shown. Uploaded files themselves are **not**
-retained: they are parsed in-request and discarded (they carry Restricted salary data;
-retaining them would create a second, unaudited copy).
+Postgres is the only durable store. Uploaded files are **not** retained: they are parsed
+in-request and discarded, because they carry Restricted salary data and keeping them would
+create a second, unaudited copy.
+
+That has a consequence this section previously got wrong. It used to claim the confirm step
+"re-reads the reviewed diff rather than re-parsing an uploaded file". It cannot: the rows that
+would actually be written carry salary figures, so they are deliberately **not** persisted in
+`ImportBatch.previewJson` — that column is read back by any HR user who can see the batch.
+Only the human-facing plan is stored. The confirm step therefore **re-parses the file the
+operator re-submits** and re-derives the plan against a live org.
+
+So "the operator confirms exactly what they were shown" is a claim that needs enforcing rather
+than a structural fact. Two checks enforce it, and they catch different things:
+
+- **The three plan counts** catch the ORG moving under a plan — another admin adding someone
+  turns a create into an update.
+- **A `planDigest`** (SHA-256 over the rows the plan would write, sorted by `odooId` so file
+  order is not content) catches a different FILE. Counts alone do not: two sheets with one
+  create each produce identical counts while writing entirely different people. The digest is
+  persisted inside `previewJson` and re-checked at apply; a mismatch refuses and asks for a
+  fresh preview.
 
 ---
 
