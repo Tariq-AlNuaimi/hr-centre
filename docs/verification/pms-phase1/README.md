@@ -184,7 +184,50 @@ so the Arabic path is inert by design. The screens are built entirely on logical
 so enabling `ar` is a config change, not a rewrite — but that claim is untested until a fork
 turns the locale on.
 
-## 9. Still not verified
+## 9. First-run bootstrap — the three guards, executed
+
+ADR-065 keeps platform authority (`User.role`) and HR authority (`Employee.pmsRoles`) separate,
+and `resolveActor` correctly resolves a `User` with no `Employee` to an actor who sees nothing.
+The consequence on a fresh deploy is that the operator logs into their own new instance and the
+PMS is empty with no way in — the fixture's HR Super Admin is an `Employee` row, and employees
+have no password. `bootstrapAdminEmployee` in `prisma/seed-pms.ts` creates one employee record
+for `SEED_ADMIN_EMAIL` carrying HR_SUPER_ADMIN. Nothing in `lib/pms/permissions.ts` learns to
+trust `User.role`; this is a seeded row, not a rule change.
+
+Run against the same throwaway PostgreSQL 16 database:
+
+| #   | Guard                                                                                     | Expected                           | Result                                                                                                                                 |
+| --- | ----------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Fresh fixture DB, `SEED_ADMIN_EMAIL` set                                                  | one record, HR_SUPER_ADMIN, linked | `BOOTSTRAP-ADMIN`, `{HR_SUPER_ADMIN}`, `userId` → the ADMIN user, `basicSalary` NULL ✅                                                |
+| 2   | Re-seed unchanged                                                                         | silent no-op, headcount steady     | silent, 37 → 37 ✅                                                                                                                     |
+| 3   | **Never mutate** — `pmsRoles` stripped to `{}` by hand, then re-seed                      | stays stripped                     | `{}` after re-seed, bootstrap silent ✅                                                                                                |
+| 4   | **Real data present** — a non-fixture employee added, bootstrap row removed, then re-seed | refuses, loudly                    | 0 rows created; logged "headcount is 37, not the 36-person demo fixture … Grant HR roles deliberately instead of from a build step" ✅ |
+
+Guard 3 is the one that matters: an import can never be overridden into HR Super Admin by a
+redeploy. Guard 4 means the seam goes permanently silent the moment HR imports the real org — a
+prototype needs a door, a system holding real appraisals must not grant HR authority from a
+build step. Phase 2 owes an explicit HR-role administration screen, at which point this is deleted.
+
+_(One incidental confirmation: the first attempt at guard 4 inserted a row with `entityId` and
+`departmentId` transposed, and `employees_department_xor_c_level_check` refused it. The test was
+wrong; the constraint was right. Re-run correctly, as recorded above.)_
+
+## 10. Live deployment — probed, not assumed
+
+`https://rihal-performance-management.vercel.app`, after the first production deploy:
+
+| Check                            | Expected              | Got                  |
+| -------------------------------- | --------------------- | -------------------- |
+| `/`                              | redirect to login     | `307 → /en/login` ✅ |
+| `/en/login`                      | 200                   | 200 ✅               |
+| `/api/employees` unauthenticated | 401                   | 401 ✅               |
+| `/api/internal/audit-purge`      | 401 (CRON_SECRET set) | 401 ✅               |
+
+The last row also resolves the deploy script's own probe, which reported
+`! Inconclusive audit-purge probe (HTTP 200 without the skip marker)` because it ran before the
+build was live.
+
+## 11. Still not verified
 
 - **A formal axe accessibility audit.** The screens use semantic tables, associated labels,
   real links rather than click-handlers on rows, and `role="alert"` on error text — but no

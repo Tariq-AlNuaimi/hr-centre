@@ -156,7 +156,12 @@ Recorded so the Phase 1 schema stays forward-compatible and no later phase force
 - **Phase 2** — `PerformanceCycle` (year, status), `CycleStage` (stage, opensAt, deadline —
   hard locks, §5.4), `CycleParticipant`, `Kpi` (description, weightage, five level descriptors,
   §5.2), `SignOff` (party, signedBy, signedAt — agreement, not lock, §5.1), `ComplianceEvent`
-  (§5.6).
+  (§5.6). **Also owed in Phase 2: an HR-role administration screen** — a way for an HR Super
+  Admin to grant and revoke `Employee.pmsRoles` (§4.1/§4.3) through the UI. Until it exists, the
+  only route into the PMS on a fresh deploy is `bootstrapAdminEmployee` in `prisma/seed-pms.ts`,
+  which seeds one HR_SUPER_ADMIN for `SEED_ADMIN_EMAIL` and refuses to run once the database
+  holds anything other than the demo fixture (guards verified in
+  `docs/verification/pms-phase1/README.md` §9). That seam is deleted when this screen ships.
 - **Phase 3** — `KpiVersion` (archived, never overwritten, §6.3), `KpiChangeRequest`
   (mandatory rejection reason, §6.2), `KpiRating` (self / manager / final, §7.1).
 - **Phase 4** — `Feedback360Cycle`, `Feedback360Template` (three types, §9.2),

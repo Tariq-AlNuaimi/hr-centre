@@ -535,8 +535,97 @@ export async function seedPms(prisma: PrismaClient): Promise<void> {
     await prisma.employee.update({ where: { id }, data: { managerId } });
   }
 
+  await bootstrapAdminEmployee(prisma, entityIds, departmentIds);
+
   console.log(
     `PMS fixture: ${ENTITIES.length} entities, ${DEPARTMENTS.length} departments, ` +
       `${EMPLOYEES.length} employees.`,
   );
+}
+
+/**
+ * First-run bootstrap: give the deploy's seeded admin a way INTO the PMS.
+ *
+ * ADR-065 keeps platform authority (`User.role`) and HR authority
+ * (`Employee.pmsRoles`) deliberately separate, and `resolveActor` is right to
+ * resolve a `User` with no `Employee` to an actor who sees nothing. The
+ * consequence on a fresh deploy is that the operator logs into their own new
+ * instance and the PMS is empty with no way in — the fixture's HR Super Admin
+ * (Fatma Al-Rashdi) is an `Employee` row, and employees have no password.
+ *
+ * So this creates ONE employee record for `SEED_ADMIN_EMAIL` carrying
+ * HR_SUPER_ADMIN, which is a bootstrap, not a rule change: nothing in
+ * `lib/pms/permissions.ts` learns to trust `User.role`.
+ *
+ * Three guards keep it out of a real deployment:
+ *
+ *  1. It never runs without `SEED_ADMIN_EMAIL` — the same variable /deploy sets
+ *     when it provisions the admin login.
+ *  2. It never MUTATES an employee. If a record already exists for that email —
+ *     because HR imported the operator as a real person — it returns untouched,
+ *     so an import can never be overridden into HR Super Admin by a redeploy.
+ *  3. It only runs while the demo fixture is the ENTIRE population. The moment
+ *     HR imports the real org the headcount stops matching and this goes
+ *     permanently silent, which is the point: a prototype needs a door, a system
+ *     holding real appraisals must not grant HR authority from a build step.
+ *
+ * Phase 2 owes an explicit HR-role administration screen; this seam disappears
+ * then. Tracked in docs/blueprints/performance-management-system.md.
+ */
+async function bootstrapAdminEmployee(
+  prisma: PrismaClient,
+  entityIds: Map<string, string>,
+  departmentIds: Map<string, string>,
+): Promise<void> {
+  const email = (process.env.SEED_ADMIN_EMAIL ?? "").toLowerCase().trim();
+  if (!email) return;
+
+  // Guard 2 — never mutate. An existing record wins, whatever its roles.
+  const existing = await prisma.employee.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  // Guard 3 — the fixture must be the whole population.
+  const headcount = await prisma.employee.count();
+  if (headcount !== EMPLOYEES.length) {
+    console.log(
+      `PMS bootstrap: skipped for ${email} — headcount is ${headcount}, not the ` +
+        `${EMPLOYEES.length}-person demo fixture, so this database holds real org data. ` +
+        `Grant HR roles deliberately instead of from a build step.`,
+    );
+    return;
+  }
+
+  const entityId = entityIds.get("RIHAL");
+  const departmentId = departmentIds.get("RIHAL::HR");
+  if (!entityId || !departmentId) return;
+
+  // The login may not exist: prisma/seed.ts skips the admin seed in production
+  // when SEED_ADMIN_PASSWORD is unset. Linking is then left to resolveActor's
+  // first-login email path, which only ever links a record with userId: null.
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, name: true },
+  });
+
+  await prisma.employee.create({
+    data: {
+      // Namespaced so it cannot collide with a real Odoo id (§3.2 keys on this).
+      odooId: "BOOTSTRAP-ADMIN",
+      name: user?.name ?? "HR Super Admin",
+      email,
+      departmentId,
+      entityId,
+      roleTrack: "MANAGER",
+      pmsRoles: ["HR_SUPER_ADMIN"],
+      // No salary invented: this is an access record, not a person's pay data.
+      unpaidLeaveDays: 0,
+      userId: user?.id ?? null,
+    },
+    select: { id: true },
+  });
+
+  console.log(`PMS bootstrap: ${email} seeded as HR Super Admin (odooId BOOTSTRAP-ADMIN).`);
 }
