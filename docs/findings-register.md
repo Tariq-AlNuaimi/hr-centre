@@ -54,7 +54,15 @@ the changed surface is still **open** (un-adjudicated).
   **Fix owed:** derive ROOT from the git toplevel of the invoking cwd (`git rev-parse
 --show-toplevel`) and fall back to `CLAUDE_PROJECT_DIR` only when that fails; audit
   `review-gate.mjs`, `blueprint-gate.mjs`, `build-vs-buy-gate.mjs` and `bash-write-gate.mjs` for
-  the same line. — status: open, owner: harness
+  the same line. — Tariq Al-Naaimi — status: adjudicated(2026-08-24), fix SCHEDULED in the
+  template repo, not here. **Why not fixed now:** the hook that misbehaves is loaded by the
+  harness from `CLAUDE_PROJECT_DIR`, so patching this fork's copy would not change the behaviour
+  of the session that hit it — the fix has to land in `Tariq-AlNuaimi/fullstack-vibe-template`'s
+  `.claude/hooks/`, which is the template's harness surface and deserves a deliberate change with
+  its own tests, not a rider on a product deploy. **Risk accepted in the interim:** the observed
+  direction is fail-closed. The dangerous direction requires a receipt trailer to exist on an
+  unrelated repo's HEAD at the moment of a deploy, and the deploy is operator-invoked, so it is
+  not reachable without a person running one.
 
 - 2026-08-24 — [quality/QA] **PMS Phase 1 deployed without a `/qa` receipt — `Gate-Skip: qa-gate`.**
   The three-tier orchestrator (design QA → functional QA → UAT) was NOT run. What WAS run, and is
