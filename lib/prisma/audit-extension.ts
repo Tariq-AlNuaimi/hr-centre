@@ -19,6 +19,16 @@ export const SCRUB_FIELDS = new Set([
   "secret",
   "apiKey",
   "api_key",
+  // Restricted compensation data (SECURITY.md §1; PMS spec §4.5 / §11.6). An
+  // employee's basic salary is visible only to HR and the COO/Ops Director —
+  // never to a line manager, not even for their own direct reports. Without
+  // this entry, an ordinary audited write to `employees` would copy the figure
+  // verbatim into `audit_logs.before/after`, a table retained 365 days and
+  // served to platform admins by `GET /api/audit-log` — routing the most
+  // tightly held field in the system around its own access control.
+  // The row still records THAT salary changed, which is the auditable fact.
+  "basicSalary",
+  "basic_salary",
 ]);
 
 /**

@@ -1,0 +1,542 @@
+import type { PrismaClient, RoleTrack, PmsRole } from "../generated/prisma/client";
+
+/**
+ * PMS org fixture — spec §1.2 (three entities), §1.3 (five role tracks),
+ * §4.1 (the role set).
+ *
+ * Called from prisma/seed.ts. Idempotent: every insert is a
+ * findUnique-then-create, so re-seeding an existing database is a no-op rather
+ * than a duplicate-key crash. (`upsert` would trip `no-unaudited-bulk-write`.)
+ *
+ * The shape is deliberately realistic rather than minimal — three entities,
+ * eleven departments, a reporting tree four levels deep, and every role track
+ * represented — because the things most likely to be wrong are the ones a toy
+ * fixture cannot exercise: a manager seeing three levels down (§4.2), a
+ * department name that repeats across entities (§1.2), a C-Level with no
+ * department, and salary being absent from a line manager's payload (§4.5).
+ */
+
+type SeedDept = { name: string; entity: string };
+type SeedEmployee = {
+  odooId: string;
+  name: string;
+  email: string;
+  department: string | null;
+  entity: string;
+  manager: string | null;
+  roleTrack: RoleTrack;
+  pmsRoles?: PmsRole[];
+  basicSalary: string;
+  unpaidLeaveDays?: number;
+};
+
+/** §1.2 — Rihal (parent), TP and CL (subsidiaries). */
+const ENTITIES = [
+  { code: "RIHAL", name: "Rihal" },
+  { code: "TP", name: "TP" },
+  { code: "CL", name: "CL" },
+];
+
+/**
+ * §1.2 — "Central/shared-service functions (HR, Finance, Admin, IT and similar)
+ * exist only in Rihal." Note Sales appears under all three entities: they are
+ * three DISTINCT departments, which is what the composite unique enforces and
+ * what makes an entity-less "Sales" ambiguous on import.
+ */
+const DEPARTMENTS: SeedDept[] = [
+  { name: "HR", entity: "RIHAL" },
+  { name: "Finance", entity: "RIHAL" },
+  { name: "IT", entity: "RIHAL" },
+  { name: "Marketing", entity: "RIHAL" },
+  { name: "Engineering", entity: "RIHAL" },
+  { name: "Sales", entity: "RIHAL" },
+  { name: "Sales", entity: "TP" },
+  { name: "Delivery", entity: "TP" },
+  { name: "Sales", entity: "CL" },
+  { name: "Operations", entity: "CL" },
+  { name: "Support", entity: "CL" },
+];
+
+const EMPLOYEES: SeedEmployee[] = [
+  // --- C-Level (§1.2: entity directly, no department; §8.3: no formula) ------
+  {
+    odooId: "1000",
+    name: "Salim Al-Harthy",
+    email: "salim.alharthy@rihal.example",
+    department: null,
+    entity: "RIHAL",
+    manager: null,
+    roleTrack: "C_LEVEL",
+    basicSalary: "6000",
+  },
+  {
+    odooId: "1001",
+    name: "Amina Al-Balushi",
+    email: "amina.albalushi@rihal.example",
+    department: null,
+    entity: "RIHAL",
+    manager: "1000",
+    roleTrack: "C_LEVEL",
+    // §4.3 — additive: the COO is an executive viewer who ALSO has reports.
+    // There is no "COO" role; the two standard ones are stacked.
+    pmsRoles: ["EXECUTIVE_VIEWER"],
+    basicSalary: "5500",
+  },
+  {
+    odooId: "1002",
+    name: "Khalid Al-Zadjali",
+    email: "khalid.alzadjali@rihal.example",
+    department: null,
+    entity: "TP",
+    manager: "1000",
+    roleTrack: "C_LEVEL",
+    basicSalary: "5200",
+  },
+  {
+    odooId: "1003",
+    name: "Maha Al-Kindi",
+    email: "maha.alkindi@rihal.example",
+    department: null,
+    entity: "CL",
+    manager: "1000",
+    roleTrack: "C_LEVEL",
+    basicSalary: "5200",
+  },
+
+  // --- HR (Rihal shared service) --------------------------------------------
+  {
+    odooId: "1100",
+    name: "Fatma Al-Rashdi",
+    email: "fatma.alrashdi@rihal.example",
+    department: "HR",
+    entity: "RIHAL",
+    manager: "1001",
+    roleTrack: "DIRECTOR",
+    pmsRoles: ["HR_SUPER_ADMIN"],
+    basicSalary: "3200",
+  },
+  {
+    odooId: "1101",
+    name: "Yousuf Al-Amri",
+    email: "yousuf.alamri@rihal.example",
+    department: "HR",
+    entity: "RIHAL",
+    manager: "1100",
+    roleTrack: "MANAGER",
+    pmsRoles: ["HRBP"],
+    basicSalary: "2400",
+  },
+  {
+    odooId: "1102",
+    name: "Noura Al-Siyabi",
+    email: "noura.alsiyabi@rihal.example",
+    department: "HR",
+    entity: "RIHAL",
+    manager: "1101",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1200",
+  },
+
+  // --- Ops Director (§4.1: org-wide read-only, sees salary) ------------------
+  {
+    odooId: "1110",
+    name: "Hamed Al-Maskari",
+    email: "hamed.almaskari@rihal.example",
+    department: "Finance",
+    entity: "RIHAL",
+    manager: "1001",
+    roleTrack: "DIRECTOR",
+    pmsRoles: ["EXECUTIVE_VIEWER"],
+    basicSalary: "3400",
+  },
+  {
+    odooId: "1111",
+    name: "Aisha Al-Hinai",
+    email: "aisha.alhinai@rihal.example",
+    department: "Finance",
+    entity: "RIHAL",
+    manager: "1110",
+    roleTrack: "LEAD",
+    basicSalary: "1900",
+  },
+
+  // --- Engineering: a four-level chain, for §4.2 depth ----------------------
+  {
+    odooId: "1200",
+    name: "Tariq Al-Naaimi",
+    email: "tariq.alnaaimi@rihal.example",
+    department: "Engineering",
+    entity: "RIHAL",
+    manager: "1001",
+    roleTrack: "DIRECTOR",
+    basicSalary: "3600",
+  },
+  {
+    odooId: "1201",
+    name: "Rashid Al-Farsi",
+    email: "rashid.alfarsi@rihal.example",
+    department: "Engineering",
+    entity: "RIHAL",
+    manager: "1200",
+    roleTrack: "MANAGER",
+    basicSalary: "2600",
+  },
+  {
+    odooId: "1202",
+    name: "Layla Al-Habsi",
+    email: "layla.alhabsi@rihal.example",
+    department: "Engineering",
+    entity: "RIHAL",
+    manager: "1201",
+    roleTrack: "LEAD",
+    basicSalary: "2000",
+  },
+  {
+    odooId: "1203",
+    name: "Omar Al-Busaidi",
+    email: "omar.albusaidi@rihal.example",
+    department: "Engineering",
+    entity: "RIHAL",
+    manager: "1202",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1300",
+  },
+  {
+    odooId: "1204",
+    name: "Zainab Al-Lawati",
+    email: "zainab.allawati@rihal.example",
+    department: "Engineering",
+    entity: "RIHAL",
+    manager: "1202",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1250",
+    // §11.5 — unpaid leave reduces both pro-ration and effective service.
+    unpaidLeaveDays: 12,
+  },
+  {
+    odooId: "1205",
+    name: "Badar Al-Riyami",
+    email: "badar.alriyami@rihal.example",
+    department: "Engineering",
+    entity: "RIHAL",
+    manager: "1201",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1350",
+  },
+
+  // --- Rihal Marketing & Sales ---------------------------------------------
+  {
+    odooId: "1300",
+    name: "Huda Al-Mahrouqi",
+    email: "huda.almahrouqi@rihal.example",
+    department: "Marketing",
+    entity: "RIHAL",
+    manager: "1001",
+    roleTrack: "MANAGER",
+    basicSalary: "2500",
+  },
+  {
+    odooId: "1301",
+    name: "Saif Al-Wahaibi",
+    email: "saif.alwahaibi@rihal.example",
+    department: "Marketing",
+    entity: "RIHAL",
+    manager: "1300",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1150",
+  },
+  {
+    odooId: "1310",
+    name: "Muna Al-Shukaili",
+    email: "muna.alshukaili@rihal.example",
+    department: "Sales",
+    entity: "RIHAL",
+    manager: "1001",
+    roleTrack: "MANAGER",
+    basicSalary: "2450",
+  },
+  {
+    odooId: "1311",
+    name: "Ali Al-Ghafri",
+    email: "ali.alghafri@rihal.example",
+    department: "Sales",
+    entity: "RIHAL",
+    manager: "1310",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1180",
+  },
+  {
+    odooId: "1320",
+    name: "Salma Al-Hajri",
+    email: "salma.alhajri@rihal.example",
+    department: "IT",
+    entity: "RIHAL",
+    manager: "1200",
+    roleTrack: "LEAD",
+    basicSalary: "1950",
+  },
+  {
+    odooId: "1321",
+    name: "Nasser Al-Abri",
+    email: "nasser.alabri@rihal.example",
+    department: "IT",
+    entity: "RIHAL",
+    manager: "1320",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1220",
+  },
+
+  // --- TP -------------------------------------------------------------------
+  {
+    odooId: "2000",
+    name: "Ibrahim Al-Sinani",
+    email: "ibrahim.alsinani@tp.example",
+    department: "Sales",
+    entity: "TP",
+    manager: "1002",
+    roleTrack: "DIRECTOR",
+    basicSalary: "3100",
+  },
+  {
+    odooId: "2001",
+    name: "Reem Al-Jabri",
+    email: "reem.aljabri@tp.example",
+    department: "Sales",
+    entity: "TP",
+    manager: "2000",
+    roleTrack: "MANAGER",
+    basicSalary: "2300",
+  },
+  {
+    odooId: "2002",
+    name: "Faisal Al-Rawahi",
+    email: "faisal.alrawahi@tp.example",
+    department: "Sales",
+    entity: "TP",
+    manager: "2001",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1100",
+  },
+  {
+    odooId: "2003",
+    name: "Hanan Al-Saadi",
+    email: "hanan.alsaadi@tp.example",
+    department: "Sales",
+    entity: "TP",
+    manager: "2001",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1120",
+  },
+  {
+    odooId: "2010",
+    name: "Sultan Al-Harrasi",
+    email: "sultan.alharrasi@tp.example",
+    department: "Delivery",
+    entity: "TP",
+    manager: "1002",
+    roleTrack: "MANAGER",
+    basicSalary: "2350",
+  },
+  {
+    odooId: "2011",
+    name: "Widad Al-Nabhani",
+    email: "widad.alnabhani@tp.example",
+    department: "Delivery",
+    entity: "TP",
+    manager: "2010",
+    roleTrack: "LEAD",
+    basicSalary: "1850",
+  },
+  {
+    odooId: "2012",
+    name: "Majid Al-Kaabi",
+    email: "majid.alkaabi@tp.example",
+    department: "Delivery",
+    entity: "TP",
+    manager: "2011",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1080",
+  },
+
+  // --- CL -------------------------------------------------------------------
+  {
+    odooId: "3000",
+    name: "Ghalia Al-Rasbi",
+    email: "ghalia.alrasbi@cl.example",
+    department: "Operations",
+    entity: "CL",
+    manager: "1003",
+    roleTrack: "DIRECTOR",
+    basicSalary: "3050",
+  },
+  {
+    odooId: "3001",
+    name: "Talal Al-Mamari",
+    email: "talal.almamari@cl.example",
+    department: "Operations",
+    entity: "CL",
+    manager: "3000",
+    roleTrack: "MANAGER",
+    basicSalary: "2280",
+  },
+  {
+    odooId: "3002",
+    name: "Sara Al-Battashi",
+    email: "sara.albattashi@cl.example",
+    department: "Operations",
+    entity: "CL",
+    manager: "3001",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1060",
+  },
+  {
+    odooId: "3010",
+    name: "Hilal Al-Yahyai",
+    email: "hilal.alyahyai@cl.example",
+    department: "Sales",
+    entity: "CL",
+    manager: "1003",
+    roleTrack: "MANAGER",
+    basicSalary: "2320",
+  },
+  {
+    odooId: "3011",
+    name: "Buthaina Al-Azri",
+    email: "buthaina.alazri@cl.example",
+    department: "Sales",
+    entity: "CL",
+    manager: "3010",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1090",
+  },
+  {
+    odooId: "3020",
+    name: "Qais Al-Hosni",
+    email: "qais.alhosni@cl.example",
+    department: "Support",
+    entity: "CL",
+    manager: "1003",
+    roleTrack: "LEAD",
+    basicSalary: "1800",
+  },
+  {
+    odooId: "3021",
+    name: "Iman Al-Rahbi",
+    email: "iman.alrahbi@cl.example",
+    department: "Support",
+    entity: "CL",
+    manager: "3020",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1040",
+  },
+  {
+    odooId: "3022",
+    name: "Adil Al-Mahrizi",
+    email: "adil.almahrizi@cl.example",
+    department: "Support",
+    entity: "CL",
+    manager: "3020",
+    roleTrack: "INDIVIDUAL",
+    basicSalary: "1050",
+  },
+];
+
+export async function seedPms(prisma: PrismaClient): Promise<void> {
+  // --- Entities -------------------------------------------------------------
+  const entityIds = new Map<string, string>();
+  for (const entity of ENTITIES) {
+    const found = await prisma.orgEntity.findUnique({
+      where: { code: entity.code },
+      select: { id: true },
+    });
+    if (found) {
+      entityIds.set(entity.code, found.id);
+      continue;
+    }
+    const row = await prisma.orgEntity.create({ data: entity, select: { id: true } });
+    entityIds.set(entity.code, row.id);
+  }
+
+  // --- Departments ----------------------------------------------------------
+  const departmentIds = new Map<string, string>(); // `${entityCode}::${name}`
+  for (const dept of DEPARTMENTS) {
+    const entityId = entityIds.get(dept.entity);
+    if (!entityId) continue;
+    const key = `${dept.entity}::${dept.name}`;
+
+    const found = await prisma.department.findUnique({
+      where: { entityId_name: { entityId, name: dept.name } },
+      select: { id: true },
+    });
+    if (found) {
+      departmentIds.set(key, found.id);
+      continue;
+    }
+    const row = await prisma.department.create({
+      data: { name: dept.name, entityId },
+      select: { id: true },
+    });
+    departmentIds.set(key, row.id);
+  }
+
+  // --- Employees, without manager edges -------------------------------------
+  // Same two-pass shape as the import applier and for the same reason: a
+  // manager may be created after their report, and the self-referencing FK is
+  // enforced per statement.
+  const employeeIds = new Map<string, string>();
+  for (const employee of EMPLOYEES) {
+    const entityId = entityIds.get(employee.entity);
+    if (!entityId) continue;
+
+    const departmentId = employee.department
+      ? (departmentIds.get(`${employee.entity}::${employee.department}`) ?? null)
+      : null;
+
+    const found = await prisma.employee.findUnique({
+      where: { odooId: employee.odooId },
+      select: { id: true },
+    });
+    if (found) {
+      employeeIds.set(employee.odooId, found.id);
+      continue;
+    }
+
+    const row = await prisma.employee.create({
+      data: {
+        odooId: employee.odooId,
+        name: employee.name,
+        email: employee.email,
+        departmentId,
+        entityId,
+        roleTrack: employee.roleTrack,
+        pmsRoles: employee.pmsRoles ?? [],
+        basicSalary: employee.basicSalary,
+        unpaidLeaveDays: employee.unpaidLeaveDays ?? 0,
+      },
+      select: { id: true },
+    });
+    employeeIds.set(employee.odooId, row.id);
+  }
+
+  // --- Manager edges --------------------------------------------------------
+  for (const employee of EMPLOYEES) {
+    if (!employee.manager) continue;
+    const id = employeeIds.get(employee.odooId);
+    const managerId = employeeIds.get(employee.manager);
+    if (!id || !managerId) continue;
+
+    const current = await prisma.employee.findUnique({
+      where: { id },
+      select: { managerId: true },
+    });
+    // Skip a no-op write so re-seeding does not churn updatedAt.
+    if (current?.managerId === managerId) continue;
+
+    await prisma.employee.update({ where: { id }, data: { managerId } });
+  }
+
+  console.log(
+    `PMS fixture: ${ENTITIES.length} entities, ${DEPARTMENTS.length} departments, ` +
+      `${EMPLOYEES.length} employees.`,
+  );
+}

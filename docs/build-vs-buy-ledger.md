@@ -676,3 +676,15 @@ skill-creator's `evals.json`, not from `addyosmani/agent-skills`, and ported int
 now gates the warm `/ship` loop (`--min-rank1 80`) rather than `ship:full`, so a routing
 regression from adding nine skills' worth of description surface cannot land silently. See
 `docs/blueprints/sdlc-chain.md` (Market scan, Work DAG task 1/2) and ADR-064.
+
+### 2026-08-24 — PMS org/employee domain layer
+
+Scope: lib/pms/**
+Considered: extending lib/api-helpers.ts + the existing User model (rejected — the employee population is not the login population, §4.1); a generic RBAC library like CASL/accesscontrol (rejected — the spec's authority model is derived from org edges, not a policy DSL, and a library would obscure the "one owner per assessment" invariant); hand-built thin domain layer over the existing Prisma/auth/audit primitives (chosen).
+Decision: build-thin-layer over existing primitives — permissions/actor/org-tree/employee-select reuse lib/api-helpers.ts, lib/pagination.ts, and the audit + soft-delete extensions unchanged; no new runtime dep. See ADR-065 + docs/blueprints/performance-management-system.md.
+
+### 2026-08-24 — PMS Excel import/export engine
+
+Scope: lib/pms/import/**, lib/pms/export/**
+Considered: exceljs (rejected — frozen by ADR-051, no publish since 2024-12); SheetJS/xlsx via vendor CDN (rejected — resolves outside the npm registry so Renovate/npm audit/license gate cannot see it, and makes cdn.sheetjs.com a build-time dependency of every deploy); hand-written xlsx parser (rejected — owning a parser for untrusted uploads); read-excel-file + write-excel-file (chosen — MIT, registry-resolved, actively maintained, per-row schema errors matching spec §3.4).
+Decision: adopt read-excel-file + write-excel-file behind a two-file seam (loaders/xlsx.ts, export/xlsx.ts). Supersedes ADR-051 item 4's SheetJS track for this use; ADR-051's exceljs freeze is upheld. See ADR-066.

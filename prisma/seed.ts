@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
+import { seedPms } from "./seed-pms";
 
 async function main() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
@@ -49,6 +50,10 @@ async function main() {
     // (no audit/soft-delete extension), so plain creates are fine; keep inserts
     // idempotent with findUnique-then-create (`upsert` would trip
     // no-unaudited-bulk-write).
+
+    // PMS org fixture (spec §1.2/§1.3/§4.1). Idempotent, so it is safe on every
+    // deploy — `vercel.json` runs the seed on each build.
+    await seedPms(prisma);
   } finally {
     await prisma.$disconnect();
   }

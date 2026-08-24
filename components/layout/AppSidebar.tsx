@@ -3,6 +3,10 @@
 import {
   Home,
   User,
+  Users,
+  Network,
+  Upload,
+  Building2,
   Settings,
   Trash2,
   ClipboardCheck,
@@ -15,6 +19,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { localePrefixRegex } from "@/i18n/config";
 import { cn } from "@/lib/utils";
+import { usePmsActor } from "@/hooks/use-pms-actor";
 
 export function AppSidebar() {
   const t = useTranslations("nav");
@@ -23,6 +28,10 @@ export function AppSidebar() {
   const pathname = usePathname();
   const locale = useLocale();
   const { data: session } = useSession();
+  // PMS authority lives on the Employee record, not the session (ADR-065), so
+  // the nav asks for it. `usePmsActor` fails closed while loading: a non-HR user
+  // never sees a flash of HR-only navigation.
+  const { capabilities } = usePmsActor();
   const [collapsed, setCollapsed] = useState(false);
 
   // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
@@ -41,7 +50,16 @@ export function AppSidebar() {
   const isAdmin = session?.user?.role === "ADMIN";
 
   // Strip locale prefix for active key matching
-  const activeKey = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean)[0] ?? "home";
+  // Active-item matching. The first path segment identifies most items, but the
+  // PMS admin screens both live under /admin/*, so a first-segment-only match
+  // would highlight the same entry for both. Use the second segment there.
+  const segments = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean);
+  const activeKey =
+    segments[0] === "admin"
+      ? segments[1] === "org-setup"
+        ? "org-setup"
+        : "admin"
+      : (segments[0] ?? "home");
 
   const menuItems = [
     {
@@ -63,6 +81,45 @@ export function AppSidebar() {
             icon: <ClipboardCheck className="h-4 w-4" />,
             label: t("auditLog"),
             onClick: () => router.push(`/${locale}/audit-log`),
+          },
+        ]
+      : []),
+    // --- Performance management (spec §4.4) ------------------------------
+    // "Oversight" surfaces: what this user is entitled to SEE. Everyone with an
+    // employee record gets the directory and the org chart — the ROUTES scope
+    // the rows, so a plain employee simply sees themselves rather than being
+    // denied a page that exists for them.
+    {
+      key: "people",
+      icon: <Users className="h-4 w-4" />,
+      label: t("people"),
+      onClick: () => router.push(`/${locale}/people`),
+    },
+    {
+      key: "org",
+      icon: <Network className="h-4 w-4" />,
+      label: t("org"),
+      onClick: () => router.push(`/${locale}/org`),
+    },
+    // HR-only administration. Import is open to HRBP (checking a file is part of
+    // running the cycle); org setup is Super-Admin-only (§4.1's configure column).
+    ...(capabilities.previewImport
+      ? [
+          {
+            key: "admin",
+            icon: <Upload className="h-4 w-4" />,
+            label: t("employeeImport"),
+            onClick: () => router.push(`/${locale}/admin/import`),
+          },
+        ]
+      : []),
+    ...(capabilities.configure
+      ? [
+          {
+            key: "org-setup",
+            icon: <Building2 className="h-4 w-4" />,
+            label: t("orgSetup"),
+            onClick: () => router.push(`/${locale}/admin/org-setup`),
           },
         ]
       : []),

@@ -65,7 +65,7 @@ Verdict legend: **use** (in-stack, no decision) · **adopt-SaaS** (`/scale-up` r
 | Rich-text editor       | —                                                  | **Tiptap** (MIT), Lexical (MIT)          | —                    | adopt-OSS — Tiptap; >50 KB → ADR                          |
 | Data grid / tables     | **TanStack Table** (in-stack)                      | —                                        | AG Grid (commercial) | use — `components/shared/DataTable`                       |
 | Charts                 | **recharts** (in-stack)                            | —                                        | —                    | use — `chart-palette.ts` tokens (ADR-015)                 |
-| Excel / CSV export     | **exceljs** (in-stack)                             | —                                        | —                    | use — `lib/export.ts` (audit column lists per route)      |
+| Excel / CSV read+write | **read-excel-file + write-excel-file**             | exceljs (frozen, ADR-051)                | SheetJS (CDN-only)   | use — seam: `lib/pms/import/loaders/xlsx.ts` (ADR-066)    |
 | i18n / translations    | **next-intl** (in-stack)                           | —                                        | Crowdin (TMS)        | use — `messages/*.json`; copy chokepoint (V2-305)         |
 | Object/relational data | **Prisma 7 + Postgres** (in-stack, locked ADR-001) | —                                        | Neon (managed PG)    | use — never swap the ORM without a superseding ADR        |
 | Component primitives   | **shadcn/Radix** (in-stack, ADR-029)               | —                                        | —                    | use — `components/shared/*`; compose, don't add a kit     |

@@ -241,3 +241,40 @@ test("scrub keeps actor/email fields while still redacting credentials", () => {
   assert.equal(r.passwordHash, "[redacted]");
   assert.ok(!SCRUB_FIELDS.has("actorEmail"), "actorEmail must never be added to SCRUB_FIELDS");
 });
+
+// --- PMS Restricted compensation data (spec §4.5 / §11.6) --------------------
+//
+// Basic salary is the most tightly held field in the performance system: HR and
+// the COO/Ops Director see it, and line managers never do — not even for their
+// own direct reports. `audit_logs` is retained for a year and served to platform
+// admins by `GET /api/audit-log`, so an unscrubbed salary in `before`/`after`
+// would route the figure straight around its own access control. These tests
+// pin the entry so a future edit to SCRUB_FIELDS cannot quietly drop it.
+
+test("scrub redacts basicSalary in both camelCase and snake_case", () => {
+  const out = scrub({ id: "e1", name: "Sara", basicSalary: 4200, basic_salary: 4200 });
+  assert.equal(out.basicSalary, "[redacted]");
+  assert.equal(out.basic_salary, "[redacted]");
+  assert.equal(out.name, "Sara", "non-Restricted fields must survive scrubbing");
+});
+
+test("computeChanges records THAT salary changed without recording the values", () => {
+  const changes = computeChanges(
+    { basicSalary: 4200, name: "Sara" },
+    { basicSalary: 5000, name: "Sara" },
+  );
+  assert.ok(changes, "a salary change must still produce an audit diff");
+  assert.deepEqual(
+    changes!.basicSalary,
+    { from: "[redacted]", to: "[redacted]" },
+    "the fact of the change is auditable; the figures are not disclosed",
+  );
+});
+
+test("scrub redacts a salary nested under an included relation", () => {
+  // `prisma.user.update({ …, include: { employee: true } })` writes the included
+  // relation into the audit payload; the recursive scrub must reach it.
+  const out = scrub({ id: "u1", employee: { id: "e1", basicSalary: 4200 } });
+  const employee = out.employee as Record<string, unknown>;
+  assert.equal(employee.basicSalary, "[redacted]");
+});

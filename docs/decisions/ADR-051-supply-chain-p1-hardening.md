@@ -192,6 +192,15 @@ every part.
    install SheetJS from the vendor CDN tarball, **not** the frozen npm `xlsx@0.18`;
    replacing exceljs also prunes the `jszip`/`pako` sub-tree.
 
+   > **Superseded for the PMS use-case (2026-08-24, ADR-066).** When the Excel
+   > requirement went live (PMS spec §3.1 import / §11.7 payroll export), the SheetJS
+   > track was re-evaluated and **not** taken: a vendor-CDN dependency resolves outside
+   > the npm registry, so Renovate, `npm audit`, and the license gate — the very controls
+   > this ADR installed — cannot see it, and it would make `cdn.sheetjs.com` a build-time
+   > dependency of every production deploy. `read-excel-file` + `write-excel-file`
+   > (MIT, registry-resolved, actively maintained) were adopted instead. **The exceljs
+   > freeze recorded here is upheld** — only the named successor changed. See ADR-066.
+
 ## Consequences
 
 ### Positive

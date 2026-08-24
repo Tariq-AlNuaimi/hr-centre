@@ -4,8 +4,13 @@
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(dashboard)/admin/import/page.tsx
+- app/[locale]/(dashboard)/admin/org-setup/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
+- app/[locale]/(dashboard)/org/page.tsx
 - app/[locale]/(dashboard)/page.tsx
+- app/[locale]/(dashboard)/people/[id]/page.tsx
+- app/[locale]/(dashboard)/people/page.tsx
 - app/[locale]/(dashboard)/recycling-bin/page.tsx
 - app/[locale]/(dashboard)/settings/page.tsx
 - app/[locale]/(dashboard)/settings/profile/page.tsx
@@ -18,9 +23,17 @@
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
+- app/api/employees/[id]/route.ts  [GET,PUT]
+- app/api/employees/route.ts  [GET]
 - app/api/health/route.ts  [GET]
+- app/api/imports/[id]/apply/route.ts  [POST]
+- app/api/imports/route.ts  [GET,POST]
+- app/api/imports/template/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/openapi/route.ts  [GET]
+- app/api/org/departments/route.ts  [GET,POST]
+- app/api/org/entities/route.ts  [GET,POST]
+- app/api/pms/me/route.ts  [GET]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
@@ -29,11 +42,16 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
+- OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt
+- Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, roleTrack, pmsRoles, basicSalary, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
+- ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -51,6 +69,20 @@
 - lib/openapi/registry.ts: RegisteredMethod, RegisteredResponse, RegisteredRoute, registeredRoutes, BEARER_SCHEME_NAME, buildPaths
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
+- lib/pms/actor.ts: ResolvedActor, resolveActor
+- lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee
+- lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders
+- lib/pms/import/checks/employment.ts: checkSalary, checkLastWorkingDay, checkUnpaidLeave
+- lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
+- lib/pms/import/checks/placement.ts: checkPlacement, checkManager
+- lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
+- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_ROWS, MAX_SHEETS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
+- lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, ReconcilePlan, reconcile
+- lib/pms/import/run.ts: previewImport, applyImport
+- lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor
+- lib/pms/import/validate.ts: ValidationResult, validateRows
+- lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
+- lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
@@ -60,6 +92,7 @@
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/utils.ts: cn
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
+- lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
@@ -75,6 +108,8 @@
 - components/layout/NotificationsMenu.tsx
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
+- components/pms/EmployeeColumns.tsx
+- components/pms/ImportPreview.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx

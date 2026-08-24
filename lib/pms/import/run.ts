@@ -1,0 +1,323 @@
+import { prisma } from "@/lib/prisma";
+import { loadEmployeesFromXlsx } from "./loaders/xlsx";
+import { reconcile, type ExistingEmployee, type ReconcileContext } from "./reconcile";
+import { validateRows, type ValidationContext } from "./validate";
+import { countsFor, type ImportPreview, type ValidatedRow } from "./types";
+
+/**
+ * Import orchestration — spec §3.
+ *
+ * Two entry points, and the split between them is the safety property:
+ *
+ *   previewImport() — parses, validates, and computes the plan. Writes an
+ *                     ImportBatch in PREVIEWED state and its issues. Touches no
+ *                     employee row.
+ *   applyImport()   — replays a reviewed plan against the employees table.
+ *
+ * A single-step import would make §3.5's "missing rows → change nothing" a
+ * property HR has to trust. Splitting it makes the plan an artifact a human
+ * reads and confirms — which is what turns Appendix A's "silence is never
+ * destructive" from an assertion into something reviewable before it happens.
+ */
+
+function normalize(value: string): string {
+  return value.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
+}
+
+/**
+ * Load the org context both validation and reconciliation need.
+ *
+ * Three bounded queries, not a query per row. The employee list is the only
+ * unbounded one, and it must be complete: §3.5's absent-employee enumeration is
+ * defined against every existing employee, so a paginated read would silently
+ * mean "these are the people the file did not mention, out of the first page" —
+ * a subtly wrong statement on a screen whose whole job is to be trustworthy.
+ * The 10,000-row upload cap (loaders/xlsx.ts) bounds the realistic org size, and
+ * the select is narrow.
+ */
+async function loadContext(): Promise<{
+  validation: ValidationContext;
+  reconcile: ReconcileContext;
+}> {
+  const [entities, departments, employees] = await Promise.all([
+    prisma.orgEntity.findMany({ select: { id: true, code: true, name: true } }),
+    prisma.department.findMany({
+      select: { id: true, name: true, entityId: true, entity: { select: { code: true } } },
+    }),
+    prisma.employee.findMany({
+      select: {
+        id: true,
+        odooId: true,
+        name: true,
+        email: true,
+        departmentId: true,
+        entityId: true,
+        managerId: true,
+        roleTrack: true,
+        basicSalary: true,
+        status: true,
+        lastWorkingDay: true,
+        unpaidLeaveDays: true,
+      },
+    }),
+  ]);
+
+  const entitiesByKey = new Map<string, { id: string; code: string }>();
+  const entityCodes = new Map<string, string>();
+  for (const entity of entities) {
+    // Both code and name are accepted keys: HR sheets say "Rihal" as often as
+    // "RIHAL", and §1.2 names the entities in prose, not by machine code.
+    entitiesByKey.set(normalize(entity.code), { id: entity.id, code: entity.code });
+    entitiesByKey.set(normalize(entity.name), { id: entity.id, code: entity.code });
+    entityCodes.set(entity.id, entity.code);
+  }
+
+  const departmentsByEntityAndName = new Map<string, { id: string; entityId: string }>();
+  const departmentsByName = new Map<
+    string,
+    Array<{ id: string; entityId: string; entityCode: string }>
+  >();
+  const departmentNames = new Map<string, string>();
+  for (const dept of departments) {
+    const key = normalize(dept.name);
+    departmentsByEntityAndName.set(`${dept.entity.code}::${key}`, {
+      id: dept.id,
+      entityId: dept.entityId,
+    });
+    const list = departmentsByName.get(key) ?? [];
+    list.push({ id: dept.id, entityId: dept.entityId, entityCode: dept.entity.code });
+    departmentsByName.set(key, list);
+    departmentNames.set(dept.id, dept.name);
+  }
+
+  const existing = new Map<string, ExistingEmployee>();
+  for (const employee of employees) {
+    existing.set(employee.odooId, {
+      id: employee.id,
+      odooId: employee.odooId,
+      name: employee.name,
+      email: employee.email,
+      departmentId: employee.departmentId,
+      entityId: employee.entityId,
+      managerId: employee.managerId,
+      roleTrack: employee.roleTrack,
+      basicSalary: employee.basicSalary?.toString() ?? null,
+      status: employee.status,
+      lastWorkingDay: employee.lastWorkingDay,
+      unpaidLeaveDays: employee.unpaidLeaveDays,
+    });
+  }
+
+  return {
+    validation: {
+      departmentsByEntityAndName,
+      departmentsByName,
+      entitiesByKey,
+      existingOdooIds: new Set(existing.keys()),
+    },
+    reconcile: { existing, departmentNames, entityCodes },
+  };
+}
+
+/**
+ * Parse and plan an upload. Writes an ImportBatch in PREVIEWED state; changes
+ * no employee.
+ */
+export async function previewImport(params: {
+  buffer: Buffer;
+  filename: string;
+  userId: string;
+  userEmail: string | null;
+}): Promise<{ batchId: string; preview: ImportPreview }> {
+  const { rows } = await loadEmployeesFromXlsx(params.buffer);
+  const ctx = await loadContext();
+
+  const { validRows, issues: validationIssues } = validateRows(rows, ctx.validation);
+  const plan = reconcile(validRows, ctx.reconcile);
+
+  const preview: ImportPreview = {
+    filename: params.filename,
+    rowsTotal: rows.length,
+    creates: plan.creates,
+    updates: plan.updates,
+    absent: plan.absent,
+    issues: [...validationIssues, ...plan.issues],
+    validRows,
+  };
+
+  const counts = countsFor(preview);
+
+  const batch = await prisma.importBatch.create({
+    data: {
+      filename: params.filename,
+      status: "PREVIEWED",
+      uploadedById: params.userId,
+      uploadedByEmail: params.userEmail,
+      ...counts,
+      // `validRows` carries salary values and must not be persisted in the
+      // preview blob, which is read back by any HR user who can view the batch.
+      // Only the human-facing plan is stored; the apply step re-derives the
+      // rows from the same file the operator re-submits (see applyImport).
+      previewJson: {
+        creates: preview.creates,
+        updates: preview.updates,
+        absent: preview.absent,
+        issues: preview.issues,
+      } as object,
+      issues: {
+        create: preview.issues.map((i) => ({
+          rowNumber: i.rowNumber,
+          odooId: i.odooId,
+          field: i.field,
+          rule: i.rule,
+          message: i.message,
+          severity: i.severity,
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  return { batchId: batch.id, preview };
+}
+
+/**
+ * Apply a previously previewed batch.
+ *
+ * The same file is re-parsed and re-planned rather than replaying a stored row
+ * set, for two reasons. First, `validRows` carries Restricted salary values and
+ * is deliberately not persisted (see previewImport). Second, re-planning against
+ * live context means an org that changed between preview and apply — a
+ * department renamed, an employee added by another admin — is caught rather than
+ * overwritten by a stale plan.
+ *
+ * The freshly computed counts are compared against the reviewed ones, and a
+ * divergence aborts: the operator confirmed a specific plan, and applying a
+ * different one because the world moved is exactly the surprise the two-step
+ * flow exists to prevent.
+ */
+export async function applyImport(params: {
+  batchId: string;
+  buffer: Buffer;
+}): Promise<{ created: number; updated: number }> {
+  const batch = await prisma.importBatch.findUnique({
+    where: { id: params.batchId },
+    select: { id: true, status: true, rowsCreated: true, rowsUpdated: true, rowsRejected: true },
+  });
+  if (!batch) throw new Error("Import batch not found");
+  if (batch.status !== "PREVIEWED") {
+    throw new Error(`Import batch is ${batch.status}; only a PREVIEWED batch can be applied.`);
+  }
+
+  const { rows } = await loadEmployeesFromXlsx(params.buffer);
+  const ctx = await loadContext();
+  const { validRows, issues: validationIssues } = validateRows(rows, ctx.validation);
+  const plan = reconcile(validRows, ctx.reconcile);
+
+  const fresh = countsFor({
+    filename: "",
+    rowsTotal: rows.length,
+    creates: plan.creates,
+    updates: plan.updates,
+    absent: plan.absent,
+    issues: [...validationIssues, ...plan.issues],
+    validRows,
+  });
+
+  if (
+    fresh.rowsCreated !== batch.rowsCreated ||
+    fresh.rowsUpdated !== batch.rowsUpdated ||
+    fresh.rowsRejected !== batch.rowsRejected
+  ) {
+    throw new Error(
+      "The organization changed since this preview was generated, so the plan no longer " +
+        "matches what was reviewed. Upload the file again to get a fresh preview.",
+    );
+  }
+
+  const byOdooId = new Map(validRows.map((r) => [r.odooId, r]));
+
+  await prisma.$transaction(async (tx) => {
+    // Pass 1 — creates and updates WITHOUT manager links.
+    //
+    // A file may name a manager who is created by the same file, and Postgres
+    // enforces the self-referencing FK per statement. Writing the rows first and
+    // the edges second is what lets an org sheet arrive in any order, which
+    // matters because HR sorts by department or name, never topologically.
+    for (const create of plan.creates) {
+      const row = byOdooId.get(create.odooId);
+      if (!row) continue;
+      await tx.employee.create({
+        data: {
+          odooId: row.odooId,
+          name: row.name,
+          email: row.email,
+          departmentId: row.departmentId,
+          entityId: row.entityId,
+          roleTrack: row.roleTrack,
+          basicSalary: row.basicSalary,
+          status: row.status,
+          lastWorkingDay: row.lastWorkingDay,
+          unpaidLeaveDays: row.unpaidLeaveDays,
+        },
+      });
+    }
+
+    for (const update of plan.updates) {
+      const row = byOdooId.get(update.odooId);
+      if (!row) continue;
+      await tx.employee.update({
+        where: { id: update.employeeId },
+        data: {
+          name: row.name,
+          email: row.email,
+          departmentId: row.departmentId,
+          entityId: row.entityId,
+          roleTrack: row.roleTrack,
+          basicSalary: row.basicSalary,
+          status: row.status,
+          lastWorkingDay: row.lastWorkingDay,
+          unpaidLeaveDays: row.unpaidLeaveDays,
+        },
+      });
+    }
+
+    // Pass 2 — manager edges, now that every referenced row exists.
+    const touched = [...plan.creates.map((c) => c.odooId), ...plan.updates.map((u) => u.odooId)];
+    if (touched.length > 0) {
+      const resolved = await tx.employee.findMany({
+        where: { odooId: { in: [...new Set([...touched, ...collectManagerIds(validRows)])] } },
+        select: { id: true, odooId: true, managerId: true },
+      });
+      const idByOdooId = new Map(resolved.map((e) => [e.odooId, e.id]));
+      const currentManager = new Map(resolved.map((e) => [e.odooId, e.managerId]));
+
+      for (const odooId of touched) {
+        const row = byOdooId.get(odooId);
+        const employeeId = idByOdooId.get(odooId);
+        if (!row || !employeeId) continue;
+
+        const managerId = row.managerOdooId ? (idByOdooId.get(row.managerOdooId) ?? null) : null;
+        // Skip a no-op write: an unchanged manager must not produce an audit row
+        // claiming the reporting line moved.
+        if (currentManager.get(odooId) === managerId) continue;
+
+        await tx.employee.update({ where: { id: employeeId }, data: { managerId } });
+      }
+    }
+
+    await tx.importBatch.update({
+      where: { id: batch.id },
+      data: { status: "APPLIED", appliedAt: new Date() },
+    });
+  });
+
+  return { created: plan.creates.length, updated: plan.updates.length };
+}
+
+/** Manager odooIds referenced by the batch, so pass 2 can resolve them all. */
+function collectManagerIds(rows: ValidatedRow[]): string[] {
+  const ids: string[] = [];
+  for (const row of rows) if (row.managerOdooId) ids.push(row.managerOdooId);
+  return ids;
+}

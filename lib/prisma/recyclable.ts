@@ -18,6 +18,14 @@ export type RecyclableRecord = {
 // /scaffold-entity appends here in lockstep with registerSoftDeleteModel().
 export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
   User: { displayField: "name" },
+  // PMS org data (ADR-065). Soft delete here is for ERRONEOUS records only — a
+  // departure is `status = LEAVER` with a last working day (§12.1: "Record and
+  // history are preserved… never deleted"), never a soft delete. The bin exists
+  // so a mistaken row can be undone without breaking the §3.2 promise that an
+  // Odoo employee ID never shifts.
+  Employee: { displayField: "name" },
+  Department: { displayField: "name" },
+  OrgEntity: { displayField: "name" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

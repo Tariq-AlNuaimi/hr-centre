@@ -45,6 +45,18 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "secret",
   "apiKey",
   "api_key",
+  // Restricted compensation data (PMS spec §4.5 / §11.6). Banned as an export
+  // column BY DEFAULT so a report, a directory dump, or a debugging export
+  // cannot carry salaries out of the system by accident.
+  //
+  // §11.7's payroll export is the one legitimate exception — an HR-only,
+  // explicitly-logged action that exists to hand payroll exactly these figures.
+  // It stays an exception rather than a hole in this list: that export carries a
+  // single-line rule disable at its own column definition, which puts the
+  // decision in the diff where a reviewer sees it, instead of silently widening
+  // the denylist for every export in the codebase.
+  "basicSalary",
+  "basic_salary",
 ]);
 
 // Forward-safe name pattern: a column key matching this is treated as Restricted

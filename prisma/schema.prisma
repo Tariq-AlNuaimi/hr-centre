@@ -32,7 +32,7 @@ model User {
   // null — Postgres allows multiple NULLs under a unique index). Correlating on
   // this instead of email means a directory email-rename updates the row in place
   // rather than orphaning access with a duplicate row (US-3).
-  scimExternalId String?  @unique @map("scim_external_id")
+  scimExternalId String? @unique @map("scim_external_id")
 
   // Stamped whenever the password changes (reset / admin change). The Auth.js
   // `jwt` callback rejects any token issued before this instant, so completing a
@@ -40,15 +40,22 @@ model User {
   passwordChangedAt DateTime?
 
   // Soft deletion
-  deletedAt     DateTime?
-  deletedBy     String?
+  deletedAt DateTime?
+  deletedBy String?
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   accounts      Account[]
   sessions      Session[]
   auditLogs     AuditLog[]
+
+  // PMS (ADR-065). Optional on purpose: a User is a login identity, an Employee
+  // is an org-data record, and the two populations only overlap. Most Users will
+  // have an Employee; Employees without a User are normal (§4.1 Strategy team,
+  // §12.1 leavers). Nothing here is required for the platform to function.
+  employee      Employee?
+  importBatches ImportBatch[]
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -112,7 +119,7 @@ model AuditLog {
   id         String   @id @default(cuid())
   entityType String
   entityId   String
-  action     String   // CREATE, UPDATE, DELETE, RESTORE
+  action     String // CREATE, UPDATE, DELETE, RESTORE
   before     Json?
   after      Json?
   changes    Json?
@@ -137,4 +144,269 @@ model AuditLog {
   @@index([userId])
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Performance Management System (PMS) — Phase 1: org foundation & import layer
+//
+// Implements the org-data half of the HR spec v1.0 (§1 structure, §3 org data
+// & setup, §4 roles/permissions/visibility). Contract:
+// docs/blueprints/performance-management-system.md. Governance: ADR-065.
+//
+// The later phases (cycles, KPIs, 360, scoring, calibration, bonus, reporting)
+// add ~19 further models; they are specified in the blueprint so this schema
+// stays forward-compatible. Nothing below assumes a cycle exists.
+// ---------------------------------------------------------------------------
+
+// PMS authority, ADDITIVE (§4.3: "a user may hold more than one; permissions
+// merge — most access wins. Do not invent hybrid roles"). Held as an array on
+// Employee, deliberately SEPARATE from the platform `Role` enum above, which
+// keeps its own meaning (application administration) — see ADR-065.
+//
+// Two roles from §4.1 are intentionally NOT members:
+//   * Employee     — everyone is one; membership would carry no information.
+//   * Line Manager — DERIVED from Employee.managerId edges, never assigned. That
+//                    is what makes §4.2's "editing/sign-off is always reserved
+//                    for the direct line manager" and Appendix A's "one owner
+//                    per assessment" true by construction rather than by
+//                    convention: there is no field an admin could set to hand
+//                    someone else's sign-off rights away.
+// The Strategy team (§4.1) has NO system access at all, so it has no role here —
+// HR keys their scores in on their behalf (Phase 5).
+enum PmsRole {
+  HR_SUPER_ADMIN // §4.1 everything + overrides; runs calibration; master export
+  HRBP // §4.1 runs the cycle org-wide; everything EXCEPT master export
+  EXECUTIVE_VIEWER // §4.1 COO / Ops Director: org-wide read-only, incl. salary/bonus
+}
+
+// §1.3 — every employee is tagged to exactly one track, which determines their
+// scoring formula (§8.3). C_LEVEL is the exception throughout: no department
+// (§1.2), no goal-setting/self-assessment/360 (§8.3), final score passed straight
+// through from the entity's corporate score.
+enum RoleTrack {
+  C_LEVEL
+  DIRECTOR
+  MANAGER
+  LEAD
+  INDIVIDUAL
+}
+
+// §3.3 — Status. A LEAVER keeps their record and history forever (§12.1): this
+// is a state, never a deletion.
+enum EmployeeStatus {
+  ACTIVE
+  LEAVER
+}
+
+// Lifecycle of one import run. PREVIEWED is the dry-run state: the file has been
+// parsed and validated and the diff is recorded, but NOTHING has been written to
+// `employees` yet. Only an explicit apply moves it to APPLIED (§3.5 safety —
+// see the ImportBatch comment).
+enum ImportStatus {
+  PREVIEWED
+  APPLIED
+  DISCARDED
+}
+
+// §1.2 — the group: Rihal (parent), TP, CL. Modelled as a table rather than an
+// enum because departments and (Phase 5) corporate scores hang off it by FK, and
+// because "the group acquires a fourth entity" must not be a schema migration.
+model OrgEntity {
+  id   String @id @default(cuid())
+  code String @unique // RIHAL | TP | CL — stable machine key, used in imports
+  name String
+
+  departments Department[]
+  employees   Employee[]
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@map("org_entities")
+}
+
+// §1.2 — "Departments are unique to their entity (e.g. 'Rihal Marketing',
+// 'TP Sales', 'CL Sales' are distinct departments)." Hence the composite unique
+// on (entityId, name): the same name MAY repeat across entities and MUST NOT
+// repeat within one. Central/shared-service functions (HR, Finance, Admin, IT)
+// exist only under Rihal — that is a seeding fact, not a schema constraint.
+model Department {
+  id       String    @id @default(cuid())
+  name     String
+  entityId String
+  entity   OrgEntity @relation(fields: [entityId], references: [id])
+
+  employees Employee[]
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([entityId, name])
+  @@index([entityId])
+  @@index([deletedAt, createdAt])
+  @@map("departments")
+}
+
+// The internal employee table the system owns (§3.1). Excel is one loader today
+// and Odoo becomes a second in v2, both writing HERE — downstream logic never
+// reads an import file. See lib/pms/import/.
+model Employee {
+  id String @id @default(cuid())
+
+  // §3.2 — the Odoo employee ID is THE permanent unique key, used from day one
+  // (including in the Excel). Every downstream record (KPIs, sign-offs, 360
+  // assignments, scores, audit entries) attaches to it, and it must never shift
+  // on re-import. Imports upsert on this column; `id` above is an internal
+  // surrogate that likewise never changes once assigned.
+  odooId String @unique @map("odoo_id")
+
+  name  String
+  email String @unique // §3.3 for login/notifications
+
+  // §1.2 — an employee belongs to exactly one department, and a department to
+  // exactly one entity, so entity is IMPLIED by department. C-Level are the
+  // exception: tagged to an entity directly, with no department.
+  //
+  // `entityId` is therefore denormalized and NOT NULL for everyone: derived from
+  // the department for the four non-C-Level tracks, direct for C-Level. That
+  // keeps entity-scoped reads (corporate score fan-out in Phase 5, executive
+  // dashboards in Phase 6) from joining through departments, and it gives the
+  // C-Level case a home instead of a null-department special path everywhere.
+  //
+  // The XOR invariant (department XOR C-Level-with-entity) and the agreement
+  // invariant (department.entityId == employee.entityId) are enforced by CHECK
+  // constraint + trigger in the migration, and again in zod at the boundary —
+  // a denormalized column that can drift silently is worse than the join.
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  entityId     String
+  entity       OrgEntity   @relation(fields: [entityId], references: [id])
+
+  // §3.3 — "Direct reporting line; drives sign-off, escalation, visibility, 360."
+  // Self-relation. Null only for C-Level (§3.4: "blank allowed only for C-Level")
+  // and transiently for the top of the tree.
+  managerId String?
+  manager   Employee?  @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports   Employee[] @relation("EmployeeManager")
+
+  roleTrack RoleTrack // §1.3
+  pmsRoles  PmsRole[] // §4.3 additive; empty for a plain employee
+
+  // RESTRICTED (SECURITY.md §1; spec §4.5 + §11.6). Visible ONLY to HR
+  // (HR_SUPER_ADMIN + HRBP) and the COO/Ops Director (EXECUTIVE_VIEWER). Line
+  // managers never see it — not for their own direct reports, not in chain view.
+  //
+  // Enforcement is at the query layer, not the UI: lib/pms/employee-select.ts
+  // builds the Prisma `select` from the actor's capabilities, so this column
+  // never enters an unauthorised response payload. It is also in SCRUB_FIELDS
+  // (lib/prisma/audit-extension.ts) so it never lands in audit_logs.
+  //
+  // Decimal, not Float: money. Phase 5 multiplies it by a band coefficient and
+  // pro-rates over days (§11.3/§11.4); binary floating point has no business
+  // anywhere near a payroll figure.
+  basicSalary Decimal? @map("basic_salary") @db.Decimal(14, 3)
+
+  status EmployeeStatus @default(ACTIVE) // §3.3
+
+  // §3.3 — for leavers; used in the day-count. §11.4: a leaver pro-rates from
+  // cycle start to their last working day.
+  lastWorkingDay DateTime? @map("last_working_day") @db.Date
+
+  // §3.3/§11.5 — unpaid leave reduces BOTH the pro-ration day count and the
+  // effective service measured against the 6-month bonus eligibility gate.
+  unpaidLeaveDays Int @default(0) @map("unpaid_leave_days")
+
+  // Login link (ADR-065). NULLABLE and unique: the employee population is not
+  // the login population — the Strategy team has no system access (§4.1),
+  // leavers keep records without accounts (§12.1), and employees exist here
+  // before they ever sign in. Set on first login by email match, or by HR.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Soft delete. Note this is for erroneous records only — a departure is
+  // `status = LEAVER`, never a delete (§12.1: "Record and history are preserved").
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([managerId]) // hierarchy walk (lib/pms/org-tree.ts recursive CTE)
+  @@index([departmentId])
+  @@index([entityId])
+  @@index([status])
+  @@map("employees")
+}
+
+// One import run (§3.5). Deliberately TWO-STEP: uploading parses, validates and
+// records the diff as PREVIEWED without writing a single employee row; a separate
+// explicit apply commits it. That is what makes §3.5's "missing rows → change
+// nothing" and Appendix A's "silence is never destructive" reviewable by a human
+// rather than merely asserted by code — HR sees exactly what a truncated or
+// filtered export would have done BEFORE it does it.
+//
+// `previewJson` holds the computed diff so the apply step replays what was
+// reviewed rather than re-parsing the file. The uploaded FILE is never retained:
+// it carries Restricted salary data, and keeping it would create a second,
+// unaudited copy outside the employees table.
+model ImportBatch {
+  id       String       @id @default(cuid())
+  filename String
+  status   ImportStatus @default(PREVIEWED)
+
+  // Who uploaded. SetNull, like audit_logs.userId — attribution survives via
+  // uploadedByEmail below rather than depending on the row still existing.
+  uploadedById    String?
+  uploadedBy      User?   @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  uploadedByEmail String? @map("uploaded_by_email")
+
+  rowsTotal    Int @default(0) @map("rows_total")
+  rowsCreated  Int @default(0) @map("rows_created")
+  rowsUpdated  Int @default(0) @map("rows_updated")
+  rowsRejected Int @default(0) @map("rows_rejected")
+
+  // Employees present in the table but absent from the file. Recorded as a COUNT
+  // for HR's awareness and explicitly NOT acted on (§3.5): absence from a file is
+  // never interpreted as a departure.
+  rowsAbsent Int @default(0) @map("rows_absent")
+
+  previewJson Json?     @map("preview_json")
+  appliedAt   DateTime? @map("applied_at")
+
+  issues ImportRowIssue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("import_batches")
+}
+
+// §3.4 — "A row failing any rule is rejected/flagged, never silently accepted."
+// One row per (row, rule) violation so HR sees every reason at once rather than
+// fixing the sheet one error per upload. `severity` separates REJECT (the row is
+// not applied) from WARNING (applied, but HR should look — e.g. the name on a
+// stable odooId changed).
+model ImportRowIssue {
+  id      String      @id @default(cuid())
+  batchId String
+  batch   ImportBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  rowNumber Int     @map("row_number") // 1-based sheet row, so HR can find it
+  odooId    String? @map("odoo_id") // absent when the ID itself was the problem
+  field     String?
+  rule      String // machine-readable rule key, e.g. "role_track_invalid"
+  message   String
+  severity  String  @default("REJECT") // REJECT | WARNING
+
+  createdAt DateTime @default(now())
+
+  @@index([batchId, severity])
+  @@map("import_row_issues")
 }

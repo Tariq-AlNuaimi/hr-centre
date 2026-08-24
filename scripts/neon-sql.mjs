@@ -38,6 +38,11 @@ export const REDACT_FIELDS = new Set([
   "secret",
   "apiKey",
   "api_key",
+  // Restricted compensation data (PMS spec §4.5 / §11.6) — a `select * from
+  // employees` in this diagnostics helper must not print salaries to a console
+  // or a terminal scrollback.
+  "basicSalary",
+  "basic_salary",
 ]);
 
 // Redact any REDACT_FIELDS key in each returned row before it is printed.
