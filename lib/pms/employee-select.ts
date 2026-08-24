@@ -100,6 +100,17 @@ export type EmployeeListRow = {
   department: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
+  /**
+   * §4.1/§4.3 — the additive HR roles this person holds.
+   *
+   * Carried for every actor, unlike `basicSalary`. §4.5's field-level
+   * restriction names salary and bonus specifically; who the HRBP is, is
+   * ordinary org information — and §5.5's escalation ladder actively depends on
+   * people being able to tell that HR exists and who they are. Selected in
+   * Prisma since Phase 1 but dropped here until the roles screen needed it,
+   * which is why an HR admin could not see the roles they were editing.
+   */
+  pmsRoles: string[];
   /** Present ONLY for HR and executive viewers (§4.5). */
   basicSalary?: string | null;
 };
@@ -128,6 +139,7 @@ export function serializeEmployee(row: {
   department: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
+  pmsRoles?: string[];
   basicSalary?: { toString(): string } | null;
 }): EmployeeListRow {
   const out: EmployeeListRow = {
@@ -140,6 +152,7 @@ export function serializeEmployee(row: {
     managerId: row.managerId,
     department: row.department,
     entity: row.entity,
+    pmsRoles: row.pmsRoles ?? [],
     manager: row.manager,
   };
   // `in` rather than a truthiness check: an entitled actor looking at an

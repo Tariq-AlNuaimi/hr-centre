@@ -7,6 +7,18 @@ import { useBreadcrumb } from "./BreadcrumbProvider";
 import { localePrefixRegex } from "@/i18n/config";
 import Link from "next/link";
 
+/**
+ * Path segments that group routes without being one.
+ *
+ * `/admin/import`, `/admin/org-setup`, `/admin/cycles` and `/admin/roles` all
+ * exist; `/admin` does not. Every one of those pages therefore rendered a
+ * clickable "Admin" crumb pointing at a 404 — and Next prefetched it on hover,
+ * so the 404 fired on every render whether or not anyone clicked. Found while
+ * screenshotting the Phase 2 screens; it predates them and affects the Phase 1
+ * admin screens identically.
+ */
+const NON_NAVIGABLE_SEGMENTS = new Set(["admin"]);
+
 const segmentToNavKey: Record<string, string> = {
   users: "users",
   "audit-log": "auditLog",
@@ -74,19 +86,26 @@ export function Breadcrumbs() {
       }
 
       const isLast = index === segments.length - 1;
+      // A grouping segment has no page of its own, so linking it produces a
+      // breadcrumb that 404s when clicked — and a prefetch that 404s on every
+      // render even when nobody clicks it. Rendered as plain text instead: it
+      // still shows where you are, it just does not promise a destination that
+      // was never built.
+      const navigable = !NON_NAVIGABLE_SEGMENTS.has(segment);
 
       return {
         key: `${segment}-${index}`,
-        node: isLast ? (
-          <span className="text-foreground">{label}</span>
-        ) : (
-          <Link
-            href={path}
-            className="text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {label}
-          </Link>
-        ),
+        node:
+          isLast || !navigable ? (
+            <span className={isLast ? "text-foreground" : "text-muted-foreground"}>{label}</span>
+          ) : (
+            <Link
+              href={path}
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {label}
+            </Link>
+          ),
         isLast,
       };
     }),

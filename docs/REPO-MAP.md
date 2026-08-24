@@ -4,8 +4,10 @@
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(dashboard)/admin/cycles/page.tsx
 - app/[locale]/(dashboard)/admin/import/page.tsx
 - app/[locale]/(dashboard)/admin/org-setup/page.tsx
+- app/[locale]/(dashboard)/admin/roles/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
 - app/[locale]/(dashboard)/page.tsx
@@ -23,6 +25,8 @@
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
+- app/api/cycles/[id]/participants/[participantId]/approve/route.ts  [POST]
+- app/api/cycles/[id]/participants/route.ts  [GET]
 - app/api/cycles/[id]/route.ts  [GET,PUT]
 - app/api/cycles/[id]/stages/route.ts  [PUT]
 - app/api/cycles/route.ts  [GET,POST]
@@ -34,12 +38,16 @@
 - app/api/imports/route.ts  [GET,POST]
 - app/api/imports/template/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
+- app/api/internal/cycle-sweep/route.ts  [GET,POST]
+- app/api/kpis/[id]/route.ts  [PUT,DELETE]
+- app/api/kpis/route.ts  [POST]
 - app/api/openapi/route.ts  [GET]
 - app/api/org/departments/route.ts  [GET,POST]
 - app/api/org/entities/route.ts  [GET,POST]
 - app/api/pms/me/route.ts  [GET]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
+- app/api/signoffs/route.ts  [POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
@@ -80,6 +88,8 @@
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/pms/actor.ts: ResolvedActor, resolveActor
+- lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
+- lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, WrittenEvent, Intervention, notify
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders
@@ -92,8 +102,11 @@
 - lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
+- lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary
+- lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, signOffBlockedReason, GOAL_SETTING_STAGE
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
+- lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
@@ -105,6 +118,7 @@
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
+- lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
@@ -120,8 +134,11 @@
 - components/layout/NotificationsMenu.tsx
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
+- components/pms/CycleForm.tsx
+- components/pms/CycleList.tsx
 - components/pms/EmployeeColumns.tsx
 - components/pms/ImportPreview.tsx
+- components/pms/RoleEditor.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx

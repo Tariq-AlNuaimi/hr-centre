@@ -7,6 +7,8 @@ import {
   Network,
   Upload,
   Building2,
+  CalendarDays,
+  ShieldCheck,
   Settings,
   Trash2,
   ClipboardCheck,
@@ -31,7 +33,7 @@ export function AppSidebar() {
   // PMS authority lives on the Employee record, not the session (ADR-065), so
   // the nav asks for it. `usePmsActor` fails closed while loading: a non-HR user
   // never sees a flash of HR-only navigation.
-  const { capabilities } = usePmsActor();
+  const { actor, capabilities } = usePmsActor();
   const [collapsed, setCollapsed] = useState(false);
 
   // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
@@ -49,16 +51,23 @@ export function AppSidebar() {
   // so this access is typed -- no `as any` needed.
   const isAdmin = session?.user?.role === "ADMIN";
 
-  // Strip locale prefix for active key matching
-  // Active-item matching. The first path segment identifies most items, but the
-  // PMS admin screens both live under /admin/*, so a first-segment-only match
-  // would highlight the same entry for both. Use the second segment there.
+  // PMS roles are additive (§4.3) and fail closed: an unresolved actor has none,
+  // so a non-HR user never sees a flash of HR-only navigation.
+  const pmsRoles = actor?.pmsRoles ?? [];
+
+  // Active-item matching (locale prefix stripped first). The first path segment
+  // identifies most items, but every PMS admin screen lives under /admin/*, so
+  // the SECOND segment is what tells them apart — a first-segment-only match
+  // would light up all of them at once. /admin/import keeps the "admin" key.
   const segments = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean);
+  const ADMIN_SEGMENT_KEYS: Record<string, string> = {
+    "org-setup": "org-setup",
+    cycles: "cycles",
+    roles: "roles",
+  };
   const activeKey =
     segments[0] === "admin"
-      ? segments[1] === "org-setup"
-        ? "org-setup"
-        : "admin"
+      ? (ADMIN_SEGMENT_KEYS[segments[1] ?? ""] ?? "admin")
       : (segments[0] ?? "home");
 
   const menuItems = [
@@ -101,6 +110,19 @@ export function AppSidebar() {
       label: t("org"),
       onClick: () => router.push(`/${locale}/org`),
     },
+    // The cycle console. §4.1 gives BOTH HR flavours "runs the cycle org-wide"
+    // (`canRunCycle` at the route), which is wider than `capabilities.configure`
+    // — so it is read off the actor's own roles, not a capability flag.
+    ...(pmsRoles.includes("HR_SUPER_ADMIN") || pmsRoles.includes("HRBP")
+      ? [
+          {
+            key: "cycles",
+            icon: <CalendarDays className="h-4 w-4" />,
+            label: t("cycles"),
+            onClick: () => router.push(`/${locale}/admin/cycles`),
+          },
+        ]
+      : []),
     // HR-only administration. Import is open to HRBP (checking a file is part of
     // running the cycle); org setup is Super-Admin-only (§4.1's configure column).
     ...(capabilities.previewImport
@@ -120,6 +142,18 @@ export function AppSidebar() {
             icon: <Building2 className="h-4 w-4" />,
             label: t("orgSetup"),
             onClick: () => router.push(`/${locale}/admin/org-setup`),
+          },
+        ]
+      : []),
+    // Granting HR authority is Super-Admin-only (§4.1: HRBP "Configures? No"),
+    // matching the route's own `isHrSuperAdmin` gate.
+    ...(pmsRoles.includes("HR_SUPER_ADMIN")
+      ? [
+          {
+            key: "roles",
+            icon: <ShieldCheck className="h-4 w-4" />,
+            label: t("hrRoles"),
+            onClick: () => router.push(`/${locale}/admin/roles`),
           },
         ]
       : []),

@@ -1,0 +1,330 @@
+import type { ComplianceKind } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { ok } from "@/lib/api-response";
+import { withInternalAuth, withRateLimit } from "@/lib/api-helpers";
+import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
+import { hoursOverdue, type StageWindow } from "@/lib/pms/cycle";
+import { signOffState } from "@/lib/pms/signoff";
+import { notify, type Intervention, type WrittenEvent } from "@/lib/pms/cycle-notify";
+import {
+  hrInterventionDue,
+  interventionSummary,
+  isLadderExempt,
+  ladderEventsFor,
+  type LadderEvent,
+  type ParticipantComplianceState,
+} from "@/lib/pms/compliance";
+
+/**
+ * The daily escalation sweep — spec §5.5 (the ladder) and §5.6 (the record).
+ *
+ * Wired as a Vercel Cron in vercel.json, beside the audit-purge job, and gated
+ * by the same CRON_SECRET pattern: Vercel can only issue GET and injects
+ * `Authorization: Bearer $CRON_SECRET`, so GET opts into Bearer auth and stays
+ * a silent 200 no-op while the secret is unset. POST is the manual / retry
+ * door, presenting the same secret as `x-internal-token`.
+ *
+ * What this endpoint is NOT: a notifier that happens to log. §5.6 asks for the
+ * RECORD ("every deadline miss and escalation event is logged automatically"),
+ * so the compliance rows are the product and the emails are a side effect. Rows
+ * are therefore written FIRST and notifications attempted afterwards, each in
+ * its own try/catch — a mail server having a bad morning must never cost §11.2
+ * a row it can never recreate, because tomorrow's run will consider the miss
+ * already logged.
+ *
+ * Idempotency comes from the database, not from bookkeeping here:
+ * `@@unique([cycleId, stageKind, subjectEmployeeId, kind])` means a retry, a
+ * manual invocation, or two overlapping runs collide on P2002, which is caught
+ * per row and counted rather than aborting the sweep. A partial run is
+ * therefore always safe to repeat.
+ */
+
+export const maxDuration = 60;
+
+/** Participants read per query. Bounded pages, never the whole company at once. */
+const PARTICIPANT_PAGE = 200;
+/**
+ * Per-run participant budget. A sweep that cannot finish inside `maxDuration`
+ * would roll nothing forward and retry the same oversized job every day; a
+ * budget means partial progress commits and tomorrow's run resumes. The ladder
+ * is idempotent, so resuming costs nothing but the rows it has yet to reach.
+ */
+const MAX_PARTICIPANTS_PER_RUN = 5_000;
+/** Cap on the intervention queue returned inline, so the response stays bounded. */
+const MAX_SURFACED = 100;
+/** Cap on outbound mail per run — a backlog must not turn into a mail storm. */
+
+type Counts = Partial<Record<ComplianceKind, number>>;
+
+/**
+ * Write one participant's warranted events. Each row is created individually:
+ * `createMany` writes no audit rows (`no-unaudited-bulk-write`), and a per-row
+ * create is what lets a single duplicate be swallowed without discarding its
+ * siblings — the three parallel rungs of a missed deadline are independent
+ * facts, and one of them already existing says nothing about the other two.
+ */
+async function writeEvents(
+  cycleId: string,
+  stageKind: StageWindow["kind"],
+  subjectEmployeeId: string,
+  events: readonly LadderEvent[],
+): Promise<WrittenEvent[]> {
+  const results: WrittenEvent[] = [];
+  for (const event of events) {
+    try {
+      await prisma.complianceEvent.create({
+        data: {
+          cycleId,
+          stageKind,
+          subjectEmployeeId,
+          managerEmployeeId: event.managerEmployeeId,
+          kind: event.kind,
+          missedByHours: event.missedByHours,
+          detail: event.detail,
+        },
+        select: { id: true },
+      });
+      results.push({ ...event, cycleId, subjectEmployeeId, isNew: true });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        // Already logged by an earlier run today. The ladder decided the same
+        // thing it decided before, which is exactly what idempotence looks like.
+        results.push({ ...event, cycleId, subjectEmployeeId, isNew: false });
+        continue;
+      }
+      throw error;
+    }
+  }
+  return results;
+}
+
+type ParticipantRow = {
+  id: string;
+  employeeId: string;
+  goalsApprovedAt: Date | null;
+  employee: {
+    id: string;
+    managerId: string | null;
+    roleTrack: ParticipantComplianceState["roleTrack"];
+    status: ParticipantComplianceState["employeeStatus"];
+    deletedAt: Date | null;
+  };
+  signOffs: { party: "EMPLOYEE" | "MANAGER" }[];
+};
+
+function stateFor(row: ParticipantRow, kpiCount: number): ParticipantComplianceState {
+  const signed = signOffState(row.signOffs);
+  return {
+    subjectEmployeeId: row.employeeId,
+    // §12.2 — the manager of record is whoever holds the relationship NOW.
+    managerEmployeeId: row.employee.managerId,
+    roleTrack: row.employee.roleTrack,
+    employeeStatus: row.employee.status,
+    kpiCount,
+    employeeSigned: signed.employeeSigned,
+    managerSigned: signed.managerSigned,
+    goalsApproved: row.goalsApprovedAt !== null,
+  };
+}
+
+/** Live KPI counts for a page of participants, in ONE query rather than N. */
+async function kpiCounts(participantIds: string[]): Promise<Map<string, number>> {
+  if (participantIds.length === 0) return new Map();
+  // `deletedAt: null` is explicit: `Kpi` carries soft-delete columns but is not
+  // in the soft-delete extension's model set, so nothing filters it for us. A
+  // deleted KPI counted here would read as "the manager drafted" for a set the
+  // employee cannot see.
+  const rows = await prisma.kpi.groupBy({
+    by: ["participantId"],
+    where: { participantId: { in: participantIds }, deletedAt: null },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.participantId, r._count._all]));
+}
+
+type Tally = { scanned: number; skipped: number; duplicates: number; interventionCount: number };
+
+/** One bounded page of participants, keyed by a stable cursor rather than an offset. */
+async function fetchParticipantPage(cycleId: string, cursor?: string): Promise<ParticipantRow[]> {
+  return prisma.cycleParticipant.findMany({
+    where: { cycleId },
+    orderBy: { id: "asc" },
+    take: PARTICIPANT_PAGE,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    select: {
+      id: true,
+      employeeId: true,
+      goalsApprovedAt: true,
+      employee: {
+        select: {
+          id: true,
+          managerId: true,
+          roleTrack: true,
+          status: true,
+          // Nested relation selects are NOT soft-delete filtered (see
+          // lib/prisma/soft-delete-extension.ts) — filtered by hand by the caller.
+          deletedAt: true,
+        },
+      },
+      signOffs: { select: { party: true } },
+    },
+  });
+}
+
+async function processParticipant(params: {
+  cycleId: string;
+  stage: StageWindow;
+  now: Date;
+  row: ParticipantRow;
+  kpiCount: number;
+  counts: Counts;
+  written: WrittenEvent[];
+  interventions: Intervention[];
+  tally: Tally;
+}): Promise<void> {
+  const { cycleId, stage, now, row, kpiCount, counts, written, interventions, tally } = params;
+  const state = stateFor(row, kpiCount);
+
+  // §8.3 C-Level and §12.1 leavers are counted as skipped, not scanned: "how
+  // many people did the ladder actually consider" is the number an operator
+  // checks a sweep against.
+  if (isLadderExempt(state)) {
+    tally.skipped += 1;
+    return;
+  }
+  tally.scanned += 1;
+
+  const rows = await writeEvents(
+    cycleId,
+    stage.kind,
+    row.employeeId,
+    ladderEventsFor(state, stage, now),
+  );
+  for (const event of rows) {
+    if (event.isNew) counts[event.kind] = (counts[event.kind] ?? 0) + 1;
+    else tally.duplicates += 1;
+    written.push(event);
+  }
+
+  if (!hrInterventionDue(state, stage, now)) return;
+  tally.interventionCount += 1;
+  if (interventions.length >= MAX_SURFACED) return;
+  interventions.push({
+    cycleId,
+    participantId: row.id,
+    subjectEmployeeId: row.employeeId,
+    managerEmployeeId: state.managerEmployeeId,
+    missedByHours: hoursOverdue(stage, now),
+    detail: interventionSummary(state),
+  });
+}
+
+async function sweepStage(
+  cycleId: string,
+  stage: StageWindow,
+  now: Date,
+  counts: Counts,
+  written: WrittenEvent[],
+  interventions: Intervention[],
+): Promise<Tally> {
+  const tally: Tally = { scanned: 0, skipped: 0, duplicates: 0, interventionCount: 0 };
+  let cursor: string | undefined;
+
+  while (tally.scanned + tally.skipped < MAX_PARTICIPANTS_PER_RUN) {
+    const page = await fetchParticipantPage(cycleId, cursor);
+    if (page.length === 0) break;
+    cursor = page[page.length - 1].id;
+
+    const live = page.filter((row) => row.employee.deletedAt === null);
+    const countsByParticipant = await kpiCounts(live.map((row) => row.id));
+    for (const row of live) {
+      await processParticipant({
+        cycleId,
+        stage,
+        now,
+        row,
+        kpiCount: countsByParticipant.get(row.id) ?? 0,
+        counts,
+        written,
+        interventions,
+        tally,
+      });
+    }
+
+    if (page.length < PARTICIPANT_PAGE) break;
+  }
+
+  return tally;
+}
+
+async function sweep() {
+  const now = new Date();
+
+  // §2 is one cycle per year and only one is normally OPEN; the cap guards
+  // against a fork that opens several, and is not a page.
+  const cycles = await prisma.performanceCycle.findMany({
+    take: 10,
+    where: { status: "OPEN" },
+    select: {
+      id: true,
+      year: true,
+      stages: {
+        where: { kind: GOAL_SETTING_STAGE },
+        select: { kind: true, opensAt: true, deadline: true, graceDays: true },
+      },
+    },
+  });
+
+  const counts: Counts = {};
+  const written: WrittenEvent[] = [];
+  const interventions: Intervention[] = [];
+  let scanned = 0;
+  let skipped = 0;
+  let duplicates = 0;
+  let interventionCount = 0;
+  let stagesSwept = 0;
+
+  for (const cycle of cycles) {
+    const stage = cycle.stages[0];
+    if (!stage) continue;
+    stagesSwept += 1;
+    const result = await sweepStage(cycle.id, stage, now, counts, written, interventions);
+    scanned += result.scanned;
+    skipped += result.skipped;
+    duplicates += result.duplicates;
+    interventionCount += result.interventionCount;
+  }
+
+  const notified = await notify(written, interventions, interventionCount);
+
+  return ok({
+    ranAt: now.toISOString(),
+    cyclesSwept: cycles.length,
+    stagesSwept,
+    participantsScanned: scanned,
+    participantsSkipped: skipped,
+    eventsWritten: counts,
+    duplicatesSkipped: duplicates,
+    hrInterventionDue: interventionCount,
+    hrInterventionQueue: interventions,
+    notified,
+  });
+}
+
+// GET: Vercel Cron (daily, wired in vercel.json). Vercel sends only GET and
+// injects `Authorization: Bearer $CRON_SECRET`, so this handler opts into
+// Bearer auth and no-ops silently while the secret is unset — a dormant fork
+// should not log a failed invocation every day.
+export const GET = withRateLimit(
+  withInternalAuth("CRON_SECRET", sweep, { bearer: true, skipWhenUnconfigured: true }),
+  { id: "cycle-sweep-cron", limit: 5, windowMs: 60_000 },
+);
+// POST: manual / retry invocation with the same secret as `x-internal-token`.
+// The same secret because it authorises the identical action; a separate token
+// would be a second thing to rotate for no additional boundary.
+export const POST = withRateLimit(withInternalAuth("CRON_SECRET", sweep), {
+  id: "cycle-sweep-manual",
+  limit: 5,
+  windowMs: 60_000,
+});
