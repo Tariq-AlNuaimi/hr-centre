@@ -1,6 +1,6 @@
 {
   "tier": "personal",
-  "pristine": true,
+  "pristine": false,
   "locales": ["en"],
   "defaultLocale": "en",
   "reactCompiler": true,

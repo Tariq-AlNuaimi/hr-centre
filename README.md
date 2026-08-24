@@ -1,4 +1,4 @@
-# Fullstack Next.js Template (Prototype Rail)
+# Rihal Performance Management
 
 Fast prototype rail for Rihal internal tools. Next.js 16 + Prisma + Postgres + Auth.js + shadcn/Radix, deployed to Vercel + Neon. **`git push` → live URL in 90 seconds.**
 
