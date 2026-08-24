@@ -153,3 +153,7 @@ docs/blueprints/.fan-out.json.baseline
 docs/verification/**/*.png
 docs/verification/**/*.jpg
 !docs/verification/design-system/**/*.png
+# PMS Phase 1 evidence: docs/verification/pms-phase1/README.md cites these four
+# captures by filename (HR directory, org chart, import preview, dark mode). The
+# doc is worthless without them, so they are tracked (524 KB total).
+!docs/verification/pms-phase1/**/*.png
