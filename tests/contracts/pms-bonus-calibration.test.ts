@@ -379,3 +379,72 @@ test("§11.5 an ineligible row contributes no money but is still counted", async
   assert.equal(totals.ineligible, 1);
   assert.equal(totals.employees, 2, "the headcount counts everyone, paid or not");
 });
+
+// --- §10.2 / §10.3 the target distribution the editor writes --------------------
+
+/**
+ * The rule the new §10.2 editor mirrors on screen. It is checked in both places
+ * deliberately — the screen so an operator learns it by reading, the schema
+ * because the screen is guidance and never the control.
+ */
+test("§10.2 the five band percentages must total exactly 100", async () => {
+  const { setTargetSchema } = await import("../../lib/validations/calibration");
+  const base = { cycleId: "c1", minDepartmentSize: 5 };
+
+  const ok = setTargetSchema.safeParse({
+    ...base,
+    outstandingPct: 10,
+    excellentPct: 20,
+    targetPct: 40,
+    almostAchievedPct: 20,
+    unsatisfactoryPct: 10,
+  });
+  assert.equal(ok.success, true);
+
+  for (const outstanding of [9, 11]) {
+    const bad = setTargetSchema.safeParse({
+      ...base,
+      outstandingPct: outstanding,
+      excellentPct: 20,
+      targetPct: 40,
+      almostAchievedPct: 20,
+      unsatisfactoryPct: 10,
+    });
+    assert.equal(bad.success, false, `${outstanding + 90}% must be refused`);
+  }
+});
+
+test("§10.2 fractional percentages that total 100 are accepted", async () => {
+  const { setTargetSchema } = await import("../../lib/validations/calibration");
+  // The editor compares at 2dp, so the schema has to agree at 2dp: a
+  // distribution of thirds is a legitimate thing for HR to key in.
+  const r = setTargetSchema.safeParse({
+    cycleId: "c1",
+    minDepartmentSize: 5,
+    outstandingPct: 10.5,
+    excellentPct: 19.5,
+    targetPct: 40,
+    almostAchievedPct: 20,
+    unsatisfactoryPct: 10,
+  });
+  assert.equal(r.success, true);
+});
+
+test("§10.3 the curve threshold is editable but never below 2", async () => {
+  const { setTargetSchema } = await import("../../lib/validations/calibration");
+  const at = (minDepartmentSize: number) =>
+    setTargetSchema.safeParse({
+      cycleId: "c1",
+      minDepartmentSize,
+      outstandingPct: 10,
+      excellentPct: 20,
+      targetPct: 40,
+      almostAchievedPct: 20,
+      unsatisfactoryPct: 10,
+    }).success;
+
+  assert.equal(at(2), true);
+  assert.equal(at(25), true, "§10.3 says the threshold is HR's to set");
+  // A department of one has no distribution to shape at all.
+  assert.equal(at(1), false);
+});

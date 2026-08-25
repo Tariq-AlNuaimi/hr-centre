@@ -22,6 +22,7 @@ import {
 import { CyclePicker } from "@/components/pms/CyclePicker";
 import { PublishGate } from "@/components/pms/PublishGate";
 import { ScoreRunPanel } from "@/components/pms/ScoreRunPanel";
+import { CalibrationTargetEditor } from "@/components/pms/CalibrationTargetEditor";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -156,6 +157,17 @@ export default function CalibrationPage() {
               card's usual complaint is that raw scores are missing, and the
               answer to it is this panel's button. */}
           {cycleId && <ScoreRunPanel cycleId={cycleId} />}
+
+          {/* §10.2 — the target every gap below is measured against. Above the
+              tables because without it they have nothing to compare to, and
+              §10.7 refuses calibration until it exists. */}
+          {cycleId && (
+            <CalibrationTargetEditor
+              cycleId={cycleId}
+              target={data.target}
+              minDepartmentSize={data.minDepartmentSize}
+            />
+          )}
 
           {/* §10.7 — "no release until calibration is done", and no calibration
               until every raw score is in. Stated first, because it decides

@@ -221,6 +221,7 @@
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
 - components/pms/BonusReport.tsx
+- components/pms/CalibrationTargetEditor.tsx
 - components/pms/ChangeRequestComposer.tsx
 - components/pms/ChangeRequestReview.tsx
 - components/pms/CycleForm.tsx

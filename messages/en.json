@@ -1024,6 +1024,20 @@
       "loadFailedHelp": "Something went wrong fetching the distribution.",
       "retry": "Try again"
     },
+    "calibrationTarget": {
+      "title": "Target distribution",
+      "help": "What share of people should land in each band. Guidance for the moves below — it never moves anyone by itself.",
+      "noTargetHelp": "No target is set for this cycle, so calibration cannot start and results cannot be released. Set one to open the gate.",
+      "setAction": "Set the target",
+      "editAction": "Edit",
+      "saveAction": "Save target",
+      "working": "Saving…",
+      "total": "Totals {pct}%",
+      "mustTotal": "The five bands must total exactly 100%.",
+      "minSize": "Smallest department to curve",
+      "minSizeHelp": "Departments below this keep their raw scores as final. You can still move any individual by hand.",
+      "savedToast": "Target distribution saved."
+    },
     "scoreRun": {
       "title": "Calculate raw scores",
       "help": "§8's calculation, and the step calibration waits on. Every signed assessment becomes one raw score and one band.",
