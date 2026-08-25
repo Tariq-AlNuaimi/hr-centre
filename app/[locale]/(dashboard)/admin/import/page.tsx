@@ -177,7 +177,7 @@ export default function ImportPage() {
           </div>
 
           {fileError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {fileError}
             </p>
           ) : null}

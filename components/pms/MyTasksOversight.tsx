@@ -189,7 +189,7 @@ function MyTasksBody(props: {
   if (props.failed) {
     return (
       <div className="space-y-3">
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-emphasis">
           {t("loadFailed")}
         </p>
         <Button variant="outline" onClick={props.onRetry}>

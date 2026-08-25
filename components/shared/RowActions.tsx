@@ -83,7 +83,7 @@ export function getRowActionsColumn<T extends { id: string }>({
           <Button
             variant="ghost"
             size="icon"
-            className="text-destructive hover:text-destructive"
+            className="text-destructive-emphasis hover:text-destructive-emphasis"
             aria-label={t("deleteAction")}
           >
             <DeleteIcon />

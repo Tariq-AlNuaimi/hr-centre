@@ -42,7 +42,13 @@ interface ThreeSixtyResponse {
     status: string;
     opensAt: string;
     deadline: string;
-    templates?: Array<{ id: string; type: string; _count: { questions: number } }>;
+    // The route returns each template's QUESTIONS, not a `_count` of them —
+    // `_count` on that payload belongs to the cycle and holds `assignments`.
+    // This interface used to claim `_count.questions` per template, and since
+    // `apiClient.get<T>` is an unchecked cast nothing caught the mismatch: the
+    // screen crashed on `_count` being undefined the moment a 360 had templates,
+    // which is every 360 that exists, because §9.2 creates them with the cycle.
+    templates?: Array<{ id: string; type: string; questions: Array<{ id: string }> }>;
   } | null;
 }
 
@@ -210,7 +216,7 @@ export default function ThreeSixtyPage() {
                   <li key={template.id} className="flex items-center justify-between gap-3">
                     <span>{t(`templateType.${template.type}`)}</span>
                     <span className="text-xs text-muted-foreground">
-                      {t("questions", { count: template._count.questions })}
+                      {t("questions", { count: template.questions.length })}
                     </span>
                   </li>
                 ))}
@@ -250,7 +256,7 @@ export default function ThreeSixtyPage() {
             noBodyPadding
           >
             {short.length > 0 && (
-              <p className="px-6 pt-4 text-sm text-destructive">
+              <p className="px-6 pt-4 text-sm text-destructive-emphasis">
                 {t("shortfallHelp", { count: short.length })}
               </p>
             )}

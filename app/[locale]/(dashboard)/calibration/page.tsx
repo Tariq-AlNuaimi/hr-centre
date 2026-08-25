@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { CyclePicker } from "@/components/pms/CyclePicker";
 import { PublishGate } from "@/components/pms/PublishGate";
+import { ScoreRunPanel } from "@/components/pms/ScoreRunPanel";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -151,6 +152,11 @@ export default function CalibrationPage() {
 
       {data && (
         <>
+          {/* §10.7's preceding step. Above the readiness card deliberately: the
+              card's usual complaint is that raw scores are missing, and the
+              answer to it is this panel's button. */}
+          {cycleId && <ScoreRunPanel cycleId={cycleId} />}
+
           {/* §10.7 — "no release until calibration is done", and no calibration
               until every raw score is in. Stated first, because it decides
               whether anything below is meaningful. */}

@@ -34,7 +34,8 @@ Every number below was produced by running the thing, on 2026-08-25.
 | Screens                                                            | 35                                                                               |
 | Local ESLint security rules at `error`                             | 14                                                                               |
 | ADRs                                                               | 67                                                                               |
-| axe (WCAG 2.1 AA), Phase 3a + 3b screens, light/dark, en + ar      | **0 violations**                                                                 |
+| axe (WCAG 2.1 AA), Phase 3a + 3b screens, light/dark               | **0 violations**                                                                 |
+| axe (WCAG 2.1 AA), Phase 4–6 screens, light/dark, en + ar          | **0 violations** — after 3 defects fixed (`pms-phase4-6/README.md`)              |
 | i18n key parity (en ↔ ar)                                          | **exact** — 0 missing either way, asserted by a contract test                    |
 
 Detailed evidence per phase: `docs/verification/pms-phase1/`, `pms-phase2/`, `pms-phase3a/`,
@@ -343,9 +344,22 @@ operator made, and each is flagged in the code where it applies.
 - **The live deployment could not be confirmed from the build container.** `vercel.json` runs
   `prisma migrate deploy` before `next build`, so a failed migration fails the build and the prior
   deployment keeps serving — but that is reasoning, not evidence. Confirm on the Vercel dashboard.
-- **Browser and axe evidence covers Phases 1–3b.** The Phase 4–6 screens are typechecked, linted,
-  built and served by tested routes, but have not had a browser pass or an axe run. That is the
-  next verification step, not a claim made here.
+- **Browser and axe evidence now covers Phases 1–6.** The Phase 4–6 pass ran on 2026-08-25 and is
+  written up in `docs/verification/pms-phase4-6/README.md`. It found four defects, three of which
+  no test could see: §8's score calculation had **no trigger anywhere in the product**, the §9 360
+  console crashed on every populated cycle, red text failed AA contrast on dark across 20 sites, and
+  the bonus total was summed twice — once in `Decimal`, once in browser floating point. All four are
+  fixed. Still not covered: mobile viewports, and the permission matrix across roles (every
+  screen-run was an HR Super Admin). `/uat` is the tier for both.
+- **The "en + ar" axe claims in this report and in `pms-phase3a/README.md` needed qualifying.**
+  This fork ships `"locales": ["en"]`, so `/ar/...` is not routable — it redirects to `/en/ar/...`
+  and 404s. Arabic evidence, here and in Phase 3a, can only have been produced with the locale
+  temporarily enabled and the app rebuilt; the Phase 4–6 report says so explicitly and the flag is
+  committed back at `["en"]`. The specification never mentions language, so English-only is not a
+  deviation — but an axe claim for a locale the fork does not serve is one worth stating precisely.
+- **The demo cycle is a fixture, and says so.** `npm run db:demo-cycle` builds a full performance
+  year for review and for the screens above. It writes appraisal ratings, so it refuses to run once
+  any employee import has happened, or when headcount is not fixture-sized.
 - **"Verified" means implemented, tested and reviewed — not accepted by Rihal.** No clause here has
   been through user acceptance with the HR team who wrote the specification, and the ten deviations
   above include four explicit open questions for them.

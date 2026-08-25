@@ -121,7 +121,7 @@ export default function YearEndPage() {
       <div className="space-y-6">
         <PageHeader title={t("title")} />
         <div className="space-y-3">
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-destructive-emphasis">
             {t("loadFailed")}
           </p>
           <Button variant="outline" onClick={() => cycles.refetch()}>

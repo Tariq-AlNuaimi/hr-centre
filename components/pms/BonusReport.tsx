@@ -49,7 +49,7 @@ interface BonusResponse {
   cycleId: string;
   year: number;
   rows: BonusRow[];
-  totals: { eligible: number; ineligible: number };
+  totals: { total: string; eligible: number; ineligible: number; employees: number };
 }
 
 export function BonusReport({ cycleId }: { cycleId: string }) {
@@ -71,7 +71,6 @@ export function BonusReport({ cycleId }: { cycleId: string }) {
   }
 
   const data = query.data;
-  const total = data.rows.reduce((sum, row) => sum + Number(row.bonus ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -82,7 +81,7 @@ export function BonusReport({ cycleId }: { cycleId: string }) {
           value={data.totals.ineligible}
           hint={t("ineligibleHint")}
         />
-        <StatCard title={t("total")} value={total.toFixed(3)} hint={t("totalHint")} />
+        <StatCard title={t("total")} value={data.totals.total} hint={t("totalHint")} />
       </div>
 
       <SectionCard

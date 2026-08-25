@@ -116,7 +116,9 @@ export function PublishGate({ cycleId }: { cycleId: string }) {
                 ` · ${t("skipped", { count: readiness.skippedCount })}`}
               {!readiness.hasTarget && ` · ${t("noTarget")}`}
             </p>
-            {readiness.reason && <p className="mt-1 text-destructive">{readiness.reason}</p>}
+            {readiness.reason && (
+              <p className="mt-1 text-destructive-emphasis">{readiness.reason}</p>
+            )}
           </div>
 
           {/* Guard 2 — the warning, in plain words. */}

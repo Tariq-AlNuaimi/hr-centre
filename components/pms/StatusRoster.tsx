@@ -101,7 +101,7 @@ export function StatusRoster({
               )}
               {/* §5.4's verbatim status for a stage that locked with a party owing. */}
               {row.outstandingLabel && (
-                <div className="text-xs text-destructive">
+                <div className="text-xs text-destructive-emphasis">
                   {t(`outstandingLabel.${row.outstandingLabel}`)}
                 </div>
               )}

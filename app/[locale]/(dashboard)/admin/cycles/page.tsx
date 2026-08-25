@@ -156,7 +156,7 @@ export default function CyclesPage() {
         <TableSkeleton rows={4} />
       ) : cycles.isError ? (
         <div className="space-y-3">
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-destructive-emphasis">
             {t("cycles.loadFailed")}
           </p>
           <Button variant="outline" onClick={() => cycles.refetch()}>
@@ -202,7 +202,7 @@ export default function CyclesPage() {
           />
 
           {formError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {formError}
             </p>
           ) : null}
@@ -254,7 +254,7 @@ export default function CyclesPage() {
           ) : null}
 
           {formError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {formError}
             </p>
           ) : null}

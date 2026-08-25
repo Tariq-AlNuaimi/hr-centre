@@ -331,3 +331,51 @@ test("a cycle with no score run at all says so plainly", () => {
     /score run before calibration/,
   );
 });
+
+// --- §13.6 the one sum of the bonus --------------------------------------------
+
+/**
+ * The executive dashboard and the §13.5 bonus report each showed a bonus total,
+ * computed two different ways: one folded `Prisma.Decimal` on the server, the
+ * other re-summed `Number(row.bonus)` in the browser. This pins the single fold
+ * they now share, and pins it against the float sum it replaced.
+ */
+test("§13.6 the bonus total is folded in Decimal, not floating point", async () => {
+  const { bonusTotals } = await import("../../lib/pms/bonus-report");
+
+  // Three amounts whose float sum is NOT their decimal sum: 0.1 + 0.2 + 0.3
+  // is 0.6000000000000001 in binary floating point.
+  const rows = [
+    { bonus: "0.100", eligible: true },
+    { bonus: "0.200", eligible: true },
+    { bonus: "0.300", eligible: true },
+  ];
+
+  const totals = bonusTotals(rows);
+  assert.equal(totals.total, "0.600");
+
+  // The reason the fold exists, stated as an assertion rather than a comment:
+  // the float sum these rows used to produce is not the number they add up to.
+  const floatSum = rows.reduce((sum, row) => sum + Number(row.bonus ?? 0), 0);
+  assert.notEqual(String(floatSum), "0.6", "0.1 + 0.2 + 0.3 is inexact in binary floating point");
+
+  assert.equal(totals.eligible, 3);
+  assert.equal(totals.ineligible, 0);
+  assert.equal(totals.employees, 3);
+});
+
+test("§11.5 an ineligible row contributes no money but is still counted", async () => {
+  const { bonusTotals } = await import("../../lib/pms/bonus-report");
+
+  const rows = [
+    { bonus: "1200.500", eligible: true },
+    // §11.4 — under six months' effective service, so no bonus at all.
+    { bonus: null, eligible: false },
+  ];
+
+  const totals = bonusTotals(rows);
+  assert.equal(totals.total, "1200.500");
+  assert.equal(totals.eligible, 1);
+  assert.equal(totals.ineligible, 1);
+  assert.equal(totals.employees, 2, "the headcount counts everyone, paid or not");
+});

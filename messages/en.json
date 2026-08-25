@@ -1019,6 +1019,22 @@
       "loadFailedHelp": "Something went wrong fetching the distribution.",
       "retry": "Try again"
     },
+    "scoreRun": {
+      "title": "Calculate raw scores",
+      "help": "§8's calculation, and the step calibration waits on. Every signed assessment becomes one raw score and one band.",
+      "runAction": "Calculate scores",
+      "rerunAction": "Recalculate",
+      "working": "Calculating…",
+      "neverRun": "No scores have been calculated for this cycle yet. {count} participant(s) are waiting.",
+      "scoredOf": "{scored} of {total} scored",
+      "skippedCount": "{count} not scored",
+      "lastRun": "Last run by {who}, {when}",
+      "unknownWho": "someone no longer on file",
+      "worklist": "{count} could not be scored yet:",
+      "rerunSafe": "Recalculating writes a new set of raw scores and never overwrites an earlier one, so any calibration already applied survives.",
+      "doneToast": "{count} employee(s) scored.",
+      "loadFailed": "Could not load previous score runs."
+    },
     "publish": {
       "title": "Release results",
       "help": "Everyone's results go live at the same moment. Nothing shows to employees before that.",

@@ -149,7 +149,7 @@
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/pms/actor.ts: ResolvedActor, resolveActor
-- lib/pms/bonus-report.ts: BonusRow, bonusRows, BONUS_EXPORT_COLUMNS
+- lib/pms/bonus-report.ts: BonusRow, bonusRows, BonusTotals, bonusTotals, BONUS_EXPORT_COLUMNS
 - lib/pms/bonus.ts: DAYS_IN_YEAR, ELIGIBILITY_MONTHS, inclusiveDays, WorkDaysInput, workDays, effectiveServiceMonths, isBonusEligible, BonusResult, computeBonus
 - lib/pms/calibration.ts: BANDS, Distribution, emptyDistribution, tally, distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
@@ -239,6 +239,7 @@
 - components/pms/ParticipantList.tsx
 - components/pms/PublishGate.tsx
 - components/pms/RoleEditor.tsx
+- components/pms/ScoreRunPanel.tsx
 - components/pms/SignOffPanel.tsx
 - components/pms/StageBanner.tsx
 - components/pms/StatusRoster.tsx

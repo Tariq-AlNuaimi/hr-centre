@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { computeBonus } from "./bonus";
 import { decryptSalary } from "./employee-select";
@@ -141,6 +142,42 @@ export async function bonusRows(params: {
  * pays from the calibrated band, and putting the raw one next to it on a
  * payroll file invites someone downstream to reconcile the difference.
  */
+export type BonusTotals = {
+  /** The payroll figure, as a fixed-3 string — Omani rial carries 3 decimals. */
+  total: string;
+  eligible: number;
+  ineligible: number;
+  employees: number;
+};
+
+/**
+ * §13.6's "bonus totals" — the one sum of the bonus.
+ *
+ * Lives beside `bonusRows` rather than in a route because BOTH the executive
+ * dashboard and the §13.5 bonus report show this figure, and they were each
+ * computing it their own way: the dashboard folded `Prisma.Decimal` server-side,
+ * the report re-summed `Number(row.bonus)` in the browser. Two independent sums
+ * of the same money, one of them in binary floating point — the exact thing the
+ * schema's "Decimal not Float: these are summed" comment forbids, and the exact
+ * thing the dashboard's own comment warned would "eventually disagree".
+ *
+ * Folding once, here, is what makes that warning true rather than aspirational.
+ */
+export function bonusTotals(rows: readonly Pick<BonusRow, "bonus" | "eligible">[]): BonusTotals {
+  let total = new Prisma.Decimal(0);
+  let eligible = 0;
+  for (const row of rows) {
+    if (row.bonus !== null) total = total.plus(row.bonus);
+    if (row.eligible) eligible += 1;
+  }
+  return {
+    total: total.toFixed(3),
+    eligible,
+    ineligible: rows.length - eligible,
+    employees: rows.length,
+  };
+}
+
 export const BONUS_EXPORT_COLUMNS: ReadonlyArray<SheetColumn<BonusRow>> = [
   { title: "Employee ID", value: (r) => r.employeeId },
   { title: "Name", width: 28, value: (r) => r.name },

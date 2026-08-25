@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { Prisma, type Band } from "@/generated/prisma/client";
+import type { Band } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { bonusRows } from "@/lib/pms/bonus-report";
+import { bonusRows, bonusTotals } from "@/lib/pms/bonus-report";
 import { BANDS, tally } from "@/lib/pms/calibration";
 import { stageState } from "@/lib/pms/cycle";
 import { canViewCompensation } from "@/lib/pms/permissions";
@@ -85,7 +85,7 @@ export const GET = withRateLimit(
     ]);
 
     // §11.6 — the bonus total is compensation, and gated as such.
-    const bonus = canViewCompensation(actor) ? await bonusTotals(cycleId, cycle.year) : null;
+    const bonus = canViewCompensation(actor) ? await cycleBonusTotals(cycleId, cycle.year) : null;
 
     return ok({
       cycle: {
@@ -191,22 +191,12 @@ async function compliancePicture(cycleId: string) {
  * §13.6's "bonus totals" — the payroll figure, summed.
  *
  * Reuses `bonusRows`, so the total on this dashboard is the sum of the exact
- * rows in §11.7's export. Two independent sums of "the bonus" would eventually
+ * rows in §11.7's export, and `bonusTotals` so it is the same fold the §13.5
+ * bonus report shows. Two independent sums of "the bonus" would eventually
  * disagree, and the one an executive sees should never be the one that is wrong.
  */
-async function bonusTotals(cycleId: string, year: number) {
+async function cycleBonusTotals(cycleId: string, year: number) {
   const rows = await bonusRows({ cycleId, year });
   if (rows === null) return null;
-  let total = new Prisma.Decimal(0);
-  let eligible = 0;
-  for (const r of rows) {
-    if (r.bonus !== null) total = total.plus(r.bonus);
-    if (r.eligible) eligible += 1;
-  }
-  return {
-    total: total.toFixed(3),
-    eligible,
-    ineligible: rows.length - eligible,
-    employees: rows.length,
-  };
+  return bonusTotals(rows);
 }

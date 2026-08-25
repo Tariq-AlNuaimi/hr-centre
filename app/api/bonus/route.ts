@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { canViewCompensation } from "@/lib/pms/permissions";
-import { BONUS_EXPORT_COLUMNS, bonusRows } from "@/lib/pms/bonus-report";
+import { BONUS_EXPORT_COLUMNS, bonusRows, bonusTotals } from "@/lib/pms/bonus-report";
 import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
 
 /**
@@ -81,13 +81,11 @@ export const GET = withRateLimit(
       });
     }
 
-    const totals = rows.reduce(
-      (acc, r) => ({
-        eligible: acc.eligible + (r.eligible ? 1 : 0),
-        ineligible: acc.ineligible + (r.eligible ? 0 : 1),
-      }),
-      { eligible: 0, ineligible: 0 },
-    );
+    // §13.6's figure, folded once in `bonusTotals` so this report and the
+    // executive dashboard cannot disagree about the payroll number. The screen
+    // used to re-sum `Number(row.bonus)` in the browser — a second, float,
+    // client-side sum of the same money.
+    const totals = bonusTotals(rows);
 
     return ok({ cycleId, year: cycle.year, rows, totals, exported: asExport });
   }),

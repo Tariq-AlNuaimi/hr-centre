@@ -134,7 +134,7 @@ export default function OrgSetupPage() {
         {entities.isLoading ? (
           <div className="h-16 animate-pulse rounded-md bg-muted" />
         ) : entities.isError ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-destructive-emphasis">
             {t("orgSetup.loadFailed")}
           </p>
         ) : entityList.length === 0 ? (
@@ -193,7 +193,7 @@ export default function OrgSetupPage() {
         {departments.isLoading ? (
           <div className="h-16 animate-pulse rounded-md bg-muted" />
         ) : departments.isError ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-destructive-emphasis">
             {t("orgSetup.loadFailed")}
           </p>
         ) : departmentList.length === 0 ? (

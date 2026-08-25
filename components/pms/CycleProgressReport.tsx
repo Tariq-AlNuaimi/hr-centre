@@ -197,7 +197,7 @@ export function CycleProgressReport({ cycleId }: { cycleId: string }) {
                   <div className="space-y-1">
                     <Badge variant="warning">{tTeam(`state.${row.state}`)}</Badge>
                     {row.outstandingLabel && (
-                      <div className="text-xs text-destructive">
+                      <div className="text-xs text-destructive-emphasis">
                         {tTeam(`outstandingLabel.${row.outstandingLabel}`)}
                       </div>
                     )}
