@@ -137,26 +137,35 @@ export const POST = withRateLimit(
       // and `update` cannot carry it. That takes the write outside the audit
       // extension, so the audit row is written explicitly below — a decision on
       // an HR-approved baseline is exactly what the trail exists for.
-      // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
-      const claimed = await prisma.kpiChangeRequest.updateMany({
-        where: { id, status: "PENDING" },
-        data: {
-          status: "REJECTED",
-          decidedByEmployeeId: deciderId,
-          decidedAt: new Date(),
-          decisionReason: reason,
-        },
+      // One transaction, for the same reason the approval path is one: the claim
+      // and its audit row are a single fact. Sequential statements leave a window
+      // — one Node turn wide, but real — in which the status changed and nothing
+      // recorded who changed it, which is precisely what the trail exists to
+      // prevent. Raised by the post-push breadth review.
+      const rejected = await prisma.$transaction(async (tx) => {
+        // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+        const claimed = await tx.kpiChangeRequest.updateMany({
+          where: { id, status: "PENDING" },
+          data: {
+            status: "REJECTED",
+            decidedByEmployeeId: deciderId,
+            decidedAt: new Date(),
+            decisionReason: reason,
+          },
+        });
+        if (claimed.count === 0) return false;
+        await recordAudit(tx, {
+          entityType: "KpiChangeRequest",
+          entityId: id,
+          action: "UPDATE",
+          before: { status: "PENDING" },
+          after: { status: "REJECTED", decidedByEmployeeId: deciderId, decisionReason: reason },
+        });
+        return true;
       });
-      if (claimed.count === 0) {
+      if (!rejected) {
         return err("This request was decided by someone else a moment ago (§6.2).", 409);
       }
-      await recordAudit(prisma, {
-        entityType: "KpiChangeRequest",
-        entityId: id,
-        action: "UPDATE",
-        before: { status: "PENDING" },
-        after: { status: "REJECTED", decidedByEmployeeId: deciderId, decisionReason: reason },
-      });
       const row = await prisma.kpiChangeRequest.findUniqueOrThrow({
         where: { id },
         select: CHANGE_REQUEST_SELECT,

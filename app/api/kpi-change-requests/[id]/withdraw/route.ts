@@ -67,25 +67,31 @@ export const POST = withRateLimit(
     // Conditional UPDATE, same arbiter as the decide route: HR pressing Approve
     // while the manager presses Withdraw must not produce a withdrawn request
     // whose edits were applied.
-    // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
-    const claimed = await prisma.kpiChangeRequest.updateMany({
-      where: { id, status: "PENDING" },
-      data: { status: "WITHDRAWN" },
+    // The claim and its audit row in ONE transaction — see the note on the
+    // rejection path in decide/route.ts. §6.3 keeps the row; the trail keeps WHO
+    // took it back and when, and neither should exist without the other.
+    const withdrawn = await prisma.$transaction(async (tx) => {
+      // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+      const claimed = await tx.kpiChangeRequest.updateMany({
+        where: { id, status: "PENDING" },
+        data: { status: "WITHDRAWN" },
+      });
+      if (claimed.count === 0) return false;
+      await recordAudit(tx, {
+        entityType: "KpiChangeRequest",
+        entityId: id,
+        action: "UPDATE",
+        before: { status: "PENDING" },
+        after: { status: "WITHDRAWN", withdrawnByEmployeeId: actor.employeeId },
+      });
+      return true;
     });
-    if (claimed.count === 0) {
+    if (!withdrawn) {
       return err(
         "This request was decided by HR a moment ago and can no longer be withdrawn.",
         409,
       );
     }
-    // §6.3 keeps the row; the trail keeps WHO took it back and when.
-    await recordAudit(prisma, {
-      entityType: "KpiChangeRequest",
-      entityId: id,
-      action: "UPDATE",
-      before: { status: "PENDING" },
-      after: { status: "WITHDRAWN", withdrawnByEmployeeId: actor.employeeId },
-    });
 
     const row = await prisma.kpiChangeRequest.findUniqueOrThrow({
       where: { id },
