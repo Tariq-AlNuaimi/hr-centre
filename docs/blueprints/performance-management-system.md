@@ -1,6 +1,6 @@
 # Blueprint — Performance Management System (PMS)
 
-Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
+Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
 
 > Source of truth: `Performance_Management_System.docx` v1.0 (2026-08-24), supplied by the
 > operator's HR team. Section references (§) throughout this document point at that
@@ -442,6 +442,158 @@ salary anywhere near it.
 Mid-year change requests and KPI version history (§6, Phase 3); any scoring (§2 is explicit that
 scoring happens once, at year-end); 360 (§9); calibration and bonus (§10, §11); and §12.3's
 mid-cycle transfer split, which needs `EmployeeAssignmentPeriod` from Phase 6.
+
+## Phase 3 — Mid-year change requests, KPI version history & year-end assessment (§6, §7)
+
+Delivered as **3a then 3b**, two PRs, each green and deployed before the next starts. 3b builds
+directly on 3a's versioning, so a defect in the version model is cheaper to find with §7 unbuilt.
+
+### The rules being implemented
+
+Quoted from `docs/PMS_Functional_Specification_v1.0.docx`, not reconstructed.
+
+| Clause | Rule                                                                                                                                                                                                                                                                                                                   |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §6.1   | Mid-year is "a progress check and chance to adjust — **no scoring, no ratings issued**".                                                                                                                                                                                                                               |
+| §6.2   | The manager submits a change request. It may be a **full overhaul** (description + weight + all five descriptors) or a **partial change**. HR approves or rejects. On approval the new version takes effect. On rejection the KPI stays unchanged and **HR must enter a reason (mandatory) that the manager can see**. |
+| §6.3   | Full version history of every change: original version, what changed across **all** fields, who requested, who approved, and when. "Old versions are archived, never overwritten."                                                                                                                                     |
+| §7.1   | Employee self-assesses against each KPI **using the five-level descriptors defined at goal-setting** → manager reviews → offline discussion → **both sign off on the final ratings**.                                                                                                                                  |
+| §7.2   | Manager-of-record is whoever holds the relationship **at the moment of the action**. Whoever is manager at year-end signs the year-end assessment.                                                                                                                                                                     |
+| §8.1   | All components resolve onto 1–5: Outstanding 5, Excellent 4, Target 3, Almost Achieved 2, Unsatisfactory 1. Phase 3 **captures** these; Phase 5 scores them.                                                                                                                                                           |
+| §8.3   | C-Level skip goal-setting, **self-assessment** and 360 entirely.                                                                                                                                                                                                                                                       |
+| §5.4   | Carried forward: deadlines are hard locks. The same lock now governs the MID_YEAR and YEAR_END stages.                                                                                                                                                                                                                 |
+
+### Data model (Phase 3)
+
+```prisma
+enum ChangeRequestStatus { PENDING  APPROVED  REJECTED  WITHDRAWN }
+enum RatingParty         { EMPLOYEE  MANAGER }
+
+// §6.2 — one request, several edits, decided as a unit.
+model KpiChangeRequest {
+  id, participantId, requestedByEmployeeId, requestedAt, status,
+  decidedByEmployeeId?, decidedAt?,
+  decisionReason?          // CHECK: NOT NULL and non-blank when status = REJECTED (§6.2)
+  edits KpiChangeRequestEdit[]
+  @@index([participantId, status])
+}
+
+// A null column means "unchanged" — that is how §6.2's PARTIAL change is expressed.
+model KpiChangeRequestEdit {
+  id, requestId, kpiId,
+  description?, weightage?, descriptorOutstanding?, descriptorExcellent?,
+  descriptorTarget?, descriptorAlmostAchieved?, descriptorUnsatisfactory?
+  @@unique([requestId, kpiId])   // one edit per KPI per request
+}
+
+// §6.3 — a FULL snapshot of the KPI as it stood before it was superseded.
+model KpiVersion {
+  id, kpiId, versionNo,
+  description, weightage, five descriptors, orderIndex,   // complete, not a diff
+  supersededAt, supersededByRequestId?
+  @@unique([kpiId, versionNo])
+}
+
+// §7.1 — the ratings themselves. Level is 1–5 (§8.1); Phase 5 turns it into a score.
+model KpiRating {
+  id, kpiId, party, level Int, comment?, ratedByEmployeeId, ratedAt
+  @@unique([kpiId, party])       // one self-assessment, one manager review
+}
+```
+
+**`SignOff` gains `stageKind`.** Its identity is `@@unique([participantId, party])` today, which
+silently assumes sign-off happens once. §7.1 needs a _second_ pair of signatures at year-end, on
+the same participant. The key becomes `@@unique([participantId, stageKind, party])`, backfilled to
+`GOAL_SETTING` for every existing row. Without this, a year-end signature would collide with the
+goal-setting one and be reported as "already signed" — the §5.1 flow silently swallowing §7.1's.
+
+### Five design decisions
+
+1. **Archive-on-write, not immutable-versions-with-a-pointer.** Approving a change first copies the
+   live `Kpi` into a `KpiVersion` row, then updates the live row. Every Phase 2 read path — the
+   §5.3 weightage total, `KPI_SELECT`, the drafting screen, the sign-off hash — keeps working
+   untouched, and "show me the original version" is one indexed query. The purer model (every state
+   is a version, the participant points at the current one) is a better long-term shape and rewrites
+   every one of those read paths to buy it. §6.3 asks that old versions be archived and never
+   overwritten; this satisfies that literally.
+2. **A change request is atomic, and cannot land off 100%.** §6.2 speaks of "a KPI", but changing
+   one weightage necessarily breaks §5.3's exactly-100% rule, so a rebalance (40→30 here, 20→30
+   there) is ONE request approved or rejected as a unit. HR's approval is **refused** unless the
+   resulting set totals exactly 100. The invariant then holds at every committed state — otherwise
+   the locked baseline sits at 90% for weeks and §5.3, which only bites at sign-off, never notices.
+3. **No re-signature after an approved change; the divergence is surfaced instead.** §6.2 says only
+   that "the new version takes effect" — requiring a fresh signature would invent a workflow step
+   with no deadline defined for it, and §5.4's hard locks would then apply to a step the spec does
+   not have. Phase 2's `SignOff.kpiSetHash` already makes it visible that a signature predates the
+   current set, so HR sees "signed an earlier version" rather than being misled. **Flagged to Rihal
+   as a spec question**, not resolved unilaterally.
+4. **The mandatory rejection reason is a database CHECK, not a required form field.** §6.2 makes it
+   mandatory; a form validation is bypassable by any other writer (the import, a hand-run fix, a
+   future route). Same reasoning as Phase 1's §1.2 invariant, which is enforced in both places.
+5. **A withdrawn request is a status, not a delete.** A manager who thinks better of a request
+   leaves a record that they asked — §6.3 wants the history of what was requested, not only of what
+   was approved.
+
+### User stories & acceptance criteria (Phase 3)
+
+**US-17 — A manager requests a mid-year change.** Given an HR-approved baseline and an open
+MID_YEAR stage, the direct line manager (§4.2) submits one request carrying edits to one or more
+KPIs, each edit changing any subset of the six §5.2 fields. Omitted fields are unchanged.
+
+**US-18 — HR approves, and the new version takes effect.** On approval the pre-change state of every
+touched KPI is archived to `KpiVersion`, the live rows are updated, and the request records who
+decided and when. Approval is refused if the resulting weightages do not total exactly 100 (§5.3).
+
+**US-19 — HR rejects, with a reason the manager can see.** The KPIs are unchanged. The reason is
+mandatory and is shown to the requesting manager. A rejection with a blank reason is refused by the
+database, not only by the form.
+
+**US-20 — The history answers §6.3's four questions.** For any KPI: the original version, what
+changed field by field, who requested it, who approved it, and when — with old versions archived
+rather than overwritten.
+
+**US-21 — Mid-year issues no ratings.** §6.1. Nothing in the mid-year path writes a `KpiRating` or
+produces a score.
+
+**US-22 — An employee self-assesses at year-end.** Against each KPI, choosing one of the five
+levels **defined at goal-setting for that KPI** — the descriptors are shown, not a bare 1–5 scale.
+C-Level are exempt (§8.3).
+
+**US-23 — The manager reviews, then both sign.** The manager records their own rating per KPI;
+after discussion offline, both parties sign the year-end assessment. The signature is against the
+YEAR_END stage, independent of the goal-setting pair.
+
+**US-24 — The year-end signer is the manager at year-end.** §7.2 — resolved live from
+`Employee.managerId` at the moment of the action, never snapshotted, exactly as Phase 2 does it.
+
+### Scenarios
+
+**Happy path.** HR opens MID_YEAR. A manager finds a KPI's target unrealistic, submits one request
+rebalancing two weightages and rewriting three descriptors. HR approves. Both KPIs' prior states
+land in `KpiVersion` as v1; the live rows become v2. The set still totals 100. At YEAR_END the
+employee self-assesses against the _current_ descriptors, the manager reviews, both sign.
+
+**Worst paths.**
+
+- _The rebalance does not add up._ HR tries to approve a request leaving the set at 95%. Refused,
+  with the gap named (§5.3). Nothing is archived and nothing is updated — an approval is one
+  transaction or it is not an approval.
+- _A rejection with no reason._ Refused at the boundary and again by the CHECK constraint (§6.2).
+- _A manager requests a change on someone else's report._ 404, not 403 — the same existence-oracle
+  rule the rest of the phase uses (§4.2).
+- _The MID_YEAR deadline passes with a request still pending._ §5.4's hard lock stops the manager
+  editing it; HR can still decide it, because the decision is HR's action and HR owns the cycle.
+- _An employee self-assesses, then the manager changes._ §7.2 — the new manager reviews and signs;
+  the self-assessment stands, because it was the employee's action and their relationship did not
+  change.
+- _A change is approved after the employee signed goal-setting._ Permitted (US-12), and the
+  employee's signature is reported as against an earlier version (decision 3).
+
+### Out of Phase 3
+
+Any scoring or band mapping (§8 — Phase 5, and §6.1 forbids it at mid-year); the 360 module (§9);
+calibration (§10); bonus (§11); and §12.3's transfer split, which needs Phase 6's
+`EmployeeAssignmentPeriod`.
 
 ## Open questions
 
