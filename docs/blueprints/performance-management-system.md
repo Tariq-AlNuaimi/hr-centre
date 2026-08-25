@@ -1,6 +1,6 @@
 # Blueprint — Performance Management System (PMS)
 
-Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
+Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
 
 > Source of truth: `Performance_Management_System.docx` v1.0 (2026-08-24), supplied by the
 > operator's HR team. Section references (§) throughout this document point at that
@@ -472,10 +472,13 @@ enum RatingParty         { EMPLOYEE  MANAGER }
 // §6.2 — one request, several edits, decided as a unit.
 model KpiChangeRequest {
   id, participantId, requestedByEmployeeId, requestedAt, status,
+  rationale,               // CHECK: non-blank — HR decides ON it (§6.2)
   decidedByEmployeeId?, decidedAt?,
   decisionReason?          // CHECK: NOT NULL and non-blank when status = REJECTED (§6.2)
   edits KpiChangeRequestEdit[]
   @@index([participantId, status])
+  // Plus a PARTIAL unique index Prisma cannot express, created in the migration:
+  //   ("participant_id") WHERE status = 'PENDING'      -- see decision 6
 }
 
 // A null column means "unchanged" — that is how §6.2's PARTIAL change is expressed.
@@ -533,6 +536,12 @@ goal-setting one and be reported as "already signed" — the §5.1 flow silently
 5. **A withdrawn request is a status, not a delete.** A manager who thinks better of a request
    leaves a record that they asked — §6.3 wants the history of what was requested, not only of what
    was approved.
+6. **At most one PENDING request per participant, enforced by a partial unique index.** Two pending
+   requests are each validated against the CURRENT set, so each can total 100 on its own and still
+   leave the set off 100 once both are approved — §5.3 broken by two individually-legal acts. A
+   route-level check cannot close that across two requests in flight. The index is partial
+   (`WHERE status = 'PENDING'`) so a participant may still accumulate any number of decided or
+   withdrawn requests, which is what §6.3 asks for. Withdrawing frees the slot immediately.
 
 ### User stories & acceptance criteria (Phase 3)
 

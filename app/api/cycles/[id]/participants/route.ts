@@ -180,7 +180,11 @@ export const GET = withRateLimit(
             where: { deletedAt: null },
             select: { weightage: true },
           },
-          signOffs: { select: { party: true, signedAt: true } },
+          // GOAL_SETTING only — see the note in lib/pms/signoff.ts.
+          signOffs: {
+            where: { stageKind: GOAL_SETTING_STAGE },
+            select: { party: true, signedAt: true },
+          },
         },
       }),
       prisma.cycleParticipant.count({ where }),

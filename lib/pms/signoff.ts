@@ -272,7 +272,16 @@ export async function loadSignOffContext(participantId: string): Promise<SignOff
         },
       },
       employee: { select: { id: true, managerId: true, roleTrack: true } },
-      signOffs: { select: { party: true, kpiSetHash: true } },
+      // GOAL_SETTING only. `SignOff` gained `stageKind` in Phase 3a so §7.1's
+      // year-end pair can co-exist with §5.1's; an unfiltered read here would
+      // count a year-end signature as agreement to the KPI BASELINE and report a
+      // participant as signed before anyone had looked at their goals. Every
+      // reader of `signOffs` in the goal-setting flow filters for the same
+      // reason.
+      signOffs: {
+        where: { stageKind: GOAL_SETTING_STAGE },
+        select: { party: true, kpiSetHash: true },
+      },
     },
   });
   if (!participant) return null;

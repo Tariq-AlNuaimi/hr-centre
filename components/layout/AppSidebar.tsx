@@ -7,6 +7,7 @@ import {
   Network,
   Upload,
   Building2,
+  CalendarClock,
   CalendarDays,
   ClipboardList,
   ShieldCheck,
@@ -125,6 +126,15 @@ export function AppSidebar() {
             icon: <ClipboardList className="h-4 w-4" />,
             label: t("goalSetting"),
             onClick: () => router.push(`/${locale}/goal-setting`),
+          },
+          // Mid-year (§6) is the same audience for the same reason: a manager
+          // raises a change request on a direct report, HR decides it. §2 gives
+          // mid-year no scoring, so this is the only thing that happens here.
+          {
+            key: "mid-year",
+            icon: <CalendarClock className="h-4 w-4" />,
+            label: t("midYear"),
+            onClick: () => router.push(`/${locale}/mid-year`),
           },
         ]
       : []),

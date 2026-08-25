@@ -130,7 +130,11 @@ export default async function KpiDraftingPage({
         orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
         select: KPI_SELECT,
       },
-      signOffs: { select: { party: true, signedAt: true, kpiSetHash: true } },
+      // GOAL_SETTING only — see the note in lib/pms/signoff.ts.
+      signOffs: {
+        where: { stageKind: GOAL_SETTING_STAGE },
+        select: { party: true, signedAt: true, kpiSetHash: true },
+      },
     },
   });
 
