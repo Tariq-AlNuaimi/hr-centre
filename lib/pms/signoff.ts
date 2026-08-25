@@ -1,7 +1,7 @@
 import type { CycleStatus, SignOffParty } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { canActOnEmployee, type PmsActor } from "./permissions";
-import { GOAL_SETTING_STAGE, isWeightageComplete, type WeightedKpi } from "./kpi";
+import { GOAL_SETTING_STAGE, weightageMessageByPeriod, type PeriodWeightedKpi } from "./kpi";
 import { isGoalSettingExempt, stageState, type StageWindow } from "./cycle";
 import { currentKpiSetHash } from "./kpi-select";
 
@@ -181,18 +181,22 @@ export function hrApprovalDecision(params: {
   state: SignOffState;
   stage: StageWindow;
   now: Date;
-  kpis: readonly WeightedKpi[];
+  kpis: readonly PeriodWeightedKpi[];
 }): HrApprovalDecision {
   const { state, stage, now, kpis } = params;
 
   if (kpis.length === 0) {
     return { allowed: false, reason: "There are no KPIs to approve (§5.1)." };
   }
-  if (!isWeightageComplete(kpis)) {
+  // §5.3, applied per period on a split year (§12.3) and once otherwise. HR is
+  // the party §12.3 puts in charge of consolidating the two halves, so this is
+  // the place both must be complete.
+  const incomplete = weightageMessageByPeriod(kpis);
+  if (incomplete) {
     return {
       allowed: false,
       reason:
-        "Weightages must total exactly 100% before the set can be locked (§5.3). " +
+        `${incomplete} ` +
         "If the stage has closed, extend the deadline (§5.5) rather than locking an incomplete set.",
     };
   }
@@ -246,7 +250,7 @@ export type SignOffContext = {
   subject: { id: string; managerId: string | null };
   exempt: boolean;
   stage: StageWindow | null;
-  kpis: WeightedKpi[];
+  kpis: PeriodWeightedKpi[];
   state: SignOffState;
   /** The set's digest right now — what a NEW signature would be recorded against. */
   currentKpiSetHash: string;
@@ -288,7 +292,9 @@ export async function loadSignOffContext(participantId: string): Promise<SignOff
 
   const kpis = await prisma.kpi.findMany({
     where: { participantId, deletedAt: null },
-    select: { weightage: true },
+    // §12.3 — the period tells `weightageMessageByPeriod` whether §5.3's
+    // exactly-100 applies once or per portion.
+    select: { weightage: true, assignmentPeriodId: true },
     // §5.2 KPI sets are a handful per employee; the cap is a guard, not a page.
     take: 200,
   });

@@ -216,17 +216,18 @@ model OrgEntity {
   code String @unique // RIHAL | TP | CL — stable machine key, used in imports
   name String
 
-  departments Department[]
-  employees   Employee[]
+  departments       Department[]
+  employees         Employee[]
+  assignmentPeriods EmployeeAssignmentPeriod[]
 
-  deletedAt DateTime?
-  deletedBy String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  deletedAt       DateTime?
+  deletedBy       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  corporateScores EntityScore[]
 
   @@index([deletedAt, createdAt])
   @@map("org_entities")
-  corporateScores EntityScore[]
 }
 
 // §1.2 — "Departments are unique to their entity (e.g. 'Rihal Marketing',
@@ -240,18 +241,19 @@ model Department {
   entityId String
   entity   OrgEntity @relation(fields: [entityId], references: [id])
 
-  employees Employee[]
+  employees         Employee[]
+  assignmentPeriods EmployeeAssignmentPeriod[]
 
-  deletedAt DateTime?
-  deletedBy String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  deletedAt        DateTime?
+  deletedBy        String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  departmentScores DepartmentScore[]
 
   @@unique([entityId, name])
   @@index([entityId])
   @@index([deletedAt, createdAt])
   @@map("departments")
-  departmentScores DepartmentScore[]
 }
 
 // The internal employee table the system owns (§3.1). Excel is one loader today
@@ -297,24 +299,32 @@ model Employee {
   reports   Employee[] @relation("EmployeeManager")
 
   // --- Phase 2 back-relations (spec §2, §5) --------------------------------
-  cyclesOpened      PerformanceCycle[] @relation("CycleOpenedBy")
-  cycleParticipants CycleParticipant[] @relation("ParticipantEmployee")
-  goalsApproved     CycleParticipant[] @relation("GoalsApprovedBy")
-  signOffs          SignOff[]          @relation("SignOffSigner")
-  changeRequested   KpiChangeRequest[] @relation("ChangeRequestRequester")
-  ratingsGiven    KpiRating[]        @relation("KpiRater")
-  ratedBy         Assignment[]       @relation("AssignmentRatee")
-  ratesOthers     Assignment[]       @relation("AssignmentRater")
-  projectMembers  ProjectMember[]
-  entityScoresEntered     EntityScore[]     @relation("EntityScoreAuthor")
+  cyclesOpened            PerformanceCycle[]      @relation("CycleOpenedBy")
+  cycleParticipants       CycleParticipant[]      @relation("ParticipantEmployee")
+  goalsApproved           CycleParticipant[]      @relation("GoalsApprovedBy")
+  signOffs                SignOff[]               @relation("SignOffSigner")
+  changeRequested         KpiChangeRequest[]      @relation("ChangeRequestRequester")
+  ratingsGiven            KpiRating[]             @relation("KpiRater")
+  ratedBy                 Assignment[]            @relation("AssignmentRatee")
+  ratesOthers             Assignment[]            @relation("AssignmentRater")
+  projectMembers          ProjectMember[]
+  entityScoresEntered     EntityScore[]           @relation("EntityScoreAuthor")
   employeeScores          EmployeeScore[]
   calibrationsMade        CalibrationAdjustment[] @relation("CalibrationAuthor")
-  scoreRunsStarted        ScoreRun[]        @relation("ScoreRunAuthor")
-  publicationsMade        CyclePublication[] @relation("PublicationAuthor")
-  departmentScoresEntered DepartmentScore[] @relation("DepartmentScoreAuthor")
-  changeDecided     KpiChangeRequest[] @relation("ChangeRequestDecider")
-  complianceAbout   ComplianceEvent[]  @relation("ComplianceSubject")
-  complianceAgainst ComplianceEvent[]  @relation("ComplianceManager")
+  scoreRunsStarted        ScoreRun[]              @relation("ScoreRunAuthor")
+  publicationsMade        CyclePublication[]      @relation("PublicationAuthor")
+  departmentScoresEntered DepartmentScore[]       @relation("DepartmentScoreAuthor")
+  changeDecided           KpiChangeRequest[]      @relation("ChangeRequestDecider")
+  complianceAbout         ComplianceEvent[]       @relation("ComplianceSubject")
+  complianceAgainst       ComplianceEvent[]       @relation("ComplianceManager")
+
+  // §12 back-relations.
+  rollUpsAbout      ManagerRollUp[]            @relation("RollUpSubject")
+  rollUpsFrom       ManagerRollUp[]            @relation("RollUpFrom")
+  rollUpsTo         ManagerRollUp[]            @relation("RollUpTo")
+  rollUpsResolved   ManagerRollUp[]            @relation("RollUpResolver")
+  assignmentPeriods EmployeeAssignmentPeriod[] @relation("AssignmentPeriodEmployee")
+  periodsManaged    EmployeeAssignmentPeriod[] @relation("AssignmentPeriodManager")
 
   roleTrack RoleTrack // §1.3
   pmsRoles  PmsRole[] // §4.3 additive; empty for a plain employee
@@ -513,25 +523,26 @@ model PerformanceCycle {
   openedBy   Employee? @relation("CycleOpenedBy", fields: [openedById], references: [id])
   openedAt   DateTime? @map("opened_at")
 
-  stages           CycleStage[]
-  participants     CycleParticipant[]
-  complianceEvents ComplianceEvent[]
+  stages            CycleStage[]
+  participants      CycleParticipant[]
+  complianceEvents  ComplianceEvent[]
+  assignmentPeriods EmployeeAssignmentPeriod[]
 
-  deletedAt DateTime?
-  deletedBy String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  deletedAt         DateTime?
+  deletedBy         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  entityScores      EntityScore[]
+  departmentScores  DepartmentScore[]
+  threeSixty        ThreeSixtyCycle?
+  projects          Project[]
+  scoreRuns         ScoreRun[]
+  calibrationTarget CalibrationTarget?
+  publication       CyclePublication?
 
   @@index([status, year])
   @@index([deletedAt, createdAt])
   @@map("performance_cycles")
-  entityScores     EntityScore[]
-  departmentScores DepartmentScore[]
-  threeSixty       ThreeSixtyCycle?
-  projects         Project[]
-  scoreRuns        ScoreRun[]
-  calibrationTarget CalibrationTarget?
-  publication      CyclePublication?
 }
 
 // §2 "HR sets deadlines for each stage" + §5.4 "All stage deadlines are hard
@@ -890,6 +901,15 @@ model Kpi {
   participantId String           @map("participant_id")
   participant   CycleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
+  /// §12.3 — which portion of a split year this KPI belongs to.
+  ///
+  /// NULL for everyone who did not transfer, which is almost everyone: the
+  /// un-split path is the default and needs no row. When it IS set, §5.3's
+  /// "exactly 100%" applies PER PERIOD — each department's manager owns a
+  /// complete set for their own portion.
+  assignmentPeriodId String?                   @map("assignment_period_id")
+  assignmentPeriod   EmployeeAssignmentPeriod? @relation(fields: [assignmentPeriodId], references: [id], onDelete: SetNull)
+
   description String
   // Percent, 0.00–100.00. Decimal not Float: these are summed and compared
   // against exactly 100, and binary floating point cannot promise that.
@@ -916,7 +936,6 @@ model Kpi {
   @@index([deletedAt, createdAt])
   @@map("kpis")
 }
-
 
 /// §8.4 — "Corporate KPI: produced by the Strategy team, provided to HR as one
 /// score per entity (Rihal, TP, CL). Each employee receives the Corporate score
@@ -1139,9 +1158,9 @@ model Project {
 }
 
 model ProjectMember {
-  id        String   @id @default(cuid())
-  projectId String   @map("project_id")
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  projectId String  @map("project_id")
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   employeeId String   @map("employee_id")
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -1151,7 +1170,6 @@ model ProjectMember {
   @@unique([projectId, employeeId])
   @@map("project_members")
 }
-
 
 // --- §8 wiring, §10 calibration, §11 bonus -----------------------------------
 
@@ -1171,7 +1189,7 @@ model ScoreRun {
   startedByEmployeeId String   @map("started_by_employee_id")
   startedByEmployee   Employee @relation("ScoreRunAuthor", fields: [startedByEmployeeId], references: [id])
 
-  startedAt DateTime  @default(now()) @map("started_at")
+  startedAt  DateTime  @default(now()) @map("started_at")
   /// Null while running. A run that never finished is visible as such rather
   /// than looking like a completed one with fewer rows.
   finishedAt DateTime? @map("finished_at")
@@ -1206,13 +1224,13 @@ model EmployeeScore {
   /// The four §8.6 components, stored so §13.5's master export can show the
   /// working rather than re-deriving it from data that has since moved on.
   /// Departmental is null for the Individual track (§8.3).
-  corporateScore    Decimal  @db.Decimal(3, 2) @map("corporate_score")
-  departmentalScore Decimal? @db.Decimal(3, 2) @map("departmental_score")
-  individualScore   Decimal  @db.Decimal(3, 2) @map("individual_score")
-  threeSixtyScore   Decimal? @db.Decimal(3, 2) @map("three_sixty_score")
+  corporateScore    Decimal  @map("corporate_score") @db.Decimal(3, 2)
+  departmentalScore Decimal? @map("departmental_score") @db.Decimal(3, 2)
+  individualScore   Decimal  @map("individual_score") @db.Decimal(3, 2)
+  threeSixtyScore   Decimal? @map("three_sixty_score") @db.Decimal(3, 2)
 
   /// §8.6's result and §8.7's band. RAW — never overwritten (§10.1).
-  rawScore Decimal @db.Decimal(3, 2) @map("raw_score")
+  rawScore Decimal @map("raw_score") @db.Decimal(3, 2)
   rawBand  Band    @map("raw_band")
 
   /// §10 — the calibrated band. Equals `rawBand` until HR moves it, and is what
@@ -1246,11 +1264,11 @@ model CalibrationTarget {
   cycleId String           @unique @map("cycle_id")
   cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
-  outstandingPct     Decimal @db.Decimal(5, 2) @map("outstanding_pct")
-  excellentPct       Decimal @db.Decimal(5, 2) @map("excellent_pct")
-  targetPct          Decimal @db.Decimal(5, 2) @map("target_pct")
-  almostAchievedPct  Decimal @db.Decimal(5, 2) @map("almost_achieved_pct")
-  unsatisfactoryPct  Decimal @db.Decimal(5, 2) @map("unsatisfactory_pct")
+  outstandingPct    Decimal @map("outstanding_pct") @db.Decimal(5, 2)
+  excellentPct      Decimal @map("excellent_pct") @db.Decimal(5, 2)
+  targetPct         Decimal @map("target_pct") @db.Decimal(5, 2)
+  almostAchievedPct Decimal @map("almost_achieved_pct") @db.Decimal(5, 2)
+  unsatisfactoryPct Decimal @map("unsatisfactory_pct") @db.Decimal(5, 2)
 
   /// §10.3 — "only to departments with ≥ 5 active employees … The threshold (5)
   /// is an editable setting controlled by HR Super Admin."
@@ -1313,4 +1331,121 @@ model CyclePublication {
   updatedAt DateTime @updatedAt
 
   @@map("cycle_publications")
+}
+
+// ---------------------------------------------------------------------------
+// §12 — the edge cases the annual cycle actually runs into.
+// ---------------------------------------------------------------------------
+
+/// §12.1/§12.2 — why a reporting line moved, and whether it is settled.
+enum RollUpReason {
+  /// §12.1 — "Direct reports auto-roll-up one level (to the departed manager's
+  /// own manager) until HR reassigns a permanent manager."
+  LEAVER_ROLLUP
+  /// HR moved the line deliberately. Recorded for the same audit reason, but it
+  /// is not a prompt — nobody needs to be reminded to finish it.
+  HR_REASSIGNMENT
+}
+
+/// §12.2 — "HR gets a VISIBLE PROMPT for temporary roll-ups ('reports
+/// temporarily rolled up — needs a permanent manager') so they don't silently
+/// persist."
+///
+/// The prompt needs somewhere to live between the departure and HR's decision,
+/// and `Employee.managerId` alone cannot carry it: after the roll-up the column
+/// looks exactly like a permanent line. This model is the difference between
+/// "this person reports to X" and "this person reports to X *for now*".
+///
+/// The reporting line itself still moves on `Employee.managerId` — §7.2 and
+/// §12.2 both define manager-of-record as whoever currently holds the
+/// relationship, and a roll-up that left the column pointing at a leaver would
+/// give the departed manager the sign-off (and give the new one nothing).
+model ManagerRollUp {
+  id String @id @default(cuid())
+
+  /// The REPORT whose line moved — not the manager who left.
+  employeeId String   @map("employee_id")
+  employee   Employee @relation("RollUpSubject", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  /// Null when the employee had no manager before (top of tree).
+  fromManagerEmployeeId String?   @map("from_manager_employee_id")
+  fromManagerEmployee   Employee? @relation("RollUpFrom", fields: [fromManagerEmployeeId], references: [id])
+
+  /// Null when the roll-up found nobody above the departed manager — the report
+  /// is temporarily unmanaged, which is precisely the case HR must see.
+  toManagerEmployeeId String?   @map("to_manager_employee_id")
+  toManagerEmployee   Employee? @relation("RollUpTo", fields: [toManagerEmployeeId], references: [id])
+
+  reason RollUpReason
+
+  /// Set when HR names a permanent manager. Until then this row IS the prompt.
+  resolvedAt           DateTime? @map("resolved_at")
+  resolvedByEmployeeId String?   @map("resolved_by_employee_id")
+  resolvedByEmployee   Employee? @relation("RollUpResolver", fields: [resolvedByEmployeeId], references: [id])
+  /// What HR decided. Optional: confirming the roll-up as permanent needs no
+  /// explanation, and demanding one would train people to type "n/a".
+  resolutionNote       String?   @map("resolution_note")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One OPEN roll-up per employee, enforced by a partial unique index in the
+  /// migration (`WHERE resolved_at IS NULL`). Two managers leaving above the
+  /// same person in one week must not produce two competing prompts.
+  @@index([resolvedAt, createdAt])
+  @@index([employeeId, createdAt])
+  @@map("manager_roll_ups")
+}
+
+/// §12.3 — a slice of the cycle during which the employee sat in one department.
+///
+/// "Individual KPIs are split across the two periods: Old department's KPIs
+/// cover the pre-transfer period; new department's KPIs cover the post-transfer
+/// period. … Proration basis: same calendar-day logic as bonus — each period
+/// weighted by days-in-department ÷ 365."
+///
+/// A transferred employee has TWO of these for the cycle; everyone else has
+/// none, and their score runs down the ordinary un-split path. Absence means
+/// "no transfer", which keeps the common case free of a row that would need
+/// creating and maintaining for the 95% of people who never move.
+model EmployeeAssignmentPeriod {
+  id String @id @default(cuid())
+
+  employeeId String   @map("employee_id")
+  employee   Employee @relation("AssignmentPeriodEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+
+  cycleId String           @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  /// Where they sat during this period. Null department is §1.2's C-Level case,
+  /// which is why entity is separate and NOT NULL — §12.3 says the departmental
+  /// AND corporate components both follow the periods.
+  departmentId String?     @map("department_id")
+  department   Department? @relation(fields: [departmentId], references: [id])
+  entityId     String      @map("entity_id")
+  entity       OrgEntity   @relation(fields: [entityId], references: [id])
+
+  /// Who drafts and assesses THIS portion. §12.3 — "Each department's manager
+  /// drafts and assesses their own portion's KPIs; HR signs off / consolidates
+  /// (neither manager owns the full year)." Snapshotted rather than resolved
+  /// live, because the whole point of the split is that the old manager keeps
+  /// authority over the old period after the employee has left their team.
+  managerEmployeeId String?   @map("manager_employee_id")
+  managerEmployee   Employee? @relation("AssignmentPeriodManager", fields: [managerEmployeeId], references: [id])
+
+  /// Inclusive, both ends — the same calendar-day convention §11.4 uses, so the
+  /// two periods' day counts sum to the cycle's own.
+  startsOn DateTime @map("starts_on") @db.Date
+  endsOn   DateTime @map("ends_on") @db.Date
+
+  orderIndex Int @default(0) @map("order_index")
+
+  kpis Kpi[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([employeeId, cycleId, orderIndex])
+  @@index([cycleId, employeeId])
+  @@map("employee_assignment_periods")
 }

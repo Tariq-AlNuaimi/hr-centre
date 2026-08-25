@@ -214,3 +214,48 @@ export function overallRatio(ratios: readonly Prisma.Decimal[]): Prisma.Decimal 
   for (const r of ratios) sum = sum.plus(r);
   return sum.div(ratios.length);
 }
+
+/** One submitted form as §13.1's consolidation needs to see it. */
+export type SubmittedForm = {
+  responses: readonly { score: number | null; text: string | null; questionId: string }[];
+  questions: readonly { id: string; scored: boolean }[];
+};
+
+/**
+ * §13.1 — the consolidated 360 figure and the combined written comments.
+ *
+ * Pure, and separated from the route on purpose: the anonymity rule is a
+ * property of the SHAPE returned, and a shape is testable. Comments come back
+ * as a flat, sorted list of strings — no rater, no assignment id, no per-form
+ * grouping — so nothing downstream can reassemble one person's form even by
+ * accident. Sorting is part of the guarantee, not presentation: submission
+ * order would otherwise leak who answered when.
+ *
+ * The level is the overall ratio × 5 (§8.5), or null when no form scored.
+ */
+export function consolidateThreeSixty(forms: readonly SubmittedForm[]): {
+  level: Prisma.Decimal | null;
+  comments: string[];
+} {
+  const ratios: Prisma.Decimal[] = [];
+  const comments: string[] = [];
+  for (const form of forms) {
+    const answered = new Map(form.responses.map((r) => [r.questionId, r.score]));
+    const ratio = formRatio(
+      form.questions.map((q) => ({
+        scored: q.scored,
+        score: q.scored ? (answered.get(q.id) ?? null) : null,
+      })),
+    );
+    if (ratio) ratios.push(ratio);
+    for (const r of form.responses) {
+      const text = r.text?.trim();
+      if (text) comments.push(text);
+    }
+  }
+  const overall = overallRatio(ratios);
+  return {
+    level: overall ? overall.times(5) : null,
+    comments: comments.sort((a, b) => a.localeCompare(b)),
+  };
+}

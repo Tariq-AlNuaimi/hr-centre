@@ -55,6 +55,14 @@ export const kpiInputSchema = z.object({
 
 export const createKpiSchema = kpiInputSchema.extend({
   participantId: z.string().min(1),
+  /**
+   * §12.3 — which portion of a split year this KPI belongs to.
+   *
+   * Omitted by every ordinary caller, and that is the correct default: an
+   * unsplit year has one set covering the whole cycle. Required only when the
+   * employee HAS periods, which the route checks — the boundary cannot know.
+   */
+  assignmentPeriodId: z.string().min(1).nullable().optional(),
 });
 
 /**

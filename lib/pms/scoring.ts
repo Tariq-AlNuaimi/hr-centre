@@ -198,3 +198,42 @@ export const BAND_COEFFICIENT: Record<Band, number> = {
   ALMOST_ACHIEVED: 0,
   UNSATISFACTORY: 0,
 };
+
+/**
+ * §8.7's table read the other way — the score range each band covers.
+ *
+ * `max` is the top of the band as a score can express it (4.49, not 4.50), which
+ * is why the table is written with two-decimal literals rather than computed
+ * from the next boundary: §8.7 prints those numbers, and a derived 4.4999…
+ * would round into the band above.
+ */
+export const BAND_RANGE: Record<Band, { min: string; max: string }> = {
+  OUTSTANDING: { min: "4.50", max: "5.00" },
+  EXCELLENT: { min: "4.00", max: "4.49" },
+  TARGET: { min: "3.00", max: "3.99" },
+  ALMOST_ACHIEVED: { min: "2.00", max: "2.99" },
+  UNSATISFACTORY: { min: "0.00", max: "1.99" },
+};
+
+/**
+ * The score to SHOW alongside a calibrated band — §13.1's "final band and score
+ * (calibrated, but never labeled as such — just 'their score')".
+ *
+ * §10 moves BANDS, not scores: there is no stored calibrated score, and §10.1
+ * forbids overwriting the raw one. Showing the raw score next to a moved band
+ * would put a contradiction on the employee's scorecard and hand them exactly
+ * the "sign of calibration" §13.1 forbids — a 3.80 labelled Excellent is a
+ * visible adjustment to anyone who has seen §8.7's table.
+ *
+ * So the displayed score is the raw score CLAMPED into the band the employee
+ * was actually placed in. When calibration did not move them — the common case
+ * — the clamp is a no-op and they see their exact score. When it did, the two
+ * halves of the scorecard agree, and the raw figure survives untouched in the
+ * column §13.5's master export reads.
+ */
+export function displayScore(rawScore: Prisma.Decimal, band: Band): Prisma.Decimal {
+  const range = BAND_RANGE[band];
+  if (rawScore.lessThan(range.min)) return d(range.min);
+  if (rawScore.greaterThan(range.max)) return d(range.max);
+  return rawScore;
+}
