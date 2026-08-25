@@ -43,7 +43,8 @@
     "cycles": "Performance cycles",
     "hrRoles": "HR roles",
     "goalSetting": "Goal setting",
-    "midYear": "Mid-year review"
+    "midYear": "Mid-year review",
+    "yearEnd": "Year-end assessment"
   },
   "auth": {
     "login": "Login",
@@ -686,6 +687,69 @@
         "descriptorUnsatisfactory": "Unsatisfactory"
       },
       "notYours": "A change request is raised by your line manager, not by you (§6.2). If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here."
+    },
+    "yearEnd": {
+      "title": "Year-end assessment",
+      "subtitle": "Self-assess against the KPIs agreed at goal-setting, then the manager reviews and both sign (§7.1).",
+      "notPermitted": "The year-end assessment is between an employee and their direct line manager. Your own assessment reaches you through My Tasks.",
+      "loadFailed": "The year-end workspace could not be loaded.",
+      "retry": "Try again",
+      "noCycles": "No performance cycle exists yet. HR opens one before year-end can run.",
+      "cycleLabel": "Cycle year",
+      "pageTitle": "Year-end assessment — {name}",
+      "backAction": "Back to year-end",
+      "progressTitle": "Where this assessment stands",
+      "progressSubtitle": "Both parties rate every KPI before either can sign (§7.1).",
+      "selfProgress": "Self-assessed {done} of {total}",
+      "managerProgress": "Manager reviewed {done} of {total}",
+      "divergentCount": "{count} KPI(s) where the ratings differ",
+      "weightage": "Weightage {value}%",
+      "selfAssessment": "The employee's self-assessment",
+      "ratedAt": "Recorded {datetime}",
+      "chooseLevel": "Choose the level that describes the year",
+      "levelName": {
+        "5": "Outstanding",
+        "4": "Excellent",
+        "3": "Target",
+        "2": "Almost Achieved",
+        "1": "Unsatisfactory"
+      },
+      "reasonRequired": "Why you rated it differently (required)",
+      "commentOptional": "Comment (optional)",
+      "divergenceHelp": "This differs from the employee's self-assessment (level {employeeLevel}). The reason is shown to them and is what calibration reads later.",
+      "saveRating": "Save rating",
+      "saving": "Saving…",
+      "ratingSaved": "Rating saved.",
+      "ratingFailed": "The rating could not be saved.",
+      "signTitle": "Sign off",
+      "signSubtitle": "Both parties sign the final ratings. There is no reject — an unsigned assessment is the signal that the discussion is not finished (§5.3).",
+      "sign": "Sign",
+      "signed": "Signed.",
+      "signFailed": "The signature could not be recorded.",
+      "signBlocked": "Signing opens once both parties have rated every KPI.",
+      "hasSigned": "Signed",
+      "notSigned": "Not signed yet",
+      "party": {
+        "EMPLOYEE": "Employee",
+        "MANAGER": "Line manager"
+      },
+      "exemptTitle": "No year-end assessment for this participant",
+      "exemptBody": "C-Level employees skip self-assessment entirely (§8.3) — their final score is the entity's Corporate score, passed straight through.",
+      "stage": {
+        "title": "Year-end",
+        "notConfigured": "This cycle has no year-end stage yet, so no assessment can be recorded on it.",
+        "notYetOpen": "Opens {datetime}",
+        "open": "Locks {datetime}",
+        "locked": "Locked since {datetime}",
+        "lockedBody": "The deadline passed, so ratings and signatures are closed for this stage. Only HR can reopen it by extending the deadline.",
+        "notYetOpenBody": "Nothing can be assessed or signed until the stage opens.",
+        "graceNote": "HR has {days} days of grace after the deadline to intervene.",
+        "stateValue": {
+          "NOT_YET_OPEN": "Not open yet",
+          "OPEN": "Open",
+          "LOCKED": "Locked"
+        }
+      }
     }
   }
 }

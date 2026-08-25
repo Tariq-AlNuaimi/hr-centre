@@ -52,7 +52,7 @@ interface StageBannerProps {
    * what closes is the ability to raise a change request. A namespace prop keeps
    * one banner rather than forking a second that would drift.
    */
-  namespace?: "pms.goalSetting.stage" | "pms.midYear.stage";
+  namespace?: "pms.goalSetting.stage" | "pms.midYear.stage" | "pms.yearEnd.stage";
 }
 
 export function StageBanner({ stage, namespace = "pms.goalSetting.stage" }: StageBannerProps) {

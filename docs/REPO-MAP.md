@@ -23,6 +23,8 @@
 - app/[locale]/(dashboard)/users/[id]/page.tsx
 - app/[locale]/(dashboard)/users/new/page.tsx
 - app/[locale]/(dashboard)/users/page.tsx
+- app/[locale]/(dashboard)/year-end/[cycleId]/participants/[participantId]/page.tsx
+- app/[locale]/(dashboard)/year-end/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
 - app/api/audit-log/route.ts  [GET]
@@ -46,6 +48,7 @@
 - app/api/kpi-change-requests/[id]/decide/route.ts  [POST]
 - app/api/kpi-change-requests/[id]/withdraw/route.ts  [POST]
 - app/api/kpi-change-requests/route.ts  [GET,POST]
+- app/api/kpi-ratings/route.ts  [POST]
 - app/api/kpis/[id]/route.ts  [PUT,DELETE]
 - app/api/kpis/route.ts  [POST]
 - app/api/openapi/route.ts  [GET]
@@ -58,6 +61,7 @@
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
+- app/api/year-end-signoffs/route.ts  [POST]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
@@ -137,6 +141,7 @@
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
+- lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
@@ -169,6 +174,7 @@
 - components/pms/RoleEditor.tsx
 - components/pms/SignOffPanel.tsx
 - components/pms/StageBanner.tsx
+- components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx

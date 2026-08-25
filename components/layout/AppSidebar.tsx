@@ -136,6 +136,15 @@ export function AppSidebar() {
             label: t("midYear"),
             onClick: () => router.push(`/${locale}/mid-year`),
           },
+          // Year-end (§7) — the same audience again: the employee's own
+          // assessment reaches them through My Tasks, the manager reviews their
+          // direct reports here, HR oversees org-wide.
+          {
+            key: "year-end",
+            icon: <ClipboardCheck className="h-4 w-4" />,
+            label: t("yearEnd"),
+            onClick: () => router.push(`/${locale}/year-end`),
+          },
         ]
       : []),
     // The cycle console. §4.1 gives BOTH HR flavours "runs the cycle org-wide"
