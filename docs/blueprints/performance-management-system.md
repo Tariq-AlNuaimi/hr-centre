@@ -64,14 +64,14 @@ and lands on `main`. **Phase 1 is the bedrock**: §3.2 makes every downstream re
 the employee table and its import layer are built and validated against real HR data before
 anything is stacked on them.
 
-| Phase | Scope                                                                                                                                               | Spec                     | Status          |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | --------------- |
-| **1** | Org foundation: entities, departments, employees, additive roles, hierarchy visibility, salary confidentiality, Excel import layer                  | §1, §3, §4               | **in progress** |
-| 2     | Cycles & goal-setting: cycle/stage model, hard-lock deadlines, KPI drafting, sign-offs, HR approval lock, escalation ladder, manager compliance log | §2, §5                   | planned         |
-| 3     | Mid-year & year-end: change requests, KPI version history, self-assessment, manager review, final sign-off                                          | §6, §7                   | planned         |
-| 4     | 360 module: templates, relationship mapping, assignment generation, execution, ratio scoring                                                        | §9                       | planned         |
-| 5     | Scoring & money: score engine, band mapping, calibration gate, bonus + pro-ration, payroll export, publish gate                                     | §8, §10, §11, §13.1–13.2 | planned         |
-| 6     | Reporting: manager workspace, status engine, HR reports, executive dashboard, master export, transfer/leaver edge cases                             | §12, §13.3–13.6          | planned         |
+| Phase | Scope                                                                                                                                               | Spec                     | Status      |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ----------- |
+| **1** | Org foundation: entities, departments, employees, additive roles, hierarchy visibility, salary confidentiality, Excel import layer                  | §1, §3, §4               | **shipped** |
+| 2     | Cycles & goal-setting: cycle/stage model, hard-lock deadlines, KPI drafting, sign-offs, HR approval lock, escalation ladder, manager compliance log | §2, §5                   | **shipped** |
+| 3     | Mid-year & year-end: change requests, KPI version history, self-assessment, manager review, final sign-off                                          | §6, §7                   | planned     |
+| 4     | 360 module: templates, relationship mapping, assignment generation, execution, ratio scoring                                                        | §9                       | planned     |
+| 5     | Scoring & money: score engine, band mapping, calibration gate, bonus + pro-ration, payroll export, publish gate                                     | §8, §10, §11, §13.1–13.2 | planned     |
+| 6     | Reporting: manager workspace, status engine, HR reports, executive dashboard, master export, transfer/leaver edge cases                             | §12, §13.3–13.6          | planned     |
 
 ---
 
@@ -488,9 +488,12 @@ Resolved with the operator after Phase 1, before the phases that consume them:
   against — so it becomes an audited HR Super Admin override with a mandatory reason, on the
   same footing as a calibration adjustment. _Builds in Phase 5._
 
-Still open — **not blocking any phase before 6**:
+**Closed 2026-08-25**, by re-reading the spec rather than by asking:
 
-- **Transfer mid-cycle + 360 (§12.3).** 360 runs once from wherever the employee sits at
-  year-end, but their KPI score is day-weighted across two departments. Confirm the 360
-  component is **not** day-weighted. Assumption: not weighted, per §12.3's "done once". _Needed
-  by Phase 6._
+- **Transfer mid-cycle + 360 (§12.3) — 360 is NOT day-weighted.** The clause is explicit twice
+  over. It names what _is_ weighted — "with departmental/corporate components day-weighted the
+  same way" — and lists 360 separately as "done once at year-end (from wherever the employee sits
+  then), not duplicated". So the split applies to the individual, departmental and corporate
+  components; the 360 component enters the formula once, whole. Phase 6 builds it that way.
+
+Nothing else is open against the specification.
