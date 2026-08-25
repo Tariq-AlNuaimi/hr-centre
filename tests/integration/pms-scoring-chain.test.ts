@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 import { Prisma } from "../../generated/prisma/client";
 import type { PmsRole } from "../../generated/prisma/client";
-import { TEST_EMPLOYEE_PREFIX } from "./fixture";
+import { TEST_EMPLOYEE_PREFIX, suiteActor, suiteLogin } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -461,4 +461,98 @@ test("§13.2 publishing succeeds once calibration is ready, and is reversible + 
     select: { after: true },
   });
   assert.ok(audit.length >= 2, "publish and un-publish both left an audit row");
+});
+
+// --- post-push breadth-review regressions -----------------------------------
+
+test("§10.6 calibration answers authority BEFORE the read — no existence oracle", async () => {
+  // Any authenticated user, with no PMS role at all. Before the fix the handler
+  // read the row first, so a real id answered 403 and a made-up one 404 —
+  // telling a stranger which EmployeeScore ids exist.
+  const nobodyId = await suiteActor(prisma, {
+    suite: "chain",
+    tag: "nobody",
+    name: "Chain No-Role Probe",
+  });
+  as(await suiteLogin(prisma, { suite: "chain", tag: "nobody", employeeId: nobodyId }));
+
+  const real = await prisma.employeeScore.findFirst({ select: { id: true } });
+  const realAnswer = await json(
+    await calibration.POST(
+      req("/api/calibration", "POST", {
+        employeeScoreId: real?.id ?? "cl00000000000000000000001",
+        toBand: "EXCELLENT",
+        reason: "probe",
+      }),
+      ctx(),
+    ),
+  );
+  const fakeAnswer = await json(
+    await calibration.POST(
+      req("/api/calibration", "POST", {
+        employeeScoreId: "cl00000000000000000000000",
+        toBand: "EXCELLENT",
+        reason: "probe",
+      }),
+      ctx(),
+    ),
+  );
+
+  assert.equal(realAnswer.status, 403);
+  assert.equal(fakeAnswer.status, 403);
+  assert.equal(realAnswer.error, fakeAnswer.error, "the two must be indistinguishable");
+});
+
+test("§13.2 two CONCURRENT publish-state writes: exactly one lands, and only one is audited", async () => {
+  as(ids.superAdminUser);
+  // Each call from its own throttle key: the publish route allows 10/minute by
+  // design and this file has already spent most of them. The bucket is
+  // per-caller, so distinct callers is the honest way to ask again.
+  let caller = 0;
+  const publishReq = (body: unknown) => {
+    caller += 1;
+    return new NextRequest(new URL("/api/publish", "http://localhost"), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-forwarded-for": `10.8.8.${caller}` },
+      body: JSON.stringify(body),
+    });
+  };
+
+  const state = await json(
+    await publish.GET(req(`/api/publish?cycleId=${ids.cycle}`, "GET"), ctx()),
+  );
+  const wasPublished = state.body.published === true;
+  const flip = wasPublished ? "UNPUBLISH" : "PUBLISH";
+
+  const auditsBefore = await prisma.auditLog.count({
+    where: { entityType: "CyclePublication", entityId: ids.cycle },
+  });
+
+  // Both started before either is awaited, so both read the same prior state.
+  // Only the conditional claim can separate them; the read-time no-op check
+  // cannot, because at read time neither has committed.
+  const [resA, resB] = await Promise.all([
+    publish.POST(
+      publishReq({ cycleId: ids.cycle, action: flip, confirm: "CONFIRM", reason: "race probe" }),
+      ctx(),
+    ),
+    publish.POST(publishReq({ cycleId: ids.cycle, action: flip, confirm: "CONFIRM" }), ctx()),
+  ]);
+  const [a, b] = [await json(resA), await json(resB)];
+
+  // A readiness refusal (§10.7) is a legitimate outcome for this cycle; the
+  // arbiter is only reachable when the transition itself is allowed.
+  if (a.status === 409 && b.status === 409 && /calibration|score/i.test(String(a.error))) return;
+
+  const landed = [a, b].filter((r) => r.status === 200);
+  assert.equal(landed.length, 1, `exactly one write may land, got ${a.status}/${b.status}`);
+
+  const auditsAfter = await prisma.auditLog.count({
+    where: { entityType: "CyclePublication", entityId: ids.cycle },
+  });
+  assert.equal(
+    auditsAfter - auditsBefore,
+    1,
+    "the loser writes no audit row — one that did would report a `before` already stale",
+  );
 });

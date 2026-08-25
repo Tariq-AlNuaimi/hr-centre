@@ -90,45 +90,72 @@ export const POST = withRateLimit(
     }
 
     const now = new Date();
-    const publication = cycle.publication
-      ? await prisma.cyclePublication.update({
-          where: { id: cycle.publication.id },
-          data:
-            action === "PUBLISH"
-              ? {
-                  published: true,
-                  publishedAt: now,
-                  publishedByEmployeeId: by,
-                  lastReason: reason ?? null,
-                }
-              : {
-                  published: false,
-                  publishedAt: null,
-                  publishedByEmployeeId: null,
-                  lastReason: reason ?? null,
-                },
-          select: { id: true, published: true, publishedAt: true, lastReason: true },
-        })
-      : await prisma.cyclePublication.create({
+    const target = action === "PUBLISH";
+
+    // `currentlyPublished` was read outside any transaction, so it is a
+    // snapshot. The conditional claim below is the arbiter: a PUBLISH racing an
+    // UNPUBLISH (two Super Admins, or a retried request) would otherwise leave
+    // the cycle in whichever state committed last, with BOTH audit rows
+    // reporting a `before` that was only ever true for one of them. §13.2 asks
+    // for a guarded, audited, reversible gate; an audit trail that misreports
+    // what it reversed is none of those.
+    const publication = await prisma.$transaction(async (tx) => {
+      if (cycle.publication) {
+        // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+        const claimed = await tx.cyclePublication.updateMany({
+          where: { id: cycle.publication.id, published: currentlyPublished },
+          data: target
+            ? {
+                published: true,
+                publishedAt: now,
+                publishedByEmployeeId: by,
+                lastReason: reason ?? null,
+              }
+            : {
+                published: false,
+                publishedAt: null,
+                publishedByEmployeeId: null,
+                lastReason: reason ?? null,
+              },
+        });
+        if (claimed.count === 0) return null;
+      } else {
+        await tx.cyclePublication.create({
           data: {
             cycleId,
-            published: action === "PUBLISH",
-            publishedAt: action === "PUBLISH" ? now : null,
-            publishedByEmployeeId: action === "PUBLISH" ? by : null,
+            published: target,
+            publishedAt: target ? now : null,
+            publishedByEmployeeId: target ? by : null,
             lastReason: reason ?? null,
           },
-          select: { id: true, published: true, publishedAt: true, lastReason: true },
+          select: { id: true },
         });
+      }
 
-    // §13.2 — "reversal is audited (who, when, why)". Both directions, because a
-    // publication is as consequential as its reversal.
-    await recordAudit(prisma, {
-      entityType: "CyclePublication",
-      entityId: cycleId,
-      action: "UPDATE",
-      before: { published: currentlyPublished },
-      after: { published: publication.published, reason: reason ?? null },
+      // §13.2 — "reversal is audited (who, when, why)". Both directions, because
+      // a publication is as consequential as its reversal. Inside the
+      // transaction, so a lost claim takes its audit row with it rather than
+      // recording a release that never happened.
+      await recordAudit(tx, {
+        entityType: "CyclePublication",
+        entityId: cycleId,
+        action: "UPDATE",
+        before: { published: currentlyPublished },
+        after: { published: target, reason: reason ?? null },
+      });
+
+      return tx.cyclePublication.findUniqueOrThrow({
+        where: { cycleId },
+        select: { id: true, published: true, publishedAt: true, lastReason: true },
+      });
     });
+
+    if (publication === null) {
+      return err(
+        "This cycle's publication state was changed by someone else a moment ago (§13.2).",
+        409,
+      );
+    }
 
     return ok({ publication, alreadyInThatState: false });
   }),

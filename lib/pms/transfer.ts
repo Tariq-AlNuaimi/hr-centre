@@ -29,8 +29,14 @@ const HUNDRED = new Prisma.Decimal(100);
 
 export type PeriodWindow = { startsOn: Date; endsOn: Date };
 
-/** Days in one period, inclusive of both ends — §11.4's convention. */
+/**
+ * Days in one period, inclusive of both ends — §11.4's convention.
+ *
+ * Zero when the window is inverted, which is how `clampToService` reports a
+ * period the employee was not employed for any of.
+ */
 export function periodDays(period: PeriodWindow): number {
+  if (period.endsOn < period.startsOn) return 0;
   return inclusiveDays(period.startsOn, period.endsOn);
 }
 
@@ -138,4 +144,38 @@ export function periodAuthorityBlockedReason(params: {
   return `Period ${
     period.orderIndex + 1
   } belongs to the manager who held the relationship during it (§12.3).`;
+}
+
+/**
+ * Clamp a period to the days the employee was actually employed.
+ *
+ * §12.3's split is created at TRANSFER time, when period 2 runs to the end of
+ * the cycle — correct then. A departure recorded later moves the employee's last
+ * working day but does not, and should not, rewrite the split: the period is a
+ * record of where they sat, not of how long they stayed.
+ *
+ * So the clamp happens at SCORING time, here, and not in the leavers route.
+ * §12.1 lets a departure arrive through the IMPORT as well as through
+ * `POST /api/leavers`, and an import-recorded leaver never passes through that
+ * route at all — truncating there would fix one path and leave the other
+ * silently wrong. Clamping where the weight is computed covers both.
+ *
+ * Both ends, for the same reason §11.4 clamps both: a mid-year joiner who then
+ * transfers has a period 1 that starts before they were employed, and counting
+ * those days inflates their score exactly as counting a departed employee's
+ * remaining months would.
+ *
+ * A period entirely outside the service window collapses to zero days and
+ * therefore zero weight, which is the honest answer — not an error.
+ */
+export function clampToService(
+  period: PeriodWindow,
+  service: { dateOfJoining: Date | null; lastWorkingDay: Date | null },
+): PeriodWindow {
+  const { dateOfJoining, lastWorkingDay } = service;
+  const startsOn =
+    dateOfJoining !== null && dateOfJoining > period.startsOn ? dateOfJoining : period.startsOn;
+  const endsOn =
+    lastWorkingDay !== null && lastWorkingDay < period.endsOn ? lastWorkingDay : period.endsOn;
+  return { startsOn, endsOn };
 }

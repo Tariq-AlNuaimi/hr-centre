@@ -6,6 +6,7 @@ import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
+import { clampToService } from "@/lib/pms/transfer";
 import {
   scoreEmployee,
   scoreSplitEmployee,
@@ -77,7 +78,17 @@ export const POST = withRateLimit(
         take: 4000,
         select: {
           employee: {
-            select: { id: true, roleTrack: true, entityId: true, departmentId: true, status: true },
+            select: {
+              id: true,
+              roleTrack: true,
+              entityId: true,
+              departmentId: true,
+              status: true,
+              // §12.3's periods are clamped to actual service before they are
+              // weighted — see `clampToService`.
+              dateOfJoining: true,
+              lastWorkingDay: true,
+            },
           },
           kpis: {
             where: { deletedAt: null },
@@ -145,7 +156,10 @@ export const POST = withRateLimit(
           ? scoreSplitEmployee({
               employeeId: e.id,
               roleTrack: e.roleTrack,
-              periods: periodInputs(split, p.kpis, byEntity, byDepartment),
+              periods: periodInputs(split, p.kpis, byEntity, byDepartment, {
+                dateOfJoining: e.dateOfJoining,
+                lastWorkingDay: e.lastWorkingDay,
+              }),
               threeSixty: ratioByEmployee.get(e.id) ?? null,
             })
           : scoreEmployee(unsplitInputs(e, p.kpis, byEntity, byDepartment, ratioByEmployee));
@@ -261,17 +275,30 @@ function periodInputs(
   kpis: readonly ScoredKpiRow[],
   byEntity: ScoreLookup,
   byDepartment: ScoreLookup,
+  service: { dateOfJoining: Date | null; lastWorkingDay: Date | null },
 ): PeriodInputs[] {
-  return periods.map((period) => ({
-    orderIndex: period.orderIndex,
-    startsOn: period.startsOn,
-    endsOn: period.endsOn,
-    corporate: byEntity.get(period.entityId) ?? null,
-    departmental: period.departmentId ? (byDepartment.get(period.departmentId) ?? null) : null,
-    kpis: kpis
-      .filter((k) => k.assignmentPeriodId === period.id && k.ratings.length > 0)
-      .map((k) => ({ level: k.ratings[0].level, weightage: k.weightage })),
-  }));
+  return periods.map((period) => {
+    // §12.3's split is written at TRANSFER time, so period 2 runs to the end of
+    // the cycle. A departure or a mid-year start recorded before or after that
+    // does not rewrite the split — the period records where they SAT, not how
+    // long they stayed — so the days are clamped to actual service here, where
+    // the weight is computed. Without this a transferred employee who then left
+    // in August was still weighted as though they worked the new department
+    // through December: their band (and so §11.3's bonus coefficient) came from
+    // a full year while §11.4 pro-rated their bonus to the days they worked —
+    // the score and the payslip disagreeing about one person's calendar.
+    const window = clampToService(period, service);
+    return {
+      orderIndex: period.orderIndex,
+      startsOn: window.startsOn,
+      endsOn: window.endsOn,
+      corporate: byEntity.get(period.entityId) ?? null,
+      departmental: period.departmentId ? (byDepartment.get(period.departmentId) ?? null) : null,
+      kpis: kpis
+        .filter((k) => k.assignmentPeriodId === period.id && k.ratings.length > 0)
+        .map((k) => ({ level: k.ratings[0].level, weightage: k.weightage })),
+    };
+  });
 }
 
 /**

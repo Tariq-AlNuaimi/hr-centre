@@ -160,7 +160,28 @@ export const POST = withRateLimit(
     }
 
     const now = new Date();
-    await prisma.$transaction(async (tx) => {
+    // `resolvedAt` was read OUTSIDE this transaction, so it is a snapshot. The
+    // claim below is what makes the decision safe: two HR users resolving the
+    // same prompt (or one double-click, or a retried request) both pass
+    // `resolveBlockedReason`, and without a predicate both `update`s commit —
+    // the employee's manager ends up whichever landed last, and the second audit
+    // row's `before` reports a manager that was already stale when it was
+    // written. Same arbiter as the change-request decide/withdraw routes, for
+    // the same reason: `update` cannot carry the condition.
+    const resolved = await prisma.$transaction(async (tx) => {
+      // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+      const claimed = await tx.managerRollUp.updateMany({
+        where: { id: rollUpId, resolvedAt: null },
+        data: {
+          resolvedAt: now,
+          resolvedByEmployeeId: by,
+          resolutionNote: resolutionNote ?? null,
+          toManagerEmployeeId: nextManagerId,
+        },
+      });
+      // Lost the race: another resolution already closed this prompt. Nothing
+      // has been written, including the manager move below.
+      if (claimed.count === 0) return false;
       // §12.2 — "Manager-of-record = whoever CURRENTLY holds the relationship."
       // So the column moves, and nothing about the existing signatures changes.
       if (rollUp.employee.managerId !== nextManagerId) {
@@ -169,15 +190,6 @@ export const POST = withRateLimit(
           data: { managerId: nextManagerId },
         });
       }
-      await tx.managerRollUp.update({
-        where: { id: rollUpId },
-        data: {
-          resolvedAt: now,
-          resolvedByEmployeeId: by,
-          resolutionNote: resolutionNote ?? null,
-          toManagerEmployeeId: nextManagerId,
-        },
-      });
       await recordAudit(tx, {
         entityType: "ManagerRollUp",
         entityId: rollUpId,
@@ -190,7 +202,12 @@ export const POST = withRateLimit(
           resolutionNote: resolutionNote ?? null,
         },
       });
+      return true;
     });
+
+    if (!resolved) {
+      return err("This roll-up was resolved by someone else a moment ago (§12.2).", 409);
+    }
 
     return ok({ rollUpId, resolvedAt: now, managerEmployeeId: nextManagerId });
   }),

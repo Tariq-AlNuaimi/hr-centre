@@ -25,8 +25,8 @@ Every number below was produced by running the thing, on 2026-08-25.
 
 | Measure                                                            | Value                                                                            |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Contract tests (`npm test`)                                        | **537 passing, 0 failing** across 33 files, plus 17 ESLint-rule tests            |
-| DB-backed integration tests (real PostgreSQL, real route handlers) | **85 passing, 0 failing** — three consecutive concurrent runs                    |
+| Contract tests (`npm test`)                                        | **540 passing, 0 failing** across 33 files, plus 17 ESLint-rule tests            |
+| DB-backed integration tests (real PostgreSQL, real route handlers) | **88 passing, 0 failing** — three consecutive concurrent runs                    |
 | `npm run ship`                                                     | **green** — typecheck, lint, format, tests, build, gitleaks, npm audit, +14 more |
 | Prisma models                                                      | 36                                                                               |
 | Migrations applied from empty → current                            | 17, in order, on a database created for this report                              |
@@ -267,23 +267,27 @@ Three things had to be true before a row below says ✅:
 Every load-bearing test below was checked by breaking the implementation and confirming the test
 fails. A test that passes against a broken implementation certifies nothing.
 
-| Implementation broken                                     | Test that caught it                                        |
-| --------------------------------------------------------- | ---------------------------------------------------------- |
-| §9.6's project peers dropped from the pool                | someone alone in their department lost their only peer     |
-| A submitted 360 allowed to read as Overdue                | a rater who had answered stayed on the chase list          |
-| §9.7's reminder window left open past the deadline        | an overdue was mailed as a reminder                        |
-| §12.3's transfer date moved into the OLD period           | day counts no longer sum to 365                            |
-| `proratedComponent` tolerating an unassessed period       | a half-assessed employee scored                            |
-| `displayScore` dropping the upper clamp                   | a moved band showed a contradicting score                  |
-| §5.4's two status strings swapped                         | "Employee did not sign" appeared for a manager's miss      |
-| `NOT_APPLICABLE` counted in the completion denominator    | C-Level participants dragged the percentage                |
-| `?? employee.managerId` restored on a transfer's period 2 | an explicit null manager recorded the old one              |
-| Authority checked after the read on `/api/roll-ups`       | 404 vs 403 distinguished a real roll-up id from a fake one |
-| §6.3's archive direction reversed                         | the version history held the new state, not the superseded |
-| The partial index on pending change requests removed      | a second pending request was accepted                      |
-| §5.3's exactly-100 guard loosened                         | a 99.99% set scored                                        |
-| INDIVIDUAL's Departmental weight set to 0 instead of null | a stray Departmental input was silently zero-weighted      |
-| §8.7's band thresholds changed from `>=` to `>`           | 4.50 fell out of Outstanding                               |
+| Implementation broken                                           | Test that caught it                                        |
+| --------------------------------------------------------------- | ---------------------------------------------------------- |
+| The service clamp removed from a split year's periods           | a leaver's weights still summed to a full year             |
+| The pre-read authority gate removed from calibration POST       | a real score id answered 403 where a fake one answered 404 |
+| The `resolvedAt: null` predicate removed from the roll-up claim | two concurrent resolutions both committed                  |
+| The `published:` predicate removed from the publish claim       | two concurrent state writes both committed                 |
+| §9.6's project peers dropped from the pool                      | someone alone in their department lost their only peer     |
+| A submitted 360 allowed to read as Overdue                      | a rater who had answered stayed on the chase list          |
+| §9.7's reminder window left open past the deadline              | an overdue was mailed as a reminder                        |
+| §12.3's transfer date moved into the OLD period                 | day counts no longer sum to 365                            |
+| `proratedComponent` tolerating an unassessed period             | a half-assessed employee scored                            |
+| `displayScore` dropping the upper clamp                         | a moved band showed a contradicting score                  |
+| §5.4's two status strings swapped                               | "Employee did not sign" appeared for a manager's miss      |
+| `NOT_APPLICABLE` counted in the completion denominator          | C-Level participants dragged the percentage                |
+| `?? employee.managerId` restored on a transfer's period 2       | an explicit null manager recorded the old one              |
+| Authority checked after the read on `/api/roll-ups`             | 404 vs 403 distinguished a real roll-up id from a fake one |
+| §6.3's archive direction reversed                               | the version history held the new state, not the superseded |
+| The partial index on pending change requests removed            | a second pending request was accepted                      |
+| §5.3's exactly-100 guard loosened                               | a 99.99% set scored                                        |
+| INDIVIDUAL's Departmental weight set to 0 instead of null       | a stray Departmental input was silently zero-weighted      |
+| §8.7's band thresholds changed from `>=` to `>`                 | 4.50 fell out of Outstanding                               |
 
 ## Corrections to previous revisions of this report
 
@@ -298,7 +302,18 @@ Stated explicitly, because a conformance report that quietly revises itself is w
    surfaced a mid-year joining date hard-coded a year and a week into the future, which the
    date-of-joining sanity CHECK rejects — so `prisma db seed` failed outright. Joining dates are
    now offsets from the seed's own clock.
-4. **The integration suites were structurally flaky.** Four suites raced to log in as the one
+4. **A post-push breadth review found four defects this report had already marked ✅.** All four
+   are now fixed and pinned, and they are listed here rather than quietly absorbed:
+   a split-year employee who later LEFT was still weighted as though they worked the new
+   department to 31 December — their band, and so §11.3's bonus coefficient, came from a full
+   year while §11.4 correctly pro-rated the bonus, so the score and the payslip disagreed about
+   one person's calendar; `POST /api/calibration` checked authority AFTER the read, making it an
+   existence oracle open to any authenticated user on the one surface §10.6 is most emphatic
+   about; and the roll-up and publish routes both wrote without a conditional claim, so two
+   concurrent callers could both commit and the loser's audit row would report a `before` that
+   was already stale. The first two mattered most: one produces a wrong number silently, the
+   other is an authorization-ordering defect.
+5. **The integration suites were structurally flaky.** Four suites raced to log in as the one
    seeded HR Super Admin through a UNIQUE column while node ran the files concurrently; the loser
    failed with a 403 that looked like a permissions bug. Each suite now owns the employees it
    mutates. Three consecutive full concurrent runs: 82 pass, 0 fail.

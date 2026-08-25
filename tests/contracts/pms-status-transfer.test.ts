@@ -14,6 +14,7 @@ import {
   type ParticipantStatusInput,
 } from "../../lib/pms/status";
 import {
+  clampToService,
   periodAuthorityBlockedReason,
   periodDays,
   periodWeight,
@@ -387,4 +388,64 @@ test("§12.2: both HR roles may name a permanent manager", () => {
 
 test("§12.2: a manager change never invalidates a signature", () => {
   assert.equal(managerChangeInvalidatesSignatures(), false);
+});
+
+// --- the split-year leaver, found by the post-push breadth review ------------
+
+test("§12.3 + §11.4: a leaver's split periods are clamped to their last working day", () => {
+  const windows = splitWindows({
+    cycleStart: new Date(Date.UTC(2026, 0, 1)),
+    cycleEnd: new Date(Date.UTC(2026, 11, 31)),
+    transferDate: new Date(Date.UTC(2026, 6, 1)),
+  })!;
+  const service = {
+    dateOfJoining: new Date(Date.UTC(2020, 0, 1)),
+    lastWorkingDay: new Date(Date.UTC(2026, 7, 31)),
+  };
+
+  const before = clampToService(windows.before, service);
+  const after = clampToService(windows.after, service);
+
+  // The old half is untouched — they worked all of it.
+  assert.equal(periodDays(before), 181);
+  // The new half stops at the last working day, not at 31 December.
+  assert.equal(after.endsOn.toISOString().slice(0, 10), "2026-08-31");
+  assert.equal(periodDays(after), 62);
+
+  // The whole point: the weights must NOT sum to 1 for someone who left in
+  // August. Before the fix they did, so the band came from a full year while
+  // §11.4 pro-rated the bonus to the days actually worked — the score and the
+  // payslip disagreeing about one person's calendar.
+  const total = periodWeight(before).plus(periodWeight(after));
+  assert.ok(total.lessThan(1), `weights must be short of a full year, got ${total.toFixed(4)}`);
+  assert.equal(total.toFixed(4), (243 / 365).toFixed(4));
+});
+
+test("§12.3 + §11.2: a mid-year joiner's first period is clamped at the other end too", () => {
+  const windows = splitWindows({
+    cycleStart: new Date(Date.UTC(2026, 0, 1)),
+    cycleEnd: new Date(Date.UTC(2026, 11, 31)),
+    transferDate: new Date(Date.UTC(2026, 8, 1)),
+  })!;
+  const clamped = clampToService(windows.before, {
+    dateOfJoining: new Date(Date.UTC(2026, 2, 1)),
+    lastWorkingDay: null,
+  });
+  assert.equal(clamped.startsOn.toISOString().slice(0, 10), "2026-03-01");
+  assert.ok(periodDays(clamped) < periodDays(windows.before));
+});
+
+test("a period entirely outside the service window is zero days, not a negative one", () => {
+  // A leaver whose departure predates the transfer: period 2 collapses rather
+  // than contributing a negative weight to the score.
+  const window = {
+    startsOn: new Date(Date.UTC(2026, 6, 1)),
+    endsOn: new Date(Date.UTC(2026, 11, 31)),
+  };
+  const clamped = clampToService(window, {
+    dateOfJoining: null,
+    lastWorkingDay: new Date(Date.UTC(2026, 2, 31)),
+  });
+  assert.equal(periodDays(clamped), 0);
+  assert.equal(periodWeight(clamped).toFixed(4), "0.0000");
 });

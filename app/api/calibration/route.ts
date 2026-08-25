@@ -92,6 +92,21 @@ export const POST = withRateLimit(
     }
     const { employeeScoreId, toBand, reason } = parsed.data;
 
+    // Authority BEFORE the read — §4.2's rule, stated in full on the roll-ups
+    // route. `withAuth` requires only a valid session, so without this ANY
+    // authenticated user (an ordinary employee with no PMS role at all) could
+    // POST a guessed id and tell "exists" (403, from the role check inside
+    // `adjustmentBlockedReason`) from "does not exist" (404, below) — an
+    // existence oracle on the one surface §10.6 is most emphatic about locking
+    // down. `adjustmentBlockedReason` still re-checks; this is what keeps the
+    // check from happening after the database has already answered.
+    if (!isHrSuperAdmin(actor)) {
+      return err(
+        "Only an HR Super Admin calibrates (§10.6) — HRBP does not touch calibration.",
+        403,
+      );
+    }
+
     const score = await prisma.employeeScore.findUnique({
       where: { id: employeeScoreId },
       select: {

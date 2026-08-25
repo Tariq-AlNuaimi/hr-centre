@@ -42,6 +42,19 @@ const req = (url: string, method: string, body?: unknown) =>
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
 const ctx = () => ({ params: Promise.resolve({}) });
+/**
+ * A POST whose throttle key is unique per call, so a deliberate race is not
+ * mistaken for abuse by the rate limiter (the bucket is per-caller by design).
+ */
+let raceCaller = 0;
+const raceReq = (path: string, body: unknown) => {
+  raceCaller += 1;
+  return new NextRequest(new URL(path, "http://localhost"), {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-forwarded-for": `10.7.7.${raceCaller}` },
+    body: JSON.stringify(body),
+  });
+};
 const as = (u: string | null) => {
   current = u === null ? null : { user: { id: u, role: "VIEWER" } };
 };
@@ -634,4 +647,65 @@ test("§13.3/§13.5 a capped roster reports that it was capped", async () => {
   // The fixture is far under the cap, so this asserts the FIELD exists — a
   // completion percentage with no way to know it covered everyone is the bug.
   assert.equal(body.truncated, false);
+});
+
+// --- post-push breadth-review regressions -----------------------------------
+
+test("§12.2 two CONCURRENT resolutions: exactly one wins, and only one is audited", async () => {
+  const subject = await suiteActor(prisma, {
+    suite: "edge",
+    tag: "race",
+    name: "Edge Race Subject",
+    managerId: ids.grandparent,
+  });
+  await prisma.managerRollUp.deleteMany({ where: { employeeId: subject } });
+  const open = await prisma.managerRollUp.create({
+    data: { employeeId: subject, reason: "LEAVER_ROLLUP", toManagerEmployeeId: ids.grandparent },
+    select: { id: true },
+  });
+
+  as(ids.superAdminUser);
+  // Fired together, so BOTH read `resolvedAt: null` before either writes — the
+  // read-time guard cannot separate them, and only the conditional claim can.
+  // Sequential calls would pass even with the arbiter removed, which is why
+  // this test is written this way.
+  // NOTE the shape: the two POSTs are started BEFORE either is awaited.
+  // `Promise.all([json(await A), json(await B)])` would await A inside the array
+  // literal and run them sequentially — which passes even with the arbiter
+  // removed, because the read-time guard alone separates sequential callers.
+  const [resA, resB] = await Promise.all([
+    rollUps.POST(
+      raceReq("/api/roll-ups", { rollUpId: open.id, newManagerEmployeeId: ids.mover }),
+      ctx(),
+    ),
+    rollUps.POST(
+      raceReq("/api/roll-ups", { rollUpId: open.id, newManagerEmployeeId: ids.grandparent }),
+      ctx(),
+    ),
+  ]);
+  const [a, b] = [await json(resA), await json(resB)];
+
+  const wins = [a, b].filter((r) => r.status === 200);
+  const losses = [a, b].filter((r) => r.status === 409);
+  assert.equal(wins.length, 1, `exactly one resolution may win, got ${a.status}/${b.status}`);
+  assert.equal(losses.length, 1, "the loser must be refused, not silently applied");
+
+  // One resolution → one audit row. Without the arbiter both commit, and the
+  // loser's `before` reports a manager that was already stale when written.
+  const resolutions = await prisma.auditLog.count({
+    where: { entityType: "ManagerRollUp", entityId: open.id, action: "UPDATE" },
+  });
+  assert.equal(resolutions, 1, "a lost claim writes no resolution audit row");
+
+  // And the employee's line matches the winner, not "whichever committed last".
+  const settled = await prisma.employee.findUniqueOrThrow({
+    where: { id: subject },
+    select: { managerId: true },
+  });
+  assert.ok(
+    settled.managerId === ids.mover || settled.managerId === ids.grandparent,
+    "the line is one of the two proposed, never a blend",
+  );
+
+  await prisma.managerRollUp.deleteMany({ where: { employeeId: subject } });
 });
