@@ -34,10 +34,10 @@ tax is the ≤30-line digest, not the whole file.
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
-- **Gotchas — deploy, env & CI** (9): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
+- **Gotchas — deploy, env & CI** (10): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
-- **Gotchas — security, auth & hooks** (7): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
+- **Gotchas — security, auth & hooks** (8): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (3): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
 - **Conventions discovered** (7): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
@@ -124,6 +124,14 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Gotchas — deploy, env & CI
 
+- 2026-08-25 — **Vercel: a Sensitive env var is WRITE-ONLY** (`env pull` yields the literal
+  `[SENSITIVE]`, which decodes to 6 bytes and mimics a truncated secret — cost two needless key
+  rotations). Nothing reads it back; keep your own copy. And **an env-var change does not reach a
+  running deployment** — it lands on the next one.
+- 2026-08-25 — **Neon TCP :5432 is firewalled in web sessions** — `ETIMEDOUT` against
+  `*.neon.tech` is the network, not the credentials. Use the serverless driver over 443, as
+  `neon-sql.mjs` and `encrypt-salaries.mjs` both now do.
+
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
 
 - 2026-08-23 — **`npx skills add` can die silently before copying** (re-run + verify files landed); vendored packs = `.agents/skills/` + `.claude/skills/` symlinks, Prettier-ignored, gates stat through symlinks — decision + pointers: `docs/blueprints/vendored-skills.md`.
@@ -166,18 +174,10 @@ PATH="$HOME/.local/bin:$PATH"` (the pre-push hook inherits the exported PATH).
 - 2026-07-11 — **The Prettier `format` /ship gate (WS-7) fails RED on generator-owned docs.**
   `docs/REPO-MAP.md` (SessionStart hook) + `docs/SESSION-HANDOFF.md` (render-handoff.mjs auto-status)
   are regenerated each session, so they MUST stay in `.prettierignore` — Prettier must not fight the generators.
-- 2026-07-03 — `scripts/deploy.mjs` (and new-project.mjs/rebrand.mjs) set
-  `project.config.json` `"pristine": false` in the LOCAL working tree as a side
-  effect. On the TEMPLATE repo that must stay `true` (a fork clears it) — `/ship`'s
-  ADR-031 E-gate goes RED on the baseline-only template if `pristine:false` is
-  committed. After running deploy from the template branch, REVERT the pristine
-  flip before committing (git file-restore is deny-listed → edit it back to true).
-- 2026-06-26 — First-deploy env-var race (#50): BOTH scripts/deploy.mjs AND
-  scripts/new-project.mjs must set all 6 env vars (incl CRON_SECRET) and
-  poll-confirm them via `GET /v9/projects/:id/env` BEFORE triggering the first
-  deploy — else the first build runs without CRON_SECRET (dead audit-purge cron)
-  / SEED_ADMIN_* (no admin). The Vercel build already seeds (vercel.json); #51
-  was a symptom of #50. seed.ts skips cleanly (exit 0) in prod with no password.
+- 2026-06-26 — First-deploy env-var race (#50): set all 6 env vars (incl CRON_SECRET) and
+  poll-confirm via `GET /v9/projects/:id/env` BEFORE the first deploy, else that build runs
+  without CRON_SECRET (dead cron) or SEED_ADMIN_* (no admin). seed.ts exits 0 cleanly in prod
+  with no password.
 - 2026-06-24 — SessionStart hook installs deps / regenerates the Prisma client
   on **stale** (package.json or schema.prisma newer than node_modules/generated),
   not just missing (`.claude/hooks/session-start.sh`, ADR-023 commit).
@@ -255,6 +255,13 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
   (transform chains `.toLowerCase()/.trim()` survive on `z.email()`). Schemas are otherwise semantics-identical.
 
 ## Gotchas — security, auth & hooks
+
+- 2026-08-25 — **`resolveRoot(input)` reads the SESSION cwd, so a `cd <repo> && …` inside the
+  command was invisible to the four SDLC gates.** In a multi-repo session that made the qa-gate
+  refuse a deploy of the PMS fork while quoting a commit from the template it was forked from —
+  the gate was reading HEAD from the wrong repository. Fixed in `.claude/hooks/lib/receipt.mjs`:
+  a LEADING `cd` now wins over `input.cwd`. Also worth knowing: `isDeployCommand` matches deploy
+  words anywhere in the command string, so a `node -e` probe containing one gets blocked too.
 
 - 2026-08-22 — **For gate scope, enumerate what is SAFE, not what is DANGEROUS.** An allowlist
   of gated paths missed a gate-disabling file in three consecutive breadth reviews

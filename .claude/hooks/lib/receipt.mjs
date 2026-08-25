@@ -177,9 +177,44 @@ export function resolveRootFromCwd() {
   return top || process.env.CLAUDE_PROJECT_DIR || process.cwd();
 }
 
+/**
+ * A leading `cd <dir> && …` names the repo a Bash command actually acts on.
+ *
+ * `input.cwd` is the SESSION's working directory, which in a multi-repo session
+ * is whichever repo the session started in — not the one the command targets.
+ * A gate resolving the session cwd then reads HEAD, receipts and blueprints from
+ * the wrong repository: the qa-gate refused a deploy of the PMS fork by citing a
+ * commit from the template it was forked FROM (2026-08-25). The `cd` is right
+ * there in the command; it was simply never read.
+ *
+ * Only a LEADING `cd` counts, and only when the directory exists — a `cd` buried
+ * mid-pipeline says nothing reliable about which repo the whole command is for.
+ *
+ * This is a governance gate, not a security control (ADR-047: governance gates
+ * fail open, security guards fail closed). A deliberately crafted `cd` prefix
+ * could point a gate at a repo with a satisfying receipt — but the author of the
+ * command is the operator, and what this catches is an honest mistake.
+ */
+function cdTargetFrom(input) {
+  if ((input?.tool_name ?? "") !== "Bash") return null;
+  const command = input?.tool_input?.command;
+  if (typeof command !== "string") return null;
+  const match = /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s&;|]+))\s*(?:&&|;)/.exec(command);
+  const dir = match?.[1] ?? match?.[2] ?? match?.[3] ?? null;
+  if (!dir) return null;
+  try {
+    return existsSync(dir) && statSync(dir).isDirectory() ? dir : null;
+  } catch {
+    return null;
+  }
+}
+
 export function resolveRoot(input) {
   const fallback = process.env.CLAUDE_PROJECT_DIR ?? process.cwd();
-  const cwd = typeof input?.cwd === "string" && input.cwd.trim() ? input.cwd : null;
+  // The command's own `cd` beats the session cwd — it is the more specific
+  // statement of which repository this invocation is about.
+  const cwd =
+    cdTargetFrom(input) ?? (typeof input?.cwd === "string" && input.cwd.trim() ? input.cwd : null);
   if (!cwd) return fallback;
   const top = gitTry(["rev-parse", "--show-toplevel"], { root: cwd })?.trim();
   return top || fallback;
