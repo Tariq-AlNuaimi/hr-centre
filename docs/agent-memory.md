@@ -39,8 +39,8 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (8): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
-- **Gotchas — subagents** (3): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
-- **Conventions discovered** (7): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
+- **Gotchas — subagents** (4): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
+- **Conventions discovered** (10): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
 
 <!-- END:digest -->
@@ -352,6 +352,11 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 
 ## Gotchas — subagents
 
+- 2026-08-25 — **Distinct backup FILENAMES when mutation-testing several routes.** Backing up
+  `app/api/{a,b,c}/route.ts` as `$D/$(basename $f).bak` collides on `route.ts`; the restore then
+  wrote one route's body into another's file. It typechecked. Mirror the path
+  (`$D/$f`) or use `git show HEAD:<path>`.
+
 - 2026-08-22 — **A file appearing on disk during a wave does NOT mean the agent finished.**
   Wait for the completion notification, not for the path to exist. In the sdlc-chain wave the
   router's `SKILL.md` appeared, was formatted, `/ship`-ed and COMMITTED while its agent was
@@ -370,6 +375,16 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
   (`git rev-parse HEAD`) first.
 
 ## Conventions discovered
+
+- 2026-08-25 — **A sequential concurrency test is vacuous.** `Promise.all([json(await A), …])`
+  awaits A _inside the array literal_, so the calls run in order and the read-time guard alone
+  separates them — it passes with the conditional arbiter deleted. Start both requests, THEN
+  await: `const [ra, rb] = await Promise.all([POST(a), POST(b)])`.
+- 2026-08-25 — **Authority BEFORE the database read.** `withAuth` requires a session, not a
+  role, so `findUnique`→404 then role-check→403 is an existence oracle for any signed-in user.
+- 2026-08-25 — **A comment citing a spec clause is a claim to verify.** Two §9 gaps surfaced
+  this way: a peer-pool comment named project peers the filter never read; `transfer.ts`
+  promised a leaver's weights sum to <1 with nothing clamping the period. Both read as done.
 
 - 2026-08-22 — **Mutation-test every regression test: a test that cannot fail is not a test.**
   Three tests written this session were vacuous until proven otherwise — one asserted
