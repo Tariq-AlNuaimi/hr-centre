@@ -307,6 +307,10 @@ model Employee {
   ratesOthers     Assignment[]       @relation("AssignmentRater")
   projectMembers  ProjectMember[]
   entityScoresEntered     EntityScore[]     @relation("EntityScoreAuthor")
+  employeeScores          EmployeeScore[]
+  calibrationsMade        CalibrationAdjustment[] @relation("CalibrationAuthor")
+  scoreRunsStarted        ScoreRun[]        @relation("ScoreRunAuthor")
+  publicationsMade        CyclePublication[] @relation("PublicationAuthor")
   departmentScoresEntered DepartmentScore[] @relation("DepartmentScoreAuthor")
   changeDecided     KpiChangeRequest[] @relation("ChangeRequestDecider")
   complianceAbout   ComplianceEvent[]  @relation("ComplianceSubject")
@@ -347,6 +351,17 @@ model Employee {
 
   // §3.3 — for leavers; used in the day-count. §11.4: a leaver pro-rates from
   // cycle start to their last working day.
+  /// §3.3 — "Date of Joining … Anchor for 6-month eligibility gate, pro-ration
+  /// Work Days, and effective service (§11)." §3.4 requires it present and valid
+  /// at import.
+  ///
+  /// Nullable in the COLUMN, required at the BOUNDARY. Employees imported before
+  /// this field existed have none, and inventing one (from `createdAt`, say)
+  /// would silently decide someone's bonus eligibility from a row-creation
+  /// timestamp. Null means "not on file", and §11's computation refuses rather
+  /// than guessing — which surfaces it as an import gap for HR to fix.
+  dateOfJoining DateTime? @map("date_of_joining") @db.Date
+
   lastWorkingDay DateTime? @map("last_working_day") @db.Date
 
   // §3.3/§11.5 — unpaid leave reduces BOTH the pro-ration day count and the
@@ -514,6 +529,9 @@ model PerformanceCycle {
   departmentScores DepartmentScore[]
   threeSixty       ThreeSixtyCycle?
   projects         Project[]
+  scoreRuns        ScoreRun[]
+  calibrationTarget CalibrationTarget?
+  publication      CyclePublication?
 }
 
 // §2 "HR sets deadlines for each stage" + §5.4 "All stage deadlines are hard
@@ -1132,4 +1150,167 @@ model ProjectMember {
 
   @@unique([projectId, employeeId])
   @@map("project_members")
+}
+
+
+// --- §8 wiring, §10 calibration, §11 bonus -----------------------------------
+
+/// §10.7's sequencing: "Assessments completed & signed → raw scores calculated
+/// (all) → HR Super Admin calibration gate → calibrated scores finalized →
+/// results published".
+///
+/// A run is one pass of the raw-score calculation over a whole cycle. Recording
+/// it as a row rather than doing the arithmetic on the fly is what makes §10.1's
+/// "every employee always retains both a raw calculated score and a calibrated
+/// score" true: the raw number is written once, and nothing later can rewrite it.
+model ScoreRun {
+  id      String           @id @default(cuid())
+  cycleId String           @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  startedByEmployeeId String   @map("started_by_employee_id")
+  startedByEmployee   Employee @relation("ScoreRunAuthor", fields: [startedByEmployeeId], references: [id])
+
+  startedAt DateTime  @default(now()) @map("started_at")
+  /// Null while running. A run that never finished is visible as such rather
+  /// than looking like a completed one with fewer rows.
+  finishedAt DateTime? @map("finished_at")
+
+  /// How many employees this run scored, and how many it could not (and why).
+  scoredCount  Int @default(0) @map("scored_count")
+  skippedCount Int @default(0) @map("skipped_count")
+
+  scores EmployeeScore[]
+
+  createdAt DateTime @default(now())
+
+  @@index([cycleId, startedAt])
+  @@map("score_runs")
+}
+
+/// One employee's scored result for one cycle.
+///
+/// §10.1 — "Every employee always retains both a raw calculated score and a
+/// calibrated score, with full auditability." So the raw components and raw
+/// final score are written by the score run and NEVER updated; calibration
+/// writes only `calibratedBand`, through an adjustment row that carries its own
+/// reason.
+model EmployeeScore {
+  id         String   @id @default(cuid())
+  scoreRunId String   @map("score_run_id")
+  scoreRun   ScoreRun @relation(fields: [scoreRunId], references: [id], onDelete: Cascade)
+
+  employeeId String   @map("employee_id")
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  /// The four §8.6 components, stored so §13.5's master export can show the
+  /// working rather than re-deriving it from data that has since moved on.
+  /// Departmental is null for the Individual track (§8.3).
+  corporateScore    Decimal  @db.Decimal(3, 2) @map("corporate_score")
+  departmentalScore Decimal? @db.Decimal(3, 2) @map("departmental_score")
+  individualScore   Decimal  @db.Decimal(3, 2) @map("individual_score")
+  threeSixtyScore   Decimal? @db.Decimal(3, 2) @map("three_sixty_score")
+
+  /// §8.6's result and §8.7's band. RAW — never overwritten (§10.1).
+  rawScore Decimal @db.Decimal(3, 2) @map("raw_score")
+  rawBand  Band    @map("raw_band")
+
+  /// §10 — the calibrated band. Equals `rawBand` until HR moves it, and is what
+  /// §11.3 reads for the bonus coefficient.
+  calibratedBand Band @map("calibrated_band")
+
+  adjustments CalibrationAdjustment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([scoreRunId, employeeId])
+  @@index([employeeId])
+  @@map("employee_scores")
+}
+
+/// §8.7's five bands.
+enum Band {
+  OUTSTANDING
+  EXCELLENT
+  TARGET
+  ALMOST_ACHIEVED
+  UNSATISFACTORY
+}
+
+/// §10.2 — "HR Super Admin defines an editable target distribution across the
+/// five bands (what % should land in each band)." §10.3's threshold lives here
+/// too, because it is the other editable setting that shapes a calibration.
+model CalibrationTarget {
+  id      String           @id @default(cuid())
+  cycleId String           @unique @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  outstandingPct     Decimal @db.Decimal(5, 2) @map("outstanding_pct")
+  excellentPct       Decimal @db.Decimal(5, 2) @map("excellent_pct")
+  targetPct          Decimal @db.Decimal(5, 2) @map("target_pct")
+  almostAchievedPct  Decimal @db.Decimal(5, 2) @map("almost_achieved_pct")
+  unsatisfactoryPct  Decimal @db.Decimal(5, 2) @map("unsatisfactory_pct")
+
+  /// §10.3 — "only to departments with ≥ 5 active employees … The threshold (5)
+  /// is an editable setting controlled by HR Super Admin."
+  minDepartmentSize Int @default(5) @map("min_department_size")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("calibration_targets")
+}
+
+/// §10.5 — "Every override/adjustment is audited: who, from-score, to-score,
+/// when, and a mandatory reason."
+///
+/// An append-only trail, not a mutable field: §10.1 wants full auditability, so
+/// moving someone twice leaves two rows and the second does not erase the first.
+model CalibrationAdjustment {
+  id              String        @id @default(cuid())
+  employeeScoreId String        @map("employee_score_id")
+  employeeScore   EmployeeScore @relation(fields: [employeeScoreId], references: [id], onDelete: Cascade)
+
+  fromBand Band @map("from_band")
+  toBand   Band @map("to_band")
+
+  /// §10.5 — mandatory. CHECK-constrained non-blank in the migration.
+  reason String
+
+  adjustedByEmployeeId String   @map("adjusted_by_employee_id")
+  adjustedByEmployee   Employee @relation("CalibrationAuthor", fields: [adjustedByEmployeeId], references: [id])
+  adjustedAt           DateTime @default(now()) @map("adjusted_at")
+
+  createdAt DateTime @default(now())
+
+  @@index([employeeScoreId, adjustedAt])
+  @@map("calibration_adjustments")
+}
+
+/// §13.2 — "Employee results are hidden entirely until HR Super Admin explicitly
+/// publishes them … Publish is all-at-once, cycle-wide … Publish is reversible
+/// (un-publish), and reversal is audited (who, when, why)."
+///
+/// One row per cycle, holding the CURRENT state; the audit trail carries the
+/// history of publishing and un-publishing.
+model CyclePublication {
+  id      String           @id @default(cuid())
+  cycleId String           @unique @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  published   Boolean   @default(false)
+  publishedAt DateTime? @map("published_at")
+
+  publishedByEmployeeId String?   @map("published_by_employee_id")
+  publishedByEmployee   Employee? @relation("PublicationAuthor", fields: [publishedByEmployeeId], references: [id])
+
+  /// §13.2 — reversal is audited with a reason. Held here as the CURRENT
+  /// explanation; every transition is also an audit row.
+  lastReason String? @map("last_reason")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("cycle_publications")
 }

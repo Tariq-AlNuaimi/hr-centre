@@ -295,6 +295,7 @@ export async function loadEmployeesFromXlsx(
       odooId: read(row, "odooId"),
       name: read(row, "name"),
       email: read(row, "email"),
+      dateOfJoining: read(row, "dateOfJoining"),
       department: read(row, "department"),
       entity: read(row, "entity"),
       managerOdooId: read(row, "managerOdooId"),

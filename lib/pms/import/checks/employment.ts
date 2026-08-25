@@ -45,6 +45,46 @@ export function checkSalary(row: EmployeeSourceRow): Check<string | null> {
   return { value: cleaned, issues: [] };
 }
 
+/**
+ * §3.4 — "Date of Joining — present and a valid date."
+ *
+ * REQUIRED, not optional: §3.3 names it "Anchor for 6-month eligibility gate,
+ * pro-ration Work Days, and effective service (§11)". A row without it cannot
+ * have a bonus computed at all, and §11 refuses rather than guessing — so it is
+ * better refused here, on the row, where HR can see which employee to fix.
+ */
+export function checkDateOfJoining(row: EmployeeSourceRow): Check<Date | null> {
+  const raw = row.dateOfJoining?.trim() ?? "";
+  if (!raw) {
+    return {
+      value: null,
+      issues: [
+        issue(
+          row,
+          "dateOfJoining",
+          "date_of_joining_missing",
+          "Date of Joining is required — it anchors the bonus eligibility gate and pro-ration (§3.4, §11).",
+        ),
+      ],
+    };
+  }
+  const parsed = parseIsoDate(raw);
+  if (!parsed) {
+    return {
+      value: null,
+      issues: [
+        issue(
+          row,
+          "dateOfJoining",
+          "date_of_joining_invalid",
+          `"${raw}" is not a valid date. Use YYYY-MM-DD.`,
+        ),
+      ],
+    };
+  }
+  return { value: parsed, issues: [] };
+}
+
 /** §3.3 / §12.1 — last working day, required for a leaver (§11.4 pro-ration). */
 export function checkLastWorkingDay(
   row: EmployeeSourceRow,

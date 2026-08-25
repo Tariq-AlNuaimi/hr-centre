@@ -28,6 +28,8 @@ type SeedEmployee = {
   roleTrack: RoleTrack;
   pmsRoles?: PmsRole[];
   basicSalary: string;
+  /** §3.3, ISO date. Omitted rows fall back to a long-tenured default. */
+  dateOfJoining?: string;
   unpaidLeaveDays?: number;
 };
 
@@ -223,6 +225,9 @@ const EMPLOYEES: SeedEmployee[] = [
     manager: "1201",
     roleTrack: "INDIVIDUAL",
     basicSalary: "1350",
+    // §11.2 — joined mid-year, so the six-month gate has a real decision to
+    // make rather than passing everyone in the fixture trivially.
+    dateOfJoining: "2027-09-01",
   },
 
   // --- Rihal Marketing & Sales ---------------------------------------------
@@ -514,6 +519,13 @@ export async function seedPms(prisma: PrismaClient): Promise<void> {
         // ADR-067 — even the fixture is encrypted, so a dev database never
         // holds a shape production does not.
         basicSalaryEnc: encryptSalary(employee.basicSalary, employee.odooId),
+        // §3.3 — the anchor for §11's eligibility gate and pro-ration. The
+        // fixture spreads joining dates across recent years, and gives a couple
+        // of people a mid-year date, so §11.2's six-month gate has something to
+        // actually decide rather than passing everyone trivially.
+        dateOfJoining: employee.dateOfJoining
+          ? new Date(employee.dateOfJoining)
+          : new Date("2021-01-04"),
         unpaidLeaveDays: employee.unpaidLeaveDays ?? 0,
       },
       select: { id: true },
@@ -624,6 +636,8 @@ async function bootstrapAdminEmployee(
       roleTrack: "MANAGER",
       pmsRoles: ["HR_SUPER_ADMIN"],
       // No salary invented: this is an access record, not a person's pay data.
+      // Nor a joining date — §11 refuses to compute a bonus without one, which
+      // is the right outcome for a bootstrap record that is not a real hire.
       unpaidLeaveDays: 0,
       userId: user?.id ?? null,
     },

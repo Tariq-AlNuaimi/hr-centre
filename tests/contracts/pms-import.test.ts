@@ -71,6 +71,7 @@ function row(over: Partial<EmployeeSourceRow> = {}): EmployeeSourceRow {
     odooId: `E${rowSeq}`,
     name: `Person ${rowSeq}`,
     email: `person${rowSeq}@rihal.om`,
+    dateOfJoining: "2021-01-04",
     department: "Marketing",
     entity: "Rihal",
     managerOdooId: "BOSS",
@@ -89,6 +90,7 @@ function existing(over: Partial<ExistingEmployee> = {}): ExistingEmployee {
     odooId: "E1",
     name: "Person 1",
     email: "person1@rihal.om",
+    dateOfJoining: new Date("2021-01-04"),
     departmentId: "dept-rihal-mkt",
     entityId: "ent-rihal",
     managerId: null,
@@ -121,7 +123,7 @@ const rules = (issues: { rule: string }[]) => issues.map((i) => i.rule).sort();
 
 // --- §3.1 / ADR-066: the loader round-trips the template it hands out --------
 
-test("§3.1 the generated template parses back through the loader, all 11 columns mapped", async () => {
+test("§3.1 the generated template parses back through the loader, all 12 §3.3 columns mapped", async () => {
   // Round-tripping real bytes, not types. An earlier iteration of the writer
   // seam typechecked cleanly while returning a writer handle instead of a
   // Buffer, and the template's own "Manager (Employee ID)" header failed to map
@@ -133,11 +135,29 @@ test("§3.1 the generated template parses back through the loader, all 11 column
   const { rows, headerMap, sheetName } = await loadEmployeesFromXlsx(buffer);
 
   assert.equal(sheetName, "Employees");
-  assert.equal(
-    Object.keys(headerMap).length,
-    11,
+  // §3.3's table lists TWELVE fields. This assertion previously said eleven,
+  // which was not a looser check — it was the omission of Date of Joining
+  // written down as an expectation. Naming them makes the next omission fail
+  // here rather than pass quietly.
+  assert.deepEqual(
+    Object.keys(headerMap).sort(),
+    [
+      "basicSalary",
+      "dateOfJoining",
+      "department",
+      "email",
+      "entity",
+      "lastWorkingDay",
+      "managerOdooId",
+      "name",
+      "odooId",
+      "roleTrack",
+      "status",
+      "unpaidLeaveDays",
+    ],
     "every §3.3 column in the template must be recognised by the loader",
   );
+  assert.equal(rows[0].dateOfJoining, "2021-03-15", "§3.3's Date of Joining round-trips");
   assert.equal(rows.length, 2, "template ships two example rows");
   assert.equal(rows[0].managerOdooId, "1000", "the Manager (Employee ID) column must map");
   assert.equal(rows[1].roleTrack, "C-Level");

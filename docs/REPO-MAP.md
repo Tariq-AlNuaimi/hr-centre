@@ -31,6 +31,8 @@
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
+- app/api/bonus/route.ts  [GET]
+- app/api/calibration/route.ts  [GET,POST,PUT]
 - app/api/cycles/[id]/participants/[participantId]/approve/route.ts  [POST]
 - app/api/cycles/[id]/participants/route.ts  [GET]
 - app/api/cycles/[id]/route.ts  [GET,PUT]
@@ -55,8 +57,10 @@
 - app/api/org/departments/route.ts  [GET,POST]
 - app/api/org/entities/route.ts  [GET,POST]
 - app/api/pms/me/route.ts  [GET]
+- app/api/publish/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
+- app/api/scores/route.ts  [GET,POST]
 - app/api/signoffs/route.ts  [POST]
 - app/api/strategy-scores/route.ts  [GET,POST]
 - app/api/three-sixty/activate/route.ts  [POST]
@@ -78,10 +82,10 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
 - Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, departmentScoresEntered, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
-- PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects
+- PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
 - CycleStage: id, cycleId, cycle, kind, opensAt, deadline, graceDays, createdAt, updatedAt
 - CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, changeRequests, createdAt, updatedAt
 - KpiChangeRequest: id, participantId, participant, requestedByEmployeeId, requestedByEmployee, requestedAt, rationale, status, decidedByEmployeeId, decidedByEmployee, decidedAt, decisionReason, edits, createdAt, updatedAt
@@ -100,6 +104,11 @@
 - AssignmentResponse: id, assignmentId, assignment, questionId, question, score, text, createdAt, updatedAt
 - Project: id, cycleId, cycle, name, members, createdAt, updatedAt
 - ProjectMember: id, projectId, project, employeeId, employee, createdAt
+- ScoreRun: id, cycleId, cycle, startedByEmployeeId, startedByEmployee, startedAt, finishedAt, scoredCount, skippedCount, scores, createdAt
+- EmployeeScore: id, scoreRunId, scoreRun, employeeId, employee, corporateScore, departmentalScore, individualScore, threeSixtyScore, rawScore, rawBand, calibratedBand, adjustments, createdAt, updatedAt
+- CalibrationTarget: id, cycleId, cycle, outstandingPct, excellentPct, targetPct, almostAchievedPct, unsatisfactoryPct, minDepartmentSize, createdAt, updatedAt
+- CalibrationAdjustment: id, employeeScoreId, employeeScore, fromBand, toBand, reason, adjustedByEmployeeId, adjustedByEmployee, adjustedAt, createdAt
+- CyclePublication: id, cycleId, cycle, published, publishedAt, publishedByEmployeeId, publishedByEmployee, lastReason, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -119,6 +128,8 @@
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/pms/actor.ts: ResolvedActor, resolveActor
+- lib/pms/bonus.ts: DAYS_IN_YEAR, ELIGIBILITY_MONTHS, inclusiveDays, WorkDaysInput, workDays, effectiveServiceMonths, isBonusEligible, BonusResult, computeBonus
+- lib/pms/calibration.ts: BANDS, Distribution, emptyDistribution, tally, distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
 - lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, withdrawBlockedReason, changeRequestAccessRefusal
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
@@ -126,7 +137,7 @@
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders
-- lib/pms/import/checks/employment.ts: checkSalary, checkLastWorkingDay, checkUnpaidLeave
+- lib/pms/import/checks/employment.ts: checkSalary, checkDateOfJoining, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
 - lib/pms/import/checks/placement.ts: checkPlacement, checkManager
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
@@ -140,6 +151,7 @@
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
+- lib/pms/score-run.ts: ScoreInputs, ScoreOutcome, scoreEmployee
 - lib/pms/scoring.ts: MIN_LEVEL, MAX_LEVEL, Band, TRACK_WEIGHTS, ScoredKpi, individualScore, threeSixtyAsLevel, Components, finalScore, bandFor, BAND_COEFFICIENT
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
@@ -153,6 +165,7 @@
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/utils.ts: cn
+- lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput
