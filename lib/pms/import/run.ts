@@ -3,6 +3,7 @@ import { loadEmployeesFromXlsx } from "./loaders/xlsx";
 import { reconcile, type ExistingEmployee, type ReconcileContext } from "./reconcile";
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
+import { decryptSalary, encryptSalary } from "../employee-select";
 
 /**
  * Import orchestration — spec §3.
@@ -54,7 +55,7 @@ async function loadContext(): Promise<{
         entityId: true,
         managerId: true,
         roleTrack: true,
-        basicSalary: true,
+        basicSalaryEnc: true,
         status: true,
         lastWorkingDay: true,
         unpaidLeaveDays: true,
@@ -101,7 +102,11 @@ async function loadContext(): Promise<{
       entityId: employee.entityId,
       managerId: employee.managerId,
       roleTrack: employee.roleTrack,
-      basicSalary: employee.basicSalary?.toString() ?? null,
+      // ADR-067: decrypt to compare. The reconcile diff needs the VALUE to tell
+      // HR that pay changed (`reconcile.ts` then renders it as [redacted]);
+      // comparing ciphertexts would report a change on every import, because a
+      // fresh IV per write means the same salary never encrypts the same twice.
+      basicSalary: decryptSalary(employee.basicSalaryEnc, employee.odooId),
       status: employee.status,
       lastWorkingDay: employee.lastWorkingDay,
       unpaidLeaveDays: employee.unpaidLeaveDays,
@@ -345,7 +350,7 @@ export async function applyImport(params: {
           departmentId: row.departmentId,
           entityId: row.entityId,
           roleTrack: row.roleTrack,
-          basicSalary: row.basicSalary,
+          basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
           status: row.status,
           lastWorkingDay: row.lastWorkingDay,
           unpaidLeaveDays: row.unpaidLeaveDays,
@@ -364,7 +369,7 @@ export async function applyImport(params: {
           departmentId: row.departmentId,
           entityId: row.entityId,
           roleTrack: row.roleTrack,
-          basicSalary: row.basicSalary,
+          basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
           status: row.status,
           lastWorkingDay: row.lastWorkingDay,
           unpaidLeaveDays: row.unpaidLeaveDays,

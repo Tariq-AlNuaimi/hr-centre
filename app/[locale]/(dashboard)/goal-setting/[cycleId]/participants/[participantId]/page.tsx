@@ -15,7 +15,8 @@ import {
   weightageMessage,
   weightageTotal,
 } from "@/lib/pms/kpi";
-import { KPI_SELECT, serializeKpi } from "@/lib/pms/kpi-select";
+import { KPI_SELECT, kpiSetHash, serializeKpi } from "@/lib/pms/kpi-select";
+import { staleParties } from "@/lib/pms/signoff";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { descendantEmployeeIds } from "@/lib/pms/org-tree";
 import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
@@ -129,7 +130,7 @@ export default async function KpiDraftingPage({
         orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
         select: KPI_SELECT,
       },
-      signOffs: { select: { party: true, signedAt: true } },
+      signOffs: { select: { party: true, signedAt: true, kpiSetHash: true } },
     },
   });
 
@@ -174,6 +175,9 @@ export default async function KpiDraftingPage({
 
   const employeeSigned = participant.signOffs.find((s) => s.party === "EMPLOYEE") ?? null;
   const managerSigned = participant.signOffs.find((s) => s.party === "MANAGER") ?? null;
+  // Hashed from the set as it stands, then compared with what each party signed.
+  // A null stored hash means "predates the column", which is unknown, not stale.
+  const stale = staleParties(participant.signOffs, kpiSetHash(participant.kpis));
 
   // The set summary, computed from the same rows the board renders. The BOOLEAN
   // is what decides §5.3, here as at the API — the total is a string for display.
@@ -223,6 +227,8 @@ export default async function KpiDraftingPage({
         initialSignOff={{
           employeeSignedAt: employeeSigned?.signedAt.toISOString() ?? null,
           managerSignedAt: managerSigned?.signedAt.toISOString() ?? null,
+          // US-12 lets the set move after a signature. These say whether it did.
+          staleParties: stale,
         }}
         goalsApprovedAt={participant.goalsApprovedAt?.toISOString() ?? null}
         isSubject={actor.employeeId === participant.employee.id}

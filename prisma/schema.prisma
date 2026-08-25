@@ -317,7 +317,17 @@ model Employee {
   // Decimal, not Float: money. Phase 5 multiplies it by a band coefficient and
   // pro-rates over days (§11.3/§11.4); binary floating point has no business
   // anywhere near a payroll figure.
+  /// LEGACY, pending drop — ADR-067 step 3. Still here because the encrypt-and-
+  /// verify pass runs against the DEPLOYED database between two migrations, and
+  /// `prisma migrate deploy` would otherwise drop the plaintext before anything
+  /// had encrypted it. No application code reads this any more; `basicSalaryEnc`
+  /// is the live column.
   basicSalary Decimal? @map("basic_salary") @db.Decimal(14, 3)
+
+  /// Restricted (SECURITY.md §1), AES-256-GCM, bound to `odooId` — ADR-067.
+  /// A `v1.<iv>.<ciphertext>.<tag>` envelope, never a number: JSON has one
+  /// numeric type and it is a double, and this one is money.
+  basicSalaryEnc String? @map("basic_salary_enc")
 
   status EmployeeStatus @default(ACTIVE) // §3.3
 
@@ -576,9 +586,25 @@ model ComplianceEvent {
   missedByHours Int?           @map("missed_by_hours") // §5.6 "by how long"
   detail        String
 
+  /// The deadline this miss was measured against — part of the event's IDENTITY,
+  /// not decoration.
+  ///
+  /// §5.5's third rung offers HR three interventions, one of which is "extend
+  /// the deadline". Without this column the unique key below is scoped to the
+  /// life of the STAGE, so the sweep after an extension re-derives the same
+  /// three events, collides on the index, and swallows them as duplicates: the
+  /// second miss is never recorded, `missedByHours` stays frozen at the value
+  /// computed against the ORIGINAL deadline, and nobody is notified — because
+  /// `notify()` only fires for new events. §5.6 is silently defeated the first
+  /// time HR uses the one remedy the spec gives them.
+  ///
+  /// With it, an extension opens a fresh window for the ladder, while a re-run
+  /// against the SAME deadline still collides exactly as before.
+  measuredAgainstDeadline DateTime @map("measured_against_deadline")
+
   occurredAt DateTime @default(now()) @map("occurred_at")
 
-  @@unique([cycleId, stageKind, subjectEmployeeId, kind])
+  @@unique([cycleId, stageKind, subjectEmployeeId, kind, measuredAgainstDeadline])
   @@index([cycleId, kind])
   @@index([managerEmployeeId, occurredAt])
   @@map("compliance_events")
@@ -605,6 +631,23 @@ model SignOff {
   signedByEmployeeId String   @map("signed_by_employee_id")
   signedByEmployee   Employee @relation("SignOffSigner", fields: [signedByEmployeeId], references: [id])
   signedAt           DateTime @default(now()) @map("signed_at")
+
+  /// A digest of the KPI set as it stood at the moment of signing.
+  ///
+  /// US-12 is explicit that "neither signature prevents further edits", so a
+  /// manager CAN reword a KPI or move a weightage after the employee has signed
+  /// — and the set still reported `employeeSigned: true`, with nothing
+  /// distinguishing "signed this exact set" from "signed an earlier version of
+  /// it". HR could then approve, which is the §5.1 lock, over content the
+  /// employee never saw.
+  ///
+  /// This adds no lock and no reject path — §5.3 is untouched. It only makes
+  /// the divergence VISIBLE, which is the part the spec left no way to see.
+  ///
+  /// Nullable because rows signed before ADR-067's sibling change cannot have
+  /// their historical set reconstructed. Null means "not recorded", and the UI
+  /// says so rather than implying agreement it cannot evidence.
+  kpiSetHash String? @map("kpi_set_hash")
 
   createdAt DateTime @default(now())
 

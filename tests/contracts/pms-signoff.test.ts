@@ -17,7 +17,10 @@ import {
   isFullySigned,
   signOffState,
   signerBlockedReason,
+  staleParties,
 } from "../../lib/pms/signoff";
+import { Prisma } from "../../generated/prisma/client";
+import { kpiSetHash, type KpiHashRow } from "../../lib/pms/kpi-select";
 import type { StageWindow } from "../../lib/pms/cycle";
 import type { PmsActor } from "../../lib/pms/permissions";
 
@@ -309,6 +312,38 @@ test("an account with no employee record signs nothing", () => {
   );
 });
 
+test("§4.2 the refusal STATUS does not leak whether a participant exists", () => {
+  // 404 when answering at all would confirm the row is there; 403 once the
+  // caller can already see them. Every other write route in the phase draws the
+  // line here, and this one did not until the post-push review found it.
+  const stranger = actor({ employeeId: "nobody-1" });
+  assert.equal(
+    signerBlockedReason({ actor: stranger, party: "EMPLOYEE", subject })?.status,
+    404,
+    "a stranger probing ids learns nothing from the status code",
+  );
+
+  const theirManager = actor({ employeeId: "mgr-1", isLineManager: true });
+  assert.equal(
+    signerBlockedReason({ actor: theirManager, party: "EMPLOYEE", subject })?.status,
+    403,
+    "their own manager already knows they exist — tell them whose line it is",
+  );
+
+  const hr = actor({ employeeId: "hr-1", pmsRoles: ["HR_SUPER_ADMIN"] });
+  assert.equal(
+    signerBlockedReason({ actor: hr, party: "EMPLOYEE", subject })?.status,
+    403,
+    "§4.1 HR sees everyone, so 404 would be a lie rather than a defence",
+  );
+
+  assert.equal(
+    signerBlockedReason({ actor: actor({ employeeId: null }), party: "MANAGER", subject })?.status,
+    403,
+    "an unlinked account is told about ITS OWN state, which reveals nothing about the row",
+  );
+});
+
 test("signature state is derived from rows, never from a status column", () => {
   assert.deepEqual(signOffState([]), { employeeSigned: false, managerSigned: false });
   assert.deepEqual(signOffState([{ party: "MANAGER" }]), {
@@ -394,4 +429,91 @@ test("§5.3 the sign-off surface exposes no reject and no un-sign", () => {
   assert.equal(/export const DELETE/.test(route), false, "§5.3 — the unsigned state IS the signal");
   assert.equal(/export const PATCH|export const PUT/.test(route), false);
   assert.match(route, /export const POST/);
+});
+
+// --- what a signature was given TO (US-12) -----------------------------------
+//
+// US-12 is explicit that "neither signature prevents further edits", so a set
+// CAN move after it is signed. Nothing here blocks that. What these pin is that
+// the movement becomes VISIBLE, because the alternative is HR applying §5.1's
+// lock to content the employee never saw.
+
+const kpi = (over: Partial<KpiHashRow> = {}) =>
+  ({
+    id: "k1",
+    description: "Ship the migration",
+    weightage: new Prisma.Decimal("100"),
+    descriptorOutstanding: "a",
+    descriptorExcellent: "b",
+    descriptorTarget: "c",
+    descriptorAlmostAchieved: "d",
+    descriptorUnsatisfactory: "e",
+    orderIndex: 0,
+    ...over,
+  }) as KpiHashRow;
+
+test("the digest changes when any of §5.2's six texts or the weightage changes", () => {
+  const base = kpiSetHash([kpi()]);
+  for (const change of [
+    { description: "Ship the migration." },
+    { weightage: new Prisma.Decimal("99") },
+    { descriptorOutstanding: "a!" },
+    { descriptorExcellent: "b!" },
+    { descriptorTarget: "c!" },
+    { descriptorAlmostAchieved: "d!" },
+    { descriptorUnsatisfactory: "e!" },
+  ]) {
+    assert.notEqual(kpiSetHash([kpi(change)]), base, `${Object.keys(change)[0]} must be covered`);
+  }
+});
+
+test("the digest changes when the READING ORDER changes", () => {
+  // §5.2's levels are read top-down; a manager reordering the set after a
+  // signature has changed what the employee agreed to read.
+  const a = kpi({ id: "k1", orderIndex: 0 });
+  const b = kpi({ id: "k2", orderIndex: 1 });
+  const reordered = [kpi({ id: "k1", orderIndex: 1 }), kpi({ id: "k2", orderIndex: 0 })];
+  assert.notEqual(kpiSetHash([a, b]), kpiSetHash(reordered));
+});
+
+test("the digest does NOT change with the order rows came back from Postgres", () => {
+  const a = kpi({ id: "k1", orderIndex: 0 });
+  const b = kpi({ id: "k2", orderIndex: 1 });
+  assert.equal(kpiSetHash([a, b]), kpiSetHash([b, a]), "sorted before hashing, so this is stable");
+});
+
+test("equal decimals hash equally, however they were written", () => {
+  // `1.50` and `1.5` are the same weightage. A digest that disagreed would
+  // accuse a manager of editing when a re-import merely re-formatted.
+  assert.equal(
+    kpiSetHash([kpi({ weightage: new Prisma.Decimal("1.50") })]),
+    kpiSetHash([kpi({ weightage: new Prisma.Decimal("1.5") })]),
+  );
+});
+
+test("§5.1 a party who signed the current set is not reported as stale", () => {
+  const hash = kpiSetHash([kpi()]);
+  assert.deepEqual(staleParties([{ party: "EMPLOYEE", kpiSetHash: hash }], hash), []);
+});
+
+test("§5.1 a party who signed an earlier version IS reported", () => {
+  const signed = kpiSetHash([kpi()]);
+  const now = kpiSetHash([kpi({ description: "reworded after they signed" })]);
+  assert.deepEqual(
+    staleParties(
+      [
+        { party: "EMPLOYEE", kpiSetHash: signed },
+        { party: "MANAGER", kpiSetHash: now },
+      ],
+      now,
+    ),
+    ["EMPLOYEE"],
+    "only the party whose signature predates the change",
+  );
+});
+
+test("a signature with no recorded digest is unknown, never reported as stale", () => {
+  // Rows that predate the column. Reporting unknown as "changed" would accuse a
+  // manager of editing after a signature on no evidence at all.
+  assert.deepEqual(staleParties([{ party: "MANAGER", kpiSetHash: null }], kpiSetHash([kpi()])), []);
 });

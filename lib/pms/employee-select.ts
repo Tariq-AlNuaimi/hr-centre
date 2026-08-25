@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { decryptField, encryptField } from "@/lib/crypto/field-encryption";
 import { canViewCompensation, type PmsActor } from "./permissions";
 
 /**
@@ -64,7 +65,11 @@ const RELATION_SELECT = {
 export function employeeSelect(actor: PmsActor) {
   const base = { ...BASE_EMPLOYEE_SELECT, ...RELATION_SELECT };
   if (!canViewCompensation(actor)) return base;
-  return { ...base, basicSalary: true };
+  // The CIPHERTEXT column (ADR-067). An unentitled actor never selects it, so
+  // they do not reach the envelope, let alone the plaintext — the entitlement
+  // gate is still the `select`, exactly as before, and decryption happens
+  // strictly inside the branch that gate already guards.
+  return { ...base, basicSalaryEnc: true };
 }
 
 /**
@@ -140,7 +145,7 @@ export function serializeEmployee(row: {
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
   pmsRoles?: string[];
-  basicSalary?: { toString(): string } | null;
+  basicSalaryEnc?: string | null;
 }): EmployeeListRow {
   const out: EmployeeListRow = {
     id: row.id,
@@ -159,8 +164,31 @@ export function serializeEmployee(row: {
   // employee with no salary on file must still get the key (as null), because
   // "not recorded" and "not allowed to see" are different facts and the UI
   // renders them differently.
-  if ("basicSalary" in row) {
-    out.basicSalary = row.basicSalary == null ? null : row.basicSalary.toString();
+  //
+  // ADR-067: the column holds a `v1.…` envelope bound to this employee's
+  // `odooId`. `decryptField` THROWS on a value it cannot open, and that is not
+  // an oversight — a ciphertext that will not decrypt means a wrong key, a
+  // tampered row, or a value moved from another employee, and rendering any of
+  // those as a blank salary is the one outcome that hides it.
+  if ("basicSalaryEnc" in row) {
+    out.basicSalary =
+      row.basicSalaryEnc == null ? null : decryptField(row.basicSalaryEnc, row.odooId);
   }
   return out;
+}
+
+/**
+ * The two salary crossings — ADR-067's "one service function" requirement.
+ *
+ * Every read and every write of compensation goes through this pair, so moving
+ * to a different scheme later (or to Option 4, not storing it at all) is a
+ * change in one file rather than a hunt. `odooId` is the binding; passing the
+ * wrong one produces a ciphertext nobody can open, which is the point.
+ */
+export function encryptSalary(plaintext: string | null, odooId: string): string | null {
+  return plaintext === null ? null : encryptField(plaintext, odooId);
+}
+
+export function decryptSalary(envelope: string | null, odooId: string): string | null {
+  return envelope === null ? null : decryptField(envelope, odooId);
 }

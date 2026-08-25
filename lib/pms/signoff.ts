@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { canActOnEmployee, type PmsActor } from "./permissions";
 import { GOAL_SETTING_STAGE, isWeightageComplete, type WeightedKpi } from "./kpi";
 import { isGoalSettingExempt, stageState, type StageWindow } from "./cycle";
+import { currentKpiSetHash } from "./kpi-select";
 
 /**
  * Sign-off and HR approval — spec §5.1, §5.3, §5.4.
@@ -40,6 +41,30 @@ export function isFullySigned(state: SignOffState): boolean {
   return state.employeeSigned && state.managerSigned;
 }
 
+/** A signature row as far as staleness is concerned. */
+export type SignedContentRow = { party: SignOffParty; kpiSetHash: string | null };
+
+/**
+ * Which parties signed a version of the set that no longer exists.
+ *
+ * US-12 permits edits after a signature, so this is not an error state and
+ * nothing here blocks anything — §5.3's "no reject button" is untouched. It
+ * answers a question the spec left no way to ask: *is the thing this person
+ * agreed to still the thing in front of HR?*
+ *
+ * A null `kpiSetHash` is NOT stale. It means the row predates the column, so
+ * the honest answer is "unknown", and reporting unknown as "changed" would
+ * accuse a manager of editing after a signature on no evidence.
+ */
+export function staleParties(
+  rows: readonly SignedContentRow[],
+  currentHash: string,
+): SignOffParty[] {
+  return rows
+    .filter((r) => r.kpiSetHash !== null && r.kpiSetHash !== currentHash)
+    .map((r) => r.party);
+}
+
 /**
  * §5.4's status for an employee who let the deadline pass. Exported as a
  * constant because it is a STATUS the spec quotes, read by the compliance
@@ -69,24 +94,62 @@ export const EMPLOYEE_SIGNED_MANAGER_DID_NOT = "employee signed, manager did not
  * `signedByEmployeeId`, and §12.2 makes "who actually signed" the question
  * worth answering later.
  */
+export type SignerRefusal = { reason: string; status: 403 | 404 };
+
+/**
+ * Why this actor may not sign this party's line, or null when they may.
+ *
+ * The STATUS matters as much as the sentence, and it follows the same rule the
+ * rest of the phase uses (`kpiSetAccessRefusal`, `loadEditableKpi`): **404 when
+ * answering at all would confirm a participant exists**, 403 when the caller can
+ * already see them and the refusal is about which line they are reaching for.
+ *
+ * §4.2's visibility rule is what makes the distinction real — a manager probing
+ * ids must not learn who is enrolled from a status code. Someone who is neither
+ * the subject nor able to act on them has no business knowing the row is there;
+ * someone who IS their manager already knows, so telling them "that is the
+ * employee's line, not yours" costs nothing and helps.
+ *
+ * Reported by the post-push breadth review, 2026-08-25: this route answered 403
+ * in both cases while every other write route in the phase answered 404 for the
+ * first — an inconsistency a future contributor would reasonably copy.
+ */
 export function signerBlockedReason(params: {
   actor: PmsActor;
   party: SignOffParty;
   subject: { id: string; managerId: string | null };
-}): string | null {
+}): SignerRefusal | null {
   const { actor, party, subject } = params;
 
   if (!actor.employeeId) {
-    return "Only a linked employee record can sign; this account has none (ADR-065).";
+    // About the CALLER's own account, not about whether the participant exists,
+    // so this one is safe to state plainly.
+    return {
+      reason: "Only a linked employee record can sign; this account has none (ADR-065).",
+      status: 403,
+    };
   }
-  if (party === "EMPLOYEE") {
-    return actor.employeeId === subject.id
-      ? null
-      : "Only the employee themselves may sign their own KPI set (§5.1) — a signature is an acknowledgment of agreement, not an administrative act.";
+
+  const isSubject = actor.employeeId === subject.id;
+  const canAct = canActOnEmployee(actor, subject);
+
+  // No relationship of any kind — do not confirm the participant is real.
+  if (!isSubject && !canAct) return { reason: "Participant not found", status: 404 };
+
+  if (party === "EMPLOYEE" && !isSubject) {
+    return {
+      reason:
+        "Only the employee themselves may sign their own KPI set (§5.1) — a signature is an acknowledgment of agreement, not an administrative act.",
+      status: 403,
+    };
   }
-  return canActOnEmployee(actor, subject)
-    ? null
-    : "Only this employee's direct line manager may sign their KPI set (§4.2).";
+  if (party === "MANAGER" && !canAct) {
+    return {
+      reason: "Only this employee's direct line manager may sign their KPI set (§4.2).",
+      status: 403,
+    };
+  }
+  return null;
 }
 
 /**
@@ -185,6 +248,10 @@ export type SignOffContext = {
   stage: StageWindow | null;
   kpis: WeightedKpi[];
   state: SignOffState;
+  /** The set's digest right now — what a NEW signature would be recorded against. */
+  currentKpiSetHash: string;
+  /** Parties whose signature is against a set that has since changed (US-12). */
+  staleParties: SignOffParty[];
 };
 
 export async function loadSignOffContext(participantId: string): Promise<SignOffContext | null> {
@@ -205,7 +272,7 @@ export async function loadSignOffContext(participantId: string): Promise<SignOff
         },
       },
       employee: { select: { id: true, managerId: true, roleTrack: true } },
-      signOffs: { select: { party: true } },
+      signOffs: { select: { party: true, kpiSetHash: true } },
     },
   });
   if (!participant) return null;
@@ -218,6 +285,7 @@ export async function loadSignOffContext(participantId: string): Promise<SignOff
   });
 
   const stage = participant.cycle.stages[0] ?? null;
+  const currentHash = await currentKpiSetHash(participantId);
 
   return {
     participant: {
@@ -232,6 +300,8 @@ export async function loadSignOffContext(participantId: string): Promise<SignOff
     stage,
     kpis,
     state: signOffState(participant.signOffs),
+    currentKpiSetHash: currentHash,
+    staleParties: staleParties(participant.signOffs, currentHash),
   };
 }
 

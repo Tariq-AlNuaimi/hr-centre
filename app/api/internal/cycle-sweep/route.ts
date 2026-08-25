@@ -34,10 +34,17 @@ import {
  * already logged.
  *
  * Idempotency comes from the database, not from bookkeeping here:
- * `@@unique([cycleId, stageKind, subjectEmployeeId, kind])` means a retry, a
- * manual invocation, or two overlapping runs collide on P2002, which is caught
- * per row and counted rather than aborting the sweep. A partial run is
- * therefore always safe to repeat.
+ * `@@unique([cycleId, stageKind, subjectEmployeeId, kind, measuredAgainstDeadline])`
+ * means a retry, a manual invocation, or two overlapping runs collide on P2002,
+ * which is caught per row and counted rather than aborting the sweep. A partial
+ * run is therefore always safe to repeat.
+ *
+ * `measuredAgainstDeadline` is in that key deliberately. Without it the identity
+ * was scoped to the life of the STAGE, so once HR used §5.5's own remedy and
+ * extended a deadline, every later miss re-derived the same three events, hit
+ * the index, and was discarded as a duplicate — `missedByHours` frozen at the
+ * original figure and nobody notified, because notification only fires for new
+ * rows. Found by the post-push breadth review, 2026-08-25.
  */
 
 export const maxDuration = 60;
@@ -66,7 +73,7 @@ type Counts = Partial<Record<ComplianceKind, number>>;
  */
 async function writeEvents(
   cycleId: string,
-  stageKind: StageWindow["kind"],
+  stage: StageWindow,
   subjectEmployeeId: string,
   events: readonly LadderEvent[],
 ): Promise<WrittenEvent[]> {
@@ -76,20 +83,23 @@ async function writeEvents(
       await prisma.complianceEvent.create({
         data: {
           cycleId,
-          stageKind,
+          stageKind: stage.kind,
           subjectEmployeeId,
           managerEmployeeId: event.managerEmployeeId,
           kind: event.kind,
           missedByHours: event.missedByHours,
           detail: event.detail,
+          measuredAgainstDeadline: stage.deadline,
         },
         select: { id: true },
       });
       results.push({ ...event, cycleId, subjectEmployeeId, isNew: true });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        // Already logged by an earlier run today. The ladder decided the same
-        // thing it decided before, which is exactly what idempotence looks like.
+        // Already logged by an earlier run AGAINST THIS SAME DEADLINE. The ladder
+        // decided the same thing it decided before, which is exactly what
+        // idempotence looks like. Had HR extended the deadline, this would be a
+        // different key and the row would be written.
         results.push({ ...event, cycleId, subjectEmployeeId, isNew: false });
         continue;
       }
@@ -197,7 +207,7 @@ async function processParticipant(params: {
 
   const rows = await writeEvents(
     cycleId,
-    stage.kind,
+    stage,
     row.employeeId,
     ladderEventsFor(state, stage, now),
   );

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { weightageMessage, weightageTotal } from "./kpi";
@@ -87,4 +88,71 @@ export async function weightageSummary(participantId: string): Promise<Weightage
     weightageComplete: message === null,
     weightageMessage: message,
   };
+}
+
+/**
+ * The columns that make a KPI set what the employee agreed to — §5.2's six
+ * authored texts, the weightage, and the order they are read in.
+ *
+ * Deliberately not `KPI_SELECT`: `createdAt`/`updatedAt` move for reasons that
+ * are not content (a soft-delete restore, a backfill), and a hash that changes
+ * when nothing a human would call the agreement changed is a hash nobody
+ * trusts.
+ */
+export const KPI_HASH_SELECT = {
+  id: true,
+  description: true,
+  weightage: true,
+  descriptorOutstanding: true,
+  descriptorExcellent: true,
+  descriptorTarget: true,
+  descriptorAlmostAchieved: true,
+  descriptorUnsatisfactory: true,
+  orderIndex: true,
+} satisfies Prisma.KpiSelect;
+
+export type KpiHashRow = Prisma.KpiGetPayload<{ select: typeof KPI_HASH_SELECT }>;
+
+/**
+ * A digest of the KPI set as it stands — what a signature is recorded against.
+ *
+ * US-12 is explicit that "neither signature prevents further edits", so a set
+ * CAN move after the employee signs it. Before this, nothing distinguished
+ * "signed this exact set" from "signed an earlier version of it", and HR could
+ * apply §5.1's lock to content the employee never saw. This adds no lock and no
+ * reject path — §5.3 is untouched — it only makes the divergence visible.
+ *
+ * Sorted by `(orderIndex, id)` before hashing, so the digest depends on the set
+ * and its reading order, not on whatever order Postgres returned the rows in.
+ * `weightage` goes in as its decimal STRING for the same reason it crosses the
+ * wire as one: `1.50` and `1.5` are the same number and must hash the same, and
+ * `Decimal.toString()` is what normalises them.
+ */
+export function kpiSetHash(kpis: readonly KpiHashRow[]): string {
+  const canonical = [...kpis]
+    .sort((a, b) => a.orderIndex - b.orderIndex || a.id.localeCompare(b.id))
+    .map((k) => [
+      k.id,
+      k.description,
+      k.weightage.toString(),
+      k.descriptorOutstanding,
+      k.descriptorExcellent,
+      k.descriptorTarget,
+      k.descriptorAlmostAchieved,
+      k.descriptorUnsatisfactory,
+      k.orderIndex,
+    ]);
+  return `sha256:${createHash("sha256").update(JSON.stringify(canonical), "utf8").digest("hex")}`;
+}
+
+/** The live hash for one participant's set. Empty sets hash too — an empty
+ *  agreement is still a thing a signature can be measured against. */
+export async function currentKpiSetHash(participantId: string): Promise<string> {
+  const kpis = await prisma.kpi.findMany({
+    where: { participantId, deletedAt: null },
+    select: KPI_HASH_SELECT,
+    // §5.2 sets are a handful per employee; the cap is a guard, not a page.
+    take: 200,
+  });
+  return kpiSetHash(kpis);
 }

@@ -60,7 +60,13 @@ export const POST = withRateLimit(
     // Authority first, then state: a stranger must not learn from the error
     // message how complete someone else's KPI set is.
     const blockedSigner = signerBlockedReason({ actor, party, subject: ctx.subject });
-    if (blockedSigner) return forbidden(blockedSigner);
+    if (blockedSigner) {
+      // 404 rather than 403 when the caller has no relationship to the subject —
+      // §4.2's existence oracle, same as every other write route in the phase.
+      return blockedSigner.status === 404
+        ? notFound("Participant")
+        : forbidden(blockedSigner.reason);
+    }
 
     const contextBlocked = contextBlockedReason(ctx);
     if (contextBlocked) return err(contextBlocked, 409);
@@ -92,7 +98,15 @@ export const POST = withRateLimit(
 
     try {
       const signOff = await prisma.signOff.create({
-        data: { participantId, party, signedByEmployeeId: signerId },
+        // The digest is what this party is agreeing TO. US-12 lets the set move
+        // afterwards; recording what it looked like is the only way anyone can
+        // later tell that it did.
+        data: {
+          participantId,
+          party,
+          signedByEmployeeId: signerId,
+          kpiSetHash: ctx.currentKpiSetHash,
+        },
         select: { id: true, party: true, signedByEmployeeId: true, signedAt: true },
       });
       return created({

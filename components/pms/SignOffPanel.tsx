@@ -33,6 +33,8 @@ export interface SignOffRow {
   party: SignOffParty;
   signedAt: string | null;
   canSign: boolean;
+  /** The set changed after this party signed it (US-12 allows that). */
+  stale: boolean;
 }
 
 export function SignOffPanel({
@@ -55,7 +57,7 @@ export function SignOffPanel({
   return (
     <SectionCard title={t("signOffTitle")} subtitle={t("signOffBody")}>
       <div className="space-y-4">
-        {parties.map(({ party, signedAt, canSign }) => (
+        {parties.map(({ party, signedAt, canSign, stale }) => (
           <div
             key={party}
             className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0"
@@ -67,9 +69,20 @@ export function SignOffPanel({
               <p className="text-xs text-muted-foreground">
                 {signedAt ? t("signedAt", { datetime: formatDateTime(signedAt) }) : t("notSigned")}
               </p>
+              {/* US-12 permits an edit after a signature, so this is a statement
+                  of fact, not a warning about a rule being broken — and never a
+                  block. It exists because the alternative is HR applying §5.1's
+                  lock to content the employee never saw. */}
+              {stale ? (
+                <p className="text-xs text-amber-700 dark:text-amber-300">{t("signedStale")}</p>
+              ) : null}
             </div>
             <div className="flex items-center gap-2">
-              {signedAt ? <Badge variant="success">{t("signedBadge")}</Badge> : null}
+              {signedAt ? (
+                <Badge variant={stale ? "warning" : "success"}>
+                  {stale ? t("signedStaleBadge") : t("signedBadge")}
+                </Badge>
+              ) : null}
               {!signedAt && canSign ? (
                 <Button
                   variant="secondary"
