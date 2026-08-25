@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
-import { ROLL_UP_PROMPT_KEY, resolveBlockedReason } from "@/lib/pms/roll-up";
+import { ROLL_UP_PROMPT_KEY, canResolveRollUp, resolveBlockedReason } from "@/lib/pms/roll-up";
 import { resolveRollUpSchema } from "@/lib/validations/edge-cases";
 
 /**
@@ -111,6 +111,13 @@ export const POST = withRateLimit(
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
     }
     const { rollUpId, newManagerEmployeeId, resolutionNote } = parsed.data;
+
+    // Authority BEFORE the read. Checking it after `findUnique` would answer
+    // 404-vs-403 to a non-HR caller, turning this route into an oracle for which
+    // roll-up ids exist — the same reasoning §4.2 applies to employee records.
+    if (!canResolveRollUp(actor)) {
+      return err("Only HR reassigns a permanent manager (§12.2).", 403);
+    }
 
     const rollUp = await prisma.managerRollUp.findUnique({
       where: { id: rollUpId },

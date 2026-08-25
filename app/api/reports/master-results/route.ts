@@ -225,13 +225,19 @@ export const GET = withRateLimit(
       entityType: "MasterResultsExport",
       entityId: cycleId,
       action: "CREATE",
-      after: { cycleYear: cycle.year, rowCount: rows.length, format: asXlsx ? "xlsx" : "json" },
+      after: {
+        cycleYear: cycle.year,
+        rowCount: rows.length,
+        auditRowCount: trail.rows.length,
+        auditTrailTruncated: trail.truncated,
+        format: asXlsx ? "xlsx" : "json",
+      },
     });
 
     if (asXlsx) {
       const buffer = await buildReportWorkbook([
         toReportSheet({ sheet: `Results ${cycle.year}`, columns: COLUMNS, rows }),
-        toReportSheet({ sheet: "Audit Trail", columns: TRAIL_COLUMNS, rows: trail }),
+        toReportSheet({ sheet: "Audit Trail", columns: TRAIL_COLUMNS, rows: trail.rows }),
       ]);
       return new NextResponse(new Uint8Array(buffer), {
         headers: xlsxDownloadHeaders(`rihal-master-results-${cycle.year}.xlsx`),
@@ -243,11 +249,18 @@ export const GET = withRateLimit(
       year: cycle.year,
       runStartedAt: runs[0].startedAt,
       rows,
-      auditTrail: trail,
+      auditTrail: {
+        // §14's mandate names the entity types; audit rows carry no cycle, so
+        // this is every such event in the system, not only this cycle's.
+        scope: "score, KPI and publication events across all cycles",
+        truncated: trail.truncated,
+        limit: TRAIL_LIMIT,
+        rows: trail.rows,
+      },
       totals: {
         employees: rows.length,
         adjusted: rows.filter((r) => r.adjusted).length,
-        auditRows: trail.length,
+        auditRows: trail.rows.length,
       },
     });
   }),
@@ -255,19 +268,34 @@ export const GET = withRateLimit(
 );
 
 /**
- * The score/KPI/publication half of the audit log, newest last.
+ * The score/KPI/publication half of the audit log.
  *
- * Bounded, and the bound is stated in the payload rather than hidden: an export
- * that silently stopped at 5,000 rows would read as a complete trail. `changes`
- * is summarised to its key names rather than dumped — the values can contain the
- * KPI text and rating comments that are already on the results tab, and a column
- * of raw JSON is not something a reader can use.
+ * ## Two honesty notes, both of which belong in the payload rather than here
+ *
+ * **It is bounded.** Read newest-FIRST and capped, then reversed for display, so
+ * a busy system's export carries the most recent 5,000 events rather than the
+ * oldest 5,000 — the opposite choice silently hands over a trail that stops
+ * before anything the reader is asking about. `truncated` goes back with it, so
+ * a capped export cannot read as a complete one.
+ *
+ * **It is not cycle-filtered.** `audit_logs` rows carry an entity id, not a
+ * cycle, so this is every score-, KPI- and publication-bearing event in the
+ * system rather than only this cycle's. Narrowing it would mean resolving each
+ * entity id back to a cycle at export time — and an under-inclusive trail is a
+ * worse failure than an over-inclusive one, because it is the one nobody
+ * notices. Stated in the payload as `scope`.
+ *
+ * `changes` is summarised to its key names rather than dumped — the values can
+ * contain the KPI text and rating comments already on the results tab, and a
+ * column of raw JSON is not something a reader can use.
  */
-async function auditTrail(): Promise<TrailRow[]> {
+const TRAIL_LIMIT = 5000;
+
+async function auditTrail(): Promise<{ rows: TrailRow[]; truncated: boolean }> {
   const rows = await prisma.auditLog.findMany({
     where: { entityType: { in: TRAIL_ENTITY_TYPES } },
-    take: 5000,
-    orderBy: { timestamp: "asc" },
+    take: TRAIL_LIMIT + 1,
+    orderBy: { timestamp: "desc" },
     select: {
       timestamp: true,
       entityType: true,
@@ -277,15 +305,23 @@ async function auditTrail(): Promise<TrailRow[]> {
       changes: true,
     },
   });
-  return rows.map((r) => ({
-    at: r.timestamp,
-    entityType: r.entityType,
-    entityId: r.entityId,
-    action: r.action,
-    actor: r.actorEmail,
-    detail:
-      r.changes && typeof r.changes === "object" && !Array.isArray(r.changes)
-        ? Object.keys(r.changes).join(", ")
-        : "",
-  }));
+  const truncated = rows.length > TRAIL_LIMIT;
+  return {
+    truncated,
+    // Oldest-first for reading, after taking the newest slice.
+    rows: rows
+      .slice(0, TRAIL_LIMIT)
+      .reverse()
+      .map((r) => ({
+        at: r.timestamp,
+        entityType: r.entityType,
+        entityId: r.entityId,
+        action: r.action,
+        actor: r.actorEmail,
+        detail:
+          r.changes && typeof r.changes === "object" && !Array.isArray(r.changes)
+            ? Object.keys(r.changes).join(", ")
+            : "",
+      })),
+  };
 }

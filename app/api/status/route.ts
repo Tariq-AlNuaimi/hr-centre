@@ -78,7 +78,7 @@ export const GET = withRateLimit(
       scope = new Set(reports.map((r) => r.id));
     }
 
-    const rows = await participantStatuses({
+    const { rows, truncated } = await participantStatuses({
       cycleId,
       scope,
       goalStageLocked,
@@ -95,6 +95,9 @@ export const GET = withRateLimit(
       // not have to re-derive it from the role, which is what §13.4 warns against.
       readOnly: requestedScope === "chain" && !actor.capabilities.orgWide,
       goalStageLocked,
+      // The read is capped. Said, never implied: a completion percentage over a
+      // truncated roster read as the whole team's is worse than no percentage.
+      truncated,
       progress: stageProgress(rows),
       outstanding: awaitingManager(rows).map((r) => r.participantId),
       rows: rows.map(serialize),
@@ -111,7 +114,7 @@ async function isPublished(cycleId: string): Promise<boolean> {
   return publication?.published ?? false;
 }
 
-function serialize(row: Awaited<ReturnType<typeof participantStatuses>>[number]) {
+function serialize(row: Awaited<ReturnType<typeof participantStatuses>>["rows"][number]) {
   return {
     participantId: row.participantId,
     employeeId: row.employeeId,

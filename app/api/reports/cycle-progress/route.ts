@@ -47,7 +47,7 @@ export const GET = withRateLimit(
     const goalStage = cycle.stages.find((s) => s.kind === "GOAL_SETTING") ?? null;
     const goalStageLocked = goalStage ? stageState(goalStage, now) === "LOCKED" : false;
 
-    const rows = await participantStatuses({
+    const { rows, truncated } = await participantStatuses({
       cycleId,
       scope: null,
       goalStageLocked,
@@ -67,6 +67,7 @@ export const GET = withRateLimit(
         })),
       },
       participantCount: rows.length,
+      truncated,
       progress: stageProgress(rows),
       byDepartment: groupCompletion(rows, (r) => r.department),
       byEntity: groupCompletion(rows, (r) => r.entity),

@@ -68,7 +68,7 @@ export const GET = withRateLimit(
     const goalStageLocked = goalStage ? stageState(goalStage, now) === "LOCKED" : false;
 
     // Completion health — the same engine the manager workspace reads (§13.4).
-    const rows = await participantStatuses({
+    const { rows, truncated } = await participantStatuses({
       cycleId,
       scope: null,
       goalStageLocked,
@@ -95,7 +95,7 @@ export const GET = withRateLimit(
         published: publication?.published ?? false,
         publishedAt: publication?.publishedAt ?? null,
       },
-      completion: { participantCount: rows.length, progress: stageProgress(rows) },
+      completion: { participantCount: rows.length, truncated, progress: stageProgress(rows) },
       distribution,
       compliance,
       bonus,

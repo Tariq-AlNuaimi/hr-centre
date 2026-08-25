@@ -6,7 +6,7 @@ import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 import type { PmsRole } from "../../generated/prisma/client";
-import { TEST_EMPLOYEE_PREFIX } from "./fixture";
+import { TEST_EMPLOYEE_PREFIX, suiteActor } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -522,4 +522,116 @@ test("§13.5 the master results export admits HR Super Admin", async () => {
   // 409 (no score run yet for this cycle) is the RIGHT answer here; what matters
   // is that it is not the 403 the HRBP got.
   assert.notEqual(res.status, 403);
+});
+
+// --- review-rail regressions -----------------------------------------------
+
+test("§12.3 an explicit null manager clears the line AND the new period's owner", async () => {
+  // `?? employee.managerId` here recorded the OLD manager as owning the new half
+  // while the employee's own line was being cleared — the one combination §12.3
+  // cannot express, and the only case the two branches disagree on.
+  const subject = await suiteActor(prisma, {
+    suite: "edge",
+    tag: "nullmgr",
+    name: "Edge Null-Manager Mover",
+    managerId: ids.grandparent,
+  });
+  const { enrolParticipants } = await import("../../lib/pms/cycle");
+  await enrolParticipants(ids.cycle);
+  // Re-runnable: a transfer moves the employee INTO the new department, so a
+  // second run would be refused as "not a transfer" unless the position is put
+  // back first. `suiteActor` already restored the manager and the status.
+  const home = await prisma.department.findFirstOrThrow({
+    where: { id: { not: ids.newDepartment } },
+    select: { id: true, entityId: true },
+  });
+  await prisma.employee.update({
+    where: { id: subject },
+    data: { departmentId: home.id, entityId: home.entityId },
+  });
+  await prisma.employeeAssignmentPeriod.deleteMany({
+    where: { employeeId: subject, cycleId: ids.cycle },
+  });
+
+  as(ids.superAdminUser);
+  const { status: code, body } = await json(
+    await transfers.POST(
+      req("/api/transfers", "POST", {
+        employeeId: subject,
+        cycleId: ids.cycle,
+        transferDate: "2095-07-01",
+        newDepartmentId: ids.newDepartment,
+        newManagerEmployeeId: null,
+      }),
+      ctx(),
+    ),
+  );
+  assert.equal(code, 200, JSON.stringify(body));
+
+  const periods = await prisma.employeeAssignmentPeriod.findMany({
+    where: { employeeId: subject, cycleId: ids.cycle },
+    orderBy: { orderIndex: "asc" },
+    select: { orderIndex: true, managerEmployeeId: true },
+  });
+  assert.equal(periods[0].managerEmployeeId, ids.grandparent, "the old half keeps its manager");
+  assert.equal(periods[1].managerEmployeeId, null, "the new half has none, as asked");
+
+  const after = await prisma.employee.findUniqueOrThrow({
+    where: { id: subject },
+    select: { managerId: true },
+  });
+  assert.equal(after.managerId, null, "and the live line agrees with it");
+});
+
+test("§4.2 a non-HR caller cannot tell a real roll-up id from a made-up one", async () => {
+  as(ids.reportUser);
+  const open = await prisma.managerRollUp.create({
+    data: { employeeId: ids.mover, reason: "HR_REASSIGNMENT", toManagerEmployeeId: null },
+    select: { id: true },
+  });
+  const real = await json(
+    await rollUps.POST(
+      req("/api/roll-ups", "POST", { rollUpId: open.id, newManagerEmployeeId: ids.grandparent }),
+      ctx(),
+    ),
+  );
+  const fake = await json(
+    await rollUps.POST(
+      req("/api/roll-ups", "POST", {
+        rollUpId: "cl00000000000000000000000",
+        newManagerEmployeeId: ids.grandparent,
+      }),
+      ctx(),
+    ),
+  );
+  // Authority is answered BEFORE the read, so both are 403 and neither says
+  // whether the id exists.
+  assert.equal(real.status, 403);
+  assert.equal(fake.status, 403);
+  assert.equal(real.error, fake.error);
+  await prisma.managerRollUp.delete({ where: { id: open.id } });
+});
+
+test("§13.5 the master export declares its audit-trail bound rather than implying completeness", async () => {
+  as(ids.superAdminUser);
+  const res = await masterResults.GET(
+    req(`/api/reports/master-results?cycleId=${ids.cycle}`, "GET"),
+    ctx(),
+  );
+  if (res.status !== 200) return; // no score run for this cycle; the gate test covers authority
+  const { body } = await json(res);
+  const trail = body.auditTrail as Record<string, unknown>;
+  assert.equal(typeof trail.truncated, "boolean", "a capped export must not read as a full one");
+  assert.equal(typeof trail.limit, "number");
+  assert.ok(typeof trail.scope === "string" && trail.scope.length > 0);
+});
+
+test("§13.3/§13.5 a capped roster reports that it was capped", async () => {
+  as(ids.superAdminUser);
+  const { body } = await json(
+    await status.GET(req(`/api/status?cycleId=${ids.cycle}`, "GET"), ctx()),
+  );
+  // The fixture is far under the cap, so this asserts the FIELD exists — a
+  // completion percentage with no way to know it covered everyone is the bug.
+  assert.equal(body.truncated, false);
 });

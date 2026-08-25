@@ -19,6 +19,14 @@ import { deriveStatus, type ParticipantStatus, type ParticipantStatusInput } fro
  * "Shows status, scores, and bands — never salary or bonus."
  */
 
+/**
+ * The read is bounded, and callers are told when the bound bit.
+ *
+ * A status screen that silently stopped at 500 people would report a completion
+ * percentage over a subset and present it as the org's — the exact failure mode
+ * "no silent caps" exists to prevent. `participantStatuses` returns the flag;
+ * every caller passes it on.
+ */
 const PARTICIPANT_PAGE = 500;
 
 export async function participantStatuses(params: {
@@ -28,9 +36,9 @@ export async function participantStatuses(params: {
   goalStageLocked: boolean;
   /** Include the calibrated band/score. Withheld until §13.2's publish for employees. */
   includeScores: boolean;
-}): Promise<ParticipantStatus[]> {
+}): Promise<{ rows: ParticipantStatus[]; truncated: boolean }> {
   const { cycleId, scope, goalStageLocked, includeScores } = params;
-  if (scope !== null && scope.size === 0) return [];
+  if (scope !== null && scope.size === 0) return { rows: [], truncated: false };
 
   const rows = await prisma.cycleParticipant.findMany({
     where: {
@@ -38,7 +46,7 @@ export async function participantStatuses(params: {
       ...(scope === null ? {} : { employeeId: { in: [...scope] } }),
       employee: { deletedAt: null },
     },
-    take: PARTICIPANT_PAGE,
+    take: PARTICIPANT_PAGE + 1,
     orderBy: { employee: { name: "asc" } },
     select: {
       id: true,
@@ -69,14 +77,17 @@ export async function participantStatuses(params: {
     },
   });
 
+  const truncated = rows.length > PARTICIPANT_PAGE;
+  const page = rows.slice(0, PARTICIPANT_PAGE);
+
   const scoreByEmployee = includeScores
     ? await latestScores(
         cycleId,
-        rows.map((r) => r.employeeId),
+        page.map((r) => r.employeeId),
       )
     : new Map<string, { band: string; score: Prisma.Decimal }>();
 
-  return rows.map((row) => {
+  const statuses = page.map((row) => {
     const signed = (stage: "GOAL_SETTING" | "YEAR_END", party: "EMPLOYEE" | "MANAGER") =>
       row.signOffs.find((s) => s.stageKind === stage && s.party === party)?.signedAt ?? null;
 
@@ -120,6 +131,8 @@ export async function participantStatuses(params: {
     };
     return deriveStatus(input, goalStageLocked);
   });
+
+  return { rows: statuses, truncated };
 }
 
 /**

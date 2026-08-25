@@ -166,7 +166,13 @@ export const POST = withRateLimit(
           cycleId,
           departmentId: newDepartmentId,
           entityId: newEntityId,
-          managerEmployeeId: newManagerEmployeeId ?? employee.managerId,
+          // `undefined` means "the line is unchanged", so period 2 keeps the
+          // current manager. An explicit `null` means "no manager yet" and must
+          // carry through — `?? employee.managerId` would silently record the
+          // OLD manager as owning the new half while the employee's own line was
+          // being cleared, which is the one combination §12.3 cannot express.
+          managerEmployeeId:
+            newManagerEmployeeId === undefined ? employee.managerId : newManagerEmployeeId,
           startsOn: windows.after.startsOn,
           endsOn: windows.after.endsOn,
           orderIndex: 1,
@@ -203,7 +209,7 @@ export const POST = withRateLimit(
         after: {
           departmentId: newDepartmentId,
           entityId: newEntityId,
-          managerId: newManagerEmployeeId ?? employee.managerId,
+          managerId: newManagerEmployeeId === undefined ? employee.managerId : newManagerEmployeeId,
           transferDate,
           cycleId,
           kpisAttachedToOldPeriod: attached.count,
