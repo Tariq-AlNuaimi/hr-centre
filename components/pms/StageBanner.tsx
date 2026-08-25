@@ -43,12 +43,20 @@ const STATE_TONE: Record<StageState, BadgeProps["variant"]> = {
 };
 
 interface StageBannerProps {
-  /** Null when the cycle has no goal-setting stage configured yet (§2). */
+  /** Null when the cycle has no stage of this kind configured yet (§2). */
   stage: GoalStage | null;
+  /**
+   * Which stage's copy to render. §2 runs three touchpoints through the same
+   * §5.4 lock, so the BEHAVIOUR is identical and only the wording differs —
+   * "nothing can be drafted or signed" is wrong for §6's mid-year window, where
+   * what closes is the ability to raise a change request. A namespace prop keeps
+   * one banner rather than forking a second that would drift.
+   */
+  namespace?: "pms.goalSetting.stage" | "pms.midYear.stage";
 }
 
-export function StageBanner({ stage }: StageBannerProps) {
-  const t = useTranslations("pms.goalSetting.stage");
+export function StageBanner({ stage, namespace = "pms.goalSetting.stage" }: StageBannerProps) {
+  const t = useTranslations(namespace);
 
   if (!stage) {
     return (

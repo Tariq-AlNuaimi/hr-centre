@@ -11,6 +11,8 @@
 - app/[locale]/(dashboard)/audit-log/page.tsx
 - app/[locale]/(dashboard)/goal-setting/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/goal-setting/page.tsx
+- app/[locale]/(dashboard)/mid-year/[cycleId]/participants/[participantId]/page.tsx
+- app/[locale]/(dashboard)/mid-year/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
 - app/[locale]/(dashboard)/page.tsx
 - app/[locale]/(dashboard)/people/[id]/page.tsx
@@ -41,6 +43,9 @@
 - app/api/imports/template/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/cycle-sweep/route.ts  [GET,POST]
+- app/api/kpi-change-requests/[id]/decide/route.ts  [POST]
+- app/api/kpi-change-requests/[id]/withdraw/route.ts  [POST]
+- app/api/kpi-change-requests/route.ts  [GET,POST]
 - app/api/kpis/[id]/route.ts  [PUT,DELETE]
 - app/api/kpis/route.ts  [POST]
 - app/api/openapi/route.ts  [GET]
@@ -63,15 +68,18 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt
 - CycleStage: id, cycleId, cycle, kind, opensAt, deadline, graceDays, createdAt, updatedAt
-- CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, createdAt, updatedAt
+- CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, changeRequests, createdAt, updatedAt
+- KpiChangeRequest: id, participantId, participant, requestedByEmployeeId, requestedByEmployee, requestedAt, rationale, status, decidedByEmployeeId, decidedByEmployee, decidedAt, decisionReason, edits, createdAt, updatedAt
+- KpiChangeRequestEdit: id, requestId, request, kpiId, kpi, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, createdAt
+- KpiVersion: id, kpiId, kpi, versionNo, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, supersededAt, supersededByRequestId, createdAt
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
-- SignOff: id, participantId, participant, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
-- Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, deletedAt, deletedBy, createdAt, updatedAt
+- SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
+- Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, deletedAt, deletedBy, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -91,6 +99,8 @@
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/pms/actor.ts: ResolvedActor, resolveActor
+- lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
+- lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, withdrawBlockedReason, changeRequestAccessRefusal
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, WrittenEvent, Intervention, notify
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
@@ -119,6 +129,7 @@
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/utils.ts: cn
+- lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
@@ -138,6 +149,8 @@
 - components/layout/NotificationsMenu.tsx
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
+- components/pms/ChangeRequestComposer.tsx
+- components/pms/ChangeRequestReview.tsx
 - components/pms/CycleForm.tsx
 - components/pms/CycleList.tsx
 - components/pms/EmployeeColumns.tsx
@@ -145,6 +158,9 @@
 - components/pms/KpiDraftBoard.tsx
 - components/pms/KpiForm.tsx
 - components/pms/KpiList.tsx
+- components/pms/KpiVersionHistory.tsx
+- components/pms/MidYearBoard.tsx
+- components/pms/MidYearRoster.tsx
 - components/pms/MyTasksOversight.tsx
 - components/pms/ParticipantList.tsx
 - components/pms/RoleEditor.tsx

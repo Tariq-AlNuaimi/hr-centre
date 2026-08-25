@@ -5,7 +5,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { signOffBlockedReason } from "@/lib/pms/kpi";
+import { GOAL_SETTING_STAGE, signOffBlockedReason } from "@/lib/pms/kpi";
 import {
   contextBlockedReason,
   loadSignOffContext,
@@ -76,7 +76,9 @@ export const POST = withRateLimit(
     // Idempotent by design (see the file comment): a second POST is the same
     // statement as the first, so it reports the existing signature at 200.
     const existing = await prisma.signOff.findUnique({
-      where: { participantId_party: { participantId, party } },
+      where: {
+        participantId_stageKind_party: { participantId, stageKind: GOAL_SETTING_STAGE, party },
+      },
       select: { id: true, party: true, signedByEmployeeId: true, signedAt: true },
     });
     if (existing) {
@@ -103,6 +105,10 @@ export const POST = withRateLimit(
         // later tell that it did.
         data: {
           participantId,
+          // Named explicitly rather than left to the column default: this
+          // route is the §5.1 goal-setting signature, and §7.1's year-end one
+          // will be a different route writing YEAR_END on the same key.
+          stageKind: GOAL_SETTING_STAGE,
           party,
           signedByEmployeeId: signerId,
           kpiSetHash: ctx.currentKpiSetHash,
@@ -120,7 +126,13 @@ export const POST = withRateLimit(
       // asked about.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         const row = await prisma.signOff.findUnique({
-          where: { participantId_party: { participantId, party } },
+          where: {
+            participantId_stageKind_party: {
+              participantId,
+              stageKind: GOAL_SETTING_STAGE,
+              party,
+            },
+          },
           select: { id: true, party: true, signedByEmployeeId: true, signedAt: true },
         });
         if (row) {

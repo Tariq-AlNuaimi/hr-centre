@@ -299,6 +299,8 @@ model Employee {
   cycleParticipants CycleParticipant[] @relation("ParticipantEmployee")
   goalsApproved     CycleParticipant[] @relation("GoalsApprovedBy")
   signOffs          SignOff[]          @relation("SignOffSigner")
+  changeRequested   KpiChangeRequest[] @relation("ChangeRequestRequester")
+  changeDecided     KpiChangeRequest[] @relation("ChangeRequestDecider")
   complianceAbout   ComplianceEvent[]  @relation("ComplianceSubject")
   complianceAgainst ComplianceEvent[]  @relation("ComplianceManager")
 
@@ -551,8 +553,9 @@ model CycleParticipant {
   goalsApprovedById String?   @map("goals_approved_by_id")
   goalsApprovedBy   Employee? @relation("GoalsApprovedBy", fields: [goalsApprovedById], references: [id])
 
-  kpis     Kpi[]
-  signOffs SignOff[]
+  kpis           Kpi[]
+  signOffs       SignOff[]
+  changeRequests KpiChangeRequest[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -569,6 +572,126 @@ model CycleParticipant {
 //
 // The unique constraint is what makes the daily sweep idempotent: a retry, or a
 // manual invocation on the same day, must not inflate a manager's miss count.
+/// §6.2 — the status of a mid-year change request.
+enum ChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  /// The manager thought better of it. A status, not a delete: §6.3 wants the
+  /// history of what was ASKED, not only of what was approved.
+  WITHDRAWN
+}
+
+/// §6.2 — one request, several KPI edits, decided as a UNIT.
+///
+/// The spec says "if a KPI needs adjusting", singular — but changing one
+/// weightage necessarily breaks §5.3's exactly-100% rule, so a rebalance is one
+/// request or the baseline sits invalid between two of them. Approval is refused
+/// unless the resulting set totals exactly 100, which is what keeps §5.3 true at
+/// every committed state rather than only at sign-off.
+model KpiChangeRequest {
+  id            String           @id @default(cuid())
+  participantId String           @map("participant_id")
+  participant   CycleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  requestedByEmployeeId String   @map("requested_by_employee_id")
+  requestedByEmployee   Employee @relation("ChangeRequestRequester", fields: [requestedByEmployeeId], references: [id])
+  requestedAt           DateTime @default(now()) @map("requested_at")
+
+  /// Why the manager wants the change — shown to HR when they decide.
+  rationale String
+
+  status ChangeRequestStatus @default(PENDING)
+
+  decidedByEmployeeId String?   @map("decided_by_employee_id")
+  decidedByEmployee   Employee? @relation("ChangeRequestDecider", fields: [decidedByEmployeeId], references: [id])
+  decidedAt           DateTime? @map("decided_at")
+
+  /// §6.2 — "HR must enter a reason (mandatory field) that the manager can see"
+  /// on rejection. Enforced by a CHECK constraint, not only by the form: a form
+  /// rule is bypassable by every other writer.
+  decisionReason String? @map("decision_reason")
+
+  edits KpiChangeRequestEdit[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([participantId, status])
+  @@index([status, requestedAt])
+  /// NOTE: the migration also creates a PARTIAL unique index that Prisma's
+  /// schema language cannot express —
+  /// `("participant_id") WHERE status = 'PENDING'` — which makes a second
+  /// concurrent pending request for the same participant impossible. Two pending
+  /// requests are each validated against the CURRENT set, so both can total 100
+  /// alone and still leave the set off 100 once both are approved. The route
+  /// checks for it too, for the readable error; the index is what makes it true
+  /// under concurrency. Do not `prisma migrate dev --create-only` past this and
+  /// accept a generated "fix" that drops it.
+  @@map("kpi_change_requests")
+}
+
+/// One KPI's proposed new state. A NULL column means "unchanged" — that is how
+/// §6.2's PARTIAL change ("descriptors/metrics only") is expressed, as against a
+/// full overhaul where every column is set.
+model KpiChangeRequestEdit {
+  id        String           @id @default(cuid())
+  requestId String           @map("request_id")
+  request   KpiChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  kpiId String @map("kpi_id")
+  kpi   Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  description String?
+  weightage   Decimal? @db.Decimal(5, 2)
+
+  descriptorOutstanding    String? @map("descriptor_outstanding")
+  descriptorExcellent      String? @map("descriptor_excellent")
+  descriptorTarget         String? @map("descriptor_target")
+  descriptorAlmostAchieved String? @map("descriptor_almost_achieved")
+  descriptorUnsatisfactory String? @map("descriptor_unsatisfactory")
+
+  createdAt DateTime @default(now())
+
+  @@unique([requestId, kpiId])
+  @@index([kpiId])
+  @@map("kpi_change_request_edits")
+}
+
+/// §6.3 — the KPI as it stood BEFORE it was superseded. A full snapshot, not a
+/// diff: the clause wants "the original version" as a thing you can look at, and
+/// replaying diffs to rebuild one is both fragile and slow.
+///
+/// Written on approval, never updated and never deleted ("archived, never
+/// overwritten"). `versionNo` counts from 1 for the state the KPI was created
+/// with, so the live row is always version `max(versionNo) + 1`.
+model KpiVersion {
+  id        String @id @default(cuid())
+  kpiId     String @map("kpi_id")
+  kpi       Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  versionNo Int    @map("version_no")
+
+  description String
+  weightage   Decimal @db.Decimal(5, 2)
+
+  descriptorOutstanding    String @map("descriptor_outstanding")
+  descriptorExcellent      String @map("descriptor_excellent")
+  descriptorTarget         String @map("descriptor_target")
+  descriptorAlmostAchieved String @map("descriptor_almost_achieved")
+  descriptorUnsatisfactory String @map("descriptor_unsatisfactory")
+
+  orderIndex Int @map("order_index")
+
+  supersededAt          DateTime @default(now()) @map("superseded_at")
+  supersededByRequestId String?  @map("superseded_by_request_id")
+
+  createdAt DateTime @default(now())
+
+  @@unique([kpiId, versionNo])
+  @@index([kpiId, supersededAt])
+  @@map("kpi_versions")
+}
+
 model ComplianceEvent {
   id      String           @id @default(cuid())
   cycleId String           @map("cycle_id")
@@ -630,6 +753,12 @@ model SignOff {
   participantId String           @map("participant_id")
   participant   CycleParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
+  /// WHICH signature this is. Without it the key `[participantId, party]` says a
+  /// participant signs once ever — and §7.1's year-end pair would collide with
+  /// §5.1's goal-setting pair and be reported as "already signed", one flow
+  /// silently swallowing the other. Backfilled to GOAL_SETTING (Phase 3a).
+  stageKind CycleStageKind @default(GOAL_SETTING) @map("stage_kind")
+
   party SignOffParty
 
   signedByEmployeeId String   @map("signed_by_employee_id")
@@ -655,7 +784,7 @@ model SignOff {
 
   createdAt DateTime @default(now())
 
-  @@unique([participantId, party])
+  @@unique([participantId, stageKind, party])
   @@index([signedByEmployeeId])
   @@map("sign_offs")
 }
@@ -689,6 +818,9 @@ model Kpi {
   descriptorUnsatisfactory String @map("descriptor_unsatisfactory") // = 1
 
   orderIndex Int @default(0) @map("order_index")
+
+  versions    KpiVersion[]
+  changeEdits KpiChangeRequestEdit[]
 
   deletedAt DateTime?
   deletedBy String?

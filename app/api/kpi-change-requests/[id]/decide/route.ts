@@ -1,0 +1,289 @@
+import { NextRequest } from "next/server";
+import { Prisma } from "@/generated/prisma/client";
+import { withAuth, withRateLimit } from "@/lib/api-helpers";
+import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
+import { prisma } from "@/lib/prisma";
+import { recordAudit } from "@/lib/prisma/audit-extension";
+import { resolveActor } from "@/lib/pms/actor";
+import {
+  applyEdit,
+  approvalBlockedReason,
+  decideBlockedReason,
+  type KpiEdit,
+} from "@/lib/pms/change-request";
+import {
+  CHANGE_REQUEST_SELECT,
+  serializeChangeRequest,
+  toKpiEdit,
+} from "@/lib/pms/change-request-select";
+import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { canViewEmployee } from "@/lib/pms/permissions";
+import { decideChangeRequestSchema } from "@/lib/validations/change-request";
+
+/**
+ * HR decides a mid-year change request — spec §6.2, and §6.3's archive.
+ *
+ * This is the only place in Phase 3 that MUTATES an HR-approved baseline, and
+ * everything about the handler is shaped by that.
+ *
+ * ## One transaction, in this order
+ *
+ *   1. re-read the request FOR THIS DECISION and confirm it is still PENDING
+ *   2. snapshot every KPI the request touches into `kpi_versions`
+ *   3. apply the edits to the live rows
+ *   4. mark the request APPROVED
+ *
+ * Steps 2 and 3 cannot be separated: §6.3 requires "full version history —
+ * previous versions archived, never overwritten", and a crash between an applied
+ * edit and its missing snapshot destroys the only record of what the employee
+ * originally agreed to (§5.1). Written as one `$transaction` rather than as a
+ * sequence the route "always" runs in order, because "always" is a property of
+ * the happy path only.
+ *
+ * ## The decision is claimed with a conditional UPDATE
+ *
+ * `updateMany({ where: { id, status: "PENDING" } })` inside the transaction is
+ * the concurrency arbiter: two HR users pressing Approve and Reject at the same
+ * moment both pass `decideBlockedReason`, and the one whose UPDATE matches zero
+ * rows loses cleanly instead of applying edits on top of a rejection.
+ *
+ * ## §5.3 is re-checked here, against the set as it stands NOW
+ *
+ * The submit route checked it too, but the set can move between raising and
+ * deciding — a KPI withdrawn mid-draft, another request approved first. The
+ * check that matters is the one immediately before the write.
+ */
+
+/**
+ * Thrown to roll the approval transaction back when §5.3 fails on the re-read.
+ *
+ * A thrown error rather than a returned sentinel because it must UNDO the claim
+ * and any snapshot already written — returning would commit them.
+ */
+class ApprovalRefused extends Error {}
+
+const KPI_STATE_SELECT = {
+  id: true,
+  description: true,
+  weightage: true,
+  descriptorOutstanding: true,
+  descriptorExcellent: true,
+  descriptorTarget: true,
+  descriptorAlmostAchieved: true,
+  descriptorUnsatisfactory: true,
+  orderIndex: true,
+} satisfies Prisma.KpiSelect;
+
+export const POST = withRateLimit(
+  withAuth(async (request: NextRequest, { params, session }) => {
+    const { id } = await params;
+    const actor = await resolveActor(session);
+
+    const body = await readJsonBody(request);
+    if (body === null) return err("Request body must be valid JSON");
+    const parsed = decideChangeRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
+    }
+    const { decision, reason } = parsed.data;
+
+    const existing = await prisma.kpiChangeRequest.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        participantId: true,
+        participant: {
+          select: {
+            employeeId: true,
+            // Enumerated columns only — §4.5 keeps `basicSalaryEnc` out of this.
+            employee: { select: { id: true } },
+            kpis: { where: { deletedAt: null }, select: KPI_STATE_SELECT, take: 200 },
+          },
+        },
+        edits: CHANGE_REQUEST_SELECT.edits,
+      },
+    });
+    if (!existing) return notFound("Change request");
+
+    // §4.2 — visibility before authority, so a non-HR actor outside the chain
+    // learns nothing about which request ids exist.
+    const descendants = actor.capabilities.orgWide
+      ? new Set<string>()
+      : actor.employeeId
+        ? await descendantEmployeeIds(actor.employeeId)
+        : new Set<string>();
+    if (!canViewEmployee(actor, existing.participant.employeeId, descendants)) {
+      return notFound("Change request");
+    }
+
+    // §6.2 — HR alone decides, and a request is decided once.
+    const blocked = decideBlockedReason({ actor, status: existing.status });
+    if (blocked) return err(blocked.reason, blocked.status);
+
+    const deciderId = actor.employeeId;
+    if (!deciderId) return err("This account has no linked employee record (ADR-065).", 403);
+
+    const edits: KpiEdit[] = existing.edits.map(toKpiEdit);
+
+    // --- rejection: nothing is applied, so nothing is archived ----------------
+    //
+    // Refusing a change leaves the set exactly as it was, and a set that was
+    // already valid stays valid — hence no §5.3 check on this path. The reason
+    // is mandatory (§6.2) and the boundary already required it.
+    if (decision === "REJECT") {
+      // `updateMany` rather than `update` ON PURPOSE: the `status: "PENDING"`
+      // predicate is the concurrency arbiter (two HR users deciding at once),
+      // and `update` cannot carry it. That takes the write outside the audit
+      // extension, so the audit row is written explicitly below — a decision on
+      // an HR-approved baseline is exactly what the trail exists for.
+      // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+      const claimed = await prisma.kpiChangeRequest.updateMany({
+        where: { id, status: "PENDING" },
+        data: {
+          status: "REJECTED",
+          decidedByEmployeeId: deciderId,
+          decidedAt: new Date(),
+          decisionReason: reason,
+        },
+      });
+      if (claimed.count === 0) {
+        return err("This request was decided by someone else a moment ago (§6.2).", 409);
+      }
+      await recordAudit(prisma, {
+        entityType: "KpiChangeRequest",
+        entityId: id,
+        action: "UPDATE",
+        before: { status: "PENDING" },
+        after: { status: "REJECTED", decidedByEmployeeId: deciderId, decisionReason: reason },
+      });
+      const row = await prisma.kpiChangeRequest.findUniqueOrThrow({
+        where: { id },
+        select: CHANGE_REQUEST_SELECT,
+      });
+      return ok({ changeRequest: serializeChangeRequest(row), applied: 0 });
+    }
+
+    // --- approval -------------------------------------------------------------
+
+    // A cheap pre-check so an unapprovable request is refused without opening a
+    // transaction. It is NOT the check that counts — see inside the transaction.
+    const preflight = approvalBlockedReason({ kpis: existing.participant.kpis, edits });
+    if (preflight) return err(preflight, 409);
+
+    const byKpi = new Map(edits.map((e) => [e.kpiId, e]));
+
+    let applied: number | null;
+    try {
+      applied = await prisma.$transaction(async (tx) => {
+        // Claim the decision FIRST. If this matches nothing, another decision
+        // landed between the read above and here, and the whole transaction —
+        // snapshots and edits included — rolls back.
+        // Conditional claim, same reasoning as the rejection path above — the
+        // predicate is what makes this safe under two simultaneous decisions, and
+        // `update` cannot express it. Audited explicitly, INSIDE the transaction,
+        // so a rollback takes the audit row with it rather than leaving a record
+        // of a decision that never happened.
+        // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+        const claimed = await tx.kpiChangeRequest.updateMany({
+          where: { id, status: "PENDING" },
+          data: {
+            status: "APPROVED",
+            decidedByEmployeeId: deciderId,
+            decidedAt: new Date(),
+            decisionReason: reason ?? null,
+          },
+        });
+        if (claimed.count === 0) return null;
+        await recordAudit(tx, {
+          entityType: "KpiChangeRequest",
+          entityId: id,
+          action: "UPDATE",
+          before: { status: "PENDING" },
+          after: { status: "APPROVED", decidedByEmployeeId: deciderId },
+        });
+
+        // Re-read the set INSIDE the transaction, and re-run §5.3 against it.
+        //
+        // The pre-check above ran on a read taken before the transaction opened.
+        // Today nothing else can move an approved baseline — `kpiEditBlockedReason`
+        // refuses drafting edits after §5.1's approval, and the partial unique
+        // index allows only one pending request at a time — but that is an
+        // argument assembled from two other files, and it is the kind that stops
+        // being true quietly. Archiving a stale "before" would put a version in
+        // §6.3's permanent history that never existed. Re-reading makes the
+        // transaction answer the question itself.
+        const kpis = await tx.kpi.findMany({
+          where: { participantId: existing.participantId, deletedAt: null },
+          select: KPI_STATE_SELECT,
+          take: 200,
+        });
+        const blockedNow = approvalBlockedReason({ kpis, edits });
+        if (blockedNow) throw new ApprovalRefused(blockedNow);
+
+        const touched = kpis.filter((k) => byKpi.has(k.id));
+
+        for (const kpi of touched) {
+          // §6.3 — archive the state being SUPERSEDED, before it is overwritten.
+          // Version 1 is therefore the KPI as HR originally approved it, and the
+          // live row is always the current state; the archive holds every state
+          // that has been replaced, in the order it was replaced.
+          //
+          // `count + 1` rather than `max + 1`: the rows are only ever appended,
+          // never deleted (that is what "never overwritten" means), so the count
+          // IS the highest version. The unique key `[kpiId, versionNo]` is the
+          // backstop if that assumption ever stops holding.
+          const versionNo = (await tx.kpiVersion.count({ where: { kpiId: kpi.id } })) + 1;
+          await tx.kpiVersion.create({
+            data: {
+              kpiId: kpi.id,
+              versionNo,
+              description: kpi.description,
+              weightage: kpi.weightage,
+              descriptorOutstanding: kpi.descriptorOutstanding,
+              descriptorExcellent: kpi.descriptorExcellent,
+              descriptorTarget: kpi.descriptorTarget,
+              descriptorAlmostAchieved: kpi.descriptorAlmostAchieved,
+              descriptorUnsatisfactory: kpi.descriptorUnsatisfactory,
+              orderIndex: kpi.orderIndex,
+              supersededByRequestId: id,
+            },
+          });
+
+          // Apply. `applyEdit` is the same function the submit route validated
+          // with and the screen previews with, so what HR saw is what lands.
+          const next = applyEdit(kpi, byKpi.get(kpi.id));
+          await tx.kpi.update({
+            where: { id: kpi.id },
+            data: {
+              description: next.description,
+              weightage: new Prisma.Decimal(next.weightage),
+              descriptorOutstanding: next.descriptorOutstanding,
+              descriptorExcellent: next.descriptorExcellent,
+              descriptorTarget: next.descriptorTarget,
+              descriptorAlmostAchieved: next.descriptorAlmostAchieved,
+              descriptorUnsatisfactory: next.descriptorUnsatisfactory,
+            },
+          });
+        }
+
+        return touched.length;
+      });
+    } catch (error) {
+      // §5.3 failed on the re-read: nothing was claimed, archived or applied.
+      if (error instanceof ApprovalRefused) return err(error.message, 409);
+      throw error;
+    }
+
+    if (applied === null) {
+      return err("This request was decided by someone else a moment ago (§6.2).", 409);
+    }
+
+    const row = await prisma.kpiChangeRequest.findUniqueOrThrow({
+      where: { id },
+      select: CHANGE_REQUEST_SELECT,
+    });
+    return ok({ changeRequest: serializeChangeRequest(row), applied });
+  }),
+  { id: "pms-change-request-write", limit: 30, windowMs: 60_000 },
+);

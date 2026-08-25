@@ -177,7 +177,10 @@ async function fetchParticipantPage(cycleId: string, cursor?: string): Promise<P
           deletedAt: true,
         },
       },
-      signOffs: { select: { party: true } },
+      // GOAL_SETTING only — see the note in lib/pms/signoff.ts. The ladder
+      // escalates on a MISSING signature; a year-end row counted here would
+      // silence a genuine goal-setting miss.
+      signOffs: { where: { stageKind: GOAL_SETTING_STAGE }, select: { party: true } },
     },
   });
 }

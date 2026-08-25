@@ -42,7 +42,8 @@
     "orgSetup": "Org setup",
     "cycles": "Performance cycles",
     "hrRoles": "HR roles",
-    "goalSetting": "Goal setting"
+    "goalSetting": "Goal setting",
+    "midYear": "Mid-year review"
   },
   "auth": {
     "login": "Login",
@@ -573,6 +574,118 @@
         "EXECUTIVE_VIEWER": "Executive viewer",
         "LINE_MANAGER": "Line manager"
       }
+    },
+    "midYear": {
+      "title": "Mid-year review",
+      "subtitle": "Raise and decide changes to an approved KPI baseline. No scoring happens at mid-year (§2).",
+      "notPermitted": "Raising a change request belongs to the direct line manager, and deciding one to HR. If your own KPIs change, you will see it on your KPI screen.",
+      "loadFailed": "The mid-year workspace could not be loaded.",
+      "retry": "Try again",
+      "noCycles": "No performance cycle exists yet. HR opens one before mid-year can run.",
+      "cycleLabel": "Cycle year",
+      "queueTitle": "Awaiting a decision",
+      "queueSubtitle": "Change requests that have been raised and not yet decided.",
+      "queueEmpty": "Nothing is waiting on a decision.",
+      "queueMeta": "Raised by {name} · {count} KPI(s) · {datetime}",
+      "unknownRequester": "a former colleague",
+      "open": "Open",
+      "status": {
+        "PENDING": "Awaiting HR",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn"
+      },
+      "stage": {
+        "title": "Mid-year",
+        "notConfigured": "This cycle has no mid-year stage yet, so no change request can be raised on it.",
+        "notYetOpen": "Opens {datetime}",
+        "open": "Locks {datetime}",
+        "locked": "Locked since {datetime}",
+        "lockedBody": "The deadline passed, so no new change request can be raised. HR can still decide one that is already pending, and can reopen the stage by extending the deadline.",
+        "notYetOpenBody": "No change request can be raised until the stage opens.",
+        "graceNote": "HR has {days} days of grace after the deadline to intervene.",
+        "stateValue": {
+          "NOT_YET_OPEN": "Not open yet",
+          "OPEN": "Open",
+          "LOCKED": "Locked"
+        }
+      },
+      "noMatches": "No one matches that search.",
+      "rosterEmpty": "No one is enrolled in this cycle yet.",
+      "exempt": "Exempt (§8.3)",
+      "noBaseline": "No approved baseline",
+      "baselineApproved": "Approved by HR",
+      "kpiCount": "{count} KPI(s)",
+      "openRow": "Open",
+      "column": {
+        "employee": "Employee",
+        "baseline": "Baseline",
+        "weightage": "Weightage",
+        "actions": "Actions"
+      }
+    },
+    "changeRequest": {
+      "pageTitle": "Mid-year changes — {name}",
+      "backAction": "Back to mid-year",
+      "title": "Propose a change",
+      "subtitle": "Weightages must still total exactly 100%, so rebalance the whole set in one request (§5.3).",
+      "currentWeightage": "Currently {value}%",
+      "proposeEdit": "Propose a change",
+      "discardEdit": "Discard",
+      "proposedTotal": "Proposed total: {total}%",
+      "mustTotal": "A request can only be approved when the set totals exactly 100%.",
+      "rationaleLabel": "Why this change is needed",
+      "rationalePlaceholder": "What changed about the role, the targets or the business?",
+      "rationaleHelp": "HR reads this when deciding. It is stored with the request either way.",
+      "submit": "Send to HR",
+      "submitting": "Sending…",
+      "editCount": "{count} KPI(s) changed",
+      "submittedToast": "Change request sent to HR.",
+      "submitFailed": "The change request could not be sent.",
+      "reviewTitle": "Change request",
+      "requestedBy": "Raised by {name} · {datetime}",
+      "unknownRequester": "a former colleague",
+      "unknownDecider": "a former colleague",
+      "kpiGone": "This KPI is no longer in the set",
+      "reasonLabel": "Decision reason",
+      "reasonPlaceholder": "Required when rejecting; the manager sees it.",
+      "reasonHelp": "A rejection must carry a reason (§6.2). An approval may leave this blank.",
+      "approve": "Approve and apply",
+      "reject": "Reject",
+      "approvedToast": "Change request approved and applied.",
+      "rejectedToast": "Change request rejected.",
+      "decideFailed": "The decision could not be recorded.",
+      "withdraw": "Withdraw this request",
+      "withdrawHelp": "The request stays on the record as withdrawn; nothing is deleted (§6.3).",
+      "withdrawnToast": "Change request withdrawn.",
+      "withdrawFailed": "The request could not be withdrawn.",
+      "decisionReasonLabel": "HR's reason",
+      "decidedBy": "Decided by {name} · {datetime}",
+      "decidedTitle": "Earlier requests",
+      "decidedSubtitle": "Everything that was asked for on this KPI set, decided or withdrawn.",
+      "historyTitle": "Version history",
+      "historySubtitle": "Superseded KPI versions, archived and never overwritten (§6.3).",
+      "historyEmptyBody": "No KPI on this set has been changed yet, so the live version is the only one.",
+      "versionNo": "Version {no}",
+      "versionMeta": "Weightage {weightage}% · replaced {datetime}",
+      "exemptTitle": "No mid-year changes for this participant",
+      "exemptBody": "C-Level employees skip goal-setting entirely (§8.3), so there is no KPI baseline to change.",
+      "status": {
+        "PENDING": "Awaiting HR",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn"
+      },
+      "field": {
+        "description": "Description",
+        "weightage": "Weightage %",
+        "descriptorOutstanding": "Outstanding",
+        "descriptorExcellent": "Excellent",
+        "descriptorTarget": "Target",
+        "descriptorAlmostAchieved": "Almost Achieved",
+        "descriptorUnsatisfactory": "Unsatisfactory"
+      },
+      "notYours": "A change request is raised by your line manager, not by you (§6.2). If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here."
     }
   }
 }
