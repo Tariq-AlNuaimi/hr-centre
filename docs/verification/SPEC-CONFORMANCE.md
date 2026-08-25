@@ -25,12 +25,12 @@ Every number below was produced by running the thing, on 2026-08-25.
 
 | Measure                                                            | Value                                                                            |
 | ------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Contract tests (`npm test`)                                        | **534 passing, 0 failing** across 33 files, plus 17 ESLint-rule tests            |
-| DB-backed integration tests (real PostgreSQL, real route handlers) | **82 passing, 0 failing** — three consecutive concurrent runs                    |
+| Contract tests (`npm test`)                                        | **537 passing, 0 failing** across 33 files, plus 17 ESLint-rule tests            |
+| DB-backed integration tests (real PostgreSQL, real route handlers) | **85 passing, 0 failing** — three consecutive concurrent runs                    |
 | `npm run ship`                                                     | **green** — typecheck, lint, format, tests, build, gitleaks, npm audit, +14 more |
 | Prisma models                                                      | 36                                                                               |
 | Migrations applied from empty → current                            | 17, in order, on a database created for this report                              |
-| API routes                                                         | 55                                                                               |
+| API routes                                                         | 56                                                                               |
 | Screens                                                            | 35                                                                               |
 | Local ESLint security rules at `error`                             | 14                                                                               |
 | ADRs                                                               | 67                                                                               |
@@ -149,18 +149,22 @@ Three things had to be true before a row below says ✅:
 
 ## §9 360 assessment module
 
-| Clause                                             | Status      | Evidence                                                                                                               |
-| -------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------- |
-| §9.1 One 360 per performance year                  | ✅ Verified | `ThreeSixtyCycle.cycleId @unique`; a second is refused                                                                 |
-| §9.2 One template per relationship direction       | ✅ Verified | `AssessmentType`; `templateTypeFor` decides from the RELATIONSHIP, so a peer form cannot be used on a manager          |
-| §9.3 **4-point forced scale, no neutral midpoint** | ✅ Verified | `assignment_responses_score_range_check` constrains a scored answer to 1–4 in the database                             |
-| §9.4 **Exactly 3 raters per employee**             | ✅ Verified | Checked at ACTIVATION, not per edit — §9.6 lets HR hold a half-built set on screen. Shortfalls are named, never padded |
-| §9.4 HR manages all assignments                    | ✅ Verified | `PUT`/`POST /api/three-sixty/assignments`, HR-only; a rater sees only their own                                        |
-| §9.5 Ratio = actual ÷ **that form's** maximum      | ✅ Verified | `formRatio` — the spec's 85/96, 84/84, 84/96 → 0.89/1.00/0.88 → 0.92 → 4.60                                            |
-| §9.5 Open-ended answers never score                | ✅ Verified | `TemplateQuestion.scored` decides; a text answer contributes nothing                                                   |
-| §9.6 Auto-generate, then HR edits before launch    | ✅ Verified | `proposeRaters` from the mapping; assignments are editable while the cycle is DRAFT                                    |
-| §9.7 Activation, execution, results                | ✅ Verified | `POST /api/three-sixty/activate`, `…/responses`, `…/results`; console at `/three-sixty`                                |
-| §8.3 No C-Level ratee; nobody rates themselves     | ✅ Verified | `assignments_no_self_rating_check` in the database, and asserted over the generated set                                |
+| Clause                                               | Status      | Evidence                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §9.1 One 360 per performance year                    | ✅ Verified | `ThreeSixtyCycle.cycleId @unique`; a second is refused                                                                                                                                                                                                                       |
+| §9.2 One template per relationship direction         | ✅ Verified | `AssessmentType`; `templateTypeFor` decides from the RELATIONSHIP, so a peer form cannot be used on a manager                                                                                                                                                                |
+| §9.3 **4-point forced scale, no neutral midpoint**   | ✅ Verified | `assignment_responses_score_range_check` constrains a scored answer to 1–4 in the database                                                                                                                                                                                   |
+| §9.4 **Exactly 3 raters per employee**               | ✅ Verified | Checked at ACTIVATION, not per edit — §9.6 lets HR hold a half-built set on screen. Shortfalls are named, never padded                                                                                                                                                       |
+| §9.4 HR manages all assignments                      | ✅ Verified | `PUT`/`POST /api/three-sixty/assignments`, HR-only; a rater sees only their own                                                                                                                                                                                              |
+| §9.5 Ratio = actual ÷ **that form's** maximum        | ✅ Verified | `formRatio` — the spec's 85/96, 84/84, 84/96 → 0.89/1.00/0.88 → 0.92 → 4.60                                                                                                                                                                                                  |
+| §9.5 Open-ended answers never score                  | ✅ Verified | `TemplateQuestion.scored` decides; a text answer contributes nothing                                                                                                                                                                                                         |
+| §9.6 Auto-generate, then HR edits before launch      | ✅ Verified | `proposeRaters` from the mapping; assignments are editable while the cycle is DRAFT                                                                                                                                                                                          |
+| §9.6 **Projects (optional): peers from shared work** | ✅ Verified | `POST/GET /api/projects`, HR-only, cycle-scoped and deliberately thin (§14 hands this to a separate system in v2). A shared project widens the peer pool where a department cannot — asserted on the RATER's identity, not on a count, for someone alone in their department |
+| §9.7 Activation, execution, results                  | ✅ Verified | `POST /api/three-sixty/activate`, `…/responses`, `…/results`; console at `/three-sixty`                                                                                                                                                                                      |
+| §9.7 **Four evaluator statuses**, incl. Overdue      | ✅ Verified | Three stored, Overdue DERIVED from the deadline — a stored "overdue" is a second source of truth about the clock, wrong for however long a job takes to run, or forever if HR moves the deadline. A submitted assessment is never overdue                                    |
+| §9.7 **Automated reminders before deadline**         | ✅ Verified | `remindThreeSixtyRaters` in the daily sweep, inside the same 7-day window §5.5 uses. It writes NO `ComplianceEvent`: an unanswered 360 is not a manager-accountability matter and must not land on anyone's record                                                           |
+| §9.7 Prevent duplicate submissions per assignment    | ✅ Verified | `assignments_submitted_complete_check`; a second submission is refused                                                                                                                                                                                                       |
+| §8.3 No C-Level ratee; nobody rates themselves       | ✅ Verified | `assignments_no_self_rating_check` in the database, and asserted over the generated set                                                                                                                                                                                      |
 
 ## §10 Calibration
 
@@ -265,6 +269,9 @@ fails. A test that passes against a broken implementation certifies nothing.
 
 | Implementation broken                                     | Test that caught it                                        |
 | --------------------------------------------------------- | ---------------------------------------------------------- |
+| §9.6's project peers dropped from the pool                | someone alone in their department lost their only peer     |
+| A submitted 360 allowed to read as Overdue                | a rater who had answered stayed on the chase list          |
+| §9.7's reminder window left open past the deadline        | an overdue was mailed as a reminder                        |
 | §12.3's transfer date moved into the OLD period           | day counts no longer sum to 365                            |
 | `proratedComponent` tolerating an unassessed period       | a half-assessed employee scored                            |
 | `displayScore` dropping the upper clamp                   | a moved band showed a contradicting score                  |

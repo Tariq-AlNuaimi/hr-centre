@@ -66,6 +66,7 @@
 - app/api/org/departments/route.ts  [GET,POST]
 - app/api/org/entities/route.ts  [GET,POST]
 - app/api/pms/me/route.ts  [GET]
+- app/api/projects/route.ts  [GET,POST]
 - app/api/publish/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
@@ -154,7 +155,7 @@
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
 - lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, withdrawBlockedReason, changeRequestAccessRefusal
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
-- lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, WrittenEvent, Intervention, notify
+- lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, WrittenEvent, Intervention, notify, remindThreeSixtyRaters
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
@@ -179,7 +180,8 @@
 - lib/pms/status-query.ts: participantStatuses
 - lib/pms/status.ts: StepState, ParticipantStatusInput, ParticipantStatus, goalSettingState, yearEndState, outstandingLabel, deriveStatus, StageTally, emptyTally, completion, tallyBy, StageProgress, stageProgress, awaitingManager
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
-- lib/pms/three-sixty.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, RATERS_PER_EMPLOYEE, isAnswerScore, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty
+- lib/pms/three-sixty-assign.ts: projectPeers, peerPoolFor, PlannedAssignment, planAssignments
+- lib/pms/three-sixty.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, RATERS_PER_EMPLOYEE, isAnswerScore, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
@@ -199,7 +201,7 @@
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
-- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema
+- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, upsertProjectSchema
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 

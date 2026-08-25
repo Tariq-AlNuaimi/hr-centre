@@ -6,11 +6,13 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
 import {
+  evaluatorStatus,
   isThreeSixtyExempt,
   proposeRaters,
   templateTypeFor,
   type RaterCandidate,
 } from "@/lib/pms/three-sixty";
+import { planAssignments, projectPeers } from "@/lib/pms/three-sixty-assign";
 import { setAssignmentsSchema } from "@/lib/validations/three-sixty";
 
 /**
@@ -75,6 +77,11 @@ export const PUT = withRateLimit(
       (p) => p.status === "ACTIVE" && !isThreeSixtyExempt(p.roleTrack),
     );
 
+    // §9.6's optional project mapping, read once for the cycle. Empty for a fork
+    // that never uses projects, which is the common case — "not applicable to
+    // everyone", as the clause says.
+    const projectPeersByEmployee = await projectPeers(threeSixty.cycleId);
+
     let created = 0;
     const shortfalls: { rateeId: string; missing: number }[] = [];
 
@@ -105,37 +112,21 @@ export const PUT = withRateLimit(
     // exactly three raters, so a partial run surfaces as a blocked activation
     // rather than as a silently short 360.
 
-    for (const ratee of rateable) {
-      const lineManager = ratee.managerId ? (byId.get(ratee.managerId) ?? null) : null;
-      const reports = people.filter((p) => p.managerId === ratee.id);
-      // §9.4's peer pool: same department first, then anyone sharing a project
-      // (§9.6). Both are "someone they worked with"; department is the cheaper
-      // and more reliable signal, so it leads.
-      const peerPool = people.filter(
-        (p) =>
-          p.id !== ratee.id &&
-          p.id !== ratee.managerId &&
-          p.departmentId !== null &&
-          p.departmentId === ratee.departmentId,
-      );
+    const { planned, shortfalls: planShortfalls } = planAssignments({
+      rateable,
+      people,
+      byId,
+      templateByType,
+      projectPeersByEmployee,
+    });
+    shortfalls.push(...planShortfalls);
 
-      const { raterIds, shortfall } = proposeRaters({ ratee, lineManager, reports, peerPool });
-      if (shortfall > 0) shortfalls.push({ rateeId: ratee.id, missing: shortfall });
-
-      for (const raterId of raterIds) {
-        const rater = byId.get(raterId);
-        if (!rater) continue;
-        const type = templateTypeFor({ rater, ratee });
-        if (type === null) continue;
-        const templateId = templateByType.get(type);
-        if (!templateId) continue;
-
-        await prisma.assignment.create({
-          data: { threeSixtyCycleId, rateeId: ratee.id, raterId, templateId },
-          select: { id: true },
-        });
-        created += 1;
-      }
+    for (const row of planned) {
+      await prisma.assignment.create({
+        data: { threeSixtyCycleId, ...row },
+        select: { id: true },
+      });
+      created += 1;
     }
 
     // Shortfalls are REPORTED, never padded. §9.4 wants exactly three, and
@@ -264,9 +255,26 @@ export const GET = withRateLimit(
           status: true,
           ratee: { select: { id: true, name: true } },
           template: { select: { type: true } },
+          threeSixtyCycle: { select: { deadline: true } },
         },
       });
-      return ok({ assignments: mine, scope: "mine" });
+      const now = new Date();
+      return ok({
+        scope: "mine",
+        // §9.7's four statuses. OVERDUE is derived from the SERVER's clock, so a
+        // slow client cannot invent or hide one.
+        assignments: mine.map((a) => ({
+          id: a.id,
+          status: evaluatorStatus({
+            stored: a.status,
+            deadline: a.threeSixtyCycle.deadline,
+            now,
+          }),
+          ratee: a.ratee,
+          template: a.template,
+          deadline: a.threeSixtyCycle.deadline,
+        })),
+      });
     }
 
     const rows = await prisma.assignment.findMany({
@@ -279,9 +287,11 @@ export const GET = withRateLimit(
         ratee: { select: { id: true, name: true, departmentId: true } },
         rater: { select: { id: true, name: true } },
         template: { select: { type: true } },
+        threeSixtyCycle: { select: { deadline: true } },
       },
       orderBy: [{ rateeId: "asc" }],
     });
+    const now = new Date();
 
     // §9.4's count per ratee, so HR can see at a glance who is short before
     // trying to activate.
@@ -293,7 +303,15 @@ export const GET = withRateLimit(
     }
 
     return ok({
-      assignments: rows,
+      // §9.7's per-evaluator status, HR's view of it.
+      assignments: rows.map((r) => ({
+        id: r.id,
+        status: evaluatorStatus({ stored: r.status, deadline: r.threeSixtyCycle.deadline, now }),
+        submittedAt: r.submittedAt,
+        ratee: r.ratee,
+        rater: r.rater,
+        template: r.template,
+      })),
       scope: "all",
       coverage: [...byRatee.entries()].map(([rateeId, v]) => ({ rateeId, ...v })),
     });

@@ -6,7 +6,12 @@ import { withInternalAuth, withRateLimit } from "@/lib/api-helpers";
 import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
 import { hoursOverdue, type StageWindow } from "@/lib/pms/cycle";
 import { signOffState } from "@/lib/pms/signoff";
-import { notify, type Intervention, type WrittenEvent } from "@/lib/pms/cycle-notify";
+import {
+  notify,
+  remindThreeSixtyRaters,
+  type Intervention,
+  type WrittenEvent,
+} from "@/lib/pms/cycle-notify";
 import {
   hrInterventionDue,
   interventionSummary,
@@ -310,6 +315,10 @@ async function sweep() {
   }
 
   const notified = await notify(written, interventions, interventionCount);
+  // §9.7's "automated reminders before deadline". Separate from §5.5's ladder
+  // because an unanswered 360 is not a compliance matter and must not land on
+  // any manager's record.
+  const threeSixtyReminders = await remindThreeSixtyRaters(now);
 
   return ok({
     ranAt: now.toISOString(),
@@ -322,6 +331,7 @@ async function sweep() {
     hrInterventionDue: interventionCount,
     hrInterventionQueue: interventions,
     notified,
+    threeSixtyReminders,
   });
 }
 

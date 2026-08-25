@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { Prisma } from "../../generated/prisma/client";
 
 import {
+  evaluatorStatus,
+  isReminderDue,
+  THREE_SIXTY_REMINDER_DAYS,
   ANSWER_SCALE,
   MAX_ANSWER,
   RATERS_PER_EMPLOYEE,
@@ -303,4 +306,50 @@ test("§9.5 averaging over what EXISTS, when a rater has left mid-cycle", () => 
 
 test("§9.4's constant is three", () => {
   assert.equal(RATERS_PER_EMPLOYEE, 3);
+});
+
+// --- §9.7's fourth status and its reminders --------------------------------
+
+test("§9.7 Overdue is DERIVED from the deadline, never a stored fourth state", () => {
+  const deadline = new Date("2027-07-31T23:59:59Z");
+  const before = new Date("2027-07-30T00:00:00Z");
+  const after = new Date("2027-08-01T00:00:00Z");
+
+  assert.equal(evaluatorStatus({ stored: "NOT_STARTED", deadline, now: before }), "NOT_STARTED");
+  assert.equal(evaluatorStatus({ stored: "IN_PROGRESS", deadline, now: before }), "IN_PROGRESS");
+  assert.equal(evaluatorStatus({ stored: "NOT_STARTED", deadline, now: after }), "OVERDUE");
+  assert.equal(evaluatorStatus({ stored: "IN_PROGRESS", deadline, now: after }), "OVERDUE");
+});
+
+test("§9.7 a submitted assessment is never overdue, whenever it arrived", () => {
+  // §9.7 tracks who still OWES an assessment. Someone who answered owes nothing,
+  // and marking them overdue would put them on a chase list forever.
+  const deadline = new Date("2027-07-31T23:59:59Z");
+  assert.equal(
+    evaluatorStatus({ stored: "SUBMITTED", deadline, now: new Date("2027-12-31T00:00:00Z") }),
+    "SUBMITTED",
+  );
+});
+
+test("§9.7 reminders fire inside the window and stop at the deadline", () => {
+  const deadline = new Date("2027-07-31T00:00:00Z");
+  const outside = new Date("2027-07-01T00:00:00Z");
+  const inside = new Date("2027-07-28T00:00:00Z");
+  const past = new Date("2027-08-01T00:00:00Z");
+
+  assert.equal(isReminderDue({ deadline, now: outside }), false, "not a month out");
+  assert.equal(isReminderDue({ deadline, now: inside }), true);
+  assert.equal(
+    isReminderDue({ deadline, now: past }),
+    false,
+    "past the deadline it is an overdue, not a reminder",
+  );
+  // Exactly on the boundary of the window.
+  assert.equal(
+    isReminderDue({
+      deadline,
+      now: new Date(deadline.getTime() - THREE_SIXTY_REMINDER_DAYS * 86_400_000),
+    }),
+    true,
+  );
 });

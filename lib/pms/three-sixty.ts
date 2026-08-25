@@ -259,3 +259,36 @@ export function consolidateThreeSixty(forms: readonly SubmittedForm[]): {
     comments: comments.sort((a, b) => a.localeCompare(b)),
   };
 }
+
+/**
+ * §9.7 — "Status tracking per evaluator: Not Started / In Progress / Submitted /
+ * **Overdue**."
+ *
+ * Four statuses, three of them stored. Overdue is DERIVED from the deadline
+ * rather than written by a job, for the same reason §5.4's lock is: a stored
+ * "overdue" is a second source of truth about the clock, and it is wrong for
+ * however long it takes the job to run — or forever, if HR moves the deadline.
+ *
+ * A submitted assignment is never overdue, whenever it arrived: §9.7 tracks who
+ * still owes an assessment, and someone who has answered owes nothing.
+ */
+export type EvaluatorStatus = "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "OVERDUE";
+
+export function evaluatorStatus(params: {
+  stored: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED";
+  deadline: Date;
+  now: Date;
+}): EvaluatorStatus {
+  const { stored, deadline, now } = params;
+  if (stored === "SUBMITTED") return "SUBMITTED";
+  return now > deadline ? "OVERDUE" : stored;
+}
+
+/** §9.7's "automated reminders before deadline" — the same 7-day window §5.5 uses. */
+export const THREE_SIXTY_REMINDER_DAYS = 7;
+
+export function isReminderDue(params: { deadline: Date; now: Date }): boolean {
+  const { deadline, now } = params;
+  if (now > deadline) return false; // past the deadline it is an overdue, not a reminder
+  return deadline.getTime() - now.getTime() <= THREE_SIXTY_REMINDER_DAYS * 86_400_000;
+}

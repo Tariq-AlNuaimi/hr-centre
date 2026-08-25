@@ -20,6 +20,7 @@ let activateRoute: typeof import("../../app/api/three-sixty/activate/route");
 let responsesRoute: typeof import("../../app/api/three-sixty/responses/route");
 let resultsRoute: typeof import("../../app/api/three-sixty/results/route");
 let strategyRoute: typeof import("../../app/api/strategy-scores/route");
+let projectsRoute: typeof import("../../app/api/projects/route");
 
 const ids = {
   cycle: "",
@@ -66,6 +67,7 @@ before(async () => {
   responsesRoute = await import("../../app/api/three-sixty/responses/route");
   resultsRoute = await import("../../app/api/three-sixty/results/route");
   strategyRoute = await import("../../app/api/strategy-scores/route");
+  projectsRoute = await import("../../app/api/projects/route");
 
   const { enrolParticipants } = await import("../../lib/pms/cycle");
 
@@ -530,4 +532,160 @@ test("§4.1 a non-org-wide actor cannot read 360 results", async () => {
     ),
   );
   assert.equal(status, 403);
+});
+
+// --- §9.6's project mapping -------------------------------------------------
+
+test("§9.6 HR maintains projects, and only HR", async () => {
+  as(ids.hrUser);
+  const create = await json(
+    await projectsRoute.POST(
+      req("/api/projects", "POST", {
+        cycleId: ids.cycle,
+        name: "Loyalty Platform",
+        memberEmployeeIds: [ids.hr],
+      }),
+      ctx(),
+    ),
+  );
+  assert.ok(create.status === 200 || create.status === 201, JSON.stringify(create));
+
+  // A re-write REPLACES the membership rather than appending to it.
+  const replace = await json(
+    await projectsRoute.POST(
+      req("/api/projects", "POST", {
+        cycleId: ids.cycle,
+        name: "Loyalty Platform",
+        memberEmployeeIds: [],
+      }),
+      ctx(),
+    ),
+  );
+  assert.equal(replace.status, 200);
+  const after = await prisma.project.findUniqueOrThrow({
+    where: { cycleId_name: { cycleId: ids.cycle, name: "Loyalty Platform" } },
+    select: { members: { select: { id: true } } },
+  });
+  assert.equal(after.members.length, 0, "the list is replaced, never merged");
+});
+
+test("§9.6 an unknown member is refused rather than silently dropped", async () => {
+  as(ids.hrUser);
+  const { status } = await json(
+    await projectsRoute.POST(
+      req("/api/projects", "POST", {
+        cycleId: ids.cycle,
+        name: "Ghost Project",
+        memberEmployeeIds: ["cl00000000000000000000000"],
+      }),
+      ctx(),
+    ),
+  );
+  assert.equal(status, 409, "a peer pool that quietly loses someone is worse than a refusal");
+});
+
+test("§9.6 a project peer reaches the rater pool that the department cannot", async () => {
+  // The point of §9.6's projects: someone alone in their department has no
+  // departmental peers at all, so their shortfall is structural rather than
+  // something HR can fix by editing assignments. A shared project is the fix.
+  const entity = await prisma.orgEntity.findFirstOrThrow({ select: { id: true } });
+  // Upsert, not create: a re-run must not collide on (entityId, name), and the
+  // department is deleted at the end so it never joins another suite's
+  // "any department" pick.
+  const lonelyName = `ZZTEST Lonely ${ids.cycle.slice(-6)}`;
+  const lonely = await prisma.department.upsert({
+    where: { entityId_name: { entityId: entity.id, name: lonelyName } },
+    create: { name: lonelyName, entityId: entity.id },
+    update: {},
+    select: { id: true },
+  });
+  const soloist = await suiteActor(prisma, {
+    suite: "ts",
+    tag: "solo",
+    name: "360 Solo Department",
+  });
+  await prisma.employee.update({
+    where: { id: soloist },
+    data: { departmentId: lonely.id, entityId: entity.id, managerId: ids.hr },
+  });
+
+  // Re-runnable regardless of how a previous run ENDED: a failed run leaves its
+  // project membership behind, and that leftover is exactly what would make the
+  // "before" measurement below already contain a project peer.
+  await prisma.projectMember.deleteMany({ where: { employeeId: soloist } });
+
+  const { enrolParticipants } = await import("../../lib/pms/cycle");
+  await enrolParticipants(ids.cycle);
+
+  // §9.6 regenerates only on a DRAFT cycle, and earlier tests in this file leave
+  // it ACTIVE. Put it back for the duration rather than depending on test order.
+  const priorStatus = (
+    await prisma.threeSixtyCycle.findUniqueOrThrow({
+      where: { id: ids.threeSixty },
+      select: { status: true },
+    })
+  ).status;
+  await prisma.threeSixtyCycle.update({
+    where: { id: ids.threeSixty },
+    data: { status: "DRAFT" },
+  });
+
+  // Each regeneration comes from its own throttle key. The route's own limit is
+  // 30/minute and this file makes many calls before reaching here; the bucket is
+  // per-caller by design, so distinct callers is the honest way to ask twice
+  // rather than reaching into the limiter's internals.
+  let caller = 0;
+  const peerPoolSize = async () => {
+    as(ids.hrUser);
+    caller += 1;
+    const request = new NextRequest(new URL("/api/three-sixty/assignments", "http://localhost"), {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": `10.9.9.${caller}`,
+      },
+      body: JSON.stringify({ threeSixtyCycleId: ids.threeSixty }),
+    });
+    const res = await json(await assignmentsRoute.PUT(request, ctx()));
+    assert.equal(res.status, 200, JSON.stringify(res));
+    // The claim is about WHICH raters reach the pool, not how many rows exist —
+    // a count can move for reasons that have nothing to do with §9.6.
+    const rows = await prisma.assignment.findMany({
+      where: { threeSixtyCycleId: ids.threeSixty, rateeId: soloist },
+      select: { raterId: true },
+    });
+    return new Set(rows.map((r) => r.raterId));
+  };
+
+  const withoutProject = await peerPoolSize();
+  assert.equal(
+    withoutProject.has(ids.ratee),
+    false,
+    "before the project, someone in another department is not a peer",
+  );
+
+  await projectsRoute.POST(
+    req("/api/projects", "POST", {
+      cycleId: ids.cycle,
+      name: "Cross-team Initiative",
+      memberEmployeeIds: [soloist, ids.hr, ids.ratee],
+    }),
+    ctx(),
+  );
+  const withProject = await peerPoolSize();
+
+  assert.equal(
+    withProject.has(ids.ratee),
+    true,
+    "a shared project makes them a peer, which the department never could",
+  );
+
+  await prisma.threeSixtyCycle.update({
+    where: { id: ids.threeSixty },
+    data: { status: priorStatus },
+  });
+  await prisma.assignment.deleteMany({ where: { rateeId: soloist } });
+  await prisma.employee.update({ where: { id: soloist }, data: { departmentId: ids.department } });
+  await prisma.projectMember.deleteMany({ where: { employeeId: soloist } });
+  await prisma.department.delete({ where: { id: lonely.id } });
 });

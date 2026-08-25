@@ -73,3 +73,18 @@ export const submitResponsesSchema = z.object({
 });
 
 export const activateSchema = z.object({ threeSixtyCycleId: z.string().min(1) });
+
+/**
+ * §9.6 — "Projects (optional): ability to create projects and link employees …
+ * v1: projects added/linked manually."
+ *
+ * Members arrive with the project rather than through a second call: a project
+ * with no members contributes nothing to the peer pool, and creating one then
+ * forgetting to populate it is the failure this shape makes impossible to reach
+ * by accident.
+ */
+export const upsertProjectSchema = z.object({
+  cycleId: z.string().min(1),
+  name: z.string().trim().min(1).max(200),
+  memberEmployeeIds: z.array(z.string().min(1)).max(200).default([]),
+});
