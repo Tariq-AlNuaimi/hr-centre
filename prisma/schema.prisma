@@ -300,6 +300,7 @@ model Employee {
   goalsApproved     CycleParticipant[] @relation("GoalsApprovedBy")
   signOffs          SignOff[]          @relation("SignOffSigner")
   changeRequested   KpiChangeRequest[] @relation("ChangeRequestRequester")
+  ratingsGiven    KpiRating[]        @relation("KpiRater")
   changeDecided     KpiChangeRequest[] @relation("ChangeRequestDecider")
   complianceAbout   ComplianceEvent[]  @relation("ComplianceSubject")
   complianceAgainst ComplianceEvent[]  @relation("ComplianceManager")
@@ -692,6 +693,60 @@ model KpiVersion {
   @@map("kpi_versions")
 }
 
+/// §7.1 — the year-end assessment: the employee rates themselves against each
+/// KPI, then the manager rates the same KPI, then the two discuss offline and
+/// both sign (§7.1's ordering, and the reason `SignOff` gained `stageKind`).
+///
+/// `level` is 1–5, resolving onto §8.1's scale: Outstanding 5, Excellent 4,
+/// Target 3, Almost Achieved 2, Unsatisfactory 1. It is stored as the LEVEL, not
+/// as a score — §6.1 forbids scoring at mid-year and §8 puts the score in
+/// Phase 5. What is captured here is which descriptor was chosen; what that is
+/// worth is a later, separate decision.
+///
+/// The descriptor TEXT is deliberately not copied onto this row. §7.1 says the
+/// employee assesses "using the five-level descriptors defined at goal-setting",
+/// and those live on the `Kpi` — which, after §6.2, may have been reworded by an
+/// approved change request. `KpiVersion` already holds every superseded wording,
+/// so the pair (kpiId, ratedAt) reconstructs what was on screen; duplicating the
+/// text here would create a second copy that can disagree with both.
+model KpiRating {
+  id    String @id @default(cuid())
+  kpiId String @map("kpi_id")
+  kpi   Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  party SignOffParty
+
+  /// §8.1's scale. CHECK-constrained to 1–5 in the migration: an out-of-range
+  /// level is not a rating, and Phase 5 will map this number onto a band.
+  level Int
+
+  /// Required when this is the MANAGER's rating and it differs from the
+  /// employee's self-assessment for the same KPI (operator decision, recorded in
+  /// the blueprint). A divergence with no stated reason is the thing employees
+  /// dispute and §10's calibration cannot interpret months later. Enforced by a
+  /// trigger-free CHECK is impossible across rows, so the rule lives at the
+  /// boundary and in the domain seam; see `lib/pms/rating.ts`.
+  comment String?
+
+  /// WHO rated. §7.2 — the manager of record is whoever holds the relationship
+  /// at the moment of the action, so the SIGNER is recorded rather than resolved
+  /// later from a relationship that may since have changed.
+  ratedByEmployeeId String   @map("rated_by_employee_id")
+  ratedByEmployee   Employee @relation("KpiRater", fields: [ratedByEmployeeId], references: [id])
+  ratedAt           DateTime @default(now()) @map("rated_at")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One self-assessment and one manager review per KPI. Re-rating before the
+  /// deadline UPDATES this row rather than appending — §7.1 describes a single
+  /// assessment each, and an append-only trail here would make "the employee's
+  /// rating" ambiguous at sign-off.
+  @@unique([kpiId, party])
+  @@index([ratedByEmployeeId])
+  @@map("kpi_ratings")
+}
+
 model ComplianceEvent {
   id      String           @id @default(cuid())
   cycleId String           @map("cycle_id")
@@ -821,6 +876,7 @@ model Kpi {
 
   versions    KpiVersion[]
   changeEdits KpiChangeRequestEdit[]
+  ratings     KpiRating[]
 
   deletedAt DateTime?
   deletedBy String?

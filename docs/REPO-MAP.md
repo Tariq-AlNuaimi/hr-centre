@@ -68,7 +68,7 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt
@@ -77,9 +77,10 @@
 - KpiChangeRequest: id, participantId, participant, requestedByEmployeeId, requestedByEmployee, requestedAt, rationale, status, decidedByEmployeeId, decidedByEmployee, decidedAt, decisionReason, edits, createdAt, updatedAt
 - KpiChangeRequestEdit: id, requestId, request, kpiId, kpi, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, createdAt
 - KpiVersion: id, kpiId, kpi, versionNo, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, supersededAt, supersededByRequestId, createdAt
+- KpiRating: id, kpiId, kpi, party, level, comment, ratedByEmployeeId, ratedByEmployee, ratedAt, createdAt, updatedAt
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
 - SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
-- Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, deletedAt, deletedBy, createdAt, updatedAt
+- Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, deletedAt, deletedBy, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -119,8 +120,10 @@
 - lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
+- lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
+- lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
