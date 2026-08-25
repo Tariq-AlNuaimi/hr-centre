@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { CycleStageKind } from "@/generated/prisma/client";
+import type { CycleStageKind, RoleTrack } from "@/generated/prisma/client";
 import { canActOnEmployee, type PmsActor } from "./permissions";
-import { canActOnStage, type StageWindow } from "./cycle";
+import { canActOnStage, isGoalSettingExempt, type StageWindow } from "./cycle";
 
 /**
  * KPI rules — spec §5.2 (what a manager authors) and §5.3 (the 100% rule).
@@ -144,3 +144,73 @@ export function signOffBlockedReason(params: {
 
 /** The stage KPI drafting and goal sign-off both belong to. */
 export const GOAL_SETTING_STAGE: CycleStageKind = "GOAL_SETTING";
+
+/**
+ * The complete "may this actor act on this participant's KPI set right now?"
+ * chain — §4.2, §8.3, §2, then §5.4/§5.1 via `kpiEditBlockedReason`.
+ *
+ * Extracted because it had two implementations: `POST /api/kpis` and the RSC
+ * drafting page, which reads through Prisma directly (the template's blessed
+ * pattern) and so could not go through the route. Two copies of a security
+ * ordering drift, and two copies of a sentence drift faster — one of them was
+ * already a duplicated string literal.
+ *
+ * `visible` is answered by the CALLER, because the two of them resolve it
+ * differently and both are right: the route computes a descendant set, the page
+ * has one in hand. Everything after that is decided here.
+ *
+ * Returns null when the actor may act. Otherwise a sentence written for the
+ * operator and a status: 404 to avoid an existence oracle (§4.2 — a manager
+ * probing ids must not learn who exists from a status code), 409 for a refusal
+ * about state.
+ */
+export type KpiAccessRefusal = { reason: string; status: 404 | 409 };
+
+export function kpiSetAccessRefusal(params: {
+  actor: PmsActor;
+  visible: boolean;
+  employee: { id: string; managerId: string | null; roleTrack: RoleTrack };
+  cycleStatus: string;
+  stage: StageWindow | null;
+  goalsApprovedAt: Date | null;
+  now: Date;
+}): KpiAccessRefusal | null {
+  const { actor, visible, employee, cycleStatus, stage, goalsApprovedAt, now } = params;
+
+  // §4.2 — visibility before anything else, and 404 rather than 403 on failure.
+  if (!visible) return { reason: "Participant not found", status: 404 };
+
+  // §8.3 — C-Level have no goal-setting step, so there is nothing to draft.
+  // They stay ENROLLED: §11's reporting and the entity-score pass-through both
+  // need the participant row. What §8.3 exempts them from is the work.
+  if (isGoalSettingExempt(employee.roleTrack)) {
+    return {
+      reason:
+        "C-Level employees skip goal-setting entirely (§8.3) — there are no KPIs to draft for " +
+        "this participant.",
+      status: 409,
+    };
+  }
+
+  // §2 — the year has to be running. A DRAFT cycle has not started and a CLOSED
+  // one has stopped moving; neither is a window a stage deadline can reopen.
+  if (cycleStatus !== "OPEN") {
+    return {
+      reason: `KPIs are drafted while the cycle is open — this cycle is ${cycleStatus} (§2).`,
+      status: 409,
+    };
+  }
+
+  if (stage === null) {
+    return { reason: "This cycle has no goal-setting stage configured yet (§2).", status: 409 };
+  }
+
+  const blocked = kpiEditBlockedReason({
+    actor,
+    target: { id: employee.id, managerId: employee.managerId },
+    stage,
+    now,
+    goalsApprovedAt,
+  });
+  return blocked === null ? null : { reason: blocked, status: 409 };
+}

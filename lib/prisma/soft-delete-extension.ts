@@ -21,7 +21,18 @@ type SoftDeleteDelegate = {
 };
 
 // Models that have deletedAt/deletedBy fields
-const SOFT_DELETE_MODELS = new Set(["User", "Employee", "Department", "OrgEntity"]);
+// `Kpi` joined 2026-08-24: it carries deletedAt/deletedBy and was absent, so
+// `prisma.kpi.delete()` was a HARD delete and reads returned withdrawn rows.
+// Two independent Phase 2 units hit it. The sharp consequence: a soft-deleted
+// KPI counted toward §5.3's exactly-100% total would let a set sign at a
+// weightage the employee cannot see.
+//
+// Registration is defence in depth, not the whole fix — see the NOTE below:
+// this filters the TOP-LEVEL `where` only, and the reader that matters here
+// (`weightageSummary`, which pulls `participant.kpis` through a nested select)
+// is exactly the case it cannot reach. Those call sites keep their explicit
+// `deletedAt: null` and are pinned by tests.
+const SOFT_DELETE_MODELS = new Set(["User", "Employee", "Department", "OrgEntity", "Kpi"]);
 
 /**
  * Whether this model participates in soft-delete filtering. Exposed so the

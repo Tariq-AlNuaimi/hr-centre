@@ -9,6 +9,8 @@
 - app/[locale]/(dashboard)/admin/org-setup/page.tsx
 - app/[locale]/(dashboard)/admin/roles/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
+- app/[locale]/(dashboard)/goal-setting/[cycleId]/participants/[participantId]/page.tsx
+- app/[locale]/(dashboard)/goal-setting/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
 - app/[locale]/(dashboard)/page.tsx
 - app/[locale]/(dashboard)/people/[id]/page.tsx
@@ -103,10 +105,11 @@
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary
-- lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, signOffBlockedReason, GOAL_SETTING_STAGE
+- lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
+- lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
@@ -138,7 +141,14 @@
 - components/pms/CycleList.tsx
 - components/pms/EmployeeColumns.tsx
 - components/pms/ImportPreview.tsx
+- components/pms/KpiDraftBoard.tsx
+- components/pms/KpiForm.tsx
+- components/pms/KpiList.tsx
+- components/pms/MyTasksOversight.tsx
+- components/pms/ParticipantList.tsx
 - components/pms/RoleEditor.tsx
+- components/pms/SignOffPanel.tsx
+- components/pms/StageBanner.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx

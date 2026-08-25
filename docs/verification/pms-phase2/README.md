@@ -156,17 +156,228 @@ rather than controls that would 409.
 `02-roles.png` shows the additive roles rendering as badges (§4.3), and is the proof that defect
 2 above is fixed.
 
-## 8. Still not verified
+## 8. The §5.5 escalation sweep, against a real database
 
-- **The KPI drafting and sign-off screens.** 2b and 2c ship their APIs and domain logic with
-  contract tests; the manager-facing drafting UI and the My Tasks split (§4.4) are the next
-  increment.
-- **The escalation sweep against a live database.** Its ladder is a pure function with 24 tests
-  including the §5.5 ordering and idempotency, and the DB-level idempotency constraint was
-  proven in §3 above (invariant 13) — but the cron has not yet been run end to end against a
-  seeded cycle with a rolled-forward clock.
+The ladder had 24 unit tests and had never met a database. Run against PostgreSQL 16 with the
+seeded 37-person fixture, a cycle whose GOAL_SETTING deadline sits **10 days in the past**, and
+four participants hand-placed into the four states §5.5 distinguishes.
 
-- **Screens.** 2a ships the API and domain layer; the HR cycle-admin and role-admin screens land
-  with the browser pass, alongside 2b's KPI drafting UI.
-- **The escalation sweep** (§5.5 rungs) — that is 2c, with `ComplianceEvent` already modelled and
-  its idempotency constraint already proven above (invariant 13).
+| Who  | State                            | Events written                                              | `managerEmployeeId` | Detail                                                         |
+| ---- | -------------------------------- | ----------------------------------------------------------- | ------------------- | -------------------------------------------------------------- |
+| 1100 | manager never drafted            | `DEADLINE_MISSED` + `ESCALATED_SKIP_LEVEL` + `ESCALATED_HR` | 1001                | "Manager did not draft KPIs before the goal-setting deadline." |
+| 1101 | employee signed, manager did not | all three                                                   | 1100                | exactly `employee signed, manager did not`                     |
+| 1102 | manager signed, employee did not | **`DEADLINE_MISSED` only**                                  | **NULL**            | exactly `Employee did not sign`                                |
+| 1110 | both signed                      | **none**                                                    | —                   | nobody was non-compliant                                       |
+
+1102 is the row that matters most. §5.4 puts an unsigned employee's responsibility on the
+employee, so it must not appear in the manager's compliance record — and it does not: the event
+carries a null manager and never reaches rungs two or three.
+
+`missedByHours` reads **240** on every one, which is the 10 days, floored (§5.6's "by how long").
+
+### Idempotency, proven rather than argued
+
+| Run | `eventsWritten` | `duplicatesSkipped` | Totals after                 |
+| --- | --------------- | ------------------- | ---------------------------- |
+| 1st | 32 / 30 / 31    | 0                   | 32 / 30 / 31                 |
+| 2nd | **{}**          | **93**              | **32 / 30 / 31** — unchanged |
+
+A retry, or a manual invocation on the same day, cannot inflate a manager's miss count. That
+matters because §11.2 reads this table as an objective accountability report.
+
+### Cron authorisation
+
+| Request                         | Expected | Got    |
+| ------------------------------- | -------- | ------ |
+| `POST` with no token            | 401      | 401 ✅ |
+| `GET` with a wrong bearer token | 401      | 401 ✅ |
+
+## 9. The two Ask-before changes, with the operator's approval
+
+### 9a. An admin password reset was audited as an indistinguishable blank — FIXED
+
+Recorded earlier as `UPDATE | User | changes: null`. The cause was not the scrub, which already
+redacts values while keeping keys. **`computeChanges` iterates the keys of `after`, and `after` is
+whatever the CALLER selected.** `PUT /api/users/[id]` returns six columns, none of them
+`passwordHash`, so the changed column was never present to be compared.
+
+This is a general defect, not a PMS one: any audited update with a narrow `select` under-reports
+what changed.
+
+The audit extension now re-reads the full row before diffing (`before` was already fetched
+unselected, so this makes the pair symmetric). Verified against PostgreSQL:
+
+```
+audit #1  {"passwordHash":{"from":"[redacted]","to":"[redacted]"},"passwordChangedAt":{...}}
+audit #2  {"name":{"from":"Admin","to":"Renamed Person"}}
+```
+
+The hash is still never stored — only the _fact_ of the change, which is now queryable and
+distinguishable from a rename. That is what makes ADR-065's compensating control real: that ADR
+accepts a platform admin can reach HR Super Admin access and names the audit trail as the control,
+so the trail has to be able to show the action that grants it.
+
+A null re-read means the update soft-deleted the row and the extension filtered it; the caller's
+projection is kept and behaviour is exactly what it was. Cost: one indexed lookup per audited
+update.
+
+### 9b. `Kpi` registered in `SOFT_DELETE_MODELS` — FIXED
+
+Two Phase 2 units hit this independently. Verified after registration:
+
+| Path                              | Row survives | Soft-deleted | Audit action  |
+| --------------------------------- | ------------ | ------------ | ------------- |
+| `prisma.kpi.delete()`             | yes ✅       | yes ✅       | **DELETE** ✅ |
+| hand-rolled `update({deletedAt})` | yes ✅       | yes ✅       | UPDATE ⚠️     |
+
+Normal reads return **0 of 2** withdrawn KPIs. The route's DELETE now uses `delete()`, which is
+the difference between an audit trail that says a KPI was withdrawn and one that says it was
+edited — the extension infers a soft delete by comparing `deletedAt` across before/after, and this
+route's narrow select hides it.
+
+**Registration is not the whole fix, and the code does not pretend it is.** That extension filters
+the TOP-LEVEL `where` only — its own documented and test-asserted limitation — and the KPI read
+that decides §5.3's total pulls `participant.kpis` through a nested select, which it cannot reach.
+Every KPI read keeps its explicit `deletedAt: null` for that reason.
+
+## 10. Manager drafting + the §4.4 home split
+
+Built as a fourth parallel unit. Two gaps it flagged but could not close from its own files were
+closed here.
+
+### 10a. The guard chain had two implementations — now one
+
+The drafting page is an RSC reading through Prisma (the template's blessed pattern), so it could
+not go through `POST /api/kpis`. It therefore restated the whole refusal chain — §4.2 → §8.3 →
+§2 → §5.4/§5.1 — in the same order, with **two of the sentences copied as string literals**. Two
+copies of a security ordering drift; two copies of a sentence drift faster.
+
+`kpiSetAccessRefusal` in `lib/pms/kpi.ts` is now the single implementation, and both callers use
+it. `visible` is passed IN rather than recomputed, because the route resolves it from a
+descendant set and the page already has one — both correct, and neither belongs inside the shared
+function. `POST /api/kpis` dropped from 194 to 137 lines in the process.
+
+### 10b. "My Tasks" was a sample presented as a list — now exact
+
+§4.4 is explicit that the personal action space is _"driven by assignment, not hierarchy or role
+name"_. There was no assignment filter, so the home screen assembled its task list from **page 1
+of the whole roster plus a name search** for the viewer's own row. That is exact at 37 people and
+silently wrong at 500: the viewer's own row falls off page 2 and their task list quietly loses
+entries — the worst failure mode a task list has, because nothing looks broken.
+
+`scope=mine` on the participants route is that filter, server-side. Verified on live payloads:
+
+| Actor            | no scope        | `scope=mine`                    |
+| ---------------- | --------------- | ------------------------------- |
+| HR Super Admin   | 37              | **1** (own set only)            |
+| Line manager     | 8 (whole chain) | **3** (self + 2 direct reports) |
+| Individual       | 3               | 3 — it NARROWS, it never widens |
+| `scope=everyone` | —               | **400**                         |
+
+The home screen is one request now, and the count it shows is the truth rather than a sample.
+
+### 10c. Screens
+
+| Screen                      | axe (light)                | axe (dark)                 |
+| --------------------------- | -------------------------- | -------------------------- |
+| Home — My Tasks / Oversight | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
+| Goal-setting roster         | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
+
+No failing requests, no page errors. `03-home.png` shows a line manager's view (Layla Al-Habsi,
+1202): **My tasks** with exactly the three `scope=mine` items — her own set plus her two direct
+reports — each carrying the stage's lock time; **Oversight** scoped to her chain, badged "Line
+manager"; and a sidebar with no admin entries, because the capability gates are doing their job.
+The three rows are in the order §4.4 needs them (see §11c).
+
+## 11. The drafting and sign-off screen — looked at, not assumed
+
+Captured at 1440×1000, light and dark, against PostgreSQL 16 with a **production build**
+(`next build` + `next start`), authenticated as HR Super Admin. Three participant states, so the
+§5.3 rule is on the record in both directions.
+
+| Capture                   | State                                                | axe (light + dark)         |
+| ------------------------- | ---------------------------------------------------- | -------------------------- |
+| `05-drafting`             | 3 KPIs at exactly 100%; employee signed, manager not | 0 violations, 0 unresolved |
+| `06-drafting-both-signed` | both parties signed                                  | 0 violations, 0 unresolved |
+| `07-drafting-incomplete`  | 2 KPIs at 75% — sign-off refused, gap named          | 0 violations, 0 unresolved |
+| `08-people`               | directory (breadcrumb regression check)              | 0 violations, 0 unresolved |
+| `09-people-no-results`    | filtered to nothing (`common.noResults`)             | 0 violations, 0 unresolved |
+
+Zero console errors and zero page errors on all ten renders.
+
+`07-drafting-incomplete.png` is the one that carries §5.3: the strip reads **75%**, the amber note
+says "A draft may sit at any total while you work. 100% is what sign-off needs.", the sentence
+below it says "Weightages total 75% — 25% short of the 100% required to sign off (§5.3)", and the
+sign control is disabled. §5.3 gates signing, not drafting, and the screen says exactly that.
+
+Every capture carries the standing note: _"There is no reject button. A party who does not agree
+simply does not sign, and the conversation happens away from this screen."_ No reject control
+exists anywhere on the screen.
+
+### 11a. Three defects the browser pass surfaced — all fixed
+
+Each one passed `tsc`, ESLint, the production build, and axe. None of them was findable without
+rendering the page.
+
+1. **`buttonVariants()` called from a server component.** Splitting `KpiDraftBoard` for the
+   complexity budget left `buttonVariants` exported from a `"use client"` module and imported by
+   an RSC — the page threw at request time. Extracted to `components/ui/button-variants.ts`
+   outside the client boundary, re-exported from `button.tsx` so no call site moved.
+
+2. **The sign-off panel rendered raw translation keys.** `SignOffPanel.tsx` and `KpiList.tsx` were
+   both written against `useTranslations("pms.goalSetting")`; the keys live under `pms.kpi`. The
+   screen came up showing `pms.goalSetting.signOffTitle` where the heading belongs. next-intl's
+   fallback for a missing key is to print the key, so this type-checks, lints, builds, renders and
+   passes axe — a screenshot was the only thing that could catch it.
+
+   Fixed, and then **closed as a class**: `tests/contracts/i18n-keys.test.ts` resolves every
+   `t("…")` call in `components/**` and `app/**` against both locale bundles. It found a third
+   instance immediately — `common.noResults`, asked for by the people directory **since Phase 1**
+   and never defined, so filtering the list to nothing showed the raw key to an HR user. Defined
+   in `en` and `ar`; `09-people-no-results.png` is the proof.
+
+3. **Breadcrumbs printed raw cuids.** `/people/<id>` rendered its own crumb as
+   `Cmt7n76cx00008z7dyiua00cc`, and the drafting page carried the same noise mid-trail. Nothing in
+   the app sets a dynamic label, so an unlabelled opaque id is dropped from the trail rather than
+   printed; a labelled one still renders, so the filter disappears the moment a page supplies a
+   name. Verified in the captures: `Home / Goal Setting / Participants` and `Home / People`.
+
+### 11c. The task list led with the one card nobody could act on
+
+Found reviewing `lib/pms/tasks.ts` before the push, not in the browser. Within a stage band the
+rank was `own-signable = 2`, `own-waiting = 0`, `report-not-drafted = 0` — so "your manager has
+not finished drafting your KPIs yet", which is context rather than a task, tied for first and won
+the alphabetical tie-break against the report rows. A list read and acted on top-down opened with
+the row you cannot act on and buried "Review and sign" at the bottom.
+
+Ranks are now named (`KIND_RANK`) and ordered by how much of someone else's work each card holds
+up: an undrafted report first (it blocks that person entirely), then a part-drafted one, then a
+set awaiting my signature, then my own signable set, and the informational card last.
+`03-home.png` is that order — Omar (nothing drafted) → Zainab (60%, cannot be signed) → my own set
+("Review and sign").
+
+The module's header says it lives in `lib/` because this is "exactly the logic a test can check
+and a screenshot cannot" — and it had no test. `tests/contracts/pms-tasks.test.ts` is that test:
+17 cases pinning the ordering, §4.4's assignment-only rule, §8.3's exemption, §5.1's "a signed
+step is not a task", the verbatim carry of the server's refusal sentence, and the due-soon band's
+boundary. The ordering assertions fail against the old ranks.
+
+### 11b. Gotcha worth keeping
+
+**Hydration never completes in `next dev` in this container**, because the HMR websocket cannot
+handshake through the proxy — so any control gated on `useHydrated()` (the login submit button,
+by design, to keep credentials out of the query string) stays permanently disabled and the
+browser pass cannot even log in. The production build has no such gate. **Browser verification in
+this environment must run against `next build` + `next start`, not `next dev`.**
+
+## 12. Still not verified
+
+- **§12.3's mid-cycle transfer split** — the 360 component's day-weighting question is open and
+  belongs to Phase 6, which introduces `EmployeeAssignmentPeriod`.
+- **Arabic / RTL rendering of the Phase 2 screens** — and it is a config decision, not a gap.
+  `project.config.json` sets `locales: ["en"]`, so `/ar/*` 307s to `/en/*` and there is no RTL
+  layout to photograph. `messages/ar.json` is still maintained and the i18n key test now holds
+  **every bundle in `messages/`** to full parity, so turning Arabic on is a one-line config flip
+  rather than a translation project. The RTL browser pass belongs to the session that flips it.
+- **ADR-067 (salary at rest)** awaits the operator's decision and is marked blocking on the first
+  real import.

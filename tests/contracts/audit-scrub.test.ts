@@ -278,3 +278,51 @@ test("scrub redacts a salary nested under an included relation", () => {
   const employee = out.employee as Record<string, unknown>;
   assert.equal(employee.basicSalary, "[redacted]");
 });
+
+// --- a narrow `select` must not hide what changed ---------------------------
+//
+// `computeChanges` iterates the keys of `after`, so it can only report on
+// columns the caller asked for. An admin resetting another user's password
+// through `PUT /api/users/[id]` — which selects six columns, none of them
+// `passwordHash` — produced `UPDATE | User | changes: null`, indistinguishable
+// from an admin fixing a typo in someone's name.
+//
+// That is not an ordinary audit gap. ADR-065 accepts that a platform admin can
+// reach HR Super Admin access, and names the audit trail as the compensating
+// control — so the trail has to be able to show the action that grants it. The
+// audit extension now re-reads the full row before diffing; these pin both
+// halves of the reasoning.
+
+test("a scrubbed field that changed is REPORTED, with its value redacted", () => {
+  const changes = computeChanges(
+    { id: "u1", name: "Admin", passwordHash: "argon2id$OLD" },
+    { id: "u1", name: "Admin", passwordHash: "argon2id$NEW" },
+  );
+  assert.ok(changes, "a password change is a change");
+  assert.deepEqual(changes?.passwordHash, { from: "[redacted]", to: "[redacted]" });
+  assert.equal(
+    JSON.stringify(changes).includes("argon2id"),
+    false,
+    "the fact is recorded; the hash never is",
+  );
+});
+
+test("a scrubbed field that did NOT change stays out of the diff", () => {
+  const changes = computeChanges(
+    { id: "u1", name: "Admin", passwordHash: "argon2id$SAME" },
+    { id: "u1", name: "Renamed", passwordHash: "argon2id$SAME" },
+  );
+  assert.deepEqual(Object.keys(changes ?? {}), ["name"], "a rename is only a rename");
+});
+
+test("the hazard the extension exists to avoid: a narrow `after` reports nothing", () => {
+  // This is what the caller's projection looks like — six columns, no
+  // passwordHash. Passing THIS to computeChanges is why the gap existed, and is
+  // why the extension re-reads the full row before diffing rather than trusting
+  // the value the query returned.
+  const changes = computeChanges(
+    { id: "u1", name: "Admin", role: "ADMIN", passwordHash: "argon2id$OLD" },
+    { id: "u1", name: "Admin", role: "ADMIN" },
+  );
+  assert.equal(changes, null, "documents the hazard: the projection cannot see it");
+});

@@ -1,16 +1,10 @@
 import { NextRequest } from "next/server";
-import type { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor, type ResolvedActor } from "@/lib/pms/actor";
 import { isGoalSettingExempt, type StageWindow } from "@/lib/pms/cycle";
-import {
-  GOAL_SETTING_STAGE,
-  kpiEditBlockedReason,
-  weightageMessage,
-  weightageTotal,
-} from "@/lib/pms/kpi";
+import { GOAL_SETTING_STAGE, kpiEditBlockedReason } from "@/lib/pms/kpi";
 import {
   EDITABLE_KPI_FIELDS,
   KPI_SELECT,
@@ -45,9 +39,12 @@ import { updateKpiSchema } from "@/lib/validations/kpi";
  *   - §4.2 / §5.4 / §5.1                 → 409, verbatim from kpiEditBlockedReason
  */
 async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
-  // `findFirst` with an explicit `deletedAt: null`, NOT `findUnique`: `Kpi` is
-  // absent from SOFT_DELETE_MODELS in lib/prisma/soft-delete-extension.ts, so
-  // nothing filters withdrawn rows for us even though the columns exist.
+  // `findFirst` with an explicit `deletedAt: null`. `Kpi` IS registered in
+  // SOFT_DELETE_MODELS now, so the extension would filter this read anyway —
+  // the filter stays explicit because that extension documents (and asserts)
+  // that it rewrites the TOP-LEVEL `where` only, and the KPI reads that matter
+  // for §5.3's total pull `participant.kpis` through a nested select, which it
+  // cannot reach. One convention for every KPI read beats two.
   const kpi = await prisma.kpi.findFirst({
     where: { id: kpiId, deletedAt: null },
     select: {
@@ -190,20 +187,19 @@ export const DELETE = withRateLimit(
     const loaded = await loadEditableKpi(id, actor, new Date());
     if (!loaded.ok) return loaded.response;
 
-    // SOFT delete, written by hand.
+    // Soft delete. `Kpi` is registered in SOFT_DELETE_MODELS, so `delete()` is
+    // rewritten into a `deletedAt` write and the row survives — §5.1's baseline
+    // and Phase 3's change history both need to see what a manager withdrew
+    // mid-draft.
     //
-    // `prisma.kpi.delete()` would be a HARD delete here: the soft-delete
-    // extension rewrites `delete` only for the models in its SOFT_DELETE_MODELS
-    // set (User, Employee, Department, OrgEntity), and `Kpi` is not one of them
-    // despite carrying `deletedAt` / `deletedBy`. Setting the columns through
-    // `update` keeps the row — §5.1's baseline and Phase 3's change history both
-    // need to be able to see what a manager withdrew mid-draft — and the audit
-    // extension records the write with before/after either way.
-    await prisma.kpi.update({
-      where: { id },
-      data: { deletedAt: new Date(), deletedBy: session.user.id },
-      select: { id: true },
-    });
+    // Written as `delete()` rather than a hand-rolled `update`, which is what
+    // this was before the model was registered: the audit extension records the
+    // action as **DELETE** through this path, and as a plain UPDATE through the
+    // manual one. It infers a soft delete by comparing `deletedAt` across the
+    // before/after images, and a narrow `select` (this route's KPI_SELECT does
+    // not carry `deletedAt`) hides it. Verified against PostgreSQL: this path
+    // logs `DELETE`, the hand-rolled one logged `UPDATE`, and both keep the row.
+    await prisma.kpi.delete({ where: { id } });
 
     return ok({
       id,

@@ -1,22 +1,10 @@
 import { NextRequest } from "next/server";
-import type { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { isGoalSettingExempt, type StageWindow } from "@/lib/pms/cycle";
-import {
-  GOAL_SETTING_STAGE,
-  kpiEditBlockedReason,
-  weightageMessage,
-  weightageTotal,
-} from "@/lib/pms/kpi";
-import {
-  EDITABLE_KPI_FIELDS,
-  KPI_SELECT,
-  serializeKpi,
-  weightageSummary,
-} from "@/lib/pms/kpi-select";
+import { GOAL_SETTING_STAGE, kpiSetAccessRefusal } from "@/lib/pms/kpi";
+import { KPI_SELECT, serializeKpi, weightageSummary } from "@/lib/pms/kpi-select";
 import { descendantEmployeeIds } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { createKpiSchema } from "@/lib/validations/kpi";
@@ -96,50 +84,28 @@ export const POST = withRateLimit(
     });
     if (!participant) return notFound("Participant");
 
-    // §4.2 — visibility before anything else, and 404 rather than 403 on failure.
     const descendants = actor.capabilities.orgWide
       ? new Set<string>()
       : actor.employeeId
         ? await descendantEmployeeIds(actor.employeeId)
         : new Set<string>();
-    if (!canViewEmployee(actor, participant.employee.id, descendants)) {
-      return notFound("Participant");
-    }
 
-    // §8.3 — C-Level have no goal-setting step, so there is nothing to draft.
-    if (isGoalSettingExempt(participant.employee.roleTrack)) {
-      // They stay ENROLLED — §11's reporting and the entity-score pass-through
-      // both need the participant row. What §8.3 exempts them from is the work.
-      return err(
-        "C-Level employees skip goal-setting entirely (§8.3) — there are no KPIs to draft for " +
-          "this participant.",
-        409,
-      );
-    }
-
-    // §2 — the year has to be running. A DRAFT cycle has not started and a CLOSED
-    // one has stopped moving; neither is a window a stage deadline can reopen.
-    if (participant.cycle.status !== "OPEN") {
-      return err(
-        `KPIs are drafted while the cycle is open — this cycle is ${participant.cycle.status} (§2).`,
-        409,
-      );
-    }
-
-    const stage: StageWindow | null = participant.cycle.stages[0] ?? null;
-    if (stage === null) {
-      return err("This cycle has no goal-setting stage configured yet (§2).", 409);
-    }
-
-    const blocked = kpiEditBlockedReason({
+    // §4.2 → §8.3 → §2 → §5.4/§5.1, in one place. The RSC drafting page reads
+    // through Prisma directly (the template's blessed pattern) and so cannot go
+    // through this route — it calls the same function rather than restating the
+    // ordering and the sentences, which is what it used to do.
+    const refusal = kpiSetAccessRefusal({
       actor,
-      target: { id: participant.employee.id, managerId: participant.employee.managerId },
-      stage,
-      now,
+      visible: canViewEmployee(actor, participant.employee.id, descendants),
+      employee: participant.employee,
+      cycleStatus: participant.cycle.status,
+      stage: participant.cycle.stages[0] ?? null,
       goalsApprovedAt: participant.goalsApprovedAt,
+      now,
     });
-    if (blocked) return err(blocked, 409);
-
+    if (refusal) {
+      return refusal.status === 404 ? notFound("Participant") : err(refusal.reason, 409);
+    }
     // §5.3 is a SET-level rule checked at sign-off, not a per-row constraint: a
     // draft mid-edit legitimately sits at 80%. The total is REPORTED here so the
     // screen can show the gap, never used to refuse the save.

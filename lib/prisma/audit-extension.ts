@@ -267,7 +267,40 @@ export const auditExtension = Prisma.defineExtension((client) => {
           if (isSoftDelete) action = "DELETE";
           if (isRestore) action = "RESTORE";
 
-          const changes = before ? computeChanges(before, after) : null;
+          // Re-read the FULL row before diffing.
+          //
+          // `computeChanges` iterates the keys of `after`, and `after` is
+          // whatever the CALLER selected. A route that narrows its select —
+          // `app/api/users/[id]/route.ts` returns six columns — hides every
+          // change to a column outside it. The observed consequence: an admin
+          // resetting another user's password produced `UPDATE | User | changes:
+          // null`, indistinguishable from an admin fixing a typo in their name,
+          // because `passwordHash` was never in `after` to be compared.
+          //
+          // That matters more than an ordinary audit gap. ADR-065 accepts that a
+          // platform admin can reach HR Super Admin access, and the compensating
+          // control it names is the audit trail — so the trail must be able to
+          // show the one action that grants it.
+          //
+          // `before` was fetched with no select, so it is complete; this makes
+          // `after` complete too. A null result means the row is no longer
+          // readable — the update soft-deleted it, and the soft-delete extension
+          // filters it out — in which case the caller's projection is kept and
+          // behaviour is exactly what it was. Costs one indexed lookup per
+          // audited update, on a rail where the audit trail is load-bearing.
+          let afterForDiff = after;
+          if (before && after?.id != null) {
+            try {
+              const full = (await modelAccessor(client, model).findUnique({
+                where: { id: after.id },
+              })) as Record<string, unknown> | null;
+              if (full) afterForDiff = full;
+            } catch {
+              // Model has no simple `id` lookup — keep the projection.
+            }
+          }
+
+          const changes = before ? computeChanges(before, afterForDiff) : null;
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (client as any).auditLog.create({
@@ -276,7 +309,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
               entityId: String(after.id),
               action,
               before: scrub(before ?? undefined),
-              after: scrub(after),
+              after: scrub(afterForDiff),
               changes,
               userId: ctx.userId,
               actorEmail: ctx.actorEmail,
