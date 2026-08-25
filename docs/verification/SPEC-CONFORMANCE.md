@@ -7,8 +7,17 @@ in full for this report — every clause below was checked against the code, not
 
 ## The headline, stated plainly
 
-**§1–§14 and Appendix A are built.** Every clause in the specification has an implementation, and
-every load-bearing clause has a test that fails when the implementation is removed.
+> **CORRECTION (2026-08-25).** This report's ✅ column measures _implementation_, not _reachability_,
+> and the distinction turned out to matter enormously. A red-team pass against the specification
+> found **eleven write endpoints with no caller anywhere in the user interface** — including the 360
+> answering form (§9.7), without which no rater can submit and therefore **no non-C-Level employee
+> can be scored at all**, and the §10.2 target-distribution editor, without which §10.7's calibration
+> gate cannot open. Read `docs/verification/SPEC-REDTEAM.md` before relying on any ✅ below. The rows
+> are accurate about the code; they were never a claim that a person could complete the flow.
+
+**§1–§14 and Appendix A are built,** in the sense that every clause has an implementation and every
+load-bearing clause has a test that fails when the implementation is removed. That is a claim about
+code, not about usability — see the correction above.
 
 Two things this report does **not** claim:
 

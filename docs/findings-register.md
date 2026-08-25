@@ -35,6 +35,32 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-25 — [high-quality/correctness] **Eleven write endpoints have no UI caller; §9's 360 module
+  is unusable end to end.** Full analysis: `docs/verification/SPEC-REDTEAM.md`. The critical two:
+  `POST /api/three-sixty/responses` (no 360 answering form exists anywhere, so no rater can ever
+  submit — which blocks §8/§10/§11/§13 for every non-C-Level employee, since scoring refuses without
+  a 360) and `PUT /api/calibration` (§10.2's target distribution and §10.3's threshold cannot be set,
+  so §10.7's gate cannot open). Also: no 360 cycle/template creation (§9.1/§9.2), no manual leaver or
+  transfer (§12.1/§12.3), no per-ratee rater editing or projects (§9.6), no individual 360 report
+  (§9.8), and My Tasks omits 360 assignments (§4.4). NOT waived — surfaced for the operator to
+  schedule; the work is UI, not domain logic, which is complete and tested. Missed because tests call
+  route modules directly (reachability is invisible to a caller-supplying test) and because
+  `prisma/seed-demo-cycle.ts` wrote the 360, its responses and the calibration target straight to the
+  database, papering over every one of these during the browser pass. — operator — status: open
+
+- 2026-08-25 — [high-quality/correctness] **A 360 score built from fewer than three raters is
+  indistinguishable from one built from three.** §9.5 says "average the 3 ratios"; `overallRatio`
+  averages over however many arrived (defensible — dividing by a hard 3 would penalise a ratee for a
+  rater's departure), but `EmployeeScore` records no rater count, so the degradation is invisible on
+  the scorecard, in the master export, and in the bonus derived from it. 26 of 33 ratees in the demo
+  fixture had fewer than three raters available. — operator — status: open
+
+- 2026-08-25 — [high-quality] **No §5.5 reminder or §9.7 invitation is ever sent unless SMTP is
+  configured.** The escalation ladder and the notification code are implemented and wired to the
+  daily cycle sweep, but `lib/email.ts` no-ops without `SMTP_HOST`, which `.env.example` does not
+  carry. The compliance record is still written, so this degrades to "the log is right, nobody was
+  told". Operational, not a code defect. — operator — status: open
+
 - 2026-08-24 — [maintainable/correctness] **`Kpi` is not registered in `SOFT_DELETE_MODELS`,
   and two independent Phase 2 units hit it.** `lib/prisma/soft-delete-extension.ts` filters
   `User`, `Employee`, `Department`, `OrgEntity`. `Kpi` carries `deletedAt`/`deletedBy` but is
