@@ -317,7 +317,11 @@ model Employee {
   // Decimal, not Float: money. Phase 5 multiplies it by a band coefficient and
   // pro-rates over days (§11.3/§11.4); binary floating point has no business
   // anywhere near a payroll figure.
-  /// LEGACY, pending drop — ADR-067 step 3. Still here because the encrypt-and-
+  /// LEGACY, pending drop — ADR-067 step 3, which is BLOCKED. Do not drop, truncate
+  /// or stop populating this column: it is the ONLY recovery path for the encrypted
+  /// one, because the production key lives solely in Vercel as a write-only Sensitive
+  /// variable that nobody can read back. See ADR-067 "STEP 3 IS BLOCKED" before
+  /// touching it. Still here because the encrypt-and-
   /// verify pass runs against the DEPLOYED database between two migrations, and
   /// `prisma migrate deploy` would otherwise drop the plaintext before anything
   /// had encrypted it. No application code reads this any more; `basicSalaryEnc`

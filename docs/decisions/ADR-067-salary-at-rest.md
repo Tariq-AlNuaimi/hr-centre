@@ -188,6 +188,35 @@ a ciphertext string to something expecting a number. Renaming makes every un-mig
 The API contract does not change: `serializeEmployee` already emits a decimal _string_, and it
 still will.
 
+### STEP 3 IS BLOCKED — do not drop `basic_salary` (operator decision, 2026-08-25)
+
+Steps 1 and 2 are **done in production**: the ciphertext column exists and all 36 salaries
+are encrypted and verified. Step 3 — the migration that drops the plaintext column — is
+**deliberately not scheduled**, and this section is the interlock.
+
+**Why.** The production key exists in exactly one place: Vercel, as a _Sensitive_ environment
+variable, which is write-only. `vercel env pull` returns the literal string `[SENSITIVE]`;
+nobody — not the operator, not a future session, not Vercel support — can read that value
+back. Asked when they wanted to take custody of it, the operator chose to **keep it with
+Vercel until development finishes**.
+
+That is a defensible call _only while `basic_salary` still holds the plaintext_, because the
+plaintext is the recovery path. Lose the Vercel value today and the fix is: set a new key,
+re-run `scripts/encrypt-salaries.mjs`, done. Drop the column first and the same event is
+unrecoverable — 36 rows of ciphertext with no key and no source.
+
+**So the ordering is a hard constraint, not a preference:**
+
+1. Operator generates a key they control and stores it somewhere they can read it.
+2. It replaces the Vercel value; `scripts/encrypt-salaries.mjs` re-runs from the plaintext.
+3. `--verify` passes.
+4. _Only then_ does step 3 become available.
+
+Until step 1 happens, **any change that drops, truncates or stops populating
+`employees.basic_salary` is a data-loss defect**, however tidy it looks. The column carries a
+`/// LEGACY, pending drop` comment in `schema.prisma` that says the same thing at the point
+someone would act on it.
+
 ### Migration is three steps, not one
 
 A data migration on Restricted values is the least forgiving kind, so it does not happen in one
