@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { KpiDraftBoard, type KpiRecord } from "@/components/pms/KpiDraftBoard";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";

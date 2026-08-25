@@ -12,6 +12,7 @@
     "back": "Back",
     "loading": "Loading...",
     "noData": "No data found",
+    "noResults": "No people match these filters. Try clearing the search or status filter.",
     "yes": "Yes",
     "no": "No",
     "selectAll": "Select all rows",

@@ -109,6 +109,7 @@
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
+- lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
@@ -142,9 +143,11 @@
 - components/pms/ImportPreview.tsx
 - components/pms/KpiDraftBoard.tsx
 - components/pms/KpiForm.tsx
+- components/pms/KpiList.tsx
 - components/pms/MyTasksOversight.tsx
 - components/pms/ParticipantList.tsx
 - components/pms/RoleEditor.tsx
+- components/pms/SignOffPanel.tsx
 - components/pms/StageBanner.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx

@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Lock, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
-import { ConfirmAction } from "@/components/shared/ConfirmAction";
-import { DescriptionList } from "@/components/shared/DescriptionList";
+import { Lock, Plus, ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { SignOffPanel } from "@/components/pms/SignOffPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { KPI_LEVEL_FIELDS, KpiForm, type KpiFormValues } from "@/components/pms/KpiForm";
+import { KpiForm, type KpiFormValues } from "@/components/pms/KpiForm";
+import { KpiList } from "@/components/pms/KpiList";
 import { StageBanner, type GoalStage } from "@/components/pms/StageBanner";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -325,117 +325,26 @@ export function KpiDraftBoard({
           />
         </div>
       ) : (
-        <ul className="flex list-none flex-col gap-4 p-0">
-          {kpis.map((kpi) => (
-            <li key={kpi.id} className="rounded-md border border-border bg-card p-6">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <p className="text-sm font-medium text-foreground">{kpi.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t("kpiWeightage", { weightage: kpi.weightage })}
-                  </p>
-                </div>
-                {canEdit ? (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={busyId === kpi.id}
-                      onClick={() => {
-                        setFormError(null);
-                        setEditing(kpi);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      {t("editAction")}
-                    </Button>
-                    <ConfirmAction
-                      title={t("deleteConfirmTitle")}
-                      description={t("deleteConfirmBody")}
-                      okText={t("deleteAction")}
-                      okType="danger"
-                      onConfirm={() => handleDelete(kpi)}
-                    >
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={busyId === kpi.id}
-                        aria-label={t("deleteAction")}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </ConfirmAction>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt-4 border-t border-border pt-4">
-                <DescriptionList
-                  bordered={false}
-                  columns={1}
-                  size="small"
-                  items={KPI_LEVEL_FIELDS.map((level) => ({
-                    key: level.field,
-                    label: (
-                      <span className="flex flex-wrap items-center gap-2">
-                        {t(`level.${level.field}`)}
-                        <Badge variant="outline">{t("levelValue", { value: level.value })}</Badge>
-                      </span>
-                    ),
-                    value: kpi[level.field],
-                  }))}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
+        <KpiList
+          kpis={kpis}
+          canEdit={canEdit}
+          busyId={busyId}
+          onEdit={(kpi) => {
+            setFormError(null);
+            setEditing(kpi);
+          }}
+          onDelete={handleDelete}
+        />
       )}
 
-      <SectionCard title={t("signOffTitle")} subtitle={t("signOffBody")}>
-        <div className="space-y-4">
-          {parties.map(({ party, signedAt, canSign }) => (
-            <div
-              key={party}
-              className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0"
-            >
-              <div className="min-w-0 space-y-1">
-                <p className="text-sm font-medium text-foreground">{t(`party.${party}`)}</p>
-                {/* The unsigned state is the signal (§5.3) — so it is stated,
-                    not left as a missing row. */}
-                <p className="text-xs text-muted-foreground">
-                  {signedAt
-                    ? t("signedAt", { datetime: formatDateTime(signedAt) })
-                    : t("notSigned")}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {signedAt ? <Badge variant="success">{t("signedBadge")}</Badge> : null}
-                {!signedAt && canSign ? (
-                  <Button
-                    variant="secondary"
-                    // §5.3: exactly 100% is required to sign. The BOOLEAN decides
-                    // — never a client-side re-sum of the decimal string.
-                    disabled={
-                      !set.weightageComplete ||
-                      stageLocked ||
-                      signingParty !== null ||
-                      !!serverBlocked
-                    }
-                    onClick={() => handleSign(party)}
-                  >
-                    {signingParty === party
-                      ? t("signing")
-                      : party === "EMPLOYEE"
-                        ? t("signAsEmployee")
-                        : t("signAsManager")}
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          ))}
-          <p className="text-xs text-muted-foreground">{t("noRejectNote")}</p>
-        </div>
-      </SectionCard>
+      <SignOffPanel
+        parties={parties}
+        weightageComplete={set.weightageComplete}
+        stageLocked={stageLocked}
+        signingParty={signingParty}
+        blocked={!!serverBlocked}
+        onSign={handleSign}
+      />
 
       <Dialog
         open={createOpen}

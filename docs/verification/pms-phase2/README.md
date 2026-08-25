@@ -283,22 +283,101 @@ The home screen is one request now, and the count it shows is the truth rather t
 | Home — My Tasks / Oversight | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
 | Goal-setting roster         | 0 violations, 0 unresolved | 0 violations, 0 unresolved |
 
-No failing requests, no page errors. `03-home.png` shows a line manager's view: **My tasks** with
-exactly the three `scope=mine` items — their own set plus two direct reports — each carrying
-§5.4's refusal sentence verbatim; **Oversight** scoped to their chain; and a sidebar with no admin
-entries, because the capability gates are doing their job.
+No failing requests, no page errors. `03-home.png` shows a line manager's view (Layla Al-Habsi,
+1202): **My tasks** with exactly the three `scope=mine` items — her own set plus her two direct
+reports — each carrying the stage's lock time; **Oversight** scoped to her chain, badged "Line
+manager"; and a sidebar with no admin entries, because the capability gates are doing their job.
+The three rows are in the order §4.4 needs them (see §11c).
 
-## 11. Still not verified
+## 11. The drafting and sign-off screen — looked at, not assumed
 
-- **The KPI drafting and sign-off screens.** 2b and 2c ship their APIs and domain logic with
-  contract tests; the manager-facing drafting UI and the My Tasks split (§4.4) are the next
-  increment.
-- **The escalation sweep against a live database.** Its ladder is a pure function with 24 tests
-  including the §5.5 ordering and idempotency, and the DB-level idempotency constraint was
-  proven in §3 above (invariant 13) — but the cron has not yet been run end to end against a
-  seeded cycle with a rolled-forward clock.
+Captured at 1440×1000, light and dark, against PostgreSQL 16 with a **production build**
+(`next build` + `next start`), authenticated as HR Super Admin. Three participant states, so the
+§5.3 rule is on the record in both directions.
 
-- **Screens.** 2a ships the API and domain layer; the HR cycle-admin and role-admin screens land
-  with the browser pass, alongside 2b's KPI drafting UI.
-- **The escalation sweep** (§5.5 rungs) — that is 2c, with `ComplianceEvent` already modelled and
-  its idempotency constraint already proven above (invariant 13).
+| Capture                   | State                                                | axe (light + dark)         |
+| ------------------------- | ---------------------------------------------------- | -------------------------- |
+| `05-drafting`             | 3 KPIs at exactly 100%; employee signed, manager not | 0 violations, 0 unresolved |
+| `06-drafting-both-signed` | both parties signed                                  | 0 violations, 0 unresolved |
+| `07-drafting-incomplete`  | 2 KPIs at 75% — sign-off refused, gap named          | 0 violations, 0 unresolved |
+| `08-people`               | directory (breadcrumb regression check)              | 0 violations, 0 unresolved |
+| `09-people-no-results`    | filtered to nothing (`common.noResults`)             | 0 violations, 0 unresolved |
+
+Zero console errors and zero page errors on all ten renders.
+
+`07-drafting-incomplete.png` is the one that carries §5.3: the strip reads **75%**, the amber note
+says "A draft may sit at any total while you work. 100% is what sign-off needs.", the sentence
+below it says "Weightages total 75% — 25% short of the 100% required to sign off (§5.3)", and the
+sign control is disabled. §5.3 gates signing, not drafting, and the screen says exactly that.
+
+Every capture carries the standing note: _"There is no reject button. A party who does not agree
+simply does not sign, and the conversation happens away from this screen."_ No reject control
+exists anywhere on the screen.
+
+### 11a. Three defects the browser pass surfaced — all fixed
+
+Each one passed `tsc`, ESLint, the production build, and axe. None of them was findable without
+rendering the page.
+
+1. **`buttonVariants()` called from a server component.** Splitting `KpiDraftBoard` for the
+   complexity budget left `buttonVariants` exported from a `"use client"` module and imported by
+   an RSC — the page threw at request time. Extracted to `components/ui/button-variants.ts`
+   outside the client boundary, re-exported from `button.tsx` so no call site moved.
+
+2. **The sign-off panel rendered raw translation keys.** `SignOffPanel.tsx` and `KpiList.tsx` were
+   both written against `useTranslations("pms.goalSetting")`; the keys live under `pms.kpi`. The
+   screen came up showing `pms.goalSetting.signOffTitle` where the heading belongs. next-intl's
+   fallback for a missing key is to print the key, so this type-checks, lints, builds, renders and
+   passes axe — a screenshot was the only thing that could catch it.
+
+   Fixed, and then **closed as a class**: `tests/contracts/i18n-keys.test.ts` resolves every
+   `t("…")` call in `components/**` and `app/**` against both locale bundles. It found a third
+   instance immediately — `common.noResults`, asked for by the people directory **since Phase 1**
+   and never defined, so filtering the list to nothing showed the raw key to an HR user. Defined
+   in `en` and `ar`; `09-people-no-results.png` is the proof.
+
+3. **Breadcrumbs printed raw cuids.** `/people/<id>` rendered its own crumb as
+   `Cmt7n76cx00008z7dyiua00cc`, and the drafting page carried the same noise mid-trail. Nothing in
+   the app sets a dynamic label, so an unlabelled opaque id is dropped from the trail rather than
+   printed; a labelled one still renders, so the filter disappears the moment a page supplies a
+   name. Verified in the captures: `Home / Goal Setting / Participants` and `Home / People`.
+
+### 11c. The task list led with the one card nobody could act on
+
+Found reviewing `lib/pms/tasks.ts` before the push, not in the browser. Within a stage band the
+rank was `own-signable = 2`, `own-waiting = 0`, `report-not-drafted = 0` — so "your manager has
+not finished drafting your KPIs yet", which is context rather than a task, tied for first and won
+the alphabetical tie-break against the report rows. A list read and acted on top-down opened with
+the row you cannot act on and buried "Review and sign" at the bottom.
+
+Ranks are now named (`KIND_RANK`) and ordered by how much of someone else's work each card holds
+up: an undrafted report first (it blocks that person entirely), then a part-drafted one, then a
+set awaiting my signature, then my own signable set, and the informational card last.
+`03-home.png` is that order — Omar (nothing drafted) → Zainab (60%, cannot be signed) → my own set
+("Review and sign").
+
+The module's header says it lives in `lib/` because this is "exactly the logic a test can check
+and a screenshot cannot" — and it had no test. `tests/contracts/pms-tasks.test.ts` is that test:
+17 cases pinning the ordering, §4.4's assignment-only rule, §8.3's exemption, §5.1's "a signed
+step is not a task", the verbatim carry of the server's refusal sentence, and the due-soon band's
+boundary. The ordering assertions fail against the old ranks.
+
+### 11b. Gotcha worth keeping
+
+**Hydration never completes in `next dev` in this container**, because the HMR websocket cannot
+handshake through the proxy — so any control gated on `useHydrated()` (the login submit button,
+by design, to keep credentials out of the query string) stays permanently disabled and the
+browser pass cannot even log in. The production build has no such gate. **Browser verification in
+this environment must run against `next build` + `next start`, not `next dev`.**
+
+## 12. Still not verified
+
+- **§12.3's mid-cycle transfer split** — the 360 component's day-weighting question is open and
+  belongs to Phase 6, which introduces `EmployeeAssignmentPeriod`.
+- **Arabic / RTL rendering of the Phase 2 screens** — and it is a config decision, not a gap.
+  `project.config.json` sets `locales: ["en"]`, so `/ar/*` 307s to `/en/*` and there is no RTL
+  layout to photograph. `messages/ar.json` is still maintained and the i18n key test now holds
+  **every bundle in `messages/`** to full parity, so turning Arabic on is a one-line config flip
+  rather than a translation project. The RTL browser pass belongs to the session that flips it.
+- **ADR-067 (salary at rest)** awaits the operator's decision and is marked blocking on the first
+  real import.

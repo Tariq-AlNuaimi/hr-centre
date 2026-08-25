@@ -17,7 +17,22 @@ import Link from "next/link";
  * screenshotting the Phase 2 screens; it predates them and affects the Phase 1
  * admin screens identically.
  */
-const NON_NAVIGABLE_SEGMENTS = new Set(["admin"]);
+const NON_NAVIGABLE_SEGMENTS = new Set(["admin", "participants"]);
+
+/**
+ * An opaque record id sitting in the MIDDLE of a path.
+ *
+ * `/goal-setting/<cycleId>/participants/<participantId>` has a page; the cycle
+ * id on its own does not, and neither does `/participants`. Linking them
+ * produced the same 404-on-prefetch as the `admin` crumb above. A trailing id
+ * (`/people/<id>`) is a different case — it IS a page, and it is the last
+ * segment, so it renders as text either way.
+ *
+ * Heuristic rather than a route manifest, and worth naming as one: a crumb that
+ * is a cuid tells the reader nothing anyway, so the cost of being wrong here is
+ * an unlinked crumb rather than a broken one.
+ */
+const OPAQUE_ID = /^c[a-z0-9]{20,}$/i;
 
 const segmentToNavKey: Record<string, string> = {
   users: "users",
@@ -49,6 +64,19 @@ export function Breadcrumbs() {
 
   type Crumb = { key: string; node: React.ReactNode; isLast: boolean };
 
+  // An unlabelled record id is not a crumb, it is a cuid. Nothing in the app
+  // sets a dynamic label today, so `/people/<id>` rendered its own page as
+  // "Cmt7n76cx00008z7dyiua00cc", and the drafting page carried the same noise
+  // mid-trail. Dropping it leaves "Home / People", which is where you are — the
+  // page heading already names the record. A LABELLED id still renders, so this
+  // stops being a filter the moment a page supplies a name.
+  const trail = segments
+    .map((segment, index) => ({
+      segment,
+      path: `/${locale}/` + segments.slice(0, index + 1).join("/"),
+    }))
+    .filter(({ segment }) => dynamicLabels[segment] || !OPAQUE_ID.test(segment));
+
   const items: Crumb[] = [
     {
       key: "__home",
@@ -61,10 +89,9 @@ export function Breadcrumbs() {
           <Home className="h-4 w-4" />
         </Link>
       ),
-      isLast: segments.length === 0,
+      isLast: trail.length === 0,
     },
-    ...segments.map((segment, index) => {
-      const path = `/${locale}/` + segments.slice(0, index + 1).join("/");
+    ...trail.map(({ segment, path }, index) => {
       const navKey = segmentToNavKey[segment];
       let label: string;
 
@@ -85,13 +112,13 @@ export function Breadcrumbs() {
         label = humanizeSegment(segment);
       }
 
-      const isLast = index === segments.length - 1;
+      const isLast = index === trail.length - 1;
       // A grouping segment has no page of its own, so linking it produces a
       // breadcrumb that 404s when clicked — and a prefetch that 404s on every
       // render even when nobody clicks it. Rendered as plain text instead: it
       // still shows where you are, it just does not promise a destination that
       // was never built.
-      const navigable = !NON_NAVIGABLE_SEGMENTS.has(segment);
+      const navigable = !NON_NAVIGABLE_SEGMENTS.has(segment) && !OPAQUE_ID.test(segment);
 
       return {
         key: `${segment}-${index}`,
