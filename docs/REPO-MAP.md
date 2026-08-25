@@ -58,6 +58,12 @@
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
 - app/api/signoffs/route.ts  [POST]
+- app/api/strategy-scores/route.ts  [GET,POST]
+- app/api/three-sixty/activate/route.ts  [POST]
+- app/api/three-sixty/assignments/route.ts  [GET,POST,PUT]
+- app/api/three-sixty/responses/route.ts  [POST]
+- app/api/three-sixty/results/route.ts  [GET]
+- app/api/three-sixty/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/route.ts  [GET,POST]
@@ -70,12 +76,12 @@
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
-- OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
+- Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, departmentScoresEntered, changeDecided, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
-- PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt
+- PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects
 - CycleStage: id, cycleId, cycle, kind, opensAt, deadline, graceDays, createdAt, updatedAt
 - CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, changeRequests, createdAt, updatedAt
 - KpiChangeRequest: id, participantId, participant, requestedByEmployeeId, requestedByEmployee, requestedAt, rationale, status, decidedByEmployeeId, decidedByEmployee, decidedAt, decisionReason, edits, createdAt, updatedAt
@@ -85,6 +91,15 @@
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
 - SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
 - Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, deletedAt, deletedBy, createdAt, updatedAt
+- EntityScore: id, cycleId, cycle, entityId, entity, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
+- DepartmentScore: id, cycleId, cycle, departmentId, department, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
+- ThreeSixtyCycle: id, cycleId, cycle, status, opensAt, deadline, templates, assignments, createdAt, updatedAt
+- AssessmentTemplate: id, threeSixtyCycleId, threeSixtyCycle, type, questions, assignments, createdAt, updatedAt
+- TemplateQuestion: id, templateId, template, text, orderIndex, scored, responses, createdAt
+- Assignment: id, threeSixtyCycleId, threeSixtyCycle, rateeId, ratee, raterId, rater, templateId, template, status, submittedAt, responses, createdAt, updatedAt
+- AssignmentResponse: id, assignmentId, assignment, questionId, question, score, text, createdAt, updatedAt
+- Project: id, cycleId, cycle, name, members, createdAt, updatedAt
+- ProjectMember: id, projectId, project, employeeId, employee, createdAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -128,6 +143,7 @@
 - lib/pms/scoring.ts: MIN_LEVEL, MAX_LEVEL, Band, TRACK_WEIGHTS, ScoredKpi, individualScore, threeSixtyAsLevel, Components, finalScore, bandFor, BAND_COEFFICIENT
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
+- lib/pms/three-sixty.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, RATERS_PER_EMPLOYEE, isAnswerScore, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
@@ -143,6 +159,8 @@
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
+- lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
+- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 

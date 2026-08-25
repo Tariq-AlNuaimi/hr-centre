@@ -1,6 +1,6 @@
 # Blueprint — Performance Management System (PMS)
 
-Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, lib/validations/rating.ts, lib/pms/scoring.ts, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/year-end-signoffs/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/year-end/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
+Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, lib/validations/rating.ts, lib/pms/scoring.ts, lib/pms/three-sixty.ts, lib/pms/calibration.ts, lib/pms/bonus.ts, lib/pms/score-run.ts, lib/validations/three-sixty.ts, lib/validations/calibration.ts, lib/validations/strategy-score.ts, app/api/strategy-scores/**, app/api/three-sixty/**, app/api/scores/**, app/api/calibration/**, app/api/bonus/**, app/api/reports/**, app/api/publish/**, app/[locale]/(dashboard)/three-sixty/**, app/[locale]/(dashboard)/calibration/**, app/[locale]/(dashboard)/reports/**, app/[locale]/(dashboard)/scorecard/**, app/[locale]/(dashboard)/admin/strategy-scores/**, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/year-end-signoffs/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/year-end/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
 
 > Source of truth: `Performance_Management_System.docx` v1.0 (2026-08-24), supplied by the
 > operator's HR team. Section references (§) throughout this document point at that
@@ -603,6 +603,74 @@ employee self-assesses against the _current_ descriptors, the manager reviews, b
 Any scoring or band mapping (§8 — Phase 5, and §6.1 forbids it at mid-year); the 360 module (§9);
 calibration (§10); bonus (§11); and §12.3's transfer split, which needs Phase 6's
 `EmployeeAssignmentPeriod`.
+
+## Phases 4-6 — 360, scoring, calibration, bonus, reporting (§8-§13)
+
+Delivered as three increments, each green and pushed before the next. The dependency order is
+fixed by §10.7's gate: **no score is released until calibration has run, and no calibration until
+every raw score is in** — so scoring cannot be wired before its two inputs (§8.4's Strategy figures
+and §9's 360) both exist.
+
+### Phase 4 — §8.4 Strategy scores + §9 the 360 module
+
+**§8.4** — the Strategy team has no system access (§4.1); HR keys their figures in. One Corporate
+score per entity per cycle, one Departmental score per department per cycle, both on the 1-5 scale.
+Separate models rather than columns on `OrgEntity`/`Department`, because a score belongs to a
+CYCLE — last year's figure must not be overwritten by this year's.
+
+**§9** — the largest single piece.
+
+```prisma
+model ThreeSixtyCycle    { id, cycleId @unique, status, opensAt, deadline }   // §9.1 tied to the KPI year
+enum  AssessmentType     { LINE_MANAGER_TO_EMPLOYEE  EMPLOYEE_TO_LINE_MANAGER  PEER_TO_PEER }
+model AssessmentTemplate { id, threeSixtyCycleId, type, questions[] }          // §9.2 one per type
+model TemplateQuestion   { id, templateId, text, orderIndex, scored }          // §9.2 scored + open-ended
+model Assignment         { id, threeSixtyCycleId, rateeId, raterId, type, status, submittedAt }
+model AssignmentResponse { id, assignmentId, questionId, score?, text? }       // §9.3 forced 1-4
+model Project            { id, cycleId, name }                                 // §9.6 optional
+model ProjectMember      { id, projectId, employeeId }
+```
+
+Five decisions:
+
+1. **The 4-point scale is forced, in the database.** §9.3 gives no neutral midpoint, so a CHECK
+   constrains a scored answer to 1-4. A 5 would silently import the KPI scale into the 360.
+2. **Exactly three raters, enforced at publish rather than at assignment.** §9.4 requires line
+   manager + peer + (reportee else second peer). HR edits assignments before launch (§9.6), so the
+   count is checked when the cycle is ACTIVATED, not on every edit — otherwise HR cannot ever have
+   a half-built assignment set on screen.
+3. **The ratio is per FORM, not per question** (§9.5): sum answered scores ÷ that form's maximum.
+   Templates may differ in length, so a per-question average would weight a short form higher.
+4. **Open-ended answers never enter the score.** `scored` on the question decides; §9.5 says "sum
+   the answered question scores", and a text answer has none.
+5. **Anonymity is structural.** §13.1 consolidates comments unattributed, so the results reader
+   never joins a response back to its rater; only HR's assignment view knows who was asked.
+
+### Phase 5 — wiring §8, then §10 and §11
+
+**§8 wiring.** A `ScoreRun` per cycle computes and stores every employee's raw components and final
+score (`lib/pms/scoring.ts` already holds the arithmetic, tested against the spec's worked
+examples). Raw scores are written once and never mutated — §10.1 and Appendix A both require it.
+
+**§10 calibration.** `CalibrationTarget` (editable band distribution, HR Super Admin only),
+`CalibrationAdjustment` (from-band, to-band, mandatory reason, who, when). Applied per department
+with ≥5 active participants, the threshold itself editable (§10.3). Guided, never forced: the
+screen shows target vs actual and HR moves individuals (§10.4).
+
+**§11 bonus.** Eligibility from effective service net of unpaid leave (§11.2, §11.5); coefficient
+from the **calibrated** band (§11.3); pro-ration on calendar days ÷ 365 (§11.4); payroll Excel
+export including ineligible employees flagged with a reason (§11.7), HR-only and logged.
+
+### Phase 6 — §13 reporting, the publish gate, §12 edge cases
+
+**§13.2's publish gate is the load-bearing piece.** Cycle-wide, all-at-once, guarded by a
+confirmation plus a readiness check, reversible, and every publish/un-publish audited. Until it
+fires, an employee sees nothing — §13.1 then shows them their band and score, their consolidated
+360 comments, and nothing else: no raw score, no components, no sign of calibration.
+
+Also: the manager workspace (§13.3), one role-scoped status engine (§13.4), the five HR reports
+(§13.5), the executive dashboard (§13.6), and §12's leaver close-out, roll-up prompt and
+day-weighted transfer split.
 
 ## Open questions
 

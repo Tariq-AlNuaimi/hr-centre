@@ -226,6 +226,7 @@ model OrgEntity {
 
   @@index([deletedAt, createdAt])
   @@map("org_entities")
+  corporateScores EntityScore[]
 }
 
 // §1.2 — "Departments are unique to their entity (e.g. 'Rihal Marketing',
@@ -250,6 +251,7 @@ model Department {
   @@index([entityId])
   @@index([deletedAt, createdAt])
   @@map("departments")
+  departmentScores DepartmentScore[]
 }
 
 // The internal employee table the system owns (§3.1). Excel is one loader today
@@ -301,6 +303,11 @@ model Employee {
   signOffs          SignOff[]          @relation("SignOffSigner")
   changeRequested   KpiChangeRequest[] @relation("ChangeRequestRequester")
   ratingsGiven    KpiRating[]        @relation("KpiRater")
+  ratedBy         Assignment[]       @relation("AssignmentRatee")
+  ratesOthers     Assignment[]       @relation("AssignmentRater")
+  projectMembers  ProjectMember[]
+  entityScoresEntered     EntityScore[]     @relation("EntityScoreAuthor")
+  departmentScoresEntered DepartmentScore[] @relation("DepartmentScoreAuthor")
   changeDecided     KpiChangeRequest[] @relation("ChangeRequestDecider")
   complianceAbout   ComplianceEvent[]  @relation("ComplianceSubject")
   complianceAgainst ComplianceEvent[]  @relation("ComplianceManager")
@@ -503,6 +510,10 @@ model PerformanceCycle {
   @@index([status, year])
   @@index([deletedAt, createdAt])
   @@map("performance_cycles")
+  entityScores     EntityScore[]
+  departmentScores DepartmentScore[]
+  threeSixty       ThreeSixtyCycle?
+  projects         Project[]
 }
 
 // §2 "HR sets deadlines for each stage" + §5.4 "All stage deadlines are hard
@@ -886,4 +897,239 @@ model Kpi {
   @@index([participantId, orderIndex])
   @@index([deletedAt, createdAt])
   @@map("kpis")
+}
+
+
+/// §8.4 — "Corporate KPI: produced by the Strategy team, provided to HR as one
+/// score per entity (Rihal, TP, CL). Each employee receives the Corporate score
+/// of their entity."
+///
+/// A score belongs to a CYCLE, not to the entity: last year's figure must still
+/// be readable after this year's is keyed in, which a column on `OrgEntity`
+/// could not do. §4.1 gives the Strategy team no system access, so `enteredBy`
+/// records the HR person who keyed it — the accountable party for the number.
+model EntityScore {
+  id       String           @id @default(cuid())
+  cycleId  String           @map("cycle_id")
+  cycle    PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  entityId String           @map("entity_id")
+  entity   OrgEntity        @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  /// §8.1's scale. CHECK-constrained to 1.00–5.00 in the migration.
+  score Decimal @db.Decimal(3, 2)
+
+  enteredByEmployeeId String   @map("entered_by_employee_id")
+  enteredByEmployee   Employee @relation("EntityScoreAuthor", fields: [enteredByEmployeeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cycleId, entityId])
+  @@map("entity_scores")
+}
+
+/// §8.4 — "Departmental KPI: … one score per department. Automatically applied
+/// to all Directors, Managers, and Leads tagged to that department.
+/// (Individuals have no Departmental component.)"
+model DepartmentScore {
+  id           String           @id @default(cuid())
+  cycleId      String           @map("cycle_id")
+  cycle        PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  departmentId String           @map("department_id")
+  department   Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  score Decimal @db.Decimal(3, 2)
+
+  enteredByEmployeeId String   @map("entered_by_employee_id")
+  enteredByEmployee   Employee @relation("DepartmentScoreAuthor", fields: [enteredByEmployeeId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cycleId, departmentId])
+  @@map("department_scores")
+}
+
+// --- §9 The 360 assessment module -------------------------------------------
+
+/// §9.1 — "Create a 360 cycle linked to the KPI assessment year, so 360 and KPI
+/// scores tie to the same performance year."
+///
+/// One per performance cycle (`cycleId @unique`): §9.1 says the two tie
+/// together, and a second 360 on the same year would make "the employee's 360
+/// ratio" ambiguous at scoring time.
+model ThreeSixtyCycle {
+  id      String           @id @default(cuid())
+  cycleId String           @unique @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  /// DRAFT while HR builds and edits assignments (§9.6), ACTIVE once published
+  /// (§9.7), CLOSED when results are calculated (§9.8).
+  status ThreeSixtyStatus @default(DRAFT)
+
+  opensAt  DateTime
+  deadline DateTime
+
+  templates   AssessmentTemplate[]
+  assignments Assignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("three_sixty_cycles")
+}
+
+enum ThreeSixtyStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+/// §9.2's three assessment types. "Employee → Line Manager (a reportee assessing
+/// their manager uses this template; employee = reportee)."
+enum AssessmentType {
+  LINE_MANAGER_TO_EMPLOYEE
+  EMPLOYEE_TO_LINE_MANAGER
+  PEER_TO_PEER
+}
+
+/// §9.2 — "Three assessment types, each with its own question template. Each
+/// template contains scored questions plus open-ended feedback questions."
+model AssessmentTemplate {
+  id                String          @id @default(cuid())
+  threeSixtyCycleId String          @map("three_sixty_cycle_id")
+  threeSixtyCycle   ThreeSixtyCycle @relation(fields: [threeSixtyCycleId], references: [id], onDelete: Cascade)
+
+  type AssessmentType
+
+  questions   TemplateQuestion[]
+  assignments Assignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([threeSixtyCycleId, type])
+  @@map("assessment_templates")
+}
+
+model TemplateQuestion {
+  id         String             @id @default(cuid())
+  templateId String             @map("template_id")
+  template   AssessmentTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  text       String
+  orderIndex Int    @map("order_index")
+
+  /// §9.5 sums "the answered question scores", so an open-ended feedback
+  /// question has none. `scored = false` keeps it out of the ratio entirely
+  /// rather than counting it as a zero.
+  scored Boolean @default(true)
+
+  responses AssignmentResponse[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([templateId, orderIndex])
+  @@map("template_questions")
+}
+
+/// §9.4 — "Raters — exactly 3 per employee: line manager (mandatory), peer
+/// (mandatory), third rater — a direct reportee if available; otherwise a second
+/// peer. HR selects and manages all rater assignments."
+model Assignment {
+  id                String          @id @default(cuid())
+  threeSixtyCycleId String          @map("three_sixty_cycle_id")
+  threeSixtyCycle   ThreeSixtyCycle @relation(fields: [threeSixtyCycleId], references: [id], onDelete: Cascade)
+
+  /// The employee being assessed.
+  rateeId String   @map("ratee_id")
+  ratee   Employee @relation("AssignmentRatee", fields: [rateeId], references: [id], onDelete: Cascade)
+
+  /// The person doing the assessing.
+  raterId String   @map("rater_id")
+  rater   Employee @relation("AssignmentRater", fields: [raterId], references: [id], onDelete: Cascade)
+
+  templateId String             @map("template_id")
+  template   AssessmentTemplate @relation(fields: [templateId], references: [id])
+
+  /// §9.7's per-evaluator tracking. OVERDUE is DERIVED from the deadline rather
+  /// than stored — a stored one would need a job to stay true, and §12.1 wants
+  /// a leaver's assignments to stop reading Overdue the moment they leave.
+  status AssignmentStatus @default(NOT_STARTED)
+
+  submittedAt DateTime? @map("submitted_at")
+
+  responses AssignmentResponse[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// §9.7 — "prevent duplicate submissions per assignment". One rater assesses
+  /// one ratee once per cycle.
+  @@unique([threeSixtyCycleId, rateeId, raterId])
+  @@index([raterId, status])
+  @@index([threeSixtyCycleId, rateeId])
+  @@map("assignments")
+}
+
+enum AssignmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+}
+
+/// One answer. §9.3's forced 4-point scale for a scored question; free text for
+/// an open-ended one. CHECK-constrained so a scored answer carries a score and
+/// an open-ended one does not.
+model AssignmentResponse {
+  id           String     @id @default(cuid())
+  assignmentId String     @map("assignment_id")
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  questionId String           @map("question_id")
+  question   TemplateQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  /// §9.3 — Strongly Disagree 1 … Strongly Agree 4. No neutral midpoint.
+  score Int?
+
+  /// §9.2's open-ended feedback. Consolidated unattributed at §13.1.
+  text String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assignmentId, questionId])
+  @@map("assignment_responses")
+}
+
+/// §9.6 — "Projects (optional): ability to create projects and link employees,
+/// so peers can be drawn from shared project work. Not applicable to everyone."
+model Project {
+  id      String           @id @default(cuid())
+  cycleId String           @map("cycle_id")
+  cycle   PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  name String
+
+  members ProjectMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cycleId, name])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String   @map("project_id")
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  employeeId String   @map("employee_id")
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, employeeId])
+  @@map("project_members")
 }
