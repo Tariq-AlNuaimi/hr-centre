@@ -1,16 +1,15 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { canViewCompensation } from "@/lib/pms/permissions";
-import { computeBonus } from "@/lib/pms/bonus";
-import { BAND_COEFFICIENT } from "@/lib/pms/scoring";
-import { decryptSalary } from "@/lib/pms/employee-select";
+import { BONUS_EXPORT_COLUMNS, bonusRows } from "@/lib/pms/bonus-report";
+import { buildReportSheet, xlsxDownloadHeaders } from "@/lib/pms/export/xlsx";
 
 /**
- * §11 — the bonus report and §11.7's payroll export.
+ * §11 — the bonus report and §11.7's payroll Excel export.
  *
  * ## Who may see this
  *
@@ -21,14 +20,16 @@ import { decryptSalary } from "@/lib/pms/employee-select";
  * ## The band is the CALIBRATED one
  *
  * §11.3 — "Bonus is always computed from the calibrated (post-curve) band, never
- * the raw band." So this reads `calibratedBand`. The raw band is returned
- * alongside it for §13.5's master export, never used in the arithmetic.
+ * the raw band." The arithmetic lives in `lib/pms/bonus-report.ts`, which the
+ * JSON view and the .xlsx export both read, so the number payroll receives is
+ * the number the screen showed.
  *
- * ## Ineligible people are included
+ * ## Two representations, one dataset
  *
- * §11.7 — "Ineligible employees are included and flagged (with reason: under 6
- * months), so nothing looks accidentally omitted." An empty row is how a payroll
- * team quietly underpays someone; a flagged one is a question they can ask.
+ * `?format=xlsx` returns the workbook §11.7 asks for; without it the same rows
+ * come back as JSON for the on-screen report (§13.5). Both are logged when they
+ * are an EXPORT — §11.7: "HR-only action to produce; logged (who exported,
+ * when)."
  */
 
 export const GET = withRateLimit(
@@ -41,7 +42,10 @@ export const GET = withRateLimit(
     const url = new URL(request.url);
     const cycleId = url.searchParams.get("cycleId");
     if (!cycleId) return err("cycleId is required");
-    const asExport = url.searchParams.get("export") === "1";
+    const asXlsx = url.searchParams.get("format") === "xlsx";
+    // `export=1` predates the xlsx format and still means "record that this was
+    // taken away from the screen". An .xlsx download always is one.
+    const asExport = asXlsx || url.searchParams.get("export") === "1";
 
     const cycle = await prisma.performanceCycle.findUnique({
       where: { id: cycleId },
@@ -49,109 +53,31 @@ export const GET = withRateLimit(
     });
     if (!cycle) return notFound("Cycle");
 
-    const runs = await prisma.scoreRun.findMany({
-      where: { cycleId },
-      take: 1,
-      orderBy: { startedAt: "desc" },
-      select: { id: true },
-    });
-    if (runs.length === 0) {
+    const rows = await bonusRows({ cycleId, year: cycle.year });
+    if (rows === null) {
       return err("No scores have been calculated for this cycle yet (§10.7).", 409);
     }
 
-    const scores = await prisma.employeeScore.findMany({
-      where: { scoreRunId: runs[0].id },
-      take: 4000,
-      select: {
-        rawBand: true,
-        calibratedBand: true,
-        employee: {
-          select: {
-            id: true,
-            odooId: true,
-            name: true,
-            dateOfJoining: true,
-            lastWorkingDay: true,
-            unpaidLeaveDays: true,
-            basicSalaryEnc: true,
-            department: { select: { name: true } },
-            entity: { select: { code: true } },
-          },
-        },
-      },
-    });
-
-    // §2 — the cycle is the calendar performance year.
-    const cycleStart = new Date(Date.UTC(cycle.year, 0, 1));
-    const cycleEnd = new Date(Date.UTC(cycle.year, 11, 31));
-
-    const rows = scores.map((s) => {
-      const e = s.employee;
-      // ADR-067 — the salary is encrypted at rest, bound to the employee's
-      // odooId. Decryption happens here, behind the §11.6 authority check above.
-      const salary = e.basicSalaryEnc ? decryptSalary(e.basicSalaryEnc, e.odooId) : null;
-      // §3.3's Date of Joining anchors both §11.2's gate and §11.4's
-      // pro-ration. Without it there is no honest figure to produce, so the row
-      // is returned FLAGGED rather than computed from a guess — §11.7 wants
-      // ineligible and unprocessable people visible, not omitted.
-      if (e.dateOfJoining === null) {
-        return {
-          employeeId: e.odooId,
-          name: e.name,
-          department: e.department?.name ?? null,
-          entity: e.entity?.code ?? null,
-          basicSalary: salary,
-          rawBand: s.rawBand,
-          finalBand: s.calibratedBand,
-          coefficient: BAND_COEFFICIENT[s.calibratedBand],
-          workDays: 0,
-          effectiveMonths: "0.00",
-          eligible: false,
-          ineligibleReason:
-            "No Date of Joining on file (§3.3) — the eligibility gate and pro-ration cannot be computed.",
-          bonus: null,
-        };
-      }
-
-      const bonus = computeBonus({
-        band: s.calibratedBand,
-        basicSalary: salary,
-        work: {
-          cycleStart,
-          cycleEnd,
-          dateOfJoining: e.dateOfJoining,
-          lastWorkingDay: e.lastWorkingDay,
-          unpaidLeaveDays: e.unpaidLeaveDays,
-        },
-      });
-
-      // §11.7's stated contents, in that order.
-      return {
-        employeeId: e.odooId,
-        name: e.name,
-        department: e.department?.name ?? null,
-        entity: e.entity?.code ?? null,
-        basicSalary: salary,
-        rawBand: s.rawBand,
-        finalBand: s.calibratedBand,
-        coefficient: bonus.coefficient,
-        workDays: bonus.workDays,
-        effectiveMonths: bonus.effectiveMonths,
-        eligible: bonus.eligible,
-        ineligibleReason: bonus.ineligibleReason,
-        bonus: bonus.amount,
-      };
-    });
-
     if (asExport) {
-      // §11.7 — "HR-only action to produce; logged (who exported, when)."
-      // Logged BEFORE the payload is built, so an export that is interrupted
-      // still leaves the record that someone asked for it.
+      // §11.7 — "logged (who exported, when)". Written BEFORE the workbook is
+      // built, so an export that is interrupted still leaves the record that
+      // someone asked for it. `recordAudit` stamps the actor and the time.
       await recordAudit(prisma, {
         entityType: "BonusExport",
         entityId: cycleId,
         action: "CREATE",
-        after: { cycleYear: cycle.year, rowCount: rows.length },
+        after: { cycleYear: cycle.year, rowCount: rows.length, format: asXlsx ? "xlsx" : "json" },
+      });
+    }
+
+    if (asXlsx) {
+      const buffer = await buildReportSheet({
+        sheet: `Bonus ${cycle.year}`,
+        columns: BONUS_EXPORT_COLUMNS,
+        rows,
+      });
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: xlsxDownloadHeaders(`rihal-bonus-${cycle.year}.xlsx`),
       });
     }
 

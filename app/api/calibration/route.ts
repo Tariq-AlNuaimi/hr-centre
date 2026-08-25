@@ -34,7 +34,10 @@ export const PUT = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!isHrSuperAdmin(actor)) {
-      return err("Only an HR Super Admin defines the target distribution (§10.6).", 403);
+      return err(
+        "Only an HR Super Admin defines the target distribution (§10.6) — HRBP does not touch calibration.",
+        403,
+      );
     }
 
     const body = await readJsonBody(request);
@@ -164,7 +167,10 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!isHrSuperAdmin(actor)) {
-      return err("Only an HR Super Admin runs calibration (§10.6).", 403);
+      return err(
+        "Only an HR Super Admin runs calibration (§10.6) — HRBP does not touch calibration.",
+        403,
+      );
     }
     const cycleId = new URL(request.url).searchParams.get("cycleId");
     if (!cycleId) return err("cycleId is required");

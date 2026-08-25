@@ -4,9 +4,10 @@ import { created, err, notFound, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { GOAL_SETTING_STAGE, kpiSetAccessRefusal } from "@/lib/pms/kpi";
+import { periodAuthorityBlockedReason } from "@/lib/pms/transfer";
 import { KPI_SELECT, serializeKpi, weightageSummary } from "@/lib/pms/kpi-select";
 import { descendantEmployeeIds } from "@/lib/pms/org-tree";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { canViewEmployee, isHr, type PmsActor } from "@/lib/pms/permissions";
 import { createKpiSchema } from "@/lib/validations/kpi";
 
 /**
@@ -70,6 +71,7 @@ export const POST = withRateLimit(
         // Narrow, enumerated columns — never `include: { employee: true }`, which
         // would pull `basicSalary` (Restricted, §4.5) into a drafting response.
         employee: { select: { id: true, managerId: true, roleTrack: true } },
+        cycleId: true,
         cycle: {
           select: {
             id: true,
@@ -106,6 +108,17 @@ export const POST = withRateLimit(
     if (refusal) {
       return refusal.status === 404 ? notFound("Participant") : err(refusal.reason, 409);
     }
+    // §12.3 — on a split year every KPI belongs to a period, and the period's
+    // own manager owns it. Resolved here rather than in `kpiSetAccessRefusal`
+    // because it needs a read, and because the unsplit path must not pay for it.
+    const periodError = await periodRefusal({
+      actor,
+      employeeId: participant.employee.id,
+      cycleId: participant.cycleId,
+      assignmentPeriodId: input.assignmentPeriodId ?? null,
+    });
+    if (periodError) return err(periodError, 409);
+
     // §5.3 is a SET-level rule checked at sign-off, not a per-row constraint: a
     // draft mid-edit legitimately sits at 80%. The total is REPORTED here so the
     // screen can show the gap, never used to refuse the save.
@@ -120,6 +133,7 @@ export const POST = withRateLimit(
         descriptorAlmostAchieved: input.descriptorAlmostAchieved,
         descriptorUnsatisfactory: input.descriptorUnsatisfactory,
         orderIndex: input.orderIndex,
+        assignmentPeriodId: input.assignmentPeriodId ?? null,
       },
       select: KPI_SELECT,
     });
@@ -128,3 +142,46 @@ export const POST = withRateLimit(
   }),
   { id: "pms-kpi-write", limit: 60, windowMs: 60_000 },
 );
+
+/**
+ * §12.3's period gate on a KPI write.
+ *
+ * Three outcomes:
+ *   - the employee has no periods → the KPI must not name one, and anything
+ *     that does is a client bug worth refusing rather than silently ignoring;
+ *   - the employee HAS periods → one must be named, because an unattached KPI
+ *     on a split year would be scored across a year the employee only worked
+ *     half of;
+ *   - the named period must be the actor's own (or the actor must be HR).
+ */
+async function periodRefusal(params: {
+  actor: PmsActor;
+  employeeId: string;
+  cycleId: string;
+  assignmentPeriodId: string | null;
+}): Promise<string | null> {
+  const { actor, employeeId, cycleId, assignmentPeriodId } = params;
+  const periods = await prisma.employeeAssignmentPeriod.findMany({
+    where: { employeeId, cycleId },
+    take: 10,
+    orderBy: { orderIndex: "asc" },
+    select: { id: true, orderIndex: true, managerEmployeeId: true },
+  });
+
+  if (periods.length === 0) {
+    return assignmentPeriodId === null
+      ? null
+      : "This employee's year is not split, so a KPI cannot belong to a period (§12.3).";
+  }
+  if (assignmentPeriodId === null) {
+    return "This employee's year is split by a transfer — every KPI must belong to one period (§12.3).";
+  }
+  const period = periods.find((p) => p.id === assignmentPeriodId);
+  if (!period) return "That period does not belong to this employee's cycle (§12.3).";
+
+  return periodAuthorityBlockedReason({
+    actorEmployeeId: actor.employeeId,
+    actorIsHr: isHr(actor),
+    period,
+  });
+}

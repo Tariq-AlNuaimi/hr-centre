@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveActor, type ResolvedActor } from "@/lib/pms/actor";
 import { isGoalSettingExempt, type StageWindow } from "@/lib/pms/cycle";
 import { GOAL_SETTING_STAGE, kpiEditBlockedReason } from "@/lib/pms/kpi";
+import { periodAuthorityBlockedReason } from "@/lib/pms/transfer";
 import {
   EDITABLE_KPI_FIELDS,
   KPI_SELECT,
@@ -12,7 +13,7 @@ import {
   weightageSummary,
 } from "@/lib/pms/kpi-select";
 import { descendantEmployeeIds } from "@/lib/pms/org-tree";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { canViewEmployee, isHr } from "@/lib/pms/permissions";
 import { updateKpiSchema } from "@/lib/validations/kpi";
 
 /**
@@ -49,6 +50,9 @@ async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
     where: { id: kpiId, deletedAt: null },
     select: {
       ...KPI_SELECT,
+      // §12.3 — which portion of a split year this KPI belongs to, and who owned
+      // that portion. Null for everyone who never transferred.
+      assignmentPeriod: { select: { orderIndex: true, managerEmployeeId: true } },
       participant: {
         select: {
           id: true,
@@ -119,6 +123,24 @@ async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
     now,
     goalsApprovedAt: participant.goalsApprovedAt,
   });
+  // §12.3 — on a split year the LIVE manager check above is the wrong question:
+  // after a transfer it names the new manager, who never set the old period's
+  // KPIs, and denies the old one, who is the only person who can honestly
+  // assess the half they supervised. The period's own manager overrides it.
+  if (kpi.assignmentPeriod) {
+    const periodBlocked = periodAuthorityBlockedReason({
+      actorEmployeeId: actor.employeeId,
+      actorIsHr: isHr(actor),
+      period: kpi.assignmentPeriod,
+    });
+    if (periodBlocked) return { ok: false as const, response: err(periodBlocked, 409) };
+    // The stage lock (§5.4) and HR's approval lock (§5.1) still apply — only the
+    // §4.2 authority sentence is replaced.
+    if (blocked && !blocked.includes("§4.2")) {
+      return { ok: false as const, response: err(blocked, 409) };
+    }
+    return { ok: true as const, kpi, participantId: participant.id };
+  }
   if (blocked) return { ok: false as const, response: err(blocked, 409) };
 
   return { ok: true as const, kpi, participantId: participant.id };
