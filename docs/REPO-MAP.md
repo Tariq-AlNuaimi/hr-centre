@@ -63,14 +63,14 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, employees, deletedAt, deletedBy, createdAt, updatedAt
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, complianceAbout, complianceAgainst, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, deletedAt, deletedBy, createdAt, updatedAt
 - CycleStage: id, cycleId, cycle, kind, opensAt, deadline, graceDays, createdAt, updatedAt
 - CycleParticipant: id, cycleId, cycle, employeeId, employee, goalsApprovedAt, goalsApprovedById, goalsApprovedBy, kpis, signOffs, createdAt, updatedAt
-- ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, occurredAt
-- SignOff: id, participantId, participant, party, signedByEmployeeId, signedByEmployee, signedAt, createdAt
+- ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
+- SignOff: id, participantId, participant, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
 - Kpi: id, participantId, participant, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, deletedAt, deletedBy, createdAt, updatedAt
 
 ## lib/ exports
@@ -80,6 +80,7 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
+- lib/crypto/field-encryption.ts: FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
@@ -93,7 +94,7 @@
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, WrittenEvent, Intervention, notify
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
-- lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee
+- lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders
 - lib/pms/import/checks/employment.ts: checkSalary, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
@@ -104,11 +105,11 @@
 - lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
-- lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary
+- lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KPI_HASH_SELECT, KpiHashRow, kpiSetHash, currentKpiSetHash
 - lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
-- lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
+- lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete

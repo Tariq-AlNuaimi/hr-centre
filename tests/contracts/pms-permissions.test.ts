@@ -1,5 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
+
+// ADR-067: the serializer decrypts, so these tests need a key. A throwaway one
+// per run — nothing here reads or writes a real database.
+process.env.SALARY_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 import {
   canActOnEmployee,
@@ -16,6 +21,7 @@ import {
   type PmsActor,
 } from "../../lib/pms/permissions";
 import { employeeSelect, serializeEmployee } from "../../lib/pms/employee-select";
+import { encryptField } from "../../lib/crypto/field-encryption";
 
 /**
  * Contract tests for PMS authority — spec §4.
@@ -66,14 +72,43 @@ test("§4.5 HR (both flavours) and the executive viewer can view compensation", 
   assert.equal(canViewCompensation(executive), true);
 });
 
-test("§4.5 basicSalary is absent from the SELECT for an unentitled actor", () => {
+test("§4.5 salary is absent from the SELECT for an unentitled actor", () => {
   // The rule is enforced where the query is built, so the column never enters
-  // the payload — not hidden afterwards by a component or a serializer.
+  // the payload — not hidden afterwards by a component or a serializer. Since
+  // ADR-067 that also means an unentitled actor never holds the CIPHERTEXT,
+  // which is what keeps decryption strictly inside the entitled branch.
   const managerSelect = employeeSelect(lineManager) as Record<string, unknown>;
-  assert.ok(!("basicSalary" in managerSelect), "the column must not be selected at all");
+  for (const column of ["basicSalary", "basicSalaryEnc"]) {
+    assert.ok(!(column in managerSelect), `${column} must not be selected at all`);
+  }
 
   const hrSelect = employeeSelect(hrSuperAdmin) as Record<string, unknown>;
-  assert.equal(hrSelect.basicSalary, true);
+  assert.equal(hrSelect.basicSalaryEnc, true, "the entitled actor selects the ciphertext");
+  assert.ok(
+    !("basicSalary" in hrSelect),
+    "and never the legacy plaintext column, which is pending drop (ADR-067 step 3)",
+  );
+});
+
+test("§4.5 a ciphertext from another employee is refused, not rendered", () => {
+  // The attack the AAD exists for, at the layer that actually serves it: a row
+  // whose salary envelope was copied from someone else must fail loudly rather
+  // than disclose. See ADR-067.
+  assert.throws(() =>
+    serializeEmployee({
+      id: "e1",
+      odooId: "1204",
+      name: "Report",
+      email: "r@example.com",
+      roleTrack: "INDIVIDUAL",
+      status: "ACTIVE",
+      managerId: null,
+      department: null,
+      entity: { id: "ent1", code: "RIHAL", name: "Rihal" },
+      manager: null,
+      basicSalaryEnc: encryptField("5500", "1001"),
+    }),
+  );
 });
 
 test("§4.5 a serialized row for a manager has no basicSalary KEY at all", () => {
@@ -110,14 +145,16 @@ test("§4.5 an entitled actor sees null for an employee with no salary on file",
     department: null,
     entity: { id: "ent1", code: "RIHAL", name: "Rihal" },
     manager: null,
-    basicSalary: null,
+    basicSalaryEnc: null,
   });
   assert.ok("basicSalary" in serialized);
   assert.equal(serialized.basicSalary, null);
 });
 
-test("§11.4 salary serializes as a decimal string, never a float", () => {
+test("§11.4 salary decrypts to a decimal string, never a float", () => {
   // §11.3 multiplies this by a coefficient and §11.4 pro-rates it over days.
+  // Since ADR-067 the column holds a ciphertext bound to the employee's odooId,
+  // so this also pins that the serializer opens it with the RIGHT binding.
   const serialized = serializeEmployee({
     id: "e1",
     odooId: "1001",
@@ -129,7 +166,7 @@ test("§11.4 salary serializes as a decimal string, never a float", () => {
     department: null,
     entity: { id: "ent1", code: "RIHAL", name: "Rihal" },
     manager: null,
-    basicSalary: { toString: () => "1234.500" },
+    basicSalaryEnc: encryptField("1234.500", "1001"),
   });
   assert.equal(serialized.basicSalary, "1234.500");
   assert.equal(typeof serialized.basicSalary, "string");

@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import {
   GOAL_SETTING_STAGE,
-  kpiEditBlockedReason,
+  kpiSetAccessRefusal,
   weightageMessage,
   weightageTotal,
 } from "@/lib/pms/kpi";
@@ -194,25 +194,35 @@ export const GET = withRateLimit(
       // (non-empty and totalling exactly 100), which is what "complete" means.
       const message = weightageMessage(row.kpis);
 
-      // Why this actor cannot edit this row right now, checked in the SAME order
-      // and with the same sentences POST /api/kpis uses (§8.3, §2, then §4.2 /
-      // §5.4 / §5.1 via the shared gate) — so the screen can disable the
-      // affordance and explain it in one breath, and a user who defeats the
-      // disabled button gets the identical answer from the write route.
-      const editBlockedReason = exempt
-        ? "C-Level employees skip goal-setting entirely (§8.3) — there are no KPIs to draft for " +
-          "this participant."
-        : cycle.status !== "OPEN"
-          ? `KPIs are drafted while the cycle is open — this cycle is ${cycle.status} (§2).`
-          : stage === null
-            ? "This cycle has no goal-setting stage configured yet (§2)."
-            : kpiEditBlockedReason({
-                actor,
-                target: { id: row.employee.id, managerId: row.employee.managerId },
-                stage,
-                now,
-                goalsApprovedAt: row.goalsApprovedAt,
-              });
+      // Why this actor cannot edit this row right now — through the SAME
+      // function `POST /api/kpis` and the drafting page use, so the screen can
+      // disable the affordance and explain it in one breath, and a user who
+      // defeats the disabled button gets the identical sentence from the write
+      // route.
+      //
+      // This was a third hand-rolled copy of that chain until the post-push
+      // breadth review found it (2026-08-25). The strings matched, so nothing
+      // was broken yet — but Phase 2 had already paid once to collapse two
+      // copies into `kpiSetAccessRefusal` precisely because the next edit to the
+      // ordering or the wording has no compiler forcing a duplicate to move
+      // with it.
+      //
+      // `visible: true` is not an assumption: this row exists only because it
+      // passed the visibility filter that built the query above.
+      const editBlockedReason =
+        kpiSetAccessRefusal({
+          actor,
+          visible: true,
+          employee: {
+            id: row.employee.id,
+            managerId: row.employee.managerId,
+            roleTrack: row.employee.roleTrack,
+          },
+          cycleStatus: cycle.status,
+          stage,
+          goalsApprovedAt: row.goalsApprovedAt,
+          now,
+        })?.reason ?? null;
 
       return {
         participantId: row.id,

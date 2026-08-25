@@ -1,4 +1,5 @@
 import type { PrismaClient, RoleTrack, PmsRole } from "../generated/prisma/client";
+import { encryptSalary } from "../lib/pms/employee-select";
 
 /**
  * PMS org fixture — spec §1.2 (three entities), §1.3 (five role tracks),
@@ -510,7 +511,9 @@ export async function seedPms(prisma: PrismaClient): Promise<void> {
         entityId,
         roleTrack: employee.roleTrack,
         pmsRoles: employee.pmsRoles ?? [],
-        basicSalary: employee.basicSalary,
+        // ADR-067 — even the fixture is encrypted, so a dev database never
+        // holds a shape production does not.
+        basicSalaryEnc: encryptSalary(employee.basicSalary, employee.odooId),
         unpaidLeaveDays: employee.unpaidLeaveDays ?? 0,
       },
       select: { id: true },

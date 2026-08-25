@@ -525,7 +525,9 @@
       },
       "levelsTitle": "The five levels",
       "kpiSetTitle": "The KPI set ({count})",
-      "signedBadge": "Signed"
+      "signedBadge": "Signed",
+      "signedStale": "The KPI set changed after this signature, so it was given to an earlier version.",
+      "signedStaleBadge": "Signed earlier version"
     },
     "home": {
       "myTasksTitle": "My tasks",

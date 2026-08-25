@@ -3,7 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { employeeSelect, serializeEmployee } from "@/lib/pms/employee-select";
+import { employeeSelect, encryptSalary, serializeEmployee } from "@/lib/pms/employee-select";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { descendantEmployeeIds } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
@@ -96,6 +96,13 @@ export const PUT = withRateLimit(
       if (!manager) return err("managerId: that employee does not exist");
     }
 
+    // ADR-067's binding. `odooId` is deliberately absent from
+    // `updateEmployeeSchema` (it is a delete-and-recreate, not a field edit), so
+    // it cannot change underneath an existing ciphertext — the AAD a row was
+    // encrypted under is the AAD it will always be read under.
+    const target = await prisma.employee.findUnique({ where: { id }, select: { odooId: true } });
+    if (!target) return notFound("Employee not found");
+
     const updated = await prisma.employee.update({
       where: { id },
       data: {
@@ -106,7 +113,7 @@ export const PUT = withRateLimit(
         managerId: data.managerId,
         roleTrack: data.roleTrack,
         pmsRoles: data.pmsRoles,
-        basicSalary: data.basicSalary,
+        basicSalaryEnc: encryptSalary(data.basicSalary, target.odooId),
         status: data.status,
         lastWorkingDay: data.lastWorkingDay ? new Date(`${data.lastWorkingDay}T00:00:00Z`) : null,
         unpaidLeaveDays: data.unpaidLeaveDays,

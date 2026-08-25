@@ -525,7 +525,9 @@
       },
       "levelsTitle": "المستويات الخمسة",
       "kpiSetTitle": "مجموعة المؤشرات ({count})",
-      "signedBadge": "موقّعة"
+      "signedBadge": "موقّعة",
+      "signedStale": "تغيّرت مجموعة مؤشرات الأداء بعد هذا التوقيع، لذا كان التوقيع على نسخة سابقة.",
+      "signedStaleBadge": "وقّع نسخة سابقة"
     },
     "home": {
       "myTasksTitle": "مهامي",

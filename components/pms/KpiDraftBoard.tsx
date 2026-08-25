@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { Lock, Plus, ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SectionCard } from "@/components/shared/SectionCard";
-import { SignOffPanel } from "@/components/pms/SignOffPanel";
+import { SignOffPanel, type SignOffRow } from "@/components/pms/SignOffPanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,6 +76,11 @@ export interface WeightageSet {
 export interface SignOffSnapshot {
   employeeSignedAt: string | null;
   managerSignedAt: string | null;
+  /**
+   * Parties whose signature is against a version of the set that has since
+   * changed (US-12 permits the edit; this reports it). Never a block.
+   */
+  staleParties: Party[];
 }
 
 interface KpiDraftBoardProps {
@@ -228,6 +233,9 @@ export function KpiDraftBoard({
         ...(party === "EMPLOYEE"
           ? { employeeSignedAt: result.signOff.signedAt }
           : { managerSignedAt: result.signOff.signedAt }),
+        // A signature just taken is by definition against the current set, so
+        // this party stops being stale the moment they sign again.
+        staleParties: prev.staleParties.filter((p) => p !== party),
       }));
       success(result.alreadySigned ? t("alreadySignedToast") : t("signedToast"));
       router.refresh();
@@ -238,9 +246,19 @@ export function KpiDraftBoard({
     }
   }
 
-  const parties: { party: Party; signedAt: string | null; canSign: boolean }[] = [
-    { party: "EMPLOYEE", signedAt: signOff.employeeSignedAt, canSign: isSubject },
-    { party: "MANAGER", signedAt: signOff.managerSignedAt, canSign: canSignAsManager },
+  const parties: SignOffRow[] = [
+    {
+      party: "EMPLOYEE",
+      signedAt: signOff.employeeSignedAt,
+      canSign: isSubject,
+      stale: signOff.staleParties.includes("EMPLOYEE"),
+    },
+    {
+      party: "MANAGER",
+      signedAt: signOff.managerSignedAt,
+      canSign: canSignAsManager,
+      stale: signOff.staleParties.includes("MANAGER"),
+    },
   ];
 
   return (
