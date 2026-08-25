@@ -22,6 +22,7 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { NOT_SUITE_OWNED, suiteActor } from "./fixture";
 import { Prisma } from "../../generated/prisma/client";
 
 const mockApi = mock as unknown as {
@@ -100,13 +101,9 @@ before(async () => {
   // under test, not the thing under test.
   const { enrolParticipants } = await import("../../lib/pms/cycle");
 
-  const opener = await prisma.employee.findFirstOrThrow({
-    where: { pmsRoles: { has: "HR_SUPER_ADMIN" } },
-    select: { id: true },
-  });
   const cycle = await prisma.performanceCycle.upsert({
     where: { year: 2099 },
-    create: { year: 2099, status: "OPEN", openedById: opener.id, openedAt: new Date() },
+    create: { year: 2099, status: "OPEN", openedAt: new Date() },
     update: { status: "OPEN" },
     select: { id: true },
   });
@@ -119,6 +116,8 @@ before(async () => {
       status: "ACTIVE",
       pmsRoles: { isEmpty: true },
       reports: { some: { status: "ACTIVE", roleTrack: { not: "C_LEVEL" } } },
+      // Never another suite's own employee — see tests/integration/fixture.ts.
+      ...NOT_SUITE_OWNED,
     },
     select: {
       id: true,
@@ -203,13 +202,15 @@ before(async () => {
   };
   ids.managerUser = await login(ids.manager, "mgr");
 
-  const hr = await prisma.employee.findFirst({
-    where: { pmsRoles: { has: "HR_SUPER_ADMIN" }, id: { notIn: [ids.manager, ids.employee] } },
-    select: { id: true },
+  // This suite owns its HR actor — see tests/integration/fixture.ts on why
+  // borrowing the seeded Super Admin makes concurrent suites fail with a 403.
+  ids.hr = await suiteActor(prisma, {
+    suite: "cr",
+    tag: "hr",
+    name: "Change-request HR Super Admin",
+    pmsRoles: ["HR_SUPER_ADMIN"],
   });
-  assert.ok(hr, "fixture must contain an HR Super Admin");
-  ids.hr = hr.id;
-  ids.hrUser = await login(hr.id, "hr");
+  ids.hrUser = await login(ids.hr, "hr");
 
   // §5.1's lock — HR approves the baseline, which is what §6 exists to amend.
   // Unconditional: this harness owns the 2099 cycle it created above, so there
@@ -217,7 +218,7 @@ before(async () => {
   // re-runnable.
   await prisma.cycleParticipant.update({
     where: { id: ids.participant },
-    data: { goalsApprovedAt: new Date(), goalsApprovedById: hr.id },
+    data: { goalsApprovedAt: new Date(), goalsApprovedById: ids.hr },
   });
 
   // Someone with no relationship to the subject at all — §4.2's 404 case.
@@ -226,6 +227,8 @@ before(async () => {
       pmsRoles: { isEmpty: true },
       id: { notIn: [ids.manager, ids.employee, ids.hr] },
       NOT: { reports: { some: {} } },
+      // Never another suite's own employee — see tests/integration/fixture.ts.
+      ...NOT_SUITE_OWNED,
     },
     select: { id: true },
   });

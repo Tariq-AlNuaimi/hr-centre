@@ -6,6 +6,7 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { NOT_SUITE_OWNED, suiteActor } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -68,15 +69,18 @@ before(async () => {
 
   const { enrolParticipants } = await import("../../lib/pms/cycle");
 
-  const hr = await prisma.employee.findFirstOrThrow({
-    where: { pmsRoles: { has: "HR_SUPER_ADMIN" } },
-    select: { id: true },
+  // This suite owns its HR actor — see tests/integration/fixture.ts on why
+  // borrowing the seeded Super Admin makes concurrent suites fail with a 403.
+  ids.hr = await suiteActor(prisma, {
+    suite: "ts",
+    tag: "hr",
+    name: "360 HR Super Admin",
+    pmsRoles: ["HR_SUPER_ADMIN"],
   });
-  ids.hr = hr.id;
 
   const cycle = await prisma.performanceCycle.upsert({
     where: { year: 2097 },
-    create: { year: 2097, status: "OPEN", openedById: hr.id, openedAt: new Date() },
+    create: { year: 2097, status: "OPEN", openedById: ids.hr, openedAt: new Date() },
     update: { status: "OPEN" },
     select: { id: true },
   });
@@ -128,7 +132,8 @@ const TEMPLATES = [
 
 test("§8.4 only HR keys a Strategy score", async () => {
   const emp = await prisma.employee.findFirstOrThrow({
-    where: { pmsRoles: { isEmpty: true } },
+    // Never another suite's own employee — see tests/integration/fixture.ts.
+    where: { pmsRoles: { isEmpty: true }, ...NOT_SUITE_OWNED },
     select: { id: true },
   });
   const user = await prisma.user.upsert({

@@ -11,6 +11,7 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
+import { NOT_SUITE_OWNED, suiteActor } from "./fixture";
 import { Prisma } from "../../generated/prisma/client";
 
 const mockApi = mock as unknown as {
@@ -72,13 +73,9 @@ before(async () => {
 
   const { enrolParticipants } = await import("../../lib/pms/cycle");
 
-  const opener = await prisma.employee.findFirstOrThrow({
-    where: { pmsRoles: { has: "HR_SUPER_ADMIN" } },
-    select: { id: true },
-  });
   const cycle = await prisma.performanceCycle.upsert({
     where: { year: 2098 },
-    create: { year: 2098, status: "OPEN", openedById: opener.id, openedAt: new Date() },
+    create: { year: 2098, status: "OPEN", openedAt: new Date() },
     update: { status: "OPEN" },
     select: { id: true },
   });
@@ -103,6 +100,8 @@ before(async () => {
       status: "ACTIVE",
       pmsRoles: { isEmpty: true },
       reports: { some: { status: "ACTIVE", roleTrack: { not: "C_LEVEL" } } },
+      // Never another suite's own employee — see tests/integration/fixture.ts.
+      ...NOT_SUITE_OWNED,
     },
     select: {
       id: true,
@@ -169,18 +168,23 @@ before(async () => {
   ids.employeeUser = await login(ids.employee, "emp");
   ids.managerUser = await login(ids.manager, "mgr");
 
-  const hr = await prisma.employee.findFirstOrThrow({
-    where: { pmsRoles: { has: "HR_SUPER_ADMIN" }, id: { notIn: [ids.manager, ids.employee] } },
-    select: { id: true },
+  // This suite owns its HR actor — see tests/integration/fixture.ts on why
+  // borrowing the seeded Super Admin makes concurrent suites fail with a 403.
+  ids.hr = await suiteActor(prisma, {
+    suite: "ye",
+    tag: "hr",
+    name: "Year-end HR Super Admin",
+    pmsRoles: ["HR_SUPER_ADMIN"],
   });
-  ids.hr = hr.id;
-  ids.hrUser = await login(hr.id, "hr");
+  ids.hrUser = await login(ids.hr, "hr");
 
   const stranger = await prisma.employee.findFirstOrThrow({
     where: {
       pmsRoles: { isEmpty: true },
       id: { notIn: [ids.manager, ids.employee, ids.hr] },
       NOT: { reports: { some: {} } },
+      // Never another suite's own employee — see tests/integration/fixture.ts.
+      ...NOT_SUITE_OWNED,
     },
     select: { id: true },
   });
@@ -190,7 +194,7 @@ before(async () => {
   // §5.1's lock — the baseline §7.1 assesses against.
   await prisma.cycleParticipant.update({
     where: { id: ids.participant },
-    data: { goalsApprovedAt: new Date(), goalsApprovedById: hr.id },
+    data: { goalsApprovedAt: new Date(), goalsApprovedById: ids.hr },
   });
 });
 
