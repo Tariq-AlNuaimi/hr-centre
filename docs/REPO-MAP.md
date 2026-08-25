@@ -27,6 +27,7 @@
 - app/[locale]/(dashboard)/settings/page.tsx
 - app/[locale]/(dashboard)/settings/profile/page.tsx
 - app/[locale]/(dashboard)/team/page.tsx
+- app/[locale]/(dashboard)/three-sixty/assignments/[assignmentId]/page.tsx
 - app/[locale]/(dashboard)/three-sixty/page.tsx
 - app/[locale]/(dashboard)/users/[id]/page.tsx
 - app/[locale]/(dashboard)/users/new/page.tsx
@@ -83,7 +84,7 @@
 - app/api/strategy-scores/route.ts  [GET,POST]
 - app/api/three-sixty/activate/route.ts  [POST]
 - app/api/three-sixty/assignments/route.ts  [GET,POST,PUT]
-- app/api/three-sixty/responses/route.ts  [POST]
+- app/api/three-sixty/responses/route.ts  [GET,POST]
 - app/api/three-sixty/results/route.ts  [GET]
 - app/api/three-sixty/route.ts  [GET,POST]
 - app/api/transfers/route.ts  [GET,POST]
@@ -179,9 +180,11 @@
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/status-query.ts: participantStatuses
 - lib/pms/status.ts: StepState, ParticipantStatusInput, ParticipantStatus, goalSettingState, yearEndState, outstandingLabel, deriveStatus, StageTally, emptyTally, completion, tallyBy, StageProgress, stageProgress, awaitingManager
-- lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks
+- lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks, ThreeSixtyTaskRow, buildThreeSixtyTasks
+- lib/pms/three-sixty-answer.ts: AnswerRefusal, answerBlockedReason
 - lib/pms/three-sixty-assign.ts: projectPeers, peerPoolFor, PlannedAssignment, planAssignments
-- lib/pms/three-sixty.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, RATERS_PER_EMPLOYEE, isAnswerScore, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
+- lib/pms/three-sixty-scale.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, isAnswerScore
+- lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
@@ -243,6 +246,7 @@
 - components/pms/SignOffPanel.tsx
 - components/pms/StageBanner.tsx
 - components/pms/StatusRoster.tsx
+- components/pms/ThreeSixtyForm.tsx
 - components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx

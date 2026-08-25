@@ -1,5 +1,10 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { AssessmentType, RoleTrack } from "@/generated/prisma/client";
+import type {
+  AssessmentType,
+  AssignmentStatus,
+  RoleTrack,
+  ThreeSixtyStatus,
+} from "@/generated/prisma/client";
 import { isGoalSettingExempt } from "./cycle";
 
 /**
@@ -10,24 +15,14 @@ import { isGoalSettingExempt } from "./cycle";
  * raters" or "the ratio" means.
  */
 
-/** §9.3 — "4-point forced scale (no neutral midpoint)." */
-export const MIN_ANSWER = 1;
-export const MAX_ANSWER = 4;
-
-/** §9.3's labels, in the order the spec lists them. */
-export const ANSWER_SCALE = [
-  { score: 1, key: "stronglyDisagree" },
-  { score: 2, key: "disagree" },
-  { score: 3, key: "agree" },
-  { score: 4, key: "stronglyAgree" },
-] as const;
+// §9.3's scale lives in a leaf module so the §9.7 answering form can import it
+// without pulling this file's `./cycle` -> `lib/prisma` chain into the browser.
+// Re-exported here so every existing server-side import keeps working.
+export { ANSWER_SCALE, MAX_ANSWER, MIN_ANSWER, isAnswerScore } from "./three-sixty-scale";
+import { MAX_ANSWER, isAnswerScore } from "./three-sixty-scale";
 
 /** §9.4 — "Raters — exactly 3 per employee". */
 export const RATERS_PER_EMPLOYEE = 3;
-
-export function isAnswerScore(score: number): boolean {
-  return Number.isInteger(score) && score >= MIN_ANSWER && score <= MAX_ANSWER;
-}
 
 /**
  * §9.2 — which template a rater fills in, decided by their relationship to the

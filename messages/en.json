@@ -582,7 +582,12 @@
         "HRBP": "HR business partner",
         "EXECUTIVE_VIEWER": "Executive viewer",
         "LINE_MANAGER": "Line manager"
-      }
+      },
+      "threeSixtyTitle": "360 assessment of {name}",
+      "threeSixtyStart": "HR asked you to assess them. Four questions plus optional comments.",
+      "threeSixtyResume": "You have started this one — your saved answers are still there.",
+      "threeSixtyAction": "Start",
+      "threeSixtyResumeAction": "Continue"
     },
     "midYear": {
       "title": "Mid-year review",
@@ -1099,6 +1104,43 @@
         "LINE_MANAGER_TO_EMPLOYEE": "Manager assessing an employee",
         "EMPLOYEE_TO_LINE_MANAGER": "Employee assessing their manager",
         "PEER_TO_PEER": "Peer assessing a peer"
+      }
+    },
+    "threeSixtyForm": {
+      "title": "360 assessment",
+      "subtitle": "Your answers are combined with the other raters' and never shown attributed to you.",
+      "about": "Assessing {name}",
+      "due": "Due {when}",
+      "questionsTitle": "Questions",
+      "questionsHelp": "Four points, no middle option — pick the one closest to what you have seen.",
+      "openEndedPlaceholder": "Optional. Combined with the other raters' comments, unattributed.",
+      "finishTitle": "Finish",
+      "finishHelp": "Save as you go. Submitting is final — you cannot reopen an assessment.",
+      "saveAction": "Save progress",
+      "submitAction": "Submit assessment",
+      "working": "Working…",
+      "remaining": "{count} question(s) still need an answer",
+      "readyToSubmit": "Every question answered.",
+      "savedToast": "Progress saved.",
+      "submittedToast": "Assessment submitted.",
+      "loadFailed": "Could not load this assessment.",
+      "loadFailedHelp": "It may have been reassigned, or the 360 cycle may have closed.",
+      "scale": {
+        "stronglyDisagree": "Strongly disagree",
+        "disagree": "Disagree",
+        "agree": "Agree",
+        "stronglyAgree": "Strongly agree"
+      },
+      "status": {
+        "NOT_STARTED": "Not started",
+        "IN_PROGRESS": "In progress",
+        "SUBMITTED": "Submitted",
+        "OVERDUE": "Overdue"
+      },
+      "type": {
+        "LINE_MANAGER_TO_EMPLOYEE": "You are their line manager",
+        "EMPLOYEE_TO_LINE_MANAGER": "They are your line manager",
+        "PEER_TO_PEER": "You work alongside them"
       }
     },
     "strategyScores": {

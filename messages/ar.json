@@ -582,7 +582,12 @@
         "HRBP": "شريك أعمال الموارد البشرية",
         "EXECUTIVE_VIEWER": "مطّلع تنفيذي",
         "LINE_MANAGER": "مدير مباشر"
-      }
+      },
+      "threeSixtyTitle": "تقييم 360 لـ {name}",
+      "threeSixtyStart": "طلبت منك الموارد البشرية تقييمه. أربعة أسئلة مع تعليقات اختيارية.",
+      "threeSixtyResume": "لقد بدأت هذا التقييم — إجاباتك المحفوظة ما زالت موجودة.",
+      "threeSixtyAction": "ابدأ",
+      "threeSixtyResumeAction": "متابعة"
     },
     "midYear": {
       "title": "مراجعة منتصف السنة",
@@ -1099,6 +1104,43 @@
         "LINE_MANAGER_TO_EMPLOYEE": "المدير يقيّم موظفًا",
         "EMPLOYEE_TO_LINE_MANAGER": "الموظف يقيّم مديره",
         "PEER_TO_PEER": "زميل يقيّم زميلًا"
+      }
+    },
+    "threeSixtyForm": {
+      "title": "تقييم 360",
+      "subtitle": "تُدمج إجاباتك مع إجابات المُقيّمين الآخرين ولا تُنسب إليك أبداً.",
+      "about": "تقييم {name}",
+      "due": "الموعد النهائي {when}",
+      "questionsTitle": "الأسئلة",
+      "questionsHelp": "أربع درجات بلا خيار وسطي — اختر الأقرب إلى ما رأيته.",
+      "openEndedPlaceholder": "اختياري. يُدمج مع تعليقات المُقيّمين الآخرين دون نسبة إلى أحد.",
+      "finishTitle": "الإنهاء",
+      "finishHelp": "احفظ أثناء العمل. الإرسال نهائي — لا يمكن إعادة فتح التقييم.",
+      "saveAction": "حفظ التقدم",
+      "submitAction": "إرسال التقييم",
+      "working": "جارٍ التنفيذ…",
+      "remaining": "{count} سؤال بحاجة إلى إجابة",
+      "readyToSubmit": "تمت الإجابة على كل الأسئلة.",
+      "savedToast": "تم حفظ التقدم.",
+      "submittedToast": "تم إرسال التقييم.",
+      "loadFailed": "تعذّر تحميل هذا التقييم.",
+      "loadFailedHelp": "قد يكون أُعيد تعيينه، أو أن دورة 360 قد أُغلقت.",
+      "scale": {
+        "stronglyDisagree": "لا أوافق بشدة",
+        "disagree": "لا أوافق",
+        "agree": "أوافق",
+        "stronglyAgree": "أوافق بشدة"
+      },
+      "status": {
+        "NOT_STARTED": "لم يبدأ",
+        "IN_PROGRESS": "قيد التنفيذ",
+        "SUBMITTED": "تم الإرسال",
+        "OVERDUE": "متأخر"
+      },
+      "type": {
+        "LINE_MANAGER_TO_EMPLOYEE": "أنت مديره المباشر",
+        "EMPLOYEE_TO_LINE_MANAGER": "هو مديرك المباشر",
+        "PEER_TO_PEER": "تعمل معه كزميل"
       }
     },
     "strategyScores": {

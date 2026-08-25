@@ -29,6 +29,17 @@ export interface Task {
   rank: number;
   /** The server's own sentence for why this set cannot be edited, if it cannot. */
   blockedReason: string | null;
+  /**
+   * A task that carries its OWN deadline, rather than the goal-setting stage's.
+   *
+   * The KPI tasks are all scoped to one stage, so the list rendered a single
+   * stage-wide badge for every row. §4.4's 360 tasks broke that assumption: they
+   * run on the 360 cycle's deadline, and inheriting goal-setting's showed a
+   * 360 due in a month as "Deadline passed". Absent = use the stage's, which
+   * keeps every existing row rendering exactly as before.
+   */
+  tone?: TaskTone;
+  dueAt?: string;
 }
 
 /**
@@ -152,4 +163,62 @@ export function buildTasks(params: {
     if (report) tasks.push(report);
   }
   return tasks.sort((a, b) => a.rank - b.rank || a.key.localeCompare(b.key, locale));
+}
+
+/** One 360 assignment as My Tasks needs to see it (§9.7's derived status). */
+export type ThreeSixtyTaskRow = {
+  id: string;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" | "OVERDUE";
+  ratee: { id: string; name: string };
+  deadline: string;
+};
+
+/**
+ * §4.4's missing category — "any 360 assigned to me (report, peer, or
+ * colleague)".
+ *
+ * My Tasks carried exactly two kinds, both derived from the goal-setting
+ * roster, so a rater with three 360 forms waiting saw an empty task list. §4.4
+ * is explicit that this space is "driven by assignment, not hierarchy or role
+ * name", and a 360 assignment is the purest case of that in the whole spec:
+ * it reaches you because HR picked you, not because of where you sit.
+ *
+ * A SUBMITTED assignment produces no task. §9.7 makes submission one-way, so
+ * leaving it on the list would be an action nobody can take.
+ */
+export function buildThreeSixtyTasks(params: {
+  assignments: readonly ThreeSixtyTaskRow[];
+  hrefFor: (assignment: ThreeSixtyTaskRow) => string;
+  nowMs: number | null;
+}): Task[] {
+  const { assignments, hrefFor, nowMs } = params;
+  const tasks: Task[] = [];
+
+  for (const a of assignments) {
+    if (a.status === "SUBMITTED") continue;
+
+    const dueMs = new Date(a.deadline).getTime();
+    const tone: TaskTone =
+      a.status === "OVERDUE"
+        ? "overdue"
+        : nowMs !== null && dueMs - nowMs <= DUE_SOON_MS
+          ? "dueSoon"
+          : "open";
+
+    tasks.push({
+      key: `360:${a.id}`,
+      titleKey: "threeSixtyTitle",
+      titleParams: { name: a.ratee.name },
+      detailKey: a.status === "IN_PROGRESS" ? "threeSixtyResume" : "threeSixtyStart",
+      actionKey: a.status === "IN_PROGRESS" ? "threeSixtyResumeAction" : "threeSixtyAction",
+      href: hrefFor(a),
+      // Ranks alongside the KPI tasks on the same urgency scale, so a 360 due
+      // tomorrow outranks a goal-setting set that is merely open.
+      rank: STAGE_RANK[tone],
+      blockedReason: null,
+      tone,
+      dueAt: a.deadline,
+    });
+  }
+  return tasks;
 }

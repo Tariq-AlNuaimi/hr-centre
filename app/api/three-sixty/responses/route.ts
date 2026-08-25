@@ -3,7 +3,8 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { isAnswerScore } from "@/lib/pms/three-sixty";
+import { evaluatorStatus, isAnswerScore } from "@/lib/pms/three-sixty";
+import { answerBlockedReason } from "@/lib/pms/three-sixty-answer";
 import { submitResponsesSchema } from "@/lib/validations/three-sixty";
 
 /**
@@ -83,25 +84,16 @@ export const POST = withRateLimit(
       return notFound("Assignment");
     }
 
-    if (assignment.threeSixtyCycle.status !== "ACTIVE") {
-      return err(
-        assignment.threeSixtyCycle.status === "DRAFT"
-          ? "This 360 cycle has not been activated yet (§9.7)."
-          : "This 360 cycle is closed (§9.8).",
-        409,
-      );
-    }
-    if (now < assignment.threeSixtyCycle.opensAt) {
-      return err("This 360 cycle has not opened yet (§9.7).", 409);
-    }
-    if (now > assignment.threeSixtyCycle.deadline) {
-      // §5.4's convention, carried into §9: a deadline is a hard lock.
-      return err("The 360 deadline has passed and this assessment is locked (§5.4).", 409);
-    }
-    if (assignment.status === "SUBMITTED") {
-      // §9.7 — "prevent duplicate submissions per assignment".
-      return err("This assessment has already been submitted (§9.7).", 409);
-    }
+    // Shared with the GET below, so the form the rater is shown and the write
+    // that accepts it cannot disagree about whether they may answer.
+    const blocked = answerBlockedReason({
+      cycleStatus: assignment.threeSixtyCycle.status,
+      opensAt: assignment.threeSixtyCycle.opensAt,
+      deadline: assignment.threeSixtyCycle.deadline,
+      assignmentStatus: assignment.status,
+      now,
+    });
+    if (blocked) return err(blocked.reason, blocked.status);
 
     const questions = new Map(assignment.template.questions.map((q) => [q.id, q]));
     const shapeError = answerShapeError(answers, questions);
@@ -180,4 +172,89 @@ export const POST = withRateLimit(
     return ok({ assignment: after });
   }),
   { id: "pms-360-write", limit: 120, windowMs: 60_000 },
+);
+
+/**
+ * §9.7 — the form itself: the questions this rater was asked, and whatever they
+ * have already saved.
+ *
+ * This read did not exist, and its absence is why §9 had no answering screen.
+ * Neither of the two endpoints a rater could already reach carries a form:
+ * `/api/three-sixty` returns cycle dates only for a plain employee, and the
+ * assignments list gives the template's TYPE, not its questions.
+ *
+ * **Only the assigned rater.** Not HR, not the ratee's manager, and 404 rather
+ * than 403 for everyone else — §4.2's convention, and here it also protects
+ * §13.1: an assignment id that answered "yes, that exists" would let someone
+ * enumerate who is assessing whom, which is the join anonymity rests on.
+ *
+ * `blockedReason` is the same function the POST refuses with, so a form that
+ * renders is a form that will be accepted.
+ */
+export const GET = withRateLimit(
+  withAuth(async (request: NextRequest, { session }) => {
+    const actor = await resolveActor(session);
+    const now = new Date();
+
+    const assignmentId = new URL(request.url).searchParams.get("assignmentId");
+    if (!assignmentId) return err("assignmentId is required");
+
+    const assignment = await prisma.assignment.findUnique({
+      where: { id: assignmentId },
+      select: {
+        id: true,
+        status: true,
+        raterId: true,
+        submittedAt: true,
+        ratee: { select: { id: true, name: true } },
+        threeSixtyCycle: {
+          select: { id: true, status: true, opensAt: true, deadline: true },
+        },
+        template: {
+          select: {
+            type: true,
+            questions: {
+              select: { id: true, text: true, orderIndex: true, scored: true },
+              orderBy: { orderIndex: "asc" },
+              take: 60,
+            },
+          },
+        },
+        responses: { select: { questionId: true, score: true, text: true }, take: 60 },
+      },
+    });
+    if (!assignment) return notFound("Assignment");
+    if (actor.employeeId === null || actor.employeeId !== assignment.raterId) {
+      return notFound("Assignment");
+    }
+
+    const blocked = answerBlockedReason({
+      cycleStatus: assignment.threeSixtyCycle.status,
+      opensAt: assignment.threeSixtyCycle.opensAt,
+      deadline: assignment.threeSixtyCycle.deadline,
+      assignmentStatus: assignment.status,
+      now,
+    });
+
+    return ok({
+      assignment: {
+        id: assignment.id,
+        // §9.7's four statuses, with OVERDUE derived from the server's clock.
+        status: evaluatorStatus({
+          stored: assignment.status,
+          deadline: assignment.threeSixtyCycle.deadline,
+          now,
+        }),
+        ratee: assignment.ratee,
+        templateType: assignment.template.type,
+        deadline: assignment.threeSixtyCycle.deadline,
+        submittedAt: assignment.submittedAt,
+        canAnswer: blocked === null,
+        blockedReason: blocked?.reason ?? null,
+      },
+      questions: assignment.template.questions,
+      answers: assignment.responses,
+    });
+  }),
+  { id: "pms-360-read", limit: 120, windowMs: 60_000 },
 );

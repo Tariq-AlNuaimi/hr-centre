@@ -240,15 +240,27 @@ export const GET = withRateLimit(
     const actor = await resolveActor(session);
     const url = new URL(request.url);
     const threeSixtyCycleId = url.searchParams.get("threeSixtyCycleId");
-    if (!threeSixtyCycleId) return err("threeSixtyCycleId is required");
 
     // §9.4 — "HR selects and manages all rater assignments", so the who-assesses-
-    // whom map is HR's. A rater sees only their OWN assignments, which reach them
-    // through My Tasks (§4.4) rather than through this list: knowing the full map
-    // is how a ratee works out who said what, and §13.1 protects that anonymity.
-    if (!isHr(actor)) {
+    // whom map is HR's. A rater sees only their OWN assignments: knowing the full
+    // map is how a ratee works out who said what, and §13.1 protects that.
+    //
+    // The scope follows the REQUEST, not the role. Asking without a cycle id is
+    // "what am I asked to do" (§4.4's My Tasks, driven by assignment), and that
+    // question belongs to everyone — §4.3 makes roles ADDITIVE, so an HR Super
+    // Admin who is also somebody's peer still has a 360 to fill in. Branching on
+    // `isHr` alone sent exactly that person down the map branch and showed them
+    // an error instead of their own task.
+    if (!threeSixtyCycleId || !isHr(actor)) {
+      // Omitting the id scopes to the open performance year; an employee has no
+      // reason to hold HR's handle on the cycle.
       const mine = await prisma.assignment.findMany({
-        where: { threeSixtyCycleId, raterId: actor.employeeId ?? "" },
+        where: {
+          raterId: actor.employeeId ?? "",
+          ...(threeSixtyCycleId
+            ? { threeSixtyCycleId }
+            : { threeSixtyCycle: { cycle: { status: "OPEN" } } }),
+        },
         take: 100,
         select: {
           id: true,

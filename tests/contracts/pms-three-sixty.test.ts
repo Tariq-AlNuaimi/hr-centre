@@ -18,6 +18,7 @@ import {
   templateTypeFor,
   type RaterCandidate,
 } from "../../lib/pms/three-sixty";
+import { answerBlockedReason } from "../../lib/pms/three-sixty-answer";
 
 /**
  * §9 — the 360 module. Where the spec gives a worked example, that example is
@@ -352,4 +353,78 @@ test("§9.7 reminders fire inside the window and stop at the deadline", () => {
     }),
     true,
   );
+});
+
+// --- §9.7 may this rater answer right now? ------------------------------------
+
+/**
+ * The gate the answering form (§9.7) and the write path both stand behind. It
+ * exists as one function because a form the UI renders and the route then
+ * refuses is the worst outcome: the rater types out an assessment and loses it
+ * at submit.
+ */
+test("§9.7 a draft cycle cannot be answered — it was never launched", () => {
+  const r = answerBlockedReason({
+    cycleStatus: "DRAFT",
+    opensAt: new Date("2027-01-01"),
+    deadline: new Date("2027-12-31"),
+    assignmentStatus: "NOT_STARTED",
+    now: new Date("2027-06-01"),
+  });
+  assert.match(String(r?.reason), /not been activated/);
+  assert.equal(r?.status, 409);
+});
+
+test("§9.8 a closed cycle cannot be answered — results are already calculated", () => {
+  const r = answerBlockedReason({
+    cycleStatus: "CLOSED",
+    opensAt: new Date("2027-01-01"),
+    deadline: new Date("2027-12-31"),
+    assignmentStatus: "NOT_STARTED",
+    now: new Date("2027-06-01"),
+  });
+  assert.match(String(r?.reason), /closed/);
+});
+
+test("§5.4's hard lock carries into §9: past the deadline the form is locked", () => {
+  const r = answerBlockedReason({
+    cycleStatus: "ACTIVE",
+    opensAt: new Date("2027-01-01"),
+    deadline: new Date("2027-06-30"),
+    assignmentStatus: "IN_PROGRESS",
+    now: new Date("2027-07-01"),
+  });
+  assert.match(String(r?.reason), /deadline has passed/);
+});
+
+test("§9.7 submission is one-way — a submitted assessment cannot be reopened", () => {
+  const r = answerBlockedReason({
+    cycleStatus: "ACTIVE",
+    opensAt: new Date("2027-01-01"),
+    deadline: new Date("2027-12-31"),
+    assignmentStatus: "SUBMITTED",
+    now: new Date("2027-06-01"),
+  });
+  assert.match(String(r?.reason), /already been submitted/);
+});
+
+test("§9.7 an active cycle inside its window, not yet submitted, is answerable", () => {
+  const open = answerBlockedReason({
+    cycleStatus: "ACTIVE",
+    opensAt: new Date("2027-01-01"),
+    deadline: new Date("2027-12-31"),
+    assignmentStatus: "IN_PROGRESS",
+    now: new Date("2027-06-01"),
+  });
+  assert.equal(open, null);
+
+  // …and not before it opens.
+  const early = answerBlockedReason({
+    cycleStatus: "ACTIVE",
+    opensAt: new Date("2027-06-01"),
+    deadline: new Date("2027-12-31"),
+    assignmentStatus: "NOT_STARTED",
+    now: new Date("2027-05-31"),
+  });
+  assert.match(String(early?.reason), /has not opened/);
 });
