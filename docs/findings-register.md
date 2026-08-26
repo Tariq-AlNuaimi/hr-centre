@@ -179,9 +179,25 @@ the changed surface is still **open** (un-adjudicated).
 
 - 2026-08-25 — [high-quality] **No §5.5 reminder or §9.7 invitation is ever sent unless SMTP is
   configured.** The escalation ladder and the notification code are implemented and wired to the
-  daily cycle sweep, but `lib/email.ts` no-ops without `SMTP_HOST`, which `.env.example` does not
-  carry. The compliance record is still written, so this degrades to "the log is right, nobody was
-  told". Operational, not a code defect. — operator — status: adjudicated(2026-08-25)
+  daily cycle sweep, but `lib/email.ts` no-ops without `SMTP_HOST`. The compliance record is still
+  written, so this degrades to "the log is right, nobody was told". Operational, not a code defect.
+
+  **2026-08-26 — the code half is now PROVEN, and a provider is the only thing left.** Verified
+  against a local SMTP sink rather than by reading: with `SMTP_HOST`/`SMTP_PORT`/`SMTP_FROM` set,
+  `isEmailEnabled()` returns true, nodemailer connects, and the message is delivered with correct
+  headers and a multipart text/html body. The gate, the transport and the send path all work; what
+  is missing is credentials, not code.
+
+  Two things the run also settled. `.env.example` DOES carry all five variables (lines 56–64) — the
+  original finding said it did not, and that half was wrong. And the success log line reads
+  `[email] sent messageId=... to=1 recipient subject="..."` — metadata only, no `opts.text` and no
+  `opts.html`, so SECURITY.md's requirement for this file holds under a real send rather than only
+  under inspection.
+
+  **To unblock:** pick a provider, then set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
+  (Restricted — never logged, never returned by any API) and `SMTP_FROM` on the deployment. Nothing
+  in the repo needs to change. — operator — status: adjudicated(2026-08-25), code verified
+  2026-08-26, awaiting a provider
 
 - 2026-08-24 — [maintainable/correctness] **`Kpi` is not registered in `SOFT_DELETE_MODELS`,
   and two independent Phase 2 units hit it.** `lib/prisma/soft-delete-extension.ts` filters
