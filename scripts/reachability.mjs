@@ -18,8 +18,8 @@
 //     reach, or inside dead code, still counts as a caller here.
 //   - Generic CRUD hooks take their path as a VARIABLE (`useEntityMutations(base)`),
 //     so those are resolved by following the hook's own base-path argument.
-//   - Cron-invoked routes have no UI caller by design; they are allowlisted with
-//     the reason, not silently skipped.
+//   - Routes reached other than by `apiClient` (Vercel crons; next-auth's own
+//     signIn) are listed with the NAME of their caller, not silently skipped.
 // It is a floor, not a proof. The proof is driving the screen in a browser.
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -33,11 +33,18 @@ const walk = (dir, out = []) => {
   return out;
 };
 
-// Routes with no UI caller BY DESIGN. Each needs a reason, and the reason has to
-// name the non-UI caller — "nothing calls it" is the defect this script hunts.
-const NO_UI_CALLER = {
+// Routes reached by something other than an `apiClient` call. Each needs a reason,
+// and the reason has to NAME the caller — "nothing calls it" is the defect this
+// script hunts, so an unnamed exemption would be the defect wearing a hat.
+//
+// Declared entries take precedence over pattern matching: the catch-all below is
+// otherwise credited to whichever `/api/auth/...` caller the prefix match reaches
+// first, which is a true verdict for a false reason.
+const NAMED_CALLER = {
   "/api/internal/audit-purge": "Vercel cron, `crons` in vercel.json (0 3 * * *)",
   "/api/internal/cycle-sweep": "Vercel cron, `crons` in vercel.json (0 6 * * *)",
+  "/api/auth/[...nextauth]":
+    "next-auth's own signIn()/signOut() — app/[locale]/(auth)/login/LoginForm.tsx",
 };
 
 const WRITE = ["POST", "PUT", "PATCH", "DELETE"];
@@ -88,7 +95,12 @@ for (const r of routes) {
   const hasDynamic = firstDyn !== -1;
 
   for (const v of WRITE) {
-    if (!new RegExp(`export const ${v}\\b`).test(src)) continue;
+    // BOTH declaration forms. Matching only `export const` made the checker blind
+    // to `export async function POST` — three auth routes, invisible to a script
+    // whose headline number is "0 unreachable". They each turned out to have a
+    // caller, so the verdict held; the instrument did not. A checker that cannot
+    // see a handler cannot report it missing.
+    if (!new RegExp(`export (?:const|async function) ${v}\\b`).test(src)) continue;
     let hits = calls.filter((c) => {
       if (c.method !== v) return false;
       // A literal tail after a dynamic segment is the most specific signal.
@@ -101,7 +113,8 @@ for (const r of routes) {
     hits = hits.sort(
       (a, b) => Number(a.file.startsWith("lib/")) - Number(b.file.startsWith("lib/")),
     );
-    rows.push({ apiPath, verb: v, hits, allow: NO_UI_CALLER[apiPath] });
+    const allow = NAMED_CALLER[apiPath];
+    rows.push({ apiPath, verb: v, hits: allow ? [] : hits, allow });
   }
 }
 
@@ -117,7 +130,7 @@ for (const r of rows) {
     );
   } else if (r.allow) {
     console.log(
-      `  --  ${r.verb.padEnd(6)} ${r.apiPath.padEnd(56)} no UI caller by design: ${r.allow}`,
+      `  --  ${r.verb.padEnd(6)} ${r.apiPath.padEnd(56)} caller named explicitly: ${r.allow}`,
     );
   } else {
     console.log(`UNREACHABLE ${r.verb} ${r.apiPath}`);
@@ -126,7 +139,7 @@ for (const r of rows) {
 
 console.log(
   `\n${rows.length} (route, verb) pairs · ${rows.length - unreachable.length - allowed.length} with a UI caller` +
-    ` · ${allowed.length} cron-only by design · ${unreachable.length} UNREACHABLE`,
+    ` · ${allowed.length} with an explicitly named non-apiClient caller · ${unreachable.length} UNREACHABLE`,
 );
 if (unreachable.length) {
   console.log(

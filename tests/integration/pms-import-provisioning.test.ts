@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 
 import { prisma, prismaUnfiltered, auditedTransaction } from "../../lib/prisma";
 import { withAuditContext } from "../../lib/audit-context";
-import { provisionLogin } from "../../lib/pms/import/run";
+import { existingLoginEmails, provisionLoginFor } from "../../lib/pms/import/run";
 
 const RUN = `prov-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 /** Stand-in for a stored password hash. See the note at its use site. */
@@ -49,24 +49,34 @@ const createdUsers: string[] = [];
 async function importOne(opts: { label: string; status: "ACTIVE" | "LEAVER" }) {
   return withAuditContext({}, async () =>
     auditedTransaction(async (tx) => {
+      const row = {
+        email: email(opts.label),
+        name: `Provision ${opts.label}`,
+        status: opts.status,
+      };
+      // The SHIPPED functions, in the SHIPPED order — resolve the taken emails for
+      // the batch, provision, then write the link on the employee's own create. A
+      // fixture that reimplemented the rule would keep passing after the import
+      // stopped calling it.
+      const taken = await existingLoginEmails(tx, [row.email]);
+      const userId = await provisionLoginFor(tx, row, taken);
       const e = await tx.employee.create({
         data: {
           odooId: odoo(opts.label),
-          name: `Provision ${opts.label}`,
-          email: email(opts.label),
+          name: row.name,
+          email: row.email,
           entityId,
           departmentId,
           roleTrack: "INDIVIDUAL",
           status: opts.status,
+          userId,
           ...(opts.status === "LEAVER" ? { lastWorkingDay: new Date("2026-06-30") } : {}),
         },
-        select: { id: true, email: true, name: true, status: true },
+        select: { id: true },
       });
       createdEmployees.push(e.id);
-      // The SHIPPED function, not a restatement of it: a fixture that reimplements
-      // the rule would keep passing after the import stopped calling it.
-      const provisioned = await provisionLogin(tx, e);
-      return { employeeId: e.id, provisioned };
+      if (userId) createdUsers.push(userId);
+      return { employeeId: e.id, provisioned: userId !== null };
     }),
   );
 }

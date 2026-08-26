@@ -48,12 +48,17 @@ is exactly how F11 hid. Run it with `node scripts/reachability.mjs`; it exits no
 unexplained miss.
 
 ```
-42 (route, verb) pairs · 40 with a UI caller · 2 cron-only by design · 0 UNREACHABLE
+45 (route, verb) pairs · 42 with a UI caller · 3 with an explicitly named non-apiClient caller · 0 UNREACHABLE
 ```
 
-The two cron-only routes are `/api/internal/audit-purge` and `/api/internal/cycle-sweep`, allowlisted
-**with the name of their non-UI caller** (`crons` in `vercel.json`), so "nothing calls it" can never
-be the silent answer.
+The three exempted routes are `/api/internal/audit-purge` and `/api/internal/cycle-sweep` (`crons` in
+`vercel.json`) and `/api/auth/[...nextauth]` (next-auth's own `signIn()`, from `LoginForm.tsx`) —
+each listed **with the name of its caller**, so "nothing calls it" can never be the silent answer.
+
+> **Corrected by the red team (R1).** These numbers were `42 · 40 · 2` when this report was first
+> written. The checker matched `export const POST` and nothing else, so three handlers declared
+> `export async function POST` were invisible to it — all three had callers, so the verdict held, but
+> by luck rather than measurement. `docs/verification/REDTEAM-DELIVERY-REPORT.md` has the detail.
 
 What this check cannot see, stated so the number is not read as more than it is: it matches paths,
 not behaviour. A call site behind a button nobody can reach still counts. It is a floor, not a proof
@@ -185,10 +190,17 @@ log is right, nobody was told". Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP
 - **Mobile viewports were captured, not audited.** Dark and light at desktop and mobile exist for the
   two screens this session added; the rest of the product has not had a viewport pass.
 - **SSO is built but has never authenticated anybody.** The Entra provider added in §7 is registered
-  only when its three env vars are set, and no environment this session could reach has an IdP. What
-  is verified is the claim mapping (unit test), the provider's absence when unset, and the existing
-  soft-deleted-user guard. Whether Rihal's tenant issues the group claims `mapSsoRole` reads is
-  unknown until IT configures it.
+  only when its three env vars are set. The **gate itself is verified by execution** in all three
+  configurations — unset and two-of-three both yield `["credentials"]`, all three yields
+  `["credentials","microsoft-entra-id"]` — and the unset case is confirmed against **production**:
+  `/api/auth/providers` on the live deployment returns credentials alone. What remains unverified is
+  what genuinely cannot be tested without an IdP: whether Rihal's tenant emits the group claims
+  `mapSsoRole` reads, and whether a real federated sign-in completes.
+- **The import has never been run at organisational scale.** The red team measured a 40- and a
+  200-row apply and found the transaction budget would have run out well under the 10,000 rows the
+  loader accepts (R2, now fixed in code). The direction is certain; the exact ceiling on Neon is not,
+  and the platform's own function-duration limit is a plan setting, not a code one. See
+  `REDTEAM-DELIVERY-REPORT.md` and the findings register.
 - **No load, concurrency or data-volume testing.** The fixture is 37 people. §10.3's curve, §13.5's
   export and the score run have never been exercised at, say, 500.
 - **"Verified" here means implemented, tested, reviewed, and driven by the named role.** It does not
@@ -231,9 +243,10 @@ for the cast needs one of two things first:** the three `AUTH_ENTRA_*` variables
 deployment, or a platform admin setting a password at `/users` for each of the four or five people
 who will be shown signing in. That is stated here rather than discovered on stage.
 
-## 8. Still open for Rihal — three deliberate ambiguities
+## 8. Still open for Rihal — four decisions
 
-Unchanged, and each is flagged in the code where it applies (full table in `SPEC-CONFORMANCE.md`).
+The first three are unchanged specification ambiguities, each flagged in the code where it applies
+(full table in `SPEC-CONFORMANCE.md`). The fourth is new, raised by the red team.
 
 1. **§6.2 — re-signing after an approved mid-year change.** The spec is silent. No re-sign was
    invented; instead `SignOff.kpiSetHash` surfaces that a signature predates the current set.
@@ -243,7 +256,18 @@ Unchanged, and each is flagged in the code where it applies (full table in `SPEC
    Implemented as `>=` thresholds. Rihal should confirm, along with whether scores are rounded before
    banding.
 
-_Deviation 8 (the clamped score on §13.1's scorecard) was the fourth open question and was settled by
+4. **§13.1 — a 360 that only one person answered.** The clause's own words are "not attributed to
+   individual raters, **protecting anonymity**", and §9.4 fixes the rater set at exactly three, naming
+   two of the roles: line manager (mandatory) and peer (mandatory). So a single returned comment came
+   from a pool of at most three, one of whom is definitely the employee's line manager. The product
+   publishes it with no minimum-submission threshold — while warning **HR** at calibration when the
+   count is under three (F8). Recommendation: withhold **comments** below two submitted forms, with an
+   honest line rather than an empty section; keep publishing the **score**, since §9.5 averages what
+   came back and HR can decline to publish a cycle where too many are thin. Not implemented — picking
+   a threshold the spec does not name is Rihal's call, not the build's. Detail in
+   `REDTEAM-DELIVERY-REPORT.md` (R3).
+
+_Deviation 8 (the clamped score on §13.1's scorecard) was an earlier open question and was settled by
 the operator on 2026-08-26: the clamped score stays._
 
 ## How to re-run this
