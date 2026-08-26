@@ -34,10 +34,10 @@ tax is the ≤30-line digest, not the whole file.
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
-- **Gotchas — deploy, env & CI** (10): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
+- **Gotchas — deploy, env & CI** (12): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
-- **Gotchas — security, auth & hooks** (8): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
+- **Gotchas — security, auth & hooks** (10): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (4): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
 - **Conventions discovered** (10): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
@@ -124,6 +124,15 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Gotchas — deploy, env & CI
 
+- 2026-08-26 — **Never start dockerd to run `test:integration` here — export `DATABASE_URL` instead.**
+  The runner prefers a real URL, else an ephemeral container; with a daemon up and no URL it runs
+  against a FRESH UNSEEDED database and 83 of 95 tests fail like real regressions. (`make db-up`
+  also just fails: native Postgres already holds :5432.)
+- 2026-08-26 — **Prisma's transaction budget defaults to 5 s; Vercel's function duration is a second,
+  lower ceiling no Prisma option can widen.** Long writes need an explicit `timeout` AND
+  `export const maxDuration` (crons set 60). Red team R2: the import died ~1,480 rows under an
+  advertised `MAX_ROWS = 10_000`.
+
 - 2026-08-25 — **Vercel: a Sensitive env var is WRITE-ONLY** (`env pull` yields the literal
   `[SENSITIVE]`, which decodes to 6 bytes and mimics a truncated secret — cost two needless key
   rotations). Nothing reads it back; keep your own copy. And **an env-var change does not reach a
@@ -135,33 +144,19 @@ tax is the ≤30-line digest, not the whole file.
 <!-- non-obvious traps a future session must not trip on; prefer a code/ADR pointer -->
 
 - 2026-08-23 — **`npx skills add` can die silently before copying** (re-run + verify files landed); vendored packs = `.agents/skills/` + `.claude/skills/` symlinks, Prettier-ignored, gates stat through symlinks — decision + pointers: `docs/blueprints/vendored-skills.md`.
-- 2026-08-21 — **The web container HAS a real PostgreSQL 16 natively — `db-structure` and
-  `integration` need not skip here.** "No Docker daemon, so no DB" is half right: `docker` is on
-  PATH but the daemon is unreachable (testcontainers can't run), yet `/usr/lib/postgresql/16`
-  ships a `main` cluster sitting `down`. As root: `pg_ctlcluster 16 main start`;
-  `apt-get install -y postgresql-16-pgvector` (`vector` NOT default); set a `postgres` password;
-  `createdb` app + shadow DB; `CREATE EXTENSION vector`; `prisma migrate deploy`; run with
-  `DATABASE_URL` + `SHADOW_DATABASE_URL` (throwaway creds). Verified: `db-structure`
-  0.1s-degraded → 9.5s REAL; `integration` 6/6 incl. the pgvector HNSW index-plan check.
-  `scripts/test-integration.mjs` resolves a reachable `DATABASE_URL` FIRST — that path exists for
-  exactly this. Only the `docker` image-build gate truly cannot run here. **Don't claim "no DB in
-  a web session" without trying.**
+- 2026-08-21 — **The web container HAS a real PostgreSQL 16 natively, so `db-structure` and
+  `integration` need not skip — don't claim "no DB in a web session" without trying.** If the
+  cluster is `down`: `pg_ctlcluster 16 main start`, `apt-get install -y postgresql-16-pgvector`
+  (`vector` is NOT default), `createdb` app + shadow, `CREATE EXTENSION vector`,
+  `prisma migrate deploy`, then export `DATABASE_URL` + `SHADOW_DATABASE_URL` (throwaway creds).
+  Only the `docker` image-build gate truly cannot run here. See the 2026-08-26 entry above for why
+  starting dockerd instead is a trap.
 
-- 2026-08-21 — **`ship:full` has an INTERMITTENT phase-A test-gate failure. Do not read a
-  single RED as a regression.** Observed across four consecutive `npm run ship:full` runs on the
-  same clean commit: run 1 failed `contract tests`, run 2 failed `coverage`, runs 3 and 4 failed
-  neither. Both gates pass in isolation (`npm test` → 228+17 pass; the coverage gate's exact
-  command → 213 pass, lines 78.88 / branches 91.54 / funcs 87.50, all above floor), and the
-  failure did NOT reproduce when phase A's eight-way concurrency was replicated by hand.
-  **Unconfirmed hypothesis, recorded as a hypothesis:** phase A runs every gate through one
-  `Promise.all`, and under `SHIP_FULL` the `coverage` gate re-runs `tests/contracts/*.test.ts`
-  _concurrently with_ the `contract tests` gate running the same specs — two node:test processes
-  over one spec set, plus six other gates competing for CPU. That would explain why it alternates
-  between exactly those two gates and never touches the others. NOT proven — do not "fix" it on
-  this theory without reproducing first. **What to do when you hit it:** re-run once; if the same
-  gate fails twice running, it is real. If you want to settle it, the cheap experiment is to
-  serialise those two gates and see whether the flake disappears over ~10 runs. The operator's
-  standing call (2026-08-21) is RECORD, don't chase.
+- 2026-08-21 — **`ship:full` has an INTERMITTENT phase-A failure in `contract tests` OR `coverage`
+  — never the other gates. Do not read a single RED as a regression.** Both pass in isolation.
+  Unproven hypothesis: under `SHIP_FULL` the coverage gate re-runs the contract specs concurrently
+  with the contract-tests gate, two node:test processes over one spec set. **Re-run once; if the
+  same gate fails twice running, it is real.** Operator's standing call: RECORD, don't chase.
 
 - 2026-07-11 — **gitleaks is NOT preinstalled in the web container; `/ship` phase B goes
   RED ("gitleaks is not on PATH") until you reinstall it EACH session.** The GitHub release
@@ -255,6 +250,17 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
   (transform chains `.toLowerCase()/.trim()` survive on `z.email()`). Schemas are otherwise semantics-identical.
 
 ## Gotchas — security, auth & hooks
+
+- 2026-08-26 — **gitleaks flags a realistic-looking hash literal in a TEST as `generic-api-key`.**
+  a `passwordHash:` fixture set to the word "argon2" plus a hyphenated word (entropy 3.61) failed
+  the push gate — and this very note tripped the gate again when it quoted the literal, so don't.
+  Because gitleaks
+  scans HISTORY, a follow-up commit does not clear it — the commit has to be rewritten. Use a
+  low-entropy English phrase for a stand-in hash, not a hash-SHAPED string.
+- 2026-08-26 — **`no-prisma-unfiltered-import` is right to refuse `prismaUnfiltered` outside auth /
+  recycling-bin / maintenance.** To see soft-deleted rows anyway (the unique indexes don't respect
+  the filter), ask the audited client twice: the plain read, plus one naming
+  `deletedAt: { not: null }` — the extension only injects `deletedAt: null` when the caller hasn't.
 
 - 2026-08-25 — **`resolveRoot(input)` reads the SESSION cwd, so a `cd <repo> && …` inside the
   command was invisible to the four SDLC gates.** In a multi-repo session that made the qa-gate
