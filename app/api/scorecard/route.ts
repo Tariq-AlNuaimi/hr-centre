@@ -131,6 +131,10 @@ export const GET = withRateLimit(
         score: displayScore(score.rawScore, score.calibratedBand).toFixed(2),
         threeSixty: consolidated.level ? consolidated.level.toFixed(2) : null,
         comments: consolidated.comments,
+        // §13.1's anonymity floor (R3). The flag, not an empty list: "nobody
+        // wrote anything" and "too few people answered to share what they wrote"
+        // are different facts, and the screen says which one this is.
+        commentsWithheld: consolidated.commentsWithheld,
       },
     });
   }),

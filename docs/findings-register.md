@@ -57,11 +57,18 @@ the changed surface is still **open** (un-adjudicated).
   inherits the platform default, **10 s on Vercel's smaller plans**, which no Prisma timeout can
   widen.
 
-  **Residual for the operator, not fixable in code:** 60 s is the most a Hobby-plan function may run.
-  The honest ceiling today is **hundreds of rows on Neon, not 10,000**; if Rihal's first import needs
-  more, `maxDuration` must go up and that needs a plan allowing it. Not load-tested at organisational
-  scale — the direction is certain, the exact production ceiling is not. — operator — status:
-  fixed(2026-08-26) in code; plan/`maxDuration` decision OPEN for the operator
+  **Residual DECIDED 2026-08-26 — operator chose to cap the import rather than raise the plan.**
+  `MAX_ROWS` drops from 10,000 to **2,000**, derived from a fresh measurement of the full apply shape
+  (three statements per created row): 9.19 ms/row at n=200, 5.54 at n=600, **5.09 amortised at
+  n=1,500** on loopback. Budget 4× for Neon's round trips → ~20 ms/row; reserve 40 s of the route's
+  60 s `maxDuration` for the transaction → 40,000 ÷ 20 ≈ 2,000 rows. `APPLY_TX_BUDGET` is now capped
+  at 55 s so the Prisma timeout can never outlive the function that holds it. A larger sheet is
+  **refused at the door** with the reason and the remedy (split into files of 2,000 or fewer), not
+  truncated and not chunked — §3.5's all-or-nothing is what makes the preview worth reading, and a
+  half-applied org chart is what Appendix A exists to prevent. Raising the cap is a platform decision
+  first: a Vercel plan allowing `maxDuration = 300` would move it to roughly 10,000, the number that
+  used to be there without the plan to back it. — operator — status: fixed(2026-08-26, MAX_ROWS =
+  2,000 derived from maxDuration = 60)
 
 - 2026-08-26 — [high-quality/§13.1] **A 360 that one person answered is published to the employee as
   if it were anonymous.** §13.1 gives the employee "combined/summarized written comments (not
@@ -82,14 +89,17 @@ the changed surface is still **open** (un-adjudicated).
   section; keep publishing the **score** (§9.5 averages what came back) since HR already sees the
   count at calibration and can decline to publish a thin cycle.
 
-  **Adjudicated 2026-08-26 — SCHEDULED, routed to Rihal, not dropped.** It is carried as open
-  decision #4 in `docs/verification/DELIVERY-REPORT.md` §8 and written up in full in
-  `REDTEAM-DELIVERY-REPORT.md` (R3), with the recommendation above and the exact code that would
-  change (`consolidateThreeSixty` in `lib/pms/three-sixty.ts`). Accepted for now because the risk is
-  bounded by a control that already exists: HR sees `threeSixtyRaterCount` at calibration and holds
-  the §13.2 publish gate, so no thin 360 reaches an employee without HR publishing the cycle that
-  contains it. Re-opens the moment Rihal names a threshold, or if HR is ever removed from that gate.
-  — operator — status: adjudicated(2026-08-26, scheduled — awaiting Rihal's threshold decision)
+  **DECIDED and FIXED 2026-08-26 — operator chose the recommended threshold.**
+  `consolidateThreeSixty` now exports `MIN_FORMS_FOR_COMMENTS = 2` and withholds comments below it,
+  returning `commentsWithheld` so the caller can tell "too few answered" from "nobody wrote" — the
+  scorecard renders a sentence saying which. The threshold counts SUBMITTED FORMS, not comments:
+  three raters of whom one wrote is a pool of three and stays anonymous. The **score** still
+  publishes: §9.5 averages what came back, and withholding a figure the formula already used would
+  read as data hidden from the employee rather than protection for a colleague. Two rather than
+  three because a floor of three would withhold most written feedback in a real cycle — its own
+  failure, just a quieter one. Evidence: three cases in `pms-status-transfer.test.ts` (one form
+  withheld, two forms clear, a lone form with no comments is empty and NOT "withheld"). — operator —
+  status: fixed(2026-08-26, MIN_FORMS_FOR_COMMENTS = 2)
 
 - 2026-08-26 — [maintainable/tooling] **The reachability checker could not see three of the
   product's write handlers.** `scripts/reachability.mjs` — the delivery report's §1 evidence, headline

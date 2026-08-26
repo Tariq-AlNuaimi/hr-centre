@@ -230,9 +230,60 @@ test("§13.1: blank comment text never becomes an empty entry", () => {
 test("no scored form yields a null level rather than zero", () => {
   const result = consolidateThreeSixty([
     { responses: [{ questionId: "q1", score: null, text: "words" }], questions: [] },
+    { responses: [{ questionId: "q1", score: null, text: null }], questions: [] },
   ]);
   assert.equal(result.level, null);
-  assert.deepEqual(result.comments, ["words"]);
+  assert.deepEqual(result.comments, ["words"], "an unscored form still carries its text");
+});
+
+// --- §13.1's anonymity floor (red-team R3, operator decision 2026-08-26) ----
+
+test("§13.1: ONE submitted form's comments are withheld, not published", () => {
+  // §9.4 fixes the rater set at exactly three and names the line manager as one
+  // of them, so the ratee knows the pool. A single comment in that pool is
+  // attributable by elimination — pooling it is not consolidation.
+  const result = consolidateThreeSixty([
+    {
+      responses: [{ questionId: "q1", score: 4, text: "works well under pressure" }],
+      questions: [{ id: "q1", scored: true }],
+    },
+  ]);
+  assert.deepEqual(result.comments, [], "nothing reaches the employee");
+  assert.equal(result.commentsWithheld, true, "and the caller is TOLD it was withheld");
+  assert.equal(result.submittedForms, 1);
+  // The SCORE is unaffected: §9.5 averages what came back, and HR sees the rater
+  // count at calibration. Withholding a figure the formula already used would
+  // read as data hidden from the employee, not as protection for a colleague.
+  assert.equal(result.level?.toFixed(2), "5.00");
+});
+
+test("§13.1: TWO submitted forms clear the floor", () => {
+  const result = consolidateThreeSixty([
+    {
+      responses: [{ questionId: "q1", score: 4, text: "clear communicator" }],
+      questions: [{ id: "q1", scored: true }],
+    },
+    {
+      responses: [{ questionId: "q1", score: 3, text: null }],
+      questions: [{ id: "q1", scored: true }],
+    },
+  ]);
+  assert.deepEqual(result.comments, ["clear communicator"]);
+  assert.equal(result.commentsWithheld, false);
+  assert.equal(result.submittedForms, 2);
+});
+
+test("§13.1: a lone form with NO comments is empty, never 'withheld'", () => {
+  // The two are different facts. Telling an employee feedback is being held back
+  // when nobody wrote any would be a lie they could act on.
+  const result = consolidateThreeSixty([
+    {
+      responses: [{ questionId: "q1", score: 4, text: "  " }],
+      questions: [{ id: "q1", scored: true }],
+    },
+  ]);
+  assert.deepEqual(result.comments, []);
+  assert.equal(result.commentsWithheld, false);
 });
 
 // --- §12.3's transfer split ------------------------------------------------

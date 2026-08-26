@@ -33,7 +33,7 @@ function normalize(value: string): string {
  * defined against every existing employee, so a paginated read would silently
  * mean "these are the people the file did not mention, out of the first page" —
  * a subtly wrong statement on a screen whose whole job is to be trustworthy.
- * The 10,000-row upload cap (loaders/xlsx.ts) bounds the realistic org size, and
+ * The 2,000-row upload cap (loaders/xlsx.ts) bounds the realistic org size, and
  * the select is narrow.
  */
 async function loadContext(): Promise<{
@@ -321,11 +321,13 @@ export async function applyImport(params: {
     An EXPLICIT budget, because Prisma's default one is 5 seconds and this
     transaction is the largest write the product makes.
 
-    Measured on a loopback Postgres: ~3.4 ms per created row. Neon is a network
-    away and will be several times that. The default 5 s therefore runs out around
-    a thousand rows locally and far fewer in production — while the loader accepts
-    MAX_ROWS = 10,000. A ceiling nobody chose, discovered as a P2028 rollback
-    halfway through onboarding a company, is the worst version of this.
+    Measured on a loopback Postgres: ~5.1 ms per row amortised for the full apply
+    shape. Neon is a network away and each statement is a round trip, so budget
+    several times that. The 5 s default therefore ran out around a thousand rows
+    locally and far fewer in production — while the loader accepted MAX_ROWS =
+    10,000. A ceiling nobody chose, discovered as a P2028 rollback halfway through
+    onboarding a company, is the worst version of this. `MAX_ROWS` is now derived
+    from the same measurement (loaders/xlsx.ts) so the two agree.
 
     Atomicity is not negotiable here (Appendix A: silence is never destructive;
     §3.5's all-or-nothing is what makes the preview meaningful), so the answer is
@@ -499,10 +501,15 @@ export async function applyImport(params: {
  * measured loopback cost so a network round trip has room.
  */
 function APPLY_TX_BUDGET(rowsTouched: number): { timeout: number; maxWait: number } {
-  return { timeout: Math.max(30_000, rowsTouched * 40), maxWait: 15_000 };
+  // Capped BELOW the route's `maxDuration = 60`. A Prisma timeout longer than the
+  // function's own life is a promise the platform will break first: the process is
+  // killed mid-statement and the operator gets a dead request instead of the
+  // clean "transaction exceeded its budget" this is here to produce.
+  const scaled = Math.max(30_000, rowsTouched * 40);
+  return { timeout: Math.min(55_000, scaled), maxWait: 15_000 };
 }
 
-/** Chunk size for the `email IN (...)` lookups. A batch may be 10,000 rows. */
+/** Chunk size for the `email IN (...)` lookups. A batch may be MAX_ROWS long. */
 const EMAIL_LOOKUP_CHUNK = 1_000;
 
 /**
@@ -524,7 +531,7 @@ const EMAIL_LOOKUP_CHUNK = 1_000;
  * replaces was an N+1 inside the apply transaction, and the apply transaction has
  * a deadline: measured on a loopback Postgres it took the cost of a created row
  * from 3.4 ms to 9.6 ms, which moved the point where Prisma's default 5 s budget
- * runs out from ~1,480 rows to ~520 — under the 10,000 the loader accepts.
+ * runs out from ~1,480 rows to ~520 — under the cap the loader then accepted.
  */
 export async function existingLoginEmails(
   tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],

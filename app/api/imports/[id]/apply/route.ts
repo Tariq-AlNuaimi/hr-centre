@@ -10,9 +10,10 @@ import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 // and re-parented row, and §3.5's all-or-nothing is what makes the preview worth
 // reading — so it cannot be split into chunks that half-apply. The platform
 // default (10 s on Vercel's smaller plans) is the real ceiling on how big an org
-// this can onboard, well before the loader's MAX_ROWS = 10,000; the internal cron
-// routes already set this for the same reason. Raising it past 60 needs a plan
-// that allows it — see docs/findings-register.md.
+// this can onboard; the internal cron routes already set this for the same reason.
+// `MAX_ROWS` (loaders/xlsx.ts) is derived FROM this number, so raising one without
+// the other is how the cap stops meaning anything — and raising it past 60 needs a
+// Vercel plan that allows it. See docs/findings-register.md.
 export const maxDuration = 60;
 
 /**

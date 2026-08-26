@@ -17,11 +17,11 @@ execute. Nothing in §3's deliverables table is overstated.
 
 **Three things were wrong, and one of them matters a great deal.**
 
-| #      | Severity            | What                                                                                                                   | State                                             |
-| ------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| **R1** | MEDIUM (instrument) | The reachability checker could not see three of the product's write handlers at all                                    | **FIXED** — 45 pairs, not 42                      |
-| **R2** | HIGH (operational)  | The employee import cannot finish for a real organisation. The 5 s default and a 10 s platform ceiling, vs 10,000 rows | **FIXED** in code; one lever left to the operator |
-| **R3** | MEDIUM (§13.1)      | A 360 with one submitted form publishes that rater's comments to the employee, and §9.4 names who the raters are       | **OPEN** — a decision, recorded                   |
+| #      | Severity            | What                                                                                                                   | State                                                         |
+| ------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **R1** | MEDIUM (instrument) | The reachability checker could not see three of the product's write handlers at all                                    | **FIXED** — 45 pairs, not 42                                  |
+| **R2** | HIGH (operational)  | The employee import cannot finish for a real organisation. The 5 s default and a 10 s platform ceiling, vs 10,000 rows | **FIXED**, and the cap now derived: `MAX_ROWS` 10,000 → 2,000 |
+| **R3** | MEDIUM (§13.1)      | A 360 with one submitted form publishes that rater's comments to the employee, and §9.4 names who the raters are       | **FIXED** — operator set the floor at two forms               |
 
 And one claim the report was too modest about: **SSO's env gate is now verified by execution, in
 production**, not "by construction".
@@ -103,11 +103,18 @@ supposed to make the system usable.
    convention the two internal cron routes already set. Without it the route inherits the platform
    default — **10 s on Vercel's smaller plans** — which no Prisma timeout can widen.
 
-**What is left for the operator, and it cannot be fixed in code:** 60 s is the most a Hobby-plan
-function may run. If Rihal's first import is large enough to need more, `maxDuration` has to go up
-and that needs a plan that allows it. The honest ceiling today is **hundreds of rows on Neon, not
-10,000** — recorded in `docs/findings-register.md` rather than left for the first real import to
-discover.
+**What was left for the operator — and what they chose.** 60 s is the most a Hobby-plan function may
+run, so the choice was raise the plan or cap the import. On **2026-08-26 the operator capped it**:
+`MAX_ROWS` drops from 10,000 to **2,000**, derived from a fresh measurement of the full apply shape
+(9.19 ms/row at n=200, 5.54 at n=600, **5.09 amortised at n=1,500**), budgeting 4× for Neon's round
+trips and reserving 40 s of the 60 s for the transaction — 40,000 ÷ 20 ≈ 2,000. `APPLY_TX_BUDGET` is
+capped at 55 s so the Prisma timeout can never outlive the function holding it.
+
+A larger sheet is **refused at the door**, with the reason and the remedy, rather than truncated or
+chunked: §3.5's all-or-nothing is what makes the preview worth reading, and a half-applied org chart
+is precisely what Appendix A exists to prevent. Raising the cap stays a platform decision first — a
+plan allowing `maxDuration = 300` would move it back to roughly 10,000, the number that used to be
+there without the plan to back it.
 
 ---
 
@@ -130,14 +137,25 @@ precisely because "a score from one rater was indistinguishable from one from th
 **HR** at calibration when the count is under three. The employee is shown the same thin 360, score
 and comments both, with no such qualification.
 
-**Not fixed, deliberately.** Suppressing feedback is a product decision with a real cost, the
-specification names no threshold, and choosing one unilaterally would be exactly the kind of quiet
-judgment this red team exists to catch. Recorded as an open decision for Rihal, with a recommendation:
+**Raised, not decided, by the red team** — suppressing feedback is a product decision with a real
+cost, and the specification names no threshold. It went to the operator with a recommendation, and on
+**2026-08-26 the operator chose it**:
 
-- **Comments:** withhold below **2** submitted forms, with an honest line ("not enough responses came
-  back to share these anonymously") rather than an empty section.
-- **Score:** keep publishing it — §9.5's average is defined over what came back — but HR already sees
-  the rater count at calibration and can decline to publish a cycle where too many are thin.
+- **Comments:** withheld below **2** submitted forms. `MIN_FORMS_FOR_COMMENTS` lives beside
+  `consolidateThreeSixty`, which now returns `commentsWithheld` alongside the list — so the scorecard
+  can say "too few people completed your assessment for their comments to stay anonymous" instead of
+  "no written comments were left", which would be a lie the employee could act on. The threshold
+  counts **submitted forms, not comments**: three raters of whom one wrote is a pool of three and
+  stays anonymous.
+- **Score:** still published. §9.5's average is defined over what came back, HR sees the rater count
+  at calibration and holds §13.2's publish gate — and withholding a figure the formula has already
+  used would read as data hidden from the employee rather than protection for a colleague.
+- **Two, not three.** Three is §9.4's design and the strictest reading, but a rater leaves (§12.1) or
+  misses the window often enough that a floor of three would withhold most written feedback in the
+  product. That is its own failure, just a quieter one.
+
+Verified by three cases in `pms-status-transfer.test.ts`: one form withheld, two forms clear the
+floor, and a lone form with no comments reports empty rather than withheld.
 
 ---
 

@@ -819,7 +819,8 @@
       "loadFailed": "Could not load your scorecard",
       "loadFailedHelp": "Something went wrong fetching your result.",
       "retry": "Try again",
-      "publishedAt": "Published {when}"
+      "publishedAt": "Published {when}",
+      "commentsWithheld": "Written feedback is not shown this year — too few people completed your assessment for their comments to stay anonymous. Your 360 score above still includes everything that came back."
     },
     "team": {
       "title": "My team",
