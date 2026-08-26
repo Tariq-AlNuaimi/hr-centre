@@ -1,11 +1,51 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import { PrismaAdapter } from "@auth/prisma-adapter";
+import { mapSsoRole } from "./sso/role-map";
 import type { Adapter } from "next-auth/adapters";
 import type { Role } from "../generated/prisma/client";
 import { prisma, prismaUnfiltered } from "./prisma";
 import { verifyPassword, needsRehash, hashPassword } from "./password";
 import { isAccountLocked, recordFailedLogin, clearFailedLogins } from "./account-lockout";
+import { withAuditContext } from "./audit-context";
+
+/**
+ * Write the IdP-derived platform role onto the row SSO just created, and return
+ * it — ADR-069.
+ *
+ * Called on the `signUp` trigger only, so this runs at most once per federated
+ * account. It exists because the adapter creates the row with the schema default
+ * (`VIEWER`) before any callback sees the profile: without this write the JWT
+ * would carry the mapped role while `/users` showed the default, and
+ * `withAdminAuth` reads the JWT. A privilege that the directory listing does not
+ * show is the failure this whole change set out to stop creating.
+ *
+ * On the AUDITED client, and inside an audit context naming the person signing
+ * in: a platform-role assignment is exactly the kind of write ADR-010 exists for,
+ * and the actor is not the system — it is them, arriving with those claims.
+ *
+ * A failure here must not break the sign-in. The mapped role is returned either
+ * way, so the worst case is a session whose role is right and a row that still
+ * says VIEWER — recoverable at `/users`, and strictly better than refusing a
+ * legitimate first login over a bookkeeping write.
+ */
+async function adoptSsoRole(userId: string, role: Role): Promise<Role> {
+  if (role === "VIEWER") return role; // already the schema default; nothing to write.
+  try {
+    const user = await prismaUnfiltered.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+    await withAuditContext({ userId, actorEmail: user?.email }, () =>
+      prisma.user.update({ where: { id: userId }, data: { role } }),
+    );
+  } catch {
+    // Deliberately swallowed — see above. Nothing about the error is safe to log
+    // here: this path handles an identity provider's claims.
+  }
+  return role;
+}
 
 const credentialsProvider = Credentials({
   credentials: {
@@ -96,12 +136,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   pages: {
     signIn: "/login",
   },
-  // Credentials only. Enterprise SSO (Microsoft Entra, and the Ory Polis SAML→OIDC
-  // bridge) was removed on 2026-08-21 as the last unexecuted item of the audit's A1
-  // dormant-layer cut -- it was configuration-gated and off in every fork that never
-  // set its env vars. `docs/recipes/saas/1-sso-oidc-saml.md` re-adds it; ADR-024 and
-  // ADR-045 are superseded but kept as the historical record.
-  providers: [credentialsProvider],
+  // Credentials + optional enterprise SSO (ADR-069, following
+  // `docs/recipes/saas/1-sso-oidc-saml.md` part (a)). SSO was removed on 2026-08-21
+  // as a dormant layer; it comes back because the employee import now provisions
+  // PASSWORDLESS accounts, and SSO is how their owners get in. ADR-024 and ADR-045
+  // are superseded but kept as the historical record.
+  //
+  // ENV-GATED, exactly like `lib/email.ts`: with the vars unset the provider is not
+  // registered at all, so an unconfigured deployment shows a credentials form and
+  // no broken button. Credentials stays as break-glass for the bootstrap admin —
+  // an IdP outage must not lock HR out of their own system.
+  //
+  // `allowDangerousEmailAccountLinking` is ON, and the name deserves an answer
+  // rather than a shrug. It lets an IdP identity attach to an EXISTING `User` row
+  // with the same email — which is the entire mechanism by which an
+  // import-provisioned account becomes usable. It is dangerous when an app trusts
+  // an unverified email from a public provider, because anyone who can register
+  // that address inherits the account. Neither half applies here: the identities
+  // come from the organisation's own directory, and the accounts it links to are
+  // ones this system created FROM that directory, with no password to take over.
+  // Turning it off would mean every imported employee hits "OAuthAccountNotLinked"
+  // on their first sign-in, which is the gap this whole change exists to close.
+  providers: [
+    credentialsProvider,
+    // All THREE, not just the client id: a half-configured provider would register
+    // and then fail at the token exchange, which reads to the user as "SSO is
+    // broken" rather than "SSO is not set up". Absent beats broken.
+    ...(process.env.AUTH_ENTRA_ID &&
+    process.env.AUTH_ENTRA_SECRET &&
+    process.env.AUTH_ENTRA_TENANT_ID
+      ? [
+          MicrosoftEntraID({
+            clientId: process.env.AUTH_ENTRA_ID,
+            clientSecret: process.env.AUTH_ENTRA_SECRET,
+            issuer: `https://login.microsoftonline.com/${process.env.AUTH_ENTRA_TENANT_ID}/v2.0`,
+            authorization: { params: { scope: "openid profile email" } },
+            allowDangerousEmailAccountLinking: true,
+          }),
+        ]
+      : []),
+  ],
   callbacks: {
     // KEPT DELIBERATELY, though no OAuth provider ships today.
     //
@@ -128,11 +202,38 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, profile, trigger }) {
       // Sign-in: stamp identity + the password epoch this token is bound to.
       if (user) {
         token.id = user.id!;
-        token.role = user.role;
+        // The IdP's groups decide the platform role for an account SSO ITSELF
+        // CREATES, and only then (`trigger === "signUp"`). Every other sign-in
+        // — credentials, or a federated sign-in onto a row that already existed
+        // — takes the STORED role.
+        //
+        // The narrow rule is the deliberate one, and the two alternatives are
+        // both worse:
+        //
+        //  - Re-mapping on every federated sign-in makes the directory
+        //    authoritative, which sounds tidy until `SSO_ADMIN_GROUPS` is unset
+        //    or misspelled: the next sign-in silently demotes every
+        //    administrator to VIEWER, including the bootstrap admin, and nobody
+        //    can reach /users to undo it.
+        //  - Mapping without persisting (what this first did) leaves the JWT
+        //    saying ADMIN while the row says VIEWER. `withAdminAuth` reads the
+        //    SESSION, so the grant is real — and invisible on the one screen
+        //    that exists to show it. A privilege that no list shows is the kind
+        //    this change set out to stop creating.
+        //
+        // So: `SSO_ADMIN_GROUPS` seeds a brand-new federated account, and
+        // `/users` governs it from then on. `adoptSsoRole` writes the mapped
+        // role to the row so the session and the directory listing agree from
+        // the first request.
+        const federated = account?.type === "oauth" || account?.type === "oidc";
+        token.role =
+          federated && trigger === "signUp"
+            ? await adoptSsoRole(user.id!, mapSsoRole(profile as Record<string, unknown>))
+            : user.role;
         token.passwordChangedAt = user.passwordChangedAt?.getTime() ?? 0;
         return token;
       }

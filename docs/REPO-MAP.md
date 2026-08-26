@@ -167,7 +167,7 @@
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
 - lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_ROWS, MAX_SHEETS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
 - lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, ReconcilePlan, reconcile
-- lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport
+- lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport, provisionLogin
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KPI_HASH_SELECT, KpiHashRow, kpiSetHash, currentKpiSetHash
@@ -196,6 +196,7 @@
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
+- lib/sso/role-map.ts: mapSsoRole
 - lib/utils.ts: cn
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput

@@ -47,6 +47,12 @@ const BASE_EMPLOYEE_SELECT = {
   managerId: true,
   departmentId: true,
   entityId: true,
+  // ADR-069 — the LINK, not the login. Serialised as the boolean `hasLogin`
+  // below: whether this person can reach the app is org information HR needs
+  // (§4.4's My Tasks and §9.7's rater invitations are addressed to someone who
+  // must be able to sign in), while the `User` id itself is a platform-side
+  // identifier no employee screen has a use for.
+  userId: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.EmployeeSelect;
@@ -122,6 +128,21 @@ export type EmployeeListRow = {
    * which is why an HR admin could not see the roles they were editing.
    */
   pmsRoles: string[];
+  /**
+   * ADR-069 — is there a `User` linked to this employee at all?
+   *
+   * An employee record and a login are separate rows (ADR-065), and before the
+   * import provisioned logins they routinely disagreed: thirty-six people in the
+   * directory, one who could sign in. HR editing §4.1 roles needs to see both
+   * facts on one screen, because granting HRBP to someone with no account grants
+   * nothing.
+   *
+   * A boolean, not the user id: "can this person reach the app" is the question;
+   * the platform identity's primary key is not an answer any employee screen
+   * needs. It says nothing about whether SSO or a password will let them in —
+   * only that the account exists to be let in to.
+   */
+  hasLogin: boolean;
   /** Present ONLY for HR and executive viewers (§4.5). */
   basicSalary?: string | null;
 };
@@ -152,6 +173,7 @@ export function serializeEmployee(row: {
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
   pmsRoles?: string[];
+  userId?: string | null;
   basicSalaryEnc?: string | null;
 }): EmployeeListRow {
   const out: EmployeeListRow = {
@@ -166,6 +188,9 @@ export function serializeEmployee(row: {
     department: row.department,
     entity: row.entity,
     pmsRoles: row.pmsRoles ?? [],
+    // `?? null` so a caller with a narrower select reports "no login" rather
+    // than `undefined` reaching a UI that would render it as a gap in the data.
+    hasLogin: (row.userId ?? null) !== null,
     manager: row.manager,
   };
   // `in` rather than a truthiness check: an entitled actor looking at an

@@ -84,7 +84,7 @@ export default function ImportPage() {
       body.append("file", file);
       const response = await fetch(`/api/imports/${batchId}/apply`, { method: "POST", body });
       const json = (await response.json()) as {
-        data?: { created: number; updated: number };
+        data?: { created: number; updated: number; provisioned: number };
         error?: string;
       };
 
@@ -93,7 +93,17 @@ export default function ImportPage() {
         return;
       }
 
-      success(t("import.applied", { created: json.data.created, updated: json.data.updated }));
+      // `provisioned` is reported separately from `created`, because they are
+      // legitimately different numbers: a leaver gets no login (§12.1 preserves
+      // the record, not the access) and an email that already has one is left
+      // alone. HR is told what happened, not what was attempted (ADR-069).
+      success(
+        t("import.applied", {
+          created: json.data.created,
+          updated: json.data.updated,
+          provisioned: json.data.provisioned,
+        }),
+      );
       setPreview(null);
       setBatchId(null);
       setFile(null);

@@ -105,12 +105,20 @@ consolidated by question rather than listed flat, for the same reason. Verified 
 window carried through activation to three submitted forms and a computed report):
 `docs/verification/pms-360-report/README.md`.
 
-### F7 — MEDIUM · §4.4 · "My Tasks" omits 360 assignments
+### F7 — MEDIUM · §4.4 · "My Tasks" omits 360 assignments — **FIXED**
 
 §4.4 is explicit that My Tasks carries "any 360 assigned to me (report, peer, or colleague)", and
-that the space is "driven by assignment, not hierarchy". `lib/pms/tasks.ts` produces exactly two
-task kinds: your own KPI set, and drafting for your reports. A 360 assignment never appears — which
-is consistent with F1, since there would be nowhere for the task to link to.
+that the space is "driven by assignment, not hierarchy". `lib/pms/tasks.ts` produced exactly two
+task kinds: your own KPI set, and drafting for your reports. A 360 assignment never appeared — which
+was consistent with F1, since there would have been nowhere for the task to link to.
+
+**Fixed** — `lib/pms/tasks.ts` now derives a task per open 360 assignment, keyed on assignment rather
+than on hierarchy or role name, and a SUBMITTED assignment produces none (§9.7 makes submission
+one-way). Verified live on 2026-08-26 as the rater rather than as HR: Layla Al-Habsi signed in, found
+"360 assessment of Zainab Al-Lawati — HR asked you to assess them" on her home page, opened it from
+there, answered §9.3's four-point scale, submitted, and was refused a second submission ("This
+assessment has already been submitted (§9.7)"). This entry was still marked open in this document
+after the fix landed; the drift is corrected here.
 
 ### F8 — MEDIUM · §9.5 · A 360 averaged over fewer than three raters is silent
 
@@ -290,10 +298,10 @@ Each of these I checked against the clause myself, in the code, this session:
 The conformance report should not claim a clause is met until the flow it describes can be completed
 by the role the clause names, in a browser, without a database write. Two measures, kept apart:
 
-| Measure                                                       | Status                                                                                                                                                                             |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Clause has a correct implementation and a clause-named test   | **§1–§14 + Appendix A** — accurate                                                                                                                                                 |
-| Clause's flow is completable by its named role through the UI | **F1–F6, F10, F11, F12 fixed; every §1–§13 flow now has a caller. F7 (My Tasks omits 360 assignments), F8's `EmployeeScore` column and F9 (SMTP) remain open — see the register.** |
+| Measure                                                       | Status                                                                                                                                                                                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clause has a correct implementation and a clause-named test   | **§1–§14 + Appendix A** — accurate                                                                                                                                                                                  |
+| Clause's flow is completable by its named role through the UI | **F1–F8 and F10–F13 fixed; every §1–§13 flow has a caller, and `scripts/reachability.mjs` now checks that mechanically on every run. F9 (SMTP) is the only one open, and it is a credentials gap, not a code one.** |
 
 The second row is the one a stakeholder means by "done", and it is the row nobody was tracking.
 

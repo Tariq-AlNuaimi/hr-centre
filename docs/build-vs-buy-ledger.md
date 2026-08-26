@@ -694,3 +694,28 @@ Decision: adopt read-excel-file + write-excel-file behind a two-file seam (loade
 Scope: lib/date-input.ts
 Considered: `date-fns` (rejected — ~20 KB for three lines of `Date` arithmetic already present in the repo, and ADR-001 locks the stack; a runtime dep >50 KB would need an ADR anyway); `Intl.DateTimeFormat` round-tripping (rejected — formats for display, does not give the ISO instant the API wants, and reintroduces the parsing step); leaving `CycleForm`'s private helpers in place and copying them (rejected — that copy is precisely how the 360 window ended up saving a deadline at midnight UTC while §5 stages saved end-of-day, deleting a day of every 360 window); extract the existing helpers to a shared leaf module (chosen).
 Decision: extract, don't add. `startOfDay`/`endOfDay`/`toDateInput` move out of `components/pms/CycleForm.tsx` unchanged and are now imported by `CycleForm`, `ThreeSixtySetup` and `ThreeSixtyWindow`. No new runtime dep; contract-tested in `tests/contracts/pms-three-sixty.test.ts` ("§5.4 a deadline chosen on a form covers the whole of that day").
+
+### 2026-08-26 — Write-endpoint reachability check
+
+Scope: scripts/**
+Considered: `knip`, already adopted and already in the `/ship` chain (rejected for THIS question — knip
+answers "is this export imported", and a Next.js route's `export const POST` is consumed by the
+framework's file-system router, so every unreachable endpoint F1–F6 and F11–F13 named was, to knip, a
+perfectly-used export; it cannot see that no _client_ calls the path); OpenAPI-driven coverage tooling
+such as `oasdiff` or a Schemathesis run against `app/api/openapi/route.ts` (rejected — those compare a
+spec to a server, which tells you the endpoint EXISTS and answers, the exact claim that was already
+true of all eleven unreachable routes, and it needs a live server plus credentials so it cannot gate a
+push); `ts-prune` / `depcheck` (rejected — same dead-export model as knip, one axis narrower);
+Playwright coverage over `/uat` (rejected as the primary check — it measures what the suite happens to
+click, so it grades the test suite rather than the product, and a route nobody wrote a test for reads
+identical to a route nobody can reach); hand-built path↔verb cross-reference (chosen).
+
+Decision: build — ~90 lines, no runtime dep, and the question is genuinely specific to this codebase's
+shape (Next file-system routes on one side, `apiClient.*` / `useEntityMutations` call sites on the
+other). The generic tools all answer "does the code use this symbol"; the defect class here is "can a
+PERSON reach this write", which is a different question and the one the 2026-08-25 red team showed
+nothing in the stack was asking. It is verb-aware on purpose — a GET caller must not make a POST look
+reachable, which is exactly how F11 hid. Its limits are written at the top of the file rather than
+implied: it matches paths, not behaviour, so it is a floor and never a substitute for driving the
+screen. Cron-only routes are allowlisted with the name of their non-UI caller, so "nothing calls it"
+can never be the silent answer.

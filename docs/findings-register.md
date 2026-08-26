@@ -35,6 +35,44 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [high-quality/operability] **36 of 37 people in the fixture cannot sign in; the import
+  provisions no logins.** The system is credentials-only (SSO providers removed 2026-08-21), so a
+  person can sign in only if a `User` row exists. The only writers of one are `prisma/seed.ts` (the
+  bootstrap admin) and `POST /api/users` — one person at a time through `/users/new`. Applying an
+  employee import creates none. `resolveActor`'s first-login email match then links `User` to
+  `Employee` correctly, but only for an account that already exists.
+
+  Not a specification violation — the spec never says "provision logins in bulk" — but it is the
+  largest practical gap between this build and use. §3.3 lists Email as "for login/notifications";
+  §4.4's My Tasks, §13.1's scorecard and §9.7's rater invitations all presuppose the person has an
+  account. At Rihal's headcount that is one manual creation per employee before anyone but HR can act.
+  For the stakeholder demo it means only HR can be shown signing in unless accounts are made first.
+
+  Surfaced by the 2026-08-26 delivery pass, which had to hand-provision five accounts before it could
+  test §4.1's matrix as anyone other than HR — and that need is itself the evidence: the prior
+  conformance report's "every screen-run was an HR Super Admin" was a symptom of this, not a choice.
+
+  Options for the operator: provision logins when an import is applied; add an invite flow; or re-add
+  SSO via the `/scale-up` recipe, which removes the question. Not fixed at surfacing time because it
+  was a design decision, not a defect.
+
+  **ADJUDICATED 2026-08-26 — operator: "fix it ofcurse and add sso". BOTH options taken (ADR-069).**
+  Applying an import now provisions a linked, PASSWORDLESS, `VIEWER` login for every employee it
+  creates, inside the same `auditedTransaction` as the employee write; LEAVERs get none (§12.1
+  preserves the record, not the access); a re-import never touches an existing account's role,
+  password or link (§3.5). SSO returns as an env-gated Microsoft Entra provider — registered only
+  when all three of `AUTH_ENTRA_ID`, `AUTH_ENTRA_SECRET`, `AUTH_ENTRA_TENANT_ID` are set, so an
+  unconfigured deployment is unchanged — with `lib/sso/role-map.ts` defaulting to `VIEWER`, the same
+  answer the import gives.
+
+  Evidence: `tests/integration/pms-import-provisioning.test.ts` (3 cases against the shipped
+  `provisionLogin`, mutation-checked) and `tests/contracts/sso-role-map.test.ts` (6 cases).
+  **Residual, stated rather than closed:** with no IdP configured and no SMTP (F9), a provisioned
+  account is a shell — the row exists, but nothing can authenticate against it. SSO is therefore
+  built-and-inert, verified by construction and unit test, NOT end-to-end; there are no IdP
+  credentials in any environment this session could reach. — operator — status:
+  fixed(ADR-069, 2026-08-26); SSO end-to-end verification deferred to IT supplying an IdP
+
 - 2026-08-26 — [maintainable/correctness] **An audit row written inside a `$transaction` survived
   the rollback — and a soft delete inside one escaped the transaction entirely.** Both extensions
   resolved their client from the handle captured in `defineExtension`, not from `tx`. For the audit
