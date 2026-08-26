@@ -52,7 +52,13 @@ export const POST = withRateLimit(
 
     const cycle = await prisma.performanceCycle.findUnique({
       where: { id: cycleId },
-      select: { id: true, publication: { select: { id: true, published: true } } },
+      // `lastReason` rides along so the audit `before` can carry the reason the
+      // publication currently holds — the two snapshots must share their keys or
+      // §13.2's WHY never reaches `changes` (see recordAudit below).
+      select: {
+        id: true,
+        publication: { select: { id: true, published: true, lastReason: true } },
+      },
     });
     if (!cycle) return notFound("Cycle");
 
@@ -136,12 +142,20 @@ export const POST = withRateLimit(
       // a publication is as consequential as its reversal. Inside the
       // transaction, so a lost claim takes its audit row with it rather than
       // recording a release that never happened.
+      // Symmetric, and under the column's own name. `reason` appeared only in
+      // `after`, so §13.2's "reversal is audited (who, when, why)" lost the WHY
+      // from `changes` — a key one side lacks yields no entry. `lastReason` is
+      // what the column is called, and naming it that keeps the audit trail
+      // readable against the schema rather than against this route.
       await recordAudit(tx, {
         entityType: "CyclePublication",
         entityId: cycleId,
         action: "UPDATE",
-        before: { published: currentlyPublished },
-        after: { published: target, reason: reason ?? null },
+        before: {
+          published: currentlyPublished,
+          lastReason: cycle.publication?.lastReason ?? null,
+        },
+        after: { published: target, lastReason: reason ?? null },
       });
 
       return tx.cyclePublication.findUniqueOrThrow({

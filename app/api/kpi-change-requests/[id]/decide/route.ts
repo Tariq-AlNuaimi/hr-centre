@@ -150,11 +150,16 @@ export const POST = withRateLimit(
           },
         });
         if (claimed.count === 0) return false;
+        // Both snapshots carry the SAME keys. `recordAudit` diffs only the keys
+        // both sides hold, so a field named on one side alone yields no `changes`
+        // entry at all — the decider and the reason were being written and not
+        // reported. A PENDING request has neither on file, so `null` here is the
+        // truth about the row before the write, not padding.
         await recordAudit(tx, {
           entityType: "KpiChangeRequest",
           entityId: id,
           action: "UPDATE",
-          before: { status: "PENDING" },
+          before: { status: "PENDING", decidedByEmployeeId: null, decisionReason: null },
           after: { status: "REJECTED", decidedByEmployeeId: deciderId, decisionReason: reason },
         });
         return true;
@@ -200,12 +205,20 @@ export const POST = withRateLimit(
           },
         });
         if (claimed.count === 0) return null;
+        // Symmetric, and complete: `decisionReason` is written by the update
+        // above (§6.2 makes it mandatory on a REJECT and optional here), so it
+        // belongs on both sides or the trail under-reports an approval that
+        // carried one.
         await recordAudit(tx, {
           entityType: "KpiChangeRequest",
           entityId: id,
           action: "UPDATE",
-          before: { status: "PENDING" },
-          after: { status: "APPROVED", decidedByEmployeeId: deciderId },
+          before: { status: "PENDING", decidedByEmployeeId: null, decisionReason: null },
+          after: {
+            status: "APPROVED",
+            decidedByEmployeeId: deciderId,
+            decisionReason: reason ?? null,
+          },
         });
 
         // Re-read the set INSIDE the transaction, and re-run §5.3 against it.

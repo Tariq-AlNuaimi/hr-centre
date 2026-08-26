@@ -567,6 +567,30 @@ test("§9.6 HR maintains projects, and only HR", async () => {
     select: { members: { select: { id: true } } },
   });
   assert.equal(after.members.length, 0, "the list is replaced, never merged");
+
+  // The audit row must say WHO moved, not how many. A replace that swaps one
+  // person for another leaves the count identical, and `computeChanges` reports
+  // only keys that differ — so recording `memberCount` made the write §9.6 most
+  // cares about invisible. Both snapshots also carry the same keys, or the diff
+  // drops the field it was asked to report.
+  const projectRow = await prisma.project.findUniqueOrThrow({
+    where: { cycleId_name: { cycleId: ids.cycle, name: "Loyalty Platform" } },
+    select: { id: true },
+  });
+  const audit = await prisma.auditLog.findFirst({
+    where: { entityType: "Project", entityId: projectRow.id, action: "UPDATE" },
+    orderBy: { timestamp: "desc" },
+    select: { before: true, after: true, changes: true },
+  });
+  assert.deepEqual(
+    (audit?.changes as Record<string, unknown> | null)?.memberEmployeeIds,
+    { from: [ids.hr], to: [] },
+    "the membership itself must be diffed, by id",
+  );
+  assert.deepEqual(
+    Object.keys((audit?.before ?? {}) as Record<string, unknown>).sort(),
+    Object.keys((audit?.after ?? {}) as Record<string, unknown>).sort(),
+  );
 });
 
 test("§9.6 an unknown member is refused rather than silently dropped", async () => {

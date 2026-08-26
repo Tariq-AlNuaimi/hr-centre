@@ -73,12 +73,18 @@ export const POST = withRateLimit(
         data: { status: "WITHDRAWN" },
       });
       if (claimed.count === 0) return false;
+      // Symmetric, and free of a field that does not exist. This used to claim
+      // `withdrawnByEmployeeId` in `after` — there is no such column on
+      // `KpiChangeRequest` and the update above never wrote one, so the audit row
+      // asserted a fact about the record that the record could not hold. WHO
+      // withdrew is already on the audit row itself (`userId` / `actorEmail`
+      // from the request context), which is where §12.2 looks for it.
       await recordAudit(tx, {
         entityType: "KpiChangeRequest",
         entityId: id,
         action: "UPDATE",
         before: { status: "PENDING" },
-        after: { status: "WITHDRAWN", withdrawnByEmployeeId: actor.employeeId },
+        after: { status: "WITHDRAWN" },
       });
       return true;
     });

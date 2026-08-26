@@ -78,12 +78,29 @@ export const POST = withRateLimit(
         });
       }
 
+      // The MEMBERSHIP, not its size. A replace that swaps one person for another
+      // leaves `memberCount` identical, and `computeChanges` reports only keys
+      // that differ — so the audit row for the write §9.6 most cares about said
+      // nothing at all. Sorted, so a reordering is not reported as a change.
+      //
+      // `name` is on both sides because the two snapshots must share their keys
+      // (`recordAudit` diffs only shared keys). It cannot actually move: the
+      // project is looked up by `cycleId_name`, so a different name is a
+      // different project, and stating it is a statement of what this row is.
+      const memberIds = (ids: string[]) => [...ids].sort();
       await recordAudit(tx, {
         entityType: "Project",
         entityId: row.id,
         action: existing ? "UPDATE" : "CREATE",
-        ...(existing ? { before: { memberCount: existing.members.length } } : {}),
-        after: { name, memberCount: members.length },
+        ...(existing
+          ? {
+              before: {
+                name,
+                memberEmployeeIds: memberIds(existing.members.map((m) => m.employeeId)),
+              },
+            }
+          : {}),
+        after: { name, memberEmployeeIds: memberIds(members.map((m) => m.id)) },
       });
       return row;
     });

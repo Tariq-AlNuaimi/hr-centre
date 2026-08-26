@@ -35,6 +35,33 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [maintainable/observability] **Five explicit `recordAudit()` callers passed
+  asymmetric snapshots, so the fields they wrote never reached `changes`.** `changesOverSharedKeys`
+  diffs only keys BOTH snapshots carry — deliberately, because diffing the union would report every
+  key one side happens to lack as a change from `undefined`. Its own doc named the residual cost and
+  said fixing it "means making each caller's two snapshots symmetric, which is a change to those
+  routes". Five routes were paying it: `POST /api/kpi-change-requests/[id]/decide` on both branches
+  (§6.2's decider and decision reason lived only in `after`), `.../withdraw`,
+  `POST /api/publish` (§13.2's "reversal is audited — who, when, **why**", and the why was
+  `after`-only), and `POST /api/projects`.
+
+  Two were worse than under-reporting. `withdraw` named `withdrawnByEmployeeId` in `after`; **there
+  is no such column on `KpiChangeRequest`** and the update never wrote one, so the audit row asserted
+  a fact the record could not hold — who withdrew was already on the audit row's own
+  `userId`/`actorEmail`, which is where §12.2 looks. `POST /api/projects` recorded `memberCount`, so
+  a §9.6 membership replace that swapped one person for another left the count identical and diffed
+  to **nothing** — the write that route exists for was invisible. It now records the sorted member
+  ids on both sides.
+
+  **Fixed 2026-08-26.** Each pair carries the same keys, with `null` on the `before` where the row
+  genuinely held nothing. One deliberate exception remains and says so at the call site:
+  `POST /api/three-sixty/assignments` keeps a one-sided `reason` annotation on a bulk delete —
+  it is not a column and did not move, and a symmetric `reason: null` would manufacture a change
+  entry reading "the reason changed from nothing". `changesOverSharedKeys` is now a backstop against
+  a future forgetful caller rather than a working compromise. Pinned by integration assertions at
+  each call site (`pms-change-request`, `pms-three-sixty`, `pms-scoring-chain`) — verified to fail
+  against the pre-fix code, not merely to pass against the new. — operator — status: fixed(2026-08-26)
+
 - 2026-08-26 — [maintainable/observability] **An audit row written from inside an interactive
   `$transaction` records the PRE-update values.** The audit extension's re-read and
   `auditLog.create` run on the outer client captured in `defineExtension`, not on the transaction's

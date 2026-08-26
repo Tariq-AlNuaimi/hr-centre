@@ -446,6 +446,29 @@ test("§6.2/§6.3 HR approves: edits apply, and the superseded state is archived
   );
   assert.equal(total.toString(), "100", "the set still totals exactly 100 after approval");
 
+  // Symmetry again, on the branch that carries the most: an approval names the
+  // decider AND the reason, and both were previously `after`-only, so §6.2's
+  // "who approved, and why" never reached `changes`.
+  const decidedAudit = await prisma.auditLog.findFirst({
+    where: { entityType: "KpiChangeRequest", entityId: requestId, action: "UPDATE" },
+    orderBy: { timestamp: "desc" },
+    select: { before: true, after: true, changes: true },
+  });
+  const decidedChanges = (decidedAudit?.changes ?? {}) as Record<string, unknown>;
+  assert.deepEqual(decidedChanges.status, { from: "PENDING", to: "APPROVED" });
+  assert.deepEqual(decidedChanges.decisionReason, {
+    from: null,
+    to: "Agreed with the re-plan.",
+  });
+  assert.ok(
+    "decidedByEmployeeId" in decidedChanges,
+    "who decided must be diffed, not merely present on one side",
+  );
+  assert.deepEqual(
+    Object.keys((decidedAudit?.before ?? {}) as Record<string, unknown>).sort(),
+    Object.keys((decidedAudit?.after ?? {}) as Record<string, unknown>).sort(),
+  );
+
   // §6.3 — "previous versions archived, never overwritten".
   const versions = await prisma.kpiVersion.findMany({
     where: { kpiId: { in: ids.kpis } },
@@ -564,6 +587,27 @@ test("a withdrawal is a STATUS, and it frees the pending slot", async () => {
   });
   assert.equal(row?.status, "WITHDRAWN", "the row survives — §6.3 wants what was ASKED");
   assert.equal(row?.edits.length, 1, "and the edits it proposed survive with it");
+
+  // The audit row's two snapshots must carry the SAME keys. `recordAudit` diffs
+  // only the keys both sides hold, so a field named on one side alone produces
+  // no `changes` entry — the trail says an UPDATE happened and not what moved.
+  // This route also used to claim `withdrawnByEmployeeId` in `after`; there is
+  // no such column, so it asserted a fact the record could not hold.
+  const pulledAudit = await prisma.auditLog.findFirst({
+    where: { entityType: "KpiChangeRequest", entityId: third, action: "UPDATE" },
+    orderBy: { timestamp: "desc" },
+    select: { before: true, after: true, changes: true },
+  });
+  assert.deepEqual(
+    pulledAudit?.changes,
+    { status: { from: "PENDING", to: "WITHDRAWN" } },
+    "the withdrawal must be legible as a status move, not as a bare UPDATE",
+  );
+  assert.deepEqual(
+    Object.keys((pulledAudit?.before ?? {}) as Record<string, unknown>).sort(),
+    Object.keys((pulledAudit?.after ?? {}) as Record<string, unknown>).sort(),
+    "before and after must be symmetric, or the diff silently drops fields",
+  );
 
   // The slot is free again.
   const next = await json(

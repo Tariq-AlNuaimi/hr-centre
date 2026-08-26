@@ -458,9 +458,29 @@ test("§13.2 publishing succeeds once calibration is ready, and is reversible + 
     where: { entityType: "CyclePublication", entityId: ids.cycle },
     take: 10,
     orderBy: { timestamp: "desc" },
-    select: { after: true },
+    select: { before: true, after: true, changes: true },
   });
   assert.ok(audit.length >= 2, "publish and un-publish both left an audit row");
+
+  // §13.2's WHY has to reach `changes`, not just sit in `after`. `recordAudit`
+  // diffs only the keys BOTH snapshots carry, so the reason was invisible in the
+  // diff for as long as it appeared on one side alone.
+  const reversal = audit[0];
+  assert.deepEqual((reversal.changes as Record<string, unknown>).published, {
+    from: true,
+    to: false,
+  });
+  assert.deepEqual((reversal.changes as Record<string, unknown>).lastReason, {
+    // The PUBLISH above carried no reason (§13.2 makes it mandatory only on the
+    // reversal), so the column held null going in.
+    from: null,
+    to: "A departmental score was keyed wrong.",
+  });
+  assert.deepEqual(
+    Object.keys((reversal.before ?? {}) as Record<string, unknown>).sort(),
+    Object.keys((reversal.after ?? {}) as Record<string, unknown>).sort(),
+    "before and after must be symmetric, or the diff silently drops fields",
+  );
 });
 
 // --- post-push breadth-review regressions -----------------------------------
