@@ -428,3 +428,87 @@ test("§9.7 an active cycle inside its window, not yet submitted, is answerable"
   });
   assert.match(String(early?.reason), /has not opened/);
 });
+
+// --- §9.1 / §9.2 the setup the new HR screen writes ----------------------------
+
+const template = (type: string, questions = [{ text: "Is dependable", scored: true }]) => ({
+  type,
+  questions,
+});
+const validCreate = {
+  cycleId: "c1",
+  opensAt: "2027-11-01T00:00:00.000Z",
+  deadline: "2027-12-15T00:00:00.000Z",
+  templates: [
+    template("LINE_MANAGER_TO_EMPLOYEE"),
+    template("EMPLOYEE_TO_LINE_MANAGER"),
+    template("PEER_TO_PEER"),
+  ],
+};
+
+test("§9.2 all three assessment types are required, exactly once each", async () => {
+  const { createThreeSixtyCycleSchema } = await import("../../lib/validations/three-sixty");
+
+  assert.equal(createThreeSixtyCycleSchema.safeParse(validCreate).success, true);
+
+  // Two of one type and none of another still totals three templates — the
+  // length check alone would let that through, which is why the refine exists.
+  const duplicated = {
+    ...validCreate,
+    templates: [
+      template("PEER_TO_PEER"),
+      template("PEER_TO_PEER"),
+      template("LINE_MANAGER_TO_EMPLOYEE"),
+    ],
+  };
+  assert.equal(createThreeSixtyCycleSchema.safeParse(duplicated).success, false);
+
+  const missingOne = { ...validCreate, templates: validCreate.templates.slice(0, 2) };
+  assert.equal(createThreeSixtyCycleSchema.safeParse(missingOne).success, false);
+});
+
+test("§9.2 a template with no questions cannot be created — it could not be answered", async () => {
+  const { createThreeSixtyCycleSchema } = await import("../../lib/validations/three-sixty");
+  const empty = {
+    ...validCreate,
+    templates: [
+      template("LINE_MANAGER_TO_EMPLOYEE", []),
+      template("EMPLOYEE_TO_LINE_MANAGER"),
+      template("PEER_TO_PEER"),
+    ],
+  };
+  assert.equal(createThreeSixtyCycleSchema.safeParse(empty).success, false);
+});
+
+test("§9.1 the deadline must fall after the cycle opens", async () => {
+  const { createThreeSixtyCycleSchema } = await import("../../lib/validations/three-sixty");
+  const backwards = {
+    ...validCreate,
+    opensAt: "2027-12-15T00:00:00.000Z",
+    deadline: "2027-11-01T00:00:00.000Z",
+  };
+  assert.equal(createThreeSixtyCycleSchema.safeParse(backwards).success, false);
+
+  // Equal is not after.
+  const same = { ...validCreate, deadline: validCreate.opensAt };
+  assert.equal(createThreeSixtyCycleSchema.safeParse(same).success, false);
+});
+
+test("§9.2 an open-ended question is stored as such, not defaulted to scored", async () => {
+  const { createThreeSixtyCycleSchema } = await import("../../lib/validations/three-sixty");
+  const withOpen = {
+    ...validCreate,
+    templates: [
+      template("LINE_MANAGER_TO_EMPLOYEE", [
+        { text: "Is dependable", scored: true },
+        { text: "Anything else?", scored: false },
+      ]),
+      template("EMPLOYEE_TO_LINE_MANAGER"),
+      template("PEER_TO_PEER"),
+    ],
+  };
+  const parsed = createThreeSixtyCycleSchema.safeParse(withOpen);
+  assert.equal(parsed.success, true);
+  // §9.5 divides by the SCORED maximum, so this flag decides the denominator.
+  assert.equal(parsed.success && parsed.data.templates[0].questions[1].scored, false);
+});

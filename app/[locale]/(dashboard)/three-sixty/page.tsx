@@ -12,6 +12,7 @@ import { DataTable } from "@/components/shared/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CyclePicker } from "@/components/pms/CyclePicker";
+import { ThreeSixtySetup } from "@/components/pms/ThreeSixtySetup";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -181,13 +182,11 @@ export default function ThreeSixtyPage() {
 
       {cycle.isLoading && <PageSkeleton />}
 
-      {!cycle.isLoading && !threeSixty && (
-        <SectionCard title={t("noThreeSixty")}>
-          {/* §9.1 ties the 360 to the performance year, so this is set up
-              alongside the cycle rather than invented here. */}
-          <EmptyState description={t("noThreeSixtyHelp")} />
-        </SectionCard>
-      )}
+      {/* §9.1/§9.2 — the cycle and its three templates are created together,
+          because a 360 cycle without templates cannot be answered and §9.7's
+          activation would refuse it anyway. Until this screen existed, nothing
+          in the product could create either. */}
+      {!cycle.isLoading && !threeSixty && cycleId && <ThreeSixtySetup cycleId={cycleId} />}
 
       {threeSixty && (
         <>

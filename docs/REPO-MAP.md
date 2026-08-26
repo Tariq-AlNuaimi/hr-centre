@@ -248,6 +248,7 @@
 - components/pms/StageBanner.tsx
 - components/pms/StatusRoster.tsx
 - components/pms/ThreeSixtyForm.tsx
+- components/pms/ThreeSixtySetup.tsx
 - components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx

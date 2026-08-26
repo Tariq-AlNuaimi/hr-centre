@@ -1157,6 +1157,33 @@
         "PEER_TO_PEER": "You work alongside them"
       }
     },
+    "threeSixtySetup": {
+      "title": "Set up the 360",
+      "help": "The cycle and its three question sets are created together — a 360 with no questions cannot be answered.",
+      "opensAt": "Opens",
+      "deadline": "Deadline",
+      "deadlineAfterOpens": "The deadline has to fall after the cycle opens.",
+      "createAction": "Create the 360 cycle",
+      "working": "Creating…",
+      "createdToast": "360 cycle created. Generate the rater assignments next.",
+      "loadStarter": "Load a starter set",
+      "clearAll": "Clear all",
+      "starterHelp": "A starting point, not a recommendation — edit or delete anything here.",
+      "addQuestion": "Add a question",
+      "removeQuestion": "Remove",
+      "questionLabel": "Question {n}",
+      "questionPlaceholder": "What should raters be asked?",
+      "kind": "Kind",
+      "kindScored": "Scored (1–4)",
+      "kindOpen": "Open-ended",
+      "scoredCount": "{count} scored question(s)",
+      "needsScored": "This set needs at least one scored question — the 360 score is the answered scores divided by the form's maximum, and open-ended answers carry none.",
+      "whatNextTitle": "What happens after this",
+      "stepOne": "Create",
+      "stepTwo": "Generate raters",
+      "stepThree": "Activate",
+      "whatNextHelp": "Creating the cycle does not invite anyone. You generate the rater assignments from the reporting lines, review them, and only then activate — which is the moment raters can start answering."
+    },
     "strategyScores": {
       "title": "Corporate & departmental scores",
       "subtitle": "The Strategy team's figures, keyed in by HR.",
