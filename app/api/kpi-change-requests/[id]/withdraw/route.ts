@@ -1,12 +1,12 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { withdrawBlockedReason } from "@/lib/pms/change-request";
 import { CHANGE_REQUEST_SELECT, serializeChangeRequest } from "@/lib/pms/change-request-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 
 /**
@@ -46,11 +46,7 @@ export const POST = withRateLimit(
 
     // §4.2 — visibility first, so a request id cannot be probed from outside the
     // actor's chain.
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
     if (!canViewEmployee(actor, existing.participant.employeeId, descendants)) {
       return notFound("Change request");
     }
@@ -70,19 +66,25 @@ export const POST = withRateLimit(
     // The claim and its audit row in ONE transaction — see the note on the
     // rejection path in decide/route.ts. §6.3 keeps the row; the trail keeps WHO
     // took it back and when, and neither should exist without the other.
-    const withdrawn = await prisma.$transaction(async (tx) => {
+    const withdrawn = await auditedTransaction(async (tx) => {
       // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
       const claimed = await tx.kpiChangeRequest.updateMany({
         where: { id, status: "PENDING" },
         data: { status: "WITHDRAWN" },
       });
       if (claimed.count === 0) return false;
+      // Symmetric, and free of a field that does not exist. This used to claim
+      // `withdrawnByEmployeeId` in `after` — there is no such column on
+      // `KpiChangeRequest` and the update above never wrote one, so the audit row
+      // asserted a fact about the record that the record could not hold. WHO
+      // withdrew is already on the audit row itself (`userId` / `actorEmail`
+      // from the request context), which is where §12.2 looks for it.
       await recordAudit(tx, {
         entityType: "KpiChangeRequest",
         entityId: id,
         action: "UPDATE",
         before: { status: "PENDING" },
-        after: { status: "WITHDRAWN", withdrawnByEmployeeId: actor.employeeId },
+        after: { status: "WITHDRAWN" },
       });
       return true;
     });

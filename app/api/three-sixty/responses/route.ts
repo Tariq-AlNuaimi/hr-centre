@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { evaluatorStatus, isAnswerScore } from "@/lib/pms/three-sixty";
 import { answerBlockedReason } from "@/lib/pms/three-sixty-answer";
@@ -127,7 +127,7 @@ export const POST = withRateLimit(
       }
     }
 
-    await prisma.$transaction(async (tx) => {
+    await auditedTransaction(async (tx) => {
       for (const a of answers) {
         const score = a.score ?? null;
         const text = a.text?.trim() ? a.text.trim() : null;

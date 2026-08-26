@@ -1,5 +1,6 @@
 import { Prisma } from "../../generated/prisma/client";
 import { getAuditContext } from "../audit-context";
+import { currentAuditWriter, type AuditWriter } from "./tx-context";
 
 // Models excluded from audit logging
 const EXCLUDE = new Set(["AuditLog", "Account", "Session", "VerificationToken"]);
@@ -137,14 +138,11 @@ type AnyClient = {
   };
 };
 
-// Minimal shape needed to write an audit row through any client (notably
-// `prismaUnfiltered`, which is outside the audit extension). `create` is typed
-// loosely so Prisma's generated delegate (with its strict input type) remains
-// assignable -- same pattern the extension uses for its internal audit writes.
-type AuditWriter = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  auditLog: { create: (args: any) => Promise<unknown> };
-};
+// `AuditWriter` — the minimal shape needed to write an audit row through any
+// client (notably `prismaUnfiltered`, which is outside the audit extension, and
+// a `$transaction` handle) — now lives in `./tx-context`, because that module's
+// whole job is swapping one such writer for another (ADR-068). One definition,
+// two readers.
 
 /**
  * Explicitly record an audit row for an operation performed OUTSIDE the audit
@@ -215,9 +213,20 @@ export async function recordAudit(
  * The trade is under-reporting at those same asymmetric call sites: a key only
  * one side carries yields nothing rather than a false entry. That is the right
  * way round for an audit trail, and it is strictly better than what those
- * callers had before, which was no `changes` at all. Fixing it properly means
- * making each caller's two snapshots symmetric, which is a change to those
- * routes rather than to this helper.
+ * callers had before, which was no `changes` at all.
+ *
+ * **The callers were made symmetric on 2026-08-26** — the under-reporting this
+ * paragraph used to describe as an accepted trade was costing real fields: the
+ * decider and reason on a §6.2 decision, the reason on a §13.2 reversal, and the
+ * membership on a §9.6 project (which recorded a COUNT, so a swap of one person
+ * for another diffed to nothing). Each is now named on both sides, with `null`
+ * on the `before` where the row genuinely held nothing. `POST /api/three-sixty/
+ * assignments` keeps one deliberate one-sided key and says why at the call site.
+ *
+ * So this function is now a BACKSTOP rather than a working compromise: it exists
+ * so a future caller that forgets symmetry under-reports instead of inventing a
+ * change from `undefined`. Integration tests assert the symmetry at each call
+ * site, because that is where it can actually be lost.
  */
 function changesOverSharedKeys(
   before: Record<string, unknown>,
@@ -444,7 +453,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const record = result as Record<string, unknown>;
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).auditLog.create({
+          await currentAuditWriter(client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String(record.id),
@@ -526,7 +535,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const changes = before ? computeChanges(before, afterForDiff) : null;
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).auditLog.create({
+          await currentAuditWriter(client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String(after.id),
@@ -562,7 +571,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const result = await query(args);
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).auditLog.create({
+          await currentAuditWriter(client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String((before as Record<string, unknown> | null)?.id ?? "unknown"),

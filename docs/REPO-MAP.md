@@ -125,7 +125,7 @@
 - Project: id, cycleId, cycle, name, members, createdAt, updatedAt
 - ProjectMember: id, projectId, project, employeeId, employee, createdAt
 - ScoreRun: id, cycleId, cycle, startedByEmployeeId, startedByEmployee, startedAt, finishedAt, scoredCount, skippedCount, scores, createdAt
-- EmployeeScore: id, scoreRunId, scoreRun, employeeId, employee, corporateScore, departmentalScore, individualScore, threeSixtyScore, rawScore, rawBand, calibratedBand, adjustments, createdAt, updatedAt
+- EmployeeScore: id, scoreRunId, scoreRun, employeeId, employee, corporateScore, departmentalScore, individualScore, threeSixtyScore, threeSixtyRaterCount, rawScore, rawBand, calibratedBand, adjustments, createdAt, updatedAt
 - CalibrationTarget: id, cycleId, cycle, outstandingPct, excellentPct, targetPct, almostAchievedPct, unsatisfactoryPct, minDepartmentSize, createdAt, updatedAt
 - CalibrationAdjustment: id, employeeScoreId, employeeScore, fromBand, toBand, reason, adjustedByEmployeeId, adjustedByEmployee, adjustedAt, createdAt
 - CyclePublication: id, cycleId, cycle, published, publishedAt, publishedByEmployeeId, publishedByEmployee, lastReason, createdAt, updatedAt
@@ -172,7 +172,7 @@
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KPI_HASH_SELECT, KpiHashRow, kpiSetHash, currentKpiSetHash
 - lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
-- lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, hasDirectReports, managerChain
+- lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
@@ -191,7 +191,8 @@
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, projectUpdate, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
-- lib/prisma.ts: prisma, prismaUnfiltered
+- lib/prisma/tx-context.ts: AuditWriter, runInAuditTx, currentClient, currentAuditWriter
+- lib/prisma.ts: prisma, prismaUnfiltered, auditedTransaction
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
@@ -231,7 +232,9 @@
 - components/pms/CycleProgressReport.tsx
 - components/pms/DistributionReport.tsx
 - components/pms/EmployeeColumns.tsx
+- components/pms/EmployeeEditForm.tsx
 - components/pms/EmployeePicker.tsx
+- components/pms/HrApprovalPanel.tsx
 - components/pms/ImportPreview.tsx
 - components/pms/KpiDraftBoard.tsx
 - components/pms/KpiForm.tsx

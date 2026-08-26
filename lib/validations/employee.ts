@@ -41,6 +41,19 @@ const employeeCore = {
   odooId: z.string().trim().min(1, "Employee ID is required").max(64),
   name: z.string().trim().min(1, "Name is required").max(255),
   email: emailSchema,
+  /**
+   * §3.3 — a required employee field, and the one the whole of §11 hangs off:
+   * "Anchor for 6-month eligibility gate, pro-ration Work Days, and effective
+   * service". §11.7 refuses to compute a bonus without it rather than guessing.
+   *
+   * NULLABLE even so, and deliberately. The column was added after Phase 1 and
+   * was not backfilled (migration 20260825210000) — every employee imported
+   * before it carries null, meaning "not on file". Requiring it here would make
+   * this form refuse to open the very records that need fixing: HR could not
+   * correct a name on an employee whose joining date was never captured. Null in,
+   * null out; §11 goes on flagging it until someone fills it in.
+   */
+  dateOfJoining: isoDate.nullable().default(null),
   departmentId: z.string().trim().min(1).nullable(),
   entityId: z.string().trim().min(1, "Entity is required"),
   managerId: z.string().trim().min(1).nullable(),
@@ -66,6 +79,7 @@ type OrgInvariantShape = {
   departmentId: string | null;
   managerId: string | null;
   status: string;
+  dateOfJoining: string | null;
   lastWorkingDay: string | null;
 };
 
@@ -90,6 +104,35 @@ function applyOrgInvariants<T extends z.ZodType<OrgInvariantShape>>(schema: T) {
       {
         message: "A leaver needs a last working day — it sets the bonus pro-ration period",
         path: ["lastWorkingDay"],
+      },
+    )
+    .refine(
+      // Nobody leaves before they join. Mirrors the
+      // `employees_joining_before_leaving_check` constraint, so the message
+      // lands on a field instead of arriving as a constraint violation.
+      (v) =>
+        v.dateOfJoining === null ||
+        v.lastWorkingDay === null ||
+        v.lastWorkingDay >= v.dateOfJoining,
+      {
+        message: "The last working day cannot be before the date of joining",
+        path: ["lastWorkingDay"],
+      },
+    )
+    .refine(
+      // A joining date far in the future is a typo, not a hire. Mirrors
+      // `employees_date_of_joining_sane_check` (CURRENT_DATE + 1 year); the
+      // bound is generous because a signed offer with a future start date is a
+      // real thing HR records ahead of time.
+      (v) => {
+        if (v.dateOfJoining === null) return true;
+        const limit = new Date();
+        limit.setUTCFullYear(limit.getUTCFullYear() + 1);
+        return v.dateOfJoining <= limit.toISOString().slice(0, 10);
+      },
+      {
+        message: "That joining date is more than a year away — check it for a typo",
+        path: ["dateOfJoining"],
       },
     );
 }

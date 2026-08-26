@@ -458,9 +458,29 @@ test("§13.2 publishing succeeds once calibration is ready, and is reversible + 
     where: { entityType: "CyclePublication", entityId: ids.cycle },
     take: 10,
     orderBy: { timestamp: "desc" },
-    select: { after: true },
+    select: { before: true, after: true, changes: true },
   });
   assert.ok(audit.length >= 2, "publish and un-publish both left an audit row");
+
+  // §13.2's WHY has to reach `changes`, not just sit in `after`. `recordAudit`
+  // diffs only the keys BOTH snapshots carry, so the reason was invisible in the
+  // diff for as long as it appeared on one side alone.
+  const reversal = audit[0];
+  assert.deepEqual((reversal.changes as Record<string, unknown>).published, {
+    from: true,
+    to: false,
+  });
+  assert.deepEqual((reversal.changes as Record<string, unknown>).lastReason, {
+    // The PUBLISH above carried no reason (§13.2 makes it mandatory only on the
+    // reversal), so the column held null going in.
+    from: null,
+    to: "A departmental score was keyed wrong.",
+  });
+  assert.deepEqual(
+    Object.keys((reversal.before ?? {}) as Record<string, unknown>).sort(),
+    Object.keys((reversal.after ?? {}) as Record<string, unknown>).sort(),
+    "before and after must be symmetric, or the diff silently drops fields",
+  );
 });
 
 // --- post-push breadth-review regressions -----------------------------------
@@ -555,4 +575,70 @@ test("§13.2 two CONCURRENT publish-state writes: exactly one lands, and only on
     1,
     "the loser writes no audit row — one that did would report a `before` already stale",
   );
+});
+
+// --- red-team F8: the rater count is a fact about a score, not a free column ---------
+
+test("F8 the rater count cannot exist without the 360 score it is the denominator of", async () => {
+  const run = await prisma.scoreRun.create({
+    data: {
+      cycleId: ids.cycle,
+      startedByEmployeeId: ids.superAdmin,
+      finishedAt: new Date(),
+      scoredCount: 0,
+    },
+    select: { id: true },
+  });
+
+  const base = {
+    scoreRunId: run.id,
+    employeeId: ids.hrbp,
+    corporateScore: new Prisma.Decimal("3.00"),
+    departmentalScore: null,
+    individualScore: new Prisma.Decimal("3.00"),
+    rawScore: new Prisma.Decimal("3.00"),
+    rawBand: "TARGET" as const,
+    calibratedBand: "TARGET" as const,
+  };
+
+  // A count with no score beside it is a denominator for nothing. §8.3's C-Level
+  // row is the case this protects: no 360 at all, so no count either — and a
+  // future writer that filled one in would be asserting a fact about an absence.
+  await assert.rejects(
+    () =>
+      prisma.employeeScore.create({
+        data: { ...base, threeSixtyScore: null, threeSixtyRaterCount: 2 },
+        select: { id: true },
+      }),
+    /rater_count_needs_score/,
+  );
+
+  // Nobody is rated by a negative number of people.
+  await assert.rejects(
+    () =>
+      prisma.employeeScore.create({
+        data: {
+          ...base,
+          threeSixtyScore: new Prisma.Decimal("3.00"),
+          threeSixtyRaterCount: -1,
+        },
+        select: { id: true },
+      }),
+    /rater_count_sane/,
+  );
+
+  // NULL is not zero, and the column must be able to say so: every row written
+  // before the column existed is in that state, and a run that recorded no count
+  // must not be readable as "nobody rated them".
+  const unknown = await prisma.employeeScore.create({
+    data: {
+      ...base,
+      threeSixtyScore: new Prisma.Decimal("3.00"),
+      threeSixtyRaterCount: null,
+    },
+    select: { id: true, threeSixtyRaterCount: true },
+  });
+  assert.equal(unknown.threeSixtyRaterCount, null);
+
+  await prisma.scoreRun.delete({ where: { id: run.id } });
 });

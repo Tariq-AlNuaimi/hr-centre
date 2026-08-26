@@ -23,7 +23,20 @@
 
 import { spawnSync } from "node:child_process";
 
-const TEST_CMD = ["--import", "tsx", "--test", "tests/integration/*.test.ts"];
+// `--experimental-test-module-mocks` is not optional: several suites here call
+// `mock.module` to stand in for `lib/auth`, and without the flag node throws
+// "mockApi.module is not a function" in a beforeEach hook — which node:test
+// reports as a FAILED test, not a skipped one. So the gate was red for a reason
+// that had nothing to do with the code under test, and the failure names an
+// internal API rather than the missing flag. `npm test` has carried the flag
+// since the contract suite started mocking; this runner never did.
+const TEST_CMD = [
+  "--experimental-test-module-mocks",
+  "--import",
+  "tsx",
+  "--test",
+  "tests/integration/*.test.ts",
+];
 const PGVECTOR_IMAGE = "pgvector/pgvector:pg16";
 
 /** Run the node:test integration suite with the given env; return its exit code. */

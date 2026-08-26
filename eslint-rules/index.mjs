@@ -18,6 +18,7 @@
 //   no-direct-anthropic-sdk   @anthropic-ai/sdk imported outside lib/ai/** -- model access must go through @/lib/ai (ADR-042).
 //   no-arbitrary-className    Arbitrary Tailwind values on spacing (p/m/gap/space) + font-size (text-[..px]) -- use the scale (V2-304).
 //   no-literal-jsx-text       Literal user-facing text in JSX (text nodes + placeholder/title/alt) -- route copy through next-intl (V2-305).
+//   no-bare-prisma-transaction  prisma.$transaction audits on the OUTER client, so a rolled-back tx keeps its audit rows (ADR-068).
 //
 // See CLAUDE.md ‘Hard rules’ for the underlying invariants each rule protects.
 
@@ -35,6 +36,7 @@ import noPrismaUnfilteredImport from "./rules/no-prisma-unfiltered-import.mjs";
 import noDirectAnthropicSdk from "./rules/no-direct-anthropic-sdk.mjs";
 import noArbitraryClassName from "./rules/no-arbitrary-className.mjs";
 import noLiteralJsxText from "./rules/no-literal-jsx-text.mjs";
+import noBarePrismaTransaction from "./rules/no-bare-prisma-transaction.mjs";
 
 const plugin = {
   meta: { name: "rihal-template", version: "1.0.0" },
@@ -53,6 +55,7 @@ const plugin = {
     "no-direct-anthropic-sdk": noDirectAnthropicSdk,
     "no-arbitrary-className": noArbitraryClassName,
     "no-literal-jsx-text": noLiteralJsxText,
+    "no-bare-prisma-transaction": noBarePrismaTransaction,
   },
 };
 

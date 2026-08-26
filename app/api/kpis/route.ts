@@ -6,7 +6,7 @@ import { resolveActor } from "@/lib/pms/actor";
 import { GOAL_SETTING_STAGE, kpiSetAccessRefusal } from "@/lib/pms/kpi";
 import { periodAuthorityBlockedReason } from "@/lib/pms/transfer";
 import { KPI_SELECT, serializeKpi, weightageSummary } from "@/lib/pms/kpi-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee, isHr, type PmsActor } from "@/lib/pms/permissions";
 import { createKpiSchema } from "@/lib/validations/kpi";
 
@@ -86,11 +86,7 @@ export const POST = withRateLimit(
     });
     if (!participant) return notFound("Participant");
 
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
 
     // §4.2 → §8.3 → §2 → §5.4/§5.1, in one place. The RSC drafting page reads
     // through Prisma directly (the template's blessed pattern) and so cannot go

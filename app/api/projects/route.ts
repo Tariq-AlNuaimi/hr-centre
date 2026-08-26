@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
@@ -62,7 +62,7 @@ export const POST = withRateLimit(
       select: { id: true, members: { select: { employeeId: true }, take: 200 } },
     });
 
-    const project = await prisma.$transaction(async (tx) => {
+    const project = await auditedTransaction(async (tx) => {
       const row = existing
         ? { id: existing.id, name }
         : await tx.project.create({ data: { cycleId, name }, select: { id: true, name: true } });
@@ -78,12 +78,29 @@ export const POST = withRateLimit(
         });
       }
 
+      // The MEMBERSHIP, not its size. A replace that swaps one person for another
+      // leaves `memberCount` identical, and `computeChanges` reports only keys
+      // that differ — so the audit row for the write §9.6 most cares about said
+      // nothing at all. Sorted, so a reordering is not reported as a change.
+      //
+      // `name` is on both sides because the two snapshots must share their keys
+      // (`recordAudit` diffs only shared keys). It cannot actually move: the
+      // project is looked up by `cycleId_name`, so a different name is a
+      // different project, and stating it is a statement of what this row is.
+      const memberIds = (ids: string[]) => [...ids].sort();
       await recordAudit(tx, {
         entityType: "Project",
         entityId: row.id,
         action: existing ? "UPDATE" : "CREATE",
-        ...(existing ? { before: { memberCount: existing.members.length } } : {}),
-        after: { name, memberCount: members.length },
+        ...(existing
+          ? {
+              before: {
+                name,
+                memberEmployeeIds: memberIds(existing.members.map((m) => m.employeeId)),
+              },
+            }
+          : {}),
+        after: { name, memberEmployeeIds: memberIds(members.map((m) => m.id)) },
       });
       return row;
     });

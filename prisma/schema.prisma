@@ -1229,6 +1229,27 @@ model EmployeeScore {
   individualScore   Decimal  @map("individual_score") @db.Decimal(3, 2)
   threeSixtyScore   Decimal? @map("three_sixty_score") @db.Decimal(3, 2)
 
+  /// How many raters the §9.5 figure beside it was averaged over (red-team F8).
+  ///
+  /// §9.5 says "average the **3** ratios". `overallRatio` averages over however
+  /// many arrived, which is the right call — dividing by a hard 3 would dock a
+  /// ratee for a rater's departure. But it made a score built from one rater
+  /// indistinguishable from one built from three, on the employee's scorecard,
+  /// in §13.5's master export and in the §11 bonus that follows. In the 36-person
+  /// demo fixture, 26 of 33 ratees had fewer than three raters available.
+  ///
+  /// **This column changes no arithmetic.** It is not an input to `rawScore`, it
+  /// gates nothing, and §13.2's publish does not consult it. It exists so a
+  /// human reading a score can see how thin its 360 was, which is a calibration
+  /// judgement (§10) and not a rule.
+  ///
+  /// NULLABLE, and the distinction is load-bearing: `null` means "this row
+  /// predates the column, so the count is unknown", `0` would mean "nobody
+  /// rated them" — and a score run written before this migration must not
+  /// claim the second. Rows with a null `threeSixtyScore` (the C-Level track,
+  /// §8.3) also carry null here: there was no 360 to count.
+  threeSixtyRaterCount Int? @map("three_sixty_rater_count")
+
   /// §8.6's result and §8.7's band. RAW — never overwritten (§10.1).
   rawScore Decimal @map("raw_score") @db.Decimal(3, 2)
   rawBand  Band    @map("raw_band")

@@ -14,7 +14,7 @@ import {
   type KpiEdit,
 } from "@/lib/pms/change-request";
 import { CHANGE_REQUEST_SELECT, serializeChangeRequest } from "@/lib/pms/change-request-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { descendantEmployeeIds, visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { createChangeRequestSchema } from "@/lib/validations/change-request";
 
@@ -84,11 +84,7 @@ export const POST = withRateLimit(
     });
     if (!participant) return notFound("Participant");
 
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
 
     // §4.2 → §8.3 → §2 → §5.1/§5.4, in one shared function so this route and the
     // manager's screen refuse in the same words.

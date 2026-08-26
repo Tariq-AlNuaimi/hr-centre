@@ -122,10 +122,29 @@ indistinguishable from one built from three — on the employee's scorecard, in 
 in the bonus that follows from it. In the 36-person demo fixture, 26 of 33 ratees had fewer than
 three raters available.
 
-**Partly fixed 2026-08-26** — the count is now stated beside the figure on §9.8's individual report,
-with an explicit caution below three (`ThreeSixtyResultCard`). The `EmployeeScore` column that would
-carry it into the scorecard, the §13.5 export and the §11 bonus is still absent; that needs a
-migration, which is Ask-before, so it remains open in the register.
+**FIXED 2026-08-26** — in two steps. First the count was stated beside the figure on §9.8's
+individual report, with an explicit caution below three (`ThreeSixtyResultCard`). Then, with the
+migration authorised, `EmployeeScore.threeSixtyRaterCount`
+(`20260826120000_pms_three_sixty_rater_count`) — written by the score run from the same `ratios`
+array `overallRatio` divided by, so the stored count and the stored score describe the same forms.
+It reaches §13.5's master export as a "360 Raters" column, and §10's calibration screen as a caution
+below three, beside the §10.5 override it is there to inform.
+
+Three boundaries, held on purpose:
+
+- **No arithmetic changes.** `scoreEmployee` never receives it, `rawScore` does not read it, and
+  §13.2's publish does not gate on it. Whether a thin 360 should move a band is a §10 judgement made
+  by a person; the column exists to put that person in a position to make it.
+- **Nullable, not backfilled.** `null` means "this run predates the column"; `0` would mean "nobody
+  rated them". Backfilling the first into the second would be a false claim about a real score. Two
+  CHECK constraints hold the shape (non-negative; never present without a `three_sixty_score`), and
+  the calibration screen renders the caution only when the count is actually known.
+- **Not on the employee's own scorecard.** §13.1: the employee "never sees raw scores, component
+  breakdown, any sign of calibration" — and the denominator of one component is component breakdown.
+  HR and the executive viewers see it; the employee sees their band.
+
+Verified against the demo fixture through the real score run: 15 ratees at one rater, 11 at two, 7
+at three, 4 null (the C-Level, §8.3) — the 26 thin ratees this finding reported, now visible.
 
 ### F10 — MEDIUM · §9.1 · The 360 window is write-once and cannot be corrected — **FIXED**
 
@@ -150,6 +169,92 @@ is configured on the deployment, §5.5's "escalating reminders", the skip-level 
 mails, and §9.7's "automated invitations" and "automated reminders before deadline" all silently do
 nothing. The compliance _record_ is still written, so this degrades to "the log is right, nobody was
 told".
+
+### F11 — CRITICAL · §5.1 · §5.1's lock has no key — **FIXED**
+
+Found 2026-08-26 by a full write-endpoint reachability sweep (43 endpoints, all checked).
+
+`POST /api/cycles/[id]/participants/[participantId]/approve` had no UI caller. The only other writer
+of `goalsApprovedAt` was `prisma/seed-demo-cycle.ts:397`, writing straight to the database — the same
+trap as F1–F6, and again it was my own fixture that made the screens look finished.
+
+The consequence was not confined to §5. `app/api/year-end-signoffs/route.ts:115` refuses without an
+HR-approved baseline ("no HR-approved baseline… §5.1"), so **§7 → §8 → §10 → §11 → §13 were shut for
+the whole company** behind a lock nobody could turn. The route itself was complete, idempotent and
+correct; it simply had no button.
+
+**Fixed** — `components/pms/HrApprovalPanel.tsx` on the goal-setting participant screen, below the
+sign-off panel (§5.1's own order: agreement, then HR's approval as the lock). HR-only per §4.1, with
+a confirmation that states what the lock costs rather than asking "are you sure?". The panel does not
+re-derive the gate: the server component calls the same `hrApprovalDecision` the route calls and
+hands down its sentence verbatim, including WHICH of §5.1's two routes to a lock would be taken — a
+§5.4 approval over an absent employee signature is a materially different record from a mutual
+agreement, and the screen says so before the click, not only in the response afterwards.
+
+Verified end to end in a browser across all three states (approved, §5.4 basis, refused):
+`docs/verification/pms-reachability-f11-f12/README.md`.
+
+### F12 — MEDIUM · §3 · HR cannot fix an employee record — **FIXED**
+
+`PUT /api/employees/[id]` had no UI caller either, though `lib/validations/employee.ts` opens by
+saying its schemas guard "the hand-editing paths (HR fixing one record in the UI)". There was no such
+path. A misspelt name, a wrong department, a role track that did not match the job could only be
+corrected by re-importing — and an import creates an `importBatch`, which makes `seed-demo-cycle`
+refuse forever. HR's smallest correction was the product's most expensive act.
+
+**Fixed** — `components/pms/EmployeeEditForm.tsx` on `/people/[id]`, HR Super Admin only (§4.1's
+configure column). It binds `updateEmployeeSchema` — the route's own schema — as its resolver, so
+§1.2's exclusive-or and the manager requirement are checked in the same words on the same field
+paths. `PUT` is a full replace, so the form carries every field it does not offer to change, and the
+payload is typed `UpdateEmployeeInput` to make a forgotten field a build error rather than a wiped
+column.
+
+**Found while building it:** `/people/[id]` was the only employee read in the app that skipped
+`serializeEmployee`. It tested `"basicSalary" in employee` — a key `employeeSelect` has not returned
+since ADR-067 moved compensation to an encrypted envelope. The whole compensation section was
+therefore dead and **HR saw no salary on any individual record**. It type-checked because `in`
+narrows on any key, and no test covered the page. Same species as the findings above: code that
+exists, is correct in isolation, and is never reached.
+
+### F13 — HIGH · §3.3 · Date of Joining is unreachable from the UI — **FIXED**
+
+Found 2026-08-26 by re-reading the specification rather than the code, after the operator
+re-supplied it as the north star. (The file is byte-identical to the in-repo copy — the target has
+not moved.)
+
+§3.3 lists **Date of Joining** among the required employee fields and names what depends on it:
+"Anchor for 6-month eligibility gate, pro-ration Work Days, and effective service (§11)". §3.4 makes
+it an import validation rule. §11.7 refuses to compute a bonus without one rather than guessing.
+
+`dateOfJoining` was written by **one** caller: the import. It was absent from `employeeCore` and so
+from `updateEmployeeSchema`; absent from `PUT /api/employees/[id]`; absent from `employeeSelect`; and
+absent from `/people/[id]`. So the field was not merely uneditable — it was **invisible**. HR had no
+screen that showed whether a given person had one, and no way to add it.
+
+The consequence is F12's own trap, one field over: an employee whose joining date came in wrong, or
+blank from a pre-§3.3 import, has a wrong or blocked bonus, and the only fix was a **re-import** —
+which is the expensive act the hand-editing path exists to avoid, and which permanently disables the
+demo fixture.
+
+Missed because the column arrived after Phase 1 (migration `20260825210000`, "§3.3's Date of Joining,
+which Phase 1 omitted"). That migration added the column, the import loader and the import validator,
+and nothing else was taught about it. No test covered a field nobody could reach, and the reachability
+sweep that produced F11/F12 looked at write ENDPOINTS, not at fields within one — so a route with a
+caller can still have a column no caller can set.
+
+**Fixed** — the whole path: `dateOfJoining` on `BASE_EMPLOYEE_SELECT` and `serializeEmployee` (as an
+ISO day), in `employeeCore`, written by `PUT`, offered as a date field on the edit form, and shown on
+the Employment card. Nullable throughout and deliberately so: the migration did not backfill, so
+requiring it would have made the form refuse to open exactly the records that need fixing. Absent
+reads as "Not on file — §11 cannot compute a bonus until this is set", because §11.7 makes it an
+outstanding action rather than a cosmetic gap.
+
+Two database CHECK constraints are mirrored as field-level zod refinements, so the message lands on a
+field instead of arriving as a constraint violation: a joining date more than a year out is a typo,
+and nobody leaves before they join. Six contract tests in
+`tests/contracts/pms-employee-schema.test.ts`, and verified in a browser — the sane-check refusal,
+a successful edit that left salary, status and `pmsRoles` untouched, and the case that matters most,
+a record with **no** date on file opening and saving.
 
 ## What is genuinely solid
 
@@ -185,9 +290,14 @@ Each of these I checked against the clause myself, in the code, this session:
 The conformance report should not claim a clause is met until the flow it describes can be completed
 by the role the clause names, in a browser, without a database write. Two measures, kept apart:
 
-| Measure                                                       | Status                                                                      |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Clause has a correct implementation and a clause-named test   | **§1–§14 + Appendix A** — accurate                                          |
-| Clause's flow is completable by its named role through the UI | **§9 blocked; §10, §11, §13 blocked behind it; §12's manual paths missing** |
+| Measure                                                       | Status                                                                                                                                                                             |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clause has a correct implementation and a clause-named test   | **§1–§14 + Appendix A** — accurate                                                                                                                                                 |
+| Clause's flow is completable by its named role through the UI | **F1–F6, F10, F11, F12 fixed; every §1–§13 flow now has a caller. F7 (My Tasks omits 360 assignments), F8's `EmployeeScore` column and F9 (SMTP) remain open — see the register.** |
 
 The second row is the one a stakeholder means by "done", and it is the row nobody was tracking.
+
+**Update, 2026-08-26.** A second sweep took the remaining 43 write endpoints one at a time and asked, of
+each, which screen calls it. Two had no answer (F11, F12); both are now built and verified in a browser.
+That sweep is the measure this table asks for, and it is worth repeating whenever a route is added — a
+route without a caller passes every gate this repo has.

@@ -35,6 +35,10 @@ const BASE_EMPLOYEE_SELECT = {
   odooId: true,
   name: true,
   email: true,
+  // §3.3 — a required employee field. Carried on the BASE select (not the
+  // compensation branch): it is ordinary employment data, and §11.7's "no date
+  // of joining" flag is unreadable if no screen can show whether one exists.
+  dateOfJoining: true,
   roleTrack: true,
   pmsRoles: true,
   status: true,
@@ -101,6 +105,8 @@ export type EmployeeListRow = {
   email: string;
   roleTrack: string;
   status: string;
+  /** §3.3, as an ISO calendar DAY — the column is a date, and the time is noise. */
+  dateOfJoining: string | null;
   managerId: string | null;
   department: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
@@ -140,6 +146,7 @@ export function serializeEmployee(row: {
   email: string;
   roleTrack: string;
   status: string;
+  dateOfJoining: Date | null;
   managerId: string | null;
   department: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
@@ -154,6 +161,7 @@ export function serializeEmployee(row: {
     email: row.email,
     roleTrack: row.roleTrack,
     status: row.status,
+    dateOfJoining: row.dateOfJoining?.toISOString().slice(0, 10) ?? null,
     managerId: row.managerId,
     department: row.department,
     entity: row.entity,

@@ -212,6 +212,7 @@
     "roleTrack": "Role track",
     "manager": "Manager",
     "status": "Status",
+    "dateOfJoining": "Date of joining",
     "basicSalary": "Basic salary",
     "lastWorkingDay": "Last working day",
     "unpaidLeaveDays": "Unpaid leave days",
@@ -537,7 +538,29 @@
       "kpiSetTitle": "The KPI set ({count})",
       "signedBadge": "Signed",
       "signedStale": "The KPI set changed after this signature, so it was given to an earlier version.",
-      "signedStaleBadge": "Signed earlier version"
+      "signedStaleBadge": "Signed earlier version",
+      "hrApproval": {
+        "title": "HR approval",
+        "subtitle": "§5.1 — HR reviews and approves. Approval is what locks the KPIs as the agreed baseline.",
+        "action": "Approve and lock",
+        "approving": "Approving…",
+        "readySigned": "Both parties have signed and the set totals 100%. Approving now locks it as the agreed baseline.",
+        "readyUnsigned": "The goal-setting deadline has passed without the employee's signature (§5.4), and the set moved to HR review. Approving records the lock on that basis, not as a mutual agreement.",
+        "effectBaseline": "The KPI set becomes the baseline the whole year is measured against — self-assessment, the manager's rating, the score and the bonus all read it.",
+        "effectEdits": "Nobody can edit the set afterwards. A correction goes through a mid-year change request (§6.2), which the manager raises and HR decides.",
+        "effectYearEnd": "Year-end sign-off refuses to open for this employee until this approval exists, so nothing downstream can start without it.",
+        "confirmTitle": "Lock this KPI set as the baseline?",
+        "confirmSigned": "Both parties signed. This records HR's approval of an agreed set.",
+        "confirmUnsigned": "The employee did not sign before the deadline. This records HR's approval over an absent signature, and the record will say so.",
+        "confirmBody": "There is no unapprove. Once the baseline is locked, the only way to change a KPI is a mid-year change request (§6.2).",
+        "confirmAction": "Approve and lock",
+        "approvedToast": "The KPI set is approved and locked",
+        "alreadyApprovedToast": "That set was already approved",
+        "failed": "Could not record the approval.",
+        "lockedTitle": "Locked as the agreed baseline",
+        "lockedSubtitle": "§5.1 — HR's approval is the lock, and there is no unapprove.",
+        "lockedBody": "Approved {datetime}. A change from here is a mid-year change request (§6.2)."
+      }
     },
     "home": {
       "myTasksTitle": "My tasks",
@@ -1022,7 +1045,8 @@
       "noCyclesHelp": "Calibration opens once a cycle has been scored.",
       "loadFailed": "Could not load calibration",
       "loadFailedHelp": "Something went wrong fetching the distribution.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "thinThreeSixty": "360 averaged over {count} rater(s), not the three §9.4 intends — a thinner sample than the rest of this department."
     },
     "calibrationTarget": {
       "title": "Target distribution",
@@ -1347,6 +1371,26 @@
       "noTransfers": "Nobody transferred mid-cycle.",
       "notPermitted": "This screen is HR's",
       "notPermittedHelp": "Ask HR if a reporting line looks wrong."
-    }
+    },
+    "editEmployee": {
+      "action": "Edit record",
+      "title": "Edit this employee record",
+      "help": "HR's correction path for a record that came in wrong — a misspelt name, the wrong department, a role track that does not match the job. It replaces the org record only; nothing about their performance year moves.",
+      "roleTrackHelp": "§8.3 weights the score differently for each track, so changing it changes how this person is scored. C-Level skip goal setting, self-assessment and 360 entirely.",
+      "entityHelp": "Departments belong to one entity, so moving someone between entities means choosing their department again.",
+      "noDepartmentCLevel": "C-Level employees are tagged to an entity directly and have no department (§1.2).",
+      "chooseDepartment": "Choose a department",
+      "searchManager": "Search for the line manager",
+      "change": "Change",
+      "managerHelp": "§4.2 gives editing and sign-off to the direct line manager, so this decides who drafts and signs this person's KPIs.",
+      "managerHelpCLevel": "Optional for C-Level.",
+      "notEditedHere": "Employee ID, salary, HR roles and leaver status are not edited here. The ID never changes (§3.2); a departure goes through the edge-case screen so the record shows who recorded it (§12.1); HR roles go through the roles screen (§4.3).",
+      "saveAction": "Save record",
+      "saving": "Saving…",
+      "savedToast": "{name}'s record was updated",
+      "failed": "Could not save the record.",
+      "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it."
+    },
+    "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set"
   }
 }

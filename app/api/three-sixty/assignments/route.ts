@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
@@ -97,6 +97,14 @@ export const PUT = withRateLimit(
     const wiped = await prisma.assignment.count({ where: { threeSixtyCycleId } });
     // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- DRAFT-only regenerate; recordAudit() below
     await prisma.assignment.deleteMany({ where: { threeSixtyCycleId } });
+    // `reason` is one-sided ON PURPOSE, and this is the exception to the
+    // symmetry rule the other `recordAudit` callers follow. That rule exists
+    // because a COLUMN named on one side alone is dropped from `changes` — the
+    // write is reported without saying what moved. `reason` is not a column and
+    // did not move: it is an annotation on a bulk delete whose only real field,
+    // `assignmentCount`, appears on both sides and diffs correctly. Adding
+    // `reason: null` to `before` would manufacture a change entry reading
+    // "the reason changed from nothing", which is not a fact about anything.
     await recordAudit(prisma, {
       entityType: "Assignment",
       entityId: threeSixtyCycleId,
@@ -197,7 +205,7 @@ export const POST = withRateLimit(
 
     const templateByType = new Map(threeSixty.templates.map((t) => [t.type, t.id]));
 
-    await prisma.$transaction(async (tx) => {
+    await auditedTransaction(async (tx) => {
       // Replace this ratee's set wholesale — that is what "set the raters" means,
       // and a partial edit would leave the previous rater assigned to a form HR
       // has just decided they should not fill in.

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
@@ -52,7 +52,13 @@ export const POST = withRateLimit(
 
     const cycle = await prisma.performanceCycle.findUnique({
       where: { id: cycleId },
-      select: { id: true, publication: { select: { id: true, published: true } } },
+      // `lastReason` rides along so the audit `before` can carry the reason the
+      // publication currently holds — the two snapshots must share their keys or
+      // §13.2's WHY never reaches `changes` (see recordAudit below).
+      select: {
+        id: true,
+        publication: { select: { id: true, published: true, lastReason: true } },
+      },
     });
     if (!cycle) return notFound("Cycle");
 
@@ -99,7 +105,7 @@ export const POST = withRateLimit(
     // reporting a `before` that was only ever true for one of them. §13.2 asks
     // for a guarded, audited, reversible gate; an audit trail that misreports
     // what it reversed is none of those.
-    const publication = await prisma.$transaction(async (tx) => {
+    const publication = await auditedTransaction(async (tx) => {
       if (cycle.publication) {
         // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
         const claimed = await tx.cyclePublication.updateMany({
@@ -136,12 +142,20 @@ export const POST = withRateLimit(
       // a publication is as consequential as its reversal. Inside the
       // transaction, so a lost claim takes its audit row with it rather than
       // recording a release that never happened.
+      // Symmetric, and under the column's own name. `reason` appeared only in
+      // `after`, so §13.2's "reversal is audited (who, when, why)" lost the WHY
+      // from `changes` — a key one side lacks yields no entry. `lastReason` is
+      // what the column is called, and naming it that keeps the audit trail
+      // readable against the schema rather than against this route.
       await recordAudit(tx, {
         entityType: "CyclePublication",
         entityId: cycleId,
         action: "UPDATE",
-        before: { published: currentlyPublished },
-        after: { published: target, reason: reason ?? null },
+        before: {
+          published: currentlyPublished,
+          lastReason: cycle.publication?.lastReason ?? null,
+        },
+        after: { published: target, lastReason: reason ?? null },
       });
 
       return tx.cyclePublication.findUniqueOrThrow({

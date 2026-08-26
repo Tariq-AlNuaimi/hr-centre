@@ -124,6 +124,32 @@ export default {
 
       CallExpression(node) {
         const callee = node.callee;
+
+        // `auditedTransaction(async (tx) => ...)` — ADR-068's required wrapper —
+        // is a BARE call, not a member expression, so the `$transaction` branch
+        // below never sees it. Without this the rule stopped tracking `tx` the
+        // moment the routes were converted, and every bulk write inside a
+        // transaction became invisible to the audit-completeness gate. The
+        // regression announced itself only as two "unused eslint-disable"
+        // warnings, which is not a signal anyone would read as "the floor just
+        // dropped".
+        if (
+          callee &&
+          callee.type === "Identifier" &&
+          callee.name === "auditedTransaction" &&
+          node.arguments.length > 0
+        ) {
+          const cb = node.arguments[0];
+          if (
+            (cb.type === "ArrowFunctionExpression" || cb.type === "FunctionExpression") &&
+            cb.params[0] &&
+            cb.params[0].type === "Identifier"
+          ) {
+            aliases.add(cb.params[0].name);
+          }
+          return;
+        }
+
         if (!callee || callee.type !== "MemberExpression") return;
 
         const method = propName(callee);

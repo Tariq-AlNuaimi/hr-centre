@@ -10,7 +10,7 @@ import {
   yearEndSignerBlockedReason,
   yearEndState,
 } from "@/lib/pms/year-end";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { isGoalSettingExempt } from "@/lib/pms/cycle";
 import { yearEndSignOffSchema } from "@/lib/validations/rating";
@@ -76,11 +76,7 @@ export const POST = withRateLimit(
     if (!participant) return notFound("Participant");
 
     // §4.2 — visibility first, 404 rather than 403.
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
     if (!canViewEmployee(actor, participant.employee.id, descendants))
       return notFound("Participant");
 

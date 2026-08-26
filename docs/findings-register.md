@@ -35,6 +35,69 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [maintainable/correctness] **An audit row written inside a `$transaction` survived
+  the rollback — and a soft delete inside one escaped the transaction entirely.** Both extensions
+  resolved their client from the handle captured in `defineExtension`, not from `tx`. For the audit
+  extension that meant the write and its audit row committed independently, so a rolled-back
+  transaction left a row asserting a change that never happened. Measured: a deliberately
+  rolled-back `employee.update` left the employee untouched and one audit row saying otherwise.
+
+  **The worse instance was found while fixing the first.** The soft-delete extension resolves its
+  model DELEGATE the same way and then runs `findUnique` + `update` on it, so a soft delete inside a
+  transaction wrote its **data** outside the transaction: `tx.user.delete(...)` in a rolled-back
+  transaction left `deletedAt` SET on a row the rollback was meant to restore. That is data loss
+  surviving a rollback, not a misleading log line. Latent today — the only two in-transaction
+  deletes target `Assignment` and `ProjectMember`, neither soft-delete-registered — but `Kpi`,
+  `Employee`, `Department`, `OrgEntity` and `User` all are, and `tx.kpi.delete(...)` would have
+  closed the trap silently.
+
+  **Fixed 2026-08-26 per ADR-068**, operator-authorised (`lib/prisma/**` and `eslint-rules/**` are
+  both Ask-before). A module-private `AsyncLocalStorage` in `lib/prisma/tx-context.ts` publishes the
+  active transaction client; `auditedTransaction` in `lib/prisma.ts` is the only writer; both
+  extensions resolve through `currentClient`. Eleven call sites changed one identifier. The
+  fourteenth ESLint rule, `no-bare-prisma-transaction`, makes the bare form an error — the failure
+  is invisible to every test (transactions in tests commit), so a convention here would be forgotten
+  exactly once.
+
+  **A near-miss worth recording.** Converting the routes silently disarmed
+  `no-unaudited-bulk-write`: it registers the callback's `tx` as a tracked alias only on a
+  `$transaction` MEMBER expression, and `auditedTransaction` is a bare call. Every bulk write inside
+  a transaction stopped being flagged — the audit-completeness floor dropped as a side effect of an
+  audit-atomicity fix, announcing itself only as two "unused eslint-disable directive" warnings. The
+  rule now recognises the wrapper and a rule-test case pins it. **The general lesson: an ESLint rule
+  that tracks a call shape is coupled to that shape, so changing the shape is a change to the rule.**
+
+  Pinned by three integration tests (rollback leaves no audit row; commit still leaves exactly one,
+  with its diff; a soft delete rolls back), each verified to FAIL against the pre-fix code.
+  — operator — status: fixed(2026-08-26, ADR-068)
+
+- 2026-08-26 — [maintainable/observability] **Five explicit `recordAudit()` callers passed
+  asymmetric snapshots, so the fields they wrote never reached `changes`.** `changesOverSharedKeys`
+  diffs only keys BOTH snapshots carry — deliberately, because diffing the union would report every
+  key one side happens to lack as a change from `undefined`. Its own doc named the residual cost and
+  said fixing it "means making each caller's two snapshots symmetric, which is a change to those
+  routes". Five routes were paying it: `POST /api/kpi-change-requests/[id]/decide` on both branches
+  (§6.2's decider and decision reason lived only in `after`), `.../withdraw`,
+  `POST /api/publish` (§13.2's "reversal is audited — who, when, **why**", and the why was
+  `after`-only), and `POST /api/projects`.
+
+  Two were worse than under-reporting. `withdraw` named `withdrawnByEmployeeId` in `after`; **there
+  is no such column on `KpiChangeRequest`** and the update never wrote one, so the audit row asserted
+  a fact the record could not hold — who withdrew was already on the audit row's own
+  `userId`/`actorEmail`, which is where §12.2 looks. `POST /api/projects` recorded `memberCount`, so
+  a §9.6 membership replace that swapped one person for another left the count identical and diffed
+  to **nothing** — the write that route exists for was invisible. It now records the sorted member
+  ids on both sides.
+
+  **Fixed 2026-08-26.** Each pair carries the same keys, with `null` on the `before` where the row
+  genuinely held nothing. One deliberate exception remains and says so at the call site:
+  `POST /api/three-sixty/assignments` keeps a one-sided `reason` annotation on a bulk delete —
+  it is not a column and did not move, and a symmetric `reason: null` would manufacture a change
+  entry reading "the reason changed from nothing". `changesOverSharedKeys` is now a backstop against
+  a future forgetful caller rather than a working compromise. Pinned by integration assertions at
+  each call site (`pms-change-request`, `pms-three-sixty`, `pms-scoring-chain`) — verified to fail
+  against the pre-fix code, not merely to pass against the new. — operator — status: fixed(2026-08-26)
+
 - 2026-08-26 — [maintainable/observability] **An audit row written from inside an interactive
   `$transaction` records the PRE-update values.** The audit extension's re-read and
   `auditLog.create` run on the outer client captured in `defineExtension`, not on the transaction's
@@ -96,15 +159,45 @@ the changed surface is still **open** (un-adjudicated).
   the scorecard, in the master export, and in the bonus derived from it. 26 of 33 ratees in the demo
   fixture had fewer than three raters available. **2026-08-26**: the count is now stated beside the figure on §9.8's
   individual report, with an explicit caution below three — so the degradation is visible where the
-  360 is read. It is still absent from `EmployeeScore`, so the scorecard, the §13.5 master export and
-  the §11 bonus remain silent about it; that needs a column and a migration, which is Ask-before.
-  — operator — status: adjudicated(2026-08-25), partly fixed 2026-08-26
+  360 is read. **2026-08-26, migration authorised by the operator**: `EmployeeScore` now carries
+  `threeSixtyRaterCount` (migration `20260826120000_pms_three_sixty_rater_count`), written by the
+  score run from the same `ratios` array `overallRatio` divided by — so the stored count and the
+  stored score describe the same forms. It reaches §13.5's master export as a "360 Raters" column
+  and §10's calibration screen as a caution below three, where §10.5's manual override is the
+  judgement it informs.
+
+  Three boundaries held on purpose. (a) **It changes no arithmetic**: `scoreEmployee` never sees it,
+  `rawScore` does not read it, and §13.2's publish does not gate on it — whether a thin 360 should
+  move a band is a §10 judgement made by a person. (b) **It is NULLABLE and not backfilled**: null
+  means "this run predates the column", 0 would mean "nobody rated them", and backfilling would turn
+  the first into the second — a false claim about a real score. Two CHECK constraints hold the shape
+  (non-negative; never present without a `three_sixty_score` beside it). (c) **It is NOT on the
+  employee's own scorecard**: §13.1 says the employee "never sees raw scores, component breakdown,
+  any sign of calibration", and the denominator of one component is component breakdown. HR and the
+  executive viewers see it; the employee sees their band.
+  — operator — status: adjudicated(2026-08-25), fixed 2026-08-26
 
 - 2026-08-25 — [high-quality] **No §5.5 reminder or §9.7 invitation is ever sent unless SMTP is
   configured.** The escalation ladder and the notification code are implemented and wired to the
-  daily cycle sweep, but `lib/email.ts` no-ops without `SMTP_HOST`, which `.env.example` does not
-  carry. The compliance record is still written, so this degrades to "the log is right, nobody was
-  told". Operational, not a code defect. — operator — status: adjudicated(2026-08-25)
+  daily cycle sweep, but `lib/email.ts` no-ops without `SMTP_HOST`. The compliance record is still
+  written, so this degrades to "the log is right, nobody was told". Operational, not a code defect.
+
+  **2026-08-26 — the code half is now PROVEN, and a provider is the only thing left.** Verified
+  against a local SMTP sink rather than by reading: with `SMTP_HOST`/`SMTP_PORT`/`SMTP_FROM` set,
+  `isEmailEnabled()` returns true, nodemailer connects, and the message is delivered with correct
+  headers and a multipart text/html body. The gate, the transport and the send path all work; what
+  is missing is credentials, not code.
+
+  Two things the run also settled. `.env.example` DOES carry all five variables (lines 56–64) — the
+  original finding said it did not, and that half was wrong. And the success log line reads
+  `[email] sent messageId=... to=1 recipient subject="..."` — metadata only, no `opts.text` and no
+  `opts.html`, so SECURITY.md's requirement for this file holds under a real send rather than only
+  under inspection.
+
+  **To unblock:** pick a provider, then set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`
+  (Restricted — never logged, never returned by any API) and `SMTP_FROM` on the deployment. Nothing
+  in the repo needs to change. — operator — status: adjudicated(2026-08-25), code verified
+  2026-08-26, awaiting a provider
 
 - 2026-08-24 — [maintainable/correctness] **`Kpi` is not registered in `SOFT_DELETE_MODELS`,
   and two independent Phase 2 units hit it.** `lib/prisma/soft-delete-extension.ts` filters

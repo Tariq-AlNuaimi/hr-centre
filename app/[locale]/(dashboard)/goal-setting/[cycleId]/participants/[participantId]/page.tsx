@@ -2,10 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import type { CycleStatus, SignOffParty } from "@/generated/prisma/client";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { KpiDraftBoard, type KpiRecord } from "@/components/pms/KpiDraftBoard";
+import { HrApprovalPanel, type HrApprovalPanelProps } from "@/components/pms/HrApprovalPanel";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
@@ -14,12 +16,18 @@ import {
   kpiSetAccessRefusal,
   weightageMessage,
   weightageTotal,
+  type PeriodWeightedKpi,
 } from "@/lib/pms/kpi";
 import { KPI_SELECT, kpiSetHash, serializeKpi } from "@/lib/pms/kpi-select";
-import { staleParties } from "@/lib/pms/signoff";
-import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
-import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
+import {
+  contextBlockedReason,
+  hrApprovalDecision,
+  signOffState,
+  staleParties,
+} from "@/lib/pms/signoff";
+import { canRunCycle, isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
+import { canActOnEmployee, canViewEmployee, type PmsActor } from "@/lib/pms/permissions";
 
 /**
  * KPI drafting for one participant — spec §5.1, §5.2, §5.3, §5.4, §4.2, §8.3.
@@ -66,6 +74,68 @@ function toKpiRecord(kpi: Parameters<typeof serializeKpi>[0]): KpiRecord {
     descriptorUnsatisfactory: row.descriptorUnsatisfactory,
     orderIndex: row.orderIndex,
   };
+}
+
+/**
+ * §5.1's approval, as the panel renders it — the SERVER's verdict, not a second
+ * opinion.
+ *
+ * Every branch here calls the same function `POST .../approve` calls, on the
+ * same inputs, and returns its sentence verbatim. That is the whole point of the
+ * seam: a screen that decided for itself whether HR may approve would eventually
+ * disagree with the route about WHY, and the sentence it showed would be a
+ * paraphrase of a rule it had re-implemented. What the page adds is the one gate
+ * the route states in its own words and `hrApprovalDecision` does not — an
+ * account with no linked employee record has nothing to write into
+ * `goalsApprovedById`.
+ *
+ * `canRunCycle` is §4.1's "HR Super Admin and HRBP run the cycle org-wide
+ * (approvals …)" — a line manager signs, only HR locks. Returns null when there
+ * is nothing to offer this viewer: they are not HR, or §8.3 means there was
+ * never a set to lock. The whole prop bundle is assembled here rather than in
+ * the page body so the two are decided in one place.
+ */
+function approvalPanelProps(params: {
+  actor: PmsActor;
+  cycleId: string;
+  participantId: string;
+  goalsApprovedAt: Date | null;
+  cycleStatus: CycleStatus;
+  exempt: boolean;
+  stage: StageWindow | null;
+  signOffs: readonly { party: SignOffParty }[];
+  kpis: readonly PeriodWeightedKpi[];
+  now: Date;
+}): HrApprovalPanelProps | null {
+  const { actor, cycleStatus, exempt, stage, signOffs, kpis, now } = params;
+  if (exempt || !canRunCycle(actor)) return null;
+
+  const base = {
+    cycleId: params.cycleId,
+    participantId: params.participantId,
+    goalsApprovedAt: params.goalsApprovedAt?.toISOString() ?? null,
+  };
+  const refuse = (reason: string): HrApprovalPanelProps => ({
+    ...base,
+    blockedReason: reason,
+    basis: null,
+  });
+
+  // The route's second gate: the approval writes `goalsApprovedById`, so an
+  // account with no linked employee record has nothing to record as approver.
+  if (!actor.employeeId) {
+    return refuse("This account has no linked employee record to record as approver.");
+  }
+
+  const contextBlocked = contextBlockedReason({ cycleStatus, exempt, stage });
+  if (contextBlocked) return refuse(contextBlocked);
+  // `contextBlockedReason` already refuses a null stage; this is the narrowing.
+  if (!stage) return refuse("This cycle has no goal-setting stage configured (§2).");
+
+  const decision = hrApprovalDecision({ state: signOffState(signOffs), stage, now, kpis });
+  return decision.allowed
+    ? { ...base, blockedReason: null, basis: decision.basis }
+    : refuse(decision.reason);
 }
 
 /** The stage window as the client renders it: ISO instants plus the server's verdict. */
@@ -128,7 +198,12 @@ export default async function KpiDraftingPage({
       kpis: {
         where: { deletedAt: null },
         orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
-        select: KPI_SELECT,
+        // `assignmentPeriodId` rides along on top of the shared read shape
+        // purely for §5.3's per-period check inside `hrApprovalDecision` (§12.3
+        // splits a transferred employee's year in two). It never reaches the
+        // client — `toKpiRecord` cuts the row down before it does — so the
+        // shared `KPI_SELECT` stays the payload shape it has always been.
+        select: { ...KPI_SELECT, assignmentPeriodId: true },
       },
       // GOAL_SETTING only — see the note in lib/pms/signoff.ts.
       signOffs: {
@@ -144,11 +219,7 @@ export default async function KpiDraftingPage({
   // §4.2 — visibility first, and 404 rather than 403 on failure: a manager
   // probing participant ids must not learn that a row exists outside their
   // chain from the status code. Same reasoning as POST /api/kpis.
-  const descendants = actor.capabilities.orgWide
-    ? new Set<string>()
-    : actor.employeeId
-      ? await descendantEmployeeIds(actor.employeeId)
-      : new Set<string>();
+  const descendants = await visibilityDescendants(actor);
   if (!canViewEmployee(actor, participant.employee.id, descendants)) notFound();
 
   const exempt = isGoalSettingExempt(participant.employee.roleTrack);
@@ -186,6 +257,26 @@ export default async function KpiDraftingPage({
   // The set summary, computed from the same rows the board renders. The BOOLEAN
   // is what decides §5.3, here as at the API — the total is a string for display.
   const message = weightageMessage(participant.kpis);
+
+  /*
+    §5.1's LOCK — the affordance `POST .../approve` never had (F11).
+
+    `canRunCycle` is §4.1's "HR Super Admin and HRBP run the cycle org-wide
+    (approvals …)" — a line manager signs, only HR locks. An exempt participant
+    (§8.3) has no set to lock, so there is nothing to offer either.
+  */
+  const approval = approvalPanelProps({
+    actor,
+    cycleId: participant.cycleId,
+    participantId: participant.id,
+    goalsApprovedAt: participant.goalsApprovedAt,
+    cycleStatus: participant.cycle.status,
+    exempt,
+    stage,
+    signOffs: participant.signOffs,
+    kpis: participant.kpis,
+    now,
+  });
 
   const subtitleParts = [
     participant.employee.email,
@@ -238,6 +329,15 @@ export default async function KpiDraftingPage({
         isSubject={actor.employeeId === participant.employee.id}
         canSignAsManager={canActOnEmployee(actor, target)}
       />
+
+      {/*
+        §5.1's LOCK, and only for the party §4.1 gives it to. It sits AFTER the
+        sign-off panel because that is the order the clause puts them in —
+        agreement, then HR's approval — and a manager who cannot approve is not
+        shown a control they would only be refused, nor a placeholder implying
+        one exists for them.
+      */}
+      {approval ? <HrApprovalPanel {...approval} /> : null}
     </div>
   );
 }

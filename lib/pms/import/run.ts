@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { loadEmployeesFromXlsx } from "./loaders/xlsx";
 import { reconcile, type ExistingEmployee, type ReconcileContext } from "./reconcile";
 import { validateRows, type ValidationContext } from "./validate";
@@ -312,7 +312,7 @@ export async function applyImport(params: {
 
   const byOdooId = new Map(validRows.map((r) => [r.odooId, r]));
 
-  await prisma.$transaction(async (tx) => {
+  await auditedTransaction(async (tx) => {
     // Claim the batch BEFORE writing anything.
     //
     // The status check above is a read, so two confirms racing each other both

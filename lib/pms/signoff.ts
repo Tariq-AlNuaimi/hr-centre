@@ -324,8 +324,20 @@ export async function loadSignOffContext(participantId: string): Promise<SignOff
  * The shared preconditions both routes check before they even look at the
  * actor: a cycle that is actually running, a configured stage, and an employee
  * who has a goal-setting step at all (§8.3).
+ *
+ * It takes the three fields it reads rather than a whole `SignOffContext` so
+ * the goal-setting SCREEN can ask the same question the routes do. The page
+ * already holds those three from its own query; forcing it to build a context
+ * it has no use for would have meant a second round-trip, and the alternative —
+ * the screen re-stating these three sentences itself — is exactly how a screen
+ * and the route behind it start disagreeing about why an act was refused.
+ * `SignOffContext` still satisfies the shape, so both routes call it unchanged.
  */
-export function contextBlockedReason(ctx: SignOffContext): string | null {
+export function contextBlockedReason(ctx: {
+  cycleStatus: CycleStatus;
+  exempt: boolean;
+  stage: StageWindow | null;
+}): string | null {
   if (ctx.cycleStatus !== "OPEN") {
     return ctx.cycleStatus === "DRAFT"
       ? "This performance cycle has not been opened yet (§5.1 — HR opens the cycle first)."

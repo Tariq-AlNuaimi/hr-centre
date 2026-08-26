@@ -45,6 +45,78 @@ const DEMO_YEAR = 2026;
 /** Above this, the population is not the demo fixture any more. */
 const MAX_FIXTURE_HEADCOUNT = 60;
 
+/**
+ * How many participants are deliberately left MID-FLOW, so §5 and §9 have
+ * something to perform rather than only something to look at.
+ *
+ * The red-team report's sharpest point about this fixture is that it wrote the
+ * 360, its responses and the calibration target straight into the database and
+ * so papered over every unreachable endpoint. The mirror-image problem is what
+ * this constant fixes: a fixture that completes every flow leaves a
+ * demonstration with nothing to demonstrate. Every screen is populated and every
+ * button is already spent.
+ *
+ * Two participants are reserved, and the two states are §5.1's two routes to a
+ * lock:
+ *
+ *   1. **Both parties signed, HR has not approved** — HR clicks "Approve and
+ *      lock" live, on the affordance F11 added. `hrApprovalDecision` reports
+ *      basis `BOTH_SIGNED`.
+ *   2. **Manager signed, employee did not, and the deadline has passed** — the
+ *      §5.4 resolution, which the panel names as a materially different record
+ *      before the click. `hrApprovalDecision` reports
+ *      `HR_REVIEW_EMPLOYEE_UNSIGNED`.
+ *
+ * The employee's own SIGNATURE is deliberately not the thing left to perform:
+ * the goal-setting deadline is January and the demo is in August, so §5.4 has
+ * hard-locked the stage and the sign route refuses. Performing that would mean
+ * moving the whole cycle's stage windows, which changes the state of every other
+ * flow. HR's approval is the act §5 actually leaves open in August, and it is
+ * the one that was unreachable until F11.
+ *
+ * ## THE COST, stated because it will surprise someone on stage
+ *
+ * §10.7 is explicit — "no calibration until all raw scores are in" — and a
+ * participant with no HR-approved baseline cannot take a year-end sign-off
+ * (§7.1), so cannot be scored. **While these two sit mid-flow, the calibration
+ * screen is BLOCKED**, reporting `N-2 of N participants have a raw score`.
+ *
+ * That is §10.7 working, not a fixture bug, and it makes the demo run in the
+ * spec's own order: approve the two baselines (§5.1) → rate and sign them
+ * (§7.1) → re-run the scores (§8) → calibration opens (§10) → publish (§13).
+ * Each step visibly unblocks the next, which is a better story than five
+ * independent screens that were already full.
+ *
+ * Set to 0 for a fixture where every flow is already complete and §10 is open
+ * from the first click.
+ */
+const RESERVED_MID_FLOW_PARTICIPANTS = 2;
+
+/**
+ * How long §9.1's 360 window stays open from the moment the fixture is seeded.
+ *
+ * Relative to the clock, not a fixed date: a hardcoded future deadline is a
+ * hardcoded expiry, and this fixture is re-seeded for demos that happen after
+ * whatever date we picked. 45 days is comfortably past a rehearsal-plus-demo
+ * cycle without pretending a real 360 runs that long.
+ */
+const THREE_SIXTY_WINDOW_DAYS = 45;
+
+/**
+ * One 360 assignment per Nth RATEE is left NOT_STARTED, so §9.7 has forms left to
+ * fill in.
+ *
+ * Per ratee, and never their last one. A first cut took every 7th entry of the
+ * flat plan, which read as "spread across the population" and was not: the plan
+ * is ordered by ratee, and 26 of 33 ratees have fewer than the three raters §9.4
+ * intends — several have exactly one. Two of them had that one form taken away,
+ * lost their whole panel, and became unscoreable ("no completed 360 assessment,
+ * §9.5/§8.5"), which quietly widened the §10.7 blockage from the two reserved
+ * participants to four. Measured, not reasoned about: the score run reported
+ * 33 of 37 instead of the intended 35.
+ */
+const LEAVE_ONE_360_UNANSWERED_PER_NTH_RATEE = 3;
+
 const d = (value: string) => new Prisma.Decimal(value);
 const utc = (y: number, m: number, day: number) => new Date(Date.UTC(y, m - 1, day));
 
@@ -306,6 +378,7 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
           odooId: true,
           managerId: true,
           roleTrack: true,
+          pmsRoles: true,
           assignmentPeriods: {
             where: { cycleId: cycle.id },
             select: { id: true, managerEmployeeId: true },
@@ -318,10 +391,36 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
     },
   });
 
+  // Reserved for the live demo — see RESERVED_MID_FLOW_PARTICIPANTS. Chosen by
+  // `odooId` rather than at random so a re-seed leaves the SAME two people
+  // mid-flow: a fixture that reshuffles is one nobody can rehearse against.
+  // C-Level are skipped because §8.3 exempts them from goal setting entirely,
+  // so there is no baseline of theirs to leave unapproved.
+  const reservedIds = new Set(
+    participants
+      .filter(
+        (p) =>
+          !isGoalSettingExempt(p.employee.roleTrack) &&
+          // Not someone holding an HR role, and not the bootstrap access record.
+          // The two lowest ids happen to be the HR Super Admin and the HRBP, and
+          // "watch HR approve HR's own baseline" is a confusing thing to put on a
+          // stage — §5.1 permits it, but the flow being shown is a line manager's
+          // set reaching HR, not HR's own.
+          p.employee.pmsRoles.length === 0 &&
+          p.employee.odooId !== "BOOTSTRAP-ADMIN",
+      )
+      .sort((a, b) => a.employee.odooId.localeCompare(b.employee.odooId))
+      .slice(0, RESERVED_MID_FLOW_PARTICIPANTS)
+      .map((p) => p.id),
+  );
+  /** The second reserved participant also goes without the EMPLOYEE signature. */
+  const employeeUnsignedId = [...reservedIds][1] ?? null;
+
   let ratedParticipants = 0;
   for (const participant of participants) {
     if (isGoalSettingExempt(participant.employee.roleTrack)) continue;
     if (participant.kpis.length > 0) continue; // already built by an earlier run
+    const reserved = reservedIds.has(participant.id);
 
     // §5.3 — the set totals exactly 100. §12.3 — PER PERIOD when the year was
     // split, because each department's manager owns a complete set for their
@@ -357,13 +456,21 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
     // consolidates when no single manager owns the assessment.
     const manager = participant.employee.managerId ?? hr.id;
     const goalSignOffs = [
-      {
-        participantId: participant.id,
-        stageKind: "GOAL_SETTING" as const,
-        party: "EMPLOYEE" as const,
-        signedByEmployeeId: participant.employeeId,
-        signedAt: utc(DEMO_YEAR, 1, 8),
-      },
+      // §5.4's case, on the one participant reserved for it: the employee let
+      // the deadline pass. There is no "rejected" row to write — §5.3 is
+      // explicit that "the unsigned state IS the signal" — so the demo state is
+      // the ABSENCE of this row, not a flag beside it.
+      ...(participant.id === employeeUnsignedId
+        ? []
+        : [
+            {
+              participantId: participant.id,
+              stageKind: "GOAL_SETTING" as const,
+              party: "EMPLOYEE" as const,
+              signedByEmployeeId: participant.employeeId,
+              signedAt: utc(DEMO_YEAR, 1, 8),
+            },
+          ]),
       ...(manager
         ? [
             {
@@ -392,6 +499,15 @@ export async function seedDemoCycle(prisma: PrismaClient): Promise<void> {
         () => prisma.signOff.create({ data: row, select: { id: true } }),
       );
     }
+    if (reserved) {
+      // Stop here. No HR approval, and therefore no §7 rating and no year-end
+      // sign-off either — `POST /api/year-end-signoffs` refuses without an
+      // HR-approved baseline, and seeding one anyway would recreate exactly the
+      // "impossible state written behind the product's back" the red-team report
+      // called out. The rest of this loop body is what the demo performs.
+      continue;
+    }
+
     await prisma.cycleParticipant.update({
       where: { id: participant.id },
       data: { goalsApprovedAt: utc(DEMO_YEAR, 1, 12), goalsApprovedById: hr.id },
@@ -529,6 +645,18 @@ async function seedThreeSixty(
     return;
   }
 
+  // §9.1's window, OPEN rather than historical. The fixture used to open on
+  // 1 August and close on the 20th, both of which are in the past by the time
+  // anyone demonstrates it — so §9.7's "answer your 360" had nothing left to
+  // answer and §9 was a screen to look at rather than a flow to perform.
+  //
+  // Computed from the clock, not hardcoded: a fixed future date is a fixed
+  // EXPIRY, and this fixture will be re-seeded for demos after that date. The
+  // deadline is deliberately generous — a 360 whose window shuts mid-rehearsal
+  // is worse than one that never opened.
+  const now = new Date();
+  const threeSixtyDeadline = new Date(now.getTime() + THREE_SIXTY_WINDOW_DAYS * 86_400_000);
+
   const threeSixty =
     existing ??
     (await prisma.threeSixtyCycle.create({
@@ -536,7 +664,7 @@ async function seedThreeSixty(
         cycleId,
         status: "ACTIVE",
         opensAt: utc(DEMO_YEAR, 8, 1),
-        deadline: utc(DEMO_YEAR, 8, 20),
+        deadline: threeSixtyDeadline,
       },
       select: { id: true, assignments: { select: { id: true }, take: 1 } },
     }));
@@ -629,8 +757,60 @@ async function seedThreeSixty(
     byTemplate.set(question.templateId, [...(byTemplate.get(question.templateId) ?? []), question]);
   }
 
-  let submitted = 0;
+  // Which assignments to leave unanswered, decided PER RATEE so nobody loses
+  // their whole panel. A ratee with a single rater keeps it: taking their only
+  // form makes them unscoreable (§8.5 gives every non-C-Level track a 360
+  // weight), which would widen §10.7's blockage past the two participants
+  // deliberately reserved for the demo.
+  const plannedByRatee = new Map<string, typeof planned>();
   for (const plan of planned) {
+    plannedByRatee.set(plan.rateeId, [...(plannedByRatee.get(plan.rateeId) ?? []), plan]);
+  }
+  const leaveUnanswered = new Set<string>();
+  for (const [rateeIndex, [, rows]] of [...plannedByRatee.entries()].entries()) {
+    if (rateeIndex % LEAVE_ONE_360_UNANSWERED_PER_NTH_RATEE !== 0) continue;
+    if (rows.length < 2) continue; // never their last form
+    leaveUnanswered.add(`${rows[0].rateeId}:${rows[0].raterId}`);
+  }
+
+  let submitted = 0;
+  let left = 0;
+  for (const plan of planned) {
+    // §9.7's flow needs a form somebody can still fill in.
+    //
+    // These do NOT block §8: `threeSixtyLevels` averages the forms that came
+    // back (§9.5, and F8's rater count now records how many that was), so a
+    // ratee with two of three raters still scores. That is the same tolerance
+    // the real cycle has, which is the point of a fixture.
+    if (leaveUnanswered.has(`${plan.rateeId}:${plan.raterId}`)) {
+      await createIfAbsent(
+        () =>
+          prisma.assignment.findUnique({
+            where: {
+              threeSixtyCycleId_rateeId_raterId: {
+                threeSixtyCycleId: threeSixty.id,
+                rateeId: plan.rateeId,
+                raterId: plan.raterId,
+              },
+            },
+            select: { id: true },
+          }),
+        () =>
+          prisma.assignment.create({
+            data: {
+              threeSixtyCycleId: threeSixty.id,
+              rateeId: plan.rateeId,
+              raterId: plan.raterId,
+              templateId: plan.templateId,
+              status: "NOT_STARTED",
+            },
+            select: { id: true },
+          }),
+      );
+      left++;
+      continue;
+    }
+
     const assignmentId = await createIfAbsent(
       () =>
         prisma.assignment.findUnique({
@@ -685,15 +865,17 @@ async function seedThreeSixty(
     submitted++;
   }
 
-  // §9.8 — results are calculated once the cycle closes.
-  await prisma.threeSixtyCycle.update({
-    where: { id: threeSixty.id },
-    data: { status: "CLOSED" },
-    select: { id: true },
-  });
+  // The cycle stays ACTIVE. It used to be CLOSED here, which is the right END
+  // state and the wrong DEMO state: §9.7's answering form is refused on a closed
+  // cycle, so the largest single piece of the specification had nothing anyone
+  // could do to it. §9.8's consolidated report does not require CLOSED either —
+  // it reads submitted assignments — so leaving it open costs §9.8 nothing and
+  // gives §9.7 back.
 
   say(
-    `§9 360 closed: ${submitted} assignment(s) submitted across ${rateable.length} ratee(s)` +
+    `§9 360 ACTIVE until ${threeSixtyDeadline.toISOString().slice(0, 10)}: ` +
+      `${submitted} assignment(s) submitted across ${rateable.length} ratee(s), ` +
+      `${left} left unanswered for §9.7 to perform` +
       (shortfalls.length ? `, ${shortfalls.length} with fewer than 3 raters available` : ""),
   );
 }

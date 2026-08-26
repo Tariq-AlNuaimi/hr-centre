@@ -1,6 +1,7 @@
 import { Prisma } from "../../generated/prisma/client";
 import { getAuditContext } from "../audit-context";
 import { recordAudit } from "./audit-extension";
+import { currentAuditWriter, currentClient, type AuditWriter } from "./tx-context";
 
 // Models excluded from soft-delete filtering (Auth.js needs direct access)
 const EXCLUDE = new Set(["Account", "Session", "VerificationToken", "AuditLog"]);
@@ -110,7 +111,12 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
           // DB-free; this path is exercised by the /uat soft-delete journey).
           const { where } = args;
           const { userId } = getAuditContext();
-          const delegate = (client as unknown as Record<string, SoftDeleteDelegate>)[
+          // Resolve the delegate off the ACTIVE client, which inside a
+          // transaction is `tx` (ADR-068). Reading it from the captured `client`
+          // ran the rewritten soft delete OUTSIDE the transaction, so a rollback
+          // left `deletedAt` set on a row it was meant to restore — data loss
+          // surviving a rollback, not merely a misleading audit row.
+          const delegate = (currentClient(client) as unknown as Record<string, SoftDeleteDelegate>)[
             model[0].toLowerCase() + model.slice(1)
           ];
           const before = await delegate.findUnique({ where });
@@ -118,7 +124,7 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
             where,
             data: { deletedAt: new Date(), deletedBy: userId ?? null },
           });
-          await recordAudit(client as unknown as Parameters<typeof recordAudit>[0], {
+          await recordAudit(currentAuditWriter(client as unknown as AuditWriter), {
             entityType: model,
             entityId: String(
               (before as { id?: string } | null)?.id ?? (where as { id?: string }).id ?? "unknown",
@@ -135,7 +141,12 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
           }
           const { where } = args ?? {};
           const { userId } = getAuditContext();
-          const delegate = (client as unknown as Record<string, SoftDeleteDelegate>)[
+          // Resolve the delegate off the ACTIVE client, which inside a
+          // transaction is `tx` (ADR-068). Reading it from the captured `client`
+          // ran the rewritten soft delete OUTSIDE the transaction, so a rollback
+          // left `deletedAt` set on a row it was meant to restore — data loss
+          // surviving a rollback, not merely a misleading audit row.
+          const delegate = (currentClient(client) as unknown as Record<string, SoftDeleteDelegate>)[
             model[0].toLowerCase() + model.slice(1)
           ];
           // Snapshot the affected rows so each soft-delete is audited (the audit
@@ -146,7 +157,7 @@ export const softDeleteExtension = Prisma.defineExtension((client) => {
             data: { deletedAt: new Date(), deletedBy: userId ?? null },
           });
           for (const rec of before) {
-            await recordAudit(client as unknown as Parameters<typeof recordAudit>[0], {
+            await recordAudit(currentAuditWriter(client as unknown as AuditWriter), {
               entityType: model,
               entityId: String(rec.id),
               action: "DELETE",

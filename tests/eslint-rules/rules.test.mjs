@@ -27,6 +27,7 @@ import noPrismaUnfilteredImport from "../../eslint-rules/rules/no-prisma-unfilte
 import noDirectAnthropicSdk from "../../eslint-rules/rules/no-direct-anthropic-sdk.mjs";
 import noArbitraryClassName from "../../eslint-rules/rules/no-arbitrary-className.mjs";
 import noLiteralJsxText from "../../eslint-rules/rules/no-literal-jsx-text.mjs";
+import noBarePrismaTransaction from "../../eslint-rules/rules/no-bare-prisma-transaction.mjs";
 
 // RuleTester.run() throws on the first mismatch; node:test surfaces that as a
 // failed case. Wrapping each rule in its own test() keeps failures isolated.
@@ -318,6 +319,10 @@ ruleTest(
       { code: `const db = makeClient();\nawait db.user.updateMany({ where, data });` },
       // `$transaction` array form on an EXCLUDE model stays allowed.
       { code: `await prisma.$transaction([prisma.session.deleteMany({ where })]);` },
+      // ADR-068's wrapper, on an EXCLUDE model — tracked, and correctly allowed.
+      {
+        code: `await auditedTransaction(async (tx) => { await tx.session.deleteMany({ where }); });`,
+      },
     ],
     invalid: [
       {
@@ -339,6 +344,16 @@ ruleTest(
       {
         // prismaUnfiltered on an audited model is just as blind.
         code: `await prismaUnfiltered.user.updateMany({ where, data });`,
+        errors: [{ messageId: "noBulkWrite" }],
+      },
+      {
+        // ADR-068 moved every route from `prisma.$transaction(cb)` to
+        // `auditedTransaction(cb)`. That call is a BARE identifier, not a member
+        // expression, so the rule stopped registering `tx` as an alias and every
+        // bulk write inside a transaction went unflagged — the audit-completeness
+        // floor dropped as a side effect of an unrelated fix, announcing itself
+        // only as an "unused eslint-disable" warning. This case is the guard.
+        code: `await auditedTransaction(async (tx) => { await tx.user.updateMany({ where, data }); });`,
         errors: [{ messageId: "noBulkWrite" }],
       },
       {
@@ -1021,6 +1036,55 @@ ruleTest(
         filename: API_ROUTE,
         code: "export async function DELETE() {}",
         errors: [{ messageId: "noBareApiRoute" }],
+      },
+    ],
+  },
+  { ecmaVersion: 2022, sourceType: "module" },
+);
+
+// --- no-bare-prisma-transaction -------------------------------------------
+// ADR-068: `prisma.$transaction` writes its audit rows on the client the
+// extension captured, not on `tx`, so a rolled-back transaction leaves rows
+// asserting changes that never happened. Every interactive transaction must go
+// through `auditedTransaction`, which publishes `tx` for the extensions to use.
+ruleTest(
+  "no-bare-prisma-transaction",
+  noBarePrismaTransaction,
+  {
+    valid: [
+      // The required wrapper.
+      {
+        code: `await auditedTransaction(async (tx) => { await tx.user.update({ where, data }); });`,
+      },
+      // `prismaUnfiltered` is outside both extensions, so it has no audit rows
+      // to misplace — the recycling bin passes its client to recordAudit by hand.
+      { code: `await prismaUnfiltered.$transaction([a, b]);` },
+      // `$transaction` on something that is not the client.
+      { code: `await queue.$transaction(cb);` },
+      // An alias bound to a NON-prisma client must not be flagged.
+      { code: `const db = makeClient();\nawait db.$transaction(cb);` },
+      // Other client methods are untouched.
+      { code: `await prisma.$queryRaw\`SELECT 1\`;` },
+    ],
+    invalid: [
+      {
+        code: `await prisma.$transaction(async (tx) => { await tx.user.update({ where, data }); });`,
+        errors: [{ messageId: "bareTransaction" }],
+      },
+      {
+        // The array form commits the same way and is audited the same way.
+        code: `await prisma.$transaction([one, two]);`,
+        errors: [{ messageId: "bareTransaction" }],
+      },
+      {
+        // A local re-bind is the same client.
+        code: `const db = prisma;\nawait db.$transaction(cb);`,
+        errors: [{ messageId: "bareTransaction" }],
+      },
+      {
+        // The `as any` escape must not launder it.
+        code: `await (prisma as any).$transaction(cb);`,
+        errors: [{ messageId: "bareTransaction" }],
       },
     ],
   },

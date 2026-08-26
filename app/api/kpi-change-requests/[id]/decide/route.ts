@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import {
@@ -16,7 +16,7 @@ import {
   serializeChangeRequest,
   toKpiEdit,
 } from "@/lib/pms/change-request-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { decideChangeRequestSchema } from "@/lib/validations/change-request";
 
@@ -108,11 +108,7 @@ export const POST = withRateLimit(
 
     // §4.2 — visibility before authority, so a non-HR actor outside the chain
     // learns nothing about which request ids exist.
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
     if (!canViewEmployee(actor, existing.participant.employeeId, descendants)) {
       return notFound("Change request");
     }
@@ -142,7 +138,7 @@ export const POST = withRateLimit(
       // — one Node turn wide, but real — in which the status changed and nothing
       // recorded who changed it, which is precisely what the trail exists to
       // prevent. Raised by the post-push breadth review.
-      const rejected = await prisma.$transaction(async (tx) => {
+      const rejected = await auditedTransaction(async (tx) => {
         // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
         const claimed = await tx.kpiChangeRequest.updateMany({
           where: { id, status: "PENDING" },
@@ -154,11 +150,16 @@ export const POST = withRateLimit(
           },
         });
         if (claimed.count === 0) return false;
+        // Both snapshots carry the SAME keys. `recordAudit` diffs only the keys
+        // both sides hold, so a field named on one side alone yields no `changes`
+        // entry at all — the decider and the reason were being written and not
+        // reported. A PENDING request has neither on file, so `null` here is the
+        // truth about the row before the write, not padding.
         await recordAudit(tx, {
           entityType: "KpiChangeRequest",
           entityId: id,
           action: "UPDATE",
-          before: { status: "PENDING" },
+          before: { status: "PENDING", decidedByEmployeeId: null, decisionReason: null },
           after: { status: "REJECTED", decidedByEmployeeId: deciderId, decisionReason: reason },
         });
         return true;
@@ -184,7 +185,7 @@ export const POST = withRateLimit(
 
     let applied: number | null;
     try {
-      applied = await prisma.$transaction(async (tx) => {
+      applied = await auditedTransaction(async (tx) => {
         // Claim the decision FIRST. If this matches nothing, another decision
         // landed between the read above and here, and the whole transaction —
         // snapshots and edits included — rolls back.
@@ -204,12 +205,20 @@ export const POST = withRateLimit(
           },
         });
         if (claimed.count === 0) return null;
+        // Symmetric, and complete: `decisionReason` is written by the update
+        // above (§6.2 makes it mandatory on a REJECT and optional here), so it
+        // belongs on both sides or the trail under-reports an approval that
+        // carried one.
         await recordAudit(tx, {
           entityType: "KpiChangeRequest",
           entityId: id,
           action: "UPDATE",
-          before: { status: "PENDING" },
-          after: { status: "APPROVED", decidedByEmployeeId: deciderId },
+          before: { status: "PENDING", decidedByEmployeeId: null, decisionReason: null },
+          after: {
+            status: "APPROVED",
+            decidedByEmployeeId: deciderId,
+            decisionReason: reason ?? null,
+          },
         });
 
         // Re-read the set INSIDE the transaction, and re-run §5.3 against it.

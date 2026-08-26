@@ -286,6 +286,15 @@ const EMPLOYEES: SeedEmployee[] = [
     manager: "1001",
     roleTrack: "MANAGER",
     basicSalary: "2450",
+    // Operator decision, 2026-08-26: "Muna → MANAGER track, HR_SUPER_ADMIN".
+    // The track was already MANAGER, so the role is the only change.
+    //
+    // NAME CHECK: the decision was written as "Muna Adam"; this is the only Muna
+    // in the fixture. If a different person was meant, this is the line to move —
+    // and it matters more than a typo usually would, because §4.1 gives
+    // HR_SUPER_ADMIN the configure column, §10.6's calibration, §13.2's publish
+    // and §13.5's master export, and this fixture is going to production.
+    pmsRoles: ["HR_SUPER_ADMIN"],
   },
   {
     odooId: "1311",

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
 import {
@@ -134,7 +134,7 @@ export const POST = withRateLimit(
     // The adjustment row and the band move are one fact. §10.5 wants "who,
     // from-score, to-score, when, and a mandatory reason" for every override, so
     // a moved band with no adjustment row is exactly the state to prevent.
-    await prisma.$transaction(async (tx) => {
+    await auditedTransaction(async (tx) => {
       await tx.calibrationAdjustment.create({
         data: {
           employeeScoreId,
@@ -221,6 +221,13 @@ export const GET = withRateLimit(
             rawScore: true,
             rawBand: true,
             calibratedBand: true,
+            // Red-team F8 — §9.5 averages over however many raters arrived, so a
+            // raw score can rest on one 360 form rather than three. §10.5 gives
+            // HR a manual override on every department, and this is precisely
+            // the kind of fact that override exists to act on. Carried, never
+            // acted on automatically: a thin sample is a reason to LOOK, not a
+            // rule that moves a band.
+            threeSixtyRaterCount: true,
             employee: {
               select: {
                 id: true,
@@ -284,6 +291,10 @@ export const GET = withRateLimit(
           rawScore: s.rawScore.toString(),
           rawBand: s.rawBand,
           calibratedBand: s.calibratedBand,
+          // `null` is "unknown" — a run written before the column existed —
+          // never "nobody rated them". The screen must render the two
+          // differently, or it invents a fact about a real person's score.
+          threeSixtyRaterCount: s.threeSixtyRaterCount,
         })),
       };
     });

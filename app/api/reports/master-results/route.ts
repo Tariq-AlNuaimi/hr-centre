@@ -94,6 +94,9 @@ type MasterRow = {
   departmentalScore: string | null;
   individualScore: string;
   threeSixtyScore: string | null;
+  /// Red-team F8 — the denominator of the figure beside it. `null` is "unknown"
+  /// (a score run written before the column existed), never "nobody rated them".
+  threeSixtyRaterCount: number | null;
   rawScore: string;
   rawBand: string;
   calibratedBand: string;
@@ -112,6 +115,10 @@ const COLUMNS: ReadonlyArray<SheetColumn<MasterRow>> = [
   { title: "Departmental", value: (r) => r.departmentalScore },
   { title: "Individual", value: (r) => r.individualScore },
   { title: "360", value: (r) => r.threeSixtyScore },
+  // §9.5 averages over however many raters arrived, so the figure to its left is
+  // not always out of three. Beside it rather than folded into it: HR reads this
+  // at calibration (§10), where a thin sample is a judgement, not a rule (F8).
+  { title: "360 Raters", value: (r) => r.threeSixtyRaterCount },
   { title: "Raw Score", value: (r) => r.rawScore },
   { title: "Raw Band", width: 18, value: (r) => r.rawBand },
   { title: "Calibrated Band", width: 18, value: (r) => r.calibratedBand },
@@ -163,6 +170,7 @@ export const GET = withRateLimit(
         departmentalScore: true,
         individualScore: true,
         threeSixtyScore: true,
+        threeSixtyRaterCount: true,
         rawScore: true,
         rawBand: true,
         calibratedBand: true,
@@ -204,6 +212,7 @@ export const GET = withRateLimit(
       departmentalScore: s.departmentalScore?.toFixed(2) ?? null,
       individualScore: s.individualScore.toFixed(2),
       threeSixtyScore: s.threeSixtyScore?.toFixed(2) ?? null,
+      threeSixtyRaterCount: s.threeSixtyRaterCount,
       rawScore: s.rawScore.toFixed(2),
       rawBand: s.rawBand,
       calibratedBand: s.calibratedBand,
