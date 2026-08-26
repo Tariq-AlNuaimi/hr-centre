@@ -6,6 +6,15 @@ import { resolveActor } from "@/lib/pms/actor";
 import { ImportFileError, MAX_UPLOAD_BYTES } from "@/lib/pms/import/loaders/xlsx";
 import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 
+// The longest write in the product: one transaction over every created, updated
+// and re-parented row, and §3.5's all-or-nothing is what makes the preview worth
+// reading — so it cannot be split into chunks that half-apply. The platform
+// default (10 s on Vercel's smaller plans) is the real ceiling on how big an org
+// this can onboard, well before the loader's MAX_ROWS = 10,000; the internal cron
+// routes already set this for the same reason. Raising it past 60 needs a plan
+// that allows it — see docs/findings-register.md.
+export const maxDuration = 60;
+
 /**
  * Confirm and apply a previewed import — spec §3.5.
  *

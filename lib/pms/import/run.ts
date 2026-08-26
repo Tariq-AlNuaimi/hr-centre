@@ -317,6 +317,27 @@ export async function applyImport(params: {
   // legitimately different and HR is told the one that happened.
   let provisioned = 0;
 
+  /*
+    An EXPLICIT budget, because Prisma's default one is 5 seconds and this
+    transaction is the largest write the product makes.
+
+    Measured on a loopback Postgres: ~3.4 ms per created row. Neon is a network
+    away and will be several times that. The default 5 s therefore runs out around
+    a thousand rows locally and far fewer in production — while the loader accepts
+    MAX_ROWS = 10,000. A ceiling nobody chose, discovered as a P2028 rollback
+    halfway through onboarding a company, is the worst version of this.
+
+    Atomicity is not negotiable here (Appendix A: silence is never destructive;
+    §3.5's all-or-nothing is what makes the preview meaningful), so the answer is
+    a bigger budget, not a split into chunks that can half-apply.
+
+    The REAL ceiling is the serverless function's own duration limit, which is
+    shorter than this on Vercel's smaller plans and is not something the code can
+    set from here — `maxDuration` in vercel.json is the lever, and raising it
+    needs a plan that allows it. Written down in docs/findings-register.md rather
+    than left for a first import to find.
+  */
+  const rowsTouched = plan.creates.length + plan.updates.length;
   await auditedTransaction(async (tx) => {
     // Claim the batch BEFORE writing anything.
     //
@@ -347,10 +368,19 @@ export async function applyImport(params: {
     // enforces the self-referencing FK per statement. Writing the rows first and
     // the edges second is what lets an org sheet arrive in any order, which
     // matters because HR sorts by department or name, never topologically.
+    // ADR-069 — which of these emails already has an account, asked ONCE for the
+    // whole batch. Per-row it was an N+1 inside a transaction that has a deadline.
+    const taken = await existingLoginEmails(
+      tx,
+      plan.creates.map((c) => byOdooId.get(c.odooId)?.email ?? "").filter(Boolean),
+    );
+
     for (const create of plan.creates) {
       const row = byOdooId.get(create.odooId);
       if (!row) continue;
-      const employee = await tx.employee.create({
+      const userId = await provisionLoginFor(tx, row, taken);
+      if (userId) provisioned++;
+      await tx.employee.create({
         data: {
           odooId: row.odooId,
           name: row.name,
@@ -363,10 +393,11 @@ export async function applyImport(params: {
           dateOfJoining: row.dateOfJoining,
           lastWorkingDay: row.lastWorkingDay,
           unpaidLeaveDays: row.unpaidLeaveDays,
+          // The link on the CREATE, not a second statement after it.
+          userId,
         },
-        select: { id: true, email: true, name: true, status: true },
+        select: { id: true },
       });
-      if (await provisionLogin(tx, employee)) provisioned++;
     }
 
     for (const update of plan.updates) {
@@ -412,7 +443,7 @@ export async function applyImport(params: {
         await tx.employee.update({ where: { id: employeeId }, data: { managerId } });
       }
     }
-  });
+  }, APPLY_TX_BUDGET(rowsTouched));
 
   return { created: plan.creates.length, updated: plan.updates.length, provisioned };
 }
@@ -455,53 +486,131 @@ export async function applyImport(params: {
  *
  * Runs inside the apply transaction, so a failed import provisions nobody.
  */
-/* Exported for the ADR-069 integration test: the rule is worth asserting against
-   the SHIPPED function rather than a copy of it in a fixture. Not part of the
-   module's public surface — nothing else imports it. */
-export async function provisionLogin(
-  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
-  employee: { id: string; email: string; name: string; status: string },
-): Promise<boolean> {
-  if (employee.status === "LEAVER") return false;
+/*
+   Both exported for the ADR-069 integration test: the rule is worth asserting
+   against the SHIPPED functions rather than a copy of them in a fixture. Not part
+   of the module's public surface — nothing else imports them.
+*/
 
-  const email = employee.email.toLowerCase().trim();
-  // TWO reads, because the unique email index does not respect the soft-delete
-  // filter and this check has to see everything the index sees. The extension
-  // injects `deletedAt: null` into every read unless the caller names
-  // `deletedAt` itself, so a live account and an off-boarded one are two
-  // different questions. Asking only the first would report "no account" for a
-  // revoked one — and the `create` that followed would hit the unique index and
-  // roll back the WHOLE import, not just this row.
-  //
-  // (`prismaUnfiltered` would answer both in one query and is exactly what the
-  // `no-prisma-unfiltered-import` floor rule refuses outside auth and the
-  // recycling bin. It is right to refuse: two narrow indexed reads on an email
-  // cost nothing, and they keep the audit and soft-delete guarantees on the
-  // import's own client.)
-  //
-  // Either answer is a SKIP, never a re-link: a soft-deleted account is access
-  // somebody deliberately revoked, and a re-hire appearing in a spreadsheet must
-  // not silently restore it. Restoring is the recycling bin's job, done by a
-  // person.
-  const live = await tx.user.findUnique({ where: { email }, select: { id: true } });
-  const revoked = live
-    ? null
-    : await tx.user.findFirst({
-        where: { email, deletedAt: { not: null } },
-        select: { id: true },
-      });
-  if (live || revoked) return false;
+/**
+ * The apply transaction's time budget, scaled to the plan — see the note at its
+ * use site. Floors at 30 s so a small import is never tighter than the default it
+ * replaces, and allows 40 ms per touched row, which is roughly four times the
+ * measured loopback cost so a network round trip has room.
+ */
+function APPLY_TX_BUDGET(rowsTouched: number): { timeout: number; maxWait: number } {
+  return { timeout: Math.max(30_000, rowsTouched * 40), maxWait: 15_000 };
+}
+
+/** Chunk size for the `email IN (...)` lookups. A batch may be 10,000 rows. */
+const EMAIL_LOOKUP_CHUNK = 1_000;
+
+/**
+ * Every email in `emails` that ALREADY has a `User` — live or soft-deleted.
+ *
+ * TWO queries per chunk, because the unique email index does not respect the
+ * soft-delete filter and this set has to see everything the index sees. The
+ * extension injects `deletedAt: null` into every read unless the caller names
+ * `deletedAt` itself, so a live account and an off-boarded one are two different
+ * questions. Asking only the first would report "no account" for a revoked one —
+ * and the `create` that followed would hit the unique index and roll back the
+ * WHOLE import, not just that row.
+ *
+ * (`prismaUnfiltered` would answer both at once and is exactly what the
+ * `no-prisma-unfiltered-import` floor rule refuses outside auth and the recycling
+ * bin. It is right to refuse; two indexed reads per chunk cost nothing.)
+ *
+ * Resolved ONCE for the whole batch rather than per row. The per-row version this
+ * replaces was an N+1 inside the apply transaction, and the apply transaction has
+ * a deadline: measured on a loopback Postgres it took the cost of a created row
+ * from 3.4 ms to 9.6 ms, which moved the point where Prisma's default 5 s budget
+ * runs out from ~1,480 rows to ~520 — under the 10,000 the loader accepts.
+ */
+export async function existingLoginEmails(
+  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
+  emails: readonly string[],
+): Promise<Set<string>> {
+  const wanted = [...new Set(emails.map((e) => e.toLowerCase().trim()).filter(Boolean))];
+  const taken = new Set<string>();
+  for (let i = 0; i < wanted.length; i += EMAIL_LOOKUP_CHUNK) {
+    const chunk = wanted.slice(i, i + EMAIL_LOOKUP_CHUNK);
+    const [live, revoked] = await Promise.all([
+      tx.user.findMany({ where: { email: { in: chunk } }, select: { email: true } }),
+      tx.user.findMany({
+        where: { email: { in: chunk }, deletedAt: { not: null } },
+        select: { email: true },
+      }),
+    ]);
+    for (const u of [...live, ...revoked]) taken.add(u.email.toLowerCase());
+  }
+  return taken;
+}
+
+/**
+ * Give a newly-imported employee a way in — ADR-069. Returns the new `User`'s id,
+ * to be written as `userId` on the employee row being created, or null when this
+ * person gets no login.
+ *
+ * §3.3 lists Email "for login/notifications", and §4.4's My Tasks, §9.7's rater
+ * invitations and §13.1's scorecard are all addressed to a person. Until this
+ * existed, the only writers of a `User` row were the bootstrap seed and
+ * `POST /api/users` one person at a time, so applying an import produced
+ * thirty-six employees who could not sign in. The 2026-08-25 conformance report's
+ * "every screen-run was an HR Super Admin" was that gap showing through: nobody
+ * else COULD run a screen.
+ *
+ * Four decisions, each of which is a thing this deliberately does NOT do:
+ *
+ *   1. **No password.** `passwordHash` is left null, not set to a random string.
+ *      `authorize()` already returns null for an account with no hash (and counts
+ *      the attempt toward the lockout), so a null hash makes credentials sign-in
+ *      IMPOSSIBLE for these accounts rather than weakly possible. A random
+ *      password would be a real secret that could be reset, leaked or logged, in
+ *      exchange for nothing — nobody would ever be told it.
+ *   2. **`VIEWER`, never `ADMIN`.** `User.role` governs PLATFORM administration
+ *      (`withAdminAuth`: users, recycling bin, audit log); §4.1's HR authority
+ *      lives on `Employee.pmsRoles` and comes from `/admin/roles`. Appearing in an
+ *      HR spreadsheet must never mint a platform administrator, so the import is
+ *      not a second, quieter way to become one.
+ *   3. **No leaver.** §12.1 preserves a leaver's record and history, not their
+ *      access. Minting a login for someone who has left is the opposite of what an
+ *      off-boarding step does.
+ *   4. **Never overwrites, never resurrects.** An email already in `taken` is left
+ *      entirely alone — no password reset, no role change, no relink, and no
+ *      un-deleting. A re-import runs every week (§3.5) and must not disturb anyone
+ *      already signed up; a soft-deleted account is access somebody deliberately
+ *      revoked, and a re-hire appearing in a spreadsheet is not the undoing of it.
+ *      Restoring is the recycling bin's job, done by a person.
+ *
+ * The link is written as `userId` on the employee's own CREATE rather than as a
+ * follow-up update — one statement instead of two, on the hottest loop in the
+ * product — and rather than left to `resolveActor`'s first-login email match. That
+ * fallback still exists and still works, but a link made at creation cannot be
+ * raced, and `userId` is authoritative from the first request rather than the
+ * second.
+ *
+ * `taken` is MUTATED on success, so two rows in one file sharing an email cannot
+ * both mint an account. §3.4 already rejects duplicate emails at validation; this
+ * is the belt to that pair of braces, and it costs one Set insert.
+ *
+ * Runs inside the apply transaction, so a failed import provisions nobody.
+ */
+export async function provisionLoginFor(
+  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
+  row: { email: string; name: string; status: string },
+  taken: Set<string>,
+): Promise<string | null> {
+  if (row.status === "LEAVER") return null;
+
+  const email = row.email.toLowerCase().trim();
+  if (taken.has(email)) return null;
 
   const user = await tx.user.create({
-    data: { email, name: employee.name, role: "VIEWER" },
+    data: { email, name: row.name, role: "VIEWER" },
     select: { id: true },
   });
-  await tx.employee.update({
-    where: { id: employee.id },
-    data: { userId: user.id },
-    select: { id: true },
-  });
-  return true;
+  taken.add(email);
+  return user.id;
 }
 
 /** Manager odooIds referenced by the batch, so pass 2 can resolve them all. */

@@ -35,6 +35,75 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [scalable/operability] **The employee import cannot finish for a real organisation:
+  one transaction, a 5-second default budget, and a 10,000-row cap.** `applyImport` does all of its
+  work in a single `auditedTransaction` — correctly, because §3.5's all-or-nothing and Appendix A's
+  "silence is never destructive" are what make the preview worth reading — but passed no `timeout`,
+  so it ran on Prisma's 5 s default. `loaders/xlsx.ts` accepts `MAX_ROWS = 10_000`. Measured on a
+  loopback Postgres (the friendliest case, no network): **3.4 ms per created row before this
+  session**, so the default budget was exhausted around **1,480 rows** — a first import of a
+  2,000-person company would have died with a `P2028` rollback partway through.
+
+  Worse: this session's own login provisioning (ADR-069) asked "does this email have an account?"
+  once per row **inside** the transaction — an N+1 in the one place the Scalable pillar names — which
+  took the cost to **9.6 ms/row** and the ceiling down to **~520 rows**.
+
+  **FIXED, three parts.** (1) `existingLoginEmails` resolves the whole batch in two chunked queries
+  before the loop and the login link is written as `userId` on the employee's own `create` instead of
+  a follow-up `update` — provisioning now costs nothing measurable: **3.3 ms/row at n=200** against a
+  3.4 ms baseline without it. (2) `APPLY_TX_BUDGET` makes the budget explicit and plan-scaled (30 s
+  floor, 40 ms per touched row ≈ 4× the measured loopback cost). (3) The apply route declares
+  `maxDuration = 60`, the convention the internal cron routes already set — without it the route
+  inherits the platform default, **10 s on Vercel's smaller plans**, which no Prisma timeout can
+  widen.
+
+  **Residual for the operator, not fixable in code:** 60 s is the most a Hobby-plan function may run.
+  The honest ceiling today is **hundreds of rows on Neon, not 10,000**; if Rihal's first import needs
+  more, `maxDuration` must go up and that needs a plan allowing it. Not load-tested at organisational
+  scale — the direction is certain, the exact production ceiling is not. — operator — status:
+  fixed(2026-08-26) in code; plan/`maxDuration` decision OPEN for the operator
+
+- 2026-08-26 — [high-quality/§13.1] **A 360 that one person answered is published to the employee as
+  if it were anonymous.** §13.1 gives the employee "combined/summarized written comments (not
+  attributed to individual raters, **protecting anonymity**)". `consolidateThreeSixty` pools every
+  submitted form's comments and returns them with **no minimum-submission threshold**. §9.4 fixes the
+  rater set at exactly three and names two of the roles — line manager (mandatory) and peer
+  (mandatory) — so a single comment came from a pool of at most three, one of whom is definitely the
+  employee's line manager. Reachable in the demo, not hypothetical: the fixture deliberately leaves
+  one form unanswered per third ratee.
+
+  Inconsistent with this session's own F8, which added `threeSixtyRaterCount` precisely because a
+  score from one rater is indistinguishable from one from three — and warns **HR** at calibration
+  below three, while showing the employee the same thin 360 unqualified.
+
+  Not fixed: the specification names no threshold, withholding feedback has a real cost, and picking
+  one unilaterally is the kind of quiet judgment the red team exists to catch. Recommendation for
+  Rihal: withhold **comments** below 2 submitted forms with an honest line rather than an empty
+  section; keep publishing the **score** (§9.5 averages what came back) since HR already sees the
+  count at calibration and can decline to publish a thin cycle.
+
+  **Adjudicated 2026-08-26 — SCHEDULED, routed to Rihal, not dropped.** It is carried as open
+  decision #4 in `docs/verification/DELIVERY-REPORT.md` §8 and written up in full in
+  `REDTEAM-DELIVERY-REPORT.md` (R3), with the recommendation above and the exact code that would
+  change (`consolidateThreeSixty` in `lib/pms/three-sixty.ts`). Accepted for now because the risk is
+  bounded by a control that already exists: HR sees `threeSixtyRaterCount` at calibration and holds
+  the §13.2 publish gate, so no thin 360 reaches an employee without HR publishing the cycle that
+  contains it. Re-opens the moment Rihal names a threshold, or if HR is ever removed from that gate.
+  — operator — status: adjudicated(2026-08-26, scheduled — awaiting Rihal's threshold decision)
+
+- 2026-08-26 — [maintainable/tooling] **The reachability checker could not see three of the
+  product's write handlers.** `scripts/reachability.mjs` — the delivery report's §1 evidence, headline
+  `0 UNREACHABLE` — matched `export const POST` and nothing else, so the three routes declared
+  `export async function POST` (`/api/auth/forgot-password`, `/api/auth/reset-password`,
+  `/api/auth/[...nextauth]`) were invisible to a script whose purpose is to notice a write nobody can
+  reach. All three turned out to have UI callers, so the verdict held — by luck, not measurement.
+  Underneath it, `/api/auth/[...nextauth]` was credited to the forgot-password page because the
+  dynamic-prefix match reaches `/api/auth` and stops: a true verdict for a false reason, which is how
+  F11 hid. **FIXED** — both declaration forms are matched, and the allowlist (renamed `NAMED_CALLER`)
+  takes precedence over pattern matching so the catch-all is credited to next-auth's own `signIn()`
+  by name. New count: **45 (route, verb) pairs · 42 with a UI caller · 3 with an explicitly named
+  non-apiClient caller · 0 UNREACHABLE.** — status: fixed(2026-08-26)
+
 - 2026-08-26 — [high-quality/operability] **36 of 37 people in the fixture cannot sign in; the import
   provisions no logins.** The system is credentials-only (SSO providers removed 2026-08-21), so a
   person can sign in only if a `User` row exists. The only writers of one are `prisma/seed.ts` (the
