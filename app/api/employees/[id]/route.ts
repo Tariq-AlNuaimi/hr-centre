@@ -104,6 +104,11 @@ export const PUT = withRateLimit(
       data: {
         name: data.name,
         email: data.email,
+        // §3.3's anchor for §11. Until now the ONLY writer was the import, so a
+        // wrong or missing joining date could be corrected no other way — and a
+        // re-import is precisely the expensive act the hand-editing path exists
+        // to avoid (red-team F13).
+        dateOfJoining: data.dateOfJoining ? new Date(`${data.dateOfJoining}T00:00:00Z`) : null,
         departmentId: data.departmentId,
         entityId: data.entityId,
         managerId: data.managerId,

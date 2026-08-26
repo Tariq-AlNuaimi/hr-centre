@@ -216,6 +216,46 @@ therefore dead and **HR saw no salary on any individual record**. It type-checke
 narrows on any key, and no test covered the page. Same species as the findings above: code that
 exists, is correct in isolation, and is never reached.
 
+### F13 — HIGH · §3.3 · Date of Joining is unreachable from the UI — **FIXED**
+
+Found 2026-08-26 by re-reading the specification rather than the code, after the operator
+re-supplied it as the north star. (The file is byte-identical to the in-repo copy — the target has
+not moved.)
+
+§3.3 lists **Date of Joining** among the required employee fields and names what depends on it:
+"Anchor for 6-month eligibility gate, pro-ration Work Days, and effective service (§11)". §3.4 makes
+it an import validation rule. §11.7 refuses to compute a bonus without one rather than guessing.
+
+`dateOfJoining` was written by **one** caller: the import. It was absent from `employeeCore` and so
+from `updateEmployeeSchema`; absent from `PUT /api/employees/[id]`; absent from `employeeSelect`; and
+absent from `/people/[id]`. So the field was not merely uneditable — it was **invisible**. HR had no
+screen that showed whether a given person had one, and no way to add it.
+
+The consequence is F12's own trap, one field over: an employee whose joining date came in wrong, or
+blank from a pre-§3.3 import, has a wrong or blocked bonus, and the only fix was a **re-import** —
+which is the expensive act the hand-editing path exists to avoid, and which permanently disables the
+demo fixture.
+
+Missed because the column arrived after Phase 1 (migration `20260825210000`, "§3.3's Date of Joining,
+which Phase 1 omitted"). That migration added the column, the import loader and the import validator,
+and nothing else was taught about it. No test covered a field nobody could reach, and the reachability
+sweep that produced F11/F12 looked at write ENDPOINTS, not at fields within one — so a route with a
+caller can still have a column no caller can set.
+
+**Fixed** — the whole path: `dateOfJoining` on `BASE_EMPLOYEE_SELECT` and `serializeEmployee` (as an
+ISO day), in `employeeCore`, written by `PUT`, offered as a date field on the edit form, and shown on
+the Employment card. Nullable throughout and deliberately so: the migration did not backfill, so
+requiring it would have made the form refuse to open exactly the records that need fixing. Absent
+reads as "Not on file — §11 cannot compute a bonus until this is set", because §11.7 makes it an
+outstanding action rather than a cosmetic gap.
+
+Two database CHECK constraints are mirrored as field-level zod refinements, so the message lands on a
+field instead of arriving as a constraint violation: a joining date more than a year out is a typo,
+and nobody leaves before they join. Six contract tests in
+`tests/contracts/pms-employee-schema.test.ts`, and verified in a browser — the sane-check refusal,
+a successful edit that left salary, status and `pmsRoles` untouched, and the case that matters most,
+a record with **no** date on file opening and saving.
+
 ## What is genuinely solid
 
 Stated because a red-team report that only lists faults is as misleading as the one it corrects.

@@ -26,13 +26,14 @@ import type { UpdateEmployeeInput } from "@/lib/validations/employee";
  * added to the schema later is a build error here rather than a column silently
  * wiped on the next save.
  *
- * `lastWorkingDay` is cut back to the ISO calendar DAY the schema accepts:
- * §11.4 pro-rates a leaver's bonus over days, and the column is a date, so the
+ * `dateOfJoining` and `lastWorkingDay` are cut back to the ISO calendar DAY the
+ * schema accepts: both columns are dates, §11.4 pro-rates over days, and the
  * instant's time component is not information the form should round-trip.
  */
 function toUpdateInput(employee: {
   name: string;
   email: string;
+  dateOfJoining: Date | null;
   departmentId: string | null;
   entityId: string;
   managerId: string | null;
@@ -46,6 +47,7 @@ function toUpdateInput(employee: {
   return {
     name: employee.name,
     email: employee.email,
+    dateOfJoining: employee.dateOfJoining?.toISOString().slice(0, 10) ?? null,
     departmentId: employee.departmentId,
     entityId: employee.entityId,
     managerId: employee.managerId,
@@ -161,6 +163,19 @@ export default async function EmployeeDetailPage({
   ];
 
   const employment = [
+    {
+      key: "dateOfJoining",
+      label: t("dateOfJoining"),
+      // §3.3's anchor for §11's eligibility gate and pro-ration. "Not on file"
+      // is said out loud rather than shown as a dash: §11.7 REFUSES to compute a
+      // bonus without it, so an absent date is an outstanding action, not a
+      // cosmetic gap — and this is the only screen that can now show it.
+      value: employee.dateOfJoining ? (
+        formatDate(employee.dateOfJoining)
+      ) : (
+        <span className="text-amber-700 dark:text-amber-300">{t("noDateOfJoining")}</span>
+      ),
+    },
     {
       key: "lastWorkingDay",
       label: t("lastWorkingDay"),

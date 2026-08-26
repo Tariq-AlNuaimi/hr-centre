@@ -212,6 +212,7 @@
     "roleTrack": "Role track",
     "manager": "Manager",
     "status": "Status",
+    "dateOfJoining": "Date of joining",
     "basicSalary": "Basic salary",
     "lastWorkingDay": "Last working day",
     "unpaidLeaveDays": "Unpaid leave days",
@@ -1387,7 +1388,9 @@
       "saveAction": "Save record",
       "saving": "Saving…",
       "savedToast": "{name}'s record was updated",
-      "failed": "Could not save the record."
-    }
+      "failed": "Could not save the record.",
+      "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it."
+    },
+    "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set"
   }
 }

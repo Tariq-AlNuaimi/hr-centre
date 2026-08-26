@@ -202,6 +202,36 @@ export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeE
               <TextField name="name" label={tPms("name")} disabled={submitting} />
               <TextField name="email" type="email" label={tPms("email")} disabled={submitting} />
 
+              {/*
+                §3.3's Date of Joining. Until F13 the ONLY writer was the import,
+                so a wrong or missing one could be corrected no other way — and
+                §11 hangs off it: §11.2's six-month eligibility gate, §11.4's
+                pro-ration, and §11.7's refusal to compute a bonus without one.
+                A `date` input rather than free text, so the browser's own picker
+                enforces the calendar and the schema only has to police the rules
+                the calendar cannot (a typo a year out; a leaver who leaves before
+                they join).
+              */}
+              <FormField
+                name="dateOfJoining"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{tPms("dateOfJoining")}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="date"
+                        value={field.value ?? ""}
+                        onChange={(e) => field.onChange(e.target.value || null)}
+                        disabled={submitting}
+                      />
+                    </FormControl>
+                    <FormDescription>{t("dateOfJoiningHelp")}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 name="roleTrack"
                 render={({ field }) => (
