@@ -241,7 +241,10 @@
 - components/pms/MidYearRoster.tsx
 - components/pms/MyTasksOversight.tsx
 - components/pms/ParticipantList.tsx
+- components/pms/ProjectMap.tsx
 - components/pms/PublishGate.tsx
+- components/pms/RaterCoverage.tsx
+- components/pms/RaterEditor.tsx
 - components/pms/RoleEditor.tsx
 - components/pms/ScoreRunPanel.tsx
 - components/pms/SignOffPanel.tsx

@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CyclePicker } from "@/components/pms/CyclePicker";
 import { ThreeSixtySetup } from "@/components/pms/ThreeSixtySetup";
+import { RaterCoverage } from "@/components/pms/RaterCoverage";
+import { ProjectMap } from "@/components/pms/ProjectMap";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -124,6 +126,7 @@ function useThreeSixtyConsole(cycleId: string | null, enabled: boolean) {
   const coverage = assignments.data?.coverage ?? [];
   return {
     cycle,
+    assignments,
     threeSixty: cycle.data?.threeSixty ?? null,
     coverage,
     // §9.4's "exactly 3 per employee" — who is short, computed once.
@@ -137,10 +140,8 @@ export default function ThreeSixtyPage() {
   const t = useTranslations("pms.threeSixty");
   const { capabilities, isLoading: actorLoading } = usePmsActor();
   const { cycles, cycleList, cycleId, selectedCycleId, setSelectedCycleId } = useCycleSelection();
-  const { cycle, threeSixty, coverage, short, generate, activate } = useThreeSixtyConsole(
-    cycleId,
-    capabilities.orgWide,
-  );
+  const { cycle, threeSixty, coverage, short, generate, activate, assignments } =
+    useThreeSixtyConsole(cycleId, capabilities.orgWide);
 
   if (actorLoading || cycles.isLoading) return <PageSkeleton />;
 
@@ -225,71 +226,20 @@ export default function ThreeSixtyPage() {
             )}
           </SectionCard>
 
-          <SectionCard
-            title={t("assignments")}
-            subtitle={t("assignmentsHelp")}
-            actions={
-              threeSixty.status === "DRAFT" ? (
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={generate.isPending}
-                    onClick={() => generate.mutate()}
-                  >
-                    {generate.isPending ? t("generating") : t("generateAction")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    // §9.4's "exactly 3" is checked at activation (§9.6 lets HR
-                    // hold a half-built set on screen), so the button says why
-                    // rather than failing on press.
-                    disabled={short.length > 0 || coverage.length === 0 || activate.isPending}
-                    onClick={() => activate.mutate()}
-                  >
-                    {activate.isPending ? t("activating") : t("activateAction")}
-                  </Button>
-                </div>
-              ) : null
-            }
-            noBodyPadding
-          >
-            {short.length > 0 && (
-              <p className="px-6 pt-4 text-sm text-destructive-emphasis">
-                {t("shortfallHelp", { count: short.length })}
-              </p>
-            )}
-            {coverage.length === 0 ? (
-              <div className="p-6">
-                <EmptyState description={t("noAssignments")} />
-              </div>
-            ) : (
-              <DataTable<{ rateeId: string; name: string; raterCount: number }>
-                rowKey="rateeId"
-                dataSource={coverage}
-                total={coverage.length}
-                page={1}
-                pageSize={coverage.length}
-                columns={[
-                  { key: "name", title: t("employee"), dataIndex: "name" },
-                  {
-                    key: "raterCount",
-                    title: t("raterCount"),
-                    render: (
-                      _v: unknown,
-                      row: { rateeId: string; name: string; raterCount: number },
-                    ) => (
-                      <Badge
-                        variant={row.raterCount === RATERS_PER_EMPLOYEE ? "success" : "warning"}
-                      >
-                        {row.raterCount} / {RATERS_PER_EMPLOYEE}
-                      </Badge>
-                    ),
-                  },
-                ]}
-              />
-            )}
-          </SectionCard>
+          <RaterCoverage
+            threeSixtyId={threeSixty.id}
+            status={threeSixty.status}
+            coverage={coverage}
+            short={short}
+            assignments={assignments.data?.assignments ?? []}
+            generate={generate}
+            activate={activate}
+          />
+
+          {/* §9.6's optional project mapping — the other half of "peers can be
+              drawn from shared project work", and the only way a small
+              department reaches three eligible raters. */}
+          {cycleId && threeSixty.status === "DRAFT" && <ProjectMap cycleId={cycleId} />}
         </>
       )}
     </div>
