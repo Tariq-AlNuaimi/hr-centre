@@ -2,6 +2,7 @@ import type { EmployeeSourceRow, ImportIssue, ValidatedRow } from "./types";
 import type { RoleTrack } from "@/generated/prisma/client";
 import {
   checkEmployeeId,
+  checkDateOfJoining,
   checkLastWorkingDay,
   checkManager,
   checkNameAndEmail,
@@ -153,6 +154,7 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
     const placement = checkPlacement(row, track.value, ctx);
     const manager = checkManager(row, id.value, track.value, idsInFile, ctx);
     const salary = checkSalary(row);
+    const dateOfJoining = checkDateOfJoining(row);
     const lastWorkingDay = checkLastWorkingDay(row, status.value);
     const unpaidLeave = checkUnpaidLeave(row);
 
@@ -171,6 +173,7 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
       ...placement.issues,
       ...manager.issues,
       ...salary.issues,
+      ...dateOfJoining.issues,
       ...lastWorkingDay.issues,
       ...unpaidLeave.issues,
     ];
@@ -193,6 +196,7 @@ export function validateRows(rows: EmployeeSourceRow[], ctx: ValidationContext):
       roleTrack: track.value as RoleTrack,
       basicSalary: salary.value,
       status: status.value,
+      dateOfJoining: dateOfJoining.value,
       lastWorkingDay: lastWorkingDay.value,
       unpaidLeaveDays: unpaidLeave.value,
     };

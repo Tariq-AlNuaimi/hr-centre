@@ -1,6 +1,6 @@
 # Blueprint — Performance Management System (PMS)
 
-Scope: prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/use-pms-actor.ts, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
+Scope: app/api/projects/**, app/api/status/**, app/api/reports/**, app/api/leavers/**, app/api/roll-ups/**, app/api/transfers/**, lib/pms/transfer.ts, lib/pms/roll-up.ts, lib/pms/status.ts, lib/pms/status-query.ts, lib/pms/bonus-report.ts, app/[locale]/(dashboard)/team/**, app/[locale]/(dashboard)/executive/**, lib/validations/**, prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, prisma/seed-demo-cycle.ts, prisma/demo-cycle.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, lib/validations/rating.ts, lib/pms/scoring.ts, lib/pms/three-sixty.ts, lib/pms/calibration.ts, lib/pms/bonus.ts, lib/pms/score-run.ts, lib/validations/three-sixty.ts, lib/validations/calibration.ts, lib/validations/strategy-score.ts, app/api/strategy-scores/**, app/api/three-sixty/**, app/api/scores/**, app/api/calibration/**, app/api/bonus/**, app/api/reports/**, app/api/publish/**, app/api/scorecard/**, app/[locale]/(dashboard)/three-sixty/**, app/[locale]/(dashboard)/calibration/**, app/[locale]/(dashboard)/reports/**, app/[locale]/(dashboard)/scorecard/**, app/[locale]/(dashboard)/admin/strategy-scores/**, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/year-end-signoffs/**, app/api/internal/cycle-sweep/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/year-end/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/**, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
 
 > Source of truth: `Performance_Management_System.docx` v1.0 (2026-08-24), supplied by the
 > operator's HR team. Section references (§) throughout this document point at that
@@ -603,6 +603,187 @@ employee self-assesses against the _current_ descriptors, the manager reviews, b
 Any scoring or band mapping (§8 — Phase 5, and §6.1 forbids it at mid-year); the 360 module (§9);
 calibration (§10); bonus (§11); and §12.3's transfer split, which needs Phase 6's
 `EmployeeAssignmentPeriod`.
+
+## Phases 4-6 — 360, scoring, calibration, bonus, reporting (§8-§13)
+
+Delivered as three increments, each green and pushed before the next. The dependency order is
+fixed by §10.7's gate: **no score is released until calibration has run, and no calibration until
+every raw score is in** — so scoring cannot be wired before its two inputs (§8.4's Strategy figures
+and §9's 360) both exist.
+
+### Phase 4 — §8.4 Strategy scores + §9 the 360 module
+
+**§8.4** — the Strategy team has no system access (§4.1); HR keys their figures in. One Corporate
+score per entity per cycle, one Departmental score per department per cycle, both on the 1-5 scale.
+Separate models rather than columns on `OrgEntity`/`Department`, because a score belongs to a
+CYCLE — last year's figure must not be overwritten by this year's.
+
+**§9** — the largest single piece.
+
+```prisma
+model ThreeSixtyCycle    { id, cycleId @unique, status, opensAt, deadline }   // §9.1 tied to the KPI year
+enum  AssessmentType     { LINE_MANAGER_TO_EMPLOYEE  EMPLOYEE_TO_LINE_MANAGER  PEER_TO_PEER }
+model AssessmentTemplate { id, threeSixtyCycleId, type, questions[] }          // §9.2 one per type
+model TemplateQuestion   { id, templateId, text, orderIndex, scored }          // §9.2 scored + open-ended
+model Assignment         { id, threeSixtyCycleId, rateeId, raterId, type, status, submittedAt }
+model AssignmentResponse { id, assignmentId, questionId, score?, text? }       // §9.3 forced 1-4
+model Project            { id, cycleId, name }                                 // §9.6 optional
+model ProjectMember      { id, projectId, employeeId }
+```
+
+Five decisions:
+
+1. **The 4-point scale is forced, in the database.** §9.3 gives no neutral midpoint, so a CHECK
+   constrains a scored answer to 1-4. A 5 would silently import the KPI scale into the 360.
+2. **Exactly three raters, enforced at publish rather than at assignment.** §9.4 requires line
+   manager + peer + (reportee else second peer). HR edits assignments before launch (§9.6), so the
+   count is checked when the cycle is ACTIVATED, not on every edit — otherwise HR cannot ever have
+   a half-built assignment set on screen.
+3. **The ratio is per FORM, not per question** (§9.5): sum answered scores ÷ that form's maximum.
+   Templates may differ in length, so a per-question average would weight a short form higher.
+4. **Open-ended answers never enter the score.** `scored` on the question decides; §9.5 says "sum
+   the answered question scores", and a text answer has none.
+5. **Anonymity is structural.** §13.1 consolidates comments unattributed, so the results reader
+   never joins a response back to its rater; only HR's assignment view knows who was asked.
+
+### Phase 5 — wiring §8, then §10 and §11
+
+**§8 wiring.** A `ScoreRun` per cycle computes and stores every employee's raw components and final
+score (`lib/pms/scoring.ts` already holds the arithmetic, tested against the spec's worked
+examples). Raw scores are written once and never mutated — §10.1 and Appendix A both require it.
+
+**§10 calibration.** `CalibrationTarget` (editable band distribution, HR Super Admin only),
+`CalibrationAdjustment` (from-band, to-band, mandatory reason, who, when). Applied per department
+with ≥5 active participants, the threshold itself editable (§10.3). Guided, never forced: the
+screen shows target vs actual and HR moves individuals (§10.4).
+
+**§11 bonus.** Eligibility from effective service net of unpaid leave (§11.2, §11.5); coefficient
+from the **calibrated** band (§11.3); pro-ration on calendar days ÷ 365 (§11.4); payroll Excel
+export including ineligible employees flagged with a reason (§11.7), HR-only and logged.
+
+### Phase 6 — §13 reporting, the publish gate, §12 edge cases
+
+**§13.2's publish gate is the load-bearing piece.** Cycle-wide, all-at-once, guarded by a
+confirmation plus a readiness check, reversible, and every publish/un-publish audited. Until it
+fires, an employee sees nothing — §13.1 then shows them their band and score, their consolidated
+360 comments, and nothing else: no raw score, no components, no sign of calibration.
+
+#### One status engine, three audiences (§13.4)
+
+§13.4 is unusually prescriptive: "the dashboard is a role-scoped view of ONE shared status engine
+… Not separate builds — one engine, filtered by role." So `lib/pms/status.ts` derives where a
+participant stands and nothing else; `lib/pms/status-query.ts` reads the rows for a SET OF
+EMPLOYEE IDS supplied by the caller. The role filter is chosen in the route, never inside the
+derivation, which is what makes it impossible for the manager view and the HR report to disagree
+about what "signed" means.
+
+`/api/status` serves §13.3 (direct reports, actionable; down-chain, view-only). The same two
+functions serve §13.5's cycle-progress report and §13.6's executive dashboard with the filter open.
+
+#### "Their score" (§13.1) and the score/band contradiction
+
+§13.1 asks for "final band and score (calibrated, but never labeled as such)". §10 moves BANDS, not
+scores, and §10.1 forbids overwriting the raw score — so there is no stored calibrated score to
+show. Showing the raw one beside a moved band puts a visible contradiction on the scorecard and
+hands the employee exactly the "sign of calibration" the clause forbids.
+
+Resolution: `displayScore(rawScore, calibratedBand)` clamps the raw figure into the awarded band's
+§8.7 range. Uncalibrated employees — the majority — see their exact score; calibrated ones see a
+score that agrees with their band; the raw figure survives untouched in the column §13.5's master
+export reads.
+
+#### The five HR reports (§13.5) and who may read each
+
+| Report                       | Route                               | Audience                         |
+| ---------------------------- | ----------------------------------- | -------------------------------- |
+| Cycle progress / completion  | `/api/reports/cycle-progress`       | org-wide sight (HR + executives) |
+| Manager compliance (§5.6)    | `/api/reports/manager-compliance`   | org-wide sight                   |
+| Results distribution         | `/api/reports/results-distribution` | org-wide sight                   |
+| Bonus report + Excel (§11.7) | `/api/bonus?format=xlsx`            | `canViewCompensation` (§11.6)    |
+| Master results export        | `/api/reports/master-results`       | **HR Super Admin only**          |
+
+The last row is the reason master results is a separate route rather than a flag: §13.5 says
+"Restricted to HR Super Admin only (not HRBP)", and every other report on the surface is open to
+`capabilities.orgWide`, which includes HRBP.
+
+#### §12's three edge cases
+
+```prisma
+enum  RollUpReason             { LEAVER_ROLLUP  HR_REASSIGNMENT }
+model ManagerRollUp            { id, employeeId, fromManagerEmployeeId?, toManagerEmployeeId?,
+                                 reason, resolvedAt?, resolvedByEmployeeId?, resolutionNote? }
+model EmployeeAssignmentPeriod { id, employeeId, cycleId, departmentId?, entityId,
+                                 managerEmployeeId?, startsOn, endsOn, orderIndex }
+// Kpi gains a nullable assignmentPeriodId — null for everyone who never transferred.
+```
+
+Four decisions:
+
+1. **The roll-up is automatic; the resolution is not.** §12.1 moves reports one level on a
+   departure so `Employee.managerId` never points at a leaver (§7.2 needs it to resolve to
+   somebody). §12.2's prompt is a separate row, because after the move the column looks exactly
+   like a permanent line. A partial unique index gives each employee at most one OPEN prompt.
+2. **One level, not to the first surviving ancestor.** §12.1 says "one level (to the departed
+   manager's own manager)". A longer walk would silently reassign people across two levels; when
+   the grandparent has also left, the right answer is a prompt, not a deeper search.
+3. **The 360 reassignment flag is derived, never stored.** §12.1 flags assignments where a leaver
+   was the rater. A stored flag goes stale the moment HR reassigns one, and departures recorded
+   through the IMPORT never pass through the manual route — so `/api/leavers` GET derives the
+   standing queue from `status: LEAVER` raters with unsubmitted assignments.
+4. **§5.3 applies PER PERIOD on a split year.** §12.3 gives each department's manager their own
+   portion to draft, so each portion is a complete 100% set in its own right. Summing the two to
+   100 would couple the two managers, which is what "neither manager owns the full year" removes.
+   The 365 denominator is taken verbatim from §12.3 — for a leaver or mid-year joiner the weights
+   deliberately sum to less than 1, pro-rating the score exactly as §11.4 pro-rates the bonus.
+
+#### User stories (Phase 6)
+
+- **US-P6-1** As an employee, after HR publishes, I see my band, my score, my consolidated 360
+  figure and the combined comments — and nothing that reveals components, raw scores or
+  calibration. _(§13.1)_
+- **US-P6-2** As an employee, before publication I see a truthful "not yet", not an error implying
+  something is being withheld from me specifically. _(§13.2)_
+- **US-P6-3** As a line manager, I open one screen showing every direct report's stage status, what
+  is outstanding, and what is approaching or past its deadline — so I can act before an escalation
+  fires. _(§13.3)_
+- **US-P6-4** As a senior manager, I see rolled-up completion health down my whole tree, view-only.
+  _(§13.3)_
+- **US-P6-5** As HR, I read org-wide completion, per-manager compliance, and the band distribution
+  per department and entity, and I export the payroll bonus file and the master results workbook.
+  _(§13.5, §11.7)_
+- **US-P6-6** As HR Super Admin, I publish a cycle in one guarded, confirmed, audited action — and
+  I can un-publish it with a recorded reason. _(§13.2)_
+- **US-P6-7** As the COO, I open an aggregate dashboard of band distributions, completion,
+  compliance and bonus totals, and drill into any individual including their salary and bonus.
+  _(§13.6)_
+- **US-P6-8** As HR, when I record a departure the reports roll up one level automatically and a
+  prompt tells me they still need a permanent manager. _(§12.1, §12.2)_
+- **US-P6-9** As HR, when someone transfers mid-cycle I split their year at the transfer date; each
+  department's manager owns their own portion, and the final score is day-weighted. _(§12.3)_
+
+#### Scenarios
+
+**Happy.** HR closes year-end, runs scoring, calibrates, checks readiness (green), types CONFIRM and
+publishes. Every employee's scorecard goes live in the same second. A manager who missed two
+deadlines appears on the compliance report with the hours and the escalations that fired. Payroll
+receives an .xlsx keyed to employee id with the ineligible flagged.
+
+**Worst — the accidental publish.** Someone with HR Super Admin opens the publish screen and clicks
+through. The readiness check refuses because eleven people are unscored; the confirmation demands a
+typed literal; the audit records the attempt. Nothing reaches an employee.
+
+**Worst — the silent roll-up.** A department head resigns on a Friday. Six reports move to the
+COO. Without §12.2's prompt that arrangement is still in place at year-end and the COO signs six
+sets of KPIs they never drafted. With it, HR sees six open prompts on Monday.
+
+**Worst — the transfer nobody split.** An engineer moves from Delivery to Product on 1 July. If the
+year is not split, whichever manager holds the relationship in December assesses twelve months they
+only saw six of. The split makes each manager assess their own half, and §12.3's day weights make
+the final score reflect both.
+
+**Worst — the score that contradicts its band.** Calibration moves someone from Target to
+Excellent. Their scorecard shows Excellent beside 3.80, and they compute the adjustment from §8.7's
+table. `displayScore` is the fix; the raw 3.80 stays in the master export where it belongs.
 
 ## Open questions
 

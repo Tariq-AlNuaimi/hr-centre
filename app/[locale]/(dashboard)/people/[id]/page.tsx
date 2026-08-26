@@ -10,6 +10,7 @@ import { descendantEmployeeIds } from "@/lib/pms/org-tree";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
+import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
 
@@ -90,7 +91,7 @@ export default async function EmployeeDetailPage({
       value: employee.manager ? (
         <Link
           href={`/${locale}/people/${employee.manager.id}`}
-          className="text-primary underline-offset-4 hover:underline"
+          className="text-primary-emphasis underline-offset-4 hover:underline"
         >
           {employee.manager.name}
         </Link>
@@ -160,6 +161,19 @@ export default async function EmployeeDetailPage({
           />
         </SectionCard>
       ) : null}
+
+      {/*
+        §9.8's individual 360 report, on the record §13.6 already sends HR and
+        the executive viewers to for "full drill-down on demand into any
+        individual's complete record". Gated on the same org-wide capability the
+        route itself enforces, so a manager never fires a request that will 403
+        — and never sees a placeholder hinting the figure exists.
+
+        It deliberately does NOT go on the 360 console: that screen shows who
+        was assigned to rate whom (§9.4), and pairing that with what came back
+        is the join §13.1's anonymity exists to prevent.
+      */}
+      {actor.capabilities.orgWide ? <ThreeSixtyResultCard employeeId={employee.id} /> : null}
 
       {/*
         §4.2 — tell a viewer which side of the view/act line they are on, rather

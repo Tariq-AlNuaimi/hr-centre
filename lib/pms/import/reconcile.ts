@@ -42,6 +42,7 @@ export type ExistingEmployee = {
   /** Decimal serialised to string, or null. Never rendered — see `diffFields`. */
   basicSalary: string | null;
   status: string;
+  dateOfJoining: Date | null;
   lastWorkingDay: Date | null;
   unpaidLeaveDays: number;
 };
@@ -74,6 +75,7 @@ const COMPARED_FIELDS = [
   "managerId",
   "roleTrack",
   "status",
+  "dateOfJoining",
   "lastWorkingDay",
   "unpaidLeaveDays",
   "basicSalary",
@@ -107,6 +109,7 @@ function diffFields(
     managerId,
     roleTrack: incoming.roleTrack,
     status: incoming.status,
+    dateOfJoining: dateKey(incoming.dateOfJoining),
     lastWorkingDay: dateKey(incoming.lastWorkingDay),
     unpaidLeaveDays: String(incoming.unpaidLeaveDays),
     basicSalary: incoming.basicSalary,
@@ -120,6 +123,7 @@ function diffFields(
     managerId: existing.managerId,
     roleTrack: existing.roleTrack,
     status: existing.status,
+    dateOfJoining: dateKey(existing.dateOfJoining),
     lastWorkingDay: dateKey(existing.lastWorkingDay),
     unpaidLeaveDays: String(existing.unpaidLeaveDays),
     basicSalary: existing.basicSalary,

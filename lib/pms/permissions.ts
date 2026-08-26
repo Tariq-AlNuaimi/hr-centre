@@ -190,6 +190,15 @@ export function canApplyImport(actor: PmsActor): boolean {
  */
 export type PmsCapabilities = {
   orgWide: boolean;
+  /**
+   * §4.1's HR (Super Admin or HRBP) — who may RUN the cycle, as opposed to
+   * `orgWide`, which is who may SEE it. The two are not the same set: an
+   * executive viewer is org-wide and may write nothing. A screen gating an
+   * HR-only action on `orgWide` offers a button that always 403s, and
+   * `readOnly` is not the complement either — it excludes an executive who
+   * happens to have direct reports. This states the predicate the routes use.
+   */
+  hr: boolean;
   configure: boolean;
   viewCompensation: boolean;
   previewImport: boolean;
@@ -203,6 +212,7 @@ export type PmsCapabilities = {
 export function capabilitiesFor(actor: PmsActor): PmsCapabilities {
   return {
     orgWide: hasOrgWideVisibility(actor),
+    hr: isHr(actor),
     configure: canConfigure(actor),
     viewCompensation: canViewCompensation(actor),
     previewImport: canPreviewImport(actor),

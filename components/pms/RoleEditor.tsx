@@ -189,7 +189,7 @@ export function RoleEditor({ actorEmployeeId }: RoleEditorProps) {
   if (isError) {
     return (
       <div className="space-y-3">
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-emphasis">
           {t("roles.loadFailed")}
         </p>
         <Button variant="outline" onClick={() => refetch()}>
@@ -288,7 +288,7 @@ export function RoleEditor({ actorEmployeeId }: RoleEditorProps) {
           </ul>
 
           {saveError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {saveError}
             </p>
           ) : null}

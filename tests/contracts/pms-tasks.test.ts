@@ -10,6 +10,7 @@ import {
   reportTask,
   toneForStage,
 } from "../../lib/pms/tasks";
+import { buildThreeSixtyTasks, type ThreeSixtyTaskRow } from "../../lib/pms/tasks";
 import type { ParticipantRow } from "../../components/pms/ParticipantList";
 import type { GoalStage } from "../../components/pms/StageBanner";
 
@@ -235,4 +236,71 @@ test("the ranks order the bands the way a person would read them", () => {
     [0, 1, 2, 3],
   );
   assert.equal(CLOCK_TICK_MS, 60_000, "the due-soon band re-evaluates every minute");
+});
+
+// --- §4.4's missing category: 360 assignments ---------------------------------
+
+const threeSixtyRow = (over: Partial<ThreeSixtyTaskRow> = {}): ThreeSixtyTaskRow => ({
+  id: "a1",
+  status: "NOT_STARTED",
+  ratee: { id: "e1", name: "Noura Al-Siyabi" },
+  deadline: "2027-06-30T00:00:00.000Z",
+  ...over,
+});
+
+test("§4.4 a 360 assigned to me becomes a task, named for the person I assess", () => {
+  const tasks = buildThreeSixtyTasks({
+    assignments: [threeSixtyRow()],
+    hrefFor: (a) => `/en/three-sixty/assignments/${a.id}`,
+    nowMs: new Date("2027-01-01").getTime(),
+  });
+  assert.equal(tasks.length, 1);
+  assert.equal(tasks[0].titleKey, "threeSixtyTitle");
+  assert.equal(tasks[0].titleParams?.name, "Noura Al-Siyabi");
+  assert.equal(tasks[0].href, "/en/three-sixty/assignments/a1");
+});
+
+test("§9.7 a SUBMITTED assignment produces no task — submission is one-way", () => {
+  const tasks = buildThreeSixtyTasks({
+    assignments: [threeSixtyRow({ status: "SUBMITTED" })],
+    hrefFor: (a) => `/x/${a.id}`,
+    nowMs: new Date("2027-01-01").getTime(),
+  });
+  assert.deepEqual(tasks, [], "a task nobody can act on is not a task");
+});
+
+test("a started 360 says resume rather than start", () => {
+  const [task] = buildThreeSixtyTasks({
+    assignments: [threeSixtyRow({ status: "IN_PROGRESS" })],
+    hrefFor: (a) => `/x/${a.id}`,
+    nowMs: new Date("2027-01-01").getTime(),
+  });
+  assert.equal(task.detailKey, "threeSixtyResume");
+  assert.equal(task.actionKey, "threeSixtyResumeAction");
+});
+
+test("a 360 task carries its OWN deadline, not the goal-setting stage's", () => {
+  // The bug this pins: My Tasks rendered one stage-wide badge per row, so a 360
+  // due in a month showed as "Deadline passed" because goal-setting had closed.
+  const [task] = buildThreeSixtyTasks({
+    assignments: [threeSixtyRow()],
+    hrefFor: (a) => `/x/${a.id}`,
+    nowMs: new Date("2027-01-01").getTime(),
+  });
+  assert.equal(task.dueAt, "2027-06-30T00:00:00.000Z");
+  assert.equal(task.tone, "open");
+});
+
+test("§9.7 an overdue assignment ranks above everything still open", () => {
+  const [overdue] = buildThreeSixtyTasks({
+    assignments: [threeSixtyRow({ status: "OVERDUE" })],
+    hrefFor: (a) => `/x/${a.id}`,
+    nowMs: new Date("2027-07-01").getTime(),
+  });
+  const [open] = buildThreeSixtyTasks({
+    assignments: [threeSixtyRow()],
+    hrefFor: (a) => `/x/${a.id}`,
+    nowMs: new Date("2027-01-01").getTime(),
+  });
+  assert.ok(overdue.rank < open.rank, "urgency sorts first");
 });

@@ -29,6 +29,7 @@ export type EmployeeSourceRow = {
   odooId: string | null;
   name: string | null;
   email: string | null;
+  dateOfJoining: string | null;
   department: string | null;
   entity: string | null;
   managerOdooId: string | null;
@@ -44,6 +45,7 @@ export const IMPORT_COLUMNS = [
   "odooId",
   "name",
   "email",
+  "dateOfJoining",
   "department",
   "entity",
   "managerOdooId",
@@ -71,6 +73,14 @@ export const COLUMN_ALIASES: Record<ImportColumn, readonly string[]> = {
   odooId: ["employee id", "employeeid", "odoo id", "odooid", "id"],
   name: ["name", "employee name", "full name"],
   email: ["email", "email address", "work email"],
+  dateOfJoining: [
+    "date of joining",
+    "dateofjoining",
+    "joining date",
+    "date joined",
+    "hire date",
+    "start date",
+  ],
   department: ["department", "dept"],
   entity: ["entity", "company", "legal entity"],
   managerOdooId: ["manager", "manager id", "manager employee id", "line manager", "reports to"],
@@ -86,6 +96,7 @@ export const COLUMN_TITLES: Record<ImportColumn, string> = {
   odooId: "Employee ID",
   name: "Name",
   email: "Email",
+  dateOfJoining: "Date of Joining",
   department: "Department",
   entity: "Entity",
   managerOdooId: "Manager (Employee ID)",
@@ -143,6 +154,8 @@ export type ValidatedRow = {
   roleTrack: RoleTrack;
   basicSalary: string | null;
   status: EmployeeStatus;
+  /// §3.3's anchor for §11's eligibility gate and pro-ration.
+  dateOfJoining: Date | null;
   lastWorkingDay: Date | null;
   unpaidLeaveDays: number;
 };

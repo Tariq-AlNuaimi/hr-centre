@@ -380,7 +380,7 @@ export function KpiDraftBoard({
           <KpiForm formId="kpi-create-form" submitting={submitting} onSubmit={handleCreate} />
 
           {formError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {formError}
             </p>
           ) : null}
@@ -422,7 +422,7 @@ export function KpiDraftBoard({
           ) : null}
 
           {formError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {formError}
             </p>
           ) : null}

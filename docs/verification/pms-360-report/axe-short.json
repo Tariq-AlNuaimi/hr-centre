@@ -1,0 +1,66 @@
+[
+  {
+    "locale": "en",
+    "theme": "light",
+    "tag": "desktop",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "en",
+    "theme": "light",
+    "tag": "mobile",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "en",
+    "theme": "dark",
+    "tag": "desktop",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "en",
+    "theme": "dark",
+    "tag": "mobile",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "ar",
+    "theme": "light",
+    "tag": "desktop",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "ar",
+    "theme": "light",
+    "tag": "mobile",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "ar",
+    "theme": "dark",
+    "tag": "desktop",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  },
+  {
+    "locale": "ar",
+    "theme": "dark",
+    "tag": "mobile",
+    "status": 200,
+    "bounced": false,
+    "blocking": []
+  }
+]

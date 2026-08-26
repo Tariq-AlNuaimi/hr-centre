@@ -86,6 +86,10 @@ export const apiClient = {
     return request<T>(path, { method: "PUT", body, ...opts });
   },
 
+  patch<T>(path: string, body?: unknown, opts?: ApiClientOptions): Promise<T> {
+    return request<T>(path, { method: "PATCH", body, ...opts });
+  },
+
   delete<T>(path: string, opts?: ApiClientOptions): Promise<T> {
     return request<T>(path, { method: "DELETE", ...opts });
   },

@@ -144,6 +144,7 @@ export async function notify(
 /** One message per recipient, each send isolated. Addresses are never logged. */
 async function deliver(
   lines: ReadonlyMap<string, string[]>,
+  subject = "Performance cycle — goal-setting compliance",
 ): Promise<{ attempted: number; sent: number; skipped: boolean }> {
   // `take` is redundant at runtime — the `in` list below is already sliced to
   // MAX_NOTIFICATIONS — and worth stating anyway: it keeps the cap true if
@@ -166,7 +167,7 @@ async function deliver(
       // here; lib/email.ts itself logs a recipient COUNT only.
       const result = await sendEmail({
         to: person.email,
-        subject: "Performance cycle — goal-setting compliance",
+        subject,
         text: `${body.join("\n")}\n`,
       });
       if (result.sent) sent += 1;
@@ -175,4 +176,65 @@ async function deliver(
     }
   }
   return { attempted: recipients.length, sent, skipped: false };
+}
+
+/**
+ * §9.7 — "Automated reminders before deadline", for the 360.
+ *
+ * Separate from the §5.5 ladder above, deliberately. That ladder logs a
+ * `ComplianceEvent` because §5.6 wants a manager-accountability RECORD; a 360
+ * rater who has not answered yet is not a compliance matter and must not land on
+ * anyone's record. So this sends and records nothing.
+ *
+ * It also runs only INSIDE the reminder window and only for unsubmitted
+ * assignments, so a rater who has answered is never chased and nobody is mailed
+ * about a cycle that has not opened.
+ *
+ * Best-effort, like everything else here: `lib/email.ts` no-ops unless SMTP is
+ * configured, and a mail failure must never break the sweep.
+ */
+export async function remindThreeSixtyRaters(
+  now: Date,
+): Promise<{ attempted: number; sent: number; skipped: boolean }> {
+  if (!isEmailEnabled()) return { attempted: 0, sent: 0, skipped: true };
+
+  try {
+    const { isReminderDue } = await import("./three-sixty");
+
+    const cycles = await prisma.threeSixtyCycle.findMany({
+      take: 10,
+      where: { status: "ACTIVE" },
+      select: { id: true, deadline: true },
+    });
+    const due = cycles.filter((c) => isReminderDue({ deadline: c.deadline, now }));
+    if (due.length === 0) return { attempted: 0, sent: 0, skipped: false };
+
+    const outstanding = await prisma.assignment.findMany({
+      take: MAX_NOTIFICATIONS,
+      where: {
+        threeSixtyCycleId: { in: due.map((c) => c.id) },
+        status: { not: "SUBMITTED" },
+        rater: { status: "ACTIVE" },
+      },
+      select: {
+        raterId: true,
+        ratee: { select: { name: true } },
+        threeSixtyCycle: { select: { deadline: true } },
+      },
+    });
+
+    const lines = new Map<string, string[]>();
+    for (const row of outstanding) {
+      const when = row.threeSixtyCycle.deadline.toISOString().slice(0, 10);
+      const line = `360 assessment of ${row.ratee.name} is still outstanding — due ${when}.`;
+      const existing = lines.get(row.raterId);
+      if (existing) existing.push(line);
+      else lines.set(row.raterId, [line]);
+    }
+    if (lines.size === 0) return { attempted: 0, sent: 0, skipped: false };
+
+    return await deliver(lines, "360 assessment — reminder");
+  } catch {
+    return { attempted: 0, sent: 0, skipped: false };
+  }
 }

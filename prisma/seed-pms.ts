@@ -28,8 +28,36 @@ type SeedEmployee = {
   roleTrack: RoleTrack;
   pmsRoles?: PmsRole[];
   basicSalary: string;
+  /**
+   * §3.3 — months BEFORE the seed runs, not an ISO date.
+   *
+   * A literal date was the obvious choice and the wrong one: the migration
+   * CHECK-constrains a joining date to at most a year ahead ("a joining date in
+   * the future is a typo"), so a hard-coded future date makes the whole seed
+   * unrunnable the moment the wall clock catches up — which it did. An offset
+   * keeps §11.2's six-month gate making a REAL decision at any point in time,
+   * which is the only reason the fixture varies these dates at all.
+   *
+   * Omitted rows fall back to a long-tenured default.
+   */
+  joinedMonthsAgo?: number;
   unpaidLeaveDays?: number;
 };
+
+/**
+ * A joining date N months before today, as a UTC calendar date.
+ *
+ * Relative rather than literal so the fixture stays valid — and stays MEANINGFUL
+ * — however long after it was written the seed runs. `undefined` means the
+ * long-tenured default: five years back, comfortably clear of every gate.
+ */
+function joiningDate(monthsAgo: number | undefined): Date {
+  const now = new Date();
+  const months = monthsAgo ?? 60;
+  return new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months, Math.min(now.getUTCDate(), 28)),
+  );
+}
 
 /** §1.2 — Rihal (parent), TP and CL (subsidiaries). */
 const ENTITIES = [
@@ -223,6 +251,9 @@ const EMPLOYEES: SeedEmployee[] = [
     manager: "1201",
     roleTrack: "INDIVIDUAL",
     basicSalary: "1350",
+    // §11.2 — under the six-month gate, so it has a real decision to make
+    // rather than passing everyone in the fixture trivially.
+    joinedMonthsAgo: 4,
   },
 
   // --- Rihal Marketing & Sales ---------------------------------------------
@@ -514,6 +545,11 @@ export async function seedPms(prisma: PrismaClient): Promise<void> {
         // ADR-067 — even the fixture is encrypted, so a dev database never
         // holds a shape production does not.
         basicSalaryEnc: encryptSalary(employee.basicSalary, employee.odooId),
+        // §3.3 — the anchor for §11's eligibility gate and pro-ration. Most of
+        // the fixture is long-tenured; a couple of rows carry an offset that
+        // puts them under §11.2's six-month gate, so the gate has something to
+        // actually decide rather than passing everyone trivially.
+        dateOfJoining: joiningDate(employee.joinedMonthsAgo),
         unpaidLeaveDays: employee.unpaidLeaveDays ?? 0,
       },
       select: { id: true },
@@ -624,6 +660,8 @@ async function bootstrapAdminEmployee(
       roleTrack: "MANAGER",
       pmsRoles: ["HR_SUPER_ADMIN"],
       // No salary invented: this is an access record, not a person's pay data.
+      // Nor a joining date — §11 refuses to compute a bonus without one, which
+      // is the right outcome for a bootstrap record that is not a real hire.
       unpaidLeaveDays: 0,
       userId: user?.id ?? null,
     },

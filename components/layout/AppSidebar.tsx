@@ -14,6 +14,13 @@ import {
   Settings,
   Trash2,
   ClipboardCheck,
+  Award,
+  BarChart3,
+  LineChart,
+  Scale,
+  UserRoundCheck,
+  Target,
+  UserMinus,
   Menu as MenuIcon,
   PanelLeftClose,
 } from "lucide-react";
@@ -66,6 +73,8 @@ export function AppSidebar() {
     "org-setup": "org-setup",
     cycles: "cycles",
     roles: "roles",
+    "strategy-scores": "strategy-scores",
+    "edge-cases": "edge-cases",
   };
   const activeKey =
     segments[0] === "admin"
@@ -112,6 +121,15 @@ export function AppSidebar() {
       label: t("org"),
       onClick: () => router.push(`/${locale}/org`),
     },
+    // §13.1 — every employee has a scorecard, published or not. The screen says
+    // "not yet" before publication rather than being hidden, because §13.2's
+    // silence is about RESULTS, not about the existence of the page.
+    {
+      key: "scorecard",
+      icon: <Award className="h-4 w-4" />,
+      label: t("scorecard"),
+      onClick: () => router.push(`/${locale}/scorecard`),
+    },
     // Goal setting (§5) is the LINE MANAGER's workspace, so it is gated on the
     // relationship — `capabilities.lineManager` is derived from
     // `Employee.managerId` edges, not from a role name (§4.2) — plus HR's
@@ -121,6 +139,14 @@ export function AppSidebar() {
     // that would open an empty screen.
     ...(capabilities.lineManager || pmsRoles.includes("HR_SUPER_ADMIN") || pmsRoles.includes("HRBP")
       ? [
+          // §13.3's manager workspace — the cockpit a manager checks before an
+          // escalation fires, so it sits above the three stage screens.
+          {
+            key: "team",
+            icon: <UserRoundCheck className="h-4 w-4" />,
+            label: t("team"),
+            onClick: () => router.push(`/${locale}/team`),
+          },
           {
             key: "goal-setting",
             icon: <ClipboardList className="h-4 w-4" />,
@@ -136,6 +162,34 @@ export function AppSidebar() {
             label: t("midYear"),
             onClick: () => router.push(`/${locale}/mid-year`),
           },
+          // Year-end (§7) — the same audience again: the employee's own
+          // assessment reaches them through My Tasks, the manager reviews their
+          // direct reports here, HR oversees org-wide.
+          {
+            key: "year-end",
+            icon: <ClipboardCheck className="h-4 w-4" />,
+            label: t("yearEnd"),
+            onClick: () => router.push(`/${locale}/year-end`),
+          },
+        ]
+      : []),
+    // §13.5's reports and §13.6's dashboard need ORG-WIDE sight, which is HR
+    // plus the COO and Ops Director (§4.1). Wider than the HR-only screens
+    // below, and narrower than the manager workspace above.
+    ...(capabilities.orgWide
+      ? [
+          {
+            key: "reports",
+            icon: <BarChart3 className="h-4 w-4" />,
+            label: t("reports"),
+            onClick: () => router.push(`/${locale}/reports`),
+          },
+          {
+            key: "executive",
+            icon: <LineChart className="h-4 w-4" />,
+            label: t("executive"),
+            onClick: () => router.push(`/${locale}/executive`),
+          },
         ]
       : []),
     // The cycle console. §4.1 gives BOTH HR flavours "runs the cycle org-wide"
@@ -148,6 +202,40 @@ export function AppSidebar() {
             icon: <CalendarDays className="h-4 w-4" />,
             label: t("cycles"),
             onClick: () => router.push(`/${locale}/admin/cycles`),
+          },
+          // §9.4 — "HR selects and manages all rater assignments."
+          {
+            key: "three-sixty",
+            icon: <Target className="h-4 w-4" />,
+            label: t("threeSixty"),
+            onClick: () => router.push(`/${locale}/three-sixty`),
+          },
+          // §8.4 — the Strategy team has no system access, so HR keys their
+          // figures in.
+          {
+            key: "strategy-scores",
+            icon: <Target className="h-4 w-4" />,
+            label: t("strategyScores"),
+            onClick: () => router.push(`/${locale}/admin/strategy-scores`),
+          },
+          // §12 — the roll-up prompt has to live somewhere HR looks.
+          {
+            key: "edge-cases",
+            icon: <UserMinus className="h-4 w-4" />,
+            label: t("edgeCases"),
+            onClick: () => router.push(`/${locale}/admin/edge-cases`),
+          },
+        ]
+      : []),
+    // §10.6 — "HRBP does not touch calibration", so this one is Super Admin
+    // alone, matching `canRunCalibration` at the route.
+    ...(capabilities.runCalibration
+      ? [
+          {
+            key: "calibration",
+            icon: <Scale className="h-4 w-4" />,
+            label: t("calibration"),
+            onClick: () => router.push(`/${locale}/calibration`),
           },
         ]
       : []),

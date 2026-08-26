@@ -149,8 +149,14 @@ type AuditWriter = {
 /**
  * Explicitly record an audit row for an operation performed OUTSIDE the audit
  * extension (e.g. recycling-bin restore / permanent delete go through
- * `prismaUnfiltered`). Pulls attribution from the request's AuditContext and
- * scrubs Restricted fields, identical to the automatic extension path.
+ * `prismaUnfiltered`; a conditional `updateMany` the bulk-write rule refuses).
+ * Pulls attribution from the request's AuditContext and scrubs Restricted
+ * fields, identical to the automatic extension path.
+ *
+ * `changes` is computed here too, when the caller supplies both halves. Without
+ * it an explicitly-audited write landed with `before` and `after` populated and
+ * `changes: null` — the same shape a no-op update produces, so the one field
+ * `GET /api/audit-log` renders as "what actually changed" said nothing.
  */
 export async function recordAudit(
   client: AuditWriter,
@@ -163,6 +169,24 @@ export async function recordAudit(
   },
 ) {
   const ctx = getAuditContext();
+  // Diff the RAW pair. `computeChanges` does its own redaction per field, so a
+  // Restricted column still records THAT it changed — scrubbing first would
+  // compare "[redacted]" with "[redacted]" and make a salary edit, or a
+  // password reset, vanish from `changes` entirely. ADR-065 leans on this trail
+  // for exactly those writes.
+  //
+  // Diffing reaches `JSON.stringify`, and a cyclic snapshot would throw AFTER
+  // the write has committed — data changed, no audit row, 500. `scrub` carries
+  // a cycle guard; this is the equivalent for the diff.
+  let changes: Record<string, { from: unknown; to: unknown }> | null = null;
+  try {
+    if (entry.before && entry.after) {
+      changes = changesOverSharedKeys(entry.before, entry.after);
+    }
+  } catch {
+    // A snapshot the differ cannot walk. The row itself is worth more than the
+    // field, so record the write and leave `changes` null.
+  }
   await client.auditLog.create({
     data: {
       entityType: entry.entityType,
@@ -170,6 +194,7 @@ export async function recordAudit(
       action: entry.action,
       before: scrub(entry.before ?? undefined),
       after: scrub(entry.after ?? undefined),
+      changes,
       userId: ctx.userId,
       actorEmail: ctx.actorEmail,
       ipAddress: ctx.ipAddress,
@@ -178,9 +203,202 @@ export async function recordAudit(
   });
 }
 
+/**
+ * `computeChanges` restricted to keys BOTH objects carry.
+ *
+ * `recordAudit`'s callers hand-build their two snapshots, and they rarely have
+ * the same shape — `POST /api/projects` passes a name on one side and a
+ * membership list on the other. Diffing the union would report every key one
+ * side happens to lack as a change from `undefined`, so an audit trail meant to
+ * say what moved would name fields nobody touched.
+ *
+ * The trade is under-reporting at those same asymmetric call sites: a key only
+ * one side carries yields nothing rather than a false entry. That is the right
+ * way round for an audit trail, and it is strictly better than what those
+ * callers had before, which was no `changes` at all. Fixing it properly means
+ * making each caller's two snapshots symmetric, which is a change to those
+ * routes rather than to this helper.
+ */
+function changesOverSharedKeys(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Record<string, { from: unknown; to: unknown }> | null {
+  const shared: Record<string, unknown> = {};
+  for (const key of Object.keys(after)) {
+    if (key in before) shared[key] = after[key];
+  }
+  return computeChanges(before, shared);
+}
+
 function modelAccessor(client: unknown, model: string) {
   const key = model[0].toLowerCase() + model.slice(1);
   return (client as AnyClient)[key];
+}
+
+/** Prisma's atomic numeric operators. */
+const ATOMIC_OPS = ["increment", "decrement", "multiply", "divide"] as const;
+
+/**
+ * Every key Prisma allows in a scalar-update envelope.
+ *
+ * An object counts as an envelope only when ALL its keys are from this set. A
+ * `Json` column's value can legitimately contain a key called `set` or
+ * `increment` — matching on "does this key appear" would unwrap the user's own
+ * data and record a fragment of it as the whole column.
+ */
+const ENVELOPE_KEYS = new Set<string>([...ATOMIC_OPS, "set", "push", "unset"]);
+
+/** An object Prisma would store as a Json column or a scalar list, not a wrapper. */
+function isPlainValue(v: unknown): boolean {
+  if (v === null || typeof v !== "object" || v instanceof Date) return false;
+  return Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype;
+}
+
+/**
+ * "Are these the same value?", across the representations one column takes.
+ *
+ * A `Decimal` and the number that equals it must compare equal — a route
+ * validating with `z.coerce.number()` writes a number into a `Decimal(5,2)`
+ * column, and reporting `"40" → 40` as a change would fill the trail with noise
+ * (2026-08-26 review). Structural comparison is used for the things `String()`
+ * flattens to `[object Object]`: Json columns and scalar lists.
+ */
+function sameValue(a: unknown, b: unknown): boolean {
+  if (isPlainValue(a) || isPlainValue(b)) {
+    return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  }
+  if (a instanceof Date || b instanceof Date) {
+    const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : String(v));
+    return iso(a) === iso(b);
+  }
+  if ((a ?? null) === null || (b ?? null) === null) return (a ?? null) === (b ?? null);
+  return String(a) === String(b);
+}
+
+/**
+ * Overlay what the write demonstrably changed onto a snapshot of the row.
+ *
+ * ## Why this exists at all
+ *
+ * The re-read below is complete and correct — outside a transaction. Inside an
+ * interactive `$transaction` it is neither: `Prisma.defineExtension((client) =>
+ * …)` closes over the OUTER client before any transaction exists, and a query
+ * extension has no way to reach the `tx` handle (a documented Prisma
+ * limitation). So the re-read ran on a different connection, could not see the
+ * uncommitted write, and returned the row exactly as it was — `computeChanges`
+ * then diffed a value against itself and the audit row landed with
+ * `changes: null`. Thirteen `$transaction` routes were affected, every 360 form
+ * submission among them, and the failure was silent: the worst property an
+ * audit trail can have.
+ *
+ * So: re-read (right outside a transaction, harmless inside), then overlay the
+ * write's own `data` on top (right in both). Neither alone is sufficient.
+ *
+ * ## What it will and will not touch
+ *
+ * Only keys ALREADY PRESENT on the snapshot. `before` is fetched with no select,
+ * so its keys are exactly this row's scalar columns — which means a nested
+ * relation write (`connect`, `create`, …) is skipped for free rather than needing
+ * a list of operator names to recognise, and no key the row does not have can be
+ * invented. `undefined` is skipped too: passing it is this repo's partial-update
+ * idiom, and treating it as a value would fabricate changes on every edit.
+ *
+ * A `Decimal`, a scalar list and a `Json` column are all objects, and all are
+ * VALUES — only the atomic operators and `{ set }` are envelopes, and both are
+ * matched by name.
+ */
+export function projectUpdate(
+  snapshot: Record<string, unknown>,
+  data: unknown,
+): Record<string, unknown> {
+  if (data === null || typeof data !== "object") return { ...snapshot };
+  const merged: Record<string, unknown> = { ...snapshot };
+
+  for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
+    // Not a scalar column of this row (a relation write), or the caller's way
+    // of saying "leave this alone".
+    if (!(key in snapshot) || value === undefined) continue;
+
+    if (value === null || typeof value !== "object" || value instanceof Date) {
+      merged[key] = value;
+      continue;
+    }
+    if (Array.isArray(value)) {
+      // A scalar list — `pmsRoles`, for instance. Granting a role must be
+      // visible in `changes`; that is the whole point of ADR-065's trail.
+      merged[key] = value;
+      continue;
+    }
+
+    const op = value as Record<string, unknown>;
+    const keys = Object.keys(op);
+    const isEnvelope = keys.length > 0 && keys.every((k) => ENVELOPE_KEYS.has(k));
+    if (!isEnvelope) {
+      // A Decimal, or a Json column's object value. Both are values.
+      merged[key] = value;
+      continue;
+    }
+    if ("set" in op) {
+      merged[key] = op.set;
+      continue;
+    }
+    const atomic = ATOMIC_OPS.find((name) => name in op);
+    if (atomic) {
+      const current = merged[key];
+      const operand = op[atomic];
+      // A `Decimal` operand is legal on this schema's several Decimal columns.
+      // We cannot compute it here, and writing the envelope into `after` as if
+      // it were the new value would be worse than saying nothing.
+      if (typeof current !== "number" || typeof operand !== "number") continue;
+      if (atomic === "increment") merged[key] = current + operand;
+      else if (atomic === "decrement") merged[key] = current - operand;
+      else if (atomic === "multiply") merged[key] = current * operand;
+      else merged[key] = current / operand;
+      continue;
+    }
+
+    // `push`, `unset`, or an operator we cannot evaluate here. Writing the
+    // envelope in as if it were the new value would be worse than silence.
+  }
+
+  return merged;
+}
+
+/**
+ * Overlay the write, but only where the re-read saw nothing happen.
+ *
+ * The re-read is authoritative when it works, and it holds the column's REAL
+ * type — a `Decimal` where the route passed a plain number, a coerced date
+ * where it passed a string. Overlaying the caller's raw value on top of a
+ * re-read that already reflects the write invents differences that are about
+ * JavaScript types rather than about the data: `PUT /api/kpis/[id]` sends
+ * `weightage` as a number into a `Decimal(5,2)`, so an editor changing only a
+ * description would have recorded `weightage: "40" → 40`.
+ *
+ * So the overlay applies to a key only where the re-read still shows the
+ * `before` value — the signature of the in-transaction case, where the re-read
+ * ran on a connection that could not see the write. There, the write's own
+ * `data` is the only evidence there is. Values are compared as strings so a
+ * `Decimal` and the number that equals it do not read as a change.
+ */
+function overlayUnobserved(
+  before: Record<string, unknown>,
+  observed: Record<string, unknown>,
+  data: unknown,
+): Record<string, unknown> {
+  const projected = projectUpdate(before, data);
+  const merged: Record<string, unknown> = { ...observed };
+
+  for (const key of Object.keys(projected)) {
+    if (!(key in observed)) continue;
+    // The re-read already reflects this column — trust it, types and all.
+    if (!sameValue(observed[key], before[key])) continue;
+    // Nothing to say: the write's value matches what is already there.
+    if (sameValue(projected[key], before[key])) continue;
+    merged[key] = projected[key];
+  }
+
+  return merged;
 }
 
 export function computeChanges(
@@ -260,18 +478,11 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const result = await query(args);
           const after = result as Record<string, unknown>;
 
-          const isSoftDelete = before && !before.deletedAt && after.deletedAt;
-          const isRestore = before && before.deletedAt && !after.deletedAt;
-
-          let action = "UPDATE";
-          if (isSoftDelete) action = "DELETE";
-          if (isRestore) action = "RESTORE";
-
-          // Re-read the FULL row before diffing.
+          // Diff against the FULL row, not the caller's projection.
           //
-          // `computeChanges` iterates the keys of `after`, and `after` is
-          // whatever the CALLER selected. A route that narrows its select —
-          // `app/api/users/[id]/route.ts` returns six columns — hides every
+          // `computeChanges` iterates the keys of its `after`, and the caller's
+          // `after` is whatever they selected. A route that narrows its select —
+          // `app/api/users/[id]/route.ts` returns six columns — would hide every
           // change to a column outside it. The observed consequence: an admin
           // resetting another user's password produced `UPDATE | User | changes:
           // null`, indistinguishable from an admin fixing a typo in their name,
@@ -282,12 +493,16 @@ export const auditExtension = Prisma.defineExtension((client) => {
           // control it names is the audit trail — so the trail must be able to
           // show the one action that grants it.
           //
-          // `before` was fetched with no select, so it is complete; this makes
-          // `after` complete too. A null result means the row is no longer
-          // readable — the update soft-deleted it, and the soft-delete extension
-          // filters it out — in which case the caller's projection is kept and
-          // behaviour is exactly what it was. Costs one indexed lookup per
-          // audited update, on a rail where the audit trail is load-bearing.
+          // `before` was fetched with no select, so it is complete; re-reading
+          // makes `after` complete too. A null result means the row is no longer
+          // readable — the update soft-deleted it and the soft-delete extension
+          // filters it out — in which case the caller's projection is kept.
+          //
+          // Then the write is overlaid, because inside an interactive
+          // transaction this re-read cannot see it (see `projectUpdate`). One
+          // field the overlay cannot supply is `updatedAt`: Prisma sets it, so
+          // in a transaction it stays at its pre-update value. `computeChanges`
+          // ignores that column, and the audit row carries its own timestamp.
           let afterForDiff = after;
           if (before && after?.id != null) {
             try {
@@ -299,6 +514,14 @@ export const auditExtension = Prisma.defineExtension((client) => {
               // Model has no simple `id` lookup — keep the projection.
             }
           }
+          if (before) afterForDiff = overlayUnobserved(before, afterForDiff, args.data);
+
+          const isSoftDelete = before && !before.deletedAt && afterForDiff.deletedAt;
+          const isRestore = before && before.deletedAt && !afterForDiff.deletedAt;
+
+          let action = "UPDATE";
+          if (isSoftDelete) action = "DELETE";
+          if (isRestore) action = "RESTORE";
 
           const changes = before ? computeChanges(before, afterForDiff) : null;
 

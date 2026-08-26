@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { scrub, computeChanges, SCRUB_FIELDS } from "../../lib/prisma/audit-extension";
 import { REDACT_FIELDS, redactRows } from "../../scripts/neon-sql.mjs";
+import { Prisma } from "../../generated/prisma/client";
 
 test("scrub replaces every SCRUB_FIELDS key value with [redacted]", () => {
   for (const key of SCRUB_FIELDS) {
@@ -325,4 +326,150 @@ test("the hazard the extension exists to avoid: a narrow `after` reports nothing
     { id: "u1", name: "Admin", role: "ADMIN" },
   );
   assert.equal(changes, null, "documents the hazard: the projection cannot see it");
+});
+
+// --- The post-update projection (audit `changes` inside a $transaction) ---------
+
+test("projectUpdate records the write the in-transaction re-read cannot see", async () => {
+  const { projectUpdate, computeChanges } = await import("../../lib/prisma/audit-extension");
+
+  // The stale snapshot an interactive $transaction hands back: the extension's
+  // captured client is a different connection and cannot see the uncommitted
+  // write, so the re-read returns the row exactly as it was.
+  const stale = {
+    id: "ts1",
+    status: "DRAFT",
+    opensAt: new Date("2026-11-01T00:00:00.000Z"),
+    deadline: new Date("2026-12-15T00:00:00.000Z"),
+    updatedAt: new Date("2026-08-01T00:00:00.000Z"),
+  };
+
+  const after = projectUpdate(stale, {
+    opensAt: new Date("2026-08-01T00:00:00.000Z"),
+    deadline: new Date("2026-12-15T23:59:59.000Z"),
+  });
+  const changes = computeChanges(stale, after);
+  assert.ok(changes, "the window move must be recorded, not diffed away as null");
+  assert.ok("opensAt" in changes, "opensAt must appear in changes");
+  assert.equal(after.status, "DRAFT", "untouched columns keep their value");
+});
+
+test("projectUpdate treats values as values and envelopes as envelopes", async () => {
+  const { projectUpdate } = await import("../../lib/prisma/audit-extension");
+  const before = {
+    id: "e1",
+    unpaidLeaveDays: 4,
+    name: "Aisha",
+    pmsRoles: ["HRBP"],
+    // A Decimal is an object with no operator keys — a value, not an envelope.
+    weightage: new Prisma.Decimal("40"),
+    meta: { note: "prior" },
+  };
+
+  assert.equal(projectUpdate(before, { unpaidLeaveDays: { increment: 2 } }).unpaidLeaveDays, 6);
+  assert.equal(projectUpdate(before, { unpaidLeaveDays: { decrement: 1 } }).unpaidLeaveDays, 3);
+  assert.equal(projectUpdate(before, { name: { set: "Aisha A." } }).name, "Aisha A.");
+
+  // ADR-065's compensating control: granting a role must be visible in `changes`.
+  assert.deepEqual(projectUpdate(before, { pmsRoles: ["HRBP", "HR_SUPER_ADMIN"] }).pmsRoles, [
+    "HRBP",
+    "HR_SUPER_ADMIN",
+  ]);
+
+  // §5.3's weightage decisions arrive as Decimals.
+  assert.equal(
+    String(projectUpdate(before, { weightage: new Prisma.Decimal("35") }).weightage),
+    "35",
+  );
+
+  // A Json column's object value.
+  assert.deepEqual(projectUpdate(before, { meta: { note: "revised" } }).meta, { note: "revised" });
+
+  // `undefined` is this repo's partial-update idiom — never a change.
+  assert.equal(projectUpdate(before, { name: undefined }).name, "Aisha");
+
+  // A nested relation write is not a column of this row, so it is left alone.
+  assert.equal("manager" in projectUpdate(before, { manager: { connect: { id: "m1" } } }), false);
+
+  // Non-object data (or none) leaves the row as it was.
+  assert.deepEqual(projectUpdate(before, undefined), before);
+});
+
+test("the write is overlaid only where the re-read saw nothing", async () => {
+  const { projectUpdate, computeChanges } = await import("../../lib/prisma/audit-extension");
+
+  // Mirrors `overlayUnobserved`: outside a transaction the re-read already
+  // reflects the write AND holds the column's real type, so overlaying the
+  // caller's raw value there would invent a JavaScript-type difference.
+  // PUT /api/kpis/[id] sends `weightage` as a number into a Decimal column.
+  const before: Record<string, unknown> = {
+    id: "k1",
+    weightage: new Prisma.Decimal("40"),
+    description: "old",
+  };
+  const observed: Record<string, unknown> = {
+    id: "k1",
+    weightage: new Prisma.Decimal("40"),
+    description: "new",
+  };
+  const data = { weightage: 40, description: "new" };
+
+  const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const projected = projectUpdate(before, data);
+  const merged: Record<string, unknown> = { ...observed };
+  for (const key of Object.keys(projected)) {
+    if (!(key in observed)) continue;
+    if (!same(observed[key], before[key])) continue;
+    if (same(projected[key], before[key]) || String(projected[key]) === String(before[key])) {
+      continue;
+    }
+    merged[key] = projected[key];
+  }
+
+  const changes = computeChanges(before, merged);
+  assert.ok(changes);
+  assert.ok("description" in changes, "the real edit is recorded");
+  assert.equal("weightage" in changes, false, "an unchanged Decimal is not a change");
+});
+
+test("projectUpdate only unwraps a real operator envelope", async () => {
+  const { projectUpdate } = await import("../../lib/prisma/audit-extension");
+  const before: Record<string, unknown> = { id: "x", meta: { note: "prior" }, count: 1 };
+
+  // A Json column whose VALUE happens to contain a key called `set`. Matching
+  // on "does this key appear" would unwrap it and record a fragment of the
+  // user's own data as the whole column.
+  const jsonValue = { set: "a name someone typed", other: 1 };
+  assert.deepEqual(projectUpdate(before, { meta: jsonValue }).meta, jsonValue);
+
+  // A genuine envelope: every key is an operator.
+  assert.deepEqual(projectUpdate(before, { meta: { set: { note: "new" } } }).meta, {
+    note: "new",
+  });
+
+  // An operator we cannot evaluate leaves the column alone rather than writing
+  // the envelope in as if it were the value.
+  assert.equal(projectUpdate(before, { count: { push: 2 } }).count, 1);
+});
+
+test("a Restricted field still records THAT it changed", async () => {
+  const { computeChanges, scrub } = await import("../../lib/prisma/audit-extension");
+
+  // `recordAudit` diffs the RAW pair and lets `computeChanges` redact per field.
+  // Scrubbing first would compare "[redacted]" with "[redacted]" and make a
+  // salary edit — or a password reset — vanish from `changes` entirely, which is
+  // the one thing ADR-065 leans on this trail for.
+  const before = { id: "e1", basicSalary: 4000, name: "Aisha" };
+  const after = { id: "e1", basicSalary: 9000, name: "Aisha" };
+
+  const raw = computeChanges(before, after);
+  assert.ok(raw && "basicSalary" in raw, "the change must be recorded");
+  assert.equal((raw.basicSalary as { from: unknown }).from, "[redacted]");
+  assert.equal((raw.basicSalary as { to: unknown }).to, "[redacted]");
+
+  const scrubbedFirst = computeChanges(
+    scrub(before) as Record<string, unknown>,
+    scrub(after) as Record<string, unknown>,
+  );
+  assert.equal(scrubbedFirst, null, "which is exactly what scrubbing first would lose");
 });

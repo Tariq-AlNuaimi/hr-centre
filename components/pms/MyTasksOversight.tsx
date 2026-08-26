@@ -63,6 +63,8 @@ import {
   STAGE_RANK,
   type Task,
   type TaskTone,
+  buildThreeSixtyTasks,
+  type ThreeSixtyTaskRow,
 } from "@/lib/pms/tasks";
 
 function useNowMs(): number | null {
@@ -139,13 +141,19 @@ function useGoalSettingSnapshot() {
 function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: GoalStage | null }) {
   const t = useTranslations("pms.home");
 
+  // A task with its own deadline (§4.4's 360 rows) speaks for itself; the KPI
+  // rows still take the goal-setting stage's, which is the only deadline they
+  // have.
+  const rowTone = task.tone ?? tone;
+  const rowDeadline = task.dueAt ?? stage?.deadline ?? null;
+
   const dueLabel =
-    tone === "overdue"
+    rowTone === "overdue"
       ? t("overdue")
-      : tone === "dueSoon"
+      : rowTone === "dueSoon"
         ? t("dueSoon")
-        : tone === "open" && stage
-          ? t("dueLabel", { datetime: formatDateTime(stage.deadline) })
+        : rowTone === "open" && rowDeadline
+          ? t("dueLabel", { datetime: formatDateTime(rowDeadline) })
           : t("notYetOpen");
 
   return (
@@ -155,7 +163,7 @@ function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: Goa
           <span className="text-sm font-medium text-foreground">
             {t(task.titleKey, task.titleParams)}
           </span>
-          <Badge variant={TONE_VARIANT[tone]}>{dueLabel}</Badge>
+          <Badge variant={TONE_VARIANT[rowTone]}>{dueLabel}</Badge>
         </div>
         <p className="max-w-prose text-xs text-muted-foreground">{t(task.detailKey)}</p>
         {/* The server's own sentence, quoted: it names WHICH rule closed the
@@ -189,7 +197,7 @@ function MyTasksBody(props: {
   if (props.failed) {
     return (
       <div className="space-y-3">
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-emphasis">
           {t("loadFailed")}
         </p>
         <Button variant="outline" onClick={props.onRetry}>
@@ -346,7 +354,7 @@ export function MyTasksOversight() {
   const stage = snapshot.roster.data?.stage ?? null;
   const tone = toneForStage(stage, nowMs);
 
-  const tasks = buildTasks({
+  const kpiTasks = buildTasks({
     rows: snapshot.rows,
     employeeId: actor?.employeeId ?? null,
     stageRank: STAGE_RANK[tone],
@@ -354,6 +362,25 @@ export function MyTasksOversight() {
       `/${locale}/goal-setting/${snapshot.openCycle?.id}/participants/${row.participantId}`,
     locale,
   });
+
+  // §4.4 — "any 360 assigned to me (report, peer, or colleague)". Driven by
+  // assignment, so it is a separate read from the goal-setting roster: a rater
+  // may hold a 360 for someone who is not their report and never appears in it.
+  const myThreeSixty = useQuery({
+    queryKey: ["pms", "360", "mine"],
+    queryFn: () =>
+      apiClient.get<{ assignments: ThreeSixtyTaskRow[] }>("/api/three-sixty/assignments"),
+    enabled: !!actor?.employeeId,
+  });
+
+  const tasks = [
+    ...kpiTasks,
+    ...buildThreeSixtyTasks({
+      assignments: myThreeSixty.data?.assignments ?? [],
+      hrefFor: (a) => `/${locale}/three-sixty/assignments/${a.id}`,
+      nowMs,
+    }),
+  ].sort((a, b) => a.rank - b.rank);
 
   const rosterData = snapshot.roster.data;
   const truncation =

@@ -120,6 +120,45 @@ export function kpiEditBlockedReason(params: {
   return null;
 }
 
+/** A KPI as the §12.3 split needs to see it: its weight, and which period owns it. */
+export type PeriodWeightedKpi = WeightedKpi & { assignmentPeriodId?: string | null };
+
+/**
+ * §5.3 applied the way §12.3 needs it — per period on a split year, once on an
+ * unsplit one.
+ *
+ * §12.3 gives each department's manager "their own portion's KPIs" to draft, so
+ * each portion is a complete set in its own right and must reach 100% on its
+ * own. Summing the two portions to 100 instead would make one manager's drafting
+ * depend on the other's, which is exactly the coupling "neither manager owns the
+ * full year" removes.
+ *
+ * When nothing carries a period — the overwhelming majority — this groups into a
+ * single bucket and returns precisely what `weightageMessage` returns, so the
+ * unsplit path is unchanged rather than merely equivalent.
+ */
+export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): string | null {
+  const byPeriod = new Map<string | null, PeriodWeightedKpi[]>();
+  for (const kpi of kpis) {
+    const key = kpi.assignmentPeriodId ?? null;
+    const bucket = byPeriod.get(key);
+    if (bucket) bucket.push(kpi);
+    else byPeriod.set(key, [kpi]);
+  }
+  if (byPeriod.size <= 1) return weightageMessage(kpis);
+
+  // Deterministic order, so the message names the same period every time rather
+  // than whichever the map happened to yield first.
+  const keys = [...byPeriod.keys()].sort((a, b) => (a ?? "").localeCompare(b ?? ""));
+  for (const key of keys) {
+    const message = weightageMessage(byPeriod.get(key) ?? []);
+    if (message) {
+      return `${message} Each period of a split year needs its own complete set (§12.3).`;
+    }
+  }
+  return null;
+}
+
 /**
  * §5.3 — why this set cannot be signed, or null when it can.
  *
@@ -129,7 +168,7 @@ export function kpiEditBlockedReason(params: {
  * rather than an error.
  */
 export function signOffBlockedReason(params: {
-  kpis: readonly WeightedKpi[];
+  kpis: readonly PeriodWeightedKpi[];
   stage: StageWindow;
   now: Date;
 }): string | null {
@@ -139,7 +178,9 @@ export function signOffBlockedReason(params: {
       ? "Goal-setting has not opened yet for this cycle (§2)."
       : "The goal-setting deadline has passed and the stage is locked (§5.4).";
   }
-  return weightageMessage(kpis);
+  // §12.3 — per period when the year is split, which `weightageMessageByPeriod`
+  // reduces to the ordinary single-set check when it is not.
+  return weightageMessageByPeriod(kpis);
 }
 
 /** The stage KPI drafting and goal sign-off both belong to. */

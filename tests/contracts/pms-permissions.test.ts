@@ -303,3 +303,35 @@ test("capabilitiesFor is consistent with the individual predicates", () => {
     assert.equal(caps.readOnly, isReadOnly(a));
   }
 });
+
+test("§4.1 `hr` is who may RUN the cycle, and it is not `orgWide` or `!readOnly`", async () => {
+  const { capabilitiesFor } = await import("../../lib/pms/permissions");
+
+  const actor = (roles: string[], isLineManager = false) => ({
+    userId: "u1",
+    employeeId: "e1",
+    pmsRoles: roles as never,
+    isLineManager,
+  });
+
+  // The COO / Ops Director: org-wide sight, read-only throughout (§4.1).
+  const executive = capabilitiesFor(actor(["EXECUTIVE_VIEWER"]));
+  assert.equal(executive.orgWide, true, "sees everything");
+  assert.equal(executive.hr, false, "runs nothing");
+
+  // The same person with direct reports is NOT read-only, which is why
+  // `!readOnly` was the wrong gate for an HR-only action: it would have offered
+  // them buttons that always 403.
+  const executiveWithReports = capabilitiesFor(actor(["EXECUTIVE_VIEWER"], true));
+  assert.equal(executiveWithReports.readOnly, false);
+  assert.equal(executiveWithReports.hr, false, "still runs nothing");
+
+  // §4.3's additive roles: HRBP is HR without being Super Admin, so `configure`
+  // is not a stand-in for `hr` either.
+  const hrbp = capabilitiesFor(actor(["HRBP"]));
+  assert.equal(hrbp.hr, true);
+  assert.equal(hrbp.configure, false);
+
+  assert.equal(capabilitiesFor(actor(["HR_SUPER_ADMIN"])).hr, true);
+  assert.equal(capabilitiesFor(actor([])).hr, false);
+});
