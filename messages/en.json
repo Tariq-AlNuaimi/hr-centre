@@ -274,7 +274,7 @@
       "confirmNote": "Applying writes the changes above. Nothing else in the organization is touched.",
       "applyAction": "Apply {created} new and {updated} updated",
       "applying": "Applying…",
-      "applied": "Import applied: {created} created, {updated} updated.",
+      "applied": "Import applied: {created} created, {updated} updated, {provisioned} login(s) provisioned.",
       "applyFailed": "The import could not be applied.",
       "discard": "Start over",
       "nothingToApply": "This file makes no changes.",
@@ -418,7 +418,10 @@
       "saveAction": "Save roles",
       "saving": "Saving…",
       "saved": "HR roles updated for {name}.",
-      "saveFailed": "Could not update the HR roles."
+      "saveFailed": "Could not update the HR roles.",
+      "canSignIn": "Can sign in",
+      "hasLogin": "Has login",
+      "noLogin": "No login"
     },
     "goalSetting": {
       "title": "Goal setting",

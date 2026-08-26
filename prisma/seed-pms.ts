@@ -585,10 +585,67 @@ export async function seedPms(prisma: PrismaClient): Promise<void> {
 
   await bootstrapAdminEmployee(prisma, entityIds, departmentIds);
 
+  const provisioned = await provisionFixtureLogins(prisma, employeeIds);
+
   console.log(
     `PMS fixture: ${ENTITIES.length} entities, ${DEPARTMENTS.length} departments, ` +
-      `${EMPLOYEES.length} employees.`,
+      `${EMPLOYEES.length} employees, ${provisioned} login(s) provisioned.`,
   );
+}
+
+/**
+ * Give every fixture employee the same login the IMPORT would have given them —
+ * ADR-069.
+ *
+ * The rule is a property of an employee record existing, not of the route that
+ * created it. Applying an import provisions a linked, passwordless `VIEWER`; a
+ * seeded fixture that did not would produce a database whose people are
+ * unreachable in a way no imported population ever is, and the demo would be the
+ * place that got discovered.
+ *
+ * Passwordless, exactly as the import's is: `authorize()` returns null without a
+ * hash, so these accounts cannot be signed into with a guessed password. They
+ * become usable when an IdP is configured (`AUTH_ENTRA_*`) or when a platform
+ * admin sets a password for a named person at `/users`. Seeding thirty-seven
+ * shared passwords to make a demo convenient is the one thing this must not do.
+ */
+async function provisionFixtureLogins(
+  prisma: PrismaClient,
+  employeeIds: Map<string, string>,
+): Promise<number> {
+  let provisioned = 0;
+  for (const employee of EMPLOYEES) {
+    const id = employeeIds.get(employee.odooId);
+    if (!id) continue;
+
+    const current = await prisma.employee.findUnique({
+      where: { id },
+      select: { userId: true, status: true },
+    });
+    if (current?.userId) continue;
+    // §12.1 — a leaver's record is preserved; their access is not created. The
+    // fixture defines no leavers today, so the status is read from the ROW
+    // rather than the literal: a leaver added later, or one off-boarded in a
+    // long-lived dev database, must not be handed an account by a re-seed.
+    if (current?.status === "LEAVER") continue;
+
+    const email = employee.email.toLowerCase().trim();
+    const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+    // An account made by hand keeps its role and its password; re-seeding must
+    // disturb nobody, for the same reason a re-import must not (§3.5).
+    if (existing) {
+      await prisma.employee.update({ where: { id }, data: { userId: existing.id } });
+      continue;
+    }
+
+    const user = await prisma.user.create({
+      data: { email, name: employee.name, role: "VIEWER" },
+      select: { id: true },
+    });
+    await prisma.employee.update({ where: { id }, data: { userId: user.id } });
+    provisioned++;
+  }
+  return provisioned;
 }
 
 /**

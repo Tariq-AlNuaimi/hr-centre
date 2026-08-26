@@ -274,7 +274,7 @@
       "confirmNote": "التأكيد يطبّق التغييرات أعلاه فقط، ولا يمسّ أي بيانات أخرى.",
       "applyAction": "تطبيق {created} جديد و{updated} محدّث",
       "applying": "جارٍ التطبيق…",
-      "applied": "تم الاستيراد: {created} إضافة و{updated} تحديث.",
+      "applied": "طُبِّق الاستيراد: {created} إضافة، {updated} تحديث، و{provisioned} حساب دخول.",
       "applyFailed": "تعذّر تطبيق الاستيراد.",
       "discard": "البدء من جديد",
       "nothingToApply": "هذا الملف لا يُحدث أي تغيير.",
@@ -418,7 +418,10 @@
       "saveAction": "حفظ الأدوار",
       "saving": "جارٍ الحفظ…",
       "saved": "تم تحديث أدوار {name}.",
-      "saveFailed": "تعذّر تحديث الأدوار."
+      "saveFailed": "تعذّر تحديث الأدوار.",
+      "canSignIn": "إمكانية تسجيل الدخول",
+      "hasLogin": "لديه حساب",
+      "noLogin": "لا يوجد حساب"
     },
     "goalSetting": {
       "title": "تحديد الأهداف",

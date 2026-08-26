@@ -53,6 +53,12 @@ export interface RoleEmployeeRow {
    * a lie the operator would then act on.
    */
   pmsRoles?: string[];
+  /**
+   * ADR-069 — whether a login exists for this person at all. Unlike `pmsRoles`
+   * this is NOT optional: `serializeEmployee` always emits it, so an absent
+   * value would mean a caller bypassed the serialiser rather than "unknown".
+   */
+  hasLogin: boolean;
 }
 
 interface RoleEditorProps {
@@ -173,6 +179,27 @@ export function RoleEditor({ actorEmployeeId }: RoleEditorProps) {
           </div>
         );
       },
+    },
+    {
+      /*
+        ADR-069 — the two role systems on one screen. Granting HRBP to someone
+        with no account grants nothing, and until the import provisioned logins
+        that was the normal case rather than the exception. HR should be able to
+        see it here instead of inferring it from a person who never responds.
+
+        Deliberately not a control: creating a login is the import's job (or a
+        platform admin's at /users), and a one-off button here would be a third
+        way to mint accounts.
+      */
+      key: "hasLogin",
+      title: t("roles.canSignIn"),
+      dataIndex: "hasLogin",
+      render: (value: boolean) =>
+        value ? (
+          <Badge variant="success">{t("roles.hasLogin")}</Badge>
+        ) : (
+          <Badge variant="warning">{t("roles.noLogin")}</Badge>
+        ),
     },
     {
       key: "actions",
