@@ -230,11 +230,13 @@
 - components/pms/CycleProgressReport.tsx
 - components/pms/DistributionReport.tsx
 - components/pms/EmployeeColumns.tsx
+- components/pms/EmployeePicker.tsx
 - components/pms/ImportPreview.tsx
 - components/pms/KpiDraftBoard.tsx
 - components/pms/KpiForm.tsx
 - components/pms/KpiList.tsx
 - components/pms/KpiVersionHistory.tsx
+- components/pms/LeaverRecorder.tsx
 - components/pms/ManagerComplianceReport.tsx
 - components/pms/MasterResultsExport.tsx
 - components/pms/MidYearBoard.tsx
@@ -252,6 +254,7 @@
 - components/pms/StatusRoster.tsx
 - components/pms/ThreeSixtyForm.tsx
 - components/pms/ThreeSixtySetup.tsx
+- components/pms/TransferRecorder.tsx
 - components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
 - components/shared/AuthCard.tsx

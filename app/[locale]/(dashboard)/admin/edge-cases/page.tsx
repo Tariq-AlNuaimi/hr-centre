@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { LeaverRecorder } from "@/components/pms/LeaverRecorder";
+import { TransferRecorder } from "@/components/pms/TransferRecorder";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageSkeleton } from "@/components/shared/Skeletons";
@@ -156,6 +158,12 @@ export default function EdgeCasesPage() {
           hint={t("splitYearsHint")}
         />
       </div>
+
+      {/* §12.1 — "settable by import OR MANUALLY (immediate one-off
+          resignations)", and §12.3's transfer. Both routes existed with no
+          caller, so the manual half of §12 could not be done at all. */}
+      <LeaverRecorder onDone={() => void rollUps.refetch()} />
+      {cycleId && <TransferRecorder cycleId={cycleId} onDone={() => void transfers.refetch()} />}
 
       <SectionCard title={t("rollUpsTitle")} subtitle={t("rollUpsHelp")}>
         {open.length === 0 ? (

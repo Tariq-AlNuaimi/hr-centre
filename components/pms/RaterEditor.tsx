@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { EmployeePicker, type PickablePerson } from "@/components/pms/EmployeePicker";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +48,7 @@ import { apiClient } from "@/lib/api-client";
  * re-implement the rules — the route stays the control.
  */
 
-type Person = { id: string; name: string; email?: string; status?: string; roleTrack?: string };
+type Person = PickablePerson;
 
 export function RaterEditor({
   threeSixtyCycleId,
@@ -64,26 +63,11 @@ export function RaterEditor({
 }) {
   const t = useTranslations("pms.raterEditor");
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
   const [staged, setStaged] = useState<Person[] | null>(null);
 
   // Null until HR touches something, so reopening a row always shows the server's
   // current answer rather than a stale edit from a previous open.
   const raters = staged ?? currentRaters;
-
-  const people = useQuery({
-    queryKey: ["pms", "employees", "raterSearch", search],
-    queryFn: () =>
-      apiClient.get<{ data: Person[] }>(
-        `/api/employees?pageSize=10&status=ACTIVE&search=${encodeURIComponent(search)}`,
-      ),
-    enabled: ratee !== null && search.trim().length > 1,
-  });
-
-  const candidates = useMemo(() => {
-    const taken = new Set([ratee?.id, ...raters.map((r) => r.id)]);
-    return (people.data?.data ?? []).filter((p) => !taken.has(p.id));
-  }, [people.data, raters, ratee]);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -96,7 +80,6 @@ export function RaterEditor({
       toast.success(t("savedToast", { name: ratee?.name ?? "" }));
       void queryClient.invalidateQueries({ queryKey: ["pms", "360", "assignments"] });
       setStaged(null);
-      setSearch("");
       onClose();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -108,7 +91,6 @@ export function RaterEditor({
       onOpenChange={(open) => {
         if (!open) {
           setStaged(null);
-          setSearch("");
           onClose();
         }
       }}
@@ -152,32 +134,12 @@ export function RaterEditor({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="rater-search">{t("addLabel")}</Label>
-            <Input
+            <EmployeePicker
               id="rater-search"
-              value={search}
-              placeholder={t("searchPlaceholder")}
-              onChange={(e) => setSearch(e.target.value)}
+              label={t("addLabel")}
+              exclude={[ratee?.id ?? "", ...raters.map((r) => r.id)]}
+              onPick={(person) => setStaged([...raters, person])}
             />
-            {search.trim().length > 1 && (
-              <ul className="max-h-48 space-y-1 overflow-y-auto">
-                {candidates.length === 0 && !people.isLoading ? (
-                  <li className="p-2 text-sm text-muted-foreground">{t("noMatches")}</li>
-                ) : (
-                  candidates.map((person) => (
-                    <li key={person.id}>
-                      <button
-                        type="button"
-                        onClick={() => setStaged([...raters, person])}
-                        className="w-full rounded-md border border-border p-2 text-start text-sm hover:bg-muted"
-                      >
-                        {person.name}
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            )}
             {/* The picker offers anyone active; the ROUTE decides. Saying so
                 keeps the screen honest about who holds the rule. */}
             <p className="text-xs text-muted-foreground">{t("pickerNote")}</p>

@@ -1224,6 +1224,41 @@
       "edit": "Edit",
       "loadFailed": "Could not load the projects."
     },
+    "employeePicker": {
+      "placeholder": "Search by name or email",
+      "searching": "Searching…",
+      "noMatches": "No active employees match that."
+    },
+    "edgeCaseRecord": {
+      "leaver": {
+        "title": "Record a departure",
+        "help": "§12.1 — for an immediate resignation, rather than waiting for the next import.",
+        "who": "Employee",
+        "change": "Change",
+        "lastWorkingDay": "Last working day",
+        "note": "Note (optional)",
+        "notePlaceholder": "Recorded on the audit trail, not on the employee record",
+        "action": "Record departure",
+        "working": "Recording…",
+        "savedToast": "{name} recorded as a leaver.",
+        "consequences": "Their direct reports roll up to their manager one level, pending actions stop chasing them, and any 360 they were rating is flagged for reassignment. The record itself is kept, never deleted."
+      },
+      "transfer": {
+        "title": "Record a transfer",
+        "help": "§12.3 — a mid-cycle move between departments splits the performance year in two.",
+        "who": "Employee",
+        "change": "Change",
+        "date": "Transfer date",
+        "dateNote": "Each period is weighted by days ÷ 365, so this date changes the score.",
+        "newDepartment": "New department",
+        "choose": "Choose a department",
+        "newManager": "New manager (optional)",
+        "action": "Record transfer",
+        "working": "Recording…",
+        "savedToast": "{name}'s transfer recorded.",
+        "consequences": "The year splits at this date. Each department's manager drafts and assesses their own portion, and the departmental and corporate scores follow the periods."
+      }
+    },
     "strategyScores": {
       "title": "Corporate & departmental scores",
       "subtitle": "The Strategy team's figures, keyed in by HR.",

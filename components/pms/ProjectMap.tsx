@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EmployeePicker, type PickablePerson } from "@/components/pms/EmployeePicker";
 import { apiClient } from "@/lib/api-client";
 
 /**
@@ -32,7 +33,7 @@ import { apiClient } from "@/lib/api-client";
  * screen is what will exist.
  */
 
-type Member = { id: string; name: string; odooId?: string };
+type Member = PickablePerson & { odooId?: string };
 type Project = { id: string; name: string; members: Member[] };
 
 export function ProjectMap({ cycleId }: { cycleId: string }) {
@@ -40,7 +41,6 @@ export function ProjectMap({ cycleId }: { cycleId: string }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [members, setMembers] = useState<Member[]>([]);
-  const [search, setSearch] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const projects = useQuery({
@@ -48,24 +48,9 @@ export function ProjectMap({ cycleId }: { cycleId: string }) {
     queryFn: () => apiClient.get<{ projects: Project[] }>(`/api/projects?cycleId=${cycleId}`),
   });
 
-  const people = useQuery({
-    queryKey: ["pms", "employees", "projectSearch", search],
-    queryFn: () =>
-      apiClient.get<{ data: Member[] }>(
-        `/api/employees?pageSize=10&status=ACTIVE&search=${encodeURIComponent(search)}`,
-      ),
-    enabled: search.trim().length > 1,
-  });
-
-  const candidates = useMemo(() => {
-    const taken = new Set(members.map((m) => m.id));
-    return (people.data?.data ?? []).filter((p) => !taken.has(p.id));
-  }, [people.data, members]);
-
   const reset = () => {
     setName("");
     setMembers([]);
-    setSearch("");
     setEditingId(null);
   };
 
@@ -135,34 +120,14 @@ export function ProjectMap({ cycleId }: { cycleId: string }) {
               </ul>
             )}
 
-            <div className="max-w-md space-y-1">
-              <Label htmlFor="project-search">{t("addMember")}</Label>
-              <Input
+            <div className="max-w-md">
+              <EmployeePicker
                 id="project-search"
-                value={search}
-                placeholder={t("searchPlaceholder")}
-                onChange={(e) => setSearch(e.target.value)}
+                label={t("addMember")}
+                exclude={members.map((m) => m.id)}
+                onPick={(person) => setMembers([...members, person])}
               />
             </div>
-            {search.trim().length > 1 && (
-              <ul className="max-h-48 max-w-md space-y-1 overflow-y-auto">
-                {candidates.length === 0 && !people.isLoading ? (
-                  <li className="p-2 text-sm text-muted-foreground">{t("noMatches")}</li>
-                ) : (
-                  candidates.map((person) => (
-                    <li key={person.id}>
-                      <button
-                        type="button"
-                        onClick={() => setMembers([...members, person])}
-                        className="w-full rounded-md border border-border p-2 text-start text-sm hover:bg-muted"
-                      >
-                        {person.name}
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            )}
           </div>
         </div>
       </SectionCard>
@@ -192,7 +157,6 @@ export function ProjectMap({ cycleId }: { cycleId: string }) {
                     setEditingId(project.id);
                     setName(project.name);
                     setMembers(project.members);
-                    setSearch("");
                   }}
                 >
                   {t("edit")}
