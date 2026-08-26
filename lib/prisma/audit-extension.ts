@@ -1,5 +1,6 @@
 import { Prisma } from "../../generated/prisma/client";
 import { getAuditContext } from "../audit-context";
+import { currentAuditWriter, type AuditWriter } from "./tx-context";
 
 // Models excluded from audit logging
 const EXCLUDE = new Set(["AuditLog", "Account", "Session", "VerificationToken"]);
@@ -137,14 +138,11 @@ type AnyClient = {
   };
 };
 
-// Minimal shape needed to write an audit row through any client (notably
-// `prismaUnfiltered`, which is outside the audit extension). `create` is typed
-// loosely so Prisma's generated delegate (with its strict input type) remains
-// assignable -- same pattern the extension uses for its internal audit writes.
-type AuditWriter = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  auditLog: { create: (args: any) => Promise<unknown> };
-};
+// `AuditWriter` — the minimal shape needed to write an audit row through any
+// client (notably `prismaUnfiltered`, which is outside the audit extension, and
+// a `$transaction` handle) — now lives in `./tx-context`, because that module's
+// whole job is swapping one such writer for another (ADR-068). One definition,
+// two readers.
 
 /**
  * Explicitly record an audit row for an operation performed OUTSIDE the audit
@@ -455,7 +453,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const record = result as Record<string, unknown>;
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).auditLog.create({
+          await currentAuditWriter(client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String(record.id),
@@ -537,7 +535,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const changes = before ? computeChanges(before, afterForDiff) : null;
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).auditLog.create({
+          await currentAuditWriter(client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String(after.id),
@@ -573,7 +571,7 @@ export const auditExtension = Prisma.defineExtension((client) => {
           const result = await query(args);
 
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (client as any).auditLog.create({
+          await currentAuditWriter(client as any).auditLog.create({
             data: {
               entityType: model,
               entityId: String((before as Record<string, unknown> | null)?.id ?? "unknown"),

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
@@ -62,7 +62,7 @@ export const POST = withRateLimit(
       select: { id: true, members: { select: { employeeId: true }, take: 200 } },
     });
 
-    const project = await prisma.$transaction(async (tx) => {
+    const project = await auditedTransaction(async (tx) => {
       const row = existing
         ? { id: existing.id, name }
         : await tx.project.create({ data: { cycleId, name }, select: { id: true, name: true } });

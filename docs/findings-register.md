@@ -35,6 +35,42 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [maintainable/correctness] **An audit row written inside a `$transaction` survived
+  the rollback — and a soft delete inside one escaped the transaction entirely.** Both extensions
+  resolved their client from the handle captured in `defineExtension`, not from `tx`. For the audit
+  extension that meant the write and its audit row committed independently, so a rolled-back
+  transaction left a row asserting a change that never happened. Measured: a deliberately
+  rolled-back `employee.update` left the employee untouched and one audit row saying otherwise.
+
+  **The worse instance was found while fixing the first.** The soft-delete extension resolves its
+  model DELEGATE the same way and then runs `findUnique` + `update` on it, so a soft delete inside a
+  transaction wrote its **data** outside the transaction: `tx.user.delete(...)` in a rolled-back
+  transaction left `deletedAt` SET on a row the rollback was meant to restore. That is data loss
+  surviving a rollback, not a misleading log line. Latent today — the only two in-transaction
+  deletes target `Assignment` and `ProjectMember`, neither soft-delete-registered — but `Kpi`,
+  `Employee`, `Department`, `OrgEntity` and `User` all are, and `tx.kpi.delete(...)` would have
+  closed the trap silently.
+
+  **Fixed 2026-08-26 per ADR-068**, operator-authorised (`lib/prisma/**` and `eslint-rules/**` are
+  both Ask-before). A module-private `AsyncLocalStorage` in `lib/prisma/tx-context.ts` publishes the
+  active transaction client; `auditedTransaction` in `lib/prisma.ts` is the only writer; both
+  extensions resolve through `currentClient`. Eleven call sites changed one identifier. The
+  fourteenth ESLint rule, `no-bare-prisma-transaction`, makes the bare form an error — the failure
+  is invisible to every test (transactions in tests commit), so a convention here would be forgotten
+  exactly once.
+
+  **A near-miss worth recording.** Converting the routes silently disarmed
+  `no-unaudited-bulk-write`: it registers the callback's `tx` as a tracked alias only on a
+  `$transaction` MEMBER expression, and `auditedTransaction` is a bare call. Every bulk write inside
+  a transaction stopped being flagged — the audit-completeness floor dropped as a side effect of an
+  audit-atomicity fix, announcing itself only as two "unused eslint-disable directive" warnings. The
+  rule now recognises the wrapper and a rule-test case pins it. **The general lesson: an ESLint rule
+  that tracks a call shape is coupled to that shape, so changing the shape is a change to the rule.**
+
+  Pinned by three integration tests (rollback leaves no audit row; commit still leaves exactly one,
+  with its diff; a soft delete rolls back), each verified to FAIL against the pre-fix code.
+  — operator — status: fixed(2026-08-26, ADR-068)
+
 - 2026-08-26 — [maintainable/observability] **Five explicit `recordAudit()` callers passed
   asymmetric snapshots, so the fields they wrote never reached `changes`.** `changesOverSharedKeys`
   diffs only keys BOTH snapshots carry — deliberately, because diffing the union would report every

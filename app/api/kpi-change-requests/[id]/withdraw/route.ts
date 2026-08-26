@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { withdrawBlockedReason } from "@/lib/pms/change-request";
@@ -66,7 +66,7 @@ export const POST = withRateLimit(
     // The claim and its audit row in ONE transaction — see the note on the
     // rejection path in decide/route.ts. §6.3 keeps the row; the trail keeps WHO
     // took it back and when, and neither should exist without the other.
-    const withdrawn = await prisma.$transaction(async (tx) => {
+    const withdrawn = await auditedTransaction(async (tx) => {
       // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
       const claimed = await tx.kpiChangeRequest.updateMany({
         where: { id, status: "PENDING" },

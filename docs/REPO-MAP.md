@@ -191,7 +191,8 @@
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, projectUpdate, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
-- lib/prisma.ts: prisma, prismaUnfiltered
+- lib/prisma/tx-context.ts: AuditWriter, runInAuditTx, currentClient, currentAuditWriter
+- lib/prisma.ts: prisma, prismaUnfiltered, auditedTransaction
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext

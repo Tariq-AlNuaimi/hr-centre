@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
 import {
@@ -134,7 +134,7 @@ export const POST = withRateLimit(
     // The adjustment row and the band move are one fact. §10.5 wants "who,
     // from-score, to-score, when, and a mandatory reason" for every override, so
     // a moved band with no adjustment row is exactly the state to prevent.
-    await prisma.$transaction(async (tx) => {
+    await auditedTransaction(async (tx) => {
       await tx.calibrationAdjustment.create({
         data: {
           employeeScoreId,

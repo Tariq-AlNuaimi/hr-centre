@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
@@ -205,7 +205,7 @@ export const POST = withRateLimit(
 
     const templateByType = new Map(threeSixty.templates.map((t) => [t.type, t.id]));
 
-    await prisma.$transaction(async (tx) => {
+    await auditedTransaction(async (tx) => {
       // Replace this ratee's set wholesale — that is what "set the raters" means,
       // and a partial edit would leave the previous rater assigned to a form HR
       // has just decided they should not fill in.

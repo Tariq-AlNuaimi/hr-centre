@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
@@ -146,7 +146,7 @@ export const POST = withRateLimit(
       );
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await auditedTransaction(async (tx) => {
       const before = await tx.employeeAssignmentPeriod.create({
         data: {
           employeeId,

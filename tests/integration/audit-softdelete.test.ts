@@ -20,7 +20,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
 
-import { prisma, prismaUnfiltered } from "../../lib/prisma";
+import { auditedTransaction, prisma, prismaUnfiltered } from "../../lib/prisma";
 import { withAuditContext } from "../../lib/audit-context";
 
 // Unique marker so cleanup only ever touches rows this run created.
@@ -217,5 +217,133 @@ test(
         "groupBy(prismaUnfiltered) still counts it -- the row is physically present",
       );
     });
+  },
+);
+
+// --- ADR-068: an audit row must share the fate of the write it describes ------
+
+test(
+  "ADR-068 a rolled-back transaction leaves NO audit row behind",
+  { skip: !dbReachable && "no reachable DATABASE_URL" },
+  async () => {
+    const user = await prismaUnfiltered.user.create({
+      data: { email: email("rollback"), name: "Rollback Probe", passwordHash: "hash-rollback" },
+      select: { id: true, name: true },
+    });
+    createdUserIds.push(user.id);
+
+    const auditsBefore = await prismaUnfiltered.auditLog.count({
+      where: { entityType: "User", entityId: user.id },
+    });
+
+    await withAuditContext({ userId: actorId }, async () => {
+      await assert.rejects(
+        () =>
+          auditedTransaction(async (tx) => {
+            await tx.user.update({
+              where: { id: user.id },
+              data: { name: "Renamed In Doomed Tx" },
+            });
+            throw new Error("deliberate rollback");
+          }),
+        /deliberate rollback/,
+      );
+    });
+
+    const auditsAfter = await prismaUnfiltered.auditLog.count({
+      where: { entityType: "User", entityId: user.id },
+    });
+    const row = await prismaUnfiltered.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { name: true },
+    });
+
+    // The write rolled back...
+    assert.equal(row.name, "Rollback Probe", "the update must not have survived");
+    // ...and so must its audit row. Before ADR-068 the extension wrote on the
+    // client it captured in defineExtension rather than on `tx`, so this count
+    // went UP by one: the trail asserted a rename that never happened. A false
+    // positive is not the lesser failure — §12.2's trail is read to answer "who
+    // changed this person's record", and someone acts on the answer.
+    assert.equal(
+      auditsAfter,
+      auditsBefore,
+      "a rolled-back transaction must not leave an audit row asserting a change that never happened",
+    );
+  },
+);
+
+test(
+  "ADR-068 a committed transaction still writes exactly one audit row",
+  { skip: !dbReachable && "no reachable DATABASE_URL" },
+  async () => {
+    const user = await prismaUnfiltered.user.create({
+      data: { email: email("commit"), name: "Commit Probe", passwordHash: "hash-commit" },
+      select: { id: true },
+    });
+    createdUserIds.push(user.id);
+
+    const auditsBefore = await prismaUnfiltered.auditLog.count({
+      where: { entityType: "User", entityId: user.id, action: "UPDATE" },
+    });
+
+    await withAuditContext({ userId: actorId }, async () => {
+      await auditedTransaction(async (tx) => {
+        await tx.user.update({ where: { id: user.id }, data: { name: "Renamed And Committed" } });
+      });
+    });
+
+    const audits = await prismaUnfiltered.auditLog.findMany({
+      where: { entityType: "User", entityId: user.id, action: "UPDATE" },
+      select: { changes: true },
+    });
+
+    // The other direction, and the reason "just don't write it in a transaction"
+    // was not the fix: moving the audit row onto `tx` must not cost the row on
+    // the path that commits, and must not cost its diff either.
+    assert.equal(audits.length - auditsBefore, 1, "exactly one audit row for one committed write");
+    assert.deepEqual(audits[audits.length - 1].changes, {
+      name: { from: "Commit Probe", to: "Renamed And Committed" },
+    });
+  },
+);
+
+test(
+  "ADR-068 a soft delete inside a rolled-back transaction does not survive it",
+  { skip: !dbReachable && "no reachable DATABASE_URL" },
+  async () => {
+    const user = await prismaUnfiltered.user.create({
+      data: { email: email("sd-rollback"), name: "Soft Delete Probe", passwordHash: "hash-sd" },
+      select: { id: true },
+    });
+    createdUserIds.push(user.id);
+
+    await withAuditContext({ userId: actorId }, async () => {
+      await assert.rejects(
+        () =>
+          auditedTransaction(async (tx) => {
+            await tx.user.delete({ where: { id: user.id } });
+            throw new Error("deliberate rollback");
+          }),
+        /deliberate rollback/,
+      );
+    });
+
+    const row = await prismaUnfiltered.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { deletedAt: true },
+    });
+
+    // The sharper half of ADR-068, and the reason it is not "only" an audit fix.
+    // The soft-delete extension resolved its model delegate from the CAPTURED
+    // client, so the rewritten `update` ran outside the transaction: `deletedAt`
+    // stayed set on a row the rollback was supposed to restore. That is data
+    // loss surviving a rollback, and it was latent only because no route yet
+    // soft-deletes inside a transaction.
+    assert.equal(
+      row.deletedAt,
+      null,
+      "a soft delete must roll back with its transaction, not outlive it",
+    );
   },
 );

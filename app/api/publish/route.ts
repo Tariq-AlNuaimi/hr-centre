@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
@@ -105,7 +105,7 @@ export const POST = withRateLimit(
     // reporting a `before` that was only ever true for one of them. §13.2 asks
     // for a guarded, audited, reversible gate; an audit trail that misreports
     // what it reversed is none of those.
-    const publication = await prisma.$transaction(async (tx) => {
+    const publication = await auditedTransaction(async (tx) => {
       if (cycle.publication) {
         // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
         const claimed = await tx.cyclePublication.updateMany({

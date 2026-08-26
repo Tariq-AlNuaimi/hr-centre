@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
@@ -168,7 +168,7 @@ export const POST = withRateLimit(
     // row's `before` reports a manager that was already stale when it was
     // written. Same arbiter as the change-request decide/withdraw routes, for
     // the same reason: `update` cannot carry the condition.
-    const resolved = await prisma.$transaction(async (tx) => {
+    const resolved = await auditedTransaction(async (tx) => {
       // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
       const claimed = await tx.managerRollUp.updateMany({
         where: { id: rollUpId, resolvedAt: null },

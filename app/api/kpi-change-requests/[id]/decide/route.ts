@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import {
@@ -138,7 +138,7 @@ export const POST = withRateLimit(
       // — one Node turn wide, but real — in which the status changed and nothing
       // recorded who changed it, which is precisely what the trail exists to
       // prevent. Raised by the post-push breadth review.
-      const rejected = await prisma.$transaction(async (tx) => {
+      const rejected = await auditedTransaction(async (tx) => {
         // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
         const claimed = await tx.kpiChangeRequest.updateMany({
           where: { id, status: "PENDING" },
@@ -185,7 +185,7 @@ export const POST = withRateLimit(
 
     let applied: number | null;
     try {
-      applied = await prisma.$transaction(async (tx) => {
+      applied = await auditedTransaction(async (tx) => {
         // Claim the decision FIRST. If this matches nothing, another decision
         // landed between the read above and here, and the whole transaction —
         // snapshots and edits included — rolls back.

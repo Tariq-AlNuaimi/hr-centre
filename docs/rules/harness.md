@@ -138,13 +138,13 @@ survive every ordinary push, which defeats a ratchet meant to catch exactly that
 while `project.config.json` `"tier"` is still the `personal` default **fails**. Fix with
 `"tier": "shared"`, or record `"tierAck": "personal"` if it is genuinely still personal.
 
-## ESLint floor (`eslint-rules/`, thirteen rules, all at `error`)
+## ESLint floor (`eslint-rules/`, fourteen rules, all at `error`)
 
 `no-prisma-in-client` · `no-any-cast-on-session` · `no-secret-env-in-console` ·
 `no-bare-internal-route` · `no-raw-hex-color` (ADR-015) · `no-unaudited-bulk-write` (ADR-010) ·
 `no-raw-sql-unsafe` · `no-rate-limit-inside-auth` · `no-restricted-export-column` ·
 `no-prisma-unfiltered-import` · `no-direct-anthropic-sdk` (ADR-042) · `no-arbitrary-className` ·
-`no-literal-jsx-text`. Plus the adopted `sonarjs/cognitive-complexity` at `error` (threshold 25) on
+`no-literal-jsx-text` · `no-bare-prisma-transaction` (ADR-068). Plus the adopted `sonarjs/cognitive-complexity` at `error` (threshold 25) on
 the product surfaces. Justified suppression = a **single-line** disable; if security-related, log it
 in SECURITY.md §12. Per-rule rationale: `docs/runbooks/maintainer.md` § Harness reference.
 
