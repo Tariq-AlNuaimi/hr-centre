@@ -4,7 +4,7 @@ import { err, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { formRatio, overallRatio } from "@/lib/pms/three-sixty";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 
 /**
@@ -139,9 +139,7 @@ export const GET = withRateLimit(
     // Guard the per-employee read against the chain rule too, so an HRBP
     // querying one employee gets the same answer the roster would give.
     if (employeeId) {
-      const descendants = actor.capabilities.orgWide
-        ? new Set<string>()
-        : await descendantEmployeeIds(actor.employeeId ?? "");
+      const descendants = await visibilityDescendants(actor);
       if (!canViewEmployee(actor, employeeId, descendants)) return notFound("Employee");
     }
 

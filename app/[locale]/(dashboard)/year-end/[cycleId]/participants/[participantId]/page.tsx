@@ -12,7 +12,7 @@ import { resolveActor } from "@/lib/pms/actor";
 import { RATING_LEVELS, YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 
 /**
@@ -100,11 +100,7 @@ export default async function YearEndParticipantPage({
   if (!participant || participant.cycleId !== cycleId) notFound();
 
   // §4.2 — visibility first, 404 rather than 403.
-  const descendants = actor.capabilities.orgWide
-    ? new Set<string>()
-    : actor.employeeId
-      ? await descendantEmployeeIds(actor.employeeId)
-      : new Set<string>();
+  const descendants = await visibilityDescendants(actor);
   if (!canViewEmployee(actor, participant.employee.id, descendants)) notFound();
 
   const stage: StageWindow | null = participant.cycle.stages[0] ?? null;

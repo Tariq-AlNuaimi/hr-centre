@@ -151,6 +151,52 @@ mails, and §9.7's "automated invitations" and "automated reminders before deadl
 nothing. The compliance _record_ is still written, so this degrades to "the log is right, nobody was
 told".
 
+### F11 — CRITICAL · §5.1 · §5.1's lock has no key — **FIXED**
+
+Found 2026-08-26 by a full write-endpoint reachability sweep (43 endpoints, all checked).
+
+`POST /api/cycles/[id]/participants/[participantId]/approve` had no UI caller. The only other writer
+of `goalsApprovedAt` was `prisma/seed-demo-cycle.ts:397`, writing straight to the database — the same
+trap as F1–F6, and again it was my own fixture that made the screens look finished.
+
+The consequence was not confined to §5. `app/api/year-end-signoffs/route.ts:115` refuses without an
+HR-approved baseline ("no HR-approved baseline… §5.1"), so **§7 → §8 → §10 → §11 → §13 were shut for
+the whole company** behind a lock nobody could turn. The route itself was complete, idempotent and
+correct; it simply had no button.
+
+**Fixed** — `components/pms/HrApprovalPanel.tsx` on the goal-setting participant screen, below the
+sign-off panel (§5.1's own order: agreement, then HR's approval as the lock). HR-only per §4.1, with
+a confirmation that states what the lock costs rather than asking "are you sure?". The panel does not
+re-derive the gate: the server component calls the same `hrApprovalDecision` the route calls and
+hands down its sentence verbatim, including WHICH of §5.1's two routes to a lock would be taken — a
+§5.4 approval over an absent employee signature is a materially different record from a mutual
+agreement, and the screen says so before the click, not only in the response afterwards.
+
+Verified end to end in a browser across all three states (approved, §5.4 basis, refused):
+`docs/verification/pms-reachability-f11-f12/README.md`.
+
+### F12 — MEDIUM · §3 · HR cannot fix an employee record — **FIXED**
+
+`PUT /api/employees/[id]` had no UI caller either, though `lib/validations/employee.ts` opens by
+saying its schemas guard "the hand-editing paths (HR fixing one record in the UI)". There was no such
+path. A misspelt name, a wrong department, a role track that did not match the job could only be
+corrected by re-importing — and an import creates an `importBatch`, which makes `seed-demo-cycle`
+refuse forever. HR's smallest correction was the product's most expensive act.
+
+**Fixed** — `components/pms/EmployeeEditForm.tsx` on `/people/[id]`, HR Super Admin only (§4.1's
+configure column). It binds `updateEmployeeSchema` — the route's own schema — as its resolver, so
+§1.2's exclusive-or and the manager requirement are checked in the same words on the same field
+paths. `PUT` is a full replace, so the form carries every field it does not offer to change, and the
+payload is typed `UpdateEmployeeInput` to make a forgotten field a build error rather than a wiped
+column.
+
+**Found while building it:** `/people/[id]` was the only employee read in the app that skipped
+`serializeEmployee`. It tested `"basicSalary" in employee` — a key `employeeSelect` has not returned
+since ADR-067 moved compensation to an encrypted envelope. The whole compensation section was
+therefore dead and **HR saw no salary on any individual record**. It type-checked because `in`
+narrows on any key, and no test covered the page. Same species as the findings above: code that
+exists, is correct in isolation, and is never reached.
+
 ## What is genuinely solid
 
 Stated because a red-team report that only lists faults is as misleading as the one it corrects.
@@ -185,9 +231,14 @@ Each of these I checked against the clause myself, in the code, this session:
 The conformance report should not claim a clause is met until the flow it describes can be completed
 by the role the clause names, in a browser, without a database write. Two measures, kept apart:
 
-| Measure                                                       | Status                                                                      |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Clause has a correct implementation and a clause-named test   | **§1–§14 + Appendix A** — accurate                                          |
-| Clause's flow is completable by its named role through the UI | **§9 blocked; §10, §11, §13 blocked behind it; §12's manual paths missing** |
+| Measure                                                       | Status                                                                                                                                                                             |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Clause has a correct implementation and a clause-named test   | **§1–§14 + Appendix A** — accurate                                                                                                                                                 |
+| Clause's flow is completable by its named role through the UI | **F1–F6, F10, F11, F12 fixed; every §1–§13 flow now has a caller. F7 (My Tasks omits 360 assignments), F8's `EmployeeScore` column and F9 (SMTP) remain open — see the register.** |
 
 The second row is the one a stakeholder means by "done", and it is the row nobody was tracking.
+
+**Update, 2026-08-26.** A second sweep took the remaining 43 write endpoints one at a time and asked, of
+each, which screen calls it. Two had no answer (F11, F12); both are now built and verified in a browser.
+That sweep is the measure this table asks for, and it is worth repeating whenever a route is added — a
+route without a caller passes every gate this repo has.

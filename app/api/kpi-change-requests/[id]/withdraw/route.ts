@@ -6,7 +6,7 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { withdrawBlockedReason } from "@/lib/pms/change-request";
 import { CHANGE_REQUEST_SELECT, serializeChangeRequest } from "@/lib/pms/change-request-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 
 /**
@@ -46,11 +46,7 @@ export const POST = withRateLimit(
 
     // §4.2 — visibility first, so a request id cannot be probed from outside the
     // actor's chain.
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
     if (!canViewEmployee(actor, existing.participant.employeeId, descendants)) {
       return notFound("Change request");
     }

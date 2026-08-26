@@ -12,7 +12,7 @@ import {
   serializeKpi,
   weightageSummary,
 } from "@/lib/pms/kpi-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee, isHr } from "@/lib/pms/permissions";
 import { updateKpiSchema } from "@/lib/validations/kpi";
 
@@ -78,11 +78,7 @@ async function loadEditableKpi(kpiId: string, actor: ResolvedActor, now: Date) {
 
   const { participant } = kpi;
 
-  const descendants = actor.capabilities.orgWide
-    ? new Set<string>()
-    : actor.employeeId
-      ? await descendantEmployeeIds(actor.employeeId)
-      : new Set<string>();
+  const descendants = await visibilityDescendants(actor);
   if (!canViewEmployee(actor, participant.employee.id, descendants)) {
     return { ok: false as const, response: notFound("KPI") };
   }

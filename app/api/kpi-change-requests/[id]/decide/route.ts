@@ -16,7 +16,7 @@ import {
   serializeChangeRequest,
   toKpiEdit,
 } from "@/lib/pms/change-request-select";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { decideChangeRequestSchema } from "@/lib/validations/change-request";
 
@@ -108,11 +108,7 @@ export const POST = withRateLimit(
 
     // §4.2 — visibility before authority, so a non-HR actor outside the chain
     // learns nothing about which request ids exist.
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
     if (!canViewEmployee(actor, existing.participant.employeeId, descendants)) {
       return notFound("Change request");
     }

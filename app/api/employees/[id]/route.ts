@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { employeeSelect, encryptSalary, serializeEmployee } from "@/lib/pms/employee-select";
 import { canViewEmployee } from "@/lib/pms/permissions";
-import { descendantEmployeeIds } from "@/lib/pms/org-tree";
+import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
 
 /**
@@ -24,11 +24,7 @@ export const GET = withRateLimit(
 
     // The descendant set is only computed for an actor who needs it — HR and
     // executives short-circuit on org-wide visibility inside canViewEmployee.
-    const descendants = actor.capabilities.orgWide
-      ? new Set<string>()
-      : actor.employeeId
-        ? await descendantEmployeeIds(actor.employeeId)
-        : new Set<string>();
+    const descendants = await visibilityDescendants(actor);
 
     if (!canViewEmployee(actor, id, descendants)) {
       // 404, not 403: a manager probing ids should not be able to learn that an

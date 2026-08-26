@@ -105,6 +105,40 @@ export async function visibleEmployeeIds(actor: {
 }
 
 /**
+ * The descendant set `canViewEmployee` wants, computed only for an actor who
+ * needs it.
+ *
+ * `canViewEmployee` already answers org-wide visibility and "it is me" from the
+ * actor alone, so the walk is pure cost for an HR admin or an executive viewer —
+ * and pure cost for an account with no linked employee record, which has no
+ * subtree to walk.
+ *
+ * Four screens and eight routes had written that reasoning out as the same
+ * four-line ternary chain — twelve copies of a *permission* precondition, which
+ * is how the thirteenth comes to forget the `employeeId` guard. One already had:
+ * `GET /api/three-sixty/results` walked the tree from `actor.employeeId ?? ""`,
+ * which happens to return an empty set (no employee has id `""`) and so was
+ * accidentally right rather than right on purpose.
+ *
+ * `GET /api/status` deliberately keeps its own shape: it 403s an actor with no
+ * employee record instead of quietly handing them an empty scope, which is a
+ * different and better answer for that route.
+ *
+ * Distinct from `visibleEmployeeIds` above, deliberately: that one answers "what
+ * may this actor LIST" (null for org-wide, self included, for a `WHERE id IN`),
+ * and this one answers "what is BELOW this actor" for a single-record check.
+ * Merging them would mean one of the two callers silently getting the other's
+ * semantics.
+ */
+export async function visibilityDescendants(actor: {
+  employeeId: string | null;
+  capabilities: { orgWide: boolean };
+}): Promise<Set<string>> {
+  if (actor.capabilities.orgWide || !actor.employeeId) return new Set<string>();
+  return descendantEmployeeIds(actor.employeeId);
+}
+
+/**
  * Whether this employee has any direct report — the sole source of line-manager
  * authority (ADR-065). A `findFirst` with `select: { id: true }`, not a count:
  * the question is existence, and the answer stops at the first row.
