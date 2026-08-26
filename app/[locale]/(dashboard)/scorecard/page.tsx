@@ -47,6 +47,13 @@ interface ScorecardResponse {
     score: string;
     threeSixty: string | null;
     comments: string[];
+    /**
+     * §13.1's anonymity floor. True when comments exist but fewer than two
+     * raters submitted, so pooling them would not hide who wrote them — §9.4
+     * names the line manager as one of exactly three raters, and the ratee knows
+     * it. Distinct from an empty `comments` array, which means nobody wrote.
+     */
+    commentsWithheld?: boolean;
   } | null;
 }
 
@@ -130,7 +137,12 @@ export default function ScorecardPage() {
           </div>
 
           <SectionCard title={t("commentsTitle")} subtitle={t("commentsHelp")}>
-            {data.score.comments.length === 0 ? (
+            {data.score.commentsWithheld ? (
+              // NOT the empty state. Feedback exists; too few people answered for
+              // pooling it to keep the writer anonymous, and saying "no comments"
+              // here would be a lie the employee could act on.
+              <p className="text-sm text-amber-700 dark:text-amber-300">{t("commentsWithheld")}</p>
+            ) : data.score.comments.length === 0 ? (
               // Honest empty: no 360 comments is a real outcome, not a failure.
               <p className="text-sm text-muted-foreground">{t("noComments")}</p>
             ) : (

@@ -227,10 +227,54 @@ export type SubmittedForm = {
  * order would otherwise leak who answered when.
  *
  * The level is the overall ratio × 5 (§8.5), or null when no form scored.
+ *
+ * ## The anonymity floor — why comments can come back withheld
+ *
+ * §13.1's parenthesis is not decoration: comments are combined "**protecting
+ * anonymity**". §9.4 fixes the rater set at exactly three and NAMES two of the
+ * roles — line manager (mandatory) and peer (mandatory) — so the ratee already
+ * knows who was in the pool. A single returned comment is therefore attributable
+ * by elimination, most sharply to the line manager, whose participation is
+ * guaranteed. Pooling one comment is not consolidation; it is a forwarded note
+ * with the sender's name torn off.
+ *
+ * So below `MIN_FORMS_FOR_COMMENTS` submitted forms the comments are WITHHELD and
+ * the caller is told they were, rather than being handed an empty list it would
+ * render as "nobody wrote anything". The two are different facts and an employee
+ * deserves the true one.
+ *
+ * The threshold counts SUBMITTED FORMS, not comments. Three raters of whom one
+ * wrote something is a pool of three and stays anonymous; two raters who both
+ * wrote is a pool of two and does not become less anonymous because the text is
+ * longer. It is the size of the pool that protects the writer.
+ *
+ * The SCORE is unaffected and still published: §9.5 averages the ratios that came
+ * back, HR sees the rater count at calibration (F8) and holds §13.2's publish
+ * gate, so a thin cycle is already visible to the people who decide whether to
+ * release it. Withholding a figure the formula has already used would read as
+ * data being hidden from the employee rather than as protection for a colleague.
+ *
+ * Operator decision, 2026-08-26, on red-team finding R3. The specification names
+ * no threshold; this is the one Rihal chose.
  */
+
+/**
+ * Fewest submitted forms whose comments can be pooled and still be anonymous.
+ *
+ * Two, not three: three is §9.4's design and the strictest reading, but in a real
+ * cycle a rater leaves (§12.1) or misses the window often enough that a floor of
+ * three would withhold most written feedback in the product — which is its own
+ * failure, just a quieter one.
+ */
+export const MIN_FORMS_FOR_COMMENTS = 2;
+
 export function consolidateThreeSixty(forms: readonly SubmittedForm[]): {
   level: Prisma.Decimal | null;
   comments: string[];
+  /** How many forms came back — what the floor above is measured against. */
+  submittedForms: number;
+  /** True when comments EXIST but are held back for anonymity, not absent. */
+  commentsWithheld: boolean;
 } {
   const ratios: Prisma.Decimal[] = [];
   const comments: string[] = [];
@@ -249,9 +293,15 @@ export function consolidateThreeSixty(forms: readonly SubmittedForm[]): {
     }
   }
   const overall = overallRatio(ratios);
+  // "Withheld" means there was something to show and we are choosing not to.
+  // An employee whose three raters all left the text box empty gets the honest
+  // empty state, not a privacy notice implying feedback is being kept from them.
+  const withheld = forms.length < MIN_FORMS_FOR_COMMENTS && comments.length > 0;
   return {
     level: overall ? overall.times(5) : null,
-    comments: comments.sort((a, b) => a.localeCompare(b)),
+    comments: withheld ? [] : comments.sort((a, b) => a.localeCompare(b)),
+    submittedForms: forms.length,
+    commentsWithheld: withheld,
   };
 }
 

@@ -34,8 +34,35 @@ import {
  * with a generous multiple for growth.
  */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
-export const MAX_ROWS = 10_000;
 export const MAX_SHEETS = 20;
+
+/**
+ * The most rows one apply can be trusted to FINISH — derived, not guessed.
+ *
+ * This was 10,000, and 10,000 was a number nobody had measured. Red-team R2 timed
+ * an apply-shaped transaction (the three statements a created row costs: the
+ * login, the employee, the manager edge) against a loopback Postgres:
+ *
+ *   n=200 → 9.19 ms/row · n=600 → 5.54 ms/row · n=1,500 → 5.09 ms/row amortised
+ *
+ * Loopback is the friendliest case there is. Neon sits a network away and each of
+ * those statements is a round trip, so budget **4×** — call it 20 ms/row. The
+ * apply route may run for `maxDuration = 60` seconds in total, and that has to
+ * cover parsing the workbook, validating it, reconciling it, the transaction, and
+ * the response; reserving 40 s for the transaction leaves
+ *
+ *   40,000 ms ÷ 20 ms/row ≈ 2,000 rows
+ *
+ * Splitting a larger file into batches is not the same product: §3.5's
+ * all-or-nothing is what makes the preview worth reading, and a half-applied org
+ * chart is the outcome Appendix A exists to prevent. So the cap is a REFUSAL at
+ * the door with an explanation, not a silent truncation and not a chunked apply.
+ *
+ * Raising it is a platform decision before it is a code one: 60 s is the ceiling a
+ * Vercel Hobby function may run, and a plan that allows 300 s would move this to
+ * roughly 10,000 — the number that used to be here without the plan to back it.
+ */
+export const MAX_ROWS = 2_000;
 
 /**
  * The sheet the loader looks for by name before falling back to the first one.
@@ -267,7 +294,12 @@ export async function loadEmployeesFromXlsx(
   if (bodyRows.length > maxRows) {
     throw new ImportFileError(
       "too_many_rows",
-      `The sheet has ${bodyRows.length} rows; the limit is ${maxRows}.`,
+      `The sheet has ${bodyRows.length} rows; one import can apply at most ${maxRows}. ` +
+        `An import either applies completely or changes nothing (§3.5), and beyond this ` +
+        `size it cannot finish inside the time the server allows — so it is refused here ` +
+        `rather than failing halfway. Split the sheet into files of ${maxRows} rows or ` +
+        `fewer and import them one after another, or ask IT to raise the server's ` +
+        `time limit.`,
     );
   }
 

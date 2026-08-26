@@ -165,7 +165,7 @@
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
 - lib/pms/import/checks/placement.ts: checkPlacement, checkManager
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
-- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_ROWS, MAX_SHEETS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
+- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_SHEETS, MAX_ROWS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
 - lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, ReconcilePlan, reconcile
 - lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport, existingLoginEmails, provisionLoginFor
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
@@ -185,7 +185,7 @@
 - lib/pms/three-sixty-answer.ts: AnswerRefusal, answerBlockedReason
 - lib/pms/three-sixty-assign.ts: projectPeers, peerPoolFor, PlannedAssignment, planAssignments
 - lib/pms/three-sixty-scale.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, isAnswerScore
-- lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
+- lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, MIN_FORMS_FOR_COMMENTS, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, projectUpdate, computeChanges, auditExtension

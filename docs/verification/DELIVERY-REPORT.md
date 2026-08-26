@@ -29,8 +29,8 @@ signed in as that role and did the thing. Where it does not, it says so.
 
 **Every deliverable in §1–§14 and Appendix A is built, and every flow is now reachable by its named
 role.** One item is outstanding and it is not code: §5.5's reminders and §9.7's invitations need an
-SMTP provider. Three specification ambiguities remain open questions for Rihal, unchanged and
-deliberately unresolved.
+SMTP provider. Three specification ambiguities remain open questions for Rihal — put to them, one
+page, in `docs/verification/OPEN-QUESTIONS-FOR-RIHAL.md`.
 
 Two things this verdict does **not** say, and the reason the last report failed is that it blurred
 exactly these:
@@ -243,10 +243,11 @@ for the cast needs one of two things first:** the three `AUTH_ENTRA_*` variables
 deployment, or a platform admin setting a password at `/users` for each of the four or five people
 who will be shown signing in. That is stated here rather than discovered on stage.
 
-## 8. Still open for Rihal — four decisions
+## 8. Still open for Rihal — three questions
 
-The first three are unchanged specification ambiguities, each flagged in the code where it applies
-(full table in `SPEC-CONFORMANCE.md`). The fourth is new, raised by the red team.
+Three specification ambiguities, each flagged in the code where it applies (full table in
+`SPEC-CONFORMANCE.md`). They are written up for the HR team, one page, with what the build does today
+and the exact question that settles each: **`docs/verification/OPEN-QUESTIONS-FOR-RIHAL.md`**.
 
 1. **§6.2 — re-signing after an approved mid-year change.** The spec is silent. No re-sign was
    invented; instead `SignOff.kpiSetHash` surfaces that a signature predates the current set.
@@ -256,16 +257,11 @@ The first three are unchanged specification ambiguities, each flagged in the cod
    Implemented as `>=` thresholds. Rihal should confirm, along with whether scores are rounded before
    banding.
 
-4. **§13.1 — a 360 that only one person answered.** The clause's own words are "not attributed to
-   individual raters, **protecting anonymity**", and §9.4 fixes the rater set at exactly three, naming
-   two of the roles: line manager (mandatory) and peer (mandatory). So a single returned comment came
-   from a pool of at most three, one of whom is definitely the employee's line manager. The product
-   publishes it with no minimum-submission threshold — while warning **HR** at calibration when the
-   count is under three (F8). Recommendation: withhold **comments** below two submitted forms, with an
-   honest line rather than an empty section; keep publishing the **score**, since §9.5 averages what
-   came back and HR can decline to publish a cycle where too many are thin. Not implemented — picking
-   a threshold the spec does not name is Rihal's call, not the build's. Detail in
-   `REDTEAM-DELIVERY-REPORT.md` (R3).
+_§13.1's anonymity floor was a fourth open question here and was **settled by the operator on
+2026-08-26**: comments are withheld below two submitted forms, with an honest line rather than an empty
+section, and the score still publishes since §9.5 averages what came back. Shipped as
+`MIN_FORMS_FOR_COMMENTS` in `lib/pms/three-sixty.ts`; the reasoning is in `REDTEAM-DELIVERY-REPORT.md`
+(R3)._
 
 _Deviation 8 (the clamped score on §13.1's scorecard) was an earlier open question and was settled by
 the operator on 2026-08-26: the clamped score stays._
