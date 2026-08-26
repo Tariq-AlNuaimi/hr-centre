@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api-client";
+import { endOfDay, startOfDay } from "@/lib/date-input";
 
 /**
  * §9.1 and §9.2 — HR creating the 360 cycle and authoring its three question
@@ -121,8 +122,9 @@ export function ThreeSixtySetup({ cycleId }: { cycleId: string }) {
     mutationFn: () =>
       apiClient.post("/api/three-sixty", {
         cycleId,
-        opensAt: new Date(opensAt).toISOString(),
-        deadline: new Date(deadline).toISOString(),
+        opensAt: startOfDay(opensAt),
+        // End of the chosen day, not midnight UTC — §5.4 locks at the deadline.
+        deadline: endOfDay(deadline),
         // Blank rows are dropped rather than sent — an empty question is
         // someone changing their mind, not something to reject them for.
         templates: TYPES.map((type) => ({

@@ -721,11 +721,11 @@
       "ratedAt": "Recorded {datetime}",
       "chooseLevel": "Choose the level that describes the year",
       "levelName": {
-        "5": "Outstanding",
-        "4": "Excellent",
-        "3": "Target",
+        "1": "Unsatisfactory",
         "2": "Almost Achieved",
-        "1": "Unsatisfactory"
+        "3": "Target",
+        "4": "Excellent",
+        "5": "Outstanding"
       },
       "reasonRequired": "Why you rated it differently (required)",
       "commentOptional": "Comment (optional)",
@@ -1185,6 +1185,30 @@
       "stepTwo": "Generate raters",
       "stepThree": "Activate",
       "whatNextHelp": "Creating the cycle does not invite anyone. You generate the rater assignments from the reporting lines, review them, and only then activate — which is the moment raters can start answering."
+    },
+    "threeSixtyWindow": {
+      "title": "360 window",
+      "help": "When raters can answer, and when the forms lock. Correctable while the cycle is a draft — once it is activated, the dates are in everyone's task list and §5.4 makes the deadline a hard lock.",
+      "opensAt": "Opens",
+      "deadline": "Deadline",
+      "deadlineAfterOpens": "The deadline must fall after the cycle opens.",
+      "save": "Save window",
+      "saving": "Saving…",
+      "savedToast": "The 360 window was updated."
+    },
+    "threeSixtyResult": {
+      "title": "360 feedback",
+      "help": "The consolidated result for this person (§9.5, §9.8). Comments arrive combined and unattributed — §13.1 — so nothing here identifies a rater.",
+      "noCycle": "No 360 cycle has been set up for the selected performance year.",
+      "noResult": "No 360 forms have been submitted for this person yet.",
+      "score": "Score out of 5",
+      "ratio": "Ratio",
+      "raterCount": "{count} of {expected} raters submitted",
+      "shortWarning": "This score comes from {count} of the {expected} assessments §9.4 intends, so it rests on a smaller sample than the rest. Treat it with the same caution at calibration.",
+      "comments": "Written comments",
+      "noComments": "No written comments were left.",
+      "anonymityNote": "No rater identity is carried here. A question is named only where more than one person answered it.",
+      "loadFailed": "The 360 result could not be loaded. Try again in a moment."
     },
     "raterEditor": {
       "title": "Raters for {name}",

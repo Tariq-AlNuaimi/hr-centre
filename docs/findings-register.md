@@ -35,6 +35,46 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [maintainable/observability] **An audit row written from inside an interactive
+  `$transaction` records the PRE-update values.** The audit extension's re-read and
+  `auditLog.create` run on the outer client captured in `defineExtension`, not on the transaction's
+  `tx`, so within a transaction they see the row as it was before the write: the audit entry exists
+  (the ADR-010 requirement holds) but its `after` is stale and `changes` is null. Repo-wide — the
+  new `PATCH /api/three-sixty` plus roughly a dozen existing `$transaction` routes. Found by the
+  pre-push review on the F10 change; the operator authorised the `lib/prisma/**` fix on 2026-08-26.
+  **Fixed**: the re-read stays (it is authoritative outside a transaction and holds each column's
+  real type), and `projectUpdate`/`overlayUnobserved` overlay the write's own `data` on top for the
+  keys where the re-read still shows the pre-write value — the signature of the in-transaction case.
+  Neither half alone is sufficient, which three review rounds established the hard way. Proved on the running app: four `Assignment` UPDATEs written by
+  `POST /api/three-sixty/responses` (a `$transaction` route) carry `changes: null`; the same route,
+  same action, after the fix records `status NOT_STARTED → SUBMITTED` and `submittedAt`
+  (`docs/verification/pms-360-report/README.md` §6). **Residual**: `auditLog.create` still runs on
+  the extension's captured client, so an audit row survives a rolled-back transaction — a false
+  positive rather than a blind spot. A Prisma query extension has no access to the `tx` handle, so
+  closing that needs a different mechanism; `PATCH /api/three-sixty` avoids it by using a
+  conditional `updateMany` with an explicit `recordAudit()` instead of a transaction. — operator —
+  status: fixed(see `projectUpdate` in
+  `lib/prisma/audit-extension.ts` and its contract tests in `tests/contracts/audit-scrub.test.ts`)
+
+- 2026-08-26 — [high-quality/privacy] **§13.1 — a written 360 comment can be attributable when HR
+  authors a distinct open-ended question per template.** Comments come only from unscored questions,
+  and each question belongs to exactly one template, i.e. one rating direction. A lone comment under
+  a `LINE_MANAGER_TO_EMPLOYEE` heading is therefore provably the ratee's single line manager, under
+  a banner saying the comments carry no rater identity. **Fixed 2026-08-26** at the route, not only
+  in the UI: `GET /api/three-sixty/results` now sends `question: null` for any comment that stands
+  alone under its question, so no consumer can reintroduce the join by rendering a field it was
+  handed. Where two or more people answered the same question the label survives, because §9.8 asks
+  for comments to be consolidated and a heap of unlabelled sentences is not that. — operator —
+  status: fixed(see `unattributableComments` in `app/api/three-sixty/results/route.ts` and the
+  contract test in `tests/contracts/pms-three-sixty.test.ts`)
+
+- 2026-08-26 — [high-quality/correctness] **The 360 window was write-once: a mistyped `opensAt` or
+  `deadline` could never be corrected.** `POST /api/three-sixty` was its only writer, there was no
+  `PATCH` and no `DELETE`, and §9.1 allows one 360 per performance year — so a slip mis-set the whole
+  year's 360 window with no path back, and §5.4 makes the deadline a hard lock. Found while
+  verifying §9.8's report by driving the product rather than reading it (red-team F10). — operator —
+  status: fixed(see `docs/verification/pms-360-report/README.md` §2 and `app/api/three-sixty/route.ts` PATCH)
+
 - 2026-08-25 — [high-quality/correctness] **Eleven write endpoints have no UI caller; §9's 360 module
   is unusable end to end.** Full analysis: `docs/verification/SPEC-REDTEAM.md`. The critical two:
   `POST /api/three-sixty/responses` (no 360 answering form exists anywhere, so no rater can ever
@@ -54,7 +94,11 @@ the changed surface is still **open** (un-adjudicated).
   averages over however many arrived (defensible — dividing by a hard 3 would penalise a ratee for a
   rater's departure), but `EmployeeScore` records no rater count, so the degradation is invisible on
   the scorecard, in the master export, and in the bonus derived from it. 26 of 33 ratees in the demo
-  fixture had fewer than three raters available. — operator — status: adjudicated(2026-08-25)
+  fixture had fewer than three raters available. **2026-08-26**: the count is now stated beside the figure on §9.8's
+  individual report, with an explicit caution below three — so the degradation is visible where the
+  360 is read. It is still absent from `EmployeeScore`, so the scorecard, the §13.5 master export and
+  the §11 bonus remain silent about it; that needs a column and a migration, which is Ask-before.
+  — operator — status: adjudicated(2026-08-25), partly fixed 2026-08-26
 
 - 2026-08-25 — [high-quality] **No §5.5 reminder or §9.7 invitation is ever sent unless SMTP is
   configured.** The escalation ladder and the notification code are implemented and wired to the

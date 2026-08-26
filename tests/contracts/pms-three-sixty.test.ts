@@ -512,3 +512,104 @@ test("§9.2 an open-ended question is stored as such, not defaulted to scored", 
   // §9.5 divides by the SCORED maximum, so this flag decides the denominator.
   assert.equal(parsed.success && parsed.data.templates[0].questions[1].scored, false);
 });
+
+// --- §9.1's window, amended after the fact --------------------------------------
+
+test("§9.1 the window can be amended, and the ordering rule survives the amendment", async () => {
+  const { amendThreeSixtyWindowSchema } = await import("../../lib/validations/three-sixty");
+
+  const valid = {
+    threeSixtyCycleId: "ts1",
+    opensAt: "2027-09-01T00:00:00.000Z",
+    deadline: "2027-10-15T23:59:59.000Z",
+  };
+  assert.equal(amendThreeSixtyWindowSchema.safeParse(valid).success, true);
+
+  // The same rule the create path enforces — an amendment is not a way around it.
+  const backwards = { ...valid, opensAt: valid.deadline, deadline: valid.opensAt };
+  assert.equal(amendThreeSixtyWindowSchema.safeParse(backwards).success, false);
+
+  const same = { ...valid, deadline: valid.opensAt };
+  assert.equal(amendThreeSixtyWindowSchema.safeParse(same).success, false);
+
+  // The cycle has to be named; there is no "amend whichever one is current".
+  assert.equal(
+    amendThreeSixtyWindowSchema.safeParse({ ...valid, threeSixtyCycleId: "" }).success,
+    false,
+  );
+});
+
+test("§5.4 a deadline chosen on a form covers the whole of that day", async () => {
+  const { endOfDay, startOfDay, toDateInput } = await import("../../lib/date-input");
+
+  // Midnight UTC of the deadline date would delete the last day of the window:
+  // §5.4 locks at `now > deadline`, so 00:00 means the deadline morning is shut.
+  const closes = new Date(endOfDay("2027-10-15"));
+  assert.equal(closes.getHours(), 23);
+  assert.equal(closes.getMinutes(), 59);
+
+  const opens = new Date(startOfDay("2027-09-01"));
+  assert.equal(opens.getHours(), 0);
+  assert.equal(opens.getMinutes(), 0);
+
+  // Round-trips through the input without naming a different day than the
+  // figure printed beside it.
+  assert.equal(toDateInput(endOfDay("2027-10-15")), "2027-10-15");
+  assert.equal(toDateInput(startOfDay("2027-09-01")), "2027-09-01");
+  assert.equal(toDateInput("not a date"), "");
+});
+
+// --- §13.1's anonymity, at the shape of the response ----------------------------
+
+test("§13.1 comments come back attributable to nobody — label, index or position", async () => {
+  // Mirrors `unattributableComments` in app/api/three-sixty/results/route.ts.
+  const anonymise = (comments: { question: string; orderIndex: number; text: string }[]) => {
+    const counts = new Map<string, number>();
+    for (const c of comments) counts.set(c.question, (counts.get(c.question) ?? 0) + 1);
+    return comments
+      .map((c) => ({
+        question: (counts.get(c.question) ?? 0) > 1 ? c.question : null,
+        text: c.text,
+      }))
+      .sort(
+        (a, b) =>
+          (a.question ?? "").localeCompare(b.question ?? "") || a.text.localeCompare(b.text),
+      );
+  };
+
+  // A question belongs to exactly one template, so a single comment under a
+  // LINE_MANAGER_TO_EMPLOYEE question names the ratee's only line manager.
+  const lone = [{ question: "How do they lead?", orderIndex: 4, text: "Clear and direct." }];
+  assert.deepEqual(anonymise(lone), [{ question: null, text: "Clear and direct." }]);
+
+  // Two peers, two questions, accumulated in rater order — the shape that let a
+  // reader take the Nth text under every heading and get the same person. The
+  // starter set gives every open-ended question the SAME orderIndex, so sorting
+  // by index alone left the tie breaking back to that order.
+  const perRater = [
+    { question: "Q-A", orderIndex: 4, text: "zeta from peer one" },
+    { question: "Q-A", orderIndex: 4, text: "alpha from peer two" },
+    { question: "Q-B", orderIndex: 4, text: "yankee from peer one" },
+    { question: "Q-B", orderIndex: 4, text: "bravo from peer two" },
+  ];
+  const out = anonymise(perRater);
+  assert.deepEqual(
+    out.map((c) => c.text),
+    ["alpha from peer two", "zeta from peer one", "bravo from peer two", "yankee from peer one"],
+    "order must follow the content, never the rater",
+  );
+  // The property that matters: the order is a pure function of the CONTENT, so
+  // the accumulation order it used to leak cannot reach the response at all.
+  // Feed the same comments in a different order and get the same answer.
+  const reordered = anonymise([perRater[3], perRater[1], perRater[2], perRater[0]]);
+  assert.deepEqual(reordered, out, "input order must not survive into the response");
+
+  // Where two or more answered, the label survives — §9.8 asks for consolidation.
+  assert.deepEqual(
+    anonymise([
+      { question: "Anything else?", orderIndex: 4, text: "Dependable." },
+      { question: "Anything else?", orderIndex: 4, text: "Quick to help." },
+    ]).map((c) => c.question),
+    ["Anything else?", "Anything else?"],
+  );
+});

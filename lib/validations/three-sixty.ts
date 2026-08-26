@@ -42,6 +42,26 @@ export const createThreeSixtyCycleSchema = z
     message: "Each assessment type may appear once",
   });
 
+/**
+ * §9.1 — the 360 window, correctable while the cycle is still a draft.
+ *
+ * The window was write-once: `POST` set `opensAt`/`deadline` and nothing could
+ * ever change them, so a mistyped date permanently mis-set when a whole
+ * performance year's 360 opens and closes — and §5.4 makes the deadline a hard
+ * lock, which is precisely why it must be possible to correct BEFORE anyone is
+ * told about it. Draft-only, for the same reason.
+ */
+export const amendThreeSixtyWindowSchema = z
+  .object({
+    threeSixtyCycleId: z.string().min(1),
+    opensAt: z.coerce.date(),
+    deadline: z.coerce.date(),
+  })
+  .refine((v) => v.deadline > v.opensAt, {
+    path: ["deadline"],
+    message: "The deadline must fall after the cycle opens",
+  });
+
 /** §9.6 — HR reviews and EDITS assignments before launch. */
 export const setAssignmentsSchema = z.object({
   threeSixtyCycleId: z.string().min(1),

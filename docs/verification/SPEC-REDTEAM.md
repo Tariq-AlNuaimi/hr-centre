@@ -93,10 +93,17 @@ regenerate wholesale or accept what the mapping produced, nothing in between.
 
 `GET`/`POST /api/projects` (§9.6's optional project-based peer sourcing) have no UI caller at all.
 
-### F6 — MEDIUM · §9.8 · Individual 360 reports cannot be viewed
+### F6 — MEDIUM · §9.8 · Individual 360 reports cannot be viewed — **FIXED**
 
 `GET /api/three-sixty/results` — the consolidated per-employee 360 report, HR and executive only —
 has no UI caller. §9.8 asks for "individual 360 reports"; the data is assembled and unreachable.
+
+**Fixed 2026-08-26** — `components/pms/ThreeSixtyResultCard.tsx`, on the individual record where
+§13.6 already sends HR and the executive viewers for drill-down, and deliberately NOT on the 360
+console, where it would sit beside §9.4's assignment map and defeat §13.1's anonymity. Comments are
+consolidated by question rather than listed flat, for the same reason. Verified end to end (a draft
+window carried through activation to three submitted forms and a computed report):
+`docs/verification/pms-360-report/README.md`.
 
 ### F7 — MEDIUM · §4.4 · "My Tasks" omits 360 assignments
 
@@ -114,6 +121,26 @@ contributed.** `EmployeeScore` stores only `threeSixtyScore`, so a score built f
 indistinguishable from one built from three — on the employee's scorecard, in the master export, and
 in the bonus that follows from it. In the 36-person demo fixture, 26 of 33 ratees had fewer than
 three raters available.
+
+**Partly fixed 2026-08-26** — the count is now stated beside the figure on §9.8's individual report,
+with an explicit caution below three (`ThreeSixtyResultCard`). The `EmployeeScore` column that would
+carry it into the scorecard, the §13.5 export and the §11 bonus is still absent; that needs a
+migration, which is Ask-before, so it remains open in the register.
+
+### F10 — MEDIUM · §9.1 · The 360 window is write-once and cannot be corrected — **FIXED**
+
+Found on 2026-08-26 while verifying F6, by trying to use the product rather than reading it.
+`POST /api/three-sixty` was the only writer of `opensAt`/`deadline`; there was no `PATCH`, no
+`DELETE`, and §9.1 allows exactly one 360 per performance year. A cycle created with a mistyped date
+was therefore wrong for the whole year with no path back — and §5.4 makes a deadline a hard lock,
+which is exactly why the typo has to be correctable before anyone is standing behind it. This is the
+same species as F1–F6 (a state the product can enter and not leave), and it was invisible to every
+test because a test supplies its own dates.
+
+**Fixed** — `PATCH /api/three-sixty` (HR-only, DRAFT-only, dates only) and
+`components/pms/ThreeSixtyWindow.tsx` on the 360 console. It disappears at activation: once §9.7 has
+put the window in every rater's task list, moving a deadline under someone mid-form is a different
+act, and not one §9 asks for.
 
 ### F9 — LOW (operational) · §5.5 / §9.7 · No reminder or invitation is ever sent
 

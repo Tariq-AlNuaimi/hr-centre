@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { z } from "zod";
 import { Form, TextField, useZodForm } from "@/components/shared/FormField";
 import { STAGE_ORDER, type CycleStage, type CycleStageKind } from "@/components/pms/CycleList";
+import { endOfDay, startOfDay, toDateInput } from "@/lib/date-input";
 
 /**
  * The cycle form — spec §2 ("HR sets deadlines for each stage") and §5.4/§5.5.
@@ -45,24 +46,6 @@ export interface CycleStageSubmitValues {
 export interface CycleFormSubmitValues {
   year: number;
   stages: CycleStageSubmitValues[];
-}
-
-/** ISO instant → the "YYYY-MM-DD" an <input type="date"> expects, in local time. */
-function toDateInput(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-/** Start of the chosen day, local time. */
-function startOfDay(dateInput: string): string {
-  return new Date(`${dateInput}T00:00:00`).toISOString();
-}
-
-/** End of the chosen day, local time — the instant §5.4 locks the stage at. */
-function endOfDay(dateInput: string): string {
-  return new Date(`${dateInput}T23:59:59`).toISOString();
 }
 
 interface CycleFormProps {

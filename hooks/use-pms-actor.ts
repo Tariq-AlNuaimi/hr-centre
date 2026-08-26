@@ -17,6 +17,8 @@ import { apiClient } from "@/lib/api-client";
 
 export type PmsCapabilities = {
   orgWide: boolean;
+  /** §4.1's HR — who may RUN the cycle, as opposed to who may SEE it. */
+  hr: boolean;
   configure: boolean;
   viewCompensation: boolean;
   previewImport: boolean;
@@ -38,6 +40,7 @@ export type PmsActorInfo = {
 
 const NO_CAPABILITIES: PmsCapabilities = {
   orgWide: false,
+  hr: false,
   configure: false,
   viewCompensation: false,
   previewImport: false,

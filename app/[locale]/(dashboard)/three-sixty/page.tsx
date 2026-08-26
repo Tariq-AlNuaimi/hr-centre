@@ -8,11 +8,10 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageSkeleton } from "@/components/shared/Skeletons";
 import { StatCard } from "@/components/shared/StatCard";
-import { DataTable } from "@/components/shared/DataTable";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { CyclePicker } from "@/components/pms/CyclePicker";
 import { ThreeSixtySetup } from "@/components/pms/ThreeSixtySetup";
+import { ThreeSixtyWindow } from "@/components/pms/ThreeSixtyWindow";
 import { RaterCoverage } from "@/components/pms/RaterCoverage";
 import { ProjectMap } from "@/components/pms/ProjectMap";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
@@ -209,6 +208,28 @@ export default function ThreeSixtyPage() {
             />
           </div>
 
+          {/* §9.1 — the window was write-once until F10: a mistyped date fixed
+              the whole year's 360 wrongly, with no amend and no delete. Draft
+              only; once §9.7 announces the dates they stand.
+
+              `orgWide` is not enough to gate it: that capability covers HR AND
+              the executive viewers, and the route is HR-only (§4.1). Nor is
+              `!readOnly` — an executive viewer with direct reports is not
+              read-only. `hr` is the predicate the route itself uses. */}
+          {threeSixty.status === "DRAFT" && cycleId && capabilities.hr && (
+            <ThreeSixtyWindow
+              // Keyed on the 360: the editor seeds its inputs from props once,
+              // so switching cycles must REMOUNT it. Reconciling in place would
+              // leave the previous cycle's dates in the boxes and PATCH them
+              // onto this one.
+              key={threeSixty.id}
+              threeSixtyCycleId={threeSixty.id}
+              cycleId={cycleId}
+              opensAt={threeSixty.opensAt}
+              deadline={threeSixty.deadline}
+            />
+          )}
+
           <SectionCard title={t("templates")} subtitle={t("templatesHelp")}>
             {threeSixty.templates && threeSixty.templates.length > 0 ? (
               <ul className="space-y-2 text-sm">
@@ -232,6 +253,7 @@ export default function ThreeSixtyPage() {
             coverage={coverage}
             short={short}
             assignments={assignments.data?.assignments ?? []}
+            canManage={capabilities.hr}
             generate={generate}
             activate={activate}
           />

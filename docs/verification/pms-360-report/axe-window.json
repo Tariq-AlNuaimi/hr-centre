@@ -1,0 +1,66 @@
+[
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "en",
+    "theme": "light",
+    "tag": "desktop",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "en",
+    "theme": "light",
+    "tag": "mobile",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "en",
+    "theme": "dark",
+    "tag": "desktop",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "en",
+    "theme": "dark",
+    "tag": "mobile",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "ar",
+    "theme": "light",
+    "tag": "desktop",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "ar",
+    "theme": "light",
+    "tag": "mobile",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "ar",
+    "theme": "dark",
+    "tag": "desktop",
+    "windowCardVisible": true,
+    "blocking": []
+  },
+  {
+    "route": "/three-sixty (2027 draft)",
+    "locale": "ar",
+    "theme": "dark",
+    "tag": "mobile",
+    "windowCardVisible": true,
+    "blocking": []
+  }
+]

@@ -688,3 +688,9 @@ Decision: build-thin-layer over existing primitives — permissions/actor/org-tr
 Scope: lib/pms/import/**, lib/pms/export/**
 Considered: exceljs (rejected — frozen by ADR-051, no publish since 2024-12); SheetJS/xlsx via vendor CDN (rejected — resolves outside the npm registry so Renovate/npm audit/license gate cannot see it, and makes cdn.sheetjs.com a build-time dependency of every deploy); hand-written xlsx parser (rejected — owning a parser for untrusted uploads); read-excel-file + write-excel-file (chosen — MIT, registry-resolved, actively maintained, per-row schema errors matching spec §3.4).
 Decision: adopt read-excel-file + write-excel-file behind a two-file seam (loaders/xlsx.ts, export/xlsx.ts). Supersedes ADR-051 item 4's SheetJS track for this use; ADR-051's exceljs freeze is upheld. See ADR-066.
+
+### 2026-08-26 — Date-input ⇄ ISO-instant conversion
+
+Scope: lib/date-input.ts
+Considered: `date-fns` (rejected — ~20 KB for three lines of `Date` arithmetic already present in the repo, and ADR-001 locks the stack; a runtime dep >50 KB would need an ADR anyway); `Intl.DateTimeFormat` round-tripping (rejected — formats for display, does not give the ISO instant the API wants, and reintroduces the parsing step); leaving `CycleForm`'s private helpers in place and copying them (rejected — that copy is precisely how the 360 window ended up saving a deadline at midnight UTC while §5 stages saved end-of-day, deleting a day of every 360 window); extract the existing helpers to a shared leaf module (chosen).
+Decision: extract, don't add. `startOfDay`/`endOfDay`/`toDateInput` move out of `components/pms/CycleForm.tsx` unchanged and are now imported by `CycleForm`, `ThreeSixtySetup` and `ThreeSixtyWindow`. No new runtime dep; contract-tested in `tests/contracts/pms-three-sixty.test.ts` ("§5.4 a deadline chosen on a form covers the whole of that day").

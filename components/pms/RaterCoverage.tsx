@@ -35,6 +35,7 @@ export function RaterCoverage({
   coverage,
   short,
   assignments,
+  canManage,
   generate,
   activate,
 }: {
@@ -43,6 +44,12 @@ export function RaterCoverage({
   coverage: CoverageRow[];
   short: CoverageRow[];
   assignments: AssignmentRow[];
+  /**
+   * §4.1 — regenerate, activate and per-ratee editing are HR's. `orgWide` also
+   * covers the executive viewers, who may write nothing, so gating on it
+   * offered them three buttons that always 403.
+   */
+  canManage: boolean;
   generate: UseMutationResult<unknown, Error, void, unknown>;
   activate: UseMutationResult<unknown, Error, void, unknown>;
 }) {
@@ -55,7 +62,7 @@ export function RaterCoverage({
         title={t("assignments")}
         subtitle={t("assignmentsHelp")}
         actions={
-          status === "DRAFT" ? (
+          status === "DRAFT" && canManage ? (
             <div className="flex gap-2">
               <Button
                 variant="outline"
@@ -119,7 +126,7 @@ export function RaterCoverage({
                   _v: unknown,
                   row: { rateeId: string; name: string; raterCount: number },
                 ) =>
-                  status === "DRAFT" ? (
+                  status === "DRAFT" && canManage ? (
                     <Button
                       variant="outline"
                       size="sm"

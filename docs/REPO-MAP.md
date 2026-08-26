@@ -86,7 +86,7 @@
 - app/api/three-sixty/assignments/route.ts  [GET,POST,PUT]
 - app/api/three-sixty/responses/route.ts  [GET,POST]
 - app/api/three-sixty/results/route.ts  [GET]
-- app/api/three-sixty/route.ts  [GET,POST]
+- app/api/three-sixty/route.ts  [GET,POST,PATCH]
 - app/api/transfers/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
@@ -140,6 +140,7 @@
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
 - lib/crypto/field-encryption.ts: FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
+- lib/date-input.ts: toDateInput, startOfDay, endOfDay
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
@@ -187,7 +188,7 @@
 - lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
-- lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, computeChanges, auditExtension
+- lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, projectUpdate, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
 - lib/prisma/soft-delete-extension.ts: isSoftDeleteModel, applySoftDeleteFilter, softDeleteExtension
 - lib/prisma.ts: prisma, prismaUnfiltered
@@ -204,7 +205,7 @@
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
-- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, upsertProjectSchema
+- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, upsertProjectSchema
 - lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
@@ -253,7 +254,9 @@
 - components/pms/StageBanner.tsx
 - components/pms/StatusRoster.tsx
 - components/pms/ThreeSixtyForm.tsx
+- components/pms/ThreeSixtyResultCard.tsx
 - components/pms/ThreeSixtySetup.tsx
+- components/pms/ThreeSixtyWindow.tsx
 - components/pms/TransferRecorder.tsx
 - components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
