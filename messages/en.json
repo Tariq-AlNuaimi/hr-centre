@@ -1044,7 +1044,8 @@
       "noCyclesHelp": "Calibration opens once a cycle has been scored.",
       "loadFailed": "Could not load calibration",
       "loadFailedHelp": "Something went wrong fetching the distribution.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "thinThreeSixty": "360 averaged over {count} rater(s), not the three §9.4 intends — a thinner sample than the rest of this department."
     },
     "calibrationTarget": {
       "title": "Target distribution",

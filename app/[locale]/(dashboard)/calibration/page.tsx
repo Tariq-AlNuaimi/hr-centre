@@ -82,6 +82,8 @@ interface CalibrationResponse {
       rawScore: string;
       rawBand: string;
       calibratedBand: string;
+      /** Red-team F8. `null` is "unknown", never "nobody rated them". */
+      threeSixtyRaterCount: number | null;
     }>;
   }>;
 }
@@ -256,6 +258,7 @@ function AdjustRow({
     rawScore: string;
     rawBand: string;
     calibratedBand: string;
+    threeSixtyRaterCount: number | null;
   };
   cycleId: string;
 }) {
@@ -293,6 +296,23 @@ function AdjustRow({
               is what moved. */}
           {moved && ` → ${tBand(employee.calibratedBand)}`}
         </div>
+        {/*
+          Red-team F8 — §9.5 averages over however many raters arrived, so this
+          score may rest on one 360 form rather than the three §9.4 intends.
+          §10.5 gives HR a manual override on every department; this is the fact
+          that override exists to act on, so it is stated here where the
+          judgement is made. It moves no band by itself — a thin sample is a
+          reason to look, not a rule.
+
+          Only below three, and only when the count is KNOWN. A run written
+          before the column existed carries null, and "unknown" rendered as a
+          caution would accuse a real score of a thinness nobody measured.
+        */}
+        {employee.threeSixtyRaterCount !== null && employee.threeSixtyRaterCount < 3 ? (
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            {t("thinThreeSixty", { count: employee.threeSixtyRaterCount })}
+          </p>
+        ) : null}
       </div>
 
       <div className="w-48">

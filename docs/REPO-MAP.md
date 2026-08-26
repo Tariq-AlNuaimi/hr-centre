@@ -125,7 +125,7 @@
 - Project: id, cycleId, cycle, name, members, createdAt, updatedAt
 - ProjectMember: id, projectId, project, employeeId, employee, createdAt
 - ScoreRun: id, cycleId, cycle, startedByEmployeeId, startedByEmployee, startedAt, finishedAt, scoredCount, skippedCount, scores, createdAt
-- EmployeeScore: id, scoreRunId, scoreRun, employeeId, employee, corporateScore, departmentalScore, individualScore, threeSixtyScore, rawScore, rawBand, calibratedBand, adjustments, createdAt, updatedAt
+- EmployeeScore: id, scoreRunId, scoreRun, employeeId, employee, corporateScore, departmentalScore, individualScore, threeSixtyScore, threeSixtyRaterCount, rawScore, rawBand, calibratedBand, adjustments, createdAt, updatedAt
 - CalibrationTarget: id, cycleId, cycle, outstandingPct, excellentPct, targetPct, almostAchievedPct, unsatisfactoryPct, minDepartmentSize, createdAt, updatedAt
 - CalibrationAdjustment: id, employeeScoreId, employeeScore, fromBand, toBand, reason, adjustedByEmployeeId, adjustedByEmployee, adjustedAt, createdAt
 - CyclePublication: id, cycleId, cycle, published, publishedAt, publishedByEmployeeId, publishedByEmployee, lastReason, createdAt, updatedAt

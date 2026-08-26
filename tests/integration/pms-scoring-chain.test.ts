@@ -556,3 +556,69 @@ test("§13.2 two CONCURRENT publish-state writes: exactly one lands, and only on
     "the loser writes no audit row — one that did would report a `before` already stale",
   );
 });
+
+// --- red-team F8: the rater count is a fact about a score, not a free column ---------
+
+test("F8 the rater count cannot exist without the 360 score it is the denominator of", async () => {
+  const run = await prisma.scoreRun.create({
+    data: {
+      cycleId: ids.cycle,
+      startedByEmployeeId: ids.superAdmin,
+      finishedAt: new Date(),
+      scoredCount: 0,
+    },
+    select: { id: true },
+  });
+
+  const base = {
+    scoreRunId: run.id,
+    employeeId: ids.hrbp,
+    corporateScore: new Prisma.Decimal("3.00"),
+    departmentalScore: null,
+    individualScore: new Prisma.Decimal("3.00"),
+    rawScore: new Prisma.Decimal("3.00"),
+    rawBand: "TARGET" as const,
+    calibratedBand: "TARGET" as const,
+  };
+
+  // A count with no score beside it is a denominator for nothing. §8.3's C-Level
+  // row is the case this protects: no 360 at all, so no count either — and a
+  // future writer that filled one in would be asserting a fact about an absence.
+  await assert.rejects(
+    () =>
+      prisma.employeeScore.create({
+        data: { ...base, threeSixtyScore: null, threeSixtyRaterCount: 2 },
+        select: { id: true },
+      }),
+    /rater_count_needs_score/,
+  );
+
+  // Nobody is rated by a negative number of people.
+  await assert.rejects(
+    () =>
+      prisma.employeeScore.create({
+        data: {
+          ...base,
+          threeSixtyScore: new Prisma.Decimal("3.00"),
+          threeSixtyRaterCount: -1,
+        },
+        select: { id: true },
+      }),
+    /rater_count_sane/,
+  );
+
+  // NULL is not zero, and the column must be able to say so: every row written
+  // before the column existed is in that state, and a run that recorded no count
+  // must not be readable as "nobody rated them".
+  const unknown = await prisma.employeeScore.create({
+    data: {
+      ...base,
+      threeSixtyScore: new Prisma.Decimal("3.00"),
+      threeSixtyRaterCount: null,
+    },
+    select: { id: true, threeSixtyRaterCount: true },
+  });
+  assert.equal(unknown.threeSixtyRaterCount, null);
+
+  await prisma.scoreRun.delete({ where: { id: run.id } });
+});

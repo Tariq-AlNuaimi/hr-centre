@@ -221,6 +221,13 @@ export const GET = withRateLimit(
             rawScore: true,
             rawBand: true,
             calibratedBand: true,
+            // Red-team F8 — §9.5 averages over however many raters arrived, so a
+            // raw score can rest on one 360 form rather than three. §10.5 gives
+            // HR a manual override on every department, and this is precisely
+            // the kind of fact that override exists to act on. Carried, never
+            // acted on automatically: a thin sample is a reason to LOOK, not a
+            // rule that moves a band.
+            threeSixtyRaterCount: true,
             employee: {
               select: {
                 id: true,
@@ -284,6 +291,10 @@ export const GET = withRateLimit(
           rawScore: s.rawScore.toString(),
           rawBand: s.rawBand,
           calibratedBand: s.calibratedBand,
+          // `null` is "unknown" — a run written before the column existed —
+          // never "nobody rated them". The screen must render the two
+          // differently, or it invents a fact about a real person's score.
+          threeSixtyRaterCount: s.threeSixtyRaterCount,
         })),
       };
     });

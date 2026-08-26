@@ -96,9 +96,23 @@ the changed surface is still **open** (un-adjudicated).
   the scorecard, in the master export, and in the bonus derived from it. 26 of 33 ratees in the demo
   fixture had fewer than three raters available. **2026-08-26**: the count is now stated beside the figure on §9.8's
   individual report, with an explicit caution below three — so the degradation is visible where the
-  360 is read. It is still absent from `EmployeeScore`, so the scorecard, the §13.5 master export and
-  the §11 bonus remain silent about it; that needs a column and a migration, which is Ask-before.
-  — operator — status: adjudicated(2026-08-25), partly fixed 2026-08-26
+  360 is read. **2026-08-26, migration authorised by the operator**: `EmployeeScore` now carries
+  `threeSixtyRaterCount` (migration `20260826120000_pms_three_sixty_rater_count`), written by the
+  score run from the same `ratios` array `overallRatio` divided by — so the stored count and the
+  stored score describe the same forms. It reaches §13.5's master export as a "360 Raters" column
+  and §10's calibration screen as a caution below three, where §10.5's manual override is the
+  judgement it informs.
+
+  Three boundaries held on purpose. (a) **It changes no arithmetic**: `scoreEmployee` never sees it,
+  `rawScore` does not read it, and §13.2's publish does not gate on it — whether a thin 360 should
+  move a band is a §10 judgement made by a person. (b) **It is NULLABLE and not backfilled**: null
+  means "this run predates the column", 0 would mean "nobody rated them", and backfilling would turn
+  the first into the second — a false claim about a real score. Two CHECK constraints hold the shape
+  (non-negative; never present without a `three_sixty_score` beside it). (c) **It is NOT on the
+  employee's own scorecard**: §13.1 says the employee "never sees raw scores, component breakdown,
+  any sign of calibration", and the denominator of one component is component breakdown. HR and the
+  executive viewers see it; the employee sees their band.
+  — operator — status: adjudicated(2026-08-25), fixed 2026-08-26
 
 - 2026-08-25 — [high-quality] **No §5.5 reminder or §9.7 invitation is ever sent unless SMTP is
   configured.** The escalation ladder and the notification code are implemented and wired to the

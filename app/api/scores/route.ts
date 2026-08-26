@@ -134,7 +134,7 @@ export const POST = withRateLimit(
     // §9.5's ratios, computed once for the cycle. §8.5 carries them in as × 5.
     const ratioByEmployee = threeSixty
       ? await threeSixtyLevels(threeSixty.id)
-      : new Map<string, Prisma.Decimal>();
+      : new Map<string, ThreeSixtyFigure>();
 
     const run = await prisma.scoreRun.create({
       data: { cycleId, startedByEmployeeId: startedBy },
@@ -160,14 +160,17 @@ export const POST = withRateLimit(
                 dateOfJoining: e.dateOfJoining,
                 lastWorkingDay: e.lastWorkingDay,
               }),
-              threeSixty: ratioByEmployee.get(e.id) ?? null,
+              threeSixty: ratioByEmployee.get(e.id)?.level ?? null,
             })
           : scoreEmployee(unsplitInputs(e, p.kpis, byEntity, byDepartment, ratioByEmployee));
       if (!outcome.scored) {
         skipped.push({ employeeId: outcome.employeeId, reason: outcome.reason });
         continue;
       }
-      await writeScore(run.id, outcome);
+      // The count belongs to the 360 figure, not to the score: `scoreEmployee`
+      // never sees it, because an input it does not use has no business being
+      // in its signature (F8 — visible only, no arithmetic, no gate).
+      await writeScore(run.id, outcome, ratioByEmployee.get(e.id)?.raterCount ?? null);
       scoredCount += 1;
     }
 
@@ -199,6 +202,18 @@ type ScoredKpiRow = {
 type ScoreLookup = ReadonlyMap<string, Prisma.Decimal>;
 
 /**
+ * §9.5's consolidated figure and the denominator it was averaged over.
+ *
+ * The pair travels together from here to the stored row, because the count is
+ * only meaningful ABOUT that particular score. `level` is the ×5 form §8.5
+ * takes; `raterCount` is not an input to any arithmetic (red-team F8) — it is
+ * carried so a human reading the score can see how thin its 360 was.
+ */
+type ThreeSixtyFigure = { level: Prisma.Decimal; raterCount: number };
+
+type ThreeSixtyLookup = ReadonlyMap<string, ThreeSixtyFigure>;
+
+/**
  * §9.5's per-employee ratio, ×5 for §8.5, computed once for the whole cycle.
  *
  * Extracted from the handler because it is a self-contained read-and-fold with
@@ -206,7 +221,7 @@ type ScoreLookup = ReadonlyMap<string, Prisma.Decimal>;
  * differently here than in `/api/scorecard` would let an employee's own screen
  * disagree with the score they were given.
  */
-async function threeSixtyLevels(threeSixtyCycleId: string): Promise<Map<string, Prisma.Decimal>> {
+async function threeSixtyLevels(threeSixtyCycleId: string): Promise<Map<string, ThreeSixtyFigure>> {
   const submitted = await prisma.assignment.findMany({
     where: { threeSixtyCycleId, status: "SUBMITTED" },
     take: 8000,
@@ -228,10 +243,15 @@ async function threeSixtyLevels(threeSixtyCycleId: string): Promise<Map<string, 
     if (ratio === null) continue;
     acc.set(a.rateeId, [...(acc.get(a.rateeId) ?? []), ratio]);
   }
-  const out = new Map<string, Prisma.Decimal>();
+  const out = new Map<string, ThreeSixtyFigure>();
   for (const [rateeId, ratios] of acc) {
     const overall = overallRatio(ratios);
-    if (overall) out.set(rateeId, overall.times(5));
+    // `ratios.length` is exactly the denominator `overallRatio` divided by —
+    // forms that produced a usable ratio, not forms assigned and not forms
+    // submitted-but-blank. Reading it from the same array the average came from
+    // is what makes the stored count and the stored score describe the same
+    // thing (F8); recounting assignments separately would eventually not.
+    if (overall) out.set(rateeId, { level: overall.times(5), raterCount: ratios.length });
   }
   return out;
 }
@@ -242,7 +262,7 @@ function unsplitInputs(
   kpis: readonly ScoredKpiRow[],
   byEntity: ScoreLookup,
   byDepartment: ScoreLookup,
-  ratioByEmployee: ScoreLookup,
+  ratioByEmployee: ThreeSixtyLookup,
 ): ScoreInputs {
   return {
     employeeId: employee.id,
@@ -255,7 +275,7 @@ function unsplitInputs(
     kpis: kpis
       .filter((k) => k.ratings.length > 0)
       .map((k) => ({ level: k.ratings[0].level, weightage: k.weightage })),
-    threeSixty: ratioByEmployee.get(employee.id) ?? null,
+    threeSixty: ratioByEmployee.get(employee.id)?.level ?? null,
   };
 }
 
@@ -309,6 +329,7 @@ function periodInputs(
 async function writeScore(
   scoreRunId: string,
   outcome: Extract<ReturnType<typeof scoreEmployee>, { scored: true }>,
+  threeSixtyRaterCount: number | null,
 ): Promise<void> {
   await prisma.employeeScore.create({
     data: {
@@ -318,6 +339,11 @@ async function writeScore(
       departmentalScore: outcome.departmental,
       individualScore: outcome.individual,
       threeSixtyScore: outcome.threeSixty,
+      // Null unless there is a score for it to be the denominator of — the
+      // `employee_scores_rater_count_needs_score_check` constraint says the same
+      // thing in the database, so a future writer cannot record a count for a
+      // 360 that is not there (a C-Level row, §8.3, is null in both).
+      threeSixtyRaterCount: outcome.threeSixty === null ? null : threeSixtyRaterCount,
       rawScore: outcome.raw,
       rawBand: outcome.band,
       // §10.1 — both exist from the start; calibration moves only this one.

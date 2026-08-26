@@ -122,10 +122,29 @@ indistinguishable from one built from three — on the employee's scorecard, in 
 in the bonus that follows from it. In the 36-person demo fixture, 26 of 33 ratees had fewer than
 three raters available.
 
-**Partly fixed 2026-08-26** — the count is now stated beside the figure on §9.8's individual report,
-with an explicit caution below three (`ThreeSixtyResultCard`). The `EmployeeScore` column that would
-carry it into the scorecard, the §13.5 export and the §11 bonus is still absent; that needs a
-migration, which is Ask-before, so it remains open in the register.
+**FIXED 2026-08-26** — in two steps. First the count was stated beside the figure on §9.8's
+individual report, with an explicit caution below three (`ThreeSixtyResultCard`). Then, with the
+migration authorised, `EmployeeScore.threeSixtyRaterCount`
+(`20260826120000_pms_three_sixty_rater_count`) — written by the score run from the same `ratios`
+array `overallRatio` divided by, so the stored count and the stored score describe the same forms.
+It reaches §13.5's master export as a "360 Raters" column, and §10's calibration screen as a caution
+below three, beside the §10.5 override it is there to inform.
+
+Three boundaries, held on purpose:
+
+- **No arithmetic changes.** `scoreEmployee` never receives it, `rawScore` does not read it, and
+  §13.2's publish does not gate on it. Whether a thin 360 should move a band is a §10 judgement made
+  by a person; the column exists to put that person in a position to make it.
+- **Nullable, not backfilled.** `null` means "this run predates the column"; `0` would mean "nobody
+  rated them". Backfilling the first into the second would be a false claim about a real score. Two
+  CHECK constraints hold the shape (non-negative; never present without a `three_sixty_score`), and
+  the calibration screen renders the caution only when the count is actually known.
+- **Not on the employee's own scorecard.** §13.1: the employee "never sees raw scores, component
+  breakdown, any sign of calibration" — and the denominator of one component is component breakdown.
+  HR and the executive viewers see it; the employee sees their band.
+
+Verified against the demo fixture through the real score run: 15 ratees at one rater, 11 at two, 7
+at three, 4 null (the C-Level, §8.3) — the 26 thin ratees this finding reported, now visible.
 
 ### F10 — MEDIUM · §9.1 · The 360 window is write-once and cannot be corrected — **FIXED**
 
