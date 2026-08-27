@@ -1,6 +1,6 @@
 # Blueprint — one access screen, and a platform role that tells the truth
 
-Scope: app/[locale]/(dashboard)/admin/access/**, app/[locale]/(dashboard)/users/**, app/[locale]/(dashboard)/admin/roles/**, components/users/**, components/pms/RoleEditor.tsx, components/layout/AppSidebar.tsx, components/layout/CommandPalette.tsx, lib/validations/user.ts, lib/api-helpers.ts, app/api/users/**, lib/pms/employee-select.ts, messages/**, tests/contracts/api-auth.test.ts, tests/uat/crud.full.uat.ts, docs/decisions/ADR-070-one-access-surface.md
+Scope: app/[locale]/(dashboard)/admin/access/**, app/[locale]/(dashboard)/users/**, app/[locale]/(dashboard)/admin/roles/**, components/users/**, components/pms/RoleEditor.tsx, components/layout/AppSidebar.tsx, components/layout/CommandPalette.tsx, lib/validations/user.ts, lib/api-helpers.ts, lib/sso/role-map.ts, lib/auth.ts, app/api/users/**, lib/pms/employee-select.ts, messages/**, tests/contracts/api-auth.test.ts, tests/uat/crud.full.uat.ts, docs/decisions/ADR-070-one-access-surface.md
 
 Feature parity: n/a — not a product category with competitors. This is the repo reconciling two role
 vocabularies it grew separately: the template's `User.role` and §4.1's `Employee.pmsRoles`.
@@ -142,6 +142,14 @@ be granted. The wrapper keeps a comment saying it gates nothing here, and a cont
 **Reuse, not rebuild.** The row data already exists: `serializeEmployee` emits `pmsRoles` and
 `loginState`; `RoleEditor`'s whole-set PUT stays as-is. This is a new composition of shipped parts
 plus one new column, not a new subsystem.
+
+**Scope grew by two files, after the fact.** `lib/sso/role-map.ts` and `lib/auth.ts` were not in the
+original Scope line because the SSO seam is not part of the screen this blueprint describes. The
+post-push breadth review showed that mattered: JIT provisioning bypasses `createUserSchema`, so
+"narrowed at the boundary" was not true of every write path, and `SSO_EDITOR_GROUPS` could still mint
+an `EDITOR`. Closing that is ADR-070's completion rather than new work, so the two files were added
+to Scope instead of being handled outside it. Recorded because a Scope line edited quietly is the
+same failure as a diff that grows quietly.
 
 ## Open questions
 

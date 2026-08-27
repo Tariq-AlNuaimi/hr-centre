@@ -28,13 +28,31 @@ import type { Role } from "@/generated/prisma/client";
  * nothing. Written as an allowlist rather than a denylist for exactly that
  * reason: the failure mode of a forgotten entry is too little access, never too
  * much.
+ *
+ * ## Why the return type is two values, not three (ADR-070, 2026-08-27)
+ *
+ * This used to read `SSO_EDITOR_GROUPS` and return `EDITOR`. ADR-070 established
+ * that `EDITOR` gates NOTHING in this application — `withEditorAuth` exists but
+ * is never called — and narrowed the API so the value can no longer be granted
+ * there. This was the one remaining way to mint one, and a post-push breadth
+ * review found it: JIT provisioning never touches `createUserSchema`, so the
+ * boundary narrowing did not reach it.
+ *
+ * Removing the branch changes no effective permission — someone who would have
+ * become `EDITOR` becomes `VIEWER`, and the two grant exactly the same thing —
+ * while removing a stored value that LOOKS like a privilege and is not. That is
+ * the whole point of ADR-070: a role that does not do what it appears to do
+ * teaches something false to the next person who reads the row.
+ *
+ * `SSO_EDITOR_GROUPS` is therefore no longer read. A deployment that still sets
+ * it is not broken and needs no coordinated change — those users simply land on
+ * `VIEWER`, which is what `EDITOR` already meant in practice. Retire the variable
+ * at leisure; see `.env.example`.
  */
 export function mapSsoRole(claims: Record<string, unknown> | undefined): Role {
   const groups = extractGroups(claims);
   const admin = csv(process.env.SSO_ADMIN_GROUPS);
-  const editor = csv(process.env.SSO_EDITOR_GROUPS);
   if (groups.some((g) => admin.has(g))) return "ADMIN";
-  if (groups.some((g) => editor.has(g))) return "EDITOR";
   return "VIEWER";
 }
 

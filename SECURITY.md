@@ -60,15 +60,22 @@ Every field carries one of four labels. Drives encryption, access, logging, rete
 > system this does not touch: §4.1's HR authority lives on `Employee.pmsRoles`, is granted only by an
 > HR Super Admin, and is deliberately separate (ADR-065). Neither role system can grant the other.
 >
-> **The API is not the only grant path, and this is the exception to know about.** JIT SSO
-> provisioning writes the role directly: on a federated FIRST sign-up, `mapSsoRole()`
-> (`lib/sso/role-map.ts`) reads `SSO_ADMIN_GROUPS` / `SSO_EDITOR_GROUPS` and `adoptSsoRole()`
-> (`lib/auth.ts`) persists the result, bypassing `createUserSchema` entirely (ADR-069). So an IdP
-> group listed in `SSO_EDITOR_GROUPS` can still stamp a brand-new account `EDITOR` — a value that
-> grants nothing, which makes it misleading rather than dangerous. `SSO_ADMIN_GROUPS` minting `ADMIN`
-> is the deliberate, IT-configured feature ADR-069 signed off. Anything unlisted defaults to `VIEWER`,
-> and that default is the security property. Setting `SSO_EDITOR_GROUPS` at all is discouraged post
-> ADR-070 — leave it empty unless you have a reason ADR-070 does not cover.
+> **The API is not the only write path — the second one is JIT SSO, and it now agrees.** On a
+> federated FIRST sign-up, `mapSsoRole()` (`lib/sso/role-map.ts`) reads the IdP's groups and
+> `adoptSsoRole()` (`lib/auth.ts`) persists the result, bypassing `createUserSchema` entirely
+> (ADR-069) — so the boundary narrowing above did not reach it, and a group in `SSO_EDITOR_GROUPS`
+> could still stamp a new account `EDITOR`. Found by the post-push breadth review of ADR-070 and
+> closed on 2026-08-27: `mapSsoRole` now returns only `ADMIN | VIEWER` and no longer reads
+> `SSO_EDITOR_GROUPS` at all. No effective permission changed (`EDITOR` granted nothing either way);
+> what changed is that no path can write a value that looks like a privilege and is not.
+> `tests/contracts/sso-role-map.test.ts` pins the refusal, so restoring the branch — or a fork
+> copying the template recipe's three-value version back over it — fails a test rather than passing
+> silently.
+>
+> `SSO_ADMIN_GROUPS` minting `ADMIN` is untouched: it is the deliberate, IT-configured feature ADR-069
+> signed off. Anything unlisted defaults to `VIEWER`, and that default is the security property. A
+> deployment that still sets `SSO_EDITOR_GROUPS` is not broken — the variable is simply ignored, and
+> those users land on `VIEWER`, which is what `EDITOR` already meant in practice.
 
 - **Boundary checks:** every API route handler wraps with `withAuth` (any authenticated user) or `withAdminAuth` (ADMIN only) or `withEditorAuth` (ADMIN | EDITOR) or `withInternalAuth` (shared-secret) or `withApiAuth` (Bearer-token gate for machine/API consumers; the `/api/v1` seam) from `lib/api-helpers.ts` — **enforced by the `rihal-template/no-bare-api-route` ESLint rule at `error`**, which is what makes this a guarantee rather than a convention. Four handlers are deliberately public and allowlisted IN THAT RULE: `app/api/auth/[...nextauth]`, `app/api/auth/forgot-password`, `app/api/auth/reset-password` (these ARE the authentication surface) and `app/api/health` (liveness probe, returns only DB reachability). Adding a public route means editing the allowlist — a reviewable decision, not an omission. UI gating is defense-in-depth, **not** the boundary.
 - **Role wrappers:** `withAdminAuth` (ADMIN only) and `withEditorAuth` (ADMIN **or** EDITOR; rejects VIEWER) are both shipped in `lib/api-helpers.ts`. Use `withEditorAuth` on write routes editors should reach but viewers shouldn't. Finer-grained, per-resource permissions (a `can()` helper) remain a project-specific addition documented here. _In this fork `withEditorAuth` is unused by design (ADR-070) — it is retained as template machinery for `scaffold-entity --writes editor`, `scripts/rbac-matrix.mjs` and the two ESLint rules that name it, not as live authority._

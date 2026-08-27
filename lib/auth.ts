@@ -14,10 +14,14 @@ import { withAuditContext } from "./audit-context";
  * Write the IdP-derived platform role onto the row SSO just created, and return
  * it — ADR-069.
  *
+ * Since ADR-070 the seam can only hand this `ADMIN` or `VIEWER` (see
+ * `lib/sso/role-map.ts`), so the early return below is now the only no-op case
+ * and `EDITOR` can no longer be written here by any path.
+ *
  * Called on the `signUp` trigger only, so this runs at most once per federated
  * account. It exists because the adapter creates the row with the schema default
  * (`VIEWER`) before any callback sees the profile: without this write the JWT
- * would carry the mapped role while `/users` showed the default, and
+ * would carry the mapped role while `/admin/access` showed the default, and
  * `withAdminAuth` reads the JWT. A privilege that the directory listing does not
  * show is the failure this whole change set out to stop creating.
  *
@@ -27,7 +31,7 @@ import { withAuditContext } from "./audit-context";
  *
  * A failure here must not break the sign-in. The mapped role is returned either
  * way, so the worst case is a session whose role is right and a row that still
- * says VIEWER — recoverable at `/users`, and strictly better than refusing a
+ * says VIEWER — recoverable at `/admin/access`, and strictly better than refusing a
  * legitimate first login over a bookkeeping write.
  */
 async function adoptSsoRole(userId: string, role: Role): Promise<Role> {
@@ -218,7 +222,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         //    authoritative, which sounds tidy until `SSO_ADMIN_GROUPS` is unset
         //    or misspelled: the next sign-in silently demotes every
         //    administrator to VIEWER, including the bootstrap admin, and nobody
-        //    can reach /users to undo it.
+        //    can reach /admin/access to undo it.
         //  - Mapping without persisting (what this first did) leaves the JWT
         //    saying ADMIN while the row says VIEWER. `withAdminAuth` reads the
         //    SESSION, so the grant is real — and invisible on the one screen
@@ -226,7 +230,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         //    this change set out to stop creating.
         //
         // So: `SSO_ADMIN_GROUPS` seeds a brand-new federated account, and
-        // `/users` governs it from then on. `adoptSsoRole` writes the mapped
+        // `/admin/access` governs it from then on. `adoptSsoRole` writes the mapped
         // role to the row so the session and the directory listing agree from
         // the first request.
         const federated = account?.type === "oauth" || account?.type === "oidc";
