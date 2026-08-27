@@ -74,6 +74,12 @@ SSO_EDITOR_GROUPS="app-editors"
  * SSO SEAM (ADR-013): map an IdP's claims to our Role enum.
  * Least-privilege by default (VIEWER); promote only on explicit group membership.
  * Group names come from SSO_ADMIN_GROUPS / SSO_EDITOR_GROUPS (comma-separated).
+ *
+ * NOTE for a fork whose EDITOR role gates nothing: drop the editor branch and
+ * return ADMIN | VIEWER instead. A directory group mapped onto a role no wrapper
+ * reads stores a value that looks like a privilege and is not — see
+ * docs/decisions/ADR-070-one-access-surface.md, which did exactly that here.
+ * Check `lib/sso/role-map.ts` before copying this sample over it.
  */
 export function mapSsoRole(claims: Record<string, unknown> | undefined): Role {
   const groups = extractGroups(claims);

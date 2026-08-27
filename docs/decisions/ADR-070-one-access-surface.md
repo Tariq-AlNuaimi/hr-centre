@@ -101,17 +101,24 @@ most employees hold no platform authority. A single table would have to invent a
 the other, and hiding the most privileged account in the system is the opposite of what an access
 screen is for.
 
-**The SSO seam was left alone — and it is the one hole in "one reviewed boundary".**
+**The SSO seam — found open, then closed on the operator's call (amended 2026-08-27).**
 JIT provisioning does not go through `createUserSchema`. On a federated first sign-up
 `mapSsoRole()` (`lib/sso/role-map.ts`) reads `SSO_ADMIN_GROUPS` / `SSO_EDITOR_GROUPS` and
 `adoptSsoRole()` (`lib/auth.ts`) writes the result straight to the row (ADR-069). So a group in
-`SSO_EDITOR_GROUPS` can still stamp a new account `EDITOR`. That grants nothing — `withEditorAuth` is
-never called — so it is misleading, not dangerous, and it is why this ADR says the role cannot be
-granted "through the UI or the API" rather than "at all". Narrowing `mapSsoRole` to `ADMIN | VIEWER`
-would close it and change no effective permission, but it is a role check and therefore an Ask-before
-surface (CLAUDE.md); it is recorded here for the operator to decide rather than taken silently. Found
-by the post-push breadth review, not by the diff-local pass — the SSO path is not in this change's
-diff, which is exactly the kind of thing a diff-local review cannot see.
+`SSO_EDITOR_GROUPS` could still stamp a new account `EDITOR`. That grants nothing — `withEditorAuth`
+is never called — so it was misleading, not dangerous, which is why the original wording said the role
+could not be granted "through the UI or the API" rather than "at all".
+
+Found by the post-push breadth review, not by the diff-local pass: the SSO path is not in this
+change's diff, which is exactly the kind of thing a diff-local review structurally cannot see.
+
+Narrowing `mapSsoRole` is a role check and therefore Ask-before (CLAUDE.md), so it was recorded for
+the operator rather than taken silently — **and they approved it.** `mapSsoRole` now returns
+`ADMIN | VIEWER` and does not read `SSO_EDITOR_GROUPS`; `tests/contracts/sso-role-map.test.ts` asserts
+the REFUSAL rather than deleting the old case, so restoring the branch fails a test. No effective
+permission changed. The variable is left accepted-and-ignored rather than removed, so no deployment
+needs a coordinated change; retire it at leisure. **The claim in this ADR is therefore now the strong
+one: `EDITOR` cannot be granted by any path.**
 
 ## Alternatives considered
 

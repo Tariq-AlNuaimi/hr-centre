@@ -37,11 +37,29 @@ test("an unconfigured allowlist cannot promote anyone", () => {
   assert.equal(mapSsoRole({ groups: ["app-admins", "app-editors"] }), "VIEWER");
 });
 
-test("explicit membership promotes, and ADMIN wins over EDITOR", () => {
+test("explicit ADMIN membership promotes; everything else does not", () => {
   withGroups("app-admins", "app-editors");
-  assert.equal(mapSsoRole({ groups: ["app-editors"] }), "EDITOR");
   assert.equal(mapSsoRole({ groups: ["app-admins"] }), "ADMIN");
   assert.equal(mapSsoRole({ groups: ["app-editors", "app-admins"] }), "ADMIN");
+});
+
+test("ADR-070 — SSO_EDITOR_GROUPS cannot promote anyone", () => {
+  // The seam used to return EDITOR for this. ADR-070 established that EDITOR
+  // gates nothing (`withEditorAuth` is never called) and narrowed the API so it
+  // cannot be granted there; JIT provisioning bypasses `createUserSchema`
+  // entirely, so it was the last way to mint one.
+  //
+  // This asserts a REFUSAL rather than deleting the old case, because the
+  // difference that matters is behavioural, not textual: a future edit that
+  // restores the branch — or a fork that copies the template recipe's
+  // three-value version back over this file — fails here instead of quietly
+  // reintroducing a stored value that looks like a privilege and is not.
+  withGroups("app-admins", "app-editors");
+  assert.equal(mapSsoRole({ groups: ["app-editors"] }), "VIEWER");
+  // And the variable is genuinely unread: set it to match EVERY group the user
+  // claims, and the answer is still VIEWER.
+  withGroups("", "app-editors,app-admins");
+  assert.equal(mapSsoRole({ groups: ["app-editors", "app-admins"] }), "VIEWER");
 });
 
 test("the three claim shapes IdPs actually emit are all read", () => {
@@ -66,8 +84,9 @@ test("SSO cannot grant §4.1 HR authority — only the platform role", () => {
   // group edited by IT must never be able to mint an HR Super Admin.
   withGroups("app-admins", "app-editors");
   for (const claims of [{ groups: ["app-admins"] }, { groups: ["app-editors"] }, {}]) {
+    // Two values, not three, since ADR-070 — and never a `pmsRoles` value.
     assert.ok(
-      ["ADMIN", "EDITOR", "VIEWER"].includes(mapSsoRole(claims)),
+      ["ADMIN", "VIEWER"].includes(mapSsoRole(claims)),
       "the seam may only ever return a platform Role",
     );
   }
