@@ -212,7 +212,7 @@ grid — it maps one-to-one onto the scaffold flags:
     title <Feature> — component view
     Container_Boundary(app, "Next.js app") {
       Component(page, "<screen>", "RSC page", "reads via service")
-      Component(route, "<METHOD /api/…>", "API route", "withEditorAuth + zod")
+      Component(route, "<METHOD /api/…>", "API route", "withAdminAuth + zod")
       Component(svc, "<lib/services/…>", "service", "the only Prisma caller")
     }
     ContainerDb(db, "Postgres (Neon)", "table(s): <snake_case>")

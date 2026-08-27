@@ -1,5 +1,9 @@
 # Recipe: Outbound webhooks (signed, retried)
 
+> **This fork (ADR-070):** `withEditorAuth` and the `EDITOR` role no longer exist here — the wrapper
+> gated nothing and was removed with the enum value. Use `withAdminAuth` or `withAuth`; a route
+> naming `withEditorAuth` fails both typecheck and the `no-bare-api-route` ESLint rule.
+
 > `/scale-up` → "SaaS feature: outbound webhooks". Lets a fork notify external systems
 > when entities change, with HMAC-SHA256 signatures, timestamped anti-replay, and
 > retry/backoff. Pairs with the Inngest `/scale-up` item for backgrounded delivery.

@@ -18,7 +18,7 @@
 //
 // Detection: flag a `withRateLimit(...)` call that sits in the handler-argument
 // position of an auth wrapper. The handler is arg 0 for the session wrappers
-// (withAuth / withAdminAuth / withEditorAuth) and arg 1 for the token wrappers
+// (withAuth / withAdminAuth) and arg 1 for the token wrappers
 // (withInternalAuth / withApiAuth, whose first arg is the env-var name). Matching
 // on the callee identifier is enough -- these wrapper names are template-specific,
 // and `withRateLimit` is only ever the api-helpers export.
@@ -37,7 +37,6 @@
 const AUTH_WRAPPERS = new Map([
   ["withAuth", 0],
   ["withAdminAuth", 0],
-  ["withEditorAuth", 0],
   ["withInternalAuth", 1],
   ["withApiAuth", 1],
 ]);

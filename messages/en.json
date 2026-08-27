@@ -1421,6 +1421,12 @@
     "accountsNotYours": "Only a platform administrator can create logins or grant platform administration.",
     "noAccess": "This screen is for HR Super Admins and platform administrators. Your account is neither.",
     "loadFailed": "Could not load the account list.",
-    "whyTwo": "Why two? A platform administrator maintains the application; an HR Super Admin runs the performance cycle. Neither can grant the other, on purpose."
+    "whyTwo": "Why two? A platform administrator maintains the application; an HR Super Admin runs the performance cycle. Neither can grant the other, on purpose.",
+    "platformAdminsLabel": "Platform administrators",
+    "platformAdminsNone": "Nobody holds platform administration. Only an existing platform administrator can grant it — if there is genuinely nobody, this needs IT.",
+    "platformAdminsLoading": "Checking…",
+    "platformAdminsFailed": "Could not load the administrator list.",
+    "platformAdminsHint": "Ask one of these people for a login, a restore from the recycling bin, or the audit log.",
+    "platformAdminsTooMany": "More than 25 accounts hold platform administration — too many for this to be a useful answer. Review them in the accounts section, or ask IT."
   }
 }

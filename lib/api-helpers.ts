@@ -78,30 +78,24 @@ export function withAdminAuth(handler: AuthedHandler) {
   });
 }
 
-/**
- * Like withAuth but requires write-level access: ADMIN or EDITOR (VIEWER is
- * rejected with 403). Use this on write routes that editors should reach but
- * viewers shouldn't -- it closes the gap where the EDITOR role existed but only
- * ADMIN-vs-not was ever enforced. (SECURITY.md §3.)
- *
- * ADR-070 NOTE (this fork): no route in the PMS calls this, so `EDITOR` gates
- * nothing here. That was the finding behind ADR-070, and the fix landed at the
- * BOUNDARY instead of here -- `lib/validations/user.ts` no longer accepts a role
- * string at all, so EDITOR can no longer be granted through the UI or the API.
- * The wrapper itself stays because it is TEMPLATE machinery, not fork code:
- * `scripts/scaffold-entity.mjs --writes editor` emits it, `scripts/rbac-matrix.mjs`
- * resolves it, and `eslint-rules/rules/no-bare-api-route.mjs` +
- * `no-rate-limit-inside-auth.mjs` both name it in the security floor. Deleting it
- * would break the scaffolder for every fork to close a gap the schema already
- * closed. See docs/decisions/ADR-070-one-access-surface.md, "What was not done".
- */
-export function withEditorAuth(handler: AuthedHandler) {
-  return withAuth(async (req, ctx) => {
-    const role = ctx.session.user.role;
-    if (role !== "ADMIN" && role !== "EDITOR") return forbidden();
-    return handler(req, ctx);
-  });
-}
+// `withEditorAuth` was REMOVED by ADR-070, together with the `EDITOR` enum value
+// it gated on (prisma/migrations/20260827090000_pms_retire_editor_role).
+//
+// It required ADMIN-or-EDITOR and was never called by a single route here, so
+// EDITOR gated nothing while the wrapper's existence made it look like it gated
+// something. ADR-070 closed the grant paths first (the zod boundary, then the SSO
+// seam), then retired the value; a wrapper that admits a role the database can no
+// longer store is dead code that reads as live authority.
+//
+// Keeping it was considered and rejected: it was TEMPLATE machinery
+// (`scripts/scaffold-entity.mjs --writes editor`, `scripts/rbac-matrix.mjs`, and
+// two ESLint rules named it), and PR #27 kept it for exactly that reason. Once
+// the enum went, that argument inverted — the scaffolder cannot emit a wrapper
+// for a role this schema has no value for. All four couplings were removed in the
+// same change.
+//
+// If a write-level tier is ever genuinely needed, add it back WITH its first
+// caller and its enum value in one commit.
 
 // Strict RFC-6750-style parse shared by withInternalAuth and withApiAuth:
 // exact `Bearer ` prefix (case-sensitive), token trimmed. A bare

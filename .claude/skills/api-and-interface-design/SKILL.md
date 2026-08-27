@@ -50,7 +50,7 @@ contract the moment something reads it, whether or not you called it "public."
    type — before touching `route.ts`. The zod schema _is_ the boundary validation
    `docs/rules/api-routes.md` requires; design it here, wire it there.
 3. **Pick the auth wrapper the design implies**, don't default to `withAuth`: does
-   this route need ADMIN (`withAdminAuth`), EDITOR-or-above (`withEditorAuth`), a
+   this route need ADMIN (`withAdminAuth`), a
    machine caller (`withApiAuth`, the `/api/v1` seam), or a scheduler
    (`withInternalAuth`)? Name it in the design so the implementation isn't a guess.
    Full wrapper semantics live in `docs/rules/api-routes.md` — don't re-derive them.
@@ -106,7 +106,7 @@ contract the moment something reads it, whether or not you called it "public."
 
 ## Verification
 
-- [ ] Every route in this change names its auth wrapper (`withAuth`/`withAdminAuth`/`withEditorAuth`/`withInternalAuth`/`withApiAuth`) and states why
+- [ ] Every route in this change names its auth wrapper (`withAuth`/`withAdminAuth`/`withInternalAuth`/`withApiAuth`) and states why
 - [ ] Every input has a zod schema in `lib/validations/`, not ad-hoc parsing in the handler
 - [ ] Error shapes are specified for every case (validation, not-found, conflict, forbidden) — not just the happy path
 - [ ] Every list/read route is bounded or paginated (`parsePagination`/`paginatedResponse`) — `npm run ship`'s unbounded-query scan (Pillar 4) will fail a naked `findMany()` otherwise

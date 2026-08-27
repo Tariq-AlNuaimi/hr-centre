@@ -42,7 +42,7 @@ to `/code-review` / senior-code-reviewer. You take the "is this the right shape.
 2. **Enumerate trust boundaries.** For the surface under review, name every point
    where data or authority crosses from less-trusted to more-trusted: the network
    edge, `middleware.ts`, each auth wrapper (`withAuth` / `withAdminAuth` /
-   `withEditorAuth` / `withInternalAuth` / `withApiAuth`), the service→Prisma seam,
+   `withInternalAuth` / `withApiAuth`), the service→Prisma seam,
    the export/IO path, any AI prompt boundary. For each: _what is trusted, by whom,
    on what evidence, and what happens if that evidence is forged?_
 3. **Run STRIDE over the boundaries** — Spoofing, Tampering, Repudiation,

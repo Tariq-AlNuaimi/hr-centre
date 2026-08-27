@@ -9,9 +9,19 @@ datasource db {
 
 // -- Enums --
 
+/// Platform administration only — NOT §4.1's HR authority, which lives on
+/// `Employee.pmsRoles` and is a separate axis by ADR-065.
+///
+/// TWO values since ADR-070 (2026-08-27). `EDITOR` was removed: it gated nothing
+/// — `withEditorAuth` was defined and never called by any route — while looking
+/// like a rung on a ladder that did not exist. ADR-070 first stopped it being
+/// grantable (the zod boundary, then the SSO seam); this retires the value
+/// itself, so no row can carry a privilege the product does not honour.
+///
+/// The migration backfills any surviving `EDITOR` row to `VIEWER` BEFORE the type
+/// swap. That is not a data loss: the two granted exactly the same nothing.
 enum Role {
   ADMIN
-  EDITOR
   VIEWER
 }
 

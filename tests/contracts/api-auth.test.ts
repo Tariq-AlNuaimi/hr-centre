@@ -14,7 +14,7 @@
 //     --test tests/contracts/api-auth.test.ts
 //
 // The `test` npm script now passes --experimental-test-module-mocks, so ALL
-// cases below (incl. the withAuth/withAdminAuth/withEditorAuth session/role
+// cases below (incl. the withAuth/withAdminAuth session/role
 // checks) run on every `npm test` / `/ship` / CI -- nothing self-skips. The
 // `skip: !canMock` guards remain only so the file still works if run WITHOUT
 // the flag (then the session cases skip and the token-gate cases still run).
@@ -353,45 +353,37 @@ test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, as
   assert.equal(called, true);
 });
 
-// ADR-070 — EDITOR confers nothing in THIS application, and that is now a test
-// rather than an observation.
+// ADR-070 — `withEditorAuth` and the `EDITOR` enum value are both GONE
+// (prisma/migrations/20260827090000_pms_retire_editor_role).
 //
-// `withEditorAuth` is still exported (see the note on it in lib/api-helpers.ts:
-// it is TEMPLATE machinery — the scaffolder's `--writes editor`,
-// scripts/rbac-matrix.mjs, and two ESLint rules all name it), but no route in
-// this fork calls it. So the only wrapper an EDITOR session ever meets here is
-// `withAdminAuth`, which must refuse it. Sessions carrying EDITOR still exist:
-// ADR-070 kept the enum so stored rows stay valid, and only stopped the API
-// ACCEPTING the value.
-test("withAdminAuth returns 403 for an EDITOR session", { skip: !canMock }, async () => {
-  current = { user: { id: "u3b", role: "EDITOR" } };
-  const res = await helpers.withAdminAuth(okHandler)(
-    new NextRequest("http://localhost/api/x"),
-    ctx,
-  );
-  assert.equal(res.status, 403);
-});
-
-test("withEditorAuth returns 403 for a VIEWER session", { skip: !canMock }, async () => {
-  current = { user: { id: "u4", role: "VIEWER" } };
-  const res = await helpers.withEditorAuth(okHandler)(
-    new NextRequest("http://localhost/api/x"),
-    ctx,
-  );
-  assert.equal(res.status, 403);
-});
-
+// The wrapper's own cases went with it; what remains worth pinning is the
+// property they were standing in for. `withAdminAuth` must admit ADMIN and
+// refuse everything else, and "everything else" is now a closed set of one
+// because the enum has exactly two values. A session object can still be
+// hand-forged with any string — a stale JWT issued before the migration is the
+// realistic case — so the refusal is asserted against the retired value too,
+// not just against VIEWER.
 test(
-  "withEditorAuth passes through for EDITOR and ADMIN sessions",
-  { skip: !canMock },
+  "withAdminAuth refuses every non-ADMIN role, including the retired EDITOR",
+  {
+    skip: !canMock,
+  },
   async () => {
-    for (const role of ["EDITOR", "ADMIN"]) {
-      current = { user: { id: "u5", role } };
-      const res = await helpers.withEditorAuth(okHandler)(
+    for (const role of ["VIEWER", "EDITOR"]) {
+      current = { user: { id: "u4", role } };
+      const res = await helpers.withAdminAuth(okHandler)(
         new NextRequest("http://localhost/api/x"),
         ctx,
       );
-      assert.equal(res.status, 200, `${role} should pass withEditorAuth`);
+      assert.equal(res.status, 403, `${role} must not reach an admin route`);
     }
   },
 );
+
+test("ADR-070 withEditorAuth is no longer exported", { skip: !canMock }, () => {
+  assert.equal(
+    "withEditorAuth" in helpers,
+    false,
+    "a wrapper admitting a role the database cannot store is dead code that reads as live authority",
+  );
+});

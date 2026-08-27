@@ -486,10 +486,6 @@ ruleTest(
         errors: [{ messageId: "rateLimitInsideAuth" }],
       },
       {
-        code: `export const PUT = withEditorAuth(withRateLimit(handler, opts));`,
-        errors: [{ messageId: "rateLimitInsideAuth" }],
-      },
-      {
         // Token wrapper: handler is arg 1, so the throttle is in the wrong slot.
         code: `export const GET = withInternalAuth("CRON_SECRET", withRateLimit(purge, opts));`,
         errors: [{ messageId: "rateLimitInsideAuth" }],
@@ -902,7 +898,7 @@ const API_ROUTE = "/repo/app/api/reports/route.ts";
 // The rule credits a wrapper only when its binding comes from @/lib/api-helpers,
 // so every VALID case must actually import it (soundness fix, 2026-07-25).
 const WRAP_IMPORT =
-  'import { withAuth, withAdminAuth, withEditorAuth, withApiAuth, withRateLimit } from "@/lib/api-helpers";\n';
+  'import { withAuth, withAdminAuth, withApiAuth, withRateLimit } from "@/lib/api-helpers";\n';
 ruleTest(
   "no-bare-api-route",
   noBareApiRoute,
@@ -913,10 +909,6 @@ ruleTest(
       {
         filename: API_ROUTE,
         code: WRAP_IMPORT + "export const POST = withAdminAuth(async () => {});",
-      },
-      {
-        filename: API_ROUTE,
-        code: WRAP_IMPORT + "export const PUT = withEditorAuth(async () => {});",
       },
       {
         filename: API_ROUTE,
@@ -958,6 +950,19 @@ ruleTest(
       {
         filename: API_ROUTE,
         code: "export async function GET() { return Response.json({}); }",
+        errors: [{ messageId: "noBareApiRoute" }],
+      },
+      // ADR-070 — `withEditorAuth` was a VALID case here until the wrapper and
+      // the `EDITOR` enum value were retired. It is asserted as INVALID rather
+      // than deleted, because the two say different things: deleting it would
+      // leave the rule silently crediting the name again if someone re-added it
+      // to AUTH_WRAPPERS, while this pins that a handler wrapped in a gate that
+      // no longer exists is treated as BARE — the fail-closed direction.
+      {
+        filename: API_ROUTE,
+        code:
+          'import { withEditorAuth } from "@/lib/api-helpers";\n' +
+          "export const PUT = withEditorAuth(async () => {});",
         errors: [{ messageId: "noBareApiRoute" }],
       },
       // --- Export-form bypasses (2026-07-25 adversarial verification) ---------

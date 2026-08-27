@@ -177,7 +177,7 @@ npx prisma generate
 npx prisma migrate dev --name add_my_entity
 ```
 
-`--writes admin|editor|any` selects the auth wrapper for the write routes (POST/PUT/DELETE): `admin` → `withAdminAuth` (ADMIN only), `editor` → `withEditorAuth` (ADMIN or EDITOR), `any` → `withAuth` (any authenticated user). Default is `any`; GET always uses `withAuth`. (`--admin-writes true` is kept as a back-compat alias for `--writes admin`.)
+`--writes admin|any` selects the auth wrapper for the write routes (POST/PUT/DELETE): `admin` → `withAdminAuth` (ADMIN only), `any` → `withAuth` (any authenticated user). Default is `any`; GET always uses `withAuth`. (An `editor` tier existed until ADR-070 retired the `EDITOR` role; `--writes editor` is now rejected with the valid list.) (`--admin-writes true` is kept as a back-compat alias for `--writes admin`.)
 
 The scaffold creates: Prisma model (with soft-delete fields + audit hooks + `@@index`es), zod validation, API routes (`GET` wrapped with `withAuth`; `POST`/`PUT`/`DELETE` wrapped with the `--writes` wrapper, writes rate-limited; the list route supports server-side search/sort/pagination), a dashboard page with DataTable + Form, sidebar nav entry, and recycling-bin registration.
 

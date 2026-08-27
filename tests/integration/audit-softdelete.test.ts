@@ -171,7 +171,13 @@ test(
     // soft-deleted rows (SR-H3). The contract suite is DB-free and can't run the
     // extension's query hooks, so this is the only place it is exercised.
     await withAuditContext(CTX, async () => {
-      const role = "EDITOR" as const;
+      // VIEWER since ADR-070 retired the other value from the enum. This
+      // fixture used it only because it was otherwise unused, so its counts
+      // could not collide with real rows. VIEWER is the common case instead —
+      // which is fine, and arguably better: every assertion below is a DELTA
+      // against a `before` reading, so the property under test (does groupBy
+      // exclude soft-deleted rows?) never depended on the bucket being empty.
+      const role = "VIEWER" as const;
       const filteredCount = async () => {
         const g = await prisma.user.groupBy({
           by: ["role"],
@@ -202,14 +208,14 @@ test(
       });
       createdUserIds.push(user.id);
 
-      assert.equal(await filteredCount(), filteredBefore + 1, "live EDITOR counted by groupBy");
+      assert.equal(await filteredCount(), filteredBefore + 1, "a live row is counted by groupBy");
 
       await prisma.user.delete({ where: { id: user.id } });
 
       assert.equal(
         await filteredCount(),
         filteredBefore,
-        "groupBy(prisma) excludes the soft-deleted EDITOR (extension filtered)",
+        "groupBy(prisma) excludes the soft-deleted row (extension filtered)",
       );
       assert.equal(
         await unfilteredCount(),

@@ -9,8 +9,6 @@
 //
 //   (a) TIER model (the template default) — the wrapper IS the gate:
 //        withAdminAuth  -> ADMIN only
-//        withEditorAuth -> ADMIN, EDITOR  (or the WRITE_ROLES set if lib/
-//                          api-helpers.ts defines one — see loadWriteRoles)
 //        withAuth       -> every authenticated role
 //        withApiAuth    -> machine (Bearer; not a session role)       [non-role]
 //        withInternalAuth -> machine (shared secret / cron)           [non-role]
@@ -112,23 +110,11 @@ function loadCapabilityCatalog(admin) {
   return null;
 }
 
-// withEditorAuth admits "write" roles. The template default is ADMIN+EDITOR, but a
-// fork may define an explicit WRITE_ROLES set in lib/api-helpers.ts (e.g. every
-// role except read-only ones). Use that when present so the matrix is accurate.
-function loadWriteRoles() {
-  const p = path.join(ROOT, "lib", "api-helpers.ts");
-  if (!fs.existsSync(p)) return null;
-  const src = fs.readFileSync(p, "utf8");
-  const block = src.match(/WRITE_ROLES[^=]*=\s*new Set<Role>\(\[([\s\S]*?)\]\)/);
-  if (!block) return null;
-  // Accept both string-literal ("admin") and enum-reference (Role.ADMIN) members,
-  // so a fork written either way resolves withEditorAuth correctly.
-  const roles = [
-    ...[...block[1].matchAll(/["']([^"']+)["']/g)].map((x) => x[1]),
-    ...[...block[1].matchAll(/\bRole\.([A-Za-z_][A-Za-z0-9_]*)/g)].map((x) => x[1]),
-  ];
-  return roles.length ? roles : null;
-}
+// `loadWriteRoles()` lived here. It resolved which roles `withEditorAuth`
+// admitted (the template default ADMIN+EDITOR, or a fork's explicit WRITE_ROLES
+// set in lib/api-helpers.ts). ADR-070 removed that wrapper and the `EDITOR` enum
+// value along with it, so there is no middle tier left to resolve: every role
+// gate in this fork is ADMIN-or-not.
 
 // --- API route scan ---------------------------------------------------------
 
@@ -159,7 +145,6 @@ function findRouteFiles(dir, out = []) {
 const KNOWN_WRAPPERS = [
   "withCapabilityAuth",
   "withAdminAuth",
-  "withEditorAuth",
   "withApiAuth",
   "withInternalAuth",
   "withAuth", // last: it is a substring-ish of the others by intent, check it after
@@ -204,12 +189,10 @@ function parseRouteHandlers(src) {
 }
 
 function scanApiRoutes(roles, ctx) {
-  const { admin, catalog, writeRoles } = ctx;
+  const { admin, catalog } = ctx;
   const apiDir = path.join(ROOT, "app", "api");
   const routes = [];
   const anomalies = [];
-  const editorRoles =
-    writeRoles ?? roles.filter((r) => r === admin || r.toLowerCase() === "editor");
 
   for (const file of findRouteFiles(apiDir)) {
     const url = urlForRouteFile(file);
@@ -252,10 +235,6 @@ function scanApiRoutes(roles, ctx) {
         case "withAdminAuth":
           kind = "role";
           allowedRoles = [admin];
-          break;
-        case "withEditorAuth":
-          kind = "role";
-          allowedRoles = [...editorRoles];
           break;
         case "withAuth":
           kind = "role";
@@ -409,9 +388,8 @@ function main() {
   const roles = discoverRoles();
   const admin = adminRole(roles);
   const catalog = loadCapabilityCatalog(admin);
-  const writeRoles = loadWriteRoles();
   const sections = discoverSectionAccess(roles, admin);
-  const { routes, anomalies } = scanApiRoutes(roles, { admin, catalog, writeRoles });
+  const { routes, anomalies } = scanApiRoutes(roles, { admin, catalog });
   const usesCapability = routes.some((r) => r.wrapper === "withCapabilityAuth");
   const modelKind = usesCapability ? "capability" : "tier";
 
@@ -430,7 +408,6 @@ function main() {
     canonicalOnly: modelKind === "capability",
     legend: {
       withAdminAuth: `${admin} only`,
-      withEditorAuth: writeRoles ? `WRITE_ROLES: ${writeRoles.join(", ")}` : `${admin}, EDITOR`,
       withAuth: "any authenticated role",
       withCapabilityAuth:
         "roles the capability catalog grants (+ admin) — CANONICAL, reconcile vs live",

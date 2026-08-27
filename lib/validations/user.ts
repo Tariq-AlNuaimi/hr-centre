@@ -22,10 +22,17 @@ import { emailSchema } from "./common";
  * change would leave the API still accepting a value nothing honours — and the
  * API is the contract.
  *
- * The `Role` enum keeps all three values, deliberately: existing rows stay valid
- * with no migration, and anything that is not ADMIN renders identically, which
- * has always been the truth. Retiring `EDITOR` from the enum is a later cleanup
- * once no row carries it.
+ * The `Role` enum KEPT all three values at first, deliberately: existing rows
+ * stayed valid with no migration, and anything that is not ADMIN renders
+ * identically, which
+ * has always been the truth.
+ *
+ * UPDATE (2026-08-27): that cleanup happened. Once the SSO seam was narrowed too
+ * (`lib/sso/role-map.ts` — JIT provisioning bypasses this file entirely, so the
+ * boundary narrowing had not reached it), nothing could write the value, and
+ * `prisma/migrations/20260827090000_pms_retire_editor_role` retired it from the
+ * enum. `Role` is now ADMIN | VIEWER, so the boolean here and the column agree
+ * exactly: two states, two values.
  */
 const platformAdmin = z
   .boolean()
