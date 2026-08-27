@@ -35,6 +35,35 @@ publish gate. Tariq adds the 360; Yousuf adds the permission story.
 
 ## Setting each password
 
+### The one-command path
+
+`scripts/provision-logins.mjs --demo-cast` does all five in one go. It reads one password per
+person from the environment, hashes them with the app's own function, links each account to its
+employee record, and stamps `passwordChangedAt` so any session issued earlier is torn down.
+
+```bash
+export DEMO_PASSWORD_1100=…   # Fatma
+export DEMO_PASSWORD_1101=…   # Yousuf
+export DEMO_PASSWORD_1200=…   # Tariq
+export DEMO_PASSWORD_1202=…   # Layla
+export DEMO_PASSWORD_1203=…   # Omar
+
+DATABASE_URL=… npm run demo-cast              # dry run — shows the five, writes nothing
+DATABASE_URL=… npm run demo-cast -- --apply   # sets the passwords
+```
+
+It refuses to run unless **all five** are supplied, so a half-provisioned cast is never the thing
+discovered on stage, and it refuses to touch anybody who is not on the list. It generates nothing
+and prints nothing: a password this script invented would have to be transmitted somehow, and every
+way of doing that is worse than choosing five yourself.
+
+While you are there, `npm run provision-logins -- --apply` gives **every** active employee the
+passwordless login ADR-069 says they should have. Production's database was seeded before that
+behaviour existed, so its employees have none; the script is idempotent, skips leavers, and skips
+any email that already has an account.
+
+### The by-hand path
+
 Sign in as the bootstrap admin, then for each person above:
 
 1. Go to **`/users/new`**.

@@ -305,8 +305,13 @@ test(
   "jwt: keeps the token on subsequent calls when the password is unchanged",
   { skip: !canMock },
   async () => {
-    // DB reports the same epoch the token carries -> token survives.
-    findUniqueResult = { passwordChangedAt: new Date(500) };
+    // DB reports the same epoch the token carries, and a live account -> token
+    // survives. `deletedAt` is part of the real SELECT (ADR-069's off-boarding
+    // revocation), and the guard is deliberately strict — anything other than an
+    // explicit null tears the session down, so a mock that omits the column
+    // would fail closed. That is the correct direction for a security check, and
+    // the reason this fixture names it.
+    findUniqueResult = { passwordChangedAt: new Date(500), deletedAt: null };
     const token = await config.callbacks.jwt({
       token: { id: "u9", role: "ADMIN", passwordChangedAt: 500 },
       user: undefined,
@@ -320,11 +325,29 @@ test(
 );
 
 test(
+  "jwt: REVOKES the token when the account has been soft-deleted (ADR-069 off-boarding)",
+  { skip: !canMock },
+  async () => {
+    // Setting an employee to LEAVER soft-deletes their `User`. Both sign-in paths
+    // already refuse a soft-deleted account — but a session ISSUED before the
+    // departure would otherwise survive until `maxAge`, and a revocation that
+    // leaves the departing person signed in for the rest of the day is not a
+    // revocation.
+    findUniqueResult = { passwordChangedAt: new Date(500), deletedAt: new Date(600) };
+    const token = await config.callbacks.jwt({
+      token: { id: "u9", role: "ADMIN", passwordChangedAt: 500 },
+      user: undefined,
+    });
+    assert.equal(token, null, "an off-boarded account's live session is torn down");
+  },
+);
+
+test(
   "jwt: REVOKES the token when the password changed after it was issued",
   { skip: !canMock },
   async () => {
     // Password reset stamped a newer epoch than the token's -> reject (return null).
-    findUniqueResult = { passwordChangedAt: new Date(9999) };
+    findUniqueResult = { passwordChangedAt: new Date(9999), deletedAt: null };
     const token = await config.callbacks.jwt({
       token: { id: "u9", role: "ADMIN", passwordChangedAt: 500 },
       user: undefined,

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { employeeSelect, encryptSalary, serializeEmployee } from "@/lib/pms/employee-select";
+import { revokeLoginOnOffboard } from "@/lib/pms/offboarding";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
@@ -96,30 +97,47 @@ export const PUT = withRateLimit(
     // `updateEmployeeSchema` (it is a delete-and-recreate, not a field edit), so
     // it cannot change underneath an existing ciphertext — the AAD a row was
     // encrypted under is the AAD it will always be read under.
-    const target = await prisma.employee.findUnique({ where: { id }, select: { odooId: true } });
+    const target = await prisma.employee.findUnique({
+      where: { id },
+      select: { odooId: true, status: true },
+    });
     if (!target) return notFound("Employee not found");
 
-    const updated = await prisma.employee.update({
-      where: { id },
-      data: {
-        name: data.name,
-        email: data.email,
-        // §3.3's anchor for §11. Until now the ONLY writer was the import, so a
-        // wrong or missing joining date could be corrected no other way — and a
-        // re-import is precisely the expensive act the hand-editing path exists
-        // to avoid (red-team F13).
-        dateOfJoining: data.dateOfJoining ? new Date(`${data.dateOfJoining}T00:00:00Z`) : null,
-        departmentId: data.departmentId,
-        entityId: data.entityId,
-        managerId: data.managerId,
-        roleTrack: data.roleTrack,
-        pmsRoles: data.pmsRoles,
-        basicSalaryEnc: encryptSalary(data.basicSalary, target.odooId),
-        status: data.status,
-        lastWorkingDay: data.lastWorkingDay ? new Date(`${data.lastWorkingDay}T00:00:00Z`) : null,
-        unpaidLeaveDays: data.unpaidLeaveDays,
-      },
-      select: employeeSelect(actor),
+    // ADR-069 — the third path that can off-board someone, after /api/leavers
+    // and the import. HR fixing a record by hand is a quieter act than either,
+    // which is exactly why it must not be the one that leaves a departed
+    // employee's login alive. Guarded on the TRANSITION so re-saving an already
+    // departed record does nothing.
+    //
+    // In the same transaction as the row it describes: a status that says LEAVER
+    // beside an account that still works is the state this decision exists to
+    // make impossible.
+    const offboarding = data.status === "LEAVER" && target.status !== "LEAVER";
+
+    const updated = await auditedTransaction(async (tx) => {
+      if (offboarding) await revokeLoginOnOffboard(tx, id);
+      return tx.employee.update({
+        where: { id },
+        data: {
+          name: data.name,
+          email: data.email,
+          // §3.3's anchor for §11. Until now the ONLY writer was the import, so a
+          // wrong or missing joining date could be corrected no other way — and a
+          // re-import is precisely the expensive act the hand-editing path exists
+          // to avoid (red-team F13).
+          dateOfJoining: data.dateOfJoining ? new Date(`${data.dateOfJoining}T00:00:00Z`) : null,
+          departmentId: data.departmentId,
+          entityId: data.entityId,
+          managerId: data.managerId,
+          roleTrack: data.roleTrack,
+          pmsRoles: data.pmsRoles,
+          basicSalaryEnc: encryptSalary(data.basicSalary, target.odooId),
+          status: data.status,
+          lastWorkingDay: data.lastWorkingDay ? new Date(`${data.lastWorkingDay}T00:00:00Z`) : null,
+          unpaidLeaveDays: data.unpaidLeaveDays,
+        },
+        select: employeeSelect(actor),
+      });
     });
 
     return ok(serializeEmployee(updated));

@@ -4,6 +4,7 @@ import { reconcile, type ExistingEmployee, type ReconcileContext } from "./recon
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
 import { decryptSalary, encryptSalary } from "../employee-select";
+import { revokeLoginOnOffboard } from "../offboarding";
 
 /**
  * Import orchestration — spec §3.
@@ -235,10 +236,13 @@ export class ImportAlreadyAppliedError extends ImportConflictError {
  * different one because the world moved is exactly the surprise the two-step
  * flow exists to prevent.
  */
-export async function applyImport(params: {
-  batchId: string;
-  buffer: Buffer;
-}): Promise<{ created: number; updated: number; provisioned: number }> {
+export async function applyImport(params: { batchId: string; buffer: Buffer }): Promise<{
+  created: number;
+  updated: number;
+  provisioned: number;
+  /** ADR-069 — returning employees whose account is still revoked; see the rehire branch. */
+  returningWithRevokedLogin: number;
+}> {
   const batch = await prisma.importBatch.findUnique({
     where: { id: params.batchId },
     select: {
@@ -316,6 +320,9 @@ export async function applyImport(params: {
   // leaver and skips an email that already has a login, so the two numbers are
   // legitimately different and HR is told the one that happened.
   let provisioned = 0;
+  // ADR-069 — returning employees whose account is still revoked. Counted rather
+  // than silently skipped: see the note at the rehire branch below.
+  let returningWithRevokedLogin = 0;
 
   /*
     An EXPLICIT budget, because Prisma's default one is 5 seconds and this
@@ -405,6 +412,24 @@ export async function applyImport(params: {
     for (const update of plan.updates) {
       const row = byOdooId.get(update.odooId);
       if (!row) continue;
+      // ADR-069 — a sheet that turns someone into a LEAVER is an off-boarding,
+      // and off-boarding revokes access. §3.2 makes the import the system of
+      // record for status, so the manual route at /api/leavers cannot be the
+      // only path that revokes: an org whose departures arrive by spreadsheet
+      // would keep every leaver's login alive.
+      //
+      // Guarded on the TRANSITION, not the value: re-importing a sheet that
+      // still lists last year's leaver must not try to revoke every week. The
+      // helper is idempotent anyway, but a no-op that never runs is cheaper.
+      if (
+        await applyStatusTransitionToAccess(tx, {
+          employeeId: update.employeeId,
+          previousStatus: ctx.reconcile.existing.get(update.odooId)?.status,
+          nextStatus: row.status,
+        })
+      ) {
+        returningWithRevokedLogin++;
+      }
       await tx.employee.update({
         where: { id: update.employeeId },
         data: {
@@ -447,7 +472,12 @@ export async function applyImport(params: {
     }
   }, APPLY_TX_BUDGET(rowsTouched));
 
-  return { created: plan.creates.length, updated: plan.updates.length, provisioned };
+  return {
+    created: plan.creates.length,
+    updated: plan.updates.length,
+    provisioned,
+    returningWithRevokedLogin,
+  };
 }
 
 /**
@@ -511,6 +541,67 @@ function APPLY_TX_BUDGET(rowsTouched: number): { timeout: number; maxWait: numbe
 
 /** Chunk size for the `email IN (...)` lookups. A batch may be MAX_ROWS long. */
 const EMAIL_LOOKUP_CHUNK = 1_000;
+
+/**
+ * What a status change in the sheet does to the person's ACCESS — ADR-069.
+ *
+ * Both directions in one place, because they are one decision seen from two ends,
+ * and because the update loop is long enough already.
+ *
+ * **Leaving** revokes. §3.2 makes the import the system of record for status, so
+ * the manual route at `/api/leavers` cannot be the only path that revokes: an org
+ * whose departures arrive by spreadsheet would keep every leaver's login alive.
+ * Guarded on the TRANSITION, not the value, so a weekly re-import that still lists
+ * last year's leaver does nothing.
+ *
+ * **Returning** does NOT restore, and returns `true` so the caller can say so. A
+ * leaver who comes back under the same §3.2 permanent key reconciles as an UPDATE,
+ * not a create — the provisioning path never runs for them, and their `userId`
+ * still points at the account off-boarding soft-deleted. The import deliberately
+ * leaves it revoked: an account may have been revoked for cause, and a spreadsheet
+ * row is not where that decision gets reversed (`provisionLoginFor` refuses to
+ * resurrect for the same reason).
+ *
+ * What was wrong was that it happened SILENTLY — the person locked out of both
+ * sign-in paths with nothing to tell HR why. So the apply counts them, the toast
+ * names the number, and `/admin/roles` shows REVOKED rather than a green badge.
+ * The remedy is a person's; finding out it is needed should not be.
+ */
+async function applyStatusTransitionToAccess(
+  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
+  params: { employeeId: string; previousStatus: string | undefined; nextStatus: string },
+): Promise<boolean> {
+  const { employeeId, previousStatus, nextStatus } = params;
+  if (nextStatus === "LEAVER") {
+    if (previousStatus !== "LEAVER") await revokeLoginOnOffboard(tx, employeeId);
+    return false;
+  }
+  if (previousStatus !== "LEAVER") return false;
+  return hasRevokedLogin(tx, employeeId);
+}
+
+/**
+ * Does this employee's linked account exist but sit revoked (soft-deleted)?
+ *
+ * Named `deletedAt` in the `where` on purpose: that is what suppresses the
+ * extension's injected `deletedAt: null`, so this asks the half of the question
+ * an ordinary read cannot see.
+ */
+async function hasRevokedLogin(
+  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
+  employeeId: string,
+): Promise<boolean> {
+  const employee = await tx.employee.findUnique({
+    where: { id: employeeId },
+    select: { userId: true },
+  });
+  if (!employee?.userId) return false;
+  const revoked = await tx.user.findFirst({
+    where: { id: employee.userId, deletedAt: { not: null } },
+    select: { id: true },
+  });
+  return revoked !== null;
+}
 
 /**
  * Every email in `emails` that ALREADY has a `User` — live or soft-deleted.

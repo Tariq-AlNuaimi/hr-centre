@@ -77,6 +77,32 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return err("Email already in use", 409);
 
+  // The SOFT-DELETED half of the same question, and it needs asking separately.
+  //
+  // The read above runs on the audited client, which injects `deletedAt: null` —
+  // so it reports "no account" for a revoked one. The unique index on `email`
+  // does not respect that filter, and `create` is not hooked by the soft-delete
+  // extension, so the next statement would hit a raw P2002 and surface as an
+  // opaque 500.
+  //
+  // This was a rare edge case until ADR-069's off-boarding amendment, which
+  // manufactures a soft-deleted `User` every time a provisioned employee leaves.
+  // The person most likely to hit it is an admin trying to give a REHIRED
+  // employee their access back — precisely the moment a 500 is least helpful.
+  // Naming the remedy costs one indexed read.
+  const revoked = await prisma.user.findFirst({
+    where: { email, deletedAt: { not: null } },
+    select: { id: true },
+  });
+  if (revoked) {
+    return err(
+      "An account for this email was revoked, not deleted — restore it from the recycling bin " +
+        "rather than creating a second one. (A revoked account keeps its history and its links; " +
+        "a new one would be refused by the unique email index anyway.)",
+      409,
+    );
+  }
+
   const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({

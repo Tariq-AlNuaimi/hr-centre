@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
 import { rollUpTarget } from "@/lib/pms/roll-up";
+import { revokeLoginOnOffboard } from "@/lib/pms/offboarding";
 import { markLeaverSchema } from "@/lib/validations/edge-cases";
 
 /**
@@ -79,6 +80,11 @@ export const POST = withRateLimit(
         data: { status: "LEAVER", lastWorkingDay },
       });
 
+      // §12.1 preserves the RECORD; ADR-069 revokes the ACCESS. In the same
+      // transaction as the status change, so a departure cannot half-happen —
+      // rolled-up reports with a still-live login is the worst of both.
+      const revokedUserId = await revokeLoginOnOffboard(tx, employeeId);
+
       const moved: string[] = [];
       for (const report of reports) {
         // The line MOVES: §7.2's manager-of-record is whoever currently holds
@@ -123,6 +129,10 @@ export const POST = withRateLimit(
           lastWorkingDay,
           rolledUpReportCount: moved.length,
           rolledUpTo: target,
+          // §12.2's trail has to say whether access was revoked. `false` is as
+          // much a fact as `true`: most employees have no login yet, and "we
+          // revoked nothing" is the answer to a question an auditor will ask.
+          loginRevoked: revokedUserId !== null,
           note: note ?? null,
         },
       });

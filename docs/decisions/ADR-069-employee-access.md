@@ -108,9 +108,7 @@ on instinct. An instinct is not a rule.
 - `lib/pms/actor.ts` already documents that a platform ADMIN **can** obtain HR authority by
   provisioning a login on an unclaimed employee's email — audited, but possible. Minting `VIEWER`s
   does not change that; it means the import is not a second, quieter way to mint admins.
-- An existing LEAVER's account is not revoked on import. Off-boarding today is a `status` change;
-  whether it should also soft-delete the `User` is a policy question left open deliberately rather
-  than answered by omission.
+- ~~An existing LEAVER's account is not revoked on import.~~ **Amended 2026-08-26 — see below.**
 
 ## Alternatives considered
 
@@ -137,3 +135,61 @@ on instinct. An instinct is not a rule.
   red with the unique-constraint violation it predicts.
 - `tests/contracts/sso-role-map.test.ts` — six cases over `mapSsoRole`, including the
   least-privilege default and the Entra SAML claim URI.
+
+---
+
+## Amendment, 2026-08-26 — off-boarding revokes access
+
+**Status:** Accepted — operator decision, answering open question 2 above.
+
+§12.1 says a departure preserves the employee's RECORD and history. It says nothing about their
+login, and this ADR originally read that silence as "leave the account alone": the import refuses to
+CREATE a login for a leaver, but an account that already existed survived the departure untouched. A
+person who left on Friday could sign in on Monday, see their own scorecard, and answer a 360 they had
+been assigned — until somebody at `/users` remembered.
+
+**Decision: setting an employee to LEAVER soft-deletes the linked `User`.** Access follows employment;
+the record does not.
+
+**One helper, three callers.** `revokeLoginOnOffboard` (`lib/pms/offboarding.ts`) is called from every
+path that can turn someone into a leaver, each inside the same transaction as the status change:
+
+| Path                      | Why it has to be here too                                                                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /api/leavers`       | §12.1's manual half — an immediate resignation                                                                                                      |
+| `applyImport`             | §3.2 makes the sheet the system of record for status; an org whose departures arrive by spreadsheet would otherwise keep every leaver's login alive |
+| `PUT /api/employees/[id]` | HR fixing a record by hand is the quietest of the three, which is exactly why it must not be the one that leaves a login live                       |
+
+All three guard on the **transition**, not the value, so re-saving or re-importing an already-departed
+record does nothing.
+
+**Why a soft delete is the right instrument.** Both sign-in paths already refuse a soft-deleted
+account and neither had to change: `authorize()` looks up `deletedAt: null`, and the `signIn` callback
+refuses a federated identity whose row is soft-deleted — the guard kept deliberately for the day a
+provider returned. This decision is what makes it load-bearing. It is also reversible by a person:
+`/recycling-bin` restores a `User`, so an off-boarding done in error is a restore rather than a
+re-creation, keeping the `Account` linkage and the audit history on the same id.
+
+**One change was required, in `lib/auth.ts`.** The per-request revocation check read
+`passwordChangedAt` on the UNFILTERED client, so a session issued before the departure would have
+survived until `maxAge`. `deletedAt` joins that same narrow indexed read, and anything other than an
+explicit null tears the session down — a revocation that leaves the departing person signed in for the
+rest of the day is not a revocation. The guard fails CLOSED by design.
+
+**What it deliberately does not do:** it does not touch the employee row (§12.1 preserves the record,
+and `recyclable.ts` excludes Employee from the bin for that reason); it does not unlink
+`Employee.userId` (the link is how a restored account finds its way back, and how the audit trail
+stays legible); and it does nothing at all for an employee who has no login, which is most of the
+fixture today.
+
+**A property of the soft-delete extension worth recording:** `delete` is **not idempotent**. The
+extension rewrites it to an `update` on the BASE client, which carries no read filter, so deleting an
+already-deleted row succeeds, re-stamps `deletedAt` to now, and emits a second `DELETE` audit row. The
+helper therefore checks for an existing `deletedAt` first — otherwise a weekly re-import that still
+listed last year's leaver would move the revocation date, and §12.2's trail would name a date on which
+nobody revoked anything.
+
+**Verification.** `tests/integration/pms-offboarding-revokes-login.test.ts` — the account is
+soft-deleted and invisible to the audited client while the employee record and its link survive; an
+employee with no login off-boards quietly; revoking twice is a no-op. Plus a contract test that the
+live session is torn down, mutation-checked against the pre-change guard.

@@ -248,9 +248,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id) {
         const current = await prismaUnfiltered.user.findUnique({
           where: { id: token.id as string },
-          select: { passwordChangedAt: true },
+          // `deletedAt` joins the epoch check for ADR-069's off-boarding: setting
+          // an employee to LEAVER soft-deletes their `User`, and both sign-in
+          // paths already refuse a soft-deleted account — but a session ISSUED
+          // before the departure would otherwise survive until `maxAge`. A
+          // revocation that leaves the departing person signed in for the rest
+          // of the day is not a revocation.
+          //
+          // This read already happens on every request; `deletedAt` is one more
+          // column on the same narrow indexed lookup, not a second query.
+          select: { passwordChangedAt: true, deletedAt: true },
         });
-        if (!current) return null;
+        if (!current || current.deletedAt !== null) return null;
         const changedAt = current.passwordChangedAt?.getTime() ?? 0;
         if (changedAt > ((token.passwordChangedAt as number | undefined) ?? 0)) {
           return null;

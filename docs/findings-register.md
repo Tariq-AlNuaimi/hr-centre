@@ -35,6 +35,33 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-26 — [high-quality/a11y] **A primary button met WCAG AA at rest and FAILED it under the
+  pointer, on every screen in the product.** The default button carried
+  `hover:opacity-90`. `--brand-primary` (`#0165ff`) takes white at **4.88:1** and passes; at 90%
+  opacity over a light surface it composites to `#1a74ff` and takes white at **4.21:1**, below the
+  4.5:1 floor for 14px normal text. A state nobody audits, on a control on every page.
+
+  Found by the axe pass the operator asked for on 2026-08-26 — and found the honest way only on the
+  second attempt. **The first run reported one `color-contrast` violation on all five screens and
+  was WRONG about why**: the probe clicked the login submit button and left the pointer at those
+  coordinates, so every subsequent screen was audited with whatever sat under them in `:hover`. The
+  resting state was clean the whole time. An automated a11y sweep that does not park the mouse
+  audits a state no user is in — the same class of mistake as the permission sweep that grepped for
+  refusal words.
+
+  **FIXED, and the obvious fix was also wrong.** Reaching for `--primary-emphasis` (the brand's
+  darker royal, already defined "for WCAG AA") took light to 6.79:1 but **broke dark to 2.41:1** —
+  that token is brand-as-TEXT and its dark override LIGHTENS to royal-300, so white sat on pale
+  blue. Measured, then discarded. The fix is a new `--primary-hover` token,
+  `color-mix(in srgb, var(--brand-primary) 80%, black)`, which works in both themes at once because
+  `bg-primary` is the same royal in each — only text tokens flip. White reads **6.88:1** hovered, so
+  the state is now MORE legible than at rest, which is the direction a hover should move. It also
+  fixes the semantics: fading a solid accent reads as the control becoming less available.
+
+  Evidence: axe (`wcag2a/2aa/21a/21aa`) over `/people`, `/admin/roles`, `/scorecard`,
+  `/goal-setting`, `/admin/import` in light and dark — **0 violations at rest and 0 while hovered**,
+  after. Before: 0 at rest, 1 hovered, both themes. — status: fixed(2026-08-26)
+
 - 2026-08-26 — [scalable/operability] **The employee import cannot finish for a real organisation:
   one transaction, a 5-second default budget, and a 10,000-row cap.** `applyImport` does all of its
   work in a single `auditedTransaction` — correctly, because §3.5's all-or-nothing and Appendix A's

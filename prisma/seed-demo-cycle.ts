@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../generated/prisma/client";
+import { revokeLoginOnOffboard } from "../lib/pms/offboarding";
 import { Prisma } from "../generated/prisma/client";
 import type { AssessmentType, RoleTrack } from "../generated/prisma/client";
 import { enrolParticipants, isGoalSettingExempt } from "../lib/pms/cycle";
@@ -940,6 +941,17 @@ async function seedEdgeCases(
           select: { id: true },
         });
       }
+      // ADR-069's amendment: setting LEAVER revokes access. The fixture has to
+      // obey the rule it exists to demonstrate — `provisionFixtureLogins` runs
+      // before this and gives nearly everyone a login, so without this the demo
+      // database would hold exactly the state the amendment eliminates: a
+      // departed employee with a live account, on the screen built to show it.
+      //
+      // This is the FOURTH writer of `status = "LEAVER"`, after the three
+      // production paths, and it reproduced the hole the same day the feature
+      // landed — which is the honest argument that the invariant is held by
+      // discipline at each call site rather than by anything structural.
+      await revokeLoginOnOffboard(prisma as never, departing.id);
       await prisma.employee.update({
         where: { id: departing.id },
         data: { status: "LEAVER", lastWorkingDay: utc(DEMO_YEAR, 6, 30) },

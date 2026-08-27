@@ -47,8 +47,8 @@ const BASE_EMPLOYEE_SELECT = {
   managerId: true,
   departmentId: true,
   entityId: true,
-  // ADR-069 — the LINK, not the login. Serialised as the boolean `hasLogin`
-  // below: whether this person can reach the app is org information HR needs
+  // ADR-069 — the LINK, not the login. Serialised as `loginState` below, never
+  // as the id: whether this person can reach the app is org information HR needs
   // (§4.4's My Tasks and §9.7's rater invitations are addressed to someone who
   // must be able to sign in), while the `User` id itself is a platform-side
   // identifier no employee screen has a use for.
@@ -62,6 +62,13 @@ const BASE_EMPLOYEE_SELECT = {
  * row to resolve a department or a manager name (Scalable pillar: no N+1).
  */
 const RELATION_SELECT = {
+  // ADR-069's off-boarding amendment made this join necessary, and the reason is
+  // worth stating: revoking access SOFT-DELETES the `User` and deliberately KEEPS
+  // `Employee.userId` pointing at it, so the link survives a restore. Deriving
+  // "can sign in" from the id alone therefore reported a departed employee as
+  // still having a login — on `/admin/roles`, the one screen built to answer that
+  // question. A to-one join, not an N+1.
+  user: { select: { deletedAt: true } },
   department: { select: { id: true, name: true } },
   entity: { select: { id: true, code: true, name: true } },
   manager: { select: { id: true, name: true, email: true } },
@@ -129,20 +136,32 @@ export type EmployeeListRow = {
    */
   pmsRoles: string[];
   /**
-   * ADR-069 — is there a `User` linked to this employee at all?
+   * ADR-069 — can this person reach the app, and if not, why not?
    *
    * An employee record and a login are separate rows (ADR-065), and before the
    * import provisioned logins they routinely disagreed: thirty-six people in the
-   * directory, one who could sign in. HR editing §4.1 roles needs to see both
-   * facts on one screen, because granting HRBP to someone with no account grants
-   * nothing.
+   * directory, one who could sign in. HR editing §4.1 roles needs both facts on
+   * one screen, because granting HRBP to someone with no account grants nothing.
    *
-   * A boolean, not the user id: "can this person reach the app" is the question;
-   * the platform identity's primary key is not an answer any employee screen
-   * needs. It says nothing about whether SSO or a password will let them in —
-   * only that the account exists to be let in to.
+   * THREE states, not a boolean, and the third is the one that cost a review to
+   * find. Off-boarding soft-deletes the `User` while keeping `Employee.userId`
+   * pointed at it, so "has a link" and "can sign in" stopped being the same
+   * question the moment revocation shipped:
+   *
+   *   NONE     — no account was ever created. The ordinary state for a fixture
+   *              seeded before provisioning existed.
+   *   ACTIVE   — a live account. Whether a PASSWORD or an IdP will let them
+   *              through is a separate question this does not answer.
+   *   REVOKED  — an account exists and was deliberately taken away (§12.1
+   *              off-boarding). Restorable from the recycling bin by a person,
+   *              which is why it must not read as NONE: the remedies differ, and
+   *              creating a second account on that email is refused by the unique
+   *              index.
+   *
+   * Never the user id itself: the platform identity's primary key is not an
+   * answer any employee screen needs.
    */
-  hasLogin: boolean;
+  loginState: "NONE" | "ACTIVE" | "REVOKED";
   /** Present ONLY for HR and executive viewers (§4.5). */
   basicSalary?: string | null;
 };
@@ -174,6 +193,7 @@ export function serializeEmployee(row: {
   manager: { id: string; name: string; email: string } | null;
   pmsRoles?: string[];
   userId?: string | null;
+  user?: { deletedAt: Date | null } | null;
   basicSalaryEnc?: string | null;
 }): EmployeeListRow {
   const out: EmployeeListRow = {
@@ -188,9 +208,7 @@ export function serializeEmployee(row: {
     department: row.department,
     entity: row.entity,
     pmsRoles: row.pmsRoles ?? [],
-    // `?? null` so a caller with a narrower select reports "no login" rather
-    // than `undefined` reaching a UI that would render it as a gap in the data.
-    hasLogin: (row.userId ?? null) !== null,
+    loginState: loginStateOf(row),
     manager: row.manager,
   };
   // `in` rather than a truthiness check: an entitled actor looking at an
@@ -208,6 +226,28 @@ export function serializeEmployee(row: {
       row.basicSalaryEnc == null ? null : decryptField(row.basicSalaryEnc, row.odooId);
   }
   return out;
+}
+
+/**
+ * Which of the three login states this row is in — see `loginState` on
+ * `EmployeeListRow` for what each means.
+ *
+ * Reads the JOINED user, not the id. The id alone cannot distinguish a live
+ * account from a revoked one, and after ADR-069's off-boarding amendment that
+ * distinction is the whole point of the field.
+ *
+ * A caller whose `select` omitted the join reports NONE rather than guessing:
+ * under-claiming access is the safe direction for a field HR acts on, and every
+ * read path in the app goes through `employeeSelect`, which carries it.
+ */
+function loginStateOf(row: {
+  userId?: string | null;
+  user?: { deletedAt: Date | null } | null;
+}): "NONE" | "ACTIVE" | "REVOKED" {
+  if (!row.userId) return "NONE";
+  if (row.user === undefined) return "NONE";
+  if (row.user === null) return "NONE";
+  return row.user.deletedAt === null ? "ACTIVE" : "REVOKED";
 }
 
 /**
