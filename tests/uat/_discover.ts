@@ -256,11 +256,66 @@ export type CrudEntity = {
   createPath: string; // "/<locale>/users/new"
 };
 
+/**
+ * Is this page file a pure `redirect()` stub rather than a real screen?
+ *
+ * A moved route leaves stubs behind on purpose — ADR-070 kept `/users/new` and
+ * `/users/[id]` so bookmarks, the command palette's history and any link in a
+ * handover document survive the move to `/admin/access`. Filesystem discovery
+ * cannot tell those apart from a real create form, and the difference matters:
+ * the CRUD journey navigates to `<entity>/new`, submits, and then asserts it
+ * landed back on `<entity>` — but a stub's redirect target navigates somewhere
+ * else entirely on success, so the journey times out and reports a FAILURE on a
+ * feature that works correctly.
+ *
+ * That failure mode is worse than a missing journey: it is a false regression on
+ * an unrelated feature, and a suite that cries wolf is one the operator learns to
+ * skim past — which is how a real regression gets waved through.
+ *
+ * The test is deliberately narrow: the module must call `redirect(` and must not
+ * render anything (no JSX, no `<form`). A page that redirects CONDITIONALLY and
+ * otherwise renders a form is still a real screen and stays discovered.
+ */
+function isRedirectStub(file: string): boolean {
+  let src: string;
+  try {
+    src = fs.readFileSync(file, "utf8");
+  } catch {
+    return false; // Unreadable: assume it is real, so we under-skip rather than over-skip.
+  }
+  if (!/\bredirect\s*\(/.test(src)) return false;
+  // Any JSX at all means it renders. `return <X/>`, `=> (<X/>)`, `<form`, etc.
+  return !/<[A-Za-z][\w.]*[\s/>]/.test(src);
+}
+
 export function discoverCrudEntities(locale = "en", root = process.cwd()): CrudEntity[] {
   const base = path.join(root, DASHBOARD_GLOB);
   if (!fs.existsSync(base)) return [];
 
   const entities: CrudEntity[] = [];
+
+  /** Does `dir` have a real (non-stub) create form AND a real record page? */
+  function isCrudDir(dir: string): boolean {
+    const createFile = path.join(dir, "new", "page.tsx");
+    // A create page that only redirects is not a create page — see isRedirectStub.
+    if (!fs.existsSync(createFile) || isRedirectStub(createFile)) return false;
+    // The record/edit page lives under a dynamic segment ([id], [slug], ...).
+    return fs.readdirSync(dir, { withFileTypes: true }).some((e) => {
+      if (!e.isDirectory() || !isDynamicSegment(e.name)) return false;
+      const f = path.join(dir, e.name, "page.tsx");
+      return fs.existsSync(f) && !isRedirectStub(f);
+    });
+  }
+
+  function add(segments: string[]) {
+    const route = segments.join("/");
+    entities.push({
+      name: route,
+      listPath: `/${locale}/${route}`,
+      createPath: `/${locale}/${route}/new`,
+    });
+  }
+
   for (const entry of fs.readdirSync(base, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
     const seg = entry.name;
@@ -268,23 +323,23 @@ export function discoverCrudEntities(locale = "en", root = process.cwd()): CrudE
     if (isRouteGroup(seg) || isDynamicSegment(seg)) continue;
 
     const dir = path.join(base, seg);
-    const hasCreate = fs.existsSync(path.join(dir, "new", "page.tsx"));
-    // The record/edit page lives under a dynamic segment ([id], [slug], ...).
-    const hasRecordPage = fs
-      .readdirSync(dir, { withFileTypes: true })
-      .some(
-        (e) =>
-          e.isDirectory() &&
-          isDynamicSegment(e.name) &&
-          fs.existsSync(path.join(dir, e.name, "page.tsx")),
-      );
+    if (isCrudDir(dir)) {
+      add([seg]);
+      continue;
+    }
 
-    if (hasCreate && hasRecordPage) {
-      entities.push({
-        name: seg,
-        listPath: `/${locale}/${seg}`,
-        createPath: `/${locale}/${seg}/new`,
-      });
+    // ONE level of nesting, because entities do not always live at the root.
+    // ADR-070 moved the account CRUD from `/users` to `/admin/access`, and a
+    // root-only scan then found NOTHING — silently dropping a journey that had
+    // existed, which is the failure mode this whole module is written against
+    // ("a fork that scaffolds `projects` gets a `projects` journey for free").
+    // Losing coverage quietly is worse than never having had it, so the scan
+    // follows a non-CRUD segment down one level.
+    for (const child of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!child.isDirectory()) continue;
+      if (isRouteGroup(child.name) || isDynamicSegment(child.name) || child.name === "new")
+        continue;
+      if (isCrudDir(path.join(dir, child.name))) add([seg, child.name]);
     }
   }
 

@@ -101,6 +101,18 @@ most employees hold no platform authority. A single table would have to invent a
 the other, and hiding the most privileged account in the system is the opposite of what an access
 screen is for.
 
+**The SSO seam was left alone — and it is the one hole in "one reviewed boundary".**
+JIT provisioning does not go through `createUserSchema`. On a federated first sign-up
+`mapSsoRole()` (`lib/sso/role-map.ts`) reads `SSO_ADMIN_GROUPS` / `SSO_EDITOR_GROUPS` and
+`adoptSsoRole()` (`lib/auth.ts`) writes the result straight to the row (ADR-069). So a group in
+`SSO_EDITOR_GROUPS` can still stamp a new account `EDITOR`. That grants nothing — `withEditorAuth` is
+never called — so it is misleading, not dangerous, and it is why this ADR says the role cannot be
+granted "through the UI or the API" rather than "at all". Narrowing `mapSsoRole` to `ADMIN | VIEWER`
+would close it and change no effective permission, but it is a role check and therefore an Ask-before
+surface (CLAUDE.md); it is recorded here for the operator to decide rather than taken silently. Found
+by the post-push breadth review, not by the diff-local pass — the SSO path is not in this change's
+diff, which is exactly the kind of thing a diff-local review cannot see.
+
 ## Alternatives considered
 
 - **Expand the platform role to match §4.1** (the operator's other suggestion). Rejected: it would

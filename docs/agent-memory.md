@@ -36,7 +36,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (12): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
-- **Gotchas — stack & build** (4): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
+- **Gotchas — stack & build** (6): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (10): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (4): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
@@ -214,6 +214,22 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — stack & build
 
+- 2026-08-27 — **Inside a `FormItem`, never pass `id` or `htmlFor` — doing so silently UNLABELS the
+  control.** `components/ui/form.tsx`: `FormControl` clones its child with `{ id: formItemId }`
+  (replacing yours), while `FormLabel` renders `<Label htmlFor={formItemId} {...props} />` with the
+  spread LAST (so yours WINS and points at an element that no longer exists). Result: no accessible
+  name — how it shipped on the ADR-070 platform-admin checkbox, the control that grants admin access.
+  Typecheck, ESLint (`jsx-a11y` sees an `htmlFor` and is satisfied) and text-scraping browser probes
+  all pass; only a Playwright `getByRole("checkbox", { name })` caught it. Select by ACCESSIBLE NAME
+  in probes so the wiring is what's asserted. Multi-line help goes in ONE `FormDescription` (it
+  registers into `aria-describedby`), not loose `<span>`s.
+- 2026-08-27 — **zod STRIPS unknown keys, so REMOVING a boundary field fails silently-successfully.**
+  After ADR-070 swapped `createUserSchema`'s `role: z.enum([...])` for `isPlatformAdmin`, the old
+  `POST /api/users {"role":"ADMIN"}` still returned **201** — and created a VIEWER. Fails safe, but the
+  caller was told "created" and got something else; a script on the old shape keeps making wrong
+  accounts forever. **Remove a field → switch that schema to `z.strictObject` in the same commit**, so
+  the legacy body is a 400 naming it. Found by POSTing the old payload at a running server; a schema
+  diff cannot show you this.
 - 2026-08-08 — **Preflight/C4 re-enable is the single highest-leverage design fix.** Tailwind
   Preflight was withheld during the AntD-coexistence slice (`app/globals.css` imported theme +
   utilities only) and was never re-enabled after AntD was removed, so native `<button>`/form-control

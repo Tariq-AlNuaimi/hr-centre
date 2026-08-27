@@ -8,7 +8,7 @@
 //
 //   - Re-running the full seed rewrites every employee row and needs SALARY_ENCRYPTION_KEY
 //     (ADR-067) to re-encrypt pay. Enormous blast radius to fix a missing FK.
-//   - Creating 37 accounts by hand at /users/new is an afternoon and a typo away from a
+//   - Creating 37 accounts by hand at /admin/access/new is an afternoon and a typo away from a
 //     duplicate-email refusal.
 //
 // This touches TWO things and nothing else: it inserts `users` rows, and it sets
@@ -141,7 +141,7 @@ async function main() {
   console.log(`\nProvisioned ${provisioned} passwordless VIEWER login(s).`);
   console.log(
     "None of them can be signed into yet. Configure AUTH_ENTRA_ID / AUTH_ENTRA_SECRET / " +
-      "AUTH_ENTRA_TENANT_ID, or set a password for a named person at /users.",
+      "AUTH_ENTRA_TENANT_ID, or set a password for a named person at /admin/access.",
   );
 }
 
@@ -197,7 +197,7 @@ async function demoCast() {
   for (const e of employees) {
     const email = e.email.toLowerCase().trim();
     // Hashed with the app's own function, so these accounts are indistinguishable from
-    // one made at /users/new — no second password format to support later.
+    // one made at /admin/access/new — no second password format to support later.
     const passwordHash = await hashPassword(process.env[`DEMO_PASSWORD_${e.odooId}`]);
     await withAuditContext({}, () =>
       auditedTransaction(async (tx) => {

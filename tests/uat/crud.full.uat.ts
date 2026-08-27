@@ -186,8 +186,15 @@ for (const entity of ENTITIES) {
     // so a slow-but-correct journey isn't mis-reported as a failure.
     test.setTimeout(120_000);
 
+    // `entity.name` is now a ROUTE, which may contain a slash once discovery
+    // follows a nested segment (ADR-070 moved the account CRUD to `admin/access`).
+    // A slash in an attachment name or a search marker is a path separator, not a
+    // label — flatten it for anything that becomes a filename or gets typed into
+    // a search box, and keep the real route for the report.
+    const slug = entity.name.replace(/\//g, "-");
+
     // Unique per run + entity so parallel journeys never collide.
-    const marker = `UAT-${Date.now()}-${Math.floor(Math.random() * 1e6)}-${entity.name}`;
+    const marker = `UAT-${Date.now()}-${Math.floor(Math.random() * 1e6)}-${slug}`;
     const phases: JourneyPhase[] = [];
 
     // Watch for console/runtime errors across the WHOLE journey — including the
@@ -214,7 +221,7 @@ for (const entity of ENTITIES) {
 
     const shot = async (label: string) => {
       const png = await page.screenshot({ fullPage: true });
-      await testInfo.attach(`${entity.name}-${label}.png`, {
+      await testInfo.attach(`${slug}-${label}.png`, {
         body: png,
         contentType: "image/png",
       });

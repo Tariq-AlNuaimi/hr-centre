@@ -120,8 +120,7 @@
     "platformAdminYes": "مسؤول المنصة",
     "platformAdminNo": "عادي",
     "createLogin": "إنشاء حساب دخول",
-    "noEmployeeRecord": "لا يوجد سجل موظف",
-    "linkedTo": "سجل الموظف"
+    "noEmployeeRecord": "لا يوجد سجل موظف"
   },
   "recyclingBin": {
     "title": "سلة المحذوفات",
