@@ -3,15 +3,16 @@
 import { z } from "zod";
 import { useTranslations } from "next-intl";
 import { emailSchema } from "@/lib/validations/common";
+import { isPlatformAdminRole } from "@/lib/validations/user";
 import { useZodForm, Form, TextField } from "@/components/shared/FormField";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 
 interface UserFormProps {
@@ -20,7 +21,13 @@ interface UserFormProps {
     name?: string;
     role?: string;
   };
-  onSubmit: (values: { email: string; name: string; password?: string; role: string }) => void;
+  onSubmit: (values: {
+    email: string;
+    name: string;
+    password?: string;
+    /** ADR-070 — the request's word for the platform role; `role` is the column's. */
+    isPlatformAdmin: boolean;
+  }) => void;
   onCancel: () => void;
   loading?: boolean;
   isEdit?: boolean;
@@ -49,7 +56,7 @@ export function UserForm({
           .max(128)
           .refine((v) => v.length === 0 || v.length >= 8)
       : z.string().min(8).max(128),
-    role: z.enum(["ADMIN", "EDITOR", "VIEWER"]),
+    isPlatformAdmin: z.boolean(),
   });
 
   const form = useZodForm(schema, {
@@ -57,7 +64,7 @@ export function UserForm({
       name: initialValues?.name ?? "",
       email: initialValues?.email ?? "",
       password: "",
-      role: (initialValues?.role as "ADMIN" | "EDITOR" | "VIEWER") ?? "VIEWER",
+      isPlatformAdmin: isPlatformAdminRole(initialValues?.role),
     },
   });
 
@@ -79,23 +86,56 @@ export function UserForm({
           placeholder={isEdit ? t("passwordLeaveBlank") : undefined}
         />
 
+        {/*
+          ADR-070 — one checkbox, naming exactly what it grants, in place of a
+          three-value dropdown that the product only ever read two ways. EDITOR
+          gated nothing (`withEditorAuth` was never called) and VIEWER gated
+          nothing, so the choice HR was asked to make was between "administrator"
+          and two words for "not administrator".
+
+          The hint is the whole point: a role is only meaningful if the person
+          setting it can tell what it does. And it says what this is NOT — §4.1's
+          HR authority is a different axis (ADR-065), granted elsewhere, and
+          conflating them is the confusion this replaces.
+        */}
         <FormField
-          name="role"
+          name="isPlatformAdmin"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>{t("role")}</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
+              <div className="flex items-start gap-3">
                 <FormControl>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  {/*
+                    NO `id` here and NO `htmlFor` on the label below, deliberately.
+                    `FormControl` clones this element and injects `id={formItemId}`,
+                    and `FormLabel` already points `htmlFor` at the same id. Setting
+                    them by hand looked tidier and was broken: the control's own id
+                    was overwritten while the label's `htmlFor` survived the spread,
+                    so the label pointed at an element that did not exist — an
+                    unlabelled checkbox for a screen reader, on the one control that
+                    grants administrative access. Caught by driving the form, not by
+                    reading it.
+                  */}
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-input accent-primary outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
                 </FormControl>
-                <SelectContent>
-                  <SelectItem value="ADMIN">{t("roleAdmin")}</SelectItem>
-                  <SelectItem value="EDITOR">{t("roleEditor")}</SelectItem>
-                  <SelectItem value="VIEWER">{t("roleViewer")}</SelectItem>
-                </SelectContent>
-              </Select>
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <FormLabel className="cursor-pointer">{t("platformAdmin")}</FormLabel>
+                  {/*
+                    A FormDescription, not two loose spans: it registers itself into
+                    the control's `aria-describedby`, so the sentence explaining what
+                    the box grants is read out WITH the box rather than sitting
+                    beside it unannounced.
+                  */}
+                  <FormDescription>
+                    {t("platformAdminHint")}
+                    <span className="mt-0.5 block">{t("platformAdminNotHr")}</span>
+                  </FormDescription>
+                </div>
+              </div>
               <FormMessage />
             </FormItem>
           )}

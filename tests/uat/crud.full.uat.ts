@@ -34,7 +34,7 @@ const FIXTURE_PASSWORD = "UatTest123!";
 // (above), so these are the English strings the Radix/shadcn DOM renders:
 //   - Each entity's row edit/delete icon buttons carry aria-label = the entity
 //     i18n namespace's editAction/deleteAction, which render as "Edit <x>" /
-//     "Delete <x>" in en (components/users/UserColumns.tsx:128,141 and the
+//     "Delete <x>" in en (components/shared/RowActions.tsx `getRowActionsColumn` and the
 //     scaffold's generated columns). A prefix match keeps this entity-agnostic.
 //   - The delete confirmation is a Radix Dialog whose primary button shows
 //     common.yes = "Yes" (components/shared/ConfirmAction.tsx:65-73).

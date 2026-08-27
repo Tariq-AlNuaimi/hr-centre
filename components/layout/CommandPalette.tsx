@@ -78,11 +78,15 @@ export function CommandPalette() {
       ...(isAdmin
         ? [
             {
-              key: "users",
-              label: tNav("users"),
+              // ADR-070 — "Users" and "HR roles" merged into /admin/access.
+              // Listed under the admin block because the palette only knows the
+              // session role; an HR Super Admin who is not a platform admin
+              // reaches the same screen from the sidebar, which knows both.
+              key: "access",
+              label: tNav("access"),
               group: "navigate" as const,
               icon: <User className="h-4 w-4" />,
-              run: () => go(`/${locale}/users`),
+              run: () => go(`/${locale}/admin/access`),
             },
             {
               key: "audit-log",

@@ -353,6 +353,25 @@ test("withAdminAuth passes through for an ADMIN session", { skip: !canMock }, as
   assert.equal(called, true);
 });
 
+// ADR-070 — EDITOR confers nothing in THIS application, and that is now a test
+// rather than an observation.
+//
+// `withEditorAuth` is still exported (see the note on it in lib/api-helpers.ts:
+// it is TEMPLATE machinery — the scaffolder's `--writes editor`,
+// scripts/rbac-matrix.mjs, and two ESLint rules all name it), but no route in
+// this fork calls it. So the only wrapper an EDITOR session ever meets here is
+// `withAdminAuth`, which must refuse it. Sessions carrying EDITOR still exist:
+// ADR-070 kept the enum so stored rows stay valid, and only stopped the API
+// ACCEPTING the value.
+test("withAdminAuth returns 403 for an EDITOR session", { skip: !canMock }, async () => {
+  current = { user: { id: "u3b", role: "EDITOR" } };
+  const res = await helpers.withAdminAuth(okHandler)(
+    new NextRequest("http://localhost/api/x"),
+    ctx,
+  );
+  assert.equal(res.status, 403);
+});
+
 test("withEditorAuth returns 403 for a VIEWER session", { skip: !canMock }, async () => {
   current = { user: { id: "u4", role: "VIEWER" } };
   const res = await helpers.withEditorAuth(okHandler)(

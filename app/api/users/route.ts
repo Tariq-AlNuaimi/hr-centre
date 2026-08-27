@@ -4,17 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/api-helpers";
 import { ok, created, err } from "@/lib/api-response";
 import { parsePagination, paginatedResponse } from "@/lib/pagination";
-import { createUserSchema } from "@/lib/validations/user";
+import { createUserSchema, roleForPlatformAdmin } from "@/lib/validations/user";
 import type { Prisma } from "@/generated/prisma/client";
 
 // Allowlist of sortable columns — prevents raw column injection via ?sort=.
 const SORTABLE_COLUMNS = ["name", "email", "role", "createdAt", "lastLoginAt"] as const;
 type SortableColumn = (typeof SORTABLE_COLUMNS)[number];
 
-const VALID_ROLES = ["ADMIN", "EDITOR", "VIEWER"] as const;
-
-// Admin-only: the user directory (email/role/lastLogin) is not exposed to
-// VIEWER/EDITOR; the users nav is also admin-gated. See SECURITY.md §3.
+// Admin-only: the account directory is not exposed to non-admins, and the nav
+// entry is admin-gated too. See SECURITY.md §3.
 export const GET = withAdminAuth(async (request: NextRequest) => {
   const { searchParams } = request.nextUrl;
   const pagination = parsePagination(searchParams);
@@ -27,9 +25,12 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
       : "createdAt";
   const order: "asc" | "desc" = searchParams.get("order") === "asc" ? "asc" : "desc";
 
-  const roleParam = searchParams.get("role");
-  const role =
-    roleParam && (VALID_ROLES as readonly string[]).includes(roleParam) ? roleParam : undefined;
+  // ADR-070 — the filter follows the field. The screen no longer offers three
+  // roles, so it no longer filters by three; `?platformAdmin=true|false` asks the
+  // only question the column actually answers. Anything else is no filter at all
+  // rather than an error, matching how `sort` and `order` already behave.
+  const adminParam = searchParams.get("platformAdmin");
+  const platformAdmin = adminParam === "true" ? true : adminParam === "false" ? false : undefined;
 
   const where: Prisma.UserWhereInput = {
     ...(search
@@ -40,7 +41,11 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
           ],
         }
       : {}),
-    ...(role ? { role: role as Prisma.UserWhereInput["role"] } : {}),
+    ...(platformAdmin === undefined
+      ? {}
+      : platformAdmin
+        ? { role: "ADMIN" }
+        : { role: { not: "ADMIN" } }),
   };
 
   const [data, total] = await Promise.all([
@@ -57,12 +62,49 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
         image: true,
         lastLoginAt: true,
         createdAt: true,
+        // ADR-070 — the §4.1 half of the same person, on the same row.
+        //
+        // "What can this person do?" used to need two screens and two
+        // vocabularies. This is the join that lets one row answer it, and it is
+        // safe HERE specifically because this endpoint is already the most
+        // privileged read in the app (`withAdminAuth`, admin-only since ADR-013).
+        // The same fact is deliberately NOT added to `/api/employees`, which is
+        // visibility-scoped and read by every signed-in employee — see
+        // ADR-070's "what was not done".
+        //
+        // A to-one join on a unique FK, not an N+1: `Employee.userId` is unique,
+        // so this is one extra join for the whole page.
+        //
+        // `deletedAt` is selected but NEVER emitted — it is here to be checked.
+        // The soft-delete extension filters the TOP-LEVEL `where` only
+        // (lib/prisma/soft-delete-extension.ts says so, and a contract test pins
+        // it), so a nested relation still surfaces soft-deleted children. Without
+        // this, a deleted employee's name and HR roles would render on the account
+        // row as though the record were live — on the screen an admin uses to
+        // decide what to do with that account.
+        employee: { select: { id: true, name: true, pmsRoles: true, deletedAt: true } },
       },
     }),
     prisma.user.count({ where }),
   ]);
 
-  return ok(paginatedResponse(data, total, pagination));
+  // `isPlatformAdmin` is emitted ALONGSIDE `role`, not instead of it: the column
+  // still exists and the recycling bin / audit log still show the stored value,
+  // but every consumer that asks a yes/no question should read the boolean rather
+  // than re-deriving `=== "ADMIN"` in a fourth place.
+  const rows = data.map(({ employee, ...user }) => ({
+    ...user,
+    isPlatformAdmin: user.role === "ADMIN",
+    // A soft-deleted employee reads the same as no employee record: the account
+    // exists, the org record does not. Reconstructed rather than spread, so
+    // `deletedAt` cannot ride along into the response.
+    employee:
+      employee && employee.deletedAt === null
+        ? { id: employee.id, name: employee.name, pmsRoles: employee.pmsRoles }
+        : null,
+  }));
+
+  return ok(paginatedResponse(rows, total, pagination));
 });
 
 export const POST = withAdminAuth(async (request: NextRequest) => {
@@ -72,7 +114,7 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
     return err(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const { email, name, password, role } = parsed.data;
+  const { email, name, password, isPlatformAdmin } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return err("Email already in use", 409);
@@ -106,7 +148,9 @@ export const POST = withAdminAuth(async (request: NextRequest) => {
   const passwordHash = await hashPassword(password);
 
   const user = await prisma.user.create({
-    data: { email, name, passwordHash, role },
+    // ADR-070 — the boundary takes a boolean and maps it here, in one place, so
+    // the stored enum and the thing a caller can ask for cannot drift apart.
+    data: { email, name, passwordHash, role: roleForPlatformAdmin(isPlatformAdmin) },
     select: {
       id: true,
       email: true,

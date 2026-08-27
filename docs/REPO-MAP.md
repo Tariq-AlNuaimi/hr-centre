@@ -4,6 +4,9 @@
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(dashboard)/admin/access/[id]/page.tsx
+- app/[locale]/(dashboard)/admin/access/new/page.tsx
+- app/[locale]/(dashboard)/admin/access/page.tsx
 - app/[locale]/(dashboard)/admin/cycles/page.tsx
 - app/[locale]/(dashboard)/admin/edge-cases/page.tsx
 - app/[locale]/(dashboard)/admin/import/page.tsx
@@ -209,7 +212,7 @@
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, upsertProjectSchema
-- lib/validations/user.ts: createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
+- lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
 ## components/
@@ -295,5 +298,5 @@
 - components/ui/skeleton.tsx
 - components/ui/sonner.tsx
 - components/ui/table.tsx
-- components/users/UserColumns.tsx
+- components/users/AccountsTable.tsx
 - components/users/UserForm.tsx
