@@ -83,6 +83,17 @@ export function withAdminAuth(handler: AuthedHandler) {
  * rejected with 403). Use this on write routes that editors should reach but
  * viewers shouldn't -- it closes the gap where the EDITOR role existed but only
  * ADMIN-vs-not was ever enforced. (SECURITY.md §3.)
+ *
+ * ADR-070 NOTE (this fork): no route in the PMS calls this, so `EDITOR` gates
+ * nothing here. That was the finding behind ADR-070, and the fix landed at the
+ * BOUNDARY instead of here -- `lib/validations/user.ts` no longer accepts a role
+ * string at all, so EDITOR can no longer be granted through the UI or the API.
+ * The wrapper itself stays because it is TEMPLATE machinery, not fork code:
+ * `scripts/scaffold-entity.mjs --writes editor` emits it, `scripts/rbac-matrix.mjs`
+ * resolves it, and `eslint-rules/rules/no-bare-api-route.mjs` +
+ * `no-rate-limit-inside-auth.mjs` both name it in the security floor. Deleting it
+ * would break the scaffolder for every fork to close a gap the schema already
+ * closed. See docs/decisions/ADR-070-one-access-surface.md, "What was not done".
  */
 export function withEditorAuth(handler: AuthedHandler) {
   return withAuth(async (req, ctx) => {

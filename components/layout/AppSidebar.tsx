@@ -2,7 +2,6 @@
 
 import {
   Home,
-  User,
   Users,
   Network,
   Upload,
@@ -72,7 +71,7 @@ export function AppSidebar() {
   const ADMIN_SEGMENT_KEYS: Record<string, string> = {
     "org-setup": "org-setup",
     cycles: "cycles",
-    roles: "roles",
+    access: "access",
     "strategy-scores": "strategy-scores",
     "edge-cases": "edge-cases",
   };
@@ -88,14 +87,11 @@ export function AppSidebar() {
       label: t("home"),
       onClick: () => router.push(`/${locale}`),
     },
+    // ADR-070 — "Users" and "HR roles" became ONE entry, "Access", further down
+    // beside the other admin screens. It is shown to a platform admin OR an HR
+    // Super Admin, because each governs one half of what that screen shows.
     ...(isAdmin
       ? [
-          {
-            key: "users",
-            icon: <User className="h-4 w-4" />,
-            label: t("users"),
-            onClick: () => router.push(`/${locale}/users`),
-          },
           {
             key: "audit-log",
             icon: <ClipboardCheck className="h-4 w-4" />,
@@ -261,15 +257,20 @@ export function AppSidebar() {
           },
         ]
       : []),
-    // Granting HR authority is Super-Admin-only (§4.1: HRBP "Configures? No"),
-    // matching the route's own `isHrSuperAdmin` gate.
-    ...(pmsRoles.includes("HR_SUPER_ADMIN")
+    // ADR-070 — the merged access screen: logins + platform administration
+    // (platform ADMIN's half) and §4.1 HR authority (HR Super Admin's half).
+    //
+    // The UNION, not the intersection: each audience governs one half and the
+    // page shows the other half read-only with the reason. §4.1 keeps granting
+    // HR authority to Super Admins only (HRBP is "Configures? No"), which is
+    // still the RoleEditor's own gate inside the page.
+    ...(isAdmin || pmsRoles.includes("HR_SUPER_ADMIN")
       ? [
           {
-            key: "roles",
+            key: "access",
             icon: <ShieldCheck className="h-4 w-4" />,
-            label: t("hrRoles"),
-            onClick: () => router.push(`/${locale}/admin/roles`),
+            label: t("access"),
+            onClick: () => router.push(`/${locale}/admin/access`),
           },
         ]
       : []),

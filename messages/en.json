@@ -53,7 +53,8 @@
     "calibration": "Calibration",
     "threeSixty": "360 assessment",
     "strategyScores": "Corporate & departmental scores",
-    "edgeCases": "Leavers & transfers"
+    "edgeCases": "Leavers & transfers",
+    "access": "Access"
   },
   "auth": {
     "login": "Login",
@@ -112,7 +113,15 @@
     "createFailed": "Failed to create user",
     "updated": "User updated",
     "updateFailed": "Failed to update user",
-    "notFound": "User not found"
+    "notFound": "User not found",
+    "platformAdmin": "Platform administrator",
+    "platformAdminHint": "Can create and delete logins, restore records from the recycling bin, and read the audit log.",
+    "platformAdminNotHr": "This is not an HR role. HR authority (§4.1) is granted separately, under HR authority on this screen.",
+    "platformAdminYes": "Platform admin",
+    "platformAdminNo": "Standard",
+    "createLogin": "Create login",
+    "noEmployeeRecord": "No employee record",
+    "linkedTo": "Employee record"
   },
   "recyclingBin": {
     "title": "Recycling bin",
@@ -1401,5 +1410,18 @@
       "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it."
     },
     "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set"
+  },
+  "access": {
+    "title": "Access",
+    "subtitle": "Who can sign in, and what authority they hold. These are two separate things, and this is the one screen that shows both.",
+    "hrSection": "HR authority",
+    "hrSectionHint": "Spec §4.1 — what a person may do in the performance cycle. Granted and revoked by an HR Super Admin.",
+    "hrSectionNotYours": "Only an HR Super Admin can grant or revoke HR roles.",
+    "accountsSection": "Logins & platform administration",
+    "accountsSectionHint": "Who has an account, and who may manage accounts, the recycling bin and the audit log. Granted by a platform administrator.",
+    "accountsNotYours": "Only a platform administrator can create logins or grant platform administration.",
+    "noAccess": "This screen is for HR Super Admins and platform administrators. Your account is neither.",
+    "loadFailed": "Could not load the account list.",
+    "whyTwo": "Why two? A platform administrator maintains the application; an HR Super Admin runs the performance cycle. Neither can grant the other, on purpose."
   }
 }
