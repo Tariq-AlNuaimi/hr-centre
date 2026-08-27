@@ -1,6 +1,6 @@
 # Blueprint — employee access: import-provisioned logins, SSO, and one role story
 
-Scope: lib/auth.ts, lib/sso/**, lib/pms/import/run.ts, lib/pms/import/types.ts, lib/pms/employee-select.ts, app/api/imports/[id]/apply/route.ts, app/[locale]/(dashboard)/admin/import/**, app/[locale]/(dashboard)/admin/roles/**, components/pms/RoleEditor.tsx, prisma/seed-pms.ts, messages/**, .env.example, docs/decisions/ADR-069-employee-access.md
+Scope: lib/auth.ts, lib/sso/**, lib/pms/import/run.ts, lib/pms/import/types.ts, lib/pms/employee-select.ts, lib/pms/offboarding.ts, app/api/leavers/route.ts, app/api/employees/[id]/route.ts, app/api/imports/[id]/apply/route.ts, app/[locale]/(dashboard)/admin/import/**, app/[locale]/(dashboard)/admin/roles/**, components/pms/RoleEditor.tsx, prisma/seed-pms.ts, messages/**, .env.example, docs/decisions/ADR-069-employee-access.md
 
 Feature parity: n/a — this is not a product category with competitors to benchmark. It is
 closing a gap between this build and its own specification (§3.3 "Email — for login/notifications";

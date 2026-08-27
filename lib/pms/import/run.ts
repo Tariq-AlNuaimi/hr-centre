@@ -4,6 +4,7 @@ import { reconcile, type ExistingEmployee, type ReconcileContext } from "./recon
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
 import { decryptSalary, encryptSalary } from "../employee-select";
+import { revokeLoginOnOffboard } from "../offboarding";
 
 /**
  * Import orchestration — spec §3.
@@ -405,6 +406,21 @@ export async function applyImport(params: {
     for (const update of plan.updates) {
       const row = byOdooId.get(update.odooId);
       if (!row) continue;
+      // ADR-069 — a sheet that turns someone into a LEAVER is an off-boarding,
+      // and off-boarding revokes access. §3.2 makes the import the system of
+      // record for status, so the manual route at /api/leavers cannot be the
+      // only path that revokes: an org whose departures arrive by spreadsheet
+      // would keep every leaver's login alive.
+      //
+      // Guarded on the TRANSITION, not the value: re-importing a sheet that
+      // still lists last year's leaver must not try to revoke every week. The
+      // helper is idempotent anyway, but a no-op that never runs is cheaper.
+      if (
+        row.status === "LEAVER" &&
+        ctx.reconcile.existing.get(update.odooId)?.status !== "LEAVER"
+      ) {
+        await revokeLoginOnOffboard(tx, update.employeeId);
+      }
       await tx.employee.update({
         where: { id: update.employeeId },
         data: {
