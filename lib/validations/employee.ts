@@ -147,7 +147,49 @@ export const createEmployeeSchema = applyOrgInvariants(z.object(employeeCore));
  * field edit someone can make in passing.
  */
 const { odooId: _immutableKey, ...updatableFields } = employeeCore;
-export const updateEmployeeSchema = applyOrgInvariants(z.object(updatableFields));
+
+/**
+ * The six fields whose DEFAULT is safe on a create and destructive on an update.
+ *
+ * `PUT /api/employees/[id]` replaces the whole row. On a CREATE, an absent
+ * `status` reasonably means "a new employee, so ACTIVE", and an absent
+ * `pmsRoles` means "no HR authority yet" — the defaults are a convenience and
+ * they are right. On a full-replace UPDATE the same absence means "I forgot to
+ * send it", and zod filling it in is silent data loss:
+ *
+ *   - `status` → ACTIVE **reactivates a leaver**, and does it without restoring
+ *     the login ADR-069's off-boarding revoked — leaving an ACTIVE employee whose
+ *     account is soft-deleted, which is the one state that amendment exists to
+ *     prevent. This is why the risk got sharper rather than staying theoretical.
+ *   - `pmsRoles` → `[]` **strips §4.1 authority** from an HR Super Admin.
+ *   - `basicSalary` → null **wipes payroll** (§11.3 multiplies by it).
+ *   - `unpaidLeaveDays` → 0 **wipes §11.5's** service reduction.
+ *   - `dateOfJoining` → null **wipes §3.3's anchor**, and §11.7 then refuses to
+ *     compute a bonus at all.
+ *   - `lastWorkingDay` → null **wipes §11.4's** pro-ration period.
+ *
+ * Every one of those is a field a caller would never *intend* to clear by
+ * omission. So on update they are REQUIRED: a missing one is a 400 naming the
+ * field, not a quiet overwrite. Nullable where the column is — "send me null" is
+ * a decision; "send me nothing" is a mistake.
+ *
+ * Nothing user-facing changes: `EmployeeEditForm` builds its payload from
+ * `UpdateEmployeeInput`, so a forgotten field was already a build error there.
+ * This closes the same hole at the HTTP boundary, for the second caller that does
+ * not exist yet. Raised by the post-push breadth review (2026-08-26) at low
+ * confidence; confirmed, and hardened on the operator's call.
+ */
+const updateRequiredFields = {
+  ...updatableFields,
+  dateOfJoining: isoDate.nullable(),
+  pmsRoles: z.array(z.enum(PMS_ROLES)).max(3),
+  basicSalary: salary,
+  status: z.enum(EMPLOYEE_STATUSES),
+  lastWorkingDay: isoDate.nullable(),
+  unpaidLeaveDays: z.number().int().min(0).max(366),
+};
+
+export const updateEmployeeSchema = applyOrgInvariants(z.object(updateRequiredFields));
 
 export const createEntitySchema = z.object({
   code: z

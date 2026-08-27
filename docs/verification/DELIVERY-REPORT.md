@@ -184,11 +184,20 @@ log is right, nobody was told". Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP
   login page serves. **No flow in §2 was driven against production** — every browser result in this
   report is from a local server running the same commit. The operator chose this rather than put
   production credentials in an agent session. A production UAT is a separate, deliberate act.
-- **No accessibility audit was run this session.** `axe-core` is not installed in this checkout. The
-  new markup composes primitives that passed a prior axe pass and uses `role="status"`/`role="alert"`
-  on live regions, but that is a reasoned expectation, not a measurement. `/design-qa` is the tier.
-- **Mobile viewports were captured, not audited.** Dark and light at desktop and mobile exist for the
-  two screens this session added; the rest of the product has not had a viewport pass.
+- **The accessibility audit RAN on 2026-08-27 — and its first attempt was wrong.** axe over seven
+  screens, signed in, light and dark: **0 violations at desktop**, and 0 at 375px mobile width. Two
+  real defects were found and fixed on the way: a primary button that met AA at rest and failed it
+  under the pointer (`hover:opacity-90`, 4.88:1 → 4.21:1), and a table scroller unreachable by
+  keyboard. **The correction worth reading** is in `docs/findings-register.md`: the 2026-08-26 run
+  audited the LOGIN PAGE five times without noticing, because the probe filled the form before React
+  hydrated and every navigation bounced back to `/login`. The probe now reads the value back and
+  throws if the session did not establish.
+- **Mobile viewports have now been audited, and the product did not fit a phone.** At 375px every
+  screen scrolled the page sideways — `/goal-setting` to 1114px against a 375px viewport — because
+  the shell's content column could not shrink below its content (`min-width: auto` on a flex item).
+  Fixed: worst case 739px of overflow → 5px, four of eight screens clean, 0 axe violations at that
+  width. **Still open and deliberately not improvised:** a 5px overflow on three table screens, and
+  touch targets inside the DataTable. Both are table density — a `/design-system` decision.
 - **SSO is built but has never authenticated anybody.** The Entra provider added in §7 is registered
   only when its three env vars are set. The **gate itself is verified by execution** in all three
   configurations — unset and two-of-three both yield `["credentials"]`, all three yields

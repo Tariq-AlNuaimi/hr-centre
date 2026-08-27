@@ -25,7 +25,8 @@
     "backHome": "العودة للرئيسية",
     "tryAgain": "إعادة المحاولة",
     "somethingWentWrong": "حدث خطأ ما",
-    "unexpectedError": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى."
+    "unexpectedError": "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى.",
+    "dataTableRegion": "جدول، يمرّر أفقيًا"
   },
   "nav": {
     "home": "الرئيسية",
@@ -186,7 +187,8 @@
     "noNotificationsHint": "ستظهر الإشعارات الجديدة هنا.",
     "switchWorkspace": "تبديل مساحة العمل",
     "singleWorkspaceHint": "أنت في مساحة العمل الوحيدة لديك.",
-    "toggleSidebar": "تبديل الشريط الجانبي"
+    "toggleSidebar": "تبديل الشريط الجانبي",
+    "account": "قائمة الحساب"
   },
   "status": {
     "forbiddenTitle": "تم رفض الوصول",

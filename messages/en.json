@@ -25,7 +25,8 @@
     "backHome": "Back home",
     "tryAgain": "Try again",
     "somethingWentWrong": "Something went wrong",
-    "unexpectedError": "An unexpected error occurred. Please try again."
+    "unexpectedError": "An unexpected error occurred. Please try again.",
+    "dataTableRegion": "Table, scrolls sideways"
   },
   "nav": {
     "home": "Home",
@@ -186,7 +187,8 @@
     "noNotificationsHint": "New notifications will appear here.",
     "switchWorkspace": "Switch workspace",
     "singleWorkspaceHint": "You're in your only workspace.",
-    "toggleSidebar": "Toggle sidebar"
+    "toggleSidebar": "Toggle sidebar",
+    "account": "Account menu"
   },
   "status": {
     "forbiddenTitle": "Access denied",

@@ -166,6 +166,10 @@ export function DataTable<T extends object>({
   size,
 }: DataTableProps<T>) {
   const t = useTranslations("common");
+  // Names the scrollable region for the label above. Generic on purpose: every
+  // caller's table is already introduced by its own page heading, so repeating
+  // that here would double the announcement rather than clarify it.
+  const tableLabel = t("dataTableRegion");
   const [searchValue, setSearchValue] = useState("");
   const [sorting, setSorting] = useState<SortingState>([]);
   const [filters, setFilters] = useState<Record<string, FilterValue | null>>({});
@@ -316,7 +320,34 @@ export function DataTable<T extends object>({
         </div>
       )}
 
-      <div className="relative overflow-x-auto rounded-md border border-border">
+      {/*
+        `tabIndex={0}` and the region role are what make a horizontally scrolling
+        table reachable by keyboard. Without them axe scores
+        `scrollable-region-focusable` (serious) and the finding is literal: a table
+        wider than its container can be scrolled with a mouse or a finger and NOT
+        with a keyboard, so the columns past the fold are unreachable for anyone
+        who does not use a pointer. It shows up at narrow widths because that is
+        where the table starts overflowing.
+
+        `aria-label` rather than a bare role: a region without a name is announced
+        as an unlabelled landmark, which is its own problem.
+      */}
+      <div
+        role="region"
+        aria-label={tableLabel}
+        /*
+          Two a11y rules disagree here, and axe is the one describing a real user's
+          problem. `jsx-a11y/no-noninteractive-tabindex` objects because a `div` is
+          not interactive; axe's `scrollable-region-focusable` objects because a
+          container that SCROLLS and cannot be focused is unreachable by keyboard —
+          the columns past the fold simply do not exist for anyone without a
+          pointer. Making it focusable is the fix the WCAG technique prescribes
+          (G202), and the rule's own allowlist is just narrower than its intent.
+        */
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region MUST be focusable (axe scrollable-region-focusable, WCAG G202)
+        tabIndex={0}
+        className="relative overflow-x-auto rounded-md border border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none"
+      >
         <Table style={minWidth ? { minWidth } : undefined}>
           <TableHeader>
             {headerGroups.map((hg) => (

@@ -35,6 +35,63 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-08-27 — [high-quality/a11y] **CORRECTION: the 2026-08-26 axe pass audited the LOGIN PAGE, not
+  the five screens it named.** The probe filled the sign-in form as soon as the DOM existed, before
+  React had hydrated the controlled inputs, so the values never reached component state and the form
+  posted empty. Playwright then followed every subsequent navigation back to `/login` — and the audit
+  measured that page five times, in two themes, and reported it clean. The `0 violations at rest`
+  claim in the delivery report and in `REDTEAM-DELIVERY-REPORT.md` was therefore **unfounded when
+  written**, and this entry supersedes it.
+
+  It is the second time in two days the same class of mistake produced a confident wrong answer: the
+  permission sweep that grepped for refusal words, then the hover-state artefact, now this. The
+  pattern is a probe that cannot tell whether it is looking at the thing it was aimed at.
+  `signin.mjs` now **reads the email back after filling it** and **throws if the session did not
+  establish**, and every screen assertion fails loudly if the page bounced to `/login`. A check that
+  cannot fail cannot pass.
+
+  **Re-run properly, the app is clean at desktop:** 0 violations across seven screens in light AND
+  dark. So the corrected claim lands in the same place the wrong one did — but it is now measured.
+  The hover finding fixed the same day stands on its own: it was measured directly from
+  `getComputedStyle`, not inferred from the page. — status: fixed(2026-08-27, probe hardened; claim
+  re-established)
+
+- 2026-08-27 — [high-quality/a11y] **The product did not fit a phone, by up to 739 pixels.** First
+  real mobile viewport pass (375×667, iPhone-SE width, signed in). Every screen scrolled the PAGE
+  sideways rather than scrolling the table inside its own container: `/goal-setting` ran to
+  **1114px** against a 375px viewport, `/people` to 1072px, and even the simplest screens to 436px.
+
+  Root cause, one line: the shell's content column is a flex item, and a flex item's default
+  `min-width: auto` **refuses to shrink below its content's width**. A wide table therefore pushed
+  the column past the viewport instead of scrolling within it. `min-w-0` on that column took the
+  worst case from 739px of overflow to **5px**, and four of eight screens to none at all.
+
+  Two more, both in the header at narrow widths: the account button's display name never hid (61px of
+  the overflow), and the workspace switcher could not truncate. Fixed with `sm:` hiding and by moving
+  the shrink pressure to the element that has text to give.
+
+  **Two regressions I introduced fixing this, caught only by re-measuring after each change** — worth
+  recording because they are the argument for measuring after, not just before:
+  (1) hiding the account button's label left it with an icon and **no accessible name** —
+  `button-name`, critical, on every screen at mobile width. A visual change that removes the only
+  text in a control is an accessibility change. Fixed with `aria-label`.
+  (2) `min-w-0` on the header's right-hand cluster let the notification and theme buttons squeeze to
+  **16px wide** — the icon with all padding crushed out, far under the 24px WCAG 2.2 target floor.
+  `shrink-0` there, `min-w-0` on the switcher instead.
+
+  Also fixed, pre-existing: the DataTable's scroller was not keyboard-reachable
+  (`scrollable-region-focusable`, serious — a table wider than its container could be scrolled by
+  pointer but not by keyboard, so columns past the fold were unreachable), and the Home breadcrumb was
+  a 16×16 tap target.
+
+  **After: 0 axe violations at mobile width on all eight screens, and 0 at desktop in both themes.**
+
+  **Still open, and deliberately not improvised:** a 5px overflow on three table screens, and touch
+  targets inside the DataTable (sort buttons 16px tall, row links 20px). Both are table DENSITY —
+  row height and header padding — which is a design decision that belongs in `/design-system`, not a
+  bug to patch at 1am. — operator — status: fixed(2026-08-27) for the shell; table density
+  OPEN for a design pass
+
 - 2026-08-26 — [high-quality/a11y] **A primary button met WCAG AA at rest and FAILED it under the
   pointer, on every screen in the product.** The default button carried
   `hover:opacity-90`. `--brand-primary` (`#0165ff`) takes white at **4.88:1** and passes; at 90%
@@ -58,9 +115,13 @@ the changed surface is still **open** (un-adjudicated).
   the state is now MORE legible than at rest, which is the direction a hover should move. It also
   fixes the semantics: fading a solid accent reads as the control becoming less available.
 
-  Evidence: axe (`wcag2a/2aa/21a/21aa`) over `/people`, `/admin/roles`, `/scorecard`,
-  `/goal-setting`, `/admin/import` in light and dark — **0 violations at rest and 0 while hovered**,
-  after. Before: 0 at rest, 1 hovered, both themes. — status: fixed(2026-08-26)
+  Evidence for the FIX is sound and independent of the probe bug found the next day: the hover
+  contrast was measured directly from `getComputedStyle` on the button, not inferred from which page
+  was loaded, and 4.88 → 4.21 → 6.88 are those measurements. **The accompanying "0 violations at rest
+  on five screens" claim was NOT sound** — that run audited the login page five times without
+  noticing (see the 2026-08-27 correction above). Re-run properly on 2026-08-27, the claim holds: 0
+  violations across seven screens, light and dark, desktop and mobile. — status: fixed(2026-08-26);
+  surrounding claim re-established 2026-08-27
 
 - 2026-08-26 — [scalable/operability] **The employee import cannot finish for a real organisation:
   one transaction, a 5-second default budget, and a 10,000-row cap.** `applyImport` does all of its
