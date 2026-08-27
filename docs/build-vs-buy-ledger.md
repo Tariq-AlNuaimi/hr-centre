@@ -35,6 +35,38 @@ Decision: <build | adopt | build-thin-wrapper-around-X> because <reason>. See <b
 
 ## Decisions
 
+### 2026-08-26 - provision-logins (one-off account backfill + demo-cast passwords)
+
+Scope: scripts/provision-logins.mjs
+
+**Capability:** give employees who already exist in a database a login they should have had —
+and, separately, set passwords for the five people in `docs/demo/DEMO-CAST.md`.
+
+**Why it exists at all:** ADR-069 made the import and `seed-pms.ts` provision logins, but neither
+helps a database seeded BEFORE that behaviour. Production is exactly that case: 37 employees, no
+`User` rows.
+
+**Considered:**
+
+- **Re-run `prisma/seed-pms.ts`** (the obvious reuse, and the first thing tried). Rejected: it
+  rewrites every employee row and needs `SALARY_ENCRYPTION_KEY` to re-encrypt pay (ADR-067) —
+  an enormous blast radius to fix a missing foreign key. This script touches two things,
+  `users` rows and `employees.userId`, and nothing else.
+- **Create the accounts by hand at `/users/new`.** Reuses a shipped screen and needs no code, and
+  it is still the documented path for a handful. Rejected for 37: an afternoon of clicking, one
+  typo away from a duplicate-email refusal partway through.
+- **`scripts/manual-uat-users.mjs`** — the closest existing tool, and the shape the demo-cast mode
+  follows deliberately (credentials from env, never printed, never defaulted). Rejected as-is: it
+  provisions one login per `Role` enum value for the UAT harness, not per PMS employee, and it
+  refuses to run outside a local/test database — which is the opposite of what is needed here.
+- **A migration.** Rejected: this is data backfill for one deployment's history, not a schema
+  change, and burying it in `prisma/migrations/` would re-run it as part of every future deploy's
+  `migrate deploy`.
+
+**Decision:** build, ~120 lines, no new dependency (Prisma + the app's own `hashPassword`).
+Dry-run by default; idempotent; skips leavers and any email that already has an account, live or
+soft-deleted.
+
 ### 2026-07-18 — AI-pattern primitives (components/shared/ai/\*\*)
 
 Scope: components/shared/ai/**

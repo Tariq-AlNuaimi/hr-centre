@@ -57,7 +57,9 @@
     "prepare": "husky",
     "uat:full": "UAT_MODE=full playwright test",
     "uat:recommend": "node scripts/uat-recommend.mjs",
-    "uat:benchmark": "node scripts/uat-benchmark.mjs"
+    "uat:benchmark": "node scripts/uat-benchmark.mjs",
+    "provision-logins": "tsx scripts/provision-logins.mjs",
+    "demo-cast": "tsx scripts/provision-logins.mjs --demo-cast"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
