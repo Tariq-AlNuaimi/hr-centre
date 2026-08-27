@@ -17,11 +17,12 @@
 //                                         spec: fieldName:TargetModel[?]
 //                                         The target model must already exist in schema
 //   --soft-delete <true|false>            Default true
-//   --writes <admin|editor|any>           Auth wrapper for write routes (POST/PUT/DELETE).
+//   --writes <admin|any>                  Auth wrapper for write routes (POST/PUT/DELETE).
 //                                         admin  => withAdminAuth (ADMIN only)
-//                                         editor => withEditorAuth (ADMIN or EDITOR)
 //                                         any    => withAuth (any authenticated user)
 //                                         Default "any". GET routes always use withAuth.
+//                                         "editor" was retired with the EDITOR
+//                                         enum value (ADR-070) and is rejected.
 //   --admin-writes <true|false>           Back-compat alias. true => --writes admin.
 //                                         --writes takes precedence if both are given.
 //   --display-field <field>               For recycling bin display; default "name"
@@ -79,9 +80,12 @@ const softDelete = values["soft-delete"] !== "false";
 // Write-route auth wrapper. `--writes` takes precedence; `--admin-writes` is a
 // back-compat alias (true => admin). Default "any" preserves the historical
 // default (no --admin-writes => withAuth).
+// `editor` was removed by ADR-070 along with `withEditorAuth` and the `EDITOR`
+// enum value. An unknown `--writes` already exits(1) with the valid list, so a
+// fork that still passes `--writes editor` gets a clear refusal rather than a
+// scaffold wired to a wrapper that no longer exists.
 const WRITE_WRAPPERS = {
   admin: "withAdminAuth",
-  editor: "withEditorAuth",
   any: "withAuth",
 };
 let writesMode;

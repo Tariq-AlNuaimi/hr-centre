@@ -13,7 +13,7 @@ and boundary detail live here.
 - **Use the auth wrappers** (`lib/api-helpers.ts`) on every route:
   - `withAuth` — any authenticated user.
   - `withAdminAuth` — ADMIN only.
-  - `withEditorAuth` — ADMIN | EDITOR.
+  - _(`withEditorAuth` was removed by ADR-070 with the `EDITOR` enum value; there is no middle tier. `no-bare-api-route` now treats it as no wrapper at all.)_
   - `withInternalAuth` — shared-secret for schedulers; Vercel-Cron routes opt into
     `{ bearer: true, skipWhenUnconfigured: true }` (ADR-018).
   - `withApiAuth` — Bearer for machine consumers, the `/api/v1` seam (ADR-013).

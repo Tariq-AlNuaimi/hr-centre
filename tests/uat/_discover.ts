@@ -162,7 +162,7 @@ export function discoverMainSections(locale = "en", root = process.cwd()): Scree
 
 /**
  * Parse the `Role` enum out of `prisma/schema.prisma` and return its members in
- * declaration order (e.g. ["ADMIN","EDITOR","VIEWER"]). The first member is the
+ * declaration order (e.g. ["ADMIN","VIEWER"]). The first member is the
  * privileged role by convention in this template (ADMIN), but callers should not
  * assume a particular name — use {@link discoverSectionAccess} to learn which
  * sections each role may reach.

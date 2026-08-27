@@ -32,13 +32,11 @@ const API_ROUTE_PATTERN = /[\\/]app[\\/]api[\\/].*route\.(?:[cm]?js|jsx|tsx?)$/;
 // is the Bearer seam for machine consumers (ADR-013); `withInternalAuth` is the
 // shared-secret gate for schedulers. All of them are gates -- a handler carrying
 // any one of them is not "bare".
-const AUTH_WRAPPERS = new Set([
-  "withAuth",
-  "withAdminAuth",
-  "withEditorAuth",
-  "withInternalAuth",
-  "withApiAuth",
-]);
+// `withEditorAuth` was removed from this set by ADR-070 along with the wrapper
+// and the `EDITOR` enum value it gated on. Dropping it makes this rule STRICTER,
+// not looser: a route that somehow named that wrapper would now be reported as
+// bare, which is the correct direction for a fail-closed security rule.
+const AUTH_WRAPPERS = new Set(["withAuth", "withAdminAuth", "withInternalAuth", "withApiAuth"]);
 
 // Routes that are public BY DESIGN. Each needs a reason, because each is an
 // unauthenticated entry point into the app:
@@ -94,9 +92,9 @@ export default {
     },
     messages: {
       noBareApiRouteReexport:
-        "A route file must not re-export its handlers from another module (`export { GET } from ...` / `export * from ...`): the auth wrapper cannot be verified from here, and an unwrapped handler is reachable unauthenticated via the `/api/v1` rewrite. Define the handler in this file wrapped with withAuth / withAdminAuth / withEditorAuth / withApiAuth / withInternalAuth.",
+        "A route file must not re-export its handlers from another module (`export { GET } from ...` / `export * from ...`): the auth wrapper cannot be verified from here, and an unwrapped handler is reachable unauthenticated via the `/api/v1` rewrite. Define the handler in this file wrapped with withAuth / withAdminAuth / withApiAuth / withInternalAuth.",
       noBareApiRoute:
-        "Handler `{{name}}` is not wrapped with an auth wrapper. Use withAuth / withAdminAuth / withEditorAuth / withApiAuth / withInternalAuth from @/lib/api-helpers. Middleware is NOT a sufficient backstop: `/api/v1/*` rewrites onto this handler and bypasses the middleware session gate, so a bare handler is reachable unauthenticated. If this route is genuinely public, add it to PUBLIC_ROUTE_PATTERNS in eslint-rules/rules/no-bare-api-route.mjs (a deliberate, reviewable decision).",
+        "Handler `{{name}}` is not wrapped with an auth wrapper. Use withAuth / withAdminAuth / withApiAuth / withInternalAuth from @/lib/api-helpers. Middleware is NOT a sufficient backstop: `/api/v1/*` rewrites onto this handler and bypasses the middleware session gate, so a bare handler is reachable unauthenticated. If this route is genuinely public, add it to PUBLIC_ROUTE_PATTERNS in eslint-rules/rules/no-bare-api-route.mjs (a deliberate, reviewable decision).",
     },
     schema: [],
   },

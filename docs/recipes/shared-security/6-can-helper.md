@@ -1,5 +1,9 @@
 # Recipe: `can(user, action, resource)` — per-resource / row-level authorization
 
+> **This fork (ADR-070):** `withEditorAuth` and the `EDITOR` role no longer exist here — the wrapper
+> gated nothing and was removed with the enum value. Use `withAdminAuth` or `withAuth`; a route
+> naming `withEditorAuth` fails both typecheck and the `no-bare-api-route` ESLint rule.
+
 > `/scale-up` → shared-tier security checklist supplement **O12**.
 > Adds a fine-grained permission helper **on top of** the role wrappers
 > (`withAuth` / `withEditorAuth` / `withAdminAuth`) for rules the role gate can't

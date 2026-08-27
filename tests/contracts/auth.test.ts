@@ -280,11 +280,11 @@ test(
   async () => {
     const token = await config.callbacks.jwt({
       token: {},
-      user: { id: "u9", role: "EDITOR", passwordChangedAt: new Date(1000) },
+      user: { id: "u9", role: "ADMIN", passwordChangedAt: new Date(1000) },
     });
     assert.ok(token);
     assert.equal(token.id, "u9");
-    assert.equal(token.role, "EDITOR");
+    assert.equal(token.role, "ADMIN");
     assert.equal(token.passwordChangedAt, 1000, "binds the token to the password epoch");
   },
 );

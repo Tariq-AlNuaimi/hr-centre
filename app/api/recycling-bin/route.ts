@@ -35,7 +35,7 @@ const PER_TYPE_CAP = 500;
 const MERGE_CAP = 500;
 
 // Admin-only: the bin lists soft-deleted records (incl. deleted-user PII + who
-// deleted them); not exposed to VIEWER/EDITOR. The bin nav is also admin-gated.
+// deleted them); not exposed to a non-admin. The bin nav is also admin-gated.
 export const GET = withAdminAuth(async (request: NextRequest) => {
   const pagination = parsePagination(request.nextUrl.searchParams);
 

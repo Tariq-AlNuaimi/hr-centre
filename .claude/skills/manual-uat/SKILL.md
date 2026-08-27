@@ -91,7 +91,7 @@ This statically parses the code and writes the **expected** permission matrix to
 **two authorization models** the fork uses, so the same command works everywhere:
 
 - **Tier model** (the template default) — the wrapper _is_ the gate: `withAdminAuth`
-  → ADMIN, `withEditorAuth` → ADMIN+EDITOR (or the fork's `WRITE_ROLES`), `withAuth`
+  → ADMIN, `withAuth`
   → any authed, `withApiAuth`/`withInternalAuth` → machine.
 - **Capability model** (forks like rihal-staffing-suite) — `withCapabilityAuth("<cap>")`
   names a capability resolved against the role→capability catalog

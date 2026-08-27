@@ -101,7 +101,7 @@ count({ where })])`, sharing the same `where`. Don't fetch-all-then-slice.
 
 ## Security floor (teach it, never bypass it)
 
-Every route: an auth wrapper (`withAuth`/`withAdminAuth`/`withEditorAuth`/
+Every route: an auth wrapper (`withAuth`/`withAdminAuth`/
 `withInternalAuth`/`withApiAuth`) + zod validation at the boundary
 (`lib/validations/*`, `.safeParse`). Compose `withRateLimit` **outside** the auth
 wrapper (`no-rate-limit-inside-auth`). Never cast `session` to `any`. A Restricted

@@ -46,10 +46,26 @@ bin, and read the audit log"_, with a second line saying what it is **not** (§4
 Narrowing the schema is what makes it real. A UI-only change would leave the API still accepting a
 value nothing honours, and the API is the contract.
 
-**2. The `Role` enum keeps all three values.** No migration, no risk. Existing `EDITOR` rows stay
-valid and render as "Standard", which is what EDITOR has always meant in practice. What changed is
-that the value can no longer be _granted_ — through the UI or the API. Retiring it from the enum is
-a later cleanup once no row carries it.
+**2. The `Role` enum kept all three values at first, then lost one.** The original decision: no
+migration, no risk — existing `EDITOR` rows stay valid and render as "Standard", which is what EDITOR
+has always meant in practice; only the ability to _grant_ it goes. Retiring it from the enum was
+recorded as a later cleanup once no row carried it.
+
+**Amended 2026-08-27 — the cleanup was brought forward, on the operator's call.** Once the SSO seam
+was narrowed (the last writer of the value), nothing could produce a new `EDITOR`, and keeping it
+meant keeping a stored privilege the product does not honour — the exact thing this ADR exists to
+remove. `prisma/migrations/20260827090000_pms_retire_editor_role` backfills any surviving row to
+`VIEWER` **before** the type swap, because Postgres cannot drop an enum value and the swap's `USING`
+cast fails on a row still holding it; a generated migration would have emitted the swap alone and
+aborted mid-deploy against a database that had one. The backfill is not data loss — the two granted
+exactly the same nothing.
+
+`withEditorAuth` went with it, reversing the "What was NOT done" entry below. The argument for
+keeping it was that it is template machinery (`scaffold-entity --writes editor`,
+`scripts/rbac-matrix.mjs`, two ESLint rules). That argument inverts once the enum value is gone: a
+scaffolder cannot emit a wrapper for a role the schema has no value for. All four couplings were
+removed, and `no-bare-api-route` now treats a handler wrapped in it as **bare** — the fail-closed
+direction, pinned as an `invalid` test case rather than by deleting the old `valid` one.
 
 **3. One screen: `/admin/access`.** `/users` and `/admin/roles` redirect to it (id-preserving for
 `/users/<id>`), so bookmarks, the command palette's history and any handover document still work. It
@@ -79,7 +95,7 @@ privileged read in the app (`withAdminAuth`).
 
 ## What was NOT done, and why
 
-**`withEditorAuth` was not deleted.** The blueprint proposed deleting it — dead authority that looks
+**`withEditorAuth` was not deleted _at the time_ — the 2026-08-27 amendment above reversed this.** The blueprint proposed deleting it — dead authority that looks
 live is how a future reader concludes EDITOR means something. Measuring the blast radius changed the
 answer: it is **template machinery, not fork code**. `scripts/scaffold-entity.mjs --writes editor`
 emits it, `scripts/rbac-matrix.mjs` resolves it, and two ESLint rules
@@ -89,11 +105,18 @@ template in order to close a gap the schema change already closes: EDITOR can no
 The wrapper now carries a comment saying it gates nothing in this fork and pointing here, and the
 contract test above pins the property. Revisit if the template's scaffolder drops the `editor` tier.
 
-**`/api/employees` was not widened.** Putting `isPlatformAdmin` on the employee payload would have
-let the People section show the platform half on every row — but that endpoint is visibility-scoped
-and read by every signed-in employee, and platform-admin status is target information. It stays on
-the admin-only account list. The cost is real and stated: an HR Super Admin who is not also a
-platform admin sees that the section exists and who to ask, not the per-person answer.
+**`/api/employees` was not widened, and still is not.** Putting `isPlatformAdmin` on the employee
+payload would have let the People section show the platform half on every row — but that endpoint is
+visibility-scoped and read by every signed-in employee, and platform-admin status is target
+information. It stays on the admin-only account list.
+
+**Amended 2026-08-27:** the stated cost — an HR Super Admin who is not also a platform admin could
+see that the section exists but not the per-person answer — was closed WITHOUT widening that
+endpoint. `GET /api/users/platform-admins` returns names and emails of platform administrators only,
+gated on the same union the screen renders on (`isHrSuperAdmin OR ADMIN`), and the screen shows it as
+a sentence to exactly the audience that cannot act on it — because knowing whom to ask _is_ the
+action available to them. Names, not per-person status on an org-wide read: the boundary is unmoved;
+what changed is that it is now navigable rather than merely declared.
 
 **The two lists were not fused into one table.** The populations are different sets, not two views
 of one set (ADR-065): the bootstrap admin on every deployment is a `User` with no `Employee`, and

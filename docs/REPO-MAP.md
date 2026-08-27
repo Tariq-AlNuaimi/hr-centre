@@ -93,6 +93,7 @@
 - app/api/transfers/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/users/platform-admins/route.ts  [GET]
 - app/api/users/route.ts  [GET,POST]
 - app/api/year-end-signoffs/route.ts  [POST]
 - app/page.tsx
@@ -138,7 +139,7 @@
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
 - lib/api-client.ts: ApiError, ApiClientOptions, apiClient
-- lib/api-helpers.ts: withAuth, withAdminAuth, withEditorAuth, withInternalAuth, withRateLimit, withApiAuth
+- lib/api-helpers.ts: withAuth, withAdminAuth, withInternalAuth, withRateLimit, withApiAuth
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
@@ -299,4 +300,5 @@
 - components/ui/sonner.tsx
 - components/ui/table.tsx
 - components/users/AccountsTable.tsx
+- components/users/PlatformAdminRoster.tsx
 - components/users/UserForm.tsx

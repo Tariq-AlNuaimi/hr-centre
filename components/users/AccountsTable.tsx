@@ -102,8 +102,9 @@ export function AccountsTable() {
 
         The old column showed ADMIN / EDITOR / VIEWER in three tones, which read
         as a ladder. It was not one: everything below ADMIN was the same rung.
-        An existing `EDITOR` row lands in "Standard" here, which is what it has
-        always meant in practice — no migration, no surprise.
+        The retired third value landed in "Standard" here for as long as any row
+        still carried it, which is what it had always meant in practice. ADR-070
+        later retired it from the enum outright, so no row can carry it now.
       */
       title: t("platformAdmin"),
       dataIndex: "isPlatformAdmin",

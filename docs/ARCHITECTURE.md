@@ -87,7 +87,7 @@ flowchart TB
         direction TB
         MW[middleware.ts · Node runtime<br/>locale + auth] --> ROUTER
         ROUTER[Next.js 16 App Router<br/>RSC pages · API routes] --> HELP
-        HELP["lib/api-helpers.ts<br/>withAuth · withAdminAuth · withEditorAuth<br/>withInternalAuth · withApiAuth · withRateLimit"] --> SVC
+        HELP["lib/api-helpers.ts<br/>withAuth · withAdminAuth<br/>withInternalAuth · withApiAuth · withRateLimit"] --> SVC
         SVC[services] --> PRISMA
         ZOD[lib/validations · zod] -.boundary.-> HELP
         PRISMA["Prisma 7 client<br/>+ auditExtension<br/>+ softDeleteExtension"] --> PG[(Postgres · Neon or self-host)]

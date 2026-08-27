@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { PageSkeleton } from "@/components/shared/Skeletons";
 import { RoleEditor } from "@/components/pms/RoleEditor";
 import { AccountsTable } from "@/components/users/AccountsTable";
+import { PlatformAdminRoster } from "@/components/users/PlatformAdminRoster";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 
 /**
@@ -100,7 +101,21 @@ export default function AccessPage() {
           ) : null
         }
       >
-        {isPlatformAdmin ? <AccountsTable /> : <EmptyState description={t("accountsNotYours")} />}
+        {isPlatformAdmin ? (
+          <AccountsTable />
+        ) : (
+          <div className="flex flex-col gap-4">
+            <EmptyState description={t("accountsNotYours")} />
+            {/*
+              ADR-070 amendment — the half-answer this fixes.
+              "Only a platform administrator can do this" told an HR Super Admin
+              to go and ask, without saying whom. The roster is shown to exactly
+              the audience that CANNOT act on it, because knowing who to ask is
+              the action available to them.
+            */}
+            <PlatformAdminRoster />
+          </div>
+        )}
       </SectionCard>
 
       <SectionCard title={t("hrSection")} subtitle={t("hrSectionHint")}>

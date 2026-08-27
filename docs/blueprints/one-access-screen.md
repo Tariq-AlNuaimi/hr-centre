@@ -1,6 +1,6 @@
 # Blueprint — one access screen, and a platform role that tells the truth
 
-Scope: app/[locale]/(dashboard)/admin/access/**, app/[locale]/(dashboard)/users/**, app/[locale]/(dashboard)/admin/roles/**, components/users/**, components/pms/RoleEditor.tsx, components/layout/AppSidebar.tsx, components/layout/CommandPalette.tsx, lib/validations/user.ts, lib/api-helpers.ts, lib/sso/role-map.ts, lib/auth.ts, app/api/users/**, lib/pms/employee-select.ts, messages/**, tests/contracts/api-auth.test.ts, tests/uat/crud.full.uat.ts, docs/decisions/ADR-070-one-access-surface.md
+Scope: app/[locale]/(dashboard)/admin/access/**, app/[locale]/(dashboard)/users/**, app/[locale]/(dashboard)/admin/roles/**, components/users/**, components/pms/RoleEditor.tsx, components/layout/AppSidebar.tsx, components/layout/CommandPalette.tsx, lib/validations/user.ts, lib/api-helpers.ts, lib/sso/role-map.ts, lib/auth.ts, app/api/users/**, prisma/schema.prisma, prisma/migrations/20260827090000_pms_retire_editor_role/**, eslint-rules/rules/no-bare-api-route.mjs, eslint-rules/rules/no-rate-limit-inside-auth.mjs, scripts/scaffold-entity.mjs, scripts/rbac-matrix.mjs, lib/pms/employee-select.ts, messages/**, tests/contracts/api-auth.test.ts, tests/uat/crud.full.uat.ts, docs/decisions/ADR-070-one-access-surface.md
 
 Feature parity: n/a — not a product category with competitors. This is the repo reconciling two role
 vocabularies it grew separately: the template's `User.role` and §4.1's `Employee.pmsRoles`.
