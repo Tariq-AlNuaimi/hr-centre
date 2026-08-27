@@ -66,18 +66,20 @@ any email that already has an account.
 
 Sign in as the bootstrap admin, then for each person above:
 
-1. Go to **`/users/new`**.
+1. Go to **`/admin/access/new`** (the old `/users/new` still works — it redirects here).
 2. Enter their **email exactly as written in the table** — lower case, no trailing space. This is what
    links the login to the employee record: `resolveActor` matches on it.
-3. Set **Role** to `VIEWER`. This is the platform role, not their HR authority — §4.1's authority comes
-   from `Employee.pmsRoles` and is already on the fixture record. Making them an ADMIN here would give
-   them the users list, the recycling bin and the audit log, which is not what any of them are demoing.
+3. **Leave "Platform administrator" unchecked.** Since ADR-070 this is one checkbox, not a role
+   dropdown — ticking it would give them the account list, the recycling bin and the audit log, which
+   is not what any of them are demoing. It is _not_ their HR authority: §4.1's authority comes from
+   `Employee.pmsRoles` and is already on the fixture record.
 4. Choose a password. **One per person, not one shared across the five.**
-5. Save, then confirm at **`/admin/roles`** that their row now reads **Can sign in → Has login**.
+5. Save. You land back on **`/admin/access`**; confirm in the **HR authority** section that their row
+   reads **Can sign in → Has login**.
 
-> **If the email is already listed at `/users`** the account exists; use the password reset on that
-> user rather than creating a second one. A duplicate email is refused by the unique index, and the
-> refusal is the system working.
+> **If the email is already listed in the accounts section of `/admin/access`** the account exists;
+> use the password reset on that user rather than creating a second one. A duplicate email is refused
+> by the unique index, and the refusal is the system working.
 
 ## Before the demo — check these four, in this order
 

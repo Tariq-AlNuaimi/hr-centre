@@ -120,8 +120,7 @@
     "platformAdminYes": "Platform admin",
     "platformAdminNo": "Standard",
     "createLogin": "Create login",
-    "noEmployeeRecord": "No employee record",
-    "linkedTo": "Employee record"
+    "noEmployeeRecord": "No employee record"
   },
   "recyclingBin": {
     "title": "Recycling bin",
