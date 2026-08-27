@@ -23,7 +23,26 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:opacity-90",
+        /*
+          Hover DARKENS rather than fading. `hover:opacity-90` was the original,
+          and an axe run at 2026-08-26 measured what it costs: `--brand-primary`
+          (#0165ff) carries white at 4.88:1 and passes AA, but at 90% opacity over
+          a light surface it composites to #1a74ff — **4.21:1, below the 4.5:1
+          floor**. So the button met AA at rest and failed it under the pointer,
+          on every primary button in the product.
+
+`--primary-hover` darkens the SURFACE instead. Not `--primary-emphasis`, which
+          was the obvious-looking reuse and is wrong: that token is brand-as-TEXT
+          and its dark override lightens to royal-300, so a hovered button would
+          put white on pale blue at 2.41:1 — worse than the bug. Measured, not
+          assumed. Darkening works in both themes at once because `bg-primary` is
+          the same royal in each; only text tokens flip. White now reads at 6.88:1
+          hovered, so the state is MORE legible than at rest.
+
+          It is also a better hover: fading a solid accent reads as the control
+          becoming less available, which is the opposite of what hovering means.
+        */
+        default: "bg-primary text-primary-foreground hover:bg-primary-hover",
         secondary: "bg-muted text-foreground hover:bg-muted/70",
         outline: "border border-input bg-transparent text-foreground hover:bg-muted",
         ghost: "bg-transparent text-foreground hover:bg-muted",

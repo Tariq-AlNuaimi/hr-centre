@@ -294,7 +294,8 @@
       "updatesTitle": "Updated employees",
       "updatesNote": "Salary changes show as changed without showing the figures.",
       "absentTitle": "In the system but not in this file",
-      "absentNote": "Nothing happens to these people. A missing row is never treated as someone leaving."
+      "absentNote": "Nothing happens to these people. A missing row is never treated as someone leaving.",
+      "returningRevoked": "{count} returning employee(s) still have a revoked account. They cannot sign in until it is restored from the recycling bin — the import does not undo a revocation."
     },
     "orgSetup": {
       "title": "Org setup",
@@ -421,7 +422,9 @@
       "saveFailed": "Could not update the HR roles.",
       "canSignIn": "Can sign in",
       "hasLogin": "Has login",
-      "noLogin": "No login"
+      "noLogin": "No login",
+      "loginRevoked": "Access revoked",
+      "loginRevokedHint": "This person left. Their account was revoked on off-boarding and can be restored from the recycling bin."
     },
     "goalSetting": {
       "title": "Goal setting",

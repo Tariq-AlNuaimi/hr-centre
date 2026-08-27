@@ -89,6 +89,22 @@
    * Bound from brand.config.ts `colors.primaryEmphasis.light` via the
    * --brand-primary-emphasis var layout.tsx emits on <html> (royal #0b53c9). */
   --primary-emphasis: var(--brand-primary-emphasis, var(--brand-primary));
+  /* The primary SURFACE under a pointer. Deliberately NOT --primary-emphasis:
+   * that token is brand-as-TEXT and its dark override LIGHTENS to royal-300, so
+   * using it as a button background puts white on a pale blue (2.41:1) — worse
+   * than the problem it was meant to fix, and measured that way.
+   *
+   * Nor `opacity`, which is what this replaced. `bg-primary` at 90% over a light
+   * surface composites to #1a74ff and carries white at only 4.21:1, so the button
+   * met AA at rest (4.88:1) and failed it while hovered. Fading a solid accent
+   * also reads as the control becoming LESS available, which is the opposite of
+   * what hovering means.
+   *
+   * Darkening the surface itself works in both themes at once, because
+   * `bg-primary` is the same royal in both — only text tokens flip. 80% of the
+   * brand color over black takes white to 6.88:1, so hover is now more legible
+   * than rest rather than less. Retints for free on a rebrand. */
+  --primary-hover: color-mix(in srgb, var(--brand-primary) 80%, black);
   --destructive: #dc2626; /* red-600 — the destructive SURFACE (bg-destructive); white foreground clears AA (4.83:1) */
   --destructive-foreground: #ffffff;
   /* Red used AS TEXT (error messages, destructive menu item, delete link). Split
@@ -207,6 +223,7 @@
   --color-ring: var(--ring);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-emphasis: var(--primary-emphasis);
+  --color-primary-hover: var(--primary-hover);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-emphasis: var(--destructive-emphasis);

@@ -30,7 +30,7 @@ export default function ImportPage() {
   const router = useRouter();
   const locale = useLocale();
   const { capabilities, isLoading: actorLoading } = usePmsActor();
-  const { success, error: showError } = useNotify();
+  const { success, warning, error: showError } = useNotify();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -84,7 +84,12 @@ export default function ImportPage() {
       body.append("file", file);
       const response = await fetch(`/api/imports/${batchId}/apply`, { method: "POST", body });
       const json = (await response.json()) as {
-        data?: { created: number; updated: number; provisioned: number };
+        data?: {
+          created: number;
+          updated: number;
+          provisioned: number;
+          returningWithRevokedLogin: number;
+        };
         error?: string;
       };
 
@@ -104,6 +109,16 @@ export default function ImportPage() {
           provisioned: json.data.provisioned,
         }),
       );
+
+      // ADR-069 — a returning employee reconciles as an UPDATE, so provisioning
+      // never runs for them and the account off-boarding revoked stays revoked.
+      // The import deliberately does not un-delete it (a revoked account may have
+      // been revoked for cause), but it must not be SILENT about it either: this
+      // person is locked out of both sign-in paths, and the remedy is a restore
+      // from the recycling bin that nobody will perform if nobody is told.
+      if (json.data.returningWithRevokedLogin > 0) {
+        warning(t("import.returningRevoked", { count: json.data.returningWithRevokedLogin }));
+      }
       setPreview(null);
       setBatchId(null);
       setFile(null);

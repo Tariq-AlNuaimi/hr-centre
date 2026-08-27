@@ -54,11 +54,11 @@ export interface RoleEmployeeRow {
    */
   pmsRoles?: string[];
   /**
-   * ADR-069 — whether a login exists for this person at all. Unlike `pmsRoles`
-   * this is NOT optional: `serializeEmployee` always emits it, so an absent
-   * value would mean a caller bypassed the serialiser rather than "unknown".
+   * ADR-069 — whether this person can reach the app, and if not, why not. Unlike
+   * `pmsRoles` this is NOT optional: `serializeEmployee` always emits it, so an
+   * absent value would mean a caller bypassed the serialiser rather than "unknown".
    */
-  hasLogin: boolean;
+  loginState: "NONE" | "ACTIVE" | "REVOKED";
 }
 
 interface RoleEditorProps {
@@ -191,12 +191,27 @@ export function RoleEditor({ actorEmployeeId }: RoleEditorProps) {
         platform admin's at /users), and a one-off button here would be a third
         way to mint accounts.
       */
-      key: "hasLogin",
+      key: "loginState",
       title: t("roles.canSignIn"),
-      dataIndex: "hasLogin",
-      render: (value: boolean) =>
-        value ? (
+      dataIndex: "loginState",
+      /*
+        Three states, because after ADR-069's off-boarding amendment a boolean
+        LIED: revoking access soft-deletes the `User` and keeps the employee's
+        link to it, so "has a link" stopped meaning "can sign in". A departed
+        employee read as green here — on the one screen built to answer exactly
+        that question.
+
+        REVOKED is worth its own badge rather than collapsing into "no login",
+        because the two have different remedies: an account that never existed is
+        created, and a revoked one is RESTORED from the recycling bin. Creating a
+        second account on that email is refused by the unique index, so an HR
+        admin who cannot tell the states apart hits a wall.
+      */
+      render: (value: RoleEmployeeRow["loginState"]) =>
+        value === "ACTIVE" ? (
           <Badge variant="success">{t("roles.hasLogin")}</Badge>
+        ) : value === "REVOKED" ? (
+          <Badge variant="danger">{t("roles.loginRevoked")}</Badge>
         ) : (
           <Badge variant="warning">{t("roles.noLogin")}</Badge>
         ),

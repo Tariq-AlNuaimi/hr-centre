@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { prisma, prismaUnfiltered, auditedTransaction } from "../../lib/prisma";
 import { withAuditContext } from "../../lib/audit-context";
 import { revokeLoginOnOffboard } from "../../lib/pms/offboarding";
+import { employeeSelect, serializeEmployee } from "../../lib/pms/employee-select";
 
 const RUN = `offb-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 const email = (l: string) => `${RUN}.${l}@example.test`;
@@ -135,6 +136,90 @@ test(
       auditedTransaction((tx) => revokeLoginOnOffboard(tx, employeeId)),
     );
     assert.equal(second, null);
+  },
+);
+
+test(
+  "a revoked employee reads as REVOKED, not as 'has a login' and not as 'never had one'",
+  { skip: !dbReachable && "no reachable DATABASE_URL" },
+  async () => {
+    // The regression a breadth review caught: off-boarding keeps `Employee.userId`
+    // pointed at the soft-deleted `User` (so a restore can find its way back), and
+    // `hasLogin` was derived from that id alone — so /admin/roles showed a green
+    // "Has login" badge for someone who could not sign in at all. On the one
+    // screen built to answer exactly that question.
+    const { employeeId } = await employeeWithLogin("state");
+
+    const hrActor = {
+      employeeId: null,
+      pmsRoles: [],
+      capabilities: {
+        orgWide: true,
+        hr: true,
+        configure: true,
+        viewCompensation: false,
+        previewImport: true,
+        applyImport: true,
+      },
+    } as unknown as Parameters<typeof employeeSelect>[0];
+
+    const before = await prismaUnfiltered.employee.findUniqueOrThrow({
+      where: { id: employeeId },
+      select: employeeSelect(hrActor),
+    });
+    assert.equal(serializeEmployee(before).loginState, "ACTIVE");
+
+    await withAuditContext({}, () =>
+      auditedTransaction((tx) => revokeLoginOnOffboard(tx, employeeId)),
+    );
+
+    const after = await prismaUnfiltered.employee.findUniqueOrThrow({
+      where: { id: employeeId },
+      select: employeeSelect(hrActor),
+    });
+    // REVOKED, not NONE: the two have different remedies. An account that never
+    // existed is created; a revoked one is RESTORED from the recycling bin, and
+    // creating a second on that email is refused by the unique index.
+    assert.equal(serializeEmployee(after).loginState, "REVOKED");
+  },
+);
+
+test(
+  "an employee who never had an account reads as NONE",
+  { skip: !dbReachable && "no reachable DATABASE_URL" },
+  async () => {
+    const employee = await prismaUnfiltered.employee.create({
+      data: {
+        odooId: odoo("never"),
+        name: "Never Had One",
+        email: email("never"),
+        entityId,
+        departmentId,
+        roleTrack: "INDIVIDUAL",
+        status: "ACTIVE",
+      },
+      select: { id: true },
+    });
+    createdEmployees.push(employee.id);
+
+    const hrActor = {
+      employeeId: null,
+      pmsRoles: [],
+      capabilities: {
+        orgWide: true,
+        hr: true,
+        configure: true,
+        viewCompensation: false,
+        previewImport: true,
+        applyImport: true,
+      },
+    } as unknown as Parameters<typeof employeeSelect>[0];
+
+    const row = await prismaUnfiltered.employee.findUniqueOrThrow({
+      where: { id: employee.id },
+      select: employeeSelect(hrActor),
+    });
+    assert.equal(serializeEmployee(row).loginState, "NONE");
   },
 );
 
