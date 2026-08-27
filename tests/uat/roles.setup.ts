@@ -52,6 +52,45 @@ function passwordFor(role: string): string | undefined {
   return process.env[`UAT_${role}_PASSWORD`] ?? process.env.SEED_ADMIN_PASSWORD;
 }
 
+/**
+ * The §4.1 facts about a fixture login that decide whether it may reach a
+ * capability-gated section. Written next to the storage state, read by
+ * roles.full.uat.ts. Absent (or `linked: false`) means "no employee record", the
+ * ordinary state for a login the harness itself provisioned.
+ */
+export type FixtureActor = { linked: boolean; pmsRoles: string[]; isLineManager: boolean };
+
+function actorFileFor(role: string): string {
+  return `uat-results/.auth/${role.toLowerCase()}.actor.json`;
+}
+
+async function saveActor(role: string, email: string): Promise<void> {
+  let actor: FixtureActor = { linked: false, pmsRoles: [], isLineManager: false };
+  try {
+    const user = await prismaUnfiltered.user.findUnique({
+      where: { email },
+      select: { employee: { select: { id: true, pmsRoles: true } } },
+    });
+    const emp = user?.employee ?? null;
+    if (emp) {
+      // Line-manager authority is DERIVED from the org tree, never assigned
+      // (§4.2), so it is counted rather than read off a field.
+      const reports = await prismaUnfiltered.employee.count({ where: { managerId: emp.id } });
+      actor = { linked: true, pmsRoles: emp.pmsRoles as string[], isLineManager: reports > 0 };
+    }
+  } catch (e) {
+    // Never fail the run over this: the matrix treats a missing actor file as
+    // "no employee record", which is the conservative reading.
+    console.warn(
+      `roles.setup — ${role}: could not resolve the fixture's employee record ` +
+        `(${e instanceof Error ? e.message : String(e)}); the matrix will assume none.`,
+    );
+  }
+  const file = path.join(process.cwd(), actorFileFor(role));
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify(actor, null, 2));
+}
+
 const roles = discoverRoles();
 
 // Skip ADMIN: auth.setup.ts already logs the seeded admin in and saves admin.json.
@@ -67,6 +106,20 @@ setup("discovers non-admin roles", async () => {
     } catch {
       // Best-effort; a missing/locked file must not fail setup.
     }
+  }
+
+  // ADMIN's storage state comes from auth.setup.ts, but its §4.1 identity still
+  // has to be resolved — and it is the one fixture the harness does NOT control,
+  // so it is also the one most likely to be linked to an employee (an operator
+  // signing in as themselves). Without this, ADMIN's capability-gated rows were
+  // the only ones the matrix could not decide.
+  if (isLocalTarget) {
+    const adminEmail = (process.env.UAT_EMAIL ?? process.env.SEED_ADMIN_EMAIL ?? "")
+      .toLowerCase()
+      .trim();
+    if (adminEmail) await saveActor(ADMIN_ROLE, adminEmail);
+    else
+      console.warn("roles.setup — no UAT_EMAIL/SEED_ADMIN_EMAIL; ADMIN's §4.1 identity unknown.");
   }
 
   // Soft guard: if discovery found no non-admin roles, there is nothing to set
@@ -135,5 +188,15 @@ for (const role of nonAdminRoles) {
 
     // 3) Save the per-role session so the matrix spec can reuse it.
     await page.context().storageState({ path: authFileFor(role) });
+
+    // 4) Save the fixture's §4.1 IDENTITY alongside it.
+    //
+    // The matrix used to predict reachability from the platform role alone, and
+    // for a §4.1-gated section that is not decidable: the answer depends on the
+    // fixture's `Employee` record (ADR-065's second axis), which the filesystem
+    // cannot be asked about. Resolving it HERE — where a DB connection already
+    // exists for local targets — is what lets roles.full.uat.ts assert those rows
+    // instead of recording them unasserted.
+    if (isLocalTarget) await saveActor(role, email);
   });
 }

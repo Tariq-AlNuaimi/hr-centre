@@ -18,6 +18,7 @@ import {
   capabilitiesFor,
   hasOrgWideVisibility,
   isReadOnly,
+  canSeePlatformAdminRoster,
   type PmsActor,
 } from "../../lib/pms/permissions";
 import { employeeSelect, serializeEmployee } from "../../lib/pms/employee-select";
@@ -339,3 +340,56 @@ test("§4.1 `hr` is who may RUN the cycle, and it is not `orgWide` or `!readOnly
   assert.equal(capabilitiesFor(actor(["HR_SUPER_ADMIN"])).hr, true);
   assert.equal(capabilitiesFor(actor([])).hr, false);
 });
+
+// --- ADR-070: who may see the platform-administrator roster --------------------
+//
+// The union of the two authority systems, which is the only place in this file
+// where BOTH are consulted. Asserted exhaustively rather than by example: the
+// endpoint it gates returns the names of the most privileged accounts in the
+// system, so "who is refused" is the property that matters, and a refusal list
+// with a hole in it is the whole risk.
+{
+  const roster = (over: Partial<PmsActor>, platformRole: string | null | undefined) =>
+    canSeePlatformAdminRoster(
+      { userId: "u", employeeId: "e", pmsRoles: [], isLineManager: false, ...over },
+      platformRole,
+    );
+
+  test("ADR-070 roster: an HR Super Admin may see it even with no platform role", () => {
+    assert.equal(roster({ pmsRoles: ["HR_SUPER_ADMIN"] }, "VIEWER"), true);
+    // The audience the endpoint exists for: cannot grant platform admin, needs
+    // to know whom to ask.
+    assert.equal(roster({ pmsRoles: ["HR_SUPER_ADMIN"] }, null), true);
+  });
+
+  test("ADR-070 roster: a platform ADMIN may see it with no HR role at all", () => {
+    // The bootstrap admin has no employee record, hence no pmsRoles.
+    assert.equal(roster({ employeeId: null }, "ADMIN"), true);
+  });
+
+  test("ADR-070 roster: every other authenticated shape is REFUSED", () => {
+    assert.equal(roster({}, "VIEWER"), false, "ordinary employee");
+    assert.equal(roster({}, null), false, "no platform role at all");
+    assert.equal(roster({ isLineManager: true }, "VIEWER"), false, "line manager");
+    // §4.1 marks HRBP "Configures? No" — the roster is an administration
+    // question, not a cycle-running one.
+    assert.equal(roster({ pmsRoles: ["HRBP"] }, "VIEWER"), false, "HRBP");
+    // §4.1 gives the executive viewer org-wide READ of performance data, which
+    // is a different surface from who administers the platform.
+    assert.equal(roster({ pmsRoles: ["EXECUTIVE_VIEWER"] }, "VIEWER"), false, "executive viewer");
+    assert.equal(
+      roster({ pmsRoles: ["HRBP", "EXECUTIVE_VIEWER"] }, "VIEWER"),
+      false,
+      "both, still no",
+    );
+  });
+
+  test("ADR-070 roster: the platform check is exact, never truthiness", () => {
+    // A stale JWT issued before the enum retirement can still carry the old
+    // value; it must not be mistaken for administration.
+    assert.equal(roster({}, "EDITOR"), false);
+    assert.equal(roster({}, "admin"), false, "case-sensitive");
+    assert.equal(roster({}, ""), false);
+    assert.equal(roster({}, undefined), false);
+  });
+}

@@ -62,8 +62,61 @@ function hasAuthState(role: string): boolean {
   return fs.existsSync(path.join(process.cwd(), authFileFor(role)));
 }
 
-/** Whether a given role is EXPECTED to reach a section, per discovered gating. */
+/**
+ * What each §4.1-gated section actually requires — ADR-065's second axis.
+ *
+ * The one hardcoded map in an otherwise discovery-driven spec, and it needs its
+ * reason. Discovery reads the SIDEBAR to learn which sections are admin-gated
+ * (`item.key !== "x" || isAdmin` is a literal in the nav). §4.1's gate is not
+ * discoverable that way: it lives inside each page as a `usePmsActor()`
+ * capability check against `Employee.pmsRoles` — a different table the
+ * filesystem cannot be asked about. Each entry cites the clause it encodes.
+ */
+const PMS_GATES: Record<string, (a: FixtureActor) => boolean> = {
+  // §10.6 — "Only HR Super Admin performs calibration adjustments... HRBP does
+  // not touch calibration."
+  calibration: (a) => a.pmsRoles.includes("HR_SUPER_ADMIN"),
+  // §4.1 — the COO / Ops Director view. HR reaches it too (org-wide visibility).
+  executive: (a) =>
+    a.pmsRoles.includes("EXECUTIVE_VIEWER") ||
+    a.pmsRoles.includes("HR_SUPER_ADMIN") ||
+    a.pmsRoles.includes("HRBP"),
+  // §4.2 — line-manager authority is DERIVED from `managerId` edges, never assigned.
+  team: (a) => a.isLineManager,
+  // §13.1 — every employee has a scorecard; a login with no employee record has none.
+  scorecard: (a) => a.linked,
+};
+
+/**
+ * The §4.1 identity of a role's fixture, written by roles.setup.ts.
+ *
+ * A missing file means "no employee record" — the conservative reading, and the
+ * ordinary state for a login the harness provisioned itself.
+ */
+type FixtureActor = { linked: boolean; pmsRoles: string[]; isLineManager: boolean };
+
+function fixtureActor(role: string): FixtureActor {
+  const file = path.join(process.cwd(), `uat-results/.auth/${role.toLowerCase()}.actor.json`);
+  try {
+    return JSON.parse(fs.readFileSync(file, "utf8")) as FixtureActor;
+  } catch {
+    return { linked: false, pmsRoles: [], isLineManager: false };
+  }
+}
+
+/**
+ * Whether a given role's FIXTURE is expected to reach a section.
+ *
+ * Two axes, because the product has two (ADR-065). Predicting from the platform
+ * role alone put four rows red against correct behaviour — a bare `User` with no
+ * `Employee` holds no §4.1 authority whatever its platform role, and an ADMIN
+ * linked to an HR Super Admin holds plenty. Neither is inferable from the role
+ * name, so the fixture's actual employee record is resolved in setup and
+ * consulted here.
+ */
 function expectedReach(role: string, section: SectionAccess): boolean {
+  const pmsGate = PMS_GATES[section.name];
+  if (pmsGate && !pmsGate(fixtureActor(role))) return false;
   // adminOnly sections are reachable only by ADMIN; allRoles by everyone.
   return section.adminOnly ? role === ADMIN_ROLE : true;
 }
@@ -143,36 +196,57 @@ async function visitSection(page: Page, section: SectionAccess): Promise<Outcome
 // Run the matrix as a series of role-scoped describe blocks. Each block applies
 // that role's saved storage state, then iterates every section.
 for (const role of ROLES) {
+  // The context is built INSIDE each test, from the `browser` fixture, rather
+  // than declared with `test.use({ storageState })`. Two failed approaches got
+  // us here, and both are worth naming:
+  //
+  //   1. `test.use({ storageState })` + a `test.skip()` in the body. Playwright
+  //      applies `storageState` when it CREATES the context, which happens
+  //      BEFORE the body runs — so a missing file produced 15 hard ENOENT
+  //      failures and the skip never executed.
+  //   2. Choosing `describe` vs `describe.skip` from `hasAuthState()`. That is
+  //      evaluated at COLLECTION time, before the setup projects have run, so
+  //      the files never exist yet and EVERY role skipped — including ADMIN,
+  //      which had been passing. Thirty silent skips is worse than fifteen loud
+  //      failures: a skip reads as "nothing to do here".
+  //
+  // Building the context in the body puts the existence check and the file read
+  // in the same place, at run time, in that order. A role the setup genuinely
+  // skipped is reported as skipped; every role it provisioned actually runs.
   test.describe(`permission matrix — role ${role}`, () => {
-    // Apply this role's storage state for every test in the block. If the setup
-    // skipped this role (no state file), we skip the whole block gracefully.
-    test.use({ storageState: authFileFor(role) });
-
-    test.beforeAll(() => {
-      if (!hasAuthState(role)) {
-        // Surface why; the per-test skip below keeps the suite green.
-        console.warn(
-          `roles.full — no storage state for ${role} ` +
-            `(${authFileFor(role)} missing). roles.setup likely skipped it ` +
-            `(missing creds / unreachable DB). Its matrix column is omitted.`,
-        );
-      }
-    });
-
     for (const section of SECTIONS) {
-      const reachExpected = expectedReach(role, section);
       const tag = section.adminOnly ? "[adminOnly]" : "[allRoles]";
 
-      test(`${role} -> ${section.name} ${tag} (expect ${reachExpected ? "reach" : "blocked"})`, async ({
-        page,
-      }, testInfo) => {
-        test.skip(!hasAuthState(role), `no storage state for ${role}; roles.setup skipped it`);
+      // The expectation is computed INSIDE the body, not here. This loop runs at
+      // COLLECTION time — before the setup projects have written the fixtures'
+      // §4.1 identity — so anything read out here sees defaults. That trap has
+      // now cost three rounds in this file (storageState, describe.skip, and
+      // this), so the rule is worth stating plainly: in this spec, NOTHING that
+      // depends on setup output may be evaluated outside a test body. The title
+      // therefore names the section, not the prediction.
+      test(`${role} -> ${section.name} ${tag}`, async ({ browser }, testInfo) => {
+        const reachExpected = expectedReach(role, section);
+        // Checked at RUN time, before anything opens the file.
+        test.skip(
+          !hasAuthState(role),
+          `no storage state for ${role} (${authFileFor(role)}); roles.setup skipped it — ` +
+            `usually missing UAT_${role}_PASSWORD/SEED_ADMIN_PASSWORD, or DATABASE_URL ` +
+            `absent from the test runner's env so the fixture user was never provisioned`,
+        );
 
-        const outcome = await visitSection(page, section);
+        const context = await browser.newContext({ storageState: authFileFor(role) });
+        const page = await context.newPage();
+        let outcome: Outcome;
+        let shot: Buffer;
+        try {
+          outcome = await visitSection(page, section);
+          // Screenshot every role×section as the stakeholder artifact.
+          shot = await page.screenshot({ fullPage: true });
+        } finally {
+          await context.close();
+        }
         const reached = outcome === "reached";
 
-        // Screenshot every role×section as the stakeholder artifact.
-        const shot = await page.screenshot({ fullPage: true });
         await testInfo.attach(`${role}-${section.name}.png`, {
           body: shot,
           contentType: "image/png",
@@ -186,6 +260,9 @@ for (const role of ROLES) {
           outcome,
           expectedReach: reachExpected,
           reached,
+          // A row the harness cannot predict is never scored as a pass OR a
+          // failure — `ok: null` renders as "recorded" in the PDF rather than a
+          // tick nobody earned.
           ok: reached === reachExpected,
         });
 

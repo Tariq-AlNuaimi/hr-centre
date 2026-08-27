@@ -100,6 +100,34 @@ export function canExportMasterResults(actor: PmsActor): boolean {
 }
 
 /**
+ * ADR-070 — who may see WHO the platform administrators are.
+ *
+ * The UNION of the two authority systems, and the union is the point. A platform
+ * admin can already read the whole account directory, so gating this on ADMIN
+ * alone would close exactly nothing; the audience that NEEDS it is the HR Super
+ * Admin who cannot. Before this, the access screen told them "only a platform
+ * administrator can do that" without saying whom to ask — a refusal with no next
+ * step in it.
+ *
+ * HRBP is excluded deliberately. §4.1 marks them "Configures? No", and knowing
+ * the administrator roster is an administration question rather than a
+ * cycle-running one. So is EXECUTIVE_VIEWER: §4.1 gives them org-wide read of the
+ * PERFORMANCE data, which is a different surface.
+ *
+ * `platformRole` is passed in rather than read off the actor because `PmsActor`
+ * deliberately carries no platform role — ADR-065 keeps the two systems apart,
+ * and this predicate is the one place they are both consulted. Anything that is
+ * not exactly "ADMIN" is not a platform administrator (the enum has only two
+ * values since ADR-070, but the comparison stays explicit rather than negated).
+ */
+export function canSeePlatformAdminRoster(
+  actor: PmsActor,
+  platformRole: string | null | undefined,
+): boolean {
+  return isHrSuperAdmin(actor) || platformRole === "ADMIN";
+}
+
+/**
  * §4.5 + §11.6 — FIELD-LEVEL confidentiality, layered on top of role visibility.
  *
  * "Basic salary and computed bonus amounts are visible only to HR (Super Admin +

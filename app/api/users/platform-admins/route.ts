@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok, forbidden } from "@/lib/api-response";
 import { resolveActor } from "@/lib/pms/actor";
-import { isHrSuperAdmin } from "@/lib/pms/permissions";
+import { canSeePlatformAdminRoster } from "@/lib/pms/permissions";
 
 /**
  * Who the platform administrators are — ADR-070, amended 2026-08-27.
@@ -52,8 +52,9 @@ const MAX_LISTED = 25;
 export const GET = withRateLimit(
   withAuth(async (_request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    const mayAsk = isHrSuperAdmin(actor) || session.user.role === "ADMIN";
-    if (!mayAsk) return forbidden();
+    // The rule lives in lib/pms/permissions.ts with every other authority
+    // question, so it is unit-testable and cannot drift from a second copy.
+    if (!canSeePlatformAdminRoster(actor, session.user.role)) return forbidden();
 
     // BOUNDED, and the bound is a runaway guard rather than a page size.
     //
