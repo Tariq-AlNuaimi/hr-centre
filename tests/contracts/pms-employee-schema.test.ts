@@ -121,3 +121,56 @@ test("§1.2's exclusive-or still holds alongside the new rules", () => {
     "lastWorkingDay: A leaver needs a last working day — it sets the bonus pro-ration period",
   ]);
 });
+
+// --- The six fields whose default was destructive on a full-replace update ---
+//
+// Raised by the post-push breadth review (2026-08-26) at low confidence,
+// confirmed, and hardened on the operator's call. Each of these previously had a
+// `.default()` inherited from `employeeCore` — right on a CREATE, silent data
+// loss on an UPDATE, because PUT replaces the whole row.
+
+test("an update that OMITS status is refused, not silently set to ACTIVE", () => {
+  // The sharpest one. Defaulting to ACTIVE reactivates a leaver — and does it
+  // WITHOUT restoring the login ADR-069's off-boarding revoked, leaving an active
+  // employee whose account is soft-deleted: the exact state that amendment
+  // exists to prevent.
+  const { status: _omitted, ...withoutStatus } = base;
+  const issues = issuesFor(withoutStatus);
+  assert.ok(issues.length > 0, "a missing status must be an error");
+  assert.ok(
+    issues.some((i) => i.startsWith("status:")),
+    `the error should name the field; got ${JSON.stringify(issues)}`,
+  );
+});
+
+test("an update that OMITS pmsRoles is refused, not silently emptied", () => {
+  // Defaulting to [] strips §4.1 authority from an HR Super Admin.
+  const { pmsRoles: _omitted, ...withoutRoles } = base;
+  assert.ok(
+    issuesFor(withoutRoles).some((i) => i.startsWith("pmsRoles:")),
+    "a missing pmsRoles must be an error naming the field",
+  );
+});
+
+test("the other four destructive defaults are gone too", () => {
+  // basicSalary → null wipes payroll (§11.3); unpaidLeaveDays → 0 wipes §11.5's
+  // service reduction; dateOfJoining → null wipes §3.3's anchor and §11.7 then
+  // refuses to compute a bonus at all; lastWorkingDay → null wipes §11.4's
+  // pro-ration period.
+  for (const field of ["basicSalary", "unpaidLeaveDays", "dateOfJoining", "lastWorkingDay"]) {
+    const partial = { ...base };
+    delete (partial as Record<string, unknown>)[field];
+    assert.ok(
+      issuesFor(partial).some((i) => i.startsWith(`${field}:`)),
+      `omitting ${field} should be an error naming it`,
+    );
+  }
+});
+
+test("EXPLICIT null is still accepted where the column is nullable", () => {
+  // "Send me null" is a decision; "send me nothing" is a mistake. Hardening the
+  // second must not break the first — HR clearing a last working day, or editing
+  // an employee whose joining date was never captured, are both legitimate.
+  const cleared = { ...base, dateOfJoining: null, lastWorkingDay: null, basicSalary: null };
+  assert.deepEqual(issuesFor(cleared), []);
+});

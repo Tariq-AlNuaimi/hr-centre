@@ -45,10 +45,23 @@ export function AppHeader() {
   const displayName = session?.user?.name ?? session?.user?.email;
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-border bg-card px-6">
-      <OrgSwitcher />
+    <header className="sticky top-0 z-40 flex h-16 items-center justify-between gap-2 border-b border-border bg-card px-4 sm:px-6">
+      {/* Absorbs the width pressure instead of the controls on the right: it has
+          a label that can truncate, and they do not. */}
+      <div className="min-w-0 flex-1">
+        <OrgSwitcher />
+      </div>
 
-      <div className="flex items-center gap-4">
+      {/*
+        `shrink-0`, NOT `min-w-0`. The first attempt put `min-w-0` here so the
+        header could fit at 375px, and it worked by letting these icon buttons
+        squeeze: the notifications and theme controls measured 16px WIDE by 36
+        tall — the icon with every scrap of padding crushed out of it, and a touch
+        target well under the 24px WCAG 2.2 floor. The row that should absorb the
+        pressure is the workspace switcher on the left, which has text to truncate;
+        these are fixed-size controls and must keep their size.
+      */}
+      <div className="flex shrink-0 items-center gap-2 sm:gap-4">
         <Button
           variant="outline"
           onClick={() => window.dispatchEvent(new Event(OPEN_COMMAND_PALETTE))}
@@ -88,6 +101,15 @@ export function AppHeader() {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              /*
+                The label has to be here because the visible one is hidden below
+                640px (just below). Hiding it was the right call for the layout and
+                it left this button with an avatar icon and NO accessible name —
+                axe scores that `button-name`, critical, and it was introduced by
+                the very fix that solved the overflow. A visual change that removes
+                the only text in a control is an accessibility change too.
+              */
+              aria-label={displayName ?? tChrome("account")}
               className="flex items-center gap-2 rounded-md px-1 py-1 text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Avatar>
@@ -98,7 +120,15 @@ export function AppHeader() {
                   <User className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
-              <span className="text-sm">{displayName}</span>
+              {/*
+                Hidden below 640px — the avatar carries the identity there, and the
+                name is the first thing in the menu this button opens, so nothing is
+                lost. Measured: at 375px the header's right-hand cluster ran to
+                436px against a 375px viewport, and this label plus its gap was the
+                61px of it. The search label and ⌘K hint already collapse at 575px
+                (app/globals.css); this was the piece that did not.
+              */}
+              <span className="hidden text-sm sm:inline">{displayName}</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

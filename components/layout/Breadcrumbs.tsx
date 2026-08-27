@@ -83,7 +83,14 @@ export function Breadcrumbs() {
       node: (
         <Link
           href={`/${locale}`}
-          className="inline-flex items-center text-muted-foreground transition-colors hover:text-foreground"
+          /*
+            `-m-1 p-1` grows the TAP target to 24x24 without moving the icon a
+            pixel: the padding expands the hit area, the negative margin pulls the
+            layout back. Measured at 16x16 before, under the 24px WCAG 2.2 AA
+            floor (2.5.8) — small enough to be a real miss on a phone, and it is
+            the link back to the dashboard.
+          */
+          className="-m-1 inline-flex items-center p-1 text-muted-foreground transition-colors hover:text-foreground"
           aria-label={t("home")}
         >
           <Home className="h-4 w-4" />
