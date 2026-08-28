@@ -78,7 +78,14 @@ export function getEmployeeColumns({
         <div className="min-w-0">
           <Link
             href={`/${locale}/people/${record.id}`}
-            className="block truncate font-medium text-foreground underline-offset-4 hover:underline"
+            /*
+              WCAG 2.5.8 — the link's own box was 20px tall (one line of text).
+              `min-h-6` with the text centred grows the TARGET to 24px without
+              changing the row: the cell already carries the email on a second
+              line, so the extra 4px is absorbed by existing cell padding rather
+              than making the table taller.
+            */
+            className="flex min-h-6 items-center truncate font-medium text-foreground underline-offset-4 hover:underline"
           >
             {value}
           </Link>

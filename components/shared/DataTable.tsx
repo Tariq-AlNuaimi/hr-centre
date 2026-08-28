@@ -381,7 +381,17 @@ export function DataTable<T extends object>({
                           <button
                             type="button"
                             onClick={header.column.getToggleSortingHandler()}
-                            className="inline-flex items-center gap-1.5 rounded-sm font-semibold outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                            /*
+                              WCAG 2.5.8 (Target Size, Minimum) wants 24x24. The
+                              label alone is ~16px tall, so the HIT AREA is grown
+                              with vertical padding and pulled back out with a
+                              matching negative margin: the target reaches 24px
+                              while the header row stays h-11 and the table stays
+                              as dense as it was. Growing the row instead would
+                              have traded an a11y fix for a density regression on
+                              a screen HR scrolls all day.
+                            */
+                            className="-my-1 inline-flex min-h-6 items-center gap-1.5 rounded-sm py-1 font-semibold outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
                             <SortIcon dir={sorted} />
@@ -466,7 +476,22 @@ export function DataTable<T extends object>({
           <span>
             {rangeStart}-{rangeEnd} / {total}
           </span>
-          <div className="flex items-center gap-2">
+          {/*
+            WRAPS, and that is the fix for the horizontal page overflow.
+
+            The table itself was never the problem: it lives in an
+            `overflow-x-auto` scroller, so a wide table scrolls inside its own
+            box by design. What pushed the DOCUMENT wide was THIS row — the page
+            selector plus the page-number nav, in a non-wrapping flex. Its width
+            grows with the PAGE COUNT, which is why the overflow was 5px on
+            /people, 66px on /admin/access and 77px on /audit-log: three
+            different symptoms of one cause, and measuring is what showed they
+            were the same bug rather than three.
+
+            `min-w-0` lets the nav inside shrink instead of forcing this row to
+            its content width.
+          */}
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
             <label className="flex items-center gap-1.5">
               <span className="sr-only">{t("pageSize")}</span>
               <select
@@ -530,7 +555,14 @@ function ColumnFilter({
       <PopoverTrigger
         aria-label={filterLabel}
         className={cn(
-          "inline-flex h-5 w-5 items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          // 24x24 for WCAG 2.5.8. The ICON inside stays small (see its own
+          // sizing below) so the header does not look heavier — it is the
+          // target that grew, not the glyph.
+          // `shrink-0` is load-bearing, not decoration: `w-6` alone still measured
+          // 16px wide because the header's flex row was shrinking it to fit a long
+          // column label. Height obeyed, width did not — which is exactly the kind
+          // of half-fix that passes a code read and fails a ruler.
+          "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring",
           active
             ? "text-primary-emphasis"
             : // Full muted-foreground (not /60): as the filter control's only visual
@@ -599,7 +631,7 @@ function Pager({
     "inline-flex h-8 min-w-8 items-center justify-center rounded-md border border-input px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 disabled:pointer-events-none";
 
   return (
-    <nav className="flex items-center gap-1" aria-label="Pagination">
+    <nav className="flex flex-wrap items-center justify-end gap-1" aria-label="Pagination">
       <button
         type="button"
         className={btn}

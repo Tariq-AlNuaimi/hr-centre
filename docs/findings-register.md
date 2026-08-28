@@ -86,11 +86,18 @@ the changed surface is still **open** (un-adjudicated).
 
   **After: 0 axe violations at mobile width on all eight screens, and 0 at desktop in both themes.**
 
-  **Still open, and deliberately not improvised:** a 5px overflow on three table screens, and touch
-  targets inside the DataTable (sort buttons 16px tall, row links 20px). Both are table DENSITY —
-  row height and header padding — which is a design decision that belongs in `/design-system`, not a
-  bug to patch at 1am. — operator — status: fixed(2026-08-27) for the shell; table density
-  OPEN for a design pass
+  **The deferred half is now CLOSED — and measuring it corrected the finding.** The overflow was
+  recorded as "5px on three table screens". Re-measured at 375px it was 5px on `/people`, **66px on
+  `/admin/access` and 77px on `/audit-log`** — three different numbers, one cause, and the cause was
+  not the table. The table lives in an `overflow-x-auto` scroller and was scrolling correctly; what
+  pushed the DOCUMENT wide was the PAGINATION bar, whose width grows with the page count (hence the
+  worst number on the screen with the most pages). Fixed by letting that row and its page-number nav
+  wrap. Targets: sort headers grew to a 24px hit area via padding + a matching negative margin (the
+  header row stays `h-11`, so density is unchanged), the employee name link to `min-h-6`, and the
+  column-filter button to `h-6 w-6 shrink-0` — `shrink-0` was load-bearing, since `w-6` alone still
+  measured 16px wide inside the header's flex row. **After: 0px document overflow and 0 sub-24px
+  targets on all three screens, and 0 axe violations across five screens x light/dark.**
+  — operator — status: fixed(2026-08-27)
 
 - 2026-08-26 — [high-quality/a11y] **A primary button met WCAG AA at rest and FAILED it under the
   pointer, on every screen in the product.** The default button carried
