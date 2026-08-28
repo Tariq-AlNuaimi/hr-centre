@@ -76,7 +76,7 @@ manager and the miss, clicking it opens the goal-setting screen and marks it rea
 | Sweep runs again tomorrow, same unresolved miss   | **No second notification.** Dedupe on the event's own identity, same key `ComplianceEvent` uses, plus the recipient.                                                                                                                                                                                                                                                                                                                                                                                    |
 | HR extends the deadline (§5.5's own remedy)       | A _new_ notification, because it is a new miss against a new deadline. Falls out of including `measuredAgainstDeadline` in the key.                                                                                                                                                                                                                                                                                                                                                                     |
 | SMTP is configured later                          | Both channels fire. Email is additive; the feed does not change behaviour.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| A backlog of 5,000 participants escalates at once | Bounded: the existing `MAX_NOTIFICATIONS = 200` cap governs the recipient map, so it governs the fan-out too.                                                                                                                                                                                                                                                                                                                                                                                           |
+| A backlog of 5,000 participants escalates at once | Bounded by TWO different caps, and conflating them was a real defect caught in review: `MAX_NOTIFICATIONS` (200) bounds RECIPIENTS for email, while `MAX_PERSISTED_NOTIFICATIONS` (1,000) bounds ROWS written per run — one recipient can warrant several rows. The row budget is spent only on notifications nobody has received yet, so a backlog drains across runs instead of stalling behind its own first thousand.                                                                               |
 | Recipient has no employee record                  | Cannot happen — the ladder works in employee ids — but the read side keys on `actor.employeeId` and returns empty for a null one.                                                                                                                                                                                                                                                                                                                                                                       |
 | A user reads someone else's notifications         | The route filters on the session's own `employeeId`. There is no id-taking read endpoint.                                                                                                                                                                                                                                                                                                                                                                                                               |
 | Employee is soft-deleted                          | Their notifications SURVIVE. `Employee` is a soft-delete model, so `prisma.employee.delete` is rewritten to an UPDATE and the FK cascade never fires — found by running it, not by reading the schema. That is the right outcome (the recycling bin restores the person and their history together) and it is safe because §12.1's off-boarding revokes the login, so a soft-deleted person cannot sign in to read the feed. Both halves are asserted in `tests/integration/pms-notifications.test.ts`. |
@@ -179,3 +179,32 @@ diff.
 
 Axe (wcag2a/2aa/21a/21aa) is clean on the dashboard and on the open popover, in both themes; no
 horizontal overflow at 375px.
+
+## What the post-push breadth review changed
+
+One finding was worth more than the fix it asked for, so it is recorded here rather than only in a
+commit message.
+
+**The feed must not be gated on `isNew`.** The sweep commits every compliance row _before_ it
+notifies, and it runs under Vercel's 60-second ceiling — which this change is what makes non-trivial,
+since `notify()` used to be an `O(1)` early return on this deployment. A run killed in between left
+the rows written; the next morning the ladder re-derived the same events, they came back
+`isNew: false`, and — while the feed was gated on that flag — the skip-level manager this feature
+exists to reach would never be told. Permanently, silently, with no retry path.
+
+The fix is not a bigger time budget (60s is the plan's ceiling). It is that **`isNew` is the wrong
+question for a durable channel.** `isNew` lives in memory and survives one run; "has this person
+been told" lives in the `dedupeKey` unique index and survives the process. So the in-app fan-out now
+takes every written event and `persistNotifications` asks the index which of them are new — one
+indexed read per 500 candidates, then writes only the gap. Email keeps the `isNew` gate, which is
+what it was always for: not re-mailing HR the same miss daily.
+
+Three properties fall out of that, and each has a test:
+
+- An interrupted run is **self-healing** — tomorrow writes exactly what yesterday missed.
+- A quiet morning costs **reads, not writes**: every already-told row is filtered out before the
+  budget is touched, instead of being a `create` that collides.
+- The row budget bounds **writes rather than candidates**, so a backlog advances each run instead of
+  re-deriving the same unreachable first thousand forever.
+
+Mutation-tested: re-applying the `isNew` gate to the feed turns two of the ten integration tests red.

@@ -106,27 +106,67 @@ export type PendingNotification = {
   dedupeKey: string;
 };
 
+/** Keys per existence query. Postgres copes with far more; this keeps the plan flat. */
+const EXISTS_CHUNK = 500;
+
+/** Which of these have already been told? One indexed query per chunk, no writes. */
+async function alreadySent(pending: readonly PendingNotification[]): Promise<Set<string>> {
+  const sent = new Set<string>();
+  for (let i = 0; i < pending.length; i += EXISTS_CHUNK) {
+    const keys = pending.slice(i, i + EXISTS_CHUNK).map((p) => p.dedupeKey);
+    const rows = await prisma.notification.findMany({
+      take: EXISTS_CHUNK,
+      where: { dedupeKey: { in: keys } },
+      select: { dedupeKey: true },
+    });
+    for (const row of rows) sent.add(row.dedupeKey);
+  }
+  return sent;
+}
+
 /**
- * Write the ones that are new; let the unique index discard the rest.
+ * Write the ones nobody has been told yet; let the unique index catch the rest.
+ *
+ * ASK FIRST, THEN WRITE — and ask about ALL of them before writing ANY. The
+ * cheap version of this looped `create` over every candidate and swallowed the
+ * P2002s, which costs one round trip per already-told notification every single
+ * morning: the daily sweep re-derives the same unresolved misses, so in steady
+ * state almost every write is a collision. Worse, the row cap then applied to
+ * the *candidates* rather than to the *writes*, so once the first `max` of them
+ * existed, a sweep could never reach the ones behind them — it would spend its
+ * whole budget colliding and make no progress, forever.
+ *
+ * Filtering first inverts both: a quiet morning costs a handful of indexed
+ * reads and zero writes, and the budget is spent only on notifications nobody
+ * has received. That is what makes a run interrupted by the cron's 60s ceiling
+ * self-healing rather than permanently lossy — see the note on the `isNew` gate
+ * in cycle-notify.ts.
  *
  * Per-row `create` rather than `createMany` for the reason ADR-010 gives:
  * `createMany` writes no audit row (`no-unaudited-bulk-write`), and a per-row
- * create is what lets one duplicate be swallowed without discarding its
- * siblings. It is the same shape as the sweep's own `writeEvents`, on purpose —
- * a reader who has understood one has understood both.
+ * create is what lets one late duplicate — another sweep racing this one — be
+ * swallowed without discarding its siblings. It is the same shape as the
+ * sweep's own `writeEvents`, on purpose.
  *
  * Never throws. A notification that could not be written must not cost the
- * sweep a compliance row that was already committed, which is why the caller
- * runs this AFTER the rows and why the loop swallows per-row failures.
+ * sweep a compliance row that was already committed.
  */
 export async function persistNotifications(
   pending: readonly PendingNotification[],
-): Promise<{ written: number; duplicates: number; failed: number }> {
+  max: number,
+): Promise<{ written: number; duplicates: number; failed: number; pending: number }> {
   let written = 0;
   let duplicates = 0;
   let failed = 0;
 
-  for (const item of pending) {
+  const sent = await alreadySent(pending);
+  const unsent = pending.filter((p) => !sent.has(p.dedupeKey));
+  // Anything past the budget is not lost — it has no row, so the next run's
+  // `alreadySent` will still report it missing and it moves to the front of the
+  // queue. The count is reported so a backlog that never drains is visible.
+  const batch = unsent.slice(0, max);
+
+  for (const item of batch) {
     try {
       await prisma.notification.create({
         data: {
@@ -141,7 +181,8 @@ export async function persistNotifications(
       written += 1;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        // Already told. Exactly what idempotence looks like.
+        // Written between `alreadySent` and here — a concurrent sweep. Exactly
+        // what idempotence looks like.
         duplicates += 1;
         continue;
       }
@@ -154,5 +195,5 @@ export async function persistNotifications(
     }
   }
 
-  return { written, duplicates, failed };
+  return { written, duplicates, failed, pending: unsent.length - batch.length };
 }

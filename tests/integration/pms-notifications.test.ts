@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { prisma } from "../../lib/prisma";
 import { notify, type WrittenEvent } from "../../lib/pms/cycle-notify";
+import { ladderDedupeKey } from "../../lib/pms/notifications";
 import { suiteActor, TEST_EMPLOYEE_PREFIX } from "./fixture";
 
 /**
@@ -109,10 +110,56 @@ test("a miss reaches the manager in-app even with no mail server", { skip }, asy
 test("tomorrow's sweep tells nobody twice", { skip }, async () => {
   const again = await notify([event()], [], 0, NOW);
   assert.equal(again.persisted.written, 0);
-  assert.equal(again.persisted.duplicates, 1);
+  // Filtered out before the write, not collided with on it — `duplicates`
+  // counts only the narrow race where a concurrent sweep wrote the row between
+  // the existence check and the create.
+  assert.equal(again.persisted.duplicates, 0);
 
   const count = await prisma.notification.count({ where: { recipientEmployeeId: managerId } });
   assert.equal(count, 1, "the daily re-run must not accumulate a copy a day");
+});
+
+test("a run cut short still tells them tomorrow", { skip }, async () => {
+  // The failure this guards, found by the post-push breadth review: the sweep
+  // has a 60s ceiling, and it commits every compliance row BEFORE it notifies.
+  // A run killed in between leaves the rows written, so the next morning the
+  // ladder re-derives the same events and they come back `isNew: false`.
+  //
+  // While the feed was gated on `isNew`, that meant the skip-level manager this
+  // feature exists to reach was never told — permanently, silently, with no
+  // retry. The gate now applies to EMAIL only; the in-app channel asks the
+  // dedupe index, which outlives the process.
+  //
+  // Simulated by deleting the notification and re-running with isNew: false,
+  // which is exactly the state tomorrow's sweep is in.
+  const key = ladderDedupeKey({
+    cycleId,
+    stageKind: "GOAL_SETTING",
+    subjectEmployeeId: subjectId,
+    kind: "DEADLINE_MISSED",
+    deadlineISO: DEADLINE,
+    recipientEmployeeId: managerId,
+  });
+  await prisma.notification.deleteMany({ where: { dedupeKey: key } });
+
+  const tomorrow = await notify([event({ isNew: false })], [], 0, NOW);
+  assert.equal(tomorrow.persisted.written, 1, "an interrupted run must be recoverable");
+
+  const row = await prisma.notification.findUnique({
+    where: { dedupeKey: key },
+    select: { id: true },
+  });
+  assert.ok(row);
+});
+
+test("a quiet morning writes nothing and asks once", { skip }, async () => {
+  // Steady state: every unresolved miss is re-derived daily and every one of
+  // them has already been told. That has to cost reads, not writes — the whole
+  // reason `persistNotifications` filters before it creates.
+  const quiet = await notify([event({ isNew: false })], [], 0, NOW);
+  assert.equal(quiet.persisted.written, 0);
+  assert.equal(quiet.persisted.duplicates, 0, "already-told rows are filtered, not collided with");
+  assert.equal(quiet.persisted.failed, 0);
 });
 
 test("HR extending the deadline tells the manager again", { skip }, async () => {

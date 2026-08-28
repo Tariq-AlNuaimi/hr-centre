@@ -143,8 +143,11 @@ This is where a wrong password or a missing HR role surfaces — much better now
 
 Say these plainly rather than let someone discover them:
 
-- **Email is not sending.** SMTP is unconfigured — IT holds those variables. Notifications are built
-  and will work the moment it is set.
+- **Email is not sending.** SMTP is unconfigured — IT holds those variables. This is worth stating
+  precisely, because it sounds worse than it is: notifications themselves **do** work. Deadline
+  reminders, the escalation ladder and 360 invitations all land on the in-app notifications bell
+  today. Email is a second channel that switches on the moment `SMTP_HOST` is set; nobody is
+  currently going untold.
 - **SSO is not live.** The seam is built and tested; it needs `AUTH_ENTRA_ID`, `AUTH_ENTRA_SECRET`,
   `AUTH_ENTRA_TENANT_ID` and the group claims from IT.
 - **Three spec questions are open.** They are in

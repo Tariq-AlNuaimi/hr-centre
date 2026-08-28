@@ -115,7 +115,12 @@ const HR_QUEUE_HREF = "/admin/cycles";
  */
 type FanOut = { lines: Map<string, string[]>; notifications: PendingNotification[] };
 
-/** Who hears about what. HR's digest is added separately by `notify`. */
+/**
+ * Who hears about what. HR's digest is added separately by `notify`.
+ *
+ * Takes EVERY written event, not just the new ones — the two channels diverge
+ * inside `add()`, where the reason for the divergence is written down.
+ */
 function fanOut(
   notifiable: readonly WrittenEvent[],
   skipLevelOf: ReadonlyMap<string, string | null>,
@@ -124,10 +129,26 @@ function fanOut(
   const notifications: PendingNotification[] = [];
 
   const add = (employeeId: string, event: WrittenEvent) => {
-    const line = `${event.kind}: ${event.detail}`;
-    const existing = lines.get(employeeId);
-    if (existing) existing.push(line);
-    else lines.set(employeeId, [line]);
+    // EMAIL is gated on the per-run `isNew` flag, so HR and a skip-level
+    // director are not re-mailed the same miss every morning (REMINDER_SENT is
+    // exempt — §5.5 asks for "escalating reminders", plural).
+    //
+    // IN-APP is NOT gated on it, and that difference is the important one. A
+    // notification's "have they been told" lives in the `dedupeKey` unique
+    // index, which survives the process; `isNew` lives in memory and survives
+    // one run. Gating the feed on `isNew` meant a sweep killed by the cron's
+    // 60s ceiling before it reached this point left its compliance rows
+    // committed — so tomorrow the ladder re-derives the same events, they come
+    // back `isNew: false`, and the skip-level manager this feature exists to
+    // reach is never told, permanently, with no retry path. Feeding every
+    // written event to the fan-out and letting the index decide makes an
+    // interrupted run self-healing instead.
+    if (event.kind === "REMINDER_SENT" || event.isNew) {
+      const line = `${event.kind}: ${event.detail}`;
+      const existing = lines.get(employeeId);
+      if (existing) existing.push(line);
+      else lines.set(employeeId, [line]);
+    }
 
     notifications.push({
       recipientEmployeeId: employeeId,
@@ -179,10 +200,10 @@ export type NotifyResult = {
   sent: number;
   /** True when email is unconfigured. The in-app channel is never skipped. */
   skipped: boolean;
-  persisted: { written: number; duplicates: number; failed: number };
+  persisted: { written: number; duplicates: number; failed: number; pending: number };
 };
 
-const NOTHING_PERSISTED = { written: 0, duplicates: 0, failed: 0 };
+const NOTHING_PERSISTED = { written: 0, duplicates: 0, failed: 0, pending: 0 };
 
 /**
  * Best-effort notification. Everything below is inside try/catch and runs only
@@ -206,10 +227,9 @@ export async function notify(
   now: Date,
 ): Promise<NotifyResult> {
   try {
-    const notifiable = written.filter((e) => e.kind === "REMINDER_SENT" || e.isNew);
-    const { lines, notifications } = fanOut(notifiable, await resolveSkipLevels(notifiable));
+    const { lines, notifications } = fanOut(written, await resolveSkipLevels(written));
 
-    const hrEscalations = notifiable.filter((e) => e.kind === "ESCALATED_HR").length;
+    const hrEscalations = written.filter((e) => e.kind === "ESCALATED_HR" && e.isNew).length;
     if (hrEscalations > 0 || interventionCount > 0) {
       const digest = hrDigest(hrEscalations, interventions, interventionCount);
       const hr = await prisma.employee.findMany({
@@ -262,7 +282,13 @@ async function deliver(
   notifications: readonly PendingNotification[],
   subject = "Performance cycle — goal-setting compliance",
 ): Promise<NotifyResult> {
-  const persisted = await persistNotifications(notifications.slice(0, MAX_PERSISTED_NOTIFICATIONS));
+  // The cap is passed DOWN rather than applied here: `persistNotifications`
+  // filters out what has already been told before spending any of it, so the
+  // budget bounds WRITES rather than candidates. Slicing the candidate list
+  // here would make a backlog permanently unreachable behind its own first
+  // thousand rows — every run would re-derive the same full slice, find it all
+  // present, and never advance.
+  const persisted = await persistNotifications(notifications, MAX_PERSISTED_NOTIFICATIONS);
 
   if (!isEmailEnabled()) return { attempted: 0, sent: 0, skipped: true, persisted };
 
