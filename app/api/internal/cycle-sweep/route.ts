@@ -83,6 +83,16 @@ async function writeEvents(
   events: readonly LadderEvent[],
 ): Promise<WrittenEvent[]> {
   const results: WrittenEvent[] = [];
+  // The compliance row's identity, minus the kind — carried onto every
+  // WrittenEvent so the in-app fan-out can key a notification on the EVENT
+  // rather than on a weaker identity of its own (lib/pms/notifications.ts).
+  const identity = {
+    cycleId,
+    subjectEmployeeId,
+    stageKind: stage.kind,
+    deadlineISO: stage.deadline.toISOString(),
+  };
+
   for (const event of events) {
     try {
       await prisma.complianceEvent.create({
@@ -98,14 +108,14 @@ async function writeEvents(
         },
         select: { id: true },
       });
-      results.push({ ...event, cycleId, subjectEmployeeId, isNew: true });
+      results.push({ ...event, ...identity, isNew: true });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         // Already logged by an earlier run AGAINST THIS SAME DEADLINE. The ladder
         // decided the same thing it decided before, which is exactly what
         // idempotence looks like. Had HR extended the deadline, this would be a
         // different key and the row would be written.
-        results.push({ ...event, cycleId, subjectEmployeeId, isNew: false });
+        results.push({ ...event, ...identity, isNew: false });
         continue;
       }
       throw error;
@@ -314,7 +324,7 @@ async function sweep() {
     interventionCount += result.interventionCount;
   }
 
-  const notified = await notify(written, interventions, interventionCount);
+  const notified = await notify(written, interventions, interventionCount, now);
   // §9.7's "automated reminders before deadline". Separate from §5.5's ladder
   // because an unanswered 360 is not a compliance matter and must not land on
   // any manager's record.

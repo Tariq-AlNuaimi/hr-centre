@@ -1408,7 +1408,22 @@
       "failed": "Could not save the record.",
       "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it."
     },
-    "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set"
+    "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set",
+    "notifications": {
+      "dashboardTitle": "New notices",
+      "markAllRead": "Mark all read",
+      "unread": "New",
+      "loading": "Loading notifications…",
+      "loadFailed": "Could not load notifications.",
+      "bellWithCount": "Notifications, {count} unread",
+      "moreInBell": "{count} more in the notifications menu.",
+      "kind": {
+        "CYCLE_REMINDER": "Goal-setting deadline approaching",
+        "CYCLE_ESCALATION": "Goal-setting deadline escalated",
+        "HR_INTERVENTION": "HR intervention needed",
+        "THREE_SIXTY_REMINDER": "360 assessment outstanding"
+      }
+    }
   },
   "access": {
     "title": "Access",

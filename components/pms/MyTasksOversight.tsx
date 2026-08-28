@@ -13,6 +13,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import type { PerformanceCycle } from "@/components/pms/CycleList";
 import type { ParticipantRow, RosterResponse } from "@/components/pms/ParticipantList";
 import type { GoalStage } from "@/components/pms/StageBanner";
+import { NotificationList } from "@/components/pms/NotificationList";
+import { useNotifications } from "@/hooks/use-notifications";
 import { usePmsActor, type PmsCapabilities } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
 import { formatDateTime } from "@/lib/format";
@@ -176,6 +178,58 @@ function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: Goa
         {t(task.actionKey)}
       </Link>
     </li>
+  );
+}
+
+/** How many unread notices the dashboard shows before deferring to the bell. */
+const DASHBOARD_NOTICES = 5;
+
+/**
+ * Unread notices, above the task list and visibly NOT part of it.
+ *
+ * §4.4 splits the interface into "everything assigned to me to do" and
+ * "everything I'm entitled to see". A notification is neither: it is what I was
+ * TOLD. It sits inside the My Tasks card because that is where people look
+ * first and an escalation that waits to be discovered has failed at its one
+ * job — but it is a separate, labelled block, because listing "your report's
+ * manager missed a deadline" among a person's own tasks would claim it is
+ * theirs to do.
+ *
+ * Read ones are not shown here at all. The bell keeps the history; the
+ * dashboard shows only what is new, or the block would grow into a second,
+ * worse task list.
+ */
+function MyNotices() {
+  // Named apart from the file's other `t` on purpose: this block reads a
+  // DIFFERENT namespace, and one variable bound to two namespaces in one file
+  // is how a key silently renders as its own name (tests/contracts/i18n-keys).
+  const tn = useTranslations("pms.notifications");
+  const { items, unread, markRead } = useNotifications();
+  const unreadItems = items.filter((i) => i.readAt === null).slice(0, DASHBOARD_NOTICES);
+  if (unreadItems.length === 0) return null;
+
+  return (
+    <section aria-labelledby="my-notices" className="rounded-md border border-border">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
+        <h3 id="my-notices" className="text-sm font-medium text-foreground">
+          {tn("dashboardTitle")}
+        </h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => markRead.mutate({ all: true })}
+          disabled={markRead.isPending}
+        >
+          {tn("markAllRead")}
+        </Button>
+      </div>
+      <NotificationList items={unreadItems} onOpen={(id) => markRead.mutate({ ids: [id] })} />
+      {unread > unreadItems.length ? (
+        <p className="px-3 py-2 text-xs text-muted-foreground">
+          {tn("moreInBell", { count: unread - unreadItems.length })}
+        </p>
+      ) : null}
+    </section>
   );
 }
 
@@ -391,17 +445,23 @@ export function MyTasksOversight() {
   return (
     <>
       <SectionCard title={t("myTasksTitle")} subtitle={t("myTasksSubtitle")}>
-        <MyTasksBody
-          loading={actorLoading || snapshot.isLoading}
-          failed={actorError || snapshot.isError}
-          onRetry={snapshot.refetch}
-          hasEmployeeRecord={!!actor?.employeeId}
-          openYear={snapshot.openCycle?.year ?? null}
-          tasks={tasks}
-          tone={tone}
-          stage={stage}
-          truncation={truncation}
-        />
+        {/* Above the list, and outside MyTasksBody on purpose: a notice must
+            still show when the task list is empty, loading, or unavailable —
+            those are exactly the mornings an escalation matters. */}
+        <div className="space-y-4">
+          <MyNotices />
+          <MyTasksBody
+            loading={actorLoading || snapshot.isLoading}
+            failed={actorError || snapshot.isError}
+            onRetry={snapshot.refetch}
+            hasEmployeeRecord={!!actor?.employeeId}
+            openYear={snapshot.openCycle?.year ?? null}
+            tasks={tasks}
+            tone={tone}
+            stage={stage}
+            truncation={truncation}
+          />
+        </div>
       </SectionCard>
 
       <SectionCard

@@ -66,6 +66,8 @@
 - app/api/kpis/[id]/route.ts  [PUT,DELETE]
 - app/api/kpis/route.ts  [POST]
 - app/api/leavers/route.ts  [GET,POST]
+- app/api/notifications/read/route.ts  [POST]
+- app/api/notifications/route.ts  [GET]
 - app/api/openapi/route.ts  [GET]
 - app/api/org/departments/route.ts  [GET,POST]
 - app/api/org/entities/route.ts  [GET,POST]
@@ -106,7 +108,7 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
 - Department: id, name, entityId, entity, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, complianceAbout, complianceAgainst, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -117,6 +119,7 @@
 - KpiVersion: id, kpiId, kpi, versionNo, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, supersededAt, supersededByRequestId, createdAt
 - KpiRating: id, kpiId, kpi, party, level, comment, ratedByEmployeeId, ratedByEmployee, ratedAt, createdAt, updatedAt
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
+- Notification: id, recipientEmployeeId, recipientEmployee, kind, body, href, dedupeKey, readAt, createdAt
 - SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
 - Kpi: id, participantId, participant, assignmentPeriodId, assignmentPeriod, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, deletedAt, deletedBy, createdAt, updatedAt
 - EntityScore: id, cycleId, cycle, entityId, entity, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
@@ -161,7 +164,7 @@
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
 - lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, withdrawBlockedReason, changeRequestAccessRefusal
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
-- lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, WrittenEvent, Intervention, notify, remindThreeSixtyRaters
+- lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
@@ -176,6 +179,7 @@
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KPI_HASH_SELECT, KpiHashRow, kpiSetHash, currentKpiSetHash
 - lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
+- lib/pms/notifications.ts: NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, PendingNotification, persistNotifications
 - lib/pms/offboarding.ts: revokeLoginOnOffboard
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
@@ -210,6 +214,7 @@
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
+- lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, upsertProjectSchema
@@ -252,6 +257,7 @@
 - components/pms/MidYearBoard.tsx
 - components/pms/MidYearRoster.tsx
 - components/pms/MyTasksOversight.tsx
+- components/pms/NotificationList.tsx
 - components/pms/ParticipantList.tsx
 - components/pms/ProjectMap.tsx
 - components/pms/PublishGate.tsx
