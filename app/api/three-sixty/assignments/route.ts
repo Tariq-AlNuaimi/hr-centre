@@ -94,23 +94,34 @@ export const PUT = withRateLimit(
     // response history to preserve, and a per-row loop over a few thousand
     // never-touched rows buys nothing but round trips. What matters for the
     // trail is that HR regenerated, and when.
-    const wiped = await prisma.assignment.count({ where: { threeSixtyCycleId } });
-    // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- DRAFT-only regenerate; recordAudit() below
-    await prisma.assignment.deleteMany({ where: { threeSixtyCycleId } });
-    // `reason` is one-sided ON PURPOSE, and this is the exception to the
-    // symmetry rule the other `recordAudit` callers follow. That rule exists
-    // because a COLUMN named on one side alone is dropped from `changes` — the
-    // write is reported without saying what moved. `reason` is not a column and
-    // did not move: it is an annotation on a bulk delete whose only real field,
-    // `assignmentCount`, appears on both sides and diffs correctly. Adding
-    // `reason: null` to `before` would manufacture a change entry reading
-    // "the reason changed from nothing", which is not a fact about anything.
-    await recordAudit(prisma, {
-      entityType: "Assignment",
-      entityId: threeSixtyCycleId,
-      action: "DELETE",
-      before: { assignmentCount: wiped },
-      after: { assignmentCount: 0, reason: "regenerated from the relationship mapping (§9.6)" },
+    //
+    // The wipe and its audit row are ONE transaction — the same rule the
+    // decide / withdraw / publish / roll-up routes already follow, and the one
+    // this route was missing. Sequential statements leave a window (one Node
+    // turn wide, but real, and a cold Lambda can die inside it) in which a few
+    // thousand assignments are gone and nothing records that HR regenerated
+    // them. A bulk delete is exactly the write that must not be able to happen
+    // unrecorded. Found by an audit of every `no-unaudited-bulk-write`
+    // suppression in the repo, 2026-08-28.
+    await auditedTransaction(async (tx) => {
+      const wiped = await tx.assignment.count({ where: { threeSixtyCycleId } });
+      // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- DRAFT-only regenerate; recordAudit() below
+      await tx.assignment.deleteMany({ where: { threeSixtyCycleId } });
+      // `reason` is one-sided ON PURPOSE, and this is the exception to the
+      // symmetry rule the other `recordAudit` callers follow. That rule exists
+      // because a COLUMN named on one side alone is dropped from `changes` — the
+      // write is reported without saying what moved. `reason` is not a column and
+      // did not move: it is an annotation on a bulk delete whose only real field,
+      // `assignmentCount`, appears on both sides and diffs correctly. Adding
+      // `reason: null` to `before` would manufacture a change entry reading
+      // "the reason changed from nothing", which is not a fact about anything.
+      await recordAudit(tx, {
+        entityType: "Assignment",
+        entityId: threeSixtyCycleId,
+        action: "DELETE",
+        before: { assignmentCount: wiped },
+        after: { assignmentCount: 0, reason: "regenerated from the relationship mapping (§9.6)" },
+      });
     });
 
     // The creates below are NOT wrapped in a transaction, deliberately. A few

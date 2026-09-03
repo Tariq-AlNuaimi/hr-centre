@@ -75,7 +75,10 @@
     "find-my-way": "^9.7.0",
     "@auth/core": "0.41.3",
     "sharp": "^0.35.3",
-    "deepmerge-ts": "^8.0.1"
+    "deepmerge-ts": "^8.0.1",
+    "fast-uri": "^3.1.7",
+    "mysql2": "^3.24.3",
+    "qs": "^6.16.0"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

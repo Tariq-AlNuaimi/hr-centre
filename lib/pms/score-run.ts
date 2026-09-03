@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { Band, RoleTrack } from "@/generated/prisma/client";
 import { bandFor, finalScore, individualScore, type ScoredKpi } from "./scoring";
+import { DEFAULT_CYCLE_POLICY, type CyclePolicy } from "./cycle-policy";
 import { proratedComponent, type PeriodWindow, type WeightedPeriodScore } from "./transfer";
 
 /**
@@ -24,6 +25,13 @@ export type ScoreInputs = {
   kpis: readonly ScoredKpi[];
   /** §8.5's 1–5 equivalent of the 360 ratio. Null when the 360 produced none. */
   threeSixty: Prisma.Decimal | null;
+  /**
+   * §8.7's banding rule for THIS cycle. Optional, and absent means the
+   * threshold reading this module has always used — so a caller that has not
+   * loaded a policy scores exactly as before rather than throwing or silently
+   * inverting at the 4.495 boundary (lib/pms/cycle-policy.ts).
+   */
+  policy?: Pick<CyclePolicy, "roundScoreBeforeBanding">;
 };
 
 export type ScoreOutcome =
@@ -49,6 +57,7 @@ export type ScoreOutcome =
  */
 export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
   const { employeeId, roleTrack, corporate, departmental, kpis, threeSixty } = input;
+  const policy = input.policy ?? DEFAULT_CYCLE_POLICY;
 
   if (corporate === null) {
     // §8.4 — every employee receives their entity's Corporate score, so a
@@ -78,7 +87,7 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
       individual: corporate,
       threeSixty: null,
       raw,
-      band: bandFor(raw),
+      band: bandFor(raw, policy),
     };
   }
 
@@ -137,7 +146,7 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     individual,
     threeSixty,
     raw,
-    band: bandFor(raw),
+    band: bandFor(raw, policy),
   };
 }
 
@@ -161,6 +170,8 @@ export type SplitScoreInputs = {
   roleTrack: RoleTrack;
   periods: readonly PeriodInputs[];
   threeSixty: Prisma.Decimal | null;
+  /** §8.7's banding rule for this cycle — see the note on `ScoreInputs`. */
+  policy?: Pick<CyclePolicy, "roundScoreBeforeBanding">;
 };
 
 /**
@@ -185,6 +196,7 @@ export type SplitScoreInputs = {
  */
 export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
   const { employeeId, roleTrack, periods, threeSixty } = input;
+  const policy = input.policy ?? DEFAULT_CYCLE_POLICY;
 
   if (periods.length < 2) {
     return {
@@ -278,6 +290,6 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
     individual,
     threeSixty,
     raw,
-    band: bandFor(raw),
+    band: bandFor(raw, policy),
   };
 }

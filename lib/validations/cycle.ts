@@ -59,3 +59,24 @@ export const cycleStatusSchema = z.object({
 
 export type CreateCycleInput = z.infer<typeof createCycleSchema>;
 export type CycleStageInput = z.infer<typeof cycleStageSchema>;
+
+/**
+ * §6.2 / §7.1 / §8.7 — the three clauses the spec leaves open, as HR's answers.
+ *
+ * `strictObject` because zod's default is to STRIP an unknown key: a client
+ * posting a misspelled field would otherwise get a 200 and no change, which on
+ * a policy that decides a bonus coefficient (§11.3) is the worst possible
+ * failure mode. Every field optional, so a caller may set one answer without
+ * restating the other two.
+ */
+export const cyclePolicySchema = z
+  .strictObject({
+    requireResignAfterChange: z.boolean().optional(),
+    divergenceReason: z.enum(["REQUIRED", "OPTIONAL", "OFF"]).optional(),
+    roundScoreBeforeBanding: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, {
+    message: "Send at least one policy field to change.",
+  });
+
+export type CyclePolicyInput = z.infer<typeof cyclePolicySchema>;

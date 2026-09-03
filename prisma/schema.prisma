@@ -327,6 +327,7 @@ model Employee {
   changeDecided           KpiChangeRequest[]      @relation("ChangeRequestDecider")
   complianceAbout         ComplianceEvent[]       @relation("ComplianceSubject")
   complianceAgainst       ComplianceEvent[]       @relation("ComplianceManager")
+  notifications           Notification[]          @relation("NotificationRecipient")
 
   // §12 back-relations.
   rollUpsAbout      ManagerRollUp[]            @relation("RollUpSubject")
@@ -512,6 +513,17 @@ enum SignOffParty {
 // §5.5's ladder + §5.6's record. One enum for both because the compliance record
 // IS the ladder's output — §5.6 asks for "every deadline miss and escalation
 // event", so a separate notification log would be the same rows written twice.
+// What a notification is ABOUT. Deliberately coarser than `ComplianceKind`: the
+// feed's job is to be read by a human in a popover, so the four ladder rungs
+// collapse to the two that mean different things to a recipient — "you are being
+// chased" and "this has been escalated past you".
+enum NotificationKind {
+  CYCLE_REMINDER // §5.5 rung one — approaching deadline
+  CYCLE_ESCALATION // §5.5 rungs two and three, including the skip-level
+  HR_INTERVENTION // §5.5 rung three's digest, to HR
+  THREE_SIXTY_REMINDER // §9.7 — an outstanding 360 assessment
+}
+
 enum ComplianceKind {
   REMINDER_SENT // approaching deadline, to the manager
   DEADLINE_MISSED // the moment it passes; logging begins here
@@ -522,6 +534,16 @@ enum ComplianceKind {
 }
 
 // §2 — one cycle per performance year.
+// §7.1's open question, as three answers rather than a boolean — because
+// "prompt but do not block" is a real third position and the spec supports it:
+// §7.1 puts the disagreement conversation offline, so the system recording it
+// is an addition, and how strongly it insists is Rihal's call.
+enum DivergenceReasonPolicy {
+  REQUIRED // a divergent manager rating is refused without a written reason
+  OPTIONAL // the field is offered and explained, but never blocks a save
+  OFF // no reason is asked for; §7.1's offline discussion is the record
+}
+
 model PerformanceCycle {
   id     String      @id @default(cuid())
   year   Int         @unique // the performance year, e.g. 2027 (goal-set in Dec 2026)
@@ -532,6 +554,43 @@ model PerformanceCycle {
   openedById String?   @map("opened_by_id")
   openedBy   Employee? @relation("CycleOpenedBy", fields: [openedById], references: [id])
   openedAt   DateTime? @map("opened_at")
+
+  // --- §6.2 / §7.1 / §8.7 — the three clauses the spec leaves open ---------
+  //
+  // Policy, not preference. Each of these is a place the specification admits
+  // more than one reading (docs/verification/OPEN-QUESTIONS-FOR-RIHAL.md), so
+  // the build had to choose one — and a choice made by the build is a choice
+  // Rihal has not made. These columns move the choice to HR.
+  //
+  // ON THE CYCLE, not in a global settings row, and that is the whole design.
+  // §11's reporting reads HISTORICAL cycles, and §11.3 ties a band to a bonus
+  // coefficient; a global rule flipped in 2028 would silently re-band every
+  // 2027 scorecard, so a report run after the flip would disagree with the
+  // payslip that was actually paid. Stored here, a finished year keeps the
+  // rules it was judged by.
+  //
+  // Every default is exactly what the code did before these columns existed,
+  // so the migration that adds them changes no behaviour. They are editable
+  // only while the cycle is DRAFT — see lib/pms/cycle-policy.ts.
+
+  /// §6.2 — after HR approves a mid-year KPI change, must both parties sign the
+  /// revised set again? False: the original signature stands and
+  /// `SignOff.kpiSetHash` records what was actually signed, so a screen can
+  /// show that a signature predates the change without pretending it covers it.
+  requireResignAfterChange Boolean @default(false) @map("require_resign_after_change")
+
+  /// §7.1 — must a manager whose rating differs from the employee's say why?
+  /// REQUIRED is more than §7.1 asks for (it puts the discussion "offline") and
+  /// was the build's own addition; OPTIONAL prompts without blocking, OFF
+  /// relies on the offline conversation alone.
+  divergenceReason DivergenceReasonPolicy @default(REQUIRED) @map("divergence_reason")
+
+  /// §8.7 — round the final score to 2dp BEFORE banding? False: bands are `>=`
+  /// thresholds on the exact score, so 4.495 is Excellent. True makes it 4.50
+  /// and Outstanding — the opposite answer from the same number, and at that
+  /// boundary the difference between a 2.0x and a 1.5x bonus coefficient
+  /// (§11.3).
+  roundScoreBeforeBanding Boolean @default(false) @map("round_score_before_banding")
 
   stages            CycleStage[]
   participants      CycleParticipant[]
@@ -840,6 +899,69 @@ model ComplianceEvent {
   @@index([cycleId, kind])
   @@index([managerEmployeeId, occurredAt])
   @@map("compliance_events")
+}
+
+// The in-app half of §5.5's ladder — what a person was TOLD, as opposed to what
+// is waiting on them (§4.4's My Tasks, which is derived, not stored).
+//
+// This model exists because the ladder had exactly one channel and the
+// deployment does not have it: `lib/email.ts` no-ops unless `SMTP_HOST` is set,
+// so `cycle-notify.ts` computed a perfectly correct recipient map every morning
+// and then discarded it. §5.6's record was written and §5.5's escalation reached
+// nobody — worst of all the skip-level manager, whom §5.5 names as the one "with
+// authority to compel action" and who has no task row to discover it through.
+//
+// A row here is therefore not a copy of an email. It is the notification, and
+// email is the optional second channel over the same recipient map.
+model Notification {
+  id String @id @default(cuid())
+
+  // The recipient is an Employee, not a User: the ladder works in employee ids
+  // (§12.2's manager-of-record), and ADR-065 keeps the login identity separate.
+  // A signed-in user with no employee record therefore has no notifications,
+  // which is the same answer §4.4's My Tasks gives them.
+  recipientEmployeeId String   @map("recipient_employee_id")
+  recipientEmployee   Employee @relation("NotificationRecipient", fields: [recipientEmployeeId], references: [id], onDelete: Cascade)
+
+  kind NotificationKind
+
+  /// The specific sentence — WHAT happened, in the machine's own words.
+  ///
+  /// There is deliberately no `title` column. The heading is derived from
+  /// `kind` and translated by the UI (next-intl, both locales, RTL), so the
+  /// part of a notification a reader scans is in their language. This column
+  /// holds the same English detail string §5.6 already stores on
+  /// `ComplianceEvent.detail` and §11.2 already shows HR — one machine-written
+  /// sentence, one representation of it, rather than a second copy of the
+  /// ladder's prose that could drift from the record.
+  body String
+
+  /// Where acting on this starts, WITHOUT a locale prefix — the client adds its
+  /// own. A sweep running at 06:00 has no viewer and therefore no locale, so
+  /// baking one in here would pin every recipient to whichever the cron guessed.
+  /// Null when there is nothing to open: an HR digest names a queue, not a row.
+  href String?
+
+  /// Idempotency, and the reason a daily sweep does not produce a daily copy.
+  ///
+  /// Built from the originating event's OWN identity plus the recipient — for a
+  /// ladder event, `ComplianceEvent`'s unique tuple (which includes
+  /// `measuredAgainstDeadline`) with the recipient appended. Two consequences,
+  /// both wanted: re-running the sweep against an unresolved miss writes
+  /// nothing, and HR extending the deadline (§5.5's own remedy) produces a NEW
+  /// notification, because it is a new miss measured against a new deadline.
+  dedupeKey String @unique @map("dedupe_key")
+
+  /// Null until read. Per-employee rather than per-device on purpose: the
+  /// question is "has this person seen it", not "has this browser".
+  readAt DateTime? @map("read_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // The unread badge counts on the first; the feed pages on the second.
+  @@index([recipientEmployeeId, readAt])
+  @@index([recipientEmployeeId, createdAt])
+  @@map("notifications")
 }
 
 // §5.1 — "both employee and manager sign off (acknowledgment of agreement)".

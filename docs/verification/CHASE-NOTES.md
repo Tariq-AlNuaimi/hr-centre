@@ -15,8 +15,11 @@ what happens if it doesn't arrive. Neither asks the recipient to understand the 
 > nothing needs writing.
 >
 > **1. Email notifications — `SMTP_HOST` (plus the usual user/password/port).**
-> Without it the app runs normally but sends nothing. That affects the rater invitations and the
-> deadline reminders in the performance cycle — the people who need to act don't get told to.
+> Without it the app runs normally but sends no mail. Everything the system needs to tell someone
+> — deadline reminders, the escalation ladder, 360 invitations — now reaches them **inside the
+> app**, on the notifications bell, whether or not this is ever set. So nothing is blocked on you
+> here; what's missing is that people only find out when they next sign in, rather than in their
+> inbox. Worth having, not urgent.
 >
 > **2. Single sign-on — `AUTH_ENTRA_ID`, `AUTH_ENTRA_SECRET`, `AUTH_ENTRA_TENANT_ID`.**
 > Right now everyone needs a password we set by hand. With these, staff sign in with their normal
@@ -55,14 +58,16 @@ what happens if it doesn't arrive. Neither asks the recipient to understand the 
 
 ## Why chase these now
 
-Both are **cheap for the other person and blocking for us**, which is the combination that gets
-forgotten. The engineering for both is finished and sitting idle:
+Both are **cheap for the other person**, which is the combination that gets forgotten. One of the
+three is no longer blocking — as of 2026-08-28 the escalation ladder and the 360 reminders reach
+people through the app's own notifications, so an unset `SMTP_HOST` costs reach, not function. SSO
+and HR's three answers are still genuinely held elsewhere:
 
-| Held by  | What's blocked        | State of our side                                                                            |
-| -------- | --------------------- | -------------------------------------------------------------------------------------------- |
-| IT       | Email notifications   | Built, tested, dormant behind `SMTP_HOST`                                                    |
-| IT       | Single sign-on        | Built, tested; the role mapping has contract tests                                           |
-| Rihal HR | Three spec behaviours | Assumptions in place and documented — changeable cheaply now, expensive after the cycle runs |
+| Held by  | What's blocked            | State of our side                                                                            |
+| -------- | ------------------------- | -------------------------------------------------------------------------------------------- |
+| IT       | Email as a SECOND channel | Built and tested. No longer blocking: notifications reach people in-app regardless           |
+| IT       | Single sign-on            | Built, tested; the role mapping has contract tests                                           |
+| Rihal HR | Three spec behaviours     | Assumptions in place and documented — changeable cheaply now, expensive after the cycle runs |
 
 The HR one has a deadline that isn't obvious: once a real performance cycle has run under the
 current assumptions, changing them means migrating data that people have already acted on. Before

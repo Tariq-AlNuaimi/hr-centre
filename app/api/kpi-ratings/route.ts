@@ -9,6 +9,7 @@ import { yearEndState } from "@/lib/pms/year-end";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { upsertRatingSchema } from "@/lib/validations/rating";
+import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
 
 /**
  * §7.1 — the year-end assessment: the employee self-assesses against each KPI,
@@ -46,6 +47,10 @@ const KPI_CONTEXT = {
             where: { kind: YEAR_END_STAGE },
             select: { kind: true, opensAt: true, deadline: true, graceDays: true },
           },
+          // §7.1's divergence rule for THIS cycle. The rule a manager is held to
+          // must be the one their cycle was opened under — see
+          // lib/pms/cycle-policy.ts for why this is per-cycle and frozen.
+          ...CYCLE_POLICY_SELECT,
         },
       },
       kpis: { where: { deletedAt: null }, select: { id: true }, take: 200 },
@@ -106,13 +111,15 @@ export const POST = withRateLimit(
       return blocked.status === 404 ? notFound("KPI") : err(blocked.reason, blocked.status);
     }
 
-    // The operator's divergence rule. Checked AFTER authority, so a stranger
-    // never learns from the error message what the employee rated themselves.
+    // §7.1's divergence rule, as THIS cycle answers it. Checked AFTER authority,
+    // so a stranger never learns from the error message what the employee rated
+    // themselves.
     const divergence = divergenceBlockedReason({
       party,
       level,
       employeeLevel: employeeRating?.level ?? null,
       comment: comment ?? null,
+      policy: policyFor(participant.cycle),
     });
     if (divergence) return err(divergence, 409);
 
