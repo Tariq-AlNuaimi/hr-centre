@@ -397,7 +397,9 @@
         "dateRequired": "Pick a date for this stage.",
         "deadlineBeforeOpens": "The deadline cannot be before the day the stage opens.",
         "graceRange": "Grace days must be a whole number between 0 and 30."
-      }
+      },
+      "policyAction": "Policy",
+      "policyViewAction": "View policy"
     },
     "roles": {
       "title": "HR roles",
@@ -1423,6 +1425,40 @@
         "HR_INTERVENTION": "HR intervention needed",
         "THREE_SIXTY_REMINDER": "360 assessment outstanding"
       }
+    },
+    "cyclePolicy": {
+      "title": "Cycle policy — {year}",
+      "note": "Three points where the specification allows more than one reading. These are Rihal's answers for this performance year, and they can only be set while the cycle is a draft.",
+      "frozen": "This cycle is no longer a draft. People have already signed and rated under these rules, so changing them now would move the goalposts after the fact — and re-price a bonus that was already calculated. These answers are shown for reference only.",
+      "saved": "Cycle policy saved.",
+      "saveFailed": "Could not save the cycle policy.",
+      "loadFailed": "Could not load the cycle policy.",
+      "resign": {
+        "label": "§6.2 — After HR approves a mid-year KPI change, does anyone sign again?",
+        "no": "No — the original signature stands",
+        "yes": "Yes — both parties sign the revised set",
+        "helpNo": "The employee's and manager's original sign-off stays in place. The system records exactly which KPI set was signed, so a screen can show that a signature predates the change without pretending it covers it.",
+        "helpYes": "Approving a change clears both goal-setting signatures, and the set goes back to awaiting signature. Nothing is lost, but both people must sign again before the set is settled."
+      },
+      "divergence": {
+        "label": "§7.1 — Must a manager explain a rating that differs from the employee's?",
+        "required": "Required — a reason must be given",
+        "optional": "Optional — offered, never enforced",
+        "off": "Off — rely on the offline discussion",
+        "help": {
+          "REQUIRED": "A manager whose rating differs from the employee's self-assessment cannot save it without a written reason. This is more than §7.1 asks for — the spec puts the discussion offline — and it is a real burden on managers at year-end.",
+          "OPTIONAL": "The reason field is offered and explained when the ratings differ, but a manager can save without it. Calibration reads whatever is written.",
+          "OFF": "No reason is asked for. §7.1's offline conversation is the record, and the system holds only the two ratings."
+        }
+      },
+      "rounding": {
+        "label": "§8.7 — Round the final score to two decimals before choosing a band?",
+        "no": "No — band the exact score",
+        "yes": "Yes — round to 2 decimals first",
+        "helpNo": "Bands are read as continuous thresholds: 4.50 and above is Outstanding, 4.00 and above is Excellent, and so on. A score of 4.495 is Excellent, because it is not yet 4.50.",
+        "helpYes": "The score rounds first, so 4.495 becomes 4.50 and is Outstanding. Same number, opposite band — and at that boundary it is the difference between a 2.0x and a 1.5x bonus coefficient (§11.3)."
+      },
+      "save": "Save policy"
     }
   },
   "access": {

@@ -65,6 +65,8 @@ interface CycleListProps {
   onOpenCycle: (cycle: PerformanceCycle) => void;
   onCloseCycle: (cycle: PerformanceCycle) => void;
   onEditDeadlines: (cycle: PerformanceCycle) => void;
+  /** §6.2 / §7.1 / §8.7 — the three answers the spec leaves to Rihal. */
+  onEditPolicy: (cycle: PerformanceCycle) => void;
   onCreate: () => void;
 }
 
@@ -76,6 +78,7 @@ export function CycleList({
   onOpenCycle,
   onCloseCycle,
   onEditDeadlines,
+  onEditPolicy,
   onCreate,
 }: CycleListProps) {
   const t = useTranslations("pms");
@@ -182,6 +185,18 @@ export function CycleList({
               {/* §5.5 — on an OPEN cycle this is an extension, a formal HR
                   intervention, not a correction. The label says which it is. */}
               {record.status === "OPEN" ? t("cycles.extendAction") : t("cycles.editAction")}
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => onEditPolicy(record)}
+            >
+              {/* Readable on an OPEN cycle, editable only on a DRAFT — the
+                  label says which, so nobody opens it expecting to change
+                  something the route will refuse. */}
+              {record.status === "DRAFT" ? t("cycles.policyAction") : t("cycles.policyViewAction")}
             </Button>
 
             {record.status === "OPEN" ? (

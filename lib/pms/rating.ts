@@ -1,6 +1,7 @@
 import type { CycleStageKind, RoleTrack, SignOffParty } from "@/generated/prisma/client";
 import { canActOnEmployee, type PmsActor } from "./permissions";
 import { canActOnStage, isGoalSettingExempt, type StageWindow } from "./cycle";
+import { DEFAULT_CYCLE_POLICY, type CyclePolicy } from "./cycle-policy";
 
 /**
  * §7.1 — the year-end assessment.
@@ -135,7 +136,9 @@ export function ratingBlockedReason(params: {
  * The operator's divergence rule: a manager who rates differently from the
  * employee must say why.
  *
- * Returns null when the rating needs no comment, or when one was given.
+ * Returns null when the rating needs no comment, when one was given, or when
+ * this cycle's policy does not require one (§7.1 is genuinely ambiguous here —
+ * see lib/pms/cycle-policy.ts).
  * Deliberately silent about the EMPLOYEE's rating — a self-assessment has
  * nothing to diverge from, and requiring a justification for one's own view of
  * one's own year is a different (and worse) rule.
@@ -145,8 +148,17 @@ export function divergenceBlockedReason(params: {
   level: number;
   employeeLevel: number | null;
   comment: string | null;
+  policy?: Pick<CyclePolicy, "divergenceReason">;
 }): string | null {
   const { party, level, employeeLevel, comment } = params;
+  const { divergenceReason } = params.policy ?? DEFAULT_CYCLE_POLICY;
+  // §7.1 puts the disagreement conversation OFFLINE, so a system that records
+  // it is an addition to the spec — which is why how hard it insists is Rihal's
+  // call, per cycle, and not the build's. OPTIONAL and OFF both let the save
+  // through; the difference between them lives in the UI, which prompts under
+  // OPTIONAL and says nothing under OFF. Blocking is the only behaviour a route
+  // can express, so this function knows about REQUIRED and nothing else.
+  if (divergenceReason !== "REQUIRED") return null;
   if (party !== "MANAGER") return null;
   if (employeeLevel === null || employeeLevel === level) return null;
   if (comment !== null && comment.trim() !== "") return null;

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { CycleForm, type CycleFormSubmitValues } from "@/components/pms/CycleForm";
 import { CycleList, type PerformanceCycle } from "@/components/pms/CycleList";
+import { CyclePolicyDialog } from "@/components/pms/CyclePolicyDialog";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
@@ -51,6 +52,7 @@ export default function CyclesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [busyCycleId, setBusyCycleId] = useState<string | null>(null);
+  const [policyCycle, setPolicyCycle] = useState<PerformanceCycle | null>(null);
 
   const roles = actor?.pmsRoles ?? [];
   const canRunCycle = roles.includes("HR_SUPER_ADMIN") || roles.includes("HRBP");
@@ -176,6 +178,10 @@ export default function CyclesPage() {
             setFormError(null);
             setEditing(cycle);
           }}
+          onEditPolicy={(cycle) => {
+            setFormError(null);
+            setPolicyCycle(cycle);
+          }}
         />
       )}
 
@@ -269,6 +275,18 @@ export default function CyclesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Extracted wholesale — it owns its own fetch, its own save, and its own
+          error states, none of which this page needs to know about. It also
+          kept `CyclesPage` inside the complexity budget, which is the honest
+          second reason. */}
+      <CyclePolicyDialog
+        cycle={policyCycle}
+        onClose={() => {
+          setPolicyCycle(null);
+          setFormError(null);
+        }}
+      />
     </div>
   );
 }

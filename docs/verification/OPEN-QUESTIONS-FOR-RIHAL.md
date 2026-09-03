@@ -10,6 +10,17 @@ does today**, and **the single question** that settles it.
 None of the three blocks the demo. All three are cheap to change now and expensive to change once a
 cycle has run with real data in it.
 
+> **Since 2026-08-28, answering these is a form rather than a code change.** Each one is now a
+> setting on the performance cycle, set by HR while the cycle is still a draft
+> (**Performance cycles → Policy**). The current answers below remain the defaults, so nothing has
+> changed by adding the setting — but the moment you answer, someone in HR can apply it without
+> engineering.
+>
+> The settings are **per cycle**, deliberately: §11's reporting reads historical cycles and §11.3
+> ties a band to a bonus coefficient, so a rule changed globally in a later year would silently
+> re-band an earlier one and disagree with a payslip that was already paid. A finished year keeps
+> the rules it was judged by. They freeze the moment the cycle opens, for the same reason.
+
 ---
 
 ## 1 · §6.2 — After HR approves a mid-year KPI change, does anyone sign again?
@@ -23,7 +34,8 @@ set, the manager signs, HR approves, and the set is locked. If a KPI is then cha
 people have signed something that no longer exists — and the year-end assessment (§7) is measured
 against the _new_ set.
 
-**What the system does today.** No re-sign was invented. The original signature stands, and
+**What the system does today (the default, changeable in the cycle policy).** No re-sign was
+invented. The original signature stands, and
 `SignOff.kpiSetHash` records the exact KPI set that was signed, so any screen can tell that a
 signature predates the current set. Nobody is asked to sign twice, and nothing pretends the old
 signature covers the new KPI.
@@ -46,9 +58,11 @@ reason when the two ratings differ.
 either earns trust or loses it. The offline conversation happens either way; the question is whether
 the system keeps a record of it.
 
-**What the system does today.** **A reason is required** when the manager's rating diverges from the
-employee's. This is more than the spec asks for, and it was added deliberately — but it is a real
-burden on managers at year-end, and it was not Rihal's decision.
+**What the system does today (the default, changeable in the cycle policy).** **A reason is
+required** when the manager's rating diverges from the employee's. This is more than the spec asks
+for, and it was added deliberately — but it is a real burden on managers at year-end, and it was not
+Rihal's decision. The policy offers three answers, not two: **Required**, **Optional** (the field is
+offered and explained but never blocks a save), or **Off**.
 
 > ### The question
 >
@@ -73,7 +87,8 @@ burden on managers at year-end, and it was not Rihal's decision.
 is above 4.49 and below 4.50, so it belongs to no band. The same hole sits between every adjacent
 pair. It only appears because the system computes to more decimal places than the table prints.
 
-**What the system does today.** Bands are implemented as **`>=` thresholds** — `≥ 4.50` Outstanding,
+**What the system does today (the default, changeable in the cycle policy).** Bands are implemented
+as **`>=` thresholds** — `≥ 4.50` Outstanding,
 else `≥ 4.00` Excellent, and so on — so the ranges are continuous and nothing falls through. A 4.495
 lands in **Excellent**, because it is not yet 4.50.
 
@@ -93,6 +108,12 @@ That is an interpretation, and it decides real money: at this boundary it is the
 
 ## How to answer
 
-A sentence each is enough. Send them back however is easiest and they will be implemented and recorded
-in `docs/verification/SPEC-CONFORMANCE.md` as **Rihal's decision** rather than the build's
-interpretation — which is the difference this page exists to make.
+A sentence each is enough. Send them back however is easiest. Each answer is then applied in
+**Performance cycles → Policy** on the draft cycle — no code change, no deploy — and recorded in
+`docs/verification/SPEC-CONFORMANCE.md` as **Rihal's decision** rather than the build's
+interpretation, which is the difference this page exists to make.
+
+One caveat worth knowing before you answer: the settings can only be changed while a cycle is a
+**draft**. Once it opens, people begin signing and rating under those rules, and moving them
+afterwards would judge someone by a rule that did not exist when they acted — and, in §8.7's case,
+re-price a bonus that was already calculated. So the answers are cheap now and impossible later.

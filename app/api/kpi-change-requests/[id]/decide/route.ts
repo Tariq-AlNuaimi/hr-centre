@@ -19,6 +19,8 @@ import {
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { decideChangeRequestSchema } from "@/lib/validations/change-request";
+import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
+import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
 
 /**
  * HR decides a mid-year change request — spec §6.2, and §6.3's archive.
@@ -99,6 +101,10 @@ export const POST = withRateLimit(
             // Enumerated columns only — §4.5 keeps `basicSalaryEnc` out of this.
             employee: { select: { id: true } },
             kpis: { where: { deletedAt: null }, select: KPI_STATE_SELECT, take: 200 },
+            // §6.2's open question — does an approved mid-year change send the
+            // set back for signature? Rihal's answer, per cycle
+            // (lib/pms/cycle-policy.ts).
+            cycle: { select: CYCLE_POLICY_SELECT },
           },
         },
         edits: CHANGE_REQUEST_SELECT.edits,
@@ -283,6 +289,30 @@ export const POST = withRateLimit(
               descriptorUnsatisfactory: next.descriptorUnsatisfactory,
             },
           });
+        }
+
+        // §6.2 — Rihal's answer to "does anyone sign again?".
+        //
+        // Default is NO: the original signature stands, and `SignOff.kpiSetHash`
+        // already records the exact set that was signed, so a screen can show
+        // that a signature predates the change without pretending it covers it.
+        // When Rihal chooses YES, the goal-setting signatures are cleared here —
+        // in the SAME transaction as the edits, because a set that has changed
+        // while its signatures survive is precisely the state this option exists
+        // to refuse.
+        //
+        // Per-row `delete` rather than `deleteMany`: there are at most two rows
+        // (§5.1's employee and manager), so the audited client covers them
+        // without an escape hatch, and §12.2 wants WHO un-signed on the trail.
+        if (touched.length > 0 && policyFor(existing.participant.cycle).requireResignAfterChange) {
+          const signOffs = await tx.signOff.findMany({
+            where: { participantId: existing.participantId, stageKind: GOAL_SETTING_STAGE },
+            select: { id: true },
+            take: 2,
+          });
+          for (const row of signOffs) {
+            await tx.signOff.delete({ where: { id: row.id } });
+          }
         }
 
         return touched.length;

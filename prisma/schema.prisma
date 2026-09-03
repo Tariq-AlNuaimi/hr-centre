@@ -534,6 +534,16 @@ enum ComplianceKind {
 }
 
 // §2 — one cycle per performance year.
+// §7.1's open question, as three answers rather than a boolean — because
+// "prompt but do not block" is a real third position and the spec supports it:
+// §7.1 puts the disagreement conversation offline, so the system recording it
+// is an addition, and how strongly it insists is Rihal's call.
+enum DivergenceReasonPolicy {
+  REQUIRED // a divergent manager rating is refused without a written reason
+  OPTIONAL // the field is offered and explained, but never blocks a save
+  OFF // no reason is asked for; §7.1's offline discussion is the record
+}
+
 model PerformanceCycle {
   id     String      @id @default(cuid())
   year   Int         @unique // the performance year, e.g. 2027 (goal-set in Dec 2026)
@@ -544,6 +554,43 @@ model PerformanceCycle {
   openedById String?   @map("opened_by_id")
   openedBy   Employee? @relation("CycleOpenedBy", fields: [openedById], references: [id])
   openedAt   DateTime? @map("opened_at")
+
+  // --- §6.2 / §7.1 / §8.7 — the three clauses the spec leaves open ---------
+  //
+  // Policy, not preference. Each of these is a place the specification admits
+  // more than one reading (docs/verification/OPEN-QUESTIONS-FOR-RIHAL.md), so
+  // the build had to choose one — and a choice made by the build is a choice
+  // Rihal has not made. These columns move the choice to HR.
+  //
+  // ON THE CYCLE, not in a global settings row, and that is the whole design.
+  // §11's reporting reads HISTORICAL cycles, and §11.3 ties a band to a bonus
+  // coefficient; a global rule flipped in 2028 would silently re-band every
+  // 2027 scorecard, so a report run after the flip would disagree with the
+  // payslip that was actually paid. Stored here, a finished year keeps the
+  // rules it was judged by.
+  //
+  // Every default is exactly what the code did before these columns existed,
+  // so the migration that adds them changes no behaviour. They are editable
+  // only while the cycle is DRAFT — see lib/pms/cycle-policy.ts.
+
+  /// §6.2 — after HR approves a mid-year KPI change, must both parties sign the
+  /// revised set again? False: the original signature stands and
+  /// `SignOff.kpiSetHash` records what was actually signed, so a screen can
+  /// show that a signature predates the change without pretending it covers it.
+  requireResignAfterChange Boolean @default(false) @map("require_resign_after_change")
+
+  /// §7.1 — must a manager whose rating differs from the employee's say why?
+  /// REQUIRED is more than §7.1 asks for (it puts the discussion "offline") and
+  /// was the build's own addition; OPTIONAL prompts without blocking, OFF
+  /// relies on the offline conversation alone.
+  divergenceReason DivergenceReasonPolicy @default(REQUIRED) @map("divergence_reason")
+
+  /// §8.7 — round the final score to 2dp BEFORE banding? False: bands are `>=`
+  /// thresholds on the exact score, so 4.495 is Excellent. True makes it 4.50
+  /// and Outstanding — the opposite answer from the same number, and at that
+  /// boundary the difference between a 2.0x and a 1.5x bonus coefficient
+  /// (§11.3).
+  roundScoreBeforeBanding Boolean @default(false) @map("round_score_before_banding")
 
   stages            CycleStage[]
   participants      CycleParticipant[]

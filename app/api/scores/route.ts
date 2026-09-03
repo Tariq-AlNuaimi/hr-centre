@@ -14,6 +14,7 @@ import {
   type ScoreInputs,
 } from "@/lib/pms/score-run";
 import { formRatio, overallRatio } from "@/lib/pms/three-sixty";
+import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
 
 /**
  * §8 — calculate every raw score for a cycle.
@@ -49,7 +50,16 @@ export const POST = withRateLimit(
 
     const cycle = await prisma.performanceCycle.findUnique({
       where: { id: cycleId },
-      select: { id: true, publication: { select: { published: true } } },
+      select: {
+        id: true,
+        publication: { select: { published: true } },
+        // §8.7's banding rule for THIS cycle. Read here, once per run, rather
+        // than per employee: it cannot change mid-run (the policy is frozen the
+        // moment a cycle leaves DRAFT, and §8 only scores an OPEN one), and one
+        // score run must band every employee by the same rule or the cohort is
+        // not comparable — which is exactly what §10's calibration assumes.
+        ...CYCLE_POLICY_SELECT,
+      },
     });
     if (!cycle) return notFound("Cycle");
     if (cycle.publication?.published) {
@@ -60,6 +70,10 @@ export const POST = withRateLimit(
         409,
       );
     }
+
+    // Resolved once, from the cycle. `policyFor` tolerates a cycle created
+    // before these columns existed and returns the behaviour the code had then.
+    const policy = policyFor(cycle);
 
     // §8.4's inputs, read once for the whole cycle rather than per employee.
     const [entityScores, departmentScores, participants, threeSixty] = await Promise.all([
@@ -161,8 +175,12 @@ export const POST = withRateLimit(
                 lastWorkingDay: e.lastWorkingDay,
               }),
               threeSixty: ratioByEmployee.get(e.id)?.level ?? null,
+              policy,
             })
-          : scoreEmployee(unsplitInputs(e, p.kpis, byEntity, byDepartment, ratioByEmployee));
+          : scoreEmployee({
+              ...unsplitInputs(e, p.kpis, byEntity, byDepartment, ratioByEmployee),
+              policy,
+            });
       if (!outcome.scored) {
         skipped.push({ employeeId: outcome.employeeId, reason: outcome.reason });
         continue;

@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
+import { DEFAULT_CYCLE_POLICY, type CyclePolicy } from "./cycle-policy";
 import type { RoleTrack } from "@/generated/prisma/client";
 
 /**
@@ -170,12 +171,25 @@ export function finalScore(roleTrack: RoleTrack, components: Components): Prisma
  * reading under which every score in 1–5 maps somewhere, and which agrees with
  * the table at every value the table actually lists.
  *
- * **Flagged to Rihal**: if scores are meant to be rounded to two decimals before
- * banding, that rounding is a step §8 does not describe, and it changes results
- * at the boundary.
+ * **Now Rihal's to decide**, per cycle. `roundScoreBeforeBanding` selects the
+ * other reading: round to 2dp first, and 4.495 becomes 4.50 and Outstanding —
+ * the opposite answer from the same number. The parameter defaults to the
+ * threshold reading, so a caller that does not pass a policy behaves exactly as
+ * this function always has (see lib/pms/cycle-policy.ts).
  */
-export function bandFor(score: Prisma.Decimal | string | number): Band {
-  const s = d(score);
+export function bandFor(
+  score: Prisma.Decimal | string | number,
+  policy: Pick<CyclePolicy, "roundScoreBeforeBanding"> = DEFAULT_CYCLE_POLICY,
+): Band {
+  // §8.7's second reading, and it is not cosmetic: at this boundary it is the
+  // difference between a 2.0x and a 1.5x bonus coefficient on basic salary
+  // (§11.3). Rounding HALF UP, because that is what "rounded to two decimals"
+  // means to the HR reader deciding it — Decimal.js defaults to half-up too,
+  // but the constant is named so the choice is on the page rather than in a
+  // library's defaults.
+  const s = policy.roundScoreBeforeBanding
+    ? d(score).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
+    : d(score);
   if (s.greaterThanOrEqualTo(d("4.50"))) return "OUTSTANDING";
   if (s.greaterThanOrEqualTo(d("4.00"))) return "EXCELLENT";
   if (s.greaterThanOrEqualTo(d("3.00"))) return "TARGET";
