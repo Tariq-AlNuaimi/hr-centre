@@ -121,6 +121,22 @@ function useGoalSettingSnapshot() {
     enabled: openCycle !== null,
   });
 
+  // The oversight cards claim ENTITLEMENT — "every participant in the cycle",
+  // "your whole chain" — which is a different question from `scope=mine` above,
+  // and answering it with the task scope was wrong by a wide margin: an HR Super
+  // Admin who line-manages nobody has exactly one assigned set, so the card that
+  // says "the whole organisation" read "1 Participants in view" against 37.
+  //
+  // Omitting `scope` is precisely the §4.1/§4.2 visibility set the cards
+  // describe, and `pageSize=1` buys the `total` without the rows: the count is
+  // the whole point of the read, the page is not.
+  const entitledCount = useQuery({
+    queryKey: ["pms", "home-entitled-count", openCycle?.id],
+    queryFn: () =>
+      apiClient.get<RosterResponse>(`/api/cycles/${openCycle?.id}/participants?page=1&pageSize=1`),
+    enabled: openCycle !== null,
+  });
+
   const byId = new Map<string, ParticipantRow>();
   for (const row of roster.data?.data ?? []) {
     byId.set(row.participantId, row);
@@ -129,6 +145,7 @@ function useGoalSettingSnapshot() {
   return {
     cycles,
     roster,
+    entitledCount,
     openCycle,
     rows: [...byId.values()],
     isLoading: cycles.isLoading || (openCycle !== null && roster.isLoading),
@@ -136,6 +153,7 @@ function useGoalSettingSnapshot() {
     refetch: () => {
       cycles.refetch();
       roster.refetch();
+      entitledCount.refetch();
     },
   };
 }
@@ -359,7 +377,7 @@ function OversightBody({
           actionLabel={t("chainAction")}
           href={`/${locale}/goal-setting`}
           value={visible}
-          valueLabel={t("participantsCount")}
+          valueLabel={t("participantsCount", { count: visible ?? 0 })}
         />
       ) : null}
 
@@ -371,7 +389,7 @@ function OversightBody({
           actionLabel={t("orgAction")}
           href={`/${locale}/admin/cycles`}
           value={visible}
-          valueLabel={t("participantsCount")}
+          valueLabel={t("participantsCount", { count: visible ?? 0 })}
         />
       ) : null}
 
@@ -383,7 +401,7 @@ function OversightBody({
           title={t("readOnlyTitle")}
           body={t("readOnlyBody")}
           value={visible}
-          valueLabel={t("participantsCount")}
+          valueLabel={t("participantsCount", { count: visible ?? 0 })}
         />
       ) : null}
 
@@ -474,7 +492,7 @@ export function MyTasksOversight() {
         <OversightBody
           capabilities={capabilities}
           locale={locale}
-          visible={rosterData?.total ?? null}
+          visible={snapshot.entitledCount.data?.total ?? null}
         />
       </SectionCard>
     </>

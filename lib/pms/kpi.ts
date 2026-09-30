@@ -160,6 +160,53 @@ export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): st
 }
 
 /**
+ * Each portion's weightage total, in the same deterministic period order
+ * `weightageMessageByPeriod` uses.
+ *
+ * One entry for an unsplit year — the overwhelming majority — and one per
+ * portion for §12.3's split year.
+ */
+export function weightageTotalsByPeriod(kpis: readonly PeriodWeightedKpi[]): Prisma.Decimal[] {
+  const byPeriod = new Map<string | null, PeriodWeightedKpi[]>();
+  for (const kpi of kpis) {
+    const key = kpi.assignmentPeriodId ?? null;
+    const bucket = byPeriod.get(key);
+    if (bucket) bucket.push(kpi);
+    else byPeriod.set(key, [kpi]);
+  }
+  const keys = [...byPeriod.keys()].sort((a, b) => (a ?? "").localeCompare(b ?? ""));
+  return keys.map((key) => weightageTotal(byPeriod.get(key) ?? []));
+}
+
+/**
+ * The ONE total §13.3's roster shows, and compares against 100.
+ *
+ * §13.3 has a row per employee, not per portion, so it needs a single number —
+ * and summing a split year's portions is the wrong one. A correctly-drafted
+ * transfer (100% for each of two departments) rendered "Weightages total
+ * 200.00%" and carried a weightage warning it had not earned, because §5.3's
+ * "exactly 100" binds PER PERIOD (see `Kpi.assignmentPeriodId`), never across
+ * them. `signOffBlockedReason` already read it that way; the roster did not.
+ *
+ * So: the first portion that is not yet exactly 100 — the actionable one, the
+ * only number a manager can do anything about — else 100 when every portion is
+ * complete. An empty set totals 0, which is not complete and never was.
+ *
+ * With a single portion this is precisely `weightageTotal`, so the unsplit path
+ * is unchanged rather than merely equivalent.
+ */
+export function rosterWeightageTotal(kpis: readonly PeriodWeightedKpi[]): Prisma.Decimal {
+  const totals = weightageTotalsByPeriod(kpis);
+  if (totals.length === 0) return new Prisma.Decimal(0);
+  return totals.find((total) => !total.equals(REQUIRED_TOTAL)) ?? REQUIRED_TOTAL;
+}
+
+/** §5.3 per portion — every period complete, and at least one to be complete. */
+export function isRosterWeightageComplete(kpis: readonly PeriodWeightedKpi[]): boolean {
+  return rosterWeightageTotal(kpis).equals(REQUIRED_TOTAL);
+}
+
+/**
  * §5.3 — why this set cannot be signed, or null when it can.
  *
  * Sign-off has the same stage lock as editing but NOT the approval lock: HR's

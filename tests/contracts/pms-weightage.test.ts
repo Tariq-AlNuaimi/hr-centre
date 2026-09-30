@@ -10,6 +10,8 @@ import {
   weightageGap,
   weightageMessage,
   weightageTotal,
+  rosterWeightageTotal,
+  isRosterWeightageComplete,
 } from "../../lib/pms/kpi";
 import type { StageWindow } from "../../lib/pms/cycle";
 import type { PmsActor } from "../../lib/pms/permissions";
@@ -254,4 +256,47 @@ test("create still defaults orderIndex, because a new KPI needs a position", () 
   });
   assert.equal(parsed.success, true);
   if (parsed.success) assert.equal(parsed.data.orderIndex, 0);
+});
+
+/**
+ * §13.3's roster showed "Weightages total 200.00%" for a correctly-drafted
+ * split year: `status-query` summed every KPI regardless of period, while
+ * §5.3's "exactly 100" binds PER PERIOD (schema: `Kpi.assignmentPeriodId`).
+ * The number contradicted the spec on screen and the row carried a weightage
+ * warning it had not earned.
+ */
+test("§12.3: roster weightage is per period, so a complete split year reads 100, not 200", () => {
+  const split = [
+    { weightage: 60, assignmentPeriodId: "period-a" },
+    { weightage: 40, assignmentPeriodId: "period-a" },
+    { weightage: 70, assignmentPeriodId: "period-b" },
+    { weightage: 30, assignmentPeriodId: "period-b" },
+  ];
+  assert.equal(
+    rosterWeightageTotal(split).toString(),
+    REQUIRED_TOTAL.toString(),
+    "each portion totals 100, so the roster must read 100 — summing them gave 200",
+  );
+  assert.equal(isRosterWeightageComplete(split), true);
+});
+
+test("§12.3: an incomplete portion surfaces THAT portion's total, not the year's sum", () => {
+  const short = [
+    { weightage: 100, assignmentPeriodId: "period-a" },
+    { weightage: 60, assignmentPeriodId: "period-b" },
+  ];
+  assert.equal(
+    rosterWeightageTotal(short).toString(),
+    "60",
+    "the actionable number is the portion still short, not 160",
+  );
+  assert.equal(isRosterWeightageComplete(short), false);
+});
+
+test("the unsplit path is unchanged — one bucket, the plain total", () => {
+  assert.equal(rosterWeightageTotal([{ weightage: 60 }, { weightage: 40 }]).toString(), "100");
+  assert.equal(rosterWeightageTotal([{ weightage: 60 }, { weightage: 20 }]).toString(), "80");
+  assert.equal(isRosterWeightageComplete([{ weightage: 60 }, { weightage: 40 }]), true);
+  assert.equal(rosterWeightageTotal([]).toString(), "0", "no KPIs is not a complete set");
+  assert.equal(isRosterWeightageComplete([]), false);
 });
