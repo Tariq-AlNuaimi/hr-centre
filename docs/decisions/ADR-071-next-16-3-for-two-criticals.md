@@ -102,14 +102,16 @@ post-push breadth review caught it the same day:
   used to justify the entry. The override is now `^2.1.7` and both advisories are gone. The
   "changed module export" objection that was carried over from the 2026-07-24 GHSA-mh99 entry
   applies to **5.x only**.
-- **`nodemailer` ×2 — allowlisted, with a corrected reason.** The entry said "no fixed version
-  exists"; 10.0.6+ does exist. `fixAvailable: false` describes the Auth.js peer chain, not the
-  registry. The accurate ground is that the only fix is a **major** bump of a direct runtime
-  dependency — no _non-breaking_ upstream fix, which is what the allowlist permits — deferred
-  pending its own verification pass. The reachability argument is unchanged and still holds.
-  Re-audit triggers: **`SMTP_HOST` being set, or the 10.x bump landing.**
+- **`nodemailer` ×2 — allowlisted with a corrected reason, then UPGRADED anyway.** The entry said
+  "no fixed version exists"; 10.0.6+ does. `fixAvailable: false` describes the Auth.js peer chain,
+  not the registry. The accurate ground — the only fix is a **major** bump, so no _non-breaking_
+  fix exists — does satisfy the allowlist's own rule, and the entry was corrected to say so. The
+  operator then chose to take the bump rather than carry it. `^9.0.1` → `^10.0.6` (resolves
+  10.0.13), verified by an end-to-end SMTP probe against the real `lib/email.ts` transport on both
+  versions, because the repo's email contract test covers only pure functions and would not have
+  caught a transport break. Results identical. See `SECURITY.md` §13.
 
-Each carries a `SECURITY.md` §12 row and a §13 entry.
+Each carries a `SECURITY.md` §12 row and a §13 entry. **`audit-allowlist.json` ended the day empty**, and `npm audit --omit=dev` reports no High+ advisories at all.
 
 ## Consequences
 
