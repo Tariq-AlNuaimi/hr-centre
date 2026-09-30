@@ -91,6 +91,7 @@ dead) · 🔴 Superseded (historical record only).
 | [067](ADR-067-salary-at-rest.md)                             | Encryption at rest for `employees.basicSalary`                                                                          | 🟢 Accepted           |                                                                                                         |
 | [068](ADR-068-audit-rows-inside-transactions.md)             | An audit row must share the fate of the write it describes                                                              | 🟢 Accepted           |                                                                                                         |
 | [069](ADR-069-employee-access.md)                            | Employee access: import-provisioned logins, env-gated SSO, two role systems that stay two                               | 🟢 Accepted           |                                                                                                         |
+| [071](ADR-071-next-16-3-for-two-criticals.md)                | Move to Next.js 16.3.x to clear two critical CVEs (no fix exists on the 16.2 line)                                      | 🟢 Accepted           | Supersedes the agent-memory "stay on 16.2.x, no 16.3 preview" note, on its own revisit condition        |
 
 ## Supersession map (the ten labelled records)
 

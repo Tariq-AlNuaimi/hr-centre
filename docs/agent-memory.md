@@ -33,7 +33,7 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
-- **Durable decisions** (11): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
+- **Durable decisions** (12): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next stays 16.2.10 + Babel React Compiler (no 16.3 preview); /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (12): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (6): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
@@ -94,14 +94,15 @@ tax is the ≤30-line digest, not the whole file.
 - 2026-07-13 — **Enterprise pivot (WS-1..8) + code wave (ADR-049..056) are COMPLETE on `main`;**
   only trigger-gated deferred work remains. Its plan docs were archived 2026-07-25 — the ADRs are
   the surviving record (`docs/ARCHIVE.md` recovers the rest).
-- 2026-07-11 — **Next feature-bump trigger (ADR-048) has NOT fired.** The React
-  Compiler Rust port + Turbopack persistent PRODUCTION build cache are **16.3-only**,
-  and 16.3 is still `preview`/`canary` (npm `latest` = 16.2.10); the Rust compiler is
-  experimental and Vercel explicitly discourages it on production apps. So we took the
-  safe in-range patch — `next 16.2.9 → 16.2.10` (ADR-017) — and KEPT the Babel React
-  Compiler path (ADR-048). Do NOT pin a 16.3 pre-release or flip experimental flags to
-  chase those features; revisit ONLY when 16.3 ships **stable** and the Rust compiler is
-  no longer production-discouraged. Don't re-investigate the version status each session.
+- 2026-09-30 — **On `next@16.3.7` (ADR-071); SUPERSEDES the 2026-07-11 "stay on 16.2.x" note.**
+  Security, not features: two criticals had **no fix on the 16.2 line** (vulnerable range runs
+  through `16.3.2`). Babel React Compiler unchanged + re-verified. 16.3 deprecates
+  `middleware` → `proxy` (warning only, OPEN-ITEMS #12). Don't re-litigate the 16.2 pin.
+- 2026-07-11 — _(SUPERSEDED 2026-09-30 — see above; the version half is dead, this half is
+  not.)_ The React Compiler **Rust port** and Turbopack's persistent production build cache
+  are 16.3-only, experimental, and Vercel discourages the Rust compiler on production apps —
+  so the fork stays on the **Babel** transform (ADR-048) even now that it runs 16.3. Don't
+  flip the experimental flags to chase them.
 - 2026-07-03 — Deferred #11 IMPLEMENTED as `/stack-advisor` (skill, not agent):
   a **build-time** advisor injecting Next 16 RSC + Prisma 7 + Postgres positive
   patterns _while_ code is written, pointing at this repo's recipes/primitives.

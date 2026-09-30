@@ -6,6 +6,30 @@
       "package": "brace-expansion",
       "severity": "high",
       "reason": "DoS (unbounded brace-expansion → OOM). Fixed only in brace-expansion 5.0.8, which CHANGED its module export shape (`expand is not a function`) and breaks the minimatch/glob versions bundled by eslint, eslint-config-next, archiver (exceljs), testcontainers, and node-gyp — so no export-compatible patched version exists (the 2.x line, pinned here at ^2.1.2, fixes the sibling ReDoS GHSA-3jxr but not this OOM). Not reachable in the app runtime: brace-expansion runs only inside build/lint/dev/test tooling (glob/minimatch file-matching) and the exceljs export path, none of which expand attacker-controlled brace patterns. Re-audit + drop this entry when eslint/minimatch upgrade to a new-export brace-expansion, or when a 2.x backport ships. SECURITY.md §12/§13."
+    },
+    {
+      "id": "GHSA-qhr7-859c-m2p7",
+      "package": "brace-expansion",
+      "severity": "high",
+      "reason": "DoS (uncontrolled recursion on nested brace groups -> stack exhaustion). Sibling of the already-allowed GHSA-mh99-v99m-4gvg and allowed on the same evidence: brace-expansion is NOT reachable from the request path. Its only route into the production tree is @sentry/nextjs -> @sentry/bundler-plugin-core -> glob -> minimatch, which runs at BUILD time over the repo's own glob patterns; nothing expands an attacker-controlled brace string. The 2.x line pinned here ('^2.1.2' override) has no patched release for this id, and the only fixed line (5.0.8+) changed its module export and breaks the minimatch/glob bundled by eslint, eslint-config-next, archiver (exceljs), testcontainers and node-gyp. Scoped allow (single advisory id; /ship still fails every other High+). Re-audit on every bump. SECURITY.md 12/13."
+    },
+    {
+      "id": "GHSA-6j4f-fj2g-mc7p",
+      "package": "brace-expansion",
+      "severity": "high",
+      "reason": "DoS (uncontrolled recursion in parseCommaParts -> stack exhaustion). Same package, same unreachable build-time-only path, and same absence of an export-compatible patched 2.x release as GHSA-qhr7-859c-m2p7 above; allowed on identical evidence rather than by widening that entry, so each id is adjudicated on its own. Scoped allow; re-audit on every bump. SECURITY.md 12/13."
+    },
+    {
+      "id": "GHSA-2x7j-588g-ccc2",
+      "package": "nodemailer",
+      "severity": "high",
+      "reason": "Quadratic (O(n^2)) time in addressparser -> DoS via a crafted address LIST. No fixed version exists (npm audit reports fixAvailable:false for the whole <=10.0.5 range) and the advisory cascades into the Auth.js chain (@auth/core, next-auth), which ADR-001 locks. Not reachable: the app registers only the Credentials and Microsoft Entra providers -- no Auth.js email provider -- so nodemailer has exactly one call site, lib/email.ts, and sendEmail() returns {sent:false} WITHOUT calling sendMail while SMTP_HOST is unset, which is production's current state. When SMTP is configured the addresses come from HR-imported employee records, never from anonymous request input, and are single recipients rather than crafted lists. RE-AUDIT THE MOMENT SMTP_HOST IS SET -- that is the trigger that changes this reasoning. SECURITY.md 12/13."
+    },
+    {
+      "id": "GHSA-v53p-9fqp-m79j",
+      "package": "nodemailer",
+      "severity": "high",
+      "reason": "Quadratic backtracking in the addressparser free-text fallback -> DoS. Same package, same missing upstream fix, and the same single unreached call site as GHSA-2x7j-588g-ccc2 above; allowed on identical evidence and carrying the same re-audit trigger (SMTP_HOST being set). SECURITY.md 12/13."
     }
   ]
 }

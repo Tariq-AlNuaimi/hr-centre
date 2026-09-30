@@ -65,6 +65,18 @@ const SCOPE_COPY = {
   org: { title: "orgTitle", help: "orgHelp", empty: "noOrg" },
 } as const;
 
+/**
+ * `data.scope` crosses the wire into an unchecked `as` cast, so the lookup is
+ * defensive: an unexpected value would otherwise make `t(scopeCopy.title)` throw
+ * and blank the screen — a white page instead of the honest state the rubric asks
+ * for. Kept out of the component so the fallback costs it no complexity.
+ */
+function scopeCopyFor(
+  scope: StatusResponse["scope"],
+): (typeof SCOPE_COPY)[keyof typeof SCOPE_COPY] {
+  return SCOPE_COPY[scope] ?? SCOPE_COPY.direct;
+}
+
 export default function TeamPage() {
   const t = useTranslations("pms.team");
   const { capabilities, isLoading: actorLoading } = usePmsActor();
@@ -115,7 +127,7 @@ export default function TeamPage() {
   // the toggle only before the first payload lands.
   const effectiveScope = data?.scope ?? scope;
   const isOrgScope = effectiveScope === "org";
-  const scopeCopy = SCOPE_COPY[effectiveScope];
+  const scopeCopy = scopeCopyFor(effectiveScope);
 
   return (
     <div className="space-y-6">

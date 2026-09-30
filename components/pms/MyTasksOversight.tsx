@@ -93,7 +93,7 @@ const TONE_VARIANT: Record<TaskTone, BadgeProps["variant"]> = {
 };
 
 /** The queries behind both sections, kept in one place so they stay in step. */
-function useGoalSettingSnapshot() {
+function useGoalSettingSnapshot(wantsEntitledCount: boolean) {
   const cycles = useQuery({
     queryKey: ["pms", "cycles"],
     queryFn: () => apiClient.get<PerformanceCycle[]>("/api/cycles"),
@@ -134,7 +134,7 @@ function useGoalSettingSnapshot() {
     queryKey: ["pms", "home-entitled-count", openCycle?.id],
     queryFn: () =>
       apiClient.get<RosterResponse>(`/api/cycles/${openCycle?.id}/participants?page=1&pageSize=1`),
-    enabled: openCycle !== null,
+    enabled: openCycle !== null && wantsEntitledCount,
   });
 
   const byId = new Map<string, ParticipantRow>();
@@ -421,7 +421,12 @@ export function MyTasksOversight() {
   const locale = useLocale();
   const nowMs = useNowMs();
   const { actor, capabilities, isLoading: actorLoading, isError: actorError } = usePmsActor();
-  const snapshot = useGoalSettingSnapshot();
+  // Only the three capability-gated oversight cards below display a count, so only
+  // they are worth a request for one. A plain employee sees the directory card alone
+  // and pays nothing.
+  const snapshot = useGoalSettingSnapshot(
+    capabilities.lineManager || capabilities.orgWide || capabilities.readOnly,
+  );
 
   const stage = snapshot.roster.data?.stage ?? null;
   const tone = toneForStage(stage, nowMs);
