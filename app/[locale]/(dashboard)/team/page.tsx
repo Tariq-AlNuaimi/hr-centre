@@ -43,6 +43,8 @@ interface StatusResponse {
   cycle: { id: string; year: number; status: string };
   scope: "direct" | "chain" | "org";
   readOnly: boolean;
+  /** §13.4 — the org-scope read is capped; the route says so, so the screen must too. */
+  truncated: boolean;
   goalStageLocked: boolean;
   progress: Array<{
     stageKind: string;
@@ -60,9 +62,27 @@ interface StatusResponse {
  * was missing when HR read "Direct reports" over the whole organisation.
  */
 const SCOPE_COPY = {
-  direct: { title: "directTitle", help: "directHelp", empty: "noReports" },
-  chain: { title: "chainTitle", help: "directHelp", empty: "noChain" },
-  org: { title: "orgTitle", help: "orgHelp", empty: "noOrg" },
+  direct: {
+    title: "directTitle",
+    help: "directHelp",
+    empty: "noReports",
+    stat: "outstanding",
+    statHint: "outstandingHint",
+  },
+  chain: {
+    title: "chainTitle",
+    help: "directHelp",
+    empty: "noChain",
+    stat: "outstandingChain",
+    statHint: "outstandingChainHint",
+  },
+  org: {
+    title: "orgTitle",
+    help: "orgHelp",
+    empty: "noOrg",
+    stat: "outstandingOrg",
+    statHint: "outstandingOrgHint",
+  },
 } as const;
 
 /**
@@ -75,6 +95,24 @@ function scopeCopyFor(
   scope: StatusResponse["scope"],
 ): (typeof SCOPE_COPY)[keyof typeof SCOPE_COPY] {
   return SCOPE_COPY[scope] ?? SCOPE_COPY.direct;
+}
+
+/**
+ * §13.4's cap, said rather than implied. The org-scope read is bounded
+ * (`participantStatuses` stops at `PARTICIPANT_PAGE`), and presenting a capped
+ * subset's completion percentages as the organisation's would be a confident
+ * wrong number — the failure mode this screen was just fixed for.
+ *
+ * Its own component so the conditional costs `TeamPage` no complexity.
+ */
+function TruncatedNotice({ truncated, shown }: { truncated: boolean; shown: number }) {
+  const t = useTranslations("pms.team");
+  if (!truncated) return null;
+  return (
+    <p className="text-sm text-muted-foreground" role="status">
+      {t("truncatedNotice", { shown })}
+    </p>
+  );
 }
 
 export default function TeamPage() {
@@ -189,9 +227,9 @@ export default function TeamPage() {
             {/* Leads, because §13.3 is a cockpit: this is the number that means
                 "do something today". */}
             <StatCard
-              title={t("outstanding")}
+              title={t(scopeCopy.stat)}
               value={data.outstanding.length}
-              hint={t("outstandingHint")}
+              hint={t(scopeCopy.statHint)}
             />
             <StatCard
               title={t("goalSettingProgress")}
@@ -212,6 +250,8 @@ export default function TeamPage() {
               }
             />
           </div>
+
+          <TruncatedNotice truncated={data.truncated} shown={data.rows.length} />
 
           <SectionCard
             title={t(scopeCopy.title)}

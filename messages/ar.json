@@ -889,7 +889,12 @@
         "employeeDidNotSign": "الموظف لم يوقّع",
         "managerDidNotSign": "الموظف وقّع، والمدير لم يوقّع"
       },
-      "outstanding": "بانتظارك"
+      "outstanding": "بانتظارك",
+      "outstandingOrg": "بانتظار المدير",
+      "outstandingOrgHint": "المشاركون الذين لم يتخذ مديرهم إجراءً بعد",
+      "outstandingChain": "بانتظار مديرهم",
+      "outstandingChainHint": "مجموعات أسفل السلسلة غير موقّعة — المدير المباشر هو من يتصرف",
+      "truncatedNotice": "يتم عرض أول {shown} مشارك. النسب أعلاه تشمل هؤلاء فقط."
     },
     "reports": {
       "title": "التقارير",

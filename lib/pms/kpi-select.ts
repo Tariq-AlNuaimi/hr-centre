@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { weightageMessage, weightageTotal } from "./kpi";
+import { weightageView } from "./kpi";
 
 /**
  * The KPI read shape and its §5.3 summary — the counterpart to
@@ -78,15 +78,21 @@ export type WeightageSummary = {
 export async function weightageSummary(participantId: string): Promise<WeightageSummary> {
   const participant = await prisma.cycleParticipant.findUnique({
     where: { id: participantId },
-    select: { kpis: { where: { deletedAt: null }, select: { weightage: true } } },
+    // §12.3 — the period decides how §5.3's 100% is counted (`weightageView`).
+    select: {
+      kpis: {
+        where: { deletedAt: null },
+        select: { weightage: true, assignmentPeriodId: true },
+      },
+    },
   });
   const kpis = participant?.kpis ?? [];
-  const message = weightageMessage(kpis);
+  const weightage = weightageView(kpis);
   return {
     kpiCount: kpis.length,
-    weightageTotal: weightageTotal(kpis).toString(),
-    weightageComplete: message === null,
-    weightageMessage: message,
+    weightageTotal: weightage.total,
+    weightageComplete: weightage.complete,
+    weightageMessage: weightage.message,
   };
 }
 

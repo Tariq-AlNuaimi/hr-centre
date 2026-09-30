@@ -6,12 +6,7 @@ import { err, notFound, ok } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import {
-  GOAL_SETTING_STAGE,
-  kpiSetAccessRefusal,
-  weightageMessage,
-  weightageTotal,
-} from "@/lib/pms/kpi";
+import { GOAL_SETTING_STAGE, kpiSetAccessRefusal, weightageView } from "@/lib/pms/kpi";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibleEmployeeIds } from "@/lib/pms/org-tree";
 
@@ -178,7 +173,9 @@ export const GET = withRateLimit(
           // `Kpi` is not in its model set at all, so nothing filters this for us.
           kpis: {
             where: { deletedAt: null },
-            select: { weightage: true },
+            // §12.3 — the period is selected because §5.3's "exactly 100" binds per
+            // portion, not across a split year (`weightageView`).
+            select: { weightage: true, assignmentPeriodId: true },
           },
           // GOAL_SETTING only — see the note in lib/pms/signoff.ts.
           signOffs: {
@@ -196,7 +193,7 @@ export const GET = withRateLimit(
       const exempt = isGoalSettingExempt(row.employee.roleTrack);
       // One call: `weightageMessage` is null exactly when the set is signable
       // (non-empty and totalling exactly 100), which is what "complete" means.
-      const message = weightageMessage(row.kpis);
+      const weightage = weightageView(row.kpis);
 
       // Why this actor cannot edit this row right now — through the SAME
       // function `POST /api/kpis` and the drafting page use, so the screen can
@@ -234,9 +231,9 @@ export const GET = withRateLimit(
         kpiCount: row.kpis.length,
         // Decimal as a STRING: §5.3 compares against exactly 100, and a JSON
         // number is a float the moment it is parsed.
-        weightageTotal: weightageTotal(row.kpis).toString(),
-        weightageComplete: message === null,
-        weightageMessage: message,
+        weightageTotal: weightage.total,
+        weightageComplete: weightage.complete,
+        weightageMessage: weightage.message,
         signOff: {
           employeeSignedAt: employeeSigned?.signedAt ?? null,
           managerSignedAt: managerSigned?.signedAt ?? null,

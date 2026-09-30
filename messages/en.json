@@ -889,7 +889,12 @@
         "employeeDidNotSign": "Employee did not sign",
         "managerDidNotSign": "Employee signed, manager did not"
       },
-      "outstanding": "Waiting on you"
+      "outstanding": "Waiting on you",
+      "outstandingOrg": "Awaiting a manager",
+      "outstandingOrgHint": "Participants whose own manager has not acted yet",
+      "outstandingChain": "Awaiting their manager",
+      "outstandingChainHint": "Down-chain sets still unsigned — the direct line manager acts",
+      "truncatedNotice": "Showing the first {shown} participants. The percentages above cover only these."
     },
     "reports": {
       "title": "Reports",

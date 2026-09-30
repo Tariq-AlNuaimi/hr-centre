@@ -93,11 +93,23 @@ This **supersedes** the `docs/agent-memory.md` "Next stays 16.2.x, no 16.3 previ
 decision's own revisit condition. It does **not** change the ADR-001 locked stack: the stack is
 Next.js 16, and this moves within it.
 
-The four remaining High+ advisories — `brace-expansion` ×2 (build-time only, no export-compatible
-patched 2.x release) and `nodemailer` ×2 (no fixed version published, single unreached call site) —
-are **allowlisted**, not upgraded, because for those no fix exists. Each carries a `SECURITY.md`
-§12 row and a §13 entry. The nodemailer pair carries an explicit re-audit trigger: **the moment
-`SMTP_HOST` is set**.
+The four remaining High+ advisories were first **allowlisted**, and that was half wrong — the
+post-push breadth review caught it the same day:
+
+- **`brace-expansion` ×2 — allowlist WITHDRAWN, upgraded instead.** The entry claimed no patched
+  2.x release existed. 2.1.5/2.1.6/2.1.7 had been published two weeks earlier and the `^2.1.2`
+  override already admitted them; `npm audit` was reporting `fixAvailable: true` in the same output
+  used to justify the entry. The override is now `^2.1.7` and both advisories are gone. The
+  "changed module export" objection that was carried over from the 2026-07-24 GHSA-mh99 entry
+  applies to **5.x only**.
+- **`nodemailer` ×2 — allowlisted, with a corrected reason.** The entry said "no fixed version
+  exists"; 10.0.6+ does exist. `fixAvailable: false` describes the Auth.js peer chain, not the
+  registry. The accurate ground is that the only fix is a **major** bump of a direct runtime
+  dependency — no _non-breaking_ upstream fix, which is what the allowlist permits — deferred
+  pending its own verification pass. The reachability argument is unchanged and still holds.
+  Re-audit triggers: **`SMTP_HOST` being set, or the 10.x bump landing.**
+
+Each carries a `SECURITY.md` §12 row and a §13 entry.
 
 ## Consequences
 

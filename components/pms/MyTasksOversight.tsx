@@ -149,11 +149,16 @@ function useGoalSettingSnapshot(wantsEntitledCount: boolean) {
     openCycle,
     rows: [...byId.values()],
     isLoading: cycles.isLoading || (openCycle !== null && roster.isLoading),
-    isError: cycles.isError || roster.isError,
+    // The count's failure is surfaced, not swallowed: hiding the number silently is
+    // the same dishonest-state failure the count bug itself was.
+    isError: cycles.isError || roster.isError || entitledCount.isError,
     refetch: () => {
       cycles.refetch();
       roster.refetch();
-      entitledCount.refetch();
+      // `refetch()` ignores `enabled`, so re-check the predicate by hand — otherwise
+      // Retry fires a request for a viewer with no card to show it in, and with no
+      // open cycle it would hit `/api/cycles/undefined/participants`.
+      if (openCycle !== null && wantsEntitledCount) entitledCount.refetch();
     },
   };
 }

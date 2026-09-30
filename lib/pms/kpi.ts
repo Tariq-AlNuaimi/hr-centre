@@ -137,7 +137,15 @@ export type PeriodWeightedKpi = WeightedKpi & { assignmentPeriodId?: string | nu
  * single bucket and returns precisely what `weightageMessage` returns, so the
  * unsplit path is unchanged rather than merely equivalent.
  */
-export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): string | null {
+/**
+ * One KPI set per §12.3 portion, in a deterministic order — sorted by period id so
+ * a message names the same portion every run rather than whichever the map yielded
+ * first. `null` (the unsplit majority) is its own single bucket.
+ *
+ * Shared so the per-period MESSAGE and the per-period TOTAL cannot bucket
+ * differently; they disagreeing is the whole failure mode this rule exists to stop.
+ */
+function groupByPeriod(kpis: readonly PeriodWeightedKpi[]): PeriodWeightedKpi[][] {
   const byPeriod = new Map<string | null, PeriodWeightedKpi[]>();
   for (const kpi of kpis) {
     const key = kpi.assignmentPeriodId ?? null;
@@ -145,13 +153,17 @@ export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): st
     if (bucket) bucket.push(kpi);
     else byPeriod.set(key, [kpi]);
   }
-  if (byPeriod.size <= 1) return weightageMessage(kpis);
+  return [...byPeriod.keys()]
+    .sort((a, b) => (a ?? "").localeCompare(b ?? ""))
+    .map((key) => byPeriod.get(key) ?? []);
+}
 
-  // Deterministic order, so the message names the same period every time rather
-  // than whichever the map happened to yield first.
-  const keys = [...byPeriod.keys()].sort((a, b) => (a ?? "").localeCompare(b ?? ""));
-  for (const key of keys) {
-    const message = weightageMessage(byPeriod.get(key) ?? []);
+export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): string | null {
+  const periods = groupByPeriod(kpis);
+  if (periods.length <= 1) return weightageMessage(kpis);
+
+  for (const period of periods) {
+    const message = weightageMessage(period);
     if (message) {
       return `${message} Each period of a split year needs its own complete set (§12.3).`;
     }
@@ -167,15 +179,7 @@ export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): st
  * portion for §12.3's split year.
  */
 export function weightageTotalsByPeriod(kpis: readonly PeriodWeightedKpi[]): Prisma.Decimal[] {
-  const byPeriod = new Map<string | null, PeriodWeightedKpi[]>();
-  for (const kpi of kpis) {
-    const key = kpi.assignmentPeriodId ?? null;
-    const bucket = byPeriod.get(key);
-    if (bucket) bucket.push(kpi);
-    else byPeriod.set(key, [kpi]);
-  }
-  const keys = [...byPeriod.keys()].sort((a, b) => (a ?? "").localeCompare(b ?? ""));
-  return keys.map((key) => weightageTotal(byPeriod.get(key) ?? []));
+  return groupByPeriod(kpis).map((period) => weightageTotal(period));
 }
 
 /**
@@ -201,9 +205,37 @@ export function rosterWeightageTotal(kpis: readonly PeriodWeightedKpi[]): Prisma
   return totals.find((total) => !total.equals(REQUIRED_TOTAL)) ?? REQUIRED_TOTAL;
 }
 
-/** §5.3 per portion — every period complete, and at least one to be complete. */
-export function isRosterWeightageComplete(kpis: readonly PeriodWeightedKpi[]): boolean {
-  return rosterWeightageTotal(kpis).equals(REQUIRED_TOTAL);
+/** The three things every screen says about a KPI set's weightage. */
+export type WeightageView = {
+  /** For display. The actionable portion's total on a split year, never the year's sum. */
+  total: string;
+  /** §5.3 — signable. Exactly `message === null`, so the badge and the gate cannot disagree. */
+  complete: boolean;
+  /** Why it is not signable, or null. Names the period on a split year. */
+  message: string | null;
+};
+
+/**
+ * The ONE weightage answer every reader should use.
+ *
+ * It exists because there were five readers and they did not agree. `/api/status`
+ * was taught §12.3's per-period rule while `/api/cycles/:id/participants`,
+ * `weightageSummary` and the goal-setting page kept summing the whole year — so a
+ * correctly-drafted transfer read "complete" on the team roster and "200.00%, keep
+ * drafting" on the manager's own screens, with the sign button disabled over a set
+ * the server would have accepted (`signOffBlockedReason` was per-period all along).
+ *
+ * Returning the trio together is the point: `complete` is defined AS
+ * `message === null`, so a future change to the rule moves the badge, the number and
+ * the gate in one step instead of three.
+ */
+export function weightageView(kpis: readonly PeriodWeightedKpi[]): WeightageView {
+  const message = weightageMessageByPeriod(kpis);
+  return {
+    total: rosterWeightageTotal(kpis).toString(),
+    complete: message === null,
+    message,
+  };
 }
 
 /**
