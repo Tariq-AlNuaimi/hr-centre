@@ -576,10 +576,16 @@ model PerformanceCycle {
   // so the migration that adds them changes no behaviour. They are editable
   // only while the cycle is DRAFT — see lib/pms/cycle-policy.ts.
 
-  /// §6.2 — after HR approves a mid-year KPI change, must both parties sign the
-  /// revised set again? False: the original signature stands and
-  /// `SignOff.kpiSetHash` records what was actually signed, so a screen can
-  /// show that a signature predates the change without pretending it covers it.
+  /// §6.2 — RETIRED by ADR-072, column deliberately kept.
+  ///
+  /// This asked whether both parties sign again after HR approves a mid-year
+  /// change. UAT Scenario C answered the underlying question a third way — the
+  /// employee ACKNOWLEDGES before HR decides — so no cycle has a reading left
+  /// to choose and nothing reads this column. It survives because a finished
+  /// year must keep the record of the rules it was judged under, which is the
+  /// whole reason these columns live on the cycle (ADR-057). Do NOT drop it in
+  /// a "remove unused column" pass: `vercel.json` migrates on every build and
+  /// a deploy is not atomic across instances.
   requireResignAfterChange Boolean @default(false) @map("require_resign_after_change")
 
   /// §7.1 — must a manager whose rating differs from the employee's say why?

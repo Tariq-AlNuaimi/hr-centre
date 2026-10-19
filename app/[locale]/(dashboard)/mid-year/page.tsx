@@ -21,6 +21,7 @@ import {
 import type { PerformanceCycle } from "@/components/pms/CycleList";
 import type { RosterResponse } from "@/components/pms/ParticipantList";
 import { MidYearRoster } from "@/components/pms/MidYearRoster";
+import { MyMidYear } from "@/components/pms/MyMidYear";
 import { StageBanner } from "@/components/pms/StageBanner";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -142,14 +143,14 @@ export default function MidYearPage() {
   }
 
   if (!canWork) {
-    // §4.2 — raising a change request belongs to the direct line manager, and
-    // deciding one to HR. Everyone else meets §6 through their own KPI screen.
+    // §6.2 — an employee's own mid-year review. This used to be a "not
+    // permitted" notice, which was true of the manager's roster and wrong about
+    // §6 as a whole: a change to someone's goals is now something they see and
+    // acknowledge, so the screen they land on is theirs, not a refusal.
     return (
       <div className="space-y-6">
-        <PageHeader title={t("title")} />
-        <SectionCard title={t("title")}>
-          <EmptyState description={t("notPermitted")} />
-        </SectionCard>
+        <PageHeader title={t("myTitle")} subtitle={t("mySubtitle")} />
+        <MyMidYear />
       </div>
     );
   }

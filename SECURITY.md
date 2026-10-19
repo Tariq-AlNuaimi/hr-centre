@@ -402,6 +402,16 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 _One subsection per remediation, reformatted from wide single-line table cells for readability + diffability — content is verbatim (#17)._
 
+### 2026-10-19 — Next.js 16.3.7 → 16.4.2 and `source-map-js` 1.2.1 → 1.2.2
+
+- **Packages:** `next` (direct), `eslint-config-next` (dev, kept in step), `source-map-js` (transitive: `next` → `postcss`, which this fork pins via `overrides`)
+- **Bump:** `next` `16.3.7` → **`16.4.2`** (pinned exact); `eslint-config-next` `^16.3.7` → `^16.4.2`; `source-map-js` refreshed to 1.2.2 inside the existing `postcss: ^8.5.23` override — **no new override was needed**, `postcss@8.5.26` already admits it and only the lockfile was holding 1.2.1.
+- **CVEs:** GHSA-cjq9-62q9-8jv4 (High — SSRF in Image Optimization, range `>=16.0.0 <16.3.8`) and GHSA-68fv-2mgg-jv7q (High — `source-map-js` event-loop DoS via indexed source-map section offsets). The same `next` bump also clears five advisories below the High+ gate: Draft Mode content leaking through a pending `use cache` fill, SSG/ISR cache poisoning (×2, one of them cross-user content substitution), dev-server MCP endpoint disclosure, and metadata-image `dynamicParams` bypass.
+- **Why upgrade rather than allowlist:** both had a non-breaking fix published, so neither is allowlistable under `audit-allowlist.json`'s own rule — the file admits only advisories with **no** non-breaking upstream fix. `npm audit` reported `fixAvailable: {"name":"next","version":"16.4.2","isSemVerMajor":false}` and `fixAvailable: true` respectively. This is the check the 2026-09-30 `brace-expansion` entry above was written to force: the reason was read off the registry, not inherited from a sibling entry.
+- **Reachability, recorded but not relied on:** the SSRF sits in `/_next/image`, which `middleware.ts` excludes from its matcher, so the route is unauthenticated — the same exposure argument as the 2026-09-30 AVIF critical, and the same conclusion: a High on an unauthenticated built-in route is not worth re-arguing on every future change that touches images. `source-map-js` reaches the production tree only through PostCSS at build time, over this repo's own sources, so it is not request-reachable at all; it was bumped because a one-line lockfile refresh is cheaper than carrying a justification.
+- **Not an ADR-001 stack change:** an in-major currency bump (ADR-017), the same classification the 2026-07-24 entry used for `16.2.10 → 16.2.11`. ADR-071's move to the 16.3 line stands.
+- **Outcome:** `npm audit --json --audit-level=high --omit=dev` — the exact invocation `/ship` makes — reports **0 high, 0 critical** (1 moderate remains, below gate). `audit-allowlist.json` stays **empty**. Full `/ship` green on 16.4.2: typecheck, lint, format, 654 contract+property tests, 18 ESLint-rule tests, 24 component tests, hooks, build. The Babel React Compiler path survived the minor bump (build green, no invalid-config warning). The employee mid-year screen was re-verified in a real browser against the local fixture at 1440×1000 light + dark and 390×844.
+
 ### 2026-09-30 — `nodemailer` 9.0.5 → 10.0.13 (the allowlist reaches empty)
 
 - **Package:** `nodemailer` (direct dependency + `overrides` pin)

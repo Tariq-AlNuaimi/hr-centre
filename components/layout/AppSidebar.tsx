@@ -126,6 +126,19 @@ export function AppSidebar() {
       label: t("scorecard"),
       onClick: () => router.push(`/${locale}/scorecard`),
     },
+    {
+      // §6.2 — mid-year is an EVERY-EMPLOYEE screen since UAT Scenario C. It
+      // used to sit in the manager/HR block below, because the only thing that
+      // happened here was a manager raising a change request. Now a change to
+      // someone's KPIs is something they are asked to acknowledge, and a
+      // request nobody can see is not a change anyone agreed to — so this sits
+      // with "My scorecard", which is where an employee's own record lives.
+      // Managers and HR get the roster on the same route; the page branches.
+      key: "mid-year",
+      icon: <CalendarClock className="h-4 w-4" />,
+      label: t("midYear"),
+      onClick: () => router.push(`/${locale}/mid-year`),
+    },
     // Goal setting (§5) is the LINE MANAGER's workspace, so it is gated on the
     // relationship — `capabilities.lineManager` is derived from
     // `Employee.managerId` edges, not from a role name (§4.2) — plus HR's
@@ -148,15 +161,6 @@ export function AppSidebar() {
             icon: <ClipboardList className="h-4 w-4" />,
             label: t("goalSetting"),
             onClick: () => router.push(`/${locale}/goal-setting`),
-          },
-          // Mid-year (§6) is the same audience for the same reason: a manager
-          // raises a change request on a direct report, HR decides it. §2 gives
-          // mid-year no scoring, so this is the only thing that happens here.
-          {
-            key: "mid-year",
-            icon: <CalendarClock className="h-4 w-4" />,
-            label: t("midYear"),
-            onClick: () => router.push(`/${locale}/mid-year`),
           },
           // Year-end (§7) — the same audience again: the employee's own
           // assessment reaches them through My Tasks, the manager reviews their

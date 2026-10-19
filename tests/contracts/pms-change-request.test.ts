@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { Prisma } from "../../generated/prisma/client";
 import {
@@ -20,6 +21,7 @@ import {
 } from "../../lib/pms/change-request";
 import type { StageWindow } from "../../lib/pms/cycle";
 import type { PmsActor } from "../../lib/pms/permissions";
+import { decideChangeRequestSchema } from "../../lib/validations/change-request";
 
 /**
  * §6 — mid-year change requests.
@@ -579,5 +581,57 @@ test("an acknowledged request is still approvable after the deadline — HR owns
       now: AFTER,
     }),
     null,
+  );
+});
+
+// --- the boundary, where HR's override is typed ------------------------------
+
+test("§6.2 the override reason is its own field, not a second meaning for `reason`", () => {
+  const ok = decideChangeRequestSchema.safeParse({
+    decision: "APPROVE",
+    overrideReason: "Employee on extended leave; agreed with their director.",
+  });
+  assert.equal(ok.success, true);
+  if (ok.success) assert.equal(ok.data.reason, undefined);
+});
+
+test("§6.2 a rejection still demands its own reason, unchanged by the new field", () => {
+  const missing = decideChangeRequestSchema.safeParse({ decision: "REJECT" });
+  assert.equal(missing.success, false);
+});
+
+test("a rejection changes nothing, so it cannot carry an override", () => {
+  const nonsense = decideChangeRequestSchema.safeParse({
+    decision: "REJECT",
+    reason: "Not this year.",
+    overrideReason: "Overriding a rejection is not a thing.",
+  });
+  assert.equal(nonsense.success, false);
+});
+
+// --- the override may not outrun the acknowledgment --------------------------
+
+test("§6.2 an override approval is claimed against the acknowledgment, not just the status", () => {
+  // Source-level, like the policy-consumer guard, and for the same reason: the
+  // failure is neither a type error nor a throw in any pure function.
+  //
+  // `overriding` is derived from a read taken BEFORE the decide transaction
+  // opens. The employee acknowledging in that window is not a far-fetched
+  // interleaving — it is two people on two screens, which is the ordinary case
+  // this flow was built for. A claim predicated on `status: "PENDING"` alone
+  // would then stamp `acknowledgmentOverridden: true` onto a request that WAS
+  // acknowledged: a false row in the one history §6.2 exists to keep honest.
+  //
+  // `kpi_change_requests_override_excludes_ack_check` refuses that row at the
+  // database, so the record cannot actually lie — but without the predicate the
+  // race reaches HR as a 500 instead of "reload, they just acknowledged", and
+  // the correctness of the whole path would rest on a CHECK constraint named in
+  // a migration rather than on the claim that performs the write.
+  const src = readFileSync("app/api/kpi-change-requests/[id]/decide/route.ts", "utf8");
+  const approvalClaim = src.slice(src.indexOf('status: "APPROVED"') - 600);
+  assert.ok(
+    /acknowledgedAt:\s*overriding\s*\?\s*null\s*:\s*\{\s*not:\s*null\s*\}/.test(approvalClaim),
+    "the approval claim must constrain acknowledgedAt to the state the consent gate was " +
+      "evaluated against, or an override can land on a request the employee acknowledged",
   );
 });

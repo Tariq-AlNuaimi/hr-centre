@@ -23,8 +23,12 @@ import type { DivergenceReasonPolicy } from "@/generated/prisma/client";
  */
 
 export type CyclePolicy = {
-  /** §6.2 — must both parties sign again after HR approves a mid-year change? */
-  requireResignAfterChange: boolean;
+  // §6.2's `requireResignAfterChange` was RETIRED by ADR-072. UAT Scenario C
+  // answered the question it toggled — the employee acknowledges BEFORE HR
+  // decides — so no cycle has a reading of §6.2 left to choose. The database
+  // column survives so finished years keep the record of what they were run
+  // under; nothing reads it, and HR is no longer offered the switch, because a
+  // toggle that changes nothing is a dead control.
   /** §7.1 — how hard does the system insist on a reason for a divergent rating? */
   divergenceReason: DivergenceReasonPolicy;
   /** §8.7 — round the final score to 2dp before choosing a band? */
@@ -39,7 +43,6 @@ export type CyclePolicy = {
  * the defaults ARE the old behaviour, so an old cycle re-bands identically.
  */
 export const DEFAULT_CYCLE_POLICY: CyclePolicy = {
-  requireResignAfterChange: false,
   divergenceReason: "REQUIRED",
   roundScoreBeforeBanding: false,
 };
@@ -56,8 +59,6 @@ export const DEFAULT_CYCLE_POLICY: CyclePolicy = {
 export function policyFor(cycle: Partial<CyclePolicy> | null | undefined): CyclePolicy {
   if (!cycle) return DEFAULT_CYCLE_POLICY;
   return {
-    requireResignAfterChange:
-      cycle.requireResignAfterChange ?? DEFAULT_CYCLE_POLICY.requireResignAfterChange,
     divergenceReason: cycle.divergenceReason ?? DEFAULT_CYCLE_POLICY.divergenceReason,
     roundScoreBeforeBanding:
       cycle.roundScoreBeforeBanding ?? DEFAULT_CYCLE_POLICY.roundScoreBeforeBanding,
@@ -66,7 +67,6 @@ export function policyFor(cycle: Partial<CyclePolicy> | null | undefined): Cycle
 
 /** The columns to select when a query needs the policy. One list, one source. */
 export const CYCLE_POLICY_SELECT = {
-  requireResignAfterChange: true,
   divergenceReason: true,
   roundScoreBeforeBanding: true,
 } as const;

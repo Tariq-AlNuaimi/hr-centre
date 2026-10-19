@@ -677,7 +677,9 @@
         "baseline": "Baseline",
         "weightage": "Weightage",
         "actions": "Actions"
-      }
+      },
+      "myTitle": "Mid-year review",
+      "mySubtitle": "Your KPIs as they stand, and any change your manager has proposed."
     },
     "changeRequest": {
       "pageTitle": "Mid-year changes — {name}",
@@ -1442,13 +1444,6 @@
       "saved": "Cycle policy saved.",
       "saveFailed": "Could not save the cycle policy.",
       "loadFailed": "Could not load the cycle policy.",
-      "resign": {
-        "label": "§6.2 — After HR approves a mid-year KPI change, does anyone sign again?",
-        "no": "No — the original signature stands",
-        "yes": "Yes — both parties sign the revised set",
-        "helpNo": "The employee's and manager's original sign-off stays in place. The system records exactly which KPI set was signed, so a screen can show that a signature predates the change without pretending it covers it.",
-        "helpYes": "Approving a change clears both goal-setting signatures, and the set goes back to awaiting signature. Nothing is lost, but both people must sign again before the set is settled."
-      },
       "divergence": {
         "label": "§7.1 — Must a manager explain a rating that differs from the employee's?",
         "required": "Required — a reason must be given",
@@ -1468,6 +1463,56 @@
         "helpYes": "The score rounds first, so 4.495 becomes 4.50 and is Outstanding. Same number, opposite band — and at that boundary it is the difference between a 2.0x and a 1.5x bonus coefficient (§11.3)."
       },
       "save": "Save policy"
+    },
+    "myMidYear": {
+      "title": "Mid-year review",
+      "subtitle": "Your KPIs as they stand, and any change your manager has proposed.",
+      "pendingTitle": "A change is waiting on you",
+      "requestedBy": "Proposed by {name} on {datetime}",
+      "unknownRequester": "your manager",
+      "unknownDecider": "HR",
+      "unknownBefore": "not recorded",
+      "kpiGone": "This KPI is no longer in your set",
+      "acknowledge": "Acknowledge",
+      "acknowledging": "Recording…",
+      "acknowledgeHelp": "Acknowledging records that you have seen this change. The discussion itself happens with your manager — there is no reject button, and a change you never acknowledge does not take effect.",
+      "acknowledgedToast": "Acknowledged. HR will see it with your decision.",
+      "acknowledgeFailed": "Could not record your acknowledgment.",
+      "currentTitle": "Your current KPIs",
+      "currentSubtitle": "The agreed baseline. Approved by HR and locked until a change is approved.",
+      "weightOf": "{weight}% of the set",
+      "noKpis": "You have no KPIs in this cycle yet.",
+      "historyTitle": "Past changes",
+      "historySubtitle": "Every change that was asked for, whether or not it took effect.",
+      "noHistory": "Nothing has been settled yet. A change moves here once HR approves or rejects it, or once the mid-year deadline passes without your acknowledgment.",
+      "requestedOn": "Proposed {datetime}",
+      "decisionReason": "{name} wrote: {reason}",
+      "overrideReason": "HR approved this without your acknowledgment. Reason given: {reason}",
+      "ackOn": "You acknowledged {datetime}",
+      "ackAwaiting": "Awaiting your acknowledgment",
+      "ackMissed": "You did not acknowledge — the KPI was left unchanged",
+      "ackOverridden": "Approved without your acknowledgment",
+      "noCycle": "No performance cycle is open, so there is nothing to review yet.",
+      "loadFailed": "Could not load your mid-year review.",
+      "retry": "Try again",
+      "status": {
+        "PENDING": "Awaiting HR",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn by your manager",
+        "NOT_ACKNOWLEDGED": "Expired — not acknowledged"
+      },
+      "field": {
+        "description": "Description",
+        "weightage": "Weight",
+        "descriptorOutstanding": "Outstanding (5)",
+        "descriptorExcellent": "Excellent (4)",
+        "descriptorTarget": "Target (3)",
+        "descriptorAlmostAchieved": "Almost achieved (2)",
+        "descriptorUnsatisfactory": "Unsatisfactory (1)"
+      },
+      "pendingAcknowledgedTitle": "You acknowledged this change",
+      "awaitingHrHelp": "HR will review it with your acknowledgment recorded. Nothing changes until they approve it."
     }
   },
   "access": {

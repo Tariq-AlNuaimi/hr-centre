@@ -33,7 +33,7 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
-- **Durable decisions** (12): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next on 16.3.7 for two criticals (ADR-071), Babel React Compiler kept + Rust port off; /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
+- **Durable decisions** (12): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next on 16.4.2 for security currency (ADR-071), Babel React Compiler kept + Rust port off; /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (12): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (6): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
@@ -94,10 +94,10 @@ tax is the ≤30-line digest, not the whole file.
 - 2026-07-13 — **Enterprise pivot (WS-1..8) + code wave (ADR-049..056) are COMPLETE on `main`;**
   only trigger-gated deferred work remains. Its plan docs were archived 2026-07-25 — the ADRs are
   the surviving record (`docs/ARCHIVE.md` recovers the rest).
-- 2026-09-30 — **On `next@16.3.7` (ADR-071); SUPERSEDES the 2026-07-11 "stay on 16.2.x" note.**
-  Security, not features: two criticals had **no fix on the 16.2 line** (vulnerable range runs
-  through `16.3.2`). Babel React Compiler unchanged + re-verified. 16.3 deprecates
-  `middleware` → `proxy` (warning only, OPEN-ITEMS #12). Don't re-litigate the 16.2 pin.
+- 2026-10-19 — **On `next@16.4.2`; SUPERSEDES the 2026-07-11 "stay on 16.2.x" note.** Security
+  currency (ADR-017, not an ADR-001 change): 16.3 cleared two criticals unfixed on 16.2 (ADR-071);
+  16.4.2 cleared the `/_next/image` SSRF, unauthenticated via the `middleware.ts` matcher. Babel
+  React Compiler survives both. `middleware`→`proxy` deprecated (warning, OPEN-ITEMS #12).
 - 2026-07-11 — _(SUPERSEDED 2026-09-30 — see above; the version half is dead, this half is
   not.)_ The React Compiler **Rust port** and Turbopack's persistent production build cache
   are 16.3-only, experimental, and Vercel discourages the Rust compiler on production apps —
