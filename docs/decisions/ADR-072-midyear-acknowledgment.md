@@ -89,6 +89,21 @@ Two sub-decisions worth recording, because both are readings the specification t
    guarantee, the sweep is the record — a sweep that never runs costs a history row, never a
    wrongly-approved KPI.
 
+   **Known asymmetry, not yet resolved — HR extending a deadline (§5.5).** "The sweep is only a
+   record" is not quite true, because the row it writes is terminal. If HR extends the mid-year
+   deadline _before_ the sweep runs, the derived status reverts to `PENDING` and the employee can
+   still acknowledge; if HR extends it _after_, the row is already `NOT_ACKNOWLEDGED` and the
+   manager must re-raise. Same HR action, two outcomes, decided by cron timing — which is the one
+   property a deadline rule should not have. Raised by the post-push breadth review.
+
+   Both repairs are small and they point in opposite directions, so this is Rihal's call rather
+   than the build's: either (a) the stage-update route reopens `NOT_ACKNOWLEDGED` requests whose
+   deadline now lies in the future, audited, which makes the behaviour purely deadline-driven; or
+   (b) `NOT_ACKNOWLEDGED` is confirmed as genuinely terminal, the extension form says so, and a
+   manager re-raises. **Flagged to the operator, deliberately not chosen here** — (a) revives a
+   state this ADR called terminal, and (b) leaves §5.5's remedy partly ineffective. Until it is
+   decided, HR should extend a mid-year deadline before the overnight sweep rather than after.
+
 ## Consequences
 
 - §6.2's open question is **closed**; `OPEN-QUESTIONS-FOR-RIHAL.md` and `SPEC-CONFORMANCE.md` say so.

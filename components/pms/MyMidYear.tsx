@@ -113,7 +113,7 @@ function AcknowledgmentBadge({ request }: { request: MyRequest }) {
   return <Badge variant="outline">{t("ackAwaiting")}</Badge>;
 }
 
-export function MyMidYear() {
+export function MyMidYear({ hideWhenAbsent = false }: { hideWhenAbsent?: boolean } = {}) {
   const t = useTranslations("pms.myMidYear");
   const queryClient = useQueryClient();
 
@@ -131,9 +131,16 @@ export function MyMidYear() {
     onError: (error: Error) => toast.error(error.message || t("acknowledgeFailed")),
   });
 
-  if (mine.isLoading) return <TableSkeleton rows={4} />;
+  // `hideWhenAbsent` is for the MANAGER's page, where this sits above their
+  // roster. A manager is usually also somebody's report, so the screen has to
+  // carry both — but a manager who is NOT a participant (C-Level, §8.3) must not
+  // be shown an empty "you have no KPIs" card on a page that is working fine.
+  // On the employee's own page the same emptiness is the answer to their
+  // question, so it stays visible there.
+  if (mine.isLoading) return hideWhenAbsent ? null : <TableSkeleton rows={4} />;
 
   if (mine.isError) {
+    if (hideWhenAbsent) return null;
     return (
       <SectionCard title={t("title")}>
         <EmptyState
@@ -147,12 +154,17 @@ export function MyMidYear() {
 
   const data = mine.data;
   if (!data?.cycle || !data.participant) {
+    if (hideWhenAbsent) return null;
     return (
       <SectionCard title={t("title")} subtitle={t("subtitle")}>
         <EmptyState description={t("noCycle")} />
       </SectionCard>
     );
   }
+
+  // A manager with nothing of their own pending sees their roster, not a
+  // duplicate of the KPI set they can already reach from their scorecard.
+  if (hideWhenAbsent && data.changeRequests.length === 0) return null;
 
   const kpiById = new Map(data.kpis.map((k) => [k.id, k]));
   const pending = data.changeRequests.find((r) => r.effectiveStatus === "PENDING");

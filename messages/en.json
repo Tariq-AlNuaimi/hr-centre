@@ -656,7 +656,7 @@
         "notYetOpen": "Opens {datetime}",
         "open": "Locks {datetime}",
         "locked": "Locked since {datetime}",
-        "lockedBody": "The deadline passed, so no new change request can be raised. HR can still decide one that is already pending, and can reopen the stage by extending the deadline.",
+        "lockedBody": "The deadline passed, so no new change request can be raised. HR can still decide one the employee had already acknowledged; one they never acknowledged is locked and the KPI stays as it was (§6.2). Extending the deadline reopens the stage.",
         "notYetOpenBody": "No change request can be raised until the stage opens.",
         "graceNote": "HR has {days} days of grace after the deadline to intervene.",
         "stateValue": {
@@ -731,7 +731,8 @@
         "PENDING": "Awaiting HR",
         "APPROVED": "Approved",
         "REJECTED": "Rejected",
-        "WITHDRAWN": "Withdrawn"
+        "WITHDRAWN": "Withdrawn",
+        "NOT_ACKNOWLEDGED": "Locked — not acknowledged"
       },
       "field": {
         "description": "Description",
@@ -742,7 +743,18 @@
         "descriptorAlmostAchieved": "Almost Achieved",
         "descriptorUnsatisfactory": "Unsatisfactory"
       },
-      "notYours": "A change request is raised by your line manager, not by you (§6.2). If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here."
+      "notYours": "A change request is raised by your line manager, not by you (§6.2). If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here.",
+      "ackBy": "Acknowledged by {name} on {datetime}",
+      "ackMissed": "The employee did not acknowledge",
+      "ackOverridden": "Approved without acknowledgment",
+      "unknownEmployee": "the employee",
+      "overrideLabel": "Reason for approving without the employee's acknowledgment",
+      "overridePlaceholder": "Why this cannot wait for the employee — e.g. on extended leave and the change is agreed in writing elsewhere",
+      "overrideHelp": "Required (§6.2). It is recorded with your name and the time, and the employee and manager both see it in the version history.",
+      "overrideClosed": "The mid-year deadline has passed, so this request is locked and the KPI stays as it was. The override is no longer available — extend the deadline if the change still needs to happen.",
+      "overrideReasonLabel": "Approved without the employee's acknowledgment",
+      "approveWithOverride": "Approve without acknowledgment",
+      "statusAwaitingEmployee": "Awaiting the employee's acknowledgment"
     },
     "yearEnd": {
       "title": "Year-end assessment",

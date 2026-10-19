@@ -1,5 +1,13 @@
 # Blueprint — the three ambiguous spec clauses, as HR-settable policy on the cycle
 
+> **Partly superseded by ADR-072 (2026-10-19).** UAT Scenario C answered §6.2's re-sign question a
+> third way — the employee **acknowledges before HR decides** — so `requireResignAfterChange` is
+> retired: it is gone from `CyclePolicy`, from `CYCLE_POLICY_SELECT`, from the input schema and
+> from HR's form, and nothing reads it. The database column stays, because a finished cycle must
+> keep the rules it was judged by. Everything below about the OTHER two policies (§7.1's divergence
+> reason, §8.7's rounding) is unchanged and still current; every mention of
+> `requireResignAfterChange` is history.
+
 **Status:** approved to build (operator, 2026-08-28 — "Make them configurable", "Per-cycle, on the
 cycle record").
 **Scope:** `prisma/schema.prisma`, `prisma/migrations/20260828140000_pms_cycle_policy/**`,

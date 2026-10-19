@@ -162,7 +162,7 @@ for a URL that does not contain `login`. **The numbers in §1 are from the corre
 
 ## 7. Left open, deliberately
 
-- **§6 never says whether an approved mid-year change needs re-signing.** The operator chose to
+- **§6 never says whether an approved mid-year change needs re-signing.** **ANSWERED 2026-10-19 by UAT Scenario C (ADR-072) — the employee acknowledges before HR decides.** At the time the operator chose to
   surface the divergence rather than invent a re-sign step: `SignOff.kpiSetHash` already records
   what each party agreed to, so an approved change makes the goal-setting signatures visibly stale
   without blocking anything. **Flag to Rihal.**

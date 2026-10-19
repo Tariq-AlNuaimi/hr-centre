@@ -187,7 +187,11 @@ export const POST = withRateLimit(
                 "Your manager has proposed a mid-year change to your KPIs. Review it and " +
                 "acknowledge it before the mid-year deadline.",
               href: `/mid-year`,
-              dedupeKey: changeRequestDedupeKey(changeRequest.id, "raised"),
+              dedupeKey: changeRequestDedupeKey(
+                changeRequest.id,
+                "raised",
+                participant.employee.id,
+              ),
             },
           ],
           1,

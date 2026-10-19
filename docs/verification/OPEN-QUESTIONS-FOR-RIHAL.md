@@ -47,7 +47,9 @@ set, the manager signs, HR approves, and the set is locked. If a KPI is then cha
 people have signed something that no longer exists — and the year-end assessment (§7) is measured
 against the _new_ set.
 
-**What the system does today (the default, changeable in the cycle policy).** No re-sign was
+**What the system did before UAT Scenario C** _(ANSWERED — see the banner above; the cycle-policy
+toggle this describes is retired by ADR-072, and the employee now acknowledges BEFORE HR decides)_**.**
+No re-sign was
 invented. The original signature stands, and
 `SignOff.kpiSetHash` records the exact KPI set that was signed, so any screen can tell that a
 signature predates the current set. Nobody is asked to sign twice, and nothing pretends the old

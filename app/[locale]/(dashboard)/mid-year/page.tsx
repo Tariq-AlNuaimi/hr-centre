@@ -191,6 +191,16 @@ export default function MidYearPage() {
     <div className="space-y-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
 
+      {/* §6.2 — a manager is almost always somebody's report too, and a change
+          raised on THEIR goals is theirs alone to acknowledge. Rendering this
+          only in the `!canWork` branch meant every manager and every HR user
+          below the top of the org had an acknowledge API they could not reach
+          from any screen: the notification pointed here, this page showed them
+          their reports, and the request locked unacknowledged at the deadline
+          with HR's override already expired. It renders nothing when they have
+          nothing pending, so the roster stays the page for everyone else. */}
+      <MyMidYear hideWhenAbsent />
+
       {/* The MID-YEAR stage, read off the cycle. The roster endpoint reports the
           GOAL-SETTING window — it is the goal-setting roster — and feeding that
           into this banner told a manager the mid-year window was unconfigured

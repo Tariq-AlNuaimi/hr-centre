@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   MAX_BODY_CHARS,
+  changeRequestDedupeKey,
   hrDigestDedupeKey,
   ladderDedupeKey,
   notificationKindFor,
@@ -86,6 +87,23 @@ test("the HR digest is per DAY, because its counts move", () => {
   assert.equal(hrDigestDedupeKey("2026-08-28", "hr1"), hrDigestDedupeKey("2026-08-28", "hr1"));
   assert.notEqual(hrDigestDedupeKey("2026-08-28", "hr1"), hrDigestDedupeKey("2026-08-29", "hr1"));
   assert.notEqual(hrDigestDedupeKey("2026-08-28", "hr1"), hrDigestDedupeKey("2026-08-28", "hr2"));
+});
+
+test("§6.2 a change-request key is per RECIPIENT, because the HR step fans out", () => {
+  // `dedupeKey` is globally unique, not unique per person. The acknowledged
+  // step notifies every HR user at once, so a key without the recipient meant
+  // the first insert won and every other HR user's row collided on P2002 and
+  // was counted as an already-sent duplicate: one arbitrary HR user heard that
+  // a request was ready to decide, and the `catch` around the call reported
+  // nothing. The same request, the same step, two recipients, two keys.
+  const a = changeRequestDedupeKey("cr1", "acknowledged", "hr1");
+  const b = changeRequestDedupeKey("cr1", "acknowledged", "hr2");
+  assert.notEqual(a, b);
+  // Still idempotent for ONE recipient — the point of the key in the first place.
+  assert.equal(a, changeRequestDedupeKey("cr1", "acknowledged", "hr1"));
+  // And the two steps stay apart, so acknowledging does not suppress the raise.
+  assert.notEqual(a, changeRequestDedupeKey("cr1", "raised", "hr1"));
+  assert.notEqual(a, changeRequestDedupeKey("cr2", "acknowledged", "hr1"));
 });
 
 test("a ladder key can never collide with a 360 key or an HR digest key", () => {

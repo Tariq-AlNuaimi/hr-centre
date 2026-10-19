@@ -97,14 +97,27 @@ export function hrDigestDedupeKey(dayISO: string, recipientEmployeeId: string): 
 }
 
 /**
- * §6.2 — one notification per request per step, forever.
+ * §6.2 — one notification per request per step **per recipient**, forever.
  *
  * The request id makes it unique and the step keeps the two moments apart: the
  * employee is told once that a change awaits them, and HR is told once that it
  * was acknowledged. Re-sending either would turn a workflow into nagging.
+ *
+ * The RECIPIENT is in the key because `dedupeKey` is globally unique
+ * (`prisma/schema.prisma`), not unique per person. The "acknowledged" step fans
+ * out to every HR user; without the recipient the first row inserted and every
+ * other HR user's row collided on P2002 and was counted as a duplicate — so
+ * exactly one arbitrarily-chosen HR user heard that a request was ready to
+ * decide, silently, with the `catch` around the call reporting nothing. This is
+ * how `hrDigestDedupeKey` above has always built its key; this one was the
+ * outlier. Caught by the post-push breadth review.
  */
-export function changeRequestDedupeKey(requestId: string, step: "raised" | "acknowledged"): string {
-  return `change-request:${requestId}:${step}`;
+export function changeRequestDedupeKey(
+  requestId: string,
+  step: "raised" | "acknowledged",
+  recipientEmployeeId: string,
+): string {
+  return `change-request:${requestId}:${step}:${recipientEmployeeId}`;
 }
 
 export type PendingNotification = {

@@ -26,6 +26,13 @@ import type { KpiVersionRow } from "./KpiVersionHistory";
  *  - **There is no partial approval.** The request is one act (§5.3 needs the
  *    set to stay at 100), so there is no per-edit checkbox — approving some
  *    edits and not others is exactly how a set ends up at 90%.
+ *  - **The employee's acknowledgment is shown, and overriding it is explicit.**
+ *    UAT Scenario C put the employee between the manager and HR, so "approve"
+ *    now means two different acts: ratifying a change the employee has seen, or
+ *    overriding the fact that they have not. The second needs its own written
+ *    reason (§6.2), it is recorded AS an override, and it is available only
+ *    while the mid-year stage is open — past the deadline the request is locked
+ *    and HR cannot push it through by waiting.
  */
 
 export interface ReviewEdit {
@@ -41,13 +48,25 @@ export interface ReviewEdit {
 
 export interface ReviewRequest {
   id: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+  /** The column. Kept for the audit-shaped record; never the actionable test. */
+  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "NOT_ACKNOWLEDGED";
+  /**
+   * What the request IS now, derived from the clock on the server. An
+   * unacknowledged request past the mid-year deadline reads `NOT_ACKNOWLEDGED`
+   * here while `status` still says `PENDING`, because nothing writes at the
+   * instant a deadline passes — `cycle-sweep` catches up afterwards.
+   */
+  effectiveStatus: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "NOT_ACKNOWLEDGED";
   rationale: string;
   requestedAt: string;
   requestedByName: string | null;
   decidedByName: string | null;
   decidedAt: string | null;
   decisionReason: string | null;
+  acknowledgedAt: string | null;
+  acknowledgedByName: string | null;
+  acknowledgmentOverridden: boolean;
+  overrideReason: string | null;
   edits: ReviewEdit[];
 }
 
@@ -58,12 +77,65 @@ const FIELDS = [
   ...KPI_LEVEL_FIELDS.map(({ field }) => ({ field })),
 ];
 
+/**
+ * The status pair, lifted out of the card because the card was over the
+ * complexity ceiling with it inline — and because these two badges only make
+ * sense read together: the status says what stage the request is at, the
+ * acknowledgment says whose move it is.
+ */
+function RequestBadges({ request }: { request: ReviewRequest }) {
+  const t = useTranslations("pms.changeRequest");
+  const pending = request.effectiveStatus === "PENDING";
+  const acknowledged = request.acknowledgedAt !== null;
+
+  const statusVariant = pending
+    ? "warning"
+    : request.effectiveStatus === "APPROVED"
+      ? "success"
+      : request.effectiveStatus === "NOT_ACKNOWLEDGED"
+        ? "danger"
+        : "outline";
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+      <Badge variant={statusVariant}>
+        {/* "Awaiting HR" is only true once the employee has acted. While it is
+            still with them, saying HR is the holdup is a lie that the
+            acknowledgment badge beside it immediately contradicts. */}
+        {pending && !acknowledged
+          ? t("statusAwaitingEmployee")
+          : t(`status.${request.effectiveStatus}`)}
+      </Badge>
+      {/* §6.2 — the acknowledgment, beside the status, because it is the thing
+          HR is now supposed to decide WITH. An overridden request says so
+          permanently: "approved" and "approved without the employee" are not
+          the same fact, and the history must not flatten them. */}
+      {request.acknowledgmentOverridden ? (
+        <Badge variant="warning">{t("ackOverridden")}</Badge>
+      ) : request.acknowledgedAt ? (
+        <Badge variant="success">
+          {t("ackBy", {
+            name: request.acknowledgedByName ?? t("unknownEmployee"),
+            datetime: formatDateTime(request.acknowledgedAt),
+          })}
+        </Badge>
+      ) : request.effectiveStatus === "NOT_ACKNOWLEDGED" ? (
+        <Badge variant="danger">{t("ackMissed")}</Badge>
+      ) : null}
+      {/* No "awaiting the employee" badge here: in that state the status badge
+          beside it already reads "Awaiting the employee's acknowledgment", and
+          two badges saying one thing is how a reader learns to skip both. */}
+    </div>
+  );
+}
+
 export function ChangeRequestReview({
   request,
   kpis,
   versions,
   canDecide,
   canWithdraw,
+  stageOpen,
   busy,
   onDecide,
   onWithdraw,
@@ -80,14 +152,24 @@ export function ChangeRequestReview({
   versions: KpiVersionRow[];
   canDecide: boolean;
   canWithdraw: boolean;
+  /** §6.2 — the override exists only inside the mid-year window (ADR-072). */
+  stageOpen: boolean;
   busy: boolean;
-  onDecide: (decision: "APPROVE" | "REJECT", reason: string) => void;
+  onDecide: (decision: "APPROVE" | "REJECT", reason: string, overrideReason: string) => void;
   onWithdraw: () => void;
 }) {
   const t = useTranslations("pms.changeRequest");
   const [reason, setReason] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
 
-  const pending = request.status === "PENDING";
+  // The DERIVED status decides what is actionable. Using `status` here is how a
+  // locked request kept its live Approve button for as long as the sweep lagged.
+  const pending = request.effectiveStatus === "PENDING";
+  const acknowledged = request.acknowledgedAt !== null;
+  // Approving an unacknowledged request IS the override, so the reason is
+  // mandatory for it exactly as the rejection reason is for a rejection.
+  const needsOverride = pending && !acknowledged;
+  const canApprove = acknowledged ? true : stageOpen && overrideReason.trim() !== "";
 
   return (
     <SectionCard
@@ -97,13 +179,7 @@ export function ChangeRequestReview({
         datetime: formatDateTime(request.requestedAt),
       })}
     >
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Badge
-          variant={pending ? "warning" : request.status === "APPROVED" ? "success" : "outline"}
-        >
-          {t(`status.${request.status}`)}
-        </Badge>
-      </div>
+      <RequestBadges request={request} />
 
       <p className="mb-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-foreground">
         {request.rationale}
@@ -158,6 +234,17 @@ export function ChangeRequestReview({
         </div>
       ) : null}
 
+      {/* §6.2 — the override, recorded on the request for good. It is shown
+          outside the decision block so it survives on a decided request: an
+          approval made without the employee is exactly the thing they must be
+          able to point at later. */}
+      {request.acknowledgmentOverridden && request.overrideReason ? (
+        <div className="mt-4 rounded-md border border-warning-emphasis/30 bg-warning/10 p-3">
+          <p className="text-xs font-medium text-muted-foreground">{t("overrideReasonLabel")}</p>
+          <p className="mt-1 text-sm text-foreground">{request.overrideReason}</p>
+        </div>
+      ) : null}
+
       {pending && canDecide ? (
         <div className="mt-4 space-y-3 border-t border-border pt-4">
           <div className="space-y-1.5">
@@ -171,14 +258,42 @@ export function ChangeRequestReview({
             />
             <p className="text-xs text-muted-foreground">{t("reasonHelp")}</p>
           </div>
+
+          {/* The override input appears ONLY when it can be acted on: the
+              employee has not acknowledged AND the window is still open. Past
+              the deadline the field is replaced by the reason it is gone,
+              because a disabled control with no explanation reads as a bug. */}
+          {needsOverride ? (
+            stageOpen ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="cr-override">{t("overrideLabel")}</Label>
+                <textarea
+                  id="cr-override"
+                  className={TEXTAREA_CLASS}
+                  placeholder={t("overridePlaceholder")}
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">{t("overrideHelp")}</p>
+              </div>
+            ) : (
+              <p role="status" className="text-xs text-muted-foreground">
+                {t("overrideClosed")}
+              </p>
+            )
+          ) : null}
+
           <div className="flex flex-wrap gap-3">
-            <Button disabled={busy} onClick={() => onDecide("APPROVE", reason.trim())}>
-              {t("approve")}
+            <Button
+              disabled={busy || !canApprove}
+              onClick={() => onDecide("APPROVE", reason.trim(), overrideReason.trim())}
+            >
+              {needsOverride ? t("approveWithOverride") : t("approve")}
             </Button>
             <Button
               variant="outline"
               disabled={busy || reason.trim() === ""}
-              onClick={() => onDecide("REJECT", reason.trim())}
+              onClick={() => onDecide("REJECT", reason.trim(), "")}
             >
               {t("reject")}
             </Button>

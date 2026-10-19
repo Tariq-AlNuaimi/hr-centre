@@ -126,22 +126,22 @@ Three things had to be true before a row below says ✅:
 
 ## §6 Mid-year review
 
-| Clause                                                             | Status      | Evidence                                                                            |
-| ------------------------------------------------------------------ | ----------- | ----------------------------------------------------------------------------------- |
-| §6.1 Progress check, no scoring                                    | ✅ Verified | Nothing on the mid-year path writes a rating                                        |
-| §6.2 Manager submits a change request                              | ✅ Verified | `POST /api/kpi-change-requests`; the employee is notified (`CHANGE_REQUEST_RAISED`) |
-| §6.2 **Employee acknowledges before HR decides**                   | ✅ Verified | `POST …/acknowledge`, subject-only; employee screen at `/mid-year`                  |
-| §6.2 **No reject button — the discussion is offline**              | ✅ Verified | Same shape as §5.1's sign-off; silence is the refusal, see the row below            |
-| §6.2 **No acknowledgment by the deadline → locked, KPI unchanged** | ✅ Verified | `NOT_ACKNOWLEDGED`, DERIVED on read and materialised by `cycle-sweep`               |
-| §6.2 **HR override only with a mandatory reason**                  | ✅ Verified | Own column + `kpi_change_requests_override_reason_check`; stage-open only           |
-| §6.2 HR sees the acknowledgment status when deciding               | ✅ Verified | Carried by `CHANGE_REQUEST_SELECT`, so every §6 screen reads the same row           |
-| §6.2 Only the employee may acknowledge their own                   | ✅ Verified | `acknowledgeBlockedReason` — manager 403, HR 403, chain manager 403                 |
-| §6.2 Full overhaul or partial change                               | ✅ Verified | Null = unchanged, end to end; only moved fields travel                              |
-| §6.2 HR approves or rejects                                        | ✅ Verified | `POST …/decide`, HR-only                                                            |
-| §6.2 **Mandatory rejection reason the manager can see**            | ✅ Verified | Enforced at the boundary **and** by `kpi_change_requests_rejection_reason_check`    |
-| §6.3 Full version history, **archived never overwritten**          | ✅ Verified | `KpiVersion` snapshots the superseded state; mutation-tested                        |
-| §6.3 **History records the acknowledgment (who + when)**           | ✅ Verified | On the request, joined by `supersededByRequestId` — one source, no drift            |
-| §6.3 History shows "did not acknowledge" + the override            | ✅ Verified | Employee's own screen renders both, with HR's reason                                |
+| Clause                                                             | Status      | Evidence                                                                                                                                    |
+| ------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| §6.1 Progress check, no scoring                                    | ✅ Verified | Nothing on the mid-year path writes a rating                                                                                                |
+| §6.2 Manager submits a change request                              | ✅ Verified | `POST /api/kpi-change-requests`; the employee is notified (`CHANGE_REQUEST_RAISED`)                                                         |
+| §6.2 **Employee acknowledges before HR decides**                   | ✅ Verified | `POST …/acknowledge`, subject-only; employee screen at `/mid-year`                                                                          |
+| §6.2 **No reject button — the discussion is offline**              | ✅ Verified | Same shape as §5.1's sign-off; silence is the refusal, see the row below                                                                    |
+| §6.2 **No acknowledgment by the deadline → locked, KPI unchanged** | ✅ Verified | `NOT_ACKNOWLEDGED`, DERIVED on read and materialised by `cycle-sweep`                                                                       |
+| §6.2 **HR override only with a mandatory reason**                  | ✅ Verified | Own column + `kpi_change_requests_override_reason_check`; stage-open only                                                                   |
+| §6.2 HR sees the acknowledgment status when deciding               | ✅ Verified | HR's participant page selects it and renders it on the review card; the status shown is DERIVED, so a locked request stops offering Approve |
+| §6.2 Only the employee may acknowledge their own                   | ✅ Verified | `acknowledgeBlockedReason` — manager 403, HR 403, chain manager 403                                                                         |
+| §6.2 Full overhaul or partial change                               | ✅ Verified | Null = unchanged, end to end; only moved fields travel                                                                                      |
+| §6.2 HR approves or rejects                                        | ✅ Verified | `POST …/decide`, HR-only                                                                                                                    |
+| §6.2 **Mandatory rejection reason the manager can see**            | ✅ Verified | Enforced at the boundary **and** by `kpi_change_requests_rejection_reason_check`                                                            |
+| §6.3 Full version history, **archived never overwritten**          | ✅ Verified | `KpiVersion` snapshots the superseded state; mutation-tested                                                                                |
+| §6.3 **History records the acknowledgment (who + when)**           | ✅ Verified | On the request, joined by `supersededByRequestId` — one source, no drift                                                                    |
+| §6.3 History shows "did not acknowledge" + the override            | ✅ Verified | Employee's own screen renders both, with HR's reason                                                                                        |
 
 ## §7 Year-end assessment
 

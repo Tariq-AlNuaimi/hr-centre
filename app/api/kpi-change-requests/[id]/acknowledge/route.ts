@@ -121,13 +121,17 @@ export const POST = withRateLimit(
         select: { id: true },
         take: 50,
       });
+      // The key carries the recipient. `dedupeKey` is globally unique, so one
+      // key shared across the whole HR fan-out meant the first row inserted and
+      // the rest collided — exactly one HR user, arbitrarily chosen by the
+      // unordered query below, was told the request was ready.
       await persistNotifications(
         hrRecipients.map((hr) => ({
           recipientEmployeeId: hr.id,
           kind: "CHANGE_REQUEST_ACKNOWLEDGED" as const,
           body: "An employee acknowledged a mid-year KPI change. It is ready for your decision.",
           href: `/mid-year`,
-          dedupeKey: changeRequestDedupeKey(id, "acknowledged"),
+          dedupeKey: changeRequestDedupeKey(id, "acknowledged", hr.id),
         })),
         50,
       );

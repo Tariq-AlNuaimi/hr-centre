@@ -6,6 +6,7 @@ import { withInternalAuth, withRateLimit } from "@/lib/api-helpers";
 import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
 import { MID_YEAR_STAGE } from "@/lib/pms/change-request";
 import { recordAudit } from "@/lib/prisma/audit-extension";
+import { withAuditContext } from "@/lib/audit-context";
 import { hoursOverdue, type StageWindow } from "@/lib/pms/cycle";
 import { signOffState } from "@/lib/pms/signoff";
 import {
@@ -74,6 +75,13 @@ const MAX_PARTICIPANTS_PER_RUN = 5_000;
  * the lock itself is derived, not waiting on this.
  */
 const MAX_EXPIRED_REQUESTS_PER_RUN = 1_000;
+
+/**
+ * The label the sweep writes into `audit_logs.actor_email`. Not an address and
+ * not a user id — the deadline closed the request, not a person, and §12.2 is
+ * better served by saying so than by a null.
+ */
+const SWEEP_ACTOR = "system:cycle-sweep";
 /** Cap on the intervention queue returned inline, so the response stays bounded. */
 const MAX_SURFACED = 100;
 /** Cap on outbound mail per run — a backlog must not turn into a mail storm. */
@@ -335,22 +343,31 @@ async function lockUnacknowledgedRequests(now: Date): Promise<number> {
       // Counted from the transaction's RESULT, not from inside it: incrementing
       // in the callback counts a row whose commit then fails, and the number
       // this returns is what the cron's log says happened.
-      const didLock = await auditedTransaction(async (tx) => {
-        // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
-        const claimed = await tx.kpiChangeRequest.updateMany({
-          where: { id: row.id, status: "PENDING", acknowledgedAt: null },
-          data: { status: "NOT_ACKNOWLEDGED" },
-        });
-        if (claimed.count === 0) return false;
-        await recordAudit(tx, {
-          entityType: "KpiChangeRequest",
-          entityId: row.id,
-          action: "UPDATE",
-          before: { status: "PENDING", acknowledgedAt: null },
-          after: { status: "NOT_ACKNOWLEDGED", acknowledgedAt: null },
-        });
-        return true;
-      });
+      //
+      // §12.2 wants WHO on every row. `withInternalAuth` establishes no audit
+      // context — there is no session, because the cron is not a person — so
+      // without this the trail read `userId: null, actorEmail: null` and the one
+      // act nobody is present to witness was also the one act the trail could
+      // not attribute. A system label is not a user id and is not pretending to
+      // be one; it is the honest answer to "who closed this".
+      const didLock = await withAuditContext({ actorEmail: SWEEP_ACTOR }, async () =>
+        auditedTransaction(async (tx) => {
+          // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+          const claimed = await tx.kpiChangeRequest.updateMany({
+            where: { id: row.id, status: "PENDING", acknowledgedAt: null },
+            data: { status: "NOT_ACKNOWLEDGED" },
+          });
+          if (claimed.count === 0) return false;
+          await recordAudit(tx, {
+            entityType: "KpiChangeRequest",
+            entityId: row.id,
+            action: "UPDATE",
+            before: { status: "PENDING", acknowledgedAt: null },
+            after: { status: "NOT_ACKNOWLEDGED", acknowledgedAt: null },
+          });
+          return true;
+        }),
+      );
       if (didLock) locked += 1;
     } catch {
       // One stubborn row must not abort the sweep; the next run sees it again
