@@ -8,6 +8,9 @@ import {
   approvalBlockedReason,
   changeRequestAccessRefusal,
   decideBlockedReason,
+  acknowledgeBlockedReason,
+  effectiveChangeRequestStatus,
+  approvalAcknowledgmentReason,
   fieldChanges,
   proposedWeightageTotal,
   submitBlockedReason,
@@ -367,4 +370,214 @@ test("§2 a cycle that is not running takes no change requests, and says which s
 test("the gate still applies §5.1 and §5.4 rather than stopping at the cycle status", () => {
   assert.match(gate({ goalsApprovedAt: null })?.reason as string, /no HR-approved baseline/i);
   assert.match(gate({ now: AFTER })?.reason as string, /deadline has passed/i);
+});
+
+// --- UAT Scenario C — the employee acknowledges before HR decides ------------
+//
+// The spec change that introduced these rules replaced "manager asks, HR
+// decides, employee is never involved". The load-bearing assertion here is the
+// mirror of the one at the top of this file: an UNACKNOWLEDGED request must
+// never be able to change a KPI once the mid-year deadline has passed. If that
+// rule is wrong, a manager can push a change through simply by waiting — which
+// is the one thing §6.2's new flow exists to prevent.
+
+const employee = actor({ employeeId: "emp", isLineManager: false });
+const chainManager = actor({ employeeId: "skip", isLineManager: true });
+
+test("§6.2 only the employee may acknowledge their own request", () => {
+  assert.equal(
+    acknowledgeBlockedReason({
+      actor: employee,
+      subjectEmployeeId: "emp",
+      status: "PENDING",
+      acknowledgedAt: null,
+      stage: MID_YEAR,
+      now: DURING,
+    }),
+    null,
+  );
+});
+
+test("§6.2 a manager cannot acknowledge on their report's behalf", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: actor(), // the line manager who raised it
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 403);
+  assert.match(String(blocked?.reason), /only the employee/i);
+});
+
+test("§4.1 not even HR may acknowledge for the employee — HR has the override instead", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: hr,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 403);
+});
+
+test("§4.2 a view-only chain manager cannot acknowledge", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: chainManager,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 403);
+});
+
+test("§6.2 acknowledgment happens once", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: employee,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 409);
+});
+
+test("§6.2 there is nothing to acknowledge on a request already decided", () => {
+  for (const status of ["APPROVED", "REJECTED", "WITHDRAWN"] as const) {
+    const blocked = acknowledgeBlockedReason({
+      actor: employee,
+      subjectEmployeeId: "emp",
+      status,
+      acknowledgedAt: null,
+      stage: MID_YEAR,
+      now: DURING,
+    });
+    assert.equal(blocked?.status, 409, status);
+  }
+});
+
+test("§5.4 the deadline locks acknowledgment too — it is a hard lock, not a nudge", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: employee,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: AFTER,
+  });
+  assert.equal(blocked?.status, 409);
+  assert.match(String(blocked?.reason), /deadline/i);
+});
+
+// --- the derived lock --------------------------------------------------------
+
+test("an unacknowledged request past the deadline READS as NOT_ACKNOWLEDGED", () => {
+  assert.equal(
+    effectiveChangeRequestStatus({
+      status: "PENDING",
+      acknowledgedAt: null,
+      stage: MID_YEAR,
+      now: AFTER,
+    }),
+    "NOT_ACKNOWLEDGED",
+  );
+});
+
+test("the derived lock never rewrites a status that was actually decided", () => {
+  for (const status of ["APPROVED", "REJECTED", "WITHDRAWN"] as const) {
+    assert.equal(
+      effectiveChangeRequestStatus({ status, acknowledgedAt: null, stage: MID_YEAR, now: AFTER }),
+      status,
+      status,
+    );
+  }
+});
+
+test("an acknowledged request past the deadline is still PENDING for HR to decide", () => {
+  assert.equal(
+    effectiveChangeRequestStatus({
+      status: "PENDING",
+      acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+      stage: MID_YEAR,
+      now: AFTER,
+    }),
+    "PENDING",
+  );
+});
+
+// --- the approval gate + HR's override ---------------------------------------
+
+test("§6.2 an acknowledged request needs no override reason", () => {
+  assert.equal(
+    approvalAcknowledgmentReason({
+      acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+      overrideReason: null,
+      stage: MID_YEAR,
+      now: DURING,
+    }),
+    null,
+  );
+});
+
+test("§6.2 approving an UNACKNOWLEDGED request without a reason is refused", () => {
+  const refusal = approvalAcknowledgmentReason({
+    acknowledgedAt: null,
+    overrideReason: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.match(String(refusal), /acknowledg/i);
+});
+
+test("a blank override reason is not a reason", () => {
+  for (const blank of ["", "   ", "\n\t"]) {
+    assert.ok(
+      approvalAcknowledgmentReason({
+        acknowledgedAt: null,
+        overrideReason: blank,
+        stage: MID_YEAR,
+        now: DURING,
+      }),
+      JSON.stringify(blank),
+    );
+  }
+});
+
+test("§6.2 HR MAY override an unacknowledged request, with a reason, while the stage is open", () => {
+  assert.equal(
+    approvalAcknowledgmentReason({
+      acknowledgedAt: null,
+      overrideReason: "Employee on extended medical leave; change agreed with their director.",
+      stage: MID_YEAR,
+      now: DURING,
+    }),
+    null,
+  );
+});
+
+test("§5.4 after the deadline NOT EVEN an override approves it — no acknowledgment, no change", () => {
+  const refusal = approvalAcknowledgmentReason({
+    acknowledgedAt: null,
+    overrideReason: "We really do want this one.",
+    stage: MID_YEAR,
+    now: AFTER,
+  });
+  assert.match(String(refusal), /deadline|did not acknowledge/i);
+});
+
+test("an acknowledged request is still approvable after the deadline — HR owns the cycle", () => {
+  assert.equal(
+    approvalAcknowledgmentReason({
+      acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+      overrideReason: null,
+      stage: MID_YEAR,
+      now: AFTER,
+    }),
+    null,
+  );
 });

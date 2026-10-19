@@ -2,7 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import type { ChangeRequestStatus } from "@/generated/prisma/client";
 import type { CycleStageKind, RoleTrack } from "@/generated/prisma/client";
 import { canActOnEmployee, isHr, type PmsActor } from "./permissions";
-import { canActOnStage, isGoalSettingExempt, type StageWindow } from "./cycle";
+import { canActOnStage, isGoalSettingExempt, stageState, type StageWindow } from "./cycle";
 import { REQUIRED_TOTAL, weightageTotal, type WeightedKpi } from "./kpi";
 
 /**
@@ -225,6 +225,144 @@ export function approvalBlockedReason(params: {
         `§5.3 requires. Ask the manager to rebalance the whole set in one request.`
     : `Approving this would leave weightages at ${total}% — ${gap}% over the 100% §5.3 allows. ` +
         `Ask the manager to rebalance the whole set in one request.`;
+}
+
+/**
+ * §6.2 — why this actor may not ACKNOWLEDGE this request, or null when they may.
+ *
+ * Acknowledgment is the employee's own act and nobody else's. §5.1's goal-setting
+ * sign-off has the same shape and the same deliberate omission: there is no
+ * reject button, because the disagreement is settled in the offline conversation
+ * — an unacknowledged request is itself the signal, and §6.2's new flow makes
+ * that signal decisive rather than cosmetic.
+ *
+ * Not even HR may acknowledge on the employee's behalf. HR's power here is the
+ * OVERRIDE (`approvalAcknowledgmentReason`), which is recorded as an override —
+ * an HR click that silently became the employee's acknowledgment would erase the
+ * distinction §6.3's history exists to keep.
+ *
+ * The stage window is checked HERE, unlike `decideBlockedReason`: §5.4 locks the
+ * party who owns an action out of it once the deadline passes, and this action
+ * is the employee's.
+ */
+export function acknowledgeBlockedReason(params: {
+  actor: PmsActor;
+  subjectEmployeeId: string;
+  status: ChangeRequestStatus;
+  acknowledgedAt: Date | null;
+  stage: StageWindow | null;
+  now: Date;
+}): ChangeRequestRefusal | null {
+  const { actor, subjectEmployeeId, status, acknowledgedAt, stage, now } = params;
+
+  const isSubject = actor.employeeId !== null && actor.employeeId === subjectEmployeeId;
+  if (!isSubject) {
+    return {
+      reason:
+        "Only the employee whose KPIs are changing may acknowledge the request (§6.2). A " +
+        "manager cannot acknowledge on their behalf, and HR's exception is the override.",
+      status: 403,
+    };
+  }
+  if (status !== "PENDING") {
+    return {
+      reason: `This request was already ${status.toLowerCase()} — there is nothing left to acknowledge (§6.2).`,
+      status: 409,
+    };
+  }
+  if (acknowledgedAt !== null) {
+    return { reason: "You have already acknowledged this change (§6.2).", status: 409 };
+  }
+  if (stage === null) {
+    return { reason: "This cycle has no mid-year stage configured yet (§2).", status: 409 };
+  }
+  if (!canActOnStage(stage, now)) {
+    return {
+      reason:
+        now < stage.opensAt
+          ? "The mid-year review has not opened yet for this cycle (§2)."
+          : "The mid-year deadline has passed, so this request is locked and the KPI is " +
+            "unchanged (§5.4).",
+      status: 409,
+    };
+  }
+  return null;
+}
+
+/**
+ * What a request IS right now, as opposed to what its column last recorded.
+ *
+ * "Employee did not acknowledge" is a state nothing fires an event for — a
+ * deadline passing is the absence of an action, so no writer runs at that
+ * instant. Deriving it means the lock holds the moment the clock passes the
+ * deadline, with no dependency on a cron having run; `cycle-sweep` materialises
+ * the same verdict into the column afterwards so §6.3's history reads correctly
+ * without recomputing it. Derivation is the guarantee, the sweep is the record,
+ * and a sweep that never runs costs the history a row but never lets a change
+ * through.
+ *
+ * Only a PENDING request is reinterpreted: a decided one already has its answer,
+ * and rewriting that would be this function inventing history.
+ */
+export function effectiveChangeRequestStatus(params: {
+  status: ChangeRequestStatus;
+  acknowledgedAt: Date | null;
+  stage: StageWindow | null;
+  now: Date;
+}): ChangeRequestStatus {
+  const { status, acknowledgedAt, stage, now } = params;
+  if (status !== "PENDING") return status;
+  if (acknowledgedAt !== null) return "PENDING";
+  if (stage === null) return "PENDING";
+  return stageState(stage, now) === "LOCKED" ? "NOT_ACKNOWLEDGED" : "PENDING";
+}
+
+/**
+ * §6.2 — why acknowledgment does not yet permit an APPROVAL, or null when it
+ * does. The weightage half of the gate is `approvalBlockedReason`; this is the
+ * consent half, and both must pass.
+ *
+ * Three outcomes, and the middle one is the whole point:
+ *
+ *   - acknowledged            → approve freely, deadline or not. HR owns the
+ *                               cycle, and a request the employee already
+ *                               accepted does not expire.
+ *   - not acknowledged, OPEN  → approve ONLY with a written override reason.
+ *                               The exception exists for the employee who is on
+ *                               leave or unreachable, and it is recorded as an
+ *                               override rather than disguised as consent.
+ *   - not acknowledged, CLOSED→ refused outright, override or not. This is the
+ *                               clause that gives §5.4 teeth: if an override
+ *                               still worked here, "no acknowledgment, no
+ *                               change" would be advice, and waiting out the
+ *                               deadline would be a strategy.
+ */
+export function approvalAcknowledgmentReason(params: {
+  acknowledgedAt: Date | null;
+  overrideReason: string | null | undefined;
+  stage: StageWindow | null;
+  now: Date;
+}): string | null {
+  const { acknowledgedAt, overrideReason, stage, now } = params;
+
+  if (acknowledgedAt !== null) return null;
+
+  if (stage !== null && stageState(stage, now) === "LOCKED") {
+    return (
+      "The mid-year deadline passed without the employee's acknowledgment, so this request is " +
+      "locked and the KPI stays unchanged (§6.2). An override cannot reopen it — the deadline " +
+      "is a hard lock."
+    );
+  }
+
+  if (overrideReason === null || overrideReason === undefined || overrideReason.trim() === "") {
+    return (
+      "The employee has not acknowledged this change yet (§6.2). Wait for their acknowledgment, " +
+      "or record a written reason to approve without it — an override is logged as an override."
+    );
+  }
+
+  return null;
 }
 
 /**

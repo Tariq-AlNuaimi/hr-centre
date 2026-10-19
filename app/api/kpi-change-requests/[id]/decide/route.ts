@@ -8,6 +8,8 @@ import { resolveActor } from "@/lib/pms/actor";
 import {
   applyEdit,
   approvalBlockedReason,
+  approvalAcknowledgmentReason,
+  MID_YEAR_STAGE,
   decideBlockedReason,
   type KpiEdit,
 } from "@/lib/pms/change-request";
@@ -87,7 +89,7 @@ export const POST = withRateLimit(
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
     }
-    const { decision, reason } = parsed.data;
+    const { decision, reason, overrideReason } = parsed.data;
 
     const existing = await prisma.kpiChangeRequest.findUnique({
       where: { id },
@@ -95,6 +97,7 @@ export const POST = withRateLimit(
         id: true,
         status: true,
         participantId: true,
+        acknowledgedAt: true,
         participant: {
           select: {
             employeeId: true,
@@ -104,7 +107,17 @@ export const POST = withRateLimit(
             // §6.2's open question — does an approved mid-year change send the
             // set back for signature? Rihal's answer, per cycle
             // (lib/pms/cycle-policy.ts).
-            cycle: { select: CYCLE_POLICY_SELECT },
+            cycle: {
+              select: {
+                ...CYCLE_POLICY_SELECT,
+                // §6.2 — the acknowledgment gate is a deadline question as much
+                // as a consent one, so the window travels with the request.
+                stages: {
+                  where: { kind: MID_YEAR_STAGE },
+                  select: { kind: true, opensAt: true, deadline: true, graceDays: true },
+                },
+              },
+            },
           },
         },
         edits: CHANGE_REQUEST_SELECT.edits,
@@ -182,6 +195,25 @@ export const POST = withRateLimit(
 
     // --- approval -------------------------------------------------------------
 
+    // §6.2 — the CONSENT gate, before the weightage one. Two independent
+    // questions, and this is the one the spec change introduced: has the
+    // employee acknowledged, and if not, may HR override it? Past the mid-year
+    // deadline the answer is no either way — that is what makes "no
+    // acknowledgment, no change" a rule rather than a preference, and it is why
+    // waiting out the deadline is not a way to force a change through.
+    const stage = existing.participant.cycle.stages[0] ?? null;
+    const consent = approvalAcknowledgmentReason({
+      acknowledgedAt: existing.acknowledgedAt,
+      overrideReason,
+      stage,
+      now: new Date(),
+    });
+    if (consent) return err(consent, 409);
+
+    // An override is only an override when there was no acknowledgment. HR may
+    // send a reason with an acknowledged request; it simply is not one.
+    const overriding = existing.acknowledgedAt === null;
+
     // A cheap pre-check so an unapprovable request is refused without opening a
     // transaction. It is NOT the check that counts — see inside the transaction.
     const preflight = approvalBlockedReason({ kpis: existing.participant.kpis, edits });
@@ -208,6 +240,8 @@ export const POST = withRateLimit(
             decidedByEmployeeId: deciderId,
             decidedAt: new Date(),
             decisionReason: reason ?? null,
+            acknowledgmentOverridden: overriding,
+            overrideReason: overriding ? (overrideReason ?? null) : null,
           },
         });
         if (claimed.count === 0) return null;
@@ -219,11 +253,21 @@ export const POST = withRateLimit(
           entityType: "KpiChangeRequest",
           entityId: id,
           action: "UPDATE",
-          before: { status: "PENDING", decidedByEmployeeId: null, decisionReason: null },
+          before: {
+            status: "PENDING",
+            decidedByEmployeeId: null,
+            decisionReason: null,
+            acknowledgmentOverridden: false,
+            overrideReason: null,
+          },
           after: {
             status: "APPROVED",
             decidedByEmployeeId: deciderId,
             decisionReason: reason ?? null,
+            // §6.2 — an override is the exception, so it goes on the trail
+            // explicitly rather than being inferable from a null elsewhere.
+            acknowledgmentOverridden: overriding,
+            overrideReason: overriding ? (overrideReason ?? null) : null,
           },
         });
 

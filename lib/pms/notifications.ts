@@ -96,6 +96,17 @@ export function hrDigestDedupeKey(dayISO: string, recipientEmployeeId: string): 
   return `hr:${dayISO}:${recipientEmployeeId}`;
 }
 
+/**
+ * §6.2 — one notification per request per step, forever.
+ *
+ * The request id makes it unique and the step keeps the two moments apart: the
+ * employee is told once that a change awaits them, and HR is told once that it
+ * was acknowledged. Re-sending either would turn a workflow into nagging.
+ */
+export function changeRequestDedupeKey(requestId: string, step: "raised" | "acknowledged"): string {
+  return `change-request:${requestId}:${step}`;
+}
+
 export type PendingNotification = {
   recipientEmployeeId: string;
   kind: NotificationKind;
