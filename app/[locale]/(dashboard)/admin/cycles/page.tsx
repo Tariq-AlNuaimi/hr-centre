@@ -121,6 +121,7 @@ export default function CyclesPage() {
       const result = await apiClient.post<{
         participantsAdded: number;
         participantsPending: number;
+        goalSettingClosed: boolean;
       }>(`/api/cycles/${cycle.id}/participants`, {});
       const added = result?.participantsAdded ?? 0;
       const pending = result?.participantsPending ?? 0;
@@ -132,6 +133,9 @@ export default function CyclesPage() {
       // Each call is bounded, so a big backlog clears over several presses.
       // Saying how many are left makes that obvious instead of mysterious.
       if (pending > 0) warning(t("cycles.enrolMorePending", { count: pending }));
+      // The consequence, said at the moment it is caused rather than discovered
+      // at calibration time months later.
+      if (result?.goalSettingClosed) warning(t("cycles.enrolledAfterGoalSetting"));
       await refresh();
     } catch (e) {
       showError(e instanceof ApiError ? e.message : t("cycles.enrolMissingFailed"));
@@ -143,14 +147,19 @@ export default function CyclesPage() {
   async function changeStatus(cycle: PerformanceCycle, status: "OPEN" | "CLOSED") {
     setBusyCycleId(cycle.id);
     try {
-      const updated = await apiClient.put<{ participantsAdded: number }>(
-        `/api/cycles/${cycle.id}`,
-        { status },
-      );
+      const updated = await apiClient.put<{
+        participantsAdded: number;
+        participantsPending: number;
+      }>(`/api/cycles/${cycle.id}`, { status });
       if (status === "OPEN") {
         // §3.5 — enrolment happens at OPEN, so the count is the answer to
         // "did that do anything?" and belongs in the confirmation.
         success(t("cycles.opened", { year: cycle.year, count: updated?.participantsAdded ?? 0 }));
+        // Bounded now, so a very large org opens over more than one action.
+        // Saying so is what keeps a half-enrolled cycle from being invisible.
+        if ((updated?.participantsPending ?? 0) > 0) {
+          warning(t("cycles.enrolMorePending", { count: updated!.participantsPending }));
+        }
       } else {
         success(t("cycles.closed", { year: cycle.year }));
       }

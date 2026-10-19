@@ -91,6 +91,7 @@ export default function ImportPage() {
           returningWithRevokedLogin: number;
           participantsEnrolled: number;
           participantsPending: number;
+          enrolmentFailed: boolean;
         };
         error?: string;
       };
@@ -125,6 +126,12 @@ export default function ImportPage() {
       // exactly the ones this whole fix exists for.
       if (json.data.participantsPending > 0) {
         warning(t("import.enrolmentPending", { count: json.data.participantsPending }));
+      }
+      // The import committed; only the follow-on enrolment did not. Saying so
+      // precisely matters — the remedy is the cycle button, NOT re-uploading
+      // the file, which would only earn a 409 on a spent batch.
+      if (json.data.enrolmentFailed) {
+        warning(t("import.enrolmentFailed"));
       }
 
       // ADR-069 — a returning employee reconciles as an UPDATE, so provisioning

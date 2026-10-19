@@ -5,6 +5,7 @@ import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { canRunCycle } from "@/lib/pms/cycle";
 import { stageReopensUnacknowledged } from "@/lib/pms/change-request";
+import { recordAudit } from "@/lib/prisma/audit-extension";
 import { updateCycleStagesSchema } from "@/lib/validations/cycle";
 
 /**
@@ -119,7 +120,7 @@ export const PUT = withRateLimit(
         );
         if (!reopens) return 0;
 
-        const locked = await tx.kpiChangeRequest.findMany({
+        const candidates = await tx.kpiChangeRequest.findMany({
           where: {
             status: "NOT_ACKNOWLEDGED",
             // Belt and braces: `NOT_ACKNOWLEDGED` is only ever written to an
@@ -128,20 +129,90 @@ export const PUT = withRateLimit(
             acknowledgedAt: null,
             participant: { cycleId: id },
           },
-          select: { id: true },
+          select: { id: true, participantId: true, requestedAt: true },
+          orderBy: { requestedAt: "desc" },
           take: MAX_REOPENED_PER_EXTENSION,
         });
+        if (candidates.length === 0) return 0;
 
-        // Per-row `update`, not `updateMany`: the audit extension covers `update`
-        // automatically, and §6.3's history should name each request that came
-        // back rather than record one bulk event with a count.
-        for (const row of locked) {
-          await tx.kpiChangeRequest.update({
-            where: { id: row.id },
+        // AT MOST ONE REOPEN PER PARTICIPANT, and only onto a participant with
+        // no live request. This is not caution, it is the difference between
+        // working and 500ing: `kpi_change_requests_one_pending_per_participant`
+        // is a unique index on `participant_id` WHERE status = 'PENDING', and
+        // it is PARTIAL — so a participant may legally hold several
+        // `NOT_ACKNOWLEDGED` rows, or one of those plus a live `PENDING` one.
+        // Setting them all back to PENDING raises P2002, which rolls back the
+        // deadline change with it and leaves HR unable to edit the mid-year
+        // stage at all: the remedy failing precisely when it is needed.
+        // Reproduced against Postgres before this guard was written.
+        //
+        // Taking only the NEWEST candidate per participant also answers
+        // supersession: an older locked request whose successor was approved
+        // must not come back to life with edits aimed at a KPI set that has
+        // since moved on.
+        const newestPerParticipant = new Map<string, { id: string; requestedAt: Date }>();
+        for (const row of candidates) {
+          // `candidates` is ordered newest-first, so the first one wins.
+          if (!newestPerParticipant.has(row.participantId)) {
+            newestPerParticipant.set(row.participantId, {
+              id: row.id,
+              requestedAt: row.requestedAt,
+            });
+          }
+        }
+        const participantIds = [...newestPerParticipant.keys()];
+
+        // Two disqualifiers, both bounded by `participantIds`:
+        //   - the participant already has a live PENDING request (the index
+        //     would refuse a second, and that request is the current question);
+        //   - something NEWER than the candidate exists in any status, so the
+        //     candidate is history rather than the thing the deadline locked.
+        const [pending, newest] = await Promise.all([
+          tx.kpiChangeRequest.findMany({
+            where: { participantId: { in: participantIds }, status: "PENDING" },
+            select: { participantId: true },
+          }),
+          tx.kpiChangeRequest.groupBy({
+            by: ["participantId"],
+            where: { participantId: { in: participantIds } },
+            _max: { requestedAt: true },
+          }),
+        ]);
+        const hasPending = new Set(pending.map((p) => p.participantId));
+        const maxRequestedAt = new Map(newest.map((g) => [g.participantId, g._max.requestedAt]));
+
+        let reopenedCount = 0;
+        for (const [participantId, candidate] of newestPerParticipant) {
+          if (hasPending.has(participantId)) continue;
+          const max = maxRequestedAt.get(participantId);
+          if (
+            max !== null &&
+            max !== undefined &&
+            max.getTime() !== candidate.requestedAt.getTime()
+          ) {
+            continue;
+          }
+
+          // Conditional claim, the same arbiter the sweep and the decide route
+          // use: the row was read inside this transaction, but READ COMMITTED
+          // lets another writer land between the read and the write, and the
+          // one writer that plausibly does is the sweep.
+          // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+          const claimed = await tx.kpiChangeRequest.updateMany({
+            where: { id: candidate.id, status: "NOT_ACKNOWLEDGED", acknowledgedAt: null },
             data: { status: "PENDING" },
           });
+          if (claimed.count === 0) continue;
+          await recordAudit(tx, {
+            entityType: "KpiChangeRequest",
+            entityId: candidate.id,
+            action: "UPDATE",
+            before: { status: "NOT_ACKNOWLEDGED" },
+            after: { status: "PENDING" },
+          });
+          reopenedCount += 1;
         }
-        return locked.length;
+        return reopenedCount;
       },
       {
         // Prisma's interactive-transaction default is 5s, which is fine for three

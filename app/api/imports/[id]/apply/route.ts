@@ -91,38 +91,42 @@ export const POST = withRateLimit(
       // adding N participant writes to the longest transaction in the product
       // (maxDuration 60) is how a large org's import starts timing out and
       // rolling back the part that actually matters.
-      const open = await prisma.performanceCycle.findFirst({
-        where: { status: "OPEN" },
-        orderBy: { year: "desc" },
-        select: { id: true },
-      });
-      // A failure here is NOT swallowed. The import is already committed and
-      // the batch is spent, so re-submitting the file cannot fix it; the
-      // honest answer is to say enrolment is the part that failed and point at
-      // the action that retries it, rather than report a clean import and
-      // leave the new employees invisible — which is the original bug.
+      // Enrolment is a follow-on, and the import above is ALREADY COMMITTED.
+      // So a failure here cannot be reported as a failed request: an error
+      // response throws away `created`, `updated`, `provisioned` and — worst —
+      // ADR-069's revoked-login warning, which has no other way of reaching
+      // anyone. The import succeeded; what is reported is the import, with
+      // enrolment flagged as the part that did not finish.
       let participantsEnrolled = 0;
       let participantsPending = 0;
-      if (open) {
-        try {
+      let enrolmentFailed = false;
+      try {
+        const open = await prisma.performanceCycle.findFirst({
+          where: { status: "OPEN" },
+          orderBy: { year: "desc" },
+          select: { id: true },
+        });
+        if (open) {
           // Bounded, because this runs inside the request that just spent most
           // of its 60s on the import transaction. Whatever is left over is not
           // lost: the count comes back, HR is told, and "Enrol missing
           // employees" finishes it with the same idempotent call.
-          const result = await enrolParticipants(open.id, { limit: ENROL_LIMIT_PER_IMPORT });
-          participantsEnrolled = result.added;
-          participantsPending = result.remaining;
-        } catch {
-          return err(
-            "The employees were imported successfully, but enrolling them into the open cycle " +
-              "failed. Nothing is lost and the import does not need re-running — use " +
-              "\u201cEnrol missing employees\u201d on the performance cycle to finish it.",
-            500,
-          );
+          const enrolled = await enrolParticipants(open.id, { limit: ENROL_LIMIT_PER_IMPORT });
+          participantsEnrolled = enrolled.added;
+          participantsPending = enrolled.remaining;
         }
+      } catch (enrolError) {
+        // Logged, not swallowed: without this the cause of a failed enrolment
+        // (timeout, pool exhaustion, a constraint) is simply gone. Metadata
+        // only — no row contents, nothing Restricted (SECURITY.md §1).
+        enrolmentFailed = true;
+        console.error("[import] enrolment after a committed import failed", {
+          batchId: id,
+          reason: enrolError instanceof Error ? enrolError.name : "unknown",
+        });
       }
 
-      return ok({ ...result, participantsEnrolled, participantsPending });
+      return ok({ ...result, participantsEnrolled, participantsPending, enrolmentFailed });
     } catch (error) {
       if (error instanceof ImportFileError) return err(error.message, 422);
       // Every ImportConflictError message is written for the operator: the batch

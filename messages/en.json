@@ -307,7 +307,8 @@
       "absentNote": "Nothing happens to these people. A missing row is never treated as someone leaving.",
       "returningRevoked": "{count} returning employee(s) still have a revoked account. They cannot sign in until it is restored from the recycling bin — the import does not undo a revocation.",
       "enrolled": "{count} new employee(s) were enrolled into the open performance cycle, so their managers can draft KPIs for them.",
-      "enrolmentPending": "{count} imported employee(s) are not enrolled yet. Open Performance cycles and press “Enrol missing employees” to finish."
+      "enrolmentPending": "{count} imported employee(s) are not enrolled yet. Open Performance cycles and press “Enrol missing employees” to finish.",
+      "enrolmentFailed": "The employees were imported, but enrolling them into the open cycle did not finish. Do not re-upload the file — open Performance cycles and press “Enrol missing employees”."
     },
     "orgSetup": {
       "title": "Org setup",
@@ -407,7 +408,8 @@
       "enrolledMissing": "{count} employee(s) were enrolled into the {year} cycle. Their managers can draft KPIs for them now.",
       "enrolledNobodyMissing": "Everyone active is already enrolled in the {year} cycle; nothing to add.",
       "enrolMissingFailed": "The employees could not be enrolled.",
-      "enrolMorePending": "{count} more employee(s) still need enrolling — press “Enrol missing employees” again to continue."
+      "enrolMorePending": "{count} more employee(s) still need enrolling — press “Enrol missing employees” again to continue.",
+      "enrolledAfterGoalSetting": "Goal setting is already locked for this cycle, so these people cannot have KPIs drafted for them and will be skipped by the score run — which holds calibration for the whole cycle. Extend the goal-setting deadline if they are meant to be assessed this year."
     },
     "roles": {
       "title": "HR roles",

@@ -309,7 +309,24 @@ export const POST = withRateLimit(
     // audited create, and a request that runs out of time tells the person
     // waiting nothing. Idempotent, so pressing the button again continues.
     const { added, remaining } = await enrolParticipants(cycleId, { limit: ENROL_LIMIT_PER_CALL });
-    return ok({ participantsAdded: added, participantsPending: remaining });
+
+    // §5.4 × §10.7 — enrolling someone after goal-setting has locked gives them
+    // a participant row they can never get KPIs into, because the hard lock
+    // refuses drafting past the deadline. They are then skipped by every score
+    // run, and `scoredCount < participantCount` holds calibration and the §13.2
+    // publish for the WHOLE cycle. There is no un-enrol.
+    //
+    // The build does not get to choose what should happen to such a person —
+    // that is Rihal's call — but it must not let HR walk into it unaware. The
+    // flag travels so the screen can say it at the moment of the click.
+    const goalSetting = await prisma.cycleStage.findFirst({
+      where: { cycleId, kind: GOAL_SETTING_STAGE },
+      select: { kind: true, opensAt: true, deadline: true, graceDays: true },
+    });
+    const goalSettingClosed =
+      added > 0 && goalSetting !== null && stageState(goalSetting, new Date()) === "LOCKED";
+
+    return ok({ participantsAdded: added, participantsPending: remaining, goalSettingClosed });
   }),
   { id: "pms-cycle-enrol", limit: 10, windowMs: 60_000 },
 );

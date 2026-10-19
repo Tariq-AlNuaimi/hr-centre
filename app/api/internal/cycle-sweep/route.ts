@@ -147,6 +147,8 @@ type ParticipantRow = {
   id: string;
   employeeId: string;
   goalsApprovedAt: Date | null;
+  /** §3.5 — when they joined the CYCLE. The ladder needs it; see compliance.ts. */
+  createdAt: Date;
   employee: {
     id: string;
     managerId: string | null;
@@ -169,6 +171,7 @@ function stateFor(row: ParticipantRow, kpiCount: number): ParticipantComplianceS
     employeeSigned: signed.employeeSigned,
     managerSigned: signed.managerSigned,
     goalsApproved: row.goalsApprovedAt !== null,
+    enrolledAt: row.createdAt,
   };
 }
 
@@ -200,6 +203,7 @@ async function fetchParticipantPage(cycleId: string, cursor?: string): Promise<P
       id: true,
       employeeId: true,
       goalsApprovedAt: true,
+      createdAt: true,
       employee: {
         select: {
           id: true,
@@ -354,7 +358,21 @@ async function lockUnacknowledgedRequests(now: Date): Promise<number> {
         auditedTransaction(async (tx) => {
           // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
           const claimed = await tx.kpiChangeRequest.updateMany({
-            where: { id: row.id, status: "PENDING", acknowledgedAt: null },
+            where: {
+              id: row.id,
+              status: "PENDING",
+              acknowledgedAt: null,
+              // The claim re-asserts the DEADLINE, not just the status. The
+              // list above was read at the top of the run and up to a thousand
+              // transactions follow it; HR extending the stage in that window
+              // would leave this claim writing a lock under a window that is
+              // open again — the "same act, two outcomes by timing" that
+              // ADR-072 option A exists to remove, reappearing from the other
+              // side. Re-checking here makes the claim a no-op instead.
+              participant: {
+                cycle: { stages: { some: { kind: MID_YEAR_STAGE, deadline: { lt: now } } } },
+              },
+            },
             data: { status: "NOT_ACKNOWLEDGED" },
           });
           if (claimed.count === 0) return false;
