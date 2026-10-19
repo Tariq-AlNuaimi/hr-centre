@@ -379,6 +379,17 @@ _Accepts when:_ HR Super Admin or HRBP creates a cycle for a year, sets a deadli
 the three stages, and opens it; every ACTIVE employee becomes a participant; re-running
 enrolment after an import adds only the joiners (§3.5) and disturbs nobody.
 
+**Who runs it, as of 2026-10-19.** For a long time the answer was "only the `DRAFT → OPEN`
+transition", which made the paragraph above aspirational: the import never called it, a cycle's
+lifecycle is one-way, and so an employee imported after the cycle opened could never become a
+participant — no participant row, no KPI set, and a manager who imported their team found
+goal-setting empty with nothing on screen to explain it. `applyImport` now enrols into the open
+cycle itself and reports the count, and `POST /api/cycles/[id]/participants` is the manual
+counterpart for the import that applied while enrolment did not. Enrolment runs AFTER the import
+transaction, not inside it: §3.5's all-or-nothing is about the org reshape, and adding N
+participant writes to the longest transaction in the product is how a large org's import starts
+timing out and rolling back the part that matters.
+
 **US-10 — A manager drafts KPIs for a direct report.**
 _Accepts when:_ a line manager can author KPIs — description, weightage, all five descriptors —
 for a **direct report only**; a report two levels down is view-only (§4.2); a C-Level employee

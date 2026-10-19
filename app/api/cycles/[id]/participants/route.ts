@@ -6,8 +6,15 @@ import { err, notFound, ok } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
+import { forbidden } from "@/lib/api-response";
 import { GOAL_SETTING_STAGE, kpiSetAccessRefusal, weightageView } from "@/lib/pms/kpi";
-import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
+import {
+  canRunCycle,
+  enrolParticipants,
+  isGoalSettingExempt,
+  stageState,
+  type StageWindow,
+} from "@/lib/pms/cycle";
 import { visibleEmployeeIds } from "@/lib/pms/org-tree";
 
 /**
@@ -252,4 +259,57 @@ export const GET = withRateLimit(
     });
   }),
   { id: "pms-cycle-participants", limit: 120, windowMs: 60_000 },
+);
+
+/**
+ * §3.5 — enrol everyone who is missing from this cycle. Idempotent.
+ *
+ * **The gap this closes.** Enrolment ran in exactly one place: the `DRAFT → OPEN`
+ * transition. The employee import never called it, and a cycle's lifecycle is
+ * one-way, so an employee imported after the cycle opened could never become a
+ * participant — no participant row, no KPI set, nothing for their manager to
+ * draft against. A manager who imported staff and then went to goal-setting
+ * found their new people simply absent, with nothing on screen explaining why.
+ * `applyImport` now runs this itself; this route is the manual counterpart, for
+ * the import that succeeded while enrolment did not, and for employees who
+ * arrived by any other path.
+ *
+ * Deliberately NOT a new concept: `enrolParticipants` is the same function the
+ * OPEN transition calls, and its own documentation already said "running it
+ * after an import is the same operation as running it when the cycle opened".
+ * The function was right; nothing was calling it.
+ *
+ * HR only (`canRunCycle`, §4.1) and never on a CLOSED cycle — §10 and §13 both
+ * assume a finished year has stopped moving, and a participant appearing in a
+ * scored year would change a published distribution.
+ */
+/** One call's worth of joiners; the rest come back on the next press. */
+const ENROL_LIMIT_PER_CALL = 500;
+
+export const POST = withRateLimit(
+  withAuth(async (_request: NextRequest, { params, session }) => {
+    const { id: cycleId } = await params;
+    const actor = await resolveActor(session);
+    if (!canRunCycle(actor)) return forbidden();
+
+    const cycle = await prisma.performanceCycle.findUnique({
+      where: { id: cycleId },
+      select: { id: true, year: true, status: true },
+    });
+    if (!cycle) return notFound("Cycle");
+    if (cycle.status !== "OPEN") {
+      return err(
+        `The ${cycle.year} cycle is ${cycle.status.toLowerCase()}, so nobody can be enrolled ` +
+          `into it. A draft cycle enrols everyone the moment it opens.`,
+        409,
+      );
+    }
+
+    // Bounded for the same reason the import path is: every row is its own
+    // audited create, and a request that runs out of time tells the person
+    // waiting nothing. Idempotent, so pressing the button again continues.
+    const { added, remaining } = await enrolParticipants(cycleId, { limit: ENROL_LIMIT_PER_CALL });
+    return ok({ participantsAdded: added, participantsPending: remaining });
+  }),
+  { id: "pms-cycle-enrol", limit: 10, windowMs: 60_000 },
 );

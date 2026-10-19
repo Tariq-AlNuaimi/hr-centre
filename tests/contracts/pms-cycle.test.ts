@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   STAGE_ORDER,
@@ -174,4 +175,39 @@ test("§4.1 both HR roles run the cycle; nobody else does", () => {
     "a line manager acts on their reports, not on the year",
   );
   assert.equal(canRunCycle(actor({ employeeId: null })), false, "and an unlinked actor on nothing");
+});
+
+// --- §3.5 enrolment is bounded wherever a REQUEST can trigger it -------------
+
+test("§3.5 every request-reachable enrolment passes a limit", () => {
+  // Source-level, because the failure is neither a type error nor a throw:
+  // `limit` is optional, so an unbounded call compiles and passes every test
+  // right up until a real org imports five hundred people into an open cycle
+  // and the route runs out of time mid-way — leaving the joiners this whole
+  // fix exists for still invisible, with nothing on screen saying so.
+  //
+  // The cycle-OPEN transition is deliberately NOT in this list: it is a
+  // one-off click on a cycle that by definition has no participants yet, it
+  // predates this change, and bounding it would silently half-open a cycle.
+  const callers = [
+    "app/api/imports/[id]/apply/route.ts",
+    "app/api/cycles/[id]/participants/route.ts",
+  ];
+  for (const file of callers) {
+    const src = readFileSync(file, "utf8");
+    const call = src.slice(src.indexOf("enrolParticipants("));
+    assert.ok(
+      src.includes("enrolParticipants("),
+      `${file} is listed as an enrolment caller but never calls enrolParticipants()`,
+    );
+    assert.ok(
+      /enrolParticipants\([^)]*\{\s*limit:/.test(call),
+      `${file} calls enrolParticipants() without a limit — a large org's import would ` +
+        "time out part-way and report nothing about who is still missing",
+    );
+    assert.ok(
+      /remaining/.test(call),
+      `${file} must read 'remaining' and tell the operator what is left to enrol`,
+    );
+  }
 });

@@ -14,6 +14,7 @@ import {
   approvalAcknowledgmentReason,
   fieldChanges,
   proposedWeightageTotal,
+  stageReopensUnacknowledged,
   submitBlockedReason,
   withdrawBlockedReason,
   type KpiEdit,
@@ -633,5 +634,58 @@ test("§6.2 an override approval is claimed against the acknowledgment, not just
     /acknowledgedAt:\s*overriding\s*\?\s*null\s*:\s*\{\s*not:\s*null\s*\}/.test(approvalClaim),
     "the approval claim must constrain acknowledgedAt to the state the consent gate was " +
       "evaluated against, or an override can land on a request the employee acknowledged",
+  );
+});
+
+// --- §5.5 × §6.2 — extending a deadline takes the lock back ------------------
+//
+// ADR-072 decision 3, option A (operator's choice, 2026-10-19). The defect this
+// closes is not that a locked request stays locked — it is that it stayed locked
+// or did not depending on whether the overnight sweep had run, so HR's §5.5
+// remedy behaved differently at 9pm and at 9am for the same act.
+
+test("§5.5 extending the mid-year deadline into the future reopens the lock", () => {
+  // The same window, re-opened: `now` is inside it again.
+  assert.equal(stageReopensUnacknowledged({ stage: MID_YEAR, now: DURING }), true);
+});
+
+test("§5.5 a deadline still in the past reopens nothing", () => {
+  // HR edited the stage but did not actually extend past `now` — the lock holds.
+  assert.equal(stageReopensUnacknowledged({ stage: MID_YEAR, now: AFTER }), false);
+});
+
+test("§5.5 a window pushed wholesale into the FUTURE does not reopen either", () => {
+  // The trap in reading this as "deadline > now": a stage that has not opened
+  // yet has a future deadline too, and nobody can acknowledge inside it. The
+  // predicate asks for OPEN, which is the state in which acknowledging works.
+  const notYetOpen = new Date("2027-05-01T00:00:00Z");
+  assert.equal(stageReopensUnacknowledged({ stage: MID_YEAR, now: notYetOpen }), false);
+});
+
+test("§5.5 moving a goal-setting or year-end deadline never touches §6.2's lock", () => {
+  // Only the MID_YEAR deadline is what locks a change request, so only moving
+  // THAT one can unlock one. A PUT carries up to three stages at once and the
+  // other two must not reach across.
+  for (const kind of ["GOAL_SETTING", "YEAR_END"] as const) {
+    assert.equal(
+      stageReopensUnacknowledged({ stage: { ...MID_YEAR, kind }, now: DURING }),
+      false,
+      `${kind} must not reopen a mid-year change request`,
+    );
+  }
+});
+
+test("reopening is confined to what the CLOCK closed, never to what a person decided", () => {
+  // Guards the route's predicate, which is where this invariant actually lives:
+  // a decided request is somebody's act and an extension must not revive it.
+  const src = readFileSync("app/api/cycles/[id]/stages/route.ts", "utf8");
+  const claim = src.slice(src.indexOf("kpiChangeRequest.findMany"));
+  assert.ok(
+    /status:\s*"NOT_ACKNOWLEDGED"/.test(claim),
+    "the reopen must select ONLY NOT_ACKNOWLEDGED — APPROVED, REJECTED and WITHDRAWN are decisions",
+  );
+  assert.ok(
+    /acknowledgedAt:\s*null/.test(claim),
+    "the reopen must also require an unacknowledged row",
   );
 });

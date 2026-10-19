@@ -3,6 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
+import { enrolParticipants } from "@/lib/pms/cycle";
 import { ImportFileError, MAX_UPLOAD_BYTES } from "@/lib/pms/import/loaders/xlsx";
 import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 
@@ -15,6 +16,14 @@ import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 // the other is how the cap stops meaning anything — and raising it past 60 needs a
 // Vercel plan that allows it. See docs/findings-register.md.
 export const maxDuration = 60;
+
+/**
+ * How many joiners the apply request enrols before handing the rest to HR's
+ * manual action. The import transaction owns most of `maxDuration`, so this is
+ * deliberately well short of what the budget could take: finishing an import
+ * and reporting honestly beats timing out with the org reshape rolled back.
+ */
+const ENROL_LIMIT_PER_IMPORT = 500;
 
 /**
  * Confirm and apply a previewed import — spec §3.5.
@@ -65,7 +74,55 @@ export const POST = withRateLimit(
 
     try {
       const result = await applyImport({ batchId: id, buffer });
-      return ok(result);
+
+      // §3.5 — "New rows → create the employee, PULL THEM INTO THE CYCLE."
+      //
+      // Enrolment used to run only on the `DRAFT → OPEN` transition, and a
+      // cycle's lifecycle is one-way, so an employee imported after the cycle
+      // opened could never become a participant: no participant row, no KPI
+      // set, and a manager who imported their team found goal-setting empty
+      // with nothing on screen to explain it. `enrolParticipants` is
+      // idempotent and was always meant to be re-run; nothing was re-running
+      // it.
+      //
+      // OUTSIDE the import transaction, on purpose. §3.5's all-or-nothing is
+      // about the org reshape — created, updated and re-parented rows are one
+      // reviewed act. Enrolment is a separate, repeatable follow-on, and
+      // adding N participant writes to the longest transaction in the product
+      // (maxDuration 60) is how a large org's import starts timing out and
+      // rolling back the part that actually matters.
+      const open = await prisma.performanceCycle.findFirst({
+        where: { status: "OPEN" },
+        orderBy: { year: "desc" },
+        select: { id: true },
+      });
+      // A failure here is NOT swallowed. The import is already committed and
+      // the batch is spent, so re-submitting the file cannot fix it; the
+      // honest answer is to say enrolment is the part that failed and point at
+      // the action that retries it, rather than report a clean import and
+      // leave the new employees invisible — which is the original bug.
+      let participantsEnrolled = 0;
+      let participantsPending = 0;
+      if (open) {
+        try {
+          // Bounded, because this runs inside the request that just spent most
+          // of its 60s on the import transaction. Whatever is left over is not
+          // lost: the count comes back, HR is told, and "Enrol missing
+          // employees" finishes it with the same idempotent call.
+          const result = await enrolParticipants(open.id, { limit: ENROL_LIMIT_PER_IMPORT });
+          participantsEnrolled = result.added;
+          participantsPending = result.remaining;
+        } catch {
+          return err(
+            "The employees were imported successfully, but enrolling them into the open cycle " +
+              "failed. Nothing is lost and the import does not need re-running — use " +
+              "\u201cEnrol missing employees\u201d on the performance cycle to finish it.",
+            500,
+          );
+        }
+      }
+
+      return ok({ ...result, participantsEnrolled, participantsPending });
     } catch (error) {
       if (error instanceof ImportFileError) return err(error.message, 422);
       // Every ImportConflictError message is written for the operator: the batch

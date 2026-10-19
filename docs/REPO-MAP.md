@@ -46,7 +46,7 @@
 - app/api/bonus/route.ts  [GET]
 - app/api/calibration/route.ts  [GET,POST,PUT]
 - app/api/cycles/[id]/participants/[participantId]/approve/route.ts  [POST]
-- app/api/cycles/[id]/participants/route.ts  [GET]
+- app/api/cycles/[id]/participants/route.ts  [GET,POST]
 - app/api/cycles/[id]/policy/route.ts  [GET,PATCH]
 - app/api/cycles/[id]/route.ts  [GET,PUT]
 - app/api/cycles/[id]/stages/route.ts  [PUT]
@@ -165,7 +165,7 @@
 - lib/pms/bonus.ts: DAYS_IN_YEAR, ELIGIBILITY_MONTHS, inclusiveDays, WorkDaysInput, workDays, effectiveServiceMonths, isBonusEligible, BonusResult, computeBonus
 - lib/pms/calibration.ts: BANDS, Distribution, emptyDistribution, tally, distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
-- lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, acknowledgeBlockedReason, effectiveChangeRequestStatus, approvalAcknowledgmentReason, withdrawBlockedReason, changeRequestAccessRefusal
+- lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, acknowledgeBlockedReason, effectiveChangeRequestStatus, approvalAcknowledgmentReason, withdrawBlockedReason, changeRequestAccessRefusal, stageReopensUnacknowledged
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason

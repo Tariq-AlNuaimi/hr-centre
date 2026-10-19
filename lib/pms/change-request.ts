@@ -436,3 +436,29 @@ export function changeRequestAccessRefusal(params: {
 
   return submitBlockedReason({ actor, target: employee, stage, now, goalsApprovedAt });
 }
+
+/**
+ * §5.5 × §6.2 — does moving this stage's window bring locked change requests
+ * back to life? (ADR-072 decision 3, option A, chosen by the operator.)
+ *
+ * The lock on an unacknowledged request is a function of the mid-year deadline,
+ * so a deadline that moves has to take the lock with it. Without that, HR's
+ * documented remedy worked or did not depending on whether the overnight sweep
+ * had already materialised `NOT_ACKNOWLEDGED`: extend before the cron and the
+ * employee could still acknowledge, extend after and the request was dead and
+ * the manager had to re-raise. Same act, two outcomes, decided by timing — the
+ * one property a deadline rule must not have.
+ *
+ * Reopening is therefore not a second kind of exception. It is what makes the
+ * deadline the single thing that decides, which is exactly what §5.4 asks of it.
+ * Note what this does NOT do: it never revives a request a PERSON decided.
+ * `APPROVED`, `REJECTED` and `WITHDRAWN` are somebody's act and stay put; only
+ * the state the clock wrote is the clock's to take back.
+ */
+export function stageReopensUnacknowledged(params: { stage: StageWindow; now: Date }): boolean {
+  const { stage, now } = params;
+  if (stage.kind !== MID_YEAR_STAGE) return false;
+  // OPEN, not merely "deadline in the future": a window pushed wholesale into
+  // next month is NOT_YET_OPEN, and nobody can acknowledge inside it either.
+  return stageState(stage, now) === "OPEN";
+}

@@ -96,13 +96,24 @@ Two sub-decisions worth recording, because both are readings the specification t
    manager must re-raise. Same HR action, two outcomes, decided by cron timing — which is the one
    property a deadline rule should not have. Raised by the post-push breadth review.
 
-   Both repairs are small and they point in opposite directions, so this is Rihal's call rather
-   than the build's: either (a) the stage-update route reopens `NOT_ACKNOWLEDGED` requests whose
-   deadline now lies in the future, audited, which makes the behaviour purely deadline-driven; or
-   (b) `NOT_ACKNOWLEDGED` is confirmed as genuinely terminal, the extension form says so, and a
-   manager re-raises. **Flagged to the operator, deliberately not chosen here** — (a) revives a
-   state this ADR called terminal, and (b) leaves §5.5's remedy partly ineffective. Until it is
-   decided, HR should extend a mid-year deadline before the overnight sweep rather than after.
+   **RESOLVED 2026-10-19 — option (a), chosen by the operator.** Extending the mid-year deadline
+   reopens the requests that deadline locked. `PUT /api/cycles/[id]/stages` does the stage move and
+   the reopen in ONE transaction, because the state they exist to prevent is exactly a new deadline
+   sitting above requests that are still dead. HR is the audit actor on both writes, so an
+   extension and the requests it revived read as one decision by one person, and the confirmation
+   names the count rather than leaving HR to discover it.
+
+   The alternative, (b) — confirm `NOT_ACKNOWLEDGED` as genuinely terminal and have the manager
+   re-raise — was rejected because it leaves §5.5's remedy half-effective while keeping the timing
+   dependence that made this a defect in the first place.
+
+   **What reopening is NOT.** It is not a second exception alongside HR's override. It is what
+   makes the deadline the single thing that decides, which is what §5.4 asks of it. Only the state
+   the CLOCK wrote is the clock's to take back: `APPROVED`, `REJECTED` and `WITHDRAWN` are a
+   person's act and are never revived, and only the `MID_YEAR` stage can reopen anything, because
+   only its deadline locks a change request. `stageReopensUnacknowledged` requires the stage to be
+   `OPEN`, not merely to have a future deadline — a window pushed wholesale into next month is
+   `NOT_YET_OPEN`, and nobody can acknowledge inside that either.
 
 ## Consequences
 

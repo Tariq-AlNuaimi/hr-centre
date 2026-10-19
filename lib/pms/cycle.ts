@@ -127,7 +127,10 @@ export function canRunCycle(actor: PmsActor): boolean {
  * leaves mid-cycle keeps the participant row they already had — this only
  * governs who gets added.
  */
-export async function enrolParticipants(cycleId: string): Promise<{ added: number }> {
+export async function enrolParticipants(
+  cycleId: string,
+  options?: { limit?: number },
+): Promise<{ added: number; remaining: number }> {
   const [employees, existing] = await Promise.all([
     prisma.employee.findMany({ where: { status: "ACTIVE" }, select: { id: true } }),
     prisma.cycleParticipant.findMany({ where: { cycleId }, select: { employeeId: true } }),
@@ -135,16 +138,24 @@ export async function enrolParticipants(cycleId: string): Promise<{ added: numbe
 
   const enrolled = new Set(existing.map((p) => p.employeeId));
   const missing = employees.filter((e) => !enrolled.has(e.id));
-  if (missing.length === 0) return { added: 0 };
+  if (missing.length === 0) return { added: 0, remaining: 0 };
+
+  // `limit` exists because this is now reachable from a REQUEST, not only from
+  // the one-off cycle-open click. Each row is its own audited create, so a
+  // thousand joiners is a thousand round trips, and a route that runs out of
+  // time mid-way returns nothing useful to the person waiting on it. Bounding
+  // it turns that into visible, resumable progress: the caller is told what is
+  // left and the same idempotent call finishes the job.
+  const batch = options?.limit === undefined ? missing : missing.slice(0, options.limit);
 
   // One row at a time rather than createMany: the audit extension records a
   // per-row CREATE, and `no-unaudited-bulk-write` exists to stop exactly the
   // shortcut that would leave enrolment invisible in the audit trail.
-  for (const employee of missing) {
+  for (const employee of batch) {
     await prisma.cycleParticipant.create({
       data: { cycleId, employeeId: employee.id },
       select: { id: true },
     });
   }
-  return { added: missing.length };
+  return { added: batch.length, remaining: missing.length - batch.length };
 }
