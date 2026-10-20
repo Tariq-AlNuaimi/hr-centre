@@ -834,7 +834,14 @@
         }
       },
       "myTitle": "My year-end assessment",
-      "mySubtitle": "Rate your own year against the KPIs agreed at goal setting. Your manager reviews it after you submit."
+      "mySubtitle": "Rate your own year against the KPIs agreed at goal setting. Your manager reviews it after you submit.",
+      "managerReview": "Your manager's review",
+      "notRatedYet": "Not rated yet",
+      "divergedHere": "Your manager rated this differently",
+      "divergedHelp": "Read their reason below before you sign — these are the ratings you are signing off.",
+      "yourSelfAssessment": "Your self-assessment",
+      "yourReview": "Your review",
+      "divergedHelpManager": "Your reason is shown to the employee before they sign."
     },
     "band": {
       "OUTSTANDING": "Outstanding",
