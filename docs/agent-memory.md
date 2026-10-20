@@ -34,7 +34,7 @@ tax is the ≤30-line digest, not the whole file.
 ## Digest (surfaced at SessionStart — read the full `##` section on demand)
 
 - **Durable decisions** (12): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next on 16.4.2 for security currency (ADR-071), Babel React Compiler kept + Rust port off; /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
-- **Gotchas — deploy, env & CI** (12): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
+- **Gotchas — deploy, env & CI** (13): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (6): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (10): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
@@ -125,6 +125,11 @@ tax is the ≤30-line digest, not the whole file.
 
 ## Gotchas — deploy, env & CI
 
+- 2026-10-20 — **A PR merged from this session does not deploy: Vercel blocks on the merge commit's
+  AUTHOR** ("Git author <account> must have access to the project"). The API authors the merge as
+  the caller, who is not in the Vercel team: production is refused while the PR's own preview
+  (authored by a member) deploys fine — `main` moves, the site stays on the old build. Redeploy
+  from the dashboard, or add the account. CHECK THE STATUS AFTER EVERY MERGE: a merge is not a deploy.
 - 2026-08-26 — **Never start dockerd to run `test:integration` here — export `DATABASE_URL` instead.**
   The runner prefers a real URL, else an ephemeral container; with a daemon up and no URL it runs
   against a FRESH UNSEEDED database and 83 of 95 tests fail like real regressions. (`make db-up`
