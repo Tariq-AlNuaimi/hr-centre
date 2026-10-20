@@ -23,6 +23,8 @@ export interface Task {
   titleKey: string;
   titleParams?: Record<string, string>;
   detailKey: string;
+  /** Values for a detail line that counts something (e.g. "3 of 5 rated"). */
+  detailParams?: Record<string, string | number>;
   actionKey: string;
   href: string;
   /** Lower sorts first. Stage urgency dominates; task kind breaks the tie. */
@@ -221,4 +223,80 @@ export function buildThreeSixtyTasks(params: {
     });
   }
   return tasks;
+}
+
+/** What `/api/year-end/me` tells My Tasks. A subset of the screen's payload. */
+export type YearEndTaskState = {
+  participant: { id: string } | null;
+  stage: {
+    deadline: string;
+    state: "NOT_YET_OPEN" | "OPEN" | "LOCKED";
+  } | null;
+  kpis: readonly { id: string }[];
+  state?: { kpiCount: number; employeeRated: number };
+  signedParties?: readonly ("EMPLOYEE" | "MANAGER")[];
+  goalSettingExempt?: boolean;
+  blockedReason?: string | null;
+};
+
+/**
+ * §7.1's first step, as a card on the home page.
+ *
+ * This is the thing the year-end nav comment and the `/year-end` refusal copy
+ * both PROMISED and neither delivered: "your own assessment reaches you through
+ * My Tasks" was written against a My Tasks that only ever built goal-setting
+ * and 360 cards. An employee whose year-end window was open had nothing
+ * anywhere telling them so.
+ *
+ * Deliberately quiet in three cases, because a task nobody can act on is worse
+ * than no task — it is a standing accusation:
+ *   - C-Level (§8.3) skip self-assessment entirely;
+ *   - a stage that has not opened yet is not yet anyone's move;
+ *   - a signed assessment is finished, and §7.1's next step is the manager's.
+ *
+ * A LOCKED stage still shows, overdue: the deadline passing does not mean the
+ * work stopped mattering, and §5.5's ladder is already escalating it.
+ */
+export function buildYearEndTasks(params: {
+  mine: YearEndTaskState | null | undefined;
+  href: string;
+  nowMs: number | null;
+}): Task[] {
+  const { mine, href, nowMs } = params;
+  if (!mine?.participant || !mine.stage) return [];
+  if (mine.goalSettingExempt) return [];
+  if (mine.stage.state === "NOT_YET_OPEN") return [];
+  if (mine.kpis.length === 0) return [];
+  if (mine.signedParties?.includes("EMPLOYEE")) return [];
+
+  const rated = mine.state?.employeeRated ?? 0;
+  const total = mine.state?.kpiCount ?? mine.kpis.length;
+
+  const dueMs = new Date(mine.stage.deadline).getTime();
+  const tone: TaskTone =
+    mine.stage.state === "LOCKED"
+      ? "overdue"
+      : nowMs !== null && dueMs - nowMs <= DUE_SOON_MS
+        ? "dueSoon"
+        : "open";
+
+  return [
+    {
+      key: "year-end:self",
+      titleKey: "yearEndSelfTitle",
+      titleParams: {},
+      // Started or not is the difference between "do this" and "finish this",
+      // and an employee part-way through a set should be told which.
+      detailKey: rated === 0 ? "yearEndSelfStart" : "yearEndSelfResume",
+      detailParams: { rated, total },
+      actionKey: rated === 0 ? "yearEndSelfAction" : "yearEndSelfResumeAction",
+      href,
+      rank: STAGE_RANK[tone],
+      // The screen explains a refused precondition in full; the card carries it
+      // so nobody clicks through to find out.
+      blockedReason: mine.blockedReason ?? null,
+      tone,
+      dueAt: mine.stage.deadline,
+    },
+  ];
 }

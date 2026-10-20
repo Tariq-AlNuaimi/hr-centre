@@ -66,7 +66,9 @@ import {
   type Task,
   type TaskTone,
   buildThreeSixtyTasks,
+  buildYearEndTasks,
   type ThreeSixtyTaskRow,
+  type YearEndTaskState,
 } from "@/lib/pms/tasks";
 
 function useNowMs(): number | null {
@@ -190,7 +192,9 @@ function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: Goa
           </span>
           <Badge variant={TONE_VARIANT[rowTone]}>{dueLabel}</Badge>
         </div>
-        <p className="max-w-prose text-xs text-muted-foreground">{t(task.detailKey)}</p>
+        <p className="max-w-prose text-xs text-muted-foreground">
+          {t(task.detailKey, task.detailParams)}
+        </p>
         {/* The server's own sentence, quoted: it names WHICH rule closed the
             door (§4.2 / §5.4 / §5.1). */}
         {task.blockedReason ? (
@@ -455,11 +459,25 @@ export function MyTasksOversight() {
     enabled: !!actor?.employeeId,
   });
 
+  // §7.1 — the employee's own year-end self-assessment. Its own read, for the
+  // same reason the 360 one is: it is driven by the caller's participation, not
+  // by the goal-setting roster, which a plain employee never fetches at all.
+  const myYearEnd = useQuery({
+    queryKey: ["pms", "year-end", "me"],
+    queryFn: () => apiClient.get<YearEndTaskState>("/api/year-end/me"),
+    enabled: !!actor?.employeeId,
+  });
+
   const tasks = [
     ...kpiTasks,
     ...buildThreeSixtyTasks({
       assignments: myThreeSixty.data?.assignments ?? [],
       hrefFor: (a) => `/${locale}/three-sixty/assignments/${a.id}`,
+      nowMs,
+    }),
+    ...buildYearEndTasks({
+      mine: myYearEnd.data,
+      href: `/${locale}/year-end`,
       nowMs,
     }),
   ].sort((a, b) => a.rank - b.rank);

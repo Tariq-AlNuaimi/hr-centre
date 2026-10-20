@@ -101,6 +101,7 @@
 - app/api/users/platform-admins/route.ts  [GET]
 - app/api/users/route.ts  [GET,POST]
 - app/api/year-end-signoffs/route.ts  [POST]
+- app/api/year-end/me/route.ts  [GET]
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
@@ -194,12 +195,13 @@
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/status-query.ts: participantStatuses
 - lib/pms/status.ts: StepState, ParticipantStatusInput, ParticipantStatus, goalSettingState, yearEndState, outstandingLabel, deriveStatus, StageTally, emptyTally, completion, tallyBy, StageProgress, stageProgress, awaitingManager
-- lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks, ThreeSixtyTaskRow, buildThreeSixtyTasks
+- lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks, ThreeSixtyTaskRow, buildThreeSixtyTasks, YearEndTaskState, buildYearEndTasks
 - lib/pms/three-sixty-answer.ts: AnswerRefusal, answerBlockedReason
 - lib/pms/three-sixty-assign.ts: projectPeers, peerPoolFor, PlannedAssignment, planAssignments
 - lib/pms/three-sixty-scale.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, isAnswerScore
 - lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, MIN_FORMS_FOR_COMMENTS, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
+- lib/pms/year-end-select.ts: YEAR_END_KPI_SELECT, YEAR_END_KPI_ORDER, SerializedYearEndKpi, serializeYearEndKpis
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
 - lib/prisma/audit-extension.ts: SCRUB_FIELDS, scrub, recordAudit, projectUpdate, computeChanges, auditExtension
 - lib/prisma/recyclable.ts: RecyclableRecord, RECYCLABLE_ENTITY_TYPES, recyclableAccessor, RecyclableDelegate, recyclableClient, permanentlyDelete
@@ -264,6 +266,7 @@
 - components/pms/MidYearRoster.tsx
 - components/pms/MyMidYear.tsx
 - components/pms/MyTasksOversight.tsx
+- components/pms/MyYearEnd.tsx
 - components/pms/NotificationList.tsx
 - components/pms/ParticipantList.tsx
 - components/pms/ProjectMap.tsx
