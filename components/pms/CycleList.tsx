@@ -67,6 +67,8 @@ interface CycleListProps {
   onEditDeadlines: (cycle: PerformanceCycle) => void;
   /** §6.2 / §7.1 / §8.7 — the three answers the spec leaves to Rihal. */
   onEditPolicy: (cycle: PerformanceCycle) => void;
+  /** §3.5 — pull in employees who arrived after the cycle opened. */
+  onEnrolMissing: (cycle: PerformanceCycle) => void;
   onCreate: () => void;
 }
 
@@ -79,6 +81,7 @@ export function CycleList({
   onCloseCycle,
   onEditDeadlines,
   onEditPolicy,
+  onEnrolMissing,
   onCreate,
 }: CycleListProps) {
   const t = useTranslations("pms");
@@ -198,6 +201,23 @@ export function CycleList({
                   something the route will refuse. */}
               {record.status === "DRAFT" ? t("cycles.policyAction") : t("cycles.policyViewAction")}
             </Button>
+
+            {/* §3.5 — OPEN only, because a DRAFT cycle enrols everyone the
+                moment it opens and a CLOSED year must stop moving. This is the
+                manual counterpart to the import's own enrolment: it exists for
+                the import that applied while enrolment failed, and for people
+                who arrived by some other route. Idempotent, so pressing it
+                twice is not a thing anyone has to worry about. */}
+            {record.status === "OPEN" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => onEnrolMissing(record)}
+              >
+                {t("cycles.enrolMissingAction")}
+              </Button>
+            ) : null}
 
             {record.status === "OPEN" ? (
               <ConfirmAction

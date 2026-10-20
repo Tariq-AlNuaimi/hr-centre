@@ -15,6 +15,7 @@ import { resolveActor } from "@/lib/pms/actor";
 import {
   MID_YEAR_STAGE,
   changeRequestAccessRefusal,
+  effectiveChangeRequestStatus,
   withdrawBlockedReason,
 } from "@/lib/pms/change-request";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
@@ -56,6 +57,15 @@ const REQUEST_FIELDS = {
   requestedByEmployeeId: true,
   requestedByEmployee: { select: { name: true } },
   decidedByEmployee: { select: { name: true } },
+  // §6.2 — HR decides WITH the acknowledgment in front of them, which is the
+  // whole point of putting the employee in the middle. These four were missing
+  // here while the employee's own screen read them through
+  // `CHANGE_REQUEST_SELECT`, so HR's screen was deciding blind: the one reader
+  // that most needed the state was the one not selecting it.
+  acknowledgedAt: true,
+  acknowledgedByEmployee: { select: { name: true } },
+  acknowledgmentOverridden: true,
+  overrideReason: true,
   edits: {
     select: {
       kpiId: true,
@@ -73,7 +83,7 @@ const REQUEST_FIELDS = {
 
 type RequestRow = {
   id: string;
-  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "NOT_ACKNOWLEDGED";
   rationale: string;
   requestedAt: Date;
   decidedAt: Date | null;
@@ -81,6 +91,10 @@ type RequestRow = {
   requestedByEmployeeId: string;
   requestedByEmployee: { name: string } | null;
   decidedByEmployee: { name: string } | null;
+  acknowledgedAt: Date | null;
+  acknowledgedByEmployee: { name: string } | null;
+  acknowledgmentOverridden: boolean;
+  overrideReason: string | null;
   edits: {
     kpiId: string;
     description: string | null;
@@ -93,17 +107,36 @@ type RequestRow = {
   }[];
 };
 
-/** Decimals cross into the client as STRINGS — §5.3 compares against exactly 100. */
-function toReview(row: RequestRow): ReviewRequest {
+/**
+ * Decimals cross into the client as STRINGS — §5.3 compares against exactly 100.
+ *
+ * `effectiveStatus` is computed HERE, on the server, from the same function the
+ * employee's screen uses. The raw column still reads `PENDING` after the mid-year
+ * deadline closes an unacknowledged request, because the thing that closed it was
+ * the absence of an action and no writer ran; `cycle-sweep` materialises it later.
+ * A screen that trusted the column would therefore offer Approve on a request the
+ * API now refuses — the dead control this flow keeps producing.
+ */
+function toReview(row: RequestRow, stage: StageWindow | null, now: Date): ReviewRequest {
   return {
     id: row.id,
     status: row.status,
+    effectiveStatus: effectiveChangeRequestStatus({
+      status: row.status,
+      acknowledgedAt: row.acknowledgedAt,
+      stage,
+      now,
+    }),
     rationale: row.rationale,
     requestedAt: row.requestedAt.toISOString(),
     requestedByName: row.requestedByEmployee?.name ?? null,
     decidedByName: row.decidedByEmployee?.name ?? null,
     decidedAt: row.decidedAt?.toISOString() ?? null,
     decisionReason: row.decisionReason,
+    acknowledgedAt: row.acknowledgedAt?.toISOString() ?? null,
+    acknowledgedByName: row.acknowledgedByEmployee?.name ?? null,
+    acknowledgmentOverridden: row.acknowledgmentOverridden,
+    overrideReason: row.overrideReason,
     edits: row.edits.map((edit) => ({
       ...edit,
       weightage: edit.weightage === null ? null : edit.weightage.toString(),
@@ -208,8 +241,17 @@ export default async function MidYearParticipantPage({
     refusal === null ? null : refusal.status === 404 ? t("changeRequest.notYours") : refusal.reason;
 
   const rows = participant.changeRequests as unknown as RequestRow[];
-  const pending = rows.find((r) => r.status === "PENDING") ?? null;
-  const decided = rows.filter((r) => r.status !== "PENDING");
+  // Derived, not raw: a request the deadline closed is history, not the live
+  // question, even on the run before the sweep materialises it.
+  const effective = (r: RequestRow) =>
+    effectiveChangeRequestStatus({
+      status: r.status,
+      acknowledgedAt: r.acknowledgedAt,
+      stage,
+      now,
+    });
+  const pending = rows.find((r) => effective(r) === "PENDING") ?? null;
+  const decided = rows.filter((r) => effective(r) !== "PENDING");
 
   const versions = await prisma.kpiVersion.findMany({
     where: { kpiId: { in: participant.kpis.map((k) => k.id) } },
@@ -291,8 +333,13 @@ export default async function MidYearParticipantPage({
         }
         kpis={kpis}
         versions={versionRows}
-        pendingRequest={pending ? toReview(pending) : null}
-        history={decided.map(toReview)}
+        pendingRequest={pending ? toReview(pending, stage, now) : null}
+        history={decided.map((row) => toReview(row, stage, now))}
+        // §6.2 — HR's override is an exception for an employee unreachable
+        // WITHIN the window, so the input for it exists only while the window
+        // is open. Past the deadline the override is gone by design (ADR-072):
+        // offering the field there would promise a decision the API refuses.
+        stageOpen={stage !== null && stageState(stage, now) === "OPEN"}
         // §8.3 is its own branch in the board — a categorical absence, not a
         // blocked action — so an exempt participant renders the exemption.
         submitBlockedReason={exempt ? null : submitReason}

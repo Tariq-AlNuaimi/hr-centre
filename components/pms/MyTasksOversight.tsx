@@ -93,7 +93,7 @@ const TONE_VARIANT: Record<TaskTone, BadgeProps["variant"]> = {
 };
 
 /** The queries behind both sections, kept in one place so they stay in step. */
-function useGoalSettingSnapshot() {
+function useGoalSettingSnapshot(wantsEntitledCount: boolean) {
   const cycles = useQuery({
     queryKey: ["pms", "cycles"],
     queryFn: () => apiClient.get<PerformanceCycle[]>("/api/cycles"),
@@ -121,6 +121,22 @@ function useGoalSettingSnapshot() {
     enabled: openCycle !== null,
   });
 
+  // The oversight cards claim ENTITLEMENT — "every participant in the cycle",
+  // "your whole chain" — which is a different question from `scope=mine` above,
+  // and answering it with the task scope was wrong by a wide margin: an HR Super
+  // Admin who line-manages nobody has exactly one assigned set, so the card that
+  // says "the whole organisation" read "1 Participants in view" against 37.
+  //
+  // Omitting `scope` is precisely the §4.1/§4.2 visibility set the cards
+  // describe, and `pageSize=1` buys the `total` without the rows: the count is
+  // the whole point of the read, the page is not.
+  const entitledCount = useQuery({
+    queryKey: ["pms", "home-entitled-count", openCycle?.id],
+    queryFn: () =>
+      apiClient.get<RosterResponse>(`/api/cycles/${openCycle?.id}/participants?page=1&pageSize=1`),
+    enabled: openCycle !== null && wantsEntitledCount,
+  });
+
   const byId = new Map<string, ParticipantRow>();
   for (const row of roster.data?.data ?? []) {
     byId.set(row.participantId, row);
@@ -129,13 +145,20 @@ function useGoalSettingSnapshot() {
   return {
     cycles,
     roster,
+    entitledCount,
     openCycle,
     rows: [...byId.values()],
     isLoading: cycles.isLoading || (openCycle !== null && roster.isLoading),
-    isError: cycles.isError || roster.isError,
+    // The count's failure is surfaced, not swallowed: hiding the number silently is
+    // the same dishonest-state failure the count bug itself was.
+    isError: cycles.isError || roster.isError || entitledCount.isError,
     refetch: () => {
       cycles.refetch();
       roster.refetch();
+      // `refetch()` ignores `enabled`, so re-check the predicate by hand — otherwise
+      // Retry fires a request for a viewer with no card to show it in, and with no
+      // open cycle it would hit `/api/cycles/undefined/participants`.
+      if (openCycle !== null && wantsEntitledCount) entitledCount.refetch();
     },
   };
 }
@@ -359,7 +382,7 @@ function OversightBody({
           actionLabel={t("chainAction")}
           href={`/${locale}/goal-setting`}
           value={visible}
-          valueLabel={t("participantsCount")}
+          valueLabel={t("participantsCount", { count: visible ?? 0 })}
         />
       ) : null}
 
@@ -371,7 +394,7 @@ function OversightBody({
           actionLabel={t("orgAction")}
           href={`/${locale}/admin/cycles`}
           value={visible}
-          valueLabel={t("participantsCount")}
+          valueLabel={t("participantsCount", { count: visible ?? 0 })}
         />
       ) : null}
 
@@ -383,7 +406,7 @@ function OversightBody({
           title={t("readOnlyTitle")}
           body={t("readOnlyBody")}
           value={visible}
-          valueLabel={t("participantsCount")}
+          valueLabel={t("participantsCount", { count: visible ?? 0 })}
         />
       ) : null}
 
@@ -403,7 +426,12 @@ export function MyTasksOversight() {
   const locale = useLocale();
   const nowMs = useNowMs();
   const { actor, capabilities, isLoading: actorLoading, isError: actorError } = usePmsActor();
-  const snapshot = useGoalSettingSnapshot();
+  // Only the three capability-gated oversight cards below display a count, so only
+  // they are worth a request for one. A plain employee sees the directory card alone
+  // and pays nothing.
+  const snapshot = useGoalSettingSnapshot(
+    capabilities.lineManager || capabilities.orgWide || capabilities.readOnly,
+  );
 
   const stage = snapshot.roster.data?.stage ?? null;
   const tone = toneForStage(stage, nowMs);
@@ -474,7 +502,7 @@ export function MyTasksOversight() {
         <OversightBody
           capabilities={capabilities}
           locale={locale}
-          visible={rosterData?.total ?? null}
+          visible={snapshot.entitledCount.data?.total ?? null}
         />
       </SectionCard>
     </>

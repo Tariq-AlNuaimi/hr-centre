@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { Prisma } from "../../generated/prisma/client";
 import {
@@ -8,8 +9,12 @@ import {
   approvalBlockedReason,
   changeRequestAccessRefusal,
   decideBlockedReason,
+  acknowledgeBlockedReason,
+  effectiveChangeRequestStatus,
+  approvalAcknowledgmentReason,
   fieldChanges,
   proposedWeightageTotal,
+  stageReopensUnacknowledged,
   submitBlockedReason,
   withdrawBlockedReason,
   type KpiEdit,
@@ -17,6 +22,7 @@ import {
 } from "../../lib/pms/change-request";
 import type { StageWindow } from "../../lib/pms/cycle";
 import type { PmsActor } from "../../lib/pms/permissions";
+import { decideChangeRequestSchema } from "../../lib/validations/change-request";
 
 /**
  * §6 — mid-year change requests.
@@ -367,4 +373,319 @@ test("§2 a cycle that is not running takes no change requests, and says which s
 test("the gate still applies §5.1 and §5.4 rather than stopping at the cycle status", () => {
   assert.match(gate({ goalsApprovedAt: null })?.reason as string, /no HR-approved baseline/i);
   assert.match(gate({ now: AFTER })?.reason as string, /deadline has passed/i);
+});
+
+// --- UAT Scenario C — the employee acknowledges before HR decides ------------
+//
+// The spec change that introduced these rules replaced "manager asks, HR
+// decides, employee is never involved". The load-bearing assertion here is the
+// mirror of the one at the top of this file: an UNACKNOWLEDGED request must
+// never be able to change a KPI once the mid-year deadline has passed. If that
+// rule is wrong, a manager can push a change through simply by waiting — which
+// is the one thing §6.2's new flow exists to prevent.
+
+const employee = actor({ employeeId: "emp", isLineManager: false });
+const chainManager = actor({ employeeId: "skip", isLineManager: true });
+
+test("§6.2 only the employee may acknowledge their own request", () => {
+  assert.equal(
+    acknowledgeBlockedReason({
+      actor: employee,
+      subjectEmployeeId: "emp",
+      status: "PENDING",
+      acknowledgedAt: null,
+      stage: MID_YEAR,
+      now: DURING,
+    }),
+    null,
+  );
+});
+
+test("§6.2 a manager cannot acknowledge on their report's behalf", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: actor(), // the line manager who raised it
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 403);
+  assert.match(String(blocked?.reason), /only the employee/i);
+});
+
+test("§4.1 not even HR may acknowledge for the employee — HR has the override instead", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: hr,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 403);
+});
+
+test("§4.2 a view-only chain manager cannot acknowledge", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: chainManager,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 403);
+});
+
+test("§6.2 acknowledgment happens once", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: employee,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.equal(blocked?.status, 409);
+});
+
+test("§6.2 there is nothing to acknowledge on a request already decided", () => {
+  for (const status of ["APPROVED", "REJECTED", "WITHDRAWN"] as const) {
+    const blocked = acknowledgeBlockedReason({
+      actor: employee,
+      subjectEmployeeId: "emp",
+      status,
+      acknowledgedAt: null,
+      stage: MID_YEAR,
+      now: DURING,
+    });
+    assert.equal(blocked?.status, 409, status);
+  }
+});
+
+test("§5.4 the deadline locks acknowledgment too — it is a hard lock, not a nudge", () => {
+  const blocked = acknowledgeBlockedReason({
+    actor: employee,
+    subjectEmployeeId: "emp",
+    status: "PENDING",
+    acknowledgedAt: null,
+    stage: MID_YEAR,
+    now: AFTER,
+  });
+  assert.equal(blocked?.status, 409);
+  assert.match(String(blocked?.reason), /deadline/i);
+});
+
+// --- the derived lock --------------------------------------------------------
+
+test("an unacknowledged request past the deadline READS as NOT_ACKNOWLEDGED", () => {
+  assert.equal(
+    effectiveChangeRequestStatus({
+      status: "PENDING",
+      acknowledgedAt: null,
+      stage: MID_YEAR,
+      now: AFTER,
+    }),
+    "NOT_ACKNOWLEDGED",
+  );
+});
+
+test("the derived lock never rewrites a status that was actually decided", () => {
+  for (const status of ["APPROVED", "REJECTED", "WITHDRAWN"] as const) {
+    assert.equal(
+      effectiveChangeRequestStatus({ status, acknowledgedAt: null, stage: MID_YEAR, now: AFTER }),
+      status,
+      status,
+    );
+  }
+});
+
+test("an acknowledged request past the deadline is still PENDING for HR to decide", () => {
+  assert.equal(
+    effectiveChangeRequestStatus({
+      status: "PENDING",
+      acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+      stage: MID_YEAR,
+      now: AFTER,
+    }),
+    "PENDING",
+  );
+});
+
+// --- the approval gate + HR's override ---------------------------------------
+
+test("§6.2 an acknowledged request needs no override reason", () => {
+  assert.equal(
+    approvalAcknowledgmentReason({
+      acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+      overrideReason: null,
+      stage: MID_YEAR,
+      now: DURING,
+    }),
+    null,
+  );
+});
+
+test("§6.2 approving an UNACKNOWLEDGED request without a reason is refused", () => {
+  const refusal = approvalAcknowledgmentReason({
+    acknowledgedAt: null,
+    overrideReason: null,
+    stage: MID_YEAR,
+    now: DURING,
+  });
+  assert.match(String(refusal), /acknowledg/i);
+});
+
+test("a blank override reason is not a reason", () => {
+  for (const blank of ["", "   ", "\n\t"]) {
+    assert.ok(
+      approvalAcknowledgmentReason({
+        acknowledgedAt: null,
+        overrideReason: blank,
+        stage: MID_YEAR,
+        now: DURING,
+      }),
+      JSON.stringify(blank),
+    );
+  }
+});
+
+test("§6.2 HR MAY override an unacknowledged request, with a reason, while the stage is open", () => {
+  assert.equal(
+    approvalAcknowledgmentReason({
+      acknowledgedAt: null,
+      overrideReason: "Employee on extended medical leave; change agreed with their director.",
+      stage: MID_YEAR,
+      now: DURING,
+    }),
+    null,
+  );
+});
+
+test("§5.4 after the deadline NOT EVEN an override approves it — no acknowledgment, no change", () => {
+  const refusal = approvalAcknowledgmentReason({
+    acknowledgedAt: null,
+    overrideReason: "We really do want this one.",
+    stage: MID_YEAR,
+    now: AFTER,
+  });
+  assert.match(String(refusal), /deadline|did not acknowledge/i);
+});
+
+test("an acknowledged request is still approvable after the deadline — HR owns the cycle", () => {
+  assert.equal(
+    approvalAcknowledgmentReason({
+      acknowledgedAt: new Date("2027-06-21T00:00:00Z"),
+      overrideReason: null,
+      stage: MID_YEAR,
+      now: AFTER,
+    }),
+    null,
+  );
+});
+
+// --- the boundary, where HR's override is typed ------------------------------
+
+test("§6.2 the override reason is its own field, not a second meaning for `reason`", () => {
+  const ok = decideChangeRequestSchema.safeParse({
+    decision: "APPROVE",
+    overrideReason: "Employee on extended leave; agreed with their director.",
+  });
+  assert.equal(ok.success, true);
+  if (ok.success) assert.equal(ok.data.reason, undefined);
+});
+
+test("§6.2 a rejection still demands its own reason, unchanged by the new field", () => {
+  const missing = decideChangeRequestSchema.safeParse({ decision: "REJECT" });
+  assert.equal(missing.success, false);
+});
+
+test("a rejection changes nothing, so it cannot carry an override", () => {
+  const nonsense = decideChangeRequestSchema.safeParse({
+    decision: "REJECT",
+    reason: "Not this year.",
+    overrideReason: "Overriding a rejection is not a thing.",
+  });
+  assert.equal(nonsense.success, false);
+});
+
+// --- the override may not outrun the acknowledgment --------------------------
+
+test("§6.2 an override approval is claimed against the acknowledgment, not just the status", () => {
+  // Source-level, like the policy-consumer guard, and for the same reason: the
+  // failure is neither a type error nor a throw in any pure function.
+  //
+  // `overriding` is derived from a read taken BEFORE the decide transaction
+  // opens. The employee acknowledging in that window is not a far-fetched
+  // interleaving — it is two people on two screens, which is the ordinary case
+  // this flow was built for. A claim predicated on `status: "PENDING"` alone
+  // would then stamp `acknowledgmentOverridden: true` onto a request that WAS
+  // acknowledged: a false row in the one history §6.2 exists to keep honest.
+  //
+  // `kpi_change_requests_override_excludes_ack_check` refuses that row at the
+  // database, so the record cannot actually lie — but without the predicate the
+  // race reaches HR as a 500 instead of "reload, they just acknowledged", and
+  // the correctness of the whole path would rest on a CHECK constraint named in
+  // a migration rather than on the claim that performs the write.
+  const src = readFileSync("app/api/kpi-change-requests/[id]/decide/route.ts", "utf8");
+  const approvalClaim = src.slice(src.indexOf('status: "APPROVED"') - 600);
+  assert.ok(
+    /acknowledgedAt:\s*overriding\s*\?\s*null\s*:\s*\{\s*not:\s*null\s*\}/.test(approvalClaim),
+    "the approval claim must constrain acknowledgedAt to the state the consent gate was " +
+      "evaluated against, or an override can land on a request the employee acknowledged",
+  );
+});
+
+// --- §5.5 × §6.2 — extending a deadline takes the lock back ------------------
+//
+// ADR-072 decision 3, option A (operator's choice, 2026-10-19). The defect this
+// closes is not that a locked request stays locked — it is that it stayed locked
+// or did not depending on whether the overnight sweep had run, so HR's §5.5
+// remedy behaved differently at 9pm and at 9am for the same act.
+
+test("§5.5 extending the mid-year deadline into the future reopens the lock", () => {
+  // The same window, re-opened: `now` is inside it again.
+  assert.equal(stageReopensUnacknowledged({ stage: MID_YEAR, now: DURING }), true);
+});
+
+test("§5.5 a deadline still in the past reopens nothing", () => {
+  // HR edited the stage but did not actually extend past `now` — the lock holds.
+  assert.equal(stageReopensUnacknowledged({ stage: MID_YEAR, now: AFTER }), false);
+});
+
+test("§5.5 a window pushed wholesale into the FUTURE does not reopen either", () => {
+  // The trap in reading this as "deadline > now": a stage that has not opened
+  // yet has a future deadline too, and nobody can acknowledge inside it. The
+  // predicate asks for OPEN, which is the state in which acknowledging works.
+  const notYetOpen = new Date("2027-05-01T00:00:00Z");
+  assert.equal(stageReopensUnacknowledged({ stage: MID_YEAR, now: notYetOpen }), false);
+});
+
+test("§5.5 moving a goal-setting or year-end deadline never touches §6.2's lock", () => {
+  // Only the MID_YEAR deadline is what locks a change request, so only moving
+  // THAT one can unlock one. A PUT carries up to three stages at once and the
+  // other two must not reach across.
+  for (const kind of ["GOAL_SETTING", "YEAR_END"] as const) {
+    assert.equal(
+      stageReopensUnacknowledged({ stage: { ...MID_YEAR, kind }, now: DURING }),
+      false,
+      `${kind} must not reopen a mid-year change request`,
+    );
+  }
+});
+
+test("reopening is confined to what the CLOCK closed, never to what a person decided", () => {
+  // Guards the route's predicate, which is where this invariant actually lives:
+  // a decided request is somebody's act and an extension must not revive it.
+  const src = readFileSync("app/api/cycles/[id]/stages/route.ts", "utf8");
+  const claim = src.slice(src.indexOf("kpiChangeRequest.findMany"));
+  assert.ok(
+    /status:\s*"NOT_ACKNOWLEDGED"/.test(claim),
+    "the reopen must select ONLY NOT_ACKNOWLEDGED — APPROVED, REJECTED and WITHDRAWN are decisions",
+  );
+  assert.ok(
+    /acknowledgedAt:\s*null/.test(claim),
+    "the reopen must also require an unacknowledged row",
+  );
 });

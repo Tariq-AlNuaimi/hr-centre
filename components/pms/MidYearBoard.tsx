@@ -44,6 +44,8 @@ export interface MidYearBoardProps {
   submitBlockedReason: string | null;
   canDecide: boolean;
   canWithdraw: boolean;
+  /** §6.2 — whether HR's override is still available (ADR-072). */
+  stageOpen: boolean;
   goalSettingExempt: boolean;
 }
 
@@ -57,6 +59,7 @@ export function MidYearBoard({
   submitBlockedReason,
   canDecide,
   canWithdraw,
+  stageOpen,
   goalSettingExempt,
 }: MidYearBoardProps) {
   const t = useTranslations("pms.changeRequest");
@@ -108,7 +111,7 @@ export function MidYearBoard({
       t("submitFailed"),
     );
 
-  const decide = (decision: "APPROVE" | "REJECT", reason: string) =>
+  const decide = (decision: "APPROVE" | "REJECT", reason: string, overrideReason: string) =>
     run(
       async () => {
         await apiClient.post(`/api/kpi-change-requests/${pendingRequest!.id}/decide`, {
@@ -117,6 +120,11 @@ export function MidYearBoard({
           // and "" would read as a reason nobody wrote. A rejection cannot reach
           // here empty — the button is disabled and the API refuses it.
           ...(reason === "" ? {} : { reason }),
+          // §6.2's override reason is a SEPARATE field from the decision note,
+          // for the reason the schema keeps them apart: one column answering two
+          // mandatory-reason rules can be validated for neither. Sent only when
+          // there is one; the API decides whether it was needed.
+          ...(overrideReason === "" ? {} : { overrideReason }),
         });
       },
       decision === "APPROVE" ? t("approvedToast") : t("rejectedToast"),
@@ -143,6 +151,7 @@ export function MidYearBoard({
           versions={versions}
           canDecide={canDecide && serverBlocked === null}
           canWithdraw={canWithdraw && serverBlocked === null}
+          stageOpen={stageOpen}
           busy={busy}
           onDecide={decide}
           onWithdraw={withdraw}
@@ -170,6 +179,7 @@ export function MidYearBoard({
                 versions={versions}
                 canDecide={false}
                 canWithdraw={false}
+                stageOpen={stageOpen}
                 busy={busy}
                 onDecide={() => {}}
                 onWithdraw={() => {}}

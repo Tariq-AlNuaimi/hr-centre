@@ -14,8 +14,7 @@ import { resolveActor } from "@/lib/pms/actor";
 import {
   GOAL_SETTING_STAGE,
   kpiSetAccessRefusal,
-  weightageMessage,
-  weightageTotal,
+  weightageView,
   type PeriodWeightedKpi,
 } from "@/lib/pms/kpi";
 import { KPI_SELECT, kpiSetHash, serializeKpi } from "@/lib/pms/kpi-select";
@@ -256,7 +255,7 @@ export default async function KpiDraftingPage({
 
   // The set summary, computed from the same rows the board renders. The BOOLEAN
   // is what decides §5.3, here as at the API — the total is a string for display.
-  const message = weightageMessage(participant.kpis);
+  const weightage = weightageView(participant.kpis);
 
   /*
     §5.1's LOCK — the affordance `POST .../approve` never had (F11).
@@ -315,9 +314,9 @@ export default async function KpiDraftingPage({
         initialKpis={kpis}
         initialSet={{
           kpiCount: participant.kpis.length,
-          weightageTotal: weightageTotal(participant.kpis).toString(),
-          weightageComplete: message === null,
-          weightageMessage: message,
+          weightageTotal: weightage.total,
+          weightageComplete: weightage.complete,
+          weightageMessage: weightage.message,
         }}
         initialSignOff={{
           employeeSignedAt: employeeSigned?.signedAt.toISOString() ?? null,

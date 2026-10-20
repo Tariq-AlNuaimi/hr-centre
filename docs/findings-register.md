@@ -35,6 +35,27 @@ the changed surface is still **open** (un-adjudicated).
 
 <!-- newest first -->
 
+- 2026-10-19 — [scalable/high-quality] **A participant enrolled after goal-setting has locked can
+  never be scored, and one of them holds calibration and the §13.2 publish for the WHOLE cycle.**
+  §3.5's enrolment now runs after an import (so this is newly reachable, where before the joiner
+  simply never became a participant). `lib/pms/score-run.ts` skips an employee with no KPIs;
+  `lib/pms/calibration.ts` refuses calibration while `scoredCount < participantCount`; and nothing
+  anywhere deletes a `CycleParticipant`, so there is no un-enrol. The same shape applies to a joiner
+  enrolled after the 360 window left DRAFT. WHY WAIVED: the fix is a product decision about who
+  Rihal considers assessable in the year they joined, not a defect with one correct answer — the
+  options are (a) exclude late joiners from the readiness denominator, (b) give HR a per-participant
+  goal-setting window, or (c) an HR-only un-enrol, and each changes who appears in a published
+  distribution. The build must not pick that unilaterally. MITIGATED, not hidden: the escalation
+  ladder no longer penalises the manager for it (`enrolledAfterDeadline` in `lib/pms/compliance.ts`,
+  with tests), and "Enrol missing employees" warns at the moment of the click that goal setting is
+  locked and what the consequence is. Raised by the post-push breadth review; reproduced by reading
+  `calibration.ts:166` and `score-run.ts:103-131`, not against a live cycle. **ADJUDICATED by the
+  operator 2026-10-19: accepted as a known limitation for now.** The two mitigations above stand
+  (the manager is not blamed, and HR is warned at the click); the behavioural choice between (a),
+  (b) and (c) is deferred to a later decision rather than made by the build. Re-open this when a
+  real cycle first reaches calibration with a late joiner in it — that is the moment the choice
+  stops being hypothetical. — operator — status: adjudicated(2026-10-19)
+
 - 2026-08-27 — [high-quality/a11y] **CORRECTION: the 2026-08-26 axe pass audited the LOGIN PAGE, not
   the five screens it named.** The probe filled the sign-in form as soon as the DOM existed, before
   React had hydrated the controlled inputs, so the values never reached component state and the form

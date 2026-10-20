@@ -102,10 +102,25 @@ export const decideChangeRequestSchema = z
   .object({
     decision: z.enum(["APPROVE", "REJECT"]),
     reason: z.string().trim().max(4000, "The reason must be 4000 characters or fewer").optional(),
+    /**
+     * §6.2 — HR's exception: approving a change the employee never
+     * acknowledged. Its own field rather than a second meaning for `reason`,
+     * which the rejection rule above already owns; one field answering two
+     * mandatory-reason questions cannot be validated for either.
+     */
+    overrideReason: z
+      .string()
+      .trim()
+      .max(4000, "The override reason must be 4000 characters or fewer")
+      .optional(),
   })
   .refine((v) => v.decision !== "REJECT" || (v.reason !== undefined && v.reason.length > 0), {
     path: ["reason"],
     message: "A rejection must carry a reason the manager can see (§6.2)",
+  })
+  .refine((v) => v.decision !== "REJECT" || v.overrideReason === undefined, {
+    path: ["overrideReason"],
+    message: "A rejection changes nothing, so there is nothing to override (§6.2)",
   });
 
 export type CreateChangeRequestInput = z.infer<typeof createChangeRequestSchema>;

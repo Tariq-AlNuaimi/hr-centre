@@ -8,6 +8,8 @@ import { resolveActor } from "@/lib/pms/actor";
 import {
   applyEdit,
   approvalBlockedReason,
+  approvalAcknowledgmentReason,
+  MID_YEAR_STAGE,
   decideBlockedReason,
   type KpiEdit,
 } from "@/lib/pms/change-request";
@@ -19,7 +21,6 @@ import {
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { decideChangeRequestSchema } from "@/lib/validations/change-request";
-import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
 import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
 
 /**
@@ -87,7 +88,7 @@ export const POST = withRateLimit(
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
     }
-    const { decision, reason } = parsed.data;
+    const { decision, reason, overrideReason } = parsed.data;
 
     const existing = await prisma.kpiChangeRequest.findUnique({
       where: { id },
@@ -95,6 +96,7 @@ export const POST = withRateLimit(
         id: true,
         status: true,
         participantId: true,
+        acknowledgedAt: true,
         participant: {
           select: {
             employeeId: true,
@@ -102,9 +104,21 @@ export const POST = withRateLimit(
             employee: { select: { id: true } },
             kpis: { where: { deletedAt: null }, select: KPI_STATE_SELECT, take: 200 },
             // §6.2's open question — does an approved mid-year change send the
-            // set back for signature? Rihal's answer, per cycle
-            // (lib/pms/cycle-policy.ts).
-            cycle: { select: CYCLE_POLICY_SELECT },
+            // set back for signature? ANSWERED by UAT Scenario C: neither. The
+            // employee acknowledges BEFORE the decision, so there is no
+            // post-approval signature step and no policy left to read (ADR-072).
+            cycle: {
+              select: {
+                // §6.2 — the acknowledgment gate is a deadline question as much
+                // as a consent one, so the window travels with the request. The
+                // policy columns used to be selected here for the re-sign
+                // option; ADR-072 retired it and nothing reads them now.
+                stages: {
+                  where: { kind: MID_YEAR_STAGE },
+                  select: { kind: true, opensAt: true, deadline: true, graceDays: true },
+                },
+              },
+            },
           },
         },
         edits: CHANGE_REQUEST_SELECT.edits,
@@ -182,6 +196,25 @@ export const POST = withRateLimit(
 
     // --- approval -------------------------------------------------------------
 
+    // §6.2 — the CONSENT gate, before the weightage one. Two independent
+    // questions, and this is the one the spec change introduced: has the
+    // employee acknowledged, and if not, may HR override it? Past the mid-year
+    // deadline the answer is no either way — that is what makes "no
+    // acknowledgment, no change" a rule rather than a preference, and it is why
+    // waiting out the deadline is not a way to force a change through.
+    const stage = existing.participant.cycle.stages[0] ?? null;
+    const consent = approvalAcknowledgmentReason({
+      acknowledgedAt: existing.acknowledgedAt,
+      overrideReason,
+      stage,
+      now: new Date(),
+    });
+    if (consent) return err(consent, 409);
+
+    // An override is only an override when there was no acknowledgment. HR may
+    // send a reason with an acknowledged request; it simply is not one.
+    const overriding = existing.acknowledgedAt === null;
+
     // A cheap pre-check so an unapprovable request is refused without opening a
     // transaction. It is NOT the check that counts — see inside the transaction.
     const preflight = approvalBlockedReason({ kpis: existing.participant.kpis, edits });
@@ -200,14 +233,31 @@ export const POST = withRateLimit(
         // `update` cannot express it. Audited explicitly, INSIDE the transaction,
         // so a rollback takes the audit row with it rather than leaving a record
         // of a decision that never happened.
+        // The predicate carries the ACKNOWLEDGMENT state too, not just the
+        // status. `overriding` was decided from a read taken before this
+        // transaction opened, and the employee can acknowledge in that window —
+        // they are a different person acting on a different screen. Claiming on
+        // `status` alone would then stamp `acknowledgmentOverridden: true` onto
+        // a request the employee HAD acknowledged, which is a false entry in the
+        // one history §6.2 exists to keep honest. The database refuses that row
+        // outright (`override_excludes_ack_check`), so the race could not
+        // corrupt the record — but it would surface to HR as a 500 rather than
+        // "reload, they just acknowledged". Binding the claim turns the race
+        // into the same 409 every other concurrent decision gets.
         // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
         const claimed = await tx.kpiChangeRequest.updateMany({
-          where: { id, status: "PENDING" },
+          where: {
+            id,
+            status: "PENDING",
+            acknowledgedAt: overriding ? null : { not: null },
+          },
           data: {
             status: "APPROVED",
             decidedByEmployeeId: deciderId,
             decidedAt: new Date(),
             decisionReason: reason ?? null,
+            acknowledgmentOverridden: overriding,
+            overrideReason: overriding ? (overrideReason ?? null) : null,
           },
         });
         if (claimed.count === 0) return null;
@@ -219,11 +269,21 @@ export const POST = withRateLimit(
           entityType: "KpiChangeRequest",
           entityId: id,
           action: "UPDATE",
-          before: { status: "PENDING", decidedByEmployeeId: null, decisionReason: null },
+          before: {
+            status: "PENDING",
+            decidedByEmployeeId: null,
+            decisionReason: null,
+            acknowledgmentOverridden: false,
+            overrideReason: null,
+          },
           after: {
             status: "APPROVED",
             decidedByEmployeeId: deciderId,
             decisionReason: reason ?? null,
+            // §6.2 — an override is the exception, so it goes on the trail
+            // explicitly rather than being inferable from a null elsewhere.
+            acknowledgmentOverridden: overriding,
+            overrideReason: overriding ? (overrideReason ?? null) : null,
           },
         });
 
@@ -293,27 +353,13 @@ export const POST = withRateLimit(
 
         // §6.2 — Rihal's answer to "does anyone sign again?".
         //
-        // Default is NO: the original signature stands, and `SignOff.kpiSetHash`
-        // already records the exact set that was signed, so a screen can show
-        // that a signature predates the change without pretending it covers it.
-        // When Rihal chooses YES, the goal-setting signatures are cleared here —
-        // in the SAME transaction as the edits, because a set that has changed
-        // while its signatures survive is precisely the state this option exists
-        // to refuse.
-        //
-        // Per-row `delete` rather than `deleteMany`: there are at most two rows
-        // (§5.1's employee and manager), so the audited client covers them
-        // without an escape hatch, and §12.2 wants WHO un-signed on the trail.
-        if (touched.length > 0 && policyFor(existing.participant.cycle).requireResignAfterChange) {
-          const signOffs = await tx.signOff.findMany({
-            where: { participantId: existing.participantId, stageKind: GOAL_SETTING_STAGE },
-            select: { id: true },
-            take: 2,
-          });
-          for (const row of signOffs) {
-            await tx.signOff.delete({ where: { id: row.id } });
-          }
-        }
+        // §6.2's re-sign policy USED to clear the goal-setting signatures here
+        // when a cycle opted in. UAT Scenario C answered the question that
+        // policy existed to toggle — consent now happens BEFORE the decision,
+        // as the employee's acknowledgment — so the branch is gone and the
+        // column is retired (ADR-072). `SignOff.kpiSetHash` still surfaces a
+        // signature that predates the current set, which is what made the
+        // "no" answer honest in the first place.
 
         return touched.length;
       });
@@ -324,7 +370,11 @@ export const POST = withRateLimit(
     }
 
     if (applied === null) {
-      return err("This request was decided by someone else a moment ago (§6.2).", 409);
+      return err(
+        "This request moved a moment ago — reload it. Either someone else decided it, or the " +
+          "employee acknowledged it while this decision was being made (§6.2).",
+        409,
+      );
     }
 
     const row = await prisma.kpiChangeRequest.findUniqueOrThrow({

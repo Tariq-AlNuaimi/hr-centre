@@ -30,7 +30,6 @@ import {
  */
 
 export type CyclePolicyValues = {
-  requireResignAfterChange: boolean;
   divergenceReason: "REQUIRED" | "OPTIONAL" | "OFF";
   roundScoreBeforeBanding: boolean;
 };
@@ -104,19 +103,6 @@ export function CyclePolicyForm({
           {t("frozen")}
         </p>
       ) : null}
-
-      <BooleanPolicy
-        id={`${formId}-resign`}
-        label={t("resign.label")}
-        help={draft.requireResignAfterChange ? t("resign.helpYes") : t("resign.helpNo")}
-        noLabel={t("resign.no")}
-        yesLabel={t("resign.yes")}
-        value={draft.requireResignAfterChange}
-        disabled={disabled}
-        onChange={(requireResignAfterChange) =>
-          setDraft((d) => ({ ...d, requireResignAfterChange }))
-        }
-      />
 
       <div className="space-y-1.5">
         <Label htmlFor={`${formId}-divergence`}>{t("divergence.label")}</Label>

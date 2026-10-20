@@ -21,11 +21,20 @@ export const CHANGE_REQUEST_SELECT = {
   decidedByEmployeeId: true,
   decidedAt: true,
   decisionReason: true,
+  // §6.2 — the employee's acknowledgment and HR's override travel with the
+  // request, because every screen that shows a request has to show whether the
+  // employee agreed: the manager's roster, HR's review, and the employee's own
+  // mid-year page all read this one select.
+  acknowledgedAt: true,
+  acknowledgedByEmployeeId: true,
+  acknowledgmentOverridden: true,
+  overrideReason: true,
   // Enumerated columns only. `include: { requestedByEmployee: true }` would pull
   // `basicSalaryEnc` (Restricted, §4.5 / ADR-067) into a workflow response that
   // has no business carrying it.
   requestedByEmployee: { select: { id: true, name: true } },
   decidedByEmployee: { select: { id: true, name: true } },
+  acknowledgedByEmployee: { select: { id: true, name: true } },
   edits: {
     select: {
       id: true,

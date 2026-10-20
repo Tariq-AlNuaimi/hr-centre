@@ -43,6 +43,8 @@ interface StatusResponse {
   cycle: { id: string; year: number; status: string };
   scope: "direct" | "chain" | "org";
   readOnly: boolean;
+  /** §13.4 — the org-scope read is capped; the route says so, so the screen must too. */
+  truncated: boolean;
   goalStageLocked: boolean;
   progress: Array<{
     stageKind: string;
@@ -50,6 +52,67 @@ interface StatusResponse {
   }>;
   outstanding: string[];
   rows: StatusRow[];
+}
+
+/**
+ * §13.3/§13.4 — the copy each scope gets, keyed by the scope the SERVER reports.
+ *
+ * A table rather than nested ternaries at three call sites: the three strings
+ * that describe a roster have to move together, and the org row is the one that
+ * was missing when HR read "Direct reports" over the whole organisation.
+ */
+const SCOPE_COPY = {
+  direct: {
+    title: "directTitle",
+    help: "directHelp",
+    empty: "noReports",
+    stat: "outstanding",
+    statHint: "outstandingHint",
+  },
+  chain: {
+    title: "chainTitle",
+    help: "directHelp",
+    empty: "noChain",
+    stat: "outstandingChain",
+    statHint: "outstandingChainHint",
+  },
+  org: {
+    title: "orgTitle",
+    help: "orgHelp",
+    empty: "noOrg",
+    stat: "outstandingOrg",
+    statHint: "outstandingOrgHint",
+  },
+} as const;
+
+/**
+ * `data.scope` crosses the wire into an unchecked `as` cast, so the lookup is
+ * defensive: an unexpected value would otherwise make `t(scopeCopy.title)` throw
+ * and blank the screen — a white page instead of the honest state the rubric asks
+ * for. Kept out of the component so the fallback costs it no complexity.
+ */
+function scopeCopyFor(
+  scope: StatusResponse["scope"],
+): (typeof SCOPE_COPY)[keyof typeof SCOPE_COPY] {
+  return SCOPE_COPY[scope] ?? SCOPE_COPY.direct;
+}
+
+/**
+ * §13.4's cap, said rather than implied. The org-scope read is bounded
+ * (`participantStatuses` stops at `PARTICIPANT_PAGE`), and presenting a capped
+ * subset's completion percentages as the organisation's would be a confident
+ * wrong number — the failure mode this screen was just fixed for.
+ *
+ * Its own component so the conditional costs `TeamPage` no complexity.
+ */
+function TruncatedNotice({ truncated, shown }: { truncated: boolean; shown: number }) {
+  const t = useTranslations("pms.team");
+  if (!truncated) return null;
+  return (
+    <p className="text-sm text-muted-foreground" role="status">
+      {t("truncatedNotice", { shown })}
+    </p>
+  );
 }
 
 export default function TeamPage() {
@@ -94,11 +157,21 @@ export default function TeamPage() {
   const goal = data?.progress.find((p) => p.stageKind === "GOAL_SETTING");
   const year = data?.progress.find((p) => p.stageKind === "YEAR_END");
 
+  // §13.4 — the SERVER decides scope, not this toggle: an actor with org-wide
+  // capability gets every participant back whatever `scope` was requested, and
+  // the response says so. Labelling from the local toggle put "Direct reports —
+  // the people you draft, review and sign for" over the whole organisation for
+  // HR, who line-manages nobody. Read the scope off the response; fall back to
+  // the toggle only before the first payload lands.
+  const effectiveScope = data?.scope ?? scope;
+  const isOrgScope = effectiveScope === "org";
+  const scopeCopy = scopeCopyFor(effectiveScope);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={t("title")}
-        subtitle={t("subtitle")}
+        subtitle={isOrgScope ? t("orgSubtitle") : t("subtitle")}
         actions={
           <div className="flex items-center gap-2">
             <CyclePicker
@@ -111,25 +184,30 @@ export default function TeamPage() {
       />
 
       {/* §13.3's two views. Buttons rather than a select: there are exactly two,
-          and a manager switches between them constantly. */}
-      <div className="flex gap-2" role="group" aria-label={t("scopeLabel")}>
-        <Button
-          variant={scope === "direct" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setScope("direct")}
-          aria-pressed={scope === "direct"}
-        >
-          {t("scopeDirect")}
-        </Button>
-        <Button
-          variant={scope === "chain" ? "default" : "outline"}
-          size="sm"
-          onClick={() => setScope("chain")}
-          aria-pressed={scope === "chain"}
-        >
-          {t("scopeChain")}
-        </Button>
-      </div>
+          and a manager switches between them constantly. Hidden at org scope:
+          `/api/status` returns every participant for an org-wide actor whatever
+          this asks for, so leaving it on screen is a dead control (design.md —
+          "no dead controls"). */}
+      {!isOrgScope && (
+        <div className="flex gap-2" role="group" aria-label={t("scopeLabel")}>
+          <Button
+            variant={scope === "direct" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setScope("direct")}
+            aria-pressed={scope === "direct"}
+          >
+            {t("scopeDirect")}
+          </Button>
+          <Button
+            variant={scope === "chain" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setScope("chain")}
+            aria-pressed={scope === "chain"}
+          >
+            {t("scopeChain")}
+          </Button>
+        </div>
+      )}
 
       {status.isLoading && <TableSkeleton />}
 
@@ -149,9 +227,9 @@ export default function TeamPage() {
             {/* Leads, because §13.3 is a cockpit: this is the number that means
                 "do something today". */}
             <StatCard
-              title={t("outstanding")}
+              title={t(scopeCopy.stat)}
               value={data.outstanding.length}
-              hint={t("outstandingHint")}
+              hint={t(scopeCopy.statHint)}
             />
             <StatCard
               title={t("goalSettingProgress")}
@@ -173,14 +251,16 @@ export default function TeamPage() {
             />
           </div>
 
+          <TruncatedNotice truncated={data.truncated} shown={data.rows.length} />
+
           <SectionCard
-            title={scope === "direct" ? t("directTitle") : t("chainTitle")}
-            subtitle={data.readOnly ? t("viewOnly") : t("directHelp")}
+            title={t(scopeCopy.title)}
+            subtitle={data.readOnly ? t("viewOnly") : t(scopeCopy.help)}
             noBodyPadding
           >
             {data.rows.length === 0 ? (
               <div className="p-6">
-                <EmptyState description={scope === "direct" ? t("noReports") : t("noChain")} />
+                <EmptyState description={t(scopeCopy.empty)} />
               </div>
             ) : (
               <StatusRoster rows={data.rows} showScores={data.rows.some((r) => r.band !== null)} />

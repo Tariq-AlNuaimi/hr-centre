@@ -4,6 +4,12 @@ import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { canRunCycle, enrolParticipants } from "@/lib/pms/cycle";
+
+/** One open-click’s worth of enrolment; the rest via "Enrol missing employees". */
+const ENROL_LIMIT_PER_OPEN = 500;
+
+/** Enrolment makes this longer than a status flip; same budget as the siblings. */
+export const maxDuration = 60;
 import { cycleStatusSchema } from "@/lib/validations/cycle";
 
 /**
@@ -91,9 +97,23 @@ export const PUT = withRateLimit(
 
     // §3.5 — enrolment is idempotent, so opening a cycle and re-running it after
     // a later import are the same operation.
-    const enrolled = next === "OPEN" ? await enrolParticipants(id) : { added: 0 };
+    //
+    // Bounded like the other two callers. This one is a request with a clock on
+    // it as well, and it was the one place still enrolling an unbounded org in
+    // a loop of audited creates: a large enough company could time out part-way
+    // and leave an OPEN cycle holding some of its participants, silently. The
+    // shortfall now comes back as a number, and "Enrol missing employees"
+    // finishes it.
+    const enrolled =
+      next === "OPEN"
+        ? await enrolParticipants(id, { limit: ENROL_LIMIT_PER_OPEN })
+        : { added: 0, remaining: 0 };
 
-    return ok({ ...updated, participantsAdded: enrolled.added });
+    return ok({
+      ...updated,
+      participantsAdded: enrolled.added,
+      participantsPending: enrolled.remaining,
+    });
   }),
   { id: "pms-cycle-write", limit: 20, windowMs: 60_000 },
 );

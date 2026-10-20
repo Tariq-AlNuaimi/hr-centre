@@ -50,6 +50,15 @@ export type ParticipantComplianceState = {
   managerSigned: boolean;
   /** §5.1 — HR approval is the lock, and therefore the definition of resolved. */
   goalsApproved: boolean;
+  /**
+   * When this person joined the CYCLE, not when they joined the company.
+   *
+   * §3.5 pulls new employees into an open cycle, so a participant can first
+   * exist after a stage deadline has already passed — an import in March
+   * against a December goal-setting deadline. Nothing about that is anyone's
+   * failure, and the ladder needs to know it: see `isLadderExempt`.
+   */
+  enrolledAt: Date;
 };
 
 /** One row the sweep will try to write. `missedByHours` is §5.6's "by how long". */
@@ -84,6 +93,30 @@ export function isLadderExempt(state: ParticipantComplianceState): boolean {
   return isGoalSettingExempt(state.roleTrack) || state.employeeStatus === "LEAVER";
 }
 
+/**
+ * §5.5 — you cannot miss a deadline that passed before you were in the cycle.
+ *
+ * Until §3.5's enrolment actually ran after an import, this case could not
+ * arise: every participant existed from the moment the cycle opened, so every
+ * deadline was one they had been present for. Enrolling joiners mid-cycle makes
+ * it ordinary, and without this the ladder reads a March joiner's empty KPI set
+ * against a December deadline and escalates their MANAGER — `DEADLINE_MISSED`,
+ * then skip-level, then HR, with `missedByHours` in the thousands — for work
+ * §5.4's hard lock forbids them from doing. That is worse than the invisible
+ * joiner it replaced: it is a false accusation on the §11.2 record, and nothing
+ * short of HR extending the stage for the whole company clears it.
+ *
+ * Deliberately NOT a general "late joiners are exempt" rule. It is scoped to
+ * the one stage whose deadline they were absent for; a joiner enrolled while
+ * the window is still open is on the ladder like everybody else.
+ */
+export function enrolledAfterDeadline(
+  state: ParticipantComplianceState,
+  stage: StageWindow,
+): boolean {
+  return state.enrolledAt.getTime() > stage.deadline.getTime();
+}
+
 /** §5.1 — the lock IS the resolution. Nothing else closes a goal-setting file. */
 export function isResolved(state: ParticipantComplianceState): boolean {
   return state.goalsApproved;
@@ -112,6 +145,7 @@ export function ladderEventsFor(
   now: Date,
 ): LadderEvent[] {
   if (isLadderExempt(state) || isResolved(state)) return [];
+  if (enrolledAfterDeadline(state, stage)) return [];
 
   const phase = stageState(stage, now);
   if (phase === "NOT_YET_OPEN") return [];

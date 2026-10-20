@@ -71,7 +71,6 @@ export type CycleStageInput = z.infer<typeof cycleStageSchema>;
  */
 export const cyclePolicySchema = z
   .strictObject({
-    requireResignAfterChange: z.boolean().optional(),
     divergenceReason: z.enum(["REQUIRED", "OPTIONAL", "OFF"]).optional(),
     roundScoreBeforeBanding: z.boolean().optional(),
   })

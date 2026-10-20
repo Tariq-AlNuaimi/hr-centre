@@ -44,7 +44,7 @@ export default function CyclesPage() {
   const t = useTranslations("pms");
   const tCommon = useTranslations("common");
   const { actor, isLoading: actorLoading } = usePmsActor();
-  const { success, error: showError } = useNotify();
+  const { success, warning, error: showError } = useNotify();
   const queryClient = useQueryClient();
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -88,8 +88,20 @@ export default function CyclesPage() {
     setSubmitting(true);
     setFormError(null);
     try {
-      await apiClient.put(`/api/cycles/${editing.id}/stages`, { stages: values.stages });
-      success(t("cycles.deadlinesSaved", { year: editing.year }));
+      const saved = await apiClient.put<{ reopenedChangeRequests: number }>(
+        `/api/cycles/${editing.id}/stages`,
+        { stages: values.stages },
+      );
+      // §6.2 — extending a mid-year deadline brings back the change requests
+      // that deadline had locked (ADR-072). HR has to be told, for the same
+      // reason the enrolment count below is in its confirmation: a side effect
+      // nobody is shown is one they find out about from someone else.
+      const reopened = saved?.reopenedChangeRequests ?? 0;
+      success(
+        reopened > 0
+          ? t("cycles.deadlinesSavedReopened", { year: editing.year, count: reopened })
+          : t("cycles.deadlinesSaved", { year: editing.year }),
+      );
       setEditing(null);
       await refresh();
     } catch (e) {
@@ -99,17 +111,55 @@ export default function CyclesPage() {
     }
   }
 
+  // §3.5 — the manual half of the enrolment fix. The import runs this itself
+  // now; this is for the import that applied while enrolment did not, and for
+  // employees who arrived by some other path. Idempotent, so a zero is a real
+  // answer ("nobody was missing"), not a failure, and it says so.
+  async function enrolMissing(cycle: PerformanceCycle) {
+    setBusyCycleId(cycle.id);
+    try {
+      const result = await apiClient.post<{
+        participantsAdded: number;
+        participantsPending: number;
+        goalSettingClosed: boolean;
+      }>(`/api/cycles/${cycle.id}/participants`, {});
+      const added = result?.participantsAdded ?? 0;
+      const pending = result?.participantsPending ?? 0;
+      success(
+        added > 0
+          ? t("cycles.enrolledMissing", { year: cycle.year, count: added })
+          : t("cycles.enrolledNobodyMissing", { year: cycle.year }),
+      );
+      // Each call is bounded, so a big backlog clears over several presses.
+      // Saying how many are left makes that obvious instead of mysterious.
+      if (pending > 0) warning(t("cycles.enrolMorePending", { count: pending }));
+      // The consequence, said at the moment it is caused rather than discovered
+      // at calibration time months later.
+      if (result?.goalSettingClosed) warning(t("cycles.enrolledAfterGoalSetting"));
+      await refresh();
+    } catch (e) {
+      showError(e instanceof ApiError ? e.message : t("cycles.enrolMissingFailed"));
+    } finally {
+      setBusyCycleId(null);
+    }
+  }
+
   async function changeStatus(cycle: PerformanceCycle, status: "OPEN" | "CLOSED") {
     setBusyCycleId(cycle.id);
     try {
-      const updated = await apiClient.put<{ participantsAdded: number }>(
-        `/api/cycles/${cycle.id}`,
-        { status },
-      );
+      const updated = await apiClient.put<{
+        participantsAdded: number;
+        participantsPending: number;
+      }>(`/api/cycles/${cycle.id}`, { status });
       if (status === "OPEN") {
         // §3.5 — enrolment happens at OPEN, so the count is the answer to
         // "did that do anything?" and belongs in the confirmation.
         success(t("cycles.opened", { year: cycle.year, count: updated?.participantsAdded ?? 0 }));
+        // Bounded now, so a very large org opens over more than one action.
+        // Saying so is what keeps a half-enrolled cycle from being invisible.
+        if ((updated?.participantsPending ?? 0) > 0) {
+          warning(t("cycles.enrolMorePending", { count: updated!.participantsPending }));
+        }
       } else {
         success(t("cycles.closed", { year: cycle.year }));
       }
@@ -178,6 +228,7 @@ export default function CyclesPage() {
             setFormError(null);
             setEditing(cycle);
           }}
+          onEnrolMissing={enrolMissing}
           onEditPolicy={(cycle) => {
             setFormError(null);
             setPolicyCycle(cycle);

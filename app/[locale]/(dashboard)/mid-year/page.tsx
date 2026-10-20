@@ -21,6 +21,7 @@ import {
 import type { PerformanceCycle } from "@/components/pms/CycleList";
 import type { RosterResponse } from "@/components/pms/ParticipantList";
 import { MidYearRoster } from "@/components/pms/MidYearRoster";
+import { MyMidYear } from "@/components/pms/MyMidYear";
 import { StageBanner } from "@/components/pms/StageBanner";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -142,14 +143,14 @@ export default function MidYearPage() {
   }
 
   if (!canWork) {
-    // §4.2 — raising a change request belongs to the direct line manager, and
-    // deciding one to HR. Everyone else meets §6 through their own KPI screen.
+    // §6.2 — an employee's own mid-year review. This used to be a "not
+    // permitted" notice, which was true of the manager's roster and wrong about
+    // §6 as a whole: a change to someone's goals is now something they see and
+    // acknowledge, so the screen they land on is theirs, not a refusal.
     return (
       <div className="space-y-6">
-        <PageHeader title={t("title")} />
-        <SectionCard title={t("title")}>
-          <EmptyState description={t("notPermitted")} />
-        </SectionCard>
+        <PageHeader title={t("myTitle")} subtitle={t("mySubtitle")} />
+        <MyMidYear />
       </div>
     );
   }
@@ -189,6 +190,16 @@ export default function MidYearPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
+
+      {/* §6.2 — a manager is almost always somebody's report too, and a change
+          raised on THEIR goals is theirs alone to acknowledge. Rendering this
+          only in the `!canWork` branch meant every manager and every HR user
+          below the top of the org had an acknowledge API they could not reach
+          from any screen: the notification pointed here, this page showed them
+          their reports, and the request locked unacknowledged at the deadline
+          with HR's override already expired. It renders nothing when they have
+          nothing pending, so the roster stays the page for everyone else. */}
+      <MyMidYear hideWhenAbsent />
 
       {/* The MID-YEAR stage, read off the cycle. The roster endpoint reports the
           GOAL-SETTING window — it is the goal-setting roster — and feeding that

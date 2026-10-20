@@ -3,6 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
+import { enrolParticipants } from "@/lib/pms/cycle";
 import { ImportFileError, MAX_UPLOAD_BYTES } from "@/lib/pms/import/loaders/xlsx";
 import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 
@@ -15,6 +16,14 @@ import { applyImport, ImportConflictError } from "@/lib/pms/import/run";
 // the other is how the cap stops meaning anything — and raising it past 60 needs a
 // Vercel plan that allows it. See docs/findings-register.md.
 export const maxDuration = 60;
+
+/**
+ * How many joiners the apply request enrols before handing the rest to HR's
+ * manual action. The import transaction owns most of `maxDuration`, so this is
+ * deliberately well short of what the budget could take: finishing an import
+ * and reporting honestly beats timing out with the org reshape rolled back.
+ */
+const ENROL_LIMIT_PER_IMPORT = 500;
 
 /**
  * Confirm and apply a previewed import — spec §3.5.
@@ -65,7 +74,59 @@ export const POST = withRateLimit(
 
     try {
       const result = await applyImport({ batchId: id, buffer });
-      return ok(result);
+
+      // §3.5 — "New rows → create the employee, PULL THEM INTO THE CYCLE."
+      //
+      // Enrolment used to run only on the `DRAFT → OPEN` transition, and a
+      // cycle's lifecycle is one-way, so an employee imported after the cycle
+      // opened could never become a participant: no participant row, no KPI
+      // set, and a manager who imported their team found goal-setting empty
+      // with nothing on screen to explain it. `enrolParticipants` is
+      // idempotent and was always meant to be re-run; nothing was re-running
+      // it.
+      //
+      // OUTSIDE the import transaction, on purpose. §3.5's all-or-nothing is
+      // about the org reshape — created, updated and re-parented rows are one
+      // reviewed act. Enrolment is a separate, repeatable follow-on, and
+      // adding N participant writes to the longest transaction in the product
+      // (maxDuration 60) is how a large org's import starts timing out and
+      // rolling back the part that actually matters.
+      // Enrolment is a follow-on, and the import above is ALREADY COMMITTED.
+      // So a failure here cannot be reported as a failed request: an error
+      // response throws away `created`, `updated`, `provisioned` and — worst —
+      // ADR-069's revoked-login warning, which has no other way of reaching
+      // anyone. The import succeeded; what is reported is the import, with
+      // enrolment flagged as the part that did not finish.
+      let participantsEnrolled = 0;
+      let participantsPending = 0;
+      let enrolmentFailed = false;
+      try {
+        const open = await prisma.performanceCycle.findFirst({
+          where: { status: "OPEN" },
+          orderBy: { year: "desc" },
+          select: { id: true },
+        });
+        if (open) {
+          // Bounded, because this runs inside the request that just spent most
+          // of its 60s on the import transaction. Whatever is left over is not
+          // lost: the count comes back, HR is told, and "Enrol missing
+          // employees" finishes it with the same idempotent call.
+          const enrolled = await enrolParticipants(open.id, { limit: ENROL_LIMIT_PER_IMPORT });
+          participantsEnrolled = enrolled.added;
+          participantsPending = enrolled.remaining;
+        }
+      } catch (enrolError) {
+        // Logged, not swallowed: without this the cause of a failed enrolment
+        // (timeout, pool exhaustion, a constraint) is simply gone. Metadata
+        // only — no row contents, nothing Restricted (SECURITY.md §1).
+        enrolmentFailed = true;
+        console.error("[import] enrolment after a committed import failed", {
+          batchId: id,
+          reason: enrolError instanceof Error ? enrolError.name : "unknown",
+        });
+      }
+
+      return ok({ ...result, participantsEnrolled, participantsPending, enrolmentFailed });
     } catch (error) {
       if (error instanceof ImportFileError) return err(error.message, 422);
       // Every ImportConflictError message is written for the operator: the batch

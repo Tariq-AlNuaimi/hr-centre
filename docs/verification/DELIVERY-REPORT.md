@@ -258,7 +258,7 @@ Three specification ambiguities, each flagged in the code where it applies (full
 `SPEC-CONFORMANCE.md`). They are written up for the HR team, one page, with what the build does today
 and the exact question that settles each: **`docs/verification/OPEN-QUESTIONS-FOR-RIHAL.md`**.
 
-1. **§6.2 — re-signing after an approved mid-year change.** The spec is silent. No re-sign was
+1. **§6.2 — re-signing after an approved mid-year change.** **ANSWERED 2026-10-19 by UAT Scenario C — the employee acknowledges BEFORE HR decides (ADR-072); the re-sign policy is retired.** The spec was silent. No re-sign was
    invented; instead `SignOff.kpiSetHash` surfaces that a signature predates the current set.
 2. **§7.1 — a divergent manager rating requires a reason.** The spec does not ask for this. It was
    added; Rihal should confirm they want it.

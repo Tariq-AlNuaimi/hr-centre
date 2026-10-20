@@ -27,7 +27,6 @@ import { cyclePolicySchema } from "../../lib/validations/cycle";
 
 test("the documented defaults are exactly what the code did before", () => {
   assert.deepEqual(DEFAULT_CYCLE_POLICY, {
-    requireResignAfterChange: false,
     divergenceReason: "REQUIRED",
     roundScoreBeforeBanding: false,
   });
@@ -45,7 +44,6 @@ test("a partially-loaded cycle fills the gaps rather than throwing", () => {
   const p = policyFor({ roundScoreBeforeBanding: true });
   assert.equal(p.roundScoreBeforeBanding, true);
   assert.equal(p.divergenceReason, "REQUIRED");
-  assert.equal(p.requireResignAfterChange, false);
 });
 
 /* -- §8.7, the boundary that decides real money ---------------------------- */
@@ -173,7 +171,6 @@ test("the policy schema refuses an empty body", () => {
 test("the policy schema accepts one field at a time", () => {
   assert.ok(cyclePolicySchema.safeParse({ roundScoreBeforeBanding: true }).success);
   assert.ok(cyclePolicySchema.safeParse({ divergenceReason: "OFF" }).success);
-  assert.ok(cyclePolicySchema.safeParse({ requireResignAfterChange: true }).success);
 });
 
 test("the policy schema refuses a divergence value that is not one of the three", () => {
@@ -203,7 +200,10 @@ test("every route that ACTS on a policy also selects one", () => {
   const consumers = [
     "app/api/scores/route.ts", // §8.7 — bands with it
     "app/api/kpi-ratings/route.ts", // §7.1 — enforces the divergence reason
-    "app/api/kpi-change-requests/[id]/decide/route.ts", // §6.2 — clears signatures
+    // The decide route was here for §6.2's re-sign policy, which ADR-072
+    // retired: the employee's acknowledgment replaced the question it toggled,
+    // so the route reads no policy at all now. Removed rather than exempted —
+    // an exemption would quietly re-admit a consumer that stopped selecting.
     "app/api/cycles/[id]/policy/route.ts", // reads and writes it
   ];
   for (const file of consumers) {
@@ -225,4 +225,17 @@ test("every route that ACTS on a policy also selects one", () => {
         "it would silently get the defaults and the HR setting would do nothing",
     );
   }
+});
+
+/**
+ * ADR-072 retired §6.2's re-sign policy: UAT Scenario C answered the question
+ * it toggled, so no cycle has a reading left to choose. The DB column survives
+ * for finished years; nothing reads it, and HR is not offered the switch.
+ */
+test("ADR-072: the retired re-sign policy is gone from the policy surface", () => {
+  assert.equal("requireResignAfterChange" in DEFAULT_CYCLE_POLICY, false);
+  assert.equal("requireResignAfterChange" in CYCLE_POLICY_SELECT, false);
+  // A stray value from an old client is ignored rather than accepted.
+  const parsed = cyclePolicySchema.safeParse({ requireResignAfterChange: true });
+  assert.equal(parsed.success && "requireResignAfterChange" in parsed.data, false);
 });

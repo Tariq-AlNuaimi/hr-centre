@@ -14,6 +14,7 @@ import {
   type KpiEdit,
 } from "@/lib/pms/change-request";
 import { CHANGE_REQUEST_SELECT, serializeChangeRequest } from "@/lib/pms/change-request-select";
+import { changeRequestDedupeKey, persistNotifications } from "@/lib/pms/notifications";
 import { descendantEmployeeIds, visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { createChangeRequestSchema } from "@/lib/validations/change-request";
@@ -171,6 +172,35 @@ export const POST = withRateLimit(
         },
         select: CHANGE_REQUEST_SELECT,
       });
+      // §6.2 — the employee is the next actor now, not HR, so they are told.
+      // After the commit and best-effort: the request is the product, the
+      // notification is how the employee learns it is waiting. Swallowed on
+      // failure for the reason the sweep gives — a mail server having a bad
+      // morning must never cost a recorded act.
+      try {
+        await persistNotifications(
+          [
+            {
+              recipientEmployeeId: participant.employee.id,
+              kind: "CHANGE_REQUEST_RAISED" as const,
+              body:
+                "Your manager has proposed a mid-year change to your KPIs. Review it and " +
+                "acknowledge it before the mid-year deadline.",
+              href: `/mid-year`,
+              dedupeKey: changeRequestDedupeKey(
+                changeRequest.id,
+                "raised",
+                participant.employee.id,
+              ),
+            },
+          ],
+          1,
+        );
+      } catch {
+        // Deliberately swallowed; the request is committed and visible on the
+        // employee's mid-year screen whether or not the notification landed.
+      }
+
       return created({ changeRequest: serializeChangeRequest(changeRequest) });
     } catch (error) {
       // The partial unique index `WHERE status = 'PENDING'` is the arbiter. Two

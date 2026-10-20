@@ -18,6 +18,7 @@ gates it.
 | 9   | `ai-eval` `/ship` gate (dormant)                          | AI quality  | —            | a fork adds `AI_API_KEY` + fixtures |
 | 10  | SSO / Microsoft Entra (dormant)                           | Auth        | —            | `AUTH_MICROSOFT_ENTRA_ID_*` env     |
 | 11  | Dormant CI (`sast.yml`/`zizmor.yml`/`lhci`/senior-review) | CI/security | —            | paid Actions / handoff              |
+| 12  | `middleware` → `proxy` file-convention migration          | Stack       | S            | nothing — deprecation warning only  |
 
 ---
 

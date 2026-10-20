@@ -6,6 +6,7 @@ import { join } from "node:path";
 import {
   hrInterventionDue,
   isLadderExempt,
+  enrolledAfterDeadline,
   ladderEventsFor,
   REMINDER_WINDOW_DAYS,
   type ParticipantComplianceState,
@@ -45,6 +46,10 @@ const state = (over: Partial<ParticipantComplianceState> = {}): ParticipantCompl
   roleTrack: "INDIVIDUAL",
   employeeStatus: "ACTIVE",
   kpiCount: 4,
+  // Enrolled when the cycle opened, like everyone in these cases. A joiner
+  // enrolled AFTER the deadline is off the ladder entirely (§3.5), which has
+  // its own cases below.
+  enrolledAt: STAGE.opensAt,
   employeeSigned: true,
   managerSigned: true,
   goalsApproved: false,
@@ -516,4 +521,36 @@ test("a signature with no recorded digest is unknown, never reported as stale", 
   // Rows that predate the column. Reporting unknown as "changed" would accuse a
   // manager of editing after a signature on no evidence at all.
   assert.deepEqual(staleParties([{ party: "MANAGER", kpiSetHash: null }], kpiSetHash([kpi()])), []);
+});
+
+// --- §3.5 × §5.5 — a joiner cannot miss a deadline that preceded them --------
+
+test("§5.5 a participant enrolled AFTER the deadline is off the ladder", () => {
+  // The case §3.5's enrolment made ordinary: an import in March against a
+  // December goal-setting deadline. Without this the ladder reads an empty KPI
+  // set against a long-past deadline and escalates the MANAGER — missed, then
+  // skip-level, then HR — for work §5.4's hard lock forbids them from doing.
+  const joiner = state({
+    kpiCount: 0,
+    employeeSigned: false,
+    managerSigned: false,
+    goalsApproved: false,
+    enrolledAt: at(30 * DAY),
+  });
+  assert.equal(enrolledAfterDeadline(joiner, STAGE), true);
+  assert.deepEqual(ladderEventsFor(joiner, STAGE, at(60 * DAY)), []);
+});
+
+test("§5.5 a joiner enrolled while the window is still OPEN stays on the ladder", () => {
+  // Scoped, not a blanket amnesty: someone who WAS there for the deadline is
+  // accountable for it like everybody else.
+  const joiner = state({
+    kpiCount: 0,
+    employeeSigned: false,
+    managerSigned: false,
+    goalsApproved: false,
+    enrolledAt: at(-5 * DAY),
+  });
+  assert.equal(enrolledAfterDeadline(joiner, STAGE), false);
+  assert.ok(ladderEventsFor(joiner, STAGE, at(2 * DAY)).length > 0);
 });

@@ -1,9 +1,12 @@
 import type { ComplianceKind } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
 import { ok } from "@/lib/api-response";
 import { withInternalAuth, withRateLimit } from "@/lib/api-helpers";
 import { GOAL_SETTING_STAGE } from "@/lib/pms/kpi";
+import { MID_YEAR_STAGE } from "@/lib/pms/change-request";
+import { recordAudit } from "@/lib/prisma/audit-extension";
+import { withAuditContext } from "@/lib/audit-context";
 import { hoursOverdue, type StageWindow } from "@/lib/pms/cycle";
 import { signOffState } from "@/lib/pms/signoff";
 import {
@@ -63,6 +66,22 @@ const PARTICIPANT_PAGE = 200;
  * is idempotent, so resuming costs nothing but the rows it has yet to reach.
  */
 const MAX_PARTICIPANTS_PER_RUN = 5_000;
+
+/**
+ * §6.2 — a run's budget for materialising expired change requests. Small on
+ * purpose: at most one request per participant can be pending at a time (the
+ * partial unique index), so a backlog this size would already be unusual, and
+ * anything beyond it is picked up tomorrow with no behavioural difference —
+ * the lock itself is derived, not waiting on this.
+ */
+const MAX_EXPIRED_REQUESTS_PER_RUN = 1_000;
+
+/**
+ * The label the sweep writes into `audit_logs.actor_email`. Not an address and
+ * not a user id — the deadline closed the request, not a person, and §12.2 is
+ * better served by saying so than by a null.
+ */
+const SWEEP_ACTOR = "system:cycle-sweep";
 /** Cap on the intervention queue returned inline, so the response stays bounded. */
 const MAX_SURFACED = 100;
 /** Cap on outbound mail per run — a backlog must not turn into a mail storm. */
@@ -128,6 +147,8 @@ type ParticipantRow = {
   id: string;
   employeeId: string;
   goalsApprovedAt: Date | null;
+  /** §3.5 — when they joined the CYCLE. The ladder needs it; see compliance.ts. */
+  createdAt: Date;
   employee: {
     id: string;
     managerId: string | null;
@@ -150,6 +171,7 @@ function stateFor(row: ParticipantRow, kpiCount: number): ParticipantComplianceS
     employeeSigned: signed.employeeSigned,
     managerSigned: signed.managerSigned,
     goalsApproved: row.goalsApprovedAt !== null,
+    enrolledAt: row.createdAt,
   };
 }
 
@@ -181,6 +203,7 @@ async function fetchParticipantPage(cycleId: string, cursor?: string): Promise<P
       id: true,
       employeeId: true,
       goalsApprovedAt: true,
+      createdAt: true,
       employee: {
         select: {
           id: true,
@@ -286,6 +309,92 @@ async function sweepStage(
   return tally;
 }
 
+/**
+ * §6.2 — materialise the requests the mid-year deadline closed.
+ *
+ * `effectiveChangeRequestStatus` already DERIVES this verdict on every read, so
+ * nothing downstream waits on this function to be correct: the lock holds from
+ * the instant the deadline passes whether or not the cron ever runs. What this
+ * adds is the RECORD — §6.3 wants a history that states what happened rather
+ * than one every reader has to recompute against a clock.
+ *
+ * That ordering is deliberate and worth keeping: a sweep that never runs costs
+ * the history a row, never a wrongly-approved KPI.
+ *
+ * Per-row update with its own audit entry rather than one `updateMany`, for the
+ * reason ADR-010 gives — a bulk write leaves no trail, and "the deadline closed
+ * this request" is exactly the kind of act nobody is around to witness.
+ */
+async function lockUnacknowledgedRequests(now: Date): Promise<number> {
+  const expired = await prisma.kpiChangeRequest.findMany({
+    take: MAX_EXPIRED_REQUESTS_PER_RUN,
+    where: {
+      status: "PENDING",
+      acknowledgedAt: null,
+      participant: {
+        cycle: {
+          status: "OPEN",
+          stages: { some: { kind: MID_YEAR_STAGE, deadline: { lt: now } } },
+        },
+      },
+    },
+    select: { id: true },
+  });
+
+  let locked = 0;
+  for (const row of expired) {
+    try {
+      // Counted from the transaction's RESULT, not from inside it: incrementing
+      // in the callback counts a row whose commit then fails, and the number
+      // this returns is what the cron's log says happened.
+      //
+      // §12.2 wants WHO on every row. `withInternalAuth` establishes no audit
+      // context — there is no session, because the cron is not a person — so
+      // without this the trail read `userId: null, actorEmail: null` and the one
+      // act nobody is present to witness was also the one act the trail could
+      // not attribute. A system label is not a user id and is not pretending to
+      // be one; it is the honest answer to "who closed this".
+      const didLock = await withAuditContext({ actorEmail: SWEEP_ACTOR }, async () =>
+        auditedTransaction(async (tx) => {
+          // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- conditional claim; recordAudit() below
+          const claimed = await tx.kpiChangeRequest.updateMany({
+            where: {
+              id: row.id,
+              status: "PENDING",
+              acknowledgedAt: null,
+              // The claim re-asserts the DEADLINE, not just the status. The
+              // list above was read at the top of the run and up to a thousand
+              // transactions follow it; HR extending the stage in that window
+              // would leave this claim writing a lock under a window that is
+              // open again — the "same act, two outcomes by timing" that
+              // ADR-072 option A exists to remove, reappearing from the other
+              // side. Re-checking here makes the claim a no-op instead.
+              participant: {
+                cycle: { stages: { some: { kind: MID_YEAR_STAGE, deadline: { lt: now } } } },
+              },
+            },
+            data: { status: "NOT_ACKNOWLEDGED" },
+          });
+          if (claimed.count === 0) return false;
+          await recordAudit(tx, {
+            entityType: "KpiChangeRequest",
+            entityId: row.id,
+            action: "UPDATE",
+            before: { status: "PENDING", acknowledgedAt: null },
+            after: { status: "NOT_ACKNOWLEDGED", acknowledgedAt: null },
+          });
+          return true;
+        }),
+      );
+      if (didLock) locked += 1;
+    } catch {
+      // One stubborn row must not abort the sweep; the next run sees it again
+      // because the derivation never stopped treating it as locked.
+    }
+  }
+  return locked;
+}
+
 async function sweep() {
   const now = new Date();
 
@@ -330,6 +439,10 @@ async function sweep() {
   // any manager's record.
   const threeSixtyReminders = await remindThreeSixtyRaters(now);
 
+  // §6.2 — last, and after the compliance rows, for the same reason the
+  // notifications are: this is bookkeeping on a verdict that already holds.
+  const changeRequestsLocked = await lockUnacknowledgedRequests(now);
+
   return ok({
     ranAt: now.toISOString(),
     cyclesSwept: cycles.length,
@@ -342,6 +455,7 @@ async function sweep() {
     hrInterventionQueue: interventions,
     notified,
     threeSixtyReminders,
+    changeRequestsLocked,
   });
 }
 

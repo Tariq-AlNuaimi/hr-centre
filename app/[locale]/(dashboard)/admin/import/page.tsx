@@ -89,6 +89,9 @@ export default function ImportPage() {
           updated: number;
           provisioned: number;
           returningWithRevokedLogin: number;
+          participantsEnrolled: number;
+          participantsPending: number;
+          enrolmentFailed: boolean;
         };
         error?: string;
       };
@@ -109,6 +112,27 @@ export default function ImportPage() {
           provisioned: json.data.provisioned,
         }),
       );
+
+      // §3.5 — the import PULLS NEW PEOPLE INTO THE CYCLE, and saying so is the
+      // point: enrolment used to happen only when a cycle opened, so employees
+      // imported afterwards never became participants and their manager found
+      // goal-setting empty with no explanation. Now it happens, and HR sees
+      // that it happened rather than having to go and check.
+      if (json.data.participantsEnrolled > 0) {
+        success(t("import.enrolled", { count: json.data.participantsEnrolled }));
+      }
+      // A bounded enrolment that did not finish must say so, or the operator
+      // reads "47 enrolled" as "everyone", and the people still missing are
+      // exactly the ones this whole fix exists for.
+      if (json.data.participantsPending > 0) {
+        warning(t("import.enrolmentPending", { count: json.data.participantsPending }));
+      }
+      // The import committed; only the follow-on enrolment did not. Saying so
+      // precisely matters — the remedy is the cycle button, NOT re-uploading
+      // the file, which would only earn a 409 on a spent batch.
+      if (json.data.enrolmentFailed) {
+        warning(t("import.enrolmentFailed"));
+      }
 
       // ADR-069 — a returning employee reconciles as an UPDATE, so provisioning
       // never runs for them and the account off-boarding revoked stays revoked.

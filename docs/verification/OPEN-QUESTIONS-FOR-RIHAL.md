@@ -25,6 +25,19 @@ cycle has run with real data in it.
 
 ## 1 · §6.2 — After HR approves a mid-year KPI change, does anyone sign again?
 
+> ## ✅ ANSWERED — 2026-10-19, UAT Scenario C
+>
+> **Neither option.** Rihal's answer is a third one: the employee **acknowledges the change
+> before HR decides**, rather than anyone re-signing after approval. The flow is manager →
+> employee → HR, the employee's step has no reject button (the discussion is offline, exactly as
+> in §5.1), and a request the employee never acknowledges **locks at the mid-year deadline with
+> the KPI unchanged**. HR may override that only with a written reason, logged, and only while
+> the stage is open.
+>
+> Built and recorded: blueprint §6 decision 3, `SPEC-CONFORMANCE` §6 rows, **ADR-072** (which
+> retires the `requireResignAfterChange` cycle policy that used to carry the old answer).
+> The text below is kept as the record of what was asked.
+
 **What the spec says.** §6.2: a manager submits a change request, "HR reviews and approves or
 rejects. On approval: the new version takes effect." §6.3 keeps the version history. Nothing is said
 about signatures.
@@ -34,7 +47,9 @@ set, the manager signs, HR approves, and the set is locked. If a KPI is then cha
 people have signed something that no longer exists — and the year-end assessment (§7) is measured
 against the _new_ set.
 
-**What the system does today (the default, changeable in the cycle policy).** No re-sign was
+**What the system did before UAT Scenario C** _(ANSWERED — see the banner above; the cycle-policy
+toggle this describes is retired by ADR-072, and the employee now acknowledges BEFORE HR decides)_**.**
+No re-sign was
 invented. The original signature stands, and
 `SignOff.kpiSetHash` records the exact KPI set that was signed, so any screen can tell that a
 signature predates the current set. Nobody is asked to sign twice, and nothing pretends the old

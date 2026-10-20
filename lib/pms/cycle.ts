@@ -127,7 +127,15 @@ export function canRunCycle(actor: PmsActor): boolean {
  * leaves mid-cycle keeps the participant row they already had — this only
  * governs who gets added.
  */
-export async function enrolParticipants(cycleId: string): Promise<{ added: number }> {
+/** Postgres unique-violation, as Prisma reports it. */
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
+
+export async function enrolParticipants(
+  cycleId: string,
+  options?: { limit?: number },
+): Promise<{ added: number; remaining: number }> {
   const [employees, existing] = await Promise.all([
     prisma.employee.findMany({ where: { status: "ACTIVE" }, select: { id: true } }),
     prisma.cycleParticipant.findMany({ where: { cycleId }, select: { employeeId: true } }),
@@ -135,16 +143,37 @@ export async function enrolParticipants(cycleId: string): Promise<{ added: numbe
 
   const enrolled = new Set(existing.map((p) => p.employeeId));
   const missing = employees.filter((e) => !enrolled.has(e.id));
-  if (missing.length === 0) return { added: 0 };
+  if (missing.length === 0) return { added: 0, remaining: 0 };
+
+  // `limit` exists because every caller is a REQUEST with a clock on it —
+  // including the cycle-open transition, which this comment previously implied
+  // was something else. Each row is its own audited create, so a
+  // thousand joiners is a thousand round trips, and a route that runs out of
+  // time mid-way returns nothing useful to the person waiting on it. Bounding
+  // it turns that into visible, resumable progress: the caller is told what is
+  // left and the same idempotent call finishes the job.
+  const batch = options?.limit === undefined ? missing : missing.slice(0, options.limit);
 
   // One row at a time rather than createMany: the audit extension records a
   // per-row CREATE, and `no-unaudited-bulk-write` exists to stop exactly the
   // shortcut that would leave enrolment invisible in the audit trail.
-  for (const employee of missing) {
-    await prisma.cycleParticipant.create({
-      data: { cycleId, employeeId: employee.id },
-      select: { id: true },
-    });
+  let added = 0;
+  for (const employee of batch) {
+    try {
+      await prisma.cycleParticipant.create({
+        data: { cycleId, employeeId: employee.id },
+        select: { id: true },
+      });
+      added += 1;
+    } catch (error) {
+      // `missing` is a snapshot, and two writers can hold the same one: the
+      // import enrolling while HR presses the button, one HR user in two tabs,
+      // two HR users at once. `@@unique([cycleId, employeeId])` then refuses
+      // the second write — which is the right outcome, and not an error. The
+      // person is enrolled; that is all anyone asked for. Only a unique
+      // violation is swallowed, so a real failure still surfaces.
+      if (!isUniqueViolation(error)) throw error;
+    }
   }
-  return { added: missing.length };
+  return { added, remaining: missing.length - batch.length };
 }

@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { rosterWeightageTotal } from "./kpi";
 import { displayScore } from "./scoring";
 import { deriveStatus, type ParticipantStatus, type ParticipantStatusInput } from "./status";
 
@@ -67,7 +68,13 @@ export async function participantStatuses(params: {
       kpis: {
         where: { deletedAt: null },
         take: 200,
-        select: { weightage: true, ratings: { select: { party: true }, take: 2 } },
+        // §12.3 — the period is selected because §5.3's "exactly 100" binds per
+        // portion, not across the year (see `rosterWeightageTotal`).
+        select: {
+          weightage: true,
+          assignmentPeriodId: true,
+          ratings: { select: { party: true }, take: 2 },
+        },
       },
       signOffs: {
         where: { stageKind: { in: ["GOAL_SETTING", "YEAR_END"] } },
@@ -91,11 +98,12 @@ export async function participantStatuses(params: {
     const signed = (stage: "GOAL_SETTING" | "YEAR_END", party: "EMPLOYEE" | "MANAGER") =>
       row.signOffs.find((s) => s.stageKind === stage && s.party === party)?.signedAt ?? null;
 
-    let weightageTotal = new Prisma.Decimal(0);
+    // §12.3 — per portion, never summed across a split year. A flat sum here
+    // put "Weightages total 200.00%" on a correctly-drafted transfer.
+    const weightageTotal = rosterWeightageTotal(row.kpis);
     let selfRatedCount = 0;
     let managerRatedCount = 0;
     for (const kpi of row.kpis) {
-      weightageTotal = weightageTotal.plus(kpi.weightage);
       for (const r of kpi.ratings) {
         if (r.party === "EMPLOYEE") selfRatedCount += 1;
         else managerRatedCount += 1;
