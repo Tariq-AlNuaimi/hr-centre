@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { YearEndAssessment, type YearEndKpi } from "@/components/pms/YearEndAssessment";
+import { isStorageConfigured } from "@/lib/storage";
 import {
   YEAR_END_KPI_ORDER,
   YEAR_END_KPI_SELECT,
@@ -165,6 +166,7 @@ export default async function YearEndParticipantPage({
       </div>
 
       <YearEndAssessment
+        storageConfigured={isStorageConfigured()}
         participantId={participant.id}
         stage={
           stage === null

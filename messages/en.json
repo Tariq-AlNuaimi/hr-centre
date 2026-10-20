@@ -1561,6 +1561,33 @@
       "summaryProgress": "Your own year-end self-assessment: {rated} of {total} KPIs rated.",
       "summaryStart": "Start mine",
       "summaryResume": "Finish mine"
+    },
+    "evidence": {
+      "title": "Evidence",
+      "required": "Required",
+      "count": "{count} of {max}",
+      "emptyHelp": "Attach at least one file or link that shows what you did. You cannot sign until every KPI has evidence.",
+      "addFile": "Attach a file",
+      "addLink": "Add a link",
+      "saveLink": "Save link",
+      "linkLabelPlaceholder": "What is this? e.g. Q3 release notes",
+      "link": "Link",
+      "addedOn": "Added {datetime}",
+      "remove": "Remove {label}",
+      "removed": "Evidence removed.",
+      "removeFailed": "That evidence could not be removed.",
+      "addFailed": "That evidence could not be added.",
+      "linkAdded": "Link added.",
+      "fileAdded": "File uploaded.",
+      "tooLarge": "That file is over the {limit} MB limit.",
+      "atLimit": "This KPI is at the evidence limit.",
+      "filesUnavailable": "File storage is not set up yet — links still work.",
+      "managerNote": "Manager's note: {comment}",
+      "commentPlaceholder": "Comment on this evidence…",
+      "saveComment": "Save note",
+      "commentSaved": "Note saved.",
+      "commentFailed": "That note could not be saved.",
+      "linkUrlPlaceholder": "https://…"
     }
   },
   "access": {

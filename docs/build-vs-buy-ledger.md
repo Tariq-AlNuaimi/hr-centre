@@ -751,3 +751,28 @@ reachable, which is exactly how F11 hid. Its limits are written at the top of th
 implied: it matches paths, not behaviour, so it is a floor and never a substitute for driving the
 screen. Cron-only routes are allowlisted with the name of their non-UI caller, so "nothing calls it"
 can never be the silent answer.
+
+### 2026-10-20 — Private object storage for §7.1 evidence files
+
+Scope: lib/storage.ts
+Considered: **`@vercel/blob` (ADOPTED)** — it is the `/scale-up` recipe's own package for this
+capability and the deployment rail is already Vercel, so storage lives where the app does and
+`BLOB_READ_WRITE_TOKEN` is injected rather than being another secret to hand over at `/handoff`;
+critically it now supports `access: "private"` plus `issueSignedToken`/`presignUrl` (both verified
+present in 2.8.2 before adopting, not assumed from the docs), which is what makes it usable for a
+Confidential record at all. **Postgres `bytea`** (rejected — keeps one backup and one access path,
+which is genuinely attractive for performance records, but it pushes file bytes through Neon's
+connection pool, bloats every dump, and the 10 MB × 10-per-KPI ceiling across a whole org is the
+kind of growth a row store absorbs badly; revisit only if the operator would rather not add a
+storage vendor). **S3 / R2 via `@aws-sdk/client-s3`** (rejected — a far larger dependency, plus
+credentials, a bucket policy and a CORS config to get wrong, to buy portability nobody has asked
+for; the presigned-GET model is the same one adopted here). **MinIO self-hosted** (rejected — this
+fork has no container rail in production, and SECURITY.md T-09 records the last attempt's
+root-credential problem). **UploadThing / Uploadcare** (rejected — a third-party processor holding
+employee performance records is a data-protection question the operator has not been asked, and
+`/handoff` would inherit it).
+
+**What is hand-built and why:** only the ~70 lines in `lib/storage.ts`, which exist to write
+`access: "private"` exactly once, to turn a missing token into a sentence a human can act on rather
+than a stack trace, and to keep pathname construction in one place so a crafted filename cannot
+traverse. Everything underneath — upload, signing, deletion — is the library's.

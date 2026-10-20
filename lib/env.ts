@@ -42,6 +42,12 @@ const envSchema = z.object({
   AUDIT_PURGE_TOKEN: z.string().min(32).optional(),
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
 
+  // Vercel Blob (optional; §7.1 evidence FILES are gated on its presence --
+  // see lib/storage.ts. Links work without it, so an unconfigured store
+  // degrades the feature rather than breaking the assessment.) Injected
+  // automatically when a Blob store is attached to the Vercel project.
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+
   // SMTP (optional; email is gated on SMTP_HOST presence -- see lib/email.ts)
   SMTP_HOST: z.string().optional(),
   SMTP_PORT: z.coerce.number().int().positive().default(587),

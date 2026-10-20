@@ -101,6 +101,8 @@
 - app/api/users/platform-admins/route.ts  [GET]
 - app/api/users/route.ts  [GET,POST]
 - app/api/year-end-signoffs/route.ts  [POST]
+- app/api/year-end/evidence/[id]/route.ts  [GET,PATCH,DELETE]
+- app/api/year-end/evidence/route.ts  [POST]
 - app/api/year-end/me/route.ts  [GET]
 - app/page.tsx
 
@@ -112,7 +114,7 @@
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
 - OrgEntity: id, code, name, departments, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
 - Department: id, name, entityId, entity, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -122,10 +124,11 @@
 - KpiChangeRequestEdit: id, requestId, request, kpiId, kpi, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, createdAt
 - KpiVersion: id, kpiId, kpi, versionNo, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, supersededAt, supersededByRequestId, createdAt
 - KpiRating: id, kpiId, kpi, party, level, comment, ratedByEmployeeId, ratedByEmployee, ratedAt, createdAt, updatedAt
+- KpiEvidence: id, kpiId, kpi, kind, label, blobPathname, contentType, sizeBytes, url, uploadedByEmployeeId, uploadedByEmployee, uploadedAt, managerComment, managerCommentAt, deletedAt, deletedBy, createdAt, updatedAt
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
 - Notification: id, recipientEmployeeId, recipientEmployee, kind, body, href, dedupeKey, readAt, createdAt
 - SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
-- Kpi: id, participantId, participant, assignmentPeriodId, assignmentPeriod, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, deletedAt, deletedBy, createdAt, updatedAt
+- Kpi: id, participantId, participant, assignmentPeriodId, assignmentPeriod, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, evidence, deletedAt, deletedBy, createdAt, updatedAt
 - EntityScore: id, cycleId, cycle, entityId, entity, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
 - DepartmentScore: id, cycleId, cycle, departmentId, department, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
 - ThreeSixtyCycle: id, cycleId, cycle, status, opensAt, deadline, templates, assignments, createdAt, updatedAt
@@ -172,6 +175,7 @@
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
+- lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
 - lib/pms/import/checks/employment.ts: checkSalary, checkDateOfJoining, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
@@ -212,6 +216,7 @@
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
+- lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, deleteStoredFile
 - lib/utils.ts: cn
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput
@@ -219,6 +224,7 @@
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput, cyclePolicySchema, CyclePolicyInput
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
+- lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, evidenceCommentSchema
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
@@ -256,6 +262,7 @@
 - components/pms/HrApprovalPanel.tsx
 - components/pms/ImportPreview.tsx
 - components/pms/KpiDraftBoard.tsx
+- components/pms/KpiEvidence.tsx
 - components/pms/KpiForm.tsx
 - components/pms/KpiList.tsx
 - components/pms/KpiVersionHistory.tsx

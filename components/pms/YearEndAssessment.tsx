@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { StageBanner, type GoalStage } from "@/components/pms/StageBanner";
 import { TEXTAREA_CLASS } from "@/components/pms/change-request-draft";
 import { formatDateTime } from "@/lib/format";
+import { KpiEvidence, type EvidenceItem } from "./KpiEvidence";
 
 /**
  * §7.1 — the year-end assessment, from both sides of it.
@@ -49,6 +50,8 @@ export interface YearEndKpi {
   levels: { level: number; text: string }[];
   employeeRating: { level: number; comment: string | null; ratedAt: string } | null;
   managerRating: { level: number; comment: string | null; ratedAt: string } | null;
+  /** §7.1 evidence. Required before the employee may sign. */
+  evidence?: EvidenceItem[];
 }
 
 export interface YearEndSetState {
@@ -171,6 +174,7 @@ export function YearEndAssessment({
   signedParties,
   goalSettingExempt,
   blockedReason,
+  storageConfigured = false,
 }: {
   participantId: string;
   stage: GoalStage | null;
@@ -180,6 +184,8 @@ export function YearEndAssessment({
   signedParties: ("EMPLOYEE" | "MANAGER")[];
   goalSettingExempt: boolean;
   blockedReason: string | null;
+  /** §7.1 — files need a Blob store; links never do. */
+  storageConfigured?: boolean;
 }) {
   const t = useTranslations("pms.yearEnd");
   const router = useRouter();
@@ -382,6 +388,17 @@ export function YearEndAssessment({
                 </Button>
               </div>
             ) : null}
+
+            {/* §7.1 evidence. Shown to everyone who can see the assessment —
+                the employee, their direct manager and HR — and editable only by
+                the owner, only until they sign. */}
+            <KpiEvidence
+              kpiId={kpi.id}
+              items={kpi.evidence ?? []}
+              canEdit={actingAs === "EMPLOYEE" && !signedParties.includes("EMPLOYEE")}
+              canComment={actingAs === "MANAGER"}
+              storageConfigured={storageConfigured}
+            />
           </SectionCard>
         );
       })}

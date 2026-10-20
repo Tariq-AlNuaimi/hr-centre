@@ -30,6 +30,28 @@ export const YEAR_END_KPI_SELECT = {
   ratings: {
     select: { party: true, level: true, comment: true, ratedAt: true },
   },
+  // §7.1 evidence. Both readers of this select — the employee's own
+  // `/api/year-end/me` and the manager's participant page — have already
+  // passed `canViewEmployee`, which is exactly the set allowed to see it
+  // (employee, direct manager, HR). Soft-deleted items are excluded here
+  // rather than filtered downstream, so a withdrawn item cannot reappear on a
+  // screen that forgot to check.
+  evidence: {
+    where: { deletedAt: null },
+    orderBy: { uploadedAt: "asc" },
+    take: 10,
+    select: {
+      id: true,
+      kind: true,
+      label: true,
+      url: true,
+      contentType: true,
+      sizeBytes: true,
+      uploadedAt: true,
+      managerComment: true,
+      managerCommentAt: true,
+    },
+  },
 } satisfies Prisma.KpiSelect;
 
 /** The ordering §5.2 reads the set in; shared so both screens agree. */
@@ -44,6 +66,18 @@ type RatingRow = {
   comment: string | null;
   ratedAt: Date;
 };
+type EvidenceRow = {
+  id: string;
+  kind: "FILE" | "LINK";
+  label: string;
+  url: string | null;
+  contentType: string | null;
+  sizeBytes: number | null;
+  uploadedAt: Date;
+  managerComment: string | null;
+  managerCommentAt: Date | null;
+};
+
 type KpiRow = {
   id: string;
   description: string;
@@ -54,6 +88,7 @@ type KpiRow = {
   descriptorAlmostAchieved: string;
   descriptorUnsatisfactory: string;
   ratings: RatingRow[];
+  evidence: EvidenceRow[];
 };
 
 /** One KPI as the assessment screen consumes it. Mirrors `YearEndKpi`. */
@@ -64,6 +99,18 @@ export type SerializedYearEndKpi = {
   levels: { level: number; text: string }[];
   employeeRating: { level: number; comment: string | null; ratedAt: string } | null;
   managerRating: { level: number; comment: string | null; ratedAt: string } | null;
+  evidence: {
+    id: string;
+    kind: "FILE" | "LINK";
+    label: string;
+    /** LINK only. A FILE has no URL — it is opened through the read route. */
+    url: string | null;
+    contentType: string | null;
+    sizeBytes: number | null;
+    uploadedAt: string;
+    managerComment: string | null;
+    managerCommentAt: string | null;
+  }[];
 };
 
 /**
@@ -87,6 +134,20 @@ export function serializeYearEndKpis(kpis: KpiRow[]): SerializedYearEndKpi[] {
       levels: RATING_LEVELS.map(({ level, field }) => ({ level, text: kpi[field] })),
       employeeRating: find("EMPLOYEE"),
       managerRating: find("MANAGER"),
+      // No URL is produced for a FILE here, deliberately: there is no public
+      // one, and a signed URL minted at list time would outlive the check that
+      // authorised it. The screen links to the read route instead.
+      evidence: kpi.evidence.map((e) => ({
+        id: e.id,
+        kind: e.kind,
+        label: e.label,
+        url: e.url,
+        contentType: e.contentType,
+        sizeBytes: e.sizeBytes,
+        uploadedAt: e.uploadedAt.toISOString(),
+        managerComment: e.managerComment,
+        managerCommentAt: e.managerCommentAt?.toISOString() ?? null,
+      })),
     };
   });
 }

@@ -4,6 +4,7 @@ import { err, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isGoalSettingExempt, stageState } from "@/lib/pms/cycle";
+import { isStorageConfigured } from "@/lib/storage";
 import { YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
 import {
@@ -138,6 +139,9 @@ export const GET = withRateLimit(
       signedParties: participant.signOffs.map((s) => s.party),
       goalSettingExempt: isGoalSettingExempt(participant.employee.roleTrack),
       blockedReason: blocked?.reason ?? null,
+      // §7.1 — so the screen can say "files unavailable, links still work"
+      // rather than offering a button that fails.
+      storageConfigured: isStorageConfigured(),
     });
   }),
   { id: "pms-year-end-me", limit: 60, windowMs: 60_000 },
