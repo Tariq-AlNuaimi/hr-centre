@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { MyYearEnd } from "@/components/pms/MyYearEnd";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageSkeleton, TableSkeleton } from "@/components/shared/Skeletons";
@@ -106,12 +107,15 @@ export default function YearEndPage() {
   if (actorLoading || (canWork && cycles.isLoading)) return <PageSkeleton rows={6} withAction />;
 
   if (!canWork) {
+    // §7.1 — an employee's OWN year-end assessment. This used to be a "not
+    // permitted" notice whose copy pointed at a My Tasks card that was never
+    // built, so §7.1's first step — the employee self-assessing — was reachable
+    // only by guessing a participant URL. The roster is what they may not see;
+    // their own assessment was never the thing being refused.
     return (
       <div className="space-y-6">
-        <PageHeader title={t("title")} />
-        <SectionCard title={t("title")}>
-          <EmptyState description={t("notPermitted")} />
-        </SectionCard>
+        <PageHeader title={t("myTitle")} subtitle={t("mySubtitle")} />
+        <MyYearEnd />
       </div>
     );
   }
@@ -148,6 +152,14 @@ export default function YearEndPage() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
+
+      {/* §7.1 — a manager is almost always somebody's report as well, and their
+          OWN assessment is theirs alone to write. Rendering this only in the
+          `!canWork` branch would hand every manager and HR user a screen they
+          could not reach — the mistake §6.2's mid-year screen made and had to
+          be corrected for a day earlier. It renders nothing when they have
+          nothing of their own, so the roster stays the page for everyone else. */}
+      <MyYearEnd variant="summary" />
 
       {/* The YEAR-END window, read off the cycle. The roster endpoint reports the
           GOAL-SETTING one — it is the goal-setting roster — and §5.4's lock is

@@ -1,6 +1,6 @@
 # Blueprint — Performance Management System (PMS)
 
-Scope: app/api/projects/**, app/api/status/**, app/api/reports/**, app/api/leavers/**, app/api/roll-ups/**, app/api/transfers/**, lib/pms/transfer.ts, lib/pms/roll-up.ts, lib/pms/status.ts, lib/pms/status-query.ts, lib/pms/bonus-report.ts, app/[locale]/(dashboard)/team/**, app/[locale]/(dashboard)/executive/**, lib/validations/**, prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, prisma/seed-demo-cycle.ts, prisma/demo-cycle.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, lib/validations/rating.ts, lib/pms/scoring.ts, lib/pms/three-sixty.ts, lib/pms/calibration.ts, lib/pms/bonus.ts, lib/pms/score-run.ts, lib/validations/three-sixty.ts, lib/validations/calibration.ts, lib/validations/strategy-score.ts, app/api/strategy-scores/**, app/api/three-sixty/**, app/api/scores/**, app/api/calibration/**, app/api/bonus/**, app/api/reports/**, app/api/publish/**, app/api/scorecard/**, app/[locale]/(dashboard)/three-sixty/**, app/[locale]/(dashboard)/calibration/**, app/[locale]/(dashboard)/reports/**, app/[locale]/(dashboard)/scorecard/**, app/[locale]/(dashboard)/admin/strategy-scores/**, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/year-end-signoffs/**, app/api/internal/cycle-sweep/**, app/api/mid-year/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/year-end/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/**, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
+Scope: app/api/projects/**, app/api/status/**, app/api/reports/**, app/api/leavers/**, app/api/roll-ups/**, app/api/transfers/**, lib/pms/transfer.ts, lib/pms/roll-up.ts, lib/pms/status.ts, lib/pms/status-query.ts, lib/pms/bonus-report.ts, app/[locale]/(dashboard)/team/**, app/[locale]/(dashboard)/executive/**, lib/validations/**, prisma/schema.prisma, prisma/seed-pms.ts, prisma/seed.ts, prisma/seed-demo-cycle.ts, prisma/demo-cycle.ts, lib/pms/**, lib/validations/employee.ts, lib/validations/cycle.ts, lib/validations/kpi.ts, lib/validations/change-request.ts, lib/validations/rating.ts, lib/pms/scoring.ts, lib/pms/three-sixty.ts, lib/pms/calibration.ts, lib/pms/bonus.ts, lib/pms/score-run.ts, lib/validations/three-sixty.ts, lib/validations/calibration.ts, lib/validations/strategy-score.ts, app/api/strategy-scores/**, app/api/three-sixty/**, app/api/scores/**, app/api/calibration/**, app/api/bonus/**, app/api/reports/**, app/api/publish/**, app/api/scorecard/**, app/[locale]/(dashboard)/three-sixty/**, app/[locale]/(dashboard)/calibration/**, app/[locale]/(dashboard)/reports/**, app/[locale]/(dashboard)/scorecard/**, app/[locale]/(dashboard)/admin/strategy-scores/**, app/api/cycles/**, app/api/kpis/**, app/api/signoffs/**, app/api/kpi-change-requests/**, app/api/kpi-ratings/**, app/api/year-end-signoffs/**, app/api/internal/cycle-sweep/**, app/api/mid-year/**, app/api/year-end/**, components/layout/AppSidebar.tsx, messages/en.json, messages/ar.json, vercel.json, lib/prisma/audit-extension.ts, lib/prisma/recyclable.ts, lib/prisma/soft-delete-extension.ts, app/api/employees/**, app/api/org/**, app/api/imports/**, app/api/pms/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/goal-setting/**, app/[locale]/(dashboard)/mid-year/**, app/[locale]/(dashboard)/year-end/**, app/[locale]/(dashboard)/page.tsx, components/pms/**, components/layout/Breadcrumbs.tsx, components/ui/button.tsx, components/ui/button-variants.ts, lib/crypto/**, scripts/encrypt-salaries.mjs, components/layout/AppSidebar.tsx, hooks/**, eslint-rules/rules/no-restricted-export-column.mjs, scripts/neon-sql.mjs
 
 > Source of truth: `Performance_Management_System.docx` v1.0 (2026-08-24), supplied by the
 > operator's HR team. Section references (§) throughout this document point at that
@@ -470,10 +470,13 @@ Quoted from `docs/PMS_Functional_Specification_v1.0.docx`, not reconstructed.
 | §6.2   | **HR override, exception only.** HR may approve without the employee's acknowledgment **only with a mandatory written reason**, logged with who, when and why, and shown in the version history as "employee did not acknowledge" plus the override. It is available **only while the stage is open** — see decision 3.                                                                                                                                                                           |
 | §6.3   | Full version history of every change: original version, what changed across **all** fields, who requested, who approved, and when. "Old versions are archived, never overwritten."                                                                                                                                                                                                                                                                                                                |
 | §7.1   | Employee self-assesses against each KPI **using the five-level descriptors defined at goal-setting** → manager reviews → offline discussion → **both sign off on the final ratings**.                                                                                                                                                                                                                                                                                                             |
-| §7.2   | Manager-of-record is whoever holds the relationship **at the moment of the action**. Whoever is manager at year-end signs the year-end assessment.                                                                                                                                                                                                                                                                                                                                                |
-| §8.1   | All components resolve onto 1–5: Outstanding 5, Excellent 4, Target 3, Almost Achieved 2, Unsatisfactory 1. Phase 3 **captures** these; Phase 5 scores them.                                                                                                                                                                                                                                                                                                                                      |
-| §8.3   | C-Level skip goal-setting, **self-assessment** and 360 entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| §5.4   | Carried forward: deadlines are hard locks. The same lock now governs the MID_YEAR and YEAR_END stages.                                                                                                                                                                                                                                                                                                                                                                                            |
+
+                                                                                                                                                                                                                                                                                                             |
+
+| §7.2 | Manager-of-record is whoever holds the relationship **at the moment of the action**. Whoever is manager at year-end signs the year-end assessment. |
+| §8.1 | All components resolve onto 1–5: Outstanding 5, Excellent 4, Target 3, Almost Achieved 2, Unsatisfactory 1. Phase 3 **captures** these; Phase 5 scores them. |
+| §8.3 | C-Level skip goal-setting, **self-assessment** and 360 entirely. |
+| §5.4 | Carried forward: deadlines are hard locks. The same lock now governs the MID_YEAR and YEAR_END stages. |
 
 ### Data model (Phase 3)
 
@@ -521,6 +524,36 @@ silently assumes sign-off happens once. §7.1 needs a _second_ pair of signature
 the same participant. The key becomes `@@unique([participantId, stageKind, party])`, backfilled to
 `GOAL_SETTING` for every existing row. Without this, a year-end signature would collide with the
 goal-setting one and be reported as "already signed" — the §5.1 flow silently swallowing §7.1's.
+
+### §7.1's first step had no way in (UAT Scenario D, 2026-10-20)
+
+**The gap.** The self-assessment screen was built, correct and complete — an employee opening
+`/year-end/<cycleId>/participants/<participantId>` got exactly the right thing, because the page
+sets `actingAs: "EMPLOYEE"` for the subject and `YearEndAssessment` has always handled that side.
+Nothing routed anyone to it. The nav entry sat inside the `lineManager || HR` block; `/year-end`
+refused a plain employee with _"your own assessment reaches you through My Tasks"_; and My Tasks
+built goal-setting and 360 cards only — there was never a year-end one. So the first step of §7.1,
+the one the whole clause is ordered around, was reachable only by guessing a URL.
+
+This is the same shape as §6.2's (an employee screen with no door) and the same shape as §3.5's (a
+mechanism nothing called). What made it costly rather than obvious is that the refusal copy
+_named_ a destination that did not exist, so the screen asserted the feature was fine.
+
+**What changed.** `/year-end` is in the nav for everyone, like `/mid-year`. The page branches: an
+employee sees their own assessment inline, a manager sees their roster with their own assessment
+above it when they have one — because a manager is almost always also somebody's report, which
+§6.2 had to learn the same way. My Tasks grows a year-end card while the window is open.
+
+**One payload, not two.** `lib/pms/year-end-select.ts` holds the KPI select, the ordering and the
+serializer; the manager's participant page and `/api/year-end/me` both read it. This is deliberate
+and recent: §6.2's HR review screen broke _because_ it kept its own hand-written field list while
+the shared one grew the acknowledgment columns, and two independent selects cannot disagree out
+loud. A column added to the year-end payload now reaches both screens or neither.
+
+**What it does NOT change.** Every precondition stays exactly where `ratingBlockedReason` put it —
+C-Level are exempt (§8.3), an employee rates only themselves, there must be an HR-approved baseline
+(§5.1), and the stage must be open (§5.4). The screen now explains which one is unmet instead of
+being unreachable; it does not relax any of them.
 
 ### Five design decisions
 

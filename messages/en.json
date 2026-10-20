@@ -638,7 +638,12 @@
       "threeSixtyStart": "HR asked you to assess them. Four questions plus optional comments.",
       "threeSixtyResume": "You have started this one — your saved answers are still there.",
       "threeSixtyAction": "Start",
-      "threeSixtyResumeAction": "Continue"
+      "threeSixtyResumeAction": "Continue",
+      "yearEndSelfTitle": "Your year-end self-assessment",
+      "yearEndSelfStart": "Rate each of your KPIs against the five descriptors agreed at goal setting, and add a comment. Your manager reviews it after you submit.",
+      "yearEndSelfResume": "{rated} of {total} KPIs rated. Finish the rest and sign to send it to your manager.",
+      "yearEndSelfAction": "Start my assessment",
+      "yearEndSelfResumeAction": "Finish my assessment"
     },
     "midYear": {
       "title": "Mid-year review",
@@ -827,7 +832,9 @@
           "OPEN": "Open",
           "LOCKED": "Locked"
         }
-      }
+      },
+      "myTitle": "My year-end assessment",
+      "mySubtitle": "Rate your own year against the KPIs agreed at goal setting. Your manager reviews it after you submit."
     },
     "band": {
       "OUTSTANDING": "Outstanding",
@@ -1535,6 +1542,18 @@
       },
       "pendingAcknowledgedTitle": "You acknowledged this change",
       "awaitingHrHelp": "HR will review it with your acknowledgment recorded. Nothing changes until they approve it."
+    },
+    "myYearEnd": {
+      "title": "My year-end assessment",
+      "subtitle": "Rate your own year against the KPIs agreed at goal setting (§7.1).",
+      "loadFailed": "Could not load your year-end assessment.",
+      "retry": "Try again",
+      "noCycle": "No performance cycle is open, so there is nothing to assess yet.",
+      "notEnrolled": "You are not enrolled in the {year} cycle yet, so you have no KPIs to assess. HR adds people to an open cycle from Performance cycles.",
+      "summaryNotStarted": "Your own year-end self-assessment is open and not started yet.",
+      "summaryProgress": "Your own year-end self-assessment: {rated} of {total} KPIs rated.",
+      "summaryStart": "Start mine",
+      "summaryResume": "Finish mine"
     }
   },
   "access": {

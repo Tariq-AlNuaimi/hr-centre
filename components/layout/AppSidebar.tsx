@@ -139,13 +139,27 @@ export function AppSidebar() {
       label: t("midYear"),
       onClick: () => router.push(`/${locale}/mid-year`),
     },
+    {
+      // §7.1 — year-end is an EVERY-EMPLOYEE screen for the same reason
+      // mid-year is: the clause OPENS with the employee self-assessing. It sat
+      // in the manager/HR block below, with a comment claiming the employee's
+      // own assessment "reaches them through My Tasks" — My Tasks had no
+      // year-end card, so the first step of §7.1 was reachable only by guessing
+      // a URL. Managers and HR get the roster on the same route; the page
+      // branches, and shows them their own assessment above it.
+      key: "year-end",
+      icon: <ClipboardCheck className="h-4 w-4" />,
+      label: t("yearEnd"),
+      onClick: () => router.push(`/${locale}/year-end`),
+    },
     // Goal setting (§5) is the LINE MANAGER's workspace, so it is gated on the
     // relationship — `capabilities.lineManager` is derived from
     // `Employee.managerId` edges, not from a role name (§4.2) — plus HR's
     // org-wide override (§4.1). Roles are additive, so this is an OR (§4.3).
     // An employee with no reports has no roster to work: their own KPI set
     // reaches them through My Tasks on the home page, not through a nav item
-    // that would open an empty screen.
+    // that would open an empty screen. (Mid-year and year-end are NOT in this
+    // block — both have an employee-facing side, and both sit above.)
     ...(capabilities.lineManager || pmsRoles.includes("HR_SUPER_ADMIN") || pmsRoles.includes("HRBP")
       ? [
           // §13.3's manager workspace — the cockpit a manager checks before an
@@ -161,15 +175,6 @@ export function AppSidebar() {
             icon: <ClipboardList className="h-4 w-4" />,
             label: t("goalSetting"),
             onClick: () => router.push(`/${locale}/goal-setting`),
-          },
-          // Year-end (§7) — the same audience again: the employee's own
-          // assessment reaches them through My Tasks, the manager reviews their
-          // direct reports here, HR oversees org-wide.
-          {
-            key: "year-end",
-            icon: <ClipboardCheck className="h-4 w-4" />,
-            label: t("yearEnd"),
-            onClick: () => router.push(`/${locale}/year-end`),
           },
         ]
       : []),

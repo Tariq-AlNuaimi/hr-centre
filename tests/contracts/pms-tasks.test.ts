@@ -11,6 +11,7 @@ import {
   toneForStage,
 } from "../../lib/pms/tasks";
 import { buildThreeSixtyTasks, type ThreeSixtyTaskRow } from "../../lib/pms/tasks";
+import { buildYearEndTasks, type YearEndTaskState } from "../../lib/pms/tasks";
 import type { ParticipantRow } from "../../components/pms/ParticipantList";
 import type { GoalStage } from "../../components/pms/StageBanner";
 
@@ -303,4 +304,89 @@ test("§9.7 an overdue assignment ranks above everything still open", () => {
     nowMs: new Date("2027-01-01").getTime(),
   });
   assert.ok(overdue.rank < open.rank, "urgency sorts first");
+});
+
+// --- §7.1 the employee's own year-end card ----------------------------------
+//
+// UAT Scenario D. The nav comment and the /year-end refusal copy both told the
+// employee their assessment "reaches them through My Tasks"; My Tasks built
+// goal-setting and 360 cards only, so §7.1's FIRST step had no door anywhere.
+// These cases pin both halves: it must appear when it is genuinely their move,
+// and stay silent when it is not — a task nobody can act on is not a prompt,
+// it is a standing accusation.
+
+const OPEN_WINDOW: YearEndTaskState = {
+  participant: { id: "p1" },
+  stage: { deadline: "2027-11-30T00:00:00Z", state: "OPEN" },
+  kpis: [{ id: "k1" }, { id: "k2" }],
+  state: { kpiCount: 2, employeeRated: 0 },
+  signedParties: [],
+  goalSettingExempt: false,
+  blockedReason: null,
+};
+const NOV_1 = new Date("2027-11-01T00:00:00Z").getTime();
+const yearEnd = (over: Partial<YearEndTaskState> = {}, nowMs: number | null = NOV_1) =>
+  buildYearEndTasks({ mine: { ...OPEN_WINDOW, ...over }, href: "/en/year-end", nowMs });
+
+test("§7.1 an open window with nothing rated yet IS a task", () => {
+  const [task] = yearEnd();
+  assert.ok(task, "the employee's own assessment must reach My Tasks");
+  assert.equal(task.href, "/en/year-end");
+  assert.equal(task.detailKey, "yearEndSelfStart");
+  assert.deepEqual(task.detailParams, { rated: 0, total: 2 });
+});
+
+test("§7.1 a part-finished assessment says finish, not start", () => {
+  // "Start" on a set someone is half-way through reads as lost work.
+  const [task] = yearEnd({ state: { kpiCount: 2, employeeRated: 1 } });
+  assert.equal(task.detailKey, "yearEndSelfResume");
+  assert.equal(task.actionKey, "yearEndSelfResumeAction");
+  assert.deepEqual(task.detailParams, { rated: 1, total: 2 });
+});
+
+test("§8.3 C-Level get no self-assessment card at all", () => {
+  // Categorical: they skip self-assessment entirely, so a card would be a
+  // prompt to do something the API refuses outright.
+  assert.deepEqual(yearEnd({ goalSettingExempt: true }), []);
+});
+
+test("§7.1 a signed assessment is finished — the next move is the manager's", () => {
+  assert.deepEqual(yearEnd({ signedParties: ["EMPLOYEE"] }), []);
+});
+
+test("§5.4 a window that has not opened yet is nobody's move", () => {
+  assert.deepEqual(
+    yearEnd({ stage: { deadline: "2027-11-30T00:00:00Z", state: "NOT_YET_OPEN" } }),
+    [],
+  );
+});
+
+test("§5.4 a LOCKED window still shows, and shows as overdue", () => {
+  // The deadline passing does not mean the work stopped mattering — §5.5's
+  // ladder is already escalating it, and hiding the card hides the reason.
+  const [task] = yearEnd({ stage: { deadline: "2027-11-30T00:00:00Z", state: "LOCKED" } });
+  assert.ok(task);
+  assert.equal(task.tone, "overdue");
+  assert.equal(task.rank, STAGE_RANK.overdue);
+});
+
+test("§3.5 someone not enrolled, and someone with no KPIs, get no card", () => {
+  assert.deepEqual(yearEnd({ participant: null }), []);
+  assert.deepEqual(yearEnd({ kpis: [], state: { kpiCount: 0, employeeRated: 0 } }), []);
+  assert.deepEqual(buildYearEndTasks({ mine: null, href: "/en/year-end", nowMs: NOV_1 }), []);
+});
+
+test("§5.1 the server's refusal travels with the card, not just to the screen", () => {
+  // A set with no HR-approved baseline cannot be rated. The card still appears
+  // — it is still their year — but it carries the reason, so nobody clicks
+  // through to discover it.
+  const reason = "This KPI set has no HR-approved baseline, so there is nothing to assess (§5.1).";
+  const [task] = yearEnd({ blockedReason: reason });
+  assert.equal(task.blockedReason, reason);
+});
+
+test("a deadline inside the due-soon window raises the card's urgency", () => {
+  const justBefore = new Date("2027-11-30T00:00:00Z").getTime() - DUE_SOON_MS / 2;
+  const [task] = yearEnd({}, justBefore);
+  assert.equal(task.tone, "dueSoon");
 });

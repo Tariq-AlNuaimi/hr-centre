@@ -6,10 +6,15 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { YearEndAssessment, type YearEndKpi } from "@/components/pms/YearEndAssessment";
+import {
+  YEAR_END_KPI_ORDER,
+  YEAR_END_KPI_SELECT,
+  serializeYearEndKpis,
+} from "@/lib/pms/year-end-select";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { RATING_LEVELS, YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
+import { YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
@@ -74,20 +79,10 @@ export default async function YearEndParticipantPage({
       },
       kpis: {
         where: { deletedAt: null },
-        orderBy: [{ orderIndex: "asc" }, { createdAt: "asc" }],
-        select: {
-          id: true,
-          description: true,
-          weightage: true,
-          descriptorOutstanding: true,
-          descriptorExcellent: true,
-          descriptorTarget: true,
-          descriptorAlmostAchieved: true,
-          descriptorUnsatisfactory: true,
-          ratings: {
-            select: { party: true, level: true, comment: true, ratedAt: true },
-          },
-        },
+        orderBy: YEAR_END_KPI_ORDER,
+        // Shared with `/api/year-end/me`, so the employee's own screen and this
+        // one cannot drift apart (lib/pms/year-end-select.ts).
+        select: YEAR_END_KPI_SELECT,
       },
       signOffs: {
         where: { stageKind: YEAR_END_STAGE },
@@ -117,24 +112,7 @@ export default async function YearEndParticipantPage({
       ? "MANAGER"
       : null;
 
-  const kpis: YearEndKpi[] = participant.kpis.map((kpi) => {
-    const find = (party: "EMPLOYEE" | "MANAGER") => {
-      const r = kpi.ratings.find((x) => x.party === party);
-      return r ? { level: r.level, comment: r.comment, ratedAt: r.ratedAt.toISOString() } : null;
-    };
-    return {
-      id: kpi.id,
-      description: kpi.description,
-      // Decimal crosses as a STRING — §5.3/§8.2 arithmetic stays off floats.
-      weightage: kpi.weightage.toString(),
-      // §7.1 — the five sentences the manager authored for THIS KPI, in §8.1's
-      // order. The screen asks which one describes the year; the number is only
-      // how §8 will later score it.
-      levels: RATING_LEVELS.map(({ level, field }) => ({ level, text: kpi[field] })),
-      employeeRating: find("EMPLOYEE"),
-      managerRating: find("MANAGER"),
-    };
-  });
+  const kpis: YearEndKpi[] = serializeYearEndKpis(participant.kpis);
 
   const state = yearEndState(
     participant.kpis,
