@@ -39,6 +39,30 @@ function runHook(hookFile, stdin, { cwd = REPO, env = {} } = {}) {
 const isDeny = (r) => r.decision === "deny";
 // C3: a personal/quickstart-tier gate ALLOWS but attaches advisory guidance.
 const isWarn = (r) => r.decision === null && !!r.json?.hookSpecificOutput?.additionalContext;
+
+/**
+ * This repo's OWN tier, read rather than assumed.
+ *
+ * The tests below that run a gate against this repo (no fixture) used to assert
+ * `isWarn`, with a comment saying "this repo is tier personal". That was true
+ * when it was written and stopped being true the moment the project moved to
+ * `shared` — five of them failed at once, reporting a tier change as a harness
+ * regression. The behaviour under test is "the gate SAW this write", which is
+ * the same claim on both tiers; only the verdict differs. Deriving it keeps the
+ * regression net honest whichever tier the fork is on.
+ */
+const REPO_TIER =
+  JSON.parse(readFileSync(join(REPO, "project.config.json"), "utf8")).tier ?? "personal";
+/** Gated here = denied on `shared`, advisory on `personal`. Never silent. */
+const isGatedHere = (r) => (REPO_TIER === "shared" ? isDeny(r) : isWarn(r));
+/**
+ * The gate's message, wherever this tier puts it: a deny carries it in
+ * `permissionDecisionReason`, an advisory in `additionalContext`. Asserting on
+ * `advice()` alone passes vacuously against the wrong one — it returns "" and
+ * the regex simply fails, which is how these read as a harness break rather
+ * than a tier change.
+ */
+const gateMessage = (r) => r.json?.hookSpecificOutput?.permissionDecisionReason || advice(r);
 const advice = (r) => r.json?.hookSpecificOutput?.additionalContext ?? "";
 const isBlock = (r) => r.decision === "block";
 const preBash = (command) => ({ tool_name: "Bash", tool_input: { command } });
@@ -78,11 +102,16 @@ test("V2-001 bash-write-gate DENIES a heredoc write to a new uncovered API route
     "bash-write-gate.mjs",
     preBash("cat > app/api/zzznew/route.ts <<'EOF'\nexport const x = 1;\nEOF"),
   );
-  // C3: this repo is tier "personal", so the gate ADVISES rather than denies.
-  // The shared-tier deny is covered by the fixture-based tests above.
-  assert.ok(isWarn(r), `expected advisory, got ${r.decision} :: ${r.stdout}`);
-  assert.match(advice(r), /blueprint-gate/);
-  assert.match(advice(r), /DENIED/, "advisory must still name the shared-tier consequence");
+  // C3: the verdict follows this repo's OWN tier — advisory on `personal`,
+  // deny on `shared`. Both fixture paths are covered by the tests above; what
+  // THIS one asserts is that the gate saw the write at all.
+  assert.ok(isGatedHere(r), `expected the gate to catch it, got ${r.decision} :: ${r.stdout}`);
+  assert.match(gateMessage(r), /blueprint-gate/);
+  if (REPO_TIER !== "shared") {
+    // Only the advisory has a consequence to name; on `shared` the write IS
+    // the consequence, so there is nothing to warn about.
+    assert.match(advice(r), /DENIED/, "advisory must still name the shared-tier consequence");
+  }
 });
 
 test("V2-001 bash-write-gate ALLOWS a heredoc write once a blueprint covers the path", () => {
@@ -124,7 +153,7 @@ test("V2-001 the heredoc OPENER is still gated (the fix must not blind the gate)
     "bash-write-gate.mjs",
     preBash("cat > app/api/zzznew/route.ts <<'EOF'\nexport const x = 1;\nEOF"),
   );
-  assert.ok(isWarn(r), `opener must still be caught :: ${r.decision} ${r.stdout}`);
+  assert.ok(isGatedHere(r), `opener must still be caught :: ${r.decision} ${r.stdout}`);
 });
 
 test("V2-001 a heredoc fed to an INTERPRETER is scanned, not stripped as data", () => {
@@ -137,7 +166,7 @@ test("V2-001 a heredoc fed to an INTERPRETER is scanned, not stripped as data", 
     "bash-write-gate.mjs",
     preBash("bash <<'OUTER'\ncat > app/api/zzznew/route.ts <<'X'\nexport const x = 1;\nX\nOUTER"),
   );
-  assert.ok(isWarn(r), `nested heredoc write must be seen :: ${r.decision} ${r.stdout}`);
+  assert.ok(isGatedHere(r), `nested heredoc write must be seen :: ${r.decision} ${r.stdout}`);
 });
 
 test("V2-001 a heredoc PIPED to an interpreter is scanned too", () => {
@@ -150,7 +179,7 @@ test("V2-001 a heredoc PIPED to an interpreter is scanned too", () => {
       "cat <<'OUTER' | bash\ncat > app/api/zzznew/route.ts <<'X'\nexport const x = 1;\nX\nOUTER",
     ),
   );
-  assert.ok(isWarn(r), `piped interpreter heredoc must be seen :: ${r.decision} ${r.stdout}`);
+  assert.ok(isGatedHere(r), `piped interpreter heredoc must be seen :: ${r.decision} ${r.stdout}`);
 });
 
 test("V2-001 a DATA heredoc NESTED inside an executed body stays unscanned", () => {
@@ -184,7 +213,10 @@ test("V2-001 a path held in a shell VARIABLE does not evade the gate", () => {
     "bash-write-gate.mjs",
     preBash('F=app/api/zzznew/route.ts; echo "export const x = 1;" > "$F"'),
   );
-  assert.ok(isWarn(r), `expected the expanded target to be gated :: ${r.decision} ${r.stdout}`);
+  assert.ok(
+    isGatedHere(r),
+    `expected the expanded target to be gated :: ${r.decision} ${r.stdout}`,
+  );
 });
 
 test("V2-001 an interpreter one-liner writing a gated file does not evade the gate", () => {
@@ -192,7 +224,7 @@ test("V2-001 an interpreter one-liner writing a gated file does not evade the ga
     "bash-write-gate.mjs",
     preBash(`node -e "require('fs').writeFileSync('app/api/zzznew/route.ts','x')"`),
   );
-  assert.ok(isWarn(r), `writeFileSync target must be gated :: ${r.decision} ${r.stdout}`);
+  assert.ok(isGatedHere(r), `writeFileSync target must be gated :: ${r.decision} ${r.stdout}`);
 });
 
 test("V2-001 an interpreter one-liner that only READS a gated path is untouched", () => {
@@ -215,10 +247,10 @@ test("V2-001 bash-write-gate ALLOWS writes outside gated surfaces", () => {
 
 test("V2-001 bash-write-gate catches tee / cp into gated surfaces", () => {
   const tee = runHook("bash-write-gate.mjs", preBash("echo x | tee app/api/teenew/route.ts"));
-  assert.ok(isWarn(tee), `tee should advise (personal tier) :: ${tee.stdout}`);
+  assert.ok(isGatedHere(tee), `tee must be gated :: ${tee.stdout}`);
   const cp = runHook("bash-write-gate.mjs", preBash("cp /tmp/x.ts lib/brandnewcap.ts"));
-  assert.ok(isWarn(cp), `cp into lib/ should advise (personal tier) :: ${cp.stdout}`);
-  assert.match(advice(cp), /build-vs-buy/);
+  assert.ok(isGatedHere(cp), `cp into lib/ must be gated :: ${cp.stdout}`);
+  assert.match(gateMessage(cp), /build-vs-buy/);
 });
 
 test("V2-001 bash-write-gate ALLOWS edits to EXISTING gated files (overwrite = continuation)", () => {
@@ -232,7 +264,7 @@ test("V2-001 bash-write-gate ALLOWS edits to EXISTING gated files (overwrite = c
   const neu = runHook("bash-write-gate.mjs", preBash("sed -i s/a/b/ app/api/brandnewzzz/route.ts"));
   // Still FLAGGED (advisory on personal tier, deny on shared) -- the point is that
   // a NEW uncovered file is treated differently from an existing one.
-  assert.ok(isWarn(neu), `new uncovered route must still be flagged :: ${neu.stdout}`);
+  assert.ok(isGatedHere(neu), `new uncovered route must still be flagged :: ${neu.stdout}`);
 });
 
 test("V2-001 bash-write-gate is FAIL-OPEN on a forced internal error (malformed stdin)", () => {
@@ -314,7 +346,7 @@ test("V2-002 blueprint-gate is FAIL-OPEN on malformed stdin", () => {
 test("build-vs-buy-gate DENIES a new uncovered lib/ capability, ALLOWS excluded dirs", () => {
   const flagged = runHook("build-vs-buy-gate.mjs", preWrite("lib/brandnewcap.ts"));
   // C3: personal tier advises; the shared-tier DENY is covered by ledgerFixture tests.
-  assert.ok(isWarn(flagged), `new lib/ file should be flagged :: ${flagged.stdout}`);
+  assert.ok(isGatedHere(flagged), `new lib/ file should be flagged :: ${flagged.stdout}`);
   // lib/validations/** is an expected-hand-written exclusion → allow.
   const allow = runHook("build-vs-buy-gate.mjs", preWrite("lib/validations/brandnew.ts"));
   assert.equal(allow.decision, null, `lib/validations exclusion should allow :: ${allow.stdout}`);
@@ -449,8 +481,8 @@ test("bash-write-gate FLAGS a `touch` that creates a new uncovered gated file (M
   const r = runHook("bash-write-gate.mjs", preBash("touch app/api/sneaky/route.ts"));
   // C3: personal tier advises, shared tier denies (fixture-covered). The M3 point
   // stands either way -- `touch` is a create and must not slip past the gate.
-  assert.ok(isWarn(r), `touch of a new uncovered route must be flagged :: ${r.stdout}`);
-  assert.match(advice(r), /blueprint-gate/);
+  assert.ok(isGatedHere(r), `touch of a new uncovered route must be flagged :: ${r.stdout}`);
+  assert.match(gateMessage(r), /blueprint-gate/);
 });
 
 test("bash-write-gate ALLOWS `touch` on an EXISTING gated file (continuation, M3)", () => {
