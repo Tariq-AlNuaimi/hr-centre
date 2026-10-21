@@ -157,6 +157,38 @@ nothing — and both of them silent by construction:
 | The employee can pick an allowed file | `accept` listed MIME types only. The OS decides whether a file matches `text/markdown` or `text/csv`, so on most machines `.md` and `.csv` grey out in the picker: the dialog opens, nothing can be selected, `onChange` never fires, and NO CODE RUNS to report it. Extensions are now listed too.                                          |
 | A saved item appears under Evidence   | Every write called `router.refresh()` alone. That re-renders the manager's server-component page, but the employee's own page reads `/api/year-end/me` through TanStack Query, which `router.refresh()` does not touch — so a row could be written and audited and never appear until a manual reload. The query is now invalidated as well. |
 
+### The upload host, settled from source (2026-10-21, third attempt)
+
+The operator got as far as "permission granted", then **"Uploading 14 KB" hung
+forever with no error**. Three things, and the first is why guessing failed
+twice:
+
+1. **`@vercel/blob` uploads to `https://vercel.com/api/blob`, not to the storage
+   host.** `defaultVercelBlobApiUrl` in `packages/blob/src/helpers.ts:13`. The
+   CSP allowed `blob.vercel-storage.com` on the reasonable assumption that bytes
+   go where blobs live; they do not. The storage subdomains
+   (`<storeId>.private.blob.vercel-storage.com` for a private store) are for
+   READS, and ours are a server-side signed URL followed by a browser
+   navigation, which `connect-src` does not govern.
+2. **Why it hung instead of failing.** A CSP-blocked fetch throws
+   `TypeError: Failed to fetch`, which is on the SDK's own network-error list
+   (`is-network-error.ts`), so `async-retry` retried it **ten** times
+   (`VERCEL_BLOB_RETRIES` defaults to `'10'`) with exponential backoff — about
+   seventeen minutes of silence. The client now imposes a 30-second
+   `AbortSignal`, and an abort is explicitly not retried.
+3. **The token was never wrong.** The store id is parsed out of
+   `BLOB_READ_WRITE_TOKEN` itself, `access: "private"` is carried into the
+   signed payload, and `retrieveClientToken` reads `{ clientToken }` from the
+   raw top-level JSON — which is what we now return. Omitting
+   `onUploadCompleted` also means the token carries no callback, so nothing
+   server-to-server can arrive to be 401'd.
+
+Read from the package's own source (`vercel/storage` at `5425e16`), because
+this container cannot reach `vercel.com`, npm, or `node_modules`. **That is the
+lesson of the whole feature: three releases were lost to inferring a
+third-party contract instead of reading it, and the source was clonable the
+entire time.**
+
 **Still not verified against a real Blob store**, and the only honest statement about it: the
 container this was built in cannot resolve `vercel.com`, read npm, or read `node_modules`, so the
 upload wire protocol — the exact CSP host, the handshake response shape, what `upload()` resolves

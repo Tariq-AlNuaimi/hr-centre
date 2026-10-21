@@ -80,3 +80,23 @@ Four details that are load-bearing, each of which was wrong in a first draft of 
   the window is bounded, not zero.
 - **Retention is undecided.** The audit purge does not touch evidence, and nothing says how long a
   performance record should live. Flagged, not answered.
+
+## Addendum (2026-10-21) — the upload host
+
+`@vercel/blob` sends upload data to **`https://vercel.com/api/blob`**
+(`defaultVercelBlobApiUrl`, `packages/blob/src/helpers.ts:13` at `5425e16`), not
+to `*.blob.vercel-storage.com`. The storage subdomains serve READS; a private
+store's is `<storeId>.private.blob.vercel-storage.com`.
+
+Consequences recorded here because both were costly:
+
+- **`connect-src` must include `https://vercel.com`.** Allowing only the storage
+  host blocks every client upload at the browser.
+- **A blocked upload HANGS rather than failing.** The SDK classifies
+  `TypeError: Failed to fetch` as a network error and retries ten times with
+  exponential backoff, surfacing nothing. Any client upload on this rail needs
+  its own `abortSignal` timeout; ours is 30s.
+
+Nothing about the private-store decision changes. The token is store-scoped by
+`BLOB_READ_WRITE_TOKEN` and carries `access: "private"`; it was correct
+throughout.

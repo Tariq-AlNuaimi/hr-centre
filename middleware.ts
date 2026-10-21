@@ -25,19 +25,35 @@ function sentryConnectSrc(): string {
 }
 
 // §7.1 evidence uploads go from the BROWSER straight to Vercel Blob (a function
-// body caps at ~4.5 MB and the limit is 10 MB), so the blob host has to be in
-// connect-src or the upload is blocked before a byte leaves — which is one of
-// the reasons no evidence file could be attached. Gated on the token exactly
-// like Sentry above: a fork with no Blob store gets no extra CSP surface.
+// body caps at ~4.5 MB and the limit is 10 MB), so the upload host has to be in
+// connect-src or the request is blocked before a byte leaves. Gated on the
+// token exactly like Sentry above: a fork with no Blob store gets no extra CSP
+// surface.
 //
-// The hostnames are NOT verified against Vercel's docs: the container this was
-// written in cannot resolve vercel.com, read npm, or read node_modules. Both
-// the API host and the per-store subdomain form are allowed to cover either
-// shape. If an upload still fails, the browser console will name the blocked
-// origin outright ("Refused to connect to …") — put that origin here.
+// `https://vercel.com` IS THE UPLOAD HOST, and guessing otherwise is what kept
+// this broken. The first attempt allowed `blob.vercel-storage.com` on the
+// reasonable-sounding assumption that bytes go to the storage host. They do
+// not: `@vercel/blob` v2.8.2 posts every data request to
+// `defaultVercelBlobApiUrl = 'https://vercel.com/api/blob'`
+// (packages/blob/src/helpers.ts:13, read from the package's own source after
+// the docs proved unreachable from this container). The storage subdomains —
+// `<storeId>.private.blob.vercel-storage.com` for a private store — are where
+// blobs are READ from, and our reads are a server-side signed URL followed by a
+// browser NAVIGATION, which connect-src does not govern.
+//
+// Why it hung instead of failing: a CSP-blocked fetch throws
+// `TypeError: Failed to fetch`, which is on the SDK's own network-error list
+// (is-network-error.ts), so `async-retry` retried it ten times with
+// exponential backoff — about seventeen minutes of silence. The client now also
+// imposes its own 30-second timeout, so a wrong host here can never again look
+// like a hang.
+//
+// The storage hosts are kept alongside it: the multipart and presigned paths
+// address the store directly, and a wildcard here costs nothing while a missing
+// host costs a release.
 function blobConnectSrc(): string {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return "";
-  return " https://blob.vercel-storage.com https://*.blob.vercel-storage.com";
+  return " https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com";
 }
 
 // Per-request CSP (T-05 / recipe shared-security/3). script-src is nonce-based:
