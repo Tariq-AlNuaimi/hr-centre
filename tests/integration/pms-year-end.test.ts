@@ -325,6 +325,50 @@ test("§7.1 signing is refused until every KPI carries both ratings", async () =
   await json(await rate({ kpiId: ids.kpis[1], party: "MANAGER", level: 3 }));
 });
 
+test("§7.1 the employee cannot sign until every KPI carries EVIDENCE (HR's rule)", async () => {
+  // The ratings are complete at this point, so this isolates the evidence gate.
+  // Before the gate existed this very fixture signed a complete-looking
+  // assessment with nothing behind a single rating — which is the state HR
+  // asked for the feature to close.
+  as(ids.employeeUser);
+  const { status, error } = await json(
+    await sign({ participantId: ids.participant, party: "EMPLOYEE" }),
+  );
+  assert.equal(status, 409);
+  assert.match(String(error), /still need evidence/);
+  // The first offending KPI by name, not a count on its own: a refusal that
+  // will not say what it wants is the thing people file bugs about.
+  assert.match(String(error), /2 of 2 KPIs/);
+});
+
+test("the MANAGER's signature is deliberately NOT gated by the employee's evidence", async () => {
+  // Blocking the reviewer for the subject's omission punishes the wrong person,
+  // and would hand an employee a way to stall their own review indefinitely.
+  as(ids.managerUser);
+  const { status } = await json(await sign({ participantId: ids.participant, party: "MANAGER" }));
+  assert.equal(status, 201);
+
+  // Put the state back for the test below, which asserts both signatures land.
+  await prisma.signOff.deleteMany({
+    where: { participantId: ids.participant, stageKind: "YEAR_END", party: "MANAGER" },
+  });
+
+  // And give every KPI one link, so the gate is satisfied honestly rather than
+  // by disabling it.
+  for (const kpiId of ids.kpis) {
+    await prisma.kpiEvidence.create({
+      data: {
+        kpiId,
+        kind: "LINK",
+        label: "Q4 delivery summary",
+        url: "https://intranet.test/evidence",
+        uploadedByEmployeeId: ids.employee,
+      },
+      select: { id: true },
+    });
+  }
+});
+
 test("§7.1 both parties sign a complete assessment", async () => {
   as(ids.employeeUser);
   const emp = await json(await sign({ participantId: ids.participant, party: "EMPLOYEE" }));

@@ -1577,6 +1577,8 @@
       "removed": "Evidence removed.",
       "removeFailed": "That evidence could not be removed.",
       "addFailed": "That evidence could not be added.",
+      "uploadFailed": "Upload failed before the file reached storage.",
+      "typeNotAccepted": "That file type is not accepted. Allowed: {types}.",
       "linkAdded": "Link added.",
       "fileAdded": "File uploaded.",
       "tooLarge": "That file is over the {limit} MB limit.",

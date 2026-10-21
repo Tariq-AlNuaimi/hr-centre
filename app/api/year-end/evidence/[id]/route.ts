@@ -3,10 +3,8 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { evidenceWriteBlockedReason } from "@/lib/pms/evidence";
+import { canViewEvidence, evidenceWriteBlockedReason } from "@/lib/pms/evidence";
 import { YEAR_END_STAGE } from "@/lib/pms/rating";
-import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 import { signedReadUrl, StorageNotConfiguredError } from "@/lib/storage";
 import { evidenceCommentSchema } from "@/lib/validations/evidence";
 
@@ -19,11 +17,21 @@ import { evidenceCommentSchema } from "@/lib/validations/evidence";
  * check FIRST and signs afterwards. The signature is the last step of an
  * authorised read, never the authorisation.
  *
- * A caller outside the subject's chain gets **404, not 403**: the rest of §4.2
- * works that way for the same reason, which is that 403 confirms the item is
- * real. Who may see it: the employee, their direct manager, and HR — the same
- * `canViewEmployee` the whole module uses, so there is no second definition of
- * "may see" to drift out of step.
+ * A caller who may not see it gets **404, not 403**: the rest of §4.2 works
+ * that way for the same reason, which is that 403 confirms the item is real.
+ *
+ * Who may see it: the employee, their DIRECT manager, and HR — `canViewEvidence`,
+ * which is deliberately narrower than the `canViewEmployee` this route used to
+ * call. That earlier version let the whole downward chain and the executive
+ * viewer read the files while the blueprint and SECURITY.md §1 both claimed a
+ * skip-level manager got a 404. The claim is now true because the predicate
+ * exists; see the note on `canViewEvidence` for why evidence is held tighter
+ * than the rating it supports.
+ *
+ * On serving: the redirect's `nosniff` and `no-store` bind THIS response, not
+ * the cross-origin Blob response the browser then loads. The controls that
+ * actually constrain the file are the private store, the pinned content type on
+ * the upload token, and the five-minute single-pathname signature.
  */
 
 const EVIDENCE_SELECT = {
@@ -37,11 +45,26 @@ const EVIDENCE_SELECT = {
   kpi: {
     select: {
       id: true,
+      // A soft-deleted KPI's evidence is not reachable either: `Kpi` is
+      // soft-deletable and the FK cascade only fires on a hard delete, so
+      // without this an item outlives the KPI it belongs to.
+      deletedAt: true,
       participant: {
         select: {
           employeeId: true,
-          employee: { select: { id: true, managerId: true } },
+          goalsApprovedAt: true,
+          employee: { select: { id: true, managerId: true, roleTrack: true } },
           signOffs: { where: { stageKind: YEAR_END_STAGE }, select: { party: true } },
+          // §5.4 — the lock that has to apply to evidence writes too.
+          cycle: {
+            select: {
+              status: true,
+              stages: {
+                where: { kind: YEAR_END_STAGE },
+                select: { kind: true, opensAt: true, deadline: true, graceDays: true },
+              },
+            },
+          },
         },
       },
     },
@@ -50,14 +73,30 @@ const EVIDENCE_SELECT = {
 
 async function loadVisible(id: string, actor: Awaited<ReturnType<typeof resolveActor>>) {
   const row = await prisma.kpiEvidence.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, deletedAt: null, kpi: { deletedAt: null } },
     select: EVIDENCE_SELECT,
   });
   if (!row) return null;
-  const descendants = await visibilityDescendants(actor);
-  if (!canViewEmployee(actor, row.kpi.participant.employeeId, descendants)) return null;
+  if (!canViewEvidence(actor, row.kpi.participant.employee)) return null;
   return row;
 }
+
+/** The §5.4/§5.1/§8.3 preconditions, read off a loaded row. */
+function writeRefusal(row: EvidenceRow, actor: Awaited<ReturnType<typeof resolveActor>>) {
+  const { participant } = row.kpi;
+  return evidenceWriteBlockedReason({
+    actor,
+    subjectEmployeeId: participant.employeeId,
+    employeeSigned: participant.signOffs.some((s) => s.party === "EMPLOYEE"),
+    roleTrack: participant.employee.roleTrack,
+    goalsApprovedAt: participant.goalsApprovedAt,
+    stage: participant.cycle.stages[0] ?? null,
+    cycleStatus: participant.cycle.status,
+    now: new Date(),
+  });
+}
+
+type EvidenceRow = NonNullable<Awaited<ReturnType<typeof loadVisible>>>;
 
 /** Open the item: a redirect to a 5-minute signed URL, or the link itself. */
 export const GET = withRateLimit(
@@ -106,12 +145,7 @@ export const DELETE = withRateLimit(
     const row = await loadVisible(id, actor);
     if (!row) return notFound("Evidence");
 
-    const signed = row.kpi.participant.signOffs.some((s) => s.party === "EMPLOYEE");
-    const blocked = evidenceWriteBlockedReason({
-      actor,
-      subjectEmployeeId: row.kpi.participant.employeeId,
-      employeeSigned: signed,
-    });
+    const blocked = writeRefusal(row, actor);
     if (blocked) return err(blocked.reason, blocked.status);
 
     await auditedTransaction(async (tx) => {
@@ -129,10 +163,16 @@ export const DELETE = withRateLimit(
 /**
  * The manager's note on one item (requirement 4).
  *
- * The DIRECT line manager, via `canActOnEmployee` — the same authority §7.1
- * gives them to review the rating. HR can see evidence but does not annotate
- * it: the note is part of the manager's review, and HR's route into the record
- * is calibration, not commentary.
+ * The DIRECT line manager, and ONLY them. Not `canActOnEmployee`, which this
+ * route used to call: that returns true for HR under §4.1's override, so an HR
+ * user could post a note through the API that renders as "Manager's note" —
+ * there is no author column to tell them apart. The screen never offered HR the
+ * box, which is exactly why the hole was invisible. Attributing one person's
+ * words to another is the impersonation `yearEndSignerBlockedReason` already
+ * refuses for signatures, and a comment on someone's evidence is the same kind
+ * of claim.
+ *
+ * HR's route into the record is calibration (§10), not commentary.
  */
 export const PATCH = withRateLimit(
   withAuth(async (request: NextRequest, { params, session }) => {
@@ -142,8 +182,20 @@ export const PATCH = withRateLimit(
     const row = await loadVisible(id, actor);
     if (!row) return notFound("Evidence");
 
-    if (!canActOnEmployee(actor, row.kpi.participant.employee)) {
+    const subject = row.kpi.participant.employee;
+    if (actor.employeeId === null || subject.managerId !== actor.employeeId) {
       return notFound("Evidence");
+    }
+    // Frozen by the MANAGER's own signature, not the employee's. The note is
+    // part of the manager's review, so their signature is what closes it —
+    // keying this on the employee's would have been a regression: §7.1 has her
+    // sign once she has seen the final ratings, which is AFTER the review, so a
+    // manager still adding notes would have been locked out by the subject.
+    if (row.kpi.participant.signOffs.some((s) => s.party === "MANAGER")) {
+      return err(
+        "You have signed this review, so its evidence notes are part of the signed record (§7.1).",
+        409,
+      );
     }
 
     const body = await readJsonBody(request);

@@ -41,6 +41,26 @@ export const uploadTokenSchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES),
 });
 
+/**
+ * The browser reporting that the bytes landed.
+ *
+ * `pathname` is the one field here the server does not take on trust: it is
+ * re-checked against the authorised KPI's prefix, refused if another row
+ * already claims it, and the bytes behind it are read back and sniffed before a
+ * row exists. `sizeBytes` is only a fallback — the recorded size comes from the
+ * stored object's own `Content-Range` where storage reports one.
+ */
+export const confirmUploadSchema = z.object({
+  kpiId: z.string().min(1),
+  pathname: z.string().trim().min(1).max(512),
+  label: z.string().trim().min(1).max(MAX_EVIDENCE_LABEL),
+  contentType: z.enum(
+    Object.keys(ALLOWED_EVIDENCE_TYPES) as [string, ...string[]],
+    "That file type is not accepted.",
+  ),
+  sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES),
+});
+
 /** The manager's note on one item. */
 export const evidenceCommentSchema = z.object({
   comment: z.string().trim().min(1).max(MAX_EVIDENCE_COMMENT),

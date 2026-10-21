@@ -68,7 +68,12 @@ Four details that are load-bearing, each of which was wrong in a first draft of 
 - Evidence is **Confidential** (SECURITY.md §1), with the row recorded there.
 - Files need a Blob store; **links do not**. An unconfigured store degrades the feature and says
   so, rather than breaking the assessment.
-- Served `Content-Disposition: attachment` with `nosniff`, so an uploaded file cannot render as a
+- ~~Served `Content-Disposition: attachment` with `nosniff`~~ — **withdrawn as written.** The
+  redirect sets `nosniff`, but headers on a 302 do not bind the cross-origin Blob response the
+  browser follows it to, and no disposition was ever set. The real constraints are the private
+  store, the content type pinned on the token, and the five-minute single-pathname signature.
+  Left in place rather than deleted, because a control a record claims and does not have is
+  worse than one it never claimed: an uploaded file cannot render as a
   page in this origin.
 - **Not closed:** no malware scanning — named in the blueprint's open questions and worth raising
   at `/handoff`. And a signed URL forwarded within its five minutes works for whoever holds it;

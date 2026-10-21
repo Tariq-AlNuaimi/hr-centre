@@ -30,12 +30,16 @@ export const YEAR_END_KPI_SELECT = {
   ratings: {
     select: { party: true, level: true, comment: true, ratedAt: true },
   },
-  // §7.1 evidence. Both readers of this select — the employee's own
-  // `/api/year-end/me` and the manager's participant page — have already
-  // passed `canViewEmployee`, which is exactly the set allowed to see it
-  // (employee, direct manager, HR). Soft-deleted items are excluded here
-  // rather than filtered downstream, so a withdrawn item cannot reappear on a
-  // screen that forgot to check.
+  // §7.1 evidence. Passing `canViewEmployee` is NOT enough to receive these
+  // rows — that was the original mistake here, and this comment asserted the
+  // opposite. `canViewEmployee` spans the whole downward chain plus org-wide
+  // viewers, so a skip-level manager and the COO were handed the file list and
+  // the manager's notes on it. `serializeYearEndKpis` now takes an explicit
+  // `includeEvidence`, and every caller must compute `canViewEvidence` to
+  // decide it.
+  //
+  // Soft-deleted items are excluded here rather than filtered downstream, so a
+  // withdrawn item cannot reappear on a screen that forgot to check.
   evidence: {
     where: { deletedAt: null },
     orderBy: { uploadedAt: "asc" },
@@ -118,7 +122,16 @@ export type SerializedYearEndKpi = {
  * `serializeKpi` follows: JSON's only numeric type is a double and §5.3/§8.2
  * compare against exactly 100.
  */
-export function serializeYearEndKpis(kpis: KpiRow[]): SerializedYearEndKpi[] {
+export function serializeYearEndKpis(
+  kpis: KpiRow[],
+  /**
+   * Whether this viewer may see the evidence (`canViewEvidence`). Required
+   * rather than defaulted: a default would be the wrong answer for one of the
+   * two callers, and the version of this function without it shipped the file
+   * list to every skip-level manager in the chain.
+   */
+  opts: { includeEvidence: boolean },
+): SerializedYearEndKpi[] {
   return kpis.map((kpi) => {
     const find = (party: "EMPLOYEE" | "MANAGER") => {
       const r = kpi.ratings.find((x) => x.party === party);
@@ -137,7 +150,7 @@ export function serializeYearEndKpis(kpis: KpiRow[]): SerializedYearEndKpi[] {
       // No URL is produced for a FILE here, deliberately: there is no public
       // one, and a signed URL minted at list time would outlive the check that
       // authorised it. The screen links to the read route instead.
-      evidence: kpi.evidence.map((e) => ({
+      evidence: (opts.includeEvidence ? kpi.evidence : []).map((e) => ({
         id: e.id,
         kind: e.kind,
         label: e.label,

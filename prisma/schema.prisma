@@ -850,14 +850,6 @@ model KpiVersion {
 /// approved change request. `KpiVersion` already holds every superseded wording,
 /// so the pair (kpiId, ratedAt) reconstructs what was on screen; duplicating the
 /// text here would create a second copy that can disagree with both.
-/// §7.1 — what an evidence item IS. A file lives in private Blob storage and is
-/// reachable only through a route that checks §4.2 first; a link is a URL the
-/// employee supplied, stored verbatim and never fetched by us.
-enum EvidenceKind {
-  FILE
-  LINK
-}
-
 model KpiRating {
   id    String @id @default(cuid())
   kpiId String @map("kpi_id")
@@ -907,6 +899,14 @@ model KpiRating {
 /// of how the assessment was built, and §6.3's principle — old versions are
 /// archived, never overwritten — reads across to it. `Kpi` cascades, so a
 /// deleted KPI takes its evidence with it.
+/// §7.1 — what an evidence item IS. A file lives in private Blob storage and is
+/// reachable only through a route that checks §4.2 first; a link is a URL the
+/// employee supplied, stored verbatim and never fetched by us.
+enum EvidenceKind {
+  FILE
+  LINK
+}
+
 model KpiEvidence {
   id    String @id @default(cuid())
   kpiId String @map("kpi_id")

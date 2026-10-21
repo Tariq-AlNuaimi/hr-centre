@@ -14,6 +14,7 @@ import {
   ALLOWED_EVIDENCE_TYPES,
   MAX_EVIDENCE_BYTES,
   MAX_EVIDENCE_PER_KPI,
+  isAllowedContentType,
 } from "@/lib/pms/evidence";
 
 /**
@@ -44,6 +45,29 @@ export interface EvidenceItem {
 
 const ACCEPT = Object.keys(ALLOWED_EVIDENCE_TYPES).join(",");
 
+/**
+ * What type IS this file, as far as the allowlist is concerned?
+ *
+ * `File.type` is the browser's guess from the OS, and it is routinely wrong or
+ * absent for exactly the formats people attach as evidence: `.md` usually
+ * arrives as `""`, and `.csv` as `application/vnd.ms-excel` on a machine with
+ * Excel installed. The server's schema is a strict enum, so taking `file.type`
+ * at face value refuses a perfectly good file with a message about its type.
+ *
+ * So the extension decides when the browser's guess is not on the allowlist.
+ * This is NOT trusting the extension: the server reads the stored file's own
+ * magic bytes before a row exists, and a mismatch is deleted. All this does is
+ * pick which claim gets checked.
+ */
+function declaredType(file: File): string | null {
+  if (isAllowedContentType(file.type)) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  for (const [type, exts] of Object.entries(ALLOWED_EVIDENCE_TYPES)) {
+    if ((exts as readonly string[]).includes(ext)) return type;
+  }
+  return null;
+}
+
 function sizeLabel(bytes: number | null): string | null {
   if (bytes === null) return null;
   return bytes >= 1024 * 1024
@@ -53,12 +77,20 @@ function sizeLabel(bytes: number | null): string | null {
 
 export function KpiEvidence({
   kpiId,
+  participantId,
   items,
   canEdit,
   canComment,
   storageConfigured,
 }: {
   kpiId: string;
+  /**
+   * The owning participant. Needed because the server pins an upload to
+   * `year-end/<participantId>/<kpiId>/` and the browser proposes the pathname
+   * in Vercel's protocol — the client has to be able to name the one location
+   * it is allowed to write to.
+   */
+  participantId: string;
   items: EvidenceItem[];
   /** The owner, before they sign. */
   canEdit: boolean;
@@ -115,6 +147,10 @@ export function KpiEvidence({
 
   async function attachFile(file: File) {
     setBusy(true);
+    // Which half failed, so a refusal is diagnosable rather than "it didn't
+    // work". The upload round trip cannot be exercised from the container this
+    // was written in, so the error has to carry its own location.
+    let stage: "upload" | "confirm" = "upload";
     try {
       // Client upload: the bytes go from here straight to private Blob
       // storage, because a Vercel function caps its body at ~4.5 MB and the
@@ -124,8 +160,29 @@ export function KpiEvidence({
         showError(t("tooLarge", { limit: MAX_EVIDENCE_BYTES / 1024 / 1024 }));
         return;
       }
+
+      // THE PATH MATTERS. The server pins uploads to
+      // `year-end/<participantId>/<kpiId>/`, so a token is only ever issued for
+      // the KPI it authorised. This used to send `year-end/pending/<name>`,
+      // which that pin can never accept — every file upload was refused.
+      //
+      // The basename is a UUID rather than the file's own name: a name with a
+      // space, a slash or an Arabic character would fail the server's pathname
+      // check, and in an RTL product that is the common case, not the edge. The
+      // real name travels in `label` and is what every screen displays.
+      const contentType = declaredType(file);
+      if (contentType === null) {
+        showError(
+          t("typeNotAccepted", { types: Object.values(ALLOWED_EVIDENCE_TYPES).flat().join(", ") }),
+        );
+        return;
+      }
+
+      const ext = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase() : "bin";
+      const pathname = `year-end/${participantId}/${kpiId}/${crypto.randomUUID()}.${ext}`;
+
       const { upload } = await import("@vercel/blob/client");
-      await upload(`year-end/pending/${file.name}`, file, {
+      const blob = await upload(pathname, file, {
         // PRIVATE, matching the store and the token. The earlier draft said
         // "public" with a comment claiming the server overrode it — the server
         // sets what the TOKEN grants, not what this call declares, so a
@@ -136,14 +193,35 @@ export function KpiEvidence({
           kpiId,
           label: file.name,
           filename: file.name,
-          contentType: file.type,
+          contentType,
           sizeBytes: file.size,
         }),
+      });
+
+      // The bytes exist; nothing in the record does yet. This call is what
+      // creates the row, and the server re-checks every rule and reads the
+      // first bytes back before it does. Vercel's own `onUploadCompleted`
+      // callback cannot do this job here: it arrives with no session and this
+      // app answers 401 to that, so the row was never written.
+      stage = "confirm";
+      await apiClient.post("/api/year-end/evidence", {
+        kpiId,
+        pathname: blob.pathname,
+        label: file.name,
+        contentType,
+        sizeBytes: file.size,
       });
       success(t("fileAdded"));
       router.refresh();
     } catch (e) {
-      fail(e, t("addFailed"));
+      // A refusal from our own confirm route is a written sentence; a failure
+      // in the upload leg is usually a CSP or token problem, where naming the
+      // leg is the whole diagnosis.
+      if (stage === "confirm") {
+        fail(e, t("addFailed"));
+      } else {
+        showError(`${t("uploadFailed")} ${e instanceof Error ? e.message : ""}`.trim());
+      }
     } finally {
       setBusy(false);
       if (fileInput.current) fileInput.current.value = "";

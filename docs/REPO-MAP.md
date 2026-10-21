@@ -173,9 +173,9 @@
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, enrolledAfterDeadline, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
-- lib/pms/cycle.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue, canRunCycle, enrolParticipants
+- lib/pms/cycle.ts: canRunCycle, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
-- lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, signBlockedReason
+- lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
 - lib/pms/import/checks/employment.ts: checkSalary, checkDateOfJoining, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
@@ -197,6 +197,7 @@
 - lib/pms/score-run.ts: ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
 - lib/pms/scoring.ts: MIN_LEVEL, MAX_LEVEL, Band, TRACK_WEIGHTS, ScoredKpi, individualScore, threeSixtyAsLevel, Components, finalScore, bandFor, BAND_COEFFICIENT, BAND_RANGE, displayScore
 - lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
+- lib/pms/stage.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue
 - lib/pms/status-query.ts: participantStatuses
 - lib/pms/status.ts: StepState, ParticipantStatusInput, ParticipantStatus, goalSettingState, yearEndState, outstandingLabel, deriveStatus, StageTally, emptyTally, completion, tallyBy, StageProgress, stageProgress, awaitingManager
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks, ThreeSixtyTaskRow, buildThreeSixtyTasks, YearEndTaskState, buildYearEndTasks
@@ -216,7 +217,7 @@
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
-- lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, deleteStoredFile
+- lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, readStoredHead, deleteStoredFile
 - lib/utils.ts: cn
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput
@@ -224,7 +225,7 @@
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput, cyclePolicySchema, CyclePolicyInput
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, createDepartmentSchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput, CreateDepartmentInput
-- lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, evidenceCommentSchema
+- lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, evidenceCommentSchema
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput

@@ -4,6 +4,7 @@ import { err, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isGoalSettingExempt, stageState } from "@/lib/pms/cycle";
+import { canViewEvidence } from "@/lib/pms/evidence";
 import { isStorageConfigured } from "@/lib/storage";
 import { YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
@@ -105,7 +106,13 @@ export const GET = withRateLimit(
     }
 
     const now = new Date();
-    const kpis = serializeYearEndKpis(participant.kpis);
+    // Always true here: this route only ever returns the actor's own set, and
+    // `canViewEvidence` grants the subject. Stated through the predicate
+    // rather than hardcoded `true`, so if that rule ever changes this caller
+    // changes with it.
+    const kpis = serializeYearEndKpis(participant.kpis, {
+      includeEvidence: canViewEvidence(actor, participant.employee),
+    });
     const state = yearEndState(
       participant.kpis,
       participant.kpis.flatMap((k) =>

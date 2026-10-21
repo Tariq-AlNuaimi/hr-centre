@@ -1,4 +1,10 @@
-import type { PmsActor } from "./permissions";
+import type { CycleStatus, RoleTrack } from "@/generated/prisma/client";
+// `./stage`, NOT `./cycle`: cycle.ts imports prisma, and this module is
+// imported by a client component for its size and type constants — so a value
+// import from cycle.ts pulls the Postgres driver into the browser bundle and
+// the build dies on a missing `dns`.
+import { canActOnStage, isGoalSettingExempt, type StageWindow } from "./stage";
+import { isHr, type PmsActor } from "./permissions";
 
 /**
  * §7.1's evidence rules — the pure half.
@@ -205,23 +211,106 @@ export function evidenceWriteBlockedReason(params: {
   actor: PmsActor;
   subjectEmployeeId: string;
   employeeSigned: boolean;
+  /** §8.3 — a C-Level participant has no self-assessment to evidence. */
+  roleTrack: RoleTrack;
+  /** §5.1 — nothing to evidence without an agreed baseline. */
+  goalsApprovedAt: Date | null;
+  /** §2 / §5.4 — the year-end window, and whether the cycle is still running. */
+  stage: StageWindow | null;
+  cycleStatus: CycleStatus;
+  now: Date;
 }): EvidenceRefusal | null {
-  const { actor, subjectEmployeeId, employeeSigned } = params;
+  const { actor, subjectEmployeeId, employeeSigned, roleTrack } = params;
+  const { goalsApprovedAt, stage, cycleStatus, now } = params;
 
   if (actor.employeeId === null || actor.employeeId !== subjectEmployeeId) {
     // 404, never 403 — the same rule the rest of §4.2 follows. "You may not
-    // touch this" confirms it exists.
+    // touch this" confirms it exists. Checked FIRST so a stranger learns
+    // nothing about the cycle's state either.
     return { reason: "Evidence not found", status: 404 };
   }
   if (employeeSigned) {
     return {
       reason:
         "You have signed this assessment, so its evidence is part of the signed record (§7.1). " +
-        "HR can reopen it if something needs to change.",
+        "Changing it now needs HR to intervene on the cycle (§5.5).",
+      status: 409,
+    };
+  }
+  if (isGoalSettingExempt(roleTrack)) {
+    return {
+      reason:
+        "C-Level employees skip self-assessment entirely (§8.3), so there is no evidence to " +
+        "attach — their score passes through from the entity.",
+      status: 409,
+    };
+  }
+  if (goalsApprovedAt === null) {
+    return {
+      reason:
+        "This KPI set has no HR-approved baseline, so there is nothing to evidence yet (§5.1).",
+      status: 409,
+    };
+  }
+
+  // §5.4's lock applies to evidence, not only to ratings (requirement 6).
+  // Without this an employee who missed the deadline — and therefore can never
+  // sign — could keep adding and DELETING evidence through calibration and
+  // after the cycle closed, which is the one window where the record has to
+  // hold still.
+  if (cycleStatus !== "OPEN") {
+    return {
+      reason: `This cycle is ${cycleStatus.toLowerCase()}, so its assessments can no longer be changed (§5.4).`,
+      status: 409,
+    };
+  }
+  if (stage === null) {
+    return { reason: "This cycle has no year-end stage configured yet (§2).", status: 409 };
+  }
+  if (!canActOnStage(stage, now)) {
+    return {
+      reason:
+        now < stage.opensAt
+          ? "The year-end review has not opened yet for this cycle (§2)."
+          : "The year-end deadline has passed and the stage is locked (§5.4). HR can extend the " +
+            "deadline or intervene (§5.5).",
       status: 409,
     };
   }
   return null;
+}
+
+/**
+ * §7.1 — who may SEE an evidence item.
+ *
+ * Deliberately NARROWER than `canViewEmployee`, and that difference is the
+ * whole point of this function existing. §4.2's visibility rule lets an actor
+ * view anyone in their downward chain however deep, plus anyone with org-wide
+ * visibility — which includes the executive viewer. That is the right rule for
+ * a RATING: a number on a five-point scale, in a system whose managers are
+ * meant to see how their org is performing.
+ *
+ * It is the wrong rule for evidence, because an evidence item is a file an
+ * employee chose, and a file can contain anything — a medical note used to
+ * explain a quarter, a customer email, a salary figure in a screenshot. HR's
+ * requirement was "the employee, their direct manager, and HR only", and that
+ * is what this returns. A skip-level manager and the COO get 404, exactly as
+ * SECURITY.md §1 and ADR-073 claim — a claim that was FALSE until this existed,
+ * because both the read route and the shared select used `canViewEmployee`.
+ *
+ * "Direct manager" is the same single edge `canActOnEmployee` keys on, so the
+ * person who may comment on an item is the person who may see it.
+ */
+export function canViewEvidence(
+  actor: PmsActor,
+  subject: { id: string; managerId: string | null },
+): boolean {
+  if (actor.employeeId !== null && actor.employeeId === subject.id) return true;
+  // §4.1 — HR is "everything + overrides", and HR already holds the ratings,
+  // the salary band and the calibration view. Excluded: the executive viewer,
+  // whom §4.1 pins to "Acts on: Nothing" and who has no need of the artefacts.
+  if (isHr(actor)) return true;
+  return actor.employeeId !== null && subject.managerId === actor.employeeId;
 }
 
 /**

@@ -19,6 +19,7 @@ import { YEAR_END_STAGE, ratingBlockedReason } from "@/lib/pms/rating";
 import { yearEndState } from "@/lib/pms/year-end";
 import { isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
+import { canViewEvidence } from "@/lib/pms/evidence";
 import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 
 /**
@@ -113,7 +114,13 @@ export default async function YearEndParticipantPage({
       ? "MANAGER"
       : null;
 
-  const kpis: YearEndKpi[] = serializeYearEndKpis(participant.kpis);
+  // §7.1 — evidence is held tighter than the ratings around it. Passing
+  // `canViewEmployee` above is what let this page load at all; it is NOT
+  // enough to receive the files.
+  const maySeeEvidence = canViewEvidence(actor, participant.employee);
+  const kpis: YearEndKpi[] = serializeYearEndKpis(participant.kpis, {
+    includeEvidence: maySeeEvidence,
+  });
 
   const state = yearEndState(
     participant.kpis,

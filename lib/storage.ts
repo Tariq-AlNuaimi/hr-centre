@@ -136,6 +136,42 @@ export async function signedReadUrl(pathname: string): Promise<string> {
   return url;
 }
 
+/**
+ * Read back the first bytes of a stored file, plus its TRUE size.
+ *
+ * Exists so the one caller that verifies an upload does not also have to own a
+ * signed read, a Range request, a response-status check and the parsing of a
+ * `Content-Range` header — all of which are storage's business, not §7.1's.
+ *
+ * `null` means "could not be read", deliberately collapsing every cause: a
+ * refused signature, a propagation delay, a network error. The caller's correct
+ * response is the same in each case and must not be to carry on, because an
+ * error document read as the file would sniff as a mismatch for every binary
+ * type (deleting a file the employee legitimately uploaded) and PASS for every
+ * text one.
+ *
+ * 64 bytes is enough for every signature on the allowlist, and bounds this to
+ * a constant read regardless of the file's size.
+ */
+export async function readStoredHead(
+  pathname: string,
+): Promise<{ bytes: Uint8Array; sizeBytes: number } | null> {
+  try {
+    const res = await fetch(await signedReadUrl(pathname), {
+      headers: { Range: "bytes=0-63" },
+    });
+    if (!res.ok) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    // `bytes 0-63/12345` — the total after the slash is the stored length, which
+    // is the only trustworthy size here: everything else was claimed by the
+    // browser. A store that reports no range leaves the caller its fallback.
+    const total = Number(res.headers.get("content-range")?.split("/")[1]);
+    return { bytes, sizeBytes: Number.isFinite(total) && total > 0 ? total : bytes.byteLength };
+  } catch {
+    return null;
+  }
+}
+
 /** Remove the bytes. The row is soft-deleted separately and keeps the record. */
 export async function deleteStoredFile(pathname: string): Promise<void> {
   await del(pathname, { token: requireToken() });
