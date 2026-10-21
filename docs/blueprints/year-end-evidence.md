@@ -38,7 +38,7 @@ rating with nothing behind it is the state this closes.
 | File types     | `pdf png jpg jpeg webp docx xlsx pptx csv txt md`                                | Allowlist, never a denylist. No `svg` (executes script), no archives, no `html`.                                                                                                                                 |
 | Type check     | **Magic bytes**, not the extension or the client's `Content-Type`                | Both are attacker-controlled. A `.pdf` that is really HTML is the whole attack.                                                                                                                                  |
 | Size           | **10 MB per file, 10 items per KPI**                                             | 10 MB holds a scanned PDF or a screenshot set without inviting video. The per-KPI cap matters as much: without it, "required evidence" is an unbounded write path.                                               |
-| Upload path    | **Client upload** (`@vercel/blob/client`), token minted server-side              | Vercel functions cap request bodies at ~4.5 MB, so a 10 MB server upload cannot fit. The function never holds the bytes; the token callback is where the rules are enforced.                                     |
+| Upload path    | **Preflight → client upload → confirm**, all three authenticated                 | Vercel functions cap request bodies at ~4.5 MB, so a 10 MB server upload cannot fit. The function never holds the bytes; the token callback is where the rules are enforced.                                     |
 | Classification | **Confidential** (SECURITY.md §1)                                                | "Disclosure harms individuals". Not Restricted — that tier is secrets and salary, and over-classifying forces scrubbing that makes the feature unusable.                                                         |
 
 ## User stories
@@ -72,7 +72,8 @@ can comment on it.
 | The employee removes evidence after the manager reviewed | Allowed until she signs, and **audited** — who, when, what.                                                                            |
 | Evidence missing at the deadline                         | §5.4 locks the stage and §5.5's ladder escalates, exactly as for a missing rating. HR is flagged by the existing sweep. No new path.   |
 | A signed URL is forwarded to someone else                | It expires in 5 minutes, and re-fetching requires passing the permission check again. The window is not zero; it is bounded and short. |
-| The Blob store does not exist yet                        | Upload fails with a sentence naming the missing configuration, rather than a stack trace. The rest of the assessment keeps working.    |
+| The Blob store does not exist yet                        | The preflight answers **503** with the missing configuration named. Links keep working.                                                |
+| A step fails for any reason                              | It is named ON THE PAGE, with the server's sentence and HTTP status. See "the flow has to be legible" below.                           |
 
 ## Architecture
 
@@ -84,8 +85,17 @@ can comment on it.
 - **`lib/pms/evidence.ts`** — the pure rules: the type allowlist, the size and count caps, the link
   scheme check, and `evidenceBlockedReason` / `signBlockedReason`. Testable without a network or a
   database, which is where the enforcement lives.
-- **Routes** under `app/api/year-end/evidence/**` — mint an upload token, list, read (permission →
-  signed URL → redirect), delete, and the manager's comment.
+- **Routes** under `app/api/year-end/evidence/**`. The attach flow is three authenticated calls on
+  one POST, and the shape of it is load-bearing:
+  1. **Preflight** (`{ preflight: true }`) — runs every rule and RETURNS the pathname the server
+     will authorise. Two jobs: a refusal comes back as our own sentence and HTTP status (a refusal
+     thrown inside the token callback travels back through the Blob SDK, which replaces both — the
+     reason an operator saw "the picker opens and nothing happens"), and the pathname gets ONE
+     author, so the client cannot propose a prefix the server's pin refuses.
+  2. **Token** (Vercel's `{ type, payload }` handshake) — re-checks everything, because the
+     preflight's answer is advice and a client may lie. `addRandomSuffix: false`, so the pathname
+     confirmed is exactly the pathname authorised.
+  3. **Confirm** — reads the stored bytes back, sniffs them, and creates the row.
 - **UI** — `components/pms/KpiEvidence.tsx`, rendered inside each KPI on the existing assessment
   screen. Read-only for anyone who is not the owner.
 
@@ -101,6 +111,26 @@ the rest of §4.2 uses; the owner check for writes is the same shape as `acknowl
    but it is not malware scanning.
 3. **Does a manager's evidence comment need to be visible to HR at calibration?** §10 does not
    mention evidence. Left visible to HR, since HR can already see the evidence itself.
+
+## The flow has to be legible without a browser console
+
+The operator tested on production, could not read the browser console, and
+reported: _"the file picker opens, but no upload request reaches storage and
+nothing appears under Evidence."_ Nothing on screen distinguished "refused",
+"blocked", "crashed" and "saved but not displayed".
+
+So the attach flow narrates itself into a list rendered beside the button —
+choosing, checking the type, checking the size, asking permission, uploading,
+verifying, saved — each line carrying its own outcome, the server's exact
+sentence, and the HTTP status. It is a `role="status"` live region, so it
+reaches a screen reader too, and it persists until the next attempt rather than
+fading like a toast. A failure that reaches no surface is indistinguishable
+from a feature that does nothing, and that is the state this closes.
+
+Two failures are called out by name because neither leaves anything readable:
+a fetch the browser never completes (`Failed to fetch`) is reported as a likely
+**Content-Security-Policy `connect-src`** problem, and a dismissed picker is
+reported as such rather than returning quietly.
 
 ## Correction log (2026-10-21)
 
@@ -118,6 +148,14 @@ which is the third time this repo has produced that exact defect (§3.5's `enrol
 | Served `Content-Disposition: attachment`            | Never implemented, and could not be: headers on our 302 do not bind the cross-origin Blob response. Withdrawn in ADR-073.                                                                                     |
 | Missing evidence falls through to the existing lock | `evidenceWriteBlockedReason` checked only ownership and signature. An employee past the deadline — who therefore can never sign — could add and delete evidence through calibration. Now §5.4 applies.        |
 | The manager comments on an item                     | `canActOnEmployee` returns true for HR, and there is no author column, so an HR user could post a note rendered as "Manager's note". Now the direct manager only.                                             |
+
+Two further defects, found when the operator reported that files still did
+nothing — and both of them silent by construction:
+
+| What was claimed                      | What was true                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The employee can pick an allowed file | `accept` listed MIME types only. The OS decides whether a file matches `text/markdown` or `text/csv`, so on most machines `.md` and `.csv` grey out in the picker: the dialog opens, nothing can be selected, `onChange` never fires, and NO CODE RUNS to report it. Extensions are now listed too.                                          |
+| A saved item appears under Evidence   | Every write called `router.refresh()` alone. That re-renders the manager's server-component page, but the employee's own page reads `/api/year-end/me` through TanStack Query, which `router.refresh()` does not touch — so a row could be written and audited and never appear until a manual reload. The query is now invalidated as well. |
 
 **Still not verified against a real Blob store**, and the only honest statement about it: the
 container this was built in cannot resolve `vercel.com`, read npm, or read `node_modules`, so the

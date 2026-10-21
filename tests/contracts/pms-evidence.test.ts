@@ -141,33 +141,48 @@ test("the handshake returns RAW json — an envelope would break the upload", ()
   assert.doesNotMatch(handshake, /return ok\(result\)/);
 });
 
-test("the client proposes a pathname the server's own pin can accept", () => {
-  // These two are written in different files by different hands and nothing
-  // type-checks one against the other: the server pins uploads to
-  // `year-end/<participantId>/<kpiId>/` and the client used to send
-  // `year-end/pending/<filename>`, which that pin can never accept. Every file
-  // upload was refused, and both sides read as correct on their own.
-  // Comments stripped first. The component's own comment explains the stale
-  // path it replaced, and an assertion that cannot tell prose from code fails
-  // on the explanation — which is the third time that has happened in this
-  // feature, so it is now the default here.
+test("the client does NOT build the upload pathname — the server hands it one", () => {
+  // This test used to assert the client built the prefix correctly, which was
+  // the WRONG invariant: it only checked that two independently-written strings
+  // happened to agree, and they had already disagreed in production (the client
+  // sent `year-end/pending/<name>`, the server pinned
+  // `year-end/<participantId>/<kpiId>/`) with every upload refused and nothing
+  // type-checking one against the other.
+  //
+  // So the string now has ONE author. The server returns the pathname it will
+  // authorise and the client echoes it back; this asserts the client cannot
+  // have an opinion about it at all.
   const client = stripComments(readFileSync("components/pms/KpiEvidence.tsx", "utf8"));
-  assert.doesNotMatch(client, /year-end\/pending\//, "the stale literal must be gone");
+  assert.doesNotMatch(
+    client,
+    /`year-end\//,
+    "the client must not build an upload path (the API route literal is fine)",
+  );
+  assert.doesNotMatch(client, /participantId/, "nor hold the id it used to build one from");
+  assert.match(client, /preflight: true/, "it must ask the server where to put the file");
   assert.match(
     client,
-    /`year-end\/\$\{participantId\}\/\$\{kpiId\}\//,
-    "the client must build the prefix the server authorises",
+    /upload\(pathname, file/,
+    "and upload to exactly the pathname the server returned",
   );
 
-  // And the basename must not be the user's filename: `isWithinEvidencePrefix`
-  // accepts [A-Za-z0-9._-] only, so a space or an Arabic character would fail
-  // the path — in an RTL product that is the common case, not the edge.
-  assert.match(client, /crypto\.randomUUID\(\)/, "the stored basename is generated");
-  const uuidPath = `year-end/p1/k1/${"0".repeat(8)}-abc.pdf`;
+  // The server generates it, and still re-checks it on the token: the reply is
+  // advice, not authority, and a client may lie.
+  const route = readFileSync("app/api/year-end/evidence/route.ts", "utf8");
+  assert.match(route, /evidencePrefix\(kpi\.participant\.id, kpiId\)/);
+  assert.match(
+    route.slice(route.indexOf("onBeforeGenerateToken")),
+    /isWithinEvidencePrefix\(/,
+    "the token callback must still pin the path it is given",
+  );
+  // The generated shape must satisfy the pin it will be checked against.
   assert.equal(
-    isWithinEvidencePrefix({ pathname: uuidPath, participantId: "p1", kpiId: "k1" }),
+    isWithinEvidencePrefix({
+      pathname: `${evidencePrefix("p1", "k1")}3f2a-9c.pdf`,
+      participantId: "p1",
+      kpiId: "k1",
+    }),
     true,
-    "the shape the client now builds must satisfy the server's pin",
   );
 });
 
@@ -479,4 +494,91 @@ test("the storage read refuses a non-OK response rather than returning its body"
   const fn = storage.slice(storage.indexOf("export async function readStoredHead"));
   assert.match(fn, /if \(!res\.ok\) return null;/);
   assert.match(fn, /Range: "bytes=0-63"/, "a constant read, whatever the file's size");
+});
+
+// --- the attach flow has to be legible without a browser console ------------
+
+test("every failure path in the attach flow is reported ON THE PAGE", () => {
+  // The operator's report was "the file picker opens and nothing happens", and
+  // they cannot read a browser console. A refusal that exists only as a thrown
+  // error, or only as a toast that has already faded, is indistinguishable from
+  // the feature doing nothing — so each step records its own outcome into a
+  // list rendered next to the button.
+  const client = stripComments(readFileSync("components/pms/KpiEvidence.tsx", "utf8"));
+  const attach = client.slice(client.indexOf("async function attachFile"));
+  const body = attach.slice(0, attach.indexOf("async function remove"));
+
+  const chunks = body.split(/^\s+return;\s*$/m);
+  assert.ok(chunks.length >= 5, "the flow should have several guarded exits");
+  for (const chunk of chunks.slice(0, -1)) {
+    assert.match(
+      chunk.slice(-400),
+      /failHere\(/,
+      "an early return must be preceded by a visible failure line",
+    );
+  }
+
+  // The catch-all reports too, so an error nobody predicted is not silent.
+  assert.match(body.slice(body.lastIndexOf("} catch (e) {")), /failHere\(describe\(e\)\)/);
+  assert.match(client, /<StepList steps=\{steps\}/, "and the list is actually rendered");
+});
+
+test("a failure carries the HTTP status, and names CSP when nothing was reached", () => {
+  // `HTTP 409 — <sentence>` is what makes a refusal actionable without a
+  // console. A fetch blocked by Content-Security-Policy reports only "Failed to
+  // fetch", with the real reason visible nowhere the page can see, so the
+  // likely cause has to be spelled out rather than left to be guessed.
+  const client = stripComments(readFileSync("components/pms/KpiEvidence.tsx", "utf8"));
+  const fn = client.slice(client.indexOf("function describe("));
+  assert.match(fn, /ApiError/, "an API refusal must be recognised");
+  assert.match(fn, /HTTP \$\{e\.status\}/, "and carry its status");
+  assert.match(fn, /failed to fetch\|load failed/i, "a blocked fetch must be recognised");
+  assert.match(fn, /Content-Security-Policy/, "and name the likely cause");
+});
+
+test("the file picker accepts EXTENSIONS as well as MIME types", () => {
+  // MIME-types-only is a silent failure, and the most likely cause of the
+  // operator's report: the OS decides whether a file matches `text/markdown`,
+  // and on most machines `.md` and `.csv` grey out in the picker. The dialog
+  // opens, nothing can be selected, `onChange` never fires, and no code runs to
+  // report anything at all.
+  const client = stripComments(readFileSync("components/pms/KpiEvidence.tsx", "utf8"));
+  const accept = client.slice(
+    client.indexOf("const ACCEPT ="),
+    client.indexOf("function declaredType"),
+  );
+  assert.match(accept, /Object\.keys\(ALLOWED_EVIDENCE_TYPES\)/, "MIME types");
+  assert.match(accept, /`\.\$\{e\}`/, "and a dotted extension for each");
+});
+
+test("an empty pick is reported rather than returning quietly", () => {
+  const client = stripComments(readFileSync("components/pms/KpiEvidence.tsx", "utf8"));
+  const onChange = client.slice(client.indexOf('type="file"'));
+  assert.match(
+    onChange.slice(0, onChange.indexOf("/>")),
+    /setSteps\(\[\{/,
+    "a dismissed picker must say so, not look like a broken upload",
+  );
+});
+
+test("the preflight refuses before any byte moves, and says why", () => {
+  // Asking first is what makes OUR refusals visible: a rule thrown inside the
+  // token callback travels back through the Blob SDK, which replaces our
+  // sentence and status with its own.
+  const route = readFileSync("app/api/year-end/evidence/route.ts", "utf8");
+  const pre = route.slice(
+    route.indexOf("async function handlePreflight"),
+    route.indexOf("async function handleHandshake"),
+  );
+  assert.ok(pre.length > 0, "there must be a preflight handler");
+  assert.match(pre, /isStorageConfigured\(\)/, "an unconfigured store is a reportable state");
+  assert.match(pre, /writeRefusal\(/, "§5.4 / §5.1 / ownership");
+  assert.match(pre, /uploadBlockedReason\(/, "type, size and the per-KPI cap");
+  assert.match(pre, /return ok\(\{ pathname/, "and it returns the authorised pathname");
+  // Dispatched before the confirm branch, which also matches on a body field.
+  const dispatch = route.slice(route.indexOf("export const POST"));
+  assert.ok(
+    dispatch.indexOf("handlePreflight") < dispatch.indexOf("handleConfirm"),
+    "preflight must be matched before the confirm shape",
+  );
 });

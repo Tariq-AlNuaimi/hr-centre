@@ -26,7 +26,7 @@
     "fan-out": "node scripts/fan-out.mjs",
     "copy-check": "node scripts/copy-check.mjs",
     "capture": "node scripts/capture-screens.mjs",
-    "test:components": "node --import tsx --import global-jsdom/register --import ./tests/components/setup.ts --test tests/components/*.test.tsx",
+    "test:components": "node --experimental-test-module-mocks --import tsx --import global-jsdom/register --import ./tests/components/setup.ts --test tests/components/*.test.tsx",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
