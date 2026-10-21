@@ -304,15 +304,28 @@ function AdjustRow({
           judgement is made. It moves no band by itself — a thin sample is a
           reason to look, not a rule.
 
-          Only below three, and only when the count is KNOWN. A run written
-          before the column existed carries null, and "unknown" rendered as a
-          caution would accuse a real score of a thinness nobody measured.
+          Shown for EVERY score, not only the thin ones (operator request). The
+          count is the denominator the 360 component rests on, so "averaged over
+          4 raters" is as much a part of reading this row as the score itself —
+          and a reviewer who only ever sees the number when something is wrong
+          cannot tell a healthy sample from a missing one.
+
+          The CAUTION styling still belongs to the thin case alone, and only
+          when the count is KNOWN: a run written before the column existed
+          carries null, and "unknown" rendered as a warning would accuse a real
+          score of a thinness nobody measured.
         */}
-        {employee.threeSixtyRaterCount !== null && employee.threeSixtyRaterCount < 3 ? (
+        {employee.threeSixtyRaterCount === null ? (
+          <p className="text-xs text-muted-foreground">{t("raterCountUnknown")}</p>
+        ) : employee.threeSixtyRaterCount < 3 ? (
           <p className="text-xs text-amber-700 dark:text-amber-300">
             {t("thinThreeSixty", { count: employee.threeSixtyRaterCount })}
           </p>
-        ) : null}
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {t("raterCount", { count: employee.threeSixtyRaterCount })}
+          </p>
+        )}
       </div>
 
       <div className="w-48">

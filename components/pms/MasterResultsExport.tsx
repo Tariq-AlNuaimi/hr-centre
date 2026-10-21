@@ -37,6 +37,8 @@ interface MasterRow {
   departmentalScore: string | null;
   individualScore: string;
   threeSixtyScore: string | null;
+  /** §9.5's denominator — how many 360 forms the figure above averaged over. */
+  threeSixtyRaterCount: number | null;
   rawScore: string;
   rawBand: string;
   calibratedBand: string;
@@ -127,6 +129,14 @@ export function MasterResultsExport({ cycleId }: { cycleId: string }) {
                     {row.departmentalScore && ` · ${t("departmental")} ${row.departmentalScore}`}
                     {` · ${t("individual")} ${row.individualScore}`}
                     {row.threeSixtyScore && ` · 360 ${row.threeSixtyScore}`}
+                    {/* The denominator the 360 figure rests on (§9.5 averages
+                        over however many raters arrived), so a 4.60 from one
+                        form cannot read the same as a 4.60 from three. It was
+                        a workbook column only; HR reads this table at
+                        calibration, which is where the fact is needed. */}
+                    {row.threeSixtyScore && row.threeSixtyRaterCount !== null
+                      ? ` (${t("raters", { count: row.threeSixtyRaterCount })})`
+                      : null}
                   </div>
                 ),
               },

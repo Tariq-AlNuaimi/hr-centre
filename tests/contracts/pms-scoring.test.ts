@@ -9,6 +9,8 @@ import {
   individualScore,
   threeSixtyAsLevel,
 } from "../../lib/pms/scoring";
+import { scoreEmployee } from "../../lib/pms/score-run";
+import { Prisma } from "../../generated/prisma/client";
 
 /**
  * §8 — the scoring model, checked against the SPECIFICATION'S OWN worked
@@ -243,4 +245,106 @@ test("§11.3 the band coefficients match the specification", () => {
 test("§11.3 the two bottom bands earn nothing — not a token amount", () => {
   assert.equal(BAND_COEFFICIENT.ALMOST_ACHIEVED, 0);
   assert.equal(BAND_COEFFICIENT.UNSATISFACTORY, 0);
+});
+
+// --- §10.7 — the signatures are a PRECONDITION of scoring -------------------
+
+const D = (v: string) => new Prisma.Decimal(v);
+
+/** A complete, signed INDIVIDUAL chain. Each test takes away one thing. */
+const chain = (over: Record<string, unknown> = {}) =>
+  scoreEmployee({
+    employeeId: "emp-1",
+    roleTrack: "INDIVIDUAL",
+    corporate: D("4.20"),
+    departmental: null,
+    kpis: [
+      { description: "Delivery", level: 4, weightage: "50" },
+      { description: "Quality", level: 3, weightage: "30" },
+      { description: "Collaboration", level: 5, weightage: "20" },
+    ],
+    threeSixty: D("4.60"),
+    signedParties: ["EMPLOYEE", "MANAGER"],
+    ...over,
+  } as never);
+
+test("§10.7 a complete, signed chain scores — and the number is the one §8.6 gives", () => {
+  const out = chain();
+  assert.equal(out.scored, true);
+  if (!out.scored) return;
+  // 4.20x10% + 3.90x80% + 4.60x10% = 0.42 + 3.12 + 0.46
+  assert.equal(String(out.individual), "3.9");
+  assert.equal(String(out.raw), "4");
+  assert.equal(out.band, "EXCELLENT");
+});
+
+test("§10.7 an UNSIGNED assessment is not scored, and says who has not signed", () => {
+  // §10.7 sequences the score run after "assessments completed & signed". Before
+  // this, scoring read ratings and never looked at a signature, so an employee
+  // nobody had signed off could be scored, calibrated and published — and the
+  // numbers would have been right, which is what made it invisible.
+  const neither = chain({ signedParties: [] });
+  assert.equal(neither.scored, false);
+  if (neither.scored) return;
+  assert.match(neither.reason, /§10\.7/);
+  assert.match(neither.reason, /employee/i);
+  assert.match(neither.reason, /manager/i);
+
+  const employeeOnly = chain({ signedParties: ["EMPLOYEE"] });
+  assert.equal(employeeOnly.scored, false);
+  if (employeeOnly.scored) return;
+  assert.match(employeeOnly.reason, /manager/i, "it must name the party still missing");
+  assert.doesNotMatch(employeeOnly.reason, /the employee has not/i);
+
+  const managerOnly = chain({ signedParties: ["MANAGER"] });
+  assert.equal(managerOnly.scored, false);
+  if (managerOnly.scored) return;
+  assert.match(managerOnly.reason, /employee/i);
+});
+
+test("§8.3 C-Level are exempt: they have no self-assessment to sign", () => {
+  // Requiring a signature from someone the spec excuses from assessing entirely
+  // would refuse to score the very people §8.3 makes simplest.
+  const out = scoreEmployee({
+    employeeId: "ceo-1",
+    roleTrack: "C_LEVEL",
+    corporate: D("4.20"),
+    departmental: null,
+    kpis: [],
+    threeSixty: null,
+    signedParties: [],
+  } as never);
+  assert.equal(out.scored, true);
+  if (!out.scored) return;
+  assert.equal(String(out.raw), "4.2");
+});
+
+test("an UNRATED KPI blames the manager's review, not the weightages", () => {
+  // The old behaviour: the route dropped unrated KPIs, the weights then totalled
+  // less than 100, and HR was told "weightages total 70%, not 100" — which sends
+  // them to the goal-setting baseline when the actual cause is a manager who has
+  // not finished reviewing.
+  const out = chain({
+    kpis: [
+      { description: "Delivery", level: 4, weightage: "50" },
+      { description: "Quality", level: null, weightage: "30" },
+      { description: "Collaboration", level: null, weightage: "20" },
+    ],
+  });
+  assert.equal(out.scored, false);
+  if (out.scored) return;
+  assert.match(out.reason, /2 of 3/, "it should count them");
+  assert.match(out.reason, /Quality/, "and name the first one");
+  assert.match(out.reason, /§7\.1/);
+  assert.doesNotMatch(out.reason, /weightage/i, "the weightages are not the problem");
+});
+
+test("a genuinely unbalanced set still reports §5.3, because that IS the problem", () => {
+  const out = chain({
+    kpis: [{ description: "Delivery", level: 4, weightage: "70" }],
+  });
+  assert.equal(out.scored, false);
+  if (out.scored) return;
+  assert.match(out.reason, /§5\.3/);
+  assert.match(out.reason, /70%/);
 });

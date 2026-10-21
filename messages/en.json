@@ -1050,7 +1050,8 @@
         "exportAction": "Export workbook",
         "none": "No scored rows for this cycle.",
         "loadFailed": "Could not load the master results",
-        "loadFailedHelp": "Something went wrong fetching the report."
+        "loadFailedHelp": "Something went wrong fetching the report.",
+        "raters": "{count} raters"
       }
     },
     "executive": {
@@ -1112,7 +1113,9 @@
       "loadFailed": "Could not load calibration",
       "loadFailedHelp": "Something went wrong fetching the distribution.",
       "retry": "Try again",
-      "thinThreeSixty": "360 averaged over {count} rater(s), not the three §9.4 intends — a thinner sample than the rest of this department."
+      "thinThreeSixty": "360 averaged over {count} rater(s), not the three §9.4 intends — a thinner sample than the rest of this department.",
+      "raterCount": "360 averaged over {count} raters",
+      "raterCountUnknown": "360 rater count not recorded for this run"
     },
     "calibrationTarget": {
       "title": "Target distribution",

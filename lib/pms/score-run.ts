@@ -1,5 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
-import type { Band, RoleTrack } from "@/generated/prisma/client";
+import type { Band, RoleTrack, SignOffParty } from "@/generated/prisma/client";
 import { bandFor, finalScore, individualScore, type ScoredKpi } from "./scoring";
 import { DEFAULT_CYCLE_POLICY, type CyclePolicy } from "./cycle-policy";
 import { proratedComponent, type PeriodWindow, type WeightedPeriodScore } from "./transfer";
@@ -14,6 +14,60 @@ import { proratedComponent, type PeriodWindow, type WeightedPeriodScore } from "
  * missing" is the question HR will actually be asking.
  */
 
+/**
+ * One KPI as the score run receives it.
+ *
+ * `level` is NULLABLE, and that is the point. The route used to filter unrated
+ * KPIs out before scoring, which left the weightages short of 100 and made
+ * `individualScore` report "§5.3: weightages total 70%, not 100" — sending HR to
+ * the goal-setting baseline when the real cause was a manager who had not
+ * finished reviewing. A missing rating has to survive as far as the code that
+ * explains it.
+ *
+ * `description` is carried for the same reason: a count is not actionable, and
+ * "starting with “Quality”" tells HR which conversation to have.
+ */
+export type RatedKpi = {
+  description: string;
+  /** §7.1's MANAGER rating — the assessed result. Null when not yet rated. */
+  level: number | null;
+  weightage: Prisma.Decimal | string | number;
+};
+
+/**
+ * §10.7 — why this assessment is not ready to score, naming the party.
+ *
+ * The signatures are a PRECONDITION, not a formality: §10.7 sequences the score
+ * run after "assessments completed & signed". Before this existed, scoring read
+ * ratings and never looked at a signature, so an employee nobody had signed off
+ * was scored, calibrated and published — with correct arithmetic, which is
+ * exactly why nothing surfaced it.
+ */
+function signatureBlockedReason(signedParties: readonly SignOffParty[]): string | null {
+  const missing = (["EMPLOYEE", "MANAGER"] as const).filter((p) => !signedParties.includes(p));
+  if (missing.length === 0) return null;
+  const who = missing.map((p) => (p === "EMPLOYEE" ? "the employee" : "the manager"));
+  return (
+    `${who.join(" and ")} ${missing.length === 1 ? "has" : "have"} not signed the year-end ` +
+    `assessment. §10.7 puts the score run after “assessments completed & signed”.`
+  );
+}
+
+/** §7.1 — KPIs the manager has not rated yet, named rather than counted away. */
+function unratedBlockedReason(kpis: readonly RatedKpi[]): string | null {
+  const unrated = kpis.filter((k) => k.level === null);
+  if (unrated.length === 0) return null;
+  return (
+    `${unrated.length} of ${kpis.length} KPIs have not been rated by the manager yet — ` +
+    `starting with “${unrated[0].description}”. §7.1 makes the manager's review the ` +
+    `assessed result, so there is nothing to score until it is complete.`
+  );
+}
+
+/** Every level is present once `unratedBlockedReason` has returned null. */
+const asScored = (kpis: readonly RatedKpi[]): ScoredKpi[] =>
+  kpis.map((k) => ({ level: k.level as number, weightage: k.weightage }));
+
 export type ScoreInputs = {
   employeeId: string;
   roleTrack: RoleTrack;
@@ -21,8 +75,16 @@ export type ScoreInputs = {
   corporate: Prisma.Decimal | null;
   /** §8.4 — the department's score. Null when unkeyed OR when the track has none. */
   departmental: Prisma.Decimal | null;
-  /** §7.1's ratings for this employee's KPIs. */
-  kpis: readonly ScoredKpi[];
+  /** §7.1's ratings for this employee's KPIs, including the unrated ones. */
+  kpis: readonly RatedKpi[];
+  /**
+   * §10.7 — the year-end sign-offs that exist for this participant.
+   *
+   * Required, not optional. An optional field here would be an opt-out of the
+   * precondition, and a caller that forgot it would silently score unsigned
+   * assessments again — the exact defect this closes.
+   */
+  signedParties: readonly SignOffParty[];
   /** §8.5's 1–5 equivalent of the 360 ratio. Null when the 360 produced none. */
   threeSixty: Prisma.Decimal | null;
   /**
@@ -59,17 +121,18 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
   const { employeeId, roleTrack, corporate, departmental, kpis, threeSixty } = input;
   const policy = input.policy ?? DEFAULT_CYCLE_POLICY;
 
-  if (corporate === null) {
+  const noCorporate = {
+    scored: false as const,
+    employeeId,
     // §8.4 — every employee receives their entity's Corporate score, so a
     // missing one blocks the whole entity, not just this person.
-    return {
-      scored: false,
-      employeeId,
-      reason: "No Corporate score has been keyed for this employee's entity (§8.4).",
-    };
-  }
+    reason: "No Corporate score has been keyed for this employee's entity (§8.4).",
+  };
 
   if (roleTrack === "C_LEVEL") {
+    // §8.3 — no formula, and no assessment either, so the entity score is the
+    // only input they have and the only one worth reporting.
+    if (corporate === null) return noCorporate;
     const raw = finalScore("C_LEVEL", {
       corporate,
       departmental: null,
@@ -91,6 +154,22 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     };
   }
 
+  // SIGNATURES FIRST — before the Corporate score, and the order is deliberate.
+  //
+  // §10.7 sequences "assessments completed & signed" ahead of the score run, and
+  // the per-person blocker is the one a person can act on: a missing Corporate
+  // score is one keystroke for the whole entity, and while it was checked first
+  // it MASKED every unsigned assessment behind it. An HR user looking at the
+  // skipped list would have seen 300 identical "no Corporate score" rows and
+  // learned nothing about the 40 people who had not signed.
+  //
+  // C-Level never reach here: §8.3 excuses them from self-assessment entirely,
+  // so they have no signatures to wait for.
+  const unsigned = signatureBlockedReason(input.signedParties);
+  if (unsigned) return { scored: false, employeeId, reason: unsigned };
+
+  if (corporate === null) return noCorporate;
+
   const needsDepartmental = roleTrack !== "INDIVIDUAL";
   if (needsDepartmental && departmental === null) {
     return {
@@ -108,9 +187,16 @@ export function scoreEmployee(input: ScoreInputs): ScoreOutcome {
     };
   }
 
+  // Before §5.3's arithmetic, so a missing rating is reported as a missing
+  // rating. In practice the signature check above catches most of these — a
+  // sign-off already requires every KPI rated — but this is the one that
+  // explains an HR intervention or a set changed after signing (§6.2).
+  const unrated = unratedBlockedReason(kpis);
+  if (unrated) return { scored: false, employeeId, reason: unrated };
+
   let individual: Prisma.Decimal;
   try {
-    individual = individualScore(kpis);
+    individual = individualScore(asScored(kpis));
   } catch (error) {
     // §5.3's exactly-100 rule, or an out-of-range level. Reported per employee
     // rather than aborting the run: one broken set must not stop the other 300.
@@ -162,7 +248,7 @@ export type PeriodInputs = PeriodWindow & {
   orderIndex: number;
   corporate: Prisma.Decimal | null;
   departmental: Prisma.Decimal | null;
-  kpis: readonly ScoredKpi[];
+  kpis: readonly RatedKpi[];
 };
 
 export type SplitScoreInputs = {
@@ -170,6 +256,8 @@ export type SplitScoreInputs = {
   roleTrack: RoleTrack;
   periods: readonly PeriodInputs[];
   threeSixty: Prisma.Decimal | null;
+  /** §10.7 — as on `ScoreInputs`. A split year is still one assessment to sign. */
+  signedParties: readonly SignOffParty[];
   /** §8.7's banding rule for this cycle — see the note on `ScoreInputs`. */
   policy?: Pick<CyclePolicy, "roundScoreBeforeBanding">;
 };
@@ -216,6 +304,11 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
     };
   }
 
+  // §10.7 — a transfer does not excuse the signatures. One assessment, one
+  // pair of sign-offs, however many departments paid for the year.
+  const unsignedSplit = signatureBlockedReason(input.signedParties);
+  if (unsignedSplit) return { scored: false, employeeId, reason: unsignedSplit };
+
   const needsDepartmental = roleTrack !== "INDIVIDUAL";
 
   // Each period's own Individual score, from that period's KPI set. §5.3 applies
@@ -229,8 +322,16 @@ export function scoreSplitEmployee(input: SplitScoreInputs): ScoreOutcome {
         reason: `Period ${p.orderIndex + 1} has no KPIs — each department's manager drafts their own portion (§12.3).`,
       };
     }
+    const unratedPeriod = unratedBlockedReason(p.kpis);
+    if (unratedPeriod) {
+      return {
+        scored: false,
+        employeeId,
+        reason: `Period ${p.orderIndex + 1}: ${unratedPeriod}`,
+      };
+    }
     try {
-      individualByPeriod.push({ ...p, score: individualScore(p.kpis) });
+      individualByPeriod.push({ ...p, score: individualScore(asScored(p.kpis)) });
     } catch (error) {
       return {
         scored: false,
