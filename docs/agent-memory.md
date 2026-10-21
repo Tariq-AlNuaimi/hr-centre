@@ -36,7 +36,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Durable decisions** (12): frontend-design plugin adopted (A.6 P1); enterprise pivot + code-wave COMPLETE on main; Next on 16.4.2 for security currency (ADR-071), Babel React Compiler kept + Rust port off; /stack-advisor is build-time advisor not reviewer; replatform Phase 0 signed (Tailwind/shadcn); harness-hardening + pillars-as-gates; agent-memory-as-markdown + model tiering.
 - **Gotchas — deploy, env & CI** (13): gitleaks NOT preinstalled — reinstall via go proxy each session; run `/ship` WITHOUT `NODE_ENV=production`; deploy scripts flip `pristine:false` locally (revert on template); first-deploy env-var race (set all 6 + poll before deploy); SessionStart installs on stale not just missing; Prettier gate fails on generator-owned docs (keep in `.prettierignore`).
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
-- **Gotchas — stack & build** (6): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
+- **Gotchas — stack & build** (7): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (10): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
 - **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (4): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
@@ -220,6 +220,12 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — stack & build
 
+- 2026-10-21 — **`lib/pms/cycle.ts` imports `prisma` at module scope, so any VALUE imported from
+  it reaches the browser bundle.** Asking it for `canActOnStage` from a module a `"use client"` file
+  imports failed the build with `Can't resolve 'dns'` under `[Client Component Browser]` — seven
+  layers from the cause, which the error never names. Import the pure rules from `lib/pms/stage.ts`
+  instead (`cycle.ts` re-exports them). Check for a top-level `prisma` import before pulling any
+  `lib/pms/*` value into client-reachable code; type-only imports are erased and always safe.
 - 2026-08-27 — **Inside a `FormItem`, never pass `id` or `htmlFor` — doing so silently UNLABELS the
   control.** `components/ui/form.tsx`: `FormControl` clones its child with `{ id: formItemId }`
   (replacing yours), while `FormLabel` renders `<Label htmlFor={formItemId} {...props} />` with the
@@ -273,6 +279,15 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
 
 ## Gotchas — security, auth & hooks
 
+- 2026-10-21 — **Vercel Blob's `onUploadCompleted` can never fire here** — no session cookie, and
+  this app 401s unauthenticated `/api/*` twice (middleware pass list, then `withAuth`), so the row
+  and the byte check beside it are unreachable code that READS as implemented. Let the browser
+  confirm over an authenticated route instead; a public callback path is Ask-before. ADR-073.
+- 2026-10-21 — **`canViewEmployee` is NOT "employee + manager + HR"**: it is the whole downward
+  chain at any depth plus org-wide viewers, the COO included. `canActOnEmployee` is likewise true
+  for HR (§4.1), so gating "the manager's comment" with it lets HR post a note rendered as the
+  manager's. Both shipped AND were documented as correct — "direct manager" needs its own
+  single-edge predicate (`canViewEvidence`).
 - 2026-08-26 — **gitleaks flags a realistic-looking hash literal in a TEST as `generic-api-key`.**
   a `passwordHash:` fixture set to the word "argon2" plus a hyphenated word (entropy 3.61) failed
   the push gate — and this very note tripped the gate again when it quoted the literal, so don't.
@@ -283,14 +298,12 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
   recycling-bin / maintenance.** To see soft-deleted rows anyway (the unique indexes don't respect
   the filter), ask the audited client twice: the plain read, plus one naming
   `deletedAt: { not: null }` — the extension only injects `deletedAt: null` when the caller hasn't.
-
 - 2026-08-25 — **`resolveRoot(input)` reads the SESSION cwd, so a `cd <repo> && …` inside the
   command was invisible to the four SDLC gates.** In a multi-repo session that made the qa-gate
   refuse a deploy of the PMS fork while quoting a commit from the template it was forked from —
   the gate was reading HEAD from the wrong repository. Fixed in `.claude/hooks/lib/receipt.mjs`:
   a LEADING `cd` now wins over `input.cwd`. Also worth knowing: `isDeployCommand` matches deploy
   words anywhere in the command string, so a `node -e` probe containing one gets blocked too.
-
 - 2026-08-22 — **For gate scope, enumerate what is SAFE, not what is DANGEROUS.** An allowlist
   of gated paths missed a gate-disabling file in three consecutive breadth reviews
   (settings.json/.husky, then package.json/eslint.config, then findings-register/
@@ -298,26 +311,16 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
   miss is a SILENT hole; enumerating safety is closed-ended and every miss is visible
   friction someone reports. Inverted to a safe-set denylist; the old allowlist was kept as
   the review-DEPTH classifier, where a miss costs a shallower review rather than none.
-- 2026-08-22 — **Changing a guard's condition can convert a fail-SAFE bug into a fail-OPEN
-  one.** qa-gate's `shipping` array was always empty (a malformed sha from
-  `git log --format=…%x1e`, whose trailing newline glues onto every sha but the first).
-  Under `shipping.length > 0 && …` that made the allow branch unreachable — it always
-  denied: annoying, safe. "Fixing" the annoyance by switching to `prevQaFound && …` made
-  `uncovered` always empty, so it always ALLOWED — silently shipping unreviewed code.
-  Before changing a guard condition, ask what the OLD one was accidentally protecting.
-
-- 2026-08-22 — **Fail-open governance gates mask the AUTHOR's bugs, not just runtime ones.** Four
-  separate times a gate used a helper it never imported (`execFileSync`, `norm`, `isSkipAdjudicated`,
-  and one more); each would have thrown `ReferenceError`, been swallowed by the fail-open handler,
-  and left the gate permanently OFF while still listed as a passing check. Fail-open is correct per
-  ADR-047 — it also means gate code needs stronger verification than its own runtime behaviour
-  provides. Run an import audit over every hook after editing one.
-- 2026-08-22 — **Two rounds of self-reviewed gate patches were not enough** (SDLC-chain wave). Round
-  1 breadth review: 6 findings. Round 2, reviewing round 1's fixes: 5 more, including a live crash
-  certified as "verified" in a commit message. All 11 landed in the GATE code; the skills, evals,
-  descriptions, router and docs drew zero. Budget adversarial review for harness/gate work at a much
-  higher rate than for product code, and treat "the author checked it" as no evidence.
-
+- 2026-08-22 — **Gate code needs adversarial review at a far higher rate than product code**
+  (SDLC-chain wave: 11 findings over two rounds, ALL in gate code; skills, evals, router and docs
+  drew zero — and round 2 caught a live crash that round 1 had certified as "verified"). Three
+  reasons it hides: fail-open swallows the AUTHOR's bugs, so a gate using a helper it never
+  imported throws `ReferenceError`, is swallowed, and stays permanently OFF while still listed as
+  passing (this happened four separate times — audit imports after editing any hook); a malformed
+  value can make a guard always-DENY, which is annoying but safe, and "fixing" the annoyance can
+  flip it to always-ALLOW (qa-gate's empty `shipping` array, then silently shipping unreviewed
+  code) — so ask what the old condition was accidentally protecting; and "the author checked it" is
+  no evidence at all.
 - 2026-07-11 — **Security guard hooks fail-CLOSED, governance gates fail-OPEN (ADR-047).**
   `protect-secrets`+`dangerous-commands` deny on internal error; `blueprint-gate`+`build-vs-buy-gate`
   stay fail-open (a crash must not block all writes). A PERSISTENT fault in a fail-closed guard denies its
@@ -404,6 +407,11 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 
 ## Conventions discovered
 
+- 2026-10-21 — **The integration suite is NOT in `/ship`** (it is `ship:full`, and WARNs with no
+  DB) — the mid-year work left 5 tests red on `main` for a day, invisible to every pre-push gate.
+  After changing a write rule run `node scripts/test-integration.mjs` against a FRESH seeded db
+  (reseeding an existing one fails `pms-import-provisioning` at file level while its subtests pass;
+  keep `SALARY_ENCRYPTION_KEY` identical between seed and run).
 - 2026-08-25 — **A sequential concurrency test is vacuous.** `Promise.all([json(await A), …])`
   awaits A _inside the array literal_, so the calls run in order and the read-time guard alone
   separates them — it passes with the conditional arbiter deleted. Start both requests, THEN
@@ -413,19 +421,14 @@ repoId:1241728413, ref, sha}}` (Bearer $VERCEL_TOKEN). (2) `.vercel.app` is SSO-
 - 2026-08-25 — **A comment citing a spec clause is a claim to verify.** Two §9 gaps surfaced
   this way: a peer-pool comment named project peers the filter never read; `transfer.ts`
   promised a leaver's weights sum to <1 with nothing clamping the period. Both read as done.
-
-- 2026-08-22 — **Mutation-test every regression test: a test that cannot fail is not a test.**
-  Three tests written this session were vacuous until proven otherwise — one asserted
-  fail-open on inputs that never reached the fail-open path (they lacked `..`, so review-gate
-  ignored the arg and measured ambient repo state instead). The check is cheap: reintroduce
-  the bug, confirm the test goes red, restore. Do it for every test guarding a defect class,
-  and never write "verified" in a commit message without it.
-
-- 2026-08-22 — **Verify by EXIT CODE, never by grepping for a success string.** `npm run evals |
-grep unreadable` matched the `console.log` and hid the `ReferenceError` thrown on the very next
-  line; the run exited 1 and I reported it as verified, then committed that claim. A grep for what
-  you hope to see cannot detect what went wrong after it. Capture `$?`, or redirect to a file and
-  read the tail.
+- 2026-08-22 — **Verify by RUNNING, and prove the check can fail.** Three ways this bit: a
+  regression test that cannot fail is not a test (mutate the code and watch it go red — several
+  "passing" tests asserted nothing); `npm run evals | grep PASS` reports success on a crashed run,
+  so gate on the EXIT CODE, never on a success string in stdout; and a gate that has never been
+  exercised is not a gate — fire it at a real bad input rather than reading its source and
+  concluding it works. Related: a source-level assertion must strip COMMENTS first, or it fails on
+  its own prose (three times in one feature — a comment naming the stale literal it replaced
+  matches the regex asserting that literal is gone).
 - 2026-08-22 — **A denied Bash call skips EVERYTHING in it, not just the offending part.** A
   compound call containing a `python3` fix plus an `rm -rf` was denied for the `rm -rf`; the fix
   never ran, and later greps "confirmed" behaviour the fix was supposed to produce. After any
@@ -447,7 +450,6 @@ grep unreadable` matched the `console.log` and hid the `ReferenceError` thrown o
 - 2026-07-25 — **`docs/SESSION-HANDOFF.md` is gitignored, so a session handoff written there dies
   with the container.** Durable close-out belongs HERE (tracked, reaches `main` and forks). Write
   the handoff for the human inline; write the lesson to agent-memory.
-
 - 2026-07-03 — **Session status is DATA, not prose.** `docs/session-state.json` is the
   single source; `SESSION-HANDOFF.md`'s two tables are RENDERED from it between
   `<!-- BEGIN/END:auto-status -->` markers via `scripts/render-handoff.mjs` (`--check`
