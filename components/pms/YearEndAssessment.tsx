@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { StageBanner, type GoalStage } from "@/components/pms/StageBanner";
 import { TEXTAREA_CLASS } from "@/components/pms/change-request-draft";
 import { formatDateTime } from "@/lib/format";
+import { KpiEvidence, type EvidenceItem } from "./KpiEvidence";
 
 /**
  * §7.1 — the year-end assessment, from both sides of it.
@@ -49,6 +50,8 @@ export interface YearEndKpi {
   levels: { level: number; text: string }[];
   employeeRating: { level: number; comment: string | null; ratedAt: string } | null;
   managerRating: { level: number; comment: string | null; ratedAt: string } | null;
+  /** §7.1 evidence. Required before the employee may sign. */
+  evidence?: EvidenceItem[];
 }
 
 export interface YearEndSetState {
@@ -57,6 +60,108 @@ export interface YearEndSetState {
   managerRated: number;
   complete: boolean;
   divergentKpiIds: string[];
+}
+
+/** One side's rating, as a read-only row. */
+function RatingSide({
+  label,
+  rating,
+  levels,
+  tone,
+}: {
+  label: string;
+  rating: { level: number; comment: string | null; ratedAt: string } | null;
+  levels: { level: number; text: string }[];
+  tone: "plain" | "diverged";
+}) {
+  const t = useTranslations("pms.yearEnd");
+  return (
+    <div
+      className={
+        tone === "diverged"
+          ? "rounded-md border border-warning-emphasis/40 bg-warning/10 p-3"
+          : "rounded-md border border-border bg-muted/40 p-3"
+      }
+    >
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      {rating === null ? (
+        // Stated, not blank. "Not yet rated" and "rated, no comment" are
+        // different facts and an empty box says neither.
+        <p className="mt-1 text-sm text-muted-foreground">{t("notRatedYet")}</p>
+      ) : (
+        <>
+          <p className="mt-1 text-sm font-medium text-foreground">
+            {levels.find((l) => l.level === rating.level)?.text ?? "—"}
+          </p>
+          {rating.comment ? (
+            <p className="mt-1 text-sm text-muted-foreground">{rating.comment}</p>
+          ) : null}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {t("ratedAt", { datetime: formatDateTime(rating.ratedAt) })}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The employee's rating beside the manager's, with a divergence marked ON the
+ * KPI it belongs to.
+ *
+ * The count-only banner it replaces ("2 KPI(s) where the ratings differ") told
+ * a reader that something had happened without telling them where, which on a
+ * page whose next control is "Sign" is worse than saying nothing.
+ */
+function RatingComparison({
+  kpi,
+  diverged,
+  actingAs,
+}: {
+  kpi: YearEndKpi;
+  diverged: boolean;
+  actingAs: "EMPLOYEE" | "MANAGER" | null;
+}) {
+  const t = useTranslations("pms.yearEnd");
+  // Whose page this is changes what the two boxes are CALLED. "The employee's
+  // self-assessment" is right when a manager reads it and wrong when the
+  // employee does — on her own screen it is hers, and a label that refers to
+  // her in the third person reads like someone else's record.
+  const selfLabel = actingAs === "EMPLOYEE" ? t("yourSelfAssessment") : t("selfAssessment");
+  const managerLabel = actingAs === "MANAGER" ? t("yourReview") : t("managerReview");
+  // Nothing to compare until at least one side has rated.
+  if (!kpi.employeeRating && !kpi.managerRating) return null;
+
+  return (
+    <div className="mb-4 space-y-2">
+      {diverged ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="warning">{t("divergedHere")}</Badge>
+          {/* §7.1's divergence rule makes the manager's comment mandatory when
+              they rate differently. It is the explanation the employee is
+              owed, so it is named rather than left to be inferred from the
+              comment box above. */}
+          <span className="text-xs text-muted-foreground">
+            {actingAs === "MANAGER" ? t("divergedHelpManager") : t("divergedHelp")}
+          </span>
+        </div>
+      ) : null}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <RatingSide
+          label={selfLabel}
+          rating={kpi.employeeRating}
+          levels={kpi.levels}
+          tone={diverged ? "diverged" : "plain"}
+        />
+        <RatingSide
+          label={managerLabel}
+          rating={kpi.managerRating}
+          levels={kpi.levels}
+          tone={diverged ? "diverged" : "plain"}
+        />
+      </div>
+    </div>
+  );
 }
 
 export function YearEndAssessment({
@@ -69,6 +174,7 @@ export function YearEndAssessment({
   signedParties,
   goalSettingExempt,
   blockedReason,
+  storageConfigured = false,
 }: {
   participantId: string;
   stage: GoalStage | null;
@@ -78,6 +184,8 @@ export function YearEndAssessment({
   signedParties: ("EMPLOYEE" | "MANAGER")[];
   goalSettingExempt: boolean;
   blockedReason: string | null;
+  /** §7.1 — files need a Blob store; links never do. */
+  storageConfigured?: boolean;
 }) {
   const t = useTranslations("pms.yearEnd");
   const router = useRouter();
@@ -200,22 +308,21 @@ export function YearEndAssessment({
             title={kpi.description}
             subtitle={t("weightage", { value: kpi.weightage })}
           >
-            {/* The manager sees what the employee said, before choosing. An
-                operator decision, not §7 — see the file header. */}
-            {actingAs === "MANAGER" && kpi.employeeRating ? (
-              <div className="mb-4 rounded-md border border-border bg-muted/40 p-3">
-                <p className="text-xs font-medium text-muted-foreground">{t("selfAssessment")}</p>
-                <p className="mt-1 text-sm text-foreground">
-                  {kpi.levels.find((l) => l.level === kpi.employeeRating!.level)?.text ?? "—"}
-                </p>
-                {kpi.employeeRating.comment ? (
-                  <p className="mt-1 text-sm text-muted-foreground">{kpi.employeeRating.comment}</p>
-                ) : null}
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t("ratedAt", { datetime: formatDateTime(kpi.employeeRating.ratedAt) })}
-                </p>
-              </div>
-            ) : null}
+            {/* BOTH sides, side by side, whenever both exist.
+                §7.1 ends "both sign off on THE FINAL RATINGS" — so the employee
+                has to be able to see what she is signing. This panel used to
+                render for `actingAs === "MANAGER"` only: the manager saw the
+                employee's rating before choosing, and the employee saw nothing
+                of the manager's. All she got was a banner counting how many
+                KPIs differed, with the Sign button directly beneath it, which
+                asks her to ratify a set of final ratings she has never been
+                shown. Read-only on both sides — the inputs below are the only
+                way either party changes anything. */}
+            <RatingComparison
+              kpi={kpi}
+              diverged={initialState.divergentKpiIds.includes(kpi.id)}
+              actingAs={actingAs}
+            />
 
             {/* §7.1 — the five descriptors the manager authored, not a bare 1–5. */}
             <fieldset disabled={!canAct} className="space-y-2">
@@ -281,6 +388,18 @@ export function YearEndAssessment({
                 </Button>
               </div>
             ) : null}
+
+            {/* §7.1 evidence. Shown to everyone who can see the assessment —
+                the employee, their direct manager and HR — and editable only by
+                the owner, only until they sign. */}
+            <KpiEvidence
+              participantId={participantId}
+              kpiId={kpi.id}
+              items={kpi.evidence ?? []}
+              canEdit={actingAs === "EMPLOYEE" && !signedParties.includes("EMPLOYEE")}
+              canComment={actingAs === "MANAGER"}
+              storageConfigured={storageConfigured}
+            />
           </SectionCard>
         );
       })}

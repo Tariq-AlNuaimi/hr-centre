@@ -15,92 +15,23 @@ import { isHr, type PmsActor } from "./permissions";
  * deadline system that only gets tested on the day it fires.
  */
 
-/** §2's three touchpoints, in the order the year runs them. */
-export const STAGE_ORDER: readonly CycleStageKind[] = [
-  "GOAL_SETTING",
-  "MID_YEAR",
-  "YEAR_END",
-] as const;
-
 /**
- * §8.3 — "C-Level skip goal-setting, self-assessment, and 360 entirely; they
- * exist in the system for record-keeping/reporting."
- *
- * They are still enrolled as participants: §11's reporting and the entity
- * score pass-through both need the row. What they are exempt from is the WORK.
+ * §2/§5.4's pure rules live in `./stage` (no prisma import, so a client
+ * component can reach them). Re-exported here because this module was their
+ * home and every existing caller imports them from it — one definition, two
+ * doors.
  */
-export function isGoalSettingExempt(roleTrack: RoleTrack): boolean {
-  return roleTrack === "C_LEVEL";
-}
-
-export type StageWindow = {
-  kind: CycleStageKind;
-  opensAt: Date;
-  deadline: Date;
-  graceDays: number;
-};
-
-/**
- * Where a stage sits relative to an instant.
- *
- * `LOCKED` is deliberately the same answer for "the deadline passed five minutes
- * ago" and "it passed in March": §5.4 says "after a deadline passes, the relevant
- * party can no longer act on that stage", with no taper. The grace window does
- * NOT extend the ability to act — see `graceEndsAt` below.
- */
-export type StageState = "NOT_YET_OPEN" | "OPEN" | "LOCKED";
-
-export function stageState(stage: StageWindow, now: Date): StageState {
-  if (now < stage.opensAt) return "NOT_YET_OPEN";
-  // Exactly at the deadline is still open; one millisecond past is not. A
-  // deadline of "31 December" means the whole of the 31st when HR sets the time
-  // to 23:59, which is a UI concern — this comparison stays exact.
-  if (now > stage.deadline) return "LOCKED";
-  return "OPEN";
-}
-
-/**
- * §5.4's hard lock, as one predicate.
- *
- * There is no actor parameter and that is the point: the lock is a property of
- * time, identical for a line manager, an employee and an HR Super Admin. §5.5
- * gives HR a way past a missed deadline — extend it — and that changes the
- * DEADLINE, leaving an audit trail, rather than letting HR quietly act inside a
- * locked stage.
- */
-export function canActOnStage(stage: StageWindow, now: Date): boolean {
-  return stageState(stage, now) === "OPEN";
-}
-
-/**
- * §5.5's third rung: when HR's formal intervention becomes due.
- *
- * The grace window runs from the DEADLINE, not from the escalation — skip-level
- * and HR are notified the moment the deadline passes (rung two), and this is how
- * long the ladder waits before HR is expected to extend, intervene, or mark a
- * formal non-compliance event.
- */
-export function graceEndsAt(stage: StageWindow): Date {
-  return new Date(stage.deadline.getTime() + stage.graceDays * 24 * 60 * 60 * 1000);
-}
-
-/** True once HR's formal intervention is due (§5.5 rung three). */
-export function isPastGrace(stage: StageWindow, now: Date): boolean {
-  return now > graceEndsAt(stage);
-}
-
-/**
- * How overdue a stage is, in whole hours — §5.6's "by how long".
- *
- * Floored rather than rounded: a compliance record that says a manager was two
- * hours late when they were one hour and fifty-nine minutes late is a record
- * someone can argue with, and the entire point of §5.6 is that the report is
- * objective.
- */
-export function hoursOverdue(stage: StageWindow, now: Date): number {
-  const ms = now.getTime() - stage.deadline.getTime();
-  return ms <= 0 ? 0 : Math.floor(ms / (60 * 60 * 1000));
-}
+export {
+  STAGE_ORDER,
+  isGoalSettingExempt,
+  stageState,
+  canActOnStage,
+  graceEndsAt,
+  isPastGrace,
+  hoursOverdue,
+  type StageWindow,
+  type StageState,
+} from "./stage";
 
 /**
  * §4.1 — HR Super Admin ("everything + overrides") and HRBP ("Runs the cycle

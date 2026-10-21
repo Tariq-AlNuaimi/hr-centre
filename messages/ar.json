@@ -834,7 +834,14 @@
         }
       },
       "myTitle": "تقييمي لنهاية السنة",
-      "mySubtitle": "قيّم سنتك وفق المؤشرات المتفق عليها عند وضع الأهداف. يراجعه مديرك بعد إرسالك له."
+      "mySubtitle": "قيّم سنتك وفق المؤشرات المتفق عليها عند وضع الأهداف. يراجعه مديرك بعد إرسالك له.",
+      "managerReview": "مراجعة مديرك",
+      "notRatedYet": "لم يُقيَّم بعد",
+      "divergedHere": "قيّمه مديرك بشكل مختلف",
+      "divergedHelp": "اقرأ سببهم أدناه قبل التوقيع — هذه هي التقييمات التي توقّع عليها.",
+      "yourSelfAssessment": "تقييمك الذاتي",
+      "yourReview": "مراجعتك",
+      "divergedHelpManager": "يظهر سببك للموظف قبل أن يوقّع."
     },
     "band": {
       "OUTSTANDING": "متميّز",
@@ -1554,6 +1561,35 @@
       "summaryProgress": "تقييمك الذاتي لنهاية السنة: قُيّم {rated} من {total} مؤشراً.",
       "summaryStart": "ابدأ تقييمي",
       "summaryResume": "أكمل تقييمي"
+    },
+    "evidence": {
+      "title": "الأدلة",
+      "required": "مطلوب",
+      "count": "{count} من {max}",
+      "emptyHelp": "أرفق ملفاً أو رابطاً واحداً على الأقل يُظهر ما أنجزته. لا يمكنك التوقيع حتى يكون لكل مؤشر دليل.",
+      "addFile": "إرفاق ملف",
+      "addLink": "إضافة رابط",
+      "saveLink": "حفظ الرابط",
+      "linkLabelPlaceholder": "ما هذا؟ مثلاً: ملاحظات إصدار الربع الثالث",
+      "link": "رابط",
+      "addedOn": "أُضيف {datetime}",
+      "remove": "إزالة {label}",
+      "removed": "أُزيل الدليل.",
+      "removeFailed": "تعذّرت إزالة الدليل.",
+      "addFailed": "تعذّرت إضافة الدليل.",
+      "uploadFailed": "فشل الرفع قبل وصول الملف إلى وحدة التخزين.",
+      "typeNotAccepted": "نوع الملف غير مقبول. المسموح: {types}.",
+      "linkAdded": "أُضيف الرابط.",
+      "fileAdded": "رُفع الملف.",
+      "tooLarge": "حجم الملف يتجاوز الحد البالغ {limit} ميجابايت.",
+      "atLimit": "بلغ هذا المؤشر الحد الأقصى للأدلة.",
+      "filesUnavailable": "لم تُهيَّأ مساحة تخزين الملفات بعد — الروابط تعمل.",
+      "managerNote": "ملاحظة المدير: {comment}",
+      "commentPlaceholder": "علّق على هذا الدليل…",
+      "saveComment": "حفظ الملاحظة",
+      "commentSaved": "حُفظت الملاحظة.",
+      "commentFailed": "تعذّر حفظ الملاحظة.",
+      "linkUrlPlaceholder": "https://…"
     }
   },
   "access": {

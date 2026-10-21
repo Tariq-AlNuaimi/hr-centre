@@ -326,6 +326,7 @@ model Employee {
   departmentScoresEntered DepartmentScore[]       @relation("DepartmentScoreAuthor")
   changeDecided           KpiChangeRequest[]      @relation("ChangeRequestDecider")
   changeAcknowledged      KpiChangeRequest[]      @relation("ChangeRequestAcknowledger")
+  kpiEvidenceUploaded     KpiEvidence[]           @relation("KpiEvidenceUploader")
   complianceAbout         ComplianceEvent[]       @relation("ComplianceSubject")
   complianceAgainst       ComplianceEvent[]       @relation("ComplianceManager")
   notifications           Notification[]          @relation("NotificationRecipient")
@@ -887,6 +888,63 @@ model KpiRating {
   @@map("kpi_ratings")
 }
 
+/// §7.1 — the evidence behind a self-assessed rating (operator requirement,
+/// 2026-10-20). Confidential (SECURITY.md §1): disclosure harms the individual.
+///
+/// REQUIRED per KPI before the employee may sign — the rule lives in
+/// `signBlockedReason` (lib/pms/evidence.ts), not in a form validator, so every
+/// writer answers to it.
+///
+/// Soft-deleted rather than removed: an item withdrawn before signing is part
+/// of how the assessment was built, and §6.3's principle — old versions are
+/// archived, never overwritten — reads across to it. `Kpi` cascades, so a
+/// deleted KPI takes its evidence with it.
+/// §7.1 — what an evidence item IS. A file lives in private Blob storage and is
+/// reachable only through a route that checks §4.2 first; a link is a URL the
+/// employee supplied, stored verbatim and never fetched by us.
+enum EvidenceKind {
+  FILE
+  LINK
+}
+
+model KpiEvidence {
+  id    String @id @default(cuid())
+  kpiId String @map("kpi_id")
+  kpi   Kpi    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  kind  EvidenceKind
+  /// What the employee called it. Shown, never parsed.
+  label String
+
+  /// FILE only — the private Blob pathname. NOT a URL: there is no public URL
+  /// for these, and storing one would be the bug this design exists to avoid.
+  /// A reader gets a short-lived signed URL from a route that checked §4.2.
+  blobPathname String? @map("blob_pathname")
+  contentType  String? @map("content_type")
+  sizeBytes    Int?    @map("size_bytes")
+
+  /// LINK only — the http(s) address the employee supplied.
+  url String?
+
+  uploadedByEmployeeId String   @map("uploaded_by_employee_id")
+  uploadedByEmployee   Employee @relation("KpiEvidenceUploader", fields: [uploadedByEmployeeId], references: [id])
+  uploadedAt           DateTime @default(now()) @map("uploaded_at")
+
+  /// §7.1 — the manager may comment on an item while reviewing.
+  managerComment   String?   @map("manager_comment")
+  managerCommentAt DateTime? @map("manager_comment_at")
+
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([kpiId, deletedAt])
+  @@index([uploadedByEmployeeId])
+  @@map("kpi_evidence")
+}
+
 model ComplianceEvent {
   id      String           @id @default(cuid())
   cycleId String           @map("cycle_id")
@@ -1089,6 +1147,7 @@ model Kpi {
   versions    KpiVersion[]
   changeEdits KpiChangeRequestEdit[]
   ratings     KpiRating[]
+  evidence    KpiEvidence[]
 
   deletedAt DateTime?
   deletedBy String?

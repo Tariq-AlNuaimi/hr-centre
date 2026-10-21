@@ -39,6 +39,7 @@ interface MyYearEndResponse {
   signedParties?: ("EMPLOYEE" | "MANAGER")[];
   goalSettingExempt?: boolean;
   blockedReason?: string | null;
+  storageConfigured?: boolean;
 }
 
 /** What `MyYearEnd` renders once there is genuinely something to render. */
@@ -104,6 +105,7 @@ function OwnAssessmentForm({ data }: { data: Ready }) {
       signedParties={data.signedParties ?? []}
       goalSettingExempt={data.goalSettingExempt ?? false}
       blockedReason={data.blockedReason ?? null}
+      storageConfigured={data.storageConfigured ?? false}
     />
   );
 }

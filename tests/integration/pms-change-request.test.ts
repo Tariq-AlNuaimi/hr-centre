@@ -34,6 +34,7 @@ let current: { user: { id: string; role: string; email?: string } } | null = nul
 let prisma: typeof import("../../lib/prisma").prisma;
 let submit: typeof import("../../app/api/kpi-change-requests/route");
 let decide: typeof import("../../app/api/kpi-change-requests/[id]/decide/route");
+let acknowledge: typeof import("../../app/api/kpi-change-requests/[id]/acknowledge/route");
 let withdraw: typeof import("../../app/api/kpi-change-requests/[id]/withdraw/route");
 
 const ids = {
@@ -44,6 +45,7 @@ const ids = {
   managerUser: "",
   hr: "",
   hrUser: "",
+  employeeUser: "",
   stranger: "",
   strangerUser: "",
   kpis: [] as string[],
@@ -91,6 +93,7 @@ before(async () => {
   ({ prisma } = await import("../../lib/prisma"));
   submit = await import("../../app/api/kpi-change-requests/route");
   decide = await import("../../app/api/kpi-change-requests/[id]/decide/route");
+  acknowledge = await import("../../app/api/kpi-change-requests/[id]/acknowledge/route");
   withdraw = await import("../../app/api/kpi-change-requests/[id]/withdraw/route");
 
   // --- build the §5.1 precondition -----------------------------------------
@@ -201,6 +204,8 @@ before(async () => {
     return user.id;
   };
   ids.managerUser = await login(ids.manager, "mgr");
+  // §6.2 needs the SUBJECT to be able to act: they acknowledge before HR decides.
+  ids.employeeUser = await login(ids.employee, "emp");
 
   // This suite owns its HR actor — see tests/integration/fixture.ts on why
   // borrowing the seeded Super Admin makes concurrent suites fail with a 403.
@@ -416,6 +421,20 @@ test("§6.2/§6.3 HR approves: edits apply, and the superseded state is archived
     orderBy: { orderIndex: "asc" },
   });
 
+  // §6.2 puts the EMPLOYEE's acknowledgment before HR's decision, and the
+  // decide route enforces that order: without it, an approval needs a written
+  // override reason instead. This fixture went straight to HR, so it started
+  // failing the moment the acknowledgment guard landed — and nothing caught it,
+  // because the integration suite is not part of `/ship`.
+  as(ids.employeeUser);
+  const ack = await json(
+    await acknowledge.POST(
+      post(`/api/kpi-change-requests/${requestId}/acknowledge`, {}),
+      ctx({ id: requestId }),
+    ),
+  );
+  assert.equal(ack.status, 200, "the subject acknowledges their own pending change");
+
   as(ids.hrUser);
   const { status, body } = await json(
     await decide.POST(
@@ -535,6 +554,16 @@ test("a decided request frees the participant for a new one, and versionNo incre
   assert.equal(created.status, 201, JSON.stringify(created.error ?? created.body));
   const second = (created.body.changeRequest as Record<string, unknown>).id as string;
 
+  // Acknowledged first, same as above — §6.2's order, not a courtesy.
+  as(ids.employeeUser);
+  const ack2 = await json(
+    await acknowledge.POST(
+      post(`/api/kpi-change-requests/${second}/acknowledge`, {}),
+      ctx({ id: second }),
+    ),
+  );
+  assert.equal(ack2.status, 200);
+
   as(ids.hrUser);
   const decided = await json(
     await decide.POST(
@@ -542,7 +571,7 @@ test("a decided request frees the participant for a new one, and versionNo incre
       ctx({ id: second }),
     ),
   );
-  assert.equal(decided.status, 200);
+  assert.equal(decided.status, 200, JSON.stringify(decided.error ?? decided.body));
 
   const versions = await prisma.kpiVersion.findMany({
     where: { kpiId: live[0].id },

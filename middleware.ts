@@ -24,6 +24,22 @@ function sentryConnectSrc(): string {
   }
 }
 
+// §7.1 evidence uploads go from the BROWSER straight to Vercel Blob (a function
+// body caps at ~4.5 MB and the limit is 10 MB), so the blob host has to be in
+// connect-src or the upload is blocked before a byte leaves — which is one of
+// the reasons no evidence file could be attached. Gated on the token exactly
+// like Sentry above: a fork with no Blob store gets no extra CSP surface.
+//
+// The hostnames are NOT verified against Vercel's docs: the container this was
+// written in cannot resolve vercel.com, read npm, or read node_modules. Both
+// the API host and the per-store subdomain form are allowed to cover either
+// shape. If an upload still fails, the browser console will name the blocked
+// origin outright ("Refused to connect to …") — put that origin here.
+function blobConnectSrc(): string {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return "";
+  return " https://blob.vercel-storage.com https://*.blob.vercel-storage.com";
+}
+
 // Per-request CSP (T-05 / recipe shared-security/3). script-src is nonce-based:
 // the inline bootstrap/theme scripts carry the nonce, scripts they load inherit
 // trust via 'strict-dynamic', and 'unsafe-inline' is IGNORED by browsers when a
@@ -40,7 +56,7 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
-    `connect-src 'self'${sentryConnectSrc()}`,
+    `connect-src 'self'${sentryConnectSrc()}${blobConnectSrc()}`,
     "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",

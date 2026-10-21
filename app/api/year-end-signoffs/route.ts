@@ -10,6 +10,7 @@ import {
   yearEndSignerBlockedReason,
   yearEndState,
 } from "@/lib/pms/year-end";
+import { signBlockedReason } from "@/lib/pms/evidence";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { isGoalSettingExempt } from "@/lib/pms/cycle";
@@ -49,7 +50,9 @@ const PARTICIPANT_SELECT = {
       },
     },
   },
-  kpis: { where: { deletedAt: null }, select: { id: true }, take: 200 },
+  // `description` is here for §7.1's evidence gate, which names the first
+  // KPI still missing something rather than refusing in the abstract.
+  kpis: { where: { deletedAt: null }, select: { id: true, description: true }, take: 200 },
   signOffs: {
     where: { stageKind: YEAR_END_STAGE },
     select: { party: true, signedAt: true },
@@ -133,6 +136,34 @@ export const POST = withRateLimit(
 
     const blocked = yearEndSignBlockedReason({ state, stage, now });
     if (blocked) return err(blocked, 409);
+
+    // §7.1 evidence (operator requirement, 2026-10-20): the EMPLOYEE may not
+    // sign until every KPI carries a rating AND at least one evidence item.
+    // Enforced here, on the write, rather than only by disabling a button —
+    // "required" has to be a property of the record, not of one screen. The
+    // manager's signature is deliberately NOT gated on this: by the time they
+    // sign, the employee has already met the bar, and blocking the reviewer for
+    // the subject's omission would punish the wrong person.
+    if (party === "EMPLOYEE") {
+      const evidenceCounts = await prisma.kpiEvidence.groupBy({
+        by: ["kpiId"],
+        where: { kpiId: { in: participant.kpis.map((k) => k.id) }, deletedAt: null },
+        _count: { _all: true },
+      });
+      const byKpi = new Map(evidenceCounts.map((r) => [r.kpiId, r._count._all]));
+      const ratedKpiIds = new Set(
+        ratings.filter((r) => r.party === "EMPLOYEE").map((r) => r.kpiId),
+      );
+      const evidenceBlocked = signBlockedReason({
+        kpis: participant.kpis.map((k) => ({
+          id: k.id,
+          description: k.description,
+          hasRating: ratedKpiIds.has(k.id),
+          evidenceCount: byKpi.get(k.id) ?? 0,
+        })),
+      });
+      if (evidenceBlocked) return err(evidenceBlocked.reason, evidenceBlocked.status);
+    }
 
     const signerId = actor.employeeId;
     if (!signerId) return err("This account has no linked employee record (ADR-065).", 403);
