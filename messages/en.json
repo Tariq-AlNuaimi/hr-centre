@@ -1605,7 +1605,8 @@
       "stepVerifying": "Checking the stored file and saving the record",
       "stepSaved": "Saved",
       "stepNoFile": "No file came back from the picker. If the file you wanted was greyed out, its type is not on the accepted list.",
-      "stepUnexpected": "Attaching the file"
+      "stepUnexpected": "Attaching the file",
+      "stepUploadTimedOut": "Upload timed out after {seconds} seconds with no response. The browser could not reach the file-storage host — this is usually the Content-Security-Policy connect-src directive, or no network route to it."
     }
   },
   "access": {

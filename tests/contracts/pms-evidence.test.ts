@@ -582,3 +582,55 @@ test("the preflight refuses before any byte moves, and says why", () => {
     "preflight must be matched before the confirm shape",
   );
 });
+
+// --- the upload leg: the host it really talks to, and never hanging ---------
+
+test("the CSP allows the host the Blob SDK actually uploads to", () => {
+  // This is the bug that survived two releases, because the plausible answer is
+  // wrong. `@vercel/blob` v2.8.2 posts every data request to
+  // `defaultVercelBlobApiUrl = 'https://vercel.com/api/blob'`
+  // (packages/blob/src/helpers.ts:13) — NOT to the storage host. Allowing only
+  // `blob.vercel-storage.com` blocked every upload at the browser.
+  const mw = readFileSync("middleware.ts", "utf8");
+  const fn = mw.slice(mw.indexOf("function blobConnectSrc"));
+  const body = fn.slice(0, fn.indexOf("\n}"));
+  assert.match(body, /https:\/\/vercel\.com/, "the upload host must be allowed");
+  assert.match(
+    body,
+    /BLOB_READ_WRITE_TOKEN/,
+    "and gated on the token, so a fork without a store gets no extra CSP surface",
+  );
+  // It is added to connect-src, not to a directive that would not govern fetch.
+  assert.match(mw, /connect-src 'self'\$\{sentryConnectSrc\(\)\}\$\{blobConnectSrc\(\)\}/);
+});
+
+test("the upload cannot hang: it is aborted and reported", () => {
+  // Why a timeout is the fix rather than padding: the SDK's own
+  // is-network-error list contains "Failed to fetch", which is what a
+  // CSP-blocked request throws, and `async-retry` then retries it ten times
+  // with exponential backoff (VERCEL_BLOB_RETRIES defaults to '10') — roughly
+  // seventeen minutes with nothing thrown and nothing on screen. The operator
+  // sat through exactly that. An abort is NOT retried, so this converts the
+  // silence into a sentence.
+  const client = stripComments(readFileSync("components/pms/KpiEvidence.tsx", "utf8"));
+  assert.match(client, /const UPLOAD_TIMEOUT_MS = 30_000;/);
+  assert.match(client, /new AbortController\(\)/);
+  assert.match(client, /abortSignal: controller\.signal/, "the SDK must be given the signal");
+  assert.match(client, /clearTimeout\(timer\)/, "and the timer cleared on every path");
+  // A timeout says it timed out; it is not reported as a generic failure.
+  assert.match(client, /timedOut\s*\?\s*t\("stepUploadTimedOut"/);
+});
+
+test("no upload-completed callback is requested, so none can 401", () => {
+  // `handleUpload` infers a callbackUrl only when `onUploadCompleted` is
+  // supplied (client.ts:781). Omitting it means the token carries no callback
+  // at all — which is the point: the callback arrives unauthenticated and this
+  // app answers 401, so the row it would create was never created.
+  const route = readFileSync("app/api/year-end/evidence/route.ts", "utf8");
+  const call = route.slice(
+    route.indexOf("handleUpload({"),
+    route.indexOf("async function handleConfirm"),
+  );
+  assert.doesNotMatch(call, /onUploadCompleted:/);
+  assert.doesNotMatch(call, /callbackUrl/);
+});

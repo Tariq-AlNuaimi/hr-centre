@@ -54,6 +54,17 @@ export interface EvidenceItem {
  * the page has no idea anything happened — "the file picker opens and nothing
  * happens", with no error anywhere because no code ran.
  */
+/**
+ * How long the browser waits for the upload before giving up.
+ *
+ * Chosen against the SDK's behaviour, not plucked from the air: `@vercel/blob`
+ * retries a network error ten times with exponential backoff and surfaces
+ * nothing while it does, so without this the failure mode is a ~17-minute hang.
+ * 30s is comfortably longer than a 10 MB upload on a slow connection and far
+ * shorter than a person's patience.
+ */
+const UPLOAD_TIMEOUT_MS = 30_000;
+
 const ACCEPT = [
   ...Object.keys(ALLOWED_EVIDENCE_TYPES),
   ...Object.values(ALLOWED_EVIDENCE_TYPES)
@@ -334,11 +345,25 @@ export function KpiEvidence({
 
       begin(t("stepUploading", { size: sizeLabel(file.size) ?? `${file.size} B` }));
       let storedPathname: string;
+      // THE TIMEOUT IS NOT DEFENSIVE PADDING — it is the fix for a hang the
+      // operator actually sat through. `@vercel/blob` treats a CSP-blocked
+      // fetch as a network error (its own is-network-error list contains
+      // "Failed to fetch") and retries it ten times with exponential backoff:
+      // roughly seventeen minutes with nothing on screen and nothing thrown.
+      // The SDK accepts an `abortSignal` and does NOT retry an abort, so this
+      // converts that silence into a sentence after 30 seconds.
+      const controller = new AbortController();
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, UPLOAD_TIMEOUT_MS);
       try {
         const { upload } = await import("@vercel/blob/client");
         const blob = await upload(pathname, file, {
           access: "private",
           handleUploadUrl: "/api/year-end/evidence",
+          abortSignal: controller.signal,
           clientPayload: JSON.stringify({
             kpiId,
             label: file.name,
@@ -351,10 +376,14 @@ export function KpiEvidence({
         done(t("stepUploaded"));
       } catch (e) {
         // The one leg that cannot be reached from the build container, so it
-        // gets the most explicit reporting: `describe` names CSP when the
-        // browser never got a response at all.
-        failHere(describe(e));
+        // gets the most explicit reporting: a timeout says what it means, and
+        // `describe` names CSP when the browser never got a response at all.
+        failHere(
+          timedOut ? t("stepUploadTimedOut", { seconds: UPLOAD_TIMEOUT_MS / 1000 }) : describe(e),
+        );
         return;
+      } finally {
+        clearTimeout(timer);
       }
 
       // Nothing is in the record yet. This creates the row, and the server
