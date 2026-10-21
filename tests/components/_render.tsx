@@ -84,9 +84,18 @@ export const messages = {
   },
 };
 
+/**
+ * next-intl namespaces nest arbitrarily (`pms.evidence.stepSaved`), so the
+ * message tree is recursive. The previous one-level `Record<string,
+ * Record<string, string>>` rejected any real slice of `messages/en.json` —
+ * which pushed tests towards hand-written fixtures that prove interpolation
+ * works rather than that the operator sees a real sentence.
+ */
+type MessageTree = { [key: string]: string | MessageTree };
+
 type ProviderOptions = {
   locale?: string;
-  messages?: Record<string, Record<string, string>>;
+  messages?: MessageTree;
 };
 
 export function Providers({

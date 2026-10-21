@@ -393,7 +393,6 @@ export function YearEndAssessment({
                 the employee, their direct manager and HR — and editable only by
                 the owner, only until they sign. */}
             <KpiEvidence
-              participantId={participantId}
               kpiId={kpi.id}
               items={kpi.evidence ?? []}
               canEdit={actingAs === "EMPLOYEE" && !signedParties.includes("EMPLOYEE")}

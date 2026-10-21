@@ -1589,7 +1589,23 @@
       "saveComment": "حفظ الملاحظة",
       "commentSaved": "حُفظت الملاحظة.",
       "commentFailed": "تعذّر حفظ الملاحظة.",
-      "linkUrlPlaceholder": "https://…"
+      "linkUrlPlaceholder": "https://…",
+      "progressTitle": "إرفاق ملف — سجل الخطوات",
+      "stepChoosing": "اختيار ملف",
+      "stepChosen": "تم اختيار {name} ({size})؛ المتصفح يحدد نوعه بأنه {type}",
+      "noTypeReported": "لا شيء",
+      "stepCheckingType": "التحقق من نوع الملف",
+      "stepTypeAccepted": "مقبول كـ {type}",
+      "stepCheckingSize": "التحقق من حجم الملف",
+      "stepEmptyFile": "هذا الملف فارغ (٠ بايت)، فلا يوجد ما يُرفق.",
+      "stepRequestingPermission": "طلب إذن الرفع من الخادم",
+      "stepPermissionGranted": "تم الإذن — يتبقى مجال لـ {remaining} عنصر/عناصر على هذا المؤشر",
+      "stepUploading": "جارٍ رفع {size} إلى وحدة التخزين",
+      "stepUploaded": "انتهى الرفع",
+      "stepVerifying": "التحقق من الملف المخزَّن وحفظ السجل",
+      "stepSaved": "تم الحفظ",
+      "stepNoFile": "لم يُعد منتقي الملفات أي ملف. إذا كان الملف المطلوب باهتًا فنوعه غير مدرج في القائمة المقبولة.",
+      "stepUnexpected": "إرفاق الملف"
     }
   },
   "access": {

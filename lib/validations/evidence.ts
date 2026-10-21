@@ -61,6 +61,23 @@ export const confirmUploadSchema = z.object({
   sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES),
 });
 
+/**
+ * Asking permission BEFORE any bytes move, and asking where to put them.
+ *
+ * Same fields the token request declares, because it answers the same question
+ * — the point is that the answer comes back as our own `{ error, status }`
+ * rather than through the Blob SDK, which replaces our sentence with its own.
+ */
+export const uploadPreflightSchema = z.object({
+  preflight: z.literal(true),
+  kpiId: z.string().min(1),
+  contentType: z.enum(
+    Object.keys(ALLOWED_EVIDENCE_TYPES) as [string, ...string[]],
+    "That file type is not accepted.",
+  ),
+  sizeBytes: z.number().int().positive().max(MAX_EVIDENCE_BYTES),
+});
+
 /** The manager's note on one item. */
 export const evidenceCommentSchema = z.object({
   comment: z.string().trim().min(1).max(MAX_EVIDENCE_COMMENT),

@@ -4,8 +4,12 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
+import { randomUUID } from "node:crypto";
 import {
+  ALLOWED_EVIDENCE_TYPES,
+  type AllowedContentType,
   MAX_EVIDENCE_BYTES,
+  MAX_EVIDENCE_PER_KPI,
   evidenceWriteBlockedReason,
   linkBlockedReason,
   sniffContentType,
@@ -14,6 +18,7 @@ import {
 import { YEAR_END_STAGE } from "@/lib/pms/rating";
 import {
   deleteStoredFile,
+  evidencePrefix,
   isStorageConfigured,
   isWithinEvidencePrefix,
   readStoredHead,
@@ -21,6 +26,7 @@ import {
 import {
   attachLinkSchema,
   confirmUploadSchema,
+  uploadPreflightSchema,
   uploadTokenSchema,
 } from "@/lib/validations/evidence";
 
@@ -119,6 +125,62 @@ const STORAGE_UNCONFIGURED =
 
 type Actor = Awaited<ReturnType<typeof resolveActor>>;
 
+/**
+ * Shape 0 — "may I upload this, and where to?", answered BEFORE any bytes move.
+ *
+ * Two jobs, both learned the hard way.
+ *
+ * **It makes a refusal legible.** Every rule below is also enforced in the
+ * token callback, but a refusal thrown there travels back through the Blob
+ * SDK, which surfaces its own error rather than our sentence and its status.
+ * The operator could not see why an upload did nothing — "the file picker opens
+ * and nothing happens" — and could not read a browser console either. Asking
+ * first means the exact reason and HTTP status reach the screen.
+ *
+ * **It ends the pathname disagreement structurally.** The server pins uploads
+ * to `year-end/<participantId>/<kpiId>/` and the BROWSER proposes the path, so
+ * for one release the client sent a prefix the pin could never accept and every
+ * upload was refused — two files, both correct in isolation, with nothing
+ * type-checking one against the other. Now the server RETURNS the pathname it
+ * will authorise and the client echoes it back. There is one author of that
+ * string, so there is nothing left to disagree about. The token callback still
+ * re-checks it: a client may lie, and this reply is advice, not authority.
+ */
+async function handlePreflight(body: unknown, actor: Actor) {
+  const parsed = uploadPreflightSchema.safeParse(body);
+  if (!parsed.success) {
+    return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
+  }
+  const { kpiId, contentType, sizeBytes } = parsed.data;
+
+  // Reported rather than thrown: the screen needs to tell the operator that
+  // files are unavailable in THIS environment while links still work, and
+  // "storage is not configured" is a deployment state, not a user error.
+  if (!isStorageConfigured()) return err(STORAGE_UNCONFIGURED, 503);
+
+  const kpi = await loadSubject(kpiId);
+  if (!kpi) return err("Evidence not found", 404);
+
+  const write = writeRefusal(kpi, actor);
+  if (write) return err(write.reason, write.status);
+
+  const refusal = uploadBlockedReason({
+    contentType,
+    sizeBytes,
+    existingCount: kpi._count.evidence,
+  });
+  if (refusal) return err(refusal.reason, refusal.status);
+
+  // The extension is cosmetic — the stored name is a UUID so that a filename
+  // with a space, a slash or an Arabic character cannot fail the pin, and the
+  // real name travels in `label`. It is kept only so a downloaded file opens in
+  // the right application.
+  const ext = ALLOWED_EVIDENCE_TYPES[contentType as AllowedContentType][0];
+  const pathname = `${evidencePrefix(kpi.participant.id, kpiId)}${randomUUID()}.${ext}`;
+
+  return ok({ pathname, remaining: MAX_EVIDENCE_PER_KPI - kpi._count.evidence });
+}
+
 /** Shape 2 — mint a client-upload token, with every rule checked first. */
 async function handleHandshake(request: NextRequest, body: unknown, actor: Actor) {
   if (!isStorageConfigured()) return err(STORAGE_UNCONFIGURED, 503);
@@ -170,9 +232,14 @@ async function handleHandshake(request: NextRequest, body: unknown, actor: Actor
           // token protocol needs it stated here too, and it is the one
           // value in this file that must never change.
           access: "private",
-          // Makes the final pathname unique, so a second upload cannot
-          // overwrite the bytes a verified row already points at.
-          addRandomSuffix: true,
+          // OFF, now that the preflight issues a server-generated UUID path.
+          // It was on to guarantee uniqueness, which the UUID already does —
+          // and leaving it on means the stored pathname is NOT the one that was
+          // authorised, so the confirm has to accept whatever shape the suffix
+          // takes. That shape is one more thing this code cannot verify from a
+          // container with no route to Vercel. Off, the pathname the client
+          // confirms is exactly the pathname the server handed out.
+          addRandomSuffix: false,
           allowedContentTypes: [contentType],
           maximumSizeInBytes: Math.min(sizeBytes, MAX_EVIDENCE_BYTES),
           // No `tokenPayload`: it existed to carry state into
@@ -331,6 +398,7 @@ export const POST = withRateLimit(
     // Vercel's client-upload protocol posts `{ type, payload }`; our confirm
     // carries a `pathname`; anything else is a link.
     if ("type" in shape && "payload" in shape) return handleHandshake(request, body, actor);
+    if (shape.preflight === true) return handlePreflight(body, actor);
     if ("pathname" in shape) return handleConfirm(body, actor);
     return handleLink(body, actor);
   }),

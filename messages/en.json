@@ -1589,7 +1589,23 @@
       "saveComment": "Save note",
       "commentSaved": "Note saved.",
       "commentFailed": "That note could not be saved.",
-      "linkUrlPlaceholder": "https://…"
+      "linkUrlPlaceholder": "https://…",
+      "progressTitle": "Attaching a file — progress",
+      "stepChoosing": "Choosing a file",
+      "stepChosen": "Chose {name} ({size}); the browser reports its type as {type}",
+      "noTypeReported": "nothing at all",
+      "stepCheckingType": "Checking the file type",
+      "stepTypeAccepted": "Accepted as {type}",
+      "stepCheckingSize": "Checking the file size",
+      "stepEmptyFile": "That file is empty (0 bytes), so there is nothing to attach.",
+      "stepRequestingPermission": "Asking the server for permission to upload",
+      "stepPermissionGranted": "Granted — room for {remaining} more item(s) on this KPI",
+      "stepUploading": "Uploading {size} to file storage",
+      "stepUploaded": "Upload finished",
+      "stepVerifying": "Checking the stored file and saving the record",
+      "stepSaved": "Saved",
+      "stepNoFile": "No file came back from the picker. If the file you wanted was greyed out, its type is not on the accepted list.",
+      "stepUnexpected": "Attaching the file"
     }
   },
   "access": {
