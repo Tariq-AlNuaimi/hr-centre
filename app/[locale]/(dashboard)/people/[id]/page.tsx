@@ -11,6 +11,9 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { EmployeeEditForm } from "@/components/pms/EmployeeEditForm";
+import { RecordDepartureDialog } from "@/components/pms/RecordDepartureDialog";
+import { departurePreview } from "@/lib/pms/departure";
+import { isHr } from "@/lib/pms/permissions";
 import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
@@ -206,13 +209,34 @@ export default async function EmployeeDetailPage({
             actually taken — but if that ever stopped being true, the form must
             not be the thing that discovers it by encrypting `null` over payroll.
           */
-          actor.capabilities.configure && basicSalary !== undefined ? (
-            <EmployeeEditForm
-              employeeId={employee.id}
-              initial={toUpdateInput({ ...employee, basicSalary })}
-              managerName={employee.manager?.name ?? null}
-            />
-          ) : null
+          <>
+            {actor.capabilities.configure && basicSalary !== undefined ? (
+              <EmployeeEditForm
+                employeeId={employee.id}
+                initial={toUpdateInput({ ...employee, basicSalary })}
+                managerName={employee.manager?.name ?? null}
+              />
+            ) : null}
+            {/*
+              §12.1 — the departure, beside the record it is about. Gated on
+              `isHr` rather than `capabilities.configure`, to match
+              `POST /api/leavers`'s own check: §4.1 gives BOTH HR flavours the
+              cycle, and a button the endpoint would accept but the page hides
+              is just a support ticket. The preview is computed here, on the
+              server, so the consequences never reach a browser that may not
+              see them.
+            */}
+            {isHr(actor) ? (
+              <RecordDepartureDialog
+                employeeId={employee.id}
+                employeeName={employee.name}
+                // Not asked for a record that has already departed: the
+                // dialog renders nothing for one, so four queries per page
+                // load would buy an unused answer.
+                preview={employee.status === "LEAVER" ? null : await departurePreview(employee.id)}
+              />
+            ) : null}
+          </>
         }
       />
 

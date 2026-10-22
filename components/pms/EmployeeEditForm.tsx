@@ -232,6 +232,46 @@ export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeE
                 )}
               />
 
+              {/*
+                §11.4's last working day, CORRECTABLE — shown only once the
+                person is already a leaver.
+
+                The departure itself is not a field edit and this form cannot
+                record one: `PUT /api/employees/[id]` refuses the ACTIVE ->
+                LEAVER transition and names "Record departure", because §12.1
+                also moves the direct reports up a level and flags the 360
+                assignments, and none of that happens here.
+
+                But the DATE has to be fixable after the fact. §11.4 pro-rates
+                the bonus to it, so a mistyped departure date is a payroll
+                error, and the departure dialog is a one-shot: it does not
+                render again for someone who has already left. Re-saving an
+                already-LEAVER record is not a transition, so this is the one
+                field edit a leaver legitimately needs. `applyOrgInvariants`
+                still refuses to let it be cleared while the status is LEAVER.
+              */}
+              {initial.status === "LEAVER" ? (
+                <FormField
+                  name="lastWorkingDay"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{tPms("lastWorkingDay")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="date"
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          disabled={submitting}
+                        />
+                      </FormControl>
+                      <FormDescription>{t("lastWorkingDayHelp")}</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+
               <FormField
                 name="roleTrack"
                 render={({ field }) => (
