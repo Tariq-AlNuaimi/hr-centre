@@ -1453,12 +1453,13 @@
       "change": "Change",
       "managerHelp": "§4.2 gives editing and sign-off to the direct line manager, so this decides who drafts and signs this person's KPIs.",
       "managerHelpCLevel": "Optional for C-Level.",
-      "notEditedHere": "Employee ID, salary, HR roles and leaver status are not edited here. The ID never changes (§3.2); a departure goes through the edge-case screen so the record shows who recorded it (§12.1); HR roles go through the roles screen (§4.3).",
+      "notEditedHere": "Employee ID, salary and HR roles are not edited here. The ID never changes (§3.2); HR roles go through the roles screen (§4.3). To record a departure, use “Record departure” on this record — it also moves the direct reports up a level and flags the 360 assignments (§12.1).",
       "saveAction": "Save record",
       "saving": "Saving…",
       "savedToast": "{name}'s record was updated",
       "failed": "Could not save the record.",
-      "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it."
+      "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it.",
+      "lastWorkingDayHelp": "The bonus is pro-rated from the start of the cycle to this date (§11.4), so a wrong date is a payroll error. Shown because this person has already left; it cannot be cleared while their status is Leaver."
     },
     "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set",
     "notifications": {
@@ -1610,6 +1611,31 @@
       "stepNoFile": "No file came back from the picker. If the file you wanted was greyed out, its type is not on the accepted list.",
       "stepUnexpected": "Attaching the file",
       "stepUploadTimedOut": "Upload timed out after {seconds} seconds with no response. The browser could not reach the file-storage host — this is usually the Content-Security-Policy connect-src directive, or no network route to it."
+    },
+    "departure": {
+      "action": "Record departure",
+      "title": "Record {name}'s departure",
+      "subtitle": "§12.1 — their record is kept. This closes out everything that depends on them still being here.",
+      "lastWorkingDay": "Last working day",
+      "lastWorkingDayHelp": "Required. The bonus is pro-rated from the start of the cycle to this date (§11.4).",
+      "lastWorkingDayRequired": "Enter a last working day.",
+      "note": "Note (optional)",
+      "notePlaceholder": "e.g. resigned, immediate",
+      "willHappen": "What this will do:",
+      "effectStatus": "Status becomes Leaver, with the last working day you entered.",
+      "effectReports": "{count} direct report(s) move up one level, to {manager}.",
+      "effectReportsNoTarget": "{count} direct report(s) have no manager above this person, so they will be left without one — you will be prompted to name a permanent manager.",
+      "effectNoReports": "Nobody reports to this person, so no reporting lines move.",
+      "effectThreeSixty": "{count} unfinished 360 assignment(s) will need a new rater, so each person still reaches 3 (§9.4).",
+      "effectThreeSixtyWho": "Assessments of: {names}",
+      "effectNoThreeSixty": "No unfinished 360 assignments, so nothing to reassign.",
+      "effectLogin": "Their sign-in access is revoked immediately.",
+      "effectNoLogin": "They have no sign-in account, so no access to revoke.",
+      "effectRecordKept": "Nothing is deleted — the record and its history are preserved (§12.1).",
+      "confirm": "Record departure",
+      "recording": "Recording…",
+      "recorded": "{name}'s departure is recorded.",
+      "failed": "Could not record the departure."
     }
   },
   "access": {

@@ -4,7 +4,6 @@ import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { employeeSelect, encryptSalary, serializeEmployee } from "@/lib/pms/employee-select";
-import { revokeLoginOnOffboard } from "@/lib/pms/offboarding";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
@@ -112,10 +111,43 @@ export const PUT = withRateLimit(
     // In the same transaction as the row it describes: a status that says LEAVER
     // beside an account that still works is the state this decision exists to
     // make impossible.
-    const offboarding = data.status === "LEAVER" && target.status !== "LEAVER";
+    // §12.1 — THIS ROUTE MAY NOT OFF-BOARD ANYONE.
+    //
+    // It used to accept the transition and revoke the login, which looks like a
+    // departure and is not one: §12.1 also requires the direct reports to roll
+    // up one level, with a `ManagerRollUp` row per report so §12.2's prompt
+    // exists. None of that happens here. The result was a half-departure — a
+    // revoked login beside a team still pointing at a manager who has gone —
+    // and the only reason nobody hit it is that the edit form did not render
+    // the field. Adding the field, which is what HR asked for, would have armed
+    // it.
+    //
+    // So the transition is refused and named: one writer of a departure, and it
+    // is `POST /api/leavers`, which the employee page's "Record departure"
+    // action calls. Re-saving an ALREADY departed record is fine — that is not a
+    // transition, and HR has to be able to correct a leaver's name.
+    if (data.status === "LEAVER" && target.status !== "LEAVER") {
+      return err(
+        "Recording a departure does more than set these two fields: §12.1 also moves this " +
+          "person's direct reports up one level and flags their 360 assignments for " +
+          "reassignment. Use “Record departure” on the employee's record, which does all of it " +
+          "in one step.",
+        409,
+      );
+    }
+    // Reinstating someone is likewise not a field edit: their reports were moved
+    // and §12.2's prompt is open, so putting the status back would leave the org
+    // chart rearranged with nothing saying why.
+    if (data.status === "ACTIVE" && target.status === "LEAVER") {
+      return err(
+        "Reinstating a departed employee is not a field edit — their reports were moved up a " +
+          "level when they left (§12.1) and that roll-up is still recorded. Resolve it on " +
+          "Leavers & transfers first.",
+        409,
+      );
+    }
 
     const updated = await auditedTransaction(async (tx) => {
-      if (offboarding) await revokeLoginOnOffboard(tx, id);
       return tx.employee.update({
         where: { id },
         data: {

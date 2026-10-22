@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
 import { rollUpTarget } from "@/lib/pms/roll-up";
+import { departureReportsWhere, departureThreeSixtyWhere } from "@/lib/pms/departure";
 import { revokeLoginOnOffboard } from "@/lib/pms/offboarding";
 import { markLeaverSchema } from "@/lib/validations/edge-cases";
 
@@ -68,8 +69,11 @@ export const POST = withRateLimit(
     // and a null target is the case HR most needs the prompt for.
     const target = rollUpTarget(employee);
 
+    // The SAME predicate the confirmation HR just read was built from
+    // (lib/pms/departure.ts). Two hand-written queries answering "whose line
+    // moves" is how a confirmation starts lying.
     const reports = await prisma.employee.findMany({
-      where: { managerId: employeeId, deletedAt: null, status: { not: "LEAVER" } },
+      where: departureReportsWhere(employeeId),
       take: 200,
       select: { id: true, name: true },
     });
@@ -145,7 +149,7 @@ export const POST = withRateLimit(
     // the departure so HR sees the work in the same breath as the event that
     // created it, rather than discovering it at launch.
     const orphaned = await prisma.assignment.findMany({
-      where: { raterId: employeeId, status: { not: "SUBMITTED" } },
+      where: departureThreeSixtyWhere(employeeId),
       take: 200,
       select: {
         id: true,
