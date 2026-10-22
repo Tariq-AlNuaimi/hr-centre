@@ -89,6 +89,8 @@ export default function ImportPage() {
           updated: number;
           provisioned: number;
           returningWithRevokedLogin: number;
+          departuresRecorded: number;
+          departuresNeedingAttention: string[];
           participantsEnrolled: number;
           participantsPending: number;
           enrolmentFailed: boolean;
@@ -142,6 +144,26 @@ export default function ImportPage() {
       // from the recycling bin that nobody will perform if nobody is told.
       if (json.data.returningWithRevokedLogin > 0) {
         warning(t("import.returningRevoked", { count: json.data.returningWithRevokedLogin }));
+      }
+
+      // §12.1 — a sheet row flipped to LEAVER is a DEPARTURE, and the import
+      // now performs the whole of it: the status, the direct reports moving up
+      // a level, §12.2's prompt per report, and the revoked login. It used to
+      // do the status and the login only, leaving the team pointing at someone
+      // who had gone with nothing on any screen to say so. Reported for the
+      // same reason as the enrolment counts: HR should see what happened, not
+      // go and check.
+      if (json.data.departuresRecorded > 0) {
+        success(t("import.departuresRecorded", { count: json.data.departuresRecorded }));
+      }
+      // And the ones it could not finish, BY NAME. A refusal nobody is told
+      // about is the silent half-departure in a new costume.
+      if (json.data.departuresNeedingAttention.length > 0) {
+        warning(
+          t("import.departuresNeedingAttention", {
+            names: json.data.departuresNeedingAttention.join(", "),
+          }),
+        );
       }
       setPreview(null);
       setBatchId(null);

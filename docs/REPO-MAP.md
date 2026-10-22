@@ -174,7 +174,7 @@
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
-- lib/pms/departure.ts: departureReportsWhere, departureThreeSixtyWhere, DeparturePreview, departurePreview
+- lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, DEPARTURE_REPORTS_ORDER, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook

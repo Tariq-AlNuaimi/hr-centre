@@ -37,7 +37,12 @@ test("the confirmation and the write are built from the SAME predicates", () => 
   // Both sides must come from lib/pms/departure.ts, not from a hand-written
   // query — the §6.2 defect this repo keeps producing.
   const leavers = stripComments(readFileSync("app/api/leavers/route.ts", "utf8"));
-  assert.match(leavers, /departureReportsWhere\(/, "the write must use the shared predicate");
+  const departure = stripComments(readFileSync("lib/pms/departure.ts", "utf8"));
+  // The route no longer runs the reports query itself — it calls the one
+  // writer, which does. That is strictly stronger than the route holding the
+  // predicate, because the IMPORT goes through the same function.
+  assert.match(leavers, /applyDeparture\(/, "the write must go through the one writer");
+  assert.match(departure, /departureReportsWhere\(employeeId\)/, "which uses the predicate");
   assert.match(leavers, /departureThreeSixtyWhere\(/);
   assert.doesNotMatch(
     leavers,
@@ -143,4 +148,96 @@ test("the edit form no longer sends HR to the edge-case screen for a departure",
 test("the preview is not computed for a record that has already departed", () => {
   const page = stripComments(readFileSync("app/[locale]/(dashboard)/people/[id]/page.tsx", "utf8"));
   assert.match(page, /employee\.status === "LEAVER" \? null : await departurePreview/);
+});
+
+test("§12.1 there is ONE writer of a departure, and both callers use it", () => {
+  // The invariant the first version of this change got wrong. Guarding the
+  // hand-edit route did nothing about the import, which §3.2 makes the system
+  // of record for status — so an org that off-boards by spreadsheet got a
+  // status change, a revoked login, and a team still reporting to someone who
+  // had gone.
+  const leavers = stripComments(readFileSync("app/api/leavers/route.ts", "utf8"));
+  const importRun = stripComments(readFileSync("lib/pms/import/run.ts", "utf8"));
+
+  for (const [name, src] of [
+    ["the leavers route", leavers],
+    ["the import", importRun],
+  ] as const) {
+    assert.match(
+      src,
+      /applyDeparture\(/,
+      `${name} must perform a departure through applyDeparture`,
+    );
+  }
+
+  // And neither may hand-write the roll-up any more: a second copy of the
+  // prompt-row logic is how the two drifted apart in the first place.
+  for (const [name, src] of [
+    ["the leavers route", leavers],
+    ["the import", importRun],
+  ] as const) {
+    assert.doesNotMatch(
+      src,
+      /managerRollUp\.create/,
+      `${name} must not write §12.2's prompt row itself`,
+    );
+  }
+});
+
+test("the import performs departures AFTER the manager-edge pass", () => {
+  // Ordering is load-bearing: pass 2 writes managerId straight from the sheet,
+  // so a roll-up done earlier is reverted by a sheet that still lists the
+  // departed manager as everyone's boss — which is what a sheet marking that
+  // manager a leaver looks like.
+  const src = readFileSync("lib/pms/import/run.ts", "utf8");
+  const edges = src.indexOf("await applyManagerEdges(");
+  const departures = src.indexOf("await runDepartures(");
+  assert.ok(edges > 0 && departures > 0, "both passes must be called");
+  assert.ok(departures > edges, "departures must run after the manager edges");
+});
+
+test("an over-limit departure is refused, never silently truncated", async () => {
+  const { DEPARTURE_REPORTS_LIMIT } = await import("../../lib/pms/departure");
+  assert.equal(typeof DEPARTURE_REPORTS_LIMIT, "number");
+
+  // The write used to read 200 with no orderBy while the preview read 200 by
+  // name: same `where`, different rows, so the remainder stayed on a departed
+  // manager with no prompt row. Both now take the shared limit AND order, and
+  // the route answers 422 above it.
+  const departure = stripComments(readFileSync("lib/pms/departure.ts", "utf8"));
+  assert.doesNotMatch(departure, /take: 200/, "no hand-written copy of the limit");
+  assert.match(departure, /reason: "TOO_MANY_REPORTS"/);
+  const leavers = stripComments(readFileSync("app/api/leavers/route.ts", "utf8"));
+  assert.match(leavers, /TOO_MANY_REPORTS/);
+  assert.match(leavers, /422/);
+});
+
+test("the import tells HR about departures it recorded and ones it could not", () => {
+  const page = stripComments(
+    readFileSync("app/[locale]/(dashboard)/admin/import/page.tsx", "utf8"),
+  );
+  assert.match(page, /departuresRecorded/);
+  assert.match(page, /departuresNeedingAttention/);
+  const en = JSON.parse(readFileSync("messages/en.json", "utf8"));
+  const ar = JSON.parse(readFileSync("messages/ar.json", "utf8"));
+  for (const key of ["departuresRecorded", "departuresNeedingAttention"]) {
+    assert.ok(en.pms.import[key], `en is missing import.${key}`);
+    assert.ok(ar.pms.import[key], `ar is missing import.${key}`);
+  }
+});
+
+test("the reinstatement refusal names what is actually possible", () => {
+  // Its first draft said "resolve it on Leavers & transfers first", which was
+  // wrong twice: that screen never writes `status`, and the guard does not test
+  // whether the roll-up was resolved, so the refusal would still have stood
+  // after HR did as they were told.
+  const route = stripComments(readFileSync("app/api/employees/[id]/route.ts", "utf8"));
+  assert.doesNotMatch(route, /Leavers & transfers first/);
+  assert.match(route, /Recycling bin/);
+  const register = readFileSync("docs/findings-register.md", "utf8");
+  assert.match(
+    register,
+    /No reinstatement path for a departed employee/,
+    "an unfixed gap is logged, never silent",
+  );
 });
