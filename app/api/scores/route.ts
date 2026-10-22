@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
 import { clampToService } from "@/lib/pms/transfer";
+import { countableParticipantWhere } from "@/lib/pms/cycle";
 import {
   scoreEmployee,
   scoreSplitEmployee,
@@ -88,8 +89,14 @@ export const POST = withRateLimit(
         take: 500,
         select: { departmentId: true, score: true },
       }),
+      // The SAME predicate the gate counts with. If these two disagreed,
+      // `scoredCount` could exceed `participantCount` and §10.7's gate would
+      // read as complete while somebody was still unscored. (Comment kept
+      // ABOVE the call: `/ship`'s scalability scan reads only 250 characters
+      // past `findMany(` looking for the bound, and deliberately will not let a
+      // comment satisfy it — so a comment in between hides a real `take`.)
       prisma.cycleParticipant.findMany({
-        where: { cycleId },
+        where: countableParticipantWhere(cycleId),
         take: 4000,
         select: {
           employee: {
@@ -419,7 +426,12 @@ export const GET = withRateLimit(
         startedByEmployee: { select: { id: true, name: true } },
       },
     });
-    const participantCount = await prisma.cycleParticipant.count({ where: { cycleId } });
+    // The same predicate again — this count is what `ScoreRunPanel` renders as
+    // "N of M", so a different denominator here would have the screen disagree
+    // with the gate that actually blocks calibration.
+    const participantCount = await prisma.cycleParticipant.count({
+      where: countableParticipantWhere(cycleId),
+    });
     return ok({ runs, participantCount, latestRunId: runs[0]?.id ?? null });
   }),
   { id: "pms-score-read", limit: 60, windowMs: 60_000 },

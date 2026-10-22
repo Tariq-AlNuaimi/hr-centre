@@ -1,4 +1,3 @@
-import type { CycleStageKind, RoleTrack } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { isHr, type PmsActor } from "./permissions";
 
@@ -58,6 +57,42 @@ export function canRunCycle(actor: PmsActor): boolean {
  * leaves mid-cycle keeps the participant row they already had — this only
  * governs who gets added.
  */
+/**
+ * Which participants COUNT towards a cycle's completion — §10.7's denominator.
+ *
+ * The gates used to ask `cycleParticipant.count({ where: { cycleId } })` with no
+ * filter of any kind, and that is a deadlock with no exit: a participant whose
+ * employee record was soft-deleted as an erroneous import can never be scored
+ * (they have no ratings, no 360) and can never be removed from the denominator,
+ * so `scoredCount < participantCount` holds forever and calibration and publish
+ * refuse for the rest of time. An operator hit exactly that after an import of
+ * test employees, and found that marking them LEAVER did not help — because
+ * LEAVER revokes a login and touches nothing here.
+ *
+ * Soft-deleted employees are excluded. `docs/rules/prisma.md` and the recycling
+ * bin are explicit that an `Employee` soft delete is "for ERRONEOUS records
+ * only — a departure is `status = LEAVER`", so a soft-deleted row is a record
+ * that should never have existed, and counting a non-person's unfinished
+ * assessment against the cycle is not a rule anybody wants.
+ *
+ * LEAVERs are deliberately NOT excluded. §12.1 preserves their record and
+ * §11.4 pro-rates their bonus to their last working day, so somebody who left
+ * in October has a real year to be scored on. Dropping them from the
+ * denominator would quietly discard that; the right instrument for a leaver who
+ * genuinely should not be scored is a deliberate, audited exclusion, which does
+ * not exist yet and should not be invented by inference here.
+ *
+ * ONE definition, used by the count AND by the score run's own iteration. If
+ * they disagreed, `scoredCount` could exceed `participantCount` and the gate
+ * would read as complete while someone was still unscored.
+ */
+export function countableParticipantWhere(cycleId: string): {
+  cycleId: string;
+  employee: { deletedAt: null };
+} {
+  return { cycleId, employee: { deletedAt: null } };
+}
+
 /** Postgres unique-violation, as Prisma reports it. */
 function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
