@@ -32,6 +32,7 @@
     "prisma:push": "prisma db push",
     "prisma:seed": "prisma db seed",
     "db:demo-cycle": "tsx prisma/demo-cycle.ts",
+    "db:dummy-data": "tsx prisma/dummy-data-cli.ts",
     "prisma:studio": "prisma studio",
     "scaffold": "node scripts/scaffold-entity.mjs",
     "rebrand": "node scripts/rebrand.mjs",
