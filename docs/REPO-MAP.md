@@ -173,7 +173,7 @@
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, enrolledAfterDeadline, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
-- lib/pms/cycle.ts: canRunCycle, enrolParticipants
+- lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook

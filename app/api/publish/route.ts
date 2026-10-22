@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
 import { calibrationReadinessBlockedReason } from "@/lib/pms/calibration";
+import { countableParticipantWhere } from "@/lib/pms/cycle";
 import { publishSchema } from "@/lib/validations/calibration";
 
 /**
@@ -73,7 +74,7 @@ export const POST = withRateLimit(
     if (action === "PUBLISH") {
       // §10.7 — "No release until calibration is done."
       const [participantCount, runs, target] = await Promise.all([
-        prisma.cycleParticipant.count({ where: { cycleId } }),
+        prisma.cycleParticipant.count({ where: countableParticipantWhere(cycleId) }),
         prisma.scoreRun.findMany({
           where: { cycleId },
           take: 1,
@@ -194,7 +195,7 @@ export const GET = withRateLimit(
     }
 
     const [participantCount, runs, target] = await Promise.all([
-      prisma.cycleParticipant.count({ where: { cycleId } }),
+      prisma.cycleParticipant.count({ where: countableParticipantWhere(cycleId) }),
       prisma.scoreRun.findMany({
         where: { cycleId },
         take: 1,

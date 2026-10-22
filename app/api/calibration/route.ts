@@ -5,6 +5,7 @@ import { created, err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
+import { countableParticipantWhere } from "@/lib/pms/cycle";
 import {
   adjustmentBlockedReason,
   calibrationReadinessBlockedReason,
@@ -208,7 +209,7 @@ export const GET = withRateLimit(
         orderBy: { startedAt: "desc" },
         select: { id: true },
       }),
-      prisma.cycleParticipant.count({ where: { cycleId } }),
+      prisma.cycleParticipant.count({ where: countableParticipantWhere(cycleId) }),
     ]);
     const runId = runs[0]?.id ?? null;
 

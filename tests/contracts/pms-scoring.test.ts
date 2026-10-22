@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   BAND_COEFFICIENT,
@@ -347,4 +348,54 @@ test("a genuinely unbalanced set still reports §5.3, because that IS the proble
   if (out.scored) return;
   assert.match(out.reason, /§5\.3/);
   assert.match(out.reason, /70%/);
+});
+
+// --- the completion-gate deadlock -------------------------------------------
+
+test("a soft-deleted employee is out of §10.7's denominator; a LEAVER is not", async () => {
+  const { countableParticipantWhere } = await import("../../lib/pms/cycle");
+  const where = countableParticipantWhere("cycle-1");
+
+  // The deadlock this closes: the gate asked `count({ where: { cycleId } })`
+  // with no filter, so a participant whose employee was soft-deleted as an
+  // erroneous import could never be scored (no ratings, no 360) and never left
+  // the denominator — `scoredCount < participantCount` forever, and calibration
+  // and publish refused permanently. Marking them LEAVER did not help: that
+  // revokes a login and touches nothing here.
+  assert.deepEqual(where, { cycleId: "cycle-1", employee: { deletedAt: null } });
+
+  // LEAVERs stay IN, deliberately. §12.1 preserves their record and §11.4
+  // pro-rates their bonus to the last working day, so someone who left in
+  // October has a real year to be scored on. Dropping them here would discard
+  // it silently.
+  assert.ok(
+    !JSON.stringify(where).includes("LEAVER"),
+    "a leaver must not be excluded by inference",
+  );
+});
+
+test("the gate's count and the score run's iteration use ONE predicate", () => {
+  // If they diverged, `scoredCount` could exceed `participantCount` and §10.7's
+  // gate would read as complete while somebody was still unscored.
+  const run = readFileSync("app/api/scores/route.ts", "utf8");
+  const calibrationRoute = readFileSync("app/api/calibration/route.ts", "utf8");
+  const publishRoute = readFileSync("app/api/publish/route.ts", "utf8");
+
+  for (const [name, src] of [
+    ["the score run", run],
+    ["calibration", calibrationRoute],
+    ["publish", publishRoute],
+  ] as const) {
+    assert.match(src, /countableParticipantWhere\(/, `${name} must use the shared predicate`);
+    assert.doesNotMatch(
+      src,
+      /cycleParticipant\.count\(\{\s*where:\s*\{\s*cycleId\s*\}/,
+      `${name} must not count participants unfiltered`,
+    );
+  }
+  // Publish asks twice — the state read and the write path.
+  assert.ok(
+    publishRoute.split("countableParticipantWhere(").length - 1 >= 2,
+    "both publish call sites must be covered",
+  );
 });
