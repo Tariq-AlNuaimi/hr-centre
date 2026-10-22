@@ -4,7 +4,7 @@ import { reconcile, type ExistingEmployee, type ReconcileContext } from "./recon
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
 import { decryptSalary, encryptSalary } from "../employee-select";
-import { revokeLoginOnOffboard } from "../offboarding";
+import { applyDeparture } from "../departure";
 
 /**
  * Import orchestration — spec §3.
@@ -242,6 +242,15 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
   provisioned: number;
   /** ADR-069 — returning employees whose account is still revoked; see the rehire branch. */
   returningWithRevokedLogin: number;
+  /** §12.1 departures this apply performed in full — status, roll-up, prompt, login. */
+  departuresRecorded: number;
+  /**
+   * Leavers in the sheet the apply could NOT off-board properly, by name.
+   * Their status is still updated by the row loop; what is missing is the
+   * roll-up. Reported so HR fixes a reporting line rather than discovering it
+   * at sign-off.
+   */
+  departuresNeedingAttention: string[];
 }> {
   const batch = await prisma.importBatch.findUnique({
     where: { id: params.batchId },
@@ -323,6 +332,13 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
   // ADR-069 — returning employees whose account is still revoked. Counted rather
   // than silently skipped: see the note at the rehire branch below.
   let returningWithRevokedLogin = 0;
+  /**
+   * §12.1 departures this apply has to perform, gathered in pass 1 and run
+   * after pass 2. See the push site for why the ordering is load-bearing.
+   */
+  const departures: PendingDeparture[] = [];
+  /** Names the apply could not off-board properly, surfaced to HR. */
+  const departureRefusals: string[] = [];
 
   /*
     An EXPLICIT budget, because Prisma's default one is 5 seconds and this
@@ -421,15 +437,23 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
       // Guarded on the TRANSITION, not the value: re-importing a sheet that
       // still lists last year's leaver must not try to revoke every week. The
       // helper is idempotent anyway, but a no-op that never runs is cheaper.
+      const existing = ctx.reconcile.existing.get(update.odooId);
+      const previousStatus = existing?.status;
+      // Non-null exactly when this row is a §12.1 departure; pass 3 performs it.
+      const pending = pendingDepartureFor(row, existing, update.employeeId);
       if (
         await applyStatusTransitionToAccess(tx, {
           employeeId: update.employeeId,
-          previousStatus: ctx.reconcile.existing.get(update.odooId)?.status,
+          previousStatus,
           nextStatus: row.status,
         })
       ) {
         returningWithRevokedLogin++;
       }
+      // §12.1 — a sheet that turns someone into a LEAVER is a DEPARTURE, and a
+      // departure is four things, not two. Collected here and applied after
+      // pass 2, never during this loop (see `runDepartures`).
+      if (pending) departures.push(pending);
       await tx.employee.update({
         where: { id: update.employeeId },
         data: {
@@ -439,37 +463,25 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
           entityId: row.entityId,
           roleTrack: row.roleTrack,
           basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
-          status: row.status,
           dateOfJoining: row.dateOfJoining,
-          lastWorkingDay: row.lastWorkingDay,
           unpaidLeaveDays: row.unpaidLeaveDays,
+          // `status` and `lastWorkingDay` are DEFERRED for a departure: pass 3
+          // writes them as part of the whole §12.1 act. Writing them here too
+          // would re-write the same values a second time and emit a second
+          // Employee UPDATE audit row for one event. For every other row —
+          // including a re-import that still lists last year's leaver — they
+          // are written here as usual.
+          ...(pending ? {} : { status: row.status, lastWorkingDay: row.lastWorkingDay }),
         },
       });
     }
 
     // Pass 2 — manager edges, now that every referenced row exists.
-    const touched = [...plan.creates.map((c) => c.odooId), ...plan.updates.map((u) => u.odooId)];
-    if (touched.length > 0) {
-      const resolved = await tx.employee.findMany({
-        where: { odooId: { in: [...new Set([...touched, ...collectManagerIds(validRows)])] } },
-        select: { id: true, odooId: true, managerId: true },
-      });
-      const idByOdooId = new Map(resolved.map((e) => [e.odooId, e.id]));
-      const currentManager = new Map(resolved.map((e) => [e.odooId, e.managerId]));
+    await applyManagerEdges(tx, { plan, byOdooId, validRows });
 
-      for (const odooId of touched) {
-        const row = byOdooId.get(odooId);
-        const employeeId = idByOdooId.get(odooId);
-        if (!row || !employeeId) continue;
-
-        const managerId = row.managerOdooId ? (idByOdooId.get(row.managerOdooId) ?? null) : null;
-        // Skip a no-op write: an unchanged manager must not produce an audit row
-        // claiming the reporting line moved.
-        if (currentManager.get(odooId) === managerId) continue;
-
-        await tx.employee.update({ where: { id: employeeId }, data: { managerId } });
-      }
-    }
+    // Pass 3 — §12.1 departures, LAST. See `runDepartures` for why the
+    // ordering is load-bearing.
+    departureRefusals.push(...(await runDepartures(tx, departures)));
   }, APPLY_TX_BUDGET(rowsTouched));
 
   return {
@@ -477,6 +489,8 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
     updated: plan.updates.length,
     provisioned,
     returningWithRevokedLogin,
+    departuresRecorded: departures.length - departureRefusals.length,
+    departuresNeedingAttention: departureRefusals,
   };
 }
 
@@ -530,6 +544,126 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
  * replaces, and allows 40 ms per touched row, which is roughly four times the
  * measured loopback cost so a network round trip has room.
  */
+/**
+ * Pass 2 — write the reporting lines the sheet asks for.
+ *
+ * Separate from the row loop because every manager it names has to exist
+ * first, and separate from the apply transaction's body because that body is
+ * at the cognitive complexity ceiling. Runs BEFORE pass 3's departures, which
+ * then get the last word on any line pointing at someone who has left.
+ */
+async function applyManagerEdges(
+  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
+  params: {
+    plan: { creates: { odooId: string }[]; updates: { odooId: string }[] };
+    byOdooId: Map<string, ValidatedRow>;
+    validRows: ValidatedRow[];
+  },
+): Promise<void> {
+  const { plan, byOdooId, validRows } = params;
+  const touched = [...plan.creates.map((c) => c.odooId), ...plan.updates.map((u) => u.odooId)];
+  if (touched.length === 0) return;
+
+  const resolved = await tx.employee.findMany({
+    where: { odooId: { in: [...new Set([...touched, ...collectManagerIds(validRows)])] } },
+    select: { id: true, odooId: true, managerId: true },
+  });
+  const idByOdooId = new Map(resolved.map((e) => [e.odooId, e.id]));
+  const currentManager = new Map(resolved.map((e) => [e.odooId, e.managerId]));
+
+  for (const odooId of touched) {
+    const row = byOdooId.get(odooId);
+    const employeeId = idByOdooId.get(odooId);
+    if (!row || !employeeId) continue;
+
+    const managerId = row.managerOdooId ? (idByOdooId.get(row.managerOdooId) ?? null) : null;
+    // Skip a no-op write: an unchanged manager must not produce an audit row
+    // claiming the reporting line moved.
+    if (currentManager.get(odooId) === managerId) continue;
+
+    await tx.employee.update({ where: { id: employeeId }, data: { managerId } });
+  }
+}
+
+/**
+ * Is this update row a §12.1 departure, and if so what does pass 3 need?
+ *
+ * The condition is a transition, not a value: re-importing a sheet that still
+ * lists last year's leaver is NOT a departure and must not roll anybody up a
+ * second time. Extracted so the apply transaction stays under the cognitive
+ * complexity ceiling, and so the transition is stated in one place.
+ */
+function pendingDepartureFor(
+  row: ValidatedRow,
+  existing: ExistingEmployee | undefined,
+  employeeId: string,
+): PendingDeparture | null {
+  if (row.status !== "LEAVER" || existing?.status === "LEAVER") return null;
+  return {
+    employeeId,
+    name: row.name,
+    lastWorkingDay: row.lastWorkingDay,
+    previousStatus: existing?.status ?? "ACTIVE",
+    previousLastWorkingDay: existing?.lastWorkingDay ?? null,
+  };
+}
+
+/** A §12.1 departure the sheet asks for, as pass 1 recorded it. */
+type PendingDeparture = {
+  employeeId: string;
+  name: string;
+  lastWorkingDay: Date | null;
+  previousStatus: string;
+  previousLastWorkingDay: Date | null;
+};
+
+/**
+ * Perform the departures a sheet asks for — pass 3 of the apply.
+ *
+ * ## Why this runs after the manager-edge pass, not during the row loop
+ *
+ * Pass 2 writes `managerId` straight from the sheet. A roll-up performed
+ * earlier would be silently reverted by a sheet that still lists the departed
+ * manager as everyone's boss — which is exactly what a sheet marking that
+ * manager a leaver looks like.
+ *
+ * Running last also makes `departureReportsWhere`'s re-query correct by
+ * construction: a report whose line the sheet legitimately moved to somebody
+ * else is no longer matched, so this leaves them alone.
+ *
+ * Its own function because the apply transaction was already at the cognitive
+ * complexity ceiling — and because "what the import does about a leaver" is
+ * worth being able to read on its own.
+ *
+ * Returns the names it could NOT off-board properly, for HR to act on. Never
+ * swallows one: an apply that quietly skips a departure is the defect this
+ * whole pass exists to remove.
+ */
+async function runDepartures(
+  tx: Parameters<Parameters<typeof auditedTransaction>[0]>[0],
+  departures: PendingDeparture[],
+): Promise<string[]> {
+  const refused: string[] = [];
+  for (const departure of departures) {
+    // §11.4 pro-rates to the last working day and `applyDeparture` requires
+    // one. Validation refuses a dateless leaver row upstream, so this is a
+    // belt-and-braces guard rather than an expected branch.
+    if (!departure.lastWorkingDay) {
+      refused.push(departure.name);
+      continue;
+    }
+    const outcome = await applyDeparture(tx, {
+      employeeId: departure.employeeId,
+      lastWorkingDay: departure.lastWorkingDay,
+      previousStatus: departure.previousStatus,
+      previousLastWorkingDay: departure.previousLastWorkingDay,
+      note: "Recorded by employee import (§3.2)",
+    });
+    if (!outcome.ok && outcome.reason === "TOO_MANY_REPORTS") refused.push(departure.name);
+  }
+  return refused;
+}
+
 function APPLY_TX_BUDGET(rowsTouched: number): { timeout: number; maxWait: number } {
   // Capped BELOW the route's `maxDuration = 60`. A Prisma timeout longer than the
   // function's own life is a promise the platform will break first: the process is
@@ -572,10 +706,10 @@ async function applyStatusTransitionToAccess(
   params: { employeeId: string; previousStatus: string | undefined; nextStatus: string },
 ): Promise<boolean> {
   const { employeeId, previousStatus, nextStatus } = params;
-  if (nextStatus === "LEAVER") {
-    if (previousStatus !== "LEAVER") await revokeLoginOnOffboard(tx, employeeId);
-    return false;
-  }
+  // The LEAVER direction is NOT handled here any more: `applyDeparture` owns
+  // the revocation, because it owns the whole departure. Two callers revoking
+  // is how the roll-up came to be the one part nobody did.
+  if (nextStatus === "LEAVER") return false;
   if (previousStatus !== "LEAVER") return false;
   return hasRevokedLogin(tx, employeeId);
 }

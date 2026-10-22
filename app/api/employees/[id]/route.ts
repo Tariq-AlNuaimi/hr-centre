@@ -138,11 +138,23 @@ export const PUT = withRateLimit(
     // Reinstating someone is likewise not a field edit: their reports were moved
     // and §12.2's prompt is open, so putting the status back would leave the org
     // chart rearranged with nothing saying why.
+    //
+    // THE MESSAGE SAYS WHAT IS ACTUALLY POSSIBLE. Its first draft said "resolve
+    // it on Leavers & transfers first", which was wrong twice: that screen
+    // resolves a roll-up but never writes `status`, and this guard does not
+    // test whether the roll-up was resolved, so the refusal would have stood
+    // after HR did as they were told. Rehire/reactivation is a documented v1
+    // gap (ADR-045) — logged in docs/findings-register.md rather than papered
+    // over with a route that half-does it, since reinstating properly means
+    // putting a reporting line back and restoring a revoked account, and
+    // neither is a field edit either.
     if (data.status === "ACTIVE" && target.status === "LEAVER") {
       return err(
-        "Reinstating a departed employee is not a field edit — their reports were moved up a " +
-          "level when they left (§12.1) and that roll-up is still recorded. Resolve it on " +
-          "Leavers & transfers first.",
+        "Bringing a departed employee back is not supported in this version, and is not a field " +
+          "edit: when they left, their direct reports were moved up a level (§12.1) and their " +
+          "login was revoked. Re-import them from the employee sheet to restore the record, " +
+          "restore their account from the Recycling bin to give them access again, and set " +
+          "their team's reporting lines on the employee records that need to change.",
         409,
       );
     }

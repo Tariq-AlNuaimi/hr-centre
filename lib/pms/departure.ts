@@ -1,6 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
+import { prisma, type auditedTransaction } from "@/lib/prisma";
+import { recordAudit } from "@/lib/prisma/audit-extension";
+import { revokeLoginOnOffboard } from "./offboarding";
 import { rollUpTarget } from "./roll-up";
+
+type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
 
 /**
  * §12.1's departure, defined once.
@@ -26,6 +30,24 @@ import { rollUpTarget } from "./roll-up";
 export function departureReportsWhere(employeeId: string): Prisma.EmployeeWhereInput {
   return { managerId: employeeId, deletedAt: null, status: { not: "LEAVER" } };
 }
+
+/**
+ * How many reports one departure moves — and the order, which matters as much.
+ *
+ * Shared because the predicate alone was not enough to stop the confirmation
+ * lying. The preview read 200 reports ordered by name while the write read 200
+ * in whatever order Postgres returned, so a manager with more than 200 reports
+ * got a confirmation naming one arbitrary 200 and a write moving a DIFFERENT
+ * arbitrary 200, with the remainder left pointing at someone who had gone and
+ * no prompt row to say so. Same `where`, different `take`/`orderBy`, same
+ * class of defect.
+ *
+ * Above the limit the departure is REFUSED rather than silently truncated.
+ * 200 direct reports is not a real reporting line, so the refusal is
+ * effectively unreachable; what matters is that exceeding it cannot be quiet.
+ */
+export const DEPARTURE_REPORTS_LIMIT = 200;
+export const DEPARTURE_REPORTS_ORDER = { name: "asc" } as const;
 
 /**
  * Which 360 assignments need a new rater — §12.1's fourth bullet.
@@ -76,13 +98,13 @@ export async function departurePreview(employeeId: string): Promise<DeparturePre
       : Promise.resolve(null),
     prisma.employee.findMany({
       where: departureReportsWhere(employeeId),
-      take: 200,
-      orderBy: { name: "asc" },
+      take: DEPARTURE_REPORTS_LIMIT,
+      orderBy: DEPARTURE_REPORTS_ORDER,
       select: { id: true, name: true },
     }),
     prisma.assignment.findMany({
       where: departureThreeSixtyWhere(employeeId),
-      take: 200,
+      take: DEPARTURE_REPORTS_LIMIT,
       select: { id: true, ratee: { select: { name: true } } },
     }),
   ]);
@@ -94,5 +116,163 @@ export async function departurePreview(employeeId: string): Promise<DeparturePre
     reports,
     threeSixty: threeSixty.map((a) => ({ assignmentId: a.id, rateeName: a.ratee.name })),
     hasLogin: employee.userId !== null,
+  };
+}
+
+/** What a departure did, or why it did nothing. */
+export type DepartureOutcome =
+  | {
+      ok: true;
+      /** The reports whose line moved. */
+      movedReportIds: string[];
+      /** §12.1's target the lines moved to. Null when the leaver was at the top. */
+      rollUpTo: string | null;
+      /** Whether an account was actually revoked — `false` is as much a fact as `true`. */
+      loginRevoked: boolean;
+    }
+  | { ok: false; reason: "TOO_MANY_REPORTS"; reportCount: number }
+  | { ok: false; reason: "ALREADY_LEAVER" };
+
+/**
+ * §12.1's departure, performed. THE ONLY WRITER.
+ *
+ * ## Why this is a function and not a route handler
+ *
+ * It was a route handler, and that was the defect. `POST /api/leavers` did all
+ * four parts of a departure — the status, the roll-up, §12.2's prompt row, the
+ * revoked login — while the IMPORT, which §3.2 makes the system of record for
+ * status, did two of them: it set the status and revoked the login and left
+ * every direct report pointing at a manager who had gone, with no prompt row
+ * to say so and nothing anywhere that surfaces "active people whose manager is
+ * a leaver". An org that off-boards by spreadsheet — the normal case, and the
+ * one this build is actually used for — got a silently broken reporting line
+ * every time.
+ *
+ * Guarding the hand-edit route (`PUT /api/employees/[id]` refuses the
+ * transition outright) did not touch that, because the import never went
+ * through it. "One writer" is only true if the writer is something both
+ * callers can call, so here it is.
+ *
+ * ## The caller supplies the transaction
+ *
+ * Every part of a departure has to commit together or not at all: a rolled-up
+ * report beside a live login is the worst of the possible halves. The import
+ * already wraps its whole apply in one `auditedTransaction` with a raised
+ * budget, so this takes the `tx` rather than opening its own — nesting would
+ * give the roll-up a commit boundary of its own.
+ *
+ * ## Ordering, for the import
+ *
+ * The import must call this AFTER its manager-edge pass, not during the row
+ * loop. Pass 2 writes `managerId` from the sheet, so a roll-up performed first
+ * would be overwritten by a stale sheet that still lists the departed manager.
+ * Running last also makes the re-query correct by construction: a report whose
+ * line the sheet legitimately moved elsewhere is no longer matched by
+ * `departureReportsWhere`, so it is left alone.
+ */
+export async function applyDeparture(
+  tx: Tx,
+  params: {
+    employeeId: string;
+    lastWorkingDay: Date;
+    /** For the audit row's `before`. */
+    previousStatus: string;
+    previousLastWorkingDay: Date | null;
+    note?: string | null;
+  },
+): Promise<DepartureOutcome> {
+  const { employeeId, lastWorkingDay, previousStatus, previousLastWorkingDay, note } = params;
+
+  if (previousStatus === "LEAVER") return { ok: false, reason: "ALREADY_LEAVER" };
+
+  const employee = await tx.employee.findUnique({
+    where: { id: employeeId },
+    select: { id: true, managerId: true },
+  });
+  if (!employee) return { ok: false, reason: "ALREADY_LEAVER" };
+
+  const target = rollUpTarget(employee);
+
+  // Counted BEFORE anything is written, so an over-limit departure leaves no
+  // half-written state behind for the caller to undo.
+  const reportCount = await tx.employee.count({ where: departureReportsWhere(employeeId) });
+  if (reportCount > DEPARTURE_REPORTS_LIMIT) {
+    return { ok: false, reason: "TOO_MANY_REPORTS", reportCount };
+  }
+
+  const reports = await tx.employee.findMany({
+    where: departureReportsWhere(employeeId),
+    take: DEPARTURE_REPORTS_LIMIT,
+    orderBy: DEPARTURE_REPORTS_ORDER,
+    select: { id: true },
+  });
+
+  await tx.employee.update({
+    where: { id: employeeId },
+    data: { status: "LEAVER", lastWorkingDay },
+  });
+
+  // §12.1 preserves the RECORD; ADR-069 revokes the ACCESS. Idempotent, so a
+  // caller that already revoked (a re-imported sheet still listing last year's
+  // leaver) gets a no-op rather than a second audit row.
+  const revokedUserId = await revokeLoginOnOffboard(tx, employeeId);
+
+  const moved: string[] = [];
+  for (const report of reports) {
+    // The line MOVES: §7.2's manager-of-record is whoever currently holds the
+    // relationship, and leaving it on a leaver hands the sign-off to someone
+    // who has gone.
+    await tx.employee.update({ where: { id: report.id }, data: { managerId: target } });
+
+    // §12.2's prompt. `upsert` on the partial unique index would be the natural
+    // shape, but Prisma cannot target a partial index — so the open row is
+    // looked up explicitly. A report already carrying an open roll-up (their
+    // previous manager left too) keeps the ORIGINAL row and has its target
+    // updated: one unresolved line, one prompt.
+    const open = await tx.managerRollUp.findFirst({
+      where: { employeeId: report.id, resolvedAt: null },
+      select: { id: true },
+    });
+    if (open) {
+      await tx.managerRollUp.update({
+        where: { id: open.id },
+        data: { toManagerEmployeeId: target },
+      });
+    } else {
+      await tx.managerRollUp.create({
+        data: {
+          employeeId: report.id,
+          fromManagerEmployeeId: employeeId,
+          toManagerEmployeeId: target,
+          reason: "LEAVER_ROLLUP",
+        },
+      });
+    }
+    moved.push(report.id);
+  }
+
+  await recordAudit(tx, {
+    entityType: "Employee",
+    entityId: employeeId,
+    action: "UPDATE",
+    before: { status: previousStatus, lastWorkingDay: previousLastWorkingDay },
+    after: {
+      status: "LEAVER",
+      lastWorkingDay,
+      rolledUpReportCount: moved.length,
+      rolledUpTo: target,
+      // §12.2's trail has to say whether access was revoked. `false` is as much
+      // a fact as `true`: most employees have no login yet, and "we revoked
+      // nothing" is the answer to a question an auditor will ask.
+      loginRevoked: revokedUserId !== null,
+      note: note ?? null,
+    },
+  });
+
+  return {
+    ok: true,
+    movedReportIds: moved,
+    rollUpTo: target,
+    loginRevoked: revokedUserId !== null,
   };
 }

@@ -308,7 +308,9 @@
       "returningRevoked": "{count} returning employee(s) still have a revoked account. They cannot sign in until it is restored from the recycling bin — the import does not undo a revocation.",
       "enrolled": "{count} new employee(s) were enrolled into the open performance cycle, so their managers can draft KPIs for them.",
       "enrolmentPending": "{count} imported employee(s) are not enrolled yet. Open Performance cycles and press “Enrol missing employees” to finish.",
-      "enrolmentFailed": "The employees were imported, but enrolling them into the open cycle did not finish. Do not re-upload the file — open Performance cycles and press “Enrol missing employees”."
+      "enrolmentFailed": "The employees were imported, but enrolling them into the open cycle did not finish. Do not re-upload the file — open Performance cycles and press “Enrol missing employees”.",
+      "departuresRecorded": "{count, plural, =1 {# departure recorded} other {# departures recorded}} — direct reports moved up a level and 360 assignments flagged for reassignment (§12.1).",
+      "departuresNeedingAttention": "Could not fully record the departure for: {names}. Their status is set, but their team's reporting lines still need moving. Open each person's record and reassign their reports."
     },
     "orgSetup": {
       "title": "Org setup",
