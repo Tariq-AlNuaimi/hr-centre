@@ -8,11 +8,14 @@ import { isHr } from "@/lib/pms/permissions";
 import {
   evaluatorStatus,
   isThreeSixtyExempt,
-  proposeRaters,
   templateTypeFor,
   type RaterCandidate,
 } from "@/lib/pms/three-sixty";
 import { planAssignments, projectPeers } from "@/lib/pms/three-sixty-assign";
+import {
+  THREE_SIXTY_CANDIDATE_SELECT,
+  raterEligibilityRefusal,
+} from "@/lib/pms/three-sixty-raters";
 import { setAssignmentsSchema } from "@/lib/validations/three-sixty";
 
 /**
@@ -28,13 +31,11 @@ import { setAssignmentsSchema } from "@/lib/validations/three-sixty";
  * §9.4's "HR selects and manages all rater assignments" says so twice.
  */
 
-const CANDIDATE_SELECT = {
-  id: true,
-  managerId: true,
-  roleTrack: true,
-  departmentId: true,
-  status: true,
-} as const;
+// §9.4's candidate columns and eligibility rules live in
+// `lib/pms/three-sixty-raters.ts`: the per-assignment writer added for
+// after-launch editing needs exactly the same ones, and two writers deciding
+// who may rate whom is not a defect anybody would spot on a screen.
+const CANDIDATE_SELECT = THREE_SIXTY_CANDIDATE_SELECT;
 
 export const PUT = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
@@ -191,10 +192,6 @@ export const POST = withRateLimit(
     if (isThreeSixtyExempt(ratee.roleTrack)) {
       return err("C-Level skip the 360 entirely (§8.3).", 409);
     }
-    if (raterIds.includes(rateeId)) {
-      return err("Nobody assesses themselves — §7.1 is where a self-assessment lives.", 400);
-    }
-
     const raters = await prisma.employee.findMany({
       where: { id: { in: raterIds } },
       take: 10,
@@ -202,17 +199,9 @@ export const POST = withRateLimit(
     });
     if (raters.length !== raterIds.length) return notFound("Rater");
 
-    const exempt = raters.filter((r) => isThreeSixtyExempt(r.roleTrack));
-    if (exempt.length > 0) {
-      return err(
-        `C-Level are excused from 360 work entirely (§8.3) — ${exempt.length} named.`,
-        409,
-      );
-    }
-    const leavers = raters.filter((r) => r.status !== "ACTIVE");
-    if (leavers.length > 0) {
-      return err(`${leavers.length} of those raters have left (§12.1) — choose someone else.`, 409);
-    }
+    // §8.3, §12.1 and §7.1, from the shared rules — not re-expressed here.
+    const ineligible = raterEligibilityRefusal({ raters, rateeId });
+    if (ineligible) return err(ineligible.reason, ineligible.status);
 
     const templateByType = new Map(threeSixty.templates.map((t) => [t.type, t.id]));
 

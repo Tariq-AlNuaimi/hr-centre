@@ -95,6 +95,41 @@ export const submitResponsesSchema = z.object({
 export const activateSchema = z.object({ threeSixtyCycleId: z.string().min(1) });
 
 /**
+ * §9.7 — close, deactivate or reopen a 360 cycle.
+ *
+ * An explicit TARGET, not a toggle. "Close" and "deactivate" are different acts
+ * with different consequences (one ends the cycle with its results standing,
+ * the other takes it back to draft so assignments can be regenerated), and a
+ * toggle cannot express which one HR chose. `DRAFT -> ACTIVE` is deliberately
+ * absent as an accepted value here: §9.7's launch keeps its own route, which
+ * carries the exactly-three gate.
+ */
+export const setThreeSixtyStatusSchema = z.object({
+  threeSixtyCycleId: z.string().min(1),
+  status: z.enum(["DRAFT", "ACTIVE", "CLOSED"]),
+  /// Free text, optional, recorded on the audit row rather than on the cycle.
+  reason: z.string().trim().max(500).optional(),
+});
+
+/** §9.4 — replace the rater on ONE live assignment, after launch. */
+export const replaceRaterSchema = z.object({
+  raterId: z.string().min(1),
+  reason: z.string().trim().max(500).optional(),
+});
+
+/**
+ * §9.4 — remove one assignment, or discard a submitted assessment.
+ *
+ * `reason` is optional HERE and required by `discardBlockedReason` when the
+ * assessment is SUBMITTED. The rule lives with the other transition rules
+ * rather than in the schema because it depends on the assignment's state, which
+ * zod cannot see.
+ */
+export const discardAssignmentSchema = z.object({
+  reason: z.string().trim().max(500).optional(),
+});
+
+/**
  * §9.6 — "Projects (optional): ability to create projects and link employees …
  * v1: projects added/linked manually."
  *

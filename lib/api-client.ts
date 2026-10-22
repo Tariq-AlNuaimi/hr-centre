@@ -90,7 +90,13 @@ export const apiClient = {
     return request<T>(path, { method: "PATCH", body, ...opts });
   },
 
-  delete<T>(path: string, opts?: ApiClientOptions): Promise<T> {
-    return request<T>(path, { method: "DELETE", ...opts });
+  /**
+   * A DELETE may carry a body, and §9.4's discard needs to: destroying a
+   * submitted 360 assessment demands a REASON, and a 500-character reason does
+   * not belong in a URL. Legal HTTP, accepted by Next route handlers, and
+   * optional — every existing caller passes nothing and is unaffected.
+   */
+  delete<T>(path: string, body?: unknown, opts?: ApiClientOptions): Promise<T> {
+    return request<T>(path, { method: "DELETE", body, ...opts });
   },
 };
