@@ -177,6 +177,19 @@ test("§8 the score run reports who could NOT be scored, and why", async () => {
     skipped.some((s) => /Corporate score|Departmental score|360|no KPIs/i.test(s.reason)),
     "each skip names the missing input",
   );
+
+  // §10.7's FIRST precondition — "assessments completed & signed" — is now one
+  // of the reasons, not an assumption. Before this, scoring read ratings and
+  // never looked at a signature, so an employee nobody had signed off was
+  // scored, calibrated and published with correct arithmetic.
+  assert.ok(
+    skipped.some((s) => /not signed the year-end assessment/i.test(s.reason)),
+    `an unsigned participant must be skipped for THAT reason; got: ${JSON.stringify(skipped.slice(0, 4))}`,
+  );
+  // And it names the party, so HR knows who to chase.
+  const unsigned = skipped.find((s) => /not signed/i.test(s.reason))!;
+  assert.match(unsigned.reason, /the (employee|manager)/i);
+  assert.match(unsigned.reason, /§10\.7/);
 });
 
 test("§10.7 calibration is refused while anyone is unscored", async () => {

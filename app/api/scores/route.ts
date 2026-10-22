@@ -14,6 +14,7 @@ import {
   type ScoreInputs,
 } from "@/lib/pms/score-run";
 import { formRatio, overallRatio } from "@/lib/pms/three-sixty";
+import { YEAR_END_STAGE } from "@/lib/pms/rating";
 import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
 
 /**
@@ -104,11 +105,18 @@ export const POST = withRateLimit(
               lastWorkingDay: true,
             },
           },
+          // §10.7 — "assessments completed & signed" comes BEFORE the score
+          // run, so the signatures are an input to it.
+          signOffs: {
+            where: { stageKind: YEAR_END_STAGE },
+            select: { party: true },
+          },
           kpis: {
             where: { deletedAt: null },
             take: 200,
             select: {
               assignmentPeriodId: true,
+              description: true,
               weightage: true,
               ratings: { where: { party: "MANAGER" }, select: { level: true }, take: 1 },
             },
@@ -175,10 +183,14 @@ export const POST = withRateLimit(
                 lastWorkingDay: e.lastWorkingDay,
               }),
               threeSixty: ratioByEmployee.get(e.id)?.level ?? null,
+              // §10.7 — the same precondition on both paths; a transfer does
+              // not excuse the signatures.
+              signedParties: p.signOffs.map((s) => s.party),
               policy,
             })
           : scoreEmployee({
               ...unsplitInputs(e, p.kpis, byEntity, byDepartment, ratioByEmployee),
+              signedParties: p.signOffs.map((s) => s.party),
               policy,
             });
       if (!outcome.scored) {
@@ -213,6 +225,7 @@ export const POST = withRateLimit(
 
 type ScoredKpiRow = {
   assignmentPeriodId: string | null;
+  description: string;
   weightage: Prisma.Decimal;
   ratings: { level: number }[];
 };
@@ -281,7 +294,10 @@ function unsplitInputs(
   byEntity: ScoreLookup,
   byDepartment: ScoreLookup,
   ratioByEmployee: ThreeSixtyLookup,
-): ScoreInputs {
+  // The signatures and the policy are supplied by the caller, which is the only
+  // place that has them; naming them here as absent beats an optional field
+  // that a future caller could quietly leave unset (§10.7).
+): Omit<ScoreInputs, "signedParties" | "policy"> {
   return {
     employeeId: employee.id,
     roleTrack: employee.roleTrack,
@@ -290,9 +306,15 @@ function unsplitInputs(
     // §8.2 scores the MANAGER's rating — §7.1 makes the manager's review the
     // final rating both parties sign, and the self-assessment is the input to
     // that conversation rather than a second score.
-    kpis: kpis
-      .filter((k) => k.ratings.length > 0)
-      .map((k) => ({ level: k.ratings[0].level, weightage: k.weightage })),
+    // NO LONGER FILTERED on having a rating. Dropping the unrated ones left the
+    // weightages short of 100, so HR was told "weightages total 70%, not 100" —
+    // the goal-setting baseline, when the cause was an unfinished review.
+    // `scoreEmployee` reports the missing rating itself.
+    kpis: kpis.map((k) => ({
+      description: k.description,
+      level: k.ratings[0]?.level ?? null,
+      weightage: k.weightage,
+    })),
     threeSixty: ratioByEmployee.get(employee.id)?.level ?? null,
   };
 }
@@ -333,8 +355,12 @@ function periodInputs(
       corporate: byEntity.get(period.entityId) ?? null,
       departmental: period.departmentId ? (byDepartment.get(period.departmentId) ?? null) : null,
       kpis: kpis
-        .filter((k) => k.assignmentPeriodId === period.id && k.ratings.length > 0)
-        .map((k) => ({ level: k.ratings[0].level, weightage: k.weightage })),
+        .filter((k) => k.assignmentPeriodId === period.id)
+        .map((k) => ({
+          description: k.description,
+          level: k.ratings[0]?.level ?? null,
+          weightage: k.weightage,
+        })),
     };
   });
 }

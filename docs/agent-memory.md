@@ -38,7 +38,7 @@ tax is the ≤30-line digest, not the whole file.
 - **Gotchas — git & landing to main** (6): land via cherry-pick not FF when a generator-docs commit sits between; plain `git push origin HEAD:main` FF only when branch is main+linear; can't delete remote branches from web (403) + `git branch -d/-D` deny-listed; Dependabot PRs can sit on abandoned disjoint history (check merge-base); fresh containers can have local main far behind origin.
 - **Gotchas — stack & build** (7): React Compiler is Babel-only on `next@16.2.9` (Rust port/FS-cache are canary, deferred); zod v4 break was only `zodResolver` in FormField.tsx (resolvers v5; `z.email()`/`z.url()`).
 - **Gotchas — security, auth & hooks** (10): security guards fail-CLOSED, governance gates fail-OPEN (ADR-047); SCIM/SSO — gate Polis takeover on "no Account linked", not `passwordHash`; `AskUserQuestion` can error twice in this env — fall back to plain-text decisions.
-- **Gotchas — browser QA & egress** (5): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
+- **Gotchas — browser QA & egress** (6): headless Chromium can't reach real sites in web sessions — `make browser-up` mitmdump chain; dark/RTL browser-axe recipe (force-deploy + SSO-ungate + loopback bridge); `seed.ts` only CREATES admin (use a throwaway probe admin); loopback design-qa bridge for deployed apps.
 - **Gotchas — subagents** (4): worktree subagents can boot on a STALE base (scope to disjoint files in main checkout instead); always Glob-verify a subagent actually WROTE its output file.
 - **Conventions discovered** (10): session status is DATA — edit `session-state.json`, tables render between markers; `/ship` green-for-HEAD signal is the gitignored `.claude/state/last-green-sha`, not `session-state.json.lastShip`.
 - **Operator directive: DESIGN BEFORE EXECUTION** (binding): architect/`/blueprint` first for multi-file work; frontend via `/design-system` + `/design-qa`, don't improvise UI.
@@ -335,6 +335,19 @@ merge-base origin/main <branch>` prints empty) — merging one resurrects a whol
   twice, stop retrying and pose decisions as plain text in the reply.
 
 ## Gotchas — browser QA & egress
+
+- 2026-10-21 — **When a third-party contract matters, CLONE ITS SOURCE — do not infer it.**
+  `node_modules` reads are denied and `vercel.com`/npm do not resolve here, but public package
+  repos clone fine through the git proxy (`add_repo` says read access is already available, then
+  `GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 <url> /home/user/<owner>/<repo>`). Three releases of
+  §7.1 evidence were lost to guessing `@vercel/blob`'s contract; `vercel/storage` answered every
+  question in minutes. What it settled, all non-obvious: upload data goes to
+  `https://vercel.com/api/blob` (`defaultVercelBlobApiUrl`), NOT the storage host, so that is the
+  `connect-src` entry; `<storeId>.private.blob.vercel-storage.com` is for READS; the handshake must
+  return `{ clientToken }` as RAW top-level JSON (an `ok()`-style `{data}` envelope breaks it); and
+  a CSP-blocked fetch is on the SDK's network-error list, so `async-retry` retries it ten times with
+  backoff — a wrong host presents as a ~17-minute HANG, not an error. Pass `abortSignal` to any
+  client upload; aborts are not retried.
 
 - 2026-07-17 — **This web container CAN run the full app locally for real screenshots (no
   Docker needed).** Native Postgres 16 is preinstalled: `pg_ctlcluster 16 main start` brings up
