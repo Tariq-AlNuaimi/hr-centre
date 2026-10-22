@@ -1215,7 +1215,13 @@
         "PEER_TO_PEER": "Peer assessing a peer"
       },
       "editRaters": "Manage",
-      "editRatersAction": "Edit"
+      "editRatersAction": "Edit",
+      "cycleActions": "Cycle status",
+      "cycleActionsHelp": "End the cycle when the assessments that matter are in, or take it back to draft if it was launched by mistake.",
+      "manageRatersAction": "Manage raters",
+      "manageRatersTitle": "{name}'s raters",
+      "manageRatersHelp": "Replace or remove a rater on a live cycle. A submitted assessment is locked — removing it deletes the answers and needs a reason.",
+      "shortfallHelpLive": "{count} employees have fewer than three raters. Their 360 score will be averaged over the assessments they do have (§9.5) — use Manage raters to add someone before the cycle closes."
     },
     "threeSixtyForm": {
       "title": "360 assessment",
@@ -1289,7 +1295,10 @@
       "deadlineAfterOpens": "The deadline must fall after the cycle opens.",
       "save": "Save window",
       "saving": "Saving…",
-      "savedToast": "The 360 window was updated."
+      "savedToast": "The 360 window was updated.",
+      "openedLocked": "This cycle has already opened, so the opening date is fixed (§9.7).",
+      "extendOnly": "On a live cycle the deadline can only be moved later — raters have been told when it closes, and a passed deadline locks their form. Close the cycle instead if it should end now.",
+      "liveExtendHelp": "This cycle is live, so the deadline can be extended but not brought forward."
     },
     "threeSixtyResult": {
       "title": "360 feedback",
@@ -1319,7 +1328,48 @@
       "cancel": "Cancel",
       "save": "Save raters",
       "saving": "Saving…",
-      "savedToast": "Raters updated for {name}."
+      "savedToast": "Raters updated for {name}.",
+      "replace": "Replace",
+      "submittedLocked": "Submitted — the rater cannot be changed",
+      "discardAria": "Remove {name} from this employee's raters",
+      "shortOfThree": "{count, plural, =1 {Only # rater} other {Only # raters}} — §9.4 expects three, so add another before the results are calculated.",
+      "status": {
+        "NOT_STARTED": "Not started",
+        "IN_PROGRESS": "In progress",
+        "SUBMITTED": "Submitted",
+        "OVERDUE": "Overdue"
+      },
+      "template": {
+        "LINE_MANAGER_TO_EMPLOYEE": "Manager assessing employee",
+        "EMPLOYEE_TO_LINE_MANAGER": "Employee assessing manager",
+        "PEER_TO_PEER": "Peer"
+      },
+      "replaceTitle": "Replace {name}",
+      "replaceSubtitle": "Choose who should assess {ratee} instead.",
+      "newRater": "New rater",
+      "willHappen": "What this will do",
+      "effect": {
+        "newRater": "{name} will assess {ratee} instead.",
+        "templateFollows": "The questionnaire follows their relationship to this employee — manager, reportee or peer (§9.2).",
+        "partialLost": "The current rater had started filling in the form. Their part-finished answers are deleted, and the new rater starts from a blank one.",
+        "audited": "Recorded on the audit trail with who made the change.",
+        "answersDeleted": "This assessment has been submitted. Its answers are deleted and cannot be restored in the app.",
+        "averageDrops": "The employee's 360 score is recalculated without it (§9.5).",
+        "keptInAudit": "The answers are written to the audit trail first, with your reason, so the record of what was discarded survives.",
+        "removedNotSubmitted": "Nothing was submitted for this assessment, so no answers are lost.",
+        "leavesCount": "{count, plural, =1 {This leaves # rater} other {This leaves # raters}} for this employee."
+      },
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "e.g. the original rater has left",
+      "confirmReplace": "Replace rater",
+      "replacedToast": "{name}'s raters were updated.",
+      "discardTitle": "Remove {name}?",
+      "discardSubtitle": "They will no longer assess {ratee}.",
+      "reasonRequired": "Reason (required)",
+      "reasonRequiredHelp": "A submitted assessment cannot be discarded without a reason — it is recorded with what was deleted.",
+      "discarding": "Removing…",
+      "confirmDiscard": "Remove rater",
+      "discardedToast": "The assessment was removed."
     },
     "projects": {
       "title": "Projects",
@@ -1638,6 +1688,49 @@
       "recording": "Recording…",
       "recorded": "{name}'s departure is recorded.",
       "failed": "Could not record the departure."
+    },
+    "threeSixtyActions": {
+      "close": "Close cycle",
+      "deactivate": "Back to draft",
+      "reopen": "Reopen cycle",
+      "deactivateBlocked": "{count, plural, =1 {# assessment has} other {# assessments have}} already been submitted, so this cycle cannot go back to draft. Close it instead.",
+      "willHappen": "What this will do",
+      "reason": "Reason (optional)",
+      "reasonPlaceholder": "e.g. the window closed early at HR's request",
+      "reasonHelp": "Recorded on the audit trail, not shown to raters.",
+      "working": "Saving…",
+      "confirm": {
+        "CLOSED": {
+          "title": "Close this 360 cycle?",
+          "subtitle": "The cycle ends and its results stand as they are.",
+          "action": "Close cycle"
+        },
+        "DRAFT": {
+          "title": "Take this cycle back to draft?",
+          "subtitle": "Use this when the cycle was launched by mistake.",
+          "action": "Back to draft"
+        },
+        "ACTIVE": {
+          "title": "Reopen this 360 cycle?",
+          "subtitle": "Raters will be able to submit again.",
+          "action": "Reopen cycle"
+        }
+      },
+      "effect": {
+        "closeNoMore": "No further assessments can be submitted — raters who open their form will be told the cycle is closed.",
+        "closeResults": "The {submitted} submitted of {raterCount} assessments stay exactly as they are, and the 360 scores are calculated from them (§9.8).",
+        "closeReversible": "This can be undone — you can reopen the cycle while the performance year is still open.",
+        "draftHidden": "The cycle disappears from every rater's task list until you activate it again.",
+        "draftEditable": "Rater assignments become editable again, including regenerating them all from the reporting lines.",
+        "draftNothingSubmitted": "Nothing has been submitted yet, so no assessment is lost.",
+        "reopenAnswerable": "Raters can open and submit their forms again.",
+        "reopenDeadline": "The deadline is unchanged — extend it as well if raters need more time."
+      },
+      "done": {
+        "CLOSED": "The 360 cycle is closed.",
+        "DRAFT": "The 360 cycle is back to draft.",
+        "ACTIVE": "The 360 cycle is open again."
+      }
     }
   },
   "access": {

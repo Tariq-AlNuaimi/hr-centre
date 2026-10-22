@@ -12,7 +12,7 @@ import { apiClient } from "@/lib/api-client";
 import { endOfDay, startOfDay, toDateInput } from "@/lib/date-input";
 
 /**
- * §9.1 — correcting the 360 window while the cycle is still a draft.
+ * §9.1/§9.7 — correcting the 360 window, and extending it after launch.
  *
  * ## Why this exists
  *
@@ -23,12 +23,21 @@ import { endOfDay, startOfDay, toDateInput } from "@/lib/date-input";
  * Found while verifying §9.8's report — the fixture's own 360 opened three
  * months in the future, and nothing in the product could bring it forward.
  *
- * ## Draft only, and it says why
+ * ## Not draft-only any more — DIRECTIONAL once the cycle is live
  *
- * Once §9.7 activates the cycle, every rater has the window in their task list.
- * §5.4 makes the deadline a hard lock; moving one under someone half-way
- * through a form is a different act from fixing a typo, and not one §9 asks
- * for. So this disappears at activation rather than failing at the click.
+ * It was draft-only, and disappeared at activation: "the window is fixed once
+ * the cycle is activated". That is right for pulling a deadline FORWARD and
+ * wrong for pushing it back, and the build treated both as one act, so a cycle
+ * that needed another week was simply over.
+ *
+ * On a live cycle the deadline may now be EXTENDED and not brought forward —
+ * extending cannot invalidate an answer anybody has already given, while §5.4
+ * makes a passed deadline a hard lock, so pulling one in locks raters out of
+ * forms they are part-way through. `opensAt` freezes once it has passed, for
+ * the same reason. The rules are `windowChangeBlockedReason`'s, and this editor
+ * disables exactly what that function would refuse rather than inventing its
+ * own copy — a control the route then rejects is the failure mode being
+ * designed out.
  */
 
 export function ThreeSixtyWindow({
@@ -36,11 +45,14 @@ export function ThreeSixtyWindow({
   cycleId,
   opensAt,
   deadline,
+  cycleStatus,
 }: {
   threeSixtyCycleId: string;
   cycleId: string;
   opensAt: string;
   deadline: string;
+  /** DRAFT moves freely; ACTIVE may only be extended. */
+  cycleStatus: "DRAFT" | "ACTIVE" | "CLOSED";
 }) {
   const t = useTranslations("pms.threeSixtyWindow");
   const queryClient = useQueryClient();
@@ -83,6 +95,14 @@ export function ThreeSixtyWindow({
   // permanently disabled on exactly the rows that need it.
   const unchanged = opensInstant === opensAt && closesInstant === deadline;
 
+  // The live-cycle rules, mirroring `windowChangeBlockedReason` so the button
+  // and the route agree. Compared as INSTANTS for the same reason `unchanged`
+  // is: a day-string comparison would call a legitimate extension a no-op.
+  const live = cycleStatus === "ACTIVE";
+  const pullsDeadlineIn = live && !incomplete && closesInstant < deadline;
+  const hasOpened = live && new Date(opensAt) <= new Date();
+  const movesOpenedStart = hasOpened && !incomplete && opensInstant !== opensAt;
+
   return (
     <SectionCard
       title={t("title")}
@@ -90,7 +110,14 @@ export function ThreeSixtyWindow({
       actions={
         <Button
           onClick={() => mutation.mutate()}
-          disabled={mutation.isPending || incomplete || misordered || unchanged}
+          disabled={
+            mutation.isPending ||
+            incomplete ||
+            misordered ||
+            unchanged ||
+            pullsDeadlineIn ||
+            movesOpenedStart
+          }
         >
           {mutation.isPending ? t("saving") : t("save")}
         </Button>
@@ -104,7 +131,9 @@ export function ThreeSixtyWindow({
             type="date"
             value={opens}
             onChange={(e) => setOpens(e.target.value)}
+            disabled={hasOpened}
           />
+          {hasOpened && <p className="text-xs text-muted-foreground">{t("openedLocked")}</p>}
         </div>
         <div className="space-y-1">
           <Label htmlFor="window-closes">{t("deadline")}</Label>
@@ -116,6 +145,13 @@ export function ThreeSixtyWindow({
           />
           {misordered && (
             <p className="text-xs text-destructive-emphasis">{t("deadlineAfterOpens")}</p>
+          )}
+          {/* Said BEFORE the click, not as a 409 afterwards. */}
+          {pullsDeadlineIn && (
+            <p className="text-xs text-destructive-emphasis">{t("extendOnly")}</p>
+          )}
+          {live && !pullsDeadlineIn && (
+            <p className="text-xs text-muted-foreground">{t("liveExtendHelp")}</p>
           )}
         </div>
       </div>

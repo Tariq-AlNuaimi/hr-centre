@@ -91,10 +91,12 @@
 - app/api/status/route.ts  [GET]
 - app/api/strategy-scores/route.ts  [GET,POST]
 - app/api/three-sixty/activate/route.ts  [POST]
+- app/api/three-sixty/assignments/[assignmentId]/route.ts  [PATCH,DELETE]
 - app/api/three-sixty/assignments/route.ts  [GET,POST,PUT]
 - app/api/three-sixty/responses/route.ts  [GET,POST]
 - app/api/three-sixty/results/route.ts  [GET]
 - app/api/three-sixty/route.ts  [GET,POST,PATCH]
+- app/api/three-sixty/status/route.ts  [POST]
 - app/api/transfers/route.ts  [GET,POST]
 - app/api/users/[id]/password/route.ts  [PUT]
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
@@ -204,6 +206,8 @@
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks, ThreeSixtyTaskRow, buildThreeSixtyTasks, YearEndTaskState, buildYearEndTasks
 - lib/pms/three-sixty-answer.ts: AnswerRefusal, answerBlockedReason
 - lib/pms/three-sixty-assign.ts: projectPeers, peerPoolFor, PlannedAssignment, planAssignments
+- lib/pms/three-sixty-edit.ts: EditRefusal, windowChangeBlockedReason, statusChangeBlockedReason, raterChangeBlockedReason, discardBlockedReason, discardDestroysAnswers
+- lib/pms/three-sixty-raters.ts: THREE_SIXTY_CANDIDATE_SELECT, ThreeSixtyCandidate, raterEligibilityRefusal
 - lib/pms/three-sixty-scale.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, isAnswerScore
 - lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, MIN_FORMS_FOR_COMMENTS, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
@@ -231,7 +235,7 @@
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
-- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, upsertProjectSchema
+- lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
 
@@ -288,7 +292,9 @@
 - components/pms/SignOffPanel.tsx
 - components/pms/StageBanner.tsx
 - components/pms/StatusRoster.tsx
+- components/pms/ThreeSixtyCycleActions.tsx
 - components/pms/ThreeSixtyForm.tsx
+- components/pms/ThreeSixtyRaterEditor.tsx
 - components/pms/ThreeSixtyResultCard.tsx
 - components/pms/ThreeSixtySetup.tsx
 - components/pms/ThreeSixtyWindow.tsx

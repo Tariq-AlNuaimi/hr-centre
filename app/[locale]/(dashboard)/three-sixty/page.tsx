@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { CyclePicker } from "@/components/pms/CyclePicker";
 import { ThreeSixtySetup } from "@/components/pms/ThreeSixtySetup";
 import { ThreeSixtyWindow } from "@/components/pms/ThreeSixtyWindow";
+import { ThreeSixtyCycleActions } from "@/components/pms/ThreeSixtyCycleActions";
 import { RaterCoverage } from "@/components/pms/RaterCoverage";
 import { ProjectMap } from "@/components/pms/ProjectMap";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
@@ -41,7 +42,9 @@ import { formatDateTime } from "@/lib/format";
 interface ThreeSixtyResponse {
   threeSixty: {
     id: string;
-    status: string;
+    // The enum, not `string`: the window editor and the cycle actions both
+    // branch on it, and a widened type here would let a typo reach them.
+    status: "DRAFT" | "ACTIVE" | "CLOSED";
     opensAt: string;
     deadline: string;
     // The route returns each template's QUESTIONS, not a `_count` of them —
@@ -123,11 +126,18 @@ function useThreeSixtyConsole(cycleId: string | null, enabled: boolean) {
   });
 
   const coverage = assignments.data?.coverage ?? [];
+  const assignmentRows = assignments.data?.assignments ?? [];
+  // §9.7's SUBMITTED, counted once: it decides whether a cycle may go back to
+  // draft (a regenerate from draft would destroy submitted assessments) and it
+  // is what the close confirmation reports.
+  const submittedCount = assignmentRows.filter((a) => a.status === "SUBMITTED").length;
   return {
     cycle,
     assignments,
     threeSixty: cycle.data?.threeSixty ?? null,
     coverage,
+    assignmentRows,
+    submittedCount,
     // §9.4's "exactly 3 per employee" — who is short, computed once.
     short: coverage.filter((c) => c.raterCount < RATERS_PER_EMPLOYEE),
     generate,
@@ -139,8 +149,17 @@ export default function ThreeSixtyPage() {
   const t = useTranslations("pms.threeSixty");
   const { capabilities, isLoading: actorLoading } = usePmsActor();
   const { cycles, cycleList, cycleId, selectedCycleId, setSelectedCycleId } = useCycleSelection();
-  const { cycle, threeSixty, coverage, short, generate, activate, assignments } =
-    useThreeSixtyConsole(cycleId, capabilities.orgWide);
+  const {
+    cycle,
+    threeSixty,
+    coverage,
+    short,
+    generate,
+    activate,
+    assignments,
+    assignmentRows,
+    submittedCount,
+  } = useThreeSixtyConsole(cycleId, capabilities.orgWide);
 
   if (actorLoading || cycles.isLoading) return <PageSkeleton />;
 
@@ -208,15 +227,19 @@ export default function ThreeSixtyPage() {
             />
           </div>
 
-          {/* §9.1 — the window was write-once until F10: a mistyped date fixed
-              the whole year's 360 wrongly, with no amend and no delete. Draft
-              only; once §9.7 announces the dates they stand.
+          {/* §9.1/§9.7 — the window was write-once until F10 (a mistyped date
+              fixed the whole year's 360 wrongly), and then DRAFT-only, which
+              meant a live cycle that needed another week was simply over. It
+              now renders on a live cycle too and lets the deadline be
+              EXTENDED; `windowChangeBlockedReason` decides what is allowed and
+              the editor disables exactly that, so no control here can be
+              refused by the route.
 
               `orgWide` is not enough to gate it: that capability covers HR AND
               the executive viewers, and the route is HR-only (§4.1). Nor is
               `!readOnly` — an executive viewer with direct reports is not
               read-only. `hr` is the predicate the route itself uses. */}
-          {threeSixty.status === "DRAFT" && cycleId && capabilities.hr && (
+          {threeSixty.status !== "CLOSED" && cycleId && capabilities.hr && (
             <ThreeSixtyWindow
               // Keyed on the 360: the editor seeds its inputs from props once,
               // so switching cycles must REMOUNT it. Reconciling in place would
@@ -227,7 +250,23 @@ export default function ThreeSixtyPage() {
               cycleId={cycleId}
               opensAt={threeSixty.opensAt}
               deadline={threeSixty.deadline}
+              cycleStatus={threeSixty.status}
             />
+          )}
+
+          {/* §9.7/§9.8 — close, deactivate, reopen. Nothing in the product
+              could end a 360 before this: `CLOSED` was in the schema and the
+              rater-side refusal was written, but no code path ever wrote the
+              column, so a cycle reached ACTIVE and stayed there for good. */}
+          {cycleId && capabilities.hr && threeSixty.status !== "DRAFT" && (
+            <SectionCard title={t("cycleActions")} subtitle={t("cycleActionsHelp")}>
+              <ThreeSixtyCycleActions
+                threeSixtyCycleId={threeSixty.id}
+                status={threeSixty.status}
+                submittedCount={submittedCount}
+                raterCount={assignmentRows.length}
+              />
+            </SectionCard>
           )}
 
           <SectionCard title={t("templates")} subtitle={t("templatesHelp")}>

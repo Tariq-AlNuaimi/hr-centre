@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
+import { windowChangeBlockedReason } from "@/lib/pms/three-sixty-edit";
 import {
   amendThreeSixtyWindowSchema,
   createThreeSixtyCycleSchema,
@@ -123,30 +124,44 @@ export const PATCH = withRateLimit(
       },
     });
     if (!before) return notFound("360 cycle");
-    if (before.cycle.status === "CLOSED") {
-      // POST refuses a closed performance year for the same reason (§2): the
-      // year is finished, and its 360 window is part of the record now.
-      return err("A closed performance year's 360 cannot be amended (§2).", 409);
-    }
 
-    // ONE conditional statement, not a read then a write: an activation landing
-    // between them would move the window on a live cycle, which is exactly what
-    // the 409 below exists to prevent. `updateMany` is what expresses "update
-    // only if still DRAFT" in Prisma — a Serializable transaction would express
-    // it too, but the audit row it writes commits on a client outside the
-    // transaction, so a losing race would record a move that never happened.
+    // §9.7 — the window USED to be draft-only, with "the window is fixed once
+    // the cycle is activated". That reasoning is right for pulling a deadline
+    // forward and wrong for pushing it back, and the route treated both as one
+    // act: a cycle that needed another week was simply over, with nothing in
+    // the product able to say otherwise. The direction is what matters now,
+    // and the rules live in `lib/pms/three-sixty-edit.ts` so the editor on
+    // screen refuses exactly what this route refuses.
+    const blocked = windowChangeBlockedReason({
+      cycleStatus: before.status,
+      performanceYearStatus: before.cycle.status,
+      currentOpensAt: before.opensAt,
+      currentDeadline: before.deadline,
+      nextOpensAt: opensAt,
+      nextDeadline: deadline,
+      now: new Date(),
+    });
+    if (blocked) return err(blocked.reason, blocked.status);
+
+    // ONE conditional statement, not a read then a write: a status change
+    // landing between them would move the window on a cycle whose rules have
+    // just changed underneath this decision. `updateMany` is what expresses
+    // "update only if it is still what I checked" in Prisma — a Serializable
+    // transaction would express it too, but the audit row it writes commits on
+    // a client outside the transaction, so a losing race would record a move
+    // that never happened.
     //
     // `updateMany` skips the audit extension, so the row is written explicitly
     // below (ADR-010's documented escape hatch) — and only when the update
     // actually landed.
     // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- audited explicitly below; a conditional single-row update is the point (see comment)
     const moved = await prisma.threeSixtyCycle.updateMany({
-      where: { id: threeSixtyCycleId, status: "DRAFT" },
+      where: { id: threeSixtyCycleId, status: before.status },
       data: { opensAt, deadline },
     });
     if (moved.count === 0) {
       return err(
-        "The window is fixed once the cycle is activated (§9.7) — raters have already been told when it closes.",
+        "Somebody else changed this cycle while you were looking at it. Reload and try again.",
         409,
       );
     }
