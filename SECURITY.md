@@ -402,6 +402,12 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 _One subsection per remediation, reformatted from wide single-line table cells for readability + diffability — content is verbatim (#17)._
 
+### 2026-10-23 — `@sentry/nextjs` 10.70.0 → 10.76.2 (middleware bypass via tunnel route)
+
+- **Package:** `@sentry/nextjs` <10.75.2 — GHSA-mchm-gjx6-7h55, middleware bypass when using the tunnel route (critical). `next` is already on 16.4.2, outside the 16.0.0–16.4.0 range of the same-day Next.js advisories (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr unauthenticated RCE; GHSA-p3m5-59mp-jv5r DoS).
+- **Bump:** `@sentry/nextjs` 10.70.0→**10.76.2** (in-major); lockfile refresh via `npm audit fix`.
+- **Outcome:** **Fixed — `/ship` npm-audit gate (production, High+) green**; full `/ship` green. No allowlist entry.
+
 ### 2026-10-19 — Next.js 16.3.7 → 16.4.2 and `source-map-js` 1.2.1 → 1.2.2
 
 - **Packages:** `next` (direct), `eslint-config-next` (dev, kept in step), `source-map-js` (transitive: `next` → `postcss`, which this fork pins via `overrides`)
