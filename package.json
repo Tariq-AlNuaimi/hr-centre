@@ -147,7 +147,7 @@
     "jscpd": "^5.0.16",
     "jsdom": "^25.0.1",
     "knip": "^6.26.0",
-    "prettier": "3.9.6",
+    "prettier": "3.9.10",
     "size-limit": "^12.1.0",
     "style-dictionary": "^5.5.0",
     "tailwindcss": "^4.3.2",
