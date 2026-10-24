@@ -402,6 +402,15 @@ Every SAST / SCA / secret-scan suppression appears here with rule ID, location, 
 
 _One subsection per remediation, reformatted from wide single-line table cells for readability + diffability — content is verbatim (#17)._
 
+### 2026-10-24 — zod memory exhaustion + nodemailer
+
+- **Package:** `zod` <4.6.6 (GHSA-mrhx-c7xc-m3w5, high), reached through `@vercel/blob` → `@vercel/oidc` → `@vercel/cli-config`, which pins `zod@4.1.11` exactly; plus `nodemailer` ≤10.1.3. Both were found red on `main` while landing Renovate #3.
+- **Bump:**
+  - `nodemailer` → 10.2.1, lockfile-only via `npm audit fix`.
+  - A new scoped override, `@vercel/cli-config` → `zod` `^4.6.7`. It stays in-major, and `@vercel/blob` was verified to load on it.
+  - Landed with Renovate #3 (`prettier` 3.9.10 plus workflow/Docker pins), whose own lockfile update had failed.
+- **Outcome:** **Fixed.** `npm audit --omit=dev` reports 0 vulnerabilities; `/ship` green. Drop the override once `@vercel/cli-config` widens its zod pin.
+
 ### 2026-10-23 — `@sentry/nextjs` 10.70.0 → 10.76.2 (middleware bypass via tunnel route)
 
 - **Package:** `@sentry/nextjs` <10.75.2 — GHSA-mchm-gjx6-7h55, middleware bypass when using the tunnel route (critical). `next` is already on 16.4.2, outside the 16.0.0–16.4.0 range of the same-day Next.js advisories (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr unauthenticated RCE; GHSA-p3m5-59mp-jv5r DoS).

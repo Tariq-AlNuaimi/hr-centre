@@ -41,7 +41,7 @@ jobs:
       # PR comment. The action is stack-agnostic -- it shells Claude over the
       # diff, so this same step works in a Next.js, Go, or Python repo unchanged.
       - name: Senior code review
-        uses: anthropics/claude-code-action@3f854a8fb5146b39d5cbf8b57f70d80810e1366f # v1.0.198
+        uses: anthropics/claude-code-action@ae68417a745a5df4b2124873632bd73a2255e6f6 # v1.0.259
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |

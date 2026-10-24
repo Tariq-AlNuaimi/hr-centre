@@ -78,7 +78,10 @@
     "deepmerge-ts": "^8.0.1",
     "fast-uri": "^3.1.7",
     "mysql2": "^3.24.3",
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "@vercel/cli-config": {
+      "zod": "^4.6.7"
+    }
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -147,7 +150,7 @@
     "jscpd": "^5.0.16",
     "jsdom": "^25.0.1",
     "knip": "^6.26.0",
-    "prettier": "3.9.6",
+    "prettier": "3.9.10",
     "size-limit": "^12.1.0",
     "style-dictionary": "^5.5.0",
     "tailwindcss": "^4.3.2",
