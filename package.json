@@ -78,7 +78,10 @@
     "deepmerge-ts": "^8.0.1",
     "fast-uri": "^3.1.7",
     "mysql2": "^3.24.3",
-    "qs": "^6.16.0"
+    "qs": "^6.16.0",
+    "@vercel/cli-config": {
+      "zod": "^4.6.7"
+    }
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
