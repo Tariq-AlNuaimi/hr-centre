@@ -268,7 +268,18 @@
       "subtitleChain": "تسلسلك الإداري بالكامل.",
       "reportingLines": "التسلسل الإداري",
       "countLabel": "{count} موظف",
-      "empty": "لا يوجد تسلسل إداري لعرضه بعد."
+      "empty": "لا يوجد تسلسل إداري لعرضه بعد.",
+      "structureHelp": "تُفتح كل جهة لعرض إداراتها، وتُفتح كل إدارة لعرض خطوط التبعية فيها. ابحث بالاسم للانتقال مباشرةً إلى شخص معيّن.",
+      "search": "ابحث عن شخص",
+      "searchPlaceholder": "ابدأ بكتابة الاسم…",
+      "searchResults": "{count, plural, =0 {لا توجد نتائج} =1 {نتيجة واحدة} other {# نتائج}}",
+      "noMatches": "لا يوجد شخص مطابق لـ «{query}» ضمن ما يمكنك الاطلاع عليه.",
+      "peopleCount": "{count, plural, =1 {شخص واحد} other {# أشخاص}}",
+      "executiveGroup": "الإدارة التنفيذية (بدون إدارة)",
+      "reportsTo": "يتبع {name}",
+      "toggleReports": "إظهار أو إخفاء {count, plural, =1 {الشخص الواحد} other {# أشخاص}} التابعين لـ {name}",
+      "expandAll": "توسيع الكل",
+      "collapseAll": "طيّ الكل"
     },
     "import": {
       "title": "استيراد الموظفين",

@@ -268,7 +268,18 @@
       "subtitleChain": "Your reporting line, all the way down.",
       "reportingLines": "Reporting lines",
       "countLabel": "{count} people",
-      "empty": "No reporting lines to show yet."
+      "empty": "No reporting lines to show yet.",
+      "structureHelp": "Each entity opens to its departments, and each department to its reporting lines. Search by name to jump straight to someone.",
+      "search": "Find a person",
+      "searchPlaceholder": "Start typing a name…",
+      "searchResults": "{count, plural, =0 {No matches} =1 {# match} other {# matches}}",
+      "noMatches": "Nobody matching “{query}” is visible to you.",
+      "peopleCount": "{count, plural, =1 {# person} other {# people}}",
+      "executiveGroup": "Executive (no department)",
+      "reportsTo": "reports to {name}",
+      "toggleReports": "Show or hide {count, plural, =1 {the # person} other {the # people}} reporting to {name}",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all"
     },
     "import": {
       "title": "Employee import",

@@ -193,6 +193,7 @@
 - lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, weightageTotalsByPeriod, rosterWeightageTotal, WeightageView, weightageView, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
 - lib/pms/notifications.ts: NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey, PendingNotification, persistNotifications
 - lib/pms/offboarding.ts: revokeLoginOnOffboard
+- lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartDepartment, OrgChartEntity, buildOrgChart, matchOrgChart
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
 - lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
@@ -281,6 +282,7 @@
 - components/pms/MyTasksOversight.tsx
 - components/pms/MyYearEnd.tsx
 - components/pms/NotificationList.tsx
+- components/pms/OrgChart.tsx
 - components/pms/ParticipantList.tsx
 - components/pms/ProjectMap.tsx
 - components/pms/PublishGate.tsx
