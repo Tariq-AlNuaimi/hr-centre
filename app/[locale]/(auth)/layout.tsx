@@ -16,7 +16,7 @@ import { brand } from "@/brand.config";
  * smallest text sits. Raising the opacities alone does not fix it (white at /80
  * on solid primary is 3.60:1) — the fade and the alpha both had to go.
  *
- * White on solid `--primary` (#0165ff) is 4.83:1, which clears AA for normal
+ * White on solid `--primary` (#0f766e, platform teal) is 5.47:1, which clears AA for normal
  * text. Hierarchy is carried by size and weight instead of transparency, which
  * is what the brand contract asks for anyway: "ONE accent, solid — no gradient
  * on product surfaces". Any fork changing `brand.colors.primary` to a lighter

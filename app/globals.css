@@ -62,9 +62,9 @@ body {
   box-sizing: border-box;
 }
 
-/* On-brand text selection (royal wash, AA-legible in both modes). */
+/* On-brand text selection (platform teal wash, AA-legible in both modes). */
 ::selection {
-  background: rgba(1, 101, 255, 0.18);
+  background: rgba(15, 118, 110, 0.18);
 }
 
 /* Header command-search trigger: a search-field-styled button with a ⌘K hint.
@@ -133,24 +133,37 @@ body {
      shadcn primitive layer to dark. Counterpart to the light values in
      tokens.css; aligned with the neutral gray scale the primitives used
      (gray-950/900/800/700/400/50) so `dark:` pairs were removable. */
-  --background: #030712; /* gray-950 */
-  --foreground: #f9fafb; /* gray-50  */
-  --card: #111827; /* gray-900 */
-  --card-foreground: #f9fafb;
-  --muted: #1f2937; /* gray-800 */
-  --muted-foreground: #9ca3af; /* gray-400 */
-  --border: #1f2937; /* gray-800 */
-  --input: #374151; /* gray-700 */
+  /* Rihal HR platform look v0.2, dark. */
+  --background: #0c111d; /* v0.2 --bg (dark) */
+  --foreground: #f2f4f7; /* v0.2 --text (dark) */
+  --card: #121826; /* v0.2 --surface (dark) */
+  --card-foreground: #f2f4f7;
+  --muted: #0f1522; /* v0.2 --sunken (dark) */
+  --muted-foreground: #c0c6d2; /* v0.2 --text-2 (dark) — 10.3:1 on the card */
+  --border: #232b3b; /* v0.2 --border (dark) */
+  --input: #2f394b; /* v0.2 --border-strong (dark) */
   /* Destructive SURFACE stays red-600 in dark too (NOT lightened to red-500):
      white-on-red-500 is only 3.76:1, below AA — red-600 gives the bg-destructive
      button/badge a 4.83:1 white foreground. Red-as-TEXT gets its own lighter
      token below so error text still reads on the dark shell. */
   --destructive: #dc2626; /* red-600 — white foreground clears AA on dark */
   --destructive-emphasis: #f87171; /* red-400 — red-as-text, AA on dark surfaces (>=5.3:1) */
-  --primary-emphasis: #6ea8ff; /* royal-300ish — brand-as-text, AA on the dark shell (matches brand.config primaryEmphasis.dark) */
-  --popover: #1d2129; /* elevated overlay surface (dark) — above cards */
-  --popover-foreground: #f9fafb; /* gray-50 (mirrors --card-foreground dark) */
-  --nav-active-foreground: #6ea8ff; /* royal-300ish — AA on the dark shell */
+  --primary-emphasis: #7fddd3; /* v0.2 --accent-text (dark) — brand-as-text, AA on the dark shell (MUST equal brand.config primaryEmphasis.dark; asserted in platform-palette.test) */
+  --popover: #161d2d; /* v0.2 --surface-2 (dark): overlays sit above cards */
+  --popover-foreground: #f2f4f7; /* mirrors --card-foreground dark */
+  --nav-active-foreground: #7fddd3; /* v0.2 --accent-text (dark) — AA on the dark shell */
+
+  /* Status pills, dark (v0.2). Each pair >= 5.9:1, measured in platform-palette. */
+  --status-ok-fg: #47cd89;
+  --status-ok-bg: #0e2a1d;
+  --status-warn-fg: #fdb022;
+  --status-warn-bg: #2e2210;
+  --status-err-fg: #f97066;
+  --status-err-bg: #311816;
+  --status-info-fg: #84caff;
+  --status-info-bg: #10233a;
+  --status-neutral-fg: #c0c6d2;
+  --status-neutral-bg: #1f2633;
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #3a4150;
