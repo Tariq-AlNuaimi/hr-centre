@@ -1,6 +1,6 @@
 // brand.config.ts — the white-label contract (Rihal Design System, ADR-029).
 //
-// Brand: royal #0165ff (ONE accent, solid — no gradient on product surfaces),
+// Brand: Rihal HR platform look v0.2, deep teal #0f766e (ONE accent, solid — no gradient on product surfaces),
 // Geist / Geist Mono, neutral surfaces, dark via the [data-theme="dark"] swap.
 // To rebrand a fork, edit ONLY the values below.
 //
@@ -72,12 +72,15 @@ export const brand: BrandConfig = {
   monogram: appName.charAt(0).toUpperCase() || "A",
 
   colors: {
-    // ONE accent — solid royal. No gradient on product surfaces: in operational
-    // tools the accent points, it does not decorate. (was #4f46e5 template default)
-    primary: "#0165ff",
-    accent: "#0165ff", // highlights / single-series viz
-    // Brand-as-text, per theme, for WCAG AA (raw royal fails AA as body text).
-    primaryEmphasis: { light: "#0b53c9", dark: "#6ea8ff" },
+    // Rihal HR platform look v0.2 (shared by every HR app; HIVE ADR-076): ONE
+    // deep-teal accent, solid. Measured in tests/contracts/platform-palette:
+    //   #0f766e + white ............ 5.47:1  (button surface)
+    //   #0b5d57 on white ........... 7.73:1  (brand as text, light)
+    //   #7fddd3 on #0c111d/#121826 . 11.8 / 11.1:1 (brand as text, dark)
+    primary: "#0f766e",
+    accent: "#0b5d57", // teal-as-text, so text-accent never adds a second brand colour
+    // Brand-as-text, per theme, for WCAG AA.
+    primaryEmphasis: { light: "#0b5d57", dark: "#7fddd3" },
   },
 
   // Softer corners read more premium; lockstep with --radius-base in tokens.css
@@ -99,7 +102,7 @@ export const brand: BrandConfig = {
     monoCssVar: "--font-mono",
   },
 
-  themeColor: "#0165ff",
+  themeColor: "#0f766e",
 };
 
 /** The full CSS `font-family` value: the loaded webfont var, then the fallback. */

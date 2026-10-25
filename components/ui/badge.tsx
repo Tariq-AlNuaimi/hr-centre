@@ -11,15 +11,16 @@ import { cn } from "@/lib/utils";
  * keep their own palette pair. No physical spacing — RTL safe by construction.
  */
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
-        default: "bg-muted text-muted-foreground",
-        brand: "bg-primary/10 text-primary-emphasis",
-        success: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-        warning: "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-        danger: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
+        default: "bg-status-neutral text-status-neutral-fg",
+        brand: "bg-accent-subtle text-primary-emphasis",
+        success: "bg-status-ok text-status-ok-fg",
+        warning: "bg-status-warn text-status-warn-fg",
+        danger: "bg-status-err text-status-err-fg",
+        info: "bg-status-info text-status-info-fg",
         outline: "border border-input text-muted-foreground",
       },
     },

@@ -55,7 +55,7 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-md: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07);
   --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.08), 0 2px 6px rgba(16, 24, 40, 0.05);
-  --shadow-ring: 0 0 0 3px rgba(1, 101, 255, 0.24); /* royal focus-ring SHADOW (plain-CSS land); distinct from the --ring COLOR token in the @theme block below */
+  --shadow-ring: 0 0 0 3px rgba(15, 118, 110, 0.25); /* platform teal focus-ring SHADOW (v0.2 --focus); distinct from the --ring COLOR token in the @theme block below */
 
   /* --- Motion (transition durations for the app) -------------------------- */
   --motion-fast: 0.1s;
@@ -71,14 +71,15 @@
    * gray scale the shipped primitives already used (gray-100/200/300/500/900)
    * plus the brand vars <html> emits; the @theme inline block below exposes each
    * as a `--color-*` utility. CSS is outside no-raw-hex-color by construction. */
-  --background: #fbfbfc; /* faint cool page ground — flat cards read against it (Precision, C4) */
-  --foreground: #111827; /* gray-900 */
+  /* Rihal HR platform look v0.2: calm slate surfaces and text. */
+  --background: #f6f7f9; /* v0.2 --bg */
+  --foreground: #101828; /* v0.2 --text — slate, never pure black */
   --card: #ffffff;
-  --card-foreground: #111827;
-  --muted: #f3f4f6; /* gray-100 */
-  --muted-foreground: #5b6472; /* slate-600ish — WCAG AA (>=4.5:1) on muted surfaces (C3 axe gate) */
-  --border: #e6e8ec; /* cool-biased hairline (Precision, C4) */
-  --input: #d1d5db; /* gray-300 */
+  --card-foreground: #101828;
+  --muted: #f1f3f6; /* v0.2 --sunken */
+  --muted-foreground: #475467; /* v0.2 --text-2 — 6.9:1 on --muted */
+  --border: #e4e7ec; /* v0.2 --border */
+  --input: #d0d5dd; /* v0.2 --border-strong */
   --ring: var(--brand-primary);
   --primary-foreground: #ffffff;
   /* Brand used AS TEXT (links, active nav/sort/filter state, brand icons on
@@ -87,7 +88,7 @@
    * but the dark override lightens it to royal-300 so brand-as-text clears AA on
    * dark surfaces (raw royal is only ~3:1 there). bg-primary is untouched.
    * Bound from brand.config.ts `colors.primaryEmphasis.light` via the
-   * --brand-primary-emphasis var layout.tsx emits on <html> (royal #0b53c9). */
+   * --brand-primary-emphasis var layout.tsx emits on <html> (platform teal #0b5d57). */
   --primary-emphasis: var(--brand-primary-emphasis, var(--brand-primary));
   /* The primary SURFACE under a pointer. Deliberately NOT --primary-emphasis:
    * that token is brand-as-TEXT and its dark override LIGHTENS to royal-300, so
@@ -117,7 +118,7 @@
    * panels sit ABOVE cards, so they get their own elevated surface token.
    * Dark override in globals.css. */
   --popover: #ffffff;
-  --popover-foreground: #111827; /* mirrors --card-foreground */
+  --popover-foreground: #101828; /* mirrors --card-foreground */
 
   /* Active-nav foreground (ADR-029, Workstream C3.5) — the sidebar's selected
    * item. Light = brand primary; dark needs a lighter indigo for AA contrast on
@@ -131,6 +132,22 @@
    * --card swap recomputes the tint on the dark shell automatically, and it
    * tracks --brand-primary so a rebrand retints everything for free. */
   --accent-subtle: color-mix(in srgb, var(--brand-primary) 12%, var(--card));
+
+  /* --- Status (Rihal HR platform look v0.2) --------------------------------
+   * One meaning per hue, the same in every HR app: ok (done), warn (needs a
+   * person), err (failed/blocked), info (in motion). `-fg` is text/dot, `-bg`
+   * the pill fill; every pair >= 5:1, re-measured in platform-palette.test.
+   * Dark counterparts in app/globals.css. */
+  --status-ok-fg: #067647;
+  --status-ok-bg: #ecfdf3;
+  --status-warn-fg: #b54708;
+  --status-warn-bg: #fffaeb;
+  --status-err-fg: #b42318;
+  --status-err-bg: #fef3f2;
+  --status-info-fg: #175cd3;
+  --status-info-bg: #eff8ff;
+  --status-neutral-fg: #475467;
+  --status-neutral-bg: #f2f4f7;
 }
 
 /* ============================================================================
@@ -236,4 +253,16 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-nav-active-foreground: var(--nav-active-foreground);
   --color-accent-subtle: var(--accent-subtle);
+
+  /* Status pills (v0.2): bg-status-ok text-status-ok-fg, … */
+  --color-status-ok: var(--status-ok-bg);
+  --color-status-ok-fg: var(--status-ok-fg);
+  --color-status-warn: var(--status-warn-bg);
+  --color-status-warn-fg: var(--status-warn-fg);
+  --color-status-err: var(--status-err-bg);
+  --color-status-err-fg: var(--status-err-fg);
+  --color-status-info: var(--status-info-bg);
+  --color-status-info-fg: var(--status-info-fg);
+  --color-status-neutral: var(--status-neutral-bg);
+  --color-status-neutral-fg: var(--status-neutral-fg);
 }
