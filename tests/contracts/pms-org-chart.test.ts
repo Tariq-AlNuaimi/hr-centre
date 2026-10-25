@@ -2,7 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { buildOrgChart, matchOrgChart, type OrgNode } from "../../lib/pms/org-chart";
+import { buildOrgChart, type OrgNode } from "../../lib/pms/org-chart";
+import { matchOrgChart } from "../../lib/pms/org-chart-search";
 
 /**
  * §4.2's reporting tree, arranged as an org chart.

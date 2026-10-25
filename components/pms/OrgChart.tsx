@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { matchOrgChart, type OrgChartEntity, type OrgChartPerson } from "@/lib/pms/org-chart";
+import type { OrgChartEntity, OrgChartPerson } from "@/lib/pms/org-chart";
+import { matchOrgChart } from "@/lib/pms/org-chart-search";
 
 /**
  * §4.2's reporting tree, as an org chart a person can actually navigate.
