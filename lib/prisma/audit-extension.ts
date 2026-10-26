@@ -30,6 +30,10 @@ export const SCRUB_FIELDS = new Set([
   // The row still records THAT salary changed, which is the auditable fact.
   "basicSalary",
   "basic_salary",
+  // The ciphertext column too: an audit row is outside the salary access gate,
+  // and a copy of the envelope there outlives any key rotation.
+  "basicSalaryEnc",
+  "basic_salary_enc",
   // HR Centre F-b (blueprint §2, AC-F2.2) — Restricted ID documents. The
   // columns hold ciphertext, but ciphertext in an audit row is still a copy of a
   // Restricted value outside its access gate; the plaintext names cover form and

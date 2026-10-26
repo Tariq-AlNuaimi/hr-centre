@@ -62,6 +62,8 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   // Restricted value outside its access gate; the plaintext names cover form and
   // import payloads.
   "civilIdNumber",
+  "basicSalaryEnc",
+  "basic_salary_enc",
   "civilIdNumberEnc",
   "civil_id_number_enc",
   "passportNumber",
