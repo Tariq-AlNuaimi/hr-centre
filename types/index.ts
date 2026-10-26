@@ -9,6 +9,8 @@ declare module "next-auth" {
       name?: string | null;
       image?: string | null;
       role: Role;
+      /** HR Centre F-d — holding a temporary password; only change-password is reachable. */
+      mustChangePassword?: boolean;
     };
   }
 
@@ -26,6 +28,7 @@ declare module "@auth/core/jwt" {
     role: Role;
     // Epoch (ms) of the password this token is bound to; 0 if never changed.
     passwordChangedAt?: number;
+    mustChangePassword?: boolean;
   }
 }
 

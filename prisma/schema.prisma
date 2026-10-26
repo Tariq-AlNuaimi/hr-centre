@@ -49,6 +49,11 @@ model User {
   // password reset revokes every pre-existing session on its next request.
   passwordChangedAt DateTime?
 
+  // HR Centre F-d — set when HR issues a temporary password (create/reset login).
+  // While true, middleware lets this user reach ONLY the change-password page
+  // (and its API); cleared when they choose their own password.
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+
   // Soft deletion
   deletedAt DateTime?
   deletedBy String?

@@ -1,6 +1,7 @@
 # Repo map (generated -- do not edit; `node scripts/repo-map.mjs`)
 
 ## Routes (app/)
+- app/[locale]/(auth)/change-password/page.tsx
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
@@ -69,6 +70,8 @@
 - app/api/kpis/[id]/route.ts  [PUT,DELETE]
 - app/api/kpis/route.ts  [POST]
 - app/api/leavers/route.ts  [GET,POST]
+- app/api/logins/[employeeId]/route.ts  [GET,POST,DELETE]
+- app/api/logins/change-password/route.ts  [POST]
 - app/api/mid-year/me/route.ts  [GET]
 - app/api/notifications/read/route.ts  [POST]
 - app/api/notifications/route.ts  [GET]
@@ -120,7 +123,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -185,7 +188,9 @@
 - lib/org/units.ts: ACTIVE_ROWS, renameCompany, createDirectorate, renameDirectorate, retireDirectorate, createOrgDepartment, updateOrgDepartment, retireOrgDepartment, plural
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
+- lib/people/force-change.ts: ForceChangeDecision, forcedChangeDecision
 - lib/people/id-documents.ts: IdDocumentKeyError, encryptIdNumber, readIdNumber
+- lib/people/logins.ts: generateTemporaryPassword, LoginState, loginStateOf, loginEligibility, loginSummary, issueTemporaryPassword, disableLogin, changeOwnPassword
 - lib/people/record.ts: EmployeeRecordInput, JOB_FIELDS, CONTACT_FIELDS, PERSONAL_FIELDS, ID_DOCUMENT_FIELDS, RecordField, RECORD_FIELDS, DATE_RECORD_FIELDS, recordFieldsTouched
 - lib/people/service.ts: createEmployeeFromForm, updateEmployeeRecord
 - lib/people/write.ts: EmployeeCoreInput, recordWriteData, employeeCreateData, employeeUpdateData
@@ -264,6 +269,7 @@
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
+- lib/validations/login.ts: issueLoginSchema, changePasswordSchema, ChangePasswordBody
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
 - lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, AddEmployeeBody, recordFromBody
@@ -296,6 +302,7 @@
 - components/people/AddEmployeeForm.tsx
 - components/people/EmployeeRecordForm.tsx
 - components/people/EmployeeRecordSections.tsx
+- components/people/LoginPanel.tsx
 - components/people/RecordFields.tsx
 - components/pms/BonusReport.tsx
 - components/pms/CalibrationTargetEditor.tsx

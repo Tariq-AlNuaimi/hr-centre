@@ -3,7 +3,8 @@ export const runtime = "nodejs";
 import createMiddleware from "next-intl/middleware";
 import { auth } from "./lib/auth";
 import { routing } from "./i18n/routing";
-import { routeDecision } from "./i18n/route-decision";
+import { localeOf, routeDecision } from "./i18n/route-decision";
+import { forcedChangeDecision } from "./lib/people/force-change";
 import { NextResponse, NextRequest } from "next/server";
 import { randomBytes } from "node:crypto";
 
@@ -113,6 +114,21 @@ export default auth((req) => {
   // login/home redirect, the API 401) lives in i18n/route-decision.ts so it can be unit
   // tested without Next's request/auth machinery (V2-406). This wrapper maps each action
   // to the actual NextResponse and keeps the framework side effects (CSP/nonce/next-intl).
+  // HR Centre F-d (AC-F4.2) — a temporary password must be replaced before
+  // anything else loads: pages redirect to change-password, APIs answer 403.
+  const forced = forcedChangeDecision(
+    pathname,
+    req.auth?.user?.mustChangePassword === true,
+    localeOf(pathname),
+  );
+  if (forced.kind === "redirect") return NextResponse.redirect(new URL(forced.to, req.url));
+  if (forced.kind === "apiForbidden") {
+    return NextResponse.json(
+      { error: "Change your temporary password before continuing." },
+      { status: 403 },
+    );
+  }
+
   const action = routeDecision(pathname, !!req.auth);
   switch (action.kind) {
     // Redirects carry no CSP/nonce — they render no HTML; the destination page gets its

@@ -1854,6 +1854,46 @@
       "saving": "Adding…",
       "created": "{name} added",
       "failed": "Could not add the employee"
+    },
+    "login": {
+      "title": "Login",
+      "subtitle": "Until single sign-on, HR role holders and line managers sign in with a password HR issues",
+      "state": {
+        "NONE": "No login",
+        "NO_PASSWORD": "No password",
+        "TEMPORARY": "Temporary password issued",
+        "ACTIVE": "Signs in",
+        "REVOKED": "Revoked when they left"
+      },
+      "notEligible": "Not eligible yet: only HR role holders and line managers get a login before single sign-on",
+      "create": "Create login",
+      "reset": "Reset password",
+      "disable": "Disable login",
+      "resetTitle": "Reset {name}'s password?",
+      "resetDescription": "Their current password stops working immediately and they are signed out everywhere",
+      "disableTitle": "Disable {name}'s login?",
+      "disableDescription": "They are signed out everywhere and can no longer sign in with a password",
+      "issuedTitle": "Temporary password",
+      "issuedHelp": "Give this to {email}. They must choose their own password the first time they sign in",
+      "issuedOnce": "This is the only time it is shown. Closing this window or reloading the page loses it; reset the password to issue a new one",
+      "copy": "Copy",
+      "done": "Done",
+      "disabled": "Login disabled",
+      "failed": "Could not change the login",
+      "loadFailed": "Could not load the login status"
+    },
+    "changePassword": {
+      "title": "Choose your password",
+      "intro": "You signed in with a temporary password. Choose your own before continuing",
+      "current": "Temporary password",
+      "new": "New password",
+      "confirm": "Confirm new password",
+      "rule": "At least 10 characters, different from the temporary one",
+      "mismatch": "The two new passwords do not match",
+      "failed": "Could not change your password",
+      "saving": "Saving…",
+      "submit": "Save and continue",
+      "signOut": "Sign out"
     }
   },
   "rbac": {
