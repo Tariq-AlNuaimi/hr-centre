@@ -22,6 +22,9 @@ import {
   UserMinus,
   Menu as MenuIcon,
   PanelLeftClose,
+  Inbox,
+  SlidersHorizontal,
+  PieChart,
 } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,6 +33,7 @@ import { useEffect, useState } from "react";
 import { localePrefixRegex } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { usePmsActor } from "@/hooks/use-pms-actor";
+import { useHiveAccess } from "@/components/hive/use-hive-access";
 
 /**
  * HR Centre F-e — the sidebar is grouped by MODULE (blueprint step 1: People,
@@ -37,7 +41,7 @@ import { usePmsActor } from "@/hooks/use-pms-actor";
  * Items keep their own visibility rules; this only decides where each sits. An
  * unknown key falls into Admin, so a scaffolded entity is never lost.
  */
-const NAV_GROUPS = ["start", "people", "performance", "admin"] as const;
+const NAV_GROUPS = ["start", "people", "performance", "tickets", "admin"] as const;
 type NavGroup = (typeof NAV_GROUPS)[number];
 
 const NAV_GROUP_OF: Record<string, NavGroup> = {
@@ -56,10 +60,45 @@ const NAV_GROUP_OF: Record<string, NavGroup> = {
   "strategy-scores": "performance",
   "edge-cases": "performance",
   calibration: "performance",
+  "hive-tickets": "tickets",
+  "hive-reports": "tickets",
+  "hive-setup": "tickets",
 };
 
 function groupOf(key: string): NavGroup {
   return NAV_GROUP_OF[key] ?? "admin";
+}
+
+/**
+ * HR tickets (HIVE port) entries. Each follows its route's own gate; HIVE hid
+ * its single entry from a reports-only user, here Reports has its own entry.
+ */
+function hiveNavItems(
+  hive: ReturnType<typeof useHiveAccess>,
+  label: (key: "hiveTickets" | "hiveReports" | "hiveSetup") => string,
+  go: (href: string) => void,
+) {
+  const items = [
+    hive.seeTickets && {
+      key: "hive-tickets",
+      icon: <Inbox className="h-4 w-4" />,
+      label: label("hiveTickets"),
+      onClick: () => go("/hive/escalations"),
+    },
+    hive.viewReports && {
+      key: "hive-reports",
+      icon: <PieChart className="h-4 w-4" />,
+      label: label("hiveReports"),
+      onClick: () => go("/hive/reports"),
+    },
+    (hive.editContent || hive.configure) && {
+      key: "hive-setup",
+      icon: <SlidersHorizontal className="h-4 w-4" />,
+      label: label("hiveSetup"),
+      onClick: () => go("/hive"),
+    },
+  ];
+  return items.filter((i): i is Exclude<(typeof items)[number], false> => Boolean(i));
 }
 
 export function AppSidebar() {
@@ -73,6 +112,8 @@ export function AppSidebar() {
   // the nav asks for it. `usePmsActor` fails closed while loading: a non-HR user
   // never sees a flash of HR-only navigation.
   const { capabilities } = usePmsActor();
+  // HR tickets (HIVE port): read live from the role builder, fails closed while loading.
+  const hive = useHiveAccess();
   const [collapsed, setCollapsed] = useState(false);
 
   // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
@@ -106,10 +147,16 @@ export function AppSidebar() {
     "strategy-scores": "strategy-scores",
     "edge-cases": "edge-cases",
   };
+  const HIVE_SEGMENT_KEYS: Record<string, string> = {
+    escalations: "hive-tickets",
+    reports: "hive-reports",
+  };
   const activeKey =
     segments[0] === "admin"
       ? (ADMIN_SEGMENT_KEYS[segments[1] ?? ""] ?? "admin")
-      : (segments[0] ?? "home");
+      : segments[0] === "hive"
+        ? (HIVE_SEGMENT_KEYS[segments[1] ?? ""] ?? "hive-setup")
+        : (segments[0] ?? "home");
 
   const menuItems = [
     {
@@ -275,6 +322,12 @@ export function AppSidebar() {
           },
         ]
       : []),
+    // --- HR tickets (the HIVE port) — see hiveNavItems below.
+    ...hiveNavItems(
+      hive,
+      (k) => t(k),
+      (href) => router.push(`/${locale}${href}`),
+    ),
     // HR-only administration. Import is open to HRBP (checking a file is part of
     // running the cycle); org setup is Super-Admin-only (§4.1's configure column).
     ...(capabilities.previewImport
