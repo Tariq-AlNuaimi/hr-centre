@@ -145,6 +145,9 @@ test("§3.1 the generated template parses back through the loader, all 12 §3.3 
       "basicSalary",
       "dateOfJoining",
       "department",
+      // HR Centre F-a: optional org columns (blueprint §5). Optional in the
+      // loader — a Performance-era sheet without them still imports.
+      "directorate",
       "email",
       "entity",
       "lastWorkingDay",
@@ -153,6 +156,7 @@ test("§3.1 the generated template parses back through the loader, all 12 §3.3 
       "odooId",
       "roleTrack",
       "status",
+      "team",
       "unpaidLeaveDays",
     ],
     "every §3.3 column in the template must be recognised by the loader",

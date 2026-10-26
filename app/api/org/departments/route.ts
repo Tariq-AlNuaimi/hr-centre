@@ -4,7 +4,9 @@ import { created, err, forbidden, ok, readJsonBody } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { createDepartmentSchema } from "@/lib/validations/employee";
+import { createOrgDepartment } from "@/lib/org/units";
+import { ruleErrorResponse, validationError } from "@/lib/org/http";
+import { createOrgDepartmentSchema } from "@/lib/validations/org";
 
 /**
  * Departments — spec §1.2.
@@ -37,8 +39,15 @@ export const GET = withRateLimit(
           id: true,
           name: true,
           entityId: true,
+          directorateId: true,
           entity: { select: { id: true, code: true, name: true } },
-          _count: { select: { employees: true } },
+          directorate: { select: { id: true, name: true } },
+          _count: {
+            select: {
+              employees: { where: { deletedAt: null } },
+              teams: { where: { deletedAt: null } },
+            },
+          },
         },
       }),
       prisma.department.count({ where }),
@@ -56,36 +65,16 @@ export const POST = withRateLimit(
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
-    const parsed = createDepartmentSchema.safeParse(body);
-    if (!parsed.success) {
-      return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
+    const parsed = createOrgDepartmentSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
+
+    // F-a: placement under an optional directorate, same-company rule and the
+    // name clash all live in the org service, shared with PATCH.
+    try {
+      return created(await createOrgDepartment(parsed.data));
+    } catch (e) {
+      return ruleErrorResponse(e);
     }
-    const { name, entityId } = parsed.data;
-
-    const entity = await prisma.orgEntity.findUnique({
-      where: { id: entityId },
-      select: { id: true, code: true },
-    });
-    if (!entity) return err("entityId: that entity does not exist");
-
-    const clash = await prisma.department.findUnique({
-      where: { entityId_name: { entityId, name } },
-      select: { id: true },
-    });
-    if (clash) {
-      return err(`${entity.code} already has a department called "${name}"`, 409);
-    }
-
-    const department = await prisma.department.create({
-      data: { name, entityId },
-      select: {
-        id: true,
-        name: true,
-        entityId: true,
-        entity: { select: { id: true, code: true, name: true } },
-      },
-    });
-    return created(department);
   }),
   { id: "pms-departments-write", limit: 30, windowMs: 60_000 },
 );

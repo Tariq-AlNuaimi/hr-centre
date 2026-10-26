@@ -309,6 +309,11 @@ export async function loadEmployeesFromXlsx(
     return cellToString(row[index]);
   };
 
+  // F-a+: optional columns distinguish "no such column" (undefined — keep what is
+  // on file) from "blank cell" (null — clear it). See EmployeeSourceRow.
+  const readOptional = (row: unknown[], column: ImportColumn): string | null | undefined =>
+    headerMap[column] === undefined ? undefined : read(row, column);
+
   const rows: EmployeeSourceRow[] = [];
   bodyRows.forEach((row, i) => {
     // +2: one for the header row, one because humans count from 1. The number
@@ -329,6 +334,8 @@ export async function loadEmployeesFromXlsx(
       email: read(row, "email"),
       dateOfJoining: read(row, "dateOfJoining"),
       department: read(row, "department"),
+      directorate: readOptional(row, "directorate"),
+      team: readOptional(row, "team"),
       entity: read(row, "entity"),
       managerOdooId: read(row, "managerOdooId"),
       roleTrack: read(row, "roleTrack"),

@@ -67,6 +67,17 @@ export type ValidationContext = {
    * after a preview that reported no rejections. See validate.ts.
    */
   emailOwners: Map<string, string>;
+  /**
+   * F-a lookups. Optional so a context built for the Performance-era columns
+   * still type-checks; absent maps mean "nothing known", which rejects any
+   * directorate or team the sheet names rather than accepting it unchecked.
+   */
+  /** `${entityId}::${normalized name}` for every directorate. */
+  directorateKeys?: Set<string>;
+  /** departmentId → its directorate (normalized key + display name), or null. */
+  departmentDirectorates?: Map<string, { key: string; name: string } | null>;
+  /** `${departmentId}::${normalized team name}` → teamId. */
+  teamsByDepartmentAndName?: Map<string, string>;
 };
 
 export function issue(

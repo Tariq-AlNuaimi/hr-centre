@@ -31,6 +31,13 @@ export type EmployeeSourceRow = {
   email: string | null;
   dateOfJoining: string | null;
   department: string | null;
+  /**
+   * F-a — optional org columns. `undefined` means the COLUMN is absent from the
+   * sheet (keep what is on file); `null` means the cell is blank (clear it).
+   * Optional in the type so a sheet built for Performance still imports.
+   */
+  directorate?: string | null;
+  team?: string | null;
   entity: string | null;
   managerOdooId: string | null;
   roleTrack: string | null;
@@ -47,6 +54,8 @@ export const IMPORT_COLUMNS = [
   "email",
   "dateOfJoining",
   "department",
+  "directorate",
+  "team",
   "entity",
   "managerOdooId",
   "roleTrack",
@@ -82,6 +91,8 @@ export const COLUMN_ALIASES: Record<ImportColumn, readonly string[]> = {
     "start date",
   ],
   department: ["department", "dept"],
+  directorate: ["directorate"],
+  team: ["team", "team name"],
   entity: ["entity", "company", "legal entity"],
   managerOdooId: ["manager", "manager id", "manager employee id", "line manager", "reports to"],
   roleTrack: ["role track", "roletrack", "track", "role"],
@@ -98,6 +109,8 @@ export const COLUMN_TITLES: Record<ImportColumn, string> = {
   email: "Email",
   dateOfJoining: "Date of Joining",
   department: "Department",
+  directorate: "Directorate",
+  team: "Team",
   entity: "Entity",
   managerOdooId: "Manager (Employee ID)",
   roleTrack: "Role Track",
@@ -143,6 +156,8 @@ export type ValidatedRow = {
   name: string;
   email: string;
   departmentId: string | null;
+  /** F-a — undefined when the sheet has no Team column (keep the current team). */
+  teamId?: string | null;
   entityId: string;
   /**
    * Resolved LATER than the rest of the row: a manager may appear further down
@@ -292,6 +307,8 @@ export function planDigest(validRows: ValidatedRow[]): string {
       // Date | null — serialise as a stable calendar day, not a locale string.
       r.lastWorkingDay ? r.lastWorkingDay.toISOString().slice(0, 10) : "",
       String(r.unpaidLeaveDays),
+      // F-a. "~" marks "column absent" so it cannot collide with a blank cell.
+      r.teamId === undefined ? "~" : (r.teamId ?? ""),
     ]);
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }

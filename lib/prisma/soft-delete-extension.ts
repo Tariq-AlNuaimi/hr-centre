@@ -33,7 +33,15 @@ type SoftDeleteDelegate = {
 // (`weightageSummary`, which pulls `participant.kpis` through a nested select)
 // is exactly the case it cannot reach. Those call sites keep their explicit
 // `deletedAt: null` and are pinned by tests.
-const SOFT_DELETE_MODELS = new Set(["User", "Employee", "Department", "OrgEntity", "Kpi"]);
+const SOFT_DELETE_MODELS = new Set([
+  "User",
+  "Employee",
+  "Department",
+  "OrgEntity",
+  "Kpi",
+  "Directorate",
+  "Team",
+]);
 
 /**
  * Whether this model participates in soft-delete filtering. Exposed so the

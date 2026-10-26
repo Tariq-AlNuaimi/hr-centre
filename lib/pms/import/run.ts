@@ -1,6 +1,11 @@
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { loadEmployeesFromXlsx } from "./loaders/xlsx";
-import { reconcile, type ExistingEmployee, type ReconcileContext } from "./reconcile";
+import {
+  effectiveTeamId,
+  reconcile,
+  type ExistingEmployee,
+  type ReconcileContext,
+} from "./reconcile";
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
 import { decryptSalary, encryptSalary } from "../employee-select";
@@ -41,10 +46,16 @@ async function loadContext(): Promise<{
   validation: ValidationContext;
   reconcile: ReconcileContext;
 }> {
-  const [entities, departments, employees] = await Promise.all([
+  const [entities, departments, employees, directorates, teams] = await Promise.all([
     prisma.orgEntity.findMany({ select: { id: true, code: true, name: true } }),
     prisma.department.findMany({
-      select: { id: true, name: true, entityId: true, entity: { select: { code: true } } },
+      select: {
+        id: true,
+        name: true,
+        entityId: true,
+        entity: { select: { code: true } },
+        directorate: { select: { name: true } },
+      },
     }),
     prisma.employee.findMany({
       select: {
@@ -61,9 +72,26 @@ async function loadContext(): Promise<{
         dateOfJoining: true,
         lastWorkingDay: true,
         unpaidLeaveDays: true,
+        teamId: true,
       },
     }),
+    // F-a lookups. Unbounded like the two above: the import validates against
+    // the WHOLE org, and directorates/teams are a small multiple of departments.
+    prisma.directorate.findMany({ select: { name: true, entityId: true } }),
+    prisma.team.findMany({ select: { id: true, name: true, departmentId: true } }),
   ]);
+
+  const directorateKeys = new Set(directorates.map((d) => `${d.entityId}::${normalize(d.name)}`));
+  const departmentDirectorates = new Map(
+    departments.map((d) => [
+      d.id,
+      d.directorate ? { key: normalize(d.directorate.name), name: d.directorate.name } : null,
+    ]),
+  );
+  const teamsByDepartmentAndName = new Map(
+    teams.map((t) => [`${t.departmentId}::${normalize(t.name)}`, t.id] as const),
+  );
+  const teamNames = new Map(teams.map((t) => [t.id, t.name] as const));
 
   const entitiesByKey = new Map<string, { id: string; code: string }>();
   const entityCodes = new Map<string, string>();
@@ -113,6 +141,7 @@ async function loadContext(): Promise<{
       status: employee.status,
       lastWorkingDay: employee.lastWorkingDay,
       unpaidLeaveDays: employee.unpaidLeaveDays,
+      teamId: employee.teamId,
     });
   }
 
@@ -125,8 +154,11 @@ async function loadContext(): Promise<{
       // Lower-cased to match how checkNameAndEmail normalises the source row;
       // built from the same `employees` read, so this costs no extra query.
       emailOwners: new Map(employees.map((e) => [e.email.trim().toLowerCase(), e.odooId] as const)),
+      directorateKeys,
+      departmentDirectorates,
+      teamsByDepartmentAndName,
     },
-    reconcile: { existing, departmentNames, entityCodes },
+    reconcile: { existing, departmentNames, entityCodes, teamNames },
   };
 }
 
@@ -411,6 +443,7 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
           name: row.name,
           email: row.email,
           departmentId: row.departmentId,
+          teamId: row.teamId ?? null,
           entityId: row.entityId,
           roleTrack: row.roleTrack,
           basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
@@ -460,6 +493,7 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
           name: row.name,
           email: row.email,
           departmentId: row.departmentId,
+          teamId: effectiveTeamId(row, existing),
           entityId: row.entityId,
           roleTrack: row.roleTrack,
           basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
