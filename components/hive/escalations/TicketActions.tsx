@@ -177,7 +177,7 @@ export function ActionRow({
 }
 
 /** An approver hands a submitted draft back, with an optional note (AC-T2.2). */
-export function ReturnForm({
+function ReturnForm({
   id,
   busy,
   act,

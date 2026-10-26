@@ -34,7 +34,7 @@ const optionalId = z
 const order = z.coerce.number().int().min(0).max(9999).default(0);
 
 /** Aliases: trimmed, blank dropped, de-duplicated, at most 40 of 80 characters. */
-export const aliasesSchema = z
+const aliasesSchema = z
   .array(z.string().trim().max(80, "An alias is at most 80 characters"))
   .max(40, "At most 40 aliases")
   .transform((list) => [...new Set(list.filter(Boolean))])
@@ -50,7 +50,7 @@ const isoDay = z
     "Not a real date",
   );
 
-export const pairSchema = z.object({
+const pairSchema = z.object({
   name: text(120),
   order,
   isDefault: z.boolean().default(false),
@@ -79,13 +79,13 @@ export const coverageSchema = z
     path: ["entityId"],
   });
 
-export const rotationGroupSchema = z.object({
+const rotationGroupSchema = z.object({
   name: text(120),
   mode: z.enum(["CONSTANT", "GROUP_1", "GROUP_2"]),
   order,
 });
 
-export const rotationCoverageSchema = z.object({
+const rotationCoverageSchema = z.object({
   groupId: id,
   label: text(120),
   aliases: aliasesSchema,
@@ -117,7 +117,7 @@ export const discountSchema = z.object({
   order,
 });
 
-export const providerSchema = z.object({
+const providerSchema = z.object({
   name: text(200),
   providerType: optionalText(120),
   location: text(120),

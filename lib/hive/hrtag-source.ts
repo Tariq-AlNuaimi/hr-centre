@@ -25,7 +25,7 @@ type CoverageDb = {
 };
 
 /** A stored coverage row in the routing rules' shape (HIVE's companyId / orgUnitId). */
-export function toCoverageRow(c: CoverageDb): CoverageRow {
+function toCoverageRow(c: CoverageDb): CoverageRow {
   return {
     label: c.label,
     aliases: c.aliases,

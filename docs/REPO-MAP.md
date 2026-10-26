@@ -372,7 +372,7 @@
 - lib/hiring/settings.ts: HIRING_SETTING_KEYS, HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
 - lib/hive/civil.ts: CivilDate, muscatDate, fold, ExpiryState, expiryStateFor
 - lib/hive/hrtag-routing.ts: CoverageRow, inCompanyOf, PairRow, CompanyRow, pairCard, resolveCompany, matchCompanyWide, matchDirectorate, matchSelector, PairResolution, resolvePair
-- lib/hive/hrtag-source.ts: toCoverageRow, loadHrPairs, loadCompanies
+- lib/hive/hrtag-source.ts: loadHrPairs, loadCompanies
 - lib/hive/mcp/protocol.ts: McpTool, McpServer, handleMcpMessage, parseErrorResponse
 - lib/hive/mcp/siraaj.ts: SIRAAJ_URL
 - lib/hive/mcp/tools.ts: MCP_TOOL_NAMES, hiveMcpServer
@@ -527,7 +527,7 @@
 - lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema
 - lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture
 - lib/validations/hive/mcp.ts: mcpIdentitySchema
-- lib/validations/hive/reference.ts: aliasesSchema, pairSchema, memberSchema, coverageSchema, rotationGroupSchema, rotationCoverageSchema, discountSchema, providerSchema, rotationConfigSchema, orgInfoSchema, referenceQuerySchema, REFERENCE_SCHEMAS, ReferenceResource, isReferenceResource
+- lib/validations/hive/reference.ts: memberSchema, coverageSchema, discountSchema, rotationConfigSchema, orgInfoSchema, referenceQuerySchema, REFERENCE_SCHEMAS, ReferenceResource, isReferenceResource
 - lib/validations/hive/reply.ts: replyBodySchema, replyTokenSchema
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
