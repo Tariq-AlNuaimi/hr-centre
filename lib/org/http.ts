@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import type { NextResponse } from "next/server";
 import { err } from "@/lib/api-response";
 import { IdDocumentKeyError } from "@/lib/people/id-documents";
 import { OrgRuleError } from "./rules";
@@ -19,7 +20,7 @@ export function validationError(error: z.ZodError) {
   );
 }
 
-export function ruleErrorResponse(e: unknown) {
+export function ruleErrorResponse(e: unknown): NextResponse {
   if (e instanceof OrgRuleError) return err(e.message, e.status);
   // Blueprint worst path: a missing ID key fails the write closed, with a
   // sentence, and nothing is saved.

@@ -4,9 +4,14 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { employeeDetailSelect, serializeEmployeeDetail } from "@/lib/pms/employee-select";
+import {
+  employeeDetailSelect,
+  serializeEmployeeDetail,
+  type EmployeeRecordView,
+} from "@/lib/pms/employee-select";
 import { EmployeeRecordSections } from "@/components/people/EmployeeRecordSections";
 import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
+import { LoginPanel } from "@/components/people/LoginPanel";
 import { recordFormValues } from "@/components/people/record-form-values";
 import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 import { placementOf } from "@/lib/rbac/resolve";
@@ -68,6 +73,37 @@ function toUpdateInput(employee: {
     lastWorkingDay: employee.lastWorkingDay?.toISOString().slice(0, 10) ?? null,
     unpaidLeaveDays: employee.unpaidLeaveDays,
   };
+}
+
+type Actor = Awaited<ReturnType<typeof resolveActor>>;
+type Subject = NonNullable<Awaited<ReturnType<typeof placementOf>>>;
+
+/** F-b/F-c — Edit details, offered only where the actor may edit this person. */
+function recordForm(
+  actor: Actor,
+  subject: Subject,
+  employeeId: string,
+  record: EmployeeRecordView,
+) {
+  if (!actorCan(actor, "people.edit", subject)) return null;
+  return (
+    <EmployeeRecordForm
+      employeeId={employeeId}
+      initial={recordFormValues(record)}
+      canEditPersonal={actorCan(actor, "people.viewPersonal", subject)}
+      // A number the server key cannot open is not offered for editing: the
+      // empty box would read as "none" and saving it would clear it.
+      canEditIdDocuments={
+        actorCan(actor, "people.viewIdDocuments", subject) && !record.idDocuments?.unavailable
+      }
+    />
+  );
+}
+
+/** F-d — the login panel, for whoever holds logins.manage for this person's scope. */
+function loginPanel(actor: Actor, subject: Subject, employee: { id: string; name: string }) {
+  if (!actorCan(actor, "logins.manage", subject)) return null;
+  return <LoginPanel employeeId={employee.id} name={employee.name} />;
 }
 
 /** HR Centre F-a — directorate and team rows, only when the org uses them. */
@@ -238,19 +274,7 @@ export default async function EmployeeDetailPage({
             not be the thing that discovers it by encrypting `null` over payroll.
           */
           <>
-            {canEditPerson ? (
-              <EmployeeRecordForm
-                employeeId={employee.id}
-                initial={recordFormValues(detail.record)}
-                canEditPersonal={actorCan(actor, "people.viewPersonal", subject)}
-                // A number the server key cannot open is not offered for editing:
-                // the empty box would read as "none" and saving it would clear it.
-                canEditIdDocuments={
-                  actorCan(actor, "people.viewIdDocuments", subject) &&
-                  !detail.record.idDocuments?.unavailable
-                }
-              />
-            ) : null}
+            {recordForm(actor, subject, employee.id, detail.record)}
             {canEditPerson && basicSalary !== undefined ? (
               <EmployeeEditForm
                 employeeId={employee.id}
@@ -294,6 +318,10 @@ export default async function EmployeeDetailPage({
       </SectionCard>
 
       <EmployeeRecordSections record={detail.record} />
+
+      {/* F-d — logins for HR role holders and line managers, for whoever holds
+          logins.manage for this person's scope (the API checks the same). */}
+      {loginPanel(actor, subject, employee)}
 
       {/*
         §4.5 / §11.6 — the compensation block exists only when the viewer is

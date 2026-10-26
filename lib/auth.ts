@@ -239,6 +239,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             ? await adoptSsoRole(user.id!, mapSsoRole(profile as Record<string, unknown>))
             : user.role;
         token.passwordChangedAt = user.passwordChangedAt?.getTime() ?? 0;
+        // mustChangePassword is NOT taken from the sign-in user: the very next
+        // request re-reads it below (that lookup runs on every request anyway).
         return token;
       }
       // Subsequent requests: reject the token if the password changed after it
@@ -261,9 +263,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           //
           // This read already happens on every request; `deletedAt` is one more
           // column on the same narrow indexed lookup, not a second query.
-          select: { passwordChangedAt: true, deletedAt: true },
+          select: { passwordChangedAt: true, deletedAt: true, mustChangePassword: true },
         });
         if (!current || current.deletedAt !== null) return null;
+        // HR Centre F-d — re-read every request (this lookup already runs), so
+        // the forced change applies and lifts without waiting for a new token.
+        token.mustChangePassword = current.mustChangePassword;
         const changedAt = current.passwordChangedAt?.getTime() ?? 0;
         if (changedAt > ((token.passwordChangedAt as number | undefined) ?? 0)) {
           return null;
@@ -279,6 +284,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // no-any-cast-on-session lint rule does not fire.
         session.user.id = token.id as string;
         session.user.role = token.role as Role;
+        session.user.mustChangePassword = token.mustChangePassword === true;
       }
       return session;
     },
