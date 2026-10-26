@@ -85,6 +85,8 @@ function FlowLinks({ base, req }: { base: string; req: RequisitionDetail }) {
     { href: `${base}/pipeline`, label: t("flowPipeline"), show: req.can.manage },
     { href: `${base}/screening`, label: t("flowScreening"), show: req.can.manage },
     { href: `${base}/assessment`, label: t("flowAssessment"), show: req.can.manage },
+    { href: `${base}/interviews`, label: t("flowInterviews"), show: true },
+    { href: `${base}/comparison`, label: t("flowComparison"), show: req.can.manage },
   ];
   return (
     <nav aria-label={t("flowNav")} className="flex flex-wrap gap-2">

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
-import { ExternalLink, Mail, Pencil, Star } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import Link from "next/link";
+import { CalendarPlus, ExternalLink, Mail, Pencil, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -166,10 +167,22 @@ function Header({ c, onEdit }: { c: CandidateDetail; onEdit: () => void }) {
 function InterviewsTab({ c }: { c: CandidateDetail }) {
   const t = useTranslations("hiring.candidate");
   const tr = useTranslations("hiring.round");
+  const locale = useLocale();
   return (
     <SectionCard
       title={t("interviewsTitle")}
-      actions={<span className="text-xs text-muted-foreground">{t("interviewsHint")}</span>}
+      subtitle={t("interviewsHint")}
+      actions={
+        c.can.manage && c.requisition ? (
+          <Link
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+            href={`/${locale}/hiring/interviews/new?candidateId=${c.id}`}
+          >
+            <CalendarPlus className="h-4 w-4" />
+            {t("scheduleInterview")}
+          </Link>
+        ) : null
+      }
     >
       {c.interviews.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("noInterviews")}</p>
@@ -178,7 +191,12 @@ function InterviewsTab({ c }: { c: CandidateDetail }) {
           {c.interviews.map((iv) => (
             <li key={iv.id} className="flex items-center justify-between gap-3 py-2">
               <div>
-                <p className="font-medium">{tr(iv.round)}</p>
+                <Link
+                  className="font-medium hover:underline"
+                  href={`/${locale}/hiring/interviews/${iv.id}`}
+                >
+                  {tr(iv.round)}
+                </Link>
                 <p className="text-xs text-muted-foreground">{formatDateTime(iv.scheduledDate)}</p>
               </div>
               <Badge
