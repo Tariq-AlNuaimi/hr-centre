@@ -42,6 +42,16 @@ const SOFT_DELETE_MODELS = new Set([
   "Directorate",
   "Team",
   "AccessRole",
+  // HR tickets (HIVE port). Tickets, their events/messages/reply tokens, the
+  // settings and rotation-config singletons are NOT soft-deletable.
+  "HrTagPair",
+  "HrTagMember",
+  "HrTagCoverage",
+  "RotationGroup",
+  "RotationCoverage",
+  "DiscountPartner",
+  "NetworkProvider",
+  "HiveEmailTemplate",
 ]);
 
 /**

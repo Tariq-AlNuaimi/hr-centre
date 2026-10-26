@@ -1,3 +1,5 @@
+import type { ScopeTypeCode } from "@/lib/validations/rbac";
+
 /** Wire shapes of /api/rbac/* as the admin screens consume them. */
 
 export type RoleRow = {
@@ -11,7 +13,7 @@ export type RoleRow = {
 
 export type AssignmentRow = {
   id: string;
-  scopeType: "GROUP" | "COMPANY" | "DIRECTORATE" | "DEPARTMENT";
+  scopeType: ScopeTypeCode;
   scopeId: string | null;
   scopeLabel: string | null;
   validFrom: string | null;

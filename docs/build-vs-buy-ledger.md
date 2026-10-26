@@ -812,3 +812,21 @@ does all three). **Keep each source module's own copy** (rejected — the operat
 calendar; the copies disagreed).
 
 Decision: build — ported from HR Onboarding/Offboarding with holidays added; no dependency.
+
+### 2026-10-27 — HR tickets: the HIVE port
+
+Scope: lib/hive/**, lib/validations/hive/**
+Considered: **Keep HIVE as a separate app** (rejected by the operator — HR Centre is Rihal's single
+HR system; HIVE's own users, org tables and permission grid would be a second identity and access
+system). **ServiceNow HRSD / Freshservice / Zendesk** (rejected — the ticket intake is Siraaj over
+MCP with tool schemas Siraaj already depends on, the approval-for-every-answer rule and the
+cross-company HR Tag pairs are bespoke, and a hosted service desk would hold employees' HR
+questions outside the group). **`@modelcontextprotocol/sdk` for the MCP endpoint** (rejected, as in
+HIVE ADR-074 — the server is stateless JSON-RPC over one POST with six tools; the SDK's transport
+and session machinery is surface Siraaj does not use). **CASL / a second grant table** for ticket
+permissions (rejected — HR Centre's role builder already has scopes, time-boxed assignments and an
+extensible scope registry; HIVE's grant rows become assignments).
+
+Decision: build (port) — HIVE's own code, carried over nearly verbatim (pure routing, rotation,
+reply-token, tool and protocol modules) and re-wired onto HR Centre's Prisma, org and RBAC. No new
+runtime dependency (`read-excel-file` for the provider import is already a dependency).

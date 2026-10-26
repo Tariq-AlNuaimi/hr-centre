@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { withAdminAuth } from "@/lib/api-helpers";
 import { ok, err, notFound } from "@/lib/api-response";
 import { updateUserSchema, roleForPlatformAdmin } from "@/lib/validations/user";
+import { assertHrAccessAdminRemains, assertPlatformAdminRemains } from "@/lib/rbac/guards";
+import { OrgRuleError } from "@/lib/org/rules";
 
 // Admin-only (matches the list route + admin-gated users nav). See SECURITY.md §3.
 export const GET = withAdminAuth(async (_request: NextRequest, { params }) => {
@@ -90,6 +92,17 @@ export const DELETE = withAdminAuth(async (_request: NextRequest, { params, sess
 
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) return notFound("User");
+
+  // A deleted account holds nothing, so the same last-holder guards as a login
+  // disable apply: the last platform admin, the last HR access admin and (HR
+  // tickets) the last permanent group-wide ticket approver are refused.
+  try {
+    await assertPlatformAdminRemains(id);
+    await assertHrAccessAdminRemains({ disabledUserId: id });
+  } catch (e) {
+    if (e instanceof OrgRuleError) return err(e.message, 409);
+    throw e;
+  }
 
   await prisma.user.delete({ where: { id } });
   // Don't echo the full row back -- it carries passwordHash + other Restricted

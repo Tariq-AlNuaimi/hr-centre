@@ -3,6 +3,7 @@ import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
 import { seedFoundation } from "./seed-foundation";
 import { seedJml } from "./seed-jml";
+import { seedHive } from "./seed-hive";
 import { seedPms } from "./seed-pms";
 
 async function main() {
@@ -56,6 +57,9 @@ async function main() {
     // Joiners, movers & leavers — reference configuration only (templates,
     // checklists, reason codes, statutory parameters). Idempotent; no people.
     await seedJml(prisma);
+    // HR tickets (HIVE port): real configuration only — pairs, coverage,
+    // rotation, discounts, the answer email and ticket starter roles.
+    await seedHive(prisma);
 
     // The 36-person demo fixture is for local development only. It never runs
     // unless asked for explicitly, so a real deployment holds no invented people.

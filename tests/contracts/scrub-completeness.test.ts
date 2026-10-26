@@ -37,6 +37,13 @@ const NON_SECRET_EXCEPTIONS = new Set<string>([
   // a credential value. The actual secrets on Account (access_token /
   // refresh_token / id_token / session_state) ARE in SCRUB_FIELDS.
   "token_type",
+  // HR tickets (HIVE ADR-070) `EscalationReplyToken.tokenHash`: a SHA-256
+  // DIGEST — the column exists so the secret is NOT stored. The raw token is 32
+  // bytes of CSPRNG output that lives only in one email; the digest cannot
+  // reconstruct it and cannot open a thread (`resolveReplyToken` hashes what it
+  // is given). The audit row it appears in records that a bearer link was
+  // ISSUED, an event worth keeping legible.
+  "tokenHash",
 ]);
 
 /** Extract `{ model, field }` pairs for every `String` scalar field in the schema. */

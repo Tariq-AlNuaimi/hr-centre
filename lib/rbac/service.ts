@@ -98,7 +98,7 @@ async function scopeLabels(rows: Array<{ scopeType: string; scopeId: string | nu
   const idsOf = (type: string) => [
     ...new Set(rows.filter((r) => r.scopeType === type && r.scopeId).map((r) => r.scopeId!)),
   ];
-  const [companies, directorates, departments] = await Promise.all([
+  const [companies, directorates, departments, pairs] = await Promise.all([
     prisma.orgEntity.findMany({
       where: { id: { in: idsOf("COMPANY") } },
       select: { id: true, name: true },
@@ -111,11 +111,17 @@ async function scopeLabels(rows: Array<{ scopeType: string; scopeId: string | nu
       where: { id: { in: idsOf("DEPARTMENT") } },
       select: { id: true, name: true, entity: { select: { code: true } } },
     }),
+    // HR tickets (HIVE port): an HR_PAIR assignment names an HR Tag pair.
+    prisma.hrTagPair.findMany({
+      where: { id: { in: idsOf("HR_PAIR") } },
+      select: { id: true, name: true },
+    }),
   ]);
   const labels = new Map<string, string>();
   for (const c of companies) labels.set(c.id, c.name);
   for (const d of directorates) labels.set(d.id, d.name);
   for (const d of departments) labels.set(d.id, `${d.entity.code} · ${d.name}`);
+  for (const p of pairs) labels.set(p.id, p.name);
   return labels;
 }
 
@@ -147,6 +153,7 @@ async function scopeUnitExists(scopeType: string, scopeId: string): Promise<bool
   if (scopeType === "COMPANY") return (await prisma.orgEntity.findUnique(where)) !== null;
   if (scopeType === "DIRECTORATE") return (await prisma.directorate.findUnique(where)) !== null;
   if (scopeType === "DEPARTMENT") return (await prisma.department.findUnique(where)) !== null;
+  if (scopeType === "HR_PAIR") return (await prisma.hrTagPair.findUnique(where)) !== null;
   return false;
 }
 

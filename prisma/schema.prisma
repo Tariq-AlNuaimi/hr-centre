@@ -77,7 +77,15 @@ model User {
   assignmentsGranted RoleAssignment[] @relation("AssignmentGrantor")
 
   // JML S1 — core configuration verified by this user.
-  statutoryVerified StatutoryParameter[] @relation("StatutoryParameterVerifier")
+  statutoryVerified        StatutoryParameter[] @relation("StatutoryParameterVerifier")
+  // HR tickets (HIVE port) — back-relations only; the columns live on hive_ tables.
+  hiveTagMember            HrTagMember?         @relation("HrTagMemberUser")
+  hiveEscalationsDrafted   Escalation[]         @relation("EscalationDraftedBy")
+  hiveEscalationsSubmitted Escalation[]         @relation("EscalationSubmittedBy")
+  hiveEscalationsApproved  Escalation[]         @relation("EscalationApprovedBy")
+  hiveEscalationEvents     EscalationEvent[]    @relation("EscalationEventActor")
+  hiveTemplatesUpdated     HiveEmailTemplate[]  @relation("HiveEmailTemplateUpdatedBy")
+  hiveSettingsUpdated      HiveTicketSettings[] @relation("HiveTicketSettingsUpdatedBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -213,6 +221,12 @@ enum ScopeType {
   COMPANY
   DIRECTORATE
   DEPARTMENT
+  /// HR tickets (HIVE port, ADR-073 → role builder): one named HR Tag pair
+  /// (`scopeId` = hive_hr_tag_pairs.id) — time-boxed cover uses it.
+  HR_PAIR
+  /// HR tickets: the pair of the HR Tag member linked to the holder's login,
+  /// resolved per request (`scopeId` is null). No linked member → covers nothing.
+  OWN_HR_PAIR
 }
 
 /// HR Centre F-c — a named bundle of catalogue permissions (lib/rbac/catalogue.ts).
@@ -485,6 +499,8 @@ model Employee {
   complianceAbout         ComplianceEvent[]       @relation("ComplianceSubject")
   complianceAgainst       ComplianceEvent[]       @relation("ComplianceManager")
   notifications           Notification[]          @relation("NotificationRecipient")
+  // HR tickets (HIVE port): tickets whose employee email matched this record.
+  hiveEscalations         Escalation[]            @relation("EscalationEmployee")
 
   // §12 back-relations.
   rollUpsAbout      ManagerRollUp[]            @relation("RollUpSubject")
@@ -1885,8 +1901,7 @@ model EmployeeAssignmentPeriod {
   @@map("employee_assignment_periods")
 }
 
-// ============================================================================
-// JML S1 — core configuration shared by every module (docs/blueprints/jml.md)
+// =====================================================================// JML S1 — core configuration shared by every module (docs/blueprints/jml.md)
 // ============================================================================
 
 /// The EMP-code cutover and allocator (Onboarding §14.1, BR-003, BR-021). A
@@ -2011,4 +2026,416 @@ model LeaveReasonCode {
 
   @@index([categoryId, active])
   @@map("leave_reason_codes")
+}
+
+// ===========================================================================
+// HR tickets — the HIVE port (docs/blueprints/hive.md, ADR-075 of HIVE).
+//
+// Employees ask in Siraaj; Siraaj calls `/api/mcp`, whose `hive_open_ticket`
+// tool is the only way a ticket is created. HR work the ticket through
+// OPEN → IN_PROGRESS → PENDING_APPROVAL → (APPROVED = sending) → SENT → CLOSED,
+// with SEND_FAILED as a side state. Every table keeps its `hive_` name so the
+// raw SQL (reports, provider search) ports verbatim.
+//
+// BINDING INVARIANT (HIVE §4.4): rotation coverage, HR Tag coverage and the org
+// chart are three INDEPENDENT structures. Each coverage table owns its own
+// `label` + `aliases`; links to core org units are optional, nullable soft
+// links (ids, no FK — core units are soft-deleted, and a dangling id resolves to
+// nothing, which is SetNull's behaviour without a back-relation on core models).
+// ===========================================================================
+
+/// Ticket lifecycle. APPROVED is the transient "sending" claim. HIVE's legacy
+/// NEW / DRAFTED values are deliberately not ported (nothing writes them).
+enum EscalationStatus {
+  OPEN
+  IN_PROGRESS
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  SEND_FAILED
+  CLOSED
+}
+
+/// One line of a ticket's history.
+enum EscalationEventKind {
+  OPENED
+  DRAFT_SAVED
+  SUBMITTED
+  RETURNED
+  APPROVED
+  SENT
+  SEND_FAILED
+  REOPENED
+  CLOSED
+}
+
+enum EscalationDirection {
+  INBOUND
+  OUTBOUND
+}
+
+/// Where a ticket came from. HIVE = the retired HIVE chat (historical only);
+/// new tickets are SIRAAJ.
+enum EscalationSource {
+  HIVE
+  SIRAAJ
+}
+
+enum RotationAnchorType {
+  A
+  B
+}
+
+enum RotationMode {
+  CONSTANT
+  GROUP_1
+  GROUP_2
+}
+
+enum DiscountEligibility {
+  ALL
+  FEMALE_ONLY
+  FEMALE_PLUS_FAMILY
+}
+
+/// Which core org table a `HiveOrgUnitInfo` row describes.
+enum HiveOrgUnitKind {
+  COMPANY
+  DIRECTORATE
+  DEPARTMENT
+  TEAM
+}
+
+/// CONFIDENTIAL. The approval trail — NOT soft-deletable, audited.
+/// `employeeName` / `employeeEmail` are immutable snapshots (service invariant):
+/// the delivery address and the record of what was asked, kept even when the
+/// linked Employee leaves, renames or changes mailbox.
+model Escalation {
+  id               String           @id @default(cuid())
+  /// Rendered `<prefix>-0047` by `formatTicketId`. A sequence: never repeats.
+  ticketNumber     Int              @unique @default(autoincrement())
+  hrPairId         String
+  employeeName     String
+  employeeEmail    String
+  /// The core Employee whose email matched at create time. Nullable: the email
+  /// may match nobody. Whether the email was the employee's own signed-in
+  /// identity or only the model's claim is `identityVerified`.
+  employeeId       String?
+  question         String           @db.Text
+  source           EscalationSource @default(HIVE)
+  /// True when Siraaj forwarded the signed-in identity (X-Siraaj-User-Email).
+  identityVerified Boolean          @default(false)
+  status           EscalationStatus @default(OPEN)
+  draftAnswer      String?          @db.Text
+  draftedById      String?
+  submittedById    String?
+  submittedAt      DateTime?
+  approvedById     String?
+  approvedAt       DateTime?
+  sentAt           DateTime?
+  threadKey        String           @unique @default(cuid())
+  sendError        String?          @db.Text
+
+  createdAt DateTime @default(now())
+  /// Load-bearing: the stale-claim takeover pins on it.
+  updatedAt DateTime @updatedAt
+
+  hrPair      HrTagPair              @relation(fields: [hrPairId], references: [id], onDelete: Restrict)
+  employee    Employee?              @relation("EscalationEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  draftedBy   User?                  @relation("EscalationDraftedBy", fields: [draftedById], references: [id], onDelete: SetNull)
+  submittedBy User?                  @relation("EscalationSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  approvedBy  User?                  @relation("EscalationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  messages    EscalationMessage[]
+  replyTokens EscalationReplyToken[]
+  events      EscalationEvent[]
+
+  @@index([status, createdAt])
+  @@index([employeeEmail, createdAt])
+  @@index([hrPairId, status])
+  @@index([employeeId])
+  @@index([draftedById])
+  @@index([approvedById])
+  @@index([submittedById])
+  @@map("hive_escalations")
+}
+
+/// A ticket's history, written in the SAME transaction as the status change.
+/// `actorId` null = HIVE / the system / the employee.
+model EscalationEvent {
+  id           String              @id @default(cuid())
+  escalationId String
+  kind         EscalationEventKind
+  actorId      String?
+  note         String?             @db.Text
+  at           DateTime            @default(now())
+
+  escalation Escalation @relation(fields: [escalationId], references: [id], onDelete: Cascade)
+  actor      User?      @relation("EscalationEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([escalationId, at])
+  @@index([actorId])
+  @@map("hive_escalation_events")
+}
+
+/// CONFIDENTIAL. Append-only thread: OUTBOUND = what HR sent, INBOUND = an
+/// employee follow-up through the reply link.
+model EscalationMessage {
+  id           String              @id @default(cuid())
+  escalationId String
+  direction    EscalationDirection
+  body         String              @db.Text
+  at           DateTime            @default(now())
+
+  escalation Escalation @relation(fields: [escalationId], references: [id], onDelete: Cascade)
+
+  @@index([escalationId, at])
+  @@map("hive_escalation_messages")
+}
+
+/// HIVE ADR-070 reply link. `tokenHash` is the SHA-256 DIGEST of a 32-byte
+/// CSPRNG token, never the token. Not soft-deleted, audited.
+model EscalationReplyToken {
+  id           String    @id @default(cuid())
+  tokenHash    String    @unique
+  escalationId String
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  lastUsedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  escalation Escalation @relation(fields: [escalationId], references: [id], onDelete: Cascade)
+
+  @@index([escalationId, expiresAt])
+  @@map("hive_escalation_reply_tokens")
+}
+
+/// An HR Tag pair — the two HR people a ticket is routed to. `name` is not
+/// unique and "exactly one isDefault" is a convention (the first wins).
+model HrTagPair {
+  id        String  @id @default(cuid())
+  name      String
+  order     Int     @default(0)
+  isDefault Boolean @default(false)
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  members     HrTagMember[]
+  coverage    HrTagCoverage[]
+  escalations Escalation[]
+
+  @@index([deletedAt, createdAt])
+  @@map("hive_hr_tag_pairs")
+}
+
+/// One person in a pair. `userId` is the HR Centre login this member signs in
+/// with: it defines that person's OWN_HR_PAIR scope (one member per login).
+model HrTagMember {
+  id       String  @id @default(cuid())
+  pairId   String
+  name     String
+  email    String
+  phone    String?
+  /// No upload path survives the port; reaches the tool card only as `hasPhoto`.
+  photoKey String?
+  order    Int     @default(0)
+  userId   String? @unique
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  pair HrTagPair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+  user User?     @relation("HrTagMemberUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([pairId, order])
+  @@index([deletedAt, createdAt])
+  @@map("hive_hr_tag_members")
+}
+
+/// What an HR Tag pair covers. Owns its OWN label + aliases (binding invariant).
+/// `companyWide` + `entityId` = whole-company routing (TP, Codeline) — always
+/// wins over a directorate. Otherwise `entityId` only SCOPES the row to a company
+/// (so "Operations" at TP never matches Rihal's Operations row); the optional
+/// directorate / department ids are soft links to core units.
+model HrTagCoverage {
+  id            String   @id @default(cuid())
+  pairId        String
+  label         String
+  aliases       String[] @default([])
+  entityId      String?
+  companyWide   Boolean  @default(false)
+  directorateId String?
+  departmentId  String?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  pair HrTagPair @relation(fields: [pairId], references: [id], onDelete: Cascade)
+
+  @@index([pairId])
+  @@index([entityId])
+  @@index([deletedAt, createdAt])
+  @@map("hive_hr_tag_coverage")
+}
+
+/// Singleton. The rotation anchor and weekend — read by the rotation tool
+/// (falls back to 2026-03-29 / A / Asia/Muscat / [5,6] when absent).
+model RotationConfig {
+  id          String             @id @default("singleton")
+  anchorDate  DateTime           @db.Date
+  anchorType  RotationAnchorType @default(A)
+  timezone    String             @default("Asia/Muscat")
+  /// ISO day numbers (Mon=1 … Sun=7).
+  weekendDays Int[]              @default([5, 6])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("hive_rotation_config")
+}
+
+model RotationGroup {
+  id    String       @id @default(cuid())
+  name  String
+  mode  RotationMode
+  order Int          @default(0)
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  coverage RotationCoverage[]
+
+  @@index([deletedAt, createdAt])
+  @@map("hive_rotation_groups")
+}
+
+/// Owns its OWN label + aliases. `entityId` marks the company the row belongs
+/// to (a company nothing covers is "not in the rotation" — Codeline).
+model RotationCoverage {
+  id            String   @id @default(cuid())
+  groupId       String
+  label         String
+  aliases       String[] @default([])
+  entityId      String?
+  directorateId String?
+  departmentId  String?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  group RotationGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([deletedAt, createdAt])
+  @@map("hive_rotation_coverage")
+}
+
+/// `validUntil` null = "not specified", never expired.
+model DiscountPartner {
+  id           String              @id @default(cuid())
+  name         String
+  offerSummary String              @db.Text
+  eligibility  DiscountEligibility @default(ALL)
+  validUntil   DateTime?           @db.Date
+  redemption   String?             @db.Text
+  onlineOnly   Boolean             @default(false)
+  url          String?
+  order        Int                 @default(0)
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([validUntil])
+  @@index([deletedAt, createdAt])
+  @@map("hive_discount_partners")
+}
+
+/// Insurance network providers (~464 rows, loaded by `npm run hive:providers`).
+/// Searched with pg_trgm `similarity()`; the GIN trigram index is raw SQL in the
+/// migration.
+model NetworkProvider {
+  id           String  @id @default(cuid())
+  name         String
+  providerType String?
+  location     String
+  address      String? @db.Text
+  phone        String?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([location])
+  @@index([deletedAt, createdAt])
+  @@map("hive_network_providers")
+}
+
+/// The editable answer email (key "escalation-answer"). Reset rewrites the
+/// default text; it never deletes (a tombstone would hold the unique key).
+model HiveEmailTemplate {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  subject     String
+  body        String  @db.Text
+  updatedById String?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  updatedBy User? @relation("HiveEmailTemplateUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
+  @@index([deletedAt, createdAt])
+  @@map("hive_email_templates")
+}
+
+/// Singleton: ticket prefix + status label overrides. Missing row = defaults.
+model HiveTicketSettings {
+  id           String  @id @default("singleton")
+  ticketPrefix String  @default("HIVE")
+  statusLabels Json    @default("{}")
+  updatedById  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  updatedBy User? @relation("HiveTicketSettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
+  @@map("hive_ticket_settings")
+}
+
+/// Org-chart details the `hive_org_structure` tool tells Siraaj that core org
+/// has no column for: a unit's leader and title, and display order. Keyed by a
+/// soft link to the core unit (kind + id). Module-owned: core org is the JML
+/// module's, and this never changes what a unit is.
+model HiveOrgUnitInfo {
+  id          String          @id @default(cuid())
+  kind        HiveOrgUnitKind
+  unitId      String
+  leaderName  String?
+  leaderTitle String?
+  order       Int             @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([kind, unitId])
+  @@map("hive_org_unit_info")
 }
