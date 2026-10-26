@@ -57,6 +57,7 @@
 - app/api/employees/[id]/route.ts  [GET,PUT]
 - app/api/employees/route.ts  [GET,POST]
 - app/api/health/route.ts  [GET]
+- app/api/hive/pairs/route.ts  [GET]
 - app/api/imports/[id]/apply/route.ts  [POST]
 - app/api/imports/route.ts  [GET,POST]
 - app/api/imports/template/route.ts  [GET]
@@ -123,7 +124,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -134,7 +135,7 @@
 - Directorate: id, name, entityId, entity, departments, deletedAt, deletedBy, createdAt, updatedAt
 - Team: id, name, departmentId, department, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, directorateId, directorate, teams, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -172,6 +173,21 @@
 - PositionClassification: id, code, label, active, sortOrder, employees, createdAt, updatedAt
 - LeaveReasonCategory: id, level1, label, active, sortOrder, codes, createdAt, updatedAt
 - LeaveReasonCode: id, categoryId, category, code, label, active, sortOrder, createdAt, updatedAt
+- Escalation: id, ticketNumber, hrPairId, employeeName, employeeEmail, employeeId, question, source, identityVerified, status, draftAnswer, draftedById, submittedById, submittedAt, approvedById, approvedAt, sentAt, threadKey, sendError, createdAt, updatedAt, hrPair, employee, draftedBy, submittedBy, approvedBy, messages, replyTokens, events
+- EscalationEvent: id, escalationId, kind, actorId, note, at, escalation, actor
+- EscalationMessage: id, escalationId, direction, body, at, escalation
+- EscalationReplyToken: id, tokenHash, escalationId, expiresAt, revokedAt, lastUsedAt, createdAt, escalation
+- HrTagPair: id, name, order, isDefault, deletedAt, deletedBy, createdAt, updatedAt, members, coverage, escalations
+- HrTagMember: id, pairId, name, email, phone, photoKey, order, userId, deletedAt, deletedBy, createdAt, updatedAt, pair, user
+- HrTagCoverage: id, pairId, label, aliases, entityId, companyWide, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, pair
+- RotationConfig: id, anchorDate, anchorType, timezone, weekendDays, createdAt, updatedAt
+- RotationGroup: id, name, mode, order, deletedAt, deletedBy, createdAt, updatedAt, coverage
+- RotationCoverage: id, groupId, label, aliases, entityId, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, group
+- DiscountPartner: id, name, offerSummary, eligibility, validUntil, redemption, onlineOnly, url, order, deletedAt, deletedBy, createdAt, updatedAt
+- NetworkProvider: id, name, providerType, location, address, phone, deletedAt, deletedBy, createdAt, updatedAt
+- HiveEmailTemplate: id, key, subject, body, updatedById, deletedAt, deletedBy, createdAt, updatedAt, updatedBy
+- HiveTicketSettings: id, ticketPrefix, statusLabels
+- HiveOrgUnitInfo: id, kind, unitId, leaderName, leaderTitle, order, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -185,6 +201,10 @@
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
+- lib/hive/pair-scope.ts: registerHivePairScopes
+- lib/hive/roles.ts: TicketStarterKey, TICKET_STARTER_ROLES
+- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission
+- lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -279,13 +299,14 @@
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
+- lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/login.ts: issueLoginSchema, changePasswordSchema, ChangePasswordBody
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
 - lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, AddEmployeeBody, recordFromBody
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
-- lib/validations/rbac.ts: roleBodySchema, ORG_SCOPE_TYPES, assignmentBodySchema, RoleBody, AssignmentBody
+- lib/validations/rbac.ts: roleBodySchema, ORG_SCOPE_TYPES, SCOPE_TYPES, ScopeTypeCode, UNITLESS_SCOPES, assignmentBodySchema, RoleBody, AssignmentBody
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput

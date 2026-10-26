@@ -1941,13 +1941,14 @@
     "delete": "Delete",
     "deleteTitle": "Delete {name}?",
     "deleteDescription": "A role that is still assigned cannot be deleted; remove its assignments first",
-    "scopeNote": "People actions and login management apply within an assignment's scope. Performance, organisation and import actions only take effect when the role is given for the whole group",
+    "scopeNote": "People actions and login management apply within an assignment's scope. HR ticket drafting and approving apply to the HR pair the assignment names (or the holder's own pair). Performance, organisation, import and other ticket actions only take effect when the role is given for the whole group",
     "module": {
       "people": "People",
       "org": "Organisation",
       "imports": "Imports",
       "logins": "Logins",
-      "perf": "Performance"
+      "perf": "Performance",
+      "tickets": "HR tickets"
     },
     "permission": {
       "people": {
@@ -1973,6 +1974,14 @@
         "calibrate": "Run calibration",
         "exportMaster": "Export master results",
         "viewReports": "See performance reports"
+      },
+      "tickets": {
+        "see": "See the HR ticket queue",
+        "draft": "Draft ticket answers",
+        "approve": "Approve and send ticket answers",
+        "editContent": "Edit the answer email and ticket settings",
+        "configure": "Manage HR pairs, coverage, rotation, discounts and providers",
+        "viewReports": "See ticket reports"
       }
     },
     "assignments": "Assignments",
@@ -1987,7 +1996,9 @@
       "GROUP": "Whole group",
       "COMPANY": "Company",
       "DIRECTORATE": "Directorate",
-      "DEPARTMENT": "Department"
+      "DEPARTMENT": "Department",
+      "HR_PAIR": "One HR pair",
+      "OWN_HR_PAIR": "Their own HR pair"
     },
     "validUntil": "Valid until (optional)",
     "validUntilHint": "For cover. At most 180 days; leave empty for no end date",
@@ -2005,7 +2016,8 @@
     "searchHint": "Type at least two letters. Only people with an account are listed",
     "change": "Change",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "pairScope": "HR pair: {pair}"
   },
   "home": {
     "title": "Home",

@@ -13,7 +13,7 @@
  * acting outside its scope. `SCOPED_PERMISSIONS` is the list that honours scope.
  */
 
-export const MODULES = ["people", "org", "imports", "logins", "perf"] as const;
+export const MODULES = ["people", "org", "imports", "logins", "perf", "tickets"] as const;
 export type ModuleKey = (typeof MODULES)[number];
 
 export const PERMISSIONS = [
@@ -31,6 +31,15 @@ export const PERMISSIONS = [
   { code: "perf.calibrate", module: "perf" },
   { code: "perf.exportMaster", module: "perf" },
   { code: "perf.viewReports", module: "perf" },
+  // HR tickets (the HIVE port — docs/blueprints/hive.md). `draft` and `approve`
+  // honour an HR-pair scope (HR_PAIR / OWN_HR_PAIR, registered by
+  // lib/hive/access.ts); the rest act group-wide only.
+  { code: "tickets.see", module: "tickets" },
+  { code: "tickets.draft", module: "tickets" },
+  { code: "tickets.approve", module: "tickets" },
+  { code: "tickets.editContent", module: "tickets" },
+  { code: "tickets.configure", module: "tickets" },
+  { code: "tickets.viewReports", module: "tickets" },
 ] as const satisfies ReadonlyArray<{ code: string; module: ModuleKey }>;
 
 export type Permission = (typeof PERMISSIONS)[number]["code"];
@@ -49,7 +58,17 @@ export const SCOPED_PERMISSIONS = new Set<Permission>([
   "people.viewPersonal",
   "people.viewIdDocuments",
   "logins.manage",
+  // HR tickets — scoped to an HR Tag pair, not an org unit.
+  "tickets.draft",
+  "tickets.approve",
 ]);
+
+/** The modules the foundation's starter roles were written for (migration 20261026180000). */
+const FOUNDATION_MODULES = new Set<ModuleKey>(["people", "org", "imports", "logins", "perf"]);
+
+function moduleOf(code: Permission): ModuleKey {
+  return PERMISSIONS.find((p) => p.code === code)!.module;
+}
 
 export type StarterKey = "HR_SUPER_ADMIN" | "HRBP" | "EXECUTIVE_VIEWER";
 
@@ -71,7 +90,10 @@ export const STARTER_ROLES: ReadonlyArray<{
     key: "HR_SUPER_ADMIN",
     name: "HR Super Admin",
     description: "Everything, including configuration, calibration and the master export.",
-    permissions: PERMISSION_CODES,
+    // The foundation's catalogue as the migration created it — NOT every code:
+    // a module's actions (e.g. HR tickets) are granted through that module's
+    // own starter roles, so adding a module never silently widens this role.
+    permissions: PERMISSION_CODES.filter((p) => FOUNDATION_MODULES.has(moduleOf(p))),
   },
   {
     key: "HRBP",

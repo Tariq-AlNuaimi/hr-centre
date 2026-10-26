@@ -29,6 +29,14 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   Directorate: { displayField: "name" },
   Team: { displayField: "name" },
   AccessRole: { displayField: "name" },
+  // HR tickets (HIVE port) reference data.
+  HrTagPair: { displayField: "name" },
+  HrTagMember: { displayField: "name" },
+  HrTagCoverage: { displayField: "label" },
+  RotationGroup: { displayField: "name" },
+  RotationCoverage: { displayField: "label" },
+  DiscountPartner: { displayField: "name" },
+  NetworkProvider: { displayField: "name" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

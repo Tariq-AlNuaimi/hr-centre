@@ -69,9 +69,11 @@ export function AssignmentsSection() {
                 <span className="font-medium text-foreground">{a.user.name ?? a.user.email}</span>
                 <Badge variant="brand">{a.role.name}</Badge>
                 <span className="text-muted-foreground">
-                  {a.scopeType === "GROUP"
-                    ? t("scopeType.GROUP")
-                    : (a.scopeLabel ?? t("unitMissing"))}
+                  {a.scopeType === "GROUP" || a.scopeType === "OWN_HR_PAIR"
+                    ? t(`scopeType.${a.scopeType}`)
+                    : a.scopeType === "HR_PAIR"
+                      ? t("pairScope", { pair: a.scopeLabel ?? t("unitMissing") })
+                      : (a.scopeLabel ?? t("unitMissing"))}
                 </span>
                 {a.validUntil ? (
                   <Badge variant={expired ? "warning" : "default"}>

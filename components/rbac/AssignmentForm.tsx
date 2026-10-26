@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/org/NativeSelect";
 import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
-import { ORG_SCOPE_TYPES } from "@/lib/validations/rbac";
+import { SCOPE_TYPES, UNITLESS_SCOPES, type ScopeTypeCode } from "@/lib/validations/rbac";
 import { UserSearch } from "./UserSearch";
 import type { RoleRow } from "./types";
 
@@ -23,7 +23,7 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
     null,
   );
   const [roleId, setRoleId] = useState("");
-  const [scopeType, setScopeType] = useState<(typeof ORG_SCOPE_TYPES)[number]>("GROUP");
+  const [scopeType, setScopeType] = useState<ScopeTypeCode>("GROUP");
   const [scopeId, setScopeId] = useState("");
   const [validUntil, setValidUntil] = useState("");
   const [note, setNote] = useState("");
@@ -35,9 +35,10 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
     queryFn: async (): Promise<Unit[]> => {
       if (scopeType === "COMPANY") return apiClient.get<Unit[]>("/api/org/entities");
       if (scopeType === "DIRECTORATE") return apiClient.get<Unit[]>("/api/org/directorates");
+      if (scopeType === "HR_PAIR") return apiClient.get<Unit[]>("/api/hive/pairs");
       return (await apiClient.get<{ data: Unit[] }>("/api/org/departments?pageSize=100")).data;
     },
-    enabled: scopeType !== "GROUP",
+    enabled: !UNITLESS_SCOPES.has(scopeType),
   });
 
   async function submit() {
@@ -48,7 +49,7 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
         userId: account?.id ?? "",
         roleId,
         scopeType,
-        scopeId: scopeType === "GROUP" ? null : scopeId || null,
+        scopeId: UNITLESS_SCOPES.has(scopeType) ? null : scopeId || null,
         validUntil: validUntil ? new Date(`${validUntil}T23:59:59Z`).toISOString() : null,
         note: note.trim() || null,
       });
@@ -105,19 +106,19 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
             id="assign-scope"
             value={scopeType}
             onChange={(e) => {
-              setScopeType(e.target.value as (typeof ORG_SCOPE_TYPES)[number]);
+              setScopeType(e.target.value as ScopeTypeCode);
               setScopeId("");
             }}
             className="w-full"
           >
-            {ORG_SCOPE_TYPES.map((s) => (
+            {SCOPE_TYPES.map((s) => (
               <option key={s} value={s}>
                 {t(`scopeType.${s}`)}
               </option>
             ))}
           </NativeSelect>
         </div>
-        {scopeType !== "GROUP" ? (
+        {!UNITLESS_SCOPES.has(scopeType) ? (
           <div>
             {label("assign-unit", t("unit"))}
             <NativeSelect
@@ -157,7 +158,7 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
       ) : null}
       <Button
         type="submit"
-        disabled={busy || !account || !roleId || (scopeType !== "GROUP" && !scopeId)}
+        disabled={busy || !account || !roleId || (!UNITLESS_SCOPES.has(scopeType) && !scopeId)}
       >
         {busy ? t("saving") : t("assign")}
       </Button>
