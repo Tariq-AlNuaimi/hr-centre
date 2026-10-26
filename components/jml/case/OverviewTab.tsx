@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { MoveSummary } from "../movers/MoveSummary";
+import { ExitOverview } from "../leavers/ExitOverview";
 import type { CaseDetail } from "./types";
 
 /** Overview — the case header in full, the joiner's IT status, external systems. */
@@ -48,6 +49,7 @@ export function OverviewTab({ detail }: { detail: CaseDetail }) {
       <DescriptionList items={items} columns={2} />
       {j ? <JoinSummary j={j} /> : null}
       {detail.moveDetail ? <MoveSummary move={detail.moveDetail} /> : null}
+      {detail.caseType === "LEAVE" ? <ExitOverview caseId={detail.id} /> : null}
       <SectionCard title={t("external")} subtitle={t("externalNote")}>
         <ul className="space-y-2 text-sm">
           {detail.externalLinks.map((l) => (

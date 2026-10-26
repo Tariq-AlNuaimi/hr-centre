@@ -58,11 +58,17 @@
 - app/[locale]/(dashboard)/jml/joiners/[id]/page.tsx
 - app/[locale]/(dashboard)/jml/joiners/new/page.tsx
 - app/[locale]/(dashboard)/jml/joiners/page.tsx
+- app/[locale]/(dashboard)/jml/leavers/new/page.tsx
+- app/[locale]/(dashboard)/jml/leavers/page.tsx
 - app/[locale]/(dashboard)/jml/movers/new/page.tsx
 - app/[locale]/(dashboard)/jml/movers/page.tsx
 - app/[locale]/(dashboard)/jml/page.tsx
 - app/[locale]/(dashboard)/jml/reports/[slug]/page.tsx
+- app/[locale]/(dashboard)/jml/reports/overrides/page.tsx
 - app/[locale]/(dashboard)/jml/reports/page.tsx
+- app/[locale]/(dashboard)/jml/settings/access-checklist/page.tsx
+- app/[locale]/(dashboard)/jml/settings/approval-authority/page.tsx
+- app/[locale]/(dashboard)/jml/settings/asset-types/page.tsx
 - app/[locale]/(dashboard)/jml/settings/calendar/page.tsx
 - app/[locale]/(dashboard)/jml/settings/classifications/page.tsx
 - app/[locale]/(dashboard)/jml/settings/contract-types/page.tsx
@@ -175,9 +181,14 @@
 - app/api/internal/jml-sweep/route.ts  [GET,POST]
 - app/api/jml/calendar/export/route.ts  [GET]
 - app/api/jml/calendar/route.ts  [GET]
+- app/api/jml/cases/[id]/access/[itemId]/confirm/route.ts  [POST]
+- app/api/jml/cases/[id]/access/route.ts  [GET,POST]
 - app/api/jml/cases/[id]/activity/route.ts  [GET]
 - app/api/jml/cases/[id]/actual-start/route.ts  [POST]
 - app/api/jml/cases/[id]/archive/route.ts  [POST]
+- app/api/jml/cases/[id]/assets/[assetId]/return/route.ts  [POST]
+- app/api/jml/cases/[id]/assets/[assetId]/write-off/route.ts  [POST]
+- app/api/jml/cases/[id]/assets/route.ts  [GET,POST]
 - app/api/jml/cases/[id]/cancel/route.ts  [POST]
 - app/api/jml/cases/[id]/emails/route.ts  [GET,POST]
 - app/api/jml/cases/[id]/it-intake/route.ts  [POST]
@@ -190,6 +201,9 @@
 - app/api/jml/cases/[id]/tasks/route.ts  [GET,POST]
 - app/api/jml/cases/export/route.ts  [GET]
 - app/api/jml/cases/route.ts  [GET]
+- app/api/jml/config/access-checklist/route.ts  [GET,PUT]
+- app/api/jml/config/approval-authority/route.ts  [GET,PUT]
+- app/api/jml/config/asset-types/route.ts  [GET,PUT]
 - app/api/jml/config/contract-types/[id]/route.ts  [PATCH]
 - app/api/jml/config/contract-types/route.ts  [GET,POST]
 - app/api/jml/config/email-templates/[type]/route.ts  [GET,PATCH,DELETE]
@@ -215,6 +229,16 @@
 - app/api/jml/joiners/[id]/activate/route.ts  [GET,POST]
 - app/api/jml/joiners/[id]/route.ts  [GET,PATCH,DELETE]
 - app/api/jml/joiners/route.ts  [GET,POST]
+- app/api/jml/leavers/[id]/activate/route.ts  [GET,POST]
+- app/api/jml/leavers/[id]/approvals/[approvalId]/route.ts  [PATCH]
+- app/api/jml/leavers/[id]/approvals/route.ts  [GET,POST]
+- app/api/jml/leavers/[id]/cancel/route.ts  [POST]
+- app/api/jml/leavers/[id]/dates/route.ts  [PUT]
+- app/api/jml/leavers/[id]/gates/route.ts  [GET,PUT]
+- app/api/jml/leavers/[id]/rekey/route.ts  [GET,POST]
+- app/api/jml/leavers/[id]/route.ts  [GET,PATCH]
+- app/api/jml/leavers/overrides/route.ts  [GET]
+- app/api/jml/leavers/route.ts  [POST]
 - app/api/jml/lookups/route.ts  [GET]
 - app/api/jml/me/route.ts  [GET]
 - app/api/jml/movers/profile/route.ts  [GET]
@@ -289,7 +313,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveGatesSatisfied, leaveGatesOverridden
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -300,7 +324,7 @@
 - Directorate: id, name, entityId, entity, departments, deletedAt, deletedBy, createdAt, updatedAt
 - Team: id, name, departmentId, department, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, directorateId, directorate, teams, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, leaveCasesManaged, jmlApprovalsHeld, jmlAuthorityDelegate, jmlAuthoritySecond, jmlAssets, jmlAccessItems, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -384,7 +408,7 @@
 - HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
 - HiringDepartmentNeed: id, roundId, round, departmentId, ownerId, status, rolesRequested, agreedRoles, askedAt, chasedAt, submittedAt, discussedAt, notes, requisitions, createdAt, updatedAt
 - HiringNeedNote: id, needId, need, authorId, authorName, authorRole, body, createdAt
-- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, deletedAt, deletedBy, createdAt, updatedAt
+- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, leaveDetail, approvals, assetsIssued, assetsReturned, accessItems, gateRecords, incidents, deletedAt, deletedBy, createdAt, updatedAt
 - JmlTaskTemplate: id, name, version, active, caseType, changeType, criteria
 - JmlTemplateTask: id, templateId, template, code, name, stage, sortOrder, dateBasis, offsetDays, offsetUnit, mandatory, blocking, confirmationRequired, defaultConfirmingParty, reversalFlag, dependsOnCodes, statutory, complianceCategory
 - JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
@@ -396,6 +420,15 @@
 - JmlEmailTemplateOverride: id, type, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - JmlJoinDetail: caseId, case, contractTypeId, contractType, plannedStartDate, actualStartDate, contractStartDate, contractEndDate, probationMonths, payrollApplicable, clientAssignedRole, introSentence, hobbies, msAccountRequired, laptopRequired, accessCardRequired, itReadinessConfirmed, itReadinessAt, itReadinessById, itReadinessBy, itIntakeSubmittedAt, itIntakeReference, itIntakeError, sourceRef, createdAt, updatedAt
 - JmlMoveDetail: caseId, case, changeType, effectiveDate
+- LeaveCaseDetail: caseId, case, exitType, exitSubtype, employmentTypeAtExit, nationality, noticeStartDate, noticePeriodDays, noticePeriodOverrideReason, lastPhysicalWorkingDay, lastDayOfService, departureDate, earlyReleaseApproved, settlementApplicable, visaSupportApplicable, docRefPerformanceHistory, docRefWrittenGrounds, docRefLegalReview, backfillDecision, backfillApprovalRef, rehireEligible, migrated, manuallyCreated, employeeNameAtExit, jobTitleAtExit, gradeAtExit, positionClassificationName, entityIdAtExit, directorateIdAtExit, departmentIdAtExit, teamIdAtExit, lineManagerEmployeeId, lineManager, rekeyedAt, rekeyReason, loginRevokedAt, departureAppliedAt, departureNote, createdAt, updatedAt
+- JmlApproval: id, caseId, case, approvalType, holderRoleKey, status, requestedAt, decisionDate, reference, comments, holderEmployeeId, holderEmployee, decidedById, decidedBy, delegateUsed, secondLevelUsed, createdAt, updatedAt
+- JmlApprovalAuthority: id, approvalType, holderLabel, delegateEmployeeId, delegate, secondLevelDelegateEmployeeId, secondLevelDelegate, active, createdAt, updatedAt
+- JmlAssetType: id, label, active, sortOrder, assets, createdAt, updatedAt
+- JmlAsset: id, employeeId, employee, issuedOnCaseId, issuedOnCase, returnedOnCaseId, returnedOnCase, assetTypeId, assetType, description, identifier, issuedDate, conditionAtIssue, returnDueDate, returnedDate, conditionAtReturn, deductionApplicable, deductionAmountEnc, writtenOff, writtenOffReason, verifiedById, verifiedBy, createdAt, updatedAt
+- JmlAccessChecklistItem: id, domain, label, rotationRequired, sharedCredential, active, sortOrder, createdAt, updatedAt
+- JmlAccessItem: id, caseId, case, employeeId, employee, direction, domain, systemName, accessLevel, sharedCredential, rotationRequired, dueDate, confirmedDate, confirmingParty, reference, confirmedById, confirmedBy, createdAt, updatedAt
+- LeaveGateRecord: id, caseId, case, gateId, satisfied, satisfiedAt, satisfiedById, satisfiedBy, reference, overriddenById, overriddenBy, overrideReason, overriddenAt, createdAt, updatedAt
+- LeaveComplianceIncident: id, caseId, case, kind, gateId, detectedAt, deadlineAt, daysLate, resolvedAt, note, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -523,10 +556,33 @@
 - lib/jml/join/sweep-steps.ts: itReadinessReminders, overdueDigests
 - lib/jml/join/triggers.ts: onActivated, notifyProIfVisaRequired, onActualStartEntered, onStartDateChanged
 - lib/jml/join/update.ts: updateJoiner
+- lib/jml/leave/activation-gate.ts: LeaveActivationCandidate, leaveActivationProblems
+- lib/jml/leave/activation.ts: previewLeaveActivation, wouldGenerate, activateLeave
+- lib/jml/leave/approval-rules.ts: TERMINATION_AUTHORISATION_HOLDERS, APPROVAL_HOLDERS, APPROVAL_TYPES, requiresSecondLevelDelegate, Problem, checkAuthorityConfig, checkTerminationAuthorisation, checkHolders, ApprovalDecision, decisionProblem, needsReminder
+- lib/jml/leave/approvals.ts: listApprovals, requestApproval, decideApproval
+- lib/jml/leave/authority.ts: listAuthorities, saveAuthority
+- lib/jml/leave/cancel.ts: cancelLeave, restoreLogin
+- lib/jml/leave/compliance.ts: COMPLIANCE_GATES, GateId, GATE_IDS, isGateId, ComplianceProfile, applicableGates, GateRecordLike, checkClosureGates, gateDataProblem, INCIDENT_KINDS, IncidentKind, daysLate, DetectedIncident, detectIncidents
+- lib/jml/leave/config.ts: listAssetTypes, saveAssetType, listAccessChecklist, saveAccessChecklistItem
+- lib/jml/leave/dates.ts: changeExitDates
+- lib/jml/leave/draft.ts: createExitDraft, refreshSnapshots, updateExit
+- lib/jml/leave/gates.ts: listGates, recordGate, overridesForMonth
+- lib/jml/leave/health.ts: ESCALATION_WORKING_DAYS, STATUTORY_WATCH_WORKING_DAYS, HealthInput, leaveRag, leaveHealth
+- lib/jml/leave/leave-data.ts: LEAVE_SELECT, LeaveRow, LeaveDetail, loadLeaveRow, leaveAnchors, revocationAnchor
+- lib/jml/leave/notices.ts: caseRecipients, noticeToOwners
+- lib/jml/leave/read.ts: getExit, ExitView
+- lib/jml/leave/rekey-rules.ts: REKEY_MAX_BACKDATE_DAYS, rekeyEligibility, Disposition, dispositionProblems, dueBeforeToday
+- lib/jml/leave/rekey.ts: rekeyPlan, applyRekey
+- lib/jml/leave/rules.ts: DEFAULT_NOTICE_DAYS, DOCUMENTED_EXIT_TYPES, DateFacts, Problem, dateProblems, nationalityBranch, describeRefusal
+- lib/jml/leave/sweep-steps.ts: leaveHealthRefresh, leaveDailyNotices, incidentScan
+- lib/jml/money/crypto.ts: sealMoney, openMoney
 - lib/jml/move/apply.ts: applyMove
 - lib/jml/move/create.ts: createMove
 - lib/jml/move/profile.ts: MOVE_EMPLOYEE_SELECT, MoveEmployee, detailsOf, loadMoveEmployee, labelsFor, Snapshot, snapshots, moveProfile
 - lib/jml/move/rules.ts: CHANGE_FIELDS, ChangeField, EmployeeDetails, ChangeDetailsInput, overlayDetails, changeRefusal, applyChangeRules, changedFields
+- lib/jml/register/access-items.ts: listAccessItems, addAccessItem, confirmAccessItem
+- lib/jml/register/assets.ts: activeAssetTypes, listCaseAssets, addAsset, recordAssetReturn, writeOffAsset
+- lib/jml/register/rules.ts: unsettledAssets, AccessConfirmation, accessConfirmationProblem, rotationFor
 - lib/jml/reports/join-aggregate.ts: hrWorkload, volumeTrend, allCompanies
 - lib/jml/reports/join-base.ts: ReportRow, ReportColumn, ReportContext, ReportDefinition, ROW_LIMIT, col, monthRange, joinWhere, CASE_SELECT, caseRow, runCaseReport, CASE_IDENTITY, goLiveDate
 - lib/jml/reports/join-cases.ts: monthlyOnboarding, onboardingCompletion, delayedTasks, upcomingJoiners, completedOnboardings
@@ -650,6 +706,7 @@
 - lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, employeeCodeRecordSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
 - lib/validations/jml/joiner.ts: ROLE_TRACKS, draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, openJoinCaseSchema, OpenJoinCaseInput
+- lib/validations/jml/leave.ts: EXIT_TYPES, EXIT_SUBTYPES, NATIONALITY_BRANCHES, APPROVAL_TYPE_VALUES, ACCESS_DOMAIN_VALUES, createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, stageAdvanceSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters
 - lib/validations/jml/task.ts: TASK_STATUS_VALUES, updateTaskSchema, manualTaskSchema, commentSchema
@@ -740,11 +797,14 @@
 - components/jml/CaseBits.tsx
 - components/jml/Field.tsx
 - components/jml/States.tsx
+- components/jml/case/AccessSection.tsx
+- components/jml/case/AssetsSection.tsx
 - components/jml/case/CaseActions.tsx
 - components/jml/case/CaseScreen.tsx
 - components/jml/case/ChecklistTab.tsx
 - components/jml/case/EmailsTab.tsx
 - components/jml/case/OverviewTab.tsx
+- components/jml/case/RegisterTab.tsx
 - components/jml/case/TaskActions.tsx
 - components/jml/case/TaskRow.tsx
 - components/jml/cases/CaseList.tsx
@@ -753,18 +813,31 @@
 - components/jml/joiners/JoinerForm.tsx
 - components/jml/joiners/JoinerList.tsx
 - components/jml/joiners/JoinerMoreFields.tsx
+- components/jml/leavers/ApprovalsTab.tsx
+- components/jml/leavers/ComplianceTab.tsx
+- components/jml/leavers/ExitActivation.tsx
+- components/jml/leavers/ExitDateFields.tsx
+- components/jml/leavers/ExitDatesDialog.tsx
+- components/jml/leavers/ExitDetailsDialog.tsx
+- components/jml/leavers/ExitOverview.tsx
+- components/jml/leavers/ExitStart.tsx
+- components/jml/leavers/LeaverList.tsx
+- components/jml/leavers/WithdrawExit.tsx
 - components/jml/movers/MoveSummary.tsx
 - components/jml/movers/MoverForm.tsx
 - components/jml/movers/MoverList.tsx
 - components/jml/movers/MoverStart.tsx
 - components/jml/nav.tsx
+- components/jml/reports/OverridesScreen.tsx
 - components/jml/reports/ReportScreen.tsx
 - components/jml/reports/ReportsIndex.tsx
+- components/jml/settings/ApprovalAuthoritySettings.tsx
 - components/jml/settings/CalendarSettings.tsx
 - components/jml/settings/CodedListSettings.tsx
 - components/jml/settings/EmailTemplatesSettings.tsx
 - components/jml/settings/EmployeeCodeSettings.tsx
 - components/jml/settings/EmploymentTypesSettings.tsx
+- components/jml/settings/LeaverListsSettings.tsx
 - components/jml/settings/RetentionSettings.tsx
 - components/jml/settings/RuleForm.tsx
 - components/jml/settings/RulesSettings.tsx

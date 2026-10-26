@@ -37,6 +37,7 @@ export type Lookups = {
   }>;
   hrUsers: Array<{ id: string; name: string | null; email: string; supervises: boolean }>;
   classifications: Array<{ id: string; code: string; label: string }>;
+  assetTypes: Array<{ id: string; label: string }>;
 };
 
 /** Read-only pickers every JML form shares (no admin route — Onboarding 8.4.2 / F7). */

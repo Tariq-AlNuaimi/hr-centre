@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Settings2,
   ShieldAlert,
+  UserMinus,
   UserPlus,
 } from "lucide-react";
 
@@ -38,6 +39,13 @@ export function jmlNavItems(can: (permission: string) => boolean): JmlNavItem[] 
       href: "/jml/movers",
       icon: <ArrowLeftRight className="h-4 w-4" />,
       show: can("jml.manageMovers"),
+    },
+    {
+      key: "jml-leavers",
+      labelKey: "jmlLeavers",
+      href: "/jml/leavers",
+      icon: <UserMinus className="h-4 w-4" />,
+      show: can("jml.manageLeavers"),
     },
     {
       key: "jml-calendar",

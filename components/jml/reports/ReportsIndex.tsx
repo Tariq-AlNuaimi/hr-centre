@@ -46,6 +46,15 @@ export function ReportsIndex() {
           ))}
         </ul>
       </SectionCard>
+      <SectionCard title={t("leaveGroup")}>
+        <Link
+          href="/jml/reports/overrides"
+          className="block rounded-md border border-border p-4 outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="block text-sm font-medium text-foreground">{t("overrides.title")}</span>
+          <span className="mt-1 block text-xs text-muted-foreground">{t("overrides.note")}</span>
+        </Link>
+      </SectionCard>
     </div>
   );
 }

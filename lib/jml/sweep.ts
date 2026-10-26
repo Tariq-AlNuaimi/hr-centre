@@ -5,6 +5,7 @@ import { drainQueue } from "./email/queue";
 import { notifyJml } from "./engine/notify";
 import { runRetention } from "./join/retention";
 import { itReadinessReminders, overdueDigests } from "./join/sweep-steps";
+import { leaveDailyNotices, leaveHealthRefresh } from "./leave/sweep-steps";
 import { isLocalHour } from "@/lib/working-time/calendar";
 
 /**
@@ -52,6 +53,8 @@ export const SWEEP_STEPS: SweepStep[] = [
   { name: "failedEmailAlerts", run: alertFailedEmails },
   { name: "itReadinessReminders", run: itReadinessReminders },
   { name: "overdueDigests", run: overdueDigests },
+  { name: "leaveHealth", run: leaveHealthRefresh },
+  { name: "leaveDailyNotices", run: leaveDailyNotices },
   {
     // Daily, 03:00 in the schedule's zone (Onboarding ran it at 02:00 UTC).
     name: "joinRetention",

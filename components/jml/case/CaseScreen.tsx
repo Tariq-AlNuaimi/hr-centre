@@ -12,10 +12,28 @@ import { CaseActions } from "./CaseActions";
 import { ChecklistTab } from "./ChecklistTab";
 import { EmailsTab } from "./EmailsTab";
 import { OverviewTab } from "./OverviewTab";
+import { RegisterTab } from "./RegisterTab";
+import { ApprovalsTab } from "../leavers/ApprovalsTab";
+import { ComplianceTab } from "../leavers/ComplianceTab";
 import type { CaseDetail } from "./types";
 
-const TABS = ["checklist", "overview", "emails", "activity"] as const;
+const TABS = [
+  "checklist",
+  "overview",
+  "approvals",
+  "compliance",
+  "register",
+  "emails",
+  "activity",
+] as const;
 type Tab = (typeof TABS)[number];
+
+/** Approvals and compliance are leaver-only; the register serves joiners (issue) and leavers (return). */
+const TABS_FOR: Record<CaseDetail["caseType"], readonly Tab[]> = {
+  JOIN: ["checklist", "overview", "register", "emails", "activity"],
+  MOVE: ["checklist", "overview", "emails", "activity"],
+  LEAVE: ["checklist", "overview", "approvals", "compliance", "register", "emails", "activity"],
+};
 
 /**
  * One case, any type — Onboarding `/onboarding/[id]` with the fourth tab the
@@ -35,6 +53,8 @@ export function CaseScreen({ caseId }: { caseId: string }) {
   if (detail.isLoading) return <LoadingBlock />;
   if (detail.isError || !detail.data) return <LoadFailed />;
   const c = detail.data;
+  const tabs = TABS_FOR[c.caseType];
+  const shown: Tab = tabs.includes(tab) ? tab : "checklist";
   return (
     <div className="space-y-6">
       <PageHeader
@@ -63,15 +83,15 @@ export function CaseScreen({ caseId }: { caseId: string }) {
       ) : null}
       <CaseActions detail={c} />
       <div role="tablist" aria-label={t("tabs")} className="flex gap-1 border-b border-border">
-        {TABS.map((key) => (
+        {tabs.map((key) => (
           <button
             key={key}
             role="tab"
             type="button"
-            aria-selected={tab === key}
+            aria-selected={shown === key}
             onClick={() => setTab(key)}
             className={
-              tab === key
+              shown === key
                 ? "border-b-2 border-primary px-3 py-2 text-sm font-medium text-foreground"
                 : "px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
             }
@@ -81,10 +101,13 @@ export function CaseScreen({ caseId }: { caseId: string }) {
         ))}
       </div>
       <div role="tabpanel">
-        {tab === "checklist" ? <ChecklistTab detail={c} /> : null}
-        {tab === "overview" ? <OverviewTab detail={c} /> : null}
-        {tab === "emails" ? <EmailsTab detail={c} /> : null}
-        {tab === "activity" ? <ActivityTab detail={c} /> : null}
+        {shown === "checklist" ? <ChecklistTab detail={c} /> : null}
+        {shown === "overview" ? <OverviewTab detail={c} /> : null}
+        {shown === "approvals" ? <ApprovalsTab caseId={c.id} /> : null}
+        {shown === "compliance" ? <ComplianceTab caseId={c.id} status={c.status} /> : null}
+        {shown === "register" ? <RegisterTab detail={c} /> : null}
+        {shown === "emails" ? <EmailsTab detail={c} /> : null}
+        {shown === "activity" ? <ActivityTab detail={c} /> : null}
       </div>
     </div>
   );

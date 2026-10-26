@@ -11,6 +11,7 @@ import { ActionDialog } from "../ActionDialog";
 import { Field } from "../Field";
 import { useJmlAction, useJmlLookups } from "../use-jml";
 import { LIVE, type CaseDetail } from "./types";
+import { WithdrawExit } from "../leavers/WithdrawExit";
 
 /**
  * Every case-level action the sources had — including those that were API-only
@@ -296,6 +297,9 @@ export function CaseActions({ detail }: { detail: CaseDetail }) {
           done={t("cancelled")}
           destructive
         />
+      ) : null}
+      {detail.can.manage && detail.caseType === "LEAVE" && (live || detail.status === "DRAFT") ? (
+        <WithdrawExit caseId={detail.id} version={detail.version} />
       ) : null}
       {s && !live && detail.status !== "ARCHIVED" && detail.status !== "DRAFT" ? (
         <TextAction

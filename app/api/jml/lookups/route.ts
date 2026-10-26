@@ -8,6 +8,7 @@ import {
   listPositionClassifications,
 } from "@/lib/jml/config";
 import { listJmlHrUsers } from "@/lib/jml/engine/assignment";
+import { activeAssetTypes } from "@/lib/jml/register/assets";
 
 /**
  * Read-only option lists for every JML form — open to anyone who may see JML
@@ -29,6 +30,7 @@ export const GET = withRateLimit(
         employmentTypes,
         hrUsers,
         classifications,
+        assetTypes,
       ] = await Promise.all([
         prisma.orgEntity.findMany({
           select: { id: true, code: true, name: true },
@@ -54,6 +56,7 @@ export const GET = withRateLimit(
         listEmploymentTypeConfigs(),
         listJmlHrUsers(),
         listPositionClassifications(false),
+        activeAssetTypes(),
       ]);
       return ok({
         companies,
@@ -64,6 +67,7 @@ export const GET = withRateLimit(
         employmentTypes,
         hrUsers,
         classifications,
+        assetTypes,
       });
     }),
   ),
