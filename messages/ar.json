@@ -72,7 +72,12 @@
     "hiveSetup": "Ticket setup",
     "hiveCrumb": "HR tickets",
     "jmlSettings": "Settings",
-    "jmlHome": "Joiners, movers & leavers"
+    "jmlHome": "Joiners, movers & leavers",
+    "jmlCases": "Cases",
+    "jmlJoiners": "Joiners",
+    "jmlCalendar": "Joining calendar",
+    "jmlStatutory": "Statutory watch",
+    "jmlReports": "Reports"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -2458,7 +2463,14 @@
   "jml": {
     "common": {
       "notPermitted": "You do not have access to this. Ask a platform administrator for a joiners, movers & leavers role.",
-      "loadFailed": "This could not be loaded. Refresh the page to try again."
+      "loadFailed": "This could not be loaded. Refresh the page to try again.",
+      "cancel": "Cancel",
+      "dash": "—",
+      "next": "Next",
+      "previous": "Previous",
+      "pageOf": "Page {page} of {total}",
+      "percent": "{value}%",
+      "progress": "Progress"
     },
     "settings": {
       "title": "Joiners, movers & leavers settings",
@@ -2466,7 +2478,8 @@
       "group": {
         "process": "Process",
         "calendar": "Calendar and statutory figures",
-        "lists": "Reference lists"
+        "lists": "Reference lists",
+        "data": "Data"
       },
       "item": {
         "templates": {
@@ -2504,6 +2517,10 @@
         "classifications": {
           "title": "Position classifications",
           "note": "Omanisation classifications for leaver gate C8"
+        },
+        "retention": {
+          "title": "Data retention",
+          "note": "The retention rule and a dry run of what it would touch."
         }
       },
       "list": {
@@ -2737,12 +2754,12 @@
           "ANY": "Any"
         },
         "criteria": "Selection criteria",
-        "criteriaHint": "Leave a field empty to match anything. The template pinning the most criteria wins",
+        "criteriaHint": "Leave a field empty to match anything. Company and contract type use their codes (RIHAL, UNLIMITED); employment type uses the list value (PERMANENT). The template pinning the most criteria wins.",
         "any": "Any",
         "fact": {
-          "companyId": "Company ID",
+          "companyId": "Company code",
           "employmentType": "Employment type",
-          "contractTypeId": "Contract type ID",
+          "contractTypeId": "Contract type code",
           "nationality": "Nationality",
           "workLocation": "Work location",
           "payrollApplicable": "Payroll applicable (yes or no)"
@@ -2863,6 +2880,564 @@
         "testDisabled": "Email sending is off on this server, so no test was sent.",
         "testNotSent": "The test was not sent.",
         "testFailed": "Could not send the test."
+      },
+      "retention": {
+        "title": "Data retention",
+        "subtitle": "How long closed onboarding cases keep their personal details.",
+        "rule": "Retention rule",
+        "ruleNote": "Set by the JML_RETENTION_DAYS and JML_RETENTION_ACTION environment variables; this screen only previews.",
+        "days": "Retention period",
+        "daysValue": "{days, plural, one {# day} other {# days}} after completion or cancellation",
+        "action": "Action",
+        "actionValue": {
+          "anonymise": "Anonymise",
+          "purge": "Purge"
+        },
+        "wouldProcess": "Cases the next run would process",
+        "onHold": "Held back by a legal hold",
+        "notConfigured": "Retention does not run: {reason}."
+      }
+    },
+    "vocab": {
+      "caseType": {
+        "JOIN": "Joiner",
+        "MOVE": "Mover",
+        "LEAVE": "Leaver"
+      },
+      "caseStatus": {
+        "DRAFT": "Draft",
+        "ACTIVE": "Active",
+        "AT_RISK": "At risk",
+        "PENDING_SETTLEMENT": "Pending settlement",
+        "COMPLETED": "Completed",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled",
+        "ARCHIVED": "Archived"
+      },
+      "stage": {
+        "PREBOARDING": "Preboarding",
+        "FIRST_DAY": "First day",
+        "FIRST_WEEK": "First week",
+        "COMPLETED": "Completed",
+        "STAGE_1_RESIGNATION": "Stage 1 — resignation and confirmation",
+        "STAGE_2_IMMEDIATE": "Stage 2 — immediate actions",
+        "STAGE_3_NOTICE_HANDOVER": "Stage 3 — notice and handover",
+        "STAGE_4_SETTLEMENT": "Stage 4 — settlement and closure"
+      },
+      "taskStatus": {
+        "NOT_STARTED": "Not started",
+        "IN_PROGRESS": "In progress",
+        "WAITING_FOR_EMPLOYEE": "Waiting for employee",
+        "WAITING_FOR_IT": "Waiting for IT",
+        "WAITING_FOR_PRO": "Waiting for PRO",
+        "WAITING_FOR_EXTERNAL": "Waiting for external party",
+        "WAITING_FOR_LINE_MANAGER": "Waiting for line manager",
+        "WAITING_FOR_FINANCE": "Waiting for Finance",
+        "WAITING_FOR_ADMIN": "Waiting for Admin",
+        "WAITING_FOR_MOL_COORDINATOR": "Waiting for MOL coordinator",
+        "WAITING_FOR_APPROVAL": "Waiting for approval",
+        "COMPLETED": "Completed",
+        "NOT_APPLICABLE": "Not applicable",
+        "DELAYED": "Delayed",
+        "CANCELLED": "Cancelled"
+      },
+      "roleTrack": {
+        "INDIVIDUAL": "Individual contributor",
+        "LEAD": "Lead",
+        "MANAGER": "Manager",
+        "DIRECTOR": "Director",
+        "C_LEVEL": "C-Level"
+      }
+    },
+    "cases": {
+      "title": "Cases",
+      "subtitle": "Every joiner, mover and leaver case you can see.",
+      "export": "Export to Excel",
+      "listTitle": "{count, plural, one {# case} other {# cases}}",
+      "search": "Search by name, employee code or case",
+      "statusFilter": "Status",
+      "statusSet": {
+        "open": "Active and completed",
+        "live": "Active only",
+        "completed": "Completed or closed",
+        "cancelled": "Cancelled",
+        "archived": "Archived"
+      },
+      "typeFilter": "Case type",
+      "allTypes": "All types",
+      "ownership": "Ownership",
+      "everyone": "Everyone's cases",
+      "mine": "Assigned to me",
+      "empty": "No activated cases yet. Joiners appear here once their onboarding is activated.",
+      "noMatches": "No cases match these filters.",
+      "noCode": "No employee code yet",
+      "noDepartment": "No department",
+      "unassigned": "Unassigned",
+      "col": {
+        "case": "Case",
+        "employee": "Employee",
+        "placement": "Placement",
+        "owner": "HR owner",
+        "start": "Start",
+        "stage": "Stage",
+        "progress": "Progress",
+        "status": "Status"
+      }
+    },
+    "joiners": {
+      "title": "Joiners",
+      "subtitle": "New hires from draft to activated onboarding.",
+      "add": "Add joiner",
+      "listTitle": "{count, plural, one {# joiner} other {# joiners}}",
+      "search": "Search by name, code, job title or department",
+      "statusFilter": "Status",
+      "status": {
+        "all": "All",
+        "draft": "Drafts",
+        "active": "Activated"
+      },
+      "company": "Company",
+      "allCompanies": "All companies",
+      "department": "Department",
+      "allDepartments": "All departments",
+      "employmentType": "Employment type",
+      "allTypes": "All employment types",
+      "empty": "No joiners yet. Add one to start a draft — nothing is sent until you activate it.",
+      "noMatches": "No joiners match these filters.",
+      "noCode": "Issued at activation",
+      "dash": "—",
+      "draftLabel": "Draft",
+      "col": {
+        "name": "Full name",
+        "code": "Employee code",
+        "jobTitle": "Job title",
+        "placement": "Placement",
+        "type": "Employment type",
+        "start": "Planned start",
+        "status": "Status"
+      },
+      "newTitle": "Add joiner",
+      "newSubtitle": "Save a draft with a name, company and department; complete the rest before activating.",
+      "openCase": "Open the case",
+      "fromHiring": "Opened by Hiring when the offer was accepted. Complete the remaining fields and activate.",
+      "saveDraft": "Save draft",
+      "saveChanges": "Save changes",
+      "saved": "Changes saved",
+      "draftSaved": "Draft saved — nothing has been sent",
+      "saveFailed": "The joiner could not be saved.",
+      "discard": "Discard draft",
+      "discardTitle": "Discard this draft?",
+      "discardBody": "The draft and its pre-joiner record move to the recycling bin. Nothing was sent, and no employee code was issued.",
+      "discarded": "Draft discarded",
+      "form": {
+        "section": {
+          "candidate": "Candidate",
+          "placement": "Where they sit",
+          "employment": "Employment",
+          "pay": "Pay",
+          "it": "IT requirements",
+          "intro": "Introduction"
+        },
+        "fullName": "Full name",
+        "personalEmail": "Personal email",
+        "phone": "Phone number",
+        "nationality": "Nationality",
+        "nationalityHint": "As written on the passport, e.g. Omani — templates match on it.",
+        "workEmail": "Work email",
+        "workEmailHint": "Leave empty until IT issues it; the login is created from it on day one.",
+        "company": "Company",
+        "department": "Department",
+        "team": "Team",
+        "noTeam": "No team",
+        "roleTrack": "Role track",
+        "roleTrackHint": "C-Level sits on the company without a department.",
+        "choose": "Choose…",
+        "jobTitle": "Job title",
+        "employmentType": "Employment type",
+        "contractType": "Contract type",
+        "noContractTypes": "No contract types yet — add the approved list in JML settings.",
+        "plannedStartDate": "Planned start date",
+        "startLocked": "Use Change start date on the case — it moves the tasks and tells IT, PRO and the manager.",
+        "contractStartDate": "Contract start date",
+        "contractEndDate": "Contract end date",
+        "probationMonths": "Probation period (months)",
+        "workLocation": "Work location",
+        "clientAssignedRole": "Client-assigned role",
+        "lineManager": "Line manager",
+        "changeManager": "Change",
+        "salary": "Salary",
+        "salaryHint": "Restricted — stored encrypted and shown only to people allowed to see salary.",
+        "salaryHidden": "Salary is restricted and hidden from you.",
+        "payNote": "Salary is restricted information.",
+        "payrollApplicable": "Payroll applicable",
+        "itNote": "Answer all three before activating — “No” is an answer, blank is not.",
+        "msAccountRequired": "Microsoft account required",
+        "laptopRequired": "Laptop required",
+        "accessCardRequired": "Access card required",
+        "introSentence": "Introductory sentence",
+        "hobbies": "Hobbies and interests",
+        "notAnswered": "Not answered",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "activation": {
+        "title": "Activate onboarding",
+        "subtitle": "Activation issues the employee code, assigns the HR owner, generates the checklist and queues the welcome email.",
+        "blockedBy": "Activation is blocked by:",
+        "ready": "Everything activation needs is in place.",
+        "overrideReason": "Reason to activate despite the duplicate email",
+        "overrideHint": "This personal email is already used by {names}. The reason is recorded on the case.",
+        "activate": "Activate onboarding",
+        "failed": "Onboarding could not be activated."
+      }
+    },
+    "case": {
+      "subtitle": "{ref} · {type} · {stage}",
+      "activatedNote": "Onboarding activated. Employee code {code} issued; the checklist is ready.",
+      "onHold": "On legal hold: {reason}. Retention will not touch this case.",
+      "tabs": "Case sections",
+      "tab": {
+        "checklist": "Checklist",
+        "overview": "Overview",
+        "emails": "Emails & notifications",
+        "activity": "Activity"
+      },
+      "actions": {
+        "failed": "That could not be done.",
+        "confirmStart": "Confirm actual start",
+        "confirmStartTitle": "Actual start date",
+        "confirmStartBody": "The employee becomes active and the day-one, headset and payroll messages are queued. This cannot be undone.",
+        "started": "Actual start confirmed",
+        "changeStart": "Change start date",
+        "changeStartTitle": "New planned start date",
+        "changeStartBody": "Open tasks move with the start on the working calendar; IT, PRO and the line manager are told.",
+        "startMoved": "Start date moved",
+        "confirmIt": "Confirm IT readiness",
+        "withdrawIt": "Withdraw IT readiness",
+        "itConfirmed": "IT readiness confirmed",
+        "itWithdrawn": "IT readiness withdrawn",
+        "submitIt": "Submit to IT",
+        "itSubmitted": "Submitted to the IT intake",
+        "recordOdoo": "Record Odoo ID",
+        "recordOdooTitle": "Odoo employee ID",
+        "recordOdooBody": "Once the Odoo profile exists, record its ID. Everything held under the provisional ID is re-keyed in one step.",
+        "odooId": "Odoo ID",
+        "odooRecorded": "Odoo ID recorded",
+        "cancel": "Cancel case",
+        "cancelTitle": "Cancel this case?",
+        "cancelBody": "Open tasks and queued messages are cancelled. The employee code is kept and never reused.",
+        "reason": "Reason",
+        "cancelled": "Case cancelled",
+        "archive": "Archive",
+        "archiveTitle": "Archive this case?",
+        "archiveBody": "The case leaves the working lists. Nothing is deleted; it stays readable and searchable.",
+        "archived": "Case archived",
+        "reassign": "Reassign owner",
+        "reassignTitle": "Reassign the case owner",
+        "reassignBody": "Currently owned by {name}.",
+        "nobody": "nobody",
+        "newOwner": "New owner",
+        "choose": "Choose…",
+        "moveTasks": "Move the previous owner's open tasks too",
+        "reassigned": "Owner reassigned",
+        "placeHold": "Place legal hold",
+        "placeHoldTitle": "Place a legal hold",
+        "placeHoldBody": "A held case is skipped by retention until the hold is lifted.",
+        "holdPlaced": "Legal hold placed",
+        "liftHold": "Lift legal hold",
+        "liftHoldTitle": "Lift the legal hold?",
+        "liftHoldBody": "Retention will treat the case normally again.",
+        "holdLifted": "Legal hold lifted"
+      },
+      "checklist": {
+        "summary": "{done} of {total} mandatory tasks — {pct}%",
+        "readOnly": "This case is closed, so its checklist is read-only.",
+        "empty": "This case has no tasks.",
+        "manual": {
+          "add": "Add task",
+          "title": "Add a task",
+          "body": "A manual task is added to this case only, with its own due date.",
+          "name": "Task",
+          "stage": "Stage",
+          "dueDate": "Due date",
+          "comment": "Why it is needed",
+          "commentHint": "Kept as the task's first comment.",
+          "mandatory": "Counts toward progress",
+          "added": "Task added",
+          "failed": "The task could not be added."
+        }
+      },
+      "task": {
+        "failed": "The task could not be updated.",
+        "saved": "Task updated",
+        "optional": "Optional",
+        "added": "Added",
+        "reversal": "Reversal",
+        "statutory": "Statutory {category}",
+        "blocking": "Blocking",
+        "overdue": "Overdue",
+        "due": "Due",
+        "completedBy": "completed by {name} on {at}",
+        "delayReason": "Delayed: {reason}",
+        "naReason": "Not applicable: {reason}",
+        "reference": "Reference: {ref}",
+        "status": "Task status",
+        "complete": "Complete",
+        "completed": "Task completed",
+        "confirmTitle": "Confirm completion",
+        "confirmBody": "This task needs a confirmation: who confirmed it, when, and the reference.",
+        "confirmingParty": "Confirming party",
+        "confirmationDate": "Confirmation date",
+        "externalReference": "Reference",
+        "markDelayed": "Delayed",
+        "delayTitle": "Why is it delayed?",
+        "markNa": "Not applicable",
+        "naTitle": "Mark as not applicable",
+        "reopen": "Reopen",
+        "reopenTitle": "Reopen this task",
+        "reason": "Reason",
+        "changeDue": "Change due date",
+        "changeDueTitle": "New due date",
+        "dueDate": "Due date",
+        "overrideReason": "Reason for the change",
+        "save": "Save",
+        "owner": "Task owner",
+        "noOwner": "No owner",
+        "comments": "{count, plural, =0 {Comments} one {# comment} other {# comments}}",
+        "noComments": "No comments yet.",
+        "comment": "Comment",
+        "commentPlaceholder": "Add a comment — comments are permanent",
+        "post": "Post",
+        "posted": "Comment posted",
+        "someone": "Someone"
+      },
+      "overview": {
+        "dash": "—",
+        "employeeCode": "Employee code",
+        "notIssued": "Not issued yet",
+        "odooId": "Odoo ID",
+        "notRecorded": "Not recorded yet",
+        "jobTitle": "Job title",
+        "company": "Company",
+        "directorate": "Directorate",
+        "department": "Department",
+        "employmentType": "Employment type",
+        "nationality": "Nationality",
+        "lineManager": "Line manager",
+        "hrOwner": "HR owner",
+        "seniorHr": "Supervising HR",
+        "template": "Checklist template",
+        "templateValue": "{name} (v{version})",
+        "activatedAt": "Activated",
+        "completedAt": "Completed",
+        "plannedStart": "Planned start",
+        "actualStart": "Actual start",
+        "contractType": "Contract type",
+        "payroll": "Payroll applicable",
+        "yes": "Yes",
+        "no": "No",
+        "itReadiness": "IT readiness",
+        "itReadyOn": "Confirmed on {date}",
+        "itNotReady": "Not confirmed",
+        "itIntake": "IT intake",
+        "intakeSent": "Submitted on {date} ({ref})",
+        "intakeFailed": "Failed: {reason}",
+        "intakeNone": "Not submitted (the integration is off until IT approves it)",
+        "cancelReason": "Cancellation reason",
+        "overrideReason": "Duplicate email override",
+        "external": "External systems",
+        "externalNote": "Odoo and the Staffing Form are updated by hand; these open them.",
+        "link": {
+          "odoo": "Odoo employee profile",
+          "staffing-form": "Staffing Form"
+        },
+        "linkMissing": "{name} — no link configured",
+        "editJoiner": "Edit the joiner record",
+        "openRecord": "Open the employee record"
+      },
+      "emails": {
+        "intro": "Messages are queued and sent in the next working window. Bodies are never stored.",
+        "sendReview": "Send welcome email for review",
+        "sendReviewTitle": "Welcome email review",
+        "sendReviewBody": "HR reviews and sends the welcome email (§11.2). It is queued to the address below.",
+        "recipient": "Send to",
+        "queue": "Queue",
+        "queued": "Message queued",
+        "failed": "That could not be done.",
+        "empty": "No messages for this case yet.",
+        "cc": "Cc {list}",
+        "retry": "Retry",
+        "retried": "Queued again",
+        "status": {
+          "QUEUED": "Queued",
+          "SENT": "Sent",
+          "FAILED": "Failed",
+          "CANCELLED": "Cancelled"
+        },
+        "col": {
+          "type": "Message",
+          "to": "To",
+          "subject": "Subject",
+          "when": "When",
+          "status": "Status"
+        }
+      },
+      "activity": {
+        "empty": "No recorded activity yet.",
+        "byAt": "{who}, {at}",
+        "system": "the system",
+        "fields": "Changed: {list}",
+        "action": {
+          "CREATE": "Created",
+          "UPDATE": "Updated",
+          "DELETE": "Deleted",
+          "RESTORE": "Restored"
+        },
+        "entity": {
+          "JmlCase": "the case",
+          "JmlJoinDetail": "the joiner details",
+          "JmlTask": "a task"
+        }
+      }
+    },
+    "calendar": {
+      "title": "Joining calendar",
+      "subtitle": "Joining dates — the actual start once confirmed, otherwise the planned start.",
+      "export": "Export to Excel",
+      "previous": "Previous",
+      "next": "Next",
+      "today": "Today",
+      "range": "{from} to {to}",
+      "view": "View",
+      "views": {
+        "month": "Month",
+        "week": "Week",
+        "list": "List"
+      },
+      "company": "Company",
+      "allCompanies": "All companies",
+      "owner": "HR owner",
+      "allOwners": "All HR owners",
+      "status": "Status",
+      "allStatuses": "Drafts, active and completed",
+      "statusValue": {
+        "DRAFT": "Draft",
+        "ACTIVE": "Active",
+        "COMPLETED": "Completed"
+      },
+      "emptyRange": "Nobody joins in this range.",
+      "emptyFiltered": "Nobody matching these filters joins in this range.",
+      "truncated": "Only the first rows are shown; narrow the range or filters.",
+      "footnote": "Dates are moved from the case (Change start date), not by dragging.",
+      "confirmedMark": "(confirmed)",
+      "weekendMark": "(non-working day)",
+      "noOwner": "no owner",
+      "listMeta": "{date} · {owner} · {status}",
+      "weekday": {
+        "sun": "Sun",
+        "mon": "Mon",
+        "tue": "Tue",
+        "wed": "Wed",
+        "thu": "Thu",
+        "fri": "Fri",
+        "sat": "Sat"
+      },
+      "totals": {
+        "title": "Range totals",
+        "summary": "{total} joining, {confirmed} confirmed, {weekend} on a non-working day",
+        "none": "None",
+        "byCompany": "By company",
+        "byDirectorate": "By directorate",
+        "byDepartment": "By department",
+        "byEmploymentType": "By employment type",
+        "byWorkLocation": "By work location",
+        "byStatus": "By status",
+        "byHrOwner": "By HR owner"
+      }
+    },
+    "statutory": {
+      "title": "Statutory & visa watch",
+      "subtitle": "Statutory tasks at risk, counted in working days of the working calendar.",
+      "listTitle": "{count, plural, one {# task} other {# tasks}}",
+      "ownership": "Ownership",
+      "mine": "My cases and tasks",
+      "everyone": "Everyone's",
+      "includeScheduled": "Include tasks that are on schedule",
+      "emptyAtRisk": "No statutory task is at risk.",
+      "emptyAll": "No open statutory tasks.",
+      "dash": "—",
+      "risk": {
+        "overdue": "Overdue",
+        "no_deadline": "No deadline",
+        "due_soon": "Due soon",
+        "scheduled": "On schedule"
+      },
+      "col": {
+        "employee": "Employee",
+        "task": "Task",
+        "category": "Category",
+        "deadline": "Deadline",
+        "workingDays": "Working days left",
+        "owner": "HR owner",
+        "risk": "Risk",
+        "status": "Status"
+      }
+    },
+    "reports": {
+      "title": "Reports",
+      "subtitle": "Every report exports to Excel and covers only the part of the group you may report on.",
+      "joinGroup": "Onboarding",
+      "goLiveNote": "Trends start at go-live: the first activated onboarding.",
+      "export": "Export to Excel",
+      "filters": "Filters",
+      "from": "Activated from",
+      "to": "Activated to",
+      "joiningMonth": "Joining month",
+      "company": "Company",
+      "owner": "HR owner",
+      "any": "Any",
+      "apply": "Apply",
+      "clear": "Clear",
+      "includeSalary": "Include salary (restricted)",
+      "retry": "Retry",
+      "rows": "{count, plural, one {# row} other {# rows}}",
+      "truncated": "Showing the first 5,000 rows.",
+      "empty": "No rows for these filters.",
+      "trendTooShort": "The trend needs at least two months since go-live.",
+      "dash": "—",
+      "report": {
+        "monthly-onboarding": {
+          "title": "Monthly onboarding",
+          "note": "Joiners by planned start month (this month by default)."
+        },
+        "hr-workload": {
+          "title": "HR workload",
+          "note": "Active cases, overdue tasks and completion per HR officer."
+        },
+        "onboarding-completion": {
+          "title": "Onboarding completion",
+          "note": "Active onboardings, lowest completion first."
+        },
+        "delayed-tasks": {
+          "title": "Delayed tasks",
+          "note": "Tasks marked delayed or past their due date."
+        },
+        "upcoming-joiners": {
+          "title": "Upcoming joiners",
+          "note": "Activated onboardings starting today or later."
+        },
+        "completed-onboardings": {
+          "title": "Completed onboardings",
+          "note": "Onboardings whose checklist is complete."
+        },
+        "onboarding-volume-trend": {
+          "title": "Onboarding volume trend",
+          "note": "Onboardings started, completed and cancelled per month."
+        },
+        "all-companies": {
+          "title": "All companies",
+          "note": "Onboarding totals per company."
+        }
       }
     }
   },

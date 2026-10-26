@@ -15,6 +15,7 @@ export const SETTINGS_SECTIONS = [
   },
   { group: "calendar", keys: ["calendar", "statutory", "employee-code"] },
   { group: "lists", keys: ["classifications"] },
+  { group: "data", keys: ["retention"] },
 ] as const;
 
 export function SettingsHub() {

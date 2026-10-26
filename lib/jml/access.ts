@@ -38,10 +38,15 @@ export function canFor(actor: JmlActor, permission: Permission, subject: ScopeSu
   return canInScope(grantsOf(actor), permission, subject);
 }
 
+/** Core permissions the JML screens also show affordances for. */
+const CORE_AFFORDANCES = new Set(["people.viewSalary", "people.view"]);
+
 /** The permissions the actor holds anywhere — the client's affordance list. */
 export function heldJmlPermissions(actor: JmlActor): string[] {
   const grants = grantsOf(actor);
-  return [...grants.keys()].filter((p) => p.startsWith("jml.") && has(grants, p));
+  return [...grants.keys()].filter(
+    (p) => (p.startsWith("jml.") || CORE_AFFORDANCES.has(p)) && has(grants, p),
+  );
 }
 
 /**

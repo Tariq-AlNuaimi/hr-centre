@@ -3,6 +3,9 @@ import { loadWorkingCalendar } from "@/lib/working-time/load";
 import type { WorkingCalendar } from "@/lib/working-time/calendar";
 import { drainQueue } from "./email/queue";
 import { notifyJml } from "./engine/notify";
+import { runRetention } from "./join/retention";
+import { itReadinessReminders, overdueDigests } from "./join/sweep-steps";
+import { isLocalHour } from "@/lib/working-time/calendar";
 
 /**
  * The JML sweep — ONE hourly scheduled job (`/api/internal/jml-sweep`, Vercel
@@ -47,6 +50,16 @@ async function alertFailedEmails({ calendar, now }: { now: Date; calendar: Worki
 export const SWEEP_STEPS: SweepStep[] = [
   { name: "emailDrain", run: ({ now }) => drainQueue(now) },
   { name: "failedEmailAlerts", run: alertFailedEmails },
+  { name: "itReadinessReminders", run: itReadinessReminders },
+  { name: "overdueDigests", run: overdueDigests },
+  {
+    // Daily, 03:00 in the schedule's zone (Onboarding ran it at 02:00 UTC).
+    name: "joinRetention",
+    run: ({ now, calendar }) =>
+      isLocalHour(now, 3, calendar.schedule.timeZone)
+        ? runRetention(now)
+        : Promise.resolve({ skipped: "not-03:00" }),
+  },
 ];
 
 export async function runSweep(now = new Date(), steps: readonly SweepStep[] = SWEEP_STEPS) {

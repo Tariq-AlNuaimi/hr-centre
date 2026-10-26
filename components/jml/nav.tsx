@@ -1,5 +1,12 @@
 import type { ReactNode } from "react";
-import { Settings2 } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  ClipboardList,
+  Settings2,
+  ShieldAlert,
+  UserPlus,
+} from "lucide-react";
 
 /**
  * The JML group of the sidebar (F-e: a module adds its group and its keys).
@@ -10,6 +17,41 @@ export type JmlNavItem = { key: string; labelKey: string; href: string; icon: Re
 
 export function jmlNavItems(can: (permission: string) => boolean): JmlNavItem[] {
   const items: Array<JmlNavItem & { show: boolean }> = [
+    {
+      key: "jml-cases",
+      labelKey: "jmlCases",
+      href: "/jml/cases",
+      icon: <ClipboardList className="h-4 w-4" />,
+      show: can("jml.view"),
+    },
+    {
+      key: "jml-joiners",
+      labelKey: "jmlJoiners",
+      href: "/jml/joiners",
+      icon: <UserPlus className="h-4 w-4" />,
+      show: can("jml.manageJoiners"),
+    },
+    {
+      key: "jml-calendar",
+      labelKey: "jmlCalendar",
+      href: "/jml/calendar",
+      icon: <CalendarDays className="h-4 w-4" />,
+      show: can("jml.view"),
+    },
+    {
+      key: "jml-statutory",
+      labelKey: "jmlStatutory",
+      href: "/jml/statutory",
+      icon: <ShieldAlert className="h-4 w-4" />,
+      show: can("jml.view"),
+    },
+    {
+      key: "jml-reports",
+      labelKey: "jmlReports",
+      href: "/jml/reports",
+      icon: <BarChart3 className="h-4 w-4" />,
+      show: can("jml.viewReports"),
+    },
     {
       key: "jml-settings",
       labelKey: "jmlSettings",
