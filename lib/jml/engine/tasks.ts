@@ -8,6 +8,7 @@ import { STAGE_ORDER, isLive } from "../vocab";
 import { userHolds } from "./assignment";
 import { computeProgress, deriveJoinStage } from "./progress";
 import { advancedLeaveStage } from "./gates";
+import { applyMove } from "../move/apply";
 
 /**
  * The task engine's writes — every case type. The only Prisma writer of
@@ -119,6 +120,8 @@ export async function refreshCase(tx: Tx, caseId: string, actorUserId: string | 
   data.stage = stage;
   if (actorUserId) data.lastUpdatedBy = { connect: { id: actorUserId } };
   await tx.jmlCase.update({ where: { id: caseId }, data, select: { id: true } });
+  // D9: a mover's change reaches the employee record when its checklist completes.
+  if (completedNow && kase.caseType === "MOVE") await applyMove(tx, caseId);
   return { completionPct, stage, completedNow } satisfies RefreshResult;
 }
 

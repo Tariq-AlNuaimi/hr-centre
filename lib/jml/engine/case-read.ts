@@ -118,6 +118,16 @@ const DETAIL_SELECT = {
       itIntakeError: true,
     },
   },
+  moveDetail: {
+    select: {
+      changeType: true,
+      effectiveDate: true,
+      previousDetails: true,
+      newDetails: true,
+      appliedAt: true,
+      applyNote: true,
+    },
+  },
   employee: {
     select: {
       id: true,

@@ -123,6 +123,84 @@ export const STARTER_JOIN_TEMPLATE: SeedTemplate = {
   ],
 };
 
+const EMPLOYMENT_CHANGE_TASKS: SeedTask[] = [
+  t(0, PRE, "Issue employment offer", -14, true),
+  t(1, PRE, "Start visa process when applicable", -14, false, {
+    statutory: true,
+    complianceCategory: "VISA",
+    conditions: NOT_OMANI,
+  }),
+  t(2, PRE, "Receive signed offer", -7, true),
+  t(3, PRE, "Submit IT request for any access changes", -3, false),
+  t(10, FD, "Sign employment contract", 0, true),
+  t(11, FD, "Update Odoo employee profile", 0, true),
+  t(12, FD, "Update Staffing Form", 0, true),
+  t(20, FW, "Add employee to payroll sheet when Payroll Applicable = Yes", 1, false, {
+    conditions: PAYROLL,
+  }),
+  t(21, FW, "Send insurance addition request", 3, true),
+  t(22, FW, "Register applicable Omani employee in MOL", 5, false, {
+    statutory: true,
+    complianceCategory: "MOL",
+    conditions: OMANI,
+  }),
+  t(23, FW, "Confirm employment contract signed", 5, true),
+];
+
+/**
+ * HR Onboarding's four internal-change starters (`prisma/seeds/change-templates.ts`,
+ * one per change type, offsets in calendar days from the effective date) — the
+ * build's proposal, edited by HR. Seeded only when no template of that change
+ * type exists (active or not).
+ */
+export const STARTER_MOVE_TEMPLATES: SeedTemplate[] = [
+  {
+    name: "Internship to training (starter)",
+    caseType: "MOVE",
+    changeType: "INTERNSHIP_TO_TRAINING",
+    dateBasis: "EFFECTIVE_DATE",
+    tasks: [
+      t(0, PRE, "Issue training offer letter", -7, true),
+      t(1, PRE, "Receive signed training offer", -3, true),
+      t(10, FD, "Update Odoo employee profile", 0, true),
+      t(11, FD, "Update Staffing Form", 0, true),
+      t(20, FW, "Add employee to payroll sheet when Payroll Applicable = Yes", 1, false, {
+        conditions: PAYROLL,
+      }),
+      t(21, FW, "Agree training plan with line manager", 5, true),
+    ],
+  },
+  {
+    name: "Internship to employment (starter)",
+    caseType: "MOVE",
+    changeType: "INTERNSHIP_TO_EMPLOYMENT",
+    dateBasis: "EFFECTIVE_DATE",
+    tasks: EMPLOYMENT_CHANGE_TASKS,
+  },
+  {
+    name: "Training to employment (starter)",
+    caseType: "MOVE",
+    changeType: "TRAINING_TO_EMPLOYMENT",
+    dateBasis: "EFFECTIVE_DATE",
+    tasks: EMPLOYMENT_CHANGE_TASKS,
+  },
+  {
+    name: "Department transfer (starter)",
+    caseType: "MOVE",
+    changeType: "DEPARTMENT_TRANSFER",
+    dateBasis: "EFFECTIVE_DATE",
+    tasks: [
+      t(0, PRE, "Confirm transfer with current and new line managers", -7, true),
+      t(1, PRE, "Issue transfer letter", -3, true),
+      t(2, PRE, "Submit IT request for access changes", -3, true),
+      t(10, FD, "Update Odoo employee profile", 0, true),
+      t(11, FD, "Update Staffing Form", 0, true),
+      t(20, FW, "Update employee distribution lists", 2, false),
+      t(21, FW, "Complete handover from previous department", 5, false),
+    ],
+  },
+];
+
 /** Create a template once (by name); never update an existing one. */
 export async function seedTemplateOnce(prisma: PrismaClient, tpl: SeedTemplate): Promise<boolean> {
   const exists = await prisma.jmlTaskTemplate.findFirst({

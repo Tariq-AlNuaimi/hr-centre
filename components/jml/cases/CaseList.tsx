@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -51,13 +51,16 @@ const STATUS_SETS: Record<string, string> = {
 };
 
 /** Every case the actor may see — Onboarding `/onboarding`, for all three types. */
-export function CaseList() {
+export function CaseList({
+  fixedType,
+  header: customHeader,
+}: { fixedType?: "JOIN" | "MOVE" | "LEAVE"; header?: ReactNode } = {}) {
   const t = useTranslations("jml.cases");
   const tv = useTranslations("jml.vocab");
   const { can, isLoading } = useJmlAccess();
   const [search, setSearch] = useState("");
   const [statusSet, setStatusSet] = useState("open");
-  const [caseType, setCaseType] = useState("");
+  const [caseType, setCaseType] = useState<string>(fixedType ?? "");
   const [mine, setMine] = useState(false);
   const [page, setPage] = useState(1);
   const params = new URLSearchParams({
@@ -73,7 +76,7 @@ export function CaseList() {
     queryFn: () => apiClient.get<Page>(`/api/jml/cases?${params}`),
     enabled: can("jml.view"),
   });
-  const header = (
+  const header = customHeader ?? (
     <PageHeader
       title={t("title")}
       subtitle={t("subtitle")}
@@ -116,18 +119,20 @@ export function CaseList() {
               </option>
             ))}
           </NativeSelect>
-          <NativeSelect
-            aria-label={t("typeFilter")}
-            value={caseType}
-            onChange={(e) => setCaseType(e.target.value)}
-          >
-            <option value="">{t("allTypes")}</option>
-            {(["JOIN", "MOVE", "LEAVE"] as const).map((c) => (
-              <option key={c} value={c}>
-                {tv(`caseType.${c}`)}
-              </option>
-            ))}
-          </NativeSelect>
+          {fixedType ? null : (
+            <NativeSelect
+              aria-label={t("typeFilter")}
+              value={caseType}
+              onChange={(e) => setCaseType(e.target.value)}
+            >
+              <option value="">{t("allTypes")}</option>
+              {(["JOIN", "MOVE", "LEAVE"] as const).map((c) => (
+                <option key={c} value={c}>
+                  {tv(`caseType.${c}`)}
+                </option>
+              ))}
+            </NativeSelect>
+          )}
           <NativeSelect
             aria-label={t("ownership")}
             value={mine ? "mine" : "all"}

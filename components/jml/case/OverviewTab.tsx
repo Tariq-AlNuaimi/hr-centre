@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { MoveSummary } from "../movers/MoveSummary";
 import type { CaseDetail } from "./types";
 
 /** Overview — the case header in full, the joiner's IT status, external systems. */
@@ -46,6 +47,7 @@ export function OverviewTab({ detail }: { detail: CaseDetail }) {
     <div className="space-y-6">
       <DescriptionList items={items} columns={2} />
       {j ? <JoinSummary j={j} /> : null}
+      {detail.moveDetail ? <MoveSummary move={detail.moveDetail} /> : null}
       <SectionCard title={t("external")} subtitle={t("externalNote")}>
         <ul className="space-y-2 text-sm">
           {detail.externalLinks.map((l) => (
