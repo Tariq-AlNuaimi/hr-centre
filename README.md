@@ -1,4 +1,13 @@
-# Rihal Performance Management
+# HR Centre
+
+Rihal's single HR system. It started on 2026-10-26 as a copy of
+[rihal-performance-management](https://github.com/Tariq-AlNuaimi/rihal-performance-management)
+(full history kept) on a new, empty database; the other HR apps move in as modules
+(foundation → joiners/movers/leavers → HR tickets → hiring). A fresh deploy seeds only
+the three companies, the bootstrap HR department and the bootstrap HR Super Admin
+(`prisma/seed-foundation.ts`); the demo fixture runs only with `SEED_DEMO=1`.
+
+## Origin: Rihal Performance Management
 
 Fast prototype rail for Rihal internal tools. Next.js 16 + Prisma + Postgres + Auth.js + shadcn/Radix, deployed to Vercel + Neon. **`git push` → live URL in 90 seconds.**
 
