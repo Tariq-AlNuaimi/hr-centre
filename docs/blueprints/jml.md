@@ -28,7 +28,7 @@ mover is transferred, a leaver departs).
 every action the old apps had (including the ones those apps only exposed as APIs), and the
 employee record stays the single source of truth.
 
-## Decisions (operator brief + decisions taken while designing; ADRs 075–081)
+## Decisions (operator brief + decisions taken while designing; ADRs 075–082)
 
 | #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -5,6 +5,7 @@ import {
   LEVEL_1_LABELS,
   STATUTORY_SEED,
 } from "./seed-jml-data";
+import { STARTER_JOIN_TEMPLATE, seedTemplateOnce } from "./seed-jml-templates";
 
 /**
  * The JML module's production seed (docs/blueprints/jml.md, PROTOCOL: real
@@ -16,6 +17,7 @@ import {
 export async function seedJml(prisma: PrismaClient): Promise<void> {
   await seedStatutoryParameters(prisma);
   await seedReasonTaxonomy(prisma);
+  await seedTemplateOnce(prisma, STARTER_JOIN_TEMPLATE);
 }
 
 async function seedStatutoryParameters(prisma: PrismaClient): Promise<void> {

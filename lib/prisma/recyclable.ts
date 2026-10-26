@@ -17,6 +17,11 @@ export type RecyclableRecord = {
 // against this -- never index prismaUnfiltered by an unvalidated URL segment.
 // /scaffold-entity appends here in lockstep with registerSoftDeleteModel().
 export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> = {
+  // JML — a discarded DRAFT case only; archive is a status, never a delete.
+  // FIRST on purpose: a discarded draft is soft-deleted together with its
+  // pre-joiner Employee, and the recycling-bin GC purges in this key order, so
+  // the case (which holds a RESTRICT FK to the employee) must go before it.
+  JmlCase: { displayField: "caseRef" },
   User: { displayField: "name" },
   // PMS org data (ADR-065). Soft delete here is for ERRONEOUS records only — a
   // departure is `status = LEAVER` with a last working day (§12.1: "Record and
@@ -48,8 +53,6 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   HiringGrade: { displayField: "name" },
   HiringJdTemplate: { displayField: "title" },
   HiringBulkJob: { displayField: "actionKind" },
-  // JML S2 — a discarded DRAFT case only; archive is a status, never a delete.
-  JmlCase: { displayField: "caseRef" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

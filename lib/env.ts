@@ -166,6 +166,22 @@ const envSchema = z.object({
       },
     )
     .optional(),
+
+  // JML (docs/blueprints/jml.md) -- all optional; each feature is OFF while its
+  // variable is unset. Declared here for the env contract only: lib/jml/desks.ts
+  // reads them at call time. Kept as plain strings so a typo degrades one desk's
+  // email rather than failing every boot.
+  IT_NOTIFY_EMAIL: z.string().optional(),
+  PRO_NOTIFY_EMAIL: z.string().optional(),
+  PAYROLL_NOTIFY_EMAIL: z.string().optional(),
+  IT_INTAKE_URL: z.string().optional(),
+  IT_INTAKE_TOKEN: z.string().optional(),
+  IT_INTAKE_DESIGN_APPROVED: z.string().optional(),
+  IT_INTAKE_FALLBACK_FORM_URL: z.string().optional(),
+  ODOO_EMPLOYEE_URL: z.string().optional(),
+  STAFFING_FORM_URL: z.string().optional(),
+  JML_RETENTION_DAYS: z.string().optional(),
+  JML_RETENTION_ACTION: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

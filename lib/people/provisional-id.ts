@@ -19,3 +19,18 @@ export function provisionalOdooId(): string {
 export function isProvisionalOdooId(odooId: string): boolean {
   return odooId.startsWith(PROVISIONAL_PREFIX);
 }
+
+/**
+ * A placeholder for the unique `Employee.email` until the joiner's work address
+ * is issued (JML S3). `.invalid` is reserved (RFC 2606), so nothing can ever
+ * deliver to it, and login provisioning refuses it.
+ */
+export const PLACEHOLDER_EMAIL_DOMAIN = "pre-joiner.invalid";
+
+export function placeholderEmail(): string {
+  return `pending-${randomBytes(9).toString("hex")}@${PLACEHOLDER_EMAIL_DOMAIN}`;
+}
+
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return Boolean(email && email.toLowerCase().endsWith(`@${PLACEHOLDER_EMAIL_DOMAIN}`));
+}

@@ -9,6 +9,7 @@ import {
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
 import { decryptSalary } from "../employee-select";
+import { isPlaceholderEmail } from "@/lib/people/provisional-id";
 import { employeeCreateData, employeeUpdateData, type EmployeeCoreInput } from "@/lib/people/write";
 import { readIdNumber } from "@/lib/people/id-documents";
 import { applyDeparture } from "../departure";
@@ -909,6 +910,9 @@ export async function provisionLoginFor(
   taken: Set<string>,
 ): Promise<string | null> {
   if (row.status === "LEAVER") return null;
+  // JML S3 — a pre-joiner signs in from day one, and a placeholder address
+  // (lib/people/provisional-id.ts) is never a login.
+  if (row.status === "PRE_JOINER" || isPlaceholderEmail(row.email)) return null;
 
   const email = row.email.toLowerCase().trim();
   if (taken.has(email)) return null;

@@ -88,18 +88,19 @@ model User {
   hiveSettingsUpdated      HiveTicketSettings[] @relation("HiveTicketSettingsUpdatedBy")
 
   // JML S2 — the case engine (docs/blueprints/jml.md).
-  jmlCasesOwned         JmlCase[]                  @relation("JmlCaseOwner")
-  jmlCasesSupervised    JmlCase[]                  @relation("JmlCaseSenior")
-  jmlCasesUpdated       JmlCase[]                  @relation("JmlCaseLastUpdatedBy")
-  jmlCasesHeld          JmlCase[]                  @relation("JmlCaseLegalHold")
-  jmlCasesArchived      JmlCase[]                  @relation("JmlCaseArchivedBy")
-  jmlTasksOwned         JmlTask[]                  @relation("JmlTaskOwner")
-  jmlTasksCompleted     JmlTask[]                  @relation("JmlTaskCompletedBy")
-  jmlTaskComments       JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
-  jmlRulesAsOwner       JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
-  jmlRulesAsSenior      JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
-  jmlEmailsSent         JmlEmailLog[]              @relation("JmlEmailSentBy")
-  jmlEmailTemplateEdits JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
+  jmlCasesOwned           JmlCase[]                  @relation("JmlCaseOwner")
+  jmlCasesSupervised      JmlCase[]                  @relation("JmlCaseSenior")
+  jmlCasesUpdated         JmlCase[]                  @relation("JmlCaseLastUpdatedBy")
+  jmlCasesHeld            JmlCase[]                  @relation("JmlCaseLegalHold")
+  jmlCasesArchived        JmlCase[]                  @relation("JmlCaseArchivedBy")
+  jmlTasksOwned           JmlTask[]                  @relation("JmlTaskOwner")
+  jmlTasksCompleted       JmlTask[]                  @relation("JmlTaskCompletedBy")
+  jmlTaskComments         JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
+  jmlRulesAsOwner         JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
+  jmlRulesAsSenior        JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
+  jmlEmailsSent           JmlEmailLog[]              @relation("JmlEmailSentBy")
+  jmlEmailTemplateEdits   JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
+  jmlItReadinessConfirmed JmlJoinDetail[]            @relation("JmlItReadinessBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -3582,8 +3583,10 @@ model JmlCase {
   legalHoldBy     User?     @relation("JmlCaseLegalHold", fields: [legalHoldById], references: [id], onDelete: SetNull)
   anonymisedAt    DateTime? @map("anonymised_at")
 
-  tasks     JmlTask[]
-  emailLogs JmlEmailLog[]
+  tasks      JmlTask[]
+  emailLogs  JmlEmailLog[]
+  /// JML S3 — the joiner details of a JOIN case.
+  joinDetail JmlJoinDetail?
 
   /// Soft delete — a discarded DRAFT only. Archive is a status, never a delete.
   deletedAt DateTime? @map("deleted_at")
@@ -3764,6 +3767,8 @@ model JmlContractType {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  joiners JmlJoinDetail[]
+
   @@index([active, sortOrder])
   @@map("jml_contract_types")
 }
@@ -3823,4 +3828,54 @@ model JmlEmailTemplateOverride {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   @@map("jml_email_template_overrides")
+}
+
+/// JML S3 — what a JOIN case knows that the core employee record does not
+/// (HR Onboarding `NewHire`, minus everything the core record already holds:
+/// name, emails, phone, nationality, placement, job title, employment type,
+/// work location, line manager and salary live on the PRE_JOINER `Employee`).
+/// No ID numbers or bank details, ever (ADR-078).
+model JmlJoinDetail {
+  caseId String  @id @map("case_id")
+  case   JmlCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  contractTypeId String?          @map("contract_type_id")
+  contractType   JmlContractType? @relation(fields: [contractTypeId], references: [id], onDelete: Restrict)
+
+  plannedStartDate  DateTime? @map("planned_start_date") @db.Date
+  /// Set once by "Confirm actual start" (AC-7.2/7.3).
+  actualStartDate   DateTime? @map("actual_start_date") @db.Date
+  contractStartDate DateTime? @map("contract_start_date") @db.Date
+  contractEndDate   DateTime? @map("contract_end_date") @db.Date
+  probationMonths   Int?      @map("probation_months")
+
+  payrollApplicable  Boolean  @default(true) @map("payroll_applicable")
+  clientAssignedRole Boolean? @map("client_assigned_role")
+  introSentence      String?  @map("intro_sentence")
+  hobbies            String?
+
+  /// NULL = not answered; activation refuses NULL; `false` is an answer.
+  msAccountRequired  Boolean? @map("ms_account_required")
+  laptopRequired     Boolean? @map("laptop_required")
+  accessCardRequired Boolean? @map("access_card_required")
+
+  /// Onboarding 8.4.5 fixed: written by "Confirm IT readiness".
+  itReadinessConfirmed Boolean   @default(false) @map("it_readiness_confirmed")
+  itReadinessAt        DateTime? @map("it_readiness_at")
+  itReadinessById      String?   @map("it_readiness_by_id")
+  itReadinessBy        User?     @relation("JmlItReadinessBy", fields: [itReadinessById], references: [id], onDelete: SetNull)
+
+  /// IT intake (Onboarding §11.2 row 2) — off unless configured and approved.
+  itIntakeSubmittedAt DateTime? @map("it_intake_submitted_at")
+  itIntakeReference   String?   @map("it_intake_reference")
+  itIntakeError       String?   @map("it_intake_error")
+
+  /// Idempotency key of the module that opened the case (Hiring: `hiring:<candidateId>`).
+  sourceRef String? @unique @map("source_ref")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([plannedStartDate])
+  @@map("jml_join_details")
 }
