@@ -52,6 +52,17 @@ const SOFT_DELETE_MODELS = new Set([
   "DiscountPartner",
   "NetworkProvider",
   "HiveEmailTemplate",
+  // Hiring (docs/blueprints/hiring.md) — Interview Hub's soft-delete set.
+  "HiringRequisition",
+  "HiringCandidate",
+  "HiringInterview",
+  "HiringScorecard",
+  "HiringQuestion",
+  "HiringOffer",
+  "HiringCompetency",
+  "HiringGrade",
+  "HiringJdTemplate",
+  "HiringBulkJob",
 ]);
 
 /**

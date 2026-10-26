@@ -279,7 +279,7 @@ model RoleAssignment {
 }
 
 /// HR Centre F-b — blueprint §2.
-/// JML S1 (ADR-076) — ONE employment-type list: the union of HR Onboarding's nine,
+/// JML S1 (ADR-081) — ONE employment-type list: the union of HR Onboarding's nine,
 /// HR Offboarding's six and the foundation's five, reconciled. PERMANENT is
 /// "permanent full-time" (Onboarding/Offboarding PERMANENT_FULL_TIME); PART_TIME is
 /// permanent part-time (Offboarding PERMANENT_PART_TIME). Labelled "Employment type".
@@ -315,7 +315,7 @@ enum RoleTrack {
 enum EmployeeStatus {
   ACTIVE
   LEAVER
-  /// JML S1 (ADR-075) — accepted an offer, not started yet. Owned by a JOIN case;
+  /// JML S1 (ADR-080) — accepted an offer, not started yet. Owned by a JOIN case;
   /// "Confirm actual start" flips it to ACTIVE. Never enrolled in a cycle.
   PRE_JOINER
 }
@@ -588,7 +588,7 @@ model Employee {
   // effective service measured against the 6-month bonus eligibility gate.
   unpaidLeaveDays Int @default(0) @map("unpaid_leave_days")
 
-  /// JML S1 (ADR-075) — the EMP code (Onboarding BR-003: one shared EMP0001
+  /// JML S1 (ADR-080) — the EMP code (Onboarding BR-003: one shared EMP0001
   /// sequence across all companies, never reused). Issued at JOIN activation from
   /// `EmployeeCodeSequence`, or recorded by HR for an existing employee (below the
   /// system range). Distinct from `odooId`.
@@ -2029,7 +2029,7 @@ model LeaveReasonCode {
 }
 
 // ===========================================================================
-// HR tickets — the HIVE port (docs/blueprints/hive.md, ADR-075 of HIVE).
+// HR tickets — the HIVE port (docs/blueprints/hive.md, ADR-080 of HIVE).
 //
 // Employees ask in Siraaj; Siraaj calls `/api/mcp`, whose `hive_open_ticket`
 // tool is the only way a ticket is created. HR work the ticket through
@@ -2438,4 +2438,924 @@ model HiveOrgUnitInfo {
 
   @@unique([kind, unitId])
   @@map("hive_org_unit_info")
+}
+
+// =============================================================================
+// Hiring module (port of Rihal Interview Hub) — docs/blueprints/hiring.md,
+// ADR-080. Every model is `Hiring*` on a `hiring_*` table. People, companies,
+// departments and the hired employee are referenced by plain id columns
+// (User / OrgEntity / Department / Employee), validated on write — the module
+// never adds relations onto core models. Compensation lives ONLY in the `*Enc`
+// columns (AES-256-GCM, lib/hiring/comp-crypto.ts), so it cannot be filtered or
+// sorted in SQL by construction.
+// =============================================================================
+
+enum HiringRequisitionStatus {
+  DRAFT
+  PENDING_APPROVAL
+  OPEN
+  ON_HOLD
+  FILLED
+  REOPENED
+  CLOSED // legacy; never a transition target
+  ARCHIVED
+}
+
+enum HiringJdStatus {
+  DRAFT
+  AWAITING_SIGNOFF
+  CHANGES_REQUESTED
+  APPROVED
+}
+
+enum HiringJdSignatory {
+  HIRING_MANAGER
+  HR
+}
+
+enum HiringJdSignoffAction {
+  SIGNED
+  CHANGES_REQUESTED
+}
+
+enum HiringStage {
+  NEW_APPLICATION
+  CV_SCREENED
+  SHORTLISTED
+  ASSESSMENT
+  FIRST_INTERVIEW
+  SECOND_INTERVIEW
+  FINAL_INTERVIEW
+  REFERENCE_CHECK
+  BACKGROUND_CHECK
+  DECISION_PENDING
+  OFFER_DRAFTED
+  OFFER_EXTENDED
+  OFFER_ACCEPTED
+  PRE_ONBOARDING
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum HiringInterviewRound {
+  SCREENING
+  TECHNICAL
+  PANEL
+  FINAL
+}
+
+enum HiringInterviewStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum HiringNotetakerStatus {
+  NO_TRANSCRIPT
+  AI_UNCONFIGURED
+  SKIPPED_NO_CONSENT
+  DRAFTED
+  FAILED
+}
+
+enum HiringVote {
+  STRONG_HIRE
+  HIRE
+  NO_HIRE
+  STRONG_NO_HIRE
+}
+
+enum HiringOfferStatus {
+  DRAFTING
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  ACCEPTED
+  DECLINED
+  WITHDRAWN
+}
+
+enum HiringNegotiationKind {
+  PRE_OFFER_ALIGNMENT
+  NEGOTIATION
+}
+
+enum HiringStallCause {
+  SCORECARDS_OUTSTANDING
+  AWAITING_APPROVAL
+  AWAITING_CANDIDATE
+  AWAITING_SCHEDULING
+  AWAITING_DOCUMENTS
+  ROLE_ON_HOLD
+  OTHER
+}
+
+enum HiringApprovalAction {
+  APPROVED
+  REJECTED
+  SENT_BACK
+}
+
+/// The approval-step identity (Interview Hub's BusinessRole minus ADMIN). Each
+/// value is held through a `hiring.<role>` permission in the role builder.
+enum HiringApprovalRole {
+  HR_MANAGER
+  HR_SPECIALIST
+  HIRING_MANAGER
+  PANELIST
+  DEPARTMENT_HEAD
+  DIRECTOR
+  OPERATIONS_MANAGER
+  OPERATIONS_DIRECTOR
+  COO
+  CEO
+}
+
+enum HiringCandidateSource {
+  CAREERS_PAGE
+  MANUAL_ENTRY
+  LINKEDIN_PASTE
+  AGENCY
+  REFERRAL
+  INTERNAL
+  DIRECT_SOURCING
+  TAWTEEN
+  OTHER
+}
+
+enum HiringDocumentKind {
+  PAYSLIP
+  BANK_STATEMENT
+  EMPLOYMENT_CONTRACT
+  CERTIFICATE
+  ID_DOCUMENT
+  OTHER
+}
+
+enum HiringPackageStatus {
+  NOT_REQUESTED
+  REQUESTED
+  RECEIVED
+  DECLINED
+  CONFIRMED
+}
+
+enum HiringPostingChannel {
+  CAREERS_PAGE
+  LINKEDIN
+  AGENCY
+  REFERRAL
+  TAWTEEN
+  INTERNAL
+}
+
+enum HiringPostingState {
+  LIVE
+  WITHDRAWN
+}
+
+enum HiringHandoverKind {
+  TRANSFERRED
+  RETAINED
+}
+
+enum HiringJobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum HiringAssessmentStatus {
+  INVITED
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+}
+
+enum HiringPlanningRoundStatus {
+  OPEN
+  CLOSED
+}
+
+enum HiringNeedStatus {
+  ASKED
+  NO_RESPONSE
+  SUBMITTED
+  CHALLENGE_AGREED
+  NO_NEED
+}
+
+/// Module configuration — Interview Hub's AppSetting keys, unchanged.
+model HiringSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("hiring_settings")
+}
+
+/// The requisition (Interview Hub `Position`). Scope key: entityId (+ departmentId).
+model HiringRequisition {
+  id                     String                  @id @default(cuid())
+  title                  String
+  entityId               String
+  departmentId           String?
+  description            String                  @default("")
+  competencies           String[]
+  hiringManagerId        String
+  targetCloseDate        DateTime?
+  salaryBandMin          Decimal?                @db.Decimal(12, 3)
+  salaryBandMax          Decimal?                @db.Decimal(12, 3)
+  salaryCurrency         String                  @default("OMR")
+  grade                  String?
+  status                 HiringRequisitionStatus @default(DRAFT)
+  openings               Int                     @default(1)
+  businessNeed           String?
+  alternativesConsidered String?
+  hmSeesSalary           Boolean                 @default(false)
+  ownerId                String?
+  departmentNeedId       String?
+  departmentNeed         HiringDepartmentNeed?   @relation(fields: [departmentNeedId], references: [id], onDelete: SetNull)
+  jdVersion              Int                     @default(1)
+  jdStatus               HiringJdStatus          @default(DRAFT)
+  jdAuthorId             String?
+  jdApprovedAt           DateTime?
+  jdTemplateTitle        String?
+
+  candidates    HiringCandidate[]
+  interviews    HiringInterview[]
+  roundPlans    HiringRoundPlan[]
+  offers        HiringOffer[]
+  questions     HiringQuestion[]
+  statusHistory HiringRequisitionStatusHistory[]
+  approvals     HiringRequisitionApproval[]
+  postings      HiringPosting[]
+  jdSignoffs    HiringJdSignoff[]
+  agencyInvites HiringAgencyInvite[]
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([entityId])
+  @@index([departmentId])
+  @@index([hiringManagerId])
+  @@index([ownerId])
+  @@index([grade])
+  @@index([status, targetCloseDate])
+  @@index([status, jdApprovedAt])
+  @@index([departmentNeedId])
+  @@map("hiring_requisitions")
+}
+
+model HiringPosting {
+  id             String               @id @default(cuid())
+  requisitionId  String
+  requisition    HiringRequisition    @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  channel        HiringPostingChannel
+  state          HiringPostingState   @default(LIVE)
+  detail         String?
+  omaniPreferred Boolean              @default(false)
+  postedAt       DateTime             @default(now())
+  postedById     String?
+  withdrawnAt    DateTime?
+  withdrawnById  String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  @@unique([requisitionId, channel])
+  @@index([channel, state])
+  @@map("hiring_postings")
+}
+
+model HiringRequisitionStatusHistory {
+  id            String                      @id @default(cuid())
+  requisitionId String
+  requisition   HiringRequisition           @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  fromStatus    HiringRequisitionStatus
+  toStatus      HiringRequisitionStatus
+  changedById   String?
+  reason        String
+  changedAt     DateTime                    @default(now())
+  approvals     HiringRequisitionApproval[]
+
+  @@index([requisitionId, changedAt])
+  @@map("hiring_requisition_status_history")
+}
+
+/// ADR-063 (Interview Hub) — one sign-off of one step of one approval round.
+model HiringRequisitionApproval {
+  id            String                         @id @default(cuid())
+  requisitionId String
+  requisition   HiringRequisition              @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  submissionId  String
+  submission    HiringRequisitionStatusHistory @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  sequence      Int
+  requiredRole  HiringApprovalRole
+  approverId    String
+  comment       String
+  createdAt     DateTime                       @default(now())
+
+  @@unique([submissionId, sequence])
+  @@index([requisitionId])
+  @@map("hiring_requisition_approvals")
+}
+
+model HiringJdSignoff {
+  id            String                @id @default(cuid())
+  requisitionId String
+  requisition   HiringRequisition     @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  version       Int
+  action        HiringJdSignoffAction
+  signatory     HiringJdSignatory?
+  actorId       String
+  actorName     String
+  comment       String?
+  createdAt     DateTime              @default(now())
+
+  @@unique([requisitionId, version, signatory])
+  @@index([requisitionId, createdAt])
+  @@map("hiring_jd_signoffs")
+}
+
+/// The candidate. DEI fields are self-declared, scrubbed from audit, never exported.
+model HiringCandidate {
+  id                             String                @id @default(cuid())
+  requisitionId                  String?
+  requisition                    HiringRequisition?    @relation(fields: [requisitionId], references: [id])
+  name                           String
+  email                          String?
+  phone                          String?
+  nationality                    String?
+  currentEmployer                String?
+  linkedinUrl                    String?
+  cvBlobPathname                 String?
+  cvFileName                     String?
+  deiGender                      String?
+  deiEthnicity                   String?
+  profileData                    Json?
+  /// National / civil ID — encrypted under the ID-document key.
+  necEnc                         String?
+  /// Monthly expectation — sealed (comp-crypto).
+  salaryExpectationEnc           String?
+  source                         HiringCandidateSource @default(MANUAL_ENTRY)
+  sourceAttribution              String?
+  referredById                   String?
+  packageStatus                  HiringPackageStatus   @default(NOT_REQUESTED)
+  packageRequestedAt             DateTime?
+  packageDeclinedAt              DateTime?
+  packageDeclinedReason          String?
+  packageConfirmedAt             DateTime?
+  packageConfirmedById           String?
+  fitScores                      Json?
+  /// 0–100 (Interview Hub ADR-057); 0 = not yet scored.
+  overallScore                   Float?                @default(0)
+  aiRationale                    String?
+  aiWhyNot                       String?
+  stage                          HiringStage           @default(NEW_APPLICATION)
+  rejectionReason                String?
+  rejectionNotes                 String?
+  rejectionNoticeSentAt          DateTime?
+  rejectionHoldUntil             DateTime?
+  stallCause                     HiringStallCause?
+  stallNote                      String?
+  stallCauseAt                   DateTime?
+  stallCauseById                 String?
+  stallCauseStage                HiringStage?
+  preferredAt                    DateTime?
+  preferredById                  String?
+  preferredNote                  String?
+  preferredOutstandingScorecards Int?
+  agencyName                     String?
+  agencyInviteId                 String?
+  agencyInvite                   HiringAgencyInvite?   @relation(fields: [agencyInviteId], references: [id], onDelete: SetNull)
+  agencySubmissionNote           String?
+  consentAt                      DateTime?
+  noticeVersion                  String?
+  /// Set at offer acceptance: the PRE_JOINER core Employee (slice 8).
+  employeeId                     String?
+  erasedAt                       DateTime?
+
+  documents        HiringCandidateDocument[]
+  interviews       HiringInterview[]
+  scorecards       HiringScorecard[]
+  stageHistory     HiringStageHistory[]
+  offers           HiringOffer[]
+  assessment       HiringAssessment?
+  negotiationNotes HiringNegotiationNote[]
+  handover         HiringHandover?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([requisitionId])
+  @@index([source])
+  @@index([referredById])
+  @@index([email])
+  @@index([requisitionId, preferredAt])
+  @@index([agencyInviteId])
+  @@index([stage, updatedAt])
+  @@index([stage, createdAt])
+  @@index([rejectionHoldUntil, rejectionNoticeSentAt])
+  @@index([overallScore])
+  @@index([employeeId])
+  @@map("hiring_candidates")
+}
+
+model HiringStageHistory {
+  id          String          @id @default(cuid())
+  candidateId String
+  candidate   HiringCandidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  fromStage   HiringStage
+  toStage     HiringStage
+  movedById   String?
+  reason      String?
+  movedAt     DateTime        @default(now())
+
+  @@index([candidateId, movedAt])
+  @@map("hiring_stage_history")
+}
+
+model HiringInterview {
+  id              String                 @id @default(cuid())
+  requisitionId   String
+  requisition     HiringRequisition      @relation(fields: [requisitionId], references: [id])
+  candidateId     String
+  candidate       HiringCandidate        @relation(fields: [candidateId], references: [id])
+  round           HiringInterviewRound
+  scheduledDate   DateTime
+  location        String?
+  meetingLink     String?
+  status          HiringInterviewStatus  @default(SCHEDULED)
+  transcript      String?
+  notes           String?
+  aiAnalysis      Json?
+  recordingUrl    String?
+  notetakerDraft  String?
+  notetakerStatus HiringNotetakerStatus?
+
+  panelists  HiringInterviewPanelist[]
+  scorecards HiringScorecard[]
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([requisitionId])
+  @@index([candidateId])
+  @@index([status])
+  @@index([scheduledDate, status])
+  @@map("hiring_interviews")
+}
+
+model HiringInterviewPanelist {
+  id          String          @id @default(cuid())
+  interviewId String
+  interview   HiringInterview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  userId      String
+  invitedAt   DateTime        @default(now())
+  confirmedAt DateTime?
+
+  @@unique([interviewId, userId])
+  @@index([userId])
+  @@map("hiring_interview_panelists")
+}
+
+/// The per-requisition round plan (Interview Hub `InterviewBrief`).
+model HiringRoundPlan {
+  id              String               @id @default(cuid())
+  requisitionId   String
+  requisition     HiringRequisition    @relation(fields: [requisitionId], references: [id], onDelete: Cascade)
+  round           HiringInterviewRound
+  roundOrder      Int
+  competencies    String[]
+  durationMinutes Int                  @default(60)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([requisitionId, round])
+  @@unique([requisitionId, roundOrder])
+  @@map("hiring_round_plans")
+}
+
+/// A panel scorecard (Interview Hub `Evaluation`). scores = { competency: 1–5 }.
+model HiringScorecard {
+  id          String          @id @default(cuid())
+  interviewId String
+  interview   HiringInterview @relation(fields: [interviewId], references: [id])
+  candidateId String
+  candidate   HiringCandidate @relation(fields: [candidateId], references: [id])
+  panelistId  String
+  scores      Json
+  strengths   String?
+  concerns    String?
+  vote        HiringVote
+  notes       String?
+  submitted   Boolean         @default(false)
+  submittedAt DateTime?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([interviewId, panelistId])
+  @@index([deletedAt, createdAt])
+  @@index([candidateId])
+  @@index([panelistId])
+  @@map("hiring_scorecards")
+}
+
+model HiringQuestion {
+  id            String             @id @default(cuid())
+  requisitionId String?
+  requisition   HiringRequisition? @relation(fields: [requisitionId], references: [id])
+  roleFamily    String
+  questionText  String
+  category      String
+  competency    String?
+  qualityScore  Float              @default(0)
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([roleFamily])
+  @@map("hiring_questions")
+}
+
+model HiringOffer {
+  id                 String            @id @default(cuid())
+  candidateId        String
+  candidate          HiringCandidate   @relation(fields: [candidateId], references: [id])
+  requisitionId      String
+  requisition        HiringRequisition @relation(fields: [requisitionId], references: [id])
+  /// Monthly basic (OMR) — sealed.
+  salaryEnc          String?
+  /// { name: amount } — sealed JSON.
+  allowancesEnc      String?
+  startDate          DateTime
+  probationMonths    Int               @default(3)
+  noticePeriod       String?           @default("1 month")
+  contractType       String?           @default("Permanent")
+  status             HiringOfferStatus @default(DRAFTING)
+  benefits           String?
+  signedBlobPathname String?
+  signedFileName     String?
+  signedSizeBytes    Int?
+  signedAt           DateTime?
+  joiningDate        DateTime?
+  noticeDetail       String?
+  countersignedBy    String?
+  countersignedAt    DateTime?
+  submittedById      String?
+  approvalChain      Json?
+
+  approvals        HiringOfferApproval[]
+  versions         HiringOfferVersion[]
+  negotiationNotes HiringNegotiationNote[]
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([candidateId])
+  @@index([requisitionId])
+  @@index([status])
+  @@map("hiring_offers")
+}
+
+model HiringOfferApproval {
+  id           String                @id @default(cuid())
+  offerId      String
+  offer        HiringOffer           @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  approverId   String
+  sequence     Int?
+  requiredRole HiringApprovalRole?
+  action       HiringApprovalAction?
+  comment      String?
+  decidedAt    DateTime?
+  createdAt    DateTime              @default(now())
+
+  @@unique([offerId, sequence])
+  @@index([approverId])
+  @@map("hiring_offer_approvals")
+}
+
+model HiringOfferVersion {
+  id                String      @id @default(cuid())
+  offerId           String
+  offer             HiringOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  versionNumber     Int
+  /// Frozen terms (incl. salary + allowances) — sealed JSON.
+  termsSnapshotEnc  String
+  summary           String
+  changedFields     String[]
+  compChanged       Boolean     @default(false)
+  restartedApproval Boolean     @default(false)
+  candidateNote     String?
+  createdById       String?
+  createdByName     String
+  supersededAt      DateTime?
+  createdAt         DateTime    @default(now())
+
+  @@unique([offerId, versionNumber])
+  @@map("hiring_offer_versions")
+}
+
+model HiringNegotiationNote {
+  id                 String                @id @default(cuid())
+  offerId            String?
+  offer              HiringOffer?          @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  candidateId        String
+  candidate          HiringCandidate       @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  kind               HiringNegotiationKind @default(NEGOTIATION)
+  body               String
+  authorId           String?
+  authorName         String
+  authorRole         String?
+  discussedSalaryEnc String?
+  discussedStartDate DateTime?
+  candidateConfirmed Boolean               @default(false)
+  createdAt          DateTime              @default(now())
+
+  @@index([offerId, createdAt])
+  @@index([candidateId, createdAt])
+  @@map("hiring_negotiation_notes")
+}
+
+/// Step 14 — the hiring-side record of the pre-boarding handover.
+model HiringHandover {
+  id           String             @id @default(cuid())
+  candidateId  String             @unique
+  candidate    HiringCandidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  kind         HiringHandoverKind
+  fromUserId   String?
+  fromRole     String?
+  toUserId     String
+  toRole       String?
+  note         String?
+  recordedById String
+  completedAt  DateTime           @default(now())
+  createdAt    DateTime           @default(now())
+
+  @@map("hiring_handovers")
+}
+
+model HiringAgencyInvite {
+  id             String             @id @default(cuid())
+  /// sha256 hex of the 256-bit token; the token itself is never stored.
+  tokenHash      String             @unique
+  agencyName     String
+  requisitionId  String?
+  requisition    HiringRequisition? @relation(fields: [requisitionId], references: [id])
+  entityId       String?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  maxSubmissions Int                @default(20)
+  lastUsedAt     DateTime?
+  createdById    String
+  candidates     HiringCandidate[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([requisitionId])
+  @@map("hiring_agency_invites")
+}
+
+/// Not soft-deletable by design: deleting evidence removes the row and the blob.
+model HiringCandidateDocument {
+  id              String             @id @default(cuid())
+  candidateId     String
+  candidate       HiringCandidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  kind            HiringDocumentKind
+  label           String
+  periodMonth     DateTime?
+  fileName        String
+  contentType     String
+  sizeBytes       Int
+  blobPathname    String?
+  statedAmountEnc String?
+  currency        String             @default("OMR")
+  uploadedById    String?
+  fromCandidate   Boolean            @default(false)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  reviewNote      String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([candidateId, kind])
+  @@map("hiring_candidate_documents")
+}
+
+model HiringCompetency {
+  id         String  @id @default(cuid())
+  name       String
+  definition String?
+  category   String?
+  roleFamily String?
+  entityId   String?
+  /// BARS anchors { "1": "...", …, "5": "..." }.
+  anchors    Json?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([name])
+  @@map("hiring_competencies")
+}
+
+model HiringGrade {
+  id        String   @id @default(cuid())
+  code      String
+  name      String
+  minSalary Decimal? @db.Decimal(12, 3)
+  maxSalary Decimal? @db.Decimal(12, 3)
+  order     Int      @default(0)
+  entityId  String?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([code])
+  @@map("hiring_grades")
+}
+
+model HiringJdTemplate {
+  id           String   @id @default(cuid())
+  title        String
+  roleFamily   String?
+  description  String
+  competencies String[]
+  grade        String?
+  entityId     String?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@index([title])
+  @@map("hiring_jd_templates")
+}
+
+model HiringAiInsight {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  kind        String
+  model       String?
+  output      Json
+  summary     String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId, kind])
+  @@map("hiring_ai_insights")
+}
+
+model HiringAiUsage {
+  id        String   @id @default(cuid())
+  feature   String
+  model     String?
+  tokensIn  Int      @default(0)
+  tokensOut Int      @default(0)
+  latencyMs Int      @default(0)
+  userId    String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([feature, createdAt])
+  @@map("hiring_ai_usage")
+}
+
+model HiringImportBatch {
+  id          String          @id @default(cuid())
+  kind        String
+  status      HiringJobStatus @default(PENDING)
+  total       Int             @default(0)
+  processed   Int             @default(0)
+  failed      Int             @default(0)
+  log         Json?
+  createdById String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([createdAt])
+  @@map("hiring_import_batches")
+}
+
+model HiringBulkJob {
+  id          String          @id @default(cuid())
+  actionKind  String
+  status      HiringJobStatus @default(PENDING)
+  input       Json
+  output      Json?
+  createdById String
+  completedAt DateTime?
+
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([deletedAt, createdAt])
+  @@map("hiring_bulk_jobs")
+}
+
+model HiringAssessment {
+  id             String                 @id @default(cuid())
+  candidateId    String                 @unique
+  candidate      HiringCandidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  invitedAt      DateTime               @default(now())
+  provider       String?
+  status         HiringAssessmentStatus @default(INVITED)
+  score          Int?
+  percentile     Int?
+  completedAt    DateTime?
+  dueAt          DateTime?
+  interviewFocus String?
+  validUntil     DateTime?
+  remindersSent  Int                    @default(0)
+  lastRemindedAt DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@index([status, invitedAt])
+  @@map("hiring_assessments")
+}
+
+model HiringPlanningRound {
+  id          String                    @id @default(cuid())
+  entityId    String
+  label       String
+  status      HiringPlanningRoundStatus @default(OPEN)
+  openedAt    DateTime                  @default(now())
+  closedAt    DateTime?
+  createdById String
+  needs       HiringDepartmentNeed[]
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  @@unique([entityId, label])
+  @@map("hiring_planning_rounds")
+}
+
+model HiringDepartmentNeed {
+  id             String              @id @default(cuid())
+  roundId        String
+  round          HiringPlanningRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  departmentId   String
+  ownerId        String?
+  status         HiringNeedStatus    @default(ASKED)
+  rolesRequested Int?
+  agreedRoles    Int?
+  askedAt        DateTime            @default(now())
+  chasedAt       DateTime?
+  submittedAt    DateTime?
+  discussedAt    DateTime?
+  notes          HiringNeedNote[]
+  requisitions   HiringRequisition[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([roundId, departmentId])
+  @@map("hiring_department_needs")
+}
+
+model HiringNeedNote {
+  id         String               @id @default(cuid())
+  needId     String
+  need       HiringDepartmentNeed @relation(fields: [needId], references: [id], onDelete: Cascade)
+  authorId   String?
+  authorName String
+  authorRole String?
+  body       String
+  createdAt  DateTime             @default(now())
+
+  @@index([needId, createdAt])
+  @@map("hiring_need_notes")
 }

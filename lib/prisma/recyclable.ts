@@ -37,6 +37,17 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   RotationCoverage: { displayField: "label" },
   DiscountPartner: { displayField: "name" },
   NetworkProvider: { displayField: "name" },
+  // Hiring (docs/blueprints/hiring.md).
+  HiringRequisition: { displayField: "title" },
+  HiringCandidate: { displayField: "name" },
+  HiringInterview: { displayField: "location" },
+  HiringScorecard: { displayField: "vote" },
+  HiringQuestion: { displayField: "roleFamily" },
+  HiringOffer: { displayField: "status" },
+  HiringCompetency: { displayField: "name" },
+  HiringGrade: { displayField: "name" },
+  HiringJdTemplate: { displayField: "title" },
+  HiringBulkJob: { displayField: "actionKind" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

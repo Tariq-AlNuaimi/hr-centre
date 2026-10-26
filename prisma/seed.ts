@@ -5,6 +5,7 @@ import { seedFoundation } from "./seed-foundation";
 import { seedJml } from "./seed-jml";
 import { seedHive } from "./seed-hive";
 import { seedPms } from "./seed-pms";
+import { seedHiring } from "./seed-hiring";
 
 async function main() {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
@@ -60,6 +61,8 @@ async function main() {
     // HR tickets (HIVE port): real configuration only — pairs, coverage,
     // rotation, discounts, the answer email and ticket starter roles.
     await seedHive(prisma);
+    // Hiring reference data + configuration defaults (idempotent; no people).
+    await seedHiring(prisma);
 
     // The 36-person demo fixture is for local development only. It never runs
     // unless asked for explicitly, so a real deployment holds no invented people.

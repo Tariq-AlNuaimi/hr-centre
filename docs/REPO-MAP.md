@@ -188,6 +188,37 @@
 - HiveEmailTemplate: id, key, subject, body, updatedById, deletedAt, deletedBy, createdAt, updatedAt, updatedBy
 - HiveTicketSettings: id, ticketPrefix, statusLabels
 - HiveOrgUnitInfo: id, kind, unitId, leaderName, leaderTitle, order, createdAt, updatedAt
+- HiringSetting: id, key, value, updatedAt
+- HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, candidates, interviews, roundPlans, offers, questions, statusHistory, approvals, postings, jdSignoffs, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
+- HiringPosting: id, requisitionId, requisition, channel, state, detail, omaniPreferred, postedAt, postedById, withdrawnAt, withdrawnById, createdAt, updatedAt
+- HiringRequisitionStatusHistory: id, requisitionId, requisition, fromStatus, toStatus, changedById, reason, changedAt, approvals
+- HiringRequisitionApproval: id, requisitionId, requisition, submissionId, submission, sequence, requiredRole, approverId, comment, createdAt
+- HiringJdSignoff: id, requisitionId, requisition, version, action, signatory, actorId, actorName, comment, createdAt
+- HiringCandidate: id, requisitionId, requisition, name, email, phone, nationality, currentEmployer, linkedinUrl, cvBlobPathname, cvFileName, deiGender, deiEthnicity, profileData, necEnc, salaryExpectationEnc, source, sourceAttribution, referredById, packageStatus, packageRequestedAt, packageDeclinedAt, packageDeclinedReason, packageConfirmedAt, packageConfirmedById, fitScores, overallScore, aiRationale, aiWhyNot, stage, rejectionReason, rejectionNotes, rejectionNoticeSentAt, rejectionHoldUntil, stallCause, stallNote, stallCauseAt, stallCauseById, stallCauseStage, preferredAt, preferredById, preferredNote, preferredOutstandingScorecards, agencyName, agencyInviteId, agencyInvite, agencySubmissionNote, consentAt, noticeVersion, employeeId, erasedAt, documents, interviews, scorecards, stageHistory, offers, assessment, negotiationNotes, handover, deletedAt, deletedBy, createdAt, updatedAt
+- HiringStageHistory: id, candidateId, candidate, fromStage, toStage, movedById, reason, movedAt
+- HiringInterview: id, requisitionId, requisition, candidateId, candidate, round, scheduledDate, location, meetingLink, status, transcript, notes, aiAnalysis, recordingUrl, notetakerDraft, notetakerStatus, panelists, scorecards, deletedAt, deletedBy, createdAt, updatedAt
+- HiringInterviewPanelist: id, interviewId, interview, userId, invitedAt, confirmedAt
+- HiringRoundPlan: id, requisitionId, requisition, round, roundOrder, competencies, durationMinutes, createdAt, updatedAt
+- HiringScorecard: id, interviewId, interview, candidateId, candidate, panelistId, scores, strengths, concerns, vote, notes, submitted, submittedAt, deletedAt, deletedBy, createdAt, updatedAt
+- HiringQuestion: id, requisitionId, requisition, roleFamily, questionText, category, competency, qualityScore, deletedAt, deletedBy, createdAt, updatedAt
+- HiringOffer: id, candidateId, candidate, requisitionId, requisition, salaryEnc
+- HiringOfferApproval: id, offerId, offer, approverId, sequence, requiredRole, action, comment, decidedAt, createdAt
+- HiringOfferVersion: id, offerId, offer, versionNumber, termsSnapshotEnc, summary, changedFields, compChanged, restartedApproval, candidateNote, createdById, createdByName, supersededAt, createdAt
+- HiringNegotiationNote: id, offerId, offer, candidateId, candidate, kind, body, authorId, authorName, authorRole, discussedSalaryEnc, discussedStartDate, candidateConfirmed, createdAt
+- HiringHandover: id, candidateId, candidate, kind, fromUserId, fromRole, toUserId, toRole, note, recordedById, completedAt, createdAt
+- HiringAgencyInvite: id, tokenHash, agencyName, requisitionId, requisition, entityId, expiresAt, revokedAt, maxSubmissions, lastUsedAt, createdById, candidates, createdAt, updatedAt
+- HiringCandidateDocument: id, candidateId, candidate, kind, label, periodMonth, fileName, contentType, sizeBytes, blobPathname, statedAmountEnc, currency, uploadedById, fromCandidate, reviewedById, reviewedAt, reviewNote, createdAt, updatedAt
+- HiringCompetency: id, name, definition, category, roleFamily, entityId
+- HiringGrade: id, code, name, minSalary, maxSalary, order, entityId, deletedAt, deletedBy, createdAt, updatedAt
+- HiringJdTemplate: id, title, roleFamily, description, competencies, grade, entityId, deletedAt, deletedBy, createdAt, updatedAt
+- HiringAiInsight: id, entityType, entityId, kind, model, output, summary, createdById, createdAt
+- HiringAiUsage: id, feature, model, tokensIn, tokensOut, latencyMs, userId, createdAt
+- HiringImportBatch: id, kind, status, total, processed, failed, log, createdById, createdAt, updatedAt
+- HiringBulkJob: id, actionKind, status, input, output, createdById, completedAt, deletedAt, deletedBy, createdAt, updatedAt
+- HiringAssessment: id, candidateId, candidate, invitedAt, provider, status, score, percentile, completedAt, dueAt, interviewFocus, validUntil, remindersSent, lastRemindedAt, createdAt, updatedAt
+- HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
+- HiringDepartmentNeed: id, roundId, round, departmentId, ownerId, status, rolesRequested, agreedRoles, askedAt, chasedAt, submittedAt, discussedAt, notes, requisitions, createdAt, updatedAt
+- HiringNeedNote: id, needId, need, authorId, authorName, authorRole, body, createdAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -201,6 +232,10 @@
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
+- lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, actsAs, canOverrideGates, canEditAssessmentPolicy, canSignJdForHr, seesPii, seesComp, isPanelOnly
+- lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
+- lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
+- lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
 - lib/hive/pair-scope.ts: registerHivePairScopes
 - lib/hive/roles.ts: TicketStarterKey, TICKET_STARTER_ROLES
 - lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission

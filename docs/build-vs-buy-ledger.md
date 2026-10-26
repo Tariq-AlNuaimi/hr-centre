@@ -830,3 +830,19 @@ extensible scope registry; HIVE's grant rows become assignments).
 Decision: build (port) — HIVE's own code, carried over nearly verbatim (pure routing, rotation,
 reply-token, tool and protocol modules) and re-wired onto HR Centre's Prisma, org and RBAC. No new
 runtime dependency (`read-excel-file` for the provider import is already a dependency).
+
+### 2026-10-26 — Hiring module (port of Rihal Interview Hub)
+
+Scope: lib/hiring/**, lib/validations/hiring/**
+Considered: **Keep running Interview Hub as a separate app** (rejected by the operator — HR Centre
+is to be Rihal's single HR system, and two identity/role systems for one HR team is the problem
+being solved). **An ATS SaaS (Greenhouse, Lever, Workable, Zoho Recruit, BambooHR ATS)** (rejected
+— the process is Rihal's documented 15 steps with Oman-specific rules: Tawteen postings, two-step
+requisition and offer chains with a COO threshold, payslip package evidence, 5-working-day
+Sun–Thu rejection holds; an off-the-shelf ATS would hold candidate PII with a third party and still
+need the hand-off into HR Centre's joiner flow). **Port Interview Hub's `lib/**` wholesale with its
+Prisma extensions** (rejected for the crypto and identity seams — ADR-080; the business rules ARE
+ported, file by file, re-wired onto HR Centre's RBAC, org and field-encryption primitives).
+Decision: build — port the rules, reuse HR Centre's role builder (`lib/rbac`), field encryption
+(`lib/crypto/field-encryption.ts`), private blob storage (`lib/storage.ts`), Excel engine
+(`read-excel-file`/`write-excel-file`) and rate limiter. See docs/blueprints/hiring.md, ADR-080.
