@@ -13,7 +13,7 @@ import { StatutoryParameterMissingError } from "@/lib/statutory/parameters";
 export class JmlError extends Error {
   constructor(
     message: string,
-    readonly status: 400 | 403 | 404 | 409 | 422 = 409,
+    readonly status: 400 | 403 | 404 | 409 | 422 | 503 = 409,
   ) {
     super(message);
     this.name = "JmlError";

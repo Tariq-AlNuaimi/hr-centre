@@ -75,6 +75,12 @@ export const REDACT_FIELDS = new Set([
   "deiGender",
   "deiEthnicity",
   "tokenHash",
+  // JML (docs/blueprints/jml.md D14) — Restricted leaver money and narrative,
+  // the same names in the audit scrub, the export denylist and the diagnostics
+  // redaction (kept in sync by tests/contracts/audit-scrub + export-column tests).
+  "deductionAmount",
+  "deductionAmountEnc",
+  "deduction_amount_enc",
 ]);
 
 // Redact any REDACT_FIELDS key in each returned row before it is printed.

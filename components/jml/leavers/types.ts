@@ -1,0 +1,44 @@
+/** GET /api/jml/leavers/[id] (lib/jml/leave/read.ts). */
+export type ExitView = {
+  caseId: string;
+  caseRef: string;
+  status: string;
+  stage: string;
+  version: number;
+  employeeId: string;
+  exitType: string;
+  exitSubtype: string | null;
+  nationality: string;
+  employmentTypeAtExit: string | null;
+  noticeStartDate: string | null;
+  noticePeriodDays: number;
+  defaultNoticeDays: number;
+  noticePeriodOverrideReason: string | null;
+  lastPhysicalWorkingDay: string | null;
+  lastDayOfService: string | null;
+  departureDate: string | null;
+  earlyReleaseApproved: boolean;
+  settlementApplicable: boolean;
+  visaSupportApplicable: boolean;
+  docRefPerformanceHistory: string | null;
+  docRefWrittenGrounds: string | null;
+  docRefLegalReview: string | null;
+  backfillDecision: string;
+  backfillApprovalRef: string | null;
+  rehireEligible: string | null;
+  migrated: boolean;
+  rekeyedAt: string | null;
+  rekeyReason: string | null;
+  employeeName: string;
+  jobTitle: string | null;
+  grade: string | null;
+  positionClassification: string | null;
+  entityName: string | null;
+  departmentName: string | null;
+  lineManager: { id: string; name: string } | null;
+  loginRevokedAt: string | null;
+  departureAppliedAt: string | null;
+  can: { manage: boolean; decide: boolean; override: boolean; settlement: boolean; close: boolean };
+};
+
+export const CLOSED_STATUSES = new Set(["CLOSED", "CANCELLED", "ARCHIVED"]);

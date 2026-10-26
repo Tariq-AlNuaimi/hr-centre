@@ -92,6 +92,16 @@ export async function archiveCase(actor: JmlActor, caseId: string) {
   if (kase.status === "DRAFT" || isLive(kase.status)) {
     throw new JmlError("Complete or cancel the case before archiving it.", 409);
   }
+  // AC-2.4: a withdrawn exit stays in the working lists until its reversals are done.
+  const openReversals = await prisma.jmlTask.count({
+    where: { caseId, isReversal: true, ...OPEN_TASK },
+  });
+  if (openReversals > 0) {
+    throw new JmlError(
+      `${openReversals} reversal task${openReversals === 1 ? " is" : "s are"} still open. Complete or mark them not applicable before archiving.`,
+      409,
+    );
+  }
   await auditedTransaction((tx) =>
     bumpCase(
       tx,

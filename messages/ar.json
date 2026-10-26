@@ -78,7 +78,8 @@
     "jmlCalendar": "Joining calendar",
     "jmlStatutory": "Statutory watch",
     "jmlReports": "Reports",
-    "jmlMovers": "Movers"
+    "jmlMovers": "Movers",
+    "jmlLeavers": "Leavers"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -2480,7 +2481,8 @@
         "process": "Process",
         "calendar": "Calendar and statutory figures",
         "lists": "Reference lists",
-        "data": "Data"
+        "data": "Data",
+        "leavers": "Leavers"
       },
       "item": {
         "templates": {
@@ -2522,6 +2524,18 @@
         "retention": {
           "title": "Data retention",
           "note": "The retention rule and a dry run of what it would touch."
+        },
+        "asset-types": {
+          "title": "Asset types",
+          "note": "What can be issued and returned."
+        },
+        "access-checklist": {
+          "title": "Access checklist",
+          "note": "The access every exit revokes (26 items to start)."
+        },
+        "approval-authority": {
+          "title": "Approval authority",
+          "note": "Delegates and second-level delegates per approval type."
         }
       },
       "list": {
@@ -2897,6 +2911,42 @@
         "wouldProcess": "Cases the next run would process",
         "onHold": "Held back by a legal hold",
         "notConfigured": "Retention does not run: {reason}."
+      },
+      "authority": {
+        "title": "Approval authority",
+        "subtitle": "Approvals are referenced by role. The second level must not be an HR Manager.",
+        "holders": "Holders: {list}",
+        "holderLabel": "Holder label",
+        "delegate": "Delegate",
+        "secondLevel": "Second-level delegate",
+        "secondLevelHint": "Used when the holder and the delegate are both unavailable.",
+        "change": "Change",
+        "none": "None",
+        "save": "Save",
+        "saved": "Approval authority saved.",
+        "failed": "The approval authority could not be saved."
+      },
+      "leaverLists": {
+        "asset-types": {
+          "title": "Asset types",
+          "subtitle": "Deactivate a type rather than delete it; recorded assets keep theirs."
+        },
+        "access-checklist": {
+          "title": "Access checklist",
+          "subtitle": "Copied onto every exit at activation; a shared credential always needs rotating."
+        },
+        "current": "Current list",
+        "add": "Add",
+        "label": "Label",
+        "domain": "Domain",
+        "shared": "Shared credential",
+        "rotate": "Needs rotation",
+        "active": "Active",
+        "inactive": "Inactive",
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "saved": "Saved.",
+        "failed": "The list could not be saved."
       }
     },
     "vocab": {
@@ -3101,7 +3151,10 @@
         "checklist": "Checklist",
         "overview": "Overview",
         "emails": "Emails & notifications",
-        "activity": "Activity"
+        "activity": "Activity",
+        "approvals": "Approvals",
+        "compliance": "Compliance",
+        "register": "Assets & access"
       },
       "actions": {
         "failed": "That could not be done.",
@@ -3440,6 +3493,17 @@
           "title": "All companies",
           "note": "Onboarding totals per company."
         }
+      },
+      "leaveGroup": "Leavers",
+      "overrides": {
+        "title": "Compliance gate overrides",
+        "note": "Every overridden gate in a month, newest first.",
+        "month": "Month",
+        "empty": "No overrides in this month.",
+        "tallies": "Totals",
+        "byGate": "By gate: {list}",
+        "byActor": "By person: {list}",
+        "row": "{gate} overridden by {by} on {at} — {reason}"
       }
     },
     "movers": {
@@ -3500,6 +3564,316 @@
         "field": "Field",
         "previous": "Before",
         "new": "After"
+      }
+    },
+    "leavers": {
+      "title": "Leavers",
+      "subtitle": "Exit cases — resignations, terminations, contract expiries and probation exits.",
+      "newTitle": "Open an exit",
+      "newSubtitle": "Pick the employee; their job, placement and line manager come from their record.",
+      "vocab": {
+        "exitType": {
+          "RESIGNATION": "Resignation",
+          "TERMINATION": "Termination",
+          "CONTRACT_EXPIRY": "Contract expiry",
+          "PROBATION_EXIT": "Probation exit",
+          "SUMMARY_DISMISSAL": "Summary dismissal"
+        },
+        "exitSubtype": {
+          "PERFORMANCE": "Performance",
+          "CONDUCT": "Conduct",
+          "BUSINESS": "Business",
+          "OTHER": "Other"
+        },
+        "nationality": {
+          "OMANI": "Omani",
+          "EXPATRIATE": "Expatriate"
+        },
+        "backfill": {
+          "PENDING": "Pending",
+          "BACKFILL": "Backfill",
+          "RELEASE": "Release the position",
+          "DEFERRED": "Deferred"
+        },
+        "rehire": {
+          "YES": "Eligible",
+          "CONDITIONAL": "Conditional",
+          "NO": "Not eligible"
+        },
+        "approvalType": {
+          "EXIT_CONFIRMATION": "Exit confirmation",
+          "TERMINATION_AUTHORISATION": "Termination authorisation",
+          "EARLY_RELEASE_VIA_LEAVE": "Early release via leave",
+          "BACKFILL_DECISION": "Backfill decision",
+          "FINAL_SETTLEMENT_APPROVAL": "Final settlement approval"
+        },
+        "approvalStatus": {
+          "PENDING": "Pending",
+          "GRANTED": "Granted",
+          "REJECTED": "Refused"
+        }
+      },
+      "form": {
+        "who": "Employee",
+        "employee": "Find the employee",
+        "changeEmployee": "Change",
+        "facts": "Exit facts",
+        "factsNote": "A draft creates no tasks, documents or notices until it is activated.",
+        "exitType": "Exit type",
+        "exitSubtype": "Termination reason",
+        "choose": "Choose…",
+        "nationality": "Branch",
+        "nationalityHint": "Defaults from the employee record.",
+        "fromRecord": "From the employee record",
+        "noticeStart": "Notice start",
+        "noticeDays": "Notice period (days)",
+        "noticeDefault": "The default for this exit type is {days} days; a different length needs a reason.",
+        "overrideReason": "Why the notice differs",
+        "lpwd": "Last physical working day",
+        "lpwdHint": "Access is revoked and assets are due on this day.",
+        "lds": "Last day of service",
+        "ldsHint": "On or after the last physical working day; the gap is terminal leave.",
+        "departure": "Departure date",
+        "departureHint": "Expatriates only — the visa document is handed over two working days before.",
+        "settlementApplicable": "A final settlement applies",
+        "visaSupport": "Visa support applies",
+        "docs": "Documentation",
+        "docsNote": "A termination or summary dismissal needs all three references before activation.",
+        "docPerf": "Performance history reference",
+        "docGrounds": "Written grounds reference",
+        "docLegal": "Legal review reference",
+        "save": "Save draft",
+        "created": "Exit draft saved.",
+        "failed": "The exit could not be saved."
+      },
+      "overview": {
+        "datesTitle": "Exit dates",
+        "detailsTitle": "Exit details",
+        "dash": "—",
+        "yes": "Yes",
+        "no": "No",
+        "notYet": "Not yet",
+        "notRecorded": "Not recorded",
+        "notAssessed": "Not assessed",
+        "exitType": "Exit type",
+        "exitSubtype": "Termination reason",
+        "nationality": "Branch",
+        "noticeStart": "Notice start",
+        "noticeDays": "Notice period (days)",
+        "noticeOverridden": "{days} — {reason}",
+        "lpwd": "Last physical working day",
+        "lds": "Last day of service",
+        "departure": "Departure date",
+        "earlyRelease": "Early release approved",
+        "loginRevoked": "Login revoked",
+        "departureApplied": "Departure applied",
+        "rekeyed": "Re-keyed",
+        "jobTitle": "Job title at exit",
+        "grade": "Grade at exit",
+        "employmentType": "Employment type at exit",
+        "classification": "Position classification",
+        "company": "Company",
+        "department": "Department",
+        "lineManager": "Line manager",
+        "settlement": "Final settlement applies",
+        "visaSupport": "Visa support applies",
+        "backfill": "Backfill decision",
+        "backfillRef": "Backfill approval reference",
+        "rehire": "Rehire eligibility",
+        "docPerf": "Performance history reference",
+        "docGrounds": "Written grounds reference",
+        "docLegal": "Legal review reference",
+        "migrated": "Historical record"
+      },
+      "dates": {
+        "open": "Change dates",
+        "title": "Exit dates",
+        "draftNote": "Nothing is generated yet, so changing the dates moves nothing else.",
+        "liveNote": "Open tasks keyed to a date that moves are recalculated, and the case owners are told. Completed tasks keep their dates.",
+        "earlyRelease": "Early release via leave is approved (needed to move only the last physical working day)",
+        "save": "Save dates",
+        "saved": "Dates saved.",
+        "failed": "The dates could not be saved."
+      },
+      "details": {
+        "open": "Edit details",
+        "title": "Exit details",
+        "classification": "Position classification",
+        "classificationHint": "Now: {current}. Compliance gate C8 needs it.",
+        "keep": "Keep as it is",
+        "settlement": "A final settlement applies",
+        "visaSupport": "Visa support applies",
+        "docPerf": "Performance history reference",
+        "docGrounds": "Written grounds reference",
+        "docLegal": "Legal review reference",
+        "backfill": "Backfill decision",
+        "backfillRef": "Backfill approval reference",
+        "rehire": "Rehire eligibility",
+        "notAssessed": "Not assessed",
+        "save": "Save",
+        "saved": "Exit details saved.",
+        "failed": "The details could not be saved."
+      },
+      "activation": {
+        "title": "Activate this exit",
+        "subtitle": "Activation assigns the HR owner, generates the checklist and the access to revoke, and attaches the assets to return.",
+        "ready": "Nothing is blocking activation.",
+        "activate": "Activate",
+        "activated": "Exit activated.",
+        "failed": "The exit could not be activated."
+      },
+      "rekey": {
+        "open": "Re-key a past notice",
+        "title": "Re-key this exit",
+        "body": "The notice started before this case was keyed. Say what happened to each of the {count} tasks already due; nothing is guessed.",
+        "reason": "Why this exit is keyed late",
+        "taskLine": "{code} {name} — due {due}",
+        "outcome": "What happened",
+        "outstanding": "Still outstanding",
+        "completed": "Done",
+        "notApplicable": "Not applicable",
+        "completedOn": "Done on",
+        "why": "Why it does not apply",
+        "confirm": "Activate and record",
+        "done": "Exit re-keyed and activated.",
+        "failed": "The exit could not be re-keyed."
+      },
+      "withdraw": {
+        "open": "Withdraw exit",
+        "title": "Withdraw this exit",
+        "body": "Open tasks are cancelled. Every revocation already done gets a reversal task, and a departure already applied is undone. The case can be archived once the reversals are done.",
+        "reason": "Reason",
+        "confirm": "Withdraw",
+        "done": "Exit withdrawn.",
+        "failed": "The exit could not be withdrawn."
+      },
+      "approvals": {
+        "intro": "Approvals are referenced by role. HR records each decision on the holder's behalf, with the email, minute or memo it came from.",
+        "why": {
+          "EXIT_CONFIRMATION": "The line manager confirms the exit.",
+          "TERMINATION_AUTHORISATION": "HR Manager and Operations Director — needed to activate a termination or summary dismissal.",
+          "EARLY_RELEASE_VIA_LEAVE": "Line manager and Operations Director — needed to bring the last physical working day forward.",
+          "BACKFILL_DECISION": "The Operations Director decides whether the position is backfilled.",
+          "FINAL_SETTLEMENT_APPROVAL": "HR Manager and Operations Director — two signatures before the settlement is paid."
+        },
+        "none": "Not requested.",
+        "request": "Request",
+        "requestMissing": "Request missing holders",
+        "requested": "Approval requested.",
+        "pendingSince": "pending since {date}",
+        "decided": "{status} on {date} by {by} — {ref}",
+        "decide": "Record decision",
+        "decideTitle": "Decision of the {holder}",
+        "decideBody": "A grant needs the reference it came from; a refusal needs the reason.",
+        "outcome": "Decision",
+        "granted": "Granted",
+        "rejected": "Refused",
+        "decisionDate": "Decision date",
+        "reference": "Reference",
+        "referenceHint": "Email, minute or memo.",
+        "comments": "Comments",
+        "commentsHint": "Required for a refusal.",
+        "delegateUsed": "Decided by the configured delegate",
+        "secondLevelUsed": "Decided by the second-level delegate",
+        "record": "Record",
+        "recorded": "Decision recorded.",
+        "failed": "The approval could not be saved."
+      },
+      "compliance": {
+        "allClear": "Every applicable compliance gate is satisfied or overridden.",
+        "outstanding": "{count, plural, one {# compliance gate is} other {# compliance gates are}} still open — the case cannot close until each is satisfied or overridden.",
+        "gateLine": "{id} — {label}",
+        "notYet": "Not recorded yet.",
+        "satisfied": "Satisfied by {by} on {date} {ref}",
+        "overridden": "Overridden by {by}: {reason}",
+        "record": "Record",
+        "recordTitle": "Record gate {id}",
+        "isSatisfied": "This gate is satisfied",
+        "reference": "Reference",
+        "override": "Override",
+        "overrideTitle": "Override gate {id}",
+        "overrideBody": "An override is reported monthly and needs the reason.",
+        "reason": "Reason",
+        "saved": "Gate recorded.",
+        "failed": "The gate could not be recorded.",
+        "incidentsTitle": "Compliance incidents",
+        "incidentsNote": "Logged by the daily scan whatever the case status; never deleted.",
+        "noIncidents": "No incidents.",
+        "incidentLine": "{gate}: {note} — deadline {deadline}, {days} days late"
+      }
+    },
+    "register": {
+      "domain": {
+        "IDENTITY": "Identity",
+        "COMMUNICATION": "Communication",
+        "NETWORK": "Network",
+        "CODE_AND_INFRASTRUCTURE": "Code and infrastructure",
+        "DATA": "Data",
+        "THIRD_PARTY_AND_SAAS": "Third-party and SaaS",
+        "SHARED_CREDENTIALS": "Shared credentials",
+        "PHYSICAL": "Physical",
+        "EXTERNAL_FACING": "External-facing"
+      },
+      "assets": {
+        "title": "Assets",
+        "joinNote": "Assets issued to the joiner; they come back on the exit case.",
+        "leaveNote": "{count, plural, =0 {Every asset is accounted for.} one {# asset still to return.} other {# assets still to return.}}",
+        "empty": "No assets recorded.",
+        "add": "Add asset",
+        "issueTitle": "Issue an asset",
+        "addReturnTitle": "Add an asset to return",
+        "type": "Asset type",
+        "choose": "Choose…",
+        "identifier": "Serial or tag",
+        "description": "Description",
+        "issuedOn": "Issued on",
+        "returnDue": "Return due",
+        "returnDueHint": "Defaults to the last physical working day.",
+        "added": "Asset added.",
+        "issued": "Issued {date}",
+        "due": "Return due {date}",
+        "returned": "Returned {date} — {condition}",
+        "writtenOff": "Written off — {reason}",
+        "deduction": "deduction {amount}",
+        "deductionHidden": "deduction recorded",
+        "return": "Record return",
+        "returnTitle": "Return of {type}",
+        "returnedOn": "Returned on",
+        "condition": "Condition at return",
+        "deductionApplies": "A deduction applies",
+        "amount": "Amount (OMR)",
+        "deductionNeedsSenior": "A deduction amount is recorded by Senior HR or the HR Manager.",
+        "returnedDone": "Return recorded.",
+        "writeOff": "Write off",
+        "writeOffTitle": "Write off {type}",
+        "reason": "Reason",
+        "writtenOffDone": "Asset written off.",
+        "failed": "The asset could not be saved."
+      },
+      "access": {
+        "title": "Access",
+        "openCount": "{count, plural, =0 {Every item is confirmed.} one {# item open.} other {# items open.}}",
+        "unrotated": "Shared credentials not yet rotated: {list}",
+        "empty": "No access items.",
+        "rotate": "rotate",
+        "due": "due {date}",
+        "confirmed": "confirmed {date} by {party} — {ref}",
+        "add": "Add access",
+        "addTitle": "Add an access item",
+        "domain": "Domain",
+        "system": "System or account",
+        "shared": "A shared credential (must be rotated)",
+        "dueDate": "Due",
+        "dueHint": "Defaults to the last physical working day on an exit.",
+        "added": "Access item added.",
+        "confirm": "Confirm",
+        "confirmTitle": "Confirm {name}",
+        "rotateNote": "This credential must be rotated; another account's disablement does not close it.",
+        "party": "Confirmed by",
+        "date": "Date",
+        "reference": "Reference (ticket, email)",
+        "confirmedDone": "Access item confirmed.",
+        "failed": "The access item could not be saved."
       }
     }
   },

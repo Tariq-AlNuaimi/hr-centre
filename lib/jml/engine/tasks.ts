@@ -132,7 +132,9 @@ export async function loadTaskForWork(actor: JmlActor, taskId: string) {
   });
   if (!task) throw new JmlError("Task not found", 404);
   const kase = await loadCaseFor(actor, task.caseId, "jml.workTasks");
-  if (!isLive(kase.status)) {
+  // A withdrawn exit's reversal tasks are the one work left on a cancelled case (AC-2.3).
+  const reversalWork = task.isReversal && kase.status === "CANCELLED";
+  if (!isLive(kase.status) && !reversalWork) {
     throw new JmlError(
       `This case is ${kase.status.toLowerCase().replace("_", " ")}, so its checklist can no longer change.`,
     );

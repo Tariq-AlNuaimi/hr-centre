@@ -101,6 +101,11 @@ model User {
   jmlEmailsSent           JmlEmailLog[]              @relation("JmlEmailSentBy")
   jmlEmailTemplateEdits   JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
   jmlItReadinessConfirmed JmlJoinDetail[]            @relation("JmlItReadinessBy")
+  jmlApprovalsDecided     JmlApproval[]              @relation("JmlApprovalDecidedBy")
+  jmlAssetsVerified       JmlAsset[]                 @relation("JmlAssetVerifiedBy")
+  jmlAccessConfirmed      JmlAccessItem[]            @relation("JmlAccessConfirmedBy")
+  leaveGatesSatisfied     LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
+  leaveGatesOverridden    LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -614,7 +619,15 @@ model Employee {
   positionClassification   PositionClassification? @relation(fields: [positionClassificationId], references: [id])
 
   /// JML S2 — joiner / mover / leaver cases about this person.
-  jmlCases JmlCase[] @relation("JmlCaseSubject")
+  jmlCases             JmlCase[]              @relation("JmlCaseSubject")
+  /// JML S5 — leaver cases this employee is the line manager of; approvals they hold;
+  /// assets and access issued to them.
+  leaveCasesManaged    LeaveCaseDetail[]      @relation("LeaveLineManager")
+  jmlApprovalsHeld     JmlApproval[]          @relation("JmlApprovalHolder")
+  jmlAuthorityDelegate JmlApprovalAuthority[] @relation("JmlAuthorityDelegate")
+  jmlAuthoritySecond   JmlApprovalAuthority[] @relation("JmlAuthoritySecondDelegate")
+  jmlAssets            JmlAsset[]             @relation("JmlAssetHolder")
+  jmlAccessItems       JmlAccessItem[]        @relation("JmlAccessHolder")
 
   // Login link (ADR-065). NULLABLE and unique: the employee population is not
   // the login population — the Strategy team has no system access (§4.1),
@@ -3583,12 +3596,20 @@ model JmlCase {
   legalHoldBy     User?     @relation("JmlCaseLegalHold", fields: [legalHoldById], references: [id], onDelete: SetNull)
   anonymisedAt    DateTime? @map("anonymised_at")
 
-  tasks      JmlTask[]
-  emailLogs  JmlEmailLog[]
+  tasks          JmlTask[]
+  emailLogs      JmlEmailLog[]
   /// JML S3 — the joiner details of a JOIN case.
-  joinDetail JmlJoinDetail?
+  joinDetail     JmlJoinDetail?
   /// JML S4 — the change of a MOVE case.
-  moveDetail JmlMoveDetail?
+  moveDetail     JmlMoveDetail?
+  /// JML S5 — the leaver side.
+  leaveDetail    LeaveCaseDetail?
+  approvals      JmlApproval[]
+  assetsIssued   JmlAsset[]                @relation("JmlAssetIssuedOn")
+  assetsReturned JmlAsset[]                @relation("JmlAssetReturnedOn")
+  accessItems    JmlAccessItem[]
+  gateRecords    LeaveGateRecord[]
+  incidents      LeaveComplianceIncident[]
 
   /// Soft delete — a discarded DRAFT only. Archive is a status, never a delete.
   deletedAt DateTime? @map("deleted_at")
@@ -3906,4 +3927,310 @@ model JmlMoveDetail {
 
   @@index([effectiveDate])
   @@map("jml_move_details")
+}
+
+enum LeaveExitSubtype {
+  PERFORMANCE
+  CONDUCT
+  BUSINESS
+  OTHER
+}
+
+/// The nationality BRANCH of an exit (Offboarding `Nationality`), derived from the
+/// employee's nationality and snapshotted on the case — not the passport.
+enum LeaveNationality {
+  OMANI
+  EXPATRIATE
+}
+
+enum LeaveBackfillDecision {
+  BACKFILL
+  RELEASE
+  DEFERRED
+  PENDING
+}
+
+enum LeaveRehireEligibility {
+  YES
+  CONDITIONAL
+  NO
+}
+
+enum JmlApprovalType {
+  EXIT_CONFIRMATION
+  TERMINATION_AUTHORISATION
+  EARLY_RELEASE_VIA_LEAVE
+  BACKFILL_DECISION
+  FINAL_SETTLEMENT_APPROVAL
+}
+
+enum JmlApprovalStatus {
+  PENDING
+  GRANTED
+  REJECTED
+}
+
+/// Offboarding §9.8.2 — the nine access domains.
+enum JmlAccessDomain {
+  IDENTITY
+  COMMUNICATION
+  NETWORK
+  CODE_AND_INFRASTRUCTURE
+  DATA
+  THIRD_PARTY_AND_SAAS
+  SHARED_CREDENTIALS
+  PHYSICAL
+  EXTERNAL_FACING
+}
+
+/// One register: access GRANTED at a join, REVOKED at a leave.
+enum JmlAccessDirection {
+  GRANT
+  REVOKE
+}
+
+/// JML S5 — the leaver-only facts of a LEAVE case (HR Offboarding `ExitCase`
+/// minus the shared header). Employee facts are read from the core record and
+/// SNAPSHOTTED here, because reports attribute an exit to the person and org as
+/// they were at exit.
+model LeaveCaseDetail {
+  caseId String  @id @map("case_id")
+  case   JmlCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  exitType                   LeaveExitType     @map("exit_type")
+  exitSubtype                LeaveExitSubtype? @map("exit_subtype")
+  employmentTypeAtExit       ContractType?     @map("employment_type_at_exit")
+  nationality                LeaveNationality
+  noticeStartDate            DateTime          @map("notice_start_date") @db.Date
+  noticePeriodDays           Int               @map("notice_period_days")
+  /// Persisted (Offboarding validated it and threw it away).
+  noticePeriodOverrideReason String?           @map("notice_period_override_reason")
+  lastPhysicalWorkingDay     DateTime?         @map("last_physical_working_day") @db.Date
+  /// = the core `Employee.lastWorkingDay` once the departure is applied (D7).
+  lastDayOfService           DateTime?         @map("last_day_of_service") @db.Date
+  departureDate              DateTime?         @map("departure_date") @db.Date
+  earlyReleaseApproved       Boolean           @default(false) @map("early_release_approved")
+  settlementApplicable       Boolean           @default(true) @map("settlement_applicable")
+  visaSupportApplicable      Boolean           @default(false) @map("visa_support_applicable")
+
+  docRefPerformanceHistory String? @map("doc_ref_performance_history")
+  docRefWrittenGrounds     String? @map("doc_ref_written_grounds")
+  docRefLegalReview        String? @map("doc_ref_legal_review")
+
+  backfillDecision    LeaveBackfillDecision   @default(PENDING) @map("backfill_decision")
+  backfillApprovalRef String?                 @map("backfill_approval_ref")
+  rehireEligible      LeaveRehireEligibility? @map("rehire_eligible")
+
+  /// Historical import (§26.2): history only — never departs the employee.
+  migrated        Boolean @default(false)
+  /// No JOIN case existed for the employee when this case was created.
+  manuallyCreated Boolean @default(true) @map("manually_created")
+
+  /// Snapshots at creation / activation.
+  employeeNameAtExit         String  @map("employee_name_at_exit")
+  jobTitleAtExit             String? @map("job_title_at_exit")
+  gradeAtExit                String? @map("grade_at_exit")
+  positionClassificationName String? @map("position_classification_name")
+  entityIdAtExit             String  @map("entity_id_at_exit")
+  directorateIdAtExit        String? @map("directorate_id_at_exit")
+  departmentIdAtExit         String? @map("department_id_at_exit")
+  teamIdAtExit               String? @map("team_id_at_exit")
+
+  /// D13 — the line manager is an employee (approval holder for EXIT_CONFIRMATION / EARLY_RELEASE).
+  lineManagerEmployeeId String?   @map("line_manager_employee_id")
+  lineManager           Employee? @relation("LeaveLineManager", fields: [lineManagerEmployeeId], references: [id], onDelete: SetNull)
+
+  /// Re-key (§26.1): an exit already in flight at go-live.
+  rekeyedAt   DateTime? @map("rekeyed_at")
+  rekeyReason String?   @map("rekey_reason")
+
+  /// D7 — the departure milestones (written by the sweep / closure, slice S6).
+  loginRevokedAt     DateTime? @map("login_revoked_at")
+  departureAppliedAt DateTime? @map("departure_applied_at")
+  departureNote      String?   @map("departure_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([lastDayOfService])
+  @@index([exitType])
+  @@map("leave_case_details")
+}
+
+/// §4.3 approvals — all five types, holders referenced by ROLE (AC-11.4).
+model JmlApproval {
+  id               String            @id @default(cuid())
+  caseId           String            @map("case_id")
+  case             JmlCase           @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  approvalType     JmlApprovalType   @map("approval_type")
+  /// "HR Manager" / "Operations Director" / "Line Manager".
+  holderRoleKey    String            @map("holder_role_key")
+  status           JmlApprovalStatus @default(PENDING)
+  requestedAt      DateTime          @default(now()) @map("requested_at")
+  decisionDate     DateTime?         @map("decision_date") @db.Date
+  reference        String?
+  comments         String?
+  /// The holder, when the holder is a known employee (the line manager).
+  holderEmployeeId String?           @map("holder_employee_id")
+  holderEmployee   Employee?         @relation("JmlApprovalHolder", fields: [holderEmployeeId], references: [id], onDelete: SetNull)
+  /// The HR user who recorded the decision (the holder may have no login).
+  decidedById      String?           @map("decided_by_id")
+  decidedBy        User?             @relation("JmlApprovalDecidedBy", fields: [decidedById], references: [id], onDelete: SetNull)
+  delegateUsed     Boolean           @default(false) @map("delegate_used")
+  secondLevelUsed  Boolean           @default(false) @map("second_level_used")
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  @@unique([caseId, approvalType, holderRoleKey])
+  @@index([status, requestedAt])
+  @@map("jml_approvals")
+}
+
+/// Who may stand in for an approval holder (Offboarding ApprovalConfig, with real
+/// employee FKs): BR-OFF-021 delegate always, BR-OFF-032 second level for two types.
+model JmlApprovalAuthority {
+  id                            String          @id @default(cuid())
+  approvalType                  JmlApprovalType @unique @map("approval_type")
+  holderLabel                   String          @map("holder_label")
+  delegateEmployeeId            String?         @map("delegate_employee_id")
+  delegate                      Employee?       @relation("JmlAuthorityDelegate", fields: [delegateEmployeeId], references: [id], onDelete: SetNull)
+  secondLevelDelegateEmployeeId String?         @map("second_level_delegate_employee_id")
+  secondLevelDelegate           Employee?       @relation("JmlAuthoritySecondDelegate", fields: [secondLevelDelegateEmployeeId], references: [id], onDelete: SetNull)
+  active                        Boolean         @default(true)
+  createdAt                     DateTime        @default(now()) @map("created_at")
+  updatedAt                     DateTime        @updatedAt @map("updated_at")
+
+  @@map("jml_approval_authorities")
+}
+
+model JmlAssetType {
+  id        String     @id @default(cuid())
+  label     String     @unique
+  active    Boolean    @default(true)
+  sortOrder Int        @default(0) @map("sort_order")
+  assets    JmlAsset[]
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@map("jml_asset_types")
+}
+
+/// One register (D6): a physical item issued to an employee (often on a JOIN case)
+/// and returned on a LEAVE case.
+model JmlAsset {
+  id                  String       @id @default(cuid())
+  employeeId          String       @map("employee_id")
+  employee            Employee     @relation("JmlAssetHolder", fields: [employeeId], references: [id], onDelete: Restrict)
+  issuedOnCaseId      String?      @map("issued_on_case_id")
+  issuedOnCase        JmlCase?     @relation("JmlAssetIssuedOn", fields: [issuedOnCaseId], references: [id], onDelete: SetNull)
+  returnedOnCaseId    String?      @map("returned_on_case_id")
+  returnedOnCase      JmlCase?     @relation("JmlAssetReturnedOn", fields: [returnedOnCaseId], references: [id], onDelete: SetNull)
+  assetTypeId         String       @map("asset_type_id")
+  assetType           JmlAssetType @relation(fields: [assetTypeId], references: [id], onDelete: Restrict)
+  description         String?
+  identifier          String?
+  issuedDate          DateTime?    @map("issued_date") @db.Date
+  conditionAtIssue    String?      @map("condition_at_issue")
+  returnDueDate       DateTime?    @map("return_due_date") @db.Date
+  returnedDate        DateTime?    @map("returned_date") @db.Date
+  conditionAtReturn   String?      @map("condition_at_return")
+  deductionApplicable Boolean      @default(false) @map("deduction_applicable")
+  /// RESTRICTED money (D14): AES-GCM envelope, bound to the asset id.
+  deductionAmountEnc  String?      @map("deduction_amount_enc")
+  writtenOff          Boolean      @default(false) @map("written_off")
+  writtenOffReason    String?      @map("written_off_reason")
+  verifiedById        String?      @map("verified_by_id")
+  verifiedBy          User?        @relation("JmlAssetVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@index([employeeId, returnedDate])
+  @@index([returnedOnCaseId])
+  @@map("jml_assets")
+}
+
+/// The access checklist (Offboarding V1, 26 items) — rotation/shared flags are
+/// COLUMNS here (the source matched them by label against a constant).
+model JmlAccessChecklistItem {
+  id               String          @id @default(cuid())
+  domain           JmlAccessDomain
+  label            String
+  rotationRequired Boolean         @default(false) @map("rotation_required")
+  sharedCredential Boolean         @default(false) @map("shared_credential")
+  active           Boolean         @default(true)
+  sortOrder        Int             @default(0) @map("sort_order")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  @@unique([domain, label])
+  @@map("jml_access_checklist_items")
+}
+
+model JmlAccessItem {
+  id               String             @id @default(cuid())
+  caseId           String             @map("case_id")
+  case             JmlCase            @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  employeeId       String             @map("employee_id")
+  employee         Employee           @relation("JmlAccessHolder", fields: [employeeId], references: [id], onDelete: Restrict)
+  direction        JmlAccessDirection
+  domain           JmlAccessDomain
+  systemName       String             @map("system_name")
+  accessLevel      String?            @map("access_level")
+  sharedCredential Boolean            @default(false) @map("shared_credential")
+  rotationRequired Boolean            @default(false) @map("rotation_required")
+  dueDate          DateTime           @map("due_date") @db.Date
+  confirmedDate    DateTime?          @map("confirmed_date") @db.Date
+  confirmingParty  String?            @map("confirming_party")
+  reference        String?
+  confirmedById    String?            @map("confirmed_by_id")
+  confirmedBy      User?              @relation("JmlAccessConfirmedBy", fields: [confirmedById], references: [id], onDelete: SetNull)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  @@index([caseId, domain])
+  @@index([dueDate, confirmedDate])
+  @@map("jml_access_items")
+}
+
+/// §17.3 compliance gates C1–C11 per case (absent record = unsatisfied).
+model LeaveGateRecord {
+  id             String    @id @default(cuid())
+  caseId         String    @map("case_id")
+  case           JmlCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  gateId         String    @map("gate_id")
+  satisfied      Boolean   @default(false)
+  satisfiedAt    DateTime? @map("satisfied_at")
+  satisfiedById  String?   @map("satisfied_by_id")
+  satisfiedBy    User?     @relation("LeaveGateSatisfiedBy", fields: [satisfiedById], references: [id], onDelete: SetNull)
+  reference      String?
+  overriddenById String?   @map("overridden_by_id")
+  overriddenBy   User?     @relation("LeaveGateOverriddenBy", fields: [overriddenById], references: [id], onDelete: SetNull)
+  overrideReason String?   @map("override_reason")
+  overriddenAt   DateTime? @map("overridden_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  @@unique([caseId, gateId])
+  @@index([overriddenById, overriddenAt])
+  @@map("leave_gate_records")
+}
+
+/// AC-12.2 — a statutory deadline missed, logged independently of case status.
+model LeaveComplianceIncident {
+  id         String    @id @default(cuid())
+  caseId     String    @map("case_id")
+  case       JmlCase   @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  kind       String
+  gateId     String    @map("gate_id")
+  detectedAt DateTime  @map("detected_at")
+  deadlineAt DateTime  @map("deadline_at") @db.Date
+  daysLate   Int       @map("days_late")
+  resolvedAt DateTime? @map("resolved_at")
+  note       String?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@unique([caseId, kind, deadlineAt])
+  @@index([kind, resolvedAt])
+  @@map("leave_compliance_incidents")
 }
