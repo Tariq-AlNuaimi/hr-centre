@@ -13,7 +13,7 @@
  * acting outside its scope. `SCOPED_PERMISSIONS` is the list that honours scope.
  */
 
-export const MODULES = ["people", "org", "imports", "logins", "perf", "tickets"] as const;
+export const MODULES = ["people", "org", "imports", "logins", "perf", "tickets", "hiring"] as const;
 export type ModuleKey = (typeof MODULES)[number];
 
 export const PERMISSIONS = [
@@ -40,6 +40,26 @@ export const PERMISSIONS = [
   { code: "tickets.editContent", module: "tickets" },
   { code: "tickets.configure", module: "tickets" },
   { code: "tickets.viewReports", module: "tickets" },
+  // Hiring (docs/blueprints/hiring.md §2, ADR-080). Capability permissions…
+  { code: "hiring.view", module: "hiring" },
+  { code: "hiring.manage", module: "hiring" },
+  { code: "hiring.viewComp", module: "hiring" },
+  { code: "hiring.viewPii", module: "hiring" },
+  { code: "hiring.viewDei", module: "hiring" },
+  { code: "hiring.configure", module: "hiring" },
+  { code: "hiring.erase", module: "hiring" },
+  // …and the approval roles (Interview Hub's business roles): holding one makes
+  // a person eligible for that step, in the scope the assignment covers.
+  { code: "hiring.hrManager", module: "hiring" },
+  { code: "hiring.hrSpecialist", module: "hiring" },
+  { code: "hiring.hiringManager", module: "hiring" },
+  { code: "hiring.panelist", module: "hiring" },
+  { code: "hiring.departmentHead", module: "hiring" },
+  { code: "hiring.director", module: "hiring" },
+  { code: "hiring.operationsManager", module: "hiring" },
+  { code: "hiring.operationsDirector", module: "hiring" },
+  { code: "hiring.coo", module: "hiring" },
+  { code: "hiring.ceo", module: "hiring" },
 ] as const satisfies ReadonlyArray<{ code: string; module: ModuleKey }>;
 
 export type Permission = (typeof PERMISSIONS)[number]["code"];
@@ -61,6 +81,23 @@ export const SCOPED_PERMISSIONS = new Set<Permission>([
   // HR tickets — scoped to an HR Tag pair, not an org unit.
   "tickets.draft",
   "tickets.approve",
+  // Hiring — a record is covered by its requisition's company / directorate /
+  // department. `hiring.configure` and `hiring.erase` are org-wide (Group only).
+  "hiring.view",
+  "hiring.manage",
+  "hiring.viewComp",
+  "hiring.viewPii",
+  "hiring.viewDei",
+  "hiring.hrManager",
+  "hiring.hrSpecialist",
+  "hiring.hiringManager",
+  "hiring.panelist",
+  "hiring.departmentHead",
+  "hiring.director",
+  "hiring.operationsManager",
+  "hiring.operationsDirector",
+  "hiring.coo",
+  "hiring.ceo",
 ]);
 
 /** The modules the foundation's starter roles were written for (migration 20261026180000). */

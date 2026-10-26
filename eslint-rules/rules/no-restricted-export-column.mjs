@@ -69,6 +69,29 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "passportNumber",
   "passportNumberEnc",
   "passport_number_enc",
+  // Hiring (docs/blueprints/hiring.md, ADR-075) — candidate and offer data that
+  // Interview Hub classed Restricted: sealed compensation (ciphertext AND the
+  // plaintext names forms carry), the civil ID, the AI's private judgement, the
+  // interview transcript, self-declared DEI fields and the agency-token hash.
+  "salaryEnc",
+  "allowancesEnc",
+  "salaryExpectation",
+  "salaryExpectationEnc",
+  "statedAmount",
+  "statedAmountEnc",
+  "termsSnapshot",
+  "termsSnapshotEnc",
+  "discussedSalary",
+  "discussedSalaryEnc",
+  "nec",
+  "necEnc",
+  "profileData",
+  "aiRationale",
+  "aiWhyNot",
+  "transcript",
+  "deiGender",
+  "deiEthnicity",
+  "tokenHash",
 ]);
 
 // Forward-safe name pattern: a column key matching this is treated as Restricted

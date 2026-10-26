@@ -1948,7 +1948,8 @@
       "imports": "Imports",
       "logins": "Logins",
       "perf": "Performance",
-      "tickets": "HR tickets"
+      "tickets": "HR tickets",
+      "hiring": "Hiring"
     },
     "permission": {
       "people": {
@@ -1982,6 +1983,25 @@
         "editContent": "Edit the answer email and ticket settings",
         "configure": "Manage HR pairs, coverage, rotation, discounts and providers",
         "viewReports": "See ticket reports"
+      },
+      "hiring": {
+        "view": "See hiring (requisitions, candidates)",
+        "manage": "Run hiring (create and edit)",
+        "viewComp": "See hiring pay and offers",
+        "viewPii": "See candidate contact and personal details",
+        "viewDei": "See diversity reports",
+        "configure": "Configure hiring settings",
+        "erase": "Export and erase candidate data",
+        "hrManager": "Act as HR Manager (Sr HRBP)",
+        "hrSpecialist": "Act as HR Specialist",
+        "hiringManager": "Act as hiring manager",
+        "panelist": "Sit on interview panels",
+        "departmentHead": "Act as department head",
+        "director": "Act as director",
+        "operationsManager": "Act as operations manager",
+        "operationsDirector": "Act as operations director",
+        "coo": "Act as COO",
+        "ceo": "Act as CEO"
       }
     },
     "assignments": "Assignments",
