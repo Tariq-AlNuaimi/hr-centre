@@ -59,7 +59,8 @@
     "uat:recommend": "node scripts/uat-recommend.mjs",
     "uat:benchmark": "node scripts/uat-benchmark.mjs",
     "provision-logins": "tsx scripts/provision-logins.mjs",
-    "demo-cast": "tsx scripts/provision-logins.mjs --demo-cast"
+    "demo-cast": "tsx scripts/provision-logins.mjs --demo-cast",
+    "hive:providers": "node --conditions=react-server --import tsx scripts/hive-import-providers.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

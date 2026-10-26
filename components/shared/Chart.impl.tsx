@@ -67,6 +67,8 @@ export interface ChartProps<T extends Record<string, unknown>> {
   valueKey?: string;
   /** Override the default palette. */
   colors?: string[];
+  /** For line/bar/area: whole-number ticks only — counts have no 1.5. */
+  integer?: boolean;
 }
 
 const DEFAULT_COLORS = chartPalette;
@@ -80,6 +82,7 @@ export function Chart<T extends Record<string, unknown>>({
   nameKey = "name",
   valueKey = "value",
   colors = DEFAULT_COLORS,
+  integer = false,
 }: ChartProps<T>) {
   const { isDark } = useTheme();
   // Read grid contrast from the active theme so the grid is visible on the dark
@@ -92,7 +95,7 @@ export function Chart<T extends Record<string, unknown>>({
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
-          <YAxis />
+          <YAxis allowDecimals={!integer} />
           <Tooltip />
           <Legend />
           <Line type="monotone" dataKey={yKey} stroke={colors[0]} strokeWidth={2} dot={{ r: 3 }} />
@@ -107,7 +110,7 @@ export function Chart<T extends Record<string, unknown>>({
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
-          <YAxis />
+          <YAxis allowDecimals={!integer} />
           <Tooltip />
           <Legend />
           <Bar dataKey={yKey} fill={colors[0]} />
@@ -122,7 +125,7 @@ export function Chart<T extends Record<string, unknown>>({
         <AreaChart data={data}>
           <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
           <XAxis dataKey={xKey} />
-          <YAxis />
+          <YAxis allowDecimals={!integer} />
           <Tooltip />
           <Legend />
           <Area
