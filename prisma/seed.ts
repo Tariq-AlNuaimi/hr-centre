@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
+import { seedFoundation } from "./seed-foundation";
 import { seedPms } from "./seed-pms";
 
 async function main() {
@@ -46,14 +47,14 @@ async function main() {
       console.log(`Admin user created: ${adminEmail}`);
     }
 
-    // Seed a fork's own domain data here. The seed uses the RAW generated client
-    // (no audit/soft-delete extension), so plain creates are fine; keep inserts
-    // idempotent with findUnique-then-create (`upsert` would trip
-    // no-unaudited-bulk-write).
+    // HR Centre starts empty: companies, the bootstrap HR department and the
+    // bootstrap HR Super Admin only (prisma/seed-foundation.ts). Runs on every
+    // deploy via vercel.json, so it must stay idempotent.
+    await seedFoundation(prisma);
 
-    // PMS org fixture (spec §1.2/§1.3/§4.1). Idempotent, so it is safe on every
-    // deploy — `vercel.json` runs the seed on each build.
-    await seedPms(prisma);
+    // The 36-person demo fixture is for local development only. It never runs
+    // unless asked for explicitly, so a real deployment holds no invented people.
+    if (process.env.SEED_DEMO === "1") await seedPms(prisma);
   } finally {
     await prisma.$disconnect();
   }

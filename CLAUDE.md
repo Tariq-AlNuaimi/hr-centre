@@ -1,6 +1,6 @@
-# CLAUDE.md — Fullstack Next.js Template (Constitution)
+# CLAUDE.md — HR Centre (Constitution)
 
-Rihal internal-tool prototype starter. Stack (ADR-001, locked): Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Tailwind v4 + shadcn/Radix (ADR-029) + next-intl (RTL) + recharts + zod; Vercel + Neon, `git push` deploys. Owner: Tariq Al-Naaimi. Non-dev stakeholders review via shared URLs; the operator iterates, then `/handoff` gives production to IT (ADR-006). Fork lifecycle: `/rebrand` → `/first-fork` (or `/new-project` / `/deploy`) → `/quickstart` per idea → `/scale-up` per growth axis → `/handoff`. Per-task rail: `/router` — where you are, what's next.
+**HR Centre**, Rihal's single HR system (origin + empty-start seed: README; `SEED_DEMO=1` is local-only). Stack (ADR-001, locked): Next.js 16 + Prisma 7 (Postgres) + Auth.js v5 + Tailwind v4 + shadcn/Radix (ADR-029) + next-intl (RTL) + recharts + zod; Vercel + Neon, `git push` deploys. Owner: Tariq Al-Naaimi. Non-dev stakeholders review via shared URLs; the operator iterates, then `/handoff` gives production to IT (ADR-006). Lost? `/router`.
 
 > **Always-on constitution** (identity, pillars, security floor, Ask-before). Domain detail loads
 > lazily by path from `docs/rules/*.md` — read the matching file first (a PreToolUse hook also
