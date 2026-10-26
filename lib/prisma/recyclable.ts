@@ -48,6 +48,8 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   HiringGrade: { displayField: "name" },
   HiringJdTemplate: { displayField: "title" },
   HiringBulkJob: { displayField: "actionKind" },
+  // JML S2 — a discarded DRAFT case only; archive is a status, never a delete.
+  JmlCase: { displayField: "caseRef" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

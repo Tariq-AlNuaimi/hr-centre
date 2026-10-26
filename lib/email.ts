@@ -41,6 +41,8 @@ function getTransporter(): Transporter | null {
 
 export interface SendEmailOptions {
   to: string | string[];
+  /** Carbon copies (JML: the fixed audience plus an administrator's cc list). */
+  cc?: string | string[];
   subject: string;
   /** Plain-text body. Required -- spam filters penalize HTML-only mail. */
   text: string;
@@ -81,6 +83,9 @@ export function buildMailOptions(opts: SendEmailOptions): SendMailOptions {
   return {
     from: opts.from ?? process.env.SMTP_FROM ?? "noreply@localhost",
     to: Array.isArray(opts.to) ? opts.to.join(",") : opts.to,
+    ...(opts.cc && (Array.isArray(opts.cc) ? opts.cc.length > 0 : true)
+      ? { cc: Array.isArray(opts.cc) ? opts.cc.join(",") : opts.cc }
+      : {}),
     subject: opts.subject,
     text: opts.text,
     html: opts.html,

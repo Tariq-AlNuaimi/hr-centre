@@ -61,14 +61,17 @@
       "people": "People",
       "performance": "Performance",
       "admin": "Admin",
-      "tickets": "HR tickets"
+      "tickets": "HR tickets",
+      "jml": "Joiners, movers & leavers"
     },
     "mainNav": "Main navigation",
     "hive": "HIVE",
     "hiveTickets": "Tickets",
     "hiveReports": "Ticket reports",
     "hiveSetup": "Ticket setup",
-    "hiveCrumb": "HR tickets"
+    "hiveCrumb": "HR tickets",
+    "jmlSettings": "Settings",
+    "jmlHome": "Joiners, movers & leavers"
   },
   "auth": {
     "login": "Login",
@@ -1535,7 +1538,16 @@
         "CYCLE_REMINDER": "Goal-setting deadline approaching",
         "CYCLE_ESCALATION": "Goal-setting deadline escalated",
         "HR_INTERVENTION": "HR intervention needed",
-        "THREE_SIXTY_REMINDER": "360 assessment outstanding"
+        "THREE_SIXTY_REMINDER": "360 assessment outstanding",
+        "JML_INFO": "Joiner notice",
+        "JML_AUTOMATION_FAILURE": "A message could not be sent",
+        "JML_OVERDUE_TASK_DIGEST": "Overdue checklist tasks",
+        "JML_OVERDUE_ESCALATION": "Checklist task escalated",
+        "JML_STATUTORY_WATCH_ALERT": "Statutory deadline approaching",
+        "JML_APPROVAL_REMINDER": "Approval waiting",
+        "JML_CASE_ACTIVATED": "Case activated",
+        "JML_RECALCULATION_NOTICE": "Due dates recalculated",
+        "JML_CASE_CLOSED": "Case closed"
       }
     },
     "cyclePolicy": {
@@ -1955,7 +1967,8 @@
       "logins": "Logins",
       "perf": "Performance",
       "tickets": "HR tickets",
-      "hiring": "Hiring"
+      "hiring": "Hiring",
+      "jml": "Joiners, movers & leavers"
     },
     "permission": {
       "people": {
@@ -2008,6 +2021,30 @@
         "operationsDirector": "Act as operations director",
         "coo": "Act as COO",
         "ceo": "Act as CEO"
+      },
+      "jml": {
+        "view": "See joiner, mover and leaver cases",
+        "manageJoiners": "Create, activate and run joiners",
+        "manageMovers": "Start and cancel internal changes",
+        "manageLeavers": "Create, activate and run exit cases",
+        "workTasks": "Work checklist tasks",
+        "reopenTasks": "Reopen completed exit tasks",
+        "supervise": "Supervise cases (archive, legal hold, reassign, duplicate override)",
+        "closeLeavers": "Close exit cases",
+        "assessExits": "Assess exits as regrettable or preventable",
+        "viewSettlement": "See settlement figures",
+        "manageSettlement": "Calculate settlements and confirm payment",
+        "approveSettlement": "Give final settlement approval",
+        "decideApprovals": "Record termination authorisation decisions",
+        "overrideGates": "Override compliance gates",
+        "reassignLeavers": "Reassign the HR owner of an exit case",
+        "viewReports": "See joiner, mover and leaver reports",
+        "financialReports": "Include settlement and salary figures in reports",
+        "unsuppressedReports": "See small report cells unsuppressed",
+        "configure": "Configure joiners, movers & leavers",
+        "activateDocuments": "Activate document templates",
+        "manageApprovalAuthority": "Manage approval holders and delegates",
+        "verifyStatutory": "Verify statutory parameters"
       }
     },
     "assignments": "Assignments",
@@ -2257,6 +2294,417 @@
       "resetConfirm": "Go back to the HIVE prefix and the built-in status names?",
       "resetDone": "Back to the defaults",
       "emailTemplateLink": "Edit the answer email"
+    }
+  },
+  "jml": {
+    "common": {
+      "notPermitted": "You do not have access to this. Ask a platform administrator for a joiners, movers & leavers role.",
+      "loadFailed": "This could not be loaded. Refresh the page to try again."
+    },
+    "settings": {
+      "title": "Joiners, movers & leavers settings",
+      "subtitle": "Templates, owners, calendar and reference lists the joiner, mover and leaver cases use",
+      "group": {
+        "process": "Process",
+        "calendar": "Calendar and statutory figures",
+        "lists": "Reference lists"
+      },
+      "item": {
+        "templates": {
+          "title": "Checklist templates",
+          "note": "Tasks, stages, due dates and conditions for each case type"
+        },
+        "rules": {
+          "title": "HR owner assignment",
+          "note": "Who owns a case, by company, directorate or department"
+        },
+        "contract-types": {
+          "title": "Contract types",
+          "note": "HR's approved list — needed before any onboarding can be activated"
+        },
+        "employment-types": {
+          "title": "Employment types",
+          "note": "What each type offers on new joiners"
+        },
+        "email-templates": {
+          "title": "Joiner emails",
+          "note": "The approved copy, your edits, preview and test send"
+        },
+        "calendar": {
+          "title": "Working calendar",
+          "note": "Working days, hours and public holidays used by every due date"
+        },
+        "statutory": {
+          "title": "Statutory parameters",
+          "note": "Gratuity, settlement and visa figures with effective dates"
+        },
+        "employee-code": {
+          "title": "Employee codes",
+          "note": "The EMP code cutover and the next code to be issued"
+        },
+        "classifications": {
+          "title": "Position classifications",
+          "note": "Omanisation classifications for leaver gate C8"
+        }
+      },
+      "list": {
+        "showInactive": "Show inactive",
+        "inactive": "Inactive",
+        "deactivate": "Deactivate",
+        "reactivate": "Reactivate",
+        "deactivated": "Deactivated",
+        "reactivated": "Reactivated",
+        "added": "Added",
+        "code": "Code",
+        "sortOrder": "Sort order",
+        "add": "Add",
+        "saveFailed": "Could not save the change."
+      },
+      "classifications": {
+        "title": "Position classifications",
+        "subtitle": "Omanisation classifications recorded on exit cases (gate C8). Never deleted, only deactivated",
+        "listTitle": "Classifications",
+        "empty": "No classifications yet. Gate C8 cannot be satisfied until HR adds the approved list.",
+        "labelField": "Label"
+      },
+      "contractTypes": {
+        "title": "Contract types",
+        "subtitle": "HR's approved contract types. Onboarding activation is refused until at least one is active",
+        "listTitle": "Contract types",
+        "empty": "No contract types yet. Add the approved list before activating any onboarding.",
+        "labelField": "Name"
+      },
+      "calendar": {
+        "title": "Working calendar",
+        "subtitle": "One calendar for every due date, working-day count and notification window",
+        "schedule": "Working week and hours",
+        "isDefault": "Using the default: Sunday to Thursday, 08:00 to 17:00, Asia/Muscat",
+        "futureOnly": "Changes apply to dates calculated from now on. Due dates already set do not move",
+        "workingDays": "Working days",
+        "weekend": "Weekend: {days}",
+        "none": "none",
+        "day": {
+          "1": "Monday",
+          "2": "Tuesday",
+          "3": "Wednesday",
+          "4": "Thursday",
+          "5": "Friday",
+          "6": "Saturday",
+          "7": "Sunday"
+        },
+        "startHour": "Window opens (hour)",
+        "endHour": "Window closes (hour)",
+        "timeZone": "Time zone",
+        "save": "Save schedule",
+        "saved": "Schedule saved",
+        "saveFailed": "Could not save the calendar.",
+        "holidays": "Public holidays",
+        "holidaysNote": "Holidays are non-working days for due dates and working-day counts. Islamic holidays move with the moon — enter them when announced",
+        "previousYear": "Previous year",
+        "nextYear": "Next year",
+        "noHolidays": "No public holidays entered for {year}.",
+        "remove": "Remove",
+        "removed": "Holiday removed",
+        "date": "Date",
+        "name": "Name",
+        "add": "Add holiday",
+        "added": "Holiday added"
+      },
+      "statutory": {
+        "title": "Statutory parameters",
+        "subtitle": "Every statutory figure is a parameter with an effective-date range, never a value in code",
+        "provisional": "{count, plural, one {# parameter is} other {# parameters are}} not yet confirmed. Settlements using them are provisional and cannot receive final approval.",
+        "parameters": "Parameters",
+        "empty": "No statutory parameters.",
+        "key": "Parameter",
+        "value": "Value",
+        "effective": "In force",
+        "status": "Status",
+        "actions": "Actions",
+        "range": "{from} to {to}",
+        "always": "always",
+        "open": "open",
+        "verified": "Confirmed by {name}",
+        "unverified": "Not confirmed",
+        "withdraw": "Withdraw confirmation",
+        "withdrawn": "Confirmation withdrawn",
+        "checkedAgainst": "Checked against",
+        "confirm": "Confirm",
+        "confirmed": "Figure confirmed",
+        "saveFailed": "Could not save the parameter.",
+        "add": "Add a parameter row",
+        "addNote": "A new row is always created unconfirmed. A correction is a new row with a later start, never an edit of history",
+        "from": "In force from",
+        "to": "In force until",
+        "toHint": "Leave empty for open-ended",
+        "note": "Note",
+        "addButton": "Add row",
+        "addedRow": "Row added"
+      },
+      "employmentTypes": {
+        "title": "Employment types",
+        "subtitle": "One list for joiners, movers and leavers. Each type's defaults are used by the joiner form",
+        "listTitle": "Employment types",
+        "noneConfigured": "None configured yet — every type is offered, payroll applies, no suggested template",
+        "type": "Employment type",
+        "offered": "Offered on new joiners",
+        "template": "Suggested template",
+        "payroll": "Payroll applies by default",
+        "notes": "Applicability note",
+        "actions": "Actions",
+        "noTemplate": "No suggestion",
+        "templateOption": "{name} (v{version})",
+        "save": "Save",
+        "saved": "Saved",
+        "saveFailed": "Could not save."
+      },
+      "employeeCode": {
+        "title": "Employee codes",
+        "subtitle": "One EMP sequence across all companies. Codes are never reused",
+        "current": "Current sequence",
+        "nextToIssue": "Next code to be issued",
+        "lastManualId": "Last code issued by hand",
+        "cutoverAt": "Cutover",
+        "approvedBy": "Approved by",
+        "notConfigured": "The cutover has not been recorded, so no onboarding can be activated. Record the last code issued from Excel below.",
+        "configure": "Record the cutover",
+        "update": "Update the sequence",
+        "firstRule": "The next system code must be the next number after the last one issued by hand",
+        "forwardOnly": "The next code can only move forward — a code is never reused",
+        "prefix": "Prefix",
+        "digits": "Digits",
+        "lastHint": "For example EMP0311",
+        "nextValue": "Next system number",
+        "preview": "Will issue {code} next",
+        "save": "Save",
+        "saved": "Sequence saved",
+        "saveFailed": "Could not save the sequence."
+      },
+      "rules": {
+        "title": "HR owner assignment",
+        "subtitle": "Each case gets exactly one HR owner. A department rule beats a directorate rule, which beats a company rule; then the higher priority, then the oldest",
+        "orgFirst": "Add the companies and departments first (Organisation setup).",
+        "hrUsersFirst": "No one holds a joiners, movers & leavers role yet. Assign HR Manager, Senior HR or Junior HR in Access first.",
+        "listTitle": "Rules",
+        "empty": "No rules yet. Activation is refused for any position no rule covers — no owner is ever invented.",
+        "level": "Level",
+        "appliesTo": "Applies to",
+        "caseTypes": "Case types",
+        "owner": "Case owner",
+        "senior": "Paired supervisor",
+        "priority": "Priority",
+        "status": "Status",
+        "actions": "Actions",
+        "allTypes": "All",
+        "active": "Active",
+        "inactive": "Inactive",
+        "edit": "Edit",
+        "scope": {
+          "COMPANY": "Company",
+          "DIRECTORATE": "Directorate",
+          "DEPARTMENT": "Department"
+        },
+        "caseType": {
+          "JOIN": "Joiners",
+          "MOVE": "Movers",
+          "LEAVE": "Leavers"
+        },
+        "editTitle": "Edit rule",
+        "addTitle": "Add a rule",
+        "seatNote": "The owner needs the Work checklist tasks permission for the unit; the supervisor needs Supervise cases",
+        "choose": "Choose…",
+        "priorityHint": "Higher wins within the same level",
+        "caseTypesHint": "None ticked means every case type",
+        "save": "Save rule",
+        "saved": "Rule saved",
+        "cancel": "Cancel",
+        "saveFailed": "Could not save the rule.",
+        "previewTitle": "Who would own a case here?",
+        "previewNote": "Pick a position to see which rule wins",
+        "anyDepartment": "No department",
+        "previewResult": "{owner} (supervised by {senior}) — matched at {level} level; {count, plural, one {# rule} other {# rules}} covered this position.",
+        "previewNone": "No rule covers this position — activation would be refused."
+      },
+      "templates": {
+        "title": "Checklist templates",
+        "subtitle": "Editing a template saves a new version. Running cases keep the version they started with",
+        "add": "New template",
+        "blocksActivation": "There is no active joiner template, so no onboarding can be activated.",
+        "listTitle": "Templates",
+        "caseType": "Case type",
+        "allTypes": "All case types",
+        "allVersions": "Show every version",
+        "empty": "No templates yet.",
+        "name": "Name",
+        "version": "Version",
+        "tasks": "Tasks",
+        "cases": "Cases using it",
+        "status": "Status",
+        "actions": "Actions",
+        "active": "Active",
+        "inactive": "Inactive",
+        "open": "Open",
+        "caseTypeValue": {
+          "JOIN": "Joiner",
+          "MOVE": "Mover",
+          "LEAVE": "Leaver"
+        },
+        "changeType": {
+          "INTERNSHIP_TO_TRAINING": "Internship to training",
+          "INTERNSHIP_TO_EMPLOYMENT": "Internship to employment",
+          "TRAINING_TO_EMPLOYMENT": "Training to employment",
+          "DEPARTMENT_TRANSFER": "Department transfer"
+        },
+        "saveFailed": "Could not save the template.",
+        "versionSaved": "New version saved",
+        "created": "Template created",
+        "editTitle": "{name} — version {version}",
+        "newTitle": "New template",
+        "pinnedWarning": "{count, plural, one {# case uses} other {# cases use}} this version. Saving creates a new version; they keep this one",
+        "versionNote": "Templates change future cases only",
+        "changeTypeLabel": "Change type",
+        "choose": "Choose…",
+        "employmentScope": "Employment scope",
+        "employmentScopeHint": "Full applies to permanent full-time employees, light to every other type",
+        "scopeValue": {
+          "FULL": "Full",
+          "LIGHT": "Light",
+          "ANY": "Any"
+        },
+        "nationalityScope": "Nationality",
+        "nationalityValue": {
+          "OMANI": "Omani",
+          "EXPATRIATE": "Expatriate",
+          "ANY": "Any"
+        },
+        "criteria": "Selection criteria",
+        "criteriaHint": "Leave a field empty to match anything. The template pinning the most criteria wins",
+        "any": "Any",
+        "fact": {
+          "companyId": "Company ID",
+          "employmentType": "Employment type",
+          "contractTypeId": "Contract type ID",
+          "nationality": "Nationality",
+          "workLocation": "Work location",
+          "payrollApplicable": "Payroll applicable (yes or no)"
+        },
+        "taskRows": "{count, plural, one {# task} other {# tasks}}",
+        "addTask": "Add task",
+        "saveVersion": "Save as new version",
+        "create": "Create template",
+        "cancel": "Cancel",
+        "taskLegend": "Task {n}",
+        "code": "Code",
+        "taskName": "Task",
+        "stage": "Stage",
+        "stageValue": {
+          "PREBOARDING": "Preboarding",
+          "FIRST_DAY": "First day",
+          "FIRST_WEEK": "First week",
+          "STAGE_1_RESIGNATION": "Stage 1 — resignation and confirmation",
+          "STAGE_2_IMMEDIATE": "Stage 2 — immediate actions",
+          "STAGE_3_NOTICE_HANDOVER": "Stage 3 — notice and handover",
+          "STAGE_4_SETTLEMENT": "Stage 4 — settlement and closure"
+        },
+        "basis": "Due from",
+        "basisValue": {
+          "START_DATE": "Start date",
+          "EFFECTIVE_DATE": "Effective date",
+          "NOTICE_START": "Notice start",
+          "LAST_PHYSICAL_WORKING_DAY": "Last physical working day",
+          "LAST_DAY_OF_SERVICE": "Last day of service",
+          "DEPARTURE_DATE": "Departure date"
+        },
+        "offset": "Offset",
+        "unit": "Counted in",
+        "unitValue": {
+          "CALENDAR_DAYS": "Calendar days",
+          "WORKING_DAYS": "Working days"
+        },
+        "order": "Order",
+        "dependsOn": "Depends on",
+        "commaHint": "Task codes, separated by commas",
+        "confirmingParty": "Default confirming party",
+        "category": "Compliance category",
+        "none": "None",
+        "categoryValue": {
+          "ROP_CLEARANCE": "ROP clearance",
+          "VISA": "Visa",
+          "MOL": "MOL",
+          "OTHER": "Other"
+        },
+        "mandatory": "Counts toward progress",
+        "blocking": "Blocks the stage",
+        "confirmation": "Needs confirmation",
+        "reversal": "Reverse on cancellation",
+        "statutory": "Statutory",
+        "condAny": "Any",
+        "condIn": "Is one of",
+        "condNotIn": "Is not one of",
+        "condValues": "Values, separated by commas",
+        "exitTypes": "Exit types",
+        "exitTypesHint": "None ticked means every exit type",
+        "exitTypeValue": {
+          "RESIGNATION": "Resignation",
+          "TERMINATION": "Termination",
+          "CONTRACT_EXPIRY": "Contract expiry",
+          "PROBATION_EXIT": "Probation exit",
+          "SUMMARY_DISMISSAL": "Summary dismissal"
+        },
+        "settlement": "Settlement",
+        "settlementAny": "Either",
+        "settlementYes": "Only when a settlement applies",
+        "settlementNo": "Only when no settlement applies",
+        "removeTask": "Remove task"
+      },
+      "emails": {
+        "title": "Joiner emails",
+        "subtitle": "The approved copy, with your edits on top. Messages are queued and sent in working hours",
+        "smtpOn": "Email sending is on.",
+        "smtpOff": "Email sending is off on this server — messages stay queued and nothing is lost. A platform administrator turns it on.",
+        "audience": "Goes to: {audience}",
+        "audienceValue": {
+          "candidate": "the joiner",
+          "payroll": "Payroll",
+          "it": "IT",
+          "pro": "the PRO",
+          "hr": "HR"
+        },
+        "manual": "Sent by HR",
+        "edited": "Edited by {name}",
+        "approved": "Approved copy",
+        "type": {
+          "candidate-welcome": "Candidate welcome",
+          "day-one-pack": "Day one pack",
+          "headset-offer": "Headset contribution",
+          "payroll-notification": "Payroll notification",
+          "it-reminder": "IT reminder",
+          "pro-visa": "PRO visa notice",
+          "overdue-digest": "Overdue task digest",
+          "start-date-changed": "Start date changed",
+          "welcome-review": "Welcome announcement"
+        },
+        "subject": "Subject",
+        "body": "Body",
+        "variables": "Variables you can use: {list}",
+        "cc": "Copy to",
+        "ccHint": "Up to ten addresses, separated by commas, in addition to the fixed audience",
+        "save": "Save",
+        "saved": "Template saved",
+        "cancel": "Cancel",
+        "saveFailed": "Could not save the template.",
+        "missing": "This template uses {vars}, which the sample cannot fill — a message with a missing value is not sent.",
+        "ccList": "Also copied to {list}",
+        "edit": "Edit",
+        "reset": "Reset to the approved copy",
+        "resetButton": "Reset",
+        "testTo": "Send a test to",
+        "sendTest": "Send test",
+        "testSent": "Test sent",
+        "testDisabled": "Email sending is off on this server, so no test was sent.",
+        "testNotSent": "The test was not sent.",
+        "testFailed": "Could not send the test."
+      }
     }
   }
 }

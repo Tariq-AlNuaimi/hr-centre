@@ -128,6 +128,10 @@ export type PendingNotification = {
   /** Locale-LESS path; the client prefixes its own locale. Null when nothing opens. */
   href: string | null;
   dedupeKey: string;
+  /** JML S2 — the case it is about (JML kinds only). */
+  caseId?: string | null;
+  /** JML S2 — hidden until this instant (the working window). */
+  sendAfter?: Date | null;
 };
 
 /** Keys per existence query. Postgres copes with far more; this keeps the plan flat. */
@@ -199,6 +203,8 @@ export async function persistNotifications(
           body: item.body.slice(0, MAX_BODY_CHARS),
           href: item.href,
           dedupeKey: item.dedupeKey,
+          caseId: item.caseId ?? null,
+          sendAfter: item.sendAfter ?? null,
         },
         select: { id: true },
       });

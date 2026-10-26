@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { PERMISSION_CODES, STARTER_ROLES } from "../../lib/rbac/catalogue";
+import { FOUNDATION_STARTER_KEYS, PERMISSION_CODES, STARTER_ROLES } from "../../lib/rbac/catalogue";
 import {
   canInScope,
   expandGrants,
@@ -32,7 +32,8 @@ const withAssignments = (
 
 test("the migration's starter roles are exactly the catalogue's (lockstep)", () => {
   const sql = readFileSync("prisma/migrations/20261026180000_hrc_rbac/migration.sql", "utf8");
-  for (const role of STARTER_ROLES) {
+  // Module starter roles (e.g. JML) are created by the seed, not this migration.
+  for (const role of STARTER_ROLES.filter((r) => FOUNDATION_STARTER_KEYS.includes(r.key))) {
     const line = sql.split("\n").find((l) => l.includes(`'${role.key}'`) && l.includes("ARRAY["));
     assert.ok(line, `${role.key} is created by the migration`);
     const perms = [...line!.matchAll(/'([a-zA-Z]+\.[a-zA-Z]+)'/g)].map((m) => m[1]).sort();
