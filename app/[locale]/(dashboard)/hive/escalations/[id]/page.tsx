@@ -16,6 +16,7 @@ import { formatTicketId } from "@/lib/hive/ticket-id";
 import { cn } from "@/lib/utils";
 import { HistoryCard } from "@/components/hive/escalations/TicketHistory";
 import { ActionRow, type Detail } from "@/components/hive/escalations/TicketActions";
+import { EmployeeLink } from "@/components/hive/escalations/EmployeeLink";
 
 /**
  * One escalation: read it, draft an answer, approve and send (US10, US11).
@@ -139,6 +140,7 @@ function DetailView({
           <p className="m-0 whitespace-pre-line text-base leading-relaxed text-foreground">
             {detail.question}
           </p>
+          <EmployeeLink detail={detail} />
         </SectionCard>
 
         {detail.messages.length > 0 && (

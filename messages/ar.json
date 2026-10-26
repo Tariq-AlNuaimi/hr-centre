@@ -1933,7 +1933,8 @@
     "tabs": {
       "label": "Record sections",
       "overview": "Overview",
-      "performance": "Performance"
+      "performance": "Performance",
+      "tickets": "HR tickets"
     }
   },
   "rbac": {
@@ -2247,7 +2248,11 @@
       "to": "إلى",
       "clearFilters": "مسح عوامل التصفية",
       "chip": "{label} · {count}",
-      "noMatch": "لا توجد تذاكر تطابق عوامل التصفية هذه."
+      "noMatch": "لا توجد تذاكر تطابق عوامل التصفية هذه.",
+      "identityVerified": "Identity confirmed by Siraaj",
+      "identityUnverified": "Identity not confirmed",
+      "employeeRecord": "Open the employee record",
+      "noEmployeeRecord": "No employee record has this email"
     },
     "roleLabel": {
       "Admin": "مسؤول",
@@ -2435,6 +2440,19 @@
         "validUntil": "Leave empty when no end date was given",
         "redemption": "Leave empty to use the standard wording"
       }
+    },
+    "tasks": {
+      "title": "HR tickets",
+      "subtitle": "Questions employees raised in Siraaj that are waiting on you",
+      "openQueue": "Open the queue",
+      "toApprove": "Waiting for your approval ({count})",
+      "toAnswer": "Waiting for an answer ({count})",
+      "nothing": "Nothing waiting",
+      "recordTitle": "HR tickets",
+      "recordSubtitle": "Questions this person raised with HR through Siraaj, matched by their work email",
+      "recordEmpty": "No HR tickets for this person",
+      "unverified": "Unverified",
+      "unverifiedNote": "Some of these were raised without Siraaj confirming who was asking; the email was the assistant's word."
     }
   },
   "jml": {

@@ -8,18 +8,27 @@ import { cn } from "@/lib/utils";
  * nothing else changes. Tabs are links (`?tab=`), so each is addressable,
  * works without JavaScript, and the server renders only the panel shown.
  */
-export const RECORD_TABS = ["overview", "performance"] as const;
+export const RECORD_TABS = ["overview", "performance", "tickets"] as const;
 export type RecordTab = (typeof RECORD_TABS)[number];
 
 export function parseRecordTab(value: string | string[] | undefined): RecordTab {
   return RECORD_TABS.find((tab) => tab === value) ?? "overview";
 }
 
-export function RecordTabs({ basePath, active }: { basePath: string; active: RecordTab }) {
+export function RecordTabs({
+  basePath,
+  active,
+  hidden = [],
+}: {
+  basePath: string;
+  active: RecordTab;
+  /** Tabs this viewer may not open (e.g. "tickets" without `tickets.see`). */
+  hidden?: readonly RecordTab[];
+}) {
   const t = useTranslations("people.tabs");
   return (
     <nav aria-label={t("label")} className="flex gap-1 border-b border-border">
-      {RECORD_TABS.map((tab) => (
+      {RECORD_TABS.filter((tab) => !hidden.includes(tab)).map((tab) => (
         <Link
           key={tab}
           href={tab === "overview" ? basePath : `${basePath}?tab=${tab}`}

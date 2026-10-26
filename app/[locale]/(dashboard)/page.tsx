@@ -22,6 +22,7 @@ import {
   type RecentAudit,
 } from "@/components/dashboard/DashboardContent";
 import { MyTasksOversight } from "@/components/pms/MyTasksOversight";
+import { TicketTasks } from "@/components/hive/TicketTaskPanels";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { getTranslations } from "next-intl/server";
 
@@ -120,7 +121,8 @@ async function getDashboardDataUncached(): Promise<DashboardData> {
  * today; later modules add theirs), then — for platform admins only — the
  * platform overview that used to be the whole page.
  */
-export default async function DashboardPage() {
+export default async function DashboardPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
   const session = await auth();
   const isAdmin = session?.user?.role === "ADMIN";
   const data = isAdmin ? await getDashboardData() : null;
@@ -133,6 +135,8 @@ export default async function DashboardPage() {
         subtitle={session?.user?.name ? t("greeting", { name: session.user.name }) : t("subtitle")}
       />
       <MyTasksOversight />
+      {/* HR tickets (HIVE port): what is waiting on this person, if they draft or approve. */}
+      {session?.user?.id ? <TicketTasks userId={session.user.id} locale={locale} /> : null}
       {isAdmin && data ? <DashboardContent isAdmin data={data} embedded /> : null}
     </div>
   );

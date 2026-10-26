@@ -387,7 +387,8 @@
 - lib/hive/services/escalation-send.ts: ApproveOutcome, renderTemplate, approveAndSend
 - lib/hive/services/escalation-transition.ts: Tx, transition, recordEvent
 - lib/hive/services/escalation.ts: RoutingOutcome, routeEscalation, CreatedEscalation, createEscalation
-- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission
+- lib/hive/services/my-tasks.ts: ticketTasksFor, ticketsForEmployee
+- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission, pairsFor
 - lib/hive/services/reference.ts: PROVIDER_PAGE, listReference, createReference, updateReference, removeReference
 - lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
 - lib/hive/services/reports.ts: TicketReport, bucketStarts, getTicketReport
@@ -579,7 +580,9 @@
 - components/hiring/ui/tabs.tsx
 - components/hive/HiveLogo.tsx
 - components/hive/HiveRoleBadge.tsx
+- components/hive/TicketTaskPanels.tsx
 - components/hive/admin/ReferenceManager.tsx
+- components/hive/escalations/EmployeeLink.tsx
 - components/hive/escalations/StatusPill.tsx
 - components/hive/escalations/TicketActions.tsx
 - components/hive/escalations/TicketHistory.tsx
