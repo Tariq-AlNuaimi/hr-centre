@@ -63,6 +63,7 @@ const SOFT_DELETE_MODELS = new Set([
   "HiringGrade",
   "HiringJdTemplate",
   "HiringBulkJob",
+  "JmlCase",
 ]);
 
 /**

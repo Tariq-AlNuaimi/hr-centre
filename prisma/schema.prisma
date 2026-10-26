@@ -87,6 +87,20 @@ model User {
   hiveTemplatesUpdated     HiveEmailTemplate[]  @relation("HiveEmailTemplateUpdatedBy")
   hiveSettingsUpdated      HiveTicketSettings[] @relation("HiveTicketSettingsUpdatedBy")
 
+  // JML S2 — the case engine (docs/blueprints/jml.md).
+  jmlCasesOwned         JmlCase[]                  @relation("JmlCaseOwner")
+  jmlCasesSupervised    JmlCase[]                  @relation("JmlCaseSenior")
+  jmlCasesUpdated       JmlCase[]                  @relation("JmlCaseLastUpdatedBy")
+  jmlCasesHeld          JmlCase[]                  @relation("JmlCaseLegalHold")
+  jmlCasesArchived      JmlCase[]                  @relation("JmlCaseArchivedBy")
+  jmlTasksOwned         JmlTask[]                  @relation("JmlTaskOwner")
+  jmlTasksCompleted     JmlTask[]                  @relation("JmlTaskCompletedBy")
+  jmlTaskComments       JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
+  jmlRulesAsOwner       JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
+  jmlRulesAsSenior      JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
+  jmlEmailsSent         JmlEmailLog[]              @relation("JmlEmailSentBy")
+  jmlEmailTemplateEdits JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
+
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
   // index serves both the filter prefix and the sort. Scaffolded soft-deletable
@@ -598,6 +612,9 @@ model Employee {
   positionClassificationId String?                 @map("position_classification_id")
   positionClassification   PositionClassification? @relation(fields: [positionClassificationId], references: [id])
 
+  /// JML S2 — joiner / mover / leaver cases about this person.
+  jmlCases JmlCase[] @relation("JmlCaseSubject")
+
   // Login link (ADR-065). NULLABLE and unique: the employee population is not
   // the login population — the Strategy team has no system access (§4.1),
   // leavers keep records without accounts (§12.1), and employees exist here
@@ -734,6 +751,16 @@ enum NotificationKind {
   THREE_SIXTY_REMINDER // §9.7 — an outstanding 360 assessment
   CHANGE_REQUEST_RAISED // §6.2 — a mid-year change is waiting on the employee's acknowledgment
   CHANGE_REQUEST_ACKNOWLEDGED // §6.2 — the employee acknowledged; HR can now decide
+  // JML S2 — joiners, movers & leavers (docs/blueprints/jml.md D6).
+  JML_INFO // Onboarding INFO (e.g. "tell the line manager the start date moved")
+  JML_AUTOMATION_FAILURE // Onboarding: a queued email failed to send
+  JML_OVERDUE_TASK_DIGEST // overdue tasks, one digest per owner per day
+  JML_OVERDUE_ESCALATION // Offboarding AC-18.3: > 3 working days overdue
+  JML_STATUTORY_WATCH_ALERT // Offboarding: ≤ 3 working days to a statutory deadline
+  JML_APPROVAL_REMINDER // Offboarding AC-11.3: pending > 2 working days
+  JML_CASE_ACTIVATED
+  JML_RECALCULATION_NOTICE // Offboarding AC-3.6: due dates moved
+  JML_CASE_CLOSED
 }
 
 enum ComplianceKind {
@@ -1253,11 +1280,21 @@ model Notification {
   /// question is "has this person seen it", not "has this browser".
   readAt DateTime? @map("read_at")
 
+  /// JML S2 — the case this is about (no FK: a notification outlives an archived
+  /// case and must never block one). Null for Performance notifications.
+  caseId      String?   @map("case_id")
+  /// JML S2 — not shown before this instant (the working window, evaluated in
+  /// Asia/Muscat from the core WorkingSchedule — Offboarding F2). Null = now.
+  sendAfter   DateTime? @map("send_after")
+  /// JML S2 — dismissed from the feed (also read). Offboarding's inbox action.
+  dismissedAt DateTime? @map("dismissed_at")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   // The unread badge counts on the first; the feed pages on the second.
   @@index([recipientEmployeeId, readAt])
   @@index([recipientEmployeeId, createdAt])
+  @@index([caseId])
   @@map("notifications")
 }
 
@@ -2028,7 +2065,7 @@ model LeaveReasonCode {
   @@map("leave_reason_codes")
 }
 
-// ===========================================================================
+// ====================================================================
 // HR tickets — the HIVE port (docs/blueprints/hive.md, ADR-080 of HIVE).
 //
 // Employees ask in Siraaj; Siraaj calls `/api/mcp`, whose `hive_open_ticket`
@@ -3358,4 +3395,432 @@ model HiringNeedNote {
 
   @@index([needId, createdAt])
   @@map("hiring_need_notes")
+}
+
+// ============================================================================
+// JML S2 — the case engine (docs/blueprints/jml.md D6): one case header, one
+// task engine, one assignment-rule model, one email queue. Vocabulary is kept
+// verbatim from the two source artifacts (Onboarding §7.4 forbids renaming).
+// ============================================================================
+
+enum JmlCaseType {
+  JOIN // HR Onboarding ONBOARDING
+  MOVE // HR Onboarding INTERNAL_CHANGE
+  LEAVE // HR Offboarding exit case
+}
+
+/// Union of both artifacts' statuses. JOIN/MOVE end COMPLETED (Onboarding);
+/// LEAVE ends CLOSED (Offboarding). ARCHIVED never deletes (F1 fixed).
+enum JmlCaseStatus {
+  DRAFT
+  ACTIVE
+  AT_RISK
+  PENDING_SETTLEMENT
+  COMPLETED
+  CLOSED
+  CANCELLED
+  ARCHIVED
+}
+
+/// JOIN/MOVE: Onboarding §10.2 (COMPLETED system-only). LEAVE: Offboarding §6.3.
+enum JmlStage {
+  PREBOARDING
+  FIRST_DAY
+  FIRST_WEEK
+  COMPLETED
+  STAGE_1_RESIGNATION
+  STAGE_2_IMMEDIATE
+  STAGE_3_NOTICE_HANDOVER
+  STAGE_4_SETTLEMENT
+}
+
+/// Offboarding §9.6's fourteen + Onboarding's WAITING_EXTERNAL. Onboarding's
+/// WAITING_EMPLOYEE/IT/PRO carry the same labels ("Waiting for employee"…).
+enum JmlTaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  WAITING_FOR_EMPLOYEE
+  WAITING_FOR_IT
+  WAITING_FOR_PRO
+  WAITING_FOR_EXTERNAL
+  WAITING_FOR_LINE_MANAGER
+  WAITING_FOR_FINANCE
+  WAITING_FOR_ADMIN
+  WAITING_FOR_MOL_COORDINATOR
+  WAITING_FOR_APPROVAL
+  COMPLETED
+  NOT_APPLICABLE
+  DELAYED
+  CANCELLED
+}
+
+enum JmlTaskSource {
+  TEMPLATE
+  MANUAL
+  REVERSAL
+}
+
+/// The anchor a task's due date is offset from.
+enum JmlDateBasis {
+  START_DATE // JOIN: planned start
+  EFFECTIVE_DATE // MOVE
+  NOTICE_START
+  LAST_PHYSICAL_WORKING_DAY
+  LAST_DAY_OF_SERVICE
+  DEPARTURE_DATE
+}
+
+/// Onboarding offsets are calendar days rolled off a day off; Offboarding's are working days.
+enum JmlOffsetUnit {
+  CALENDAR_DAYS
+  WORKING_DAYS
+}
+
+enum JmlComplianceCategory {
+  ROP_CLEARANCE
+  VISA
+  MOL
+  OTHER
+}
+
+enum JmlRuleScope {
+  COMPANY
+  DIRECTORATE
+  DEPARTMENT
+}
+
+enum JmlEmailStatus {
+  QUEUED
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum JmlRagFlag {
+  GREEN
+  AMBER
+  RED
+}
+
+/// Onboarding internal-change types (verbatim HR list).
+enum JmlChangeType {
+  INTERNSHIP_TO_TRAINING
+  INTERNSHIP_TO_EMPLOYMENT
+  TRAINING_TO_EMPLOYMENT
+  DEPARTMENT_TRANSFER
+}
+
+/// Offboarding §6.1.
+enum LeaveExitType {
+  RESIGNATION
+  TERMINATION
+  CONTRACT_EXPIRY
+  PROBATION_EXIT
+  SUMMARY_DISMISSAL
+}
+
+/// Offboarding template scope: FULL iff permanent full-time (BR-OFF-006).
+enum JmlEmploymentScope {
+  FULL
+  LIGHT
+  ANY
+}
+
+/// The nationality BRANCH (not a passport), Offboarding §19.2.
+enum JmlNationalityScope {
+  OMANI
+  EXPATRIATE
+  ANY
+}
+
+/// One case — a joiner, a mover or a leaver — always about a core Employee.
+model JmlCase {
+  id       String        @id @default(cuid())
+  /// ONB-YYYY-NNNN / CHG-YYYY-NNNN / EXIT-YYYY-NNNN — immutable.
+  caseRef  String        @unique @map("case_ref")
+  caseType JmlCaseType   @map("case_type")
+  status   JmlCaseStatus @default(DRAFT)
+  stage    JmlStage
+
+  employeeId String   @map("employee_id")
+  employee   Employee @relation("JmlCaseSubject", fields: [employeeId], references: [id], onDelete: Restrict)
+
+  /// Exactly one owner (BR-002 / BR-OFF-002), from the assignment rule.
+  hrOwnerUserId  String? @map("hr_owner_user_id")
+  hrOwner        User?   @relation("JmlCaseOwner", fields: [hrOwnerUserId], references: [id], onDelete: Restrict)
+  /// The paired senior from the rule at activation (escalations, recalculation notices).
+  seniorHrUserId String? @map("senior_hr_user_id")
+  seniorHr       User?   @relation("JmlCaseSenior", fields: [seniorHrUserId], references: [id], onDelete: SetNull)
+
+  /// Pinned at activation, never updated (BR-016 / BR-OFF-026).
+  templateId String?          @map("template_id")
+  template   JmlTaskTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  completionPct Int        @default(0) @map("completion_pct")
+  ragFlag       JmlRagFlag @default(GREEN) @map("rag_flag")
+  /// Optimistic concurrency (Offboarding AC-6.2).
+  version       Int        @default(0)
+
+  activatedAt             DateTime? @map("activated_at")
+  completedAt             DateTime? @map("completed_at")
+  closedAt                DateTime? @map("closed_at")
+  cancelledAt             DateTime? @map("cancelled_at")
+  cancelReason            String?   @map("cancel_reason")
+  duplicateOverrideReason String?   @map("duplicate_override_reason")
+
+  archivedAt   DateTime? @map("archived_at")
+  archivedById String?   @map("archived_by_id")
+  archivedBy   User?     @relation("JmlCaseArchivedBy", fields: [archivedById], references: [id], onDelete: SetNull)
+
+  lastUpdatedById String? @map("last_updated_by_id")
+  lastUpdatedBy   User?   @relation("JmlCaseLastUpdatedBy", fields: [lastUpdatedById], references: [id], onDelete: SetNull)
+
+  legalHold       Boolean   @default(false) @map("legal_hold")
+  legalHoldReason String?   @map("legal_hold_reason")
+  legalHoldAt     DateTime? @map("legal_hold_at")
+  legalHoldById   String?   @map("legal_hold_by_id")
+  legalHoldBy     User?     @relation("JmlCaseLegalHold", fields: [legalHoldById], references: [id], onDelete: SetNull)
+  anonymisedAt    DateTime? @map("anonymised_at")
+
+  tasks     JmlTask[]
+  emailLogs JmlEmailLog[]
+
+  /// Soft delete — a discarded DRAFT only. Archive is a status, never a delete.
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([deletedAt, createdAt])
+  @@index([caseType, status])
+  @@index([status, stage])
+  @@index([hrOwnerUserId, status])
+  @@index([employeeId, caseType, status])
+  @@index([status, legalHold, anonymisedAt])
+  @@map("jml_cases")
+}
+
+/// A checklist template (Onboarding ChecklistTemplate ∪ Offboarding TaskTemplate).
+/// Editing cuts a new version; cases pin the version they were created from.
+model JmlTaskTemplate {
+  id               String              @id @default(cuid())
+  name             String
+  version          Int                 @default(1)
+  active           Boolean             @default(true)
+  caseType         JmlCaseType         @map("case_type")
+  /// MOVE only.
+  changeType       JmlChangeType?      @map("change_type")
+  /// JOIN/MOVE selection criteria (Onboarding BR-004): strict keys companyId,
+  /// employmentType, contractTypeId, nationality, workLocation. Never compensation.
+  criteria         Json                @default("{}")
+  /// LEAVE selection (Offboarding BR-OFF-006).
+  employmentScope  JmlEmploymentScope  @default(ANY) @map("employment_scope")
+  nationalityScope JmlNationalityScope @default(ANY) @map("nationality_scope")
+  tasks            JmlTemplateTask[]
+  cases            JmlCase[]
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  @@unique([name, version])
+  @@index([caseType, changeType, active])
+  @@map("jml_task_templates")
+}
+
+model JmlTemplateTask {
+  id                     String                 @id @default(cuid())
+  templateId             String                 @map("template_id")
+  template               JmlTaskTemplate        @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  code                   String
+  name                   String
+  stage                  JmlStage
+  sortOrder              Int                    @default(0) @map("sort_order")
+  dateBasis              JmlDateBasis           @map("date_basis")
+  offsetDays             Int                    @default(0) @map("offset_days")
+  offsetUnit             JmlOffsetUnit          @map("offset_unit")
+  mandatory              Boolean                @default(true)
+  blocking               Boolean                @default(false)
+  confirmationRequired   Boolean                @default(false) @map("confirmation_required")
+  defaultConfirmingParty String?                @map("default_confirming_party")
+  reversalFlag           Boolean                @default(false) @map("reversal_flag")
+  dependsOnCodes         String[]               @default([]) @map("depends_on_codes")
+  statutory              Boolean                @default(false)
+  complianceCategory     JmlComplianceCategory? @map("compliance_category")
+  /// JOIN/MOVE conditions (Onboarding §14): per fact {in?, notIn?}.
+  conditions             Json                   @default("{}")
+  /// LEAVE applicability (Offboarding §8.4): empty = every exit type.
+  appliesToExitTypes     LeaveExitType[]        @default([]) @map("applies_to_exit_types")
+  appliesToNationality   JmlNationalityScope    @default(ANY) @map("applies_to_nationality")
+  /// null = regardless of whether a settlement applies.
+  appliesToSettlement    Boolean?               @map("applies_to_settlement")
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+
+  @@unique([templateId, code])
+  @@index([templateId, stage, sortOrder])
+  @@map("jml_template_tasks")
+}
+
+/// A task on a case — the union of Onboarding ChecklistTask and Offboarding OffboardingTask.
+model JmlTask {
+  id                    String                 @id @default(cuid())
+  caseId                String                 @map("case_id")
+  case                  JmlCase                @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// Immutable: template code, M-NN (manual) or REV-<code> (reversal).
+  code                  String
+  name                  String
+  stage                 JmlStage
+  sortOrder             Int                    @default(0) @map("sort_order")
+  source                JmlTaskSource          @default(TEMPLATE)
+  status                JmlTaskStatus          @default(NOT_STARTED)
+  dateBasis             JmlDateBasis?          @map("date_basis")
+  offsetDays            Int?                   @map("offset_days")
+  offsetUnit            JmlOffsetUnit?         @map("offset_unit")
+  dueDate               DateTime?              @map("due_date") @db.Date
+  dueDateOverrideReason String?                @map("due_date_override_reason")
+  ownerUserId           String?                @map("owner_user_id")
+  owner                 User?                  @relation("JmlTaskOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  mandatory             Boolean                @default(true)
+  blocking              Boolean                @default(false)
+  confirmationRequired  Boolean                @default(false) @map("confirmation_required")
+  confirmingParty       String?                @map("confirming_party")
+  confirmationDate      DateTime?              @map("confirmation_date") @db.Date
+  externalReference     String?                @map("external_reference")
+  reversalFlag          Boolean                @default(false) @map("reversal_flag")
+  isReversal            Boolean                @default(false) @map("is_reversal")
+  reversalOfId          String?                @unique @map("reversal_of_id")
+  reversalOf            JmlTask?               @relation("JmlTaskReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversedBy            JmlTask?               @relation("JmlTaskReversal")
+  dependsOnCodes        String[]               @default([]) @map("depends_on_codes")
+  notApplicableReason   String?                @map("not_applicable_reason")
+  delayReason           String?                @map("delay_reason")
+  statutory             Boolean                @default(false)
+  complianceCategory    JmlComplianceCategory? @map("compliance_category")
+  complianceDeadline    DateTime?              @map("compliance_deadline") @db.Date
+  /// The conditions that admitted this task (Onboarding §14), null if unconditional.
+  conditionSource       Json?                  @map("condition_source")
+  lastReminderAt        DateTime?              @map("last_reminder_at")
+  completedAt           DateTime?              @map("completed_at")
+  completedById         String?                @map("completed_by_id")
+  completedBy           User?                  @relation("JmlTaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
+  /// Optimistic concurrency for task completion (Offboarding AC-6.2).
+  version               Int                    @default(0)
+  comments              JmlTaskComment[]
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+
+  @@unique([caseId, code])
+  @@index([caseId, stage, sortOrder])
+  @@index([status, dueDate])
+  @@index([ownerUserId, status, dueDate])
+  @@index([statutory, complianceDeadline])
+  @@map("jml_tasks")
+}
+
+/// Insert-only (Onboarding §10.3, Offboarding §9.6: not editable after submission).
+model JmlTaskComment {
+  id        String   @id @default(cuid())
+  taskId    String   @map("task_id")
+  task      JmlTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  body      String
+  authorId  String?  @map("author_id")
+  author    User?    @relation("JmlTaskCommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([taskId, createdAt])
+  @@map("jml_task_comments")
+}
+
+/// Who owns a case (Onboarding §14 / BR-002): scoped with priority; most specific
+/// level wins (department > directorate > company), then priority, then oldest.
+model JmlHrAssignmentRule {
+  id             String        @id @default(cuid())
+  scope          JmlRuleScope
+  /// The company / directorate / department id the rule covers.
+  scopeId        String        @map("scope_id")
+  priority       Int           @default(0)
+  active         Boolean       @default(true)
+  /// Empty = every case type.
+  caseTypes      JmlCaseType[] @default([]) @map("case_types")
+  juniorHrUserId String        @map("junior_hr_user_id")
+  juniorHr       User          @relation("JmlRuleOwner", fields: [juniorHrUserId], references: [id], onDelete: Restrict)
+  seniorHrUserId String        @map("senior_hr_user_id")
+  seniorHr       User          @relation("JmlRuleSenior", fields: [seniorHrUserId], references: [id], onDelete: Restrict)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  @@index([active, scope, priority])
+  @@index([scopeId])
+  @@map("jml_hr_assignment_rules")
+}
+
+/// HR's approved legal contract kinds (Onboarding ContractType; seeded EMPTY —
+/// activation is refused until HR enters at least one, §7.4).
+model JmlContractType {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  code      String   @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([active, sortOrder])
+  @@map("jml_contract_types")
+}
+
+/// Per employment type: offered on new hires, suggested template, payroll default
+/// (Onboarding EmploymentTypeConfig — and now actually read by the joiner form, 8.4.10).
+model JmlEmploymentTypeConfig {
+  id                       String       @id @default(cuid())
+  employmentType           ContractType @unique @map("employment_type")
+  active                   Boolean      @default(true)
+  defaultTemplateId        String?      @map("default_template_id")
+  payrollApplicableDefault Boolean      @default(true) @map("payroll_applicable_default")
+  notes                    String?
+  sortOrder                Int          @default(0) @map("sort_order")
+  createdAt                DateTime     @default(now()) @map("created_at")
+  updatedAt                DateTime     @updatedAt @map("updated_at")
+
+  @@map("jml_employment_type_configs")
+}
+
+/// Queued email (Onboarding §11). NO body column, ever (§11.3) — rendered at send.
+model JmlEmailLog {
+  id            String         @id @default(cuid())
+  type          String
+  recipient     String
+  cc            String?
+  subject       String
+  status        JmlEmailStatus @default(QUEUED)
+  scheduledFor  DateTime       @map("scheduled_for")
+  sentAt        DateTime?      @map("sent_at")
+  failureReason String?        @map("failure_reason")
+  caseId        String?        @map("case_id")
+  case          JmlCase?       @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  sentById      String?        @map("sent_by_id")
+  sentBy        User?          @relation("JmlEmailSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+  resendOfId    String?        @map("resend_of_id")
+  resendOf      JmlEmailLog?   @relation("JmlEmailResend", fields: [resendOfId], references: [id], onDelete: SetNull)
+  resends       JmlEmailLog[]  @relation("JmlEmailResend")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  @@index([status, scheduledFor])
+  @@index([caseId, createdAt])
+  @@map("jml_email_logs")
+}
+
+/// Admin edits shadowing the approved email copy (Onboarding §11 override layer).
+model JmlEmailTemplateOverride {
+  id           String   @id @default(cuid())
+  type         String   @unique
+  subject      String?
+  body         String?
+  ccRecipients String[] @default([]) @map("cc_recipients")
+  updatedById  String?  @map("updated_by_id")
+  updatedBy    User?    @relation("JmlEmailTemplateEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("jml_email_template_overrides")
 }

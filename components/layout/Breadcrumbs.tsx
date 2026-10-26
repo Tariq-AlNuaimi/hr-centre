@@ -44,6 +44,8 @@ const segmentToNavKey: Record<string, string> = {
   // HR tickets (HIVE port).
   hive: "hiveCrumb",
   escalations: "hiveTickets",
+  // Joiners, movers & leavers (docs/blueprints/jml.md).
+  jml: "jmlHome",
 };
 
 // Fallback for a route segment with no nav-key mapping and no dynamic label (e.g. a

@@ -846,3 +846,21 @@ ported, file by file, re-wired onto HR Centre's RBAC, org and field-encryption p
 Decision: build — port the rules, reuse HR Centre's role builder (`lib/rbac`), field encryption
 (`lib/crypto/field-encryption.ts`), private blob storage (`lib/storage.ts`), Excel engine
 (`read-excel-file`/`write-excel-file`) and rate limiter. See docs/blueprints/hiring.md, ADR-080.
+
+### 2026-10-27 — JML: joiners, movers & leavers module (case engine and all slices)
+
+Scope: lib/jml/**, lib/validations/jml/**
+Considered: **Odoo HR's onboarding/offboarding plans** (rejected — Odoo plans are flat activity
+lists with no stages, compliance gates, settlement, approvals or due-date bases; the two HR apps
+being ported exist because Odoo did not cover the process, and the operator's brief is a port
+"to the smallest detail"). **A workflow/BPMN engine (Camunda, Temporal, n8n)** (rejected — the
+two source artifacts define fixed stages and checklists, not configurable process graphs; an
+engine would be a platform for a prototype rail and would hold HR data outside the database the
+audit log covers). **Keeping HR Onboarding and HR Offboarding as separate apps linked by API**
+(rejected by the operator: HR Centre is the single HR system). **BambooHR / HiBob onboarding**
+(rejected — SaaS processors for Restricted settlement and ID data are a data-protection question
+the operator has not asked, and neither models Oman gratuity or the C1–C11 gates).
+
+Decision: build — port the two apps' services into one engine over the HR Centre core
+(employee record, org, RBAC, departure flow). Dependencies are recorded with their own ADRs
+(document generation: docxtemplater + pizzip, slice S6).

@@ -13,7 +13,16 @@
  * acting outside its scope. `SCOPED_PERMISSIONS` is the list that honours scope.
  */
 
-export const MODULES = ["people", "org", "imports", "logins", "perf", "tickets", "hiring"] as const;
+export const MODULES = [
+  "people",
+  "org",
+  "imports",
+  "logins",
+  "perf",
+  "tickets",
+  "hiring",
+  "jml",
+] as const;
 export type ModuleKey = (typeof MODULES)[number];
 
 export const PERMISSIONS = [
@@ -60,6 +69,31 @@ export const PERMISSIONS = [
   { code: "hiring.operationsDirector", module: "hiring" },
   { code: "hiring.coo", module: "hiring" },
   { code: "hiring.ceo", module: "hiring" },
+  // JML (docs/blueprints/jml.md D12) — joiners, movers & leavers. Scoped to the
+  // case's employee (company / directorate / department) unless noted.
+  { code: "jml.view", module: "jml" },
+  { code: "jml.manageJoiners", module: "jml" },
+  { code: "jml.manageMovers", module: "jml" },
+  { code: "jml.manageLeavers", module: "jml" },
+  { code: "jml.workTasks", module: "jml" },
+  { code: "jml.reopenTasks", module: "jml" },
+  { code: "jml.supervise", module: "jml" },
+  { code: "jml.closeLeavers", module: "jml" },
+  { code: "jml.assessExits", module: "jml" },
+  { code: "jml.viewSettlement", module: "jml" },
+  { code: "jml.manageSettlement", module: "jml" },
+  { code: "jml.approveSettlement", module: "jml" },
+  { code: "jml.decideApprovals", module: "jml" },
+  { code: "jml.overrideGates", module: "jml" },
+  { code: "jml.reassignLeavers", module: "jml" },
+  { code: "jml.viewReports", module: "jml" },
+  { code: "jml.financialReports", module: "jml" },
+  // Org-wide only (Group scope), like the other configuration permissions.
+  { code: "jml.unsuppressedReports", module: "jml" },
+  { code: "jml.configure", module: "jml" },
+  { code: "jml.activateDocuments", module: "jml" },
+  { code: "jml.manageApprovalAuthority", module: "jml" },
+  { code: "jml.verifyStatutory", module: "jml" },
 ] as const satisfies ReadonlyArray<{ code: string; module: ModuleKey }>;
 
 export type Permission = (typeof PERMISSIONS)[number]["code"];
@@ -98,6 +132,23 @@ export const SCOPED_PERMISSIONS = new Set<Permission>([
   "hiring.operationsDirector",
   "hiring.coo",
   "hiring.ceo",
+  "jml.view",
+  "jml.manageJoiners",
+  "jml.manageMovers",
+  "jml.manageLeavers",
+  "jml.workTasks",
+  "jml.reopenTasks",
+  "jml.supervise",
+  "jml.closeLeavers",
+  "jml.assessExits",
+  "jml.viewSettlement",
+  "jml.manageSettlement",
+  "jml.approveSettlement",
+  "jml.decideApprovals",
+  "jml.overrideGates",
+  "jml.reassignLeavers",
+  "jml.viewReports",
+  "jml.financialReports",
 ]);
 
 /** The modules the foundation's starter roles were written for (migration 20261026180000). */
@@ -107,7 +158,54 @@ function moduleOf(code: Permission): ModuleKey {
   return PERMISSIONS.find((p) => p.code === code)!.module;
 }
 
-export type StarterKey = "HR_SUPER_ADMIN" | "HRBP" | "EXECUTIVE_VIEWER";
+export type StarterKey =
+  | "HR_SUPER_ADMIN"
+  | "HRBP"
+  | "EXECUTIVE_VIEWER"
+  | "JML_HR_MANAGER"
+  | "JML_SENIOR_HR"
+  | "JML_JUNIOR_HR";
+
+/** The foundation starter roles, mirrored by migration 20261026180000 (lockstep test). */
+export const FOUNDATION_STARTER_KEYS: readonly StarterKey[] = [
+  "HR_SUPER_ADMIN",
+  "HRBP",
+  "EXECUTIVE_VIEWER",
+];
+
+/** JML starter roles — HR Offboarding's Junior HR ⊂ Senior HR ⊂ HR Manager. */
+const JML_JUNIOR: readonly Permission[] = [
+  "people.view",
+  "people.viewSalary",
+  "jml.view",
+  "jml.manageJoiners",
+  "jml.manageMovers",
+  "jml.manageLeavers",
+  "jml.workTasks",
+  "jml.viewReports",
+];
+const JML_SENIOR: readonly Permission[] = [
+  ...JML_JUNIOR,
+  "jml.reopenTasks",
+  "jml.supervise",
+  "jml.closeLeavers",
+  "jml.assessExits",
+  "jml.viewSettlement",
+  "jml.manageSettlement",
+  "jml.financialReports",
+  "jml.configure",
+];
+const JML_MANAGER: readonly Permission[] = [
+  ...JML_SENIOR,
+  "jml.approveSettlement",
+  "jml.decideApprovals",
+  "jml.overrideGates",
+  "jml.reassignLeavers",
+  "jml.unsuppressedReports",
+  "jml.activateDocuments",
+  "jml.manageApprovalAuthority",
+  "jml.verifyStatutory",
+];
 
 /**
  * The three starter roles, reproducing Performance's hard-coded roles EXACTLY
@@ -151,5 +249,25 @@ export const STARTER_ROLES: ReadonlyArray<{
     name: "Executive Viewer",
     description: "Read-only, organisation-wide, including salary.",
     permissions: ["people.view", "people.viewSalary", "perf.viewReports"],
+  },
+  {
+    key: "JML_HR_MANAGER",
+    name: "HR Manager",
+    description:
+      "Joiners, movers & leavers: everything, including approvals, gate overrides, final settlement approval and configuration.",
+    permissions: JML_MANAGER,
+  },
+  {
+    key: "JML_SENIOR_HR",
+    name: "Senior HR",
+    description:
+      "Joiners, movers & leavers: runs and supervises cases, closes exits, calculates settlements and configures the module.",
+    permissions: JML_SENIOR,
+  },
+  {
+    key: "JML_JUNIOR_HR",
+    name: "Junior HR",
+    description: "Joiners, movers & leavers: owns and works cases and their checklists.",
+    permissions: JML_JUNIOR,
   },
 ];

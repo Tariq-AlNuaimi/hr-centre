@@ -26,7 +26,14 @@ export const GET = withRateLimit(
     const actor = await resolveActor(session);
     if (!actor.employeeId) return ok({ items: [], unread: 0 });
 
-    const where = { recipientEmployeeId: actor.employeeId };
+    // JML S2 — a row queued outside the working window (`sendAfter` in the
+    // future) is not shown yet, and a dismissed one is gone from the feed.
+    const now = new Date();
+    const where = {
+      recipientEmployeeId: actor.employeeId,
+      dismissedAt: null,
+      OR: [{ sendAfter: null }, { sendAfter: { lte: now } }],
+    };
 
     // Two reads rather than one: the badge counts EVERY unread, while the list
     // is one bounded page. Deriving the count from the page would understate it
@@ -38,7 +45,15 @@ export const GET = withRateLimit(
         take: NOTIFICATION_PAGE_SIZE,
         where,
         orderBy: { createdAt: "desc" },
-        select: { id: true, kind: true, body: true, href: true, readAt: true, createdAt: true },
+        select: {
+          id: true,
+          kind: true,
+          body: true,
+          href: true,
+          readAt: true,
+          createdAt: true,
+          caseId: true,
+        },
       }),
       prisma.notification.count({ where: { ...where, readAt: null } }),
     ]);

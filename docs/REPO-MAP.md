@@ -24,6 +24,17 @@
 - app/[locale]/(dashboard)/hive/escalations/page.tsx
 - app/[locale]/(dashboard)/hive/page.tsx
 - app/[locale]/(dashboard)/hive/settings/page.tsx
+- app/[locale]/(dashboard)/jml/page.tsx
+- app/[locale]/(dashboard)/jml/settings/calendar/page.tsx
+- app/[locale]/(dashboard)/jml/settings/classifications/page.tsx
+- app/[locale]/(dashboard)/jml/settings/contract-types/page.tsx
+- app/[locale]/(dashboard)/jml/settings/email-templates/page.tsx
+- app/[locale]/(dashboard)/jml/settings/employee-code/page.tsx
+- app/[locale]/(dashboard)/jml/settings/employment-types/page.tsx
+- app/[locale]/(dashboard)/jml/settings/page.tsx
+- app/[locale]/(dashboard)/jml/settings/rules/page.tsx
+- app/[locale]/(dashboard)/jml/settings/statutory/page.tsx
+- app/[locale]/(dashboard)/jml/settings/templates/page.tsx
 - app/[locale]/(dashboard)/mid-year/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/mid-year/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
@@ -77,6 +88,33 @@
 - app/api/imports/template/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/cycle-sweep/route.ts  [GET,POST]
+- app/api/internal/jml-sweep/route.ts  [GET,POST]
+- app/api/jml/cases/[id]/tasks/route.ts  [GET,POST]
+- app/api/jml/config/contract-types/[id]/route.ts  [PATCH]
+- app/api/jml/config/contract-types/route.ts  [GET,POST]
+- app/api/jml/config/email-templates/[type]/route.ts  [GET,PATCH,DELETE]
+- app/api/jml/config/email-templates/[type]/test/route.ts  [POST]
+- app/api/jml/config/email-templates/route.ts  [GET]
+- app/api/jml/config/employee-code/route.ts  [GET,PUT]
+- app/api/jml/config/employment-types/[type]/route.ts  [PATCH]
+- app/api/jml/config/employment-types/route.ts  [GET]
+- app/api/jml/config/holidays/[id]/route.ts  [DELETE]
+- app/api/jml/config/holidays/route.ts  [GET,POST]
+- app/api/jml/config/position-classifications/[id]/route.ts  [PATCH]
+- app/api/jml/config/position-classifications/route.ts  [GET,POST]
+- app/api/jml/config/rules/[id]/route.ts  [PATCH]
+- app/api/jml/config/rules/resolve/route.ts  [GET]
+- app/api/jml/config/rules/route.ts  [GET,POST]
+- app/api/jml/config/schedule/route.ts  [GET,PUT]
+- app/api/jml/config/statutory/[id]/verify/route.ts  [POST]
+- app/api/jml/config/statutory/route.ts  [GET,POST]
+- app/api/jml/config/templates/[id]/route.ts  [GET,PATCH]
+- app/api/jml/config/templates/route.ts  [GET,POST]
+- app/api/jml/emails/[id]/retry/route.ts  [POST]
+- app/api/jml/lookups/route.ts  [GET]
+- app/api/jml/me/route.ts  [GET]
+- app/api/jml/tasks/[id]/comments/route.ts  [GET,POST]
+- app/api/jml/tasks/[id]/route.ts  [PATCH]
 - app/api/kpi-change-requests/[id]/acknowledge/route.ts  [POST]
 - app/api/kpi-change-requests/[id]/decide/route.ts  [POST]
 - app/api/kpi-change-requests/[id]/withdraw/route.ts  [POST]
@@ -88,6 +126,7 @@
 - app/api/logins/[employeeId]/route.ts  [GET,POST,DELETE]
 - app/api/logins/change-password/route.ts  [POST]
 - app/api/mid-year/me/route.ts  [GET]
+- app/api/notifications/dismiss/route.ts  [POST]
 - app/api/notifications/read/route.ts  [POST]
 - app/api/notifications/route.ts  [GET]
 - app/api/openapi/route.ts  [GET]
@@ -138,7 +177,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -149,7 +188,7 @@
 - Directorate: id, name, entityId, entity, departments, deletedAt, deletedBy, createdAt, updatedAt
 - Team: id, name, departmentId, department, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, directorateId, directorate, teams, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, hiveEscalations, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, jmlCases, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -161,7 +200,7 @@
 - KpiRating: id, kpiId, kpi, party, level, comment, ratedByEmployeeId, ratedByEmployee, ratedAt, createdAt, updatedAt
 - KpiEvidence: id, kpiId, kpi, kind, label, blobPathname, contentType, sizeBytes, url, uploadedByEmployeeId, uploadedByEmployee, uploadedAt, managerComment, managerCommentAt, deletedAt, deletedBy, createdAt, updatedAt
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
-- Notification: id, recipientEmployeeId, recipientEmployee, kind, body, href, dedupeKey, readAt, createdAt
+- Notification: id, recipientEmployeeId, recipientEmployee, kind, body, href, dedupeKey, readAt, caseId, sendAfter, dismissedAt, createdAt
 - SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
 - Kpi: id, participantId, participant, assignmentPeriodId, assignmentPeriod, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, evidence, deletedAt, deletedBy, createdAt, updatedAt
 - EntityScore: id, cycleId, cycle, entityId, entity, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
@@ -233,6 +272,16 @@
 - HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
 - HiringDepartmentNeed: id, roundId, round, departmentId, ownerId, status, rolesRequested, agreedRoles, askedAt, chasedAt, submittedAt, discussedAt, notes, requisitions, createdAt, updatedAt
 - HiringNeedNote: id, needId, need, authorId, authorName, authorRole, body, createdAt
+- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, deletedAt, deletedBy, createdAt, updatedAt
+- JmlTaskTemplate: id, name, version, active, caseType, changeType, criteria
+- JmlTemplateTask: id, templateId, template, code, name, stage, sortOrder, dateBasis, offsetDays, offsetUnit, mandatory, blocking, confirmationRequired, defaultConfirmingParty, reversalFlag, dependsOnCodes, statutory, complianceCategory
+- JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
+- JmlTaskComment: id, taskId, task, body, authorId, author, createdAt
+- JmlHrAssignmentRule: id, scope, scopeId, priority, active, caseTypes, juniorHrUserId, juniorHr, seniorHrUserId, seniorHr, createdAt, updatedAt
+- JmlContractType: id, name, code, sortOrder, active, createdAt, updatedAt
+- JmlEmploymentTypeConfig: id, employmentType, active, defaultTemplateId, payrollApplicableDefault, notes, sortOrder, createdAt, updatedAt
+- JmlEmailLog: id, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
+- JmlEmailTemplateOverride: id, type, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -262,6 +311,28 @@
 - lib/hive/services/ticket-notify.ts: preview, composeNotification, notifyTicket
 - lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
+- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, employeeScopeWhere, caseScopeWhere, AccessibleCase, subjectOf, loadCaseFor, MANAGE_PERMISSION
+- lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
+- lib/jml/email/overrides.ts: ResolvedTemplate, resolveTemplates, resolveTemplate, saveTemplateOverride, resetTemplateOverride
+- lib/jml/email/queue.ts: QueueEmailInput, queueEmail, sendableNow, DrainResult, drainQueue, retryEmail, renderBody, cancelQueuedEmails
+- lib/jml/email/templates.ts: TemplateContext, EmailTemplate, TEMPLATES, findTemplate, render, missingVariables, contextForCase, SAMPLE_CONTEXT
+- lib/jml/email/types.ts: EMAIL_TYPES, EmailType
+- lib/jml/engine/assignment.ts: SCOPE_PRECEDENCE, RULE_SELECT, RuleRow, Placement, resolveHrAssignment, subjectForTarget, userHolds, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules, listJmlHrUsers
+- lib/jml/engine/case-ref.ts: nextCaseRef, withCaseRefRetry
+- lib/jml/engine/conditions.ts: CONDITION_FIELDS, ConditionField, ConditionFacts, readConditions, taskApplies, conditionSource, criteriaScore
+- lib/jml/engine/gates.ts: GateResult, GateTask, canCompleteTask, canCloseStage, canAdvanceStage, advancedLeaveStage
+- lib/jml/engine/generate.ts: TemplateTaskDef, Anchors, GenerationProfile, GeneratedTask, generateTasks, RecalculableTask, DueDateChange, recalculateDueDates, ReversalTask, generateReversalTasks
+- lib/jml/engine/leave-applicability.ts: LeaveApplicability, LeaveProfile, leaveTaskApplies
+- lib/jml/engine/notify.ts: JmlNotice, notifyJml
+- lib/jml/engine/progress.ts: ProgressTask, computeProgress, isComplete, deriveJoinStage
+- lib/jml/engine/task-status-rules.ts: reopenData, notApplicableData
+- lib/jml/engine/task-update.ts: UpdateTaskInput, updateTask
+- lib/jml/engine/tasks.ts: TASK_SELECT, TaskRow, GATE_SELECT, RefreshResult, refreshCase, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks, auditTaskBulk
+- lib/jml/engine/templates.ts: TEMPLATE_TASK_SELECT, listTemplates, getTemplate, createTemplate, updateTemplate, selectJoinOrMoveTemplate, selectLeaveTemplate, templateTaskDefs
+- lib/jml/errors.ts: JmlError, ValidationFailure, jmlValidationError, jmlErrorResponse, jmlHandle
+- lib/jml/route.ts: jml, body, query, requireAnywhere, requireGroup
+- lib/jml/sweep.ts: SweepStep, SWEEP_STEPS, runSweep
+- lib/jml/vocab.ts: STAGE_ORDER, FIRST_STAGE, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, TERMINAL_CASE_STATUSES, CASE_REF_PREFIX, isLive, isTerminal
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -339,7 +410,7 @@
 - lib/prisma.ts: prisma, prismaUnfiltered, auditedTransaction
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
-- lib/rbac/catalogue.ts: MODULES, ModuleKey, PERMISSIONS, Permission, PERMISSION_CODES, isPermission, SCOPED_PERMISSIONS, StarterKey, STARTER_ROLES
+- lib/rbac/catalogue.ts: MODULES, ModuleKey, PERMISSIONS, Permission, PERMISSION_CODES, isPermission, SCOPED_PERMISSIONS, StarterKey, FOUNDATION_STARTER_KEYS, STARTER_ROLES
 - lib/rbac/grants.ts: ScopeRef, ScopeSubject, registerScopeResolver, scopeCovers, Grants, NO_GRANTS, expandGrants, has, hasGroup, canInScope, partialScopes, starterGrants, MAX_COVER_DAYS, isAssignmentActive, validityProblem
 - lib/rbac/guards.ts: AccessChange, assertHrAccessAdminRemains, assertPlatformAdminRemains
 - lib/rbac/resolve.ts: loadGrants, roleNamesFor, scopeMemberIds, placementOf, usersHoldingPermission, subjectForPlacement
@@ -361,6 +432,9 @@
 - lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
+- lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
+- lib/validations/jml/task.ts: TASK_STATUS_VALUES, updateTaskSchema, manualTaskSchema, commentSchema
+- lib/validations/jml/template.ts: CASE_TYPES, CHANGE_TYPES, STAGES, DATE_BASES, OFFSET_UNITS, COMPLIANCE_CATEGORIES, EXIT_TYPES, NATIONALITY_SCOPES, EMPLOYMENT_SCOPES, conditionsSchema, criteriaSchema, templateTaskSchema, templateShapeProblem, createTemplateSchema, updateTemplateSchema, CreateTemplateInput, UpdateTemplateInput, TemplateTaskInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/login.ts: issueLoginSchema, changePasswordSchema, ChangePasswordBody
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
@@ -381,6 +455,21 @@
 - components/hive/escalations/StatusPill.tsx
 - components/hive/escalations/TicketActions.tsx
 - components/hive/escalations/TicketHistory.tsx
+- components/jml/Field.tsx
+- components/jml/States.tsx
+- components/jml/nav.tsx
+- components/jml/settings/CalendarSettings.tsx
+- components/jml/settings/CodedListSettings.tsx
+- components/jml/settings/EmailTemplatesSettings.tsx
+- components/jml/settings/EmployeeCodeSettings.tsx
+- components/jml/settings/EmploymentTypesSettings.tsx
+- components/jml/settings/RuleForm.tsx
+- components/jml/settings/RulesSettings.tsx
+- components/jml/settings/SettingsHub.tsx
+- components/jml/settings/StatutorySettings.tsx
+- components/jml/settings/TemplateEditor.tsx
+- components/jml/settings/TemplateTaskRow.tsx
+- components/jml/settings/TemplatesSettings.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx
 - components/layout/AppShell.tsx

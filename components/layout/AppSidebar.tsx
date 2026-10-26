@@ -34,6 +34,8 @@ import { localePrefixRegex } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { useHiveAccess } from "@/components/hive/use-hive-access";
+import { jmlActiveKey, jmlNavItems } from "@/components/jml/nav";
+import { useJmlAccess } from "@/components/jml/use-jml";
 
 /**
  * HR Centre F-e — the sidebar is grouped by MODULE (blueprint step 1: People,
@@ -41,7 +43,7 @@ import { useHiveAccess } from "@/components/hive/use-hive-access";
  * Items keep their own visibility rules; this only decides where each sits. An
  * unknown key falls into Admin, so a scaffolded entity is never lost.
  */
-const NAV_GROUPS = ["start", "people", "performance", "tickets", "admin"] as const;
+const NAV_GROUPS = ["start", "people", "performance", "tickets", "jml", "admin"] as const;
 type NavGroup = (typeof NAV_GROUPS)[number];
 
 const NAV_GROUP_OF: Record<string, NavGroup> = {
@@ -66,6 +68,8 @@ const NAV_GROUP_OF: Record<string, NavGroup> = {
 };
 
 function groupOf(key: string): NavGroup {
+  // Joiners, movers & leavers (docs/blueprints/jml.md): every `jml-*` key.
+  if (key.startsWith("jml-")) return "jml";
   return NAV_GROUP_OF[key] ?? "admin";
 }
 
@@ -101,6 +105,27 @@ function hiveNavItems(
   return items.filter((i): i is Exclude<(typeof items)[number], false> => Boolean(i));
 }
 
+const ADMIN_SEGMENT_KEYS: Record<string, string> = {
+  "org-setup": "org-setup",
+  cycles: "cycles",
+  access: "access",
+  roles: "roles",
+  "strategy-scores": "strategy-scores",
+  "edge-cases": "edge-cases",
+};
+const HIVE_SEGMENT_KEYS: Record<string, string> = {
+  escalations: "hive-tickets",
+  reports: "hive-reports",
+};
+
+/** The sidebar key the current path lights up (locale prefix already stripped). */
+function activeKeyFor(segments: readonly string[]): string {
+  if (segments[0] === "jml") return jmlActiveKey(segments);
+  if (segments[0] === "admin") return ADMIN_SEGMENT_KEYS[segments[1] ?? ""] ?? "admin";
+  if (segments[0] === "hive") return HIVE_SEGMENT_KEYS[segments[1] ?? ""] ?? "hive-setup";
+  return segments[0] ?? "home";
+}
+
 export function AppSidebar() {
   const t = useTranslations("nav");
   const tChrome = useTranslations("chrome");
@@ -114,6 +139,7 @@ export function AppSidebar() {
   const { capabilities } = usePmsActor();
   // HR tickets (HIVE port): read live from the role builder, fails closed while loading.
   const hive = useHiveAccess();
+  const jmlAccess = useJmlAccess();
   const [collapsed, setCollapsed] = useState(false);
 
   // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
@@ -139,24 +165,7 @@ export function AppSidebar() {
   // the SECOND segment is what tells them apart — a first-segment-only match
   // would light up all of them at once. /admin/import keeps the "admin" key.
   const segments = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean);
-  const ADMIN_SEGMENT_KEYS: Record<string, string> = {
-    "org-setup": "org-setup",
-    cycles: "cycles",
-    access: "access",
-    roles: "roles",
-    "strategy-scores": "strategy-scores",
-    "edge-cases": "edge-cases",
-  };
-  const HIVE_SEGMENT_KEYS: Record<string, string> = {
-    escalations: "hive-tickets",
-    reports: "hive-reports",
-  };
-  const activeKey =
-    segments[0] === "admin"
-      ? (ADMIN_SEGMENT_KEYS[segments[1] ?? ""] ?? "admin")
-      : segments[0] === "hive"
-        ? (HIVE_SEGMENT_KEYS[segments[1] ?? ""] ?? "hive-setup")
-        : (segments[0] ?? "home");
+  const activeKey = activeKeyFor(segments);
 
   const menuItems = [
     {
@@ -379,6 +388,13 @@ export function AppSidebar() {
           },
         ]
       : []),
+    // Joiners, movers & leavers — the module's own items (components/jml/nav.tsx).
+    ...jmlNavItems(jmlAccess.can).map((item) => ({
+      key: item.key,
+      icon: item.icon,
+      label: t(item.labelKey),
+      onClick: () => router.push(`/${locale}${item.href}`),
+    })),
     // Scaffolded entities land here — `/scaffold-entity` appends a nav item per
     // entity, above the recycling bin.
     {
