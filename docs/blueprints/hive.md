@@ -157,3 +157,13 @@ Each slice appends its notes here.
   reports has its own entry), Ticket setup (editContent or configure). `server-only` is not a
   dependency here, so the ported modules drop that import (the no-prisma-in-client rule holds the
   line instead).
+- **Slice 3.** MCP + reply links live; tools read the core org + `hive_org_unit_info`; the
+  rotation tool reads `hive_rotation_config`. A department whose directorate was retired shows at
+  the org chart's top level (HIVE answered `no_chart` for such orphans; in core org they are real
+  departments with people).
+- **Slice 4.** Reports + the reference-data screens HIVE never had; provider upload on the screen
+  as well as `npm run hive:providers`. Fixed: read-excel-file v9 returns the workbook (HIVE's
+  script read every real file as empty).
+- **Slice 5.** Home "HR tickets" tasks, the employee record tab (gated on `tickets.see`) and the
+  asker/identity/record link on the ticket.
+- **Cut-over:** `docs/runbooks/hive-siraaj-cutover.md`.
