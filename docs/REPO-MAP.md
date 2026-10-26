@@ -55,6 +55,7 @@
 - app/[locale]/(dashboard)/users/page.tsx
 - app/[locale]/(dashboard)/year-end/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/year-end/page.tsx
+- app/[locale]/(hive)/reply/[token]/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
 - app/api/audit-log/route.ts  [GET]
@@ -83,6 +84,7 @@
 - app/api/hive/escalations/route.ts  [GET]
 - app/api/hive/me/permissions/route.ts  [GET]
 - app/api/hive/pairs/route.ts  [GET]
+- app/api/hive/reply/[token]/route.ts  [POST]
 - app/api/imports/[id]/apply/route.ts  [POST]
 - app/api/imports/route.ts  [GET,POST]
 - app/api/imports/template/route.ts  [GET]
@@ -125,6 +127,7 @@
 - app/api/leavers/route.ts  [GET,POST]
 - app/api/logins/[employeeId]/route.ts  [GET,POST,DELETE]
 - app/api/logins/change-password/route.ts  [POST]
+- app/api/mcp/route.ts  [GET,POST]
 - app/api/mid-year/me/route.ts  [GET]
 - app/api/notifications/dismiss/route.ts  [POST]
 - app/api/notifications/read/route.ts  [POST]
@@ -299,18 +302,34 @@
 - lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
 - lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
+- lib/hive/civil.ts: CivilDate, muscatDate, fold, ExpiryState, expiryStateFor
+- lib/hive/hrtag-routing.ts: CoverageRow, inCompanyOf, PairRow, CompanyRow, pairCard, resolveCompany, matchCompanyWide, matchDirectorate, matchSelector, PairResolution, resolvePair
+- lib/hive/hrtag-source.ts: toCoverageRow, loadHrPairs, loadCompanies
+- lib/hive/mcp/protocol.ts: McpTool, McpServer, handleMcpMessage, parseErrorResponse
+- lib/hive/mcp/siraaj.ts: SIRAAJ_URL
+- lib/hive/mcp/tools.ts: MCP_TOOL_NAMES, hiveMcpServer
 - lib/hive/pair-scope.ts: registerHivePairScopes
 - lib/hive/reply-token.ts: REPLY_TOKEN_TTL_MS, issueReplyToken, replyLinkFor, resolveReplyToken, revokeReplyTokens
 - lib/hive/roles.ts: TicketStarterKey, TICKET_STARTER_ROLES
+- lib/hive/rotation.ts: ANCHOR, WeekType, RotationMode, Presence, weeksBetweenSundays, weekTypeFor, presenceFor, CoverageRow, matchCoverage
 - lib/hive/services/email-template.ts: StoredTemplate, loadTemplate, saveTemplate, resetTemplate
 - lib/hive/services/escalation-queue.ts: ticketAbilities, DraftOutcome, draftAnswer, SubmitOutcome, submitForApproval, ReturnOutcome, returnToDraft, CloseOutcome, closeEscalation
 - lib/hive/services/escalation-read.ts: QUEUE_SELECT, QueueFilter, queueWhere, listEscalations, listQueuePairs, getEscalation
 - lib/hive/services/escalation-send.ts: ApproveOutcome, renderTemplate, approveAndSend
 - lib/hive/services/escalation-transition.ts: Tx, transition, recordEvent
+- lib/hive/services/escalation.ts: RoutingOutcome, routeEscalation, CreatedEscalation, createEscalation
 - lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission
+- lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
 - lib/hive/services/ticket-notify.ts: preview, composeNotification, notifyTicket
 - lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
+- lib/hive/tools/discounts.ts: ELIGIBILITY_NOTE, runDiscounts
+- lib/hive/tools/escalate.ts: runEscalate
+- lib/hive/tools/hrtags.ts: runHrTags
+- lib/hive/tools/index.ts: ToolContext, ToolResult, HiveToolDefinition, HiveTool, registerTool, toolDefinitions, runTool
+- lib/hive/tools/orgchart.ts: runOrgChart
+- lib/hive/tools/providers.ts: runProviders
+- lib/hive/tools/rotation.ts: loadRotationConfig, runRotation
 - lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, employeeScopeWhere, caseScopeWhere, AccessibleCase, subjectOf, loadCaseFor, MANAGE_PERMISSION
 - lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
 - lib/jml/email/overrides.ts: ResolvedTemplate, resolveTemplates, resolveTemplate, saveTemplateOverride, resetTemplateOverride
@@ -430,6 +449,8 @@
 - lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
 - lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema
 - lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture
+- lib/validations/hive/mcp.ts: mcpIdentitySchema
+- lib/validations/hive/reply.ts: replyBodySchema, replyTokenSchema
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
@@ -451,10 +472,13 @@
 
 ## components/
 - components/dashboard/DashboardContent.tsx
+- components/hive/HiveLogo.tsx
 - components/hive/HiveRoleBadge.tsx
 - components/hive/escalations/StatusPill.tsx
 - components/hive/escalations/TicketActions.tsx
 - components/hive/escalations/TicketHistory.tsx
+- components/hive/reply/ReplyClient.tsx
+- components/hive/reply/ReplyInvalid.tsx
 - components/jml/Field.tsx
 - components/jml/States.tsx
 - components/jml/nav.tsx

@@ -148,6 +148,20 @@
   --status-info-bg: #eff8ff;
   --status-neutral-fg: #475467;
   --status-neutral-bg: #f2f4f7;
+
+  /* HR tickets (HIVE port, HIVE ADR-076): the pastel surface and logo artwork
+   * survive ONLY on the employee reply page (/reply/<token>) and the HIVE mark.
+   * Text on --hive-lavender is the ordinary --foreground. */
+  --hive-lavender: #ede9fe;
+  --hive-lavender-edge: #c9bcf7;
+  --hive-cell-1: #7c5fe0;
+  --hive-cell-2: #cf6f3c;
+  --hive-cell-3: #3d9a72;
+  --hive-cell-4: #c07d10;
+  --hive-comb-edge: #3f3560;
+  --hive-bee-body: #2b2417;
+  --hive-bee-stripe: #f5c542;
+  --hive-bee-wing: #9fb6d4;
 }
 
 /* ============================================================================
@@ -265,4 +279,8 @@
   --color-status-info-fg: var(--status-info-fg);
   --color-status-neutral: var(--status-neutral-bg);
   --color-status-neutral-fg: var(--status-neutral-fg);
+
+  /* HR tickets reply page only: bg-hive-lavender, border-hive-lavender-edge. */
+  --color-hive-lavender: var(--hive-lavender);
+  --color-hive-lavender-edge: var(--hive-lavender-edge);
 }

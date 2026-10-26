@@ -23,10 +23,61 @@ export const PUBLIC_PATHS = [
   "/api/internal",
 ] as const;
 
+/**
+ * HR tickets (HIVE ADR-070): pages an employee opens WITHOUT an account — only
+ * the reply link `/reply/<token>`. Being here only means middleware does not
+ * demand a session; the page resolves the token server-side and shows "this
+ * link is no longer valid" for anything it cannot. Separate from PUBLIC_PATHS
+ * because PUBLIC_PATHS is the AUTHENTICATION surface, whose signed-in visitors
+ * are bounced home — and an HR user opening a reply link must not be.
+ */
+export const EMPLOYEE_PATHS = ["/reply"] as const;
+
+function matchesPrefix(stripped: string, prefixes: readonly string[]): boolean {
+  return prefixes.some((p) => stripped === p || stripped.startsWith(p + "/"));
+}
+
+function stripLocale(pathname: string): string {
+  return pathname.replace(localePrefixRegex, "") || "/";
+}
+
+/** Is this path one an employee opens without an account? */
+export function isEmployeePath(pathname: string): boolean {
+  return matchesPrefix(stripLocale(pathname), EMPLOYEE_PATHS);
+}
+
 /** Is this path reachable without a session? (locale prefix ignored). */
 export function isPublicPath(pathname: string): boolean {
-  const stripped = pathname.replace(localePrefixRegex, "") || "/";
-  return PUBLIC_PATHS.some((p) => stripped === p || stripped.startsWith(p + "/"));
+  const stripped = stripLocale(pathname);
+  return matchesPrefix(stripped, PUBLIC_PATHS) || matchesPrefix(stripped, EMPLOYEE_PATHS);
+}
+
+/**
+ * API routes middleware lets through without a session because the route
+ * authorises the caller itself. EXACT equality, so the next route under a
+ * listed path has to be added on purpose.
+ *
+ * - `/api/mcp` — HR tickets' MCP server for Siraaj (HIVE ADR-074/075).
+ *   Machine-only: `withApiAuth` checks a bearer token in constant time and
+ *   answers 503 while `HIVE_MCP_TOKEN` is unset.
+ */
+export const PUBLIC_API_PATHS = ["/api/mcp"] as const;
+
+/**
+ * Public API routes with a DYNAMIC segment. Pinned shapes, never prefixes:
+ * `[^/]+` cannot cross a slash.
+ *
+ * - HR tickets' reply link write (HIVE ADR-070): the token in the path IS the
+ *   authorisation, for exactly one ticket thread.
+ */
+export const PUBLIC_API_PATTERNS: readonly RegExp[] = [/^\/api\/hive\/reply\/[^/]+$/];
+
+/** Is this an API route that authorises its own caller (no session needed)? */
+export function isPublicApiPath(pathname: string): boolean {
+  return (
+    (PUBLIC_API_PATHS as readonly string[]).includes(pathname) ||
+    PUBLIC_API_PATTERNS.some((re) => re.test(pathname))
+  );
 }
 
 /** The locale in the path (`/ar/...` → `ar`), or the configured default. */
@@ -58,15 +109,21 @@ export function routeDecision(pathname: string, isAuthed: boolean): RouteAction 
     pathname.startsWith("/api/health") ||
     pathname.startsWith("/api/internal") ||
     pathname.startsWith("/api/v1") ||
+    isPublicApiPath(pathname) ||
     pathname.startsWith("/_next") ||
     pathname === "/favicon.ico"
   ) {
     return { kind: "pass" };
   }
   if (!pathname.startsWith("/api")) {
-    const pub = isPublicPath(pathname);
-    if (!isAuthed && !pub) return { kind: "redirectLogin", locale: localeOf(pathname) };
-    if (isAuthed && pub) return { kind: "redirectHome", locale: localeOf(pathname) };
+    if (!isAuthed && !isPublicPath(pathname)) {
+      return { kind: "redirectLogin", locale: localeOf(pathname) };
+    }
+    // Only the AUTH surface bounces a signed-in visitor; the reply page (an
+    // employee path) is one HR may look at.
+    if (isAuthed && matchesPrefix(stripLocale(pathname), PUBLIC_PATHS)) {
+      return { kind: "redirectHome", locale: localeOf(pathname) };
+    }
     return { kind: "intl" };
   }
   return isAuthed ? { kind: "pass" } : { kind: "apiUnauthorized" };

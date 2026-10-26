@@ -164,6 +164,18 @@ body {
   --status-info-bg: #10233a;
   --status-neutral-fg: #c0c6d2;
   --status-neutral-bg: #1f2633;
+
+  /* HR tickets (HIVE port) reply page + logo, dark (HIVE values). */
+  --hive-lavender: #241f3d;
+  --hive-lavender-edge: #3b3363;
+  --hive-cell-1: #a996f0;
+  --hive-cell-2: #eda478;
+  --hive-cell-3: #6fc9a3;
+  --hive-cell-4: #f2b544;
+  --hive-comb-edge: #d8cff0;
+  --hive-bee-body: #f0c06a;
+  --hive-bee-stripe: #3a3016;
+  --hive-bee-wing: #7d93ad;
 }
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #3a4150;
@@ -172,4 +184,50 @@ body {
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
   background: #4a5365;
   background-clip: padding-box;
+}
+
+/* HR tickets (HIVE port): the HIVE mark's bee motion — opt-in via the
+ * component's `animated` prop, and removed entirely under reduced motion. */
+.hive-logo--animated .hive-bee {
+  animation: hive-bee-pace 4.2s var(--ease-out) infinite;
+  transform-box: fill-box;
+}
+
+.hive-logo--animated .hive-bee__wings {
+  animation: hive-bee-wings 0.22s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+@keyframes hive-bee-pace {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -0.06px -0.05px;
+  }
+  50% {
+    translate: 0.05px -0.09px;
+  }
+  75% {
+    translate: 0.07px -0.02px;
+  }
+}
+
+@keyframes hive-bee-wings {
+  0%,
+  100% {
+    scale: 1 1;
+  }
+  50% {
+    scale: 1 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hive-logo--animated .hive-bee,
+  .hive-logo--animated .hive-bee__wings {
+    animation: none;
+  }
 }
