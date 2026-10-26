@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/format";
 import { formatBand } from "@/lib/hiring/money";
 import { useHiringQuery } from "../ui/api";
 import { StatusBadge } from "../ui/badges";
+import { useCrumb } from "../ui/crumb";
 import { QueryState } from "../ui/states";
 import { Tabs } from "../ui/tabs";
 import { AuditTrail } from "./AuditTrail";
@@ -31,6 +32,7 @@ export function RequisitionView({ id }: { id: string }) {
     refetch,
   } = useHiringQuery<RequisitionDetail>(`/api/hiring/requisitions/${id}`);
   const base = `/${locale}/hiring/requisitions/${id}`;
+  useCrumb(id, r?.title);
   return (
     <QueryState isLoading={isLoading} error={error} onRetry={() => void refetch()}>
       {r ? (
@@ -80,6 +82,9 @@ function FlowLinks({ base, req }: { base: string; req: RequisitionDetail }) {
     { href: `${base}/approval`, label: t("flowApproval"), show: true },
     { href: `${base}/jd`, label: t("flowJd"), show: true },
     { href: `${base}/posting`, label: t("flowPosting"), show: req.can.manage },
+    { href: `${base}/pipeline`, label: t("flowPipeline"), show: req.can.manage },
+    { href: `${base}/screening`, label: t("flowScreening"), show: req.can.manage },
+    { href: `${base}/assessment`, label: t("flowAssessment"), show: req.can.manage },
   ];
   return (
     <nav aria-label={t("flowNav")} className="flex flex-wrap gap-2">

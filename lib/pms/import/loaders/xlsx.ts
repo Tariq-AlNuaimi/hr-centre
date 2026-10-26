@@ -211,27 +211,16 @@ function pickSheet(workbook: Array<{ sheet: string; data: unknown[][] }>): {
   return named ?? workbook[0];
 }
 
-export type LoadResult = {
-  rows: EmployeeSourceRow[];
-  /** Recognised headers, so the preview can tell HR what it read. */
-  headerMap: HeaderMap;
-  /** Which tab was imported, so the preview can say so out loud. */
-  sheetName: string;
-};
-
 /**
- * Parse an uploaded workbook into source rows.
- *
- * Throws `ImportFileError` for file-level problems (too large, unreadable, no
- * usable header, missing a required column). Row-level problems are NOT thrown:
- * they travel on as null values and become §3.4 rejections in validate.ts.
+ * The bounded parse every Excel import shares: size, readability and sheet
+ * count are refused at the door (see MAX_UPLOAD_BYTES), and every sheet comes
+ * back as raw cell rows. Exported so other modules' imports (Hiring's
+ * candidate sheet) reuse these bounds and this stays the one file that touches
+ * the Excel library (ADR-066).
  */
-export async function loadEmployeesFromXlsx(
+export async function readWorkbook(
   buffer: Buffer,
-  opts: { maxRows?: number } = {},
-): Promise<LoadResult> {
-  const maxRows = opts.maxRows ?? MAX_ROWS;
-
+): Promise<Array<{ sheet: string; data: unknown[][] }>> {
   if (buffer.byteLength === 0) {
     throw new ImportFileError("empty_file", "The uploaded file is empty.");
   }
@@ -272,6 +261,35 @@ export async function loadEmployeesFromXlsx(
       `The workbook has ${workbook.length} sheets; the limit is ${MAX_SHEETS}.`,
     );
   }
+
+  return workbook;
+}
+
+/** One cell as a trimmed string (null for empty) — the same rules as the employee import. */
+export const cellText = cellToString;
+
+export type LoadResult = {
+  rows: EmployeeSourceRow[];
+  /** Recognised headers, so the preview can tell HR what it read. */
+  headerMap: HeaderMap;
+  /** Which tab was imported, so the preview can say so out loud. */
+  sheetName: string;
+};
+
+/**
+ * Parse an uploaded workbook into source rows.
+ *
+ * Throws `ImportFileError` for file-level problems (too large, unreadable, no
+ * usable header, missing a required column). Row-level problems are NOT thrown:
+ * they travel on as null values and become §3.4 rejections in validate.ts.
+ */
+export async function loadEmployeesFromXlsx(
+  buffer: Buffer,
+  opts: { maxRows?: number } = {},
+): Promise<LoadResult> {
+  const maxRows = opts.maxRows ?? MAX_ROWS;
+
+  const workbook = await readWorkbook(buffer);
 
   const picked = pickSheet(workbook);
   const sheet = picked.data;

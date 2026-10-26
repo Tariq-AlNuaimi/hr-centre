@@ -847,6 +847,15 @@ Decision: build — port the rules, reuse HR Centre's role builder (`lib/rbac`),
 (`lib/crypto/field-encryption.ts`), private blob storage (`lib/storage.ts`), Excel engine
 (`read-excel-file`/`write-excel-file`) and rate limiter. See docs/blueprints/hiring.md, ADR-080.
 
+### 2026-10-27 — Hiring: drag-and-drop for the pipeline board (`@dnd-kit/core`)
+
+Scope: components/hiring/pipeline/**
+Considered: **native HTML5 drag and drop** (rejected — no keyboard or touch dragging, no screen-
+reader announcements). **Menus only** (rejected as the only path — it drops the board interaction
+the port keeps; kept as the accessible second path on every card). **`@dnd-kit/core`** (adopted —
+the library Interview Hub used; keyboard sensor + announcements; MIT).
+Decision: buy — `@dnd-kit/core` ^6.3.1, loaded lazily on the board pages only. ADR-081.
+
 ### 2026-10-27 — JML: joiners, movers & leavers module (case engine and all slices)
 
 Scope: lib/jml/**, lib/validations/jml/**

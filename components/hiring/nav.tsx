@@ -93,7 +93,16 @@ const ITEMS: Array<{ seg: string; icon: ReactNode; label: string; perm: string }
 ];
 
 /** Segments whose screens exist in this build (grows slice by slice). */
-export const LIVE_SEGMENTS = new Set(["home", "requisitions", "library", "flow", "approvals"]);
+export const LIVE_SEGMENTS = new Set([
+  "home",
+  "requisitions",
+  "candidates",
+  "pipeline",
+  "import",
+  "library",
+  "flow",
+  "approvals",
+]);
 
 export function useHiringNavItems(): NavItem[] {
   const t = useTranslations("hiring.nav");
@@ -113,5 +122,6 @@ export function useHiringNavItems(): NavItem[] {
 export function hiringActiveKey(segments: readonly string[]): string | null {
   if (segments[0] !== "hiring") return null;
   const seg = segments[1] ?? "home";
-  return `hiring-${seg === "planning" ? "requisitions" : seg}`;
+  const parent: Record<string, string> = { planning: "requisitions", import: "candidates" };
+  return `hiring-${parent[seg] ?? seg}`;
 }

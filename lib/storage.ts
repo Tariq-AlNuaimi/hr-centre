@@ -1,4 +1,4 @@
-import { del, issueSignedToken, presignUrl } from "@vercel/blob";
+import { del, issueSignedToken, presignUrl, put } from "@vercel/blob";
 
 /**
  * The ONLY module that talks to blob storage.
@@ -175,4 +175,26 @@ export async function readStoredHead(
 /** Remove the bytes. The row is soft-deleted separately and keeps the record. */
 export async function deleteStoredFile(pathname: string): Promise<void> {
   await del(pathname, { token: requireToken() });
+}
+
+/**
+ * A server-side write of a file the route has ALREADY authorised and checked
+ * (type, size). Private, at a pathname the caller derives from the record, so
+ * a client can never choose where its bytes land. Used by Hiring for CVs and
+ * package evidence, which arrive as a multipart body rather than a client
+ * upload because the route must pin the record before any byte is stored.
+ */
+export async function putPrivateFile(
+  pathname: string,
+  body: Blob | Buffer,
+  contentType: string,
+  opts: { overwrite?: boolean } = {},
+): Promise<void> {
+  await put(pathname, body, {
+    access: "private",
+    token: requireToken(),
+    addRandomSuffix: false,
+    allowOverwrite: opts.overwrite ?? false,
+    contentType,
+  });
 }

@@ -20,16 +20,24 @@
 - app/[locale]/(dashboard)/goal-setting/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/goal-setting/page.tsx
 - app/[locale]/(dashboard)/hiring/approvals/page.tsx
+- app/[locale]/(dashboard)/hiring/candidates/[id]/page.tsx
+- app/[locale]/(dashboard)/hiring/candidates/new/page.tsx
+- app/[locale]/(dashboard)/hiring/candidates/page.tsx
 - app/[locale]/(dashboard)/hiring/flow/page.tsx
+- app/[locale]/(dashboard)/hiring/import/page.tsx
 - app/[locale]/(dashboard)/hiring/library/[kind]/page.tsx
 - app/[locale]/(dashboard)/hiring/library/page.tsx
 - app/[locale]/(dashboard)/hiring/page.tsx
+- app/[locale]/(dashboard)/hiring/pipeline/page.tsx
 - app/[locale]/(dashboard)/hiring/planning/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/approval/page.tsx
+- app/[locale]/(dashboard)/hiring/requisitions/[id]/assessment/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/edit/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/jd/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/page.tsx
+- app/[locale]/(dashboard)/hiring/requisitions/[id]/pipeline/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/posting/page.tsx
+- app/[locale]/(dashboard)/hiring/requisitions/[id]/screening/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/new/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/request/page.tsx
@@ -106,6 +114,18 @@
 - app/api/employees/[id]/route.ts  [GET,PUT]
 - app/api/employees/route.ts  [GET,POST]
 - app/api/health/route.ts  [GET]
+- app/api/hiring/candidates/[id]/cv/route.ts  [GET,POST]
+- app/api/hiring/candidates/[id]/documents/[docId]/route.ts  [GET,PATCH,DELETE]
+- app/api/hiring/candidates/[id]/documents/route.ts  [GET,POST]
+- app/api/hiring/candidates/[id]/package/route.ts  [GET,POST]
+- app/api/hiring/candidates/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/hiring/candidates/[id]/stage/route.ts  [PATCH]
+- app/api/hiring/candidates/[id]/stall-cause/route.ts  [PATCH]
+- app/api/hiring/candidates/board/route.ts  [GET]
+- app/api/hiring/candidates/bulk/route.ts  [POST]
+- app/api/hiring/candidates/export/route.ts  [GET]
+- app/api/hiring/candidates/import/route.ts  [POST]
+- app/api/hiring/candidates/route.ts  [GET,POST]
 - app/api/hiring/directory/route.ts  [GET]
 - app/api/hiring/library/[kind]/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/hiring/library/[kind]/route.ts  [GET,POST]
@@ -120,13 +140,16 @@
 - app/api/hiring/requests/approval-route/route.ts  [GET]
 - app/api/hiring/requests/route.ts  [POST]
 - app/api/hiring/requisitions/[id]/approval/route.ts  [GET]
+- app/api/hiring/requisitions/[id]/assessment/route.ts  [GET,POST]
 - app/api/hiring/requisitions/[id]/history/route.ts  [GET]
 - app/api/hiring/requisitions/[id]/jd/route.ts  [GET,POST]
 - app/api/hiring/requisitions/[id]/postings/route.ts  [GET,POST,DELETE]
 - app/api/hiring/requisitions/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/hiring/requisitions/[id]/screening/route.ts  [GET,POST]
 - app/api/hiring/requisitions/[id]/status/route.ts  [PATCH]
 - app/api/hiring/requisitions/export/route.ts  [GET]
 - app/api/hiring/requisitions/route.ts  [GET,POST]
+- app/api/hiring/settings/assessment/route.ts  [GET,PUT]
 - app/api/hive/admin/email-templates/[key]/route.ts  [GET,PUT,DELETE]
 - app/api/hive/admin/org-info/route.ts  [GET,PUT]
 - app/api/hive/admin/providers/import/route.ts  [POST]
@@ -390,6 +413,16 @@
 - lib/hiring/actor.ts: resolveHiringActor
 - lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
 - lib/hiring/approval-config.ts: approvalConfigSchema, ApprovalConfig, loadApprovalConfig, configToChainOptions, Approver, RoutedStep, routeChain, getRoutedChain, computeChainSnapshot, vacantApprovalRoles
+- lib/hiring/assessment-rules.ts: RESULTS_USE, assessmentConfigSchema, AssessmentConfig, DEFAULT_ASSESSMENT_CONFIG, AssessmentStatusValue, PercentileBand, percentileBand, computeValidUntil, ResultLike, isResultValid, ReuseAction, reuseDecision, isThresholdLocked, blocksAdvance, effectiveStatus, defaultDueAt, advanceableCount
+- lib/hiring/assessments.ts: loadAssessmentConfig, completedResultCount, mayEditPolicy, policyView, savePolicy, listAssessments, invite, remind, advance, recordResult
+- lib/hiring/candidate-bulk.ts: BulkSummary, bulkStageMove, ExportRow, exportRows, IMPORT_ROW_CAP, importCandidates
+- lib/hiring/candidate-export.ts: candidateSheet
+- lib/hiring/candidate-files.ts: MAX_FILE_BYTES, cvPathname, documentPathname, sniffType, uploadCv, cvUrl, listDocuments, uploadDocument, loadDocument, documentUrl, reviewDocument, removeDocument, packageView, packageAction
+- lib/hiring/candidate-rules.ts: PAYSLIP_MONTHS_REQUESTED, PackageDocument, currentPackageFrom, bandMidpoint, PricingBasis, pricingBasisFor, reviewedPayslips, referrerToPersist, InterviewCountBounds, resolveInterviewCountBounds, isOmani
+- lib/hiring/candidate-stage.ts: stageHistoryFor, preferredCandidatePending, releaseHoldsForRequisition, ApplyStageChange, applyStageChange, visitedStages, moveStage, setStallCause
+- lib/hiring/candidate-views.ts: candidateHistory, candidateDetail, boardCards
+- lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
+- lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, isAssignedPanelist, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
 - lib/hiring/fill-rules.ts: SEAT_OCCUPYING_STAGES, occupiesSeat, normalizeOpenings, FillState, describeFill, fillLabel, nextFillStatus, BudgetEnvelopeEntry, BudgetCheck, buildBudgetCheck
 - lib/hiring/http.ts: HiringRuleError, hiringError, hiringErrorResponse
@@ -397,6 +430,8 @@
 - lib/hiring/jd.ts: CAREERS_TAG, jdView, JdAction, applyJdAction
 - lib/hiring/library.ts: LIBRARY_LIMIT, canReadLibrary, assertCanWriteLibrary, seesLibraryPay, listLibrary, getLibraryItem, createLibraryItem, updateLibraryItem, deleteLibraryItem
 - lib/hiring/money.ts: CURRENCY_CODES, CurrencyCode, toNum, toOMR, toOMRorNull, formatMoney, formatBand
+- lib/hiring/nationalities.ts: NATIONALITIES
+- lib/hiring/notice-rules.ts: HOLD_WORKING_DAYS, computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
 - lib/hiring/people.ts: PersonRef, peopleById, personOrNull, isLiveUser, directory, orgNames
 - lib/hiring/planning-rules.ts: NEEDS_PER_ROUND_LIMIT, NOTES_PER_NEED_LIMIT, NeedFacts, RoundStats, hasResponded, summarizeRound, canRaiseRequisition, chaseableNeedIds, lastContact, stampsFor
 - lib/hiring/planning.ts: loadRound, listRounds, roundView, createRound, updateRound, addNeed, chaseRound, loadNeed, updateNeed, needThread, addNeedNote
@@ -410,7 +445,11 @@
 - lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
 - lib/hiring/route.ts: hiringRoute, parseBody, parseQuery
 - lib/hiring/scope.ts: requisitionSubject, requisitionScopeWhere, candidateScopeWhere, companyScope, requisitionSubjects
+- lib/hiring/screen-verdict.ts: ScreenVerdict, VerdictResult, screenVerdict, isWithinBand, yearsFromProfile, employerLine
+- lib/hiring/screening.ts: screeningView, screeningAction
 - lib/hiring/settings.ts: HIRING_SETTING_KEYS, HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
+- lib/hiring/stage-gates.ts: GATE_STAGES, GATE_REASON, PACKAGE_GATE_REASON, GATE_CODE, skippedGates, mayCrossGates, joinReasons, describeGates, PackageEvidence, packageGateBlocks, GateVerdict, gateVerdict
+- lib/hiring/stage-rules.ts: PIPELINE_STAGES, Stage, PipelinePhase, LINEAR_STAGES, TERMINAL_STAGES, isStage, getPhase, stageRank, isPastFirstInterview, isRegression, isPhaseCross, classifyStageMove, HIRING_STEPS, stepForStage, boardStepForStage, BOARD_STEPS, RAIL_STEPS, stepEntryStage, stageTransitionError
 - lib/hive/civil.ts: CivilDate, muscatDate, fold, ExpiryState, expiryStateFor
 - lib/hive/hrtag-routing.ts: CoverageRow, inCompanyOf, PairRow, CompanyRow, pairCard, resolveCompany, matchCompanyWide, matchDirectorate, matchSelector, PairResolution, resolvePair
 - lib/hive/hrtag-source.ts: loadHrPairs, loadCompanies
@@ -539,7 +578,7 @@
 - lib/pms/import/checks/record.ts: checkRecord
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
 - lib/pms/import/checks/units.ts: checkUnits
-- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_SHEETS, MAX_ROWS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
+- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_SHEETS, MAX_ROWS, ImportFileError, HeaderMap, mapHeaders, readWorkbook, cellText, LoadResult, loadEmployeesFromXlsx
 - lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, effectiveTeamId, ReconcilePlan, reconcile
 - lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport, existingLoginEmails, provisionLoginFor
 - lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
@@ -586,7 +625,7 @@
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
 - lib/statutory/parameters.ts: STATUTORY_KEYS, StatutoryKey, isStatutoryKey, isOpenStart, StatutoryRow, Resolved, StatutoryParameterMissingError, resolve, unverifiedAmong
-- lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, readStoredHead, deleteStoredFile
+- lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, readStoredHead, deleteStoredFile, putPrivateFile
 - lib/utils.ts: cn
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput
@@ -595,6 +634,7 @@
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
+- lib/validations/hiring/candidate.ts: CANDIDATE_SOURCES, GENDERS, STALL_CAUSES, DOCUMENT_KINDS, createCandidateSchema, updateCandidateSchema, CandidateInput, CandidateUpdate, candidateListQuerySchema, CandidateListQuery, boardQuerySchema, stageMoveSchema, stallCauseSchema, BULK_ID_CAP, bulkActionSchema, candidateExportQuerySchema, uploadDocumentFieldsSchema, reviewDocumentSchema, packageActionSchema, assessmentActionSchema, assessmentPolicySchema, screeningActionSchema, importCandidatesSchema
 - lib/validations/hiring/library-schemas.ts: LIBRARY_SCHEMAS, libraryKind
 - lib/validations/hiring/library.ts: competencySchema, gradeSchema, jdTemplateSchema, questionSchema, LIBRARY_KINDS, LibraryKind
 - lib/validations/hiring/planning.ts: createPlanningRoundSchema, updatePlanningRoundSchema, createNeedSchema, updateNeedSchema, createNeedNoteSchema
@@ -631,16 +671,40 @@
 ## components/
 - components/dashboard/DashboardContent.tsx
 - components/hiring/approvals/ApprovalsView.tsx
+- components/hiring/candidates/AdvancedFilters.tsx
+- components/hiring/candidates/BulkBar.tsx
+- components/hiring/candidates/CandidateForm.tsx
+- components/hiring/candidates/CandidateList.tsx
+- components/hiring/candidates/CandidateProfile.tsx
+- components/hiring/candidates/CvCard.tsx
+- components/hiring/candidates/FilterChips.tsx
+- components/hiring/candidates/ImportView.tsx
+- components/hiring/candidates/NewCandidate.tsx
+- components/hiring/candidates/PackageDialogs.tsx
+- components/hiring/candidates/PackageTab.tsx
+- components/hiring/candidates/ProfileTab.tsx
+- components/hiring/candidates/RowMenu.tsx
+- components/hiring/candidates/StageRail.tsx
+- components/hiring/candidates/StallCard.tsx
+- components/hiring/candidates/TimelineTab.tsx
+- components/hiring/candidates/ViewSwitch.tsx
+- components/hiring/candidates/useStageMove.tsx
 - components/hiring/flow/HiringFlow.tsx
 - components/hiring/home/HiringHome.tsx
 - components/hiring/library/LibraryItemDialog.tsx
 - components/hiring/library/LibraryView.tsx
 - components/hiring/nav.tsx
+- components/hiring/pipeline/BoardDnd.tsx
+- components/hiring/pipeline/PipelineBoard.tsx
+- components/hiring/pipeline/PipelineView.tsx
 - components/hiring/planning/CycleDialogs.tsx
 - components/hiring/planning/NeedDialog.tsx
 - components/hiring/planning/PlanningView.tsx
 - components/hiring/requisitions/ApprovalRoutePreview.tsx
 - components/hiring/requisitions/ApprovalView.tsx
+- components/hiring/requisitions/AssessmentDialogs.tsx
+- components/hiring/requisitions/AssessmentPolicy.tsx
+- components/hiring/requisitions/AssessmentView.tsx
 - components/hiring/requisitions/AuditTrail.tsx
 - components/hiring/requisitions/CareersToggle.tsx
 - components/hiring/requisitions/HiringRequestForm.tsx
@@ -650,12 +714,16 @@
 - components/hiring/requisitions/RequisitionCompSection.tsx
 - components/hiring/requisitions/RequisitionForm.tsx
 - components/hiring/requisitions/RequisitionList.tsx
+- components/hiring/requisitions/RequisitionPipeline.tsx
 - components/hiring/requisitions/RequisitionView.tsx
+- components/hiring/requisitions/ScreeningView.tsx
 - components/hiring/requisitions/StatusCard.tsx
 - components/hiring/ui/badges.tsx
 - components/hiring/ui/competency-picker.tsx
 - components/hiring/ui/fields.tsx
+- components/hiring/ui/flow-rail.tsx
 - components/hiring/ui/person-picker.tsx
+- components/hiring/ui/stage.tsx
 - components/hiring/ui/states.tsx
 - components/hiring/ui/tabs.tsx
 - components/hive/HiveLogo.tsx
