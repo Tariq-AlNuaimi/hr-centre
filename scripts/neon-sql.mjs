@@ -43,6 +43,13 @@ export const REDACT_FIELDS = new Set([
   // or a terminal scrollback.
   "basicSalary",
   "basic_salary",
+  // HR Centre F-b — ID document numbers (mirrors SCRUB_FIELDS).
+  "civilIdNumber",
+  "civilIdNumberEnc",
+  "civil_id_number_enc",
+  "passportNumber",
+  "passportNumberEnc",
+  "passport_number_enc",
 ]);
 
 // Redact any REDACT_FIELDS key in each returned row before it is printed.

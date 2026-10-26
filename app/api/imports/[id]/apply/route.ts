@@ -1,3 +1,4 @@
+import { IdDocumentKeyError } from "@/lib/people/id-documents";
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok } from "@/lib/api-response";
@@ -134,6 +135,8 @@ export const POST = withRateLimit(
       // Typed rather than pattern-matched on the message — the regex this
       // replaced silently turned each newly added conflict into a 500.
       if (error instanceof ImportConflictError) return err(error.message, 409);
+      // F-b worst path: the ID key is missing — the whole apply rolled back.
+      if (error instanceof IdDocumentKeyError) return err(error.message, 503);
       throw error;
     }
   }),

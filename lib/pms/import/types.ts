@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { EmployeeStatus, RoleTrack } from "@/generated/prisma/client";
+import type { EmployeeRecordInput, RecordField } from "@/lib/people/record";
 
 /**
  * The import layer's canonical shapes — spec §3.1.
@@ -45,7 +46,7 @@ export type EmployeeSourceRow = {
   status: string | null;
   lastWorkingDay: string | null;
   unpaidLeaveDays: string | null;
-};
+} & Partial<Record<RecordField, string | null>>;
 
 /** The eleven §3.3 fields, in the order they appear in the spec's own table. */
 export const IMPORT_COLUMNS = [
@@ -63,6 +64,23 @@ export const IMPORT_COLUMNS = [
   "status",
   "lastWorkingDay",
   "unpaidLeaveDays",
+  // HR Centre F-b — the full record (blueprint §2). Optional columns; names are
+  // the writer's own field names (lib/people/record.ts) so nothing is mapped twice.
+  "jobTitle",
+  "grade",
+  "contractType",
+  "probationEndDate",
+  "workLocation",
+  "workPhone",
+  "personalEmail",
+  "personalPhone",
+  "dateOfBirth",
+  "gender",
+  "nationality",
+  "civilIdNumber",
+  "civilIdExpiry",
+  "passportNumber",
+  "passportExpiry",
 ] as const;
 
 export type ImportColumn = (typeof IMPORT_COLUMNS)[number];
@@ -100,6 +118,21 @@ export const COLUMN_ALIASES: Record<ImportColumn, readonly string[]> = {
   status: ["status", "employment status"],
   lastWorkingDay: ["last working day", "lastworkingday", "lwd", "end date"],
   unpaidLeaveDays: ["unpaid leave days", "unpaid leave", "unpaidleavedays", "lop days"],
+  jobTitle: ["job title", "jobtitle", "position", "designation"],
+  grade: ["grade", "job grade"],
+  contractType: ["contract type", "contracttype", "contract", "employment type"],
+  probationEndDate: ["probation end date", "probation end", "probationenddate"],
+  workLocation: ["work location", "worklocation", "location", "office"],
+  workPhone: ["work phone", "workphone", "work mobile", "office phone"],
+  personalEmail: ["personal email", "personalemail", "private email"],
+  personalPhone: ["personal phone", "personalphone", "mobile", "private phone"],
+  dateOfBirth: ["date of birth", "dateofbirth", "dob", "birth date", "birthday"],
+  gender: ["gender", "sex"],
+  nationality: ["nationality", "country of nationality"],
+  civilIdNumber: ["civil id number", "civil id", "civilidnumber", "civil id no", "national id"],
+  civilIdExpiry: ["civil id expiry", "civil id expiry date", "civilidexpiry"],
+  passportNumber: ["passport number", "passport", "passportnumber", "passport no"],
+  passportExpiry: ["passport expiry", "passport expiry date", "passportexpiry"],
 };
 
 /** Human-facing column titles for the downloadable template (§3.3 wording). */
@@ -118,6 +151,21 @@ export const COLUMN_TITLES: Record<ImportColumn, string> = {
   status: "Status",
   lastWorkingDay: "Last Working Day",
   unpaidLeaveDays: "Unpaid Leave Days",
+  jobTitle: "Job Title",
+  grade: "Grade",
+  contractType: "Contract Type",
+  probationEndDate: "Probation End Date",
+  workLocation: "Work Location",
+  workPhone: "Work Phone",
+  personalEmail: "Personal Email",
+  personalPhone: "Personal Phone",
+  dateOfBirth: "Date of Birth",
+  gender: "Gender",
+  nationality: "Nationality",
+  civilIdNumber: "Civil ID Number",
+  civilIdExpiry: "Civil ID Expiry",
+  passportNumber: "Passport Number",
+  passportExpiry: "Passport Expiry",
 };
 
 /**
@@ -173,6 +221,8 @@ export type ValidatedRow = {
   dateOfJoining: Date | null;
   lastWorkingDay: Date | null;
   unpaidLeaveDays: number;
+  /** F-b — natural-form record fields; a key is absent when its column is. */
+  record?: EmployeeRecordInput;
 };
 
 /** One field's before/after in an update, for the preview diff. */
@@ -309,6 +359,8 @@ export function planDigest(validRows: ValidatedRow[]): string {
       String(r.unpaidLeaveDays),
       // F-a. "~" marks "column absent" so it cannot collide with a blank cell.
       r.teamId === undefined ? "~" : (r.teamId ?? ""),
+      // F-b. ID numbers included for the reason salary is (see above).
+      JSON.stringify(r.record ?? {}),
     ]);
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }

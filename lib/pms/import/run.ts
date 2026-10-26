@@ -8,8 +8,11 @@ import {
 } from "./reconcile";
 import { validateRows, type ValidationContext } from "./validate";
 import { countsFor, planDigest, type ImportPreview, type ValidatedRow } from "./types";
-import { decryptSalary, encryptSalary } from "../employee-select";
+import { decryptSalary } from "../employee-select";
+import { employeeCreateData, employeeUpdateData, type EmployeeCoreInput } from "@/lib/people/write";
+import { readIdNumber } from "@/lib/people/id-documents";
 import { applyDeparture } from "../departure";
+import type { EmployeeRecordInput } from "@/lib/people/record";
 
 /**
  * Import orchestration — spec §3.
@@ -27,6 +30,24 @@ import { applyDeparture } from "../departure";
  * destructive" from an assertion into something reviewable before it happens.
  */
 
+/** A validated row as the writer's core input. */
+function coreOf(row: ValidatedRow, teamId: string | null): EmployeeCoreInput {
+  return {
+    odooId: row.odooId,
+    name: row.name,
+    email: row.email,
+    departmentId: row.departmentId,
+    teamId,
+    entityId: row.entityId,
+    roleTrack: row.roleTrack,
+    basicSalary: row.basicSalary,
+    status: row.status,
+    dateOfJoining: row.dateOfJoining,
+    lastWorkingDay: row.lastWorkingDay,
+    unpaidLeaveDays: row.unpaidLeaveDays,
+  };
+}
+
 function normalize(value: string): string {
   return value.trim().toLowerCase().replace(/[_-]+/g, " ").replace(/\s+/g, " ");
 }
@@ -42,6 +63,45 @@ function normalize(value: string): string {
  * The 2,000-row upload cap (loaders/xlsx.ts) bounds the realistic org size, and
  * the select is narrow.
  */
+/** F-b record columns, read back for comparison (lib/people/record.ts). */
+const RECORD_COLUMNS = {
+  jobTitle: true,
+  grade: true,
+  contractType: true,
+  probationEndDate: true,
+  workLocation: true,
+  workPhone: true,
+  personalEmail: true,
+  personalPhone: true,
+  dateOfBirth: true,
+  gender: true,
+  nationality: true,
+  civilIdNumberEnc: true,
+  civilIdExpiry: true,
+  passportNumberEnc: true,
+  passportExpiry: true,
+} as const;
+
+function recordOnFile(e: {
+  odooId: string;
+  civilIdNumberEnc: string | null;
+  passportNumberEnc: string | null;
+  [key: string]: unknown;
+}): EmployeeRecordInput {
+  const { civilIdNumberEnc, passportNumberEnc, ...rest } = e;
+  const civil = readIdNumber(civilIdNumberEnc, e.odooId);
+  const passport = readIdNumber(passportNumberEnc, e.odooId);
+  const record: Record<string, unknown> = {};
+  for (const key of Object.keys(RECORD_COLUMNS)) {
+    if (key in rest) record[key] = rest[key];
+  }
+  // An unreadable number stays `undefined`: the import then treats any value
+  // in the sheet as a change and re-encrypts it, rather than guessing equality.
+  record.civilIdNumber = civil.unavailable ? undefined : civil.value;
+  record.passportNumber = passport.unavailable ? undefined : passport.value;
+  return record as EmployeeRecordInput;
+}
+
 async function loadContext(): Promise<{
   validation: ValidationContext;
   reconcile: ReconcileContext;
@@ -73,6 +133,7 @@ async function loadContext(): Promise<{
         lastWorkingDay: true,
         unpaidLeaveDays: true,
         teamId: true,
+        ...RECORD_COLUMNS,
       },
     }),
     // F-a lookups. Unbounded like the two above: the import validates against
@@ -142,6 +203,7 @@ async function loadContext(): Promise<{
       lastWorkingDay: employee.lastWorkingDay,
       unpaidLeaveDays: employee.unpaidLeaveDays,
       teamId: employee.teamId,
+      record: recordOnFile(employee),
     });
   }
 
@@ -437,23 +499,11 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
       if (!row) continue;
       const userId = await provisionLoginFor(tx, row, taken);
       if (userId) provisioned++;
+      // The one writer (lib/people/write.ts) — the Add employee form calls the
+      // same builder, so the two ways in cannot drift (AC-F5.2). The login
+      // link goes on the CREATE, not a second statement after it.
       await tx.employee.create({
-        data: {
-          odooId: row.odooId,
-          name: row.name,
-          email: row.email,
-          departmentId: row.departmentId,
-          teamId: row.teamId ?? null,
-          entityId: row.entityId,
-          roleTrack: row.roleTrack,
-          basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
-          status: row.status,
-          dateOfJoining: row.dateOfJoining,
-          lastWorkingDay: row.lastWorkingDay,
-          unpaidLeaveDays: row.unpaidLeaveDays,
-          // The link on the CREATE, not a second statement after it.
-          userId,
-        },
+        data: employeeCreateData(coreOf(row, row.teamId ?? null), row.record ?? {}, { userId }),
         select: { id: true },
       });
     }
@@ -490,15 +540,7 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
       await tx.employee.update({
         where: { id: update.employeeId },
         data: {
-          name: row.name,
-          email: row.email,
-          departmentId: row.departmentId,
-          teamId: effectiveTeamId(row, existing),
-          entityId: row.entityId,
-          roleTrack: row.roleTrack,
-          basicSalaryEnc: encryptSalary(row.basicSalary, row.odooId),
-          dateOfJoining: row.dateOfJoining,
-          unpaidLeaveDays: row.unpaidLeaveDays,
+          ...employeeUpdateData(coreOf(row, effectiveTeamId(row, existing)), row.record ?? {}),
           // `status` and `lastWorkingDay` are DEFERRED for a departure: pass 3
           // writes them as part of the whole §12.1 act. Writing them here too
           // would re-write the same values a second time and emit a second

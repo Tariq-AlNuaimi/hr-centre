@@ -252,6 +252,30 @@ test("scrub keeps actor/email fields while still redacting credentials", () => {
 // would route the figure straight around its own access control. These tests
 // pin the entry so a future edit to SCRUB_FIELDS cannot quietly drop it.
 
+test("HR Centre F-b: scrub redacts ID document numbers, plain and encrypted (AC-F2.2)", () => {
+  const out = scrub({
+    id: "e1",
+    civilIdNumber: "12345678",
+    civilIdNumberEnc: "v1.a.b.c",
+    civil_id_number_enc: "v1.a.b.c",
+    passportNumber: "P1234567",
+    passportNumberEnc: "v1.d.e.f",
+    passport_number_enc: "v1.d.e.f",
+    civilIdExpiry: "2030-01-01",
+  });
+  for (const key of [
+    "civilIdNumber",
+    "civilIdNumberEnc",
+    "civil_id_number_enc",
+    "passportNumber",
+    "passportNumberEnc",
+    "passport_number_enc",
+  ]) {
+    assert.equal((out as Record<string, unknown>)[key], "[redacted]", key);
+  }
+  assert.equal(out.civilIdExpiry, "2030-01-01", "expiry dates are not Restricted");
+});
+
 test("scrub redacts basicSalary in both camelCase and snake_case", () => {
   const out = scrub({ id: "e1", name: "Sara", basicSalary: 4200, basic_salary: 4200 });
   assert.equal(out.basicSalary, "[redacted]");

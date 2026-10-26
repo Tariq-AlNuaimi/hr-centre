@@ -18,3 +18,4 @@ export {
   checkLastWorkingDay,
   checkUnpaidLeave,
 } from "./employment";
+export { checkRecord } from "./record";

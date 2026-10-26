@@ -21,6 +21,8 @@ export type PmsCapabilities = {
   hr: boolean;
   configure: boolean;
   viewCompensation: boolean;
+  viewPersonal: boolean;
+  viewIdDocuments: boolean;
   previewImport: boolean;
   applyImport: boolean;
   runCalibration: boolean;
@@ -43,6 +45,8 @@ const NO_CAPABILITIES: PmsCapabilities = {
   hr: false,
   configure: false,
   viewCompensation: false,
+  viewPersonal: false,
+  viewIdDocuments: false,
   previewImport: false,
   applyImport: false,
   runCalibration: false,

@@ -16,7 +16,7 @@ export const EMPLOYEE_STATUSES = ["ACTIVE", "LEAVER"] as const;
 export const PMS_ROLES = ["HR_SUPER_ADMIN", "HRBP", "EXECUTIVE_VIEWER"] as const;
 
 /** ISO calendar day. Strict, for the reason given in import/validate.ts. */
-const isoDate = z
+export const isoDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
   .refine((value) => {

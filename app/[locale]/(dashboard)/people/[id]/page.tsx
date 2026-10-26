@@ -4,7 +4,10 @@ import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { employeeSelect, serializeEmployee } from "@/lib/pms/employee-select";
+import { employeeDetailSelect, serializeEmployeeDetail } from "@/lib/pms/employee-select";
+import { EmployeeRecordSections } from "@/components/people/EmployeeRecordSections";
+import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
+import { recordFormValues } from "@/components/people/record-form-values";
 import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -38,6 +41,7 @@ function toUpdateInput(employee: {
   email: string;
   dateOfJoining: Date | null;
   departmentId: string | null;
+  team: { id: string } | null;
   entityId: string;
   managerId: string | null;
   roleTrack: string;
@@ -52,6 +56,7 @@ function toUpdateInput(employee: {
     email: employee.email,
     dateOfJoining: employee.dateOfJoining?.toISOString().slice(0, 10) ?? null,
     departmentId: employee.departmentId,
+    teamId: employee.team?.id ?? null,
     entityId: employee.entityId,
     managerId: employee.managerId,
     roleTrack: employee.roleTrack as UpdateEmployeeInput["roleTrack"],
@@ -61,6 +66,20 @@ function toUpdateInput(employee: {
     lastWorkingDay: employee.lastWorkingDay?.toISOString().slice(0, 10) ?? null,
     unpaidLeaveDays: employee.unpaidLeaveDays,
   };
+}
+
+/** HR Centre F-a — directorate and team rows, only when the org uses them. */
+function unitItems(
+  directorate: { name: string } | null,
+  team: { name: string } | null,
+  t: (key: string) => string,
+) {
+  return [
+    ...(directorate
+      ? [{ key: "directorate", label: t("detail.directorate"), value: directorate.name }]
+      : []),
+    ...(team ? [{ key: "team", label: t("detail.team"), value: team.name }] : []),
+  ];
 }
 
 /**
@@ -91,9 +110,11 @@ export default async function EmployeeDetailPage({
 
   const employee = await prisma.employee.findUnique({
     where: { id },
-    select: employeeSelect(actor),
+    select: employeeDetailSelect(actor),
   });
   if (!employee) notFound();
+  // HR Centre F-b — the record groups the gated select returned (AC-F2.2/F2.3).
+  const detail = serializeEmployeeDetail(employee);
 
   const canAct = canActOnEmployee(actor, { id: employee.id, managerId: employee.managerId });
 
@@ -114,7 +135,7 @@ export default async function EmployeeDetailPage({
     `in` narrows on any key, and it was the only employee read in the app that
     skipped the serializer.
   */
-  const basicSalary = serializeEmployee(employee).basicSalary;
+  const basicSalary = detail.basicSalary;
 
   const identity = [
     { key: "odooId", label: t("employeeId"), value: employee.odooId },
@@ -149,6 +170,7 @@ export default async function EmployeeDetailPage({
       // a blank that reads as missing data.
       value: employee.department?.name ?? t("detail.noDepartmentCLevel"),
     },
+    ...unitItems(detail.record.directorate, employee.team, t),
     {
       key: "manager",
       label: t("manager"),
@@ -210,6 +232,18 @@ export default async function EmployeeDetailPage({
             not be the thing that discovers it by encrypting `null` over payroll.
           */
           <>
+            {actor.capabilities.configure ? (
+              <EmployeeRecordForm
+                employeeId={employee.id}
+                initial={recordFormValues(detail.record)}
+                canEditPersonal={actor.capabilities.viewPersonal}
+                // A number the server key cannot open is not offered for editing:
+                // the empty box would read as "none" and saving it would clear it.
+                canEditIdDocuments={
+                  actor.capabilities.viewIdDocuments && !detail.record.idDocuments?.unavailable
+                }
+              />
+            ) : null}
             {actor.capabilities.configure && basicSalary !== undefined ? (
               <EmployeeEditForm
                 employeeId={employee.id}
@@ -251,6 +285,8 @@ export default async function EmployeeDetailPage({
       <SectionCard title={t("detail.employment")}>
         <DescriptionList items={employment} columns={2} />
       </SectionCard>
+
+      <EmployeeRecordSections record={detail.record} />
 
       {/*
         §4.5 / §11.6 — the compensation block exists only when the viewer is

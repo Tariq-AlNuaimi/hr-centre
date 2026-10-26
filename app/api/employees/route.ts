@@ -1,13 +1,17 @@
 import { NextRequest } from "next/server";
 import type { Prisma } from "@/generated/prisma/client";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
-import { err, ok } from "@/lib/api-response";
+import { created, err, forbidden, ok, readJsonBody } from "@/lib/api-response";
 import { paginatedResponse, parsePagination } from "@/lib/pagination";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { employeeSelect, serializeEmployee } from "@/lib/pms/employee-select";
 import { visibleEmployeeIds } from "@/lib/pms/org-tree";
 import { employeeListQuerySchema } from "@/lib/validations/employee";
+import { addEmployeeSchema, recordFromBody } from "@/lib/validations/people";
+import { ruleErrorResponse, validationError } from "@/lib/org/http";
+import { recordFieldsTouched } from "@/lib/people/record";
+import { createEmployeeFromForm } from "@/lib/people/service";
 
 /**
  * The employee directory — spec §4.2 (hierarchical visibility) and §4.5
@@ -97,4 +101,34 @@ export const GET = withRateLimit(
     return ok(paginatedResponse(rows.map(serializeEmployee), total, pagination));
   }),
   { id: "pms-employees-list", limit: 120, windowMs: 60_000 },
+);
+
+/**
+ * HR Centre F-b — Add employee (blueprint §5 "typing"). The second way in after
+ * the import, through the same writer (AC-F5.2). Writing personal details or ID
+ * documents additionally needs the permission to SEE them: nobody may set a
+ * value they are not allowed to read back.
+ */
+export const POST = withRateLimit(
+  withAuth(async (request: NextRequest, { session }) => {
+    const actor = await resolveActor(session);
+    if (!actor.capabilities.configure) return forbidden();
+
+    const body = await readJsonBody(request);
+    if (body === null) return err("Request body must be valid JSON");
+    const parsed = addEmployeeSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
+
+    const record = recordFromBody(parsed.data.record);
+    const touched = recordFieldsTouched(record);
+    if (touched.personal && !actor.capabilities.viewPersonal) return forbidden();
+    if (touched.idDocuments && !actor.capabilities.viewIdDocuments) return forbidden();
+
+    try {
+      return created(await createEmployeeFromForm(parsed.data.employee, record));
+    } catch (e) {
+      return ruleErrorResponse(e);
+    }
+  }),
+  { id: "pms-employee-write", limit: 30, windowMs: 60_000 },
 );

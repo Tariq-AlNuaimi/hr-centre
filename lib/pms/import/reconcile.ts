@@ -6,6 +6,12 @@ import type {
   PlannedUpdate,
   ValidatedRow,
 } from "./types";
+import {
+  ID_DOCUMENT_FIELDS,
+  PERSONAL_FIELDS,
+  RECORD_FIELDS,
+  type EmployeeRecordInput,
+} from "@/lib/people/record";
 
 /**
  * Reconciliation — spec §3.5 (re-import / refresh behavior, mid-cycle).
@@ -47,6 +53,11 @@ export type ExistingEmployee = {
   unpaidLeaveDays: number;
   /** F-a. Optional so Performance-era fixtures still type-check. */
   teamId?: string | null;
+  /**
+   * F-b — the record as on file, natural form (ID numbers decrypted in memory
+   * for comparison only; `undefined` for a number the key could not open).
+   */
+  record?: EmployeeRecordInput;
 };
 
 export type ReconcileContext = {
@@ -153,7 +164,7 @@ function diffFields(
     teamId: teamLabel(existing.teamId ?? null),
   };
 
-  const changes: FieldChange[] = [];
+  const changes: FieldChange[] = recordChanges(existing.record ?? {}, incoming.record ?? {});
   for (const field of COMPARED_FIELDS) {
     const from = before[field];
     const to = next[field];
@@ -181,6 +192,35 @@ function diffFields(
  * row's create will produce, which is why `managerId` is left null on creates
  * and linked in a second pass at apply time; see run.ts).
  */
+/** Personal and ID-document values never appear in a stored preview — only that they change. */
+const REDACTED_IN_PREVIEW = new Set<string>([...PERSONAL_FIELDS, ...ID_DOCUMENT_FIELDS]);
+
+function recordValueKey(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value);
+}
+
+/**
+ * F-b — compare only the record fields the file actually carries; an absent
+ * column is "leave alone", never a change.
+ */
+function recordChanges(before: EmployeeRecordInput, after: EmployeeRecordInput): FieldChange[] {
+  const changes: FieldChange[] = [];
+  for (const field of RECORD_FIELDS) {
+    if (after[field] === undefined) continue;
+    const from = recordValueKey(before[field]);
+    const to = recordValueKey(after[field]);
+    if (from === to) continue;
+    changes.push(
+      REDACTED_IN_PREVIEW.has(field)
+        ? { field, from: "[redacted]", to: "[redacted]" }
+        : { field, from, to },
+    );
+  }
+  return changes;
+}
+
 export function reconcile(rows: ValidatedRow[], ctx: ReconcileContext): ReconcilePlan {
   const creates: PlannedCreate[] = [];
   const updates: PlannedUpdate[] = [];

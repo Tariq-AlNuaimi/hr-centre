@@ -51,8 +51,25 @@ const IV_BYTES = 12; // GCM's standard nonce length; anything else weakens it.
 const KEY_BYTES = 32; // AES-256.
 
 /** The env var NAMES. Their VALUES are Restricted and must never be logged. */
-const CURRENT_KEY_VAR = "SALARY_ENCRYPTION_KEY";
-const PREVIOUS_KEY_VAR = "SALARY_ENCRYPTION_KEY_PREVIOUS";
+/**
+ * A named pair of key variables. Salary (ADR-067) was the only one; HR Centre
+ * F-b adds ID documents under their OWN key so the two can rotate — or leak —
+ * independently. Everything else (envelope, AAD binding, rotation fallback) is
+ * shared.
+ */
+export type Keyring = { current: string; previous: string; purpose: string };
+
+export const SALARY_KEYRING: Keyring = {
+  current: "SALARY_ENCRYPTION_KEY",
+  previous: "SALARY_ENCRYPTION_KEY_PREVIOUS",
+  purpose: "Salary is stored encrypted (ADR-067)",
+};
+
+export const ID_DOCUMENT_KEYRING: Keyring = {
+  current: "ID_ENCRYPTION_KEY",
+  previous: "ID_ENCRYPTION_KEY_PREVIOUS",
+  purpose: "Civil ID and passport numbers are stored encrypted (HR Centre F-b)",
+};
 
 export class FieldEncryptionError extends Error {
   constructor(message: string) {
@@ -70,12 +87,12 @@ const b64url = (buf: Buffer) => buf.toString("base64url");
  * `no-secret-env-in-console` floor rule applies to thrown messages too, because
  * an error string reaches logs just as surely as a `console.log`.
  */
-function readKey(varName: string, required: boolean): Buffer | null {
+function readKey(varName: string, required: boolean, purpose: string): Buffer | null {
   const raw = process.env[varName];
   if (!raw) {
     if (!required) return null;
     throw new FieldEncryptionError(
-      `${varName} is not set. Salary is stored encrypted (ADR-067); the app cannot read or ` +
+      `${varName} is not set. ${purpose}; the app cannot read or ` +
         `write it without the key. Generate one with: openssl rand -base64 32`,
     );
   }
@@ -99,21 +116,23 @@ function readKey(varName: string, required: boolean): Buffer | null {
  * never touches salary (most of them) does not require the key to boot, and so
  * a test can set the variable before the first call.
  */
-let cachedKeys: { current: Buffer; previous: Buffer | null } | null = null;
+const cachedKeys = new Map<string, { current: Buffer; previous: Buffer | null }>();
 
-function keys() {
-  if (cachedKeys === null) {
-    cachedKeys = {
-      current: readKey(CURRENT_KEY_VAR, true) as Buffer,
-      previous: readKey(PREVIOUS_KEY_VAR, false),
+function keys(ring: Keyring) {
+  let found = cachedKeys.get(ring.current);
+  if (!found) {
+    found = {
+      current: readKey(ring.current, true, ring.purpose) as Buffer,
+      previous: readKey(ring.previous, false, ring.purpose),
     };
+    cachedKeys.set(ring.current, found);
   }
-  return cachedKeys;
+  return found;
 }
 
 /** Test seam. Not exported from any barrel — nothing in `app/` should call it. */
 export function resetKeyCacheForTests(): void {
-  cachedKeys = null;
+  cachedKeys.clear();
 }
 
 /** True when a stored value looks like something this module produced. */
@@ -128,12 +147,16 @@ export function isEncryptedEnvelope(value: string): boolean {
  * envelope every time — so ciphertext equality leaks nothing, and nobody can
  * tell from the database that two people are paid the same.
  */
-export function encryptField(plaintext: string, aad: string): string {
+export function encryptField(
+  plaintext: string,
+  aad: string,
+  ring: Keyring = SALARY_KEYRING,
+): string {
   if (aad.length === 0) {
     throw new FieldEncryptionError("Refusing to encrypt without binding data — see ADR-067.");
   }
   const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv(ALGORITHM, keys().current, iv);
+  const cipher = createCipheriv(ALGORITHM, keys(ring).current, iv);
   cipher.setAAD(Buffer.from(aad, "utf8"));
   const ciphertext = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   return [VERSION, b64url(iv), b64url(ciphertext), b64url(cipher.getAuthTag())].join(".");
@@ -159,7 +182,11 @@ function openWith(key: Buffer, iv: Buffer, ct: Buffer, tag: Buffer, aad: string)
  * without a flag day: deploy both keys, re-encrypt in the background, then drop
  * the previous one.
  */
-export function decryptField(envelope: string, aad: string): string {
+export function decryptField(
+  envelope: string,
+  aad: string,
+  ring: Keyring = SALARY_KEYRING,
+): string {
   const parts = envelope.split(".");
   if (parts.length !== 4 || parts[0] !== VERSION) {
     throw new FieldEncryptionError(
@@ -172,7 +199,7 @@ export function decryptField(envelope: string, aad: string): string {
   const ct = Buffer.from(ctPart, "base64url");
   const tag = Buffer.from(tagPart, "base64url");
 
-  const { current, previous } = keys();
+  const { current, previous } = keys(ring);
   const opened =
     openWith(current, iv, ct, tag, aad) ?? (previous ? openWith(previous, iv, ct, tag, aad) : null);
 

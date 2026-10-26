@@ -1,3 +1,4 @@
+import { RECORD_FIELDS } from "../../lib/people/record";
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -158,7 +159,9 @@ test("§3.1 the generated template parses back through the loader, all 12 §3.3 
       "status",
       "team",
       "unpaidLeaveDays",
-    ],
+      // HR Centre F-b: the optional full-record columns (blueprint §2).
+      ...RECORD_FIELDS,
+    ].sort(),
     "every §3.3 column in the template must be recognised by the loader",
   );
   assert.equal(rows[0].dateOfJoining, "2021-03-15", "§3.3's Date of Joining round-trips");
