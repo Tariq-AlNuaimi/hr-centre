@@ -20,6 +20,8 @@ export interface Detail {
   status: string;
   employeeName: string;
   employeeEmail: string;
+  identityVerified: boolean;
+  employee: { id: string; name: string } | null;
   question: string;
   draftAnswer: string | null;
   sendError: string | null;

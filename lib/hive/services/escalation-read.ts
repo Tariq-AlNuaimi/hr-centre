@@ -158,6 +158,10 @@ export async function getEscalation(id: string) {
     where: { id },
     select: {
       ...QUEUE_SELECT,
+      // ADR-079: the core Employee this email matched, and whether the email was
+      // the employee's signed-in identity (Siraaj forwarded it) or the model's word.
+      identityVerified: true,
+      employee: { select: { id: true, name: true } },
       messages: {
         // `id` as a tiebreaker: `at` is not unique, and two messages written in
         // the same millisecond rendering in an arbitrary order turns an answer

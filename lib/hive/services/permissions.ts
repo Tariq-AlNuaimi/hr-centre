@@ -159,3 +159,21 @@ export function requireHivePermission(
     return handler(req, ctx);
   };
 }
+
+/**
+ * Which pairs this person may Draft / Approve on right now — "all" for a
+ * group-wide assignment, else the HR_PAIR ids plus their own pair. Used to
+ * build their task list (My tasks); each action still re-checks `canOnPair`.
+ *
+ * @public
+ */
+export async function pairsFor(
+  userId: string,
+  action: "draftEscalation" | "approve",
+): Promise<"all" | string[]> {
+  const scopes = (await loadGrants(userId)).get(ACTION_PERMISSION[action]) ?? [];
+  if (scopes.some((s) => s.type === "GROUP")) return "all";
+  const named = scopes.filter((s) => s.type === "HR_PAIR" && s.id).map((s) => s.id!);
+  const own = scopes.some((s) => s.type === "OWN_HR_PAIR") ? await ownPairIds(userId) : [];
+  return [...new Set([...named, ...own])];
+}

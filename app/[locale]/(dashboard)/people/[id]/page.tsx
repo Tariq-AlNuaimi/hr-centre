@@ -12,7 +12,9 @@ import {
 import { EmployeeRecordSections } from "@/components/people/EmployeeRecordSections";
 import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
 import { LoginPanel } from "@/components/people/LoginPanel";
-import { RecordTabs, parseRecordTab } from "@/components/people/RecordTabs";
+import { RecordTabs, parseRecordTab, type RecordTab } from "@/components/people/RecordTabs";
+import { EmployeeTickets } from "@/components/hive/TicketTaskPanels";
+import { hasHivePermission } from "@/lib/hive/services/permissions";
 import { recordFormValues } from "@/components/people/record-form-values";
 import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 import { placementOf } from "@/lib/rbac/resolve";
@@ -157,6 +159,18 @@ function unitItems(
  * the row at all. Doing this in a client component would mean shipping the data
  * and then choosing not to draw it.
  */
+/**
+ * HR tickets tab: only with `tickets.see` (company-wide by design). Without it
+ * the tab is absent and its URL shows the overview — no question leaks.
+ */
+async function tabsFor(
+  userId: string,
+  requested: RecordTab,
+): Promise<{ tab: RecordTab; hiddenTabs: RecordTab[] }> {
+  if (await hasHivePermission(userId, "seeTickets")) return { tab: requested, hiddenTabs: [] };
+  return { tab: requested === "tickets" ? "overview" : requested, hiddenTabs: ["tickets"] };
+}
+
 export default async function EmployeeDetailPage({
   params,
   searchParams,
@@ -165,9 +179,10 @@ export default async function EmployeeDetailPage({
   searchParams: Promise<{ tab?: string | string[] }>;
 }) {
   const { locale, id } = await params;
-  const tab = parseRecordTab((await searchParams).tab);
+  const requestedTab = parseRecordTab((await searchParams).tab);
   const session = await auth();
   if (!session) redirect(`/${locale}/login`);
+  const { tab, hiddenTabs } = await tabsFor(session.user.id, requestedTab);
 
   const t = await getTranslations("pms");
   const actor = await resolveActor(session);
@@ -346,9 +361,11 @@ export default async function EmployeeDetailPage({
       />
 
       {/* F-e — the record's tabs; later modules add theirs (RecordTabs). */}
-      <RecordTabs basePath={`/${locale}/people/${employee.id}`} active={tab} />
+      <RecordTabs basePath={`/${locale}/people/${employee.id}`} active={tab} hidden={hiddenTabs} />
 
-      {tab === "overview" ? (
+      {tab === "tickets" ? (
+        <EmployeeTickets employeeId={employee.id} locale={locale} />
+      ) : tab === "overview" ? (
         <>
           <SectionCard title={t("detail.identity")}>
             <DescriptionList items={identity} columns={2} />
