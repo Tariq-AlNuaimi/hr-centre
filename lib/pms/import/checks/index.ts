@@ -11,6 +11,7 @@
 export { issue, normalize, type Check, type ValidationContext } from "./shared";
 export { checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus } from "./identity";
 export { checkPlacement, checkManager } from "./placement";
+export { checkUnits } from "./units";
 export {
   checkSalary,
   checkDateOfJoining,

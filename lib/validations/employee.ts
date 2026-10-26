@@ -55,6 +55,12 @@ const employeeCore = {
    */
   dateOfJoining: isoDate.nullable().default(null),
   departmentId: z.string().trim().min(1).nullable(),
+  /**
+   * F-a — optional refinement of the department. ABSENT means "keep the current
+   * team" (or drop it, if the department changed — a team never outlives a move
+   * out of its department); `null` clears it.
+   */
+  teamId: z.string().trim().min(1).max(64).nullable().optional(),
   entityId: z.string().trim().min(1, "Entity is required"),
   managerId: z.string().trim().min(1).nullable(),
   roleTrack: z.enum(ROLE_TRACKS),
@@ -201,11 +207,6 @@ export const createEntitySchema = z.object({
   name: z.string().trim().min(1).max(120),
 });
 
-export const createDepartmentSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  entityId: z.string().trim().min(1, "Choose the entity this department belongs to"),
-});
-
 /** List filters. Kept narrow so a caller cannot smuggle a raw column name in. */
 export const employeeListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
@@ -218,4 +219,3 @@ export const employeeListQuerySchema = z.object({
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type CreateEntityInput = z.infer<typeof createEntitySchema>;
-export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;

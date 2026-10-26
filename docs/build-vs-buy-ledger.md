@@ -776,3 +776,23 @@ employee performance records is a data-protection question the operator has not 
 `access: "private"` exactly once, to turn a missing token into a sentence a human can act on rather
 than a stack trace, and to keep pathname construction in one place so a crafted filename cannot
 traverse. Everything underneath — upload, signing, deletion — is the library's.
+
+### 2026-10-26 — HR Centre foundation: org units, people writer, RBAC, logins
+
+Scope: lib/org/**, lib/people/**, lib/rbac/**, lib/crypto/**, lib/validations/org.ts, lib/validations/people.ts, lib/validations/rbac.ts, lib/validations/login.ts
+Considered: **Odoo HR as the system of record** (rejected for this step — the operator chose Excel
+first with an Odoo API sync later; the foundation keeps `odooId` as the key and routes every write
+through one writer so the sync becomes a third caller, not a third implementation). **CASL /
+`@casl/ability`** for the role builder (rejected — its strength is attribute-based rules evaluated
+client-side; our scopes are org-tree subsets resolved by one SQL query per request, and the 15
+Performance helpers already define the call sites, so CASL would be a second vocabulary over the
+same checks). **Oso / Permit.io / Cerbos** (rejected — an external policy service or a policy
+language is a platform for a prototype rail, and a hosted PDP would hold the org chart). **Auth.js
+role claims in the JWT** (rejected — a cached claim survives a role edit until the token expires,
+which the blueprint's "no cached permission survives the request" worst path forbids). **A second
+field-encryption library (e.g. `@47ng/cloak`)** for ID numbers (rejected — ADR-067's AES-GCM module
+is already audited here; ID documents reuse it with a separate key so the two can rotate apart).
+
+Decision: build — a permission catalogue in code, two tables (role, assignment) and a resolver of
+~150 lines; an org-unit service of guarded CRUD over Prisma; one employee writer. No runtime
+dependency is added.

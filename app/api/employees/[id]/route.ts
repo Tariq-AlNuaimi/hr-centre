@@ -7,6 +7,7 @@ import { employeeSelect, encryptSalary, serializeEmployee } from "@/lib/pms/empl
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
+import { teamPlacementProblem } from "@/lib/org/teams";
 
 /**
  * One employee record — spec §4.2 / §4.5.
@@ -61,7 +62,7 @@ export const PUT = withRateLimit(
 
     const existing = await prisma.employee.findUnique({
       where: { id },
-      select: { id: true, entityId: true },
+      select: { id: true, entityId: true, departmentId: true, teamId: true },
     });
     if (!existing) return notFound("Employee");
 
@@ -78,6 +79,18 @@ export const PUT = withRateLimit(
         return err("departmentId: that department belongs to a different entity");
       }
     }
+
+    // F-a / AC-F1.2 — the team must be in the employee's department. Absent
+    // means "keep it", but only while the department is unchanged: a team never
+    // follows its member into another department.
+    const teamId =
+      data.teamId !== undefined
+        ? data.teamId
+        : data.departmentId === existing.departmentId
+          ? existing.teamId
+          : null;
+    const teamProblem = await teamPlacementProblem(teamId, data.departmentId);
+    if (teamProblem) return err(teamProblem);
 
     if (data.managerId) {
       if (data.managerId === id) return err("managerId: an employee cannot be their own manager");
@@ -171,6 +184,7 @@ export const PUT = withRateLimit(
           // to avoid (red-team F13).
           dateOfJoining: data.dateOfJoining ? new Date(`${data.dateOfJoining}T00:00:00Z`) : null,
           departmentId: data.departmentId,
+          teamId,
           entityId: data.entityId,
           managerId: data.managerId,
           roleTrack: data.roleTrack,

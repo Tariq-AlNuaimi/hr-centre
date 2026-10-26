@@ -26,6 +26,8 @@ export const RECYCLABLE_ENTITY_TYPES: Record<string, { displayField: string }> =
   Employee: { displayField: "name" },
   Department: { displayField: "name" },
   OrgEntity: { displayField: "name" },
+  Directorate: { displayField: "name" },
+  Team: { displayField: "name" },
   // Add more entity types here as you create them:
   // Project: { displayField: "name" },
 };

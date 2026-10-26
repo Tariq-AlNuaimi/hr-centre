@@ -45,6 +45,8 @@ export type ExistingEmployee = {
   dateOfJoining: Date | null;
   lastWorkingDay: Date | null;
   unpaidLeaveDays: number;
+  /** F-a. Optional so Performance-era fixtures still type-check. */
+  teamId?: string | null;
 };
 
 export type ReconcileContext = {
@@ -53,7 +55,24 @@ export type ReconcileContext = {
   departmentNames: Map<string, string>;
   /** Entity id → code, likewise. */
   entityCodes: Map<string, string>;
+  /** F-a — teamId → name, so the preview shows "Data → Platform", not two ids. */
+  teamNames?: Map<string, string>;
 };
+
+/**
+ * F-a — the team a row will actually end up with. A sheet without a Team
+ * column keeps the team on file, but only while the department is unchanged: a
+ * team never follows its member into another department (the database would
+ * refuse it anyway — `employees_team_department_agree_fkey`).
+ */
+export function effectiveTeamId(
+  incoming: Pick<ValidatedRow, "teamId" | "departmentId">,
+  existing: Pick<ExistingEmployee, "teamId" | "departmentId"> | undefined,
+): string | null {
+  if (incoming.teamId !== undefined) return incoming.teamId;
+  if (!existing || existing.departmentId !== incoming.departmentId) return null;
+  return existing.teamId ?? null;
+}
 
 export type ReconcilePlan = {
   creates: PlannedCreate[];
@@ -79,6 +98,7 @@ const COMPARED_FIELDS = [
   "lastWorkingDay",
   "unpaidLeaveDays",
   "basicSalary",
+  "teamId",
 ] as const;
 
 function dateKey(value: Date | null): string | null {
@@ -100,7 +120,9 @@ function diffFields(
   existing: ExistingEmployee,
   incoming: ValidatedRow,
   managerId: string | null,
+  teamNames: Map<string, string> | undefined,
 ): FieldChange[] {
+  const teamLabel = (id: string | null) => (id ? (teamNames?.get(id) ?? id) : null);
   const next: Record<(typeof COMPARED_FIELDS)[number], string | null> = {
     name: incoming.name,
     email: incoming.email,
@@ -113,6 +135,7 @@ function diffFields(
     lastWorkingDay: dateKey(incoming.lastWorkingDay),
     unpaidLeaveDays: String(incoming.unpaidLeaveDays),
     basicSalary: incoming.basicSalary,
+    teamId: teamLabel(effectiveTeamId(incoming, existing)),
   };
 
   const before: Record<(typeof COMPARED_FIELDS)[number], string | null> = {
@@ -127,6 +150,7 @@ function diffFields(
     lastWorkingDay: dateKey(existing.lastWorkingDay),
     unpaidLeaveDays: String(existing.unpaidLeaveDays),
     basicSalary: existing.basicSalary,
+    teamId: teamLabel(existing.teamId ?? null),
   };
 
   const changes: FieldChange[] = [];
@@ -190,7 +214,7 @@ export function reconcile(rows: ValidatedRow[], ctx: ReconcileContext): Reconcil
       continue;
     }
 
-    const changes = diffFields(existing, row, managerId ?? existing.managerId);
+    const changes = diffFields(existing, row, managerId ?? existing.managerId, ctx.teamNames);
 
     // §3.2 — "IDs must never shift on re-import." So an existing odooId arriving
     // with a different NAME is applied, not refused: people marry, transliterate

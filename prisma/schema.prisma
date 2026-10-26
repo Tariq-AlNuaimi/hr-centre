@@ -227,6 +227,7 @@ model OrgEntity {
   name String
 
   departments       Department[]
+  directorates      Directorate[]
   employees         Employee[]
   assignmentPeriods EmployeeAssignmentPeriod[]
 
@@ -245,11 +246,61 @@ model OrgEntity {
 // on (entityId, name): the same name MAY repeat across entities and MUST NOT
 // repeat within one. Central/shared-service functions (HR, Finance, Admin, IT)
 // exist only under Rihal — that is a seeding fact, not a schema constraint.
+/// HR Centre foundation F-a — the optional level between a company and its
+/// departments. Only Rihal uses it today; TP and CL hang departments directly off
+/// the company. A directorate never changes company (create a new one instead),
+/// which is what lets the composite FK below stay ON UPDATE RESTRICT.
+model Directorate {
+  id       String    @id @default(cuid())
+  name     String
+  entityId String    @map("entity_id")
+  entity   OrgEntity @relation(fields: [entityId], references: [id])
+
+  departments Department[]
+
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@unique([entityId, name])
+  @@index([deletedAt, createdAt])
+  @@map("directorates")
+}
+
+/// HR Centre foundation F-a — a team inside one department. `Employee.teamId` is
+/// an optional refinement of `Employee.departmentId`; the composite FK
+/// `employees_team_department_agree_fkey` makes a team from another department
+/// unrepresentable.
+model Team {
+  id           String     @id @default(cuid())
+  name         String
+  departmentId String     @map("department_id")
+  department   Department @relation(fields: [departmentId], references: [id])
+
+  employees Employee[]
+
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@unique([departmentId, name])
+  @@index([deletedAt, createdAt])
+  @@map("teams")
+}
+
 model Department {
   id       String    @id @default(cuid())
   name     String
   entityId String
   entity   OrgEntity @relation(fields: [entityId], references: [id])
+
+  /// F-a — optional; when set, the directorate must belong to the same company
+  /// (composite FK `departments_directorate_entity_agree_fkey`).
+  directorateId String?      @map("directorate_id")
+  directorate   Directorate? @relation(fields: [directorateId], references: [id])
+  teams         Team[]
 
   employees         Employee[]
   assignmentPeriods EmployeeAssignmentPeriod[]
@@ -262,6 +313,7 @@ model Department {
 
   @@unique([entityId, name])
   @@index([entityId])
+  @@index([directorateId])
   @@index([deletedAt, createdAt])
   @@map("departments")
 }
@@ -300,6 +352,11 @@ model Employee {
   department   Department? @relation(fields: [departmentId], references: [id])
   entityId     String
   entity       OrgEntity   @relation(fields: [entityId], references: [id])
+
+  // F-a — optional refinement of departmentId. The team must belong to the
+  // employee's department (composite FK + CHECK in 20261026120000).
+  teamId String? @map("team_id")
+  team   Team?   @relation(fields: [teamId], references: [id])
 
   // §3.3 — "Direct reporting line; drives sign-off, escalation, visibility, 360."
   // Self-relation. Null only for C-Level (§3.4: "blank allowed only for C-Level")
@@ -408,6 +465,7 @@ model Employee {
   @@index([deletedAt, createdAt])
   @@index([managerId]) // hierarchy walk (lib/pms/org-tree.ts recursive CTE)
   @@index([departmentId])
+  @@index([teamId])
   @@index([entityId])
   @@index([status])
   @@map("employees")
