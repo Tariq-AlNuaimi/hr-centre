@@ -1,3 +1,4 @@
+import { PROVISIONAL_PREFIX } from "@/lib/people/provisional-id";
 import type { EmployeeSourceRow, ImportIssue, ValidatedRow } from "./types";
 import type { RoleTrack } from "@/generated/prisma/client";
 import {
@@ -97,9 +98,12 @@ function checkEmailUniqueness(
       row,
       "email",
       "email_in_use",
-      `Email "${email}" already belongs to employee ${owner}. ` +
-        `Give this person their own address, or correct the Employee ID ` +
-        `if this is the same person.`,
+      owner.startsWith(PROVISIONAL_PREFIX)
+        ? `Email "${email}" belongs to a pre-joiner who has no Odoo ID yet. If this row is ` +
+            `that person, record their Odoo ID on the joiner case first, then re-import.`
+        : `Email "${email}" already belongs to employee ${owner}. ` +
+            `Give this person their own address, or correct the Employee ID ` +
+            `if this is the same person.`,
     ),
   ];
 }

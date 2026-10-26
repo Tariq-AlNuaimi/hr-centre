@@ -245,7 +245,8 @@
     },
     "statusValue": {
       "ACTIVE": "Active",
-      "LEAVER": "Leaver"
+      "LEAVER": "Leaver",
+      "PRE_JOINER": "Pre-joiner"
     },
     "filter": {
       "allStatuses": "All statuses"
@@ -1814,7 +1815,7 @@
       "notSet": "Not set",
       "jobTitle": "Job title",
       "grade": "Grade",
-      "contractType": "Contract type",
+      "contractType": "Employment type",
       "probationEndDate": "Probation ends",
       "workLocation": "Work location",
       "workPhone": "Work phone",
@@ -1828,11 +1829,17 @@
       "passportNumber": "Passport number",
       "passportExpiry": "Passport expiry",
       "contract": {
-        "PERMANENT": "Permanent",
+        "PERMANENT": "Permanent full-time",
         "FIXED_TERM": "Fixed term",
+        "PART_TIME": "Part-time",
         "INTERN": "Intern",
-        "PART_TIME": "Part time",
-        "SECONDMENT": "Secondment"
+        "SUMMER_INTERN": "Summer intern",
+        "TRAINEE": "Trainee",
+        "SECONDMENT": "Secondment",
+        "FREELANCER": "Freelancer",
+        "CONSULTANT": "Consultant",
+        "CONTRACTOR": "Contractor",
+        "TEMPORARY": "Temporary employee"
       },
       "genderValue": {
         "MALE": "Male",

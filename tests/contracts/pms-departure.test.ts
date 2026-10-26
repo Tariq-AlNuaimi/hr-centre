@@ -65,12 +65,16 @@ test("the employee edit route REFUSES to off-board, and names the action", () =>
   // who has gone. Unreachable only because the form did not render the field,
   // and adding that field (what HR asked for) would have armed it.
   const route = stripComments(readFileSync("app/api/employees/[id]/route.ts", "utf8"));
-  const guard = route.slice(route.indexOf('data.status === "LEAVER"'));
-  assert.match(guard.slice(0, 400), /return err\(/, "the LEAVER transition must be refused");
+  // JML S1: the transition checks live in `statusTransitionRefusal`, whose
+  // sentence the PUT returns as a 409.
+  assert.match(route, /statusTransitionRefusal\(data\.status, target\.status\)/);
+  assert.match(route, /if \(refusal\) return err\(refusal, 409\)/);
+  const guard = route.slice(route.indexOf('next === "LEAVER"'));
+  assert.match(guard.slice(0, 400), /return \(/, "the LEAVER transition must be refused");
   assert.match(guard.slice(0, 600), /Record departure/, "and must name where to do it");
 
   // Reinstating is equally not a field edit: the reports were already moved.
-  assert.match(route, /data\.status === "ACTIVE" && target\.status === "LEAVER"/);
+  assert.match(route, /next === "ACTIVE" && current === "LEAVER"/);
 
   // And it must no longer be the thing that revokes a login.
   assert.doesNotMatch(route, /revokeLoginOnOffboard/);

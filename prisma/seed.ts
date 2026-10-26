@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 import { hashPassword } from "../lib/password";
 import { seedFoundation } from "./seed-foundation";
+import { seedJml } from "./seed-jml";
 import { seedPms } from "./seed-pms";
 
 async function main() {
@@ -51,6 +52,10 @@ async function main() {
     // bootstrap HR Super Admin only (prisma/seed-foundation.ts). Runs on every
     // deploy via vercel.json, so it must stay idempotent.
     await seedFoundation(prisma);
+
+    // Joiners, movers & leavers — reference configuration only (templates,
+    // checklists, reason codes, statutory parameters). Idempotent; no people.
+    await seedJml(prisma);
 
     // The 36-person demo fixture is for local development only. It never runs
     // unless asked for explicitly, so a real deployment holds no invented people.

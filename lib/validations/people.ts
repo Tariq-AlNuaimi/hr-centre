@@ -10,12 +10,19 @@ import { createEmployeeSchema, isoDate } from "./employee";
  * absent = leave alone, null = clear, value = set.
  */
 
+/** JML S1 (ADR-076) — the one employment-type list, in display order. */
 export const CONTRACT_TYPES = [
   "PERMANENT",
   "FIXED_TERM",
-  "INTERN",
   "PART_TIME",
+  "INTERN",
+  "SUMMER_INTERN",
+  "TRAINEE",
   "SECONDMENT",
+  "FREELANCER",
+  "CONSULTANT",
+  "CONTRACTOR",
+  "TEMPORARY",
 ] as const;
 export const GENDERS = ["MALE", "FEMALE"] as const;
 

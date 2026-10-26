@@ -121,6 +121,7 @@ export default function PeoplePage() {
           <option value="">{t("filter.allStatuses")}</option>
           <option value="ACTIVE">{t("statusValue.ACTIVE")}</option>
           <option value="LEAVER">{t("statusValue.LEAVER")}</option>
+          <option value="PRE_JOINER">{t("statusValue.PRE_JOINER")}</option>
         </select>
       </div>
 

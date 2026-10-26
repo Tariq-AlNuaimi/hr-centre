@@ -276,3 +276,86 @@ export async function applyDeparture(
     loginRevoked: revokedUserId !== null,
   };
 }
+
+/** What undoing a departure did. */
+export type ReverseDepartureOutcome =
+  | {
+      ok: true;
+      /** Whether a revoked login was restored. */
+      loginRestored: boolean;
+      /**
+       * The reports §12.1's roll-up moved away from this person whose roll-up is
+       * still OPEN — the lines HR may want to move back. Not moved automatically:
+       * a report's line may since have been decided on purpose.
+       */
+      rolledUpReportIds: string[];
+    }
+  | { ok: false; reason: "NOT_A_LEAVER" };
+
+/**
+ * JML S1 (ADR-080) — undo a departure when a resignation is withdrawn
+ * (Offboarding T10). The inverse of `applyDeparture`, and like it the caller
+ * supplies the transaction:
+ *
+ *  - status back to ACTIVE and `lastWorkingDay` cleared;
+ *  - the login revoked by `revokeLoginOnOffboard` restored (its soft delete
+ *    undone — the account, its links and its audit history are the same row);
+ *  - reporting lines are NOT moved back: the open roll-up prompts are returned
+ *    so HR can decide each one (a report may have been re-lined on purpose).
+ *
+ * One audit row records the reversal beside the departure it reverses.
+ */
+export async function reverseDeparture(
+  tx: Tx,
+  params: { employeeId: string; note?: string | null },
+): Promise<ReverseDepartureOutcome> {
+  const employee = await tx.employee.findUnique({
+    where: { id: params.employeeId },
+    select: { id: true, status: true, lastWorkingDay: true, userId: true },
+  });
+  if (!employee || employee.status !== "LEAVER") return { ok: false, reason: "NOT_A_LEAVER" };
+
+  await tx.employee.update({
+    where: { id: employee.id },
+    data: { status: "ACTIVE", lastWorkingDay: null },
+  });
+
+  let loginRestored = false;
+  if (employee.userId) {
+    const revoked = await tx.user.findFirst({
+      where: { id: employee.userId, deletedAt: { not: null } },
+      select: { id: true },
+    });
+    if (revoked) {
+      await tx.user.update({
+        where: { id: revoked.id },
+        data: { deletedAt: null, deletedBy: null },
+        select: { id: true },
+      });
+      loginRestored = true;
+    }
+  }
+
+  const openRollUps = await tx.managerRollUp.findMany({
+    where: { fromManagerEmployeeId: employee.id, resolvedAt: null, reason: "LEAVER_ROLLUP" },
+    select: { employeeId: true },
+    take: DEPARTURE_REPORTS_LIMIT,
+  });
+
+  await recordAudit(tx, {
+    entityType: "Employee",
+    entityId: employee.id,
+    action: "UPDATE",
+    before: { status: "LEAVER", lastWorkingDay: employee.lastWorkingDay },
+    after: {
+      status: "ACTIVE",
+      lastWorkingDay: null,
+      departureReversed: true,
+      loginRestored,
+      openRollUps: openRollUps.length,
+      note: params.note ?? null,
+    },
+  });
+
+  return { ok: true, loginRestored, rolledUpReportIds: openRollUps.map((r) => r.employeeId) };
+}
