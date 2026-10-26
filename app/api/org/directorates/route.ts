@@ -37,7 +37,7 @@ export const GET = withRateLimit(
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!actor.capabilities.configure) return forbidden();
+    if (!actor.capabilities.orgManage) return forbidden();
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");

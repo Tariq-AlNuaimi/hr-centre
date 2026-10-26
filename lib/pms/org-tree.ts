@@ -95,12 +95,13 @@ export async function descendantEmployeeIds(
 export async function visibleEmployeeIds(actor: {
   employeeId: string | null;
   orgWide: boolean;
+  /** F-c — members of a scoped `people.view` grant (lib/rbac/resolve.ts). */
+  scopeMembers?: ReadonlySet<string>;
 }): Promise<Set<string> | null> {
   if (actor.orgWide) return null;
-  if (!actor.employeeId) return new Set();
-
-  const ids = await descendantEmployeeIds(actor.employeeId);
-  ids.add(actor.employeeId);
+  const ids = actor.employeeId ? await descendantEmployeeIds(actor.employeeId) : new Set<string>();
+  if (actor.employeeId) ids.add(actor.employeeId);
+  for (const id of actor.scopeMembers ?? []) ids.add(id);
   return ids;
 }
 
@@ -133,9 +134,15 @@ export async function visibleEmployeeIds(actor: {
 export async function visibilityDescendants(actor: {
   employeeId: string | null;
   capabilities: { orgWide: boolean };
+  scopeMembers?: ReadonlySet<string>;
 }): Promise<Set<string>> {
-  if (actor.capabilities.orgWide || !actor.employeeId) return new Set<string>();
-  return descendantEmployeeIds(actor.employeeId);
+  if (actor.capabilities.orgWide) return new Set<string>();
+  // F-c — a scoped HR officer's scope counts as "below" them for VIEWING
+  // (AC-F3.2). Acting stays on `canActOnEmployee`, which scoped grants do not
+  // widen (lib/rbac/catalogue.ts scope note).
+  const ids = actor.employeeId ? await descendantEmployeeIds(actor.employeeId) : new Set<string>();
+  for (const id of actor.scopeMembers ?? []) ids.add(id);
+  return ids;
 }
 
 /**

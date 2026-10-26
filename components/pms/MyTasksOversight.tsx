@@ -358,7 +358,7 @@ function RoleBadges({ roles, isLineManager }: { roles: string[]; isLineManager: 
       ) : null}
       {roles.map((role) => (
         <Badge key={role} variant="brand">
-          {t(`roleValue.${role}`)}
+          {role}
         </Badge>
       ))}
       {isLineManager ? <Badge variant="brand">{t("roleValue.LINE_MANAGER")}</Badge> : null}
@@ -514,7 +514,7 @@ export function MyTasksOversight() {
         title={t("oversightTitle")}
         subtitle={t("oversightSubtitle")}
         actions={
-          <RoleBadges roles={actor?.pmsRoles ?? []} isLineManager={capabilities.lineManager} />
+          <RoleBadges roles={actor?.roleNames ?? []} isLineManager={capabilities.lineManager} />
         }
       >
         <OversightBody

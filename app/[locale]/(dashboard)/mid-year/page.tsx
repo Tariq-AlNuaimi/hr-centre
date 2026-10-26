@@ -121,17 +121,15 @@ function useMidYearWorkspace(
 export default function MidYearPage() {
   const t = useTranslations("pms.midYear");
   const locale = useLocale();
-  const { actor, capabilities, isLoading: actorLoading } = usePmsActor();
+  const { capabilities, isLoading: actorLoading } = usePmsActor();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
 
-  const roles = actor?.pmsRoles ?? [];
   // §4.3 — roles are additive and most access wins, so this is an OR, never a
   // switch on a single "primary" role.
-  const canWork =
-    capabilities.lineManager || roles.includes("HR_SUPER_ADMIN") || roles.includes("HRBP");
+  const canWork = capabilities.lineManager || capabilities.hr;
 
   const { cycles, cycleList, cycleId, selected, setSelectedCycleId, roster, pending } =
     useMidYearWorkspace(canWork, { page, pageSize, search });

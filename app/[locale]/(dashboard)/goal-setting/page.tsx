@@ -79,17 +79,15 @@ function useGoalSettingRoster(
 export default function GoalSettingPage() {
   const t = useTranslations("pms.goalSetting");
   const locale = useLocale();
-  const { actor, capabilities, isLoading: actorLoading } = usePmsActor();
+  const { capabilities, isLoading: actorLoading } = usePmsActor();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
 
-  const roles = actor?.pmsRoles ?? [];
   // §4.3 — roles are additive and most access wins, so this is an OR, never a
   // switch on a single "primary" role.
-  const canDraft =
-    capabilities.lineManager || roles.includes("HR_SUPER_ADMIN") || roles.includes("HRBP");
+  const canDraft = capabilities.lineManager || capabilities.hr;
 
   const { cycles, cycleList, cycleId, setSelectedCycleId, roster } = useGoalSettingRoster(
     canDraft,

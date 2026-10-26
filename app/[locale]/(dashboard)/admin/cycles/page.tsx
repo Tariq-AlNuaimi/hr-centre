@@ -43,7 +43,7 @@ import { apiClient, ApiError } from "@/lib/api-client";
 export default function CyclesPage() {
   const t = useTranslations("pms");
   const tCommon = useTranslations("common");
-  const { actor, isLoading: actorLoading } = usePmsActor();
+  const { capabilities, isLoading: actorLoading } = usePmsActor();
   const { success, warning, error: showError } = useNotify();
   const queryClient = useQueryClient();
 
@@ -54,8 +54,7 @@ export default function CyclesPage() {
   const [busyCycleId, setBusyCycleId] = useState<string | null>(null);
   const [policyCycle, setPolicyCycle] = useState<PerformanceCycle | null>(null);
 
-  const roles = actor?.pmsRoles ?? [];
-  const canRunCycle = roles.includes("HR_SUPER_ADMIN") || roles.includes("HRBP");
+  const canRunCycle = capabilities.hr;
 
   const cycles = useQuery({
     queryKey: ["pms", "cycles"],

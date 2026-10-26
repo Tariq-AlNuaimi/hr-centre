@@ -41,6 +41,7 @@ const SOFT_DELETE_MODELS = new Set([
   "Kpi",
   "Directorate",
   "Team",
+  "AccessRole",
 ]);
 
 /**

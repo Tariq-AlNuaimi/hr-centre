@@ -24,7 +24,7 @@ import type { Company, Department, Directorate, Team } from "./types";
 export function OrgSetup() {
   const t = useTranslations("org");
   const { capabilities, isLoading: actorLoading } = usePmsActor();
-  const allowed = capabilities.configure;
+  const allowed = capabilities.orgManage;
 
   const companies = useQuery({
     queryKey: ["org", "companies"],

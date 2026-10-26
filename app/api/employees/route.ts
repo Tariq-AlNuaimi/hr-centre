@@ -12,6 +12,8 @@ import { addEmployeeSchema, recordFromBody } from "@/lib/validations/people";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";
 import { recordFieldsTouched } from "@/lib/people/record";
 import { createEmployeeFromForm } from "@/lib/people/service";
+import { actorCan } from "@/lib/pms/permissions";
+import { subjectForPlacement } from "@/lib/rbac/resolve";
 
 /**
  * The employee directory — spec §4.2 (hierarchical visibility) and §4.5
@@ -61,6 +63,7 @@ export const GET = withRateLimit(
     const visibleIds = await visibleEmployeeIds({
       employeeId: actor.employeeId,
       orgWide: actor.capabilities.orgWide,
+      scopeMembers: actor.scopeMembers,
     });
 
     // An authenticated user with no employee record and no org-wide role sees
@@ -112,17 +115,27 @@ export const GET = withRateLimit(
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!actor.capabilities.configure) return forbidden();
+    if (!actor.capabilities.peopleEdit) return forbidden();
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
     const parsed = addEmployeeSchema.safeParse(body);
     if (!parsed.success) return validationError(parsed.error);
 
+    // F-c — the new person must land inside the actor's people.edit scope, and
+    // salary / personal / ID fields need their own permission there.
+    const { employee } = parsed.data;
+    const subject = await subjectForPlacement(employee.entityId, employee.departmentId);
+    if (!actorCan(actor, "people.edit", subject)) return forbidden();
+    if (employee.basicSalary !== null && !actorCan(actor, "people.viewSalary", subject)) {
+      return forbidden();
+    }
     const record = recordFromBody(parsed.data.record);
     const touched = recordFieldsTouched(record);
-    if (touched.personal && !actor.capabilities.viewPersonal) return forbidden();
-    if (touched.idDocuments && !actor.capabilities.viewIdDocuments) return forbidden();
+    if (touched.personal && !actorCan(actor, "people.viewPersonal", subject)) return forbidden();
+    if (touched.idDocuments && !actorCan(actor, "people.viewIdDocuments", subject)) {
+      return forbidden();
+    }
 
     try {
       return created(await createEmployeeFromForm(parsed.data.employee, record));

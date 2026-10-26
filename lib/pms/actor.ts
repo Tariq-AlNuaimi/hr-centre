@@ -1,6 +1,8 @@
 import type { Session } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { hasDirectReports } from "./org-tree";
+import { loadGrants, scopeMemberIds } from "@/lib/rbac/resolve";
+import type { Grants } from "@/lib/rbac/grants";
 import { capabilitiesFor, type PmsActor, type PmsCapabilities } from "./permissions";
 
 /**
@@ -19,6 +21,12 @@ export type ResolvedActor = PmsActor & {
   employeeName: string | null;
   entityId: string | null;
   departmentId: string | null;
+  /**
+   * F-c — employees a COMPANY/DIRECTORATE/DEPARTMENT-scoped `people.view`
+   * covers (empty for Group-scoped or no grant). Folded into visibility by
+   * lib/pms/org-tree.ts so a scoped HR officer sees exactly their scope.
+   */
+  scopeMembers: ReadonlySet<string>;
 };
 
 /**
@@ -35,15 +43,27 @@ export type ResolvedActor = PmsActor & {
  * restate this as "platform administration does not confer HR authority": it
  * confers it by default, and withholds it only from an admin who does not act.
  */
-function unlinkedActor(userId: string): ResolvedActor {
-  const base: PmsActor = { userId, employeeId: null, pmsRoles: [], isLineManager: false };
+async function withGrants(
+  base: Omit<PmsActor, "grants">,
+  extra: Pick<ResolvedActor, "employeeName" | "entityId" | "departmentId">,
+): Promise<ResolvedActor> {
+  // ONE assignments query per request, expanded in memory; nothing cached past
+  // the request, so a role edit takes effect on the very next one.
+  const grants: Grants = await loadGrants(base.userId);
+  const actor: PmsActor = { ...base, grants };
   return {
-    ...base,
-    capabilities: capabilitiesFor(base),
-    employeeName: null,
-    entityId: null,
-    departmentId: null,
+    ...actor,
+    ...extra,
+    capabilities: capabilitiesFor(actor),
+    scopeMembers: await scopeMemberIds(grants, "people.view"),
   };
+}
+
+function unlinkedActor(userId: string): Promise<ResolvedActor> {
+  return withGrants(
+    { userId, employeeId: null, pmsRoles: [], isLineManager: false },
+    { employeeName: null, entityId: null, departmentId: null },
+  );
 }
 
 /**
@@ -69,7 +89,6 @@ export async function resolveActor(session: Session): Promise<ResolvedActor> {
     select: {
       id: true,
       name: true,
-      pmsRoles: true,
       entityId: true,
       departmentId: true,
     },
@@ -83,7 +102,7 @@ export async function resolveActor(session: Session): Promise<ResolvedActor> {
       // `userId: null` matters: without it, an employee already linked to a
       // DIFFERENT user whose email happens to match would be hijacked here.
       where: { email, userId: null },
-      select: { id: true, name: true, pmsRoles: true, entityId: true, departmentId: true },
+      select: { id: true, name: true, entityId: true, departmentId: true },
     });
     if (!unlinked) return unlinkedActor(userId);
 
@@ -102,18 +121,14 @@ export async function resolveActor(session: Session): Promise<ResolvedActor> {
 
   const isLineManager = await hasDirectReports(employee.id);
 
-  const base: PmsActor = {
-    userId,
-    employeeId: employee.id,
-    pmsRoles: employee.pmsRoles,
-    isLineManager,
-  };
-
-  return {
-    ...base,
-    capabilities: capabilitiesFor(base),
-    employeeName: employee.name,
-    entityId: employee.entityId,
-    departmentId: employee.departmentId,
-  };
+  // F-c: authority comes from role assignments; `Employee.pmsRoles` is no
+  // longer read (migrated into assignments by 20261026180000).
+  return withGrants(
+    { userId, employeeId: employee.id, pmsRoles: [], isLineManager },
+    {
+      employeeName: employee.name,
+      entityId: employee.entityId,
+      departmentId: employee.departmentId,
+    },
+  );
 }

@@ -54,7 +54,8 @@
     "threeSixty": "تقييم ٣٦٠",
     "strategyScores": "الدرجات المؤسسية والإدارية",
     "edgeCases": "المغادرون والانتقالات",
-    "access": "الصلاحيات"
+    "access": "الصلاحيات",
+    "roles": "Roles"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -1730,8 +1731,8 @@
     "title": "الصلاحيات",
     "subtitle": "من يستطيع تسجيل الدخول، وما الصلاحيات التي يملكها. هذان أمران منفصلان، وهذه هي الشاشة الوحيدة التي تعرضهما معاً.",
     "hrSection": "صلاحيات الموارد البشرية",
-    "hrSectionHint": "المواصفة §4.1 — ما يمكن للشخص فعله في دورة الأداء. تُمنح وتُسحب من قبل مسؤول الموارد البشرية الرئيسي.",
-    "hrSectionNotYours": "فقط مسؤول الموارد البشرية الرئيسي يمكنه منح أدوار الموارد البشرية أو سحبها.",
+    "hrSectionHint": "What a person may do in HR Centre comes from roles assigned to them. Platform administrators manage roles and assignments",
+    "hrSectionNotYours": "Only a platform administrator can change who holds which role",
     "accountsSection": "حسابات الدخول وإدارة المنصة",
     "accountsSectionHint": "من لديه حساب، ومن يمكنه إدارة الحسابات وسلة المحذوفات وسجل التدقيق. تُمنح من قبل مسؤول المنصة.",
     "accountsNotYours": "فقط مسؤول المنصة يمكنه إنشاء حسابات الدخول أو منح صلاحية إدارة المنصة.",
@@ -1743,7 +1744,8 @@
     "platformAdminsLoading": "جارٍ التحقق…",
     "platformAdminsFailed": "تعذر تحميل قائمة المسؤولين.",
     "platformAdminsHint": "اطلب من أحد هؤلاء الأشخاص إنشاء حساب دخول، أو استعادة سجل من سلة المحذوفات، أو الاطلاع على سجل التدقيق.",
-    "platformAdminsTooMany": "أكثر من ٢٥ حساباً يملك صلاحية إدارة المنصة — وهذا عدد أكبر من أن تكون هذه إجابة مفيدة. راجع القائمة في قسم الحسابات، أو اسأل قسم تقنية المعلومات."
+    "platformAdminsTooMany": "أكثر من ٢٥ حساباً يملك صلاحية إدارة المنصة — وهذا عدد أكبر من أن تكون هذه إجابة مفيدة. راجع القائمة في قسم الحسابات، أو اسأل قسم تقنية المعلومات.",
+    "openRoles": "Open roles and access"
   },
   "org": {
     "title": "Organisation",
@@ -1853,5 +1855,95 @@
       "created": "{name} added",
       "failed": "Could not add the employee"
     }
+  },
+  "rbac": {
+    "title": "Roles and access",
+    "subtitle": "Build roles from actions, then give them to people for the whole group, a company, a directorate or a department. Only platform administrators can change these",
+    "roles": "Roles",
+    "rolesNote": "A role is a named bundle of actions. Changes take effect on each holder's next request",
+    "newRole": "New role",
+    "editRole": "Edit role",
+    "roleHelp": "Tick the actions this role allows, grouped by module",
+    "roleName": "Name",
+    "roleDescription": "Description",
+    "saveRole": "Save role",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "roleSaved": "Role saved",
+    "roleDeleted": "Role deleted",
+    "saveFailed": "Could not save the change",
+    "loadFailed": "Could not load roles and assignments",
+    "noRoles": "No roles yet",
+    "starter": "Starter",
+    "roleCounts": "{actions} actions · {holders} assignments",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete {name}?",
+    "deleteDescription": "A role that is still assigned cannot be deleted; remove its assignments first",
+    "scopeNote": "People actions and login management apply within an assignment's scope. Performance, organisation and import actions only take effect when the role is given for the whole group",
+    "module": {
+      "people": "People",
+      "org": "Organisation",
+      "imports": "Imports",
+      "logins": "Logins",
+      "perf": "Performance"
+    },
+    "permission": {
+      "people": {
+        "view": "See people",
+        "edit": "Add and edit people",
+        "viewSalary": "See salary",
+        "viewPersonal": "See personal details",
+        "viewIdDocuments": "See ID documents"
+      },
+      "org": {
+        "manage": "Manage the organisation structure"
+      },
+      "imports": {
+        "preview": "Upload and preview an import",
+        "apply": "Apply an import"
+      },
+      "logins": {
+        "manage": "Create, reset and disable logins"
+      },
+      "perf": {
+        "runCycle": "Run the performance cycle",
+        "configure": "Configure performance",
+        "calibrate": "Run calibration",
+        "exportMaster": "Export master results",
+        "viewReports": "See performance reports"
+      }
+    },
+    "assignments": "Assignments",
+    "assignmentsNote": "Several assignments add up. A time-boxed assignment stops granting anything once it ends",
+    "noAssignments": "No assignments yet",
+    "person": "Person",
+    "role": "Role",
+    "scope": "Scope",
+    "unit": "Unit",
+    "choose": "Choose…",
+    "scopeType": {
+      "GROUP": "Whole group",
+      "COMPANY": "Company",
+      "DIRECTORATE": "Directorate",
+      "DEPARTMENT": "Department"
+    },
+    "validUntil": "Valid until (optional)",
+    "validUntilHint": "For cover. At most 180 days; leave empty for no end date",
+    "note": "Note (optional)",
+    "assign": "Assign role",
+    "assigned": "Role assigned",
+    "removed": "Assignment removed",
+    "remove": "Remove",
+    "removeTitle": "Remove this assignment?",
+    "removeDescription": "{person} will lose {role} on their next request",
+    "expired": "Expired",
+    "until": "Until {date}",
+    "unitMissing": "Unit no longer exists",
+    "searchPeople": "Search by name or email",
+    "searchHint": "Type at least two letters. Only people with an account are listed",
+    "change": "Change",
+    "previous": "Previous",
+    "next": "Next"
   }
 }

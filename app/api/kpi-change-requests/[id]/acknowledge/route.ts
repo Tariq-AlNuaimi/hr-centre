@@ -1,3 +1,4 @@
+import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok } from "@/lib/api-response";
@@ -116,8 +117,10 @@ export const POST = withRateLimit(
     // it arrived. Best-effort and after the commit, for the reason the sweep
     // gives: a mail server having a bad morning must never cost a recorded act.
     try {
+      // F-c — HR = holders of perf.runCycle for the group (role assignments).
+      const hrUserIds = await usersHoldingPermission("perf.runCycle", {}, { limit: 50 });
       const hrRecipients = await prisma.employee.findMany({
-        where: { status: "ACTIVE", pmsRoles: { hasSome: ["HR_SUPER_ADMIN", "HRBP"] } },
+        where: { status: "ACTIVE", userId: { in: hrUserIds } },
         select: { id: true },
         take: 50,
       });

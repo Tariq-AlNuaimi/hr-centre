@@ -10,7 +10,8 @@ import {
   serializeEmployeeDetail,
 } from "@/lib/pms/employee-select";
 import { employeeUpdateData } from "@/lib/people/write";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { actorCan, canViewEmployee } from "@/lib/pms/permissions";
+import { placementOf, subjectForPlacement } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
 import { teamPlacementProblem } from "@/lib/org/teams";
@@ -39,9 +40,11 @@ export const GET = withRateLimit(
       return notFound("Employee");
     }
 
+    const subject = await placementOf(id);
+    if (!subject) return notFound("Employee");
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: employeeDetailSelect(actor),
+      select: employeeDetailSelect(actor, subject),
     });
     if (!employee) return notFound("Employee");
 
@@ -56,7 +59,17 @@ export const PUT = withRateLimit(
     const actor = await resolveActor(session);
 
     // §4.1 "Configures? HR Super Admin: Yes — full", everyone else "No".
-    if (!actor.capabilities.configure) return forbidden();
+    // F-c — editing needs people.edit where the person IS and where they are
+    // GOING (a move into another scope is an edit there too). The PUT replaces
+    // salary, so it also needs salary access: no blind overwrite.
+    const current = await placementOf(id);
+    if (!current) return notFound("Employee");
+    if (
+      !actorCan(actor, "people.edit", current) ||
+      !actorCan(actor, "people.viewSalary", current)
+    ) {
+      return forbidden();
+    }
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -65,6 +78,8 @@ export const PUT = withRateLimit(
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
     }
     const data = parsed.data;
+    const destination = await subjectForPlacement(data.entityId, data.departmentId);
+    if (!actorCan(actor, "people.edit", destination)) return forbidden();
 
     const existing = await prisma.employee.findUnique({
       where: { id },
@@ -204,7 +219,6 @@ export const PUT = withRateLimit(
             {},
           ),
           managerId: data.managerId,
-          pmsRoles: data.pmsRoles,
           status: data.status,
           lastWorkingDay: data.lastWorkingDay ? new Date(`${data.lastWorkingDay}T00:00:00Z`) : null,
         },

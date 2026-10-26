@@ -52,7 +52,6 @@
 - app/api/cycles/[id]/route.ts  [GET,PUT]
 - app/api/cycles/[id]/stages/route.ts  [PUT]
 - app/api/cycles/route.ts  [GET,POST]
-- app/api/employees/[id]/pms-roles/route.ts  [PUT]
 - app/api/employees/[id]/record/route.ts  [PATCH]
 - app/api/employees/[id]/route.ts  [GET,PUT]
 - app/api/employees/route.ts  [GET,POST]
@@ -85,6 +84,10 @@
 - app/api/pms/me/route.ts  [GET]
 - app/api/projects/route.ts  [GET,POST]
 - app/api/publish/route.ts  [GET,POST]
+- app/api/rbac/assignments/[id]/route.ts  [DELETE]
+- app/api/rbac/assignments/route.ts  [GET,POST]
+- app/api/rbac/roles/[id]/route.ts  [PATCH,DELETE]
+- app/api/rbac/roles/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
 - app/api/recycling-bin/route.ts  [GET,POST]
 - app/api/reports/cycle-progress/route.ts  [GET]
@@ -117,11 +120,13 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
 - AuditLog: id, entityType, entityId, action, before, after, changes, userId, user, actorEmail, ipAddress, userAgent, timestamp
+- AccessRole: id, name, description, permissions, starterKey, assignments, deletedAt, deletedBy, createdAt, updatedAt
+- RoleAssignment: id, userId, user, roleId, role, scopeType, scopeId, validFrom, validUntil, note, grantedById, grantedBy, createdAt, updatedAt
 - OrgEntity: id, code, name, departments, directorates, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, corporateScores
 - Directorate: id, name, entityId, entity, departments, deletedAt, deletedBy, createdAt, updatedAt
 - Team: id, name, departmentId, department, employees, deletedAt, deletedBy, createdAt, updatedAt
@@ -216,7 +221,7 @@
 - lib/pms/org-chart-search.ts: matchOrgChart
 - lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartDepartment, OrgChartEntity, buildOrgChart
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
-- lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
+- lib/pms/permissions.ts: PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
 - lib/pms/score-run.ts: RatedKpi, ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
@@ -242,6 +247,11 @@
 - lib/prisma.ts: prisma, prismaUnfiltered, auditedTransaction
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
+- lib/rbac/catalogue.ts: MODULES, ModuleKey, PERMISSIONS, Permission, PERMISSION_CODES, isPermission, SCOPED_PERMISSIONS, StarterKey, STARTER_ROLES
+- lib/rbac/grants.ts: ScopeRef, ScopeSubject, registerScopeResolver, scopeCovers, Grants, NO_GRANTS, expandGrants, has, hasGroup, canInScope, partialScopes, starterGrants, MAX_COVER_DAYS, isAssignmentActive, validityProblem
+- lib/rbac/guards.ts: AccessChange, assertHrAccessAdminRemains, assertPlatformAdminRemains
+- lib/rbac/resolve.ts: loadGrants, roleNamesFor, scopeMemberIds, placementOf, usersHoldingPermission, subjectForPlacement
+- lib/rbac/service.ts: listRoles, createRole, updateRole, deleteRole, listAssignments, createAssignment, removeAssignment
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
 - lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, readStoredHead, deleteStoredFile
@@ -258,6 +268,7 @@
 - lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
 - lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, AddEmployeeBody, recordFromBody
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
+- lib/validations/rbac.ts: roleBodySchema, ORG_SCOPE_TYPES, assignmentBodySchema, RoleBody, AssignmentBody
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
@@ -323,7 +334,6 @@
 - components/pms/RaterCoverage.tsx
 - components/pms/RaterEditor.tsx
 - components/pms/RecordDepartureDialog.tsx
-- components/pms/RoleEditor.tsx
 - components/pms/ScoreRunPanel.tsx
 - components/pms/SignOffPanel.tsx
 - components/pms/StageBanner.tsx
@@ -337,6 +347,11 @@
 - components/pms/TransferRecorder.tsx
 - components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
+- components/rbac/AssignmentForm.tsx
+- components/rbac/AssignmentsSection.tsx
+- components/rbac/RoleDialog.tsx
+- components/rbac/RolesSection.tsx
+- components/rbac/UserSearch.tsx
 - components/shared/AuthCard.tsx
 - components/shared/BrandedStatus.tsx
 - components/shared/Chart.impl.tsx

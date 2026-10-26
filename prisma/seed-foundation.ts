@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../generated/prisma/client";
+import { STARTER_ROLES } from "../lib/rbac/catalogue";
 
 /**
  * HR Centre's production seed — the foundation a fresh database starts from.
@@ -56,14 +57,42 @@ export async function seedFoundation(prisma: PrismaClient): Promise<void> {
       })
     ).id;
 
+  await seedStarterRoles(prisma);
   await bootstrapAdminEmployee(prisma, entityId, departmentId);
 }
 
 /**
+ * HR Centre F-c — the three starter roles (lib/rbac/catalogue.ts), created only
+ * if no role carries that starter key. "No role" includes a SOFT-DELETED one
+ * (this client has no soft-delete filter): an admin who deleted a starter role
+ * meant it, and the next deploy must not bring it back. Never overwrites an
+ * existing role's permissions — admins may have edited them.
+ */
+async function seedStarterRoles(prisma: PrismaClient): Promise<void> {
+  for (const role of STARTER_ROLES) {
+    const found = await prisma.accessRole.findUnique({
+      where: { starterKey: role.key },
+      select: { id: true },
+    });
+    if (found) continue;
+    await prisma.accessRole.create({
+      data: {
+        name: role.name,
+        description: role.description,
+        permissions: [...role.permissions],
+        starterKey: role.key,
+      },
+      select: { id: true },
+    });
+  }
+}
+
+/**
  * First-run door into HR Centre: one Employee record for `SEED_ADMIN_EMAIL`
- * carrying HR_SUPER_ADMIN, so the operator can reach Admin → Roles and grant HR
- * authority to real people. Platform authority (`User.role`) and HR authority
- * (`Employee.pmsRoles`) stay separate (ADR-065); this does not change that.
+ * holding the HR Super Admin role for the whole group (an F-c assignment), so
+ * the operator can reach Admin → Roles and grant HR authority to real people.
+ * Platform authority (`User.role`) and HR authority (role assignments) stay
+ * separate (ADR-065); this does not change that.
  *
  * Same guards as the demo-era bootstrap it replaces, with guard 3 retargeted at
  * an empty database instead of the demo fixture:
@@ -109,13 +138,30 @@ async function bootstrapAdminEmployee(
       departmentId,
       entityId,
       roleTrack: "MANAGER",
-      pmsRoles: ["HR_SUPER_ADMIN"],
       // An access record, not a person: no salary, no joining date.
       unpaidLeaveDays: 0,
       userId: user?.id ?? null,
     },
     select: { id: true },
   });
+
+  // F-c — HR authority is an assignment, granted once with the bootstrap
+  // record (never re-derived on later deploys).
+  const superAdmin = await prisma.accessRole.findUnique({
+    where: { starterKey: "HR_SUPER_ADMIN" },
+    select: { id: true, deletedAt: true },
+  });
+  if (user && superAdmin && superAdmin.deletedAt === null) {
+    await prisma.roleAssignment.create({
+      data: {
+        userId: user.id,
+        roleId: superAdmin.id,
+        scopeType: "GROUP",
+        note: "Bootstrap administrator (seed)",
+      },
+      select: { id: true },
+    });
+  }
 
   console.log(`HR Centre bootstrap: ${email} seeded as HR Super Admin (odooId BOOTSTRAP-ADMIN).`);
 }

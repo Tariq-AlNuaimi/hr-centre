@@ -29,6 +29,9 @@ export type PmsCapabilities = {
   exportMasterResults: boolean;
   readOnly: boolean;
   lineManager: boolean;
+  orgManage: boolean;
+  peopleEdit: boolean;
+  loginsManage: boolean;
 };
 
 export type PmsActorInfo = {
@@ -36,7 +39,8 @@ export type PmsActorInfo = {
   employeeName: string | null;
   entityId: string | null;
   departmentId: string | null;
-  pmsRoles: string[];
+  /** F-c — names of the roles this person holds (display only). */
+  roleNames: string[];
   capabilities: PmsCapabilities;
 };
 
@@ -53,6 +57,9 @@ const NO_CAPABILITIES: PmsCapabilities = {
   exportMasterResults: false,
   readOnly: false,
   lineManager: false,
+  orgManage: false,
+  peopleEdit: false,
+  loginsManage: false,
 };
 
 export function usePmsActor() {
