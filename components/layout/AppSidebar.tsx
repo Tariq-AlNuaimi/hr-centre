@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { useHiveAccess } from "@/components/hive/use-hive-access";
 import { jmlActiveKey, jmlNavItems } from "@/components/jml/nav";
+import { hiringActiveKey, useHiringNavItems } from "@/components/hiring/nav";
 import { useJmlAccess } from "@/components/jml/use-jml";
 
 /**
@@ -43,7 +44,7 @@ import { useJmlAccess } from "@/components/jml/use-jml";
  * Items keep their own visibility rules; this only decides where each sits. An
  * unknown key falls into Admin, so a scaffolded entity is never lost.
  */
-const NAV_GROUPS = ["start", "people", "performance", "tickets", "jml", "admin"] as const;
+const NAV_GROUPS = ["start", "people", "performance", "tickets", "jml", "hiring", "admin"] as const;
 type NavGroup = (typeof NAV_GROUPS)[number];
 
 const NAV_GROUP_OF: Record<string, NavGroup> = {
@@ -70,6 +71,8 @@ const NAV_GROUP_OF: Record<string, NavGroup> = {
 function groupOf(key: string): NavGroup {
   // Joiners, movers & leavers (docs/blueprints/jml.md): every `jml-*` key.
   if (key.startsWith("jml-")) return "jml";
+  // Hiring (docs/blueprints/hiring.md): every `hiring-*` key.
+  if (key.startsWith("hiring-")) return "hiring";
   return NAV_GROUP_OF[key] ?? "admin";
 }
 
@@ -121,6 +124,7 @@ const HIVE_SEGMENT_KEYS: Record<string, string> = {
 /** The sidebar key the current path lights up (locale prefix already stripped). */
 function activeKeyFor(segments: readonly string[]): string {
   if (segments[0] === "jml") return jmlActiveKey(segments);
+  if (segments[0] === "hiring") return hiringActiveKey(segments) ?? "hiring-home";
   if (segments[0] === "admin") return ADMIN_SEGMENT_KEYS[segments[1] ?? ""] ?? "admin";
   if (segments[0] === "hive") return HIVE_SEGMENT_KEYS[segments[1] ?? ""] ?? "hive-setup";
   return segments[0] ?? "home";
@@ -140,6 +144,7 @@ export function AppSidebar() {
   // HR tickets (HIVE port): read live from the role builder, fails closed while loading.
   const hive = useHiveAccess();
   const jmlAccess = useJmlAccess();
+  const hiringItems = useHiringNavItems();
   const [collapsed, setCollapsed] = useState(false);
 
   // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
@@ -395,6 +400,9 @@ export function AppSidebar() {
       label: t(item.labelKey),
       onClick: () => router.push(`/${locale}${item.href}`),
     })),
+    // Hiring (docs/blueprints/hiring.md) — items gated on the actor's hiring
+    // permissions (components/hiring/nav.tsx).
+    ...hiringItems,
     // Scaffolded entities land here — `/scaffold-entity` appends a nav item per
     // entity, above the recycling bin.
     {
