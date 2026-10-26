@@ -2,7 +2,7 @@
 
 Scope: prisma/schema.prisma, prisma/seed-foundation.ts, prisma/seed.ts, lib/org/**, lib/rbac/**, lib/people/**, lib/pms/permissions.ts, lib/pms/actor.ts, lib/pms/org-tree.ts, lib/pms/employee-select.ts, lib/pms/import/**, lib/crypto/**, lib/validations/org.ts, lib/validations/people.ts, lib/validations/rbac.ts, lib/validations/login.ts, app/api/org/**, app/api/people/**, app/api/rbac/**, app/api/logins/**, app/api/employees/**, app/api/imports/**, app/[locale]/(dashboard)/admin/**, app/[locale]/(dashboard)/people/**, app/[locale]/(dashboard)/org/**, app/[locale]/(auth)/change-password/**, components/org/**, components/people/**, components/rbac/**, components/layout/AppSidebar.tsx, messages/en.json
 
-Status: DRAFT — awaiting operator sign-off (2026-10-26)
+Status: SIGNED OFF by the operator 2026-10-26 ("do it in phases, don't wait for me to merge"). Open questions proceed on the stated defaults.
 
 ## Problem & outcome
 
