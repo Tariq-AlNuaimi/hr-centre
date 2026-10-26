@@ -46,7 +46,9 @@ export interface AccountRow {
    * would an IT service account (ADR-065). Rendering it as a missing record
    * would be the wrong story about the most privileged account in the system.
    */
-  employee: { id: string; name: string; pmsRoles: string[] } | null;
+  employee: { id: string; name: string } | null;
+  /** F-c — names of the roles assigned to this account. */
+  roleNames: string[];
 }
 
 export function AccountsTable() {
@@ -132,20 +134,17 @@ export function AccountsTable() {
         that they are deleting the HRBP's.
       */
       title: tPms("roles.currentRoles"),
-      dataIndex: "employee",
-      key: "pmsRoles",
-      render: (value: AccountRow["employee"]) => {
-        if (value === null) {
-          return <span className="text-xs text-muted-foreground">{t("noEmployeeRecord")}</span>;
-        }
-        if (value.pmsRoles.length === 0) {
+      dataIndex: "roleNames",
+      key: "roleNames",
+      render: (value: string[]) => {
+        if (value.length === 0) {
           return <span className="text-xs text-muted-foreground">{tPms("roles.noRoles")}</span>;
         }
         return (
           <div className="flex flex-wrap gap-1">
-            {value.pmsRoles.map((role) => (
+            {value.map((role) => (
               <Badge key={role} variant="brand">
-                {tPms(`roles.roleName.${role}`)}
+                {role}
               </Badge>
             ))}
           </div>

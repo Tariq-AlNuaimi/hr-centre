@@ -41,7 +41,7 @@ export function AppSidebar() {
   // PMS authority lives on the Employee record, not the session (ADR-065), so
   // the nav asks for it. `usePmsActor` fails closed while loading: a non-HR user
   // never sees a flash of HR-only navigation.
-  const { actor, capabilities } = usePmsActor();
+  const { capabilities } = usePmsActor();
   const [collapsed, setCollapsed] = useState(false);
 
   // Mirror AntD Sider `breakpoint="lg"` (992px): auto-collapse to icons below
@@ -61,7 +61,6 @@ export function AppSidebar() {
 
   // PMS roles are additive (§4.3) and fail closed: an unresolved actor has none,
   // so a non-HR user never sees a flash of HR-only navigation.
-  const pmsRoles = actor?.pmsRoles ?? [];
 
   // Active-item matching (locale prefix stripped first). The first path segment
   // identifies most items, but every PMS admin screen lives under /admin/*, so
@@ -72,6 +71,7 @@ export function AppSidebar() {
     "org-setup": "org-setup",
     cycles: "cycles",
     access: "access",
+    roles: "roles",
     "strategy-scores": "strategy-scores",
     "edge-cases": "edge-cases",
   };
@@ -160,7 +160,7 @@ export function AppSidebar() {
     // reaches them through My Tasks on the home page, not through a nav item
     // that would open an empty screen. (Mid-year and year-end are NOT in this
     // block — both have an employee-facing side, and both sit above.)
-    ...(capabilities.lineManager || pmsRoles.includes("HR_SUPER_ADMIN") || pmsRoles.includes("HRBP")
+    ...(capabilities.lineManager || capabilities.hr
       ? [
           // §13.3's manager workspace — the cockpit a manager checks before an
           // escalation fires, so it sits above the three stage screens.
@@ -200,7 +200,7 @@ export function AppSidebar() {
     // The cycle console. §4.1 gives BOTH HR flavours "runs the cycle org-wide"
     // (`canRunCycle` at the route), which is wider than `capabilities.configure`
     // — so it is read off the actor's own roles, not a capability flag.
-    ...(pmsRoles.includes("HR_SUPER_ADMIN") || pmsRoles.includes("HRBP")
+    ...(capabilities.hr
       ? [
           {
             key: "cycles",
@@ -256,7 +256,7 @@ export function AppSidebar() {
           },
         ]
       : []),
-    ...(capabilities.configure
+    ...(capabilities.orgManage
       ? [
           {
             key: "org-setup",
@@ -273,13 +273,25 @@ export function AppSidebar() {
     // page shows the other half read-only with the reason. §4.1 keeps granting
     // HR authority to Super Admins only (HRBP is "Configures? No"), which is
     // still the RoleEditor's own gate inside the page.
-    ...(isAdmin || pmsRoles.includes("HR_SUPER_ADMIN")
+    ...(isAdmin || capabilities.loginsManage
       ? [
           {
             key: "access",
             icon: <ShieldCheck className="h-4 w-4" />,
             label: t("access"),
             onClick: () => router.push(`/${locale}/admin/access`),
+          },
+        ]
+      : []),
+    // F-c — the role builder and assignments: platform admins only (HR cannot
+    // change its own powers — blueprint §3).
+    ...(isAdmin
+      ? [
+          {
+            key: "roles",
+            icon: <ShieldCheck className="h-4 w-4" />,
+            label: t("roles"),
+            onClick: () => router.push(`/${locale}/admin/roles`),
           },
         ]
       : []),

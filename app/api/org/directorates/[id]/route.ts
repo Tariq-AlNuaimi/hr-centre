@@ -12,7 +12,7 @@ export const PATCH = withRateLimit(
   withAuth(async (request: NextRequest, { params, session }) => {
     const { id } = await params;
     const actor = await resolveActor(session);
-    if (!actor.capabilities.configure) return forbidden();
+    if (!actor.capabilities.orgManage) return forbidden();
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -33,7 +33,7 @@ export const DELETE = withRateLimit(
   withAuth(async (_request: NextRequest, { params, session }) => {
     const { id } = await params;
     const actor = await resolveActor(session);
-    if (!actor.capabilities.configure) return forbidden();
+    if (!actor.capabilities.orgManage) return forbidden();
 
     try {
       await retireDirectorate(id);

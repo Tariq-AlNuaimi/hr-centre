@@ -82,7 +82,13 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
         // this, a deleted employee's name and HR roles would render on the account
         // row as though the record were live — on the screen an admin uses to
         // decide what to do with that account.
-        employee: { select: { id: true, name: true, pmsRoles: true, deletedAt: true } },
+        employee: { select: { id: true, name: true, deletedAt: true } },
+        // F-c — HR authority now lives on role assignments, not Employee.pmsRoles.
+        roleAssignments: {
+          where: { role: { deletedAt: null } },
+          select: { role: { select: { name: true } } },
+          take: 20,
+        },
       },
     }),
     prisma.user.count({ where }),
@@ -92,16 +98,15 @@ export const GET = withAdminAuth(async (request: NextRequest) => {
   // still exists and the recycling bin / audit log still show the stored value,
   // but every consumer that asks a yes/no question should read the boolean rather
   // than re-deriving `=== "ADMIN"` in a fourth place.
-  const rows = data.map(({ employee, ...user }) => ({
+  const rows = data.map(({ employee, roleAssignments, ...user }) => ({
     ...user,
+    roleNames: [...new Set(roleAssignments.map((a) => a.role.name))].sort(),
     isPlatformAdmin: user.role === "ADMIN",
     // A soft-deleted employee reads the same as no employee record: the account
     // exists, the org record does not. Reconstructed rather than spread, so
     // `deletedAt` cannot ride along into the response.
     employee:
-      employee && employee.deletedAt === null
-        ? { id: employee.id, name: employee.name, pmsRoles: employee.pmsRoles }
-        : null,
+      employee && employee.deletedAt === null ? { id: employee.id, name: employee.name } : null,
   }));
 
   return ok(paginatedResponse(rows, total, pagination));

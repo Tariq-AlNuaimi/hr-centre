@@ -1,14 +1,27 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+import { auth } from "@/lib/auth";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { RolesSection } from "@/components/rbac/RolesSection";
+import { AssignmentsSection } from "@/components/rbac/AssignmentsSection";
 
 /**
- * `/admin/roles` moved to `/admin/access` — ADR-070.
- *
- * The HR-roles editor is now the "HR authority" section of the merged access
- * screen; the component itself (components/pms/RoleEditor.tsx) is unchanged and
- * still gated on HR Super Admin. See the redirect note in
- * app/[locale]/(dashboard)/users/page.tsx for why this is a redirect.
+ * Roles & access — blueprint §3 (F-c). PLATFORM ADMINS ONLY (`User.role =
+ * ADMIN`): HR cannot change its own powers. Anyone else is sent to the
+ * forbidden page (AC-F3.3); the /api/rbac routes refuse them with 403 too.
  */
-export default async function RolesRedirect({ params }: { params: Promise<{ locale: string }> }) {
+export default async function RolesPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  redirect(`/${locale}/admin/access`);
+  const session = await auth();
+  if (!session) redirect(`/${locale}/login`);
+  if (session.user.role !== "ADMIN") redirect(`/${locale}/forbidden`);
+  const t = await getTranslations("rbac");
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t("title")} subtitle={t("subtitle")} />
+      <RolesSection />
+      <AssignmentsSection />
+    </div>
+  );
 }

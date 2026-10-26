@@ -1,7 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { decryptField, encryptField } from "@/lib/crypto/field-encryption";
 import { readIdNumber } from "@/lib/people/id-documents";
+import type { Permission } from "@/lib/rbac/catalogue";
+import type { ScopeSubject } from "@/lib/rbac/grants";
 import {
+  actorCan,
   canViewCompensation,
   canViewIdDocuments,
   canViewPersonal,
@@ -46,7 +49,6 @@ const BASE_EMPLOYEE_SELECT = {
   // of joining" flag is unreadable if no screen can show whether one exists.
   dateOfJoining: true,
   roleTrack: true,
-  pmsRoles: true,
   status: true,
   lastWorkingDay: true,
   unpaidLeaveDays: true,
@@ -135,17 +137,6 @@ export type EmployeeListRow = {
   /** HR Centre F-a — the optional team inside the department. */
   team: { id: string; name: string } | null;
   /**
-   * §4.1/§4.3 — the additive HR roles this person holds.
-   *
-   * Carried for every actor, unlike `basicSalary`. §4.5's field-level
-   * restriction names salary and bonus specifically; who the HRBP is, is
-   * ordinary org information — and §5.5's escalation ladder actively depends on
-   * people being able to tell that HR exists and who they are. Selected in
-   * Prisma since Phase 1 but dropped here until the roles screen needed it,
-   * which is why an HR admin could not see the roles they were editing.
-   */
-  pmsRoles: string[];
-  /**
    * ADR-069 — can this person reach the app, and if not, why not?
    *
    * An employee record and a login are separate rows (ADR-065), and before the
@@ -202,7 +193,6 @@ export function serializeEmployee(row: {
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
   team?: { id: string; name: string } | null;
-  pmsRoles?: string[];
   userId?: string | null;
   user?: { deletedAt: Date | null } | null;
   basicSalaryEnc?: string | null;
@@ -219,7 +209,6 @@ export function serializeEmployee(row: {
     department: row.department,
     entity: row.entity,
     team: row.team ?? null,
-    pmsRoles: row.pmsRoles ?? [],
     loginState: loginStateOf(row),
     manager: row.manager,
   };
@@ -316,12 +305,20 @@ const ID_DOCUMENT_SELECT = {
  * only for an actor entitled to it — the same query-layer gate as salary, so an
  * unentitled payload has nothing to leak.
  */
-export function employeeDetailSelect(actor: PmsActor) {
+export function employeeDetailSelect(actor: PmsActor, subject?: ScopeSubject) {
+  // F-c — with the target's placement, a SCOPED grant counts (an HRBP for
+  // Codeline sees a Codeline employee's personal details); without it, only a
+  // Group grant does (lists — fail closed).
+  const may = (permission: Permission, groupAnswer: boolean) =>
+    subject ? actorCan(actor, permission, subject) : groupAnswer;
+  const base = { ...BASE_EMPLOYEE_SELECT, ...RELATION_SELECT, ...RECORD_BASE_SELECT };
   return {
-    ...employeeSelect(actor),
-    ...RECORD_BASE_SELECT,
-    ...(canViewPersonal(actor) ? PERSONAL_SELECT : {}),
-    ...(canViewIdDocuments(actor) ? ID_DOCUMENT_SELECT : {}),
+    ...base,
+    ...(may("people.viewSalary", canViewCompensation(actor))
+      ? { basicSalaryEnc: true as const }
+      : {}),
+    ...(may("people.viewPersonal", canViewPersonal(actor)) ? PERSONAL_SELECT : {}),
+    ...(may("people.viewIdDocuments", canViewIdDocuments(actor)) ? ID_DOCUMENT_SELECT : {}),
   };
 }
 

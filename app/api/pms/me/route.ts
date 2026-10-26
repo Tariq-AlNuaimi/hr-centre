@@ -1,3 +1,4 @@
+import { roleNamesFor } from "@/lib/rbac/resolve";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
 import { resolveActor } from "@/lib/pms/actor";
@@ -27,7 +28,8 @@ export const GET = withRateLimit(
       employeeName: actor.employeeName,
       entityId: actor.entityId,
       departmentId: actor.departmentId,
-      pmsRoles: actor.pmsRoles,
+      // F-c — display only; authority is in `capabilities`.
+      roleNames: await roleNamesFor(actor.userId),
       capabilities: actor.capabilities,
     });
   }),

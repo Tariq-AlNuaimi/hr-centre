@@ -78,17 +78,17 @@ export default function PeoplePage() {
           capabilities.orgWide ? t("directory.subtitleOrgWide") : t("directory.subtitleChain")
         }
         actions={
-          capabilities.previewImport || capabilities.configure ? (
+          capabilities.previewImport || capabilities.peopleEdit ? (
             <div className="flex flex-wrap gap-2">
               {/* HR Centre F-b — typing is the second way in (blueprint §5). */}
-              {capabilities.configure ? (
+              {capabilities.peopleEdit ? (
                 <Button onClick={() => router.push(`/${locale}/people/new`)}>
                   {t("directory.addAction")}
                 </Button>
               ) : null}
               {capabilities.previewImport ? (
                 <Button
-                  variant={capabilities.configure ? "outline" : "default"}
+                  variant={capabilities.peopleEdit ? "outline" : "default"}
                   onClick={() => router.push(`/${locale}/admin/import`)}
                 >
                   {t("directory.importAction")}

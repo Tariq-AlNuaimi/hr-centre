@@ -4,7 +4,8 @@ import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
 import { employeeDetailSelect, serializeEmployeeDetail } from "@/lib/pms/employee-select";
-import { canViewEmployee } from "@/lib/pms/permissions";
+import { actorCan, canViewEmployee } from "@/lib/pms/permissions";
+import { placementOf } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { ruleErrorResponse, validationError } from "@/lib/org/http";
 import { recordFieldsTouched } from "@/lib/people/record";
@@ -25,7 +26,9 @@ export const PATCH = withRateLimit(
     // Out-of-scope reads as absent (no existence leak) before any 403.
     const descendants = await visibilityDescendants(actor);
     if (!canViewEmployee(actor, id, descendants)) return notFound("Employee");
-    if (!actor.capabilities.configure) return forbidden();
+    const subject = await placementOf(id);
+    if (!subject) return notFound("Employee");
+    if (!actorCan(actor, "people.edit", subject)) return forbidden();
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -34,8 +37,10 @@ export const PATCH = withRateLimit(
 
     const record = recordFromBody(parsed.data);
     const touched = recordFieldsTouched(record);
-    if (touched.personal && !actor.capabilities.viewPersonal) return forbidden();
-    if (touched.idDocuments && !actor.capabilities.viewIdDocuments) return forbidden();
+    if (touched.personal && !actorCan(actor, "people.viewPersonal", subject)) return forbidden();
+    if (touched.idDocuments && !actorCan(actor, "people.viewIdDocuments", subject)) {
+      return forbidden();
+    }
 
     try {
       await updateEmployeeRecord(id, record);
@@ -45,7 +50,7 @@ export const PATCH = withRateLimit(
 
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: employeeDetailSelect(actor),
+      select: employeeDetailSelect(actor, subject),
     });
     if (!employee) return notFound("Employee");
     return ok(serializeEmployeeDetail(employee));

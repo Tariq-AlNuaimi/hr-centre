@@ -101,6 +101,26 @@ export async function suiteLogin(
     where: { userId: user.id, NOT: { id: employeeId } },
     data: { userId: null },
   });
-  await prisma.employee.update({ where: { id: employeeId }, data: { userId: user.id } });
+  const employee = await prisma.employee.update({
+    where: { id: employeeId },
+    data: { userId: user.id },
+    select: { pmsRoles: true },
+  });
+  // HR Centre F-c: authority is role assignments now. Suites still describe
+  // their actors with pmsRoles; mirror them as Group assignments of the
+  // matching starter role (created by migration 20261026180000).
+  await prisma.roleAssignment.deleteMany({ where: { userId: user.id } });
+  for (const key of employee.pmsRoles) {
+    const role = await prisma.accessRole.findFirst({
+      where: { starterKey: key },
+      select: { id: true },
+    });
+    if (role) {
+      await prisma.roleAssignment.create({
+        data: { userId: user.id, roleId: role.id, scopeType: "GROUP", note: "integration fixture" },
+        select: { id: true },
+      });
+    }
+  }
   return user.id;
 }

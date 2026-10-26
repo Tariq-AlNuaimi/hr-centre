@@ -54,9 +54,47 @@ async function main() {
 
     // The 36-person demo fixture is for local development only. It never runs
     // unless asked for explicitly, so a real deployment holds no invented people.
-    if (process.env.SEED_DEMO === "1") await seedPms(prisma);
+    if (process.env.SEED_DEMO === "1") {
+      await seedPms(prisma);
+      await grantDemoRoles(prisma);
+    }
   } finally {
     await prisma.$disconnect();
+  }
+}
+
+/**
+ * HR Centre F-c — the LOCAL-ONLY demo fixture still describes its HR people with
+ * `pmsRoles`; give each the matching starter role for the whole group so the
+ * demo has HR authority. Idempotent (skips existing assignments). Never runs in
+ * a real deployment (SEED_DEMO is local-only), where migration 20261026180000
+ * converted `pmsRoles` exactly once.
+ */
+async function grantDemoRoles(prisma: PrismaClient) {
+  const roles = await prisma.accessRole.findMany({
+    where: { starterKey: { not: null }, deletedAt: null },
+    select: { id: true, starterKey: true },
+  });
+  const employees = await prisma.employee.findMany({
+    where: { userId: { not: null }, NOT: { pmsRoles: { isEmpty: true } } },
+    select: { userId: true, pmsRoles: true },
+    take: 1000,
+  });
+  for (const e of employees) {
+    for (const key of e.pmsRoles) {
+      const role = roles.find((r) => r.starterKey === key);
+      if (!role || !e.userId) continue;
+      const found = await prisma.roleAssignment.findFirst({
+        where: { userId: e.userId, roleId: role.id, scopeType: "GROUP" },
+        select: { id: true },
+      });
+      if (!found) {
+        await prisma.roleAssignment.create({
+          data: { userId: e.userId, roleId: role.id, scopeType: "GROUP", note: "Demo fixture" },
+          select: { id: true },
+        });
+      }
+    }
   }
 }
 

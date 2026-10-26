@@ -8,7 +8,8 @@ import { employeeDetailSelect, serializeEmployeeDetail } from "@/lib/pms/employe
 import { EmployeeRecordSections } from "@/components/people/EmployeeRecordSections";
 import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
 import { recordFormValues } from "@/components/people/record-form-values";
-import { canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
+import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
+import { placementOf } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
@@ -45,7 +46,6 @@ function toUpdateInput(employee: {
   entityId: string;
   managerId: string | null;
   roleTrack: string;
-  pmsRoles: string[];
   status: string;
   lastWorkingDay: Date | null;
   unpaidLeaveDays: number;
@@ -60,7 +60,9 @@ function toUpdateInput(employee: {
     entityId: employee.entityId,
     managerId: employee.managerId,
     roleTrack: employee.roleTrack as UpdateEmployeeInput["roleTrack"],
-    pmsRoles: employee.pmsRoles as UpdateEmployeeInput["pmsRoles"],
+    // F-c — the legacy field the PUT schema still carries; the route ignores
+    // it (HR authority lives on role assignments now).
+    pmsRoles: [],
     basicSalary: employee.basicSalary,
     status: employee.status as UpdateEmployeeInput["status"],
     lastWorkingDay: employee.lastWorkingDay?.toISOString().slice(0, 10) ?? null,
@@ -108,11 +110,15 @@ export default async function EmployeeDetailPage({
   // able to learn that someone exists outside their chain from the difference.
   if (!canViewEmployee(actor, id, descendants)) notFound();
 
+  const subject = await placementOf(id);
+  if (!subject) notFound();
   const employee = await prisma.employee.findUnique({
     where: { id },
-    select: employeeDetailSelect(actor),
+    select: employeeDetailSelect(actor, subject),
   });
   if (!employee) notFound();
+  // F-c — what this actor may change HERE (scoped grants count for people.*).
+  const canEditPerson = actorCan(actor, "people.edit", subject);
   // HR Centre F-b — the record groups the gated select returned (AC-F2.2/F2.3).
   const detail = serializeEmployeeDetail(employee);
 
@@ -232,19 +238,20 @@ export default async function EmployeeDetailPage({
             not be the thing that discovers it by encrypting `null` over payroll.
           */
           <>
-            {actor.capabilities.configure ? (
+            {canEditPerson ? (
               <EmployeeRecordForm
                 employeeId={employee.id}
                 initial={recordFormValues(detail.record)}
-                canEditPersonal={actor.capabilities.viewPersonal}
+                canEditPersonal={actorCan(actor, "people.viewPersonal", subject)}
                 // A number the server key cannot open is not offered for editing:
                 // the empty box would read as "none" and saving it would clear it.
                 canEditIdDocuments={
-                  actor.capabilities.viewIdDocuments && !detail.record.idDocuments?.unavailable
+                  actorCan(actor, "people.viewIdDocuments", subject) &&
+                  !detail.record.idDocuments?.unavailable
                 }
               />
             ) : null}
-            {actor.capabilities.configure && basicSalary !== undefined ? (
+            {canEditPerson && basicSalary !== undefined ? (
               <EmployeeEditForm
                 employeeId={employee.id}
                 initial={toUpdateInput({ ...employee, basicSalary })}

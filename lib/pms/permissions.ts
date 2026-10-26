@@ -1,4 +1,13 @@
 import type { PmsRole } from "@/generated/prisma/client";
+import {
+  canInScope,
+  has,
+  hasGroup,
+  starterGrants,
+  type Grants,
+  type ScopeSubject,
+} from "@/lib/rbac/grants";
+import type { Permission } from "@/lib/rbac/catalogue";
 
 /**
  * PMS capability resolution — spec §4 (roles, permissions & visibility).
@@ -33,13 +42,48 @@ export type PmsActor = {
    * administration and HR authority are deliberately separate (ADR-065).
    */
   employeeId: string | null;
+  /**
+   * LEGACY input only (HR Centre F-c). `resolveActor` always sets `[]` and
+   * supplies `grants`; an actor built without `grants` (tests, background jobs)
+   * is read as these roles' STARTER role at Group scope — which is exactly how
+   * the Performance contract tests prove the starter roles reproduce the old
+   * behaviour (AC-F3.4).
+   */
   pmsRoles: PmsRole[];
+  /** F-c — the actor's expanded role assignments (lib/rbac/resolve.ts). */
+  grants?: Grants;
   /**
    * True when this actor has at least one direct report. Derived from the org
    * tree, not stored, and the only source of line-manager authority.
    */
   isLineManager: boolean;
 };
+
+const legacyGrants = new WeakMap<PmsActor, Grants>();
+
+/**
+ * The actor's grants — from assignments, or (legacy/test actors) from the
+ * starter roles their `pmsRoles` name. Every helper below answers from this,
+ * keeping its name and call sites (blueprint §3).
+ */
+export function grantsOf(actor: PmsActor): Grants {
+  if (actor.grants) return actor.grants;
+  let g = legacyGrants.get(actor);
+  if (!g) {
+    g = starterGrants(actor.pmsRoles);
+    legacyGrants.set(actor, g);
+  }
+  return g;
+}
+
+/**
+ * F-c — may this actor do `permission` for this employee placement? The scoped
+ * question the People routes ask (AC-F3.2); org-wide permissions only count at
+ * Group scope (lib/rbac/catalogue.ts).
+ */
+export function actorCan(actor: PmsActor, permission: Permission, subject: ScopeSubject): boolean {
+  return canInScope(grantsOf(actor), permission, subject);
+}
 
 /**
  * §4.1 — HR Super Admin ("everything + overrides; runs calibration") and HRBP
@@ -48,16 +92,16 @@ export type PmsActor = {
  * `canExportMasterResults`, which are Super-Admin-only.
  */
 export function isHr(actor: PmsActor): boolean {
-  return actor.pmsRoles.includes("HR_SUPER_ADMIN") || actor.pmsRoles.includes("HRBP");
+  return hasGroup(grantsOf(actor), "perf.runCycle");
 }
 
 export function isHrSuperAdmin(actor: PmsActor): boolean {
-  return actor.pmsRoles.includes("HR_SUPER_ADMIN");
+  return hasGroup(grantsOf(actor), "perf.configure");
 }
 
 /** §4.1 — COO / Ops Director: org-wide, full drill-down, read-only throughout. */
 export function isExecutiveViewer(actor: PmsActor): boolean {
-  return actor.pmsRoles.includes("EXECUTIVE_VIEWER");
+  return hasGroup(grantsOf(actor), "perf.viewReports");
 }
 
 /**
@@ -65,7 +109,7 @@ export function isExecutiveViewer(actor: PmsActor): boolean {
  * §4.1 grants this to HR (both flavours) and to the COO/Ops Director.
  */
 export function hasOrgWideVisibility(actor: PmsActor): boolean {
-  return isHr(actor) || isExecutiveViewer(actor);
+  return hasGroup(grantsOf(actor), "people.view");
 }
 
 /**
@@ -78,7 +122,7 @@ export function hasOrgWideVisibility(actor: PmsActor): boolean {
  * changing the org structure itself.
  */
 export function canConfigure(actor: PmsActor): boolean {
-  return isHrSuperAdmin(actor);
+  return hasGroup(grantsOf(actor), "perf.configure");
 }
 
 /**
@@ -87,7 +131,7 @@ export function canConfigure(actor: PmsActor): boolean {
  * Phase 5 consumer; defined here so the boundary is stated once.
  */
 export function canRunCalibration(actor: PmsActor): boolean {
-  return isHrSuperAdmin(actor);
+  return hasGroup(grantsOf(actor), "perf.calibrate");
 }
 
 /**
@@ -96,7 +140,7 @@ export function canRunCalibration(actor: PmsActor): boolean {
  * Admin only (not HRBP)". Phase 6 consumer; stated here for the same reason.
  */
 export function canExportMasterResults(actor: PmsActor): boolean {
-  return isHrSuperAdmin(actor);
+  return hasGroup(grantsOf(actor), "perf.exportMaster");
 }
 
 /**
@@ -124,7 +168,7 @@ export function canSeePlatformAdminRoster(
   actor: PmsActor,
   platformRole: string | null | undefined,
 ): boolean {
-  return isHrSuperAdmin(actor) || platformRole === "ADMIN";
+  return hasGroup(grantsOf(actor), "logins.manage") || platformRole === "ADMIN";
 }
 
 /**
@@ -143,7 +187,7 @@ export function canSeePlatformAdminRoster(
  * Enforced at the query layer, never the UI: see lib/pms/employee-select.ts.
  */
 export function canViewCompensation(actor: PmsActor): boolean {
-  return isHr(actor) || isExecutiveViewer(actor);
+  return hasGroup(grantsOf(actor), "people.viewSalary");
 }
 
 /**
@@ -156,11 +200,11 @@ export function canViewCompensation(actor: PmsActor): boolean {
  * `people.viewIdDocuments` assignments.
  */
 export function canViewPersonal(actor: PmsActor): boolean {
-  return isHr(actor);
+  return hasGroup(grantsOf(actor), "people.viewPersonal");
 }
 
 export function canViewIdDocuments(actor: PmsActor): boolean {
-  return isHr(actor);
+  return hasGroup(grantsOf(actor), "people.viewIdDocuments");
 }
 
 /**
@@ -222,11 +266,11 @@ export function isReadOnly(actor: PmsActor): boolean {
  * is therefore `canConfigure` (Super Admin only), per §4.1's configure column.
  */
 export function canPreviewImport(actor: PmsActor): boolean {
-  return isHr(actor);
+  return hasGroup(grantsOf(actor), "imports.preview");
 }
 
 export function canApplyImport(actor: PmsActor): boolean {
-  return canConfigure(actor);
+  return hasGroup(grantsOf(actor), "imports.apply");
 }
 
 /**
@@ -255,6 +299,12 @@ export type PmsCapabilities = {
   exportMasterResults: boolean;
   readOnly: boolean;
   lineManager: boolean;
+  /** F-c — org structure admin (Group scope). */
+  orgManage: boolean;
+  /** F-c — may add/edit people somewhere (the route checks the target's scope). */
+  peopleEdit: boolean;
+  /** F-c/F-d — may create/reset/disable logins somewhere (scope-checked per target). */
+  loginsManage: boolean;
 };
 
 export function capabilitiesFor(actor: PmsActor): PmsCapabilities {
@@ -271,5 +321,8 @@ export function capabilitiesFor(actor: PmsActor): PmsCapabilities {
     exportMasterResults: canExportMasterResults(actor),
     readOnly: isReadOnly(actor),
     lineManager: actor.isLineManager,
+    orgManage: hasGroup(grantsOf(actor), "org.manage"),
+    peopleEdit: has(grantsOf(actor), "people.edit"),
+    loginsManage: has(grantsOf(actor), "logins.manage"),
   };
 }

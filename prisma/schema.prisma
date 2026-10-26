@@ -67,6 +67,10 @@ model User {
   employee      Employee?
   importBatches ImportBatch[]
 
+  // HR Centre F-c — role assignments held, and granted (blueprint §3).
+  roleAssignments    RoleAssignment[] @relation("AssignmentHolder")
+  assignmentsGranted RoleAssignment[] @relation("AssignmentGrantor")
+
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
   // index serves both the filter prefix and the sort. Scaffolded soft-deletable
@@ -193,6 +197,65 @@ enum PmsRole {
 // scoring formula (§8.3). C_LEVEL is the exception throughout: no department
 // (§1.2), no goal-setting/self-assessment/360 (§8.3), final score passed straight
 // through from the entity's corporate score.
+/// HR Centre F-c — where an assignment applies. EXTENSIBLE: a module adds its
+/// own kind here (plus a resolver in lib/rbac/grants.ts `registerScopeResolver`);
+/// an unknown kind covers nothing.
+enum ScopeType {
+  GROUP
+  COMPANY
+  DIRECTORATE
+  DEPARTMENT
+}
+
+/// HR Centre F-c — a named bundle of catalogue permissions (lib/rbac/catalogue.ts).
+/// Managed by platform admins only (User.role = ADMIN).
+model AccessRole {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  /// Catalogue codes, e.g. "people.view". Validated against the catalogue on write.
+  permissions String[]
+  /// Set on the three starter roles (HR_SUPER_ADMIN | HRBP | EXECUTIVE_VIEWER)
+  /// so the seed recognises them — including after an admin renamed or deleted one.
+  starterKey  String?  @unique @map("starter_key")
+
+  assignments RoleAssignment[]
+
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([deletedAt, createdAt])
+  @@map("access_roles")
+}
+
+/// HR Centre F-c — "this person can do these actions for people inside this
+/// scope". Several add up. Optional validity window for time-boxed cover
+/// (≤ 180 days); an expired or not-yet-started assignment grants nothing,
+/// checked per request.
+model RoleAssignment {
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  user        User       @relation("AssignmentHolder", fields: [userId], references: [id], onDelete: Cascade)
+  roleId      String     @map("role_id")
+  role        AccessRole @relation(fields: [roleId], references: [id])
+  scopeType   ScopeType  @map("scope_type")
+  /// Null only for GROUP; otherwise the org unit's (or module's) id.
+  scopeId     String?    @map("scope_id")
+  validFrom   DateTime?  @map("valid_from")
+  validUntil  DateTime?  @map("valid_until")
+  note        String?
+  grantedById String?    @map("granted_by_id")
+  grantedBy   User?      @relation("AssignmentGrantor", fields: [grantedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([roleId])
+  @@map("role_assignments")
+}
+
 /// HR Centre F-b — blueprint §2.
 enum ContractType {
   PERMANENT
@@ -446,28 +509,28 @@ model Employee {
   // --- HR Centre F-b: the full employee record (blueprint §2) ----------------
   // All optional: the import and the form fill them; Performance never reads them.
   // Job & contract — Internal.
-  jobTitle         String?       @map("job_title")
-  grade            String?
-  contractType     ContractType? @map("contract_type")
-  probationEndDate DateTime?     @map("probation_end_date") @db.Date
-  workLocation     String?       @map("work_location")
+  jobTitle          String?       @map("job_title")
+  grade             String?
+  contractType      ContractType? @map("contract_type")
+  probationEndDate  DateTime?     @map("probation_end_date") @db.Date
+  workLocation      String?       @map("work_location")
   // Contact — Confidential. Visible to anyone who may view the employee.
-  workPhone     String? @map("work_phone")
-  personalEmail String? @map("personal_email")
-  personalPhone String? @map("personal_phone")
+  workPhone         String?       @map("work_phone")
+  personalEmail     String?       @map("personal_email")
+  personalPhone     String?       @map("personal_phone")
   // Personal — Confidential. Selected only with `people.viewPersonal`
   // (lib/pms/employee-select.ts).
-  dateOfBirth DateTime? @map("date_of_birth") @db.Date
-  gender      Gender?
-  nationality String?
+  dateOfBirth       DateTime?     @map("date_of_birth") @db.Date
+  gender            Gender?
+  nationality       String?
   /// ID documents — RESTRICTED (SECURITY.md §1). Numbers are AES-256-GCM
   /// envelopes bound to `odooId` under ID_ENCRYPTION_KEY (lib/people/id-documents.ts),
   /// scrubbed from audit and exports, selected only with `people.viewIdDocuments`.
   /// Expiry dates stay plain: they drive "expiring soon" lists.
-  civilIdNumberEnc  String?   @map("civil_id_number_enc")
-  civilIdExpiry     DateTime? @map("civil_id_expiry") @db.Date
-  passportNumberEnc String?   @map("passport_number_enc")
-  passportExpiry    DateTime? @map("passport_expiry") @db.Date
+  civilIdNumberEnc  String?       @map("civil_id_number_enc")
+  civilIdExpiry     DateTime?     @map("civil_id_expiry") @db.Date
+  passportNumberEnc String?       @map("passport_number_enc")
+  passportExpiry    DateTime?     @map("passport_expiry") @db.Date
 
   // §3.3 — for leavers; used in the day-count. §11.4: a leaver pro-rates from
   // cycle start to their last working day.

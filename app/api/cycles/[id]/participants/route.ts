@@ -118,6 +118,7 @@ export const GET = withRateLimit(
     const visibleIds = await visibleEmployeeIds({
       employeeId: actor.employeeId,
       orgWide: actor.capabilities.orgWide,
+      scopeMembers: actor.scopeMembers,
     });
 
     // An authenticated user with no employee record and no org-wide role is in

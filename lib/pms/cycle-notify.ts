@@ -1,3 +1,4 @@
+import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { prisma } from "@/lib/prisma";
 import { isEmailEnabled, sendEmail } from "@/lib/email";
 import type { LadderEvent } from "./compliance";
@@ -232,8 +233,11 @@ export async function notify(
     const hrEscalations = written.filter((e) => e.kind === "ESCALATED_HR" && e.isNew).length;
     if (hrEscalations > 0 || interventionCount > 0) {
       const digest = hrDigest(hrEscalations, interventions, interventionCount);
+      // F-c: "HR" is whoever holds `perf.runCycle` for the whole group (the
+      // starter HR Super Admin and HRBP roles), resolved from assignments.
+      const hrUserIds = await usersHoldingPermission("perf.runCycle", {}, { limit: 50, now });
       const hr = await prisma.employee.findMany({
-        where: { status: "ACTIVE", pmsRoles: { hasSome: ["HR_SUPER_ADMIN", "HRBP"] } },
+        where: { status: "ACTIVE", userId: { in: hrUserIds } },
         select: { id: true },
         take: 50,
       });

@@ -15,7 +15,7 @@ export default async function AddEmployeePage({ params }: { params: Promise<{ lo
   const session = await auth();
   if (!session) redirect(`/${locale}/login`);
   const actor = await resolveActor(session);
-  if (!actor.capabilities.configure) notFound();
+  if (!actor.capabilities.peopleEdit) notFound();
   const t = await getTranslations("people.add");
 
   return (

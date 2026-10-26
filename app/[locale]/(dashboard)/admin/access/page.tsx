@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageSkeleton } from "@/components/shared/Skeletons";
-import { RoleEditor } from "@/components/pms/RoleEditor";
 import { AccountsTable } from "@/components/users/AccountsTable";
 import { PlatformAdminRoster } from "@/components/users/PlatformAdminRoster";
 import { usePmsActor } from "@/hooks/use-pms-actor";
@@ -49,9 +48,9 @@ export default function AccessPage() {
   const router = useRouter();
   const locale = useLocale();
   const { data: session, status } = useSession();
-  const { actor, isLoading } = usePmsActor();
+  const { capabilities, isLoading } = usePmsActor();
 
-  const isHrSuperAdmin = (actor?.pmsRoles ?? []).includes("HR_SUPER_ADMIN");
+  const isHrSuperAdmin = capabilities.loginsManage;
   // types/index.ts augments next-auth's Session.user with role: Role.
   // ADR-070 kept the enum and narrowed what can be SET; `=== "ADMIN"` is still
   // what the column means, and `lib/validations/user.ts` is the one place that
@@ -119,8 +118,12 @@ export default function AccessPage() {
       </SectionCard>
 
       <SectionCard title={t("hrSection")} subtitle={t("hrSectionHint")}>
-        {isHrSuperAdmin ? (
-          <RoleEditor actorEmployeeId={actor?.employeeId ?? null} />
+        {/* F-c — HR authority is role assignments now, managed by platform
+            admins only (blueprint §3: HR cannot change its own powers). */}
+        {isPlatformAdmin ? (
+          <Button variant="outline" onClick={() => router.push(`/${locale}/admin/roles`)}>
+            {t("openRoles")}
+          </Button>
         ) : (
           <EmptyState description={t("hrSectionNotYours")} />
         )}

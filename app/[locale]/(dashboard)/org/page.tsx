@@ -40,6 +40,7 @@ export default async function OrgPage({ params }: { params: Promise<{ locale: st
   const visible = await visibleEmployeeIds({
     employeeId: actor.employeeId,
     orgWide: actor.capabilities.orgWide,
+    scopeMembers: actor.scopeMembers,
   });
 
   const nodes: OrgNode[] =
