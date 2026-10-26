@@ -147,6 +147,23 @@ export function canViewCompensation(actor: PmsActor): boolean {
 }
 
 /**
+ * HR Centre F-b (blueprint §2, AC-F2.2/AC-F2.3) — field-level gates for the full
+ * employee record, layered exactly like compensation above. Personal details
+ * (date of birth, gender, nationality, personal contact) and ID documents are
+ * HR's; line managers see job and work contact only (open question 3's default),
+ * and the executive viewer's org-wide READ of performance data does not extend
+ * to them. F-c re-answers both from `people.viewPersonal` /
+ * `people.viewIdDocuments` assignments.
+ */
+export function canViewPersonal(actor: PmsActor): boolean {
+  return isHr(actor);
+}
+
+export function canViewIdDocuments(actor: PmsActor): boolean {
+  return isHr(actor);
+}
+
+/**
  * §4.2 — hierarchical visibility. An actor may VIEW an employee when:
  *   - it is themselves, or
  *   - they hold org-wide visibility (HR / executive), or
@@ -229,6 +246,9 @@ export type PmsCapabilities = {
   hr: boolean;
   configure: boolean;
   viewCompensation: boolean;
+  /** F-b — personal details and ID documents (field-level, like compensation). */
+  viewPersonal: boolean;
+  viewIdDocuments: boolean;
   previewImport: boolean;
   applyImport: boolean;
   runCalibration: boolean;
@@ -243,6 +263,8 @@ export function capabilitiesFor(actor: PmsActor): PmsCapabilities {
     hr: isHr(actor),
     configure: canConfigure(actor),
     viewCompensation: canViewCompensation(actor),
+    viewPersonal: canViewPersonal(actor),
+    viewIdDocuments: canViewIdDocuments(actor),
     previewImport: canPreviewImport(actor),
     applyImport: canApplyImport(actor),
     runCalibration: canRunCalibration(actor),

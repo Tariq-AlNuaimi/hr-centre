@@ -1,6 +1,12 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { decryptField, encryptField } from "@/lib/crypto/field-encryption";
-import { canViewCompensation, type PmsActor } from "./permissions";
+import { readIdNumber } from "@/lib/people/id-documents";
+import {
+  canViewCompensation,
+  canViewIdDocuments,
+  canViewPersonal,
+  type PmsActor,
+} from "./permissions";
 
 /**
  * The single gate on Restricted compensation data — spec §4.5 / §11.6.
@@ -72,6 +78,8 @@ const RELATION_SELECT = {
   department: { select: { id: true, name: true } },
   entity: { select: { id: true, code: true, name: true } },
   manager: { select: { id: true, name: true, email: true } },
+  // HR Centre F-a — a to-one join like the three above.
+  team: { select: { id: true, name: true } },
 } satisfies Prisma.EmployeeSelect;
 
 /**
@@ -124,6 +132,8 @@ export type EmployeeListRow = {
   department: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
+  /** HR Centre F-a — the optional team inside the department. */
+  team: { id: string; name: string } | null;
   /**
    * §4.1/§4.3 — the additive HR roles this person holds.
    *
@@ -191,6 +201,7 @@ export function serializeEmployee(row: {
   department: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
+  team?: { id: string; name: string } | null;
   pmsRoles?: string[];
   userId?: string | null;
   user?: { deletedAt: Date | null } | null;
@@ -207,6 +218,7 @@ export function serializeEmployee(row: {
     managerId: row.managerId,
     department: row.department,
     entity: row.entity,
+    team: row.team ?? null,
     pmsRoles: row.pmsRoles ?? [],
     loginState: loginStateOf(row),
     manager: row.manager,
@@ -264,4 +276,140 @@ export function encryptSalary(plaintext: string | null, odooId: string): string 
 
 export function decryptSalary(envelope: string | null, odooId: string): string | null {
   return envelope === null ? null : decryptField(envelope, odooId);
+}
+
+// --- HR Centre F-b: the full record (blueprint §2) ---------------------------
+
+/** Job & contract (Internal) and work contact (Confidential): any viewer. */
+const RECORD_BASE_SELECT = {
+  jobTitle: true,
+  grade: true,
+  contractType: true,
+  probationEndDate: true,
+  workLocation: true,
+  workPhone: true,
+  department: {
+    select: { id: true, name: true, directorate: { select: { id: true, name: true } } },
+  },
+} satisfies Prisma.EmployeeSelect;
+
+/** Personal details — only with `people.viewPersonal` (AC-F2.3). */
+const PERSONAL_SELECT = {
+  personalEmail: true,
+  personalPhone: true,
+  dateOfBirth: true,
+  gender: true,
+  nationality: true,
+} satisfies Prisma.EmployeeSelect;
+
+/** ID documents — Restricted, only with `people.viewIdDocuments` (AC-F2.2). */
+const ID_DOCUMENT_SELECT = {
+  civilIdNumberEnc: true,
+  civilIdExpiry: true,
+  passportNumberEnc: true,
+  passportExpiry: true,
+} satisfies Prisma.EmployeeSelect;
+
+/**
+ * `select` for ONE employee's record page. The list keeps the lean
+ * `employeeSelect` (Speed pillar); the detail adds the record fields, each group
+ * only for an actor entitled to it — the same query-layer gate as salary, so an
+ * unentitled payload has nothing to leak.
+ */
+export function employeeDetailSelect(actor: PmsActor) {
+  return {
+    ...employeeSelect(actor),
+    ...RECORD_BASE_SELECT,
+    ...(canViewPersonal(actor) ? PERSONAL_SELECT : {}),
+    ...(canViewIdDocuments(actor) ? ID_DOCUMENT_SELECT : {}),
+  };
+}
+
+const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
+
+export type EmployeeRecordView = {
+  jobTitle: string | null;
+  grade: string | null;
+  contractType: string | null;
+  probationEndDate: string | null;
+  workLocation: string | null;
+  workPhone: string | null;
+  directorate: { id: string; name: string } | null;
+  /** Present only for `people.viewPersonal`. */
+  personal?: {
+    personalEmail: string | null;
+    personalPhone: string | null;
+    dateOfBirth: string | null;
+    gender: string | null;
+    nationality: string | null;
+  };
+  /** Present only for `people.viewIdDocuments`. */
+  idDocuments?: {
+    civilIdNumber: string | null;
+    civilIdExpiry: string | null;
+    passportNumber: string | null;
+    passportExpiry: string | null;
+    /** True when a stored number exists but the server key cannot open it. */
+    unavailable: boolean;
+  };
+};
+
+type DetailRow = Parameters<typeof serializeEmployee>[0] & {
+  jobTitle: string | null;
+  grade: string | null;
+  contractType: string | null;
+  probationEndDate: Date | null;
+  workLocation: string | null;
+  workPhone: string | null;
+  department: {
+    id: string;
+    name: string;
+    directorate?: { id: string; name: string } | null;
+  } | null;
+  personalEmail?: string | null;
+  personalPhone?: string | null;
+  dateOfBirth?: Date | null;
+  gender?: string | null;
+  nationality?: string | null;
+  civilIdNumberEnc?: string | null;
+  civilIdExpiry?: Date | null;
+  passportNumberEnc?: string | null;
+  passportExpiry?: Date | null;
+};
+
+/** Serialise a detail row: the list shape plus `record`, keys omitted when gated. */
+export function serializeEmployeeDetail(
+  row: DetailRow,
+): EmployeeListRow & { record: EmployeeRecordView } {
+  const record: EmployeeRecordView = {
+    jobTitle: row.jobTitle,
+    grade: row.grade,
+    contractType: row.contractType,
+    probationEndDate: day(row.probationEndDate),
+    workLocation: row.workLocation,
+    workPhone: row.workPhone,
+    directorate: row.department?.directorate ?? null,
+  };
+  if ("dateOfBirth" in row) {
+    record.personal = {
+      personalEmail: row.personalEmail ?? null,
+      personalPhone: row.personalPhone ?? null,
+      dateOfBirth: day(row.dateOfBirth),
+      gender: row.gender ?? null,
+      nationality: row.nationality ?? null,
+    };
+  }
+  if ("civilIdNumberEnc" in row) {
+    const civil = readIdNumber(row.civilIdNumberEnc ?? null, row.odooId);
+    const passport = readIdNumber(row.passportNumberEnc ?? null, row.odooId);
+    record.idDocuments = {
+      civilIdNumber: civil.value,
+      civilIdExpiry: day(row.civilIdExpiry),
+      passportNumber: passport.value,
+      passportExpiry: day(row.passportExpiry),
+      unavailable: civil.unavailable || passport.unavailable,
+    };
+  }
+  const department = row.department ? { id: row.department.id, name: row.department.name } : null;
+  return { ...serializeEmployee({ ...row, department }), record };
 }

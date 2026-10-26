@@ -3,7 +3,13 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, forbidden, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { employeeSelect, encryptSalary, serializeEmployee } from "@/lib/pms/employee-select";
+import {
+  employeeDetailSelect,
+  employeeSelect,
+  serializeEmployee,
+  serializeEmployeeDetail,
+} from "@/lib/pms/employee-select";
+import { employeeUpdateData } from "@/lib/people/write";
 import { canViewEmployee } from "@/lib/pms/permissions";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
 import { updateEmployeeSchema } from "@/lib/validations/employee";
@@ -35,11 +41,11 @@ export const GET = withRateLimit(
 
     const employee = await prisma.employee.findUnique({
       where: { id },
-      select: employeeSelect(actor),
+      select: employeeDetailSelect(actor),
     });
     if (!employee) return notFound("Employee");
 
-    return ok(serializeEmployee(employee));
+    return ok(serializeEmployeeDetail(employee));
   }),
   { id: "pms-employee-read", limit: 120, windowMs: 60_000 },
 );
@@ -175,24 +181,32 @@ export const PUT = withRateLimit(
     const updated = await auditedTransaction(async (tx) => {
       return tx.employee.update({
         where: { id },
+        // The one writer (lib/people/write.ts) builds the core columns, so this
+        // path and the import cannot encrypt or place differently. §3.3's
+        // joining date stays editable here (red-team F13). The F-b record
+        // fields have their own partial PATCH /record, outside this replace.
         data: {
-          name: data.name,
-          email: data.email,
-          // §3.3's anchor for §11. Until now the ONLY writer was the import, so a
-          // wrong or missing joining date could be corrected no other way — and a
-          // re-import is precisely the expensive act the hand-editing path exists
-          // to avoid (red-team F13).
-          dateOfJoining: data.dateOfJoining ? new Date(`${data.dateOfJoining}T00:00:00Z`) : null,
-          departmentId: data.departmentId,
-          teamId,
-          entityId: data.entityId,
+          ...employeeUpdateData(
+            {
+              odooId: target.odooId,
+              name: data.name,
+              email: data.email,
+              departmentId: data.departmentId,
+              teamId,
+              entityId: data.entityId,
+              roleTrack: data.roleTrack,
+              basicSalary: data.basicSalary,
+              dateOfJoining: data.dateOfJoining
+                ? new Date(`${data.dateOfJoining}T00:00:00Z`)
+                : null,
+              unpaidLeaveDays: data.unpaidLeaveDays,
+            },
+            {},
+          ),
           managerId: data.managerId,
-          roleTrack: data.roleTrack,
           pmsRoles: data.pmsRoles,
-          basicSalaryEnc: encryptSalary(data.basicSalary, target.odooId),
           status: data.status,
           lastWorkingDay: data.lastWorkingDay ? new Date(`${data.lastWorkingDay}T00:00:00Z`) : null,
-          unpaidLeaveDays: data.unpaidLeaveDays,
         },
         select: employeeSelect(actor),
       });

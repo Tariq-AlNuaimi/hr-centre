@@ -248,7 +248,8 @@
       "visibleCount": "الموظفون الظاهرون لك",
       "importAction": "استيراد الموظفين",
       "emptyHr": "لا يوجد موظفون بعد. استورد ملف الموظفين لإعداد الهيكل التنظيمي.",
-      "emptyMember": "لا يوجد أحد في تسلسلك الإداري بعد."
+      "emptyMember": "لا يوجد أحد في تسلسلك الإداري بعد.",
+      "addAction": "Add employee"
     },
     "detail": {
       "subtitle": "رقم الموظف {odooId}",
@@ -260,7 +261,9 @@
       "noDepartmentCLevel": "لا يوجد — الإدارة التنفيذية ترتبط بالكيان مباشرة",
       "noManager": "لا يوجد",
       "youCanAct": "أنت المدير المباشر لهذا الموظف، لذا التقييم والاعتماد من مسؤوليتك.",
-      "viewOnly": "للاطلاع فقط. التقييم والاعتماد من مسؤولية المدير المباشر."
+      "viewOnly": "للاطلاع فقط. التقييم والاعتماد من مسؤولية المدير المباشر.",
+      "directorate": "Directorate",
+      "team": "Team"
     },
     "org": {
       "title": "الهيكل التنظيمي",
@@ -1499,7 +1502,9 @@
       "savedToast": "حُدِّث سجل {name}",
       "failed": "تعذّر حفظ السجل.",
       "dateOfJoiningHelp": "يُحتسب §11 من هذا التاريخ — شرط الستة أشهر للاستحقاق، والمكافأة المحتسبة بالتناسب، ومدة الخدمة الفعلية بعد خصم الإجازات غير المدفوعة. ولا تُحتسب المكافأة بدونه.",
-      "lastWorkingDayHelp": "يتم توزيع المكافأة تناسبيًا من بداية الدورة إلى هذا التاريخ (§11.4)، لذلك فإن تاريخًا خاطئًا يعني خطأً في الرواتب. يظهر لأن هذا الشخص قد ترك العمل بالفعل؛ ولا يمكن مسحه ما دامت حالته «مغادر»."
+      "lastWorkingDayHelp": "يتم توزيع المكافأة تناسبيًا من بداية الدورة إلى هذا التاريخ (§11.4)، لذلك فإن تاريخًا خاطئًا يعني خطأً في الرواتب. يظهر لأن هذا الشخص قد ترك العمل بالفعل؛ ولا يمكن مسحه ما دامت حالته «مغادر».",
+      "team": "Team",
+      "noTeam": "No team"
     },
     "noDateOfJoining": "غير مُسجَّل — لا يمكن لـ §11 احتساب المكافأة قبل تعيينه",
     "notifications": {
@@ -1785,5 +1790,68 @@
     "saveFailed": "Could not save the change",
     "loadFailed": "Could not load the organisation",
     "notPermitted": "Organisation setup needs the org management permission"
+  },
+  "people": {
+    "record": {
+      "jobSection": "Job and contract",
+      "personalSection": "Personal details",
+      "personalNote": "Visible to people with the personal details permission",
+      "idSection": "ID documents",
+      "idNote": "Restricted. Numbers are encrypted at rest and never written to the audit log",
+      "idUnavailable": "ID numbers cannot be shown right now: the server's ID encryption key is missing or wrong. The rest of the record is unaffected",
+      "notOnFile": "Not on file",
+      "notSet": "Not set",
+      "jobTitle": "Job title",
+      "grade": "Grade",
+      "contractType": "Contract type",
+      "probationEndDate": "Probation ends",
+      "workLocation": "Work location",
+      "workPhone": "Work phone",
+      "personalEmail": "Personal email",
+      "personalPhone": "Personal phone",
+      "dateOfBirth": "Date of birth",
+      "gender": "Gender",
+      "nationality": "Nationality",
+      "civilIdNumber": "Civil ID number",
+      "civilIdExpiry": "Civil ID expiry",
+      "passportNumber": "Passport number",
+      "passportExpiry": "Passport expiry",
+      "contract": {
+        "PERMANENT": "Permanent",
+        "FIXED_TERM": "Fixed term",
+        "INTERN": "Intern",
+        "PART_TIME": "Part time",
+        "SECONDMENT": "Secondment"
+      },
+      "genderValue": {
+        "MALE": "Male",
+        "FEMALE": "Female"
+      },
+      "edit": "Edit details",
+      "editTitle": "Edit details",
+      "editHelp": "Job, contact, personal and ID document details. Leave a box empty to clear it",
+      "save": "Save details",
+      "saving": "Saving…",
+      "cancel": "Cancel",
+      "saved": "Details saved",
+      "saveFailed": "Could not save the details"
+    },
+    "add": {
+      "title": "Add employee",
+      "subtitle": "The same rules as the import apply: the company, department and team must already exist",
+      "identity": "Employee",
+      "placement": "Placement",
+      "details": "Details",
+      "cLevelNote": "C-Level employees belong to a company directly, with no department or team",
+      "company": "Company",
+      "team": "Team",
+      "noTeam": "No team",
+      "choose": "Choose…",
+      "changeManager": "Change",
+      "submit": "Add employee",
+      "saving": "Adding…",
+      "created": "{name} added",
+      "failed": "Could not add the employee"
+    }
   }
 }

@@ -106,6 +106,7 @@ export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeE
   const form = useZodForm(updateEmployeeSchema, { defaultValues: initial });
   const roleTrack = form.watch("roleTrack");
   const entityId = form.watch("entityId");
+  const departmentId = form.watch("departmentId");
   const isCLevel = roleTrack === "C_LEVEL";
 
   const entities = useQuery({
@@ -122,6 +123,25 @@ export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeE
       ),
     enabled: open && !isCLevel && entityId !== "",
   });
+
+  const teams = useQuery({
+    queryKey: ["org", "teams", "options", departmentId],
+    queryFn: () =>
+      apiClient.get<{ data: Array<{ id: string; name: string }> }>(
+        `/api/org/teams?pageSize=100&departmentId=${encodeURIComponent(departmentId ?? "")}`,
+      ),
+    enabled: open && !isCLevel && !!departmentId,
+  });
+
+  // A team never outlives a move out of its department (AC-F1.2).
+  useEffect(() => {
+    const current = form.getValues("teamId");
+    if (!current) return;
+    const options = teams.data?.data;
+    if (isCLevel || (options && !options.some((team) => team.id === current))) {
+      form.setValue("teamId", null, { shouldValidate: true });
+    }
+  }, [teams.data, isCLevel, form]);
 
   /*
     §1.2's two structural consequences, applied as the user types rather than
@@ -335,6 +355,36 @@ export function EmployeeEditForm({ employeeId, initial, managerName }: EmployeeE
                           {(departments.data?.data ?? []).map((d) => (
                             <option key={d.id} value={d.id}>
                               {d.name}
+                            </option>
+                          ))}
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* HR Centre F-a (AC-F1.2) — only teams of the chosen department are
+                  offered; the API and the database refuse any other. */}
+              {isCLevel || !departmentId ? null : (
+                <FormField
+                  name="teamId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("team")}</FormLabel>
+                      <FormControl>
+                        <select
+                          {...field}
+                          value={field.value ?? ""}
+                          onChange={(e) => field.onChange(e.target.value || null)}
+                          disabled={submitting || teams.isPending}
+                          className={SELECT_CLASS}
+                        >
+                          <option value="">{t("noTeam")}</option>
+                          {(teams.data?.data ?? []).map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
                             </option>
                           ))}
                         </select>

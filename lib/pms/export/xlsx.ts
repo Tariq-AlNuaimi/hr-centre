@@ -1,4 +1,5 @@
 import writeXlsxFile from "write-excel-file/node";
+import { RECORD_FIELDS, type RecordField } from "@/lib/people/record";
 import { COLUMN_TITLES, IMPORT_COLUMNS, type ImportColumn } from "../import/types";
 
 /**
@@ -25,6 +26,12 @@ import { COLUMN_TITLES, IMPORT_COLUMNS, type ImportColumn } from "../import/type
  * (entity, no department, no manager) is the single most likely thing to be got
  * wrong and the hardest to infer from a header alone.
  */
+/** F-b record columns are optional; the examples leave them blank. */
+const BLANK_RECORD = Object.fromEntries(RECORD_FIELDS.map((f) => [f, ""])) as Record<
+  RecordField,
+  string
+>;
+
 const EXAMPLE_ROWS: Array<Record<ImportColumn, string>> = [
   {
     odooId: "1001",
@@ -41,6 +48,7 @@ const EXAMPLE_ROWS: Array<Record<ImportColumn, string>> = [
     status: "Active",
     lastWorkingDay: "",
     unpaidLeaveDays: "0",
+    ...BLANK_RECORD,
   },
   {
     odooId: "1000",
@@ -57,6 +65,7 @@ const EXAMPLE_ROWS: Array<Record<ImportColumn, string>> = [
     status: "Active",
     lastWorkingDay: "",
     unpaidLeaveDays: "0",
+    ...BLANK_RECORD,
   },
 ];
 

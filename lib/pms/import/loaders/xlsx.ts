@@ -1,4 +1,5 @@
 import readXlsxFile from "read-excel-file/node";
+import { RECORD_FIELDS } from "@/lib/people/record";
 import {
   COLUMN_ALIASES,
   IMPORT_COLUMNS,
@@ -336,6 +337,7 @@ export async function loadEmployeesFromXlsx(
       department: read(row, "department"),
       directorate: readOptional(row, "directorate"),
       team: readOptional(row, "team"),
+      ...Object.fromEntries(RECORD_FIELDS.map((f) => [f, readOptional(row, f)])),
       entity: read(row, "entity"),
       managerOdooId: read(row, "managerOdooId"),
       roleTrack: read(row, "roleTrack"),

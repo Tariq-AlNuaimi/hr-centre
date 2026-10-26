@@ -193,6 +193,20 @@ enum PmsRole {
 // scoring formula (§8.3). C_LEVEL is the exception throughout: no department
 // (§1.2), no goal-setting/self-assessment/360 (§8.3), final score passed straight
 // through from the entity's corporate score.
+/// HR Centre F-b — blueprint §2.
+enum ContractType {
+  PERMANENT
+  FIXED_TERM
+  INTERN
+  PART_TIME
+  SECONDMENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum RoleTrack {
   C_LEVEL
   DIRECTOR
@@ -428,6 +442,32 @@ model Employee {
   basicSalaryEnc String? @map("basic_salary_enc")
 
   status EmployeeStatus @default(ACTIVE) // §3.3
+
+  // --- HR Centre F-b: the full employee record (blueprint §2) ----------------
+  // All optional: the import and the form fill them; Performance never reads them.
+  // Job & contract — Internal.
+  jobTitle         String?       @map("job_title")
+  grade            String?
+  contractType     ContractType? @map("contract_type")
+  probationEndDate DateTime?     @map("probation_end_date") @db.Date
+  workLocation     String?       @map("work_location")
+  // Contact — Confidential. Visible to anyone who may view the employee.
+  workPhone     String? @map("work_phone")
+  personalEmail String? @map("personal_email")
+  personalPhone String? @map("personal_phone")
+  // Personal — Confidential. Selected only with `people.viewPersonal`
+  // (lib/pms/employee-select.ts).
+  dateOfBirth DateTime? @map("date_of_birth") @db.Date
+  gender      Gender?
+  nationality String?
+  /// ID documents — RESTRICTED (SECURITY.md §1). Numbers are AES-256-GCM
+  /// envelopes bound to `odooId` under ID_ENCRYPTION_KEY (lib/people/id-documents.ts),
+  /// scrubbed from audit and exports, selected only with `people.viewIdDocuments`.
+  /// Expiry dates stay plain: they drive "expiring soon" lists.
+  civilIdNumberEnc  String?   @map("civil_id_number_enc")
+  civilIdExpiry     DateTime? @map("civil_id_expiry") @db.Date
+  passportNumberEnc String?   @map("passport_number_enc")
+  passportExpiry    DateTime? @map("passport_expiry") @db.Date
 
   // §3.3 — for leavers; used in the day-count. §11.4: a leaver pro-rates from
   // cycle start to their last working day.

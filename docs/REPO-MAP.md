@@ -23,6 +23,7 @@
 - app/[locale]/(dashboard)/org/page.tsx
 - app/[locale]/(dashboard)/page.tsx
 - app/[locale]/(dashboard)/people/[id]/page.tsx
+- app/[locale]/(dashboard)/people/new/page.tsx
 - app/[locale]/(dashboard)/people/page.tsx
 - app/[locale]/(dashboard)/recycling-bin/page.tsx
 - app/[locale]/(dashboard)/reports/page.tsx
@@ -52,8 +53,9 @@
 - app/api/cycles/[id]/stages/route.ts  [PUT]
 - app/api/cycles/route.ts  [GET,POST]
 - app/api/employees/[id]/pms-roles/route.ts  [PUT]
+- app/api/employees/[id]/record/route.ts  [PATCH]
 - app/api/employees/[id]/route.ts  [GET,PUT]
-- app/api/employees/route.ts  [GET]
+- app/api/employees/route.ts  [GET,POST]
 - app/api/health/route.ts  [GET]
 - app/api/imports/[id]/apply/route.ts  [POST]
 - app/api/imports/route.ts  [GET,POST]
@@ -124,7 +126,7 @@
 - Directorate: id, name, entityId, entity, departments, deletedAt, deletedBy, createdAt, updatedAt
 - Team: id, name, departmentId, department, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, directorateId, directorate, teams, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -163,7 +165,7 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
-- lib/crypto/field-encryption.ts: FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
+- lib/crypto/field-encryption.ts: Keyring, SALARY_KEYRING, ID_DOCUMENT_KEYRING, FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
 - lib/date-input.ts: toDateInput, startOfDay, endOfDay
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
@@ -178,6 +180,10 @@
 - lib/org/units.ts: ACTIVE_ROWS, renameCompany, createDirectorate, renameDirectorate, retireDirectorate, createOrgDepartment, updateOrgDepartment, retireOrgDepartment, plural
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
+- lib/people/id-documents.ts: IdDocumentKeyError, encryptIdNumber, readIdNumber
+- lib/people/record.ts: EmployeeRecordInput, JOB_FIELDS, CONTACT_FIELDS, PERSONAL_FIELDS, ID_DOCUMENT_FIELDS, RecordField, RECORD_FIELDS, DATE_RECORD_FIELDS, recordFieldsTouched
+- lib/people/service.ts: createEmployeeFromForm, updateEmployeeRecord
+- lib/people/write.ts: EmployeeCoreInput, recordWriteData, employeeCreateData, employeeUpdateData
 - lib/pms/actor.ts: ResolvedActor, resolveActor
 - lib/pms/bonus-report.ts: BonusRow, bonusRows, BonusTotals, bonusTotals, BONUS_EXPORT_COLUMNS
 - lib/pms/bonus.ts: DAYS_IN_YEAR, ELIGIBILITY_MONTHS, inclusiveDays, WorkDaysInput, workDays, effectiveServiceMonths, isBonusEligible, BonusResult, computeBonus
@@ -189,12 +195,13 @@
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
 - lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, DEPARTURE_REPORTS_ORDER, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture
-- lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary
+- lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
 - lib/pms/import/checks/employment.ts: checkSalary, checkDateOfJoining, checkLastWorkingDay, checkUnpaidLeave
 - lib/pms/import/checks/identity.ts: checkEmployeeId, checkNameAndEmail, checkRoleTrack, checkStatus
 - lib/pms/import/checks/placement.ts: checkPlacement, checkManager
+- lib/pms/import/checks/record.ts: checkRecord
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
 - lib/pms/import/checks/units.ts: checkUnits
 - lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_SHEETS, MAX_ROWS, ImportFileError, HeaderMap, mapHeaders, LoadResult, loadEmployeesFromXlsx
@@ -209,7 +216,7 @@
 - lib/pms/org-chart-search.ts: matchOrgChart
 - lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartDepartment, OrgChartEntity, buildOrgChart
 - lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
-- lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
+- lib/pms/permissions.ts: PmsActor, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
 - lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
 - lib/pms/score-run.ts: RatedKpi, ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
@@ -244,11 +251,12 @@
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
 - lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput, cyclePolicySchema, CyclePolicyInput
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
-- lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
+- lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
 - lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
+- lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, AddEmployeeBody, recordFromBody
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
@@ -274,6 +282,10 @@
 - components/org/OrgSetup.tsx
 - components/org/TeamsSection.tsx
 - components/org/UnitRow.tsx
+- components/people/AddEmployeeForm.tsx
+- components/people/EmployeeRecordForm.tsx
+- components/people/EmployeeRecordSections.tsx
+- components/people/RecordFields.tsx
 - components/pms/BonusReport.tsx
 - components/pms/CalibrationTargetEditor.tsx
 - components/pms/ChangeRequestComposer.tsx

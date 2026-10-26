@@ -276,3 +276,14 @@ their team → the performance cycle runs as before.
    Default: no — job and contact only.
 4. How long must ID document numbers be kept after someone leaves?
 5. Who are the platform admins besides Tariq (e.g. IT)?
+
+## Build notes (decisions taken while building, on the stated defaults)
+
+- **F-a (PR #3).** Directorates never change company (create a new one instead);
+  departments move across company/directorate in one "Place" choice, refused
+  across companies while they have people; teams move department only while
+  empty. A retired unit's name stays reserved — restore it from the recycling bin.
+  Import: a sheet with no Team column keeps the team on file unless the
+  department changed.
+- **F-b onward** — each slice records its build notes in its own slice
+  blueprint (`docs/blueprints/hr-centre-foundation-f-*.md`).
