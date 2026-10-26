@@ -13,6 +13,8 @@ export interface EmployeeRecord {
   status: string;
   managerId: string | null;
   department: { id: string; name: string } | null;
+  /** HR Centre F-a — optional team inside the department. */
+  team?: { id: string; name: string } | null;
   entity: { id: string; code: string; name: string };
   manager: { id: string; name: string; email: string } | null;
   /**
@@ -104,6 +106,11 @@ export function getEmployeeColumns({
       // §1.2 — a C-Level employee has no department, by design. An em-dash says
       // "not applicable"; an empty cell would read as missing data.
       render: (_: unknown, record: EmployeeRecord) => record.department?.name ?? "—",
+    },
+    {
+      title: t("teamColumn"),
+      key: "team",
+      render: (_: unknown, record: EmployeeRecord) => record.team?.name ?? "—",
     },
     {
       title: t("roleTrack"),

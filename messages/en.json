@@ -40,7 +40,7 @@
     "people": "People",
     "org": "Org chart",
     "employeeImport": "Employee import",
-    "orgSetup": "Org setup",
+    "orgSetup": "Organisation",
     "cycles": "Performance cycles",
     "hrRoles": "HR roles",
     "goalSetting": "Goal setting",
@@ -55,7 +55,14 @@
     "strategyScores": "Corporate & departmental scores",
     "edgeCases": "Leavers & transfers",
     "access": "Access",
-    "roles": "Roles"
+    "roles": "Roles",
+    "group": {
+      "start": "Start",
+      "people": "People",
+      "performance": "Performance",
+      "admin": "Admin"
+    },
+    "mainNav": "Main navigation"
   },
   "auth": {
     "login": "Login",
@@ -88,7 +95,8 @@
     "rolesInUse": "Roles in use",
     "usersByRole": "Users by role",
     "recentActivity": "Recent activity",
-    "welcome": "Welcome. Your tasks and the people you oversee are below."
+    "welcome": "Welcome. Your tasks and the people you oversee are below.",
+    "platformOverview": "Platform overview"
   },
   "users": {
     "title": "Users",
@@ -1725,7 +1733,8 @@
         "DRAFT": "The 360 cycle is back to draft.",
         "ACTIVE": "The 360 cycle is open again."
       }
-    }
+    },
+    "teamColumn": "Team"
   },
   "access": {
     "title": "Access",
@@ -1894,6 +1903,11 @@
       "saving": "Saving…",
       "submit": "Save and continue",
       "signOut": "Sign out"
+    },
+    "tabs": {
+      "label": "Record sections",
+      "overview": "Overview",
+      "performance": "Performance"
     }
   },
   "rbac": {
@@ -1985,5 +1999,10 @@
     "change": "Change",
     "previous": "Previous",
     "next": "Next"
+  },
+  "home": {
+    "title": "Home",
+    "subtitle": "What is waiting on you across HR Centre",
+    "greeting": "Welcome, {name}. Here is what is waiting on you"
   }
 }

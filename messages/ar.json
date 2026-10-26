@@ -40,7 +40,7 @@
     "people": "الموظفون",
     "org": "الهيكل التنظيمي",
     "employeeImport": "استيراد الموظفين",
-    "orgSetup": "إعداد الهيكل",
+    "orgSetup": "Organisation",
     "cycles": "دورات الأداء",
     "hrRoles": "أدوار الموارد البشرية",
     "goalSetting": "تحديد الأهداف",
@@ -55,7 +55,14 @@
     "strategyScores": "الدرجات المؤسسية والإدارية",
     "edgeCases": "المغادرون والانتقالات",
     "access": "الصلاحيات",
-    "roles": "Roles"
+    "roles": "Roles",
+    "group": {
+      "start": "Start",
+      "people": "People",
+      "performance": "Performance",
+      "admin": "Admin"
+    },
+    "mainNav": "Main navigation"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -88,7 +95,8 @@
     "rolesInUse": "الأدوار المستخدمة",
     "usersByRole": "المستخدمون حسب الدور",
     "recentActivity": "النشاط الأخير",
-    "welcome": "أهلاً بك. مهامك ومن تشرف عليهم في الأسفل."
+    "welcome": "أهلاً بك. مهامك ومن تشرف عليهم في الأسفل.",
+    "platformOverview": "Platform overview"
   },
   "users": {
     "title": "المستخدمون",
@@ -1725,7 +1733,8 @@
         "DRAFT": "أُرجعت دورة تقييم 360 إلى مسودة.",
         "ACTIVE": "أُعيد فتح دورة تقييم 360."
       }
-    }
+    },
+    "teamColumn": "Team"
   },
   "access": {
     "title": "الصلاحيات",
@@ -1894,6 +1903,11 @@
       "saving": "Saving…",
       "submit": "Save and continue",
       "signOut": "Sign out"
+    },
+    "tabs": {
+      "label": "Record sections",
+      "overview": "Overview",
+      "performance": "Performance"
     }
   },
   "rbac": {
@@ -1985,5 +1999,10 @@
     "change": "Change",
     "previous": "Previous",
     "next": "Next"
+  },
+  "home": {
+    "title": "Home",
+    "subtitle": "What is waiting on you across HR Centre",
+    "greeting": "Welcome, {name}. Here is what is waiting on you"
   }
 }
