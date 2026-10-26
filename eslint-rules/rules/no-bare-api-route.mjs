@@ -45,9 +45,17 @@ const AUTH_WRAPPERS = new Set(["withAuth", "withAdminAuth", "withInternalAuth", 
 //                            require an authenticated session to work.
 //   - app/api/health         Liveness probe for uptime monitoring; returns only
 //                            DB reachability, no data (SECURITY.md §2).
+//   - app/api/hive/reply/[token]/route.ts
+//                            HR tickets (HIVE ADR-070): the employee's reply
+//                            link. The TOKEN in the path is the authorisation
+//                            (one thread, hashed, 30-day, revoked on close);
+//                            rate-limited per IP and per token. EXACT file only.
+//                            (`/api/mcp` is not listed: `withApiAuth` satisfies
+//                            the rule.)
 const PUBLIC_ROUTE_PATTERNS = [
   /[\\/]app[\\/]api[\\/]auth[\\/]/,
   /[\\/]app[\\/]api[\\/]health[\\/]/,
+  /[\\/]app[\\/]api[\\/]hive[\\/]reply[\\/]\[token\][\\/]route\.ts$/,
 ];
 
 // Wrappers a real auth wrapper may legitimately be nested INSIDE. Recursing into
