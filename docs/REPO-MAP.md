@@ -23,16 +23,28 @@
 - app/[locale]/(dashboard)/hiring/candidates/[id]/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/new/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/page.tsx
+- app/[locale]/(dashboard)/hiring/evaluations/[id]/page.tsx
+- app/[locale]/(dashboard)/hiring/evaluations/new/page.tsx
+- app/[locale]/(dashboard)/hiring/evaluations/page.tsx
 - app/[locale]/(dashboard)/hiring/flow/page.tsx
 - app/[locale]/(dashboard)/hiring/import/page.tsx
+- app/[locale]/(dashboard)/hiring/interviews/[id]/page.tsx
+- app/[locale]/(dashboard)/hiring/interviews/new/page.tsx
+- app/[locale]/(dashboard)/hiring/interviews/page.tsx
 - app/[locale]/(dashboard)/hiring/library/[kind]/page.tsx
 - app/[locale]/(dashboard)/hiring/library/page.tsx
 - app/[locale]/(dashboard)/hiring/page.tsx
+- app/[locale]/(dashboard)/hiring/panel/[id]/brief/page.tsx
+- app/[locale]/(dashboard)/hiring/panel/[id]/compare/page.tsx
+- app/[locale]/(dashboard)/hiring/panel/[id]/score/page.tsx
+- app/[locale]/(dashboard)/hiring/panel/page.tsx
 - app/[locale]/(dashboard)/hiring/pipeline/page.tsx
 - app/[locale]/(dashboard)/hiring/planning/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/approval/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/assessment/page.tsx
+- app/[locale]/(dashboard)/hiring/requisitions/[id]/comparison/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/edit/page.tsx
+- app/[locale]/(dashboard)/hiring/requisitions/[id]/interviews/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/jd/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/[id]/pipeline/page.tsx
@@ -133,12 +145,27 @@
 - app/api/hiring/candidates/import/route.ts  [POST]
 - app/api/hiring/candidates/route.ts  [GET,POST]
 - app/api/hiring/directory/route.ts  [GET]
+- app/api/hiring/evaluations/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/hiring/evaluations/export/route.ts  [GET]
+- app/api/hiring/evaluations/route.ts  [GET,POST]
+- app/api/hiring/interviews/[id]/confirm/route.ts  [POST]
+- app/api/hiring/interviews/[id]/ics/route.ts  [GET]
+- app/api/hiring/interviews/[id]/panelists/route.ts  [POST,DELETE]
+- app/api/hiring/interviews/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/hiring/interviews/calendar/route.ts  [GET]
+- app/api/hiring/interviews/export/route.ts  [GET]
+- app/api/hiring/interviews/route.ts  [GET,POST]
 - app/api/hiring/library/[kind]/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/hiring/library/[kind]/route.ts  [GET,POST]
 - app/api/hiring/me/route.ts  [GET]
 - app/api/hiring/needs/[id]/notes/route.ts  [GET,POST]
 - app/api/hiring/needs/[id]/route.ts  [GET,PATCH]
 - app/api/hiring/org-options/route.ts  [GET]
+- app/api/hiring/panel/[id]/brief/route.ts  [GET]
+- app/api/hiring/panel/[id]/compare/route.ts  [GET]
+- app/api/hiring/panel/[id]/revise/route.ts  [POST]
+- app/api/hiring/panel/[id]/score/route.ts  [GET,POST]
+- app/api/hiring/panel/route.ts  [GET]
 - app/api/hiring/planning-rounds/[id]/chase/route.ts  [POST]
 - app/api/hiring/planning-rounds/[id]/needs/route.ts  [POST]
 - app/api/hiring/planning-rounds/[id]/route.ts  [GET,PATCH]
@@ -147,7 +174,9 @@
 - app/api/hiring/requests/route.ts  [POST]
 - app/api/hiring/requisitions/[id]/approval/route.ts  [GET]
 - app/api/hiring/requisitions/[id]/assessment/route.ts  [GET,POST]
+- app/api/hiring/requisitions/[id]/comparison/route.ts  [GET,POST]
 - app/api/hiring/requisitions/[id]/history/route.ts  [GET]
+- app/api/hiring/requisitions/[id]/interviews/route.ts  [GET,PUT]
 - app/api/hiring/requisitions/[id]/jd/route.ts  [GET,POST]
 - app/api/hiring/requisitions/[id]/postings/route.ts  [GET,POST,DELETE]
 - app/api/hiring/requisitions/[id]/route.ts  [GET,PUT,DELETE]
@@ -457,14 +486,22 @@
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
 - lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, isAssignedPanelist, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
+- lib/hiring/comparison.ts: FINALIST_STAGES, matrixCompetencies, loadComparison, selectPreferred, rejectFinalist, clearPreferred
+- lib/hiring/evaluations.ts: EvaluationListQuery, listEvaluations, loadEvaluation, EvaluationBody, createEvaluation, updateEvaluation
 - lib/hiring/fill-rules.ts: SEAT_OCCUPYING_STAGES, occupiesSeat, normalizeOpenings, FillState, describeFill, fillLabel, nextFillStatus, BudgetEnvelopeEntry, BudgetCheck, buildBudgetCheck
 - lib/hiring/http.ts: HiringRuleError, hiringError, hiringErrorResponse
+- lib/hiring/ics.ts: InterviewEventSource, toIcsDate, escapeIcs, foldLine, buildIcs, icsHeaders
+- lib/hiring/interview-rules.ts: CANONICAL_ROUND_ORDER, RoundKind, DEFAULT_ROUND_MINUTES, BriefInput, RoundPlanEntry, buildRoundPlan, resolveBriefForRound, interviewEndsAt, ScheduleStatusCode, scheduleStatus, roundLabel, PanelAiMode, asPanelAiMode, canReveal
+- lib/hiring/interview-views.ts: InterviewListQuery, listInterviews, calendarRows, panelAiMode, interviewDetail, carriedFocus
+- lib/hiring/interview-write.ts: InterviewInput, createInterview, InterviewUpdate, updateInterview, addPanelist, removePanelist, confirmAttendance
+- lib/hiring/interviews.ts: LoadedInterview, isPanelistOn, loadInterview, interviewReadWhere, loadRoundPlans, loadRoundPlan, replaceRoundPlan, assertPanel, setPanel, panelOf, withPanelAndRound
 - lib/hiring/jd-rules.ts: JD_SLOTS, JdActor, JdContext, canSignJd, canRequestJdChanges, canSubmitJd, signableSlots
 - lib/hiring/jd.ts: CAREERS_TAG, jdView, JdAction, applyJdAction
 - lib/hiring/library.ts: LIBRARY_LIMIT, canReadLibrary, assertCanWriteLibrary, seesLibraryPay, listLibrary, getLibraryItem, createLibraryItem, updateLibraryItem, deleteLibraryItem
 - lib/hiring/money.ts: CURRENCY_CODES, CurrencyCode, toNum, toOMR, toOMRorNull, formatMoney, formatBand
 - lib/hiring/nationalities.ts: NATIONALITIES
 - lib/hiring/notice-rules.ts: HOLD_WORKING_DAYS, computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
+- lib/hiring/panel.ts: loadMyInterview, myPanels, brief, myScorecard, ScoreBody, saveScorecard, reviseScorecard, compare
 - lib/hiring/people.ts: PersonRef, peopleById, personOrNull, isLiveUser, directory, orgNames
 - lib/hiring/planning-rules.ts: NEEDS_PER_ROUND_LIMIT, NOTES_PER_NEED_LIMIT, NeedFacts, RoundStats, hasResponded, summarizeRound, canRaiseRequisition, chaseableNeedIds, lastContact, stampsFor
 - lib/hiring/planning.ts: loadRound, listRounds, roundView, createRound, updateRound, addNeed, chaseRound, loadNeed, updateNeed, needThread, addNeedNote
@@ -478,6 +515,7 @@
 - lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
 - lib/hiring/route.ts: hiringRoute, parseBody, parseQuery
 - lib/hiring/scope.ts: requisitionSubject, requisitionScopeWhere, candidateScopeWhere, companyScope, requisitionSubjects
+- lib/hiring/scorecard-math.ts: HIRE_VOTES, HireVote, isHireVote, normalizeCompetencyKey, NormalizedScores, normalizeScores, scoreFor, ScorecardInput, PreparedScorecard, prepareScorecard, CompetencyAverage, competencyAverages, weightedOverall, Coverage, coverageOf, VerdictSummary, latestVotePerPanelist, aggregateVerdict, describeRounds, initialsOf, Divergence, voteDivergence
 - lib/hiring/screen-verdict.ts: ScreenVerdict, VerdictResult, screenVerdict, isWithinBand, yearsFromProfile, employerLine
 - lib/hiring/screening.ts: screeningView, screeningAction
 - lib/hiring/settings.ts: HIRING_SETTING_KEYS, HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
@@ -691,6 +729,7 @@
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
 - lib/validations/hiring/candidate.ts: CANDIDATE_SOURCES, GENDERS, STALL_CAUSES, DOCUMENT_KINDS, createCandidateSchema, updateCandidateSchema, CandidateInput, CandidateUpdate, candidateListQuerySchema, CandidateListQuery, boardQuerySchema, stageMoveSchema, stallCauseSchema, BULK_ID_CAP, bulkActionSchema, candidateExportQuerySchema, uploadDocumentFieldsSchema, reviewDocumentSchema, packageActionSchema, assessmentActionSchema, assessmentPolicySchema, screeningActionSchema, importCandidatesSchema
+- lib/validations/hiring/interview.ts: INTERVIEW_STATUSES, createInterviewSchema, updateInterviewSchema, interviewListQuerySchema, calendarQuerySchema, panelistSchema, confirmSchema, roundPlanSchema, panelScoreSchema, panelReviseSchema, createEvaluationSchema, updateEvaluationSchema, evaluationListQuerySchema, comparisonActionSchema
 - lib/validations/hiring/library-schemas.ts: LIBRARY_SCHEMAS, libraryKind
 - lib/validations/hiring/library.ts: competencySchema, gradeSchema, jdTemplateSchema, questionSchema, LIBRARY_KINDS, LibraryKind
 - lib/validations/hiring/planning.ts: createPlanningRoundSchema, updatePlanningRoundSchema, createNeedSchema, updateNeedSchema, createNeedNoteSchema
@@ -746,11 +785,29 @@
 - components/hiring/candidates/TimelineTab.tsx
 - components/hiring/candidates/ViewSwitch.tsx
 - components/hiring/candidates/useStageMove.tsx
+- components/hiring/evaluations/EvaluationDetail.tsx
+- components/hiring/evaluations/EvaluationForm.tsx
+- components/hiring/evaluations/EvaluationList.tsx
+- components/hiring/evaluations/EvaluationNew.tsx
 - components/hiring/flow/HiringFlow.tsx
 - components/hiring/home/HiringHome.tsx
+- components/hiring/interviews/EditInterviewDialog.tsx
+- components/hiring/interviews/InterviewDetail.tsx
+- components/hiring/interviews/InterviewForm.tsx
+- components/hiring/interviews/InterviewList.tsx
+- components/hiring/interviews/MonthCalendar.tsx
+- components/hiring/interviews/NewInterview.tsx
+- components/hiring/interviews/ScheduleList.tsx
+- components/hiring/interviews/bits.tsx
 - components/hiring/library/LibraryItemDialog.tsx
 - components/hiring/library/LibraryView.tsx
 - components/hiring/nav.tsx
+- components/hiring/panel/MyPanel.tsx
+- components/hiring/panel/PanelBrief.tsx
+- components/hiring/panel/PanelCompare.tsx
+- components/hiring/panel/PanelScore.tsx
+- components/hiring/panel/ReviseDialog.tsx
+- components/hiring/panel/ScorecardFields.tsx
 - components/hiring/pipeline/BoardDnd.tsx
 - components/hiring/pipeline/PipelineBoard.tsx
 - components/hiring/pipeline/PipelineView.tsx
@@ -763,7 +820,10 @@
 - components/hiring/requisitions/AssessmentPolicy.tsx
 - components/hiring/requisitions/AssessmentView.tsx
 - components/hiring/requisitions/AuditTrail.tsx
+- components/hiring/requisitions/BriefEditor.tsx
 - components/hiring/requisitions/CareersToggle.tsx
+- components/hiring/requisitions/ComparisonDialogs.tsx
+- components/hiring/requisitions/ComparisonView.tsx
 - components/hiring/requisitions/HiringRequestForm.tsx
 - components/hiring/requisitions/JdSignoffView.tsx
 - components/hiring/requisitions/NeedContext.tsx
@@ -772,6 +832,7 @@
 - components/hiring/requisitions/RequisitionForm.tsx
 - components/hiring/requisitions/RequisitionList.tsx
 - components/hiring/requisitions/RequisitionPipeline.tsx
+- components/hiring/requisitions/RequisitionSchedule.tsx
 - components/hiring/requisitions/RequisitionView.tsx
 - components/hiring/requisitions/ScreeningView.tsx
 - components/hiring/requisitions/StatusCard.tsx

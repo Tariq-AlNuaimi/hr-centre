@@ -102,6 +102,9 @@ export const LIVE_SEGMENTS = new Set([
   "library",
   "flow",
   "approvals",
+  "interviews",
+  "panel",
+  "evaluations",
 ]);
 
 export function useHiringNavItems(): NavItem[] {
@@ -122,6 +125,10 @@ export function useHiringNavItems(): NavItem[] {
 export function hiringActiveKey(segments: readonly string[]): string | null {
   if (segments[0] !== "hiring") return null;
   const seg = segments[1] ?? "home";
-  const parent: Record<string, string> = { planning: "requisitions", import: "candidates" };
+  const parent: Record<string, string> = {
+    planning: "requisitions",
+    import: "candidates",
+    evaluations: "interviews",
+  };
   return `hiring-${parent[seg] ?? seg}`;
 }
