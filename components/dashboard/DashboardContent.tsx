@@ -41,6 +41,8 @@ export interface DashboardData {
 interface DashboardContentProps {
   isAdmin: boolean;
   data: DashboardData | null;
+  /** HR Centre F-e — rendered under My tasks on home, so it takes a section heading. */
+  embedded?: boolean;
 }
 
 const ACTION_VARIANTS: Record<string, BadgeProps["variant"]> = {
@@ -103,7 +105,7 @@ function ShieldIcon() {
   );
 }
 
-export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
+export function DashboardContent({ isAdmin, data, embedded = false }: DashboardContentProps) {
   const t = useTranslations("nav");
   const tCommon = useTranslations("common");
   const tAudit = useTranslations("auditLog");
@@ -147,7 +149,11 @@ export function DashboardContent({ isAdmin, data }: DashboardContentProps) {
 
   return (
     <>
-      <PageHeader title={t("home")} />
+      {embedded ? (
+        <h2 className="text-lg font-semibold text-foreground">{tDash("platformOverview")}</h2>
+      ) : (
+        <PageHeader title={t("home")} />
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard

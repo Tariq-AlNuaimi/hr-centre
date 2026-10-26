@@ -304,6 +304,7 @@
 - components/people/EmployeeRecordSections.tsx
 - components/people/LoginPanel.tsx
 - components/people/RecordFields.tsx
+- components/people/RecordTabs.tsx
 - components/pms/BonusReport.tsx
 - components/pms/CalibrationTargetEditor.tsx
 - components/pms/ChangeRequestComposer.tsx

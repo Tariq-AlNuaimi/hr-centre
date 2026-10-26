@@ -12,6 +12,7 @@ import {
 import { EmployeeRecordSections } from "@/components/people/EmployeeRecordSections";
 import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
 import { LoginPanel } from "@/components/people/LoginPanel";
+import { RecordTabs, parseRecordTab } from "@/components/people/RecordTabs";
 import { recordFormValues } from "@/components/people/record-form-values";
 import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 import { placementOf } from "@/lib/rbac/resolve";
@@ -106,6 +107,34 @@ function loginPanel(actor: Actor, subject: Subject, employee: { id: string; name
   return <LoginPanel employeeId={employee.id} name={employee.name} />;
 }
 
+/**
+ * §4.5 / §11.6 — the compensation block exists only when the viewer is
+ * entitled to it. `basicSalary` is `undefined` exactly when the SELECT omitted
+ * the ciphertext column; the page reads the server's decision, not re-making it.
+ */
+function compensationCard(t: (key: string) => string, basicSalary: string | null | undefined) {
+  if (basicSalary === undefined) return null;
+  return (
+    <SectionCard title={t("detail.compensation")} subtitle={t("detail.compensationNote")}>
+      <DescriptionList
+        items={[
+          {
+            key: "basicSalary",
+            label: t("basicSalary"),
+            value:
+              basicSalary === null ? (
+                <span className="text-muted-foreground">{t("noSalaryOnFile")}</span>
+              ) : (
+                <span className="font-mono tabular-nums">{basicSalary}</span>
+              ),
+          },
+        ]}
+        columns={2}
+      />
+    </SectionCard>
+  );
+}
+
 /** HR Centre F-a — directorate and team rows, only when the org uses them. */
 function unitItems(
   directorate: { name: string } | null,
@@ -130,10 +159,13 @@ function unitItems(
  */
 export default async function EmployeeDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  searchParams: Promise<{ tab?: string | string[] }>;
 }) {
   const { locale, id } = await params;
+  const tab = parseRecordTab((await searchParams).tab);
   const session = await auth();
   if (!session) redirect(`/${locale}/login`);
 
@@ -305,71 +337,55 @@ export default async function EmployeeDetailPage({
         }
       />
 
-      <SectionCard title={t("detail.identity")}>
-        <DescriptionList items={identity} columns={2} />
-      </SectionCard>
+      {/* F-e — the record's tabs; later modules add theirs (RecordTabs). */}
+      <RecordTabs basePath={`/${locale}/people/${employee.id}`} active={tab} />
 
-      <SectionCard title={t("detail.placement")}>
-        <DescriptionList items={placement} columns={2} />
-      </SectionCard>
+      {tab === "overview" ? (
+        <>
+          <SectionCard title={t("detail.identity")}>
+            <DescriptionList items={identity} columns={2} />
+          </SectionCard>
 
-      <SectionCard title={t("detail.employment")}>
-        <DescriptionList items={employment} columns={2} />
-      </SectionCard>
+          <SectionCard title={t("detail.placement")}>
+            <DescriptionList items={placement} columns={2} />
+          </SectionCard>
 
-      <EmployeeRecordSections record={detail.record} />
+          <SectionCard title={t("detail.employment")}>
+            <DescriptionList items={employment} columns={2} />
+          </SectionCard>
 
-      {/* F-d — logins for HR role holders and line managers, for whoever holds
-          logins.manage for this person's scope (the API checks the same). */}
-      {loginPanel(actor, subject, employee)}
+          <EmployeeRecordSections record={detail.record} />
 
-      {/*
-        §4.5 / §11.6 — the compensation block exists only when the viewer is
-        entitled to it. `basicSalary` is `undefined` exactly when the SELECT
-        above omitted the ciphertext column; the page is reading the server's
-        decision, not re-making it. There is no branch here that could show the
-        figure to someone the query already excluded it for.
-      */}
-      {basicSalary !== undefined ? (
-        <SectionCard title={t("detail.compensation")} subtitle={t("detail.compensationNote")}>
-          <DescriptionList
-            items={[
-              {
-                key: "basicSalary",
-                label: t("basicSalary"),
-                value:
-                  basicSalary === null ? (
-                    <span className="text-muted-foreground">{t("noSalaryOnFile")}</span>
-                  ) : (
-                    <span className="font-mono tabular-nums">{basicSalary}</span>
-                  ),
-              },
-            ]}
-            columns={2}
-          />
-        </SectionCard>
-      ) : null}
+          {/* F-d — logins for HR role holders and line managers, for whoever holds
+            logins.manage for this person's scope (the API checks the same). */}
+          {loginPanel(actor, subject, employee)}
 
-      {/*
-        §9.8's individual 360 report, on the record §13.6 already sends HR and
-        the executive viewers to for "full drill-down on demand into any
-        individual's complete record". Gated on the same org-wide capability the
-        route itself enforces, so a manager never fires a request that will 403
-        — and never sees a placeholder hinting the figure exists.
+          {compensationCard(t, basicSalary)}
+        </>
+      ) : (
+        <>
+          {/*
+          §9.8's individual 360 report, on the record §13.6 already sends HR and
+          the executive viewers to for "full drill-down on demand into any
+          individual's complete record". Gated on the same org-wide capability the
+          route itself enforces, so a manager never fires a request that will 403
+          — and never sees a placeholder hinting the figure exists.
 
-        It deliberately does NOT go on the 360 console: that screen shows who
-        was assigned to rate whom (§9.4), and pairing that with what came back
-        is the join §13.1's anonymity exists to prevent.
-      */}
-      {actor.capabilities.orgWide ? <ThreeSixtyResultCard employeeId={employee.id} /> : null}
+          It deliberately does NOT go on the 360 console: that screen shows who
+          was assigned to rate whom (§9.4), and pairing that with what came back
+          is the join §13.1's anonymity exists to prevent.
+        */}
+          {actor.capabilities.orgWide ? <ThreeSixtyResultCard employeeId={employee.id} /> : null}
 
-      {/*
-        §4.2 — tell a viewer which side of the view/act line they are on, rather
-        than leaving them to discover it from a missing button in Phase 2.
-      */}
-      <p className="text-sm text-muted-foreground">
-        {canAct ? t("detail.youCanAct") : t("detail.viewOnly")}
-      </p>
+          {/*
+          §4.2 — tell a viewer which side of the view/act line they are on, rather
+          than leaving them to discover it from a missing button in Phase 2.
+        */}
+          <p className="text-sm text-muted-foreground">
+            {canAct ? t("detail.youCanAct") : t("detail.viewOnly")}
+          </p>
+        </>
+      )}
     </div>
   );
 }

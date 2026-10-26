@@ -31,6 +31,37 @@ import { localePrefixRegex } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 
+/**
+ * HR Centre F-e — the sidebar is grouped by MODULE (blueprint step 1: People,
+ * Performance, Admin; later modules add their group here and their keys below).
+ * Items keep their own visibility rules; this only decides where each sits. An
+ * unknown key falls into Admin, so a scaffolded entity is never lost.
+ */
+const NAV_GROUPS = ["start", "people", "performance", "admin"] as const;
+type NavGroup = (typeof NAV_GROUPS)[number];
+
+const NAV_GROUP_OF: Record<string, NavGroup> = {
+  home: "start",
+  people: "people",
+  org: "people",
+  scorecard: "performance",
+  "mid-year": "performance",
+  "year-end": "performance",
+  team: "performance",
+  "goal-setting": "performance",
+  reports: "performance",
+  executive: "performance",
+  cycles: "performance",
+  "three-sixty": "performance",
+  "strategy-scores": "performance",
+  "edge-cases": "performance",
+  calibration: "performance",
+};
+
+function groupOf(key: string): NavGroup {
+  return NAV_GROUP_OF[key] ?? "admin";
+}
+
 export function AppSidebar() {
   const t = useTranslations("nav");
   const tChrome = useTranslations("chrome");
@@ -321,27 +352,41 @@ export function AppSidebar() {
         collapsed ? "w-16" : "w-56",
       )}
     >
-      <nav className="flex flex-1 flex-col gap-1 px-2">
-        {menuItems.map((item) => {
-          const isActive = item.key === activeKey;
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2" aria-label={t("mainNav")}>
+        {NAV_GROUPS.map((group) => {
+          const items = menuItems.filter((item) => groupOf(item.key) === group);
+          if (items.length === 0) return null;
           return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={item.onClick}
-              aria-current={isActive ? "page" : undefined}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                collapsed && "justify-center",
-                isActive
-                  ? "bg-accent-subtle font-medium text-nav-active-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <span className="inline-flex shrink-0">{item.icon}</span>
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </button>
+            <div key={group} className="flex flex-col gap-1">
+              {group !== "start" && !collapsed ? (
+                <p className="mt-3 px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t(`group.${group}`)}
+                </p>
+              ) : null}
+              {group !== "start" && collapsed ? <hr className="my-2 border-border" /> : null}
+              {items.map((item) => {
+                const isActive = item.key === activeKey;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={item.onClick}
+                    aria-current={isActive ? "page" : undefined}
+                    title={collapsed ? item.label : undefined}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                      collapsed && "justify-center",
+                      isActive
+                        ? "bg-accent-subtle font-medium text-nav-active-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <span className="inline-flex shrink-0">{item.icon}</span>
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
