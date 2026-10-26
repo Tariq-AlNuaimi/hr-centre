@@ -147,3 +147,13 @@ Each slice appends its notes here.
   HR Super Admin's starter definition is pinned to the foundation modules so adding a module never
   widens it. Coverage keeps company scoping on the row (`entityId`) so routing works before HR
   loads the org into HR Centre.
+- **Slice 2.** Queue, detail, draft/submit/return/approve/retry/close, history, notifications,
+  answer-email editor and ticket settings ported from HIVE with their tests. Routes moved under
+  `/api/hive/escalations/**`; pages keep `/hive/escalations/[id]` (the notification link).
+  Notification recipients come from `usersHoldingPermission` (group/HR_PAIR holders) plus
+  OWN_HR_PAIR holders whose member link is in the pair; "opened" drops group-wide drafters (HIVE
+  quirk, kept). Transactions use `auditedTransaction` (ADR-068). Sidebar group "HR tickets":
+  Tickets (see), Ticket reports (viewReports — HIVE hid its nav from reports-only users; here
+  reports has its own entry), Ticket setup (editContent or configure). `server-only` is not a
+  dependency here, so the ported modules drop that import (the no-prisma-in-client rule holds the
+  line instead).

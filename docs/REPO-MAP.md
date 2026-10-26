@@ -19,6 +19,11 @@
 - app/[locale]/(dashboard)/executive/page.tsx
 - app/[locale]/(dashboard)/goal-setting/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/goal-setting/page.tsx
+- app/[locale]/(dashboard)/hive/email-template/page.tsx
+- app/[locale]/(dashboard)/hive/escalations/[id]/page.tsx
+- app/[locale]/(dashboard)/hive/escalations/page.tsx
+- app/[locale]/(dashboard)/hive/page.tsx
+- app/[locale]/(dashboard)/hive/settings/page.tsx
 - app/[locale]/(dashboard)/mid-year/[cycleId]/participants/[participantId]/page.tsx
 - app/[locale]/(dashboard)/mid-year/page.tsx
 - app/[locale]/(dashboard)/org/page.tsx
@@ -57,6 +62,15 @@
 - app/api/employees/[id]/route.ts  [GET,PUT]
 - app/api/employees/route.ts  [GET,POST]
 - app/api/health/route.ts  [GET]
+- app/api/hive/admin/email-templates/[key]/route.ts  [GET,PUT,DELETE]
+- app/api/hive/admin/ticket-settings/route.ts  [GET,PUT]
+- app/api/hive/escalations/[id]/approve/route.ts  [POST]
+- app/api/hive/escalations/[id]/close/route.ts  [POST]
+- app/api/hive/escalations/[id]/return/route.ts  [POST]
+- app/api/hive/escalations/[id]/route.ts  [GET,PATCH]
+- app/api/hive/escalations/[id]/submit/route.ts  [POST]
+- app/api/hive/escalations/route.ts  [GET]
+- app/api/hive/me/permissions/route.ts  [GET]
 - app/api/hive/pairs/route.ts  [GET]
 - app/api/imports/[id]/apply/route.ts  [POST]
 - app/api/imports/route.ts  [GET,POST]
@@ -237,8 +251,16 @@
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
 - lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
 - lib/hive/pair-scope.ts: registerHivePairScopes
+- lib/hive/reply-token.ts: REPLY_TOKEN_TTL_MS, issueReplyToken, replyLinkFor, resolveReplyToken, revokeReplyTokens
 - lib/hive/roles.ts: TicketStarterKey, TICKET_STARTER_ROLES
+- lib/hive/services/email-template.ts: StoredTemplate, loadTemplate, saveTemplate, resetTemplate
+- lib/hive/services/escalation-queue.ts: ticketAbilities, DraftOutcome, draftAnswer, SubmitOutcome, submitForApproval, ReturnOutcome, returnToDraft, CloseOutcome, closeEscalation
+- lib/hive/services/escalation-read.ts: QUEUE_SELECT, QueueFilter, queueWhere, listEscalations, listQueuePairs, getEscalation
+- lib/hive/services/escalation-send.ts: ApproveOutcome, renderTemplate, approveAndSend
+- lib/hive/services/escalation-transition.ts: Tx, transition, recordEvent
 - lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission
+- lib/hive/services/ticket-notify.ts: preview, composeNotification, notifyTicket
+- lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
@@ -335,6 +357,10 @@
 - lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
 - lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
+- lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema
+- lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture
+- lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
+- lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
 - lib/validations/login.ts: issueLoginSchema, changePasswordSchema, ChangePasswordBody
 - lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
@@ -351,6 +377,10 @@
 
 ## components/
 - components/dashboard/DashboardContent.tsx
+- components/hive/HiveRoleBadge.tsx
+- components/hive/escalations/StatusPill.tsx
+- components/hive/escalations/TicketActions.tsx
+- components/hive/escalations/TicketHistory.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx
 - components/layout/AppShell.tsx

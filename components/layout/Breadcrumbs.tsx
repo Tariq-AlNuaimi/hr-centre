@@ -41,6 +41,9 @@ const segmentToNavKey: Record<string, string> = {
   profile: "profile",
   "recycling-bin": "recyclingBin",
   new: "create",
+  // HR tickets (HIVE port).
+  hive: "hiveCrumb",
+  escalations: "hiveTickets",
 };
 
 // Fallback for a route segment with no nav-key mapping and no dynamic label (e.g. a
