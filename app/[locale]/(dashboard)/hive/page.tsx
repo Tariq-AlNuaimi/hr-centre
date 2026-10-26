@@ -55,6 +55,37 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
       title: t("reportsTitle"),
       description: t("reportsDescription"),
     },
+    // HR Centre (ADR-079): the reference data HIVE kept in its seed — the
+    // data Siraaj's tools answer from — gets screens, on `tickets.configure`.
+    ...(permissions?.configure
+      ? [
+          {
+            href: `/${locale}/hive/pairs`,
+            title: t("pairsTitle"),
+            description: t("pairsDescription"),
+          },
+          {
+            href: `/${locale}/hive/rotation`,
+            title: t("rotationTitle"),
+            description: t("rotationDescription"),
+          },
+          {
+            href: `/${locale}/hive/discounts`,
+            title: t("discountsTitle"),
+            description: t("discountsDescription"),
+          },
+          {
+            href: `/${locale}/hive/providers`,
+            title: t("providersTitle"),
+            description: t("providersDescription"),
+          },
+          {
+            href: `/${locale}/hive/org-details`,
+            title: t("orgTitle"),
+            description: t("orgDescription"),
+          },
+        ]
+      : []),
     // HR Centre: ticket access is given on the role builder, which only
     // platform admins manage (operator decision, ADR-079) — HIVE's Permission
     // Editor (a Manage accounts grant) is gone.

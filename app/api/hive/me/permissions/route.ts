@@ -7,7 +7,7 @@ import { getHivePermissions, roleLabelFor } from "@/lib/hive/services/permission
  *
  * This exists for the navigation, not for access control. §5.3 puts the four
  * booleans on `User` and deliberately keeps them OUT of the session (see
- * `lib/services/hive/permissions.ts` for why), which means client chrome has no
+ * `lib/hive/services/permissions.ts` for why), which means client chrome has no
  * way to know whether the person looking at it may edit content -- and a nav
  * entry that leads to a 403 is a dead control, which `docs/uat-rubric.md` makes
  * a Tier-0 failure.

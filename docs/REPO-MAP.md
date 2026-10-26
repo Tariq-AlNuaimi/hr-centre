@@ -33,10 +33,16 @@
 - app/[locale]/(dashboard)/hiring/requisitions/new/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/request/page.tsx
+- app/[locale]/(dashboard)/hive/(setup)/discounts/page.tsx
+- app/[locale]/(dashboard)/hive/(setup)/org-details/page.tsx
+- app/[locale]/(dashboard)/hive/(setup)/pairs/page.tsx
+- app/[locale]/(dashboard)/hive/(setup)/providers/page.tsx
+- app/[locale]/(dashboard)/hive/(setup)/rotation/page.tsx
 - app/[locale]/(dashboard)/hive/email-template/page.tsx
 - app/[locale]/(dashboard)/hive/escalations/[id]/page.tsx
 - app/[locale]/(dashboard)/hive/escalations/page.tsx
 - app/[locale]/(dashboard)/hive/page.tsx
+- app/[locale]/(dashboard)/hive/reports/page.tsx
 - app/[locale]/(dashboard)/hive/settings/page.tsx
 - app/[locale]/(dashboard)/jml/page.tsx
 - app/[locale]/(dashboard)/jml/settings/calendar/page.tsx
@@ -110,6 +116,12 @@
 - app/api/hiring/requisitions/export/route.ts  [GET]
 - app/api/hiring/requisitions/route.ts  [GET,POST]
 - app/api/hive/admin/email-templates/[key]/route.ts  [GET,PUT,DELETE]
+- app/api/hive/admin/org-info/route.ts  [GET,PUT]
+- app/api/hive/admin/providers/import/route.ts  [POST]
+- app/api/hive/admin/ref/[resource]/[id]/route.ts  [PATCH,DELETE]
+- app/api/hive/admin/ref/[resource]/route.ts  [GET,POST]
+- app/api/hive/admin/reports/route.ts  [GET]
+- app/api/hive/admin/rotation-config/route.ts  [GET,PUT]
 - app/api/hive/admin/ticket-settings/route.ts  [GET,PUT]
 - app/api/hive/escalations/[id]/approve/route.ts  [POST]
 - app/api/hive/escalations/[id]/close/route.ts  [POST]
@@ -365,6 +377,7 @@
 - lib/hive/mcp/siraaj.ts: SIRAAJ_URL
 - lib/hive/mcp/tools.ts: MCP_TOOL_NAMES, hiveMcpServer
 - lib/hive/pair-scope.ts: registerHivePairScopes
+- lib/hive/provider-import.ts: mapHeaders, cell, ParseResult, parseProviderSheet, firstSheetRows
 - lib/hive/reply-token.ts: REPLY_TOKEN_TTL_MS, issueReplyToken, replyLinkFor, resolveReplyToken, revokeReplyTokens
 - lib/hive/roles.ts: TicketStarterKey, TICKET_STARTER_ROLES
 - lib/hive/rotation.ts: ANCHOR, WeekType, RotationMode, Presence, weeksBetweenSundays, weekTypeFor, presenceFor, CoverageRow, matchCoverage
@@ -375,7 +388,10 @@
 - lib/hive/services/escalation-transition.ts: Tx, transition, recordEvent
 - lib/hive/services/escalation.ts: RoutingOutcome, routeEscalation, CreatedEscalation, createEscalation
 - lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission
+- lib/hive/services/reference.ts: PROVIDER_PAGE, listReference, createReference, updateReference, removeReference
 - lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
+- lib/hive/services/reports.ts: TicketReport, bucketStarts, getTicketReport
+- lib/hive/services/setup.ts: saveRotationConfig, listOrgInfo, saveOrgInfo, MAX_PROVIDER_FILE_BYTES, importProviders
 - lib/hive/services/ticket-notify.ts: preview, composeNotification, notifyTicket
 - lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
@@ -510,6 +526,7 @@
 - lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema
 - lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture
 - lib/validations/hive/mcp.ts: mcpIdentitySchema
+- lib/validations/hive/reference.ts: aliasesSchema, pairSchema, memberSchema, coverageSchema, rotationGroupSchema, rotationCoverageSchema, discountSchema, providerSchema, rotationConfigSchema, orgInfoSchema, referenceQuerySchema, REFERENCE_SCHEMAS, ReferenceResource, isReferenceResource
 - lib/validations/hive/reply.ts: replyBodySchema, replyTokenSchema
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
@@ -562,6 +579,7 @@
 - components/hiring/ui/tabs.tsx
 - components/hive/HiveLogo.tsx
 - components/hive/HiveRoleBadge.tsx
+- components/hive/admin/ReferenceManager.tsx
 - components/hive/escalations/StatusPill.tsx
 - components/hive/escalations/TicketActions.tsx
 - components/hive/escalations/TicketHistory.tsx
