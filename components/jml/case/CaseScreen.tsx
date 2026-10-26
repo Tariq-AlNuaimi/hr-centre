@@ -15,6 +15,8 @@ import { OverviewTab } from "./OverviewTab";
 import { RegisterTab } from "./RegisterTab";
 import { ApprovalsTab } from "../leavers/ApprovalsTab";
 import { ComplianceTab } from "../leavers/ComplianceTab";
+import { InterviewTab } from "../leavers/InterviewTab";
+import { SettlementTab } from "../leavers/SettlementTab";
 import type { CaseDetail } from "./types";
 
 const TABS = [
@@ -22,6 +24,8 @@ const TABS = [
   "overview",
   "approvals",
   "compliance",
+  "interview",
+  "settlement",
   "register",
   "emails",
   "activity",
@@ -32,7 +36,17 @@ type Tab = (typeof TABS)[number];
 const TABS_FOR: Record<CaseDetail["caseType"], readonly Tab[]> = {
   JOIN: ["checklist", "overview", "register", "emails", "activity"],
   MOVE: ["checklist", "overview", "emails", "activity"],
-  LEAVE: ["checklist", "overview", "approvals", "compliance", "register", "emails", "activity"],
+  LEAVE: [
+    "checklist",
+    "overview",
+    "approvals",
+    "compliance",
+    "interview",
+    "settlement",
+    "register",
+    "emails",
+    "activity",
+  ],
 };
 
 /**
@@ -105,6 +119,10 @@ export function CaseScreen({ caseId }: { caseId: string }) {
         {shown === "overview" ? <OverviewTab detail={c} /> : null}
         {shown === "approvals" ? <ApprovalsTab caseId={c.id} /> : null}
         {shown === "compliance" ? <ComplianceTab caseId={c.id} status={c.status} /> : null}
+        {shown === "interview" ? (
+          <InterviewTab caseId={c.id} exitType={c.exitType ?? ""} status={c.status} />
+        ) : null}
+        {shown === "settlement" ? <SettlementTab caseId={c.id} /> : null}
         {shown === "register" ? <RegisterTab detail={c} /> : null}
         {shown === "emails" ? <EmailsTab detail={c} /> : null}
         {shown === "activity" ? <ActivityTab detail={c} /> : null}

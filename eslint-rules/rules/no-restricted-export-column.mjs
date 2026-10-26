@@ -98,6 +98,23 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "deductionAmount",
   "deductionAmountEnc",
   "deduction_amount_enc",
+  // JML S6 (D14): the final settlement and the exit-interview narrative.
+  "figures",
+  "figuresEnc",
+  "figures_enc",
+  "lineAmount",
+  "lineAmountEnc",
+  "line_amount_enc",
+  "narrative",
+  "narrativeEnc",
+  "narrative_enc",
+  "gratuityPreSplitAmount",
+  "gratuityPostSplitAmount",
+  "leaveEncashmentAmount",
+  "outstandingSalaryAmount",
+  "grossTotalAmount",
+  "netTotalAmount",
+  "basicMonthlyWage",
 ]);
 
 // Forward-safe name pattern: a column key matching this is treated as Restricted

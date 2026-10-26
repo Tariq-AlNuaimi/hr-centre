@@ -211,3 +211,119 @@ export const accessChecklistSchema = z.object({
 export const overridesQuerySchema = z.object({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "A month like 2026-10"),
 });
+
+// --- S6: settlement, interview, closure --------------------------------------
+
+const omr = z
+  .string()
+  .trim()
+  .regex(/^\d{1,9}(\.\d{1,3})?$/, "An amount like 120 or 120.500");
+
+export const calculateSettlementSchema = z.object({
+  leaveBalanceDays: z.number().min(-365).max(365),
+  outstandingSalaryAmount: z.number().min(0).max(10_000_000).default(0),
+});
+
+export const settlementLineSchema = z
+  .object({
+    lineType: z.enum(["ADDITION", "DEDUCTION"]),
+    deductionType: z
+      .enum([
+        "VISA_COST_RECOVERY",
+        "MEDICAL_INSURANCE",
+        "NEGATIVE_LEAVE_BALANCE",
+        "NOTICE_SHORTFALL",
+        "UNRETURNED_OR_DAMAGED_ASSET",
+        "OUTSTANDING_ADVANCE_OR_LOAN",
+      ])
+      .nullable()
+      .default(null),
+    description: z.string().trim().min(2).max(300),
+    lineAmount: omr,
+    reasonCode: z.string().trim().min(1).max(60),
+    documentaryReference: z.string().trim().min(1).max(300),
+    authorisedById: id,
+    assetId: id.nullable().default(null),
+  })
+  .refine((v) => (v.lineType === "DEDUCTION") === (v.deductionType !== null), {
+    message: "A deduction names its type; an addition does not",
+    path: ["deductionType"],
+  });
+
+export const approveSettlementSchema = z.object({
+  signatureReference: z.string().trim().max(300).nullable().default(null),
+});
+
+export const paymentSchema = z.object({
+  paymentDate: isoDay,
+  paymentReference: z.string().trim().min(1).max(200),
+});
+
+export const REASON_LEVEL1 = [
+  "VOLUNTARY_ATTRACTED_AWAY",
+  "VOLUNTARY_DISSATISFACTION",
+  "VOLUNTARY_PERSONAL",
+  "INVOLUNTARY_PERFORMANCE",
+  "INVOLUNTARY_CONDUCT",
+  "INVOLUNTARY_BUSINESS",
+  "CONTRACT",
+] as const;
+
+export const interviewSchema = z.object({
+  conducted: z.enum(["CONDUCTED", "DECLINED"]),
+  primaryL1: z.enum(REASON_LEVEL1),
+  primaryL2Code: z.string().regex(/^[A-Z]{3}-\d{2}$/, "A code like VAA-01"),
+  secondaryL2Code: z
+    .string()
+    .regex(/^[A-Z]{3}-\d{2}$/)
+    .nullable()
+    .default(null),
+  narrative: z.string().max(10_000).nullable().default(null),
+  destinationType: z
+    .enum([
+      "COMPETITOR",
+      "SAME_SECTOR",
+      "OTHER_SECTOR",
+      "PUBLIC_SECTOR",
+      "OVERSEAS",
+      "STUDY",
+      "NOT_DISCLOSED",
+    ])
+    .nullable()
+    .default(null),
+  retentionAttempted: z.boolean().nullable().default(null),
+  counterOfferMade: z.boolean().nullable().default(null),
+  recommendScore: z.number().int().min(1).max(5),
+  returnScore: z.number().int().min(1).max(5),
+  interviewedAt: isoDay.nullable().default(null),
+});
+
+export const PREVENTION_FACTOR_VALUES = [
+  "COMPENSATION",
+  "CAREER_PROGRESSION",
+  "MANAGER_RELATIONSHIP",
+  "WORKLOAD_OR_BURNOUT",
+  "RECOGNITION",
+  "ROLE_CONTENT",
+  "LEARNING_AND_DEVELOPMENT",
+  "WORK_LIFE_BALANCE",
+  "ORGANISATIONAL_DIRECTION",
+  "OTHER",
+] as const;
+
+export const assessmentSchema = z.object({
+  regrettable: z.enum(["REGRETTABLE", "NON_REGRETTABLE", "NEUTRAL"]).nullable(),
+  preventable: z.enum(["PREVENTABLE", "NOT_PREVENTABLE", "UNCLEAR"]).nullable(),
+  preventionFactor: z.enum(PREVENTION_FACTOR_VALUES).nullable().default(null),
+});
+
+export const closeExitSchema = z.object({ expectedVersion: z.number().int().min(0) });
+
+export const reasonCodeSchema = z.object({
+  id: id.optional(),
+  level1: z.enum(REASON_LEVEL1),
+  code: z.string().regex(/^[A-Z]{3}-\d{2}$/, "A code like VAA-07"),
+  label: z.string().trim().min(2).max(120),
+  active: z.boolean().default(true),
+  sortOrder: z.number().int().min(0).max(1000).default(0),
+});

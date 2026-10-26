@@ -88,6 +88,7 @@
 - app/[locale]/(dashboard)/jml/settings/employee-code/page.tsx
 - app/[locale]/(dashboard)/jml/settings/employment-types/page.tsx
 - app/[locale]/(dashboard)/jml/settings/page.tsx
+- app/[locale]/(dashboard)/jml/settings/reason-codes/page.tsx
 - app/[locale]/(dashboard)/jml/settings/retention/page.tsx
 - app/[locale]/(dashboard)/jml/settings/rules/page.tsx
 - app/[locale]/(dashboard)/jml/settings/statutory/page.tsx
@@ -245,6 +246,7 @@
 - app/api/jml/config/holidays/route.ts  [GET,POST]
 - app/api/jml/config/position-classifications/[id]/route.ts  [PATCH]
 - app/api/jml/config/position-classifications/route.ts  [GET,POST]
+- app/api/jml/config/reason-codes/route.ts  [GET,PUT]
 - app/api/jml/config/retention/route.ts  [GET]
 - app/api/jml/config/rules/[id]/route.ts  [PATCH]
 - app/api/jml/config/rules/resolve/route.ts  [GET]
@@ -262,10 +264,18 @@
 - app/api/jml/leavers/[id]/approvals/[approvalId]/route.ts  [PATCH]
 - app/api/jml/leavers/[id]/approvals/route.ts  [GET,POST]
 - app/api/jml/leavers/[id]/cancel/route.ts  [POST]
+- app/api/jml/leavers/[id]/close/route.ts  [GET,POST]
 - app/api/jml/leavers/[id]/dates/route.ts  [PUT]
 - app/api/jml/leavers/[id]/gates/route.ts  [GET,PUT]
+- app/api/jml/leavers/[id]/interview/assessment/route.ts  [PUT]
+- app/api/jml/leavers/[id]/interview/route.ts  [GET,PUT]
 - app/api/jml/leavers/[id]/rekey/route.ts  [GET,POST]
 - app/api/jml/leavers/[id]/route.ts  [GET,PATCH]
+- app/api/jml/leavers/[id]/settlement/approve/route.ts  [POST]
+- app/api/jml/leavers/[id]/settlement/lines/[lineId]/route.ts  [DELETE]
+- app/api/jml/leavers/[id]/settlement/lines/route.ts  [POST]
+- app/api/jml/leavers/[id]/settlement/payment/route.ts  [POST]
+- app/api/jml/leavers/[id]/settlement/route.ts  [GET,POST]
 - app/api/jml/leavers/overrides/route.ts  [GET]
 - app/api/jml/leavers/route.ts  [POST]
 - app/api/jml/lookups/route.ts  [GET]
@@ -342,7 +352,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveGatesSatisfied, leaveGatesOverridden
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, leaveGatesSatisfied, leaveGatesOverridden
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -390,7 +400,7 @@
 - StatutoryParameter: id, key, value, effectiveFrom, effectiveTo, verified, verifiedById, verifiedBy, verifiedAt, note, createdAt, updatedAt
 - PositionClassification: id, code, label, active, sortOrder, employees, createdAt, updatedAt
 - LeaveReasonCategory: id, level1, label, active, sortOrder, codes, createdAt, updatedAt
-- LeaveReasonCode: id, categoryId, category, code, label, active, sortOrder, createdAt, updatedAt
+- LeaveReasonCode: id, categoryId, category, code, label, active, sortOrder, primaryOf, secondaryOf, createdAt, updatedAt
 - Escalation: id, ticketNumber, hrPairId, employeeName, employeeEmail, employeeId, question, source, identityVerified, status, draftAnswer, draftedById, submittedById, submittedAt, approvedById, approvedAt, sentAt, threadKey, sendError, createdAt, updatedAt, hrPair, employee, draftedBy, submittedBy, approvedBy, messages, replyTokens, events
 - EscalationEvent: id, escalationId, kind, actorId, note, at, escalation, actor
 - EscalationMessage: id, escalationId, direction, body, at, escalation
@@ -437,7 +447,7 @@
 - HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
 - HiringDepartmentNeed: id, roundId, round, departmentId, ownerId, status, rolesRequested, agreedRoles, askedAt, chasedAt, submittedAt, discussedAt, notes, requisitions, createdAt, updatedAt
 - HiringNeedNote: id, needId, need, authorId, authorName, authorRole, body, createdAt
-- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, leaveDetail, approvals, assetsIssued, assetsReturned, accessItems, gateRecords, incidents, deletedAt, deletedBy, createdAt, updatedAt
+- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, leaveDetail, interview, settlement, approvals, assetsIssued, assetsReturned, accessItems, gateRecords, incidents, deletedAt, deletedBy, createdAt, updatedAt
 - JmlTaskTemplate: id, name, version, active, caseType, changeType, criteria
 - JmlTemplateTask: id, templateId, template, code, name, stage, sortOrder, dateBasis, offsetDays, offsetUnit, mandatory, blocking, confirmationRequired, defaultConfirmingParty, reversalFlag, dependsOnCodes, statutory, complianceCategory
 - JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
@@ -453,11 +463,14 @@
 - JmlApproval: id, caseId, case, approvalType, holderRoleKey, status, requestedAt, decisionDate, reference, comments, holderEmployeeId, holderEmployee, decidedById, decidedBy, delegateUsed, secondLevelUsed, createdAt, updatedAt
 - JmlApprovalAuthority: id, approvalType, holderLabel, delegateEmployeeId, delegate, secondLevelDelegateEmployeeId, secondLevelDelegate, active, createdAt, updatedAt
 - JmlAssetType: id, label, active, sortOrder, assets, createdAt, updatedAt
-- JmlAsset: id, employeeId, employee, issuedOnCaseId, issuedOnCase, returnedOnCaseId, returnedOnCase, assetTypeId, assetType, description, identifier, issuedDate, conditionAtIssue, returnDueDate, returnedDate, conditionAtReturn, deductionApplicable, deductionAmountEnc, writtenOff, writtenOffReason, verifiedById, verifiedBy, createdAt, updatedAt
+- JmlAsset: id, employeeId, employee, issuedOnCaseId, issuedOnCase, returnedOnCaseId, returnedOnCase, assetTypeId, assetType, description, identifier, issuedDate, conditionAtIssue, returnDueDate, returnedDate, conditionAtReturn, deductionApplicable, deductionAmountEnc, writtenOff, writtenOffReason, verifiedById, verifiedBy, settlementLines, createdAt, updatedAt
 - JmlAccessChecklistItem: id, domain, label, rotationRequired, sharedCredential, active, sortOrder, createdAt, updatedAt
 - JmlAccessItem: id, caseId, case, employeeId, employee, direction, domain, systemName, accessLevel, sharedCredential, rotationRequired, dueDate, confirmedDate, confirmingParty, reference, confirmedById, confirmedBy, createdAt, updatedAt
 - LeaveGateRecord: id, caseId, case, gateId, satisfied, satisfiedAt, satisfiedById, satisfiedBy, reference, overriddenById, overriddenBy, overrideReason, overriddenAt, createdAt, updatedAt
 - LeaveComplianceIncident: id, caseId, case, kind, gateId, detectedAt, deadlineAt, daysLate, resolvedAt, note, createdAt, updatedAt
+- LeaveExitInterview: caseId, case, conducted, primaryL1, primaryL2Code, primaryCode, secondaryL2Code, secondaryCode, narrativeEnc, destinationType, retentionAttempted, counterOfferMade, recommendScore, returnScore, interviewedAt, interviewerId, interviewer, regrettable, preventable, preventionFactor, assessorId, assessor, assessedAt, createdAt, updatedAt
+- LeaveSettlement: caseId, case, figuresEnc, provisional, unverifiedKeys, hireDate, calculatedAt, calculatedById, calculatedBy, recalculationRequired, signatureReference, approvedAt, approvedById, approvedBy, paymentDate, paymentReference, paymentConfirmedAt, paymentConfirmedById, paymentConfirmedBy, lines, createdAt, updatedAt
+- LeaveSettlementLine: id, caseId, settlement, lineType, deductionType, description, lineAmountEnc, reasonCode, documentaryReference, authorisedById, authorisedBy, assetId, asset, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -600,19 +613,27 @@
 - lib/jml/leave/approvals.ts: listApprovals, requestApproval, decideApproval
 - lib/jml/leave/authority.ts: listAuthorities, saveAuthority
 - lib/jml/leave/cancel.ts: cancelLeave, restoreLogin
+- lib/jml/leave/closure.ts: closurePreview, closeLeave
 - lib/jml/leave/compliance.ts: COMPLIANCE_GATES, GateId, GATE_IDS, isGateId, ComplianceProfile, applicableGates, GateRecordLike, checkClosureGates, gateDataProblem, INCIDENT_KINDS, IncidentKind, daysLate, DetectedIncident, detectIncidents
-- lib/jml/leave/config.ts: listAssetTypes, saveAssetType, listAccessChecklist, saveAccessChecklistItem
+- lib/jml/leave/config.ts: listAssetTypes, saveAssetType, listAccessChecklist, saveAccessChecklistItem, listReasonCodes, saveReasonCode
 - lib/jml/leave/dates.ts: changeExitDates
+- lib/jml/leave/departure.ts: revokeLeaverLogin, applyLeaverDeparture, departureMilestones
 - lib/jml/leave/draft.ts: createExitDraft, refreshSnapshots, updateExit
 - lib/jml/leave/gates.ts: listGates, recordGate, overridesForMonth
+- lib/jml/leave/gratuity.ts: money, GratuityUnavailableError, SUMMARY_DISMISSAL_UNCONFIGURED, GratuityInput, GratuityResult, computeGratuity, LeaveResult, computeLeave, DEDUCTION_TYPES, DeductionTypeKey, SettlementLineInput, settlementLineProblems, visaCostRecoveryApplies, serviceMonths, settlementTotals
 - lib/jml/leave/health.ts: ESCALATION_WORKING_DAYS, STATUTORY_WATCH_WORKING_DAYS, HealthInput, leaveRag, leaveHealth
+- lib/jml/leave/interview-rules.ts: TaxonomyCode, InterviewCapture, Blocker, checkInterviewCapture, checkAssessment, reasonsChanged
+- lib/jml/leave/interview.ts: activeTaxonomy, getInterview, InterviewInput, saveInterview, assessInterview
 - lib/jml/leave/leave-data.ts: LEAVE_SELECT, LeaveRow, LeaveDetail, loadLeaveRow, leaveAnchors, revocationAnchor
 - lib/jml/leave/notices.ts: caseRecipients, noticeToOwners
 - lib/jml/leave/read.ts: getExit, ExitView
 - lib/jml/leave/rekey-rules.ts: REKEY_MAX_BACKDATE_DAYS, rekeyEligibility, Disposition, dispositionProblems, dueBeforeToday
 - lib/jml/leave/rekey.ts: rekeyPlan, applyRekey
 - lib/jml/leave/rules.ts: DEFAULT_NOTICE_DAYS, DOCUMENTED_EXIT_TYPES, DateFacts, Problem, dateProblems, nationalityBranch, describeRefusal
-- lib/jml/leave/sweep-steps.ts: leaveHealthRefresh, leaveDailyNotices, incidentScan
+- lib/jml/leave/settlement-actions.ts: addSettlementLine, removeSettlementLine, approveSettlement, confirmPayment, settlementClosureProblems
+- lib/jml/leave/settlement-rules.ts: Gate, AssetSnapshot, canTransmitSettlement, canApproveSettlement, canCloseSettlement, paymentDeadline
+- lib/jml/leave/settlement.ts: Figures, statutoryRows, loadContext, getSettlement, calculateSettlement
+- lib/jml/leave/sweep-steps.ts: leaveHealthRefresh, leaveDailyNotices, incidentScan, leaveDepartures
 - lib/jml/money/crypto.ts: sealMoney, openMoney
 - lib/jml/move/apply.ts: applyMove
 - lib/jml/move/create.ts: createMove
@@ -745,7 +766,7 @@
 - lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, employeeCodeRecordSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
 - lib/validations/jml/joiner.ts: ROLE_TRACKS, draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, openJoinCaseSchema, OpenJoinCaseInput
-- lib/validations/jml/leave.ts: EXIT_TYPES, EXIT_SUBTYPES, NATIONALITY_BRANCHES, APPROVAL_TYPE_VALUES, ACCESS_DOMAIN_VALUES, createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, stageAdvanceSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema
+- lib/validations/jml/leave.ts: EXIT_TYPES, EXIT_SUBTYPES, NATIONALITY_BRANCHES, APPROVAL_TYPE_VALUES, ACCESS_DOMAIN_VALUES, createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, stageAdvanceSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, REASON_LEVEL1, interviewSchema, PREVENTION_FACTOR_VALUES, assessmentSchema, closeExitSchema, reasonCodeSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters
 - lib/validations/jml/task.ts: TASK_STATUS_VALUES, updateTaskSchema, manualTaskSchema, commentSchema
@@ -875,6 +896,7 @@
 - components/jml/joiners/JoinerList.tsx
 - components/jml/joiners/JoinerMoreFields.tsx
 - components/jml/leavers/ApprovalsTab.tsx
+- components/jml/leavers/CloseExit.tsx
 - components/jml/leavers/ComplianceTab.tsx
 - components/jml/leavers/ExitActivation.tsx
 - components/jml/leavers/ExitDateFields.tsx
@@ -882,7 +904,11 @@
 - components/jml/leavers/ExitDetailsDialog.tsx
 - components/jml/leavers/ExitOverview.tsx
 - components/jml/leavers/ExitStart.tsx
+- components/jml/leavers/InterviewAssessment.tsx
+- components/jml/leavers/InterviewTab.tsx
 - components/jml/leavers/LeaverList.tsx
+- components/jml/leavers/SettlementLineDialog.tsx
+- components/jml/leavers/SettlementTab.tsx
 - components/jml/leavers/WithdrawExit.tsx
 - components/jml/movers/MoveSummary.tsx
 - components/jml/movers/MoverForm.tsx
@@ -899,6 +925,7 @@
 - components/jml/settings/EmployeeCodeSettings.tsx
 - components/jml/settings/EmploymentTypesSettings.tsx
 - components/jml/settings/LeaverListsSettings.tsx
+- components/jml/settings/ReasonCodesSettings.tsx
 - components/jml/settings/RetentionSettings.tsx
 - components/jml/settings/RuleForm.tsx
 - components/jml/settings/RulesSettings.tsx
