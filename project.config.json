@@ -14,6 +14,17 @@
   },
   "$comment_velocityBaselines": "Velocity-pillar warm baselines (V2-103). shipWarmSeconds: /ship warns when total > 125% (a warm cached build; cold/--full builds legitimately exceed). hookChainMs: UserPromptSubmit+PreToolUse chain, warns > 150% (npm run hook-latency --record to refresh on a representative machine). All three velocity checks are advisory/fail-open.",
   "copy": {
-    "properNouns": ["Tag", "Siraaj", "Siraaj's"]
+    "properNouns": [
+      "Tag",
+      "Siraaj",
+      "Siraaj's",
+      "Excel",
+      "Omanisation",
+      "Omanization",
+      "Tawteen",
+      "LinkedIn",
+      "Outlook",
+      "Omani"
+    ]
   }
 }
