@@ -31,6 +31,14 @@ export type CaseDetail = {
     itIntakeReference: string | null;
     itIntakeError: string | null;
   } | null;
+  moveDetail: {
+    changeType: string;
+    effectiveDate: string;
+    previousDetails: Record<string, { value: string | null; label: string | null }>;
+    newDetails: Record<string, { value: string | null; label: string | null }>;
+    appliedAt: string | null;
+    applyNote: string | null;
+  } | null;
   employee: {
     id: string;
     odooId: string | null;

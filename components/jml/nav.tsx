@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {
+  ArrowLeftRight,
   BarChart3,
   CalendarDays,
   ClipboardList,
@@ -30,6 +31,13 @@ export function jmlNavItems(can: (permission: string) => boolean): JmlNavItem[] 
       href: "/jml/joiners",
       icon: <UserPlus className="h-4 w-4" />,
       show: can("jml.manageJoiners"),
+    },
+    {
+      key: "jml-movers",
+      labelKey: "jmlMovers",
+      href: "/jml/movers",
+      icon: <ArrowLeftRight className="h-4 w-4" />,
+      show: can("jml.manageMovers"),
     },
     {
       key: "jml-calendar",

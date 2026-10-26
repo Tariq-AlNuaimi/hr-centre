@@ -3587,6 +3587,8 @@ model JmlCase {
   emailLogs  JmlEmailLog[]
   /// JML S3 — the joiner details of a JOIN case.
   joinDetail JmlJoinDetail?
+  /// JML S4 — the change of a MOVE case.
+  moveDetail JmlMoveDetail?
 
   /// Soft delete — a discarded DRAFT only. Archive is a status, never a delete.
   deletedAt DateTime? @map("deleted_at")
@@ -3878,4 +3880,30 @@ model JmlJoinDetail {
 
   @@index([plannedStartDate])
   @@map("jml_join_details")
+}
+
+/// JML S4 — what a MOVE case changes (HR Onboarding INTERNAL_CHANGE, R1–R10).
+/// The new details are APPLIED to the employee when the case completes (D9),
+/// not when it opens — so cancelling needs no revert. Salary is never part of a
+/// change (R10).
+model JmlMoveDetail {
+  caseId String  @id @map("case_id")
+  case   JmlCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  changeType    JmlChangeType @map("change_type")
+  effectiveDate DateTime      @map("effective_date") @db.Date
+
+  /// `{field: {value, label}}` of the changed fields only, labels resolved at creation.
+  previousDetails Json @map("previous_details")
+  newDetails      Json @map("new_details")
+
+  /// When the change reached the employee record, and how (e.g. the performance-year split).
+  appliedAt DateTime? @map("applied_at")
+  applyNote String?   @map("apply_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([effectiveDate])
+  @@map("jml_move_details")
 }

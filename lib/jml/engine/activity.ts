@@ -19,7 +19,7 @@ export async function caseActivity(actor: JmlActor, caseId: string) {
   const rows = await prisma.auditLog.findMany({
     where: {
       OR: [
-        { entityType: { in: ["JmlCase", "JmlJoinDetail"] }, entityId: caseId },
+        { entityType: { in: ["JmlCase", "JmlJoinDetail", "JmlMoveDetail"] }, entityId: caseId },
         { entityType: "JmlTask", entityId: { in: tasks.map((t) => t.id) } },
       ],
     },

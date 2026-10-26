@@ -77,7 +77,8 @@
     "jmlJoiners": "Joiners",
     "jmlCalendar": "Joining calendar",
     "jmlStatutory": "Statutory watch",
-    "jmlReports": "Reports"
+    "jmlReports": "Reports",
+    "jmlMovers": "Movers"
   },
   "auth": {
     "login": "Login",
@@ -3296,7 +3297,8 @@
         "entity": {
           "JmlCase": "the case",
           "JmlJoinDetail": "the joiner details",
-          "JmlTask": "a task"
+          "JmlTask": "a task",
+          "JmlMoveDetail": "the change details"
         }
       }
     },
@@ -3438,6 +3440,66 @@
           "title": "All companies",
           "note": "Onboarding totals per company."
         }
+      }
+    },
+    "movers": {
+      "title": "Movers",
+      "subtitle": "Internal changes — applied to the employee record when their checklist completes.",
+      "startTitle": "Start an internal change",
+      "startSubtitle": "Choose the employee, the kind of change and its effective date.",
+      "whoTitle": "Employee",
+      "employee": "Find the employee",
+      "changeEmployee": "Choose someone else",
+      "none": "—",
+      "currentTitle": "Current details",
+      "employeeCode": "Employee code",
+      "recordCode": "Record their employee code",
+      "save": "Save",
+      "codeRecorded": "Employee code recorded",
+      "codeFailed": "The employee code could not be recorded.",
+      "field": {
+        "entityId": "Company",
+        "departmentId": "Department",
+        "teamId": "Team",
+        "jobTitle": "Job title",
+        "employmentType": "Employment type",
+        "contractTypeId": "Contract type",
+        "workLocation": "Work location",
+        "managerId": "Line manager"
+      },
+      "openMove": "An internal change is already in progress ({ref}).",
+      "openCase": "Open it",
+      "cannotStart": "You cannot start internal changes for this employee.",
+      "historyTitle": "Change history",
+      "noHistory": "No internal changes yet.",
+      "effective": "effective {date}",
+      "changeType": {
+        "INTERNSHIP_TO_TRAINING": "Internship to training",
+        "INTERNSHIP_TO_EMPLOYMENT": "Internship to employment",
+        "TRAINING_TO_EMPLOYMENT": "Training to employment",
+        "DEPARTMENT_TRANSFER": "Department transfer"
+      },
+      "changeHint": {
+        "INTERNSHIP_TO_TRAINING": "For a current intern; makes them a trainee.",
+        "INTERNSHIP_TO_EMPLOYMENT": "For a current intern; choose the new employment type.",
+        "TRAINING_TO_EMPLOYMENT": "For a current trainee; choose the new employment type.",
+        "DEPARTMENT_TRANSFER": "Moves the employee to another department; the employment type is kept."
+      },
+      "formTitle": "The change",
+      "formNote": "Pre-filled with today's details — change only what moves. Salary is never part of a change.",
+      "changeTypeLabel": "Kind of change",
+      "effectiveDate": "Effective date",
+      "newManager": "Change the line manager",
+      "start": "Start the change",
+      "started": "Internal change started",
+      "failed": "The change could not be started.",
+      "summaryTitle": "{type}",
+      "applied": "Applied on {date}. {note}",
+      "notApplied": "Effective {date}. The record changes when this checklist completes.",
+      "col": {
+        "field": "Field",
+        "previous": "Before",
+        "new": "After"
       }
     }
   },

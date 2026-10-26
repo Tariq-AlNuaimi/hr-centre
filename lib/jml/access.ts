@@ -133,12 +133,39 @@ export async function loadCaseFor(
   if (!row || (expectType && row.caseType !== expectType)) {
     throw new JmlError("Case not found", 404);
   }
-  const subject = subjectOf(row.employee);
+  let subject = subjectOf(row.employee);
+  if (!canFor(actor, "jml.view", subject) && row.caseType === "MOVE") {
+    // A mover's case is also visible from the position they are moving INTO —
+    // its owner is resolved there (Onboarding R7), before the change applies.
+    subject = (await movingInto(row.id)) ?? subject;
+  }
   if (!canFor(actor, "jml.view", subject)) throw new JmlError("Case not found", 404);
   if (!canFor(actor, permission, subject)) {
     throw new JmlError("You do not have permission to do that on this case.", 403);
   }
   return { ...row, subject };
+}
+
+/** The placement an open internal change moves the employee into, if it moves them. */
+async function movingInto(caseId: string): Promise<ScopeSubject | null> {
+  const detail = await prisma.jmlMoveDetail.findUnique({
+    where: { caseId },
+    select: { newDetails: true, appliedAt: true },
+  });
+  if (!detail || detail.appliedAt) return null;
+  const next = detail.newDetails as Record<string, { value: string | null } | undefined>;
+  const departmentId = next.departmentId?.value ?? null;
+  const entityId = next.entityId?.value ?? null;
+  if (!departmentId && !entityId) return null;
+  const dept = departmentId
+    ? await prisma.department.findUnique({
+        where: { id: departmentId },
+        select: { entityId: true, directorateId: true },
+      })
+    : null;
+  const resolvedEntity = dept?.entityId ?? entityId;
+  if (!resolvedEntity) return null;
+  return { entityId: resolvedEntity, departmentId, directorateId: dept?.directorateId ?? null };
 }
 
 /** Which "manage" permission a case type needs. */

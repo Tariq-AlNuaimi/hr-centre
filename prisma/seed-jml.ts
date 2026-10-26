@@ -5,7 +5,11 @@ import {
   LEVEL_1_LABELS,
   STATUTORY_SEED,
 } from "./seed-jml-data";
-import { STARTER_JOIN_TEMPLATE, seedTemplateOnce } from "./seed-jml-templates";
+import {
+  STARTER_JOIN_TEMPLATE,
+  STARTER_MOVE_TEMPLATES,
+  seedTemplateOnce,
+} from "./seed-jml-templates";
 
 /**
  * The JML module's production seed (docs/blueprints/jml.md, PROTOCOL: real
@@ -18,6 +22,7 @@ export async function seedJml(prisma: PrismaClient): Promise<void> {
   await seedStatutoryParameters(prisma);
   await seedReasonTaxonomy(prisma);
   await seedTemplateOnce(prisma, STARTER_JOIN_TEMPLATE);
+  for (const tpl of STARTER_MOVE_TEMPLATES) await seedTemplateOnce(prisma, tpl);
 }
 
 async function seedStatutoryParameters(prisma: PrismaClient): Promise<void> {

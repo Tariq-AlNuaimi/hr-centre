@@ -50,6 +50,8 @@
 - app/[locale]/(dashboard)/jml/joiners/[id]/page.tsx
 - app/[locale]/(dashboard)/jml/joiners/new/page.tsx
 - app/[locale]/(dashboard)/jml/joiners/page.tsx
+- app/[locale]/(dashboard)/jml/movers/new/page.tsx
+- app/[locale]/(dashboard)/jml/movers/page.tsx
 - app/[locale]/(dashboard)/jml/page.tsx
 - app/[locale]/(dashboard)/jml/reports/[slug]/page.tsx
 - app/[locale]/(dashboard)/jml/reports/page.tsx
@@ -192,6 +194,9 @@
 - app/api/jml/joiners/route.ts  [GET,POST]
 - app/api/jml/lookups/route.ts  [GET]
 - app/api/jml/me/route.ts  [GET]
+- app/api/jml/movers/profile/route.ts  [GET]
+- app/api/jml/movers/route.ts  [POST]
+- app/api/jml/people/[id]/employee-code/route.ts  [POST]
 - app/api/jml/reports/[slug]/export/route.ts  [GET]
 - app/api/jml/reports/[slug]/route.ts  [GET]
 - app/api/jml/search/route.ts  [GET]
@@ -356,7 +361,7 @@
 - HiringPlanningRound: id, entityId, label, status, openedAt, closedAt, createdById, needs, createdAt, updatedAt
 - HiringDepartmentNeed: id, roundId, round, departmentId, ownerId, status, rolesRequested, agreedRoles, askedAt, chasedAt, submittedAt, discussedAt, notes, requisitions, createdAt, updatedAt
 - HiringNeedNote: id, needId, need, authorId, authorName, authorRole, body, createdAt
-- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, deletedAt, deletedBy, createdAt, updatedAt
+- JmlCase: id, caseRef, caseType, status, stage, employeeId, employee, hrOwnerUserId, hrOwner, seniorHrUserId, seniorHr, templateId, template, completionPct, ragFlag, version, activatedAt, completedAt, closedAt, cancelledAt, cancelReason, duplicateOverrideReason, archivedAt, archivedById, archivedBy, lastUpdatedById, lastUpdatedBy, legalHold, legalHoldReason, legalHoldAt, legalHoldById, legalHoldBy, anonymisedAt, tasks, emailLogs, joinDetail, moveDetail, deletedAt, deletedBy, createdAt, updatedAt
 - JmlTaskTemplate: id, name, version, active, caseType, changeType, criteria
 - JmlTemplateTask: id, templateId, template, code, name, stage, sortOrder, dateBasis, offsetDays, offsetUnit, mandatory, blocking, confirmationRequired, defaultConfirmingParty, reversalFlag, dependsOnCodes, statutory, complianceCategory
 - JmlTask: id, caseId, case, code, name, stage, sortOrder, source, status, dateBasis, offsetDays, offsetUnit, dueDate, dueDateOverrideReason, ownerUserId, owner, mandatory, blocking, confirmationRequired, confirmingParty, confirmationDate, externalReference, reversalFlag, isReversal, reversalOfId, reversalOf, reversedBy, dependsOnCodes, notApplicableReason, delayReason, statutory, complianceCategory, complianceDeadline, conditionSource, lastReminderAt, completedAt, completedById, completedBy, version, comments, createdAt, updatedAt
@@ -367,6 +372,7 @@
 - JmlEmailLog: id, type, recipient, cc, subject, status, scheduledFor, sentAt, failureReason, caseId, case, sentById, sentBy, resendOfId, resendOf, resends, createdAt, updatedAt
 - JmlEmailTemplateOverride: id, type, subject, body, ccRecipients, updatedById, updatedBy, createdAt, updatedAt
 - JmlJoinDetail: caseId, case, contractTypeId, contractType, plannedStartDate, actualStartDate, contractStartDate, contractEndDate, probationMonths, payrollApplicable, clientAssignedRole, introSentence, hobbies, msAccountRequired, laptopRequired, accessCardRequired, itReadinessConfirmed, itReadinessAt, itReadinessById, itReadinessBy, itIntakeSubmittedAt, itIntakeReference, itIntakeError, sourceRef, createdAt, updatedAt
+- JmlMoveDetail: caseId, case, changeType, effectiveDate
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -478,6 +484,10 @@
 - lib/jml/join/sweep-steps.ts: itReadinessReminders, overdueDigests
 - lib/jml/join/triggers.ts: onActivated, notifyProIfVisaRequired, onActualStartEntered, onStartDateChanged
 - lib/jml/join/update.ts: updateJoiner
+- lib/jml/move/apply.ts: applyMove
+- lib/jml/move/create.ts: createMove
+- lib/jml/move/profile.ts: MOVE_EMPLOYEE_SELECT, MoveEmployee, detailsOf, loadMoveEmployee, labelsFor, Snapshot, snapshots, moveProfile
+- lib/jml/move/rules.ts: CHANGE_FIELDS, ChangeField, EmployeeDetails, ChangeDetailsInput, overlayDetails, changeRefusal, applyChangeRules, changedFields
 - lib/jml/reports/join-aggregate.ts: hrWorkload, volumeTrend, allCompanies
 - lib/jml/reports/join-base.ts: ReportRow, ReportColumn, ReportContext, ReportDefinition, ROW_LIMIT, col, monthRange, joinWhere, CASE_SELECT, caseRow, runCaseReport, CASE_IDENTITY, goLiveDate
 - lib/jml/reports/join-cases.ts: monthlyOnboarding, onboardingCompletion, delayedTasks, upcomingJoiners, completedOnboardings
@@ -557,6 +567,7 @@
 - lib/pms/three-sixty-raters.ts: THREE_SIXTY_CANDIDATE_SELECT, ThreeSixtyCandidate, raterEligibilityRefusal
 - lib/pms/three-sixty-scale.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, isAnswerScore
 - lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, MIN_FORMS_FOR_COMMENTS, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
+- lib/pms/transfer-apply.ts: TransferEmployee, TransferSplitInput, splitAndMove, TransferPlan, transferPlan
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
 - lib/pms/year-end-select.ts: YEAR_END_KPI_SELECT, YEAR_END_KPI_ORDER, SerializedYearEndKpi, serializeYearEndKpis
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
@@ -599,6 +610,7 @@
 - lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, employeeCodeRecordSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
 - lib/validations/jml/joiner.ts: ROLE_TRACKS, draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, openJoinCaseSchema, OpenJoinCaseInput
+- lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters
 - lib/validations/jml/task.ts: TASK_STATUS_VALUES, updateTaskSchema, manualTaskSchema, commentSchema
 - lib/validations/jml/template.ts: CASE_TYPES, CHANGE_TYPES, STAGES, DATE_BASES, OFFSET_UNITS, COMPLIANCE_CATEGORIES, EXIT_TYPES, NATIONALITY_SCOPES, EMPLOYMENT_SCOPES, conditionsSchema, criteriaSchema, templateTaskSchema, templateShapeProblem, createTemplateSchema, updateTemplateSchema, CreateTemplateInput, UpdateTemplateInput, TemplateTaskInput
@@ -673,6 +685,10 @@
 - components/jml/joiners/JoinerForm.tsx
 - components/jml/joiners/JoinerList.tsx
 - components/jml/joiners/JoinerMoreFields.tsx
+- components/jml/movers/MoveSummary.tsx
+- components/jml/movers/MoverForm.tsx
+- components/jml/movers/MoverList.tsx
+- components/jml/movers/MoverStart.tsx
 - components/jml/nav.tsx
 - components/jml/reports/ReportScreen.tsx
 - components/jml/reports/ReportsIndex.tsx

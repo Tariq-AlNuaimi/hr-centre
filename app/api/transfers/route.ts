@@ -2,10 +2,10 @@ import { NextRequest } from "next/server";
 import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { recordAudit } from "@/lib/prisma/audit-extension";
 import { resolveActor } from "@/lib/pms/actor";
 import { isHr } from "@/lib/pms/permissions";
 import { periodDays, periodWeight, splitWindows } from "@/lib/pms/transfer";
+import { splitAndMove } from "@/lib/pms/transfer-apply";
 import { recordTransferSchema } from "@/lib/validations/edge-cases";
 
 /**
@@ -146,78 +146,19 @@ export const POST = withRateLimit(
       );
     }
 
-    const result = await auditedTransaction(async (tx) => {
-      const before = await tx.employeeAssignmentPeriod.create({
-        data: {
-          employeeId,
-          cycleId,
-          departmentId: employee.departmentId,
-          entityId: employee.entityId,
-          managerEmployeeId: employee.managerId,
-          startsOn: windows.before.startsOn,
-          endsOn: windows.before.endsOn,
-          orderIndex: 0,
-        },
-        select: { id: true },
-      });
-      const after = await tx.employeeAssignmentPeriod.create({
-        data: {
-          employeeId,
-          cycleId,
-          departmentId: newDepartmentId,
-          entityId: newEntityId,
-          // `undefined` means "the line is unchanged", so period 2 keeps the
-          // current manager. An explicit `null` means "no manager yet" and must
-          // carry through — `?? employee.managerId` would silently record the
-          // OLD manager as owning the new half while the employee's own line was
-          // being cleared, which is the one combination §12.3 cannot express.
-          managerEmployeeId:
-            newManagerEmployeeId === undefined ? employee.managerId : newManagerEmployeeId,
-          startsOn: windows.after.startsOn,
-          endsOn: windows.after.endsOn,
-          orderIndex: 1,
-        },
-        select: { id: true },
-      });
-
-      // Every KPI drafted so far belongs to the OLD period — it was written by
-      // the old manager against the old department's objectives.
-      // eslint-disable-next-line rihal-template/no-unaudited-bulk-write -- one-shot attach; recordAudit() below
-      const attached = await tx.kpi.updateMany({
-        where: { participantId: participant.id, deletedAt: null, assignmentPeriodId: null },
-        data: { assignmentPeriodId: before.id },
-      });
-
-      await tx.employee.update({
-        where: { id: employeeId },
-        data: {
-          departmentId: newDepartmentId,
-          entityId: newEntityId,
-          ...(newManagerEmployeeId !== undefined ? { managerId: newManagerEmployeeId } : {}),
-        },
-      });
-
-      await recordAudit(tx, {
-        entityType: "Employee",
-        entityId: employeeId,
-        action: "UPDATE",
-        before: {
-          departmentId: employee.departmentId,
-          entityId: employee.entityId,
-          managerId: employee.managerId,
-        },
-        after: {
-          departmentId: newDepartmentId,
-          entityId: newEntityId,
-          managerId: newManagerEmployeeId === undefined ? employee.managerId : newManagerEmployeeId,
-          transferDate,
-          cycleId,
-          kpisAttachedToOldPeriod: attached.count,
-        },
-      });
-
-      return { beforeId: before.id, afterId: after.id, attached: attached.count };
-    });
+    // The split itself is shared with the JML mover (lib/pms/transfer-apply.ts).
+    const result = await auditedTransaction((tx) =>
+      splitAndMove(tx, {
+        employee,
+        cycleId,
+        participantId: participant.id,
+        windows,
+        transferDate,
+        newDepartmentId,
+        newEntityId,
+        newManagerEmployeeId,
+      }),
+    );
 
     return ok({
       employeeId,
