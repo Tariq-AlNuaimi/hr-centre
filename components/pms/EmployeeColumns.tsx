@@ -42,6 +42,7 @@ const trackTone: Record<string, BadgeProps["variant"]> = {
 const statusTone: Record<string, BadgeProps["variant"]> = {
   ACTIVE: "success",
   LEAVER: "warning",
+  PRE_JOINER: "info",
 };
 
 export function getEmployeeColumns({

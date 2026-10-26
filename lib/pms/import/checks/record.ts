@@ -21,6 +21,22 @@ const CONTRACT_ALIASES: Record<string, ContractType> = {
   parttime: "PART_TIME",
   secondment: "SECONDMENT",
   seconded: "SECONDMENT",
+  // JML S1 (ADR-076) — the union of the onboarding/offboarding lists.
+  "permanent full time": "PERMANENT",
+  "full time": "PERMANENT",
+  "permanent part time": "PART_TIME",
+  "summer intern": "SUMMER_INTERN",
+  "summer internship": "SUMMER_INTERN",
+  trainee: "TRAINEE",
+  training: "TRAINEE",
+  freelancer: "FREELANCER",
+  freelance: "FREELANCER",
+  consultant: "CONSULTANT",
+  consultancy: "CONSULTANT",
+  contractor: "CONTRACTOR",
+  temporary: "TEMPORARY",
+  "temporary employee": "TEMPORARY",
+  temp: "TEMPORARY",
 };
 
 const GENDER_ALIASES: Record<string, Gender> = {
@@ -57,7 +73,11 @@ function parseField(field: keyof EmployeeRecordInput, raw: string): Parsed {
       const v = CONTRACT_ALIASES[normalize(raw)];
       return v
         ? { value: v }
-        : { problem: "Use Permanent, Fixed term, Intern, Part time or Secondment." };
+        : {
+            problem:
+              "Use Permanent, Fixed term, Part time, Intern, Summer intern, Trainee, Secondment, " +
+              "Freelancer, Consultant, Contractor or Temporary.",
+          };
     }
     case "gender": {
       const v = GENDER_ALIASES[normalize(raw)];

@@ -796,3 +796,19 @@ is already audited here; ID documents reuse it with a separate key so the two ca
 Decision: build — a permission catalogue in code, two tables (role, assignment) and a resolver of
 ~150 lines; an org-unit service of guarded CRUD over Prisma; one employee writer. No runtime
 dependency is added.
+
+### 2026-10-27 — JML S1: working calendar, statutory parameters, EMP codes, provisional ids
+
+Scope: lib/working-time/**, lib/statutory/**, lib/people/employee-code.ts, lib/people/provisional-id.ts, lib/people/odoo-id.ts
+Considered: **date-fns + date-fns-tz / Luxon** for working days and zone conversion (rejected —
+`Intl.DateTimeFormat` already converts zones correctly, the two source apps both hand-rolled
+the arithmetic for good reason (Fri/Sat weekend, snap-forward, holidays), and a library would
+add a dependency to wrap ~40 lines of loop). **`date-holidays` (npm)** for Oman's public holidays
+(rejected — Oman's Islamic holidays are announced by moon-sighting each year, so a computed list
+is wrong by a day often enough to move statutory deadlines; HR enters them). **Postgres
+sequences** for EMP codes (rejected — the code needs a configurable cutover, an audit record of
+who approved it and a "never backwards" rule; a row-locked singleton ported from HR Onboarding
+does all three). **Keep each source module's own copy** (rejected — the operator asked for one
+calendar; the copies disagreed).
+
+Decision: build — ported from HR Onboarding/Offboarding with holidays added; no dependency.

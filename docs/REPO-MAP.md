@@ -123,7 +123,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -134,7 +134,7 @@
 - Directorate: id, name, entityId, entity, departments, deletedAt, deletedBy, createdAt, updatedAt
 - Team: id, name, departmentId, department, employees, deletedAt, deletedBy, createdAt, updatedAt
 - Department: id, name, entityId, entity, directorateId, directorate, teams, employees, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, departmentScores
-- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, userId, user, deletedAt, deletedBy, createdAt, updatedAt
+- Employee: id, odooId, name, email, departmentId, department, entityId, entity, teamId, team, managerId, manager, reports, cyclesOpened, cycleParticipants, goalsApproved, signOffs, changeRequested, ratingsGiven, ratedBy, ratesOthers, projectMembers, entityScoresEntered, employeeScores, calibrationsMade, scoreRunsStarted, publicationsMade, departmentScoresEntered, changeDecided, changeAcknowledged, kpiEvidenceUploaded, complianceAbout, complianceAgainst, notifications, rollUpsAbout, rollUpsFrom, rollUpsTo, rollUpsResolved, assignmentPeriods, periodsManaged, roleTrack, pmsRoles, basicSalary, basicSalaryEnc, status, jobTitle, grade, contractType, probationEndDate, workLocation, workPhone, personalEmail, personalPhone, dateOfBirth, gender, nationality, civilIdNumberEnc, civilIdExpiry, passportNumberEnc, passportExpiry, dateOfJoining, lastWorkingDay, unpaidLeaveDays, employeeCode, positionClassificationId, positionClassification, userId, user, deletedAt, deletedBy, createdAt, updatedAt
 - ImportBatch: id, filename, status, uploadedById, uploadedBy, uploadedByEmail, rowsTotal, rowsCreated, rowsUpdated, rowsRejected, rowsAbsent, previewJson, appliedAt, issues, createdAt, updatedAt
 - ImportRowIssue: id, batchId, batch, rowNumber, odooId, field, rule, message, severity, createdAt
 - PerformanceCycle: id, year, status, openedById, openedBy, openedAt, requireResignAfterChange, divergenceReason, roundScoreBeforeBanding, stages, participants, complianceEvents, assignmentPeriods, deletedAt, deletedBy, createdAt, updatedAt, entityScores, departmentScores, threeSixty, projects, scoreRuns, calibrationTarget, publication
@@ -165,6 +165,13 @@
 - CyclePublication: id, cycleId, cycle, published, publishedAt, publishedByEmployeeId, publishedByEmployee, lastReason, createdAt, updatedAt
 - ManagerRollUp: id, employeeId, employee, fromManagerEmployeeId, fromManagerEmployee, toManagerEmployeeId, toManagerEmployee, reason, resolvedAt, resolvedByEmployeeId, resolvedByEmployee, resolutionNote, createdAt, updatedAt
 - EmployeeAssignmentPeriod: id, employeeId, employee, cycleId, cycle, departmentId, department, entityId, entity, managerEmployeeId, managerEmployee, startsOn, endsOn, orderIndex, kpis, createdAt, updatedAt
+- EmployeeCodeSequence: id, singleton, prefix, digits, lastManualId, nextValue, cutoverAt, approvedBy, createdAt, updatedAt
+- WorkingSchedule: id, singleton, workingDays, startHour, endHour, timeZone, createdAt, updatedAt
+- PublicHoliday: id, date, name, createdAt, updatedAt
+- StatutoryParameter: id, key, value, effectiveFrom, effectiveTo, verified, verifiedById, verifiedBy, verifiedAt, note, createdAt, updatedAt
+- PositionClassification: id, code, label, active, sortOrder, employees, createdAt, updatedAt
+- LeaveReasonCategory: id, level1, label, active, sortOrder, codes, createdAt, updatedAt
+- LeaveReasonCode: id, categoryId, category, code, label, active, sortOrder, createdAt, updatedAt
 
 ## lib/ exports
 - lib/account-lockout.ts: isAccountLocked, recordFailedLogin, clearFailedLogins
@@ -188,9 +195,12 @@
 - lib/org/units.ts: ACTIVE_ROWS, renameCompany, createDirectorate, renameDirectorate, retireDirectorate, createOrgDepartment, updateOrgDepartment, retireOrgDepartment, plural
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
+- lib/people/employee-code.ts: NOT_CONFIGURED_MESSAGE, formatEmployeeCode, parseEmployeeCode, getEmployeeCodeSequence, ConfigureEmployeeCodeInput, configureEmployeeCodeSequence, EmployeeCodeError, allocateEmployeeCode, EMPLOYEE_CODE_PATTERN, recordEmployeeCode
 - lib/people/force-change.ts: ForceChangeDecision, forcedChangeDecision
 - lib/people/id-documents.ts: IdDocumentKeyError, encryptIdNumber, readIdNumber
 - lib/people/logins.ts: generateTemporaryPassword, LoginState, loginStateOf, loginEligibility, loginSummary, issueTemporaryPassword, disableLogin, changeOwnPassword
+- lib/people/odoo-id.ts: recordOdooId
+- lib/people/provisional-id.ts: PROVISIONAL_PREFIX, provisionalOdooId, isProvisionalOdooId
 - lib/people/record.ts: EmployeeRecordInput, JOB_FIELDS, CONTACT_FIELDS, PERSONAL_FIELDS, ID_DOCUMENT_FIELDS, RecordField, RECORD_FIELDS, DATE_RECORD_FIELDS, recordFieldsTouched
 - lib/people/service.ts: createEmployeeFromForm, updateEmployeeRecord
 - lib/people/write.ts: EmployeeCoreInput, recordWriteData, employeeCreateData, employeeUpdateData
@@ -204,7 +214,7 @@
 - lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
-- lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, DEPARTURE_REPORTS_ORDER, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture
+- lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, DEPARTURE_REPORTS_ORDER, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture, ReverseDepartureOutcome, reverseDeparture
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
@@ -259,6 +269,7 @@
 - lib/rbac/service.ts: listRoles, createRole, updateRole, deleteRole, listAssignments, createAssignment, removeAssignment
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
+- lib/statutory/parameters.ts: STATUTORY_KEYS, StatutoryKey, isStatutoryKey, isOpenStart, StatutoryRow, Resolved, StatutoryParameterMissingError, resolve, unverifiedAmong
 - lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, readStoredHead, deleteStoredFile
 - lib/utils.ts: cn
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
@@ -279,6 +290,8 @@
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
+- lib/working-time/calendar.ts: IsoWeekday, WorkingSchedule, DEFAULT_SCHEDULE, WorkingCalendar, DEFAULT_CALENDAR, isoWeekday, utcDate, dayKey, weekendDays, isWorkingDay, rollForward, addWorkingDays, addCalendarDaysRolled, OffsetUnit, offsetDate, workingDaysBetween, signedWorkingDays, zonedParts, zonedTimeToUtc, zonedToday, isWithinWindow, nextWindowOpening, isLocalHour
+- lib/working-time/load.ts: loadSchedule, loadWorkingCalendar
 
 ## components/
 - components/dashboard/DashboardContent.tsx

@@ -5,6 +5,12 @@
 #
 # Emergency bypass: `git push --no-verify` (use sparingly; CI will still gate
 # once active at /handoff).
+# Run from a linked worktree, git exports GIT_DIR (an absolute
+# .git/worktrees/<name> path) into this hook, and the harness tests that build
+# throw-away repos then operate on THIS repository (they committed, branched and
+# rewrote the shared config). Unset the plumbing variables so every child
+# discovers its repository from its own cwd.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
 npm run ship
 
 # Receipt gate — review-before-push (ADR-064 / docs/blueprints/sdlc-chain.md, AC-1.1/1.2/1.6): require a

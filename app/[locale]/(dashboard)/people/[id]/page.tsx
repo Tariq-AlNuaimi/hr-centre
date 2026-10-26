@@ -224,7 +224,15 @@ export default async function EmployeeDetailPage({
       key: "status",
       label: t("status"),
       value: (
-        <Badge variant={employee.status === "ACTIVE" ? "success" : "warning"}>
+        <Badge
+          variant={
+            employee.status === "ACTIVE"
+              ? "success"
+              : employee.status === "PRE_JOINER"
+                ? "info"
+                : "warning"
+          }
+        >
           {t(`statusValue.${employee.status}`)}
         </Badge>
       ),
