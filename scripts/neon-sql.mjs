@@ -45,6 +45,8 @@ export const REDACT_FIELDS = new Set([
   "basic_salary",
   // HR Centre F-b — ID document numbers (mirrors SCRUB_FIELDS).
   "civilIdNumber",
+  "basicSalaryEnc",
+  "basic_salary_enc",
   "civilIdNumberEnc",
   "civil_id_number_enc",
   "passportNumber",

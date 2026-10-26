@@ -276,6 +276,12 @@ test("HR Centre F-b: scrub redacts ID document numbers, plain and encrypted (AC-
   assert.equal(out.civilIdExpiry, "2030-01-01", "expiry dates are not Restricted");
 });
 
+test("scrub redacts the salary ciphertext column too", () => {
+  const out = scrub({ id: "e1", basicSalaryEnc: "v1.a.b.c", basic_salary_enc: "v1.a.b.c" });
+  assert.equal(out.basicSalaryEnc, "[redacted]");
+  assert.equal(out.basic_salary_enc, "[redacted]");
+});
+
 test("scrub redacts basicSalary in both camelCase and snake_case", () => {
   const out = scrub({ id: "e1", name: "Sara", basicSalary: 4200, basic_salary: 4200 });
   assert.equal(out.basicSalary, "[redacted]");
