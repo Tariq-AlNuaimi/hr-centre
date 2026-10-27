@@ -117,18 +117,35 @@ export async function previewActivation(actor: JmlActor, caseId: string) {
   if (duplicates.length > 0 && !canFor(actor, "jml.supervise", subject)) {
     push(await duplicateProblem(actor, row, undefined));
   }
+  blockers.push(...(await setupProblems(row)));
+  return { ready: blockers.length === 0, blockers, duplicates };
+}
+
+/** The configuration a joiner's activation needs: HR rule, code cutover, template. */
+async function setupProblems(row: Awaited<ReturnType<typeof loadJoinerRow>>): Promise<string[]> {
+  const out: string[] = [];
   const owner = await resolveHrAssignment(placementOf(row), "JOIN");
-  if (!owner) blockers.push("No HR assignment rule covers this position.");
+  if (!owner) {
+    out.push("No HR assignment rule covers this position. Add a rule in JML settings.");
+  }
   if (!(await getEmployeeCodeSequence())) {
-    blockers.push("The employee code cutover has not been configured yet (BR-021).");
+    out.push("The employee code cutover has not been configured yet (BR-021).");
   }
   try {
     await chooseTemplate(prisma as unknown as Tx, row, row.employee.entity.code);
   } catch (e) {
-    if (e instanceof JmlError) blockers.push(e.message);
+    if (e instanceof JmlError) out.push(e.message);
     else throw e;
   }
-  return { ready: blockers.length === 0, blockers, duplicates };
+  return out;
+}
+
+/** Several refusals as one message: numbered, so each reads on its own. */
+export function joinProblems(problems: readonly string[]): string {
+  if (problems.length === 1) return problems[0]!;
+  return `Activation is blocked by ${problems.length} things: ${problems
+    .map((p, i) => `(${i + 1}) ${p.replace(/\.$/, "")}`)
+    .join("; ")}.`;
 }
 
 export async function activateJoiner(
@@ -143,11 +160,19 @@ export async function activateJoiner(
     throw new JmlError("You cannot activate onboarding for this joiner.", 403);
   }
   assertActivatable(row);
-  const problem =
-    readinessProblem(candidateOf(row)) ??
-    (await directorateProblem(row)) ??
-    (await duplicateProblem(actor, row, options.duplicateOverrideReason));
-  if (problem) throw new JmlError(problem, problem.includes("already used by") ? 409 : 422);
+  // QA D-10: report EVERY blocker in one refusal (as the preview does), not the
+  // first one per attempt — on a fresh install that was contract type, then HR
+  // rule, then the employee-code cutover, one click each.
+  const problems = [
+    readinessProblem(candidateOf(row)),
+    await directorateProblem(row),
+    await duplicateProblem(actor, row, options.duplicateOverrideReason),
+    ...(await setupProblems(row)),
+  ].filter((p): p is string => Boolean(p));
+  if (problems.length > 0) {
+    const onlyDuplicate = problems.length === 1 && problems[0]!.includes("already used by");
+    throw new JmlError(joinProblems(problems), onlyDuplicate ? 409 : 422);
+  }
   const dupes = await emailDuplicates(row);
   const overrideReason = dupes.length > 0 ? (options.duplicateOverrideReason ?? null) : null;
 

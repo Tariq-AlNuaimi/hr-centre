@@ -24,6 +24,37 @@ export type CareersRole = {
   postedAt: string | null;
 };
 
+/**
+ * QA D-06 — a JD is written in Markdown, and the board's two-line summary showed
+ * it raw ("## About the role … - Design APIs"). The board gets plain text:
+ * headings, list markers, emphasis, code ticks and link syntax are dropped and
+ * the lines are joined. Pure, so it is tested on its own.
+ */
+export function markdownToPlainText(md: string): string {
+  return md
+    .replace(/\r\n?/g, "\n")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .split("\n")
+    .map((line) =>
+      line
+        .replace(/^\s{0,3}#{1,6}\s+/, "")
+        .replace(/^\s*>\s?/, "")
+        .replace(/^\s*(?:[-*+]|\d+[.)])\s+/, "")
+        .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/, "")
+        .replace(/(\*\*|__)(.+?)\1/g, "$2")
+        .replace(/(^|[^\w*])[*_](\S(?:.*?\S)?)[*_](?=[^\w*]|$)/g, "$1$2")
+        .replace(/`([^`]+)`/g, "$1")
+        .trim(),
+    )
+    .filter(Boolean)
+    .map((line) => (/[.!?:;]$/.test(line) ? line : `${line}.`))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /** The board, cached 60 s and revalidated on the careers tag (posting / JD changes). */
 export const listOpenRoles = unstable_cache(
   async (): Promise<CareersRole[]> => {
@@ -58,7 +89,7 @@ export const listOpenRoles = unstable_cache(
       title: r.title,
       company: org.entities.get(r.entityId)?.name ?? "",
       department: r.departmentId ? (org.departments.get(r.departmentId) ?? "") : "",
-      description: r.description,
+      description: markdownToPlainText(r.description),
       postedAt: r.postings[0]?.postedAt?.toISOString() ?? null,
     }));
   },

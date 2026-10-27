@@ -1,4 +1,5 @@
 import type { NotificationKind } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import { persistNotifications } from "@/lib/pms/notifications";
 
 /**
@@ -56,6 +57,44 @@ export async function notifyUsers(
   } catch {
     // Not detailed: the error could carry names. The action already committed.
     console.warn(`[notify] a ${notice.kind} notice could not be written`);
+    return 0;
+  }
+}
+
+/**
+ * QA D-14 — an actionable notice stops reading "New" once the thing it asked for
+ * is done. Marks unread notices whose event key starts with `keyPrefix` as read
+ * — for `userIds` only, or for every recipient when omitted (the step was
+ * decided, so nobody is still waiting on it). Per row through the audited
+ * client, bounded. NEVER THROWS, like `notifyUsers`: the action has committed.
+ */
+export async function resolveUserNotices(
+  keyPrefix: string,
+  userIds?: ReadonlyArray<string | null | undefined>,
+): Promise<number> {
+  try {
+    const ids = userIds?.filter((x): x is string => Boolean(x));
+    if (ids && ids.length === 0) return 0;
+    const rows = await prisma.notification.findMany({
+      where: {
+        dedupeKey: { startsWith: keyPrefix },
+        readAt: null,
+        recipientUserId: ids ? { in: ids } : { not: null },
+      },
+      select: { id: true },
+      take: MAX_RECIPIENTS,
+    });
+    const now = new Date();
+    for (const r of rows) {
+      await prisma.notification.update({
+        where: { id: r.id },
+        data: { readAt: now },
+        select: { id: true },
+      });
+    }
+    return rows.length;
+  } catch {
+    console.warn("[notify] notices could not be marked done");
     return 0;
   }
 }

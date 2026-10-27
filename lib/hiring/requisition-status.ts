@@ -6,6 +6,7 @@ import { assertChainStaffed, getRoutedChain, type RoutedStep } from "./approval-
 import { describeFill, fillLabel, nextFillStatus } from "./fill-rules";
 import { HiringRuleError } from "./http";
 import { notifyApprovalStep } from "./notify";
+import { resolveUserNotices } from "@/lib/notifications/user-notify";
 import { toNum, toOMRorNull } from "./money";
 import { seatOccupancyWhere } from "./requisitions";
 import {
@@ -125,6 +126,9 @@ export async function changeRequisitionStatus(
       });
     }
   });
+  // QA D-14: whatever was decided, the notices for the step(s) just acted on
+  // are done; the next step (if any) is notified afresh below.
+  await resolveUserNotices(`hiring:requisition:${req.id}:`);
   if (to === "PENDING_APPROVAL") await notifyNextRequisitionStep(req, subject);
   return { status: to };
 }

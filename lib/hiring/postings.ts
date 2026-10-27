@@ -93,7 +93,7 @@ export async function postChannel(
     await prisma.hiringPosting.create({
       data: { requisitionId: l.req.id, channel: input.channel, ...data },
     });
-  if (input.channel === "CAREERS_PAGE") revalidateTag(CAREERS_TAG, "max");
+  if (input.channel === "CAREERS_PAGE") revalidateTag(CAREERS_TAG, { expire: 0 });
 }
 
 export async function withdrawChannel(
@@ -112,5 +112,5 @@ export async function withdrawChannel(
     where: { id: existing.id },
     data: { state: "WITHDRAWN", withdrawnAt: new Date(), withdrawnById: actor.userId },
   });
-  if (channel === "CAREERS_PAGE") revalidateTag(CAREERS_TAG, "max");
+  if (channel === "CAREERS_PAGE") revalidateTag(CAREERS_TAG, { expire: 0 });
 }

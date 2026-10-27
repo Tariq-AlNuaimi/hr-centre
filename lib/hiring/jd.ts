@@ -5,6 +5,7 @@ import { can, canSignJdForHr, type HiringActor } from "./access";
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { HiringRuleError } from "./http";
 import { notifyJdSubmitted } from "./notify";
+import { resolveUserNotices } from "@/lib/notifications/user-notify";
 import {
   canRequestJdChanges,
   canSignJd,
@@ -191,8 +192,13 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
       });
       return true;
     });
-    if (approved || (await completeIfFullySigned(req.id, req.jdVersion)))
-      revalidateTag(CAREERS_TAG, "max");
+    const done = approved || (await completeIfFullySigned(req.id, req.jdVersion));
+    if (done) revalidateTag(CAREERS_TAG, { expire: 0 });
+    // QA D-14: the signer's notice is done; once approved, everyone's is.
+    await resolveUserNotices(
+      `hiring:jd:${req.id}:v${req.jdVersion}:`,
+      done ? undefined : [actor.userId],
+    );
     return;
   }
   await auditedTransaction(async (tx) => {
@@ -211,7 +217,9 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
       data: { jdStatus: "CHANGES_REQUESTED", jdVersion: { increment: 1 }, jdApprovedAt: null },
     });
   });
-  revalidateTag(CAREERS_TAG, "max");
+  revalidateTag(CAREERS_TAG, { expire: 0 });
+  // Changes requested: this version will never be signed, so its notices are done.
+  await resolveUserNotices(`hiring:jd:${req.id}:v${req.jdVersion}:`);
 }
 
 /** Closes the race where both signers commit concurrently and neither saw count = 2. */
