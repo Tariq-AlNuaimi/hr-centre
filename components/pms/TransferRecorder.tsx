@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmployeePicker, type PickablePerson } from "@/components/pms/EmployeePicker";
 import { apiClient } from "@/lib/api-client";
+import { BYPASS_REASON_MIN, BypassReasonField } from "./BypassReasonField";
 
 /**
  * §12.3's mid-cycle transfer — the move that splits the performance year in two.
@@ -27,6 +28,7 @@ export function TransferRecorder({ cycleId, onDone }: { cycleId: string; onDone:
   const t = useTranslations("pms.edgeCaseRecord.transfer");
   const queryClient = useQueryClient();
   const [person, setPerson] = useState<PickablePerson | null>(null);
+  const [reason, setReason] = useState("");
   const [manager, setManager] = useState<PickablePerson | null>(null);
   const [transferDate, setTransferDate] = useState("");
   const [newDepartmentId, setNewDepartmentId] = useState("");
@@ -43,6 +45,7 @@ export function TransferRecorder({ cycleId, onDone }: { cycleId: string; onDone:
     mutationFn: () =>
       apiClient.post("/api/transfers", {
         employeeId: person?.id,
+        bypassReason: reason.trim(),
         cycleId,
         transferDate,
         newDepartmentId: newDepartmentId || null,
@@ -54,13 +57,18 @@ export function TransferRecorder({ cycleId, onDone }: { cycleId: string; onDone:
       setManager(null);
       setTransferDate("");
       setNewDepartmentId("");
+      setReason("");
       void queryClient.invalidateQueries({ queryKey: ["pms", "edgeCases"] });
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const ready = person !== null && transferDate !== "" && newDepartmentId !== "";
+  const ready =
+    person !== null &&
+    reason.trim().length >= BYPASS_REASON_MIN &&
+    transferDate !== "" &&
+    newDepartmentId !== "";
 
   return (
     <SectionCard
@@ -135,6 +143,7 @@ export function TransferRecorder({ cycleId, onDone }: { cycleId: string; onDone:
             onPick={setManager}
           />
         )}
+        <BypassReasonField id="transfer-bypass" value={reason} onChange={setReason} />
       </div>
 
       <p className="mt-4 max-w-prose text-sm text-muted-foreground">{t("consequences")}</p>

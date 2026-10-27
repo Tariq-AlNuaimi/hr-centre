@@ -53,7 +53,7 @@
     "calibration": "Calibration",
     "threeSixty": "360 assessment",
     "strategyScores": "Corporate & departmental scores",
-    "edgeCases": "Leavers & transfers",
+    "edgeCases": "Roll-ups & split years",
     "access": "Access",
     "roles": "Roles",
     "group": {
@@ -1447,7 +1447,7 @@
     },
     "edgeCaseRecord": {
       "leaver": {
-        "title": "Record a departure",
+        "title": "Record a departure without a leaver case",
         "help": "For an immediate resignation, rather than waiting for the next import.",
         "who": "Employee",
         "change": "Change",
@@ -1460,7 +1460,7 @@
         "consequences": "Their direct reports roll up to their manager one level, pending actions stop chasing them, and any 360 they were rating is flagged for reassignment. The record itself is kept, never deleted."
       },
       "transfer": {
-        "title": "Record a transfer",
+        "title": "Record a transfer without a mover case",
         "help": "A mid-cycle move between departments splits the performance year in two.",
         "who": "Employee",
         "change": "Change",
@@ -1473,7 +1473,9 @@
         "working": "Recording…",
         "savedToast": "{name}'s transfer recorded.",
         "consequences": "The year splits at this date. Each department's manager drafts and assesses their own portion, and the departmental and corporate scores follow the periods."
-      }
+      },
+      "bypassReason": "Why record it without the process?",
+      "bypassReasonHelp": "Required, at least 10 characters. Kept in the audit log."
     },
     "strategyScores": {
       "title": "Corporate & departmental scores",
@@ -1501,8 +1503,8 @@
       "retry": "Try again"
     },
     "edgeCases": {
-      "title": "Leavers, roll-ups & transfers",
-      "subtitle": "The consequences of a departure or a move, so none of them persist silently.",
+      "title": "Roll-ups & split years",
+      "subtitle": "What a departure or a move leaves to resolve in Performance: reports to re-home, 360 raters to replace, split performance years.",
       "openRollUps": "Open roll-ups",
       "openRollUpsHint": "People without a permanent manager",
       "reassignmentsNeeded": "360 reassignments",
@@ -1538,7 +1540,13 @@
       "kpis": "KPIs",
       "noTransfers": "Nobody transferred mid-cycle.",
       "notPermitted": "This screen is HR's",
-      "notPermittedHelp": "Ask HR if a reporting line looks wrong."
+      "notPermittedHelp": "Ask HR if a reporting line looks wrong.",
+      "startTitle": "Leavers and transfers start in Joiners & leavers",
+      "startHelp": "A leaver case runs the exit checklist, approvals, settlement and access revocation, and on closing rolls up the reports and revokes the login. A mover case applies the transfer and splits the performance year. This page then shows what is left to resolve.",
+      "startLeaver": "Start leaver case",
+      "startMover": "Start mover case",
+      "correctionsTitle": "Record without the process (corrections)",
+      "correctionsHelp": "For correcting a record or entering a historical leaver or transfer only. Nothing here creates a checklist, approval or settlement. Every entry needs a reason, which is kept in the audit log."
     },
     "editEmployee": {
       "action": "Edit record",
@@ -1724,8 +1732,8 @@
       "stepUploadTimedOut": "Upload timed out after {seconds} seconds with no response. The browser could not reach the file-storage host — this is usually the Content-Security-Policy connect-src directive, or no network route to it."
     },
     "departure": {
-      "action": "Record departure",
-      "title": "Record {name}'s departure",
+      "action": "Record without exit process",
+      "title": "Record {name}'s departure without the exit process",
       "subtitle": "Their record is kept. This closes out everything that depends on them still being here.",
       "lastWorkingDay": "Last working day",
       "lastWorkingDayHelp": "Required. The bonus is pro-rated from the start of the cycle to this date.",
@@ -1743,10 +1751,16 @@
       "effectLogin": "Their sign-in access is revoked immediately.",
       "effectNoLogin": "They have no sign-in account, so no access to revoke.",
       "effectRecordKept": "Nothing is deleted — the record and its history are preserved.",
-      "confirm": "Record departure",
+      "confirm": "Record without exit process",
       "recording": "Recording…",
       "recorded": "{name}'s departure is recorded.",
-      "failed": "Could not record the departure."
+      "failed": "Could not record the departure.",
+      "bypassWarning": "This records the departure without the exit process: no checklist, approvals, settlement or access revocation tasks. Use it only to correct a record or to enter a historical leaver. For a real departure, start a leaver case.",
+      "bypassReason": "Why record it without the exit process?",
+      "bypassReasonHelp": "Required, at least 10 characters. Kept in the audit log.",
+      "bypassReasonRequired": "Say why this is recorded without the exit process (at least 10 characters).",
+      "startCase": "Start leaver case",
+      "startMoverCase": "Start mover case"
     },
     "threeSixtyActions": {
       "close": "Close cycle",

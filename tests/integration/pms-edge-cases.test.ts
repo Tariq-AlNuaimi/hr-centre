@@ -211,6 +211,7 @@ test("§12.1 a departure moves reports up ONE level and records the roll-up", as
       req("/api/leavers", "POST", {
         employeeId: ids.departing,
         lastWorkingDay: "2095-06-30",
+        bypassReason: "Integration fixture: recorded without the process",
       }),
       ctx(),
     ),
@@ -250,7 +251,11 @@ test("§12.1 a second departure is refused rather than silently re-run", async (
   as(ids.superAdminUser);
   const { status: code, error } = await json(
     await leavers.POST(
-      req("/api/leavers", "POST", { employeeId: ids.departing, lastWorkingDay: "2095-06-30" }),
+      req("/api/leavers", "POST", {
+        employeeId: ids.departing,
+        lastWorkingDay: "2095-06-30",
+        bypassReason: "Integration fixture: recorded without the process",
+      }),
       ctx(),
     ),
   );
@@ -261,7 +266,13 @@ test("§12.1 a second departure is refused rather than silently re-run", async (
 test("§12.1 the last working day is required — §11.4 pro-rates to it", async () => {
   as(ids.superAdminUser);
   const { status: code } = await json(
-    await leavers.POST(req("/api/leavers", "POST", { employeeId: ids.mover }), ctx()),
+    await leavers.POST(
+      req("/api/leavers", "POST", {
+        employeeId: ids.mover,
+        bypassReason: "Integration fixture: recorded without the process",
+      }),
+      ctx(),
+    ),
   );
   assert.equal(code, 400);
 });
@@ -343,6 +354,7 @@ test("§12.2 a resolved prompt cannot be resolved twice", async () => {
       req("/api/roll-ups", "POST", {
         rollUpId: resolved.id,
         newManagerEmployeeId: ids.grandparent,
+        bypassReason: "Integration fixture: recorded without the process",
       }),
       ctx(),
     ),
@@ -414,6 +426,7 @@ test("§12.3 a second split of the same year is refused, not half-applied", asyn
         cycleId: ids.cycle,
         transferDate: "2095-09-01",
         newDepartmentId: ids.newDepartment,
+        bypassReason: "Integration fixture: recorded without the process",
       }),
       ctx(),
     ),

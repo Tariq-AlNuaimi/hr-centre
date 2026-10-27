@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -93,6 +95,7 @@ interface TransfersResponse {
 
 export default function EdgeCasesPage() {
   const t = useTranslations("pms.edgeCases");
+  const locale = useLocale();
   const { capabilities, isLoading: actorLoading } = usePmsActor();
   const { cycles, cycleList, cycleId, selectedCycleId, setSelectedCycleId } = useCycleSelection();
 
@@ -159,11 +162,38 @@ export default function EdgeCasesPage() {
         />
       </div>
 
-      {/* §12.1 — "settable by import OR MANUALLY (immediate one-off
-          resignations)", and §12.3's transfer. Both routes existed with no
-          caller, so the manual half of §12 could not be done at all. */}
-      <LeaverRecorder onDone={() => void rollUps.refetch()} />
-      {cycleId && <TransferRecorder cycleId={cycleId} onDone={() => void transfers.refetch()} />}
+      {/* UX review P0 (docs/blueprints/ux-p0.md, US-2): a leaver or a move is a
+          Joiners & leavers case — checklist, approvals, settlement, access — and
+          closing it applies everything this page tracks. This page no longer
+          records them; it watches their Performance consequences. */}
+      <SectionCard title={t("startTitle")} subtitle={t("startHelp")}>
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/${locale}/jml/leavers/new`} className={buttonVariants({ size: "sm" })}>
+            {t("startLeaver")}
+          </Link>
+          <Link
+            href={`/${locale}/jml/movers/new`}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            {t("startMover")}
+          </Link>
+        </div>
+      </SectionCard>
+
+      {/* The correction path (import mistakes, historical leavers): HR Super
+          Admin only, with a reason the server writes to the audit log. */}
+      {capabilities.configure ? (
+        <details className="rounded-md border border-border p-4">
+          <summary className="cursor-pointer text-sm font-medium">{t("correctionsTitle")}</summary>
+          <p className="mt-2 max-w-prose text-sm text-muted-foreground">{t("correctionsHelp")}</p>
+          <div className="mt-4 space-y-4">
+            <LeaverRecorder onDone={() => void rollUps.refetch()} />
+            {cycleId && (
+              <TransferRecorder cycleId={cycleId} onDone={() => void transfers.refetch()} />
+            )}
+          </div>
+        </details>
+      ) : null}
 
       <SectionCard title={t("rollUpsTitle")} subtitle={t("rollUpsHelp")}>
         {open.length === 0 ? (

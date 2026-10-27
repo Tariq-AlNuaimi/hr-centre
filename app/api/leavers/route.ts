@@ -3,7 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { isHr } from "@/lib/pms/permissions";
+import { isHr, isHrSuperAdmin } from "@/lib/pms/permissions";
 import {
   DEPARTURE_REPORTS_LIMIT,
   applyDeparture,
@@ -43,8 +43,16 @@ import { markLeaverSchema } from "@/lib/validations/edge-cases";
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    // §4.1 — employee data administration is HR's.
-    if (!isHr(actor)) return err("Only HR records a departure.", 403);
+    // UX review P0 (US-2): a departure's process is a JML leaver case. Recording
+    // it here skips the exit checklist, approvals and settlement, so it is an
+    // admin correction — HR Super Admin only, with a stated reason.
+    if (!isHrSuperAdmin(actor)) {
+      return err(
+        "Start a leaver case in Joiners & leavers instead. Recording a departure without the " +
+          "exit process is an HR Super Admin correction.",
+        403,
+      );
+    }
     if (!actor.employeeId) {
       return err("This account has no linked employee record (ADR-065).", 403);
     }
@@ -55,7 +63,7 @@ export const POST = withRateLimit(
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
     }
-    const { employeeId, lastWorkingDay, note } = parsed.data;
+    const { employeeId, lastWorkingDay, note, bypassReason } = parsed.data;
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
@@ -79,7 +87,8 @@ export const POST = withRateLimit(
         lastWorkingDay,
         previousStatus: employee.status,
         previousLastWorkingDay: employee.lastWorkingDay,
-        note,
+        // The reason lands on the departure's audit row.
+        note: `Recorded without the exit process: ${bypassReason}${note ? ` — ${note}` : ""}`,
       }),
     );
 

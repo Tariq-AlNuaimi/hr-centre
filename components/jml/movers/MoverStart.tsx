@@ -51,10 +51,15 @@ const FIELDS = [
 ];
 
 /** Start an internal change — Onboarding `/employees/[id]` + `InternalChangeForm`. */
-export function MoverStart() {
+export function MoverStart({
+  initialEmployeeId = null,
+}: {
+  /** Pre-filled when opened from Performance's transfer screen. */
+  initialEmployeeId?: string | null;
+}) {
   const t = useTranslations("jml.movers");
   const { can, isLoading } = useJmlAccess();
-  const [employeeId, setEmployeeId] = useState<string | null>(null);
+  const [employeeId, setEmployeeId] = useState<string | null>(initialEmployeeId);
   const profile = useQuery({
     queryKey: ["jml", "move-profile", employeeId],
     queryFn: () => apiClient.get<MoveProfile>(`/api/jml/movers/profile?employeeId=${employeeId}`),

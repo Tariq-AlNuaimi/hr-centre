@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmployeePicker, type PickablePerson } from "@/components/pms/EmployeePicker";
 import { apiClient } from "@/lib/api-client";
+import { BYPASS_REASON_MIN, BypassReasonField } from "./BypassReasonField";
 
 /**
  * §12.1's manual departure — "settable by import **or manually** (immediate
@@ -29,6 +30,7 @@ export function LeaverRecorder({ onDone }: { onDone: () => void }) {
   const t = useTranslations("pms.edgeCaseRecord.leaver");
   const queryClient = useQueryClient();
   const [person, setPerson] = useState<PickablePerson | null>(null);
+  const [reason, setReason] = useState("");
   const [lastWorkingDay, setLastWorkingDay] = useState("");
   const [note, setNote] = useState("");
 
@@ -36,6 +38,7 @@ export function LeaverRecorder({ onDone }: { onDone: () => void }) {
     mutationFn: () =>
       apiClient.post("/api/leavers", {
         employeeId: person?.id,
+        bypassReason: reason.trim(),
         lastWorkingDay,
         ...(note.trim() ? { note: note.trim() } : {}),
       }),
@@ -44,13 +47,15 @@ export function LeaverRecorder({ onDone }: { onDone: () => void }) {
       setPerson(null);
       setLastWorkingDay("");
       setNote("");
+      setReason("");
       void queryClient.invalidateQueries({ queryKey: ["pms", "edgeCases"] });
       onDone();
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const ready = person !== null && lastWorkingDay !== "";
+  const ready =
+    person !== null && reason.trim().length >= BYPASS_REASON_MIN && lastWorkingDay !== "";
 
   return (
     <SectionCard
@@ -96,6 +101,7 @@ export function LeaverRecorder({ onDone }: { onDone: () => void }) {
             onChange={(e) => setNote(e.target.value)}
           />
         </div>
+        <BypassReasonField id="leaver-bypass" value={reason} onChange={setReason} />
       </div>
 
       {/* §12.1's consequences, before the click rather than after it. */}
