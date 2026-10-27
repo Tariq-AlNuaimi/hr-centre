@@ -30,6 +30,8 @@ export interface Detail {
   approvedAt: string | null;
   submittedAt: string | null;
   hrPair: { id: string; name: string } | null;
+  assignee: { id: string; name: string | null } | null;
+  dueAt: string | null;
   draftedBy: { id: string; name: string | null } | null;
   approvedBy: { id: string; name: string | null } | null;
   submittedBy: { id: string; name: string | null } | null;
@@ -73,6 +75,8 @@ export function ActionRow({
   act: Act;
   t: (key: string, values?: Record<string, string>) => string;
 }) {
+  const [more, setMore] = useState(false);
+  const [returning, setReturning] = useState(false);
   const trimmed = draft.trim();
   const empty = trimmed.length === 0;
   const unsaved = trimmed !== (detail.draftAnswer ?? "").trim();
@@ -98,7 +102,21 @@ export function ActionRow({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* UX P1 (tickets P1-3): ONE primary action by state — approve and send,
+          retry, or submit — with Save as the quiet companion, Return as a
+          disclosure and Close behind "More". */}
       <div className="flex flex-wrap items-center gap-3">
+        <PrimaryAction
+          can={can}
+          busy={busy}
+          unsaved={unsaved}
+          empty={empty}
+          hasDraft={Boolean(detail.draftAnswer?.trim())}
+          onApprove={() => void act(approve, t("approved"), t("approveFailed"))}
+          onSubmit={() => void act(submit, t("submitted"), t("submitFailed"))}
+          t={t}
+        />
+
         {can.save && (
           <Button
             variant="outline"
@@ -109,34 +127,25 @@ export function ActionRow({
           </Button>
         )}
 
-        {can.submit && (
+        {can.returnToDraft && (
           <Button
-            disabled={busy || empty}
-            onClick={() => void act(submit, t("submitted"), t("submitFailed"))}
+            variant="ghost"
+            aria-expanded={returning}
+            onClick={() => setReturning(!returning)}
           >
-            {busy ? t("submitting") : t("submit")}
-          </Button>
-        )}
-
-        {can.approve && (
-          <Button
-            disabled={busy || unsaved}
-            onClick={() => void act(approve, t("approved"), t("approveFailed"))}
-          >
-            {busy ? t("approving") : t("approve")}
-          </Button>
-        )}
-
-        {can.retry && (
-          <Button
-            disabled={busy || !detail.draftAnswer?.trim()}
-            onClick={() => void act(approve, t("approved"), t("approveFailed"))}
-          >
-            {busy ? t("approving") : t("retrySend")}
+            {t("returnToggle")}
           </Button>
         )}
 
         {can.close && (
+          <Button variant="ghost" aria-expanded={more} onClick={() => setMore(!more)}>
+            {t("more")}
+          </Button>
+        )}
+      </div>
+
+      {more && can.close ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3">
           <ConfirmAction
             title={t("close")}
             description={t("closeConfirm")}
@@ -154,8 +163,9 @@ export function ActionRow({
               {t("close")}
             </Button>
           </ConfirmAction>
-        )}
-      </div>
+          <span className="text-xs text-muted-foreground">{t("closeHint")}</span>
+        </div>
+      ) : null}
 
       {can.explainUnsaved && (
         <p className="m-0 text-sm text-muted-foreground">{t("unsavedBeforeApprove")}</p>
@@ -171,9 +181,52 @@ export function ActionRow({
         <p className="m-0 text-sm text-muted-foreground">{t("noApproveRights")}</p>
       )}
 
-      {can.returnToDraft && <ReturnForm id={detail.id} busy={busy} act={act} t={t} />}
+      {can.returnToDraft && returning ? (
+        <ReturnForm id={detail.id} busy={busy} act={act} t={t} />
+      ) : null}
     </div>
   );
+}
+
+/** The one primary action this state allows: approve and send, retry, or submit. */
+function PrimaryAction({
+  can,
+  busy,
+  unsaved,
+  empty,
+  hasDraft,
+  onApprove,
+  onSubmit,
+  t,
+}: {
+  can: ReturnType<typeof allowedActions>;
+  busy: boolean;
+  unsaved: boolean;
+  empty: boolean;
+  hasDraft: boolean;
+  onApprove: () => void;
+  onSubmit: () => void;
+  t: (key: string) => string;
+}) {
+  if (can.approve)
+    return (
+      <Button disabled={busy || unsaved} onClick={onApprove}>
+        {busy ? t("approving") : t("approve")}
+      </Button>
+    );
+  if (can.retry)
+    return (
+      <Button disabled={busy || !hasDraft} onClick={onApprove}>
+        {busy ? t("approving") : t("retrySend")}
+      </Button>
+    );
+  if (can.submit)
+    return (
+      <Button disabled={busy || empty} onClick={onSubmit}>
+        {busy ? t("submitting") : t("submit")}
+      </Button>
+    );
+  return null;
 }
 
 /** An approver hands a submitted draft back, with an optional note (AC-T2.2). */

@@ -55,6 +55,8 @@ export const escalationQuerySchema = z
     from: isoDaySchema.optional(),
     to: isoDaySchema.optional(),
     q: z.string().trim().max(100).optional(),
+    /** UX P1 (tickets P1-2): Mine / Unassigned / Overdue. */
+    view: z.enum(["mine", "unassigned", "overdue"]).optional(),
   })
   .transform(({ from, to, q, ...rest }) => ({
     ...rest,
@@ -63,3 +65,18 @@ export const escalationQuerySchema = z
     gte: from ? muscatDayStart(from) : undefined,
     lt: to ? new Date(muscatDayStart(to).getTime() + 86_400_000) : undefined,
   }));
+
+/** UX P1 (tickets P1-2): assign a ticket to a drafter in its pair, or clear it. */
+export const assigneeSchema = z.object({
+  assigneeId: z.string().trim().min(1).max(64).nullable(),
+});
+
+/** UX P1 (tickets P1-4): a saved reply. Pair-specific when `hrPairId` is set. */
+export const savedReplySchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  body: z.string().trim().min(1).max(5000),
+  hrPairId: z.string().trim().min(1).max(64).nullable(),
+});
+export const savedRepliesQuerySchema = z.object({
+  pairId: z.string().trim().min(1).max(64).optional(),
+});

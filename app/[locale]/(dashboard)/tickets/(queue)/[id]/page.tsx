@@ -1,8 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
-import Link from "next/link";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -17,6 +16,10 @@ import { cn } from "@/lib/utils";
 import { HistoryCard } from "@/components/hive/escalations/TicketHistory";
 import { ActionRow, type Detail } from "@/components/hive/escalations/TicketActions";
 import { EmployeeLink } from "@/components/hive/escalations/EmployeeLink";
+import { TicketRail } from "@/components/hive/escalations/TicketRail";
+import { InsertMenu } from "@/components/hive/escalations/InsertMenu";
+import { useDynamicBreadcrumb } from "@/hooks/use-breadcrumb";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * One escalation: read it, draft an answer, approve and send (US10, US11).
@@ -48,7 +51,6 @@ import { EmployeeLink } from "@/components/hive/escalations/EmployeeLink";
 export default function EscalationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useTranslations("hive.escalations");
-  const locale = useLocale();
   const notify = useNotify();
 
   const query = useQuery<Detail>({
@@ -67,7 +69,6 @@ export default function EscalationDetailPage({ params }: { params: Promise<{ id:
       detail={query.data}
       canApprove={query.data.abilities.approve}
       canDraft={query.data.abilities.draft}
-      locale={locale}
       refetch={() => void query.refetch()}
       notify={notify}
       t={t}
@@ -79,7 +80,6 @@ function DetailView({
   detail,
   canApprove,
   canDraft,
-  locale,
   refetch,
   notify,
   t,
@@ -87,7 +87,6 @@ function DetailView({
   detail: Detail;
   canApprove: boolean;
   canDraft: boolean;
-  locale: string;
   refetch: () => void;
   notify: { success: (m: string) => void; error: (m: string) => void };
   t: (key: string, values?: Record<string, string>) => string;
@@ -118,10 +117,10 @@ function DetailView({
     }
   }
 
-  const when = (iso: string) =>
-    new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(
-      new Date(iso),
-    );
+  const when = (iso: string) => formatDateTime(iso);
+  const ticketLabel = (n: number) => formatTicketId(n, detail.settings.ticketPrefix);
+  // UX P1: the breadcrumb ends on the ticket's own id, not "Tickets".
+  useDynamicBreadcrumb(detail.id, ticketLabel(detail.ticketNumber));
 
   return (
     <>
@@ -135,116 +134,133 @@ function DetailView({
         }
       />
 
-      <div className="flex flex-col gap-6">
-        <SectionCard title={t("theyAsked")} subtitle={when(detail.createdAt)}>
-          <p className="m-0 whitespace-pre-line text-base leading-relaxed text-foreground">
-            {detail.question}
-          </p>
-          <EmployeeLink detail={detail} />
-        </SectionCard>
-
-        {detail.messages.length > 0 && (
-          <SectionCard title={t("followUps")}>
-            <div className="flex flex-col gap-3">
-              {detail.messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={cn(
-                    "flex flex-col gap-1",
-                    m.direction === "INBOUND" ? "items-start" : "items-end",
-                  )}
-                >
-                  <span className="px-1 text-xs text-muted-foreground">
-                    {m.direction === "INBOUND" ? t("fromEmployee") : t("fromHr")} · {when(m.at)}
-                  </span>
-                  <p className="m-0 max-w-[85%] whitespace-pre-line rounded-2xl border border-border px-4 py-3 text-base leading-relaxed text-foreground">
-                    {m.body}
-                  </p>
-                </div>
-              ))}
-            </div>
+      {/* UX P1 (tickets P1-3): the conversation and answer on the left, who
+          owns it and who is asking on the right (ServiceNow's agent workspace). */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <SectionCard title={t("theyAsked")} subtitle={when(detail.createdAt)}>
+            <p className="m-0 whitespace-pre-line text-base leading-relaxed text-foreground">
+              {detail.question}
+            </p>
+            <EmployeeLink detail={detail} />
           </SectionCard>
-        )}
 
-        {detail.sendError && (
-          <SectionCard title={t("sendErrorLabel")}>
-            <p className="m-0 text-sm text-muted-foreground">{detail.sendError}</p>
-          </SectionCard>
-        )}
+          {detail.messages.length > 0 && (
+            <SectionCard title={t("followUps")}>
+              <div className="flex flex-col gap-3">
+                {detail.messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "flex flex-col gap-1",
+                      m.direction === "INBOUND" ? "items-start" : "items-end",
+                    )}
+                  >
+                    <span className="px-1 text-xs text-muted-foreground">
+                      {m.direction === "INBOUND" ? t("fromEmployee") : t("fromHr")} · {when(m.at)}
+                    </span>
+                    <p className="m-0 max-w-[85%] whitespace-pre-line rounded-2xl border border-border px-4 py-3 text-base leading-relaxed text-foreground">
+                      {m.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          )}
 
-        <SectionCard
-          // Not `draftLabel` — that is the FIELD's label, and repeating it as
-          // the card heading directly above put the same two words on screen
-          // twice with nothing between them.
-          title={t("draftSection")}
-          subtitle={
-            [
-              detail.draftedBy?.name ? t("draftedBy", { name: detail.draftedBy.name }) : null,
-              detail.submittedBy?.name ? t("submittedBy", { name: detail.submittedBy.name }) : null,
-              detail.approvedBy?.name ? t("answeredBy", { name: detail.approvedBy.name }) : null,
-            ]
-              .filter(Boolean)
-              .join(" · ") || undefined
-          }
-        >
-          <div className="flex flex-col gap-4">
-            {/* Three states, and the two terminal ones render the answer as TEXT
+          {detail.sendError && (
+            <SectionCard title={t("sendErrorLabel")}>
+              <p className="m-0 text-sm text-muted-foreground">{detail.sendError}</p>
+            </SectionCard>
+          )}
+
+          <SectionCard
+            // Not `draftLabel` — that is the FIELD's label, and repeating it as
+            // the card heading directly above put the same two words on screen
+            // twice with nothing between them.
+            title={t("draftSection")}
+            subtitle={
+              [
+                detail.draftedBy?.name ? t("draftedBy", { name: detail.draftedBy.name }) : null,
+                detail.submittedBy?.name
+                  ? t("submittedBy", { name: detail.submittedBy.name })
+                  : null,
+                detail.approvedBy?.name ? t("answeredBy", { name: detail.approvedBy.name }) : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined
+            }
+          >
+            <div className="flex flex-col gap-4">
+              {/* Three states, and the two terminal ones render the answer as TEXT
                 rather than as a disabled field. A closed thread used to show an
                 editable-looking textarea with no buttons under it and no reason
                 given — the reader's only clue that nothing could be done was the
                 absence of a control, which is exactly the dishonest empty state
                 the rubric's state-honesty row is about. */}
-            {sent || closed || detail.status === "APPROVED" || !canDraft ? (
-              <>
-                <p className="m-0 whitespace-pre-line text-base leading-relaxed text-foreground">
-                  {detail.draftAnswer}
-                </p>
-                <p className="m-0 text-sm text-muted-foreground">
-                  {closed
-                    ? t("closedNotice")
-                    : sent
-                      ? t("alreadySent")
-                      : detail.status === "APPROVED"
-                        ? t("statusAPPROVED")
-                        : t("noDraftRights")}
-                </p>
-              </>
-            ) : (
-              <>
-                <Label htmlFor="draft-answer">{t("draftLabel")}</Label>
-                <textarea
-                  id="draft-answer"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder={t("draftPlaceholder")}
-                  className="min-h-48 w-full rounded-md border border-input bg-background p-3 text-sm"
-                />
-                {detail.status === "PENDING_APPROVAL" && (
-                  <p className="m-0 text-sm text-muted-foreground">{t("pendingNotice")}</p>
-                )}
-              </>
-            )}
+              {sent || closed || detail.status === "APPROVED" || !canDraft ? (
+                <>
+                  <p className="m-0 whitespace-pre-line text-base leading-relaxed text-foreground">
+                    {detail.draftAnswer}
+                  </p>
+                  <p className="m-0 text-sm text-muted-foreground">
+                    {closed
+                      ? t("closedNotice")
+                      : sent
+                        ? t("alreadySent")
+                        : detail.status === "APPROVED"
+                          ? t("statusAPPROVED")
+                          : t("noDraftRights")}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Label htmlFor="draft-answer">{t("draftLabel")}</Label>
+                    <InsertMenu
+                      pairId={detail.hrPair?.id ?? null}
+                      onInsert={(text) =>
+                        setDraft((d) => (d.trim() ? `${d.trimEnd()}\n\n${text}` : text))
+                      }
+                    />
+                  </div>
+                  <textarea
+                    id="draft-answer"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder={t("draftPlaceholder")}
+                    className="min-h-48 w-full rounded-md border border-input bg-background p-3 text-sm"
+                  />
+                  {detail.status === "PENDING_APPROVAL" && (
+                    <p className="m-0 text-sm text-muted-foreground">{t("pendingNotice")}</p>
+                  )}
+                </>
+              )}
 
-            <ActionRow
-              detail={detail}
-              draft={draft}
-              busy={busy}
-              canApprove={canApprove}
-              canDraft={canDraft}
-              act={act}
-              t={t}
-            />
-          </div>
-        </SectionCard>
+              <ActionRow
+                detail={detail}
+                draft={draft}
+                busy={busy}
+                canApprove={canApprove}
+                canDraft={canDraft}
+                act={act}
+                t={t}
+              />
+            </div>
+          </SectionCard>
 
-        <HistoryCard events={detail.events} when={when} t={t} />
-
-        <Link
-          href={`/${locale}/tickets`}
-          className="text-sm text-muted-foreground underline underline-offset-4"
-        >
-          {t("back")}
-        </Link>
+          <HistoryCard events={detail.events} when={when} t={t} />
+        </div>
+        <aside aria-label={t("railLabel")}>
+          <TicketRail
+            ticketId={detail.id}
+            status={detail.status}
+            dueAt={detail.dueAt}
+            assignee={detail.assignee}
+            canDraft={canDraft}
+            ticketLabel={ticketLabel}
+          />
+        </aside>
       </div>
     </>
   );

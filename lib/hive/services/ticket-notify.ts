@@ -91,8 +91,10 @@ async function pairMemberUserIds(pairId: string): Promise<Set<string>> {
  * (`usersHoldingPermission`): GROUP and HR_PAIR holders directly, plus
  * OWN_HR_PAIR holders whose member link is in this pair. `withGroup: false`
  * drops group-wide holders — HIVE's "opened" quirk (US-H6).
+ *
+ * @public — also names a ticket's drafters and approvers on its detail page.
  */
-async function pairHolders(
+export async function pairHolders(
   permission: "tickets.draft" | "tickets.approve",
   pairId: string,
   { withGroup }: { withGroup: boolean },

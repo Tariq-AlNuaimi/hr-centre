@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { EscalationSource, EscalationStatus } from "@/generated/prisma/enums";
 import type { Prisma } from "@/generated/prisma/client";
+import { viewWhere, type QueueView } from "@/lib/hive/ticket-clock";
 
 /**
  * The queue and one ticket — the read half of HIVE's escalation-queue service
@@ -29,6 +30,10 @@ export const QUEUE_SELECT = {
   draftedBy: { select: { id: true, name: true } },
   submittedBy: { select: { id: true, name: true } },
   approvedBy: { select: { id: true, name: true } },
+  // UX P1 (tickets P1-2): ownership and the internal clock.
+  assignee: { select: { id: true, name: true } },
+  dueAt: true,
+  firstResponseAt: true,
 } as const;
 
 /** Rows per page. The queue is a work list, not an archive browser. */
@@ -46,6 +51,9 @@ export interface QueueFilter {
   gte?: Date;
   lt?: Date;
   q?: string;
+  /** UX P1: Mine / Unassigned / Overdue, for `userId`. */
+  view?: QueueView;
+  userId?: string;
 }
 
 /**
@@ -76,6 +84,7 @@ export function queueWhere(f: QueueFilter): Prisma.EscalationWhereInput {
         : { in: [...f.pairIds] };
   } else if (f.pairId) where.hrPairId = f.pairId;
   if (f.source) where.source = f.source;
+  if (f.view) Object.assign(where, viewWhere(f.view, f.userId ?? ""));
   if (f.gte || f.lt) where.createdAt = { ...(f.gte && { gte: f.gte }), ...(f.lt && { lt: f.lt }) };
   if (f.q) {
     const number = ticketNumberIn(f.q);
@@ -116,7 +125,10 @@ export async function listEscalations(filter: QueueFilter = {}) {
       // burst after an announcement) sort arbitrarily, and a cursor page boundary
       // that lands between them silently skips one or repeats one. The row that
       // vanishes is an unanswered question nobody sees again.
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      // UX P1: a view is a work list, so it runs oldest-due first.
+      orderBy: filter.view
+        ? [{ dueAt: { sort: "asc", nulls: "last" } }, { id: "desc" }]
+        : [{ createdAt: "desc" }, { id: "desc" }],
       select: QUEUE_SELECT,
       take: PAGE + 1,
       ...(filter.cursor ? { cursor: { id: filter.cursor }, skip: 1 } : {}),

@@ -30,13 +30,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     from: param("from"),
     to: param("to"),
     q: param("q"),
+    view: param("view"),
   });
   if (!parsed.success) return err(parsed.error.issues[0]?.message ?? "Invalid filter.", 400);
 
   // The pair list rides the first page only: it feeds the filter control,
   // and "show older" has no use for it.
   const [{ data, nextCursor, counts }, pairs, settings] = await Promise.all([
-    listEscalations({ ...parsed.data, pairIds }),
+    listEscalations({ ...parsed.data, pairIds, userId: ctx.session.user.id }),
     parsed.data.cursor ? Promise.resolve(undefined) : listQueuePairs(pairIds),
     getTicketSettings(),
   ]);

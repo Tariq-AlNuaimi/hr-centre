@@ -7,16 +7,12 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { SectionCard } from "@/components/shared/SectionCard";
+import { DataTable } from "@/components/shared/DataTable";
+import { FilterBar, FilterChips, FilterSelect } from "@/components/shared/FilterBar";
+import { AgeingBadge } from "@/components/hive/escalations/AgeingBadge";
+import { formatDay } from "@/lib/format";
 import { useSourceLabels, useStatusLabels } from "@/components/hive/escalations/status-labels";
 import { StatusPill } from "@/components/hive/escalations/StatusPill";
 import { apiClient } from "@/lib/api-client";
@@ -52,6 +48,8 @@ interface QueueRow {
   sendError: string | null;
   createdAt: string;
   hrPair: { id: string; name: string } | null;
+  assignee: { id: string; name: string | null } | null;
+  dueAt: string | null;
 }
 
 /**
@@ -87,7 +85,6 @@ interface Filters {
 const NO_FILTERS: Filters = { pairId: null, source: null, from: "", to: "", q: "" };
 
 /** The Select's "any" option. Radix reserves the empty string. */
-const ANY = "ANY";
 
 /** Typing pause before a search runs: one request per thought, not per key. */
 const SEARCH_DEBOUNCE_MS = 300;
@@ -97,6 +94,8 @@ export default function EscalationQueuePage() {
   const sourceLabel = useSourceLabels();
   const locale = useLocale();
   const [status, setStatus] = useState<string | null>(null);
+  // UX P1 (tickets P1-2): All / Mine / Unassigned / Overdue.
+  const [view, setView] = useState<string>("");
   const [cursor, setCursor] = useState<string | null>(null);
   const [seen, setSeen] = useState<QueueRow[]>([]);
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
@@ -118,7 +117,7 @@ export default function EscalationQueuePage() {
   }, [search]);
 
   const query = useQuery<QueuePage>({
-    queryKey: ["hive", "escalations", status, cursor, filters],
+    queryKey: ["hive", "escalations", status, cursor, filters, view],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (status) params.set("status", status);
@@ -128,6 +127,7 @@ export default function EscalationQueuePage() {
       if (filters.from) params.set("from", filters.from);
       if (filters.to) params.set("to", filters.to);
       if (filters.q) params.set("q", filters.q);
+      if (view) params.set("view", view);
       const suffix = params.toString() ? `?${params}` : "";
       const page = await apiClient.get<QueuePage>(`/api/hive/escalations${suffix}`);
       if (page.pairs) setPairs(page.pairs);
@@ -169,80 +169,134 @@ export default function EscalationQueuePage() {
     search.trim() !== "";
   const allCount = Object.values(counts).reduce((a, b) => a + b, 0);
 
-  const when = (iso: string) =>
-    new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(new Date(iso));
+  const when = (iso: string) => formatDay(iso);
+
+  const columns = [
+    {
+      key: "ticket",
+      title: t("ticket"),
+      render: (_: unknown, row: QueueRow) => (
+        <div className="flex flex-col items-start gap-1">
+          <Link
+            href={`/${locale}/tickets/${row.id}`}
+            className="font-mono text-xs whitespace-nowrap text-primary-emphasis underline-offset-4 hover:underline"
+          >
+            {formatTicketId(row.ticketNumber, settings?.ticketPrefix)}
+          </Link>
+          <StatusPill status={row.status} label={statusLabel[row.status] ?? row.status} />
+        </div>
+      ),
+    },
+    {
+      key: "employee",
+      title: t("employee"),
+      render: (_: unknown, row: QueueRow) => (
+        <div className="min-w-0">
+          <div className="whitespace-nowrap text-foreground">{row.employeeName}</div>
+          {/* Truncated in the LIST only; the full question is on the ticket. */}
+          <div className="max-w-[40ch] truncate text-xs text-muted-foreground">{row.question}</div>
+        </div>
+      ),
+    },
+    {
+      key: "pair",
+      title: t("pair"),
+      render: (_: unknown, row: QueueRow) => (
+        <div className="text-sm whitespace-nowrap">
+          {row.hrPair?.name ?? "—"}
+          <div className="text-xs text-muted-foreground">
+            {row.assignee?.name ?? t("unassigned")}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "due",
+      title: t("due"),
+      render: (_: unknown, row: QueueRow) => (
+        <div className="flex flex-col items-start gap-1 text-xs whitespace-nowrap">
+          <AgeingBadge dueAt={row.dueAt} status={row.status} />
+          <span className="text-muted-foreground">
+            {t("raisedOn", { date: when(row.createdAt) })} · {sourceLabel[row.source] ?? row.source}
+          </span>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
       <PageHeader title={t("title")} subtitle={t("intro")} />
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+      <div className="mb-4">
+        <FilterChips
+          label={t("viewLabel")}
+          value={view}
+          onChange={(v) => {
+            setView(v);
+            setCursor(null);
+          }}
+          chips={[
+            { value: "", label: t("viewAll") },
+            { value: "mine", label: t("viewMine") },
+            { value: "unassigned", label: t("viewUnassigned") },
+            { value: "overdue", label: t("viewOverdue") },
+          ]}
+        />
+      </div>
+
+      <FilterBar className="mb-4">
         <div className="flex min-w-56 flex-1 flex-col gap-1">
-          <Label htmlFor="queue-search">{t("searchLabel")}</Label>
+          <Label htmlFor="queue-search" className="text-xs text-muted-foreground">
+            {t("searchLabel")}
+          </Label>
           <Input
             id="queue-search"
             type="search"
+            className="h-9"
             value={search}
             placeholder={t("searchPlaceholder")}
             maxLength={100}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <FilterSelect
+          id="queue-pair"
+          label={t("pair")}
+          allLabel={t("anyPair")}
+          value={filters.pairId ?? ""}
+          onChange={(v) => narrow({ pairId: v || null })}
+          options={pairs.map((p) => ({ value: p.id, label: p.name }))}
+        />
+        <FilterSelect
+          id="queue-source"
+          label={t("source")}
+          allLabel={t("anySource")}
+          value={filters.source ?? ""}
+          onChange={(v) => narrow({ source: v || null })}
+          options={(["SIRAAJ", "HIVE"] as const).map((s) => ({ value: s, label: sourceLabel[s] }))}
+        />
         <div className="flex flex-col gap-1">
-          <Label id="queue-pair-label">{t("pair")}</Label>
-          <Select
-            value={filters.pairId ?? ANY}
-            onValueChange={(v) => narrow({ pairId: v === ANY ? null : v })}
-          >
-            <SelectTrigger aria-labelledby="queue-pair-label" className="w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>{t("anyPair")}</SelectItem>
-              {pairs.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label id="queue-source-label">{t("source")}</Label>
-          <Select
-            value={filters.source ?? ANY}
-            onValueChange={(v) => narrow({ source: v === ANY ? null : v })}
-          >
-            <SelectTrigger aria-labelledby="queue-source-label" className="w-36">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ANY}>{t("anySource")}</SelectItem>
-              {(["SIRAAJ", "HIVE"] as const).map((s) => (
-                <SelectItem key={s} value={s}>
-                  {sourceLabel[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label htmlFor="queue-from">{t("from")}</Label>
+          <Label htmlFor="queue-from" className="text-xs text-muted-foreground">
+            {t("from")}
+          </Label>
           <Input
             id="queue-from"
             type="date"
-            className="w-40"
+            className="h-9 w-40"
             value={filters.from}
             max={filters.to || undefined}
             onChange={(e) => narrow({ from: e.target.value })}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor="queue-to">{t("to")}</Label>
+          <Label htmlFor="queue-to" className="text-xs text-muted-foreground">
+            {t("to")}
+          </Label>
           <Input
             id="queue-to"
             type="date"
-            className="w-40"
+            className="h-9 w-40"
             value={filters.to}
             min={filters.from || undefined}
             onChange={(e) => narrow({ to: e.target.value })}
@@ -253,105 +307,32 @@ export default function EscalationQueuePage() {
             {t("clearFilters")}
           </Button>
         ) : null}
-      </div>
+      </FilterBar>
 
-      <div className="mb-4 flex flex-wrap gap-2" role="group" aria-label={t("statusColumn")}>
-        <Button
-          variant={status === null ? "default" : "outline"}
-          size="sm"
-          onClick={() => filterBy(null)}
-        >
-          {t("chip", { label: t("filterAll"), count: allCount })}
-        </Button>
-        {STATUSES.map((s) => (
-          <Button
-            key={s}
-            variant={status === s ? "default" : "outline"}
-            size="sm"
-            onClick={() => filterBy(s)}
-          >
-            {t("chip", { label: statusLabel[s], count: counts[s] ?? 0 })}
-          </Button>
-        ))}
+      <div className="mb-4">
+        <FilterChips
+          label={t("statusColumn")}
+          value={status ?? ""}
+          onChange={(v) => filterBy(v || null)}
+          chips={[
+            { value: "", label: t("filterAll"), count: allCount },
+            ...STATUSES.map((s) => ({ value: s, label: statusLabel[s], count: counts[s] ?? 0 })),
+          ]}
+        />
       </div>
 
       {query.isError ? (
         <EmptyState description={t("loadFailed")} />
-      ) : query.isPending && seen.length === 0 ? (
-        <EmptyState description={t("loading")} />
-      ) : seen.length === 0 ? (
-        <EmptyState description={filtered || status ? t("noMatch") : t("empty")} />
       ) : (
-        // The card is titled with the ACTIVE FILTER, not with the page's own name.
-        // Repeating "Escalations" as a card heading directly under the page
-        // heading is a line that carries no information and pushes the table
-        // down; the filter is the thing a reader actually needs restated,
-        // because the chip row scrolls out of view on a long queue.
-        <SectionCard title={status ? statusLabel[status] : t("filterAll")} noBodyPadding>
-          <div className="overflow-x-auto">
-            <table className="w-full text-start text-sm">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground">
-                  <th className="px-4 py-2 text-start font-medium">{t("ticket")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("statusColumn")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("employee")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("question")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("pair")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("source")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("raised")}</th>
-                  <th className="px-4 py-2 text-start font-medium">{t("open")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {seen.map((row) => (
-                  <tr key={row.id} className="border-b border-border align-top">
-                    <td className="px-4 py-3 font-mono text-xs whitespace-nowrap text-muted-foreground">
-                      {formatTicketId(row.ticketNumber, settings?.ticketPrefix)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusPill
-                        status={row.status}
-                        label={statusLabel[row.status] ?? row.status}
-                      />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-foreground">
-                      {row.employeeName}
-                    </td>
-                    {/* Truncated in the LIST only. The full text is on the detail
-                        page — a queue that wraps four-line questions is one nobody
-                        scans. */}
-                    <td className="max-w-[38ch] truncate px-4 py-3 text-foreground">
-                      {row.question}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                      {row.hrPair?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                      {sourceLabel[row.source] ?? row.source}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
-                      {when(row.createdAt)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/${locale}/tickets/${row.id}`}
-                        // `primary-emphasis`, not `primary`. The raw brand royal
-                        // is ~3:1 on a dark surface — axe flags it serious, and
-                        // OQ-5 named the pastel palette as a real contrast risk
-                        // rather than a formality. This token exists for brand
-                        // used AS TEXT and lifts on dark; `bg-primary` buttons
-                        // keep the brand colour.
-                        className="text-primary-emphasis underline underline-offset-4"
-                      >
-                        {t("open")}
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
+        <DataTable<QueueRow>
+          rowKey="id"
+          columns={columns}
+          dataSource={seen}
+          loading={query.isPending && seen.length === 0}
+          emptyText={
+            <EmptyState description={filtered || status || view ? t("noMatch") : t("empty")} />
+          }
+        />
       )}
 
       {query.data?.nextCursor ? (

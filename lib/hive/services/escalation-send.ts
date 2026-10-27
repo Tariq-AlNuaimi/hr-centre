@@ -146,6 +146,7 @@ export async function approveAndSend(id: string, userId: string): Promise<Approv
       draftedById: true,
       hrPairId: true,
       updatedAt: true,
+      firstResponseAt: true,
       hrPair: { select: { name: true } },
     },
   });
@@ -249,7 +250,13 @@ export async function approveAndSend(id: string, userId: string): Promise<Approv
     const settled = await transition(
       tx,
       { id, status: "APPROVED" },
-      { status: "SENT", sentAt: new Date(), sendError: null },
+      {
+        status: "SENT",
+        sentAt: new Date(),
+        sendError: null,
+        // UX P1 (tickets P1-2): the first answer's time, for response reporting.
+        ...(row.firstResponseAt ? {} : { firstResponseAt: new Date() }),
+      },
     );
     // The outbound message is part of the thread, so a later reply (ADR-070)
     // appends to a conversation rather than starting one. Recorded even if the

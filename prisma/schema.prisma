@@ -85,6 +85,8 @@ model User {
   hiveEscalationsDrafted   Escalation[]         @relation("EscalationDraftedBy")
   hiveEscalationsSubmitted Escalation[]         @relation("EscalationSubmittedBy")
   hiveEscalationsApproved  Escalation[]         @relation("EscalationApprovedBy")
+  hiveEscalationsAssigned  Escalation[]         @relation("EscalationAssignee")
+  hiveSavedReplies         HiveSavedReply[]     @relation("HiveSavedReplyAuthor")
   hiveEscalationEvents     EscalationEvent[]    @relation("EscalationEventActor")
   hiveTemplatesUpdated     HiveEmailTemplate[]  @relation("HiveEmailTemplateUpdatedBy")
   hiveSettingsUpdated      HiveTicketSettings[] @relation("HiveTicketSettingsUpdatedBy")
@@ -2224,14 +2226,22 @@ model Escalation {
   /// Load-bearing: the stale-claim takeover pins on it.
   updatedAt DateTime @updatedAt
 
-  hrPair      HrTagPair              @relation(fields: [hrPairId], references: [id], onDelete: Restrict)
-  employee    Employee?              @relation("EscalationEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
-  draftedBy   User?                  @relation("EscalationDraftedBy", fields: [draftedById], references: [id], onDelete: SetNull)
-  submittedBy User?                  @relation("EscalationSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
-  approvedBy  User?                  @relation("EscalationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
-  messages    EscalationMessage[]
-  replyTokens EscalationReplyToken[]
-  events      EscalationEvent[]
+  hrPair      HrTagPair @relation(fields: [hrPairId], references: [id], onDelete: Restrict)
+  employee    Employee? @relation("EscalationEmployee", fields: [employeeId], references: [id], onDelete: SetNull)
+  draftedBy   User?     @relation("EscalationDraftedBy", fields: [draftedById], references: [id], onDelete: SetNull)
+  submittedBy User?     @relation("EscalationSubmittedBy", fields: [submittedById], references: [id], onDelete: SetNull)
+  approvedBy  User?     @relation("EscalationApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  /// UX P1 (tickets P1-2): who in the pair owns answering this ticket. Internal only.
+  assigneeId      String?                @map("assignee_id")
+  assignee        User?                  @relation("EscalationAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  /// The internal answer-by time, in WORKING hours on the core calendar (never shown to employees).
+  dueAt           DateTime?              @map("due_at")
+  /// When the first answer was sent.
+  firstResponseAt DateTime?              @map("first_response_at")
+  messages        EscalationMessage[]
+  replyTokens     EscalationReplyToken[]
+  events          EscalationEvent[]
 
   @@index([status, createdAt])
   @@index([employeeEmail, createdAt])
@@ -2240,6 +2250,8 @@ model Escalation {
   @@index([draftedById])
   @@index([approvedById])
   @@index([submittedById])
+  @@index([assigneeId, status])
+  @@index([dueAt])
   @@map("hive_escalations")
 }
 
@@ -2307,9 +2319,10 @@ model HrTagPair {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  members     HrTagMember[]
-  coverage    HrTagCoverage[]
-  escalations Escalation[]
+  members      HrTagMember[]
+  coverage     HrTagCoverage[]
+  escalations  Escalation[]
+  savedReplies HiveSavedReply[]
 
   @@index([deletedAt, createdAt])
   @@map("hive_hr_tag_pairs")
@@ -2489,12 +2502,32 @@ model HiveEmailTemplate {
   @@map("hive_email_templates")
 }
 
+/// UX P1 (tickets P1-4): a reusable answer HR inserts into a draft. A pair's own
+/// reply when `hrPairId` is set; everyone's otherwise. Edited by Edit content.
+model HiveSavedReply {
+  id          String     @id @default(cuid())
+  title       String
+  body        String     @db.Text
+  hrPairId    String?    @map("hr_pair_id")
+  hrPair      HrTagPair? @relation(fields: [hrPairId], references: [id], onDelete: Cascade)
+  createdById String?    @map("created_by_id")
+  createdBy   User?      @relation("HiveSavedReplyAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([hrPairId])
+  @@index([createdById])
+  @@map("hive_saved_replies")
+}
+
 /// Singleton: ticket prefix + status label overrides. Missing row = defaults.
 model HiveTicketSettings {
-  id           String  @id @default("singleton")
-  ticketPrefix String  @default("HR")
-  statusLabels Json    @default("{}")
-  updatedById  String?
+  id            String  @id @default("singleton")
+  ticketPrefix  String  @default("HR")
+  /// UX P1 (tickets P1-2): working hours to answer a new ticket (internal clock).
+  responseHours Int     @default(16) @map("response_hours")
+  statusLabels  Json    @default("{}")
+  updatedById   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

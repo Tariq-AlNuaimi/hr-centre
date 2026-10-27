@@ -1,6 +1,7 @@
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { recordAudit } from "@/lib/prisma/audit-extension";
 import { notifyTicket } from "./ticket-notify";
+import { answerDueAt } from "./ticket-sla";
 import { fold } from "@/lib/hive/civil";
 import { loadCompanies, loadHrPairs } from "@/lib/hive/hrtag-source";
 import { inCompanyOf, resolveCompany, resolvePair } from "@/lib/hive/hrtag-routing";
@@ -237,6 +238,8 @@ export async function createEscalation(
   if (!routed) return { error: "no_hr_pairs" };
 
   const employeeId = await employeeIdFor(capture.employeeEmail);
+  // UX P1 (tickets P1-2): the internal answer-by time, in working hours.
+  const dueAt = await answerDueAt();
 
   // The ticket and its first history line in one transaction (spec V2 §8.8),
   // so a ticket can never exist without the record of how it was opened.
@@ -257,6 +260,7 @@ export async function createEscalation(
         // OPEN ticket is the whole safety property of this function (§5.4 step
         // 5), and a default can change in a migration without anyone reading this.
         status: "OPEN",
+        dueAt,
       },
       // `hrPairId` is selected so the automatic audit row's `after` records WHERE
       // this went, which makes a misroute explainable after the fact.
