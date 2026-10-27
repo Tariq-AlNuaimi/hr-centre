@@ -20,6 +20,7 @@ import { Tabs } from "../ui/tabs";
 import { isOmani } from "@/lib/hiring/candidate-rules";
 import { CandidateForm, EMPTY_CANDIDATE, toBody } from "./CandidateForm";
 import { CvCard } from "./CvCard";
+import { DataRequestCard } from "./DataRequestCard";
 import { PackageTab } from "./PackageTab";
 import { ProfileTab } from "./ProfileTab";
 import { StageRail } from "./StageRail";
@@ -75,7 +76,16 @@ export function CandidateProfile({ id }: { id: string }) {
                 hidden: !c.can.manage || !PACKAGE_STAGES.includes(c.stage),
                 content: <PackageTab candidateId={c.id} />,
               },
-              { key: "timeline", label: t("tabTimeline"), content: <TimelineTab c={c} /> },
+              {
+                key: "timeline",
+                label: t("tabTimeline"),
+                content: (
+                  <div className="space-y-4">
+                    <TimelineTab c={c} />
+                    <DataRequestCard candidateId={c.id} hired={c.stage === "HIRED"} />
+                  </div>
+                ),
+              },
             ]}
           />
           <EditDialog c={c} open={editing} onOpenChange={setEditing} />

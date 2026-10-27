@@ -39,6 +39,7 @@ export type GeneralView = {
   panelAiMode: "blind" | "assisted" | "off";
   budget: { entities: Record<string, BudgetEntry> };
   approvals: { chains: Record<string, string[]>; cooThreshold: number };
+  tawteen: { targets: Record<string, number> };
   canEdit: boolean;
 };
 

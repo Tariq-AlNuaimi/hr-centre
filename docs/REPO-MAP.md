@@ -31,6 +31,7 @@
 - app/[locale]/(dashboard)/hiring/evaluations/page.tsx
 - app/[locale]/(dashboard)/hiring/flow/page.tsx
 - app/[locale]/(dashboard)/hiring/import/page.tsx
+- app/[locale]/(dashboard)/hiring/insights/page.tsx
 - app/[locale]/(dashboard)/hiring/interviews/[id]/page.tsx
 - app/[locale]/(dashboard)/hiring/interviews/new/page.tsx
 - app/[locale]/(dashboard)/hiring/interviews/page.tsx
@@ -158,6 +159,7 @@
 - app/api/hiring/candidates/[id]/cv/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/documents/[docId]/route.ts  [GET,PATCH,DELETE]
 - app/api/hiring/candidates/[id]/documents/route.ts  [GET,POST]
+- app/api/hiring/candidates/[id]/dsar/route.ts  [GET,DELETE]
 - app/api/hiring/candidates/[id]/negotiations/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/package/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/route.ts  [GET,PUT,DELETE]
@@ -173,6 +175,7 @@
 - app/api/hiring/evaluations/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/hiring/evaluations/export/route.ts  [GET]
 - app/api/hiring/evaluations/route.ts  [GET,POST]
+- app/api/hiring/insights/route.ts  [GET]
 - app/api/hiring/interviews/[id]/confirm/route.ts  [POST]
 - app/api/hiring/interviews/[id]/ics/route.ts  [GET]
 - app/api/hiring/interviews/[id]/panelists/route.ts  [POST,DELETE]
@@ -250,6 +253,7 @@
 - app/api/imports/template/route.ts  [GET]
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/cycle-sweep/route.ts  [GET,POST]
+- app/api/internal/hiring-retention/route.ts  [GET,POST]
 - app/api/internal/jml-sweep/route.ts  [GET,POST]
 - app/api/jml/calendar/exits/route.ts  [GET]
 - app/api/jml/calendar/export/route.ts  [GET]
@@ -539,7 +543,7 @@
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
-- lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, actsAs, canOverrideGates, canEditAssessmentPolicy, canSignJdForHr, seesPii, seesComp, isPanelOnly
+- lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, canErase, actsAs, canOverrideGates, canEditAssessmentPolicy, canSignJdForHr, seesPii, seesComp, isPanelOnly
 - lib/hiring/actor.ts: resolveHiringActor
 - lib/hiring/agency-invite-admin.ts: listInvites, createInvite, revokeInvite
 - lib/hiring/agency-invites.ts: INVITE_TOKEN_BYTES, generateInviteToken, hashInviteToken, InviteState, evaluateInvite, INVITE_SELECT, resolveInvite, invitePageView, submitViaInvite
@@ -554,6 +558,8 @@
 - lib/hiring/ai/screen.ts: SCREEN_CHUNK, screenStatus, screenChunk
 - lib/hiring/ai/skills.ts: KIND_FEATURE, BuiltPrompt, SYSTEM_BASE, SkillInputError, getScoringWeights, weightsGuidance, transcriptPrompt, buildPrompt, FitJson, fitFields
 - lib/hiring/ai/text.ts: extractJson, isRawOnly, FileKind, detectFileKind, extractPdfText, extractDocxText
+- lib/hiring/analytics-rules.ts: MIN_CELL, WITHHELD, FUNNEL_STAGES, suppressSmallCells, avgDays, pct, acceptanceRate
+- lib/hiring/analytics.ts: insightsView
 - lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
 - lib/hiring/approval-config.ts: approvalConfigSchema, ApprovalConfig, loadApprovalConfig, configToChainOptions, Approver, RoutedStep, routeChain, getRoutedChain, computeChainSnapshot, vacantApprovalRoles
 - lib/hiring/assessment-rules.ts: RESULTS_USE, assessmentConfigSchema, AssessmentConfig, DEFAULT_ASSESSMENT_CONFIG, AssessmentStatusValue, PercentileBand, percentileBand, computeValidUntil, ResultLike, isResultValid, ReuseAction, reuseDecision, isThresholdLocked, blocksAdvance, effectiveStatus, defaultDueAt, advanceableCount
@@ -570,6 +576,8 @@
 - lib/hiring/close-out.ts: listCloseOut, markNoticesSent
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId, sealSecretSetting, openSecretSetting
 - lib/hiring/comparison.ts: FINALIST_STAGES, matrixCompetencies, loadComparison, selectPreferred, rejectFinalist, clearPreferred
+- lib/hiring/dsar.ts: dsarExport
+- lib/hiring/erasure.ts: ERASED, eraseCandidate
 - lib/hiring/evaluations.ts: EvaluationListQuery, listEvaluations, loadEvaluation, EvaluationBody, createEvaluation, updateEvaluation
 - lib/hiring/fill-rules.ts: SEAT_OCCUPYING_STAGES, occupiesSeat, normalizeOpenings, FillState, describeFill, fillLabel, nextFillStatus, BudgetEnvelopeEntry, BudgetCheck, buildBudgetCheck
 - lib/hiring/http.ts: HiringRuleError, hiringError, hiringErrorResponse
@@ -603,6 +611,7 @@
 - lib/hiring/requisition-views.ts: approvalView, statusHistory, auditTrail
 - lib/hiring/requisition-write.ts: assertPlacement, createRequisition, createHiringRequest, updateRequisition
 - lib/hiring/requisitions.ts: LoadedRequisition, loadRequisition, seatOccupancyWhere, bandFor, requisitionDetail, RequisitionListQuery, listRequisitions
+- lib/hiring/retention.ts: RETENTION_BATCH, retentionCutoff, runHiringRetention
 - lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
 - lib/hiring/route.ts: hiringRoute, parseBody, parseQuery
 - lib/hiring/scope.ts: requisitionSubject, requisitionScopeWhere, candidateScopeWhere, companyScope, requisitionSubjects
@@ -898,6 +907,7 @@
 - components/hiring/candidates/CandidateList.tsx
 - components/hiring/candidates/CandidateProfile.tsx
 - components/hiring/candidates/CvCard.tsx
+- components/hiring/candidates/DataRequestCard.tsx
 - components/hiring/candidates/FilterChips.tsx
 - components/hiring/candidates/ImportView.tsx
 - components/hiring/candidates/NewCandidate.tsx
@@ -920,6 +930,8 @@
 - components/hiring/evaluations/EvaluationNew.tsx
 - components/hiring/flow/HiringFlow.tsx
 - components/hiring/home/HiringHome.tsx
+- components/hiring/insights/InsightCards.tsx
+- components/hiring/insights/InsightsView.tsx
 - components/hiring/interviews/EditInterviewDialog.tsx
 - components/hiring/interviews/InterviewDetail.tsx
 - components/hiring/interviews/InterviewForm.tsx
@@ -985,6 +997,7 @@
 - components/hiring/settings/BudgetCard.tsx
 - components/hiring/settings/ScoringCards.tsx
 - components/hiring/settings/SettingsView.tsx
+- components/hiring/settings/TawteenCard.tsx
 - components/hiring/sourcing/SourcingView.tsx
 - components/hiring/ui/badges.tsx
 - components/hiring/ui/competency-picker.tsx

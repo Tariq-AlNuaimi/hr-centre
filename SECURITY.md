@@ -134,6 +134,19 @@ prompt). Insight bodies (`aiOutput`) and interview analyses (`aiAnalysis`) are i
 the db-sql redaction list and the export denylist. Accepted risk: a stored insight is visible to
 anyone who can read the record (judgments behind the panel reveal), as in Interview Hub.
 
+### Hiring retention and erasure (Hiring port slice 7, PDPL)
+
+`/api/internal/hiring-retention` (daily 04:00 UTC, `withInternalAuth` + `CRON_SECRET` bearer,
+silent while unset) erases candidates who ended REJECTED / WITHDRAWN or were deleted and are
+untouched for `CANDIDATE_RETENTION_DAYS` (default 365), 25 per run. `DELETE
+/api/hiring/candidates/[id]/dsar` (org-wide `hiring.erase`) erases one on request; `GET` exports
+everything held (no-store). Erasure (`lib/hiring/erasure.ts`) clears identity, contact, ID, sealed
+expectation, notes, AI judgments and DEI on the candidate; text on interviews, scorecards, stage
+history and handovers; sealed pay and terms on offers and versions; deletes documents,
+negotiation notes and AI insights; removes the CV, document and signed-offer files; and redacts
+the values in the audit rows of every erased record. A candidate linked to an employee is
+refused (erase from the people record).
+
 ## 4. Encryption — current
 
 | Layer                                  | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |

@@ -181,6 +181,9 @@ const envSchema = z.object({
   ODOO_EMPLOYEE_URL: z.string().optional(),
   STAFFING_FORM_URL: z.string().optional(),
   JML_RETENTION_DAYS: z.string().optional(),
+  // Hiring PDPL retention (Interview Hub CANDIDATE_RETENTION_DAYS): rejected,
+  // withdrawn and deleted candidates untouched for this long are erased daily.
+  CANDIDATE_RETENTION_DAYS: z.coerce.number().int().positive().default(365),
   JML_RETENTION_ACTION: z.string().optional(),
 });
 

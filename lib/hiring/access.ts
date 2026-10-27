@@ -50,6 +50,11 @@ export function isHiringAdmin(actor: HiringActor): boolean {
   return hasGroup(actor.grants, "hiring.configure");
 }
 
+/** PDPL erasure and data-subject exports: org-wide only. */
+export function canErase(actor: HiringActor): boolean {
+  return hasGroup(actor.grants, "hiring.erase");
+}
+
 /** Holds approval role `role` for this record (Interview Hub `businessRole === role`). */
 export function actsAs(actor: HiringActor, role: HiringApprovalRole, subject: ScopeSubject) {
   return can(actor, ROLE_PERMISSION[role], subject);
