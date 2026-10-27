@@ -327,3 +327,34 @@ export const reasonCodeSchema = z.object({
   active: z.boolean().default(true),
   sortOrder: z.number().int().min(0).max(1000).default(0),
 });
+
+// --- S6b: documents ------------------------------------------------------------
+
+export const DOCUMENT_TYPE_VALUES = [
+  "ACCEPTANCE_OF_RESIGNATION",
+  "TERMINATION_NOTIFICATION",
+  "NON_RENEWAL_NOTIFICATION",
+  "BANK_TERMINATION_NOTICE",
+  "REPATRIATION_TICKET_REQUEST",
+  "IT_ACCESS_REVOCATION_INSTRUCTION",
+  "FINAL_SETTLEMENT_WORKSHEET",
+  "SETTLEMENT_TRANSMITTAL_TO_FINANCE",
+  "CERTIFICATE_OF_SERVICE",
+] as const;
+
+export const uploadTemplateSchema = z.object({
+  documentType: z.enum(DOCUMENT_TYPE_VALUES),
+  name: z.string().trim().min(2).max(120),
+  language: z.enum(["en", "ar"]).default("en"),
+  /** The .docx as base64 (≤ 2 MB decoded — the engine re-checks). */
+  base64: z
+    .string()
+    .max(2_900_000, "The template is larger than 2 MB")
+    .regex(/^[A-Za-z0-9+/=\s]+$/, "Not a base64 file"),
+});
+
+export const generateDocumentSchema = z.object({
+  documentType: z.enum(DOCUMENT_TYPE_VALUES),
+  useCurrent: z.boolean().default(false),
+  reason: z.string().trim().max(500).nullable().default(null),
+});

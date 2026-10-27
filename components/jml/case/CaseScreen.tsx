@@ -17,6 +17,7 @@ import { ApprovalsTab } from "../leavers/ApprovalsTab";
 import { ComplianceTab } from "../leavers/ComplianceTab";
 import { InterviewTab } from "../leavers/InterviewTab";
 import { SettlementTab } from "../leavers/SettlementTab";
+import { DocumentsTab } from "../leavers/DocumentsTab";
 import type { CaseDetail } from "./types";
 
 const TABS = [
@@ -26,6 +27,7 @@ const TABS = [
   "compliance",
   "interview",
   "settlement",
+  "documents",
   "register",
   "emails",
   "activity",
@@ -43,6 +45,7 @@ const TABS_FOR: Record<CaseDetail["caseType"], readonly Tab[]> = {
     "compliance",
     "interview",
     "settlement",
+    "documents",
     "register",
     "emails",
     "activity",
@@ -123,6 +126,7 @@ export function CaseScreen({ caseId }: { caseId: string }) {
           <InterviewTab caseId={c.id} exitType={c.exitType ?? ""} status={c.status} />
         ) : null}
         {shown === "settlement" ? <SettlementTab caseId={c.id} /> : null}
+        {shown === "documents" ? <DocumentsTab caseId={c.id} status={c.status} /> : null}
         {shown === "register" ? <RegisterTab detail={c} /> : null}
         {shown === "emails" ? <EmailsTab detail={c} /> : null}
         {shown === "activity" ? <ActivityTab detail={c} /> : null}

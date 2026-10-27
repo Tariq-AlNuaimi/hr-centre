@@ -15,7 +15,7 @@ export const SETTINGS_SECTIONS = [
   },
   { group: "calendar", keys: ["calendar", "statutory", "employee-code"] },
   { group: "lists", keys: ["classifications", "asset-types", "access-checklist"] },
-  { group: "leavers", keys: ["approval-authority", "reason-codes"] },
+  { group: "leavers", keys: ["approval-authority", "reason-codes", "documents"] },
   { group: "data", keys: ["retention"] },
 ] as const;
 

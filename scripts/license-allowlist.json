@@ -1,9 +1,9 @@
 {
-  "$comment": "ADR-051 license-gate elections. The /ship `licenses` phase (scripts/license-gate.mjs) goes RED when any package in package-lock.json resolves an AGPL / SSPL / BUSL / Elastic / GPL-only license, unless the package has an election here. Elections are for: (a) dual-licensed packages electing their permissive branch, (b) packages with no published license field (documented exceptions, noted in the SBOM). Every entry REQUIRES a human 'reason' — a reasonless entry fails allowlist validation. Waiving a TRUE (non-dual) copyleft/source-available license additionally needs a SECURITY.md §12 row with sign-off (ADR-051 migration trigger). MPL-2.0 is NOT in the deny set: file-level weak copyleft consumed unmodified (axe-core, lightningcss — dev/build only) carries no obligation for this template (ADR-051).",
+  "$comment": "ADR-051 license-gate elections. The /ship `licenses` phase (scripts/license-gate.mjs) goes RED when any package in package-lock.json resolves an AGPL / SSPL / BUSL / Elastic / GPL-only license, unless the package has an election here. Elections are for: (a) dual-licensed packages electing their permissive branch, (b) packages with no published license field (documented exceptions, noted in the SBOM). Every entry REQUIRES a human 'reason' \u2014 a reasonless entry fails allowlist validation. Waiving a TRUE (non-dual) copyleft/source-available license additionally needs a SECURITY.md \u00a712 row with sign-off (ADR-051 migration trigger). MPL-2.0 is NOT in the deny set: file-level weak copyleft consumed unmodified (axe-core, lightningcss \u2014 dev/build only) carries no obligation for this template (ADR-051).",
   "elections": {
     "jszip": {
       "license": "MIT",
-      "reason": "dual-licensed (MIT OR GPL-3.0-or-later); MIT elected per ADR-051. Transitive via exceljs; the tracked exceljs->SheetJS migration (ADR-051 §4) prunes this subtree."
+      "reason": "dual-licensed (MIT OR GPL-3.0-or-later); MIT elected per ADR-051. Transitive via exceljs; the tracked exceljs->SheetJS migration (ADR-051 \u00a74) prunes this subtree."
     },
     "buffers": {
       "license": "UNKNOWN",
@@ -24,6 +24,10 @@
     "buildcheck": {
       "license": "MIT",
       "reason": "no `license` field but ships a verbatim MIT LICENSE file (mscdex). DEV-only transitive via ssh2 (V2-401 testcontainers); documented exception per ADR-051."
+    },
+    "pizzip": {
+      "license": "MIT",
+      "reason": "dual-licensed (MIT OR GPL-3.0); MIT elected per ADR-051 \u2014 the same election as jszip, from which PizZip is forked. RUNTIME dependency of the JML leaver documents (ADR-083): docxtemplater takes a caller-supplied zip. Its dependency pako is MIT AND Zlib (both permissive)."
     }
   }
 }

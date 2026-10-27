@@ -38,3 +38,5 @@ Port spec: HR Offboarding §2.10–2.13, §2.17–2.21.
 - Worst: Junior HR calculates → 403; approval with unverified parameters → refused naming
   them; a line after calculation → approval refused until recalculated; a code under the wrong
   category → refused naming its real parent; closing before the LDS → refused.
+
+S6b (documents) is specified in `docs/blueprints/jml-s6b-documents.md`.

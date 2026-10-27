@@ -873,3 +873,15 @@ the operator has not asked, and neither models Oman gratuity or the C1–C11 gat
 Decision: build — port the two apps' services into one engine over the HR Centre core
 (employee record, org, RBAC, departure flow). Dependencies are recorded with their own ADRs
 (document generation: docxtemplater + pizzip, slice S6).
+
+### 2026-10-27 — JML: Word document generation for leavers (`docxtemplater` + `pizzip`)
+
+Scope: lib/jml/docs/**
+Considered: **hand-writing OOXML** (rejected — HR authors the letters in Word; a hand-rolled
+merge breaks on Word's split runs and is a parser we would own). **easy-template-x** (rejected as
+first choice — smaller community, bundles jszip, same election needed; kept as the fallback).
+**A PDF/document SaaS** (rejected — settlement and termination data would leave the database the
+audit log covers, a cross-border question the operator has not asked). **`docxtemplater` core +
+`pizzip`** (adopted — what HR Offboarding shipped; default parser only, nothing evaluates; MIT, with
+the MIT branch of pizzip's dual licence elected).
+Decision: buy — `docxtemplater` 3.71.1 + `pizzip` 3.3.0, server-only, no file retained. ADR-083.

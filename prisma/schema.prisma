@@ -110,6 +110,9 @@ model User {
   leaveSettlementsApproved LeaveSettlement[]          @relation("LeaveSettlementApprovedBy")
   leaveSettlementsPaid     LeaveSettlement[]          @relation("LeaveSettlementPaymentBy")
   leaveLinesAuthorised     LeaveSettlementLine[]      @relation("LeaveLineAuthorisedBy")
+  jmlDocTemplatesUploaded  JmlDocumentTemplate[]      @relation("JmlDocTemplateUploadedBy")
+  jmlDocTemplatesApproved  JmlDocumentTemplate[]      @relation("JmlDocTemplateApprovedBy")
+  jmlDocumentsGenerated    JmlGeneratedDocument[]     @relation("JmlDocumentGeneratedBy")
   leaveGatesSatisfied      LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
   leaveGatesOverridden     LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
 
@@ -3613,6 +3616,7 @@ model JmlCase {
   /// JML S5 — the leaver side.
   leaveDetail    LeaveCaseDetail?
   interview      LeaveExitInterview?
+  documents      JmlGeneratedDocument[]
   settlement     LeaveSettlement?
   approvals      JmlApproval[]
   assetsIssued   JmlAsset[]                @relation("JmlAssetIssuedOn")
@@ -4397,4 +4401,74 @@ model LeaveSettlementLine {
 
   @@index([caseId, lineType])
   @@map("leave_settlement_lines")
+}
+
+// ====================================================================
+// JML S6b — Word documents (ADR-083). Templates are .docx bodies (base64)
+// versioned per type; generated documents are METADATA only (BR-OFF-027).
+// ====================================================================
+
+/// Offboarding §16: the nine document types.
+enum JmlDocumentType {
+  ACCEPTANCE_OF_RESIGNATION
+  TERMINATION_NOTIFICATION
+  NON_RENEWAL_NOTIFICATION
+  BANK_TERMINATION_NOTICE
+  REPATRIATION_TICKET_REQUEST
+  IT_ACCESS_REVOCATION_INSTRUCTION
+  FINAL_SETTLEMENT_WORKSHEET
+  SETTLEMENT_TRANSMITTAL_TO_FINANCE
+  CERTIFICATE_OF_SERVICE
+}
+
+enum JmlDocumentState {
+  DRAFT
+  ACTIVE
+  RETIRED
+}
+
+model JmlDocumentTemplate {
+  id           String                 @id @default(cuid())
+  documentType JmlDocumentType        @map("document_type")
+  name         String
+  version      Int
+  state        JmlDocumentState       @default(DRAFT)
+  /// The .docx, base64. Validated on upload (allowlisted placeholders only).
+  body         String
+  language     String                 @default("en")
+  /// Seeded default (ADR-083) — HR replaces it with their real letter.
+  isDefault    Boolean                @default(false) @map("is_default")
+  uploadedById String?                @map("uploaded_by_id")
+  uploadedBy   User?                  @relation("JmlDocTemplateUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  approvedById String?                @map("approved_by_id")
+  approvedBy   User?                  @relation("JmlDocTemplateApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt   DateTime?              @map("approved_at")
+  retiredAt    DateTime?              @map("retired_at")
+  generated    JmlGeneratedDocument[]
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  @@unique([documentType, version])
+  @@index([documentType, state])
+  @@map("jml_document_templates")
+}
+
+/// One generation — no file, no path, no URL (BR-OFF-027).
+model JmlGeneratedDocument {
+  id                   String              @id @default(cuid())
+  caseId               String              @map("case_id")
+  case                 JmlCase             @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  documentType         JmlDocumentType     @map("document_type")
+  templateId           String              @map("template_id")
+  template             JmlDocumentTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  templateVersion      Int                 @map("template_version")
+  /// AC-17.2: regenerating on the CURRENT template instead of the pinned one needs a reason.
+  currentVersionReason String?             @map("current_version_reason")
+  generatedById        String?             @map("generated_by_id")
+  generatedBy          User?               @relation("JmlDocumentGeneratedBy", fields: [generatedById], references: [id], onDelete: SetNull)
+  generatedAt          DateTime            @default(now()) @map("generated_at")
+
+  @@index([caseId, generatedAt])
+  @@index([templateId])
+  @@map("jml_generated_documents")
 }

@@ -2540,6 +2540,10 @@
         "reason-codes": {
           "title": "Exit reasons",
           "note": "The 7 categories and their codes the interview uses."
+        },
+        "documents": {
+          "title": "Documents",
+          "note": "The nine Word templates for leaver letters."
         }
       },
       "list": {
@@ -2964,6 +2968,32 @@
         "deactivate": "Deactivate",
         "saved": "Saved.",
         "failed": "The code could not be saved."
+      },
+      "documents": {
+        "title": "Document templates",
+        "subtitle": "Upload a .docx with placeholders such as '{'caseRef'}'; an HR Manager other than the uploader activates it.",
+        "uploadTitle": "Upload a template",
+        "uploadNote": "Up to 2 MB. Unknown placeholders are refused so a letter never silently loses a paragraph.",
+        "type": "Document",
+        "name": "Name",
+        "file": "Word file (.docx)",
+        "upload": "Upload as draft",
+        "uploaded": "Template uploaded as a draft.",
+        "noVersions": "No versions yet.",
+        "versionLine": "v{version} — {name}",
+        "isDefault": "default (replace with HR's letter)",
+        "uploadedBy": "uploaded by {who}",
+        "state": {
+          "DRAFT": "Draft",
+          "ACTIVE": "Active",
+          "RETIRED": "Retired"
+        },
+        "download": "Download",
+        "activate": "Activate",
+        "activated": "Template activated.",
+        "retire": "Retire",
+        "retired": "Template retired.",
+        "failed": "The template could not be saved."
       }
     },
     "vocab": {
@@ -3173,7 +3203,8 @@
         "compliance": "Compliance",
         "register": "Assets & access",
         "interview": "Interview",
-        "settlement": "Settlement"
+        "settlement": "Settlement",
+        "documents": "Documents"
       },
       "actions": {
         "failed": "That could not be done.",
@@ -3985,6 +4016,24 @@
         "confirm": "Close",
         "done": "Exit closed.",
         "failed": "The exit could not be closed."
+      },
+      "documents": {
+        "title": "Documents",
+        "subtitle": "Generated as Word files from the active template and downloaded — nothing is stored but who generated what.",
+        "draft": "Documents are generated once the exit is active.",
+        "noTemplates": "No active templates. Upload and activate them in JML settings → Documents.",
+        "defaultTemplate": "default template v{version} — HR should replace it",
+        "version": "v{version}",
+        "generate": "Generate",
+        "regenerate": "Regenerate (same version)",
+        "useCurrent": "Use current template",
+        "useCurrentTitle": "Regenerate on the current template",
+        "useCurrentBody": "The first generation is pinned to its template version. Using the current one needs a reason.",
+        "reason": "Reason",
+        "generated": "Document downloaded.",
+        "historyTitle": "Generated",
+        "none": "Nothing generated yet.",
+        "historyLine": "{type} — template v{version}, by {by} at {at}"
       }
     },
     "register": {
@@ -4060,6 +4109,17 @@
         "confirmedDone": "Access item confirmed.",
         "failed": "The access item could not be saved."
       }
+    },
+    "documentType": {
+      "ACCEPTANCE_OF_RESIGNATION": "Acceptance of resignation",
+      "TERMINATION_NOTIFICATION": "Termination notification",
+      "NON_RENEWAL_NOTIFICATION": "Non-renewal notification",
+      "BANK_TERMINATION_NOTICE": "Bank termination notice",
+      "REPATRIATION_TICKET_REQUEST": "Repatriation ticket request",
+      "IT_ACCESS_REVOCATION_INSTRUCTION": "IT access revocation instruction",
+      "FINAL_SETTLEMENT_WORKSHEET": "Final settlement worksheet",
+      "SETTLEMENT_TRANSMITTAL_TO_FINANCE": "Settlement transmittal to Finance",
+      "CERTIFICATE_OF_SERVICE": "Certificate of service"
     }
   },
   "hiring": {
