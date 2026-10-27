@@ -19,11 +19,16 @@ export function LeaverList() {
           title={t("title")}
           subtitle={t("subtitle")}
           actions={
-            can("jml.manageLeavers") ? (
-              <Link href="/jml/leavers/new" className={buttonVariants({ variant: "default" })}>
-                {t("newTitle")}
+            <div className="flex gap-2">
+              <Link href="/jml/leavers/calendar" className={buttonVariants({ variant: "outline" })}>
+                {t("calendar")}
               </Link>
-            ) : null
+              {can("jml.manageLeavers") ? (
+                <Link href="/jml/leavers/new" className={buttonVariants({ variant: "default" })}>
+                  {t("newTitle")}
+                </Link>
+              ) : null}
+            </div>
           }
         />
       }
