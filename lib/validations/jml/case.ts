@@ -92,3 +92,8 @@ export const statutoryWatchSchema = z.object({
   mine: z.enum(["true", "false"]).optional(),
   all: z.enum(["true", "false"]).optional(),
 });
+
+export const dashboardQuerySchema = z.object({ scope: z.enum(["mine", "all"]).optional() });
+export const myTasksQuerySchema = z.object({
+  caseType: z.enum(["JOIN", "MOVE", "LEAVE"]).optional(),
+});

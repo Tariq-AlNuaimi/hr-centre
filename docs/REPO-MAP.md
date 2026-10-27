@@ -82,6 +82,7 @@
 - app/[locale]/(dashboard)/jml/leavers/page.tsx
 - app/[locale]/(dashboard)/jml/movers/new/page.tsx
 - app/[locale]/(dashboard)/jml/movers/page.tsx
+- app/[locale]/(dashboard)/jml/my-tasks/page.tsx
 - app/[locale]/(dashboard)/jml/page.tsx
 - app/[locale]/(dashboard)/jml/reports/[slug]/page.tsx
 - app/[locale]/(dashboard)/jml/reports/leavers/[slug]/page.tsx
@@ -292,6 +293,7 @@
 - app/api/jml/config/statutory/route.ts  [GET,POST]
 - app/api/jml/config/templates/[id]/route.ts  [GET,PATCH]
 - app/api/jml/config/templates/route.ts  [GET,POST]
+- app/api/jml/dashboard/route.ts  [GET]
 - app/api/jml/emails/[id]/retry/route.ts  [POST]
 - app/api/jml/joiners/[id]/activate/route.ts  [GET,POST]
 - app/api/jml/joiners/[id]/route.ts  [GET,PATCH,DELETE]
@@ -321,6 +323,7 @@
 - app/api/jml/me/route.ts  [GET]
 - app/api/jml/movers/profile/route.ts  [GET]
 - app/api/jml/movers/route.ts  [POST]
+- app/api/jml/my-tasks/route.ts  [GET]
 - app/api/jml/people/[id]/employee-code/route.ts  [POST]
 - app/api/jml/reports/[slug]/export/route.ts  [GET]
 - app/api/jml/reports/[slug]/route.ts  [GET]
@@ -622,6 +625,8 @@
 - lib/hive/tools/rotation.ts: loadRotationConfig, runRotation
 - lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, employeeScopeWhere, caseScopeWhere, AccessibleCase, subjectOf, loadCaseFor, MANAGE_PERMISSION
 - lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
+- lib/jml/dashboard-rules.ts: WorkBucket, workBucket, BUCKET_ORDER, defaultMine
+- lib/jml/dashboard.ts: myTasks, jmlDashboard, JmlDashboard
 - lib/jml/desks.ts: desks, externalSystems, itIntakeConfig, itIntakeFallbackUrl, isRetryable
 - lib/jml/docs/engine.ts: MAX_TEMPLATE_BYTES, TEMPLATE_PLACEHOLDERS, MergeData, TemplateIssue, validateTemplateBuffer, renderDocument, docxHeaders, SUMMARY_DISMISSAL_GATE_TASKS, summaryDismissalHold, generationProblem
 - lib/jml/docs/generate.ts: listCaseDocuments, generateDocument
@@ -630,6 +635,7 @@
 - lib/jml/email/queue.ts: QueueEmailInput, queueEmail, sendableNow, DrainResult, drainQueue, retryEmail, renderBody, cancelQueuedEmails
 - lib/jml/email/templates.ts: TemplateContext, EmailTemplate, TEMPLATES, findTemplate, render, missingVariables, contextForCase, SAMPLE_CONTEXT
 - lib/jml/email/types.ts: EMAIL_TYPES, EmailType
+- lib/jml/employee-tab.ts: jmlTabVisible, employeeJml, EmployeeJml
 - lib/jml/engine/activity.ts: caseActivity
 - lib/jml/engine/assignment.ts: SCOPE_PRECEDENCE, RULE_SELECT, RuleRow, Placement, resolveHrAssignment, subjectForTarget, userHolds, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules, listJmlHrUsers
 - lib/jml/engine/case-actions.ts: cancelOpenWork, cancelCase, archiveCase, reassignOwner, setLegalHold
@@ -831,7 +837,7 @@
 - lib/validations/hive/reply.ts: replyBodySchema, replyTokenSchema
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
-- lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, employeeCodeRecordSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema
+- lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, employeeCodeRecordSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema, dashboardQuerySchema, myTasksQuerySchema
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
 - lib/validations/jml/joiner.ts: ROLE_TRACKS, draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, openJoinCaseSchema, OpenJoinCaseInput
 - lib/validations/jml/leave.ts: EXIT_TYPES, EXIT_SUBTYPES, NATIONALITY_BRANCHES, APPROVAL_TYPE_VALUES, ACCESS_DOMAIN_VALUES, createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, stageAdvanceSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, REASON_LEVEL1, interviewSchema, PREVENTION_FACTOR_VALUES, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
@@ -964,6 +970,7 @@
 - components/hive/reply/ReplyInvalid.tsx
 - components/jml/ActionDialog.tsx
 - components/jml/CaseBits.tsx
+- components/jml/EmployeeJmlTab.tsx
 - components/jml/Field.tsx
 - components/jml/States.tsx
 - components/jml/case/AccessSection.tsx
@@ -977,6 +984,9 @@
 - components/jml/case/TaskActions.tsx
 - components/jml/case/TaskRow.tsx
 - components/jml/cases/CaseList.tsx
+- components/jml/dashboard/JmlDashboard.tsx
+- components/jml/dashboard/MyTasksScreen.tsx
+- components/jml/dashboard/TaskLines.tsx
 - components/jml/joiners/ActivationPanel.tsx
 - components/jml/joiners/JoinerFields.tsx
 - components/jml/joiners/JoinerForm.tsx

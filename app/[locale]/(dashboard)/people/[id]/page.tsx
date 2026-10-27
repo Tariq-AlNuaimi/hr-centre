@@ -14,6 +14,10 @@ import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
 import { LoginPanel } from "@/components/people/LoginPanel";
 import { RecordTabs, parseRecordTab, type RecordTab } from "@/components/people/RecordTabs";
 import { EmployeeTickets } from "@/components/hive/TicketTaskPanels";
+import { EmployeeJmlTab } from "@/components/jml/EmployeeJmlTab";
+import type { Session } from "next-auth";
+import { jmlActor } from "@/lib/jml/access";
+import { employeeJml, jmlTabVisible } from "@/lib/jml/employee-tab";
 import { hasHivePermission } from "@/lib/hive/services/permissions";
 import { recordFormValues } from "@/components/people/record-form-values";
 import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
@@ -163,12 +167,32 @@ function unitItems(
  * HR tickets tab: only with `tickets.see` (company-wide by design). Without it
  * the tab is absent and its URL shows the overview — no question leaks.
  */
-async function tabsFor(
-  userId: string,
-  requested: RecordTab,
-): Promise<{ tab: RecordTab; hiddenTabs: RecordTab[] }> {
-  if (await hasHivePermission(userId, "seeTickets")) return { tab: requested, hiddenTabs: [] };
-  return { tab: requested === "tickets" ? "overview" : requested, hiddenTabs: ["tickets"] };
+async function tabsFor(session: Session, employeeId: string, requested: RecordTab) {
+  const hiddenTabs: RecordTab[] = [];
+  if (!(await hasHivePermission(session.user.id, "seeTickets"))) hiddenTabs.push("tickets");
+  // JML tab: only for someone who may see JML cases for this person's placement;
+  // its data loads only when it is the open tab.
+  const jml = await jmlActor(session);
+  if (!(await jmlTabVisible(jml, employeeId))) hiddenTabs.push("jml");
+  const tab: RecordTab = hiddenTabs.includes(requested) ? "overview" : requested;
+  const jmlData = tab === "jml" ? await employeeJml(jml, employeeId) : null;
+  return { tab, hiddenTabs, jmlData };
+}
+
+/** A module's tab on the record (HR tickets, JML) — each module renders its own. */
+function ModuleTab({
+  tab,
+  jmlData,
+  employeeId,
+  locale,
+}: {
+  tab: "tickets" | "jml";
+  jmlData: Awaited<ReturnType<typeof employeeJml>>;
+  employeeId: string;
+  locale: string;
+}) {
+  if (tab === "jml") return jmlData ? <EmployeeJmlTab data={jmlData} locale={locale} /> : null;
+  return <EmployeeTickets employeeId={employeeId} locale={locale} />;
 }
 
 export default async function EmployeeDetailPage({
@@ -182,7 +206,7 @@ export default async function EmployeeDetailPage({
   const requestedTab = parseRecordTab((await searchParams).tab);
   const session = await auth();
   if (!session) redirect(`/${locale}/login`);
-  const { tab, hiddenTabs } = await tabsFor(session.user.id, requestedTab);
+  const { tab, hiddenTabs, jmlData } = await tabsFor(session, id, requestedTab);
 
   const t = await getTranslations("pms");
   const actor = await resolveActor(session);
@@ -363,8 +387,8 @@ export default async function EmployeeDetailPage({
       {/* F-e — the record's tabs; later modules add theirs (RecordTabs). */}
       <RecordTabs basePath={`/${locale}/people/${employee.id}`} active={tab} hidden={hiddenTabs} />
 
-      {tab === "tickets" ? (
-        <EmployeeTickets employeeId={employee.id} locale={locale} />
+      {tab === "tickets" || tab === "jml" ? (
+        <ModuleTab tab={tab} jmlData={jmlData} employeeId={employee.id} locale={locale} />
       ) : tab === "overview" ? (
         <>
           <SectionCard title={t("detail.identity")}>

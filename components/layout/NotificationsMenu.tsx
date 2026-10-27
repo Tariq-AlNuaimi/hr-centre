@@ -26,7 +26,7 @@ export function NotificationsMenu() {
   const t = useTranslations("chrome");
   const tn = useTranslations("pms.notifications");
   const [open, setOpen] = useState(false);
-  const { items, unread, isLoading, isError, markRead } = useNotifications();
+  const { items, unread, isLoading, isError, markRead, dismiss } = useNotifications();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -90,6 +90,7 @@ export function NotificationsMenu() {
                 setOpen(false);
                 markRead.mutate({ ids: [id] });
               }}
+              onDismiss={(id) => dismiss.mutate(id)}
             />
           </div>
         )}

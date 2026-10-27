@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * nothing else changes. Tabs are links (`?tab=`), so each is addressable,
  * works without JavaScript, and the server renders only the panel shown.
  */
-export const RECORD_TABS = ["overview", "performance", "tickets"] as const;
+export const RECORD_TABS = ["overview", "performance", "tickets", "jml"] as const;
 export type RecordTab = (typeof RECORD_TABS)[number];
 
 export function parseRecordTab(value: string | string[] | undefined): RecordTab {
