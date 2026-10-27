@@ -11,12 +11,12 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { DataTable, type SortChange } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { NativeSelect } from "@/components/org/NativeSelect";
 import { formatDate } from "@/lib/format";
 import { formatBand } from "@/lib/hiring/money";
 import { qs, useHiringMe, useHiringQuery } from "../ui/api";
 import { StatusBadge } from "../ui/badges";
 import { QueryState } from "../ui/states";
+import { FilterBar, FilterSelect } from "@/components/shared/FilterBar";
 
 export type RequisitionRow = {
   id: string;
@@ -204,26 +204,19 @@ export function RequisitionList() {
           </>
         }
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <label htmlFor="req-status" className="text-sm text-muted-foreground">
-          {t("filterStatus")}
-        </label>
-        <NativeSelect
+      <FilterBar>
+        <FilterSelect
           id="req-status"
+          label={t("filterStatus")}
+          allLabel={t("allStatuses")}
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
+          onChange={(v) => {
+            setStatus(v);
             setPage(1);
           }}
-        >
-          <option value="">{t("allStatuses")}</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {ts(s)}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
+          options={STATUSES.map((s) => ({ value: s, label: ts(s) }))}
+        />
+      </FilterBar>
       <QueryState isLoading={false} error={error} onRetry={() => void refetch()}>
         <DataTable<RequisitionRow>
           rowKey="id"

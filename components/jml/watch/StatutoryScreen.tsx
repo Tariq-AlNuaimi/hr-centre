@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge } from "@/components/ui/badge";
-import { NativeSelect } from "@/components/org/NativeSelect";
+import { FilterChips } from "@/components/shared/FilterBar";
 import {
   Table,
   TableBody,
@@ -66,14 +66,15 @@ export function StatutoryScreen() {
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
       <SectionCard title={t("listTitle", { count: rows.length })}>
         <div className="mb-4 flex flex-wrap gap-3">
-          <NativeSelect
-            aria-label={t("ownership")}
+          <FilterChips
+            label={t("ownership")}
             value={mine ? "mine" : "all"}
-            onChange={(e) => setMine(e.target.value === "mine")}
-          >
-            <option value="mine">{t("mine")}</option>
-            <option value="all">{t("everyone")}</option>
-          </NativeSelect>
+            onChange={(v) => setMine(v === "mine")}
+            chips={[
+              { value: "mine", label: t("mine") },
+              { value: "all", label: t("everyone") },
+            ]}
+          />
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />
             {t("includeScheduled")}

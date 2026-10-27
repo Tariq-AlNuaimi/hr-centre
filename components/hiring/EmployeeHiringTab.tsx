@@ -4,6 +4,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { Badge } from "@/components/ui/badge";
 import type { EmployeeHiring } from "@/lib/hiring/employee-tab";
+import { formatZonedDay } from "@/lib/format";
 
 /**
  * The employee record's "Hiring" tab: how this person was hired. Server
@@ -21,13 +22,7 @@ export async function EmployeeHiringTab({
   const tsrc = await getTranslations("hiring.source");
   const tr = await getTranslations("hiring.round");
   // Calendar days in Muscat: a start date stored at local midnight is the previous UTC day.
-  const muscat = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Muscat",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const day = (d: Date | null | undefined) => (d ? muscat.format(d) : "—");
+  const day = (d: Date | null | undefined) => (d ? formatZonedDay(d) : "—");
   return (
     <div className="space-y-6">
       <SectionCard

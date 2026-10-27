@@ -15,8 +15,8 @@ import { formatDate } from "@/lib/format";
 import { HIRE_VOTES, type HireVote } from "@/lib/hiring/scorecard-math";
 import { qs, useHiringMutation, useHiringQuery } from "../ui/api";
 import { QueryState } from "../ui/states";
-import { FilterChips } from "../candidates/FilterChips";
 import { VoteBadge, initials, useRoundLabel } from "../interviews/bits";
+import { FilterChips } from "@/components/shared/FilterBar";
 
 type EvaluationRow = {
   id: string;
@@ -75,13 +75,13 @@ export function EvaluationList() {
       />
       <FilterChips
         label={t("voteFilter")}
-        active={vote}
-        onSelect={(v) => {
-          setVote(v);
+        value={vote}
+        onChange={(v) => {
+          setVote(v as HireVote | "");
           setPage(1);
         }}
-        options={[
-          { value: "" as const, label: t("all") },
+        chips={[
+          { value: "", label: t("all") },
           ...HIRE_VOTES.map((v) => ({ value: v, label: tv(v) })),
         ]}
       />

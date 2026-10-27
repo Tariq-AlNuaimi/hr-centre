@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { DataTable, type SortChange } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { NativeSelect } from "@/components/org/NativeSelect";
 import { CANDIDATE_SOURCES } from "@/lib/validations/hiring/candidate";
 import { qs, useHiringMe, useHiringMutation, useHiringQuery } from "../ui/api";
 import { BOARD_STEPS } from "@/lib/hiring/stage-rules";
@@ -21,7 +20,7 @@ import { ScoreChip, StageBadge } from "../ui/stage";
 import { QueryState } from "../ui/states";
 import { AdvancedFilters, type AdvancedValues } from "./AdvancedFilters";
 import { BulkBar } from "./BulkBar";
-import { FilterChips } from "./FilterChips";
+import { FilterBar, FilterChips, FilterSelect } from "@/components/shared/FilterBar";
 import { RowMenu } from "./RowMenu";
 import { useStageMove } from "./useStageMove";
 import { ViewSwitch } from "./ViewSwitch";
@@ -239,24 +238,20 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
           </>
         }
       />
-      <div className="flex flex-wrap items-center gap-2">
-        <FilterChips
-          label={t("stageFilter")}
-          active={phase}
-          onSelect={(v) => {
-            setPhase(v);
-            setStage(undefined);
-            reset();
-          }}
-          options={[
-            { value: undefined, label: t("allStages") },
-            ...BOARD_STEPS.map((s) => ({
-              value: String(s) as string | undefined,
-              label: tStep(String(s)),
-            })),
-          ]}
-        />
-        <span className="flex-1" />
+      <FilterChips
+        label={t("stageFilter")}
+        value={phase ?? ""}
+        onChange={(v) => {
+          setPhase(v || undefined);
+          setStage(undefined);
+          reset();
+        }}
+        chips={[
+          { value: "", label: t("allStages") },
+          ...BOARD_STEPS.map((s) => ({ value: String(s), label: tStep(String(s)) })),
+        ]}
+      />
+      <FilterBar>
         <Input
           className="w-56"
           aria-label={t("search")}
@@ -264,37 +259,28 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
-        <NativeSelect
-          aria-label={t("sourceFilter")}
+        <FilterSelect
+          id="cand-source"
+          label={t("sourceFilter")}
+          allLabel={t("allSources")}
           value={source}
-          onChange={(e) => {
-            setSource(e.target.value);
+          onChange={(v) => {
+            setSource(v);
             reset();
           }}
-        >
-          <option value="">{t("allSources")}</option>
-          {CANDIDATE_SOURCES.map((s) => (
-            <option key={s} value={s}>
-              {tsrc(s)}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label={t("requisitionFilter")}
-          className="max-w-56"
+          options={CANDIDATE_SOURCES.map((s) => ({ value: s, label: tsrc(s) }))}
+        />
+        <FilterSelect
+          id="cand-requisition"
+          label={t("requisitionFilter")}
+          allLabel={t("allRequisitions")}
           value={requisitionId}
-          onChange={(e) => {
-            setRequisitionId(e.target.value);
+          onChange={(v) => {
+            setRequisitionId(v);
             reset();
           }}
-        >
-          <option value="">{t("allRequisitions")}</option>
-          {reqs.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.title}
-            </option>
-          ))}
-        </NativeSelect>
+          options={reqs.map((r) => ({ value: r.id, label: r.title }))}
+        />
         <AdvancedFilters
           value={advanced}
           onApply={(v) => {
@@ -304,7 +290,7 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
           grades={grades.data ?? []}
           canFilterScore={has("hiring.viewPii")}
         />
-      </div>
+      </FilterBar>
       {canManage && selected.length > 0 ? (
         <BulkBar ids={selected} onClear={() => setSelected([])} />
       ) : null}

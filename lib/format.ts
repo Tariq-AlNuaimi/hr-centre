@@ -36,6 +36,22 @@ export function formatDay(value: string | number | Date): string {
   return dayFormatter.format(new Date(value));
 }
 
+const zonedDayFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * A moment as the calendar day it falls on in `timeZone` (default Muscat), in
+ * the same medium style — for a start date stored at local midnight, which is
+ * the previous day in UTC.
+ */
+export function formatZonedDay(value: string | number | Date, timeZone = "Asia/Muscat"): string {
+  let f = zonedDayFormatters.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone });
+    zonedDayFormatters.set(timeZone, f);
+  }
+  return f.format(new Date(value));
+}
+
 /**
  * Whole calendar days from `today` to `due` (negative = overdue), compared as
  * UTC dates so the time of day never changes the answer. Pure.

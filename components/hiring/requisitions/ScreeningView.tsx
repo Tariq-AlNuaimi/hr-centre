@@ -15,8 +15,8 @@ import { FlowRail } from "../ui/flow-rail";
 import { ScoreChip, StageBadge } from "../ui/stage";
 import { useCrumb } from "../ui/crumb";
 import { QueryState } from "../ui/states";
-import { FilterChips } from "../candidates/FilterChips";
 import { AiScreenPanel } from "../ai/AiScreenPanel";
+import { FilterChips } from "@/components/shared/FilterBar";
 
 type Applicant = {
   id: string;
@@ -166,10 +166,10 @@ export function ScreeningView({ id }: { id: string }) {
           <div className="space-y-1">
             <FilterChips
               label={t("filterLabel")}
-              active={filter}
-              onSelect={setFilter}
-              options={[
-                { value: undefined, label: t("filterAll") },
+              value={filter ?? ""}
+              onChange={(v) => setFilter(v || undefined)}
+              chips={[
+                { value: "", label: t("filterAll") },
                 { value: "fit", label: t("filterFit", { threshold: v.fitThreshold }) },
                 { value: "band", label: t("filterBand") },
               ]}

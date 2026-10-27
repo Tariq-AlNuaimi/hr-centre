@@ -7,7 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { StatCard } from "@/components/shared/StatCard";
-import { NativeSelect } from "@/components/org/NativeSelect";
+import { FilterChips } from "@/components/shared/FilterBar";
 import { apiClient } from "@/lib/api-client";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess } from "../use-jml";
@@ -63,14 +63,15 @@ export function JmlDashboard() {
         title={t("title")}
         subtitle={t("subtitle")}
         actions={
-          <NativeSelect
-            aria-label={t("scope")}
+          <FilterChips
+            label={t("scope")}
             value={scope || d?.scope || ""}
-            onChange={(e) => setScope(e.target.value as "mine" | "all")}
-          >
-            <option value="mine">{t("mine")}</option>
-            <option value="all">{t("all")}</option>
-          </NativeSelect>
+            onChange={(v) => setScope(v as "mine" | "all")}
+            chips={[
+              { value: "mine", label: t("mine") },
+              { value: "all", label: t("all") },
+            ]}
+          />
         }
       />
       {q.isLoading ? <LoadingBlock /> : null}
