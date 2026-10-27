@@ -4,6 +4,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, ok, readJsonBody } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
+import { feedOwnerWhere } from "@/lib/pms/notifications";
 
 const dismissSchema = z.object({ id: z.string().trim().min(1).max(64) });
 
@@ -15,12 +16,16 @@ const dismissSchema = z.object({ id: z.string().trim().min(1).max(64) });
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!actor.employeeId) return ok({ updated: 0 });
     const body = await readJsonBody(request);
     const parsed = dismissSchema.safeParse(body);
     if (!parsed.success) return err("id is required");
     const row = await prisma.notification.findFirst({
-      where: { id: parsed.data.id, recipientEmployeeId: actor.employeeId, dismissedAt: null },
+      where: {
+        AND: [
+          feedOwnerWhere(actor.employeeId, session.user.id),
+          { id: parsed.data.id, dismissedAt: null },
+        ],
+      },
       select: { id: true, readAt: true },
     });
     if (!row) return ok({ updated: 0 });

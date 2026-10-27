@@ -6,6 +6,8 @@ import { formatTicketId } from "@/lib/hive/ticket-id";
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { registerHivePairScopes } from "@/lib/hive/pair-scope";
 import { getTicketSettings } from "./ticket-settings";
+import type { NotificationKind } from "@/generated/prisma/client";
+import { notifyUsers, shortPreview } from "@/lib/notifications/user-notify";
 
 /**
  * Spec V2 §8.9's HR notifications (blueprint US-T5, phase T3).
@@ -38,7 +40,7 @@ import { getTicketSettings } from "./ticket-settings";
 
 const PREVIEW_MAX = 200;
 
-type Kind = "opened" | "reopened" | "submitted" | "sent";
+type Kind = "opened" | "reopened" | "submitted" | "sent" | "returned";
 
 /**
  * Flood backstop on the two pair-wide kinds: past this many tickets for one pair
@@ -125,18 +127,6 @@ async function emailsOf(userIds: Iterable<string>): Promise<string[]> {
   return users.map((u) => u.email);
 }
 
-/** Live approvers for a pair (group, cover for it, own pair = it), minus the drafter. */
-async function approverEmails(pairId: string, excludeUserId: string | null): Promise<string[]> {
-  const holders = await pairHolders("tickets.approve", pairId, { withGroup: true });
-  if (excludeUserId) holders.delete(excludeUserId);
-  return emailsOf(holders);
-}
-
-/** People who can draft for the pair: own pair, or a cover assignment for it (not group). */
-async function pairDrafterEmails(pairId: string): Promise<string[]> {
-  return emailsOf(await pairHolders("tickets.draft", pairId, { withGroup: false }));
-}
-
 /** Has this pair already had its hourly share of pair-wide emails? */
 async function pairOverQuota(pairId: string): Promise<boolean> {
   const recent = await prisma.escalation.count({
@@ -145,19 +135,48 @@ async function pairOverQuota(pairId: string): Promise<boolean> {
   return recent > PAIR_MAILS_PER_HOUR;
 }
 
-async function recipientsFor(kind: Kind, t: Ticket): Promise<string[]> {
-  if (kind === "opened") return pairDrafterEmails(t.hrPairId);
+/** Who a hand-off is for, as user ids (the email and the bell share it). */
+async function recipientIds(kind: Kind, t: Ticket): Promise<Set<string>> {
+  const drafter =
+    t.draftedById && t.draftedBy && !t.draftedBy.deletedAt ? [t.draftedById] : ([] as string[]);
+  // People who can draft for the pair: own pair, or a cover assignment (not group).
+  if (kind === "opened") return pairHolders("tickets.draft", t.hrPairId, { withGroup: false });
   if (kind === "reopened") {
-    const drafter = t.draftedBy && !t.draftedBy.deletedAt ? [t.draftedBy.email] : [];
-    return [...(await pairDrafterEmails(t.hrPairId)), ...drafter];
+    const ids = await pairHolders("tickets.draft", t.hrPairId, { withGroup: false });
+    for (const d of drafter) ids.add(d);
+    return ids;
   }
-  if (kind === "submitted") return approverEmails(t.hrPairId, t.draftedById);
-  return t.draftedBy && !t.draftedBy.deletedAt ? [t.draftedBy.email] : [];
+  if (kind === "submitted") {
+    // Live approvers for the pair (group, cover, own pair), minus the drafter.
+    const ids = await pairHolders("tickets.approve", t.hrPairId, { withGroup: true });
+    if (t.draftedById) ids.delete(t.draftedById);
+    return ids;
+  }
+  return new Set(drafter);
+}
+
+/** The bell's version of a hand-off (UX review P0, US-6). `sent` stays email-only. */
+const IN_APP: Partial<Record<Kind, NotificationKind>> = {
+  opened: "TICKET_TO_DRAFT",
+  reopened: "TICKET_TO_DRAFT",
+  submitted: "TICKET_TO_APPROVE",
+  returned: "TICKET_RETURNED",
+};
+
+function inAppBody(kind: Kind, id: string, t: Ticket): string {
+  const q = shortPreview(t.question);
+  if (kind === "submitted")
+    return `${id} for ${t.hrPair.name} has an answer waiting for your approval: "${q}"`;
+  if (kind === "returned") return `${id}: your drafted answer was returned with a note: "${q}"`;
+  if (kind === "reopened") return `${id} is back in progress — the employee replied: "${q}"`;
+  return `${id} for ${t.hrPair.name} needs an answer: "${q}"`;
 }
 
 /** The message for one hand-off. Exported for the contract test. */
+type EmailKind = Exclude<Kind, "returned">;
+
 export function composeNotification(
-  kind: Kind,
+  kind: EmailKind,
   t: Ticket,
   ticketPrefix?: string,
 ): { subject: string; text: string } {
@@ -203,13 +222,28 @@ async function deliver(kind: Kind, escalationId: string): Promise<void> {
   try {
     const ticket = await loadTicket(escalationId);
     if (!ticket) return;
+    const ids = await recipientIds(kind, ticket);
+    if (ids.size === 0) return;
+    const { ticketPrefix } = await getTicketSettings();
+    const inApp = IN_APP[kind];
+    if (inApp) {
+      const id = formatTicketId(ticket.ticketNumber, ticketPrefix);
+      await notifyUsers(ids, {
+        kind: inApp,
+        module: "tickets",
+        body: inAppBody(kind, id, ticket),
+        href: `/hive/escalations/${ticket.id}`,
+        // `opened` happens once per ticket; the others recur, so each is its own event.
+        key: `tickets:${kind}:${ticket.id}${kind === "opened" ? "" : `:${Date.now()}`}`,
+      });
+    }
+    if (kind === "returned") return; // in-app only, as before (no email existed for it)
     if ((kind === "opened" || kind === "reopened") && (await pairOverQuota(ticket.hrPairId))) {
       return;
     }
-    const to = [...new Set((await recipientsFor(kind, ticket)).map((e) => e.trim().toLowerCase()))];
+    const to = [...new Set((await emailsOf(ids)).map((e) => e.trim().toLowerCase()))];
     if (to.length === 0) return;
-    const { ticketPrefix } = await getTicketSettings();
-    await sendEmail({ to, ...composeNotification(kind, ticket, ticketPrefix) });
+    await sendEmail({ to, ...composeNotification(kind as EmailKind, ticket, ticketPrefix) });
   } catch {
     // Deliberately swallowed and not detailed: the error can carry addresses
     // and the question, and the transition it follows has already committed.

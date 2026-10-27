@@ -905,3 +905,15 @@ anyway). **`pdf-parse`** (rejected — unmaintained, reads a fixture at import t
 `mammoth`** (adopted — what Interview Hub used; pure JS, server-only).
 Decision: build the engine (fetch, ~150 lines), buy text extraction — `unpdf` ^1.9.1, `mammoth`
 ^1.12.3. ADR-085.
+
+### 2026-10-27 — UX review P0: user-addressed notifications and the "My work" list
+
+Scope: lib/notifications/**, lib/hiring/notify.ts, lib/core/**, lib/jml/work-items.ts, lib/hiring/work-items.ts, lib/hive/services/work-items.ts
+Considered: **A notification SaaS (Knock, Novu, Courier)** (rejected — another processor for
+names and ticket previews, and the bell already reads one Postgres table with dedupe and audit).
+**A task/inbox product or workflow engine (Camunda, Temporal)** (rejected — the work already lives
+in each module's own tables; the inbox is a bounded read over them, not a new system of record).
+**A new `WorkItem` table fed by every module** (rejected for now — a second copy of each module's
+state that can drift; a fan-in read needs no sync). Decision: build — a provider registry that
+reads each module's tables (≤ 20 rows per provider), and a User recipient on the existing
+`Notification` table written through the existing `persistNotifications`.

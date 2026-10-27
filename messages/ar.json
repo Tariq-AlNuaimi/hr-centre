@@ -1592,7 +1592,15 @@
         "JML_APPROVAL_REMINDER": "Approval waiting",
         "JML_CASE_ACTIVATED": "Case activated",
         "JML_RECALCULATION_NOTICE": "Due dates recalculated",
-        "JML_CASE_CLOSED": "Case closed"
+        "JML_CASE_CLOSED": "Case closed",
+        "HIRING_APPROVAL_REQUESTED": "Hiring approval waiting on you",
+        "HIRING_OFFER_DECIDED": "Offer decided",
+        "HIRING_SCORECARD_DUE": "Interview scorecard due",
+        "TICKET_TO_DRAFT": "HR ticket to answer",
+        "TICKET_TO_APPROVE": "HR ticket answer to approve",
+        "TICKET_RETURNED": "Your ticket answer was returned",
+        "CHANGE_REQUEST_RAISED": "KPI change waiting for your acknowledgment",
+        "CHANGE_REQUEST_ACKNOWLEDGED": "KPI change ready for HR's decision"
       },
       "dismiss": "Dismiss"
     },

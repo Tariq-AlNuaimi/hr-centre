@@ -14,6 +14,7 @@ import { toNum } from "./money";
 import { bandVerdict } from "./offer-package";
 import { nextOfferStep, offerDecisionRefusal } from "./offer-rules";
 import { offerPay, type LoadedOffer } from "./offers";
+import { notifyApprovalStep, notifyOfferDecided } from "./notify";
 import { orgNames, peopleById } from "./people";
 
 /**
@@ -182,10 +183,48 @@ export async function decideOffer(
       });
     }
   });
+  await notifyAfterDecision(actor, l, steps, step, body.action, final);
   return {
     status: final ? "APPROVED" : back ? "DRAFTING" : "PENDING_APPROVAL",
     decided: step.role,
   };
+}
+
+/**
+ * UX review P0 (US-6): after a decision, the next step's holders hear it is
+ * their turn; on the final approval, a rejection or a send-back, the person who
+ * submitted the offer hears the outcome. Never throws (notifyUsers swallows).
+ */
+async function notifyAfterDecision(
+  actor: HiringActor,
+  l: LoadedOffer,
+  steps: NonNullable<ReturnType<typeof chainFromSnapshot>>,
+  decided: { sequence: number },
+  action: "APPROVED" | "REJECTED" | "SENT_BACK",
+  final: boolean,
+) {
+  const o = l.offer;
+  if (action === "APPROVED" && !final) {
+    const nextStep = steps.find((s) => s.sequence > decided.sequence);
+    if (!nextStep) return;
+    const [routed] = await routeChain([nextStep], l.subject).catch(() => [undefined]);
+    await notifyApprovalStep({
+      what: "offer",
+      id: o.id,
+      title: o.candidate.name,
+      step: routed,
+      round: `${o.submittedById ?? "x"}:${decided.sequence}:${Date.now()}`,
+      exclude: [o.candidate.referredById, o.submittedById, actor.userId],
+    });
+    return;
+  }
+  await notifyOfferDecided({
+    offerId: o.id,
+    candidateName: o.candidate.name,
+    submitterId: o.submittedById,
+    outcome: action,
+    deciderId: actor.userId,
+  });
 }
 
 /** What submitting would route, for the offer form (Interview Hub `ApprovalChainPreview`). */

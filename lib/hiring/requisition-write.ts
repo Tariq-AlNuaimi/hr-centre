@@ -4,6 +4,7 @@ import { can, type HiringActor } from "./access";
 import { assertChainStaffed, getRoutedChain } from "./approval-config";
 import { HiringRuleError } from "./http";
 import { toOMRorNull } from "./money";
+import { notifyNextRequisitionStep } from "./requisition-status";
 import { isLiveUser } from "./people";
 import { canRaiseRequisition } from "./planning-rules";
 import { requisitionSubject } from "./scope";
@@ -99,7 +100,7 @@ export async function createHiringRequest(actor: HiringActor, input: CreateHirin
     throw new HiringRuleError("Choose the hiring manager before saving.", 400);
   const needId = r.departmentNeedId ? await raisableNeed(actor, r.departmentNeedId) : null;
   const note = input.mode === "submit" ? input.note : null;
-  return auditedTransaction(async (tx) => {
+  const created = await auditedTransaction(async (tx) => {
     const req = await tx.hiringRequisition.create({
       data: {
         title: r.title,
@@ -141,6 +142,8 @@ export async function createHiringRequest(actor: HiringActor, input: CreateHirin
     }
     return req;
   });
+  if (note) await notifyNextRequisitionStep(created, subject);
+  return created;
 }
 
 async function raisableNeed(actor: HiringActor, needId: string): Promise<string> {

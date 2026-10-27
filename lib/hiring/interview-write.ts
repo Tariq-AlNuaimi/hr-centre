@@ -2,6 +2,7 @@ import type { HiringInterviewRound, HiringInterviewStatus } from "@/generated/pr
 import { prisma } from "@/lib/prisma";
 import { can, type HiringActor } from "./access";
 import { HiringRuleError } from "./http";
+import { notifyScorecardDue } from "./notify";
 import { assertPanel, isPanelistOn, setPanel, type LoadedInterview } from "./interviews";
 import { requisitionSubject } from "./scope";
 
@@ -57,6 +58,11 @@ export async function createInterview(actor: HiringActor, data: InterviewInput) 
     select: { id: true },
   });
   await setPanel(iv.id, panel);
+  await notifyScorecardDue({
+    interviewId: iv.id,
+    scheduledDate: data.scheduledDate ?? null,
+    panelistIds: data.panelistIds,
+  });
   return iv;
 }
 
@@ -77,7 +83,15 @@ export async function updateInterview(l: LoadedInterview, data: InterviewUpdate)
     },
     select: { id: true },
   });
-  if (panel) await setPanel(l.iv.id, panel);
+  if (panel) {
+    await setPanel(l.iv.id, panel);
+    // Newly added panelists hear it; the per-interview key keeps it to one each.
+    await notifyScorecardDue({
+      interviewId: l.iv.id,
+      scheduledDate: fields.scheduledDate ?? l.iv.scheduledDate ?? null,
+      panelistIds: panelistIds ?? [],
+    });
+  }
 }
 
 export async function addPanelist(l: LoadedInterview, userId: string) {
@@ -87,6 +101,11 @@ export async function addPanelist(l: LoadedInterview, userId: string) {
   await prisma.hiringInterviewPanelist.create({
     data: { interviewId: l.iv.id, userId },
     select: { id: true },
+  });
+  await notifyScorecardDue({
+    interviewId: l.iv.id,
+    scheduledDate: l.iv.scheduledDate ?? null,
+    panelistIds: [userId],
   });
 }
 

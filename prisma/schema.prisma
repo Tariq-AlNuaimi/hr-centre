@@ -74,6 +74,8 @@ model User {
 
   // HR Centre F-c — role assignments held, and granted (blueprint §3).
   roleAssignments    RoleAssignment[] @relation("AssignmentHolder")
+  /// UX review P0 — Hiring / HR ticket notifications addressed to the login.
+  notifications      Notification[]   @relation("NotificationUserRecipient")
   assignmentsGranted RoleAssignment[] @relation("AssignmentGrantor")
 
   // JML S1 — core configuration verified by this user.
@@ -784,6 +786,13 @@ enum NotificationKind {
   JML_CASE_ACTIVATED
   JML_RECALCULATION_NOTICE // Offboarding AC-3.6: due dates moved
   JML_CASE_CLOSED
+  // UX review P0 (US-6) — Hiring and HR tickets, addressed to a User.
+  HIRING_APPROVAL_REQUESTED // a requisition, JD or offer step is waiting on you
+  HIRING_OFFER_DECIDED // an offer you submitted was approved, rejected or sent back
+  HIRING_SCORECARD_DUE // you sit on an interview panel and owe a scorecard
+  TICKET_TO_DRAFT // a ticket in your HR pair needs an answer
+  TICKET_TO_APPROVE // a drafted answer in your pair is waiting for approval
+  TICKET_RETURNED // an approver returned your drafted answer
 }
 
 enum ComplianceKind {
@@ -1267,8 +1276,19 @@ model Notification {
   // (§12.2's manager-of-record), and ADR-065 keeps the login identity separate.
   // A signed-in user with no employee record therefore has no notifications,
   // which is the same answer §4.4's My Tasks gives them.
-  recipientEmployeeId String   @map("recipient_employee_id")
-  recipientEmployee   Employee @relation("NotificationRecipient", fields: [recipientEmployeeId], references: [id], onDelete: Cascade)
+  recipientEmployeeId String?   @map("recipient_employee_id")
+  recipientEmployee   Employee? @relation("NotificationRecipient", fields: [recipientEmployeeId], references: [id], onDelete: Cascade)
+
+  /// UX review P0 (docs/blueprints/ux-p0.md, US-6) — Hiring and HR tickets
+  /// address the LOGIN: approvers, panelists and ticket drafters are users, and
+  /// many have no employee record. Exactly one of the two recipients is set
+  /// (CHECK constraint in the migration); the feed reads both for the viewer.
+  recipientUserId String? @map("recipient_user_id")
+  recipientUser   User?   @relation("NotificationUserRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+
+  /// Which module raised it ("performance", "jml", "hiring", "tickets"). Null on
+  /// rows written before the column existed (Performance and JML, by kind).
+  module String? @db.VarChar(20)
 
   kind NotificationKind
 
@@ -1317,6 +1337,8 @@ model Notification {
   // The unread badge counts on the first; the feed pages on the second.
   @@index([recipientEmployeeId, readAt])
   @@index([recipientEmployeeId, createdAt])
+  @@index([recipientUserId, readAt])
+  @@index([recipientUserId, createdAt])
   @@index([caseId])
   @@map("notifications")
 }
