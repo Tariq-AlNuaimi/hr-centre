@@ -29,7 +29,6 @@ export type CandidateRow = {
   id: string;
   name: string;
   email: string | null;
-  nationality: string | null;
   currentEmployer: string | null;
   stage: string;
   source: string;
@@ -131,7 +130,9 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
               {r.name}
             </Link>
             <span className="block truncate text-xs text-muted-foreground">
-              {r.nationality ?? r.email ?? "—"}
+              {r.currentEmployer
+                ? t("fromEmployer", { employer: r.currentEmployer })
+                : (r.email ?? "—")}
             </span>
           </div>
         </div>
@@ -143,11 +144,6 @@ export function CandidateList({ initialStage }: { initialStage?: string }) {
       render: (_: unknown, r: CandidateRow) => (
         <div className="min-w-0">
           <span className="block truncate text-sm font-medium">{r.requisition?.title ?? "—"}</span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {r.currentEmployer
-              ? t("fromEmployer", { employer: r.currentEmployer })
-              : t("noEmployer")}
-          </span>
         </div>
       ),
     },

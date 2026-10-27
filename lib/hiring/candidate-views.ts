@@ -114,7 +114,7 @@ export async function candidateDetail(actor: HiringActor, l: LoadedCandidate) {
           referredById: c.referredById,
         }
       : null,
-    dei: dei ? { gender: c.deiGender } : null,
+    dei: dei ? { gender: c.deiGender, ethnicity: c.deiEthnicity } : null,
     salaryExpectation: comp
       ? openAmount("candidate", c.id, "salaryExpectation", c.salaryExpectationEnc)
       : null,

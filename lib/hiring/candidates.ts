@@ -198,7 +198,11 @@ export async function listCandidates(actor: HiringActor, q: CandidateListQuery) 
     }),
     prisma.hiringCandidate.count({ where }),
   ]);
-  return { data: await projectRows(actor, rows), total };
+  // The list never carries nationality: a protected attribute beside every name
+  // on a screening list invites bias (UX review P0-2). The board keeps its own
+  // Omanisation marker; the profile shows nationality in its Sensitive section.
+  const data = (await projectRows(actor, rows)).map(({ nationality: _omit, ...row }) => row);
+  return { data, total };
 }
 
 type ListRow = Prisma.HiringCandidateGetPayload<{ select: typeof LIST_SELECT }>;

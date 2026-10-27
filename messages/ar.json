@@ -5185,7 +5185,10 @@
       "viewOffer": "Open offer",
       "preboarding": "Pre-boarding",
       "nextStep": "Move to {step}",
-      "refuseHint": "Say why. The reason is recorded on the stage history."
+      "refuseHint": "Say why. The reason is recorded on the stage history.",
+      "sensitiveTitle": "Sensitive",
+      "sensitiveHint": "Protected details and pay expectation. Shown only to people with access to them, never to an interview panel.",
+      "ethnicity": "Ethnicity"
     },
     "stall": {
       "title": "Held up?",
