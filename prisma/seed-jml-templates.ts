@@ -14,7 +14,7 @@ import type {
  * be compared across versions.
  */
 
-export type SeedTask = {
+type SeedTask = {
   code: string;
   name: string;
   stage: JmlStage;

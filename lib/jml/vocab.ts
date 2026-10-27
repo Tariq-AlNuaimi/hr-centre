@@ -23,12 +23,6 @@ export const STAGE_ORDER: Record<JmlCaseType, readonly JmlStage[]> = {
   ],
 };
 
-export const FIRST_STAGE: Record<JmlCaseType, JmlStage> = {
-  JOIN: "PREBOARDING",
-  MOVE: "PREBOARDING",
-  LEAVE: "STAGE_1_RESIGNATION",
-};
-
 /** The task statuses each artifact approved (Onboarding §10.3: 10; Offboarding §9.6: 14). */
 export const TASK_STATUSES: Record<JmlCaseType, readonly JmlTaskStatus[]> = {
   JOIN: [
@@ -87,14 +81,6 @@ export const LIVE_CASE_STATUSES: readonly JmlCaseStatus[] = [
   "PENDING_SETTLEMENT",
 ];
 
-/** Terminal for the workflow (archive is possible from these). */
-export const TERMINAL_CASE_STATUSES: readonly JmlCaseStatus[] = [
-  "COMPLETED",
-  "CLOSED",
-  "CANCELLED",
-  "ARCHIVED",
-];
-
 export const CASE_REF_PREFIX: Record<JmlCaseType, string> = {
   JOIN: "ONB",
   MOVE: "CHG",
@@ -103,8 +89,4 @@ export const CASE_REF_PREFIX: Record<JmlCaseType, string> = {
 
 export function isLive(status: JmlCaseStatus): boolean {
   return LIVE_CASE_STATUSES.includes(status);
-}
-
-export function isTerminal(status: JmlCaseStatus): boolean {
-  return TERMINAL_CASE_STATUSES.includes(status);
 }

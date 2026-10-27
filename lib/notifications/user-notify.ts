@@ -17,7 +17,7 @@ import { persistNotifications } from "@/lib/pms/notifications";
  *     question goes through `shortPreview`). A contract test pins the callers.
  */
 
-export const MAX_RECIPIENTS = 50;
+const MAX_RECIPIENTS = 50;
 export const PREVIEW_CHARS = 80;
 
 export type UserNotice = {

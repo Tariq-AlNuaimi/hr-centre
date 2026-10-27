@@ -21,7 +21,7 @@ import { JmlError } from "../errors";
  * and the paired senior `jml.supervise`, each for the rule's target.
  */
 
-export const SCOPE_PRECEDENCE: readonly JmlRuleScope[] = ["DEPARTMENT", "DIRECTORATE", "COMPANY"];
+const SCOPE_PRECEDENCE: readonly JmlRuleScope[] = ["DEPARTMENT", "DIRECTORATE", "COMPANY"];
 
 const RULE_ORDER: Prisma.JmlHrAssignmentRuleOrderByWithRelationInput[] = [
   { priority: "desc" },
@@ -30,7 +30,7 @@ const RULE_ORDER: Prisma.JmlHrAssignmentRuleOrderByWithRelationInput[] = [
 
 const LIVE_PAIR = { juniorHr: { deletedAt: null }, seniorHr: { deletedAt: null } } as const;
 
-export const RULE_SELECT = {
+const RULE_SELECT = {
   id: true,
   scope: true,
   scopeId: true,
@@ -91,7 +91,7 @@ export async function resolveHrAssignment(
 }
 
 /** The scope subject an org unit stands for (for seat checks). */
-export async function subjectForTarget(scope: JmlRuleScope, id: string): Promise<ScopeSubject> {
+async function subjectForTarget(scope: JmlRuleScope, id: string): Promise<ScopeSubject> {
   if (scope === "COMPANY") {
     const c = await prisma.orgEntity.findUnique({ where: { id }, select: { id: true } });
     if (!c) throw new JmlError("The selected organisation unit was not found", 404);

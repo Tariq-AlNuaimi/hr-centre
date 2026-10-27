@@ -14,7 +14,7 @@ import { SMALL_CELL_THRESHOLD, type Cell } from "./rules";
  * an Excel export: the aggregate, or one row per case. Financial columns are
  * opt-in and `jml.financialReports` only; the narrative is never exported.
  */
-export const LEAVE_REPORTS: readonly LeaveReport[] = [
+const LEAVE_REPORTS: readonly LeaveReport[] = [
   r1Reasons,
   r2Attrition,
   r3Regrettable,
@@ -25,7 +25,7 @@ export const LEAVE_REPORTS: readonly LeaveReport[] = [
   r8Omanisation,
 ];
 
-export function findLeaveReport(slug: string): LeaveReport {
+function findLeaveReport(slug: string): LeaveReport {
   const r = LEAVE_REPORTS.find((x) => x.slug === slug);
   if (!r) throw new JmlError("Report not found", 404);
   return r;

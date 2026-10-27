@@ -17,7 +17,7 @@ import { splitWindows } from "./transfer";
 
 type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
 
-export type TransferEmployee = {
+type TransferEmployee = {
   id: string;
   departmentId: string | null;
   entityId: string;

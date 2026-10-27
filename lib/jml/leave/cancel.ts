@@ -105,7 +105,7 @@ export async function cancelLeave(
 type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
 
 /** Undo an LPWD login revocation (the soft delete), when the departure itself never applied. */
-export async function restoreLogin(tx: Tx, employeeId: string) {
+async function restoreLogin(tx: Tx, employeeId: string) {
   const emp = await tx.employee.findUnique({ where: { id: employeeId }, select: { userId: true } });
   if (!emp?.userId) return false;
   const user = await tx.user.findFirst({

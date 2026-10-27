@@ -547,96 +547,96 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
-- lib/core/work-items/index.ts: WorkModule, WorkItem, ProviderResult, WorkProvider, PROVIDER_LIMIT, WorkList, collectWorkItems, byDue, DueGroup, dueGroup
+- lib/core/work-items/index.ts: WorkModule, WorkItem, WorkProvider, PROVIDER_LIMIT, WorkList, collectWorkItems, byDue, DueGroup, dueGroup
 - lib/crypto/field-encryption.ts: Keyring, SALARY_KEYRING, ID_DOCUMENT_KEYRING, FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
 - lib/date-input.ts: toDateInput, startOfDay, endOfDay
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
 - lib/format.ts: formatDateTime, formatDate
-- lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, canErase, actsAs, canOverrideGates, canEditAssessmentPolicy, canSignJdForHr, seesPii, seesComp, isPanelOnly
+- lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, canErase, actsAs, canOverrideGates, canSignJdForHr, seesPii, seesComp, isPanelOnly
 - lib/hiring/actor.ts: resolveHiringActor
 - lib/hiring/agency-invite-admin.ts: listInvites, createInvite, revokeInvite
-- lib/hiring/agency-invites.ts: INVITE_TOKEN_BYTES, generateInviteToken, hashInviteToken, InviteState, evaluateInvite, INVITE_SELECT, resolveInvite, invitePageView, submitViaInvite
+- lib/hiring/agency-invites.ts: generateInviteToken, hashInviteToken, InviteState, evaluateInvite, INVITE_SELECT, invitePageView, submitViaInvite
 - lib/hiring/ai/admin.ts: saveAiProvider, saveAiLimits, aiUsage, testAiConnection, generalSettings, saveGeneral
 - lib/hiring/ai/budget.ts: BudgetState, BudgetVerdict, decideAiBudget, startOfUtcDay, estimateSpend
-- lib/hiring/ai/config.ts: AiProvider, AiConfig, AI_KEYS, readAiSettings, sealedKeyOf, getAiConfig, aiConfigured, aiSupportsPdf, AiLimits, getAiLimits, publicAiConfig
+- lib/hiring/ai/config.ts: AiConfig, sealedKeyOf, getAiConfig, aiConfigured, aiSupportsPdf, AiLimits, getAiLimits, publicAiConfig
 - lib/hiring/ai/egress.ts: assertEgressAllowed
 - lib/hiring/ai/engine.ts: AiErrorCode, AiError, AiRequest, AiResult, aiErrorMessage, aiComplete
 - lib/hiring/ai/insights.ts: latestInsight, runInsight, aiOff
 - lib/hiring/ai/parse.ts: ParseMode, parseDocument, extractStoredCv
 - lib/hiring/ai/redact.ts: redactPromptPii, redactProfileProxies
-- lib/hiring/ai/screen.ts: SCREEN_CHUNK, screenStatus, screenChunk
-- lib/hiring/ai/skills.ts: KIND_FEATURE, BuiltPrompt, SYSTEM_BASE, SkillInputError, getScoringWeights, weightsGuidance, transcriptPrompt, buildPrompt, FitJson, fitFields
+- lib/hiring/ai/screen.ts: screenStatus, screenChunk
+- lib/hiring/ai/skills.ts: KIND_FEATURE, BuiltPrompt, SkillInputError, weightsGuidance, buildPrompt, FitJson, fitFields
 - lib/hiring/ai/text.ts: extractJson, isRawOnly, FileKind, detectFileKind, extractPdfText, extractDocxText
 - lib/hiring/analytics-rules.ts: MIN_CELL, WITHHELD, FUNNEL_STAGES, suppressSmallCells, avgDays, pct, acceptanceRate
 - lib/hiring/analytics.ts: insightsView
 - lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
-- lib/hiring/approval-config.ts: approvalConfigSchema, ApprovalConfig, loadApprovalConfig, configToChainOptions, Approver, RoutedStep, routeChain, getRoutedChain, computeChainSnapshot, vacantApprovalRoles, approvalRoleLabel, vacantSteps, assertChainStaffed
-- lib/hiring/assessment-rules.ts: RESULTS_USE, assessmentConfigSchema, AssessmentConfig, DEFAULT_ASSESSMENT_CONFIG, AssessmentStatusValue, PercentileBand, percentileBand, computeValidUntil, ResultLike, isResultValid, ReuseAction, reuseDecision, isThresholdLocked, blocksAdvance, effectiveStatus, defaultDueAt, advanceableCount
-- lib/hiring/assessments.ts: loadAssessmentConfig, completedResultCount, mayEditPolicy, policyView, savePolicy, listAssessments, invite, remind, advance, recordResult
-- lib/hiring/candidate-bulk.ts: BulkSummary, bulkStageMove, ExportRow, exportRows, IMPORT_ROW_CAP, importCandidates
+- lib/hiring/approval-config.ts: ApprovalConfig, loadApprovalConfig, configToChainOptions, RoutedStep, routeChain, getRoutedChain, approvalRoleLabel, vacantSteps, assertChainStaffed
+- lib/hiring/assessment-rules.ts: assessmentConfigSchema, AssessmentConfig, DEFAULT_ASSESSMENT_CONFIG, AssessmentStatusValue, PercentileBand, percentileBand, computeValidUntil, ResultLike, isResultValid, ReuseAction, reuseDecision, isThresholdLocked, blocksAdvance, effectiveStatus, defaultDueAt, advanceableCount
+- lib/hiring/assessments.ts: loadAssessmentConfig, policyView, savePolicy, listAssessments, invite, remind, advance, recordResult
+- lib/hiring/candidate-bulk.ts: bulkStageMove, ExportRow, exportRows, importCandidates
 - lib/hiring/candidate-export.ts: candidateSheet
-- lib/hiring/candidate-files.ts: MAX_FILE_BYTES, cvPathname, documentPathname, sniffType, requireStorage, readChecked, uploadCv, cvUrl, listDocuments, uploadDocument, loadDocument, documentUrl, reviewDocument, removeDocument, packageView, packageAction
+- lib/hiring/candidate-files.ts: MAX_FILE_BYTES, cvPathname, sniffType, requireStorage, readChecked, uploadCv, cvUrl, listDocuments, uploadDocument, loadDocument, documentUrl, reviewDocument, removeDocument, packageView, packageAction
 - lib/hiring/candidate-rules.ts: PAYSLIP_MONTHS_REQUESTED, PackageDocument, currentPackageFrom, bandMidpoint, PricingBasis, pricingBasisFor, reviewedPayslips, referrerToPersist, InterviewCountBounds, resolveInterviewCountBounds, isOmani
-- lib/hiring/candidate-stage.ts: stageHistoryFor, preferredCandidatePending, releaseHoldsForRequisition, ApplyStageChange, applyStageChange, visitedStages, moveStage, setStallCause
-- lib/hiring/candidate-views.ts: candidateHistory, candidateDetail, boardCards
+- lib/hiring/candidate-stage.ts: stageHistoryFor, releaseHoldsForRequisition, ApplyStageChange, applyStageChange, moveStage, setStallCause
+- lib/hiring/candidate-views.ts: candidateDetail, boardCards
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
-- lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, isAssignedPanelist, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
-- lib/hiring/careers.ts: CareersRole, listOpenRoles, advertisedRequisition, alreadyApplied, applyToRole
+- lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
+- lib/hiring/careers.ts: CareersRole, markdownToPlainText, listOpenRoles, alreadyApplied, applyToRole
 - lib/hiring/close-out.ts: listCloseOut, markNoticesSent
-- lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId, sealSecretSetting, openSecretSetting
-- lib/hiring/comparison.ts: FINALIST_STAGES, matrixCompetencies, loadComparison, selectPreferred, rejectFinalist, clearPreferred
+- lib/hiring/comp-crypto.ts: CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId, sealSecretSetting, openSecretSetting
+- lib/hiring/comparison.ts: loadComparison, selectPreferred, rejectFinalist, clearPreferred
 - lib/hiring/dsar.ts: dsarExport
 - lib/hiring/employee-tab.ts: employeeHiring, EmployeeHiring, hiringTabVisible
-- lib/hiring/erasure.ts: ERASED, eraseCandidate
+- lib/hiring/erasure.ts: eraseCandidate
 - lib/hiring/evaluations.ts: EvaluationListQuery, listEvaluations, loadEvaluation, EvaluationBody, createEvaluation, updateEvaluation
 - lib/hiring/fill-rules.ts: SEAT_OCCUPYING_STAGES, occupiesSeat, normalizeOpenings, FillState, describeFill, fillLabel, nextFillStatus, BudgetEnvelopeEntry, BudgetCheck, buildBudgetCheck
-- lib/hiring/http.ts: HiringRuleError, hiringError, hiringErrorResponse
-- lib/hiring/ics.ts: InterviewEventSource, toIcsDate, escapeIcs, foldLine, buildIcs, icsHeaders
-- lib/hiring/interview-rules.ts: CANONICAL_ROUND_ORDER, RoundKind, DEFAULT_ROUND_MINUTES, BriefInput, RoundPlanEntry, buildRoundPlan, resolveBriefForRound, interviewEndsAt, ScheduleStatusCode, scheduleStatus, roundLabel, PanelAiMode, asPanelAiMode, canReveal
+- lib/hiring/http.ts: HiringRuleError, hiringErrorResponse
+- lib/hiring/ics.ts: InterviewEventSource, escapeIcs, foldLine, buildIcs, icsHeaders
+- lib/hiring/interview-rules.ts: CANONICAL_ROUND_ORDER, DEFAULT_ROUND_MINUTES, BriefInput, RoundPlanEntry, buildRoundPlan, resolveBriefForRound, interviewEndsAt, ScheduleStatusCode, scheduleStatus, roundLabel, PanelAiMode, asPanelAiMode, canReveal
 - lib/hiring/interview-views.ts: InterviewListQuery, listInterviews, calendarRows, panelAiMode, interviewDetail, carriedFocus
-- lib/hiring/interview-write.ts: InterviewInput, createInterview, InterviewUpdate, updateInterview, addPanelist, removePanelist, confirmAttendance
-- lib/hiring/interviews.ts: LoadedInterview, isPanelistOn, loadInterview, interviewReadWhere, loadRoundPlans, loadRoundPlan, replaceRoundPlan, assertPanel, setPanel, panelOf, withPanelAndRound
-- lib/hiring/jd-rules.ts: JD_SLOTS, JdActor, JdContext, canSignJd, canRequestJdChanges, canSubmitJd, signableSlots
+- lib/hiring/interview-write.ts: InterviewInput, createInterview, stageOnScheduling, InterviewUpdate, updateInterview, addPanelist, removePanelist, confirmAttendance
+- lib/hiring/interviews.ts: LoadedInterview, isPanelistOn, loadInterview, interviewReadWhere, loadRoundPlan, replaceRoundPlan, assertPanel, setPanel, withPanelAndRound
+- lib/hiring/jd-rules.ts: JdActor, JdContext, canSignJd, canRequestJdChanges, canSubmitJd, signableSlots
 - lib/hiring/jd.ts: CAREERS_TAG, jdView, JdAction, applyJdAction
-- lib/hiring/library.ts: LIBRARY_LIMIT, canReadLibrary, assertCanWriteLibrary, seesLibraryPay, listLibrary, getLibraryItem, createLibraryItem, updateLibraryItem, deleteLibraryItem
-- lib/hiring/money.ts: CURRENCY_CODES, CurrencyCode, toNum, toOMR, toOMRorNull, formatMoney, formatBand
+- lib/hiring/library.ts: canReadLibrary, seesLibraryPay, listLibrary, getLibraryItem, createLibraryItem, updateLibraryItem, deleteLibraryItem
+- lib/hiring/money.ts: CURRENCY_CODES, toNum, toOMR, toOMRorNull, formatMoney, formatBand
 - lib/hiring/my-hiring.ts: HM_REVIEW_STAGES, nextStage, myHiring
 - lib/hiring/nationalities.ts: NATIONALITIES
 - lib/hiring/negotiations.ts: NoteBody, thread, addNote
-- lib/hiring/notice-rules.ts: HOLD_WORKING_DAYS, computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
+- lib/hiring/notice-rules.ts: computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
 - lib/hiring/notify.ts: notifyApprovalStep, notifyJdSubmitted, notifyOfferDecided, notifyScorecardDue
-- lib/hiring/offer-acceptance.ts: signedLetterPathname, recordAcceptance, uploadSignedLetter, signedLetterUrl
+- lib/hiring/offer-acceptance.ts: recordAcceptance, uploadSignedLetter, signedLetterUrl
 - lib/hiring/offer-approvals.ts: approvalView, decideOffer, previewChain
-- lib/hiring/offer-package.ts: ALLOWANCE_KEYS, CompRow, CompBreakdown, buildCompBreakdown, BandStatus, bandVerdict, OfferTerms, OfferTermField, APPROVAL_RESTARTING_FIELDS, REVISABLE_FIELDS, diffOfferTerms, restartsApproval, summarizeVersion, nextVersionNumber, withSupersession
+- lib/hiring/offer-package.ts: ALLOWANCE_KEYS, CompBreakdown, buildCompBreakdown, BandStatus, bandVerdict, OfferTerms, OfferTermField, diffOfferTerms, restartsApproval, summarizeVersion, nextVersionNumber, withSupersession
 - lib/hiring/offer-rules.ts: OFFER_STATUSES, offerTransitions, offerTransitionError, APPROVAL_BOUND_FIELDS, LIVE_OFFER_STATUSES, OfferStep, OfferDecision, nextOfferStep, offerDecisionRefusal, sameMuscatDay
 - lib/hiring/offer-versions.ts: termsOf, ensureInitialVersion, listVersions, RevisionBody, reviseOffer
 - lib/hiring/offer-write.ts: OfferBody, createOffer, updateOffer, deleteOffer
-- lib/hiring/offers.ts: OfferRow, OfferEntity, LoadedOffer, isOfferApprover, loadOffer, offerPay, offerJson, OfferListQuery, listOffers, offerDetail
+- lib/hiring/offers.ts: OfferRow, OfferEntity, LoadedOffer, loadOffer, offerPay, OfferListQuery, listOffers, offerDetail
 - lib/hiring/panel.ts: loadMyInterview, myPanels, brief, myScorecard, ScoreBody, saveScorecard, reviseScorecard, compare
 - lib/hiring/people.ts: PersonRef, peopleById, personOrNull, isLiveUser, directory, orgNames
-- lib/hiring/planning-rules.ts: NEEDS_PER_ROUND_LIMIT, NOTES_PER_NEED_LIMIT, NeedFacts, RoundStats, hasResponded, summarizeRound, canRaiseRequisition, chaseableNeedIds, lastContact, stampsFor
+- lib/hiring/planning-rules.ts: NEEDS_PER_ROUND_LIMIT, NOTES_PER_NEED_LIMIT, NeedFacts, RoundStats, summarizeRound, canRaiseRequisition, chaseableNeedIds, lastContact, stampsFor
 - lib/hiring/planning.ts: loadRound, listRounds, roundView, createRound, updateRound, addNeed, chaseRound, loadNeed, updateNeed, needThread, addNeedNote
-- lib/hiring/posting-rules.ts: POSTING_CHANNELS, CHANNEL_SOURCES, CHANNELS_WITH_DETAIL, omaniPreferredForced, PostingGate, canPost, isAdvertisable, notAdvertisedReason, ChannelRow, buildChannelRows, daysBetween
+- lib/hiring/posting-rules.ts: POSTING_CHANNELS, CHANNELS_WITH_DETAIL, omaniPreferredForced, PostingGate, canPost, isAdvertisable, notAdvertisedReason, ChannelRow, buildChannelRows, daysBetween
 - lib/hiring/postings.ts: postingConsole, postChannel, withdrawChannel
-- lib/hiring/preboarding-rules.ts: HandoverRoute, handoverRoute, ChecklistInput, ChecklistItem, preboardingChecklist, HANDOVER_STAGES, handoverRefusal
+- lib/hiring/preboarding-rules.ts: HandoverRoute, handoverRoute, ChecklistInput, ChecklistItem, preboardingChecklist, handoverRefusal
 - lib/hiring/preboarding.ts: preboardingView, recordHandover, retryHandoff
 - lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, handToJml, withdrawFromJml
-- lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, REQUIRED_FIELDS, RequiredField, ReadinessInput, readinessProblems, REQUISITION_DECISIONS, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal
+- lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, RequiredField, ReadinessInput, readinessProblems, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal
 - lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, notifyNextRequisitionStep, syncRequisitionFill, assertRoutedToActor
 - lib/hiring/requisition-views.ts: approvalView, statusHistory, auditTrail
-- lib/hiring/requisition-write.ts: assertPlacement, createRequisition, createHiringRequest, updateRequisition
+- lib/hiring/requisition-write.ts: createRequisition, createHiringRequest, updateRequisition
 - lib/hiring/requisitions.ts: LoadedRequisition, loadRequisition, seatOccupancyWhere, bandFor, requisitionDetail, RequisitionListQuery, listRequisitions
-- lib/hiring/retention.ts: RETENTION_BATCH, retentionCutoff, runHiringRetention
+- lib/hiring/retention.ts: runHiringRetention
 - lib/hiring/roles.ts: HiringStarterKey, HIRING_STARTER_ROLES
 - lib/hiring/route.ts: hiringRoute, parseBody, parseQuery
 - lib/hiring/scope.ts: requisitionSubject, requisitionScopeWhere, candidateScopeWhere, companyScope, requisitionSubjects
-- lib/hiring/scorecard-math.ts: HIRE_VOTES, HireVote, isHireVote, normalizeCompetencyKey, NormalizedScores, normalizeScores, scoreFor, ScorecardInput, PreparedScorecard, prepareScorecard, CompetencyAverage, competencyAverages, weightedOverall, Coverage, coverageOf, VerdictSummary, latestVotePerPanelist, aggregateVerdict, describeRounds, initialsOf, Divergence, voteDivergence
-- lib/hiring/screen-verdict.ts: ScreenVerdict, VerdictResult, screenVerdict, isWithinBand, yearsFromProfile, employerLine
+- lib/hiring/scorecard-math.ts: HIRE_VOTES, HireVote, isHireVote, ScorecardInput, PreparedScorecard, prepareScorecard, CompetencyAverage, competencyAverages, weightedOverall, Coverage, coverageOf, VerdictSummary, aggregateVerdict, describeRounds, initialsOf, voteDivergence
+- lib/hiring/screen-verdict.ts: VerdictResult, screenVerdict, isWithinBand, yearsFromProfile, employerLine
 - lib/hiring/screening.ts: screeningView, screeningAction
-- lib/hiring/settings.ts: HIRING_SETTING_KEYS, HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
-- lib/hiring/stage-gates.ts: GATE_STAGES, GATE_REASON, PACKAGE_GATE_REASON, GATE_CODE, skippedGates, mayCrossGates, joinReasons, describeGates, PackageEvidence, packageGateBlocks, GateVerdict, gateVerdict
-- lib/hiring/stage-rules.ts: PIPELINE_STAGES, Stage, PipelinePhase, LINEAR_STAGES, TERMINAL_STAGES, isStage, getPhase, stageRank, isPastFirstInterview, isRegression, isPhaseCross, classifyStageMove, HIRING_STEPS, stepForStage, boardStepForStage, BOARD_STEPS, RAIL_STEPS, stepEntryStage, stageTransitionError
+- lib/hiring/settings.ts: HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
+- lib/hiring/stage-gates.ts: GATE_CODE, skippedGates, mayCrossGates, PackageEvidence, packageGateBlocks, GateVerdict, gateVerdict
+- lib/hiring/stage-rules.ts: PIPELINE_STAGES, Stage, LINEAR_STAGES, TERMINAL_STAGES, isStage, stageRank, isPastFirstInterview, isRegression, isPhaseCross, classifyStageMove, HIRING_STEPS, stepForStage, boardStepForStage, BOARD_STEPS, RAIL_STEPS, stepEntryStage, stageTransitionError
 - lib/hiring/work-items.ts: hiringWorkProvider
 - lib/hive/civil.ts: CivilDate, muscatDate, fold, ExpiryState, expiryStateFor
 - lib/hive/hrtag-routing.ts: CoverageRow, inCompanyOf, PairRow, CompanyRow, pairCard, resolveCompany, matchCompanyWide, matchDirectorate, matchSelector, PairResolution, resolvePair
@@ -672,25 +672,25 @@
 - lib/hive/tools/orgchart.ts: runOrgChart
 - lib/hive/tools/providers.ts: runProviders
 - lib/hive/tools/rotation.ts: loadRotationConfig, runRotation
-- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, employeeScopeWhere, caseScopeWhere, AccessibleCase, subjectOf, loadCaseFor, MANAGE_PERMISSION
+- lib/jml/access.ts: JmlActor, jmlActor, holdsAnywhere, holdsGroup, canFor, heldJmlPermissions, caseScopeWhere, AccessibleCase, subjectOf, loadCaseFor, MANAGE_PERMISSION
 - lib/jml/config.ts: getSchedule, saveSchedule, listHolidays, addHoliday, removeHoliday, listStatutory, createStatutory, verifyStatutory, listPositionClassifications, createPositionClassification, updatePositionClassification, listContractTypes, createContractType, updateContractType, listEmploymentTypeConfigs, saveEmploymentTypeConfig
 - lib/jml/dashboard-rules.ts: WorkBucket, workBucket, BUCKET_ORDER, defaultMine
-- lib/jml/dashboard.ts: myTasks, jmlDashboard, JmlDashboard
+- lib/jml/dashboard.ts: myTasks, jmlDashboard
 - lib/jml/desks.ts: desks, externalSystems, itIntakeConfig, itIntakeFallbackUrl, isRetryable
-- lib/jml/docs/engine.ts: MAX_TEMPLATE_BYTES, TEMPLATE_PLACEHOLDERS, MergeData, TemplateIssue, validateTemplateBuffer, renderDocument, docxHeaders, SUMMARY_DISMISSAL_GATE_TASKS, summaryDismissalHold, generationProblem
+- lib/jml/docs/engine.ts: MergeData, TemplateIssue, validateTemplateBuffer, renderDocument, docxHeaders, summaryDismissalHold, generationProblem
 - lib/jml/docs/generate.ts: listCaseDocuments, generateDocument
 - lib/jml/docs/templates.ts: listTemplates, uploadTemplate, activateTemplate, retireTemplate, templateFile
 - lib/jml/email/overrides.ts: ResolvedTemplate, resolveTemplates, resolveTemplate, saveTemplateOverride, resetTemplateOverride
-- lib/jml/email/queue.ts: QueueEmailInput, queueEmail, sendableNow, DrainResult, drainQueue, retryEmail, renderBody, cancelQueuedEmails
+- lib/jml/email/queue.ts: QueueEmailInput, queueEmail, DrainResult, drainQueue, retryEmail, cancelQueuedEmails
 - lib/jml/email/templates.ts: TemplateContext, EmailTemplate, TEMPLATES, findTemplate, render, missingVariables, contextForCase, SAMPLE_CONTEXT
-- lib/jml/email/types.ts: EMAIL_TYPES, EmailType
+- lib/jml/email/types.ts: EMAIL_TYPES
 - lib/jml/employee-tab.ts: jmlTabVisible, employeeJml, EmployeeJml
 - lib/jml/engine/activity.ts: caseActivity
-- lib/jml/engine/assignment.ts: SCOPE_PRECEDENCE, RULE_SELECT, RuleRow, Placement, resolveHrAssignment, subjectForTarget, userHolds, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules, listJmlHrUsers
+- lib/jml/engine/assignment.ts: RuleRow, Placement, resolveHrAssignment, userHolds, RuleInput, createAssignmentRule, updateAssignmentRule, listAssignmentRules, listJmlHrUsers
 - lib/jml/engine/case-actions.ts: cancelOpenWork, cancelCase, archiveCase, reassignOwner, setLegalHold
-- lib/jml/engine/case-read.ts: caseListWhere, CASE_ROW_SELECT, CaseRow, listCases, getCaseDetail, listCaseEmails
+- lib/jml/engine/case-read.ts: CaseRow, listCases, getCaseDetail, listCaseEmails
 - lib/jml/engine/case-ref.ts: nextCaseRef, withCaseRefRetry
-- lib/jml/engine/conditions.ts: CONDITION_FIELDS, ConditionField, ConditionFacts, readConditions, taskApplies, conditionSource, criteriaScore
+- lib/jml/engine/conditions.ts: ConditionFacts, taskApplies, conditionSource, criteriaScore
 - lib/jml/engine/gates.ts: GateResult, GateTask, canCompleteTask, canCloseStage, canAdvanceStage, advancedLeaveStage
 - lib/jml/engine/generate.ts: TemplateTaskDef, Anchors, GenerationProfile, GeneratedTask, generateTasks, RecalculableTask, DueDateChange, recalculateDueDates, ReversalTask, generateReversalTasks
 - lib/jml/engine/leave-applicability.ts: LeaveApplicability, LeaveProfile, leaveTaskApplies
@@ -699,78 +699,78 @@
 - lib/jml/engine/progress.ts: ProgressTask, computeProgress, isComplete, deriveJoinStage
 - lib/jml/engine/task-status-rules.ts: reopenData, notApplicableData
 - lib/jml/engine/task-update.ts: UpdateTaskInput, updateTask
-- lib/jml/engine/tasks.ts: TASK_SELECT, TaskRow, GATE_SELECT, RefreshResult, isMoveDue, refreshCase, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks, auditTaskBulk
-- lib/jml/engine/templates.ts: TEMPLATE_TASK_SELECT, listTemplates, getTemplate, createTemplate, updateTemplate, selectJoinOrMoveTemplate, selectLeaveTemplate, templateTaskDefs
-- lib/jml/errors.ts: JmlError, ValidationFailure, jmlValidationError, jmlErrorResponse, jmlHandle
+- lib/jml/engine/tasks.ts: TASK_SELECT, GATE_SELECT, isMoveDue, refreshCase, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks
+- lib/jml/engine/templates.ts: listTemplates, getTemplate, createTemplate, updateTemplate, selectJoinOrMoveTemplate, selectLeaveTemplate, templateTaskDefs
+- lib/jml/errors.ts: JmlError, ValidationFailure, jmlErrorResponse
 - lib/jml/join/actions.ts: confirmActualStart, changeStartDate, confirmItReadiness, resubmitToIt, sendWelcomeReview
 - lib/jml/join/activation-checks.ts: factsOf, placementOf, assertActivatable, candidateOf, directorateProblem, emailDuplicates, duplicateProblem
-- lib/jml/join/activation.ts: previewActivation, activateJoiner
+- lib/jml/join/activation.ts: previewActivation, joinProblems, activateJoiner
 - lib/jml/join/draft.ts: DRAFT_REF_PREFIX, requireManage, requireSalaryIfGiven, assertReferences, createJoinerDraft, detailData, loadJoinerForEdit, discardDraft
 - lib/jml/join/facts.ts: joinFacts
-- lib/jml/join/it-intake.ts: ItIntakeOutcome, submitToIt, submitAndRecord
-- lib/jml/join/joiner-data.ts: JOINER_SELECT, JoinerRow, joinerSubject, serializeJoiner, Joiner, loadJoinerRow, placementSubject
+- lib/jml/join/it-intake.ts: ItIntakeOutcome, submitAndRecord
+- lib/jml/join/joiner-data.ts: JoinerRow, joinerSubject, serializeJoiner, loadJoinerRow, placementSubject
 - lib/jml/join/list.ts: JoinerListFilter, listJoiners
 - lib/jml/join/open-join.ts: openJoinCase, withdrawJoinCase
-- lib/jml/join/readiness.ts: ActivationCandidate, ACTIVATION_FIELD_LABEL, missingActivationFields, readinessProblem
+- lib/jml/join/readiness.ts: ActivationCandidate, missingActivationFields, readinessProblem
 - lib/jml/join/retention-config.ts: RetentionConfig, retentionConfig
-- lib/jml/join/retention.ts: ANONYMISED, previewRetention, anonymiseJoinCase, runRetention
+- lib/jml/join/retention.ts: previewRetention, runRetention
 - lib/jml/join/start-shift.ts: shiftedDue
 - lib/jml/join/sweep-steps.ts: itReadinessReminders, overdueDigests
-- lib/jml/join/triggers.ts: onActivated, notifyProIfVisaRequired, onActualStartEntered, onStartDateChanged
+- lib/jml/join/triggers.ts: onActivated, onActualStartEntered, onStartDateChanged
 - lib/jml/join/update.ts: updateJoiner
 - lib/jml/leave/activation-gate.ts: LeaveActivationCandidate, leaveActivationProblems
 - lib/jml/leave/activation.ts: previewLeaveActivation, wouldGenerate, activateLeave
-- lib/jml/leave/approval-rules.ts: TERMINATION_AUTHORISATION_HOLDERS, APPROVAL_HOLDERS, APPROVAL_TYPES, requiresSecondLevelDelegate, Problem, checkAuthorityConfig, checkTerminationAuthorisation, checkHolders, ApprovalDecision, decisionProblem, segregationProblem, needsReminder
+- lib/jml/leave/approval-rules.ts: APPROVAL_HOLDERS, APPROVAL_TYPES, requiresSecondLevelDelegate, Problem, checkAuthorityConfig, checkTerminationAuthorisation, checkHolders, ApprovalDecision, decisionProblem, segregationProblem, needsReminder
 - lib/jml/leave/approvals.ts: listApprovals, requestApproval, decideApproval
 - lib/jml/leave/authority.ts: listAuthorities, saveAuthority
-- lib/jml/leave/cancel.ts: cancelLeave, restoreLogin
+- lib/jml/leave/cancel.ts: cancelLeave
 - lib/jml/leave/closure.ts: closurePreview, closeLeave
-- lib/jml/leave/compliance.ts: COMPLIANCE_GATES, GateId, GATE_IDS, isGateId, ComplianceProfile, applicableGates, GateRecordLike, checkClosureGates, gateDataProblem, INCIDENT_KINDS, IncidentKind, daysLate, DetectedIncident, detectIncidents
+- lib/jml/leave/compliance.ts: COMPLIANCE_GATES, GateId, isGateId, ComplianceProfile, applicableGates, GateRecordLike, checkClosureGates, gateDataProblem, INCIDENT_KINDS, daysLate, DetectedIncident, detectIncidents
 - lib/jml/leave/config.ts: listAssetTypes, saveAssetType, listAccessChecklist, saveAccessChecklistItem, listReasonCodes, saveReasonCode
 - lib/jml/leave/csv.ts: parseCsv
 - lib/jml/leave/dates.ts: changeExitDates
-- lib/jml/leave/departure.ts: revokeLeaverLogin, applyLeaverDeparture, departureMilestones
+- lib/jml/leave/departure.ts: applyLeaverDeparture, departureMilestones
 - lib/jml/leave/draft.ts: createExitDraft, refreshSnapshots, updateExit
 - lib/jml/leave/gates.ts: listGates, recordGate, overridesForMonth
-- lib/jml/leave/gratuity.ts: money, GratuityUnavailableError, SUMMARY_DISMISSAL_UNCONFIGURED, GratuityInput, GratuityResult, computeGratuity, LeaveResult, computeLeave, DEDUCTION_TYPES, DeductionTypeKey, SettlementLineInput, settlementLineProblems, visaCostRecoveryApplies, serviceMonths, settlementTotals
-- lib/jml/leave/health.ts: ESCALATION_WORKING_DAYS, STATUTORY_WATCH_WORKING_DAYS, HealthInput, leaveRag, leaveHealth
-- lib/jml/leave/import-rules.ts: REQUIRED_COLUMNS, OPTIONAL_COLUMNS, ImportRow, RowProblem, validateImport
+- lib/jml/leave/gratuity.ts: money, GratuityUnavailableError, GratuityInput, GratuityResult, computeGratuity, LeaveResult, computeLeave, SettlementLineInput, settlementLineProblems, visaCostRecoveryApplies, serviceMonths, settlementTotals
+- lib/jml/leave/health.ts: ESCALATION_WORKING_DAYS, STATUTORY_WATCH_WORKING_DAYS, HealthInput, leaveHealth
+- lib/jml/leave/import-rules.ts: ImportRow, RowProblem, validateImport
 - lib/jml/leave/import.ts: importHistoricalExits
 - lib/jml/leave/interview-rules.ts: TaxonomyCode, InterviewCapture, Blocker, checkInterviewCapture, checkAssessment, reasonsChanged
 - lib/jml/leave/interview.ts: activeTaxonomy, getInterview, InterviewInput, saveInterview, assessInterview
-- lib/jml/leave/leave-data.ts: LEAVE_SELECT, LeaveRow, LeaveDetail, loadLeaveRow, leaveAnchors, revocationAnchor
-- lib/jml/leave/notices.ts: caseRecipients, noticeToOwners
-- lib/jml/leave/read.ts: getExit, ExitView
-- lib/jml/leave/rekey-rules.ts: REKEY_MAX_BACKDATE_DAYS, rekeyEligibility, Disposition, dispositionProblems, dueBeforeToday
+- lib/jml/leave/leave-data.ts: LeaveRow, LeaveDetail, loadLeaveRow, leaveAnchors, revocationAnchor
+- lib/jml/leave/notices.ts: noticeToOwners
+- lib/jml/leave/read.ts: getExit
+- lib/jml/leave/rekey-rules.ts: rekeyEligibility, Disposition, dispositionProblems, dueBeforeToday
 - lib/jml/leave/rekey.ts: rekeyPlan, applyRekey
 - lib/jml/leave/rules.ts: DEFAULT_NOTICE_DAYS, DOCUMENTED_EXIT_TYPES, DateFacts, Problem, dateProblems, nationalityBranch, describeRefusal
 - lib/jml/leave/settlement-actions.ts: addSettlementLine, removeSettlementLine, approveSettlement, confirmPayment, settlementClosureProblems
 - lib/jml/leave/settlement-rules.ts: Gate, AssetSnapshot, canTransmitSettlement, canApproveSettlement, canCloseSettlement, paymentDeadline
 - lib/jml/leave/settlement.ts: Figures, statutoryRows, loadContext, getSettlement, calculateSettlement
-- lib/jml/leave/sweep-steps.ts: leaveHealthRefresh, leaveDailyNotices, incidentScan, leaveDepartures
+- lib/jml/leave/sweep-steps.ts: leaveHealthRefresh, leaveDailyNotices, leaveDepartures
 - lib/jml/money/crypto.ts: sealMoney, openMoney
 - lib/jml/move/apply.ts: applyMove, applyDueMoves
 - lib/jml/move/create.ts: createMove
-- lib/jml/move/profile.ts: MOVE_EMPLOYEE_SELECT, MoveEmployee, detailsOf, loadMoveEmployee, labelsFor, Snapshot, snapshots, moveProfile
+- lib/jml/move/profile.ts: MoveEmployee, detailsOf, loadMoveEmployee, Snapshot, snapshots, moveProfile
 - lib/jml/move/rules.ts: CHANGE_FIELDS, ChangeField, EmployeeDetails, ChangeDetailsInput, overlayDetails, changeRefusal, applyChangeRules, changedFields
 - lib/jml/register/access-items.ts: listAccessItems, addAccessItem, confirmAccessItem
 - lib/jml/register/assets.ts: activeAssetTypes, listCaseAssets, addAsset, recordAssetReturn, writeOffAsset
 - lib/jml/register/rules.ts: unsettledAssets, AccessConfirmation, accessConfirmationProblem, rotationFor
 - lib/jml/reports/join-aggregate.ts: hrWorkload, volumeTrend, allCompanies
-- lib/jml/reports/join-base.ts: ReportRow, ReportColumn, ReportContext, ReportDefinition, ROW_LIMIT, col, monthRange, joinWhere, CASE_SELECT, caseRow, runCaseReport, CASE_IDENTITY, goLiveDate
+- lib/jml/reports/join-base.ts: ReportRow, ReportColumn, ReportContext, ReportDefinition, ROW_LIMIT, col, monthRange, joinWhere, runCaseReport, CASE_IDENTITY, goLiveDate
 - lib/jml/reports/join-cases.ts: monthlyOnboarding, onboardingCompletion, delayedTasks, upcomingJoiners, completedOnboardings
 - lib/jml/reports/leave/attrition.ts: r2Attrition, r5Early, r8Omanisation
-- lib/jml/reports/leave/base.ts: REPORT_ROW_CAP, LeaveReportContext, LeaveReportResult, LeaveReport, period, unsuppressed, LEAVE_ROW_SELECT, LeaveRow, leaveWhere, loadLeaveRows, emptyResult, orgNames
+- lib/jml/reports/leave/base.ts: LeaveReportContext, LeaveReportResult, LeaveReport, period, unsuppressed, LeaveRow, loadLeaveRows, emptyResult, orgNames
 - lib/jml/reports/leave/process.ts: r6Active, r7Settlement
 - lib/jml/reports/leave/reasons.ts: r1Reasons, r3Regrettable, r4Managers
-- lib/jml/reports/leave/registry.ts: LEAVE_REPORTS, findLeaveReport, runLeaveReport, exportLeaveReport
-- lib/jml/reports/leave/rules.ts: SMALL_CELL_THRESHOLD, BELOW_THRESHOLD, Cell, suppressSmallCells, monthsBetween, TENURE_BANDS, tenureBand, quarterOf, monthOf, lowerMedian, mean, ratio, DAY, daysBetween, attritionRate, employedOn, settlementBucket, topReason
+- lib/jml/reports/leave/registry.ts: runLeaveReport, exportLeaveReport
+- lib/jml/reports/leave/rules.ts: SMALL_CELL_THRESHOLD, BELOW_THRESHOLD, Cell, suppressSmallCells, monthsBetween, TENURE_BANDS, tenureBand, quarterOf, monthOf, lowerMedian, mean, ratio, daysBetween, attritionRate, employedOn, settlementBucket, topReason
 - lib/jml/reports/months.ts: monthBuckets
-- lib/jml/reports/registry.ts: REPORTS, findReport, runReport, exportReport
+- lib/jml/reports/registry.ts: runReport, exportReport
 - lib/jml/route.ts: jml, body, query, requireAnywhere, requireGroup
 - lib/jml/search.ts: searchCases
-- lib/jml/sweep.ts: SweepStep, SWEEP_STEPS, runSweep
-- lib/jml/vocab.ts: STAGE_ORDER, FIRST_STAGE, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, TERMINAL_CASE_STATUSES, CASE_REF_PREFIX, isLive, isTerminal
+- lib/jml/sweep.ts: SweepStep, runSweep
+- lib/jml/vocab.ts: STAGE_ORDER, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, CASE_REF_PREFIX, isLive
 - lib/jml/watch/calendar.ts: joiningCalendar, CalendarEntry, calendarTotals
 - lib/jml/watch/exit-calendar.ts: ExitEntry, exitCalendar
 - lib/jml/watch/risk.ts: StatutoryRisk, RISK_ORDER, statutoryRisk
@@ -778,11 +778,11 @@
 - lib/jml/work-items.ts: jmlWorkProvider
 - lib/nav/config.ts: NAV_GROUPS, NavGroup, NavContext, NavIcon, NavLink, NavEntry, NAV
 - lib/nav/legacy-redirects.ts: Redirect, legacyRedirects
-- lib/nav/resolve.ts: ResolvedLink, ResolvedEntry, hrefOf, visibleNav, groupedNav, normalisePath, covers, ActiveNav, activeNav, tabsFor, PaletteItem, paletteItems
+- lib/nav/resolve.ts: ResolvedEntry, hrefOf, visibleNav, groupedNav, normalisePath, covers, ActiveNav, activeNav, tabsFor, PaletteItem, paletteItems
 - lib/nav/server-context.ts: navContextFor
-- lib/nav/tabs.ts: Gate, always, hr, teamLead, orgWide, admin, jml, hiring, ownsRequisitions, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
+- lib/nav/tabs.ts: Gate, always, hr, teamLead, admin, hiring, ownsRequisitions, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
 - lib/nav/trail.ts: NavCrumb, navTrail
-- lib/notifications/user-notify.ts: MAX_RECIPIENTS, PREVIEW_CHARS, UserNotice, notifyUsers, shortPreview
+- lib/notifications/user-notify.ts: PREVIEW_CHARS, UserNotice, notifyUsers, resolveUserNotices, shortPreview
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -793,11 +793,11 @@
 - lib/org/units.ts: ACTIVE_ROWS, renameCompany, createDirectorate, renameDirectorate, retireDirectorate, createOrgDepartment, updateOrgDepartment, retireOrgDepartment, plural
 - lib/pagination.ts: PaginationParams, PaginatedResponse, parsePagination, paginatedResponse
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
-- lib/people/employee-code.ts: NOT_CONFIGURED_MESSAGE, formatEmployeeCode, parseEmployeeCode, getEmployeeCodeSequence, ConfigureEmployeeCodeInput, configureEmployeeCodeSequence, EmployeeCodeError, allocateEmployeeCode, EMPLOYEE_CODE_PATTERN, recordEmployeeCode
+- lib/people/employee-code.ts: formatEmployeeCode, parseEmployeeCode, getEmployeeCodeSequence, ConfigureEmployeeCodeInput, configureEmployeeCodeSequence, EmployeeCodeError, allocateEmployeeCode, recordEmployeeCode
 - lib/people/force-change.ts: ForceChangeDecision, forcedChangeDecision
 - lib/people/history.ts: HistoryEntry, employeeHistory, changedFields
 - lib/people/id-documents.ts: IdDocumentKeyError, encryptIdNumber, readIdNumber
-- lib/people/logins.ts: generateTemporaryPassword, LoginState, loginStateOf, loginEligibility, loginSummary, issueTemporaryPassword, disableLogin, changeOwnPassword
+- lib/people/logins.ts: generateTemporaryPassword, LoginState, loginStateOf, loginSummary, issueTemporaryPassword, disableLogin, changeOwnPassword
 - lib/people/odoo-id.ts: recordOdooId
 - lib/people/pending-id.ts: isPendingEmployeeId
 - lib/people/provisional-id.ts: PROVISIONAL_PREFIX, provisionalOdooId, isProvisionalOdooId, PLACEHOLDER_EMAIL_DOMAIN, placeholderEmail, isPlaceholderEmail
@@ -811,11 +811,11 @@
 - lib/pms/calibration.ts: BANDS, Distribution, emptyDistribution, tally, distributionGap, isCurveEligible, CalibrationRefusal, adjustmentBlockedReason, calibrationReadinessBlockedReason
 - lib/pms/change-request-select.ts: CHANGE_REQUEST_SELECT, ChangeRequestRow, EditRow, serializeChangeRequest, toKpiEdit
 - lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, acknowledgeBlockedReason, effectiveChangeRequestStatus, approvalAcknowledgmentReason, withdrawBlockedReason, changeRequestAccessRefusal, stageReopensUnacknowledged
-- lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, enrolledAfterDeadline, isResolved, ladderEventsFor, hrInterventionDue, interventionSummary
-- lib/pms/cycle-notify.ts: MAX_NOTIFICATIONS, MAX_PERSISTED_NOTIFICATIONS, WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
+- lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, enrolledAfterDeadline, ladderEventsFor, hrInterventionDue, interventionSummary
+- lib/pms/cycle-notify.ts: WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
-- lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, DEPARTURE_REPORTS_ORDER, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture, ReverseDepartureOutcome, reverseDeparture
+- lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture, ReverseDepartureOutcome, reverseDeparture
 - lib/pms/employee-select.ts: employeeSelect, ORG_TREE_NODE_SELECT, EmployeeListRow, serializeEmployee, encryptSalary, decryptSalary, employeeDetailSelect, EmployeeRecordView, serializeEmployeeDetail
 - lib/pms/evidence.ts: ALLOWED_EVIDENCE_TYPES, AllowedContentType, MAX_EVIDENCE_BYTES, MAX_EVIDENCE_PER_KPI, MAX_EVIDENCE_LABEL, MAX_EVIDENCE_COMMENT, EvidenceRefusal, sniffContentType, isAllowedContentType, uploadBlockedReason, linkBlockedReason, evidenceWriteBlockedReason, canViewEvidence, signBlockedReason
 - lib/pms/export/xlsx.ts: buildImportTemplate, xlsxDownloadHeaders, SheetColumn, buildReportSheet, ReportSheet, toReportSheet, buildReportWorkbook
@@ -825,35 +825,35 @@
 - lib/pms/import/checks/record.ts: checkRecord
 - lib/pms/import/checks/shared.ts: ROLE_TRACK_ALIASES, STATUS_ALIASES, normalize, ValidationContext, issue, Check, parseIsoDate
 - lib/pms/import/checks/units.ts: checkUnits
-- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, MAX_SHEETS, MAX_ROWS, ImportFileError, HeaderMap, mapHeaders, readWorkbook, cellText, LoadResult, loadEmployeesFromXlsx
+- lib/pms/import/loaders/xlsx.ts: MAX_UPLOAD_BYTES, ImportFileError, HeaderMap, mapHeaders, readWorkbook, cellText, LoadResult, loadEmployeesFromXlsx
 - lib/pms/import/reconcile.ts: ExistingEmployee, ReconcileContext, effectiveTeamId, ReconcilePlan, reconcile
 - lib/pms/import/run.ts: previewImport, ImportConflictError, ImportAlreadyAppliedError, applyImport, existingLoginEmails, provisionLoginFor
-- lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, IssueSeverity, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, PlannedChange, ImportPreview, ImportCounts, countsFor, planDigest
+- lib/pms/import/types.ts: EmployeeSourceRow, IMPORT_COLUMNS, ImportColumn, COLUMN_ALIASES, COLUMN_TITLES, ImportIssue, ValidatedRow, FieldChange, PlannedCreate, PlannedUpdate, AbsentEmployee, ImportPreview, ImportCounts, countsFor, planDigest
 - lib/pms/import/validate.ts: ValidationResult, validateRows
-- lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KPI_HASH_SELECT, KpiHashRow, kpiSetHash, currentKpiSetHash
-- lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, weightageTotalsByPeriod, rosterWeightageTotal, WeightageView, weightageView, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
+- lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KpiHashRow, kpiSetHash, currentKpiSetHash
+- lib/pms/kpi.ts: KPI_LEVELS, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, rosterWeightageTotal, WeightageView, weightageView, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
 - lib/pms/notifications.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey, PendingNotification, persistNotifications
 - lib/pms/offboarding.ts: revokeLoginOnOffboard
 - lib/pms/org-chart-search.ts: matchOrgChart
-- lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartDepartment, OrgChartEntity, buildOrgChart
-- lib/pms/org-tree.ts: MAX_ORG_DEPTH, descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
-- lib/pms/permissions.ts: PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, isExecutiveViewer, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
-- lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, RatingLevelField, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
+- lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartEntity, buildOrgChart
+- lib/pms/org-tree.ts: descendantEmployeeIds, visibleEmployeeIds, visibilityDescendants, hasDirectReports, managerChain
+- lib/pms/permissions.ts: PmsActor, grantsOf, actorCan, isHr, isHrSuperAdmin, hasOrgWideVisibility, canConfigure, canRunCalibration, canExportMasterResults, canSeePlatformAdminRoster, canViewCompensation, canViewPersonal, canViewIdDocuments, canViewEmployee, canActOnEmployee, isReadOnly, canPreviewImport, canApplyImport, PmsCapabilities, capabilitiesFor
+- lib/pms/rating.ts: YEAR_END_STAGE, RATING_LEVELS, isRatingLevel, RatingRefusal, ratingBlockedReason, divergenceBlockedReason
 - lib/pms/roll-up.ts: ROLL_UP_PROMPT_KEY, rollUpTarget, canResolveRollUp, RollUpState, resolveBlockedReason, managerChangeInvalidatesSignatures
-- lib/pms/score-run.ts: RatedKpi, ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
-- lib/pms/scoring.ts: MIN_LEVEL, MAX_LEVEL, Band, TRACK_WEIGHTS, ScoredKpi, individualScore, threeSixtyAsLevel, Components, finalScore, bandFor, BAND_COEFFICIENT, BAND_RANGE, displayScore
-- lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalBasis, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
+- lib/pms/score-run.ts: ScoreInputs, ScoreOutcome, scoreEmployee, PeriodInputs, SplitScoreInputs, scoreSplitEmployee
+- lib/pms/scoring.ts: Band, TRACK_WEIGHTS, ScoredKpi, individualScore, threeSixtyAsLevel, Components, finalScore, bandFor, BAND_COEFFICIENT, BAND_RANGE, displayScore
+- lib/pms/signoff.ts: SignOffState, signOffState, isFullySigned, SignedContentRow, staleParties, EMPLOYEE_DID_NOT_SIGN, EMPLOYEE_SIGNED_MANAGER_DID_NOT, SignerRefusal, signerBlockedReason, HrApprovalDecision, hrApprovalDecision, SignOffContext, loadSignOffContext, contextBlockedReason
 - lib/pms/stage.ts: STAGE_ORDER, isGoalSettingExempt, StageWindow, StageState, stageState, canActOnStage, graceEndsAt, isPastGrace, hoursOverdue
 - lib/pms/status-query.ts: participantStatuses
 - lib/pms/status.ts: StepState, ParticipantStatusInput, ParticipantStatus, goalSettingState, yearEndState, outstandingLabel, deriveStatus, StageTally, emptyTally, completion, tallyBy, StageProgress, stageProgress, awaitingManager
 - lib/pms/tasks.ts: DUE_SOON_MS, TaskTone, Task, CLOCK_TICK_MS, toneForStage, STAGE_RANK, ownTask, reportTask, buildTasks, ThreeSixtyTaskRow, buildThreeSixtyTasks, YearEndTaskState, buildYearEndTasks
 - lib/pms/three-sixty-answer.ts: AnswerRefusal, answerBlockedReason
-- lib/pms/three-sixty-assign.ts: projectPeers, peerPoolFor, PlannedAssignment, planAssignments
+- lib/pms/three-sixty-assign.ts: projectPeers, PlannedAssignment, planAssignments
 - lib/pms/three-sixty-edit.ts: EditRefusal, windowChangeBlockedReason, statusChangeBlockedReason, raterChangeBlockedReason, discardBlockedReason, discardDestroysAnswers
 - lib/pms/three-sixty-raters.ts: THREE_SIXTY_CANDIDATE_SELECT, ThreeSixtyCandidate, raterEligibilityRefusal
-- lib/pms/three-sixty-scale.ts: MIN_ANSWER, MAX_ANSWER, ANSWER_SCALE, isAnswerScore
-- lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, MIN_FORMS_FOR_COMMENTS, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
-- lib/pms/transfer-apply.ts: TransferEmployee, TransferSplitInput, splitAndMove, TransferPlan, transferPlan
+- lib/pms/three-sixty-scale.ts: MAX_ANSWER, ANSWER_SCALE, isAnswerScore
+- lib/pms/three-sixty.ts: RATERS_PER_EMPLOYEE, templateTypeFor, isThreeSixtyExempt, RaterCandidate, proposeRaters, AssignmentCount, activationBlockedReason, ScoredResponse, formRatio, overallRatio, SubmittedForm, consolidateThreeSixty, EvaluatorStatus, evaluatorStatus, THREE_SIXTY_REMINDER_DAYS, isReminderDue
+- lib/pms/transfer-apply.ts: TransferSplitInput, splitAndMove, TransferPlan, transferPlan
 - lib/pms/transfer.ts: PeriodWindow, periodDays, periodWeight, WeightedPeriodScore, proratedComponent, splitWindows, periodWeightageBlockedReason, periodAuthorityBlockedReason, clampToService
 - lib/pms/year-end-select.ts: YEAR_END_KPI_SELECT, YEAR_END_KPI_ORDER, SerializedYearEndKpi, serializeYearEndKpis
 - lib/pms/year-end.ts: RatingRow, YearEndState, yearEndState, yearEndSignBlockedReason, yearEndSignerBlockedReason
@@ -872,19 +872,19 @@
 - lib/rbac/service.ts: listRoles, createRole, updateRole, deleteRole, listAssignments, createAssignment, removeAssignment, effectiveAccess
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
-- lib/statutory/parameters.ts: STATUTORY_KEYS, StatutoryKey, isStatutoryKey, isOpenStart, StatutoryRow, Resolved, StatutoryParameterMissingError, resolve, unverifiedAmong
-- lib/storage.ts: SIGNED_URL_TTL_SECONDS, StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrls, signedReadUrl, readStoredHead, deleteStoredFile, putPrivateFile
+- lib/statutory/parameters.ts: STATUTORY_KEYS, StatutoryKey, isStatutoryKey, StatutoryRow, Resolved, StatutoryParameterMissingError, resolve, unverifiedAmong
+- lib/storage.ts: StorageNotConfiguredError, isStorageConfigured, evidencePrefix, isWithinEvidencePrefix, signedReadUrl, readStoredHead, deleteStoredFile, putPrivateFile
 - lib/utils.ts: cn
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
-- lib/validations/change-request.ts: changeRequestEditSchema, createChangeRequestSchema, decideChangeRequestSchema, CreateChangeRequestInput, ChangeRequestEditInput, DecideChangeRequestInput
+- lib/validations/change-request.ts: createChangeRequestSchema, decideChangeRequestSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
-- lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, CreateCycleInput, CycleStageInput, cyclePolicySchema, CyclePolicyInput
+- lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
-- lib/validations/employee.ts: ROLE_TRACKS, EMPLOYEE_STATUSES, PMS_ROLES, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput, CreateEntityInput
+- lib/validations/employee.ts: ROLE_TRACKS, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
 - lib/validations/hiring/ai-egress.ts: isBlockedHost, checkBaseUrl
-- lib/validations/hiring/ai.ts: AI_KINDS, AiKind, insightRunSchema, insightQuerySchema, aiProviderSchema, AiProviderInput, aiLimitsSchema, AiLimitsInput, scoringWeightsSchema, ScoringWeights, DEFAULT_SCORING_WEIGHTS, panelModeSchema, budgetEntrySchema, budgetEnvelopeSchema, CV_MAX_BYTES, APPROVAL_ROLE_VALUES, generalSettingsSchema, GeneralSettingsInput, parseModeSchema, aiScreenChunkSchema
-- lib/validations/hiring/candidate.ts: CANDIDATE_SOURCES, GENDERS, STALL_CAUSES, DOCUMENT_KINDS, createCandidateSchema, updateCandidateSchema, CandidateInput, CandidateUpdate, candidateListQuerySchema, CandidateListQuery, boardQuerySchema, stageMoveSchema, stallCauseSchema, BULK_ID_CAP, bulkActionSchema, candidateExportQuerySchema, uploadDocumentFieldsSchema, reviewDocumentSchema, packageActionSchema, assessmentActionSchema, assessmentPolicySchema, screeningActionSchema, importCandidatesSchema, preboardingActionSchema
+- lib/validations/hiring/ai.ts: AiKind, insightRunSchema, insightQuerySchema, aiProviderSchema, AiProviderInput, aiLimitsSchema, AiLimitsInput, scoringWeightsSchema, ScoringWeights, DEFAULT_SCORING_WEIGHTS, budgetEnvelopeSchema, CV_MAX_BYTES, APPROVAL_ROLE_VALUES, generalSettingsSchema, GeneralSettingsInput, parseModeSchema, aiScreenChunkSchema
+- lib/validations/hiring/candidate.ts: CANDIDATE_SOURCES, STALL_CAUSES, DOCUMENT_KINDS, createCandidateSchema, updateCandidateSchema, CandidateInput, CandidateUpdate, candidateListQuerySchema, CandidateListQuery, boardQuerySchema, stageMoveSchema, stallCauseSchema, BULK_ID_CAP, bulkActionSchema, candidateExportQuerySchema, uploadDocumentFieldsSchema, reviewDocumentSchema, packageActionSchema, assessmentActionSchema, assessmentPolicySchema, screeningActionSchema, importCandidatesSchema, preboardingActionSchema
 - lib/validations/hiring/interview.ts: INTERVIEW_STATUSES, createInterviewSchema, updateInterviewSchema, interviewListQuerySchema, calendarQuerySchema, panelistSchema, confirmSchema, roundPlanSchema, panelScoreSchema, panelReviseSchema, createEvaluationSchema, updateEvaluationSchema, evaluationListQuerySchema, comparisonActionSchema
 - lib/validations/hiring/library-schemas.ts: LIBRARY_SCHEMAS, libraryKind
 - lib/validations/hiring/library.ts: competencySchema, gradeSchema, jdTemplateSchema, questionSchema, LIBRARY_KINDS, LibraryKind
@@ -900,26 +900,26 @@
 - lib/validations/hive/reply.ts: replyBodySchema, replyTokenSchema
 - lib/validations/hive/reports.ts: REPORT_RANGE_MAX_DAYS, isoDaySchema, muscatDayStart, reportRangeSchema, ReportRange
 - lib/validations/hive/ticket-settings.ts: LABELLED_STATUSES, ticketPrefixSchema, statusLabelsSchema, ticketSettingsSchema, TicketSettingsInput
-- lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, employeeCodeRecordSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema, dashboardQuerySchema, myTasksQuerySchema
+- lib/validations/jml/case.ts: CASE_STATUS_VALUES, caseListSchema, CaseListInput, startDateSchema, actualStartSchema, cancelSchema, ownerSchema, legalHoldSchema, itReadinessSchema, sendWelcomeReviewSchema, odooIdSchema, searchSchema, calendarSchema, CalendarInput, statutoryWatchSchema, dashboardQuerySchema, myTasksQuerySchema
 - lib/validations/jml/config.ts: isoDay, scheduleSchema, holidaySchema, statutoryCreateSchema, statutoryVerifySchema, classificationCreateSchema, classificationUpdateSchema, contractTypeCreateSchema, contractTypeUpdateSchema, employmentTypeParamSchema, employmentTypeConfigSchema, employeeCodeSchema, ruleCreateSchema, ruleUpdateSchema, resolveRuleSchema, emailOverrideSchema, testEmailSchema
-- lib/validations/jml/joiner.ts: ROLE_TRACKS, draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, openJoinCaseSchema, OpenJoinCaseInput
-- lib/validations/jml/leave.ts: EXIT_TYPES, EXIT_SUBTYPES, NATIONALITY_BRANCHES, APPROVAL_TYPE_VALUES, ACCESS_DOMAIN_VALUES, createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, stageAdvanceSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, REASON_LEVEL1, interviewSchema, PREVENTION_FACTOR_VALUES, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
+- lib/validations/jml/joiner.ts: draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, OpenJoinCaseInput
+- lib/validations/jml/leave.ts: createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, interviewSchema, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
 - lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
-- lib/validations/jml/task.ts: TASK_STATUS_VALUES, updateTaskSchema, manualTaskSchema, commentSchema
-- lib/validations/jml/template.ts: CASE_TYPES, CHANGE_TYPES, STAGES, DATE_BASES, OFFSET_UNITS, COMPLIANCE_CATEGORIES, EXIT_TYPES, NATIONALITY_SCOPES, EMPLOYMENT_SCOPES, conditionsSchema, criteriaSchema, templateTaskSchema, templateShapeProblem, createTemplateSchema, updateTemplateSchema, CreateTemplateInput, UpdateTemplateInput, TemplateTaskInput
-- lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
-- lib/validations/login.ts: issueLoginSchema, changePasswordSchema, ChangePasswordBody
-- lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema, MarkReadInput
+- lib/validations/jml/task.ts: updateTaskSchema, manualTaskSchema, commentSchema
+- lib/validations/jml/template.ts: CASE_TYPES, CHANGE_TYPES, STAGES, COMPLIANCE_CATEGORIES, conditionsSchema, templateShapeProblem, createTemplateSchema, updateTemplateSchema, CreateTemplateInput, UpdateTemplateInput, TemplateTaskInput
+- lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema
+- lib/validations/login.ts: issueLoginSchema, changePasswordSchema
+- lib/validations/notification.ts: MAX_MARK_READ_IDS, markReadSchema
 - lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
-- lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, AddEmployeeBody, recordFromBody
-- lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
-- lib/validations/rbac.ts: roleBodySchema, ORG_SCOPE_TYPES, SCOPE_TYPES, ScopeTypeCode, UNITLESS_SCOPES, assignmentBodySchema, RoleBody, AssignmentBody, assignmentFilterSchema, effectiveAccessQuerySchema
-- lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
+- lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, recordFromBody
+- lib/validations/rating.ts: upsertRatingSchema, yearEndSignOffSchema
+- lib/validations/rbac.ts: roleBodySchema, SCOPE_TYPES, ScopeTypeCode, UNITLESS_SCOPES, assignmentBodySchema, RoleBody, AssignmentBody, assignmentFilterSchema, effectiveAccessQuerySchema
+- lib/validations/strategy-score.ts: upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
-- lib/working-time/calendar.ts: IsoWeekday, WorkingSchedule, DEFAULT_SCHEDULE, WorkingCalendar, DEFAULT_CALENDAR, isoWeekday, utcDate, dayKey, weekendDays, isWorkingDay, rollForward, addWorkingDays, addCalendarDaysRolled, OffsetUnit, offsetDate, workingDaysBetween, signedWorkingDays, zonedParts, zonedTimeToUtc, zonedToday, isWithinWindow, nextWindowOpening, isLocalHour
+- lib/working-time/calendar.ts: IsoWeekday, WorkingSchedule, DEFAULT_SCHEDULE, WorkingCalendar, DEFAULT_CALENDAR, isoWeekday, utcDate, dayKey, weekendDays, isWorkingDay, addWorkingDays, addCalendarDaysRolled, OffsetUnit, offsetDate, workingDaysBetween, signedWorkingDays, zonedTimeToUtc, zonedToday, isWithinWindow, nextWindowOpening, isLocalHour
 - lib/working-time/load.ts: loadSchedule, loadWorkingCalendar
 
 ## components/

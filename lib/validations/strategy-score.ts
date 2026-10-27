@@ -8,7 +8,7 @@ import { z } from "zod";
  * boundaries, so it must not round-trip through a float on the way in.
  */
 
-export const strategyScoreValue = z
+const strategyScoreValue = z
   .union([z.string().trim(), z.number()])
   .transform((v) => (typeof v === "number" ? String(v) : v))
   .refine((s) => /^[1-5](\.\d{1,2})?$/.test(s) || s === "5.00" || s === "5.0", {

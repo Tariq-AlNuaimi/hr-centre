@@ -4,7 +4,7 @@
  * and every task that fell due before today gets a disposition.
  */
 
-export const REKEY_MAX_BACKDATE_DAYS = 365;
+const REKEY_MAX_BACKDATE_DAYS = 365;
 const DAY = 86_400_000;
 const day = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 

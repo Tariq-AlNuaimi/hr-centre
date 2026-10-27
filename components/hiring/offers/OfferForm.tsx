@@ -37,7 +37,7 @@ export type OfferFormValues = {
   benefits: string;
 };
 
-export const CONTRACT_TYPES = ["Permanent", "Fixed term", "Part time", "Internship"] as const;
+const CONTRACT_TYPES = ["Permanent", "Fixed term", "Part time", "Internship"] as const;
 
 const num = (s: string) => (s.trim() === "" ? null : Number(s));
 
@@ -59,7 +59,7 @@ export function toOfferBody(v: OfferFormValues, withPay: boolean) {
   };
 }
 
-export const totalOf = (v: Pick<OfferFormValues, "salary" | "allowances">) =>
+const totalOf = (v: Pick<OfferFormValues, "salary" | "allowances">) =>
   (num(v.salary) ?? 0) + v.allowances.reduce((s, a) => s + (num(a.amount) ?? 0), 0);
 
 function CandidatePicker({

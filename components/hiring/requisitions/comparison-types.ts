@@ -7,7 +7,7 @@ import type {
 } from "@/lib/hiring/scorecard-math";
 
 /** The `/api/hiring/requisitions/[id]/comparison` payload (`loadComparison`). */
-export type FeedbackEntry = {
+type FeedbackEntry = {
   panelistId: string;
   name: string;
   initials: string;

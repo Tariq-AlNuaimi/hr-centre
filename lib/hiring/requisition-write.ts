@@ -20,11 +20,7 @@ import type {
  */
 
 /** The company + department exist, agree, and are inside the actor's manage scope. */
-export async function assertPlacement(
-  actor: HiringActor,
-  entityId: string,
-  departmentId: string | null,
-) {
+async function assertPlacement(actor: HiringActor, entityId: string, departmentId: string | null) {
   const entity = await prisma.orgEntity.findFirst({
     where: { id: entityId, deletedAt: null },
     select: { id: true },

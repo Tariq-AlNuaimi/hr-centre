@@ -78,7 +78,7 @@ async function attempt(url: string, token: string | null, payload: { caseNumber:
   }
 }
 
-export async function submitToIt(caseId: string): Promise<ItIntakeOutcome> {
+async function submitToIt(caseId: string): Promise<ItIntakeOutcome> {
   const config = itIntakeConfig();
   if (!config.enabled) return { status: "skipped", reason: config.reason };
   const payload = await buildPayload(caseId);

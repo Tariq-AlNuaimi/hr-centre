@@ -199,5 +199,3 @@ export async function jmlDashboard(actor: JmlActor, scope: "mine" | "all" | unde
       .sort((a, b) => b.exits - a.exits),
   };
 }
-
-export type JmlDashboard = NonNullable<Awaited<ReturnType<typeof jmlDashboard>>>;

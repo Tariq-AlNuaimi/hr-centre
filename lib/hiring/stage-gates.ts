@@ -8,7 +8,7 @@ import { LINEAR_STAGES, TERMINAL_STAGES, stageRank, type Stage } from "./stage-r
  */
 
 /** The mandatory steps of the hiring process (steps 5, 7, 8 and 10). */
-export const GATE_STAGES: readonly Stage[] = [
+const GATE_STAGES: readonly Stage[] = [
   "CV_SCREENED",
   "FIRST_INTERVIEW",
   "DECISION_PENDING",
@@ -16,14 +16,14 @@ export const GATE_STAGES: readonly Stage[] = [
 ];
 const GATE_SET: ReadonlySet<Stage> = new Set(GATE_STAGES);
 
-export const GATE_REASON: Record<string, string> = {
+const GATE_REASON: Record<string, string> = {
   CV_SCREENED: "CV screening (step 5)",
   FIRST_INTERVIEW: "the first interview (step 7)",
   DECISION_PENDING: "the decision to select a preferred candidate (step 8)",
   OFFER_DRAFTED: "drafting the offer (step 10)",
 };
 
-export const PACKAGE_GATE_REASON =
+const PACKAGE_GATE_REASON =
   "package confirmation (step 9) — record the pay-slip evidence, or record that the candidate declined to share it";
 
 export const GATE_CODE = {
@@ -61,12 +61,12 @@ export function mayCrossGates(from: Stage, to: Stage): boolean {
   return skippedGates(from, to, []).length > 0;
 }
 
-export function joinReasons(parts: readonly string[]): string {
+function joinReasons(parts: readonly string[]): string {
   if (parts.length <= 1) return parts[0] ?? "";
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
-export function describeGates(gates: readonly Stage[]): string {
+function describeGates(gates: readonly Stage[]): string {
   return joinReasons(gates.map((g) => GATE_REASON[g] ?? g));
 }
 

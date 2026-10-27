@@ -7,7 +7,7 @@ import type { JmlApprovalType } from "@/generated/prisma/client";
  * holder rows (HR Manager AND Operations Director), not one click.
  */
 
-export const TERMINATION_AUTHORISATION_HOLDERS = ["HR Manager", "Operations Director"] as const;
+const TERMINATION_AUTHORISATION_HOLDERS = ["HR Manager", "Operations Director"] as const;
 
 export const APPROVAL_HOLDERS: Record<JmlApprovalType, readonly string[]> = {
   EXIT_CONFIRMATION: ["Line Manager"],

@@ -22,7 +22,7 @@ export type ActivationCandidate = {
   accessCardRequired: boolean | null;
 };
 
-export const ACTIVATION_FIELD_LABEL: Record<string, string> = {
+const ACTIVATION_FIELD_LABEL: Record<string, string> = {
   fullName: "Full name",
   personalEmail: "Personal email",
   nationality: "Nationality",

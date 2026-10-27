@@ -12,7 +12,7 @@ import type { HiringJdSignatory, HiringJdStatus } from "@/generated/prisma/clien
  *    other slot.
  */
 
-export const JD_SLOTS: HiringJdSignatory[] = ["HIRING_MANAGER", "HR"];
+const JD_SLOTS: HiringJdSignatory[] = ["HIRING_MANAGER", "HR"];
 
 export type JdActor = {
   id: string;

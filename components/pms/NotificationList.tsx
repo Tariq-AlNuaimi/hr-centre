@@ -54,7 +54,7 @@ function DismissButton({ id, onDismiss }: { id: string; onDismiss: (id: string) 
   );
 }
 
-export function NotificationRow({
+function NotificationRow({
   item,
   onOpen,
   onDismiss,

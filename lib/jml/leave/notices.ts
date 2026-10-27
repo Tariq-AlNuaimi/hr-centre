@@ -11,7 +11,7 @@ import { notifyJml } from "../engine/notify";
  * owner and paired senior, optionally the HR managers of the case's scope.
  */
 
-export async function caseRecipients(caseId: string, withManagers = false): Promise<string[]> {
+async function caseRecipients(caseId: string, withManagers = false): Promise<string[]> {
   const kase = await prisma.jmlCase.findUnique({
     where: { id: caseId },
     select: {

@@ -46,7 +46,7 @@ const weightageString = z
  * that changes nothing is noise in §6.3's history and the database refuses it
  * too (`kpi_change_request_edits_not_empty_check`).
  */
-export const changeRequestEditSchema = z
+const changeRequestEditSchema = z
   .object({
     kpiId: z.string().min(1),
     description: editableText("The KPI description").optional(),
@@ -122,7 +122,3 @@ export const decideChangeRequestSchema = z
     path: ["overrideReason"],
     message: "A rejection changes nothing, so there is nothing to override",
   });
-
-export type CreateChangeRequestInput = z.infer<typeof createChangeRequestSchema>;
-export type ChangeRequestEditInput = z.infer<typeof changeRequestEditSchema>;
-export type DecideChangeRequestInput = z.infer<typeof decideChangeRequestSchema>;

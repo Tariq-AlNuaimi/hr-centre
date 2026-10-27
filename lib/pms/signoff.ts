@@ -179,7 +179,7 @@ export function signerBlockedReason(params: {
  * HR's route past that is to extend the deadline (§5.5), which is an audited
  * act, not a quiet approval of a 95% set.
  */
-export type HrApprovalBasis = "BOTH_SIGNED" | "HR_REVIEW_EMPLOYEE_UNSIGNED";
+type HrApprovalBasis = "BOTH_SIGNED" | "HR_REVIEW_EMPLOYEE_UNSIGNED";
 
 export type HrApprovalDecision =
   { allowed: true; basis: HrApprovalBasis; note: string } | { allowed: false; reason: string };

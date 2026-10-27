@@ -47,7 +47,7 @@ export function departureReportsWhere(employeeId: string): Prisma.EmployeeWhereI
  * effectively unreachable; what matters is that exceeding it cannot be quiet.
  */
 export const DEPARTURE_REPORTS_LIMIT = 200;
-export const DEPARTURE_REPORTS_ORDER = { name: "asc" } as const;
+const DEPARTURE_REPORTS_ORDER = { name: "asc" } as const;
 
 /**
  * Which 360 assignments need a new rater — §12.1's fourth bullet.

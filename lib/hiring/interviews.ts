@@ -85,7 +85,7 @@ export async function interviewReadWhere(
 
 // ---------------------------------------------------------------- round plans
 
-export async function loadRoundPlans(requisitionIds: readonly string[]) {
+async function loadRoundPlans(requisitionIds: readonly string[]) {
   const ids = [...new Set(requisitionIds.filter(Boolean))];
   const out = new Map<string, RoundPlanEntry[]>();
   if (ids.length === 0) return out;
@@ -208,7 +208,7 @@ export async function setPanel(interviewId: string, userIds: readonly string[]) 
   }
 }
 
-export async function panelOf(interviewIds: readonly string[]) {
+async function panelOf(interviewIds: readonly string[]) {
   const rows = await prisma.hiringInterviewPanelist.findMany({
     where: { interviewId: { in: [...interviewIds] } },
     select: { interviewId: true, userId: true, confirmedAt: true },

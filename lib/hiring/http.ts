@@ -19,7 +19,7 @@ export class HiringRuleError extends Error {
   }
 }
 
-export function hiringError(message: string, status: number, code?: string) {
+function hiringError(message: string, status: number, code?: string) {
   return NextResponse.json(code ? { error: message, code } : { error: message }, { status });
 }
 

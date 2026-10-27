@@ -1,6 +1,5 @@
 import type { JmlComplianceCategory, JmlStage, Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
-import { recordAudit } from "@/lib/prisma/audit-extension";
 import { DEFAULT_CALENDAR, utcDate, zonedToday } from "@/lib/working-time/calendar";
 import { JmlError } from "../errors";
 import { loadCaseFor, type JmlActor } from "../access";
@@ -60,8 +59,6 @@ export const TASK_SELECT = {
   _count: { select: { comments: true } },
 } as const;
 
-export type TaskRow = Prisma.JmlTaskGetPayload<{ select: typeof TASK_SELECT }>;
-
 type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
 
 export const GATE_SELECT = {
@@ -79,7 +76,7 @@ export const GATE_SELECT = {
   dependsOnCodes: true,
 } as const;
 
-export type RefreshResult = {
+type RefreshResult = {
   completionPct: number;
   stage: JmlStage;
   /** True when this refresh moved a JOIN/MOVE case to COMPLETED. */
@@ -297,20 +294,4 @@ export async function listTasks(actor: JmlActor, caseId: string) {
     take: 500,
     select: TASK_SELECT,
   });
-}
-
-/** Explicit audit for a bulk task write (ADR-010) — one row per task. */
-export async function auditTaskBulk(
-  tx: Tx,
-  rows: Array<{ id: string; before: Record<string, unknown>; after: Record<string, unknown> }>,
-) {
-  for (const r of rows) {
-    await recordAudit(tx, {
-      entityType: "JmlTask",
-      entityId: r.id,
-      action: "UPDATE",
-      before: r.before,
-      after: r.after,
-    });
-  }
 }

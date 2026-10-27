@@ -54,7 +54,7 @@ const TARGET_SELECT = {
  * AC-F4.3 — only HR-role holders and line managers get a login before SSO.
  * "HR-role holder" = the person's account holds any role assignment now.
  */
-export async function loginEligibility(employee: {
+async function loginEligibility(employee: {
   id: string;
   userId: string | null;
 }): Promise<{ eligible: boolean; lineManager: boolean; roleHolder: boolean }> {

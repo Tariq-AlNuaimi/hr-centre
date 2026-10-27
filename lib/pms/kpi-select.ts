@@ -105,7 +105,7 @@ export async function weightageSummary(participantId: string): Promise<Weightage
  * when nothing a human would call the agreement changed is a hash nobody
  * trusts.
  */
-export const KPI_HASH_SELECT = {
+const KPI_HASH_SELECT = {
   id: true,
   description: true,
   weightage: true,

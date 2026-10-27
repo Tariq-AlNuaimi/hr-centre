@@ -35,7 +35,7 @@ import {
  * with a generous multiple for growth.
  */
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024; // 5 MB
-export const MAX_SHEETS = 20;
+const MAX_SHEETS = 20;
 
 /**
  * The most rows one apply can be trusted to FINISH — derived, not guessed.
@@ -63,7 +63,7 @@ export const MAX_SHEETS = 20;
  * Vercel Hobby function may run, and a plan that allows 300 s would move this to
  * roughly 10,000 — the number that used to be here without the plan to back it.
  */
-export const MAX_ROWS = 2_000;
+const MAX_ROWS = 2_000;
 
 /**
  * The sheet the loader looks for by name before falling back to the first one.

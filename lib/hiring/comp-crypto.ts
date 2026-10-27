@@ -28,7 +28,7 @@ import { IdDocumentKeyError } from "@/lib/people/id-documents";
  *     hides pay while the rest of the record still renders.
  */
 
-export const HIRING_COMP_KEYRING: Keyring = {
+const HIRING_COMP_KEYRING: Keyring = {
   current: "HIRING_COMP_ENCRYPTION_KEY",
   previous: "HIRING_COMP_ENCRYPTION_KEY_PREVIOUS",
   purpose: "Hiring compensation is stored encrypted (ADR-080)",

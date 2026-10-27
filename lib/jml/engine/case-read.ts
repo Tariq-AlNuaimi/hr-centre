@@ -14,7 +14,7 @@ import { TASK_STATUSES } from "../vocab";
 
 const DEFAULT_STATUSES: JmlCaseStatus[] = ["ACTIVE", "AT_RISK", "PENDING_SETTLEMENT", "COMPLETED"];
 
-export function caseListWhere(actor: JmlActor, f: CaseListInput): Prisma.JmlCaseWhereInput | null {
+function caseListWhere(actor: JmlActor, f: CaseListInput): Prisma.JmlCaseWhereInput | null {
   const scope = caseScopeWhere(actor, "jml.view");
   if (scope === null) return null;
   const statuses = f.status && f.status.length > 0 ? f.status : DEFAULT_STATUSES;
@@ -39,7 +39,7 @@ export function caseListWhere(actor: JmlActor, f: CaseListInput): Prisma.JmlCase
   };
 }
 
-export const CASE_ROW_SELECT = {
+const CASE_ROW_SELECT = {
   id: true,
   caseRef: true,
   caseType: true,

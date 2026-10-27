@@ -100,7 +100,7 @@ export function isHrSuperAdmin(actor: PmsActor): boolean {
 }
 
 /** §4.1 — COO / Ops Director: org-wide, full drill-down, read-only throughout. */
-export function isExecutiveViewer(actor: PmsActor): boolean {
+function isExecutiveViewer(actor: PmsActor): boolean {
   return hasGroup(grantsOf(actor), "perf.viewReports");
 }
 

@@ -17,7 +17,7 @@ import { aiConfigured } from "./config";
  * halts the run — the rest stay pending, and the reply says why.
  */
 
-export const SCREEN_CHUNK = 5;
+const SCREEN_CHUNK = 5;
 
 const pendingWhere = (requisitionId: string): Prisma.HiringCandidateWhereInput => ({
   requisitionId,

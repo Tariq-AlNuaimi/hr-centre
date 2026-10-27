@@ -20,7 +20,7 @@ import type { TemplateTaskDef } from "./generate";
  * place. Old versions stay — cases pin them.
  */
 
-export const TEMPLATE_TASK_SELECT = {
+const TEMPLATE_TASK_SELECT = {
   id: true,
   code: true,
   name: true,

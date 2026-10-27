@@ -118,7 +118,7 @@ export function enrolledAfterDeadline(
 }
 
 /** §5.1 — the lock IS the resolution. Nothing else closes a goal-setting file. */
-export function isResolved(state: ParticipantComplianceState): boolean {
+function isResolved(state: ParticipantComplianceState): boolean {
   return state.goalsApproved;
 }
 

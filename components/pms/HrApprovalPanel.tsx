@@ -51,7 +51,7 @@ import { formatDateTime } from "@/lib/format";
  * reader would otherwise have to know already.
  */
 
-export type ApprovalBasis = "BOTH_SIGNED" | "HR_REVIEW_EMPLOYEE_UNSIGNED";
+type ApprovalBasis = "BOTH_SIGNED" | "HR_REVIEW_EMPLOYEE_UNSIGNED";
 
 export interface HrApprovalPanelProps {
   cycleId: string;

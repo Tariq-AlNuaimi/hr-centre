@@ -29,7 +29,7 @@ export type WorkItem = {
   href: string;
 };
 
-export type ProviderResult = { items: WorkItem[]; total: number };
+type ProviderResult = { items: WorkItem[]; total: number };
 
 export type WorkProvider = {
   module: WorkModule;

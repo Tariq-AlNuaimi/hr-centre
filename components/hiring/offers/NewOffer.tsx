@@ -8,7 +8,7 @@ import { useHiringMe, useHiringMutation, useHiringQuery } from "../ui/api";
 import { FlowRail } from "../ui/flow-rail";
 import { OfferForm, toOfferBody, type CandidateRef, type OfferFormValues } from "./OfferForm";
 
-export const EMPTY_OFFER: Omit<OfferFormValues, "candidate"> = {
+const EMPTY_OFFER: Omit<OfferFormValues, "candidate"> = {
   salary: "",
   allowances: [],
   startDate: "",

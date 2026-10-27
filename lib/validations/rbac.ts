@@ -26,7 +26,7 @@ export const roleBodySchema = z.object({
     .transform((list) => [...new Set(list)].sort()),
 });
 
-export const ORG_SCOPE_TYPES = ["GROUP", "COMPANY", "DIRECTORATE", "DEPARTMENT"] as const;
+const ORG_SCOPE_TYPES = ["GROUP", "COMPANY", "DIRECTORATE", "DEPARTMENT"] as const;
 
 /**
  * Every scope an assignment may carry: the org kinds plus HR tickets' HR Tag

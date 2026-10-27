@@ -26,8 +26,6 @@ export const KPI_LEVELS = [
   { key: "descriptorUnsatisfactory", label: "Unsatisfactory", value: 1 },
 ] as const;
 
-export type KpiLevelKey = (typeof KPI_LEVELS)[number]["key"];
-
 /** The shape the weightage rule needs. Anything with a weightage qualifies. */
 export type WeightedKpi = { weightage: Prisma.Decimal | string | number };
 
@@ -178,7 +176,7 @@ export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): st
  * One entry for an unsplit year — the overwhelming majority — and one per
  * portion for §12.3's split year.
  */
-export function weightageTotalsByPeriod(kpis: readonly PeriodWeightedKpi[]): Prisma.Decimal[] {
+function weightageTotalsByPeriod(kpis: readonly PeriodWeightedKpi[]): Prisma.Decimal[] {
   return groupByPeriod(kpis).map((period) => weightageTotal(period));
 }
 

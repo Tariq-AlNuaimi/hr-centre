@@ -18,7 +18,7 @@ import { HiringRuleError } from "./http";
  * data now lives on the people record and is erased there.
  */
 
-export const ERASED = "[erased]";
+const ERASED = "[erased]";
 type Tx = Parameters<Parameters<typeof auditedTransaction>[0]>[0];
 const CHILD_CAP = 1000;
 

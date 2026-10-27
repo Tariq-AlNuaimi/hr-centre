@@ -3,7 +3,7 @@ import { checkBaseUrl } from "./ai-egress";
 
 /** Boundary schemas for hiring AI and Hiring settings (Interview Hub `settings-ai`, `scoring-weights`). */
 
-export const AI_KINDS = ["jd", "fit", "transcript"] as const;
+const AI_KINDS = ["jd", "fit", "transcript"] as const;
 export type AiKind = (typeof AI_KINDS)[number];
 
 export const insightRunSchema = z.object({
@@ -60,9 +60,9 @@ export const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
   language: 10,
 };
 
-export const panelModeSchema = z.object({ mode: z.enum(["blind", "assisted", "off"]) });
+const panelModeSchema = z.object({ mode: z.enum(["blind", "assisted", "off"]) });
 
-export const budgetEntrySchema = z.object({
+const budgetEntrySchema = z.object({
   fiscalYear: z.string().trim().min(1).max(20),
   amountOMR: z.number().nonnegative().max(1_000_000_000),
   setBy: z.string().trim().min(1).max(120),

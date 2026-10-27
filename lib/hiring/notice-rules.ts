@@ -11,7 +11,7 @@ import { TERMINAL_STAGES, isPastFirstInterview, stageRank, type Stage } from "./
  * calendar (ADR-077: the same default, plus public holidays).
  */
 
-export const HOLD_WORKING_DAYS = 5;
+const HOLD_WORKING_DAYS = 5;
 
 /**
  * Five working days from `heldFrom`, keeping the time of day: the local date

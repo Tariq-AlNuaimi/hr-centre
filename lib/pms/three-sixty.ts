@@ -1,10 +1,5 @@
 import { Prisma } from "@/generated/prisma/client";
-import type {
-  AssessmentType,
-  AssignmentStatus,
-  RoleTrack,
-  ThreeSixtyStatus,
-} from "@/generated/prisma/client";
+import type { AssessmentType, RoleTrack } from "@/generated/prisma/client";
 import { isGoalSettingExempt } from "./cycle";
 
 /**
@@ -18,7 +13,7 @@ import { isGoalSettingExempt } from "./cycle";
 // §9.3's scale lives in a leaf module so the §9.7 answering form can import it
 // without pulling this file's `./cycle` -> `lib/prisma` chain into the browser.
 // Re-exported here so every existing server-side import keeps working.
-export { ANSWER_SCALE, MAX_ANSWER, MIN_ANSWER, isAnswerScore } from "./three-sixty-scale";
+export { ANSWER_SCALE, MAX_ANSWER, isAnswerScore } from "./three-sixty-scale";
 import { MAX_ANSWER, isAnswerScore } from "./three-sixty-scale";
 
 /** §9.4 — "Raters — exactly 3 per employee". */
@@ -266,7 +261,7 @@ export type SubmittedForm = {
  * three would withhold most written feedback in the product — which is its own
  * failure, just a quieter one.
  */
-export const MIN_FORMS_FOR_COMMENTS = 2;
+const MIN_FORMS_FOR_COMMENTS = 2;
 
 export function consolidateThreeSixty(forms: readonly SubmittedForm[]): {
   level: Prisma.Decimal | null;

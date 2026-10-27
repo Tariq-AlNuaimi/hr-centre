@@ -34,7 +34,7 @@ const email = z
 
 const id = z.string().trim().min(1).max(64);
 
-export const ROLE_TRACKS = ["C_LEVEL", "DIRECTOR", "MANAGER", "LEAD", "INDIVIDUAL"] as const;
+const ROLE_TRACKS = ["C_LEVEL", "DIRECTOR", "MANAGER", "LEAD", "INDIVIDUAL"] as const;
 
 const joinerFields = {
   fullName: z.string().trim().min(1, "Full name is required").max(200),
@@ -136,7 +136,7 @@ export const joinerListSchema = z.object({
 });
 
 /** Hiring → JML (D8): the employee already exists as a PRE_JOINER. */
-export const openJoinCaseSchema = z.object({
+const openJoinCaseSchema = z.object({
   employeeId: id,
   sourceRef: z.string().trim().min(3).max(120),
   plannedStartDate: isoDay.nullable().default(null),

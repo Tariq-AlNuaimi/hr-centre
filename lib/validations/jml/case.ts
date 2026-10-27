@@ -65,14 +65,6 @@ export const sendWelcomeReviewSchema = z.object({ recipient: z.email().max(254) 
 
 export const odooIdSchema = z.object({ odooId: z.string().trim().min(1).max(64) });
 
-export const employeeCodeRecordSchema = z.object({
-  employeeCode: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z]{1,10}[0-9]{1,10}$/, "Letters then digits, like EMP0123"),
-});
-
 export const searchSchema = z.object({ q: z.string().trim().min(2).max(120) });
 
 export const calendarSchema = z.object({

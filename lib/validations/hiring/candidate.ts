@@ -23,7 +23,7 @@ export const CANDIDATE_SOURCES = [
   "TAWTEEN",
   "OTHER",
 ] as const;
-export const GENDERS = ["Male", "Female"] as const;
+const GENDERS = ["Male", "Female"] as const;
 export const STALL_CAUSES = [
   "SCORECARDS_OUTSTANDING",
   "AWAITING_APPROVAL",

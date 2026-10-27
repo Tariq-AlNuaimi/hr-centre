@@ -13,5 +13,3 @@ export const EMAIL_TYPES = {
   START_DATE_CHANGED: "start-date-changed",
   WELCOME_REVIEW: "welcome-review",
 } as const;
-
-export type EmailType = (typeof EMAIL_TYPES)[keyof typeof EMAIL_TYPES];

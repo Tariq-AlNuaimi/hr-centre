@@ -11,7 +11,7 @@ import type { Cell } from "./rules";
  * in attrition (R1–R5, R8) and never in process metrics (R6, R7, cycle time).
  */
 
-export const REPORT_ROW_CAP = 5000;
+const REPORT_ROW_CAP = 5000;
 
 export type LeaveReportContext = { actor: JmlActor; filters: LeaveReportFilters; now: Date };
 
@@ -47,7 +47,7 @@ export function unsuppressed(actor: JmlActor): boolean {
   return holdsAnywhere(actor, "jml.unsuppressedReports");
 }
 
-export const LEAVE_ROW_SELECT = {
+const LEAVE_ROW_SELECT = {
   id: true,
   caseRef: true,
   status: true,
@@ -104,7 +104,7 @@ export type LeaveRow = Prisma.JmlCaseGetPayload<{ select: typeof LEAVE_ROW_SELEC
   >;
 };
 
-export function leaveWhere(
+function leaveWhere(
   ctx: LeaveReportContext,
   extra: Prisma.JmlCaseWhereInput = {},
 ): Prisma.JmlCaseWhereInput {

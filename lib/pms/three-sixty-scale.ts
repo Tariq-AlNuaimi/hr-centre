@@ -11,7 +11,7 @@
  */
 
 /** §9.3 — "4-point forced scale (no neutral midpoint)." */
-export const MIN_ANSWER = 1;
+const MIN_ANSWER = 1;
 export const MAX_ANSWER = 4;
 
 /** §9.3's labels, in the order the spec lists them. */

@@ -13,7 +13,7 @@ import {
  * No React, no I/O — unit-tested in tests/contracts/ux-nav.test.ts.
  */
 
-export type ResolvedLink = { key: string; label: string; text?: string; href: string };
+type ResolvedLink = { key: string; label: string; text?: string; href: string };
 export type ResolvedEntry = ResolvedLink & {
   group: NavGroup;
   icon: NavEntry["icon"];

@@ -12,14 +12,14 @@ import { emailSchema } from "./common";
  */
 
 export const ROLE_TRACKS = ["C_LEVEL", "DIRECTOR", "MANAGER", "LEAD", "INDIVIDUAL"] as const;
-export const EMPLOYEE_STATUSES = ["ACTIVE", "LEAVER", "PRE_JOINER"] as const;
+const EMPLOYEE_STATUSES = ["ACTIVE", "LEAVER", "PRE_JOINER"] as const;
 /**
  * JML S1 — statuses a core form may CREATE with. A pre-joiner exists only
  * through a joiner case (docs/blueprints/jml.md D8), which also flips it to
  * ACTIVE on day one; the People forms neither create nor reach that state.
  */
 const CREATABLE_STATUSES = ["ACTIVE", "LEAVER"] as const;
-export const PMS_ROLES = ["HR_SUPER_ADMIN", "HRBP", "EXECUTIVE_VIEWER"] as const;
+const PMS_ROLES = ["HR_SUPER_ADMIN", "HRBP", "EXECUTIVE_VIEWER"] as const;
 
 /** ISO calendar day. Strict, for the reason given in import/validate.ts. */
 export const isoDate = z
@@ -228,4 +228,3 @@ export const employeeListQuerySchema = z.object({
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
-export type CreateEntityInput = z.infer<typeof createEntitySchema>;

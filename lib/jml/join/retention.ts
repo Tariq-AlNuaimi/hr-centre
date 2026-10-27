@@ -19,7 +19,7 @@ import { retentionConfig } from "./retention-config";
  * is redacted — the source left all four behind.
  */
 
-export const ANONYMISED = "[anonymised]";
+const ANONYMISED = "[anonymised]";
 const BATCH = 50;
 
 function candidateWhere(cutoff: Date): Prisma.JmlCaseWhereInput {
@@ -163,7 +163,7 @@ async function eraseNeverJoined(tx: Tx, employeeId: string) {
   await redactAudit(tx, "Employee", [employeeId]);
 }
 
-export async function anonymiseJoinCase(caseId: string, now = new Date()) {
+async function anonymiseJoinCase(caseId: string, now = new Date()) {
   const kase = await prisma.jmlCase.findUnique({
     where: { id: caseId },
     select: { employeeId: true, employee: { select: { status: true } } },

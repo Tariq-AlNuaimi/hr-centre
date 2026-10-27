@@ -17,7 +17,7 @@ import {
  * The JML report registry. Onboarding §13.1 — exactly these eight, in this
  * order (a contract test pins it). The leaver reports (R1–R8) join in S6.
  */
-export const REPORTS: readonly ReportDefinition[] = [
+const REPORTS: readonly ReportDefinition[] = [
   monthlyOnboarding,
   hrWorkload,
   onboardingCompletion,
@@ -28,7 +28,7 @@ export const REPORTS: readonly ReportDefinition[] = [
   allCompanies,
 ];
 
-export function findReport(slug: string): ReportDefinition {
+function findReport(slug: string): ReportDefinition {
   const report = REPORTS.find((r) => r.slug === slug);
   if (!report) throw new JmlError("Report not found", 404);
   return report;

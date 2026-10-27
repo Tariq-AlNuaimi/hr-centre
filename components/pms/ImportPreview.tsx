@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
  * will happen to those people: nothing.
  */
 
-export type PreviewIssue = {
+type PreviewIssue = {
   rowNumber: number;
   odooId: string | null;
   field: string | null;
@@ -25,7 +25,7 @@ export type PreviewIssue = {
   severity: "REJECT" | "WARNING";
 };
 
-export type PreviewCreate = {
+type PreviewCreate = {
   rowNumber: number;
   odooId: string;
   name: string;
@@ -36,7 +36,7 @@ export type PreviewCreate = {
   status: string;
 };
 
-export type PreviewUpdate = {
+type PreviewUpdate = {
   rowNumber: number;
   odooId: string;
   employeeId: string;
@@ -44,7 +44,7 @@ export type PreviewUpdate = {
   changes: Array<{ field: string; from: string | null; to: string | null }>;
 };
 
-export type PreviewAbsent = { employeeId: string; odooId: string; name: string };
+type PreviewAbsent = { employeeId: string; odooId: string; name: string };
 
 export type ImportPreviewData = {
   filename: string;

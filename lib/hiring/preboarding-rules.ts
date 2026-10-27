@@ -36,7 +36,7 @@ export function preboardingChecklist(i: ChecklistInput): ChecklistItem[] {
   ];
 }
 
-export const HANDOVER_STAGES = ["OFFER_ACCEPTED", "PRE_ONBOARDING", "HIRED"] as const;
+const HANDOVER_STAGES = ["OFFER_ACCEPTED", "PRE_ONBOARDING", "HIRED"] as const;
 
 /** Why a handover cannot be recorded now, or null. */
 export function handoverRefusal(x: {

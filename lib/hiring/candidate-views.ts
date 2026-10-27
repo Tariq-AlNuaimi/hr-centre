@@ -17,7 +17,7 @@ import { boardStepForStage } from "./stage-rules";
 const HISTORY_CAP = 200;
 const BOARD_CAP = 1000;
 
-export async function candidateHistory(candidateId: string) {
+async function candidateHistory(candidateId: string) {
   const rows = await prisma.hiringStageHistory.findMany({
     where: { candidateId },
     orderBy: { movedAt: "desc" },

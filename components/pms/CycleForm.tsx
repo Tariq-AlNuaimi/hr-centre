@@ -34,7 +34,7 @@ import { endOfDay, startOfDay, toDateInput } from "@/lib/date-input";
 
 const DATE_INPUT = /^\d{4}-\d{2}-\d{2}$/;
 
-export interface CycleStageSubmitValues {
+interface CycleStageSubmitValues {
   kind: CycleStageKind;
   /** ISO instant. */
   opensAt: string;

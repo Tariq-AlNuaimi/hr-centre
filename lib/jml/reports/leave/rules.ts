@@ -68,7 +68,7 @@ export const mean = (xs: readonly number[], dp = 1): number | null =>
 export const ratio = (num: number, den: number, dp = 1): number | null =>
   den > 0 ? Math.round((num / den) * 100 * 10 ** dp) / 10 ** dp : null;
 
-export const DAY = 86_400_000;
+const DAY = 86_400_000;
 export const daysBetween = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / DAY);
 
 /**

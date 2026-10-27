@@ -13,7 +13,7 @@ import { OrgRuleError } from "@/lib/org/rules";
  * concurrent activations read distinct values.
  */
 
-export const NOT_CONFIGURED_MESSAGE =
+const NOT_CONFIGURED_MESSAGE =
   "The employee code cutover has not been configured. An administrator must record the " +
   "last manually issued code, the next system code, the cutover time and the approver before " +
   "any onboarding can be activated.";
@@ -220,7 +220,7 @@ export async function allocateEmployeeCode(tx: AllocationTx): Promise<string> {
   return code;
 }
 
-export const EMPLOYEE_CODE_PATTERN = /^[A-Z]{1,10}[0-9]{1,10}$/;
+const EMPLOYEE_CODE_PATTERN = /^[A-Z]{1,10}[0-9]{1,10}$/;
 
 /**
  * HR records the code of an EXISTING employee (Onboarding R2): the code must be

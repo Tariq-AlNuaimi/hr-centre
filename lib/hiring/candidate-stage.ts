@@ -46,7 +46,7 @@ export async function stageHistoryFor(ids: readonly string[]) {
 }
 
 /** Someone else on the requisition is in offer, or preferred and not yet settled. */
-export async function preferredCandidatePending(requisitionId: string | null, excludeId: string) {
+async function preferredCandidatePending(requisitionId: string | null, excludeId: string) {
   if (!requisitionId) return false;
   const n = await prisma.hiringCandidate.count({
     where: {
@@ -175,7 +175,7 @@ async function maybeHoldNotice(cand: ApplyStageChange["cand"]) {
 }
 
 /** The set of stages a candidate has ever been at (for the gate check). */
-export async function visitedStages(cand: Pick<HiringCandidate, "id" | "stage">) {
+async function visitedStages(cand: Pick<HiringCandidate, "id" | "stage">) {
   const history = await stageHistoryFor([cand.id]);
   return new Set<Stage>([
     cand.stage,

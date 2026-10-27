@@ -181,7 +181,7 @@ export const COLUMN_TITLES: Record<ImportColumn, string> = {
  *             like. Refusing it would break the spec; applying it silently would
  *             hide a person being overwritten. So it applies, and it is shown.
  */
-export type IssueSeverity = "REJECT" | "WARNING";
+type IssueSeverity = "REJECT" | "WARNING";
 
 export type ImportIssue = {
   rowNumber: number;
@@ -272,8 +272,6 @@ export type AbsentEmployee = {
   odooId: string;
   name: string;
 };
-
-export type PlannedChange = PlannedCreate | PlannedUpdate;
 
 /**
  * The complete dry run.

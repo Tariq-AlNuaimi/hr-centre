@@ -28,7 +28,7 @@ export type RoundStats = {
   readyToRaise: string[];
 };
 
-export const hasResponded = (n: { rolesRequested: number | null }) =>
+const hasResponded = (n: { rolesRequested: number | null }) =>
   n.rolesRequested !== null && n.rolesRequested !== undefined;
 
 export function summarizeRound(needs: readonly NeedFacts[]): RoundStats {

@@ -13,13 +13,13 @@ import type { LibraryKind } from "@/lib/validations/hiring/library";
  * company, or Group scope for a group-wide row (entityId null).
  */
 
-export const LIBRARY_LIMIT = 500;
+const LIBRARY_LIMIT = 500;
 
 export function canReadLibrary(actor: HiringActor) {
   return holdsAnywhere(actor, "hiring.view");
 }
 
-export function assertCanWriteLibrary(actor: HiringActor, entityId: string | null | undefined) {
+function assertCanWriteLibrary(actor: HiringActor, entityId: string | null | undefined) {
   const ok = entityId
     ? can(actor, "hiring.manage", { entityId })
     : hasGroup(actor.grants, "hiring.manage");

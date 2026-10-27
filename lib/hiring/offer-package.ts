@@ -18,7 +18,7 @@ export const ALLOWANCE_KEYS = [
 ] as const;
 const ORDER = ["housing", "transport", "transportation"];
 
-export type CompRow = { key: string; amount: number; basic?: boolean };
+type CompRow = { key: string; amount: number; basic?: boolean };
 export type CompBreakdown = {
   rows: CompRow[];
   basic: number | null;
@@ -83,15 +83,7 @@ export type OfferTerms = {
 export type OfferTermField = keyof OfferTerms;
 
 /** Moving the money voids the approvals; moving logistics does not. */
-export const APPROVAL_RESTARTING_FIELDS = ["salary", "allowances"] as const;
-export const REVISABLE_FIELDS = [
-  "salary",
-  "allowances",
-  "startDate",
-  "probationMonths",
-  "noticePeriod",
-  "contractType",
-] as const;
+const APPROVAL_RESTARTING_FIELDS = ["salary", "allowances"] as const;
 
 function sameAllowances(a: unknown, b: unknown): boolean {
   const norm = (v: unknown) => {

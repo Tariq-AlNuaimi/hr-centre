@@ -45,10 +45,8 @@ export const KPI_LEVEL_FIELDS = [
   { field: "descriptorUnsatisfactory", value: 1 },
 ] as const;
 
-export type KpiLevelField = (typeof KPI_LEVEL_FIELDS)[number]["field"];
-
 /** The six texts, plus the weightage as the API delivers it: a decimal STRING. */
-export interface KpiFormInitial {
+interface KpiFormInitial {
   description: string;
   weightage: string;
   descriptorOutstanding: string;

@@ -35,7 +35,7 @@ import type { KpiVersionRow } from "./KpiVersionHistory";
  *    and HR cannot push it through by waiting.
  */
 
-export interface ReviewEdit {
+interface ReviewEdit {
   kpiId: string;
   description: string | null;
   weightage: string | null;

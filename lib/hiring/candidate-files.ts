@@ -32,7 +32,7 @@ const DOC_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/webp"] a
 const DOC_CAP = 200;
 
 export const cvPathname = (candidateId: string) => `hiring/cvs/${candidateId}/cv.pdf`;
-export const documentPathname = (candidateId: string, docId: string) =>
+const documentPathname = (candidateId: string, docId: string) =>
   `hiring/docs/${candidateId}/${docId}`;
 
 /** The content type the bytes actually are (of the ones we accept), or null. */

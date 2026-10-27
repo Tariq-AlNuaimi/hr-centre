@@ -53,7 +53,7 @@ export async function projectPeers(cycleId: string): Promise<Map<string, Set<str
  * would otherwise take the peer slot as well, leaving the ratee assessed twice
  * by the same person.
  */
-export function peerPoolFor(params: {
+function peerPoolFor(params: {
   ratee: RaterCandidate;
   people: readonly RaterCandidate[];
   projectPeersByEmployee: ReadonlyMap<string, Set<string>>;

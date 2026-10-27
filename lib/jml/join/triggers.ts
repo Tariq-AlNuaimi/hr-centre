@@ -68,7 +68,7 @@ export async function onActivated(caseId: string): Promise<void> {
 }
 
 /** Once per case: the PRO desk hears about open visa work (idempotent). */
-export async function notifyProIfVisaRequired(caseId: string): Promise<boolean> {
+async function notifyProIfVisaRequired(caseId: string): Promise<boolean> {
   const pro = desks.pro();
   if (!pro || !(await hasOpenVisaWork(caseId))) return false;
   const already = await prisma.jmlEmailLog.findFirst({

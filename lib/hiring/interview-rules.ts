@@ -6,7 +6,6 @@
  */
 
 export const CANONICAL_ROUND_ORDER = ["SCREENING", "TECHNICAL", "PANEL", "FINAL"] as const;
-export type RoundKind = (typeof CANONICAL_ROUND_ORDER)[number];
 export const DEFAULT_ROUND_MINUTES = 60;
 
 export type BriefInput = {

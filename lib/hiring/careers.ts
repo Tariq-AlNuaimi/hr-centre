@@ -98,7 +98,7 @@ export const listOpenRoles = unstable_cache(
 );
 
 /** Is this requisition on the board right now (uncached — the apply path must be exact)? */
-export async function advertisedRequisition(id: string) {
+async function advertisedRequisition(id: string) {
   return prisma.hiringRequisition.findFirst({
     where: {
       id,

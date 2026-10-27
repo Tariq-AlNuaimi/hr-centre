@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { COMPLIANCE_CATEGORIES, STAGES } from "./template";
 
-export const TASK_STATUS_VALUES = [
+const TASK_STATUS_VALUES = [
   "NOT_STARTED",
   "IN_PROGRESS",
   "WAITING_FOR_EMPLOYEE",

@@ -40,7 +40,7 @@ import {
  * down — or because a notification insert raced a hard-deleted employee.
  */
 
-export const MAX_NOTIFICATIONS = 200;
+const MAX_NOTIFICATIONS = 200;
 
 /**
  * Cap on in-app rows written per run — a DIFFERENT bound from
@@ -55,7 +55,7 @@ export const MAX_NOTIFICATIONS = 200;
  * produces, and the cap still exists so a pathological backlog cannot write an
  * unbounded number of rows in one cron invocation.
  */
-export const MAX_PERSISTED_NOTIFICATIONS = MAX_NOTIFICATIONS * 5;
+const MAX_PERSISTED_NOTIFICATIONS = MAX_NOTIFICATIONS * 5;
 
 export type WrittenEvent = LadderEvent & {
   cycleId: string;

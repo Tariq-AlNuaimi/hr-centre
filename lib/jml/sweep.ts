@@ -49,7 +49,7 @@ async function alertFailedEmails({ calendar, now }: { now: Date; calendar: Worki
   return notifyJml(notices, calendar, now);
 }
 
-export const SWEEP_STEPS: SweepStep[] = [
+const SWEEP_STEPS: SweepStep[] = [
   { name: "emailDrain", run: ({ now }) => drainQueue(now) },
   { name: "failedEmailAlerts", run: alertFailedEmails },
   { name: "itReadinessReminders", run: itReadinessReminders },

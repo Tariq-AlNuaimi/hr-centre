@@ -24,7 +24,7 @@ import { formatDateTime } from "@/lib/format";
  * fast would render a lock the server does not agree with.
  */
 
-export type StageState = "NOT_YET_OPEN" | "OPEN" | "LOCKED";
+type StageState = "NOT_YET_OPEN" | "OPEN" | "LOCKED";
 
 export interface GoalStage {
   /** ISO instant the stage opens at. */

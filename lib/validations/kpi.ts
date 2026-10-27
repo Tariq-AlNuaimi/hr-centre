@@ -73,5 +73,3 @@ export const updateKpiSchema = z
   .object(kpiFields)
   .partial()
   .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update" });
-
-export type KpiInput = z.infer<typeof kpiInputSchema>;

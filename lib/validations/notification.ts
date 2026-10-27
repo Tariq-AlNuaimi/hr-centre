@@ -26,5 +26,3 @@ export const markReadSchema = z
     // server choosing, and a client that sent both would not know which it got.
     message: "Send either `ids` or `all: true`, not both and not neither.",
   });
-
-export type MarkReadInput = z.infer<typeof markReadSchema>;

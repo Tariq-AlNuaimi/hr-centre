@@ -11,9 +11,9 @@ import { eraseCandidate } from "./erasure";
  * run; `more` says the next run continues.
  */
 
-export const RETENTION_BATCH = 25;
+const RETENTION_BATCH = 25;
 
-export function retentionCutoff(now: Date, days = env.CANDIDATE_RETENTION_DAYS) {
+function retentionCutoff(now: Date, days = env.CANDIDATE_RETENTION_DAYS) {
   return new Date(now.getTime() - days * 86_400_000);
 }
 

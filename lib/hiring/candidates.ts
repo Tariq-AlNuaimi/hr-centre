@@ -57,7 +57,7 @@ export type LoadedCandidate = {
 };
 
 /** Is the actor on a (live) interview panel for this candidate? */
-export async function isAssignedPanelist(actor: HiringActor, candidateId: string) {
+async function isAssignedPanelist(actor: HiringActor, candidateId: string) {
   const n = await prisma.hiringInterview.count({
     where: { candidateId, panelists: { some: { userId: actor.userId } } },
   });

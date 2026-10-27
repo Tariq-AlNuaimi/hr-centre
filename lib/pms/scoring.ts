@@ -22,8 +22,8 @@ import type { RoleTrack } from "@/generated/prisma/client";
  */
 
 /** §8.1 — every component resolves onto this scale. */
-export const MIN_LEVEL = 1;
-export const MAX_LEVEL = 5;
+const MIN_LEVEL = 1;
+const MAX_LEVEL = 5;
 
 export type Band = "OUTSTANDING" | "EXCELLENT" | "TARGET" | "ALMOST_ACHIEVED" | "UNSATISFACTORY";
 
