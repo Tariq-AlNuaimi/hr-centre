@@ -28,6 +28,10 @@
     "pizzip": {
       "license": "MIT",
       "reason": "dual-licensed (MIT OR GPL-3.0); MIT elected per ADR-051 \u2014 the same election as jszip, from which PizZip is forked. RUNTIME dependency of the JML leaver documents (ADR-083): docxtemplater takes a caller-supplied zip. Its dependency pako is MIT AND Zlib (both permissive)."
+    },
+    "png-js": {
+      "license": "MIT",
+      "reason": "no `license` field in package.json but ships a verbatim MIT LICENSE file (Devon Govett). Runtime transitive via @react-pdf/renderer (ADR-084, server-only offer letter). Documented exception per ADR-051."
     }
   }
 }

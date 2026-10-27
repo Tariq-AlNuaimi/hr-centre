@@ -105,6 +105,8 @@ export const LIVE_SEGMENTS = new Set([
   "interviews",
   "panel",
   "evaluations",
+  "offers",
+  "close-out",
 ]);
 
 export function useHiringNavItems(): NavItem[] {

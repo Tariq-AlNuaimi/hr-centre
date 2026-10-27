@@ -23,6 +23,7 @@
 - app/[locale]/(dashboard)/hiring/candidates/[id]/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/new/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/page.tsx
+- app/[locale]/(dashboard)/hiring/close-out/page.tsx
 - app/[locale]/(dashboard)/hiring/evaluations/[id]/page.tsx
 - app/[locale]/(dashboard)/hiring/evaluations/new/page.tsx
 - app/[locale]/(dashboard)/hiring/evaluations/page.tsx
@@ -33,6 +34,9 @@
 - app/[locale]/(dashboard)/hiring/interviews/page.tsx
 - app/[locale]/(dashboard)/hiring/library/[kind]/page.tsx
 - app/[locale]/(dashboard)/hiring/library/page.tsx
+- app/[locale]/(dashboard)/hiring/offers/[id]/page.tsx
+- app/[locale]/(dashboard)/hiring/offers/new/page.tsx
+- app/[locale]/(dashboard)/hiring/offers/page.tsx
 - app/[locale]/(dashboard)/hiring/page.tsx
 - app/[locale]/(dashboard)/hiring/panel/[id]/brief/page.tsx
 - app/[locale]/(dashboard)/hiring/panel/[id]/compare/page.tsx
@@ -137,6 +141,7 @@
 - app/api/hiring/candidates/[id]/cv/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/documents/[docId]/route.ts  [GET,PATCH,DELETE]
 - app/api/hiring/candidates/[id]/documents/route.ts  [GET,POST]
+- app/api/hiring/candidates/[id]/negotiations/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/package/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/hiring/candidates/[id]/stage/route.ts  [PATCH]
@@ -146,6 +151,7 @@
 - app/api/hiring/candidates/export/route.ts  [GET]
 - app/api/hiring/candidates/import/route.ts  [POST]
 - app/api/hiring/candidates/route.ts  [GET,POST]
+- app/api/hiring/close-out/route.ts  [GET,POST]
 - app/api/hiring/directory/route.ts  [GET]
 - app/api/hiring/evaluations/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/hiring/evaluations/export/route.ts  [GET]
@@ -162,6 +168,16 @@
 - app/api/hiring/me/route.ts  [GET]
 - app/api/hiring/needs/[id]/notes/route.ts  [GET,POST]
 - app/api/hiring/needs/[id]/route.ts  [GET,PATCH]
+- app/api/hiring/offers/[id]/acceptance/route.ts  [POST]
+- app/api/hiring/offers/[id]/approvals/route.ts  [GET,POST]
+- app/api/hiring/offers/[id]/letter/route.ts  [GET]
+- app/api/hiring/offers/[id]/negotiations/route.ts  [GET,POST]
+- app/api/hiring/offers/[id]/route.ts  [GET,PUT,DELETE]
+- app/api/hiring/offers/[id]/signed/route.ts  [GET,POST]
+- app/api/hiring/offers/[id]/versions/route.ts  [GET,POST]
+- app/api/hiring/offers/chain-preview/route.ts  [GET]
+- app/api/hiring/offers/export/route.ts  [GET]
+- app/api/hiring/offers/route.ts  [GET,POST]
 - app/api/hiring/org-options/route.ts  [GET]
 - app/api/hiring/panel/[id]/brief/route.ts  [GET]
 - app/api/hiring/panel/[id]/compare/route.ts  [GET]
@@ -187,6 +203,7 @@
 - app/api/hiring/requisitions/export/route.ts  [GET]
 - app/api/hiring/requisitions/route.ts  [GET,POST]
 - app/api/hiring/settings/assessment/route.ts  [GET,PUT]
+- app/api/hiring/settings/offer-letter/route.ts  [GET,PUT]
 - app/api/hive/admin/email-templates/[key]/route.ts  [GET,PUT,DELETE]
 - app/api/hive/admin/org-info/route.ts  [GET,PUT]
 - app/api/hive/admin/providers/import/route.ts  [POST]
@@ -500,12 +517,13 @@
 - lib/hiring/assessments.ts: loadAssessmentConfig, completedResultCount, mayEditPolicy, policyView, savePolicy, listAssessments, invite, remind, advance, recordResult
 - lib/hiring/candidate-bulk.ts: BulkSummary, bulkStageMove, ExportRow, exportRows, IMPORT_ROW_CAP, importCandidates
 - lib/hiring/candidate-export.ts: candidateSheet
-- lib/hiring/candidate-files.ts: MAX_FILE_BYTES, cvPathname, documentPathname, sniffType, uploadCv, cvUrl, listDocuments, uploadDocument, loadDocument, documentUrl, reviewDocument, removeDocument, packageView, packageAction
+- lib/hiring/candidate-files.ts: MAX_FILE_BYTES, cvPathname, documentPathname, sniffType, requireStorage, readChecked, uploadCv, cvUrl, listDocuments, uploadDocument, loadDocument, documentUrl, reviewDocument, removeDocument, packageView, packageAction
 - lib/hiring/candidate-rules.ts: PAYSLIP_MONTHS_REQUESTED, PackageDocument, currentPackageFrom, bandMidpoint, PricingBasis, pricingBasisFor, reviewedPayslips, referrerToPersist, InterviewCountBounds, resolveInterviewCountBounds, isOmani
 - lib/hiring/candidate-stage.ts: stageHistoryFor, preferredCandidatePending, releaseHoldsForRequisition, ApplyStageChange, applyStageChange, visitedStages, moveStage, setStallCause
 - lib/hiring/candidate-views.ts: candidateHistory, candidateDetail, boardCards
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
 - lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, isAssignedPanelist, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
+- lib/hiring/close-out.ts: listCloseOut, markNoticesSent
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
 - lib/hiring/comparison.ts: FINALIST_STAGES, matrixCompetencies, loadComparison, selectPreferred, rejectFinalist, clearPreferred
 - lib/hiring/evaluations.ts: EvaluationListQuery, listEvaluations, loadEvaluation, EvaluationBody, createEvaluation, updateEvaluation
@@ -521,7 +539,15 @@
 - lib/hiring/library.ts: LIBRARY_LIMIT, canReadLibrary, assertCanWriteLibrary, seesLibraryPay, listLibrary, getLibraryItem, createLibraryItem, updateLibraryItem, deleteLibraryItem
 - lib/hiring/money.ts: CURRENCY_CODES, CurrencyCode, toNum, toOMR, toOMRorNull, formatMoney, formatBand
 - lib/hiring/nationalities.ts: NATIONALITIES
+- lib/hiring/negotiations.ts: NoteBody, thread, addNote
 - lib/hiring/notice-rules.ts: HOLD_WORKING_DAYS, computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
+- lib/hiring/offer-acceptance.ts: signedLetterPathname, recordAcceptance, uploadSignedLetter, signedLetterUrl
+- lib/hiring/offer-approvals.ts: approvalView, decideOffer, previewChain
+- lib/hiring/offer-package.ts: ALLOWANCE_KEYS, CompRow, CompBreakdown, buildCompBreakdown, BandStatus, bandVerdict, OfferTerms, OfferTermField, APPROVAL_RESTARTING_FIELDS, REVISABLE_FIELDS, diffOfferTerms, restartsApproval, summarizeVersion, nextVersionNumber, withSupersession
+- lib/hiring/offer-rules.ts: OFFER_STATUSES, offerTransitions, offerTransitionError, APPROVAL_BOUND_FIELDS, LIVE_OFFER_STATUSES, OfferStep, OfferDecision, nextOfferStep, offerDecisionRefusal, sameMuscatDay
+- lib/hiring/offer-versions.ts: termsOf, ensureInitialVersion, listVersions, RevisionBody, reviseOffer
+- lib/hiring/offer-write.ts: OfferBody, createOffer, updateOffer, deleteOffer
+- lib/hiring/offers.ts: OfferRow, OfferEntity, LoadedOffer, isOfferApprover, loadOffer, offerPay, offerJson, OfferListQuery, listOffers, offerDetail
 - lib/hiring/panel.ts: loadMyInterview, myPanels, brief, myScorecard, ScoreBody, saveScorecard, reviseScorecard, compare
 - lib/hiring/people.ts: PersonRef, peopleById, personOrNull, isLiveUser, directory, orgNames
 - lib/hiring/planning-rules.ts: NEEDS_PER_ROUND_LIMIT, NOTES_PER_NEED_LIMIT, NeedFacts, RoundStats, hasResponded, summarizeRound, canRaiseRequisition, chaseableNeedIds, lastContact, stampsFor
@@ -764,6 +790,7 @@
 - lib/validations/hiring/interview.ts: INTERVIEW_STATUSES, createInterviewSchema, updateInterviewSchema, interviewListQuerySchema, calendarQuerySchema, panelistSchema, confirmSchema, roundPlanSchema, panelScoreSchema, panelReviseSchema, createEvaluationSchema, updateEvaluationSchema, evaluationListQuerySchema, comparisonActionSchema
 - lib/validations/hiring/library-schemas.ts: LIBRARY_SCHEMAS, libraryKind
 - lib/validations/hiring/library.ts: competencySchema, gradeSchema, jdTemplateSchema, questionSchema, LIBRARY_KINDS, LibraryKind
+- lib/validations/hiring/offer.ts: createOfferSchema, updateOfferSchema, offerListQuerySchema, offerDecisionSchema, reviseOfferSchema, negotiationNoteSchema, acceptanceSchema, offerLetterTemplateSchema, closeOutQuerySchema, closeOutMarkSchema, chainPreviewQuerySchema
 - lib/validations/hiring/planning.ts: createPlanningRoundSchema, updatePlanningRoundSchema, createNeedSchema, updateNeedSchema, createNeedNoteSchema
 - lib/validations/hiring/requisition.ts: createHiringRequestSchema, CreateHiringRequestInput, createRequisitionSchema, updateRequisitionSchema, UpdateRequisitionInput, statusChangeSchema, requisitionListQuerySchema, jdActionSchema, postingSchema, withdrawPostingSchema
 - lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
@@ -834,6 +861,20 @@
 - components/hiring/library/LibraryItemDialog.tsx
 - components/hiring/library/LibraryView.tsx
 - components/hiring/nav.tsx
+- components/hiring/offers/Acceptance.tsx
+- components/hiring/offers/AcceptanceSection.tsx
+- components/hiring/offers/ApprovalPanel.tsx
+- components/hiring/offers/ChainPreview.tsx
+- components/hiring/offers/CloseOutView.tsx
+- components/hiring/offers/LetterTemplateDialog.tsx
+- components/hiring/offers/Negotiation.tsx
+- components/hiring/offers/NewOffer.tsx
+- components/hiring/offers/OfferDetailView.tsx
+- components/hiring/offers/OfferForm.tsx
+- components/hiring/offers/OfferList.tsx
+- components/hiring/offers/PackageCard.tsx
+- components/hiring/offers/Revisions.tsx
+- components/hiring/offers/bits.tsx
 - components/hiring/panel/MyPanel.tsx
 - components/hiring/panel/PanelBrief.tsx
 - components/hiring/panel/PanelCompare.tsx

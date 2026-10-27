@@ -45,7 +45,7 @@ export function sniffType(bytes: Uint8Array): (typeof DOC_TYPES)[number] | null 
   return null;
 }
 
-function requireStorage() {
+export function requireStorage() {
   if (!isStorageConfigured()) {
     throw new HiringRuleError(
       "File storage isn't configured for this environment, so files cannot be uploaded or opened yet. Everything else on this screen still works.",
@@ -55,7 +55,7 @@ function requireStorage() {
   }
 }
 
-async function readChecked(file: File, accepted: readonly string[]) {
+export async function readChecked(file: File, accepted: readonly string[]) {
   if (file.size === 0) throw new HiringRuleError("The file is empty.", 400);
   if (file.size > MAX_FILE_BYTES) throw new HiringRuleError("File too large (max 10 MB).", 400);
   const buffer = Buffer.from(await file.arrayBuffer());
