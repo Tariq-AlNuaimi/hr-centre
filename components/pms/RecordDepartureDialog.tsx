@@ -58,6 +58,7 @@ export function RecordDepartureDialog({
   const [open, setOpen] = useState(false);
   const [lastWorkingDay, setLastWorkingDay] = useState("");
   const [note, setNote] = useState("");
+  const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -73,9 +74,18 @@ export function RecordDepartureDialog({
       setFormError(t("lastWorkingDayRequired"));
       return;
     }
+    if (reason.trim().length < 10) {
+      setFormError(t("bypassReasonRequired"));
+      return;
+    }
     setSubmitting(true);
     try {
-      await apiClient.post("/api/leavers", { employeeId, lastWorkingDay, note: note || undefined });
+      await apiClient.post("/api/leavers", {
+        employeeId,
+        lastWorkingDay,
+        note: note || undefined,
+        bypassReason: reason.trim(),
+      });
       success(t("recorded", { name: employeeName }));
       setOpen(false);
       router.refresh();
@@ -89,7 +99,7 @@ export function RecordDepartureDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="ghost" size="sm">
           <UserMinus className="me-2 h-4 w-4" />
           {t("action")}
         </Button>
@@ -101,6 +111,22 @@ export function RecordDepartureDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* UX review P0 (US-2): the normal path is a leaver case in Joiners &
+              leavers. This is the HR Super Admin correction, and it says so. */}
+          <p className="rounded-md border border-status-warn bg-status-warn px-3 py-2 text-sm text-status-warn-fg">
+            {t("bypassWarning")}
+          </p>
+          <div className="space-y-1">
+            <Label htmlFor="departure-reason">{t("bypassReason")}</Label>
+            <textarea
+              id="departure-reason"
+              required
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="min-h-16 w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-muted-foreground">{t("bypassReasonHelp")}</p>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="departure-lwd">{t("lastWorkingDay")}</Label>
             <input

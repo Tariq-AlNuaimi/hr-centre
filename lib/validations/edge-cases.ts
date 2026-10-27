@@ -26,8 +26,21 @@ const calendarDate = z
  * the departure without the date would produce a bonus computed to 31 December
  * for somebody who left in March.
  */
+/**
+ * UX review P0 (docs/blueprints/ux-p0.md, US-2): the leaver and mover PROCESS is
+ * a Joiners & leavers case. Recording the event directly skips the exit
+ * checklist, approvals, settlement and access revocation, so it is an admin
+ * correction (or a historical record), and it must say why. HR Super Admin only.
+ */
+const bypassReason = z
+  .string()
+  .trim()
+  .min(10, "Say why this is recorded without the exit process (at least 10 characters).")
+  .max(500);
+
 export const markLeaverSchema = z.object({
   employeeId: z.string().min(1),
+  bypassReason,
   lastWorkingDay: calendarDate,
   /// Free text, optional. Recorded on the audit row rather than on the employee.
   note: z.string().trim().max(500).optional(),
@@ -55,6 +68,7 @@ export const resolveRollUpSchema = z.object({
  */
 export const recordTransferSchema = z.object({
   employeeId: z.string().min(1),
+  bypassReason,
   cycleId: z.string().min(1),
   transferDate: calendarDate,
   /** Null for a move to a C-Level position (§1.2 — entity, no department). */

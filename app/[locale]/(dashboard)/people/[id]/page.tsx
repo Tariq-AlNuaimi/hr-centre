@@ -18,7 +18,7 @@ import { EmployeeJmlTab } from "@/components/jml/EmployeeJmlTab";
 import { EmployeeHiringTab } from "@/components/hiring/EmployeeHiringTab";
 import { employeeHiring, hiringTabVisible } from "@/lib/hiring/employee-tab";
 import type { Session } from "next-auth";
-import { jmlActor } from "@/lib/jml/access";
+import { canFor, jmlActor } from "@/lib/jml/access";
 import { employeeJml, jmlTabVisible } from "@/lib/jml/employee-tab";
 import { hasHivePermission } from "@/lib/hive/services/permissions";
 import { recordFormValues } from "@/components/people/record-form-values";
@@ -31,7 +31,8 @@ import { DescriptionList } from "@/components/shared/DescriptionList";
 import { EmployeeEditForm } from "@/components/pms/EmployeeEditForm";
 import { RecordDepartureDialog } from "@/components/pms/RecordDepartureDialog";
 import { departurePreview } from "@/lib/pms/departure";
-import { isHr } from "@/lib/pms/permissions";
+import { isHrSuperAdmin } from "@/lib/pms/permissions";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/format";
@@ -373,24 +374,20 @@ export default async function EmployeeDetailPage({
               />
             ) : null}
             {/*
-              §12.1 — the departure, beside the record it is about. Gated on
-              `isHr` rather than `capabilities.configure`, to match
-              `POST /api/leavers`'s own check: §4.1 gives BOTH HR flavours the
-              cycle, and a button the endpoint would accept but the page hides
-              is just a support ticket. The preview is computed here, on the
-              server, so the consequences never reach a browser that may not
-              see them.
+              UX review P0 (docs/blueprints/ux-p0.md, US-2) — a departure's
+              PROCESS is a Joiners & leavers case: checklist, approvals,
+              settlement, access revocation, and on closing the same
+              Performance consequences (roll-ups, login, 360s). So the record
+              opens a pre-filled leaver case. Recording the departure directly
+              is kept only as the HR Super Admin correction, with a reason.
             */}
-            {isHr(actor) ? (
-              <RecordDepartureDialog
-                employeeId={employee.id}
-                employeeName={employee.name}
-                // Not asked for a record that has already departed: the
-                // dialog renders nothing for one, so four queries per page
-                // load would buy an unused answer.
-                preview={employee.status === "LEAVER" ? null : await departurePreview(employee.id)}
-              />
-            ) : null}
+            <DepartureActions
+              actor={actor}
+              subject={subject}
+              employee={employee}
+              locale={locale}
+              startLabel={t("departure.startCase")}
+            />
           </>
         }
       />
@@ -453,5 +450,50 @@ export default async function EmployeeDetailPage({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * The record's departure actions (docs/blueprints/ux-p0.md, US-2): a pre-filled
+ * Joiners & leavers case for anyone who may open one here, and the direct
+ * "record without exit process" correction for an HR Super Admin only.
+ */
+async function DepartureActions({
+  actor,
+  subject,
+  employee,
+  locale,
+  startLabel,
+}: {
+  actor: Awaited<ReturnType<typeof resolveActor>>;
+  subject: NonNullable<Awaited<ReturnType<typeof placementOf>>>;
+  employee: { id: string; name: string; status: string };
+  locale: string;
+  startLabel: string;
+}) {
+  return (
+    <>
+      {employee.status !== "LEAVER" && canFor(actor, "jml.manageLeavers", subject) ? (
+        <Link
+          href={`/${locale}/jml/leavers/new?${new URLSearchParams({
+            employeeId: employee.id,
+            name: employee.name,
+          })}`}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          {startLabel}
+        </Link>
+      ) : null}
+      {isHrSuperAdmin(actor) ? (
+        <RecordDepartureDialog
+          employeeId={employee.id}
+          employeeName={employee.name}
+          // Not asked for a record that has already departed: the
+          // dialog renders nothing for one, so four queries per page
+          // load would buy an unused answer.
+          preview={employee.status === "LEAVER" ? null : await departurePreview(employee.id)}
+        />
+      ) : null}
+    </>
   );
 }

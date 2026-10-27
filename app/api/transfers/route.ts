@@ -3,7 +3,7 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { err, notFound, ok, readJsonBody } from "@/lib/api-response";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { isHr } from "@/lib/pms/permissions";
+import { isHrSuperAdmin } from "@/lib/pms/permissions";
 import { periodDays, periodWeight, splitWindows } from "@/lib/pms/transfer";
 import { splitAndMove } from "@/lib/pms/transfer-apply";
 import { recordTransferSchema } from "@/lib/validations/edge-cases";
@@ -51,7 +51,15 @@ export const POST = withRateLimit(
     const actor = await resolveActor(session);
     // §12.3 gives HR the consolidation, and a transfer rearranges two managers'
     // authority — not a line manager's call.
-    if (!isHr(actor)) return err("Only HR records a mid-cycle transfer.", 403);
+    // UX review P0 (US-2): a move's process is a JML mover case; recording the
+    // split directly is an HR Super Admin correction with a stated reason.
+    if (!isHrSuperAdmin(actor)) {
+      return err(
+        "Start a mover case in Joiners & leavers instead. Recording a transfer without the " +
+          "mover process is an HR Super Admin correction.",
+        403,
+      );
+    }
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -59,8 +67,14 @@ export const POST = withRateLimit(
     if (!parsed.success) {
       return err(parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join(", "));
     }
-    const { employeeId, cycleId, transferDate, newDepartmentId, newManagerEmployeeId } =
-      parsed.data;
+    const {
+      employeeId,
+      cycleId,
+      transferDate,
+      newDepartmentId,
+      newManagerEmployeeId,
+      bypassReason,
+    } = parsed.data;
 
     const [employee, cycle] = await Promise.all([
       prisma.employee.findUnique({
@@ -157,6 +171,7 @@ export const POST = withRateLimit(
         newDepartmentId,
         newEntityId,
         newManagerEmployeeId,
+        note: `Recorded without the mover process: ${bypassReason}`,
       }),
     );
 

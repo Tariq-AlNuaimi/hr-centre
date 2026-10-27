@@ -36,6 +36,8 @@ export type TransferSplitInput = {
   newManagerEmployeeId: string | null | undefined;
   /** Further employee fields changed in the same move (team, job title…). */
   extra?: Prisma.EmployeeUncheckedUpdateInput;
+  /** Why it was recorded (e.g. without a mover case) — written to the audit row. */
+  note?: string | null;
 };
 
 export async function splitAndMove(tx: Tx, p: TransferSplitInput) {
@@ -97,6 +99,7 @@ export async function splitAndMove(tx: Tx, p: TransferSplitInput) {
       transferDate: p.transferDate,
       cycleId: p.cycleId,
       kpisAttachedToOldPeriod: attached.count,
+      ...(p.note ? { note: p.note } : {}),
     },
   });
   return { beforeId: before.id, afterId: after.id, attached: attached.count };

@@ -1473,7 +1473,9 @@
         "working": "جارٍ التسجيل…",
         "savedToast": "تم تسجيل انتقال {name}.",
         "consequences": "تنقسم السنة عند هذا التاريخ. يتولى مدير كل قسم صياغة وتقييم فترته، وتتبع الدرجات القسمية والمؤسسية الفترتين."
-      }
+      },
+      "bypassReason": "Why record it without the process?",
+      "bypassReasonHelp": "Required, at least 10 characters. Kept in the audit log."
     },
     "strategyScores": {
       "title": "الدرجات المؤسسية والإدارية",
@@ -1538,7 +1540,13 @@
       "kpis": "المؤشرات",
       "noTransfers": "لم ينتقل أحد خلال الدورة.",
       "notPermitted": "هذه الشاشة للموارد البشرية",
-      "notPermittedHelp": "راجع الموارد البشرية إن بدت تبعية خاطئة."
+      "notPermittedHelp": "راجع الموارد البشرية إن بدت تبعية خاطئة.",
+      "startTitle": "Leavers and transfers start in Joiners & leavers",
+      "startHelp": "A leaver case runs the exit checklist, approvals, settlement and access revocation, and on closing rolls up the reports and revokes the login. A mover case applies the transfer and splits the performance year. This page then shows what is left to resolve.",
+      "startLeaver": "Start leaver case",
+      "startMover": "Start mover case",
+      "correctionsTitle": "Record without the process (corrections)",
+      "correctionsHelp": "For correcting a record or entering a historical leaver or transfer only. Nothing here creates a checklist, approval or settlement. Every entry needs a reason, which is kept in the audit log."
     },
     "editEmployee": {
       "action": "تعديل السجل",
@@ -1746,7 +1754,13 @@
       "confirm": "تسجيل المغادرة",
       "recording": "جارٍ التسجيل…",
       "recorded": "تم تسجيل مغادرة {name}.",
-      "failed": "تعذّر تسجيل المغادرة."
+      "failed": "تعذّر تسجيل المغادرة.",
+      "bypassWarning": "This records the departure without the exit process: no checklist, approvals, settlement or access revocation tasks. Use it only to correct a record or to enter a historical leaver. For a real departure, start a leaver case.",
+      "bypassReason": "Why record it without the exit process?",
+      "bypassReasonHelp": "Required, at least 10 characters. Kept in the audit log.",
+      "bypassReasonRequired": "Say why this is recorded without the exit process (at least 10 characters).",
+      "startCase": "Start leaver case",
+      "startMoverCase": "Start mover case"
     },
     "threeSixtyActions": {
       "close": "إغلاق الدورة",

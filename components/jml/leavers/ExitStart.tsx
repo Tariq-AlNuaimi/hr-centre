@@ -20,12 +20,17 @@ import { DOCUMENTED, EMPTY_EXIT, datesPayload, type ExitValues } from "./exit-va
  * picked (their job, placement, employment type and line manager come from the
  * record), then the exit facts. The draft creates nothing else (AC-1.1).
  */
-export function ExitStart() {
+export function ExitStart({
+  initialEmployee = null,
+}: {
+  /** Pre-filled from the person record's "Start leaver case". */
+  initialEmployee?: { id: string; name: string } | null;
+}) {
   const t = useTranslations("jml.leavers");
   const { can, isLoading } = useJmlAccess();
   const router = useRouter();
   const { run, busy } = useJmlAction(t("form.failed"));
-  const [employee, setEmployee] = useState<{ id: string; name: string } | null>(null);
+  const [employee, setEmployee] = useState<{ id: string; name: string } | null>(initialEmployee);
   const [values, setValues] = useState<ExitValues>(EMPTY_EXIT);
   const [settlement, setSettlement] = useState(true);
   const [visa, setVisa] = useState(false);
