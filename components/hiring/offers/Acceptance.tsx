@@ -157,16 +157,26 @@ function SignedUpload({ o }: { o: OfferDetail }) {
 }
 
 /** Record acceptance (Interview Hub `RecordAcceptanceModal`): joining date must be the offered start date. */
+type HandoffReply = { ok: true } | { ok: false; reason: string };
+
 export function AcceptDialog({ o, onClose }: { o: OfferDetail; onClose: () => void }) {
   const t = useTranslations("hiring.offerAcceptance");
   const offered = muscatDay(o.startDate);
   const [joining, setJoining] = useState(offered);
   const [notice, setNotice] = useState("");
   const [counter, setCounter] = useState("");
-  const accept = useHiringMutation<object>("POST", `/api/hiring/offers/${o.id}/acceptance`, {
-    success: t("recorded"),
-    onSuccess: onClose,
-  });
+  const accept = useHiringMutation<object, { handoff: HandoffReply | null }>(
+    "POST",
+    `/api/hiring/offers/${o.id}/acceptance`,
+    {
+      success: t("recorded"),
+      onSuccess: (r) => {
+        if (r.handoff?.ok) toast.success(t("handedOff"));
+        else if (r.handoff) toast.warning(t("handoffFailed", { reason: r.handoff.reason }));
+        onClose();
+      },
+    },
+  );
   const mismatch = joining !== offered;
   return (
     <Dialog open onOpenChange={(x) => !x && onClose()}>

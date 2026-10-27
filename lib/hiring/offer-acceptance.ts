@@ -7,6 +7,7 @@ import { HiringRuleError } from "./http";
 import { sameMuscatDay } from "./offer-rules";
 import type { LoadedOffer } from "./offers";
 import { stageRank } from "./stage-rules";
+import { handToJml, type HandoffResult } from "./prejoiner";
 
 /**
  * Acceptance (step 12) — Interview Hub `/api/offers/[id]/acceptance`. The
@@ -63,16 +64,20 @@ export async function recordAcceptance(
     });
   });
   let stageMoved = false;
+  let handoff: HandoffResult | null = null;
   if (stageRank(cand.stage) < stageRank("OFFER_ACCEPTED")) {
-    await applyStageChange({
+    ({ handoff } = await applyStageChange({
       cand,
       toStage: "OFFER_ACCEPTED",
       movedById: actor.userId,
       reason: "Offer accepted — signed offer recorded.",
-    });
+    }));
     stageMoved = true;
+  } else {
+    // Already at or past OFFER_ACCEPTED (moved on the rail first): still hand off.
+    handoff = await handToJml(cand.id, actor.userId);
   }
-  return { status: "ACCEPTED" as const, stageMoved };
+  return { status: "ACCEPTED" as const, stageMoved, handoff };
 }
 
 /** The signed letter (private blob). Any time after the offer is sent. */

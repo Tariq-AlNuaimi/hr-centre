@@ -99,32 +99,12 @@ const ITEMS: Array<{ seg: string; icon: ReactNode; label: string; perm: string }
   },
 ];
 
-/** Segments whose screens exist in this build (grows slice by slice). */
-export const LIVE_SEGMENTS = new Set([
-  "home",
-  "requisitions",
-  "candidates",
-  "pipeline",
-  "import",
-  "library",
-  "flow",
-  "approvals",
-  "interviews",
-  "panel",
-  "evaluations",
-  "offers",
-  "close-out",
-  "sourcing",
-  "settings",
-  "insights",
-]);
-
 export function useHiringNavItems(): NavItem[] {
   const t = useTranslations("hiring.nav");
   const router = useRouter();
   const locale = useLocale();
   const { has } = useHiringMe();
-  return ITEMS.filter((i) => LIVE_SEGMENTS.has(i.seg) && has(i.perm)).map((i) => ({
+  return ITEMS.filter((i) => has(i.perm)).map((i) => ({
     key: `hiring-${i.seg}`,
     icon: i.icon,
     label: t(i.label),

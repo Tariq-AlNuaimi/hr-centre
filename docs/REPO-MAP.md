@@ -23,6 +23,7 @@
 - app/[locale]/(dashboard)/goal-setting/page.tsx
 - app/[locale]/(dashboard)/hiring/approvals/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/[id]/page.tsx
+- app/[locale]/(dashboard)/hiring/candidates/[id]/preboarding/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/new/page.tsx
 - app/[locale]/(dashboard)/hiring/candidates/page.tsx
 - app/[locale]/(dashboard)/hiring/close-out/page.tsx
@@ -162,6 +163,7 @@
 - app/api/hiring/candidates/[id]/dsar/route.ts  [GET,DELETE]
 - app/api/hiring/candidates/[id]/negotiations/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/package/route.ts  [GET,POST]
+- app/api/hiring/candidates/[id]/preboarding/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/hiring/candidates/[id]/stage/route.ts  [PATCH]
 - app/api/hiring/candidates/[id]/stall-cause/route.ts  [PATCH]
@@ -577,6 +579,7 @@
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId, sealSecretSetting, openSecretSetting
 - lib/hiring/comparison.ts: FINALIST_STAGES, matrixCompetencies, loadComparison, selectPreferred, rejectFinalist, clearPreferred
 - lib/hiring/dsar.ts: dsarExport
+- lib/hiring/employee-tab.ts: employeeHiring, EmployeeHiring, hiringTabVisible
 - lib/hiring/erasure.ts: ERASED, eraseCandidate
 - lib/hiring/evaluations.ts: EvaluationListQuery, listEvaluations, loadEvaluation, EvaluationBody, createEvaluation, updateEvaluation
 - lib/hiring/fill-rules.ts: SEAT_OCCUPYING_STAGES, occupiesSeat, normalizeOpenings, FillState, describeFill, fillLabel, nextFillStatus, BudgetEnvelopeEntry, BudgetCheck, buildBudgetCheck
@@ -606,6 +609,9 @@
 - lib/hiring/planning.ts: loadRound, listRounds, roundView, createRound, updateRound, addNeed, chaseRound, loadNeed, updateNeed, needThread, addNeedNote
 - lib/hiring/posting-rules.ts: POSTING_CHANNELS, CHANNEL_SOURCES, CHANNELS_WITH_DETAIL, omaniPreferredForced, PostingGate, canPost, isAdvertisable, notAdvertisedReason, ChannelRow, buildChannelRows, daysBetween
 - lib/hiring/postings.ts: postingConsole, postChannel, withdrawChannel
+- lib/hiring/preboarding-rules.ts: HandoverRoute, handoverRoute, ChecklistInput, ChecklistItem, preboardingChecklist, HANDOVER_STAGES, handoverRefusal
+- lib/hiring/preboarding.ts: preboardingView, recordHandover, retryHandoff
+- lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, handToJml, withdrawFromJml
 - lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, REQUIRED_FIELDS, RequiredField, ReadinessInput, readinessProblems, REQUISITION_DECISIONS, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal
 - lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, syncRequisitionFill, assertRoutedToActor
 - lib/hiring/requisition-views.ts: approvalView, statusHistory, auditTrail
@@ -854,7 +860,7 @@
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
 - lib/validations/hiring/ai-egress.ts: isBlockedHost, checkBaseUrl
 - lib/validations/hiring/ai.ts: AI_KINDS, AiKind, insightRunSchema, insightQuerySchema, aiProviderSchema, AiProviderInput, aiLimitsSchema, AiLimitsInput, scoringWeightsSchema, ScoringWeights, DEFAULT_SCORING_WEIGHTS, panelModeSchema, budgetEntrySchema, budgetEnvelopeSchema, CV_MAX_BYTES, APPROVAL_ROLE_VALUES, generalSettingsSchema, GeneralSettingsInput, parseModeSchema, aiScreenChunkSchema
-- lib/validations/hiring/candidate.ts: CANDIDATE_SOURCES, GENDERS, STALL_CAUSES, DOCUMENT_KINDS, createCandidateSchema, updateCandidateSchema, CandidateInput, CandidateUpdate, candidateListQuerySchema, CandidateListQuery, boardQuerySchema, stageMoveSchema, stallCauseSchema, BULK_ID_CAP, bulkActionSchema, candidateExportQuerySchema, uploadDocumentFieldsSchema, reviewDocumentSchema, packageActionSchema, assessmentActionSchema, assessmentPolicySchema, screeningActionSchema, importCandidatesSchema
+- lib/validations/hiring/candidate.ts: CANDIDATE_SOURCES, GENDERS, STALL_CAUSES, DOCUMENT_KINDS, createCandidateSchema, updateCandidateSchema, CandidateInput, CandidateUpdate, candidateListQuerySchema, CandidateListQuery, boardQuerySchema, stageMoveSchema, stallCauseSchema, BULK_ID_CAP, bulkActionSchema, candidateExportQuerySchema, uploadDocumentFieldsSchema, reviewDocumentSchema, packageActionSchema, assessmentActionSchema, assessmentPolicySchema, screeningActionSchema, importCandidatesSchema, preboardingActionSchema
 - lib/validations/hiring/interview.ts: INTERVIEW_STATUSES, createInterviewSchema, updateInterviewSchema, interviewListQuerySchema, calendarQuerySchema, panelistSchema, confirmSchema, roundPlanSchema, panelScoreSchema, panelReviseSchema, createEvaluationSchema, updateEvaluationSchema, evaluationListQuerySchema, comparisonActionSchema
 - lib/validations/hiring/library-schemas.ts: LIBRARY_SCHEMAS, libraryKind
 - lib/validations/hiring/library.ts: competencySchema, gradeSchema, jdTemplateSchema, questionSchema, LIBRARY_KINDS, LibraryKind
@@ -894,6 +900,7 @@
 
 ## components/
 - components/dashboard/DashboardContent.tsx
+- components/hiring/EmployeeHiringTab.tsx
 - components/hiring/ai/AiInsightCard.tsx
 - components/hiring/ai/AiScreenPanel.tsx
 - components/hiring/ai/CandidateAiActions.tsx
@@ -913,6 +920,7 @@
 - components/hiring/candidates/NewCandidate.tsx
 - components/hiring/candidates/PackageDialogs.tsx
 - components/hiring/candidates/PackageTab.tsx
+- components/hiring/candidates/PreboardingView.tsx
 - components/hiring/candidates/ProfileTab.tsx
 - components/hiring/candidates/RowMenu.tsx
 - components/hiring/candidates/StageRail.tsx

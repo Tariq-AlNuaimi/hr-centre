@@ -5,7 +5,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
-import { LIVE_SEGMENTS } from "../nav";
 
 /**
  * "The 15 steps of the Rihal hiring process, and the screen that serves each
@@ -91,16 +90,12 @@ export function HiringFlow() {
                     {s.n}. {t(`step.${s.n}.title`)}
                   </p>
                   <p className="text-muted-foreground">
-                    {LIVE_SEGMENTS.has(s.href.split("/")[0]) ? (
-                      <Link
-                        className="text-primary-emphasis hover:underline"
-                        href={`/${locale}/hiring/${s.href}`}
-                      >
-                        {t(`step.${s.n}.screen`)}
-                      </Link>
-                    ) : (
-                      t(`step.${s.n}.screen`)
-                    )}
+                    <Link
+                      className="text-primary-emphasis hover:underline"
+                      href={`/${locale}/hiring/${s.href}`}
+                    >
+                      {t(`step.${s.n}.screen`)}
+                    </Link>
                     {s.perRecord ? ` · ${t(`step.${s.n}.opens`)}` : ""}
                   </p>
                 </li>
