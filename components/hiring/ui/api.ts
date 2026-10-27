@@ -94,3 +94,16 @@ export function qs(params: Record<string, string | number | null | undefined>): 
   const s = sp.toString();
   return s ? `?${s}` : "";
 }
+
+/** Multipart upload with the same error envelope as `hiringFetch`. */
+export async function hiringUpload<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(path, { method: "POST", body: form });
+  const envelope = (await res.json().catch(() => null)) as {
+    data?: T;
+    error?: string;
+    code?: string;
+  } | null;
+  if (!res.ok)
+    throw new HiringApiError(envelope?.error ?? "Request failed", res.status, envelope?.code);
+  return envelope?.data as T;
+}

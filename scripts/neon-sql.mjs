@@ -71,6 +71,8 @@ export const REDACT_FIELDS = new Set([
   "profileData",
   "aiRationale",
   "aiWhyNot",
+  "aiOutput",
+  "aiAnalysis",
   "transcript",
   "deiGender",
   "deiEthnicity",

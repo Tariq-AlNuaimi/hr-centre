@@ -14,8 +14,9 @@ import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { FlowRail } from "../ui/flow-rail";
 import { ScoreChip, StageBadge } from "../ui/stage";
 import { useCrumb } from "../ui/crumb";
-import { Notice, QueryState } from "../ui/states";
+import { QueryState } from "../ui/states";
 import { FilterChips } from "../candidates/FilterChips";
+import { AiScreenPanel } from "../ai/AiScreenPanel";
 
 type Applicant = {
   id: string;
@@ -42,8 +43,8 @@ const VERDICT_TONE = { SHORTLIST: "success", OVER_BAND: "warning", REJECT: "dang
 /**
  * CV screening (Interview Hub `/positions/[id]/screening`). Shortlist against
  * the JD and the band; select and shortlist, reject, or go to the assessment
- * queue. AI scoring arrives with the AI slice — until then screening is done
- * by reading each CV, and the screen says so.
+ * queue. "Run AI screen" scores new applicants against the JD (advisory); with
+ * AI not set up the panel says so and screening is by reading each CV.
  */
 export function ScreeningView({ id }: { id: string }) {
   const t = useTranslations("hiring.screening");
@@ -161,7 +162,7 @@ export function ScreeningView({ id }: { id: string }) {
             }
           />
           <FlowRail current={2} />
-          <Notice tone="warning">{t("noAi")}</Notice>
+          <AiScreenPanel requisitionId={id} />
           <div className="space-y-1">
             <FilterChips
               label={t("filterLabel")}

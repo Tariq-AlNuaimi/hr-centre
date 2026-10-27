@@ -9,6 +9,7 @@ import { NativeSelect } from "@/components/org/NativeSelect";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
+import { JdFileButtons } from "../ai/JdFileButtons";
 import { CompetencyPicker } from "../ui/competency-picker";
 import { Field, Textarea } from "../ui/fields";
 import { useOrgOptions } from "../ui/org";
@@ -274,7 +275,13 @@ function RequisitionFormBody({ id, detail }: { id?: string; detail?: Detail }) {
             </Field>
           </div>
         </SectionCard>
-        <SectionCard title={t("jdSection")} subtitle={t("jdHint")}>
+        <SectionCard
+          title={t("jdSection")}
+          subtitle={t("jdHint")}
+          actions={
+            <JdFileButtons onDescription={set("description")} onCompetencies={setCompetencies} />
+          }
+        >
           <div className="space-y-4">
             <Field label={t("description")} htmlFor="rf-desc" required>
               <Textarea

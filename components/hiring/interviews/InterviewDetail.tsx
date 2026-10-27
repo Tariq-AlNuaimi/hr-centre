@@ -11,6 +11,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { ConfirmAction } from "@/components/shared/ConfirmAction";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { AiInsightCard } from "../ai/AiInsightCard";
 import { useHiringMutation, useHiringQuery } from "../ui/api";
 import { useCrumb } from "../ui/crumb";
 import { FlowRail } from "../ui/flow-rail";
@@ -128,12 +129,6 @@ function TranscriptTab({ d }: { d: Detail }) {
   const save = useHiringMutation<{ transcript: string }>("PUT", `/api/hiring/interviews/${d.id}`, {
     success: t("transcriptSaved"),
   });
-  const analysis =
-    typeof d.aiAnalysis === "string"
-      ? d.aiAnalysis
-      : d.aiAnalysis && typeof d.aiAnalysis === "object" && "text" in d.aiAnalysis
-        ? String((d.aiAnalysis as { text: unknown }).text)
-        : null;
   return (
     <div className="space-y-4">
       <SectionCard title={t("transcriptTitle")}>
@@ -162,14 +157,14 @@ function TranscriptTab({ d }: { d: Detail }) {
       </SectionCard>
       {d.judgmentsHidden ? (
         <Notice tone="info">{t("judgmentsHidden")}</Notice>
-      ) : analysis ? (
-        <SectionCard
-          title={t("analysisTitle")}
-          actions={<Badge variant="info">{t("advisory")}</Badge>}
-        >
-          <p className="text-sm whitespace-pre-wrap">{analysis}</p>
-        </SectionCard>
-      ) : null}
+      ) : (
+        <AiInsightCard
+          kind="transcript"
+          entityId={d.id}
+          canRun={d.can.manage}
+          transcript={text.trim() ? text : undefined}
+        />
+      )}
     </div>
   );
 }

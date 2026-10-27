@@ -151,3 +151,17 @@ export function openNec(candidateId: string, envelope: string | null): string | 
 export function newHiringId(): string {
   return `h${crypto.randomUUID().replace(/-/g, "")}`;
 }
+
+/**
+ * A secret hiring setting (the AI provider key), under the hiring key with an
+ * AAD of `hiring:setting:<key>:value`. Seal fails closed; open answers null
+ * when the key is missing or rotated, so AI then reads as unconfigured.
+ */
+export function sealSecretSetting(key: string, value: string): string {
+  return seal("setting", key, "value", value, HIRING_COMP_KEYRING);
+}
+
+export function openSecretSetting(key: string, envelope: string | null): string | null {
+  if (!envelope) return null;
+  return open("setting", key, "value", envelope, HIRING_COMP_KEYRING);
+}

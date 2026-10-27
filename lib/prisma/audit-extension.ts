@@ -63,6 +63,9 @@ export const SCRUB_FIELDS = new Set([
   "profileData",
   "aiRationale",
   "aiWhyNot",
+  // Hiring AI (slice 7): the stored insight body and an interview's analysis.
+  "aiOutput",
+  "aiAnalysis",
   "transcript",
   "deiGender",
   "deiEthnicity",

@@ -110,6 +110,7 @@
     "docxtemplater": "3.71.1",
     "ioredis": "^5.11.1",
     "lucide-react": "^1.24.0",
+    "mammoth": "^1.12.3",
     "next": "16.4.2",
     "next-auth": "5.0.0-beta.32",
     "next-intl": "^4.13.2",
@@ -125,6 +126,7 @@
     "recharts": "^2.15.4",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
+    "unpdf": "^1.9.1",
     "write-excel-file": "^4.1.1",
     "zod": "^4.4.3",
     "zod-openapi": "^6.0.0"

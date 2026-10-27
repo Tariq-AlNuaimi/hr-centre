@@ -26,7 +26,10 @@
       "Outlook",
       "Omani",
       "Rihal",
-      "Oman"
+      "Oman",
+      "OpenAI",
+      "LiteLLM",
+      "Anthropic"
     ]
   }
 }
