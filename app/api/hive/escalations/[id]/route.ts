@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
-import { ok, err, readJsonBody } from "@/lib/api-response";
+import { ok, err, forbidden, readJsonBody } from "@/lib/api-response";
 import { withAuth } from "@/lib/api-helpers";
-import { requireHivePermission } from "@/lib/hive/services/permissions";
+import { requireHivePermission, ticketReach } from "@/lib/hive/services/permissions";
 import {
   draftAnswer,
   getEscalation,
@@ -16,21 +16,25 @@ import { getTicketSettings } from "@/lib/hive/services/ticket-settings";
  * what THIS person may do on it — pair-scoped since ADR-073 — so the screen
  * shows only buttons the server will honour.
  */
-export const GET = withAuth(
-  requireHivePermission("seeTickets", async (_req, ctx) => {
-    const { id } = await ctx.params;
-    const row = await getEscalation(id);
-    if (!row) return err("Not found.", 404);
-    const [abilities, settings] = await Promise.all([
-      ticketAbilities(ctx.session.user.id, {
-        hrPairId: row.hrPair.id,
-        draftedById: row.draftedBy?.id ?? null,
-      }),
-      getTicketSettings(),
-    ]);
-    return ok({ ...row, abilities, settings });
-  }),
-);
+export const GET = withAuth(async (_req, ctx) => {
+  // QA D-03: See tickets reads any ticket; a Drafter/Approver without it reads
+  // the tickets of the pairs they can act on, and nothing else (404).
+  const reach = await ticketReach(ctx.session.user.id);
+  if (!reach) return forbidden();
+  const { id } = await ctx.params;
+  const row = await getEscalation(id);
+  if (!row || (reach !== "all" && !reach.includes(row.hrPair.id))) {
+    return err("Not found.", 404);
+  }
+  const [abilities, settings] = await Promise.all([
+    ticketAbilities(ctx.session.user.id, {
+      hrPairId: row.hrPair.id,
+      draftedById: row.draftedBy?.id ?? null,
+    }),
+    getTicketSettings(),
+  ]);
+  return ok({ ...row, abilities, settings });
+});
 
 /** Each refusal's message and status. */
 const DRAFT_REFUSALS: Record<Extract<DraftOutcome, { error: string }>["error"], [string, number]> =

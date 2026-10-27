@@ -544,6 +544,23 @@ describe("US-T6 — queue filters and live counts", { skip: !canMock }, () => {
     assert.deepEqual(queue.queueWhere({ gte }), { createdAt: { gte } });
   });
 
+  test("QA D-03: a drafter/approver without See tickets reads only their pairs", () => {
+    assert.deepEqual(queue.queueWhere({ pairIds: ["p1", "p2"] }), {
+      hrPairId: { in: ["p1", "p2"] },
+    });
+    assert.deepEqual(queue.queueWhere({ pairIds: ["p1"], pairId: "p1" }), { hrPairId: "p1" });
+    assert.deepEqual(
+      queue.queueWhere({ pairIds: ["p1"], pairId: "p9" }),
+      { hrPairId: { in: [] } },
+      "a pair filter outside the reader's reach matches nothing, never everything",
+    );
+    const list = readFileSync("app/api/hive/escalations/route.ts", "utf8");
+    assert.match(list, /ticketReach\(ctx\.session\.user\.id\)/);
+    assert.match(list, /listEscalations\(\{ \.\.\.parsed\.data, pairIds \}\)/);
+    const one = readFileSync("app/api/hive/escalations/[id]/route.ts", "utf8");
+    assert.match(one, /reach !== "all" && !reach\.includes\(row\.hrPair\.id\)/);
+  });
+
   test("search finds a ticket by the number HR quote, under ANY prefix — old emails keep working", () => {
     for (const q of ["HIVE-0047", "hive-47", "47", "HR-0047", "rhl2-47"]) {
       const or = queue.queueWhere({ q }).OR as Record<string, unknown>[];

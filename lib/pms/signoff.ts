@@ -88,7 +88,9 @@ export const EMPLOYEE_SIGNED_MANAGER_DID_NOT = "employee signed, manager did not
  *     deliberately absent.
  *   - MANAGER goes through `canActOnEmployee`, which is §4.2's "editing and
  *     sign-off is always reserved for the direct line manager" — one edge, not
- *     the chain — with HR's documented override on top (§4.1).
+ *     the chain. HR's §4.1 override does NOT extend to signing: HR reaches a
+ *     stuck set through its own actions (approve, extend, intervene), never by
+ *     recording the manager's signature (QA D-01).
  *
  * An actor with no employee record can sign nothing: the signature records
  * `signedByEmployeeId`, and §12.2 makes "who actually signed" the question
@@ -143,7 +145,12 @@ export function signerBlockedReason(params: {
       status: 403,
     };
   }
-  if (party === "MANAGER" && !canAct) {
+  // D-01 (QA 2026-10-27): the MANAGER line is the direct line manager's own
+  // statement of agreement. HR's §4.1 override lets HR SEE and act on the set
+  // through HR actions (approve, extend, intervene) — never sign as the manager.
+  // `canActOnEmployee` is true for any HR, so it cannot be the test here; the
+  // single `managerId` edge is (same rule as `yearEndSignerBlockedReason`).
+  if (party === "MANAGER" && subject.managerId !== actor.employeeId) {
     return {
       reason: "Only this employee's direct line manager may sign their KPI set.",
       status: 403,

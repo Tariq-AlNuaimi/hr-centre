@@ -7,6 +7,7 @@ import { loadCaseFor, type JmlActor } from "../access";
 import { queueEmail } from "../email/queue";
 import { EMAIL_TYPES } from "../email/types";
 import { JmlError } from "../errors";
+import { refreshCase } from "../engine/tasks";
 import { SETTLED_TASK_STATUSES } from "../vocab";
 import { submitAndRecord } from "./it-intake";
 import { shiftedDue } from "./start-shift";
@@ -73,9 +74,15 @@ async function activateEmployee(
 /** AC-7.2/7.3: once, ACTIVE cases only, never in the future (Muscat today). */
 export async function confirmActualStart(actor: JmlActor, caseId: string, date: Date) {
   const { kase, detail } = await loadJoin(actor, caseId);
-  if (kase.status !== "ACTIVE") throw new JmlError("Only an active onboarding can start.", 409);
   if (detail.actualStartDate)
     throw new JmlError("The actual start has already been confirmed.", 409);
+  // QA D-02 recovery: before the fix, a checklist finished ahead of day one
+  // auto-COMPLETED the case and stranded the joiner as PRE_JOINER. Such a case
+  // (COMPLETED, no actual start) may still confirm the start.
+  const stranded = kase.status === "COMPLETED";
+  if (kase.status !== "ACTIVE" && !stranded) {
+    throw new JmlError("Only an active onboarding can start.", 409);
+  }
   const calendar = await loadWorkingCalendar();
   if (utcDate(date) > zonedToday(new Date(), calendar.schedule.timeZone)) {
     throw new JmlError("The actual start date cannot be in the future.", 400);
@@ -96,6 +103,9 @@ export async function confirmActualStart(actor: JmlActor, caseId: string, date: 
       },
       select: { id: true },
     });
+    // A checklist already finished completes the case now that the joiner has
+    // started (refreshCase holds a JOIN open until then).
+    if (!stranded) await refreshCase(tx, caseId, actor.userId);
   });
   await onActualStartEntered(caseId);
   return { actualStartDate: date.toISOString().slice(0, 10) };

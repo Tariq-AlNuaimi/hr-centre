@@ -1,5 +1,6 @@
 import type { ContractType, Prisma } from "@/generated/prisma/client";
-import type { auditedTransaction } from "@/lib/prisma";
+import { auditedTransaction, prisma } from "@/lib/prisma";
+import { zonedToday, type WorkingCalendar } from "@/lib/working-time/calendar";
 import { splitAndMove, transferPlan } from "@/lib/pms/transfer-apply";
 import { JmlError } from "../errors";
 import type { Snapshot } from "./profile";
@@ -121,4 +122,31 @@ async function applyContractType(tx: Tx, employeeId: string, contractTypeId: str
     data: { contractTypeId },
     select: { caseId: true },
   });
+}
+
+/**
+ * QA D-05 — the sweep half of "applied on the effective date": a mover whose
+ * checklist completed BEFORE the effective date was left pending by
+ * `refreshCase`; this applies every such change once its day arrives. Each
+ * case in its own transaction, so one bad placement never blocks the rest.
+ */
+export async function applyDueMoves({ now, calendar }: { now: Date; calendar: WorkingCalendar }) {
+  const today = zonedToday(now, calendar.schedule.timeZone);
+  const due = await prisma.jmlMoveDetail.findMany({
+    where: { appliedAt: null, effectiveDate: { lte: today }, case: { status: "COMPLETED" } },
+    select: { caseId: true },
+    orderBy: { effectiveDate: "asc" },
+    take: 100,
+  });
+  let applied = 0;
+  const failed: string[] = [];
+  for (const { caseId } of due) {
+    try {
+      await auditedTransaction((tx) => applyMove(tx, caseId));
+      applied += 1;
+    } catch {
+      failed.push(caseId);
+    }
+  }
+  return { due: due.length, applied, failed };
 }

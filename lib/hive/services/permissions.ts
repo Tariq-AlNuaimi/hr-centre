@@ -161,6 +161,32 @@ export function requireHivePermission(
 }
 
 /**
+ * QA D-03 — may this person open the ticket queue at all? See tickets (group)
+ * opens the whole company-wide queue; a Drafter or Approver without it opens
+ * the queue limited to the pairs they can act on ({@link ticketReach}). Before
+ * this, a drafter-only user was told they had no ticket screens while Home
+ * "My work" linked them to a ticket they were expected to answer.
+ */
+export function opensQueue(p: HivePermissions): boolean {
+  return p.seeTickets || p.draftEscalation || p.approve;
+}
+
+/**
+ * Which tickets this person may read: "all" with See tickets (or a group-wide
+ * Draft/Approve), else the pairs they may Draft or Approve on, else null.
+ */
+export async function ticketReach(userId: string): Promise<"all" | string[] | null> {
+  if (await hasHivePermission(userId, "seeTickets")) return "all";
+  const [draft, approve] = await Promise.all([
+    pairsFor(userId, "draftEscalation"),
+    pairsFor(userId, "approve"),
+  ]);
+  if (draft === "all" || approve === "all") return "all";
+  const pairs = [...new Set([...draft, ...approve])];
+  return pairs.length > 0 ? pairs : null;
+}
+
+/**
  * Which pairs this person may Draft / Approve on right now — "all" for a
  * group-wide assignment, else the HR_PAIR ids plus their own pair. Used to
  * build their task list (My tasks); each action still re-checks `canOnPair`.

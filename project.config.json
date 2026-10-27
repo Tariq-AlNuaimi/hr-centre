@@ -29,7 +29,19 @@
       "Oman",
       "OpenAI",
       "LiteLLM",
-      "Anthropic"
+      "Anthropic",
+      "Centre",
+      "Muscat",
+      "Odoo",
+      "SaaS"
+    ],
+    "waivers": [
+      "pms.import.uploadStep",
+      "pms.import.confirmStep",
+      "jml.reports.leaveReport.r1-exit-reasons.title",
+      "jml.reports.leaveReport.r3-regrettable.title",
+      "jml.reports.leaveReport.r5-early-attrition.title",
+      "jml.reports.leaveReport.r7-settlement-status.title"
     ]
   }
 }

@@ -54,7 +54,8 @@ export function useNavContext(): NavContext {
       loginsManage: c.loginsManage,
     },
     hive: {
-      seeTickets: hive.seeTickets,
+      // QA D-03: a Drafter/Approver opens the queue (limited to their pairs).
+      seeTickets: hive.seeTickets || hive.draftEscalation || hive.approve,
       viewReports: hive.viewReports,
       editContent: hive.editContent,
       configure: hive.configure,

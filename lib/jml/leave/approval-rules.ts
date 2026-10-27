@@ -120,6 +120,35 @@ export function decisionProblem(
   return null;
 }
 
+/**
+ * QA D-13 — segregation of duties on recorded decisions. An HR user may record
+ * a holder's decision on their behalf (the Operations Director has no login;
+ * the reference carries the evidence), but one person may not stand for two
+ * holders of the same approval: "HR Manager + Operations Director (both)"
+ * means two people, and a single recorder for both rows reduces it to one.
+ * Nor may the leaver record any decision on their own exit.
+ */
+export function segregationProblem(
+  approval: { id: string; holderRoleKey: string },
+  siblings: readonly { id: string; holderRoleKey: string; decidedById: string | null }[],
+  actorUserId: string,
+  leaverUserId: string | null,
+): string | null {
+  if (leaverUserId && leaverUserId === actorUserId) {
+    return "You cannot record a decision on your own exit.";
+  }
+  const other = siblings.find(
+    (s) =>
+      s.id !== approval.id &&
+      s.holderRoleKey !== approval.holderRoleKey &&
+      s.decidedById === actorUserId,
+  );
+  if (other) {
+    return `You already recorded the ${other.holderRoleKey}'s decision on this approval. The ${approval.holderRoleKey}'s decision must be recorded by someone else, so the two sign-offs come from two people.`;
+  }
+  return null;
+}
+
 /** AC-11.3: a pending approval older than two working days earns a reminder. */
 export function needsReminder(
   a: { status: string; requestedAt: Date },

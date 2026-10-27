@@ -653,7 +653,7 @@
 - lib/hive/services/escalation-transition.ts: Tx, transition, recordEvent
 - lib/hive/services/escalation.ts: RoutingOutcome, routeEscalation, CreatedEscalation, createEscalation
 - lib/hive/services/my-tasks.ts: ticketTasksFor, ticketsForEmployee
-- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission, pairsFor
+- lib/hive/services/permissions.ts: HiveAction, HivePermissions, ACTION_PERMISSION, getHivePermissions, permissionsFrom, hasHivePermission, ownPairIds, canOnPair, roleLabelFor, requireHivePermission, opensQueue, ticketReach, pairsFor
 - lib/hive/services/reference.ts: PROVIDER_PAGE, listReference, createReference, updateReference, removeReference
 - lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
 - lib/hive/services/reports.ts: TicketReport, bucketStarts, getTicketReport
@@ -696,7 +696,7 @@
 - lib/jml/engine/progress.ts: ProgressTask, computeProgress, isComplete, deriveJoinStage
 - lib/jml/engine/task-status-rules.ts: reopenData, notApplicableData
 - lib/jml/engine/task-update.ts: UpdateTaskInput, updateTask
-- lib/jml/engine/tasks.ts: TASK_SELECT, TaskRow, GATE_SELECT, RefreshResult, refreshCase, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks, auditTaskBulk
+- lib/jml/engine/tasks.ts: TASK_SELECT, TaskRow, GATE_SELECT, RefreshResult, isMoveDue, refreshCase, loadTaskForWork, assertOwner, ManualTaskInput, addManualTask, addComment, listComments, listTasks, auditTaskBulk
 - lib/jml/engine/templates.ts: TEMPLATE_TASK_SELECT, listTemplates, getTemplate, createTemplate, updateTemplate, selectJoinOrMoveTemplate, selectLeaveTemplate, templateTaskDefs
 - lib/jml/errors.ts: JmlError, ValidationFailure, jmlValidationError, jmlErrorResponse, jmlHandle
 - lib/jml/join/actions.ts: confirmActualStart, changeStartDate, confirmItReadiness, resubmitToIt, sendWelcomeReview
@@ -717,7 +717,7 @@
 - lib/jml/join/update.ts: updateJoiner
 - lib/jml/leave/activation-gate.ts: LeaveActivationCandidate, leaveActivationProblems
 - lib/jml/leave/activation.ts: previewLeaveActivation, wouldGenerate, activateLeave
-- lib/jml/leave/approval-rules.ts: TERMINATION_AUTHORISATION_HOLDERS, APPROVAL_HOLDERS, APPROVAL_TYPES, requiresSecondLevelDelegate, Problem, checkAuthorityConfig, checkTerminationAuthorisation, checkHolders, ApprovalDecision, decisionProblem, needsReminder
+- lib/jml/leave/approval-rules.ts: TERMINATION_AUTHORISATION_HOLDERS, APPROVAL_HOLDERS, APPROVAL_TYPES, requiresSecondLevelDelegate, Problem, checkAuthorityConfig, checkTerminationAuthorisation, checkHolders, ApprovalDecision, decisionProblem, segregationProblem, needsReminder
 - lib/jml/leave/approvals.ts: listApprovals, requestApproval, decideApproval
 - lib/jml/leave/authority.ts: listAuthorities, saveAuthority
 - lib/jml/leave/cancel.ts: cancelLeave, restoreLogin
@@ -746,7 +746,7 @@
 - lib/jml/leave/settlement.ts: Figures, statutoryRows, loadContext, getSettlement, calculateSettlement
 - lib/jml/leave/sweep-steps.ts: leaveHealthRefresh, leaveDailyNotices, incidentScan, leaveDepartures
 - lib/jml/money/crypto.ts: sealMoney, openMoney
-- lib/jml/move/apply.ts: applyMove
+- lib/jml/move/apply.ts: applyMove, applyDueMoves
 - lib/jml/move/create.ts: createMove
 - lib/jml/move/profile.ts: MOVE_EMPLOYEE_SELECT, MoveEmployee, detailsOf, loadMoveEmployee, labelsFor, Snapshot, snapshots, moveProfile
 - lib/jml/move/rules.ts: CHANGE_FIELDS, ChangeField, EmployeeDetails, ChangeDetailsInput, overlayDetails, changeRefusal, applyChangeRules, changedFields

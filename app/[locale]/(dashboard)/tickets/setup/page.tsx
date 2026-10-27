@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { getHivePermissions } from "@/lib/hive/services/permissions";
+import { getHivePermissions, opensQueue } from "@/lib/hive/services/permissions";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LinkCards } from "@/components/shared/LinkCards";
@@ -36,11 +36,12 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
   const cards = [
     // §5.4's queue. Gated on See tickets (ADR-073): spec V2 §8.8 shows every
     // ticket to everyone who holds it, read-only for those who cannot act.
-    permissions?.seeTickets && {
-      href: `/${locale}/tickets`,
-      title: t("escalationsTitle"),
-      description: t("escalationsDescription"),
-    },
+    permissions &&
+      opensQueue(permissions) && {
+        href: `/${locale}/tickets`,
+        title: t("escalationsTitle"),
+        description: t("escalationsDescription"),
+      },
     // Spec V2 §8.8 Settings: the ticket prefix, status names and (linked from
     // there) the answer email. Gated on Edit content — since HIVE ADR-075 that is
     // the wording HIVE still holds.

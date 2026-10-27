@@ -5,6 +5,7 @@ import { drainQueue } from "./email/queue";
 import { notifyJml } from "./engine/notify";
 import { runRetention } from "./join/retention";
 import { itReadinessReminders, overdueDigests } from "./join/sweep-steps";
+import { applyDueMoves } from "./move/apply";
 import { leaveDailyNotices, leaveDepartures, leaveHealthRefresh } from "./leave/sweep-steps";
 import { isLocalHour } from "@/lib/working-time/calendar";
 
@@ -53,6 +54,7 @@ export const SWEEP_STEPS: SweepStep[] = [
   { name: "failedEmailAlerts", run: alertFailedEmails },
   { name: "itReadinessReminders", run: itReadinessReminders },
   { name: "overdueDigests", run: overdueDigests },
+  { name: "moveEffective", run: applyDueMoves },
   { name: "leaveDepartures", run: leaveDepartures },
   { name: "leaveHealth", run: leaveHealthRefresh },
   { name: "leaveDailyNotices", run: leaveDailyNotices },

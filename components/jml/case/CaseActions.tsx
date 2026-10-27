@@ -215,7 +215,23 @@ function SubmitToIt({ caseId }: { caseId: string }) {
 function JoinActions({ detail }: { detail: CaseDetail }) {
   const { act, busy, t } = useAct();
   const j = detail.joinDetail;
-  if (!j || detail.status !== "ACTIVE" || !detail.can.manage) return null;
+  if (!j || !detail.can.manage) return null;
+  // QA D-02 recovery: a case completed before day one can still confirm the start.
+  if (detail.status === "COMPLETED" && !j.actualStartDate) {
+    return (
+      <DateAction
+        caseId={detail.id}
+        label={t("confirmStart")}
+        title={t("confirmStartTitle")}
+        description={t("confirmStartBody")}
+        path="actual-start"
+        field="actualStartDate"
+        done={t("started")}
+        initial={today()}
+      />
+    );
+  }
+  if (detail.status !== "ACTIVE") return null;
   return (
     <>
       {!j.actualStartDate ? (
