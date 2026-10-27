@@ -26,6 +26,7 @@ import {
   byTabs,
   hiring,
   hr,
+  ownsRequisitions,
   teamLead,
   type Gate,
 } from "./tabs";
@@ -141,6 +142,12 @@ export const NAV: readonly NavEntry[] = [
     tabs: [
       { key: "team-people", label: "teamPeople", href: "/team", show: teamLead },
       { key: "goal-setting", label: "goalSetting", href: "/goal-setting", show: teamLead },
+      {
+        key: "my-hiring",
+        label: "myHiring",
+        href: "/team/hiring",
+        show: ownsRequisitions,
+      },
     ],
   },
 

@@ -21,6 +21,9 @@ export const hiring =
   (p: Permission): Gate =>
   (c) =>
     c.hiring(p);
+/** Who may own a requisition: hiring managers, and the HR people who run hiring. */
+export const ownsRequisitions: Gate = (c) =>
+  [c.hiring("hiring.hiringManager"), c.hiring("hiring.manage")].some(Boolean);
 /** Tabs-only entries are shown when any tab is (see `resolve.ts`). */
 export const byTabs: Gate = always;
 
