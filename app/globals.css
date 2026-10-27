@@ -177,6 +177,30 @@ body {
   --hive-bee-stripe: #3a3016;
   --hive-bee-wing: #7d93ad;
 }
+/* Hiring careers board + agency invite page: the candidate-facing brand is
+   always light, whatever theme the visitor's browser or HR account prefers.
+   Re-declares the light semantic layer (tokens.css :root values) under the
+   page so the shared primitives (inputs, checkboxes) render light inside it. */
+.careers-light {
+  color-scheme: light;
+  --background: #f8fafc;
+  --foreground: #1f2933;
+  --card: #ffffff;
+  --card-foreground: #1f2933;
+  --muted: #f1f5f9;
+  --muted-foreground: #5b6472;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --popover: #ffffff;
+  --popover-foreground: #1f2933;
+  --primary-emphasis: #0165ff;
+  --destructive-emphasis: #b91c1c;
+  --status-ok-fg: #067647;
+  --status-ok-bg: #ecfdf3;
+  --status-err-fg: #b42318;
+  --status-err-bg: #fef3f2;
+}
+
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
   background: #3a4150;
   background-clip: padding-box;

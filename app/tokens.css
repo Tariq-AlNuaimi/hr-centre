@@ -162,6 +162,20 @@
   --hive-bee-body: #2b2417;
   --hive-bee-stripe: #f5c542;
   --hive-bee-wing: #9fb6d4;
+
+  /* Hiring careers board + agency invite page (ADR-080): the candidate-facing
+   * Rihal recruitment brand (Interview Hub careersTheme.ts), NOT the console's
+   * v0.2 look. Fixed values: these pages stay light in either theme (the
+   * .careers-light scope in globals.css resets the semantic layer under them). */
+  --careers-mint: #00ea9d;
+  --careers-sky: #0894ee;
+  --careers-royal: #0165ff;
+  --careers-navy: #06112e;
+  --careers-ink: #1f2933;
+  --careers-muted: #5b6472;
+  --careers-line: #e2e8f0;
+  --careers-page: #f8fafc;
+  --careers-panel: #ffffff;
 }
 
 /* ============================================================================
@@ -279,6 +293,17 @@
   --color-status-info-fg: var(--status-info-fg);
   --color-status-neutral: var(--status-neutral-bg);
   --color-status-neutral-fg: var(--status-neutral-fg);
+
+  /* Hiring public pages only: bg-careers-royal, text-careers-ink, … */
+  --color-careers-mint: var(--careers-mint);
+  --color-careers-sky: var(--careers-sky);
+  --color-careers-royal: var(--careers-royal);
+  --color-careers-navy: var(--careers-navy);
+  --color-careers-ink: var(--careers-ink);
+  --color-careers-muted: var(--careers-muted);
+  --color-careers-line: var(--careers-line);
+  --color-careers-page: var(--careers-page);
+  --color-careers-panel: var(--careers-panel);
 
   /* HR tickets reply page only: bg-hive-lavender, border-hive-lavender-edge. */
   --color-hive-lavender: var(--hive-lavender);

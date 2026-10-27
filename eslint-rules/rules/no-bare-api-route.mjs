@@ -52,10 +52,22 @@ const AUTH_WRAPPERS = new Set(["withAuth", "withAdminAuth", "withInternalAuth", 
 //                            rate-limited per IP and per token. EXACT file only.
 //                            (`/api/mcp` is not listed: `withApiAuth` satisfies
 //                            the rule.)
+//   - app/api/careers/route.ts, app/api/careers/apply/route.ts
+//                            Hiring (ADR-080, operator-approved): the public
+//                            careers board (open roles, no pay; cached) and its
+//                            apply path (per-IP limit, consent enforced). EXACT
+//                            files only.
+//   - app/api/agency/[token]/submit/route.ts
+//                            Hiring: an agency submits a candidate. The TOKEN is
+//                            the authorisation (256-bit, hashed, expiring,
+//                            capped); per-IP and per-token limits. EXACT file.
 const PUBLIC_ROUTE_PATTERNS = [
   /[\\/]app[\\/]api[\\/]auth[\\/]/,
   /[\\/]app[\\/]api[\\/]health[\\/]/,
   /[\\/]app[\\/]api[\\/]hive[\\/]reply[\\/]\[token\][\\/]route\.ts$/,
+  /[\\/]app[\\/]api[\\/]careers[\\/]route\.ts$/,
+  /[\\/]app[\\/]api[\\/]careers[\\/]apply[\\/]route\.ts$/,
+  /[\\/]app[\\/]api[\\/]agency[\\/]\[token\][\\/]submit[\\/]route\.ts$/,
 ];
 
 // Wrappers a real auth wrapper may legitimately be nested INSIDE. Recursing into

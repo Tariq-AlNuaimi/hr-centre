@@ -102,6 +102,22 @@ PUBLIC_API_PATTERNS) and the reply route in `no-bare-api-route`'s PUBLIC_ROUTE_P
 carried from HIVE: the ticket caps (3/hour per email, 30/hour unverified) are count-then-create
 without a lock, so concurrent identical calls can exceed them slightly.
 
+### Hiring public surface (Hiring port, ADR-080; operator-approved)
+
+Five unauthenticated entry points for candidates and agencies, each authorising its caller
+itself: the careers board page `/careers` and `GET /api/careers` (open, JD-signed, live-posted
+roles only — title, company, department, JD text; never pay; CDN-cached 60 s; 60/min per IP);
+`POST /api/careers/apply` (5/min per IP, optional per-role daily cap, one application per email
+per role case-insensitively, consent required server-side); and the agency link `/agency/<token>`
+(page) with `POST /api/agency/[token]/submit` (256-bit random token stored only as SHA-256,
+expiring, revocable, submission-capped under a Serializable transaction, every failure the same
+"not valid" / 404, 5/min per IP and 10/min per token, PDF checked by its bytes, `no-store` +
+`noindex`). Listed by exact name in `i18n/route-decision.ts` (CANDIDATE_PATHS /
+PUBLIC_API_PATHS / PUBLIC_API_PATTERNS) and `no-bare-api-route`'s PUBLIC_ROUTE_PATTERNS;
+`tests/contracts/hive-public-surface.test.ts` and `hiring-public.test.ts` keep them in lockstep.
+Accepted risk: the careers daily cap is count-then-create without a lock (a burst can exceed it
+by a few); the per-IP limit bounds it.
+
 ## 4. Encryption — current
 
 | Layer                                  | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
