@@ -556,7 +556,7 @@ describe("US-T6 — queue filters and live counts", { skip: !canMock }, () => {
     );
     const list = readFileSync("app/api/hive/escalations/route.ts", "utf8");
     assert.match(list, /ticketReach\(ctx\.session\.user\.id\)/);
-    assert.match(list, /listEscalations\(\{ \.\.\.parsed\.data, pairIds \}\)/);
+    assert.match(list, /listEscalations\(\{ \.\.\.parsed\.data, pairIds[,} ]/);
     const one = readFileSync("app/api/hive/escalations/[id]/route.ts", "utf8");
     assert.match(one, /reach !== "all" && !reach\.includes\(row\.hrPair\.id\)/);
   });

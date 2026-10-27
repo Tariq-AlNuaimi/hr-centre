@@ -289,3 +289,28 @@ export function nextWindowOpening(
 export function isLocalHour(instant: Date, hour: number, timeZone: string): boolean {
   return zonedParts(instant, timeZone).hour === hour;
 }
+
+/**
+ * `hours` of WORKING time after `start` (UX P1 tickets P1-2): time counts only
+ * inside the working window (working days, holidays excluded, start ≤ hour <
+ * end, in the schedule's zone). A start outside the window begins at the next
+ * opening. Bounded like `nextWindowOpening`.
+ */
+export function addWorkingHours(
+  start: Date,
+  hours: number,
+  calendar: WorkingCalendar = DEFAULT_CALENDAR,
+): Date {
+  const { schedule } = calendar;
+  let remaining = Math.max(0, hours) * 3_600_000;
+  let t = nextWindowOpening(start, calendar);
+  for (let i = 0; i < MAX_WALK; i++) {
+    const p = zonedParts(t, schedule.timeZone);
+    const close = zonedTimeToUtc(p.year, p.month, p.day, schedule.endHour, 0, schedule.timeZone);
+    const available = close.getTime() - t.getTime();
+    if (remaining <= available) return new Date(t.getTime() + remaining);
+    remaining -= available;
+    t = nextWindowOpening(close, calendar);
+  }
+  throw new Error("Working hours could not be added within a year; check the working schedule");
+}

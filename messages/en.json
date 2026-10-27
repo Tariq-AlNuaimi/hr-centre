@@ -2343,7 +2343,13 @@
       "providersTitle": "Network providers",
       "providersDescription": "The insurance network list Siraaj searches. Upload the insurer's spreadsheet.",
       "orgTitle": "Org chart details",
-      "orgDescription": "Leaders and order for the org chart Siraaj describes."
+      "orgDescription": "Leaders and order for the org chart Siraaj describes.",
+      "ticketSettingsSection": "Ticket settings",
+      "ticketSettingsNote": "How tickets are routed, answered and approved.",
+      "knowledgeSection": "Siraaj knowledge",
+      "knowledgeNote": "The reference data Siraaj answers employees from.",
+      "savedRepliesTitle": "Saved replies",
+      "savedRepliesDescription": "Answers HR reuse, shared or for one HR pair."
     },
     "emailTemplate": {
       "title": "Escalation email",
@@ -2484,7 +2490,60 @@
       "identityVerified": "Identity confirmed by Siraaj",
       "identityUnverified": "Identity not confirmed",
       "employeeRecord": "Open the employee record",
-      "noEmployeeRecord": "No employee record has this email"
+      "noEmployeeRecord": "No employee record has this email",
+      "viewLabel": "View",
+      "viewAll": "All tickets",
+      "viewMine": "Mine",
+      "viewUnassigned": "Unassigned",
+      "viewOverdue": "Overdue",
+      "due": "Answer by",
+      "unassigned": "Unassigned",
+      "raisedOn": "Raised {date}",
+      "ageing": {
+        "ok": "On time",
+        "soon": "Due soon",
+        "overdue": "Overdue"
+      },
+      "railLabel": "Ticket details",
+      "returnToggle": "Return to drafter…",
+      "more": "More",
+      "closeHint": "Closing ends the conversation and revokes the employee's reply link.",
+      "rail": {
+        "ownership": "Ownership",
+        "assignee": "Assigned to",
+        "nobody": "Nobody",
+        "assigned": "Ticket assigned",
+        "unassignedNow": "Ticket unassigned",
+        "assignFailed": "Couldn't assign the ticket. Try again.",
+        "answerBy": "Answer by",
+        "noClock": "No answer-by time (raised before tickets had one)",
+        "approvers": "Can approve",
+        "noApprovers": "Nobody can approve for this pair — assign an approver in Roles & access",
+        "employee": "Who is asking",
+        "contextFailed": "Couldn't load the employee's details.",
+        "noRecord": "No employee record matches this email.",
+        "name": "Name",
+        "placement": "Job and placement",
+        "manager": "Manager",
+        "grade": "Grade",
+        "tenure": "With the company",
+        "tenureValue": "{years, plural, =0 {} one {# year } other {# years }}{months, plural, one {# month} other {# months}}",
+        "openCase": "Open case",
+        "caseType": {
+          "JOIN": "Joining",
+          "MOVE": "Moving",
+          "LEAVE": "Leaving"
+        },
+        "recent": "Their recent questions",
+        "noRecent": "No earlier questions."
+      },
+      "insert": {
+        "button": "Insert",
+        "replies": "Saved replies",
+        "noReplies": "No saved replies yet",
+        "reference": "Reference (what Siraaj answers from)",
+        "noReference": "No reference data yet"
+      }
     },
     "roleLabel": {
       "Admin": "Admin",
@@ -2685,6 +2744,29 @@
       "recordEmpty": "No HR tickets for this person",
       "unverified": "Unverified",
       "unverifiedNote": "Some of these were raised without Siraaj confirming who was asking; the email was the assistant's word."
+    },
+    "savedReplies": {
+      "title": "Saved replies",
+      "subtitle": "Answers HR reuse when drafting. Inserting one never sends it: every answer is still submitted and approved.",
+      "newTitle": "New saved reply",
+      "editTitle": "Edit saved reply",
+      "replyTitle": "Title",
+      "pair": "HR pair",
+      "everyPair": "Every pair",
+      "body": "Reply",
+      "add": "Add reply",
+      "update": "Save changes",
+      "cancel": "Cancel",
+      "saved": "Saved reply saved",
+      "saveFailed": "Couldn't save the reply. Try again.",
+      "deleted": "Saved reply deleted",
+      "listTitle": "Saved replies",
+      "loadFailed": "Couldn't load saved replies.",
+      "empty": "No saved replies yet. Add the answers HR give most often.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleteTitle": "Delete this saved reply?",
+      "deleteBody": "Drafts that already used it keep their text."
     }
   },
   "jml": {

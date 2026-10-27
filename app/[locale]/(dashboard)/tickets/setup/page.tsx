@@ -1,9 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
-import { getHivePermissions, opensQueue } from "@/lib/hive/services/permissions";
+import { getHivePermissions } from "@/lib/hive/services/permissions";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { LinkCards } from "@/components/shared/LinkCards";
+import { SectionCard } from "@/components/shared/SectionCard";
 import { HiveRoleBadge } from "@/components/hive/HiveRoleBadge";
 
 /**
@@ -33,38 +34,40 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
 
   const permissions = session?.user?.id ? await getHivePermissions(session.user.id) : null;
 
-  const cards = [
-    // §5.4's queue. Gated on See tickets (ADR-073): spec V2 §8.8 shows every
-    // ticket to everyone who holds it, read-only for those who cannot act.
-    permissions &&
-      opensQueue(permissions) && {
-        href: `/${locale}/tickets`,
-        title: t("escalationsTitle"),
-        description: t("escalationsDescription"),
-      },
-    // Spec V2 §8.8 Settings: the ticket prefix, status names and (linked from
-    // there) the answer email. Gated on Edit content — since HIVE ADR-075 that is
-    // the wording HIVE still holds.
+  type Card = { href: string; title: string; description: string };
+  const only = (cards: Array<Card | false | undefined>) =>
+    cards.filter((c): c is Card => Boolean(c));
+  // UX P1 (tickets P1-5): two jobs, two owners. Ticket settings decide how
+  // tickets are routed and answered; Siraaj knowledge is the reference data the
+  // assistant answers from. The working screens (queue, reports) are not here —
+  // they are in the sidebar and in Insights.
+  const ticketSettings = only([
     permissions?.editContent && {
       href: `/${locale}/tickets/setup/settings`,
       title: t("settingsTitle"),
       description: t("settingsDescription"),
     },
-    // US-T7: counts only, gated on View reports.
-    permissions?.viewReports && {
-      href: `/${locale}/tickets/reports`,
-      title: t("reportsTitle"),
-      description: t("reportsDescription"),
+    permissions?.editContent && {
+      href: `/${locale}/tickets/setup/saved-replies`,
+      title: t("savedRepliesTitle"),
+      description: t("savedRepliesDescription"),
     },
-    // HR Centre (ADR-079): the reference data HIVE kept in its seed — the
-    // data Siraaj's tools answer from — gets screens, on `tickets.configure`.
-    ...(permissions?.configure
+    permissions?.configure && {
+      href: `/${locale}/tickets/setup/pairs`,
+      title: t("pairsTitle"),
+      description: t("pairsDescription"),
+    },
+    // Ticket access is given on the role builder, which only platform admins
+    // manage (operator decision, ADR-079).
+    session?.user?.role === "ADMIN" && {
+      href: `/${locale}/admin/roles`,
+      title: t("accessTitle"),
+      description: t("accessDescription"),
+    },
+  ]);
+  const knowledge = only(
+    permissions?.configure
       ? [
-          {
-            href: `/${locale}/tickets/setup/pairs`,
-            title: t("pairsTitle"),
-            description: t("pairsDescription"),
-          },
           {
             href: `/${locale}/tickets/setup/rotation`,
             title: t("rotationTitle"),
@@ -86,25 +89,28 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
             description: t("orgDescription"),
           },
         ]
-      : []),
-    // HR Centre: ticket access is given on the role builder, which only
-    // platform admins manage (operator decision, ADR-079) — HIVE's Permission
-    // Editor (a Manage accounts grant) is gone.
-    session?.user?.role === "ADMIN" && {
-      href: `/${locale}/admin/roles`,
-      title: t("accessTitle"),
-      description: t("accessDescription"),
-    },
-  ].filter((c): c is { href: string; title: string; description: string } => Boolean(c));
+      : [],
+  );
 
   return (
     <>
       <PageHeader title={t("title")} subtitle={t("intro")} actions={<HiveRoleBadge />} />
 
-      {cards.length === 0 ? (
+      {ticketSettings.length + knowledge.length === 0 ? (
         <EmptyState description={t("noAccess")} />
       ) : (
-        <LinkCards cards={cards} />
+        <div className="space-y-6">
+          {ticketSettings.length > 0 ? (
+            <SectionCard title={t("ticketSettingsSection")} subtitle={t("ticketSettingsNote")}>
+              <LinkCards cards={ticketSettings} />
+            </SectionCard>
+          ) : null}
+          {knowledge.length > 0 ? (
+            <SectionCard title={t("knowledgeSection")} subtitle={t("knowledgeNote")}>
+              <LinkCards cards={knowledge} />
+            </SectionCard>
+          ) : null}
+        </div>
       )}
     </>
   );

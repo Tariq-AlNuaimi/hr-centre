@@ -128,6 +128,7 @@
 - app/[locale]/(dashboard)/tickets/setup/(config)/rotation/page.tsx
 - app/[locale]/(dashboard)/tickets/setup/email-template/page.tsx
 - app/[locale]/(dashboard)/tickets/setup/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/saved-replies/page.tsx
 - app/[locale]/(dashboard)/tickets/setup/settings/page.tsx
 - app/[locale]/(dashboard)/users/[id]/page.tsx
 - app/[locale]/(dashboard)/users/new/page.tsx
@@ -249,7 +250,9 @@
 - app/api/hive/admin/rotation-config/route.ts  [GET,PUT]
 - app/api/hive/admin/ticket-settings/route.ts  [GET,PUT]
 - app/api/hive/escalations/[id]/approve/route.ts  [POST]
+- app/api/hive/escalations/[id]/assignee/route.ts  [GET,PUT]
 - app/api/hive/escalations/[id]/close/route.ts  [POST]
+- app/api/hive/escalations/[id]/context/route.ts  [GET]
 - app/api/hive/escalations/[id]/return/route.ts  [POST]
 - app/api/hive/escalations/[id]/route.ts  [GET,PATCH]
 - app/api/hive/escalations/[id]/submit/route.ts  [POST]
@@ -257,6 +260,8 @@
 - app/api/hive/me/permissions/route.ts  [GET]
 - app/api/hive/pairs/route.ts  [GET]
 - app/api/hive/reply/[token]/route.ts  [POST]
+- app/api/hive/saved-replies/[id]/route.ts  [PUT,DELETE]
+- app/api/hive/saved-replies/route.ts  [GET,POST]
 - app/api/imports/[id]/apply/route.ts  [POST]
 - app/api/imports/route.ts  [GET,POST]
 - app/api/imports/template/route.ts  [GET]
@@ -421,7 +426,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationsAssigned, hiveSavedReplies, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -470,11 +475,11 @@
 - PositionClassification: id, code, label, active, sortOrder, employees, createdAt, updatedAt
 - LeaveReasonCategory: id, level1, label, active, sortOrder, codes, createdAt, updatedAt
 - LeaveReasonCode: id, categoryId, category, code, label, active, sortOrder, primaryOf, secondaryOf, createdAt, updatedAt
-- Escalation: id, ticketNumber, hrPairId, employeeName, employeeEmail, employeeId, question, source, identityVerified, status, draftAnswer, draftedById, submittedById, submittedAt, approvedById, approvedAt, sentAt, threadKey, sendError, createdAt, updatedAt, hrPair, employee, draftedBy, submittedBy, approvedBy, messages, replyTokens, events
+- Escalation: id, ticketNumber, hrPairId, employeeName, employeeEmail, employeeId, question, source, identityVerified, status, draftAnswer, draftedById, submittedById, submittedAt, approvedById, approvedAt, sentAt, threadKey, sendError, createdAt, updatedAt, hrPair, employee, draftedBy, submittedBy, approvedBy, assigneeId, assignee, dueAt, firstResponseAt, messages, replyTokens, events
 - EscalationEvent: id, escalationId, kind, actorId, note, at, escalation, actor
 - EscalationMessage: id, escalationId, direction, body, at, escalation
 - EscalationReplyToken: id, tokenHash, escalationId, expiresAt, revokedAt, lastUsedAt, createdAt, escalation
-- HrTagPair: id, name, order, isDefault, deletedAt, deletedBy, createdAt, updatedAt, members, coverage, escalations
+- HrTagPair: id, name, order, isDefault, deletedAt, deletedBy, createdAt, updatedAt, members, coverage, escalations, savedReplies
 - HrTagMember: id, pairId, name, email, phone, photoKey, order, userId, deletedAt, deletedBy, createdAt, updatedAt, pair, user
 - HrTagCoverage: id, pairId, label, aliases, entityId, companyWide, directorateId, departmentId, deletedAt, deletedBy, createdAt, updatedAt, pair
 - RotationConfig: id, anchorDate, anchorType, timezone, weekendDays, createdAt, updatedAt
@@ -483,7 +488,8 @@
 - DiscountPartner: id, name, offerSummary, eligibility, validUntil, redemption, onlineOnly, url, order, deletedAt, deletedBy, createdAt, updatedAt
 - NetworkProvider: id, name, providerType, location, address, phone, deletedAt, deletedBy, createdAt, updatedAt
 - HiveEmailTemplate: id, key, subject, body, updatedById, deletedAt, deletedBy, createdAt, updatedAt, updatedBy
-- HiveTicketSettings: id, ticketPrefix, statusLabels
+- HiveSavedReply: id, title, body, hrPairId, hrPair, createdById, createdBy, createdAt, updatedAt
+- HiveTicketSettings: id, ticketPrefix, responseHours, statusLabels
 - HiveOrgUnitInfo: id, kind, unitId, leaderName, leaderTitle, order, createdAt, updatedAt
 - HiringSetting: id, key, value, updatedAt
 - HiringRequisition: id, title, entityId, departmentId, description, competencies, hiringManagerId, targetCloseDate, salaryBandMin, salaryBandMax, salaryCurrency, grade, status, openings, businessNeed, alternativesConsidered, hmSeesSalary, ownerId, departmentNeedId, departmentNeed, jdVersion, jdStatus, jdAuthorId, jdApprovedAt, jdTemplateTitle, candidates, interviews, roundPlans, offers, questions, statusHistory, approvals, postings, jdSignoffs, agencyInvites, deletedAt, deletedBy, createdAt, updatedAt
@@ -663,10 +669,15 @@
 - lib/hive/services/reference.ts: PROVIDER_PAGE, listReference, createReference, updateReference, removeReference
 - lib/hive/services/reply.ts: ReplyThread, loadReplyThread, ReplyOutcome, appendReply
 - lib/hive/services/reports.ts: TicketReport, bucketStarts, getTicketReport
+- lib/hive/services/saved-replies.ts: listSavedReplies, referenceSnippets, SavedReplyInput, createSavedReply, updateSavedReply, deleteSavedReply
 - lib/hive/services/setup.ts: saveRotationConfig, listOrgInfo, saveOrgInfo, MAX_PROVIDER_FILE_BYTES, importProviders
-- lib/hive/services/ticket-notify.ts: preview, composeNotification, notifyTicket
+- lib/hive/services/ticket-assign.ts: assignEscalation, pairPeople
+- lib/hive/services/ticket-context.ts: ticketContext
+- lib/hive/services/ticket-notify.ts: preview, pairHolders, composeNotification, notifyTicket
 - lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
+- lib/hive/services/ticket-sla.ts: answerDueAt
 - lib/hive/services/work-items.ts: ticketWorkProvider
+- lib/hive/ticket-clock.ts: OPEN_STATUSES, Ageing, ageing, QueueView, viewWhere
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
 - lib/hive/tools/discounts.ts: ELIGIBILITY_NOTE, runDiscounts
 - lib/hive/tools/escalate.ts: runEscalate
@@ -897,7 +908,7 @@
 - lib/validations/hiring/public.ts: PRIVACY_NOTICE_VERSION, applySchema, ApplyInput, agencySubmitSchema, AgencySubmitInput, inviteTokenSchema, agencyInviteCreateSchema, agencyInviteListQuerySchema, careersSettingsSchema
 - lib/validations/hiring/requisition.ts: createHiringRequestSchema, CreateHiringRequestInput, createRequisitionSchema, updateRequisitionSchema, UpdateRequisitionInput, statusChangeSchema, requisitionListQuerySchema, jdActionSchema, postingSchema, withdrawPostingSchema
 - lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
-- lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema
+- lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema, assigneeSchema, savedReplySchema, savedRepliesQuerySchema
 - lib/validations/hive/escalation.ts: ESCALATION_QUESTION_MAX, workEmailSchema, escalationCaptureSchema, EscalationCapture
 - lib/validations/hive/mcp.ts: mcpIdentitySchema
 - lib/validations/hive/reference.ts: memberSchema, coverageSchema, discountSchema, rotationConfigSchema, orgInfoSchema, referenceQuerySchema, REFERENCE_SCHEMAS, ReferenceResource, isReferenceResource
@@ -923,7 +934,7 @@
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
 - lib/valkey.ts: getValkey
-- lib/working-time/calendar.ts: IsoWeekday, WorkingSchedule, DEFAULT_SCHEDULE, WorkingCalendar, DEFAULT_CALENDAR, isoWeekday, utcDate, dayKey, weekendDays, isWorkingDay, addWorkingDays, addCalendarDaysRolled, OffsetUnit, offsetDate, workingDaysBetween, signedWorkingDays, zonedTimeToUtc, zonedToday, isWithinWindow, nextWindowOpening, isLocalHour
+- lib/working-time/calendar.ts: IsoWeekday, WorkingSchedule, DEFAULT_SCHEDULE, WorkingCalendar, DEFAULT_CALENDAR, isoWeekday, utcDate, dayKey, weekendDays, isWorkingDay, addWorkingDays, addCalendarDaysRolled, OffsetUnit, offsetDate, workingDaysBetween, signedWorkingDays, zonedTimeToUtc, zonedToday, isWithinWindow, nextWindowOpening, isLocalHour, addWorkingHours
 - lib/working-time/load.ts: loadSchedule, loadWorkingCalendar
 
 ## components/
@@ -1048,10 +1059,14 @@
 - components/hive/HiveRoleBadge.tsx
 - components/hive/TicketTaskPanels.tsx
 - components/hive/admin/ReferenceManager.tsx
+- components/hive/admin/SavedRepliesManager.tsx
+- components/hive/escalations/AgeingBadge.tsx
 - components/hive/escalations/EmployeeLink.tsx
+- components/hive/escalations/InsertMenu.tsx
 - components/hive/escalations/StatusPill.tsx
 - components/hive/escalations/TicketActions.tsx
 - components/hive/escalations/TicketHistory.tsx
+- components/hive/escalations/TicketRail.tsx
 - components/hive/reply/ReplyClient.tsx
 - components/hive/reply/ReplyInvalid.tsx
 - components/home/MyWork.tsx

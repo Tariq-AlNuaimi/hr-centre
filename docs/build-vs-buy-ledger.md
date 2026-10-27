@@ -960,3 +960,13 @@ statutory stage locks and calibration already live here; this is a read over the
 dashboard on the database** (rejected — the late/complete rule is the status engine's, and a
 second copy in SQL would drift). Decision: build — a bounded read over the status engine plus a
 reminder through the existing notification writer.
+
+### 2026-10-27 — UX review P1: HR ticket ownership, SLA clock and saved replies
+
+Scope: lib/hive/ticket-clock.ts, lib/hive/services/ticket-sla.ts, lib/hive/services/ticket-assign.ts, lib/hive/services/ticket-context.ts, lib/hive/services/saved-replies.ts
+Considered: **A service-desk product (Zendesk, Jira Service Management, ServiceNow HRSD)**
+(rejected — Siraaj is the front door and the four-eyes answer approval is ours; a desk would
+duplicate the queue and move employee questions to another processor). **An SLA library
+(business-hours npm packages such as `business-time`)** (rejected — the core working calendar
+(ADR-077) already models the week, hours, zone and holidays; one more function over it beats a
+second calendar). Decision: build.
