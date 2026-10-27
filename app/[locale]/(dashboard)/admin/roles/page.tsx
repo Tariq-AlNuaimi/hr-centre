@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { RolesSection } from "@/components/rbac/RolesSection";
 import { AssignmentsSection } from "@/components/rbac/AssignmentsSection";
+import { AccessPreview } from "@/components/rbac/AccessPreview";
 
 /**
  * Roles & access — blueprint §3 (F-c). PLATFORM ADMINS ONLY (`User.role =
@@ -22,6 +23,7 @@ export default async function RolesPage({ params }: { params: Promise<{ locale: 
       <PageHeader title={t("title")} subtitle={t("subtitle")} />
       <RolesSection />
       <AssignmentsSection />
+      <AccessPreview />
     </div>
   );
 }

@@ -592,7 +592,7 @@ export async function applyImport(params: { batchId: string; buffer: Buffer }): 
  *      exchange for nothing — nobody would ever be told it.
  *   2. **`VIEWER`, never `ADMIN`.** `User.role` governs PLATFORM administration
  *      (`withAdminAuth`: users, recycling bin, audit log); §4.1's HR authority
- *      lives on `Employee.pmsRoles` and comes from `/admin/roles`. Appearing in an
+ *      is a role assignment made at `/admin/roles`. Appearing in an
  *      HR spreadsheet must never mint a platform administrator, so the import is
  *      not a second, quieter way to become one.
  *   3. **No leaver.** §12.1 preserves a leaver's record and history, not their
@@ -878,7 +878,7 @@ export async function existingLoginEmails(
  *      exchange for nothing — nobody would ever be told it.
  *   2. **`VIEWER`, never `ADMIN`.** `User.role` governs PLATFORM administration
  *      (`withAdminAuth`: users, recycling bin, audit log); §4.1's HR authority
- *      lives on `Employee.pmsRoles` and comes from `/admin/roles`. Appearing in an
+ *      is a role assignment made at `/admin/roles`. Appearing in an
  *      HR spreadsheet must never mint a platform administrator, so the import is
  *      not a second, quieter way to become one.
  *   3. **No leaver.** §12.1 preserves a leaver's record and history, not their

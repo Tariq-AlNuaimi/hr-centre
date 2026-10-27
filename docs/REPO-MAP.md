@@ -380,6 +380,7 @@
 - app/api/publish/route.ts  [GET,POST]
 - app/api/rbac/assignments/[id]/route.ts  [DELETE]
 - app/api/rbac/assignments/route.ts  [GET,POST]
+- app/api/rbac/effective/route.ts  [GET]
 - app/api/rbac/roles/[id]/route.ts  [PATCH,DELETE]
 - app/api/rbac/roles/route.ts  [GET,POST]
 - app/api/recycling-bin/[entityType]/[id]/route.ts  [DELETE]
@@ -860,10 +861,11 @@
 - lib/query-error-notifier.ts: registerQueryErrorNotifier, notifyQueryError
 - lib/rate-limit.ts: RateLimitOptions, RateLimitResult, rateLimit
 - lib/rbac/catalogue.ts: MODULES, ModuleKey, PERMISSIONS, Permission, PERMISSION_CODES, isPermission, SCOPED_PERMISSIONS, StarterKey, FOUNDATION_STARTER_KEYS, STARTER_ROLES
+- lib/rbac/diff.ts: permissionDiff, newPermissions
 - lib/rbac/grants.ts: ScopeRef, ScopeSubject, registerScopeResolver, scopeCovers, Grants, NO_GRANTS, expandGrants, has, hasGroup, canInScope, partialScopes, starterGrants, MAX_COVER_DAYS, isAssignmentActive, validityProblem
 - lib/rbac/guards.ts: AccessChange, assertHrAccessAdminRemains, assertPlatformAdminRemains
 - lib/rbac/resolve.ts: loadGrants, roleNamesFor, scopeMemberIds, placementOf, usersHoldingPermission, subjectForPlacement
-- lib/rbac/service.ts: listRoles, createRole, updateRole, deleteRole, listAssignments, createAssignment, removeAssignment
+- lib/rbac/service.ts: listRoles, createRole, updateRole, deleteRole, listAssignments, createAssignment, removeAssignment, effectiveAccess
 - lib/sentry.ts: _setSentryForTesting, scrubContext, captureError, setUserContext
 - lib/sso/role-map.ts: mapSsoRole
 - lib/statutory/parameters.ts: STATUTORY_KEYS, StatutoryKey, isStatutoryKey, isOpenStart, StatutoryRow, Resolved, StatutoryParameterMissingError, resolve, unverifiedAmong
@@ -908,7 +910,7 @@
 - lib/validations/org.ts: renameCompanySchema, createDirectorateSchema, updateDirectorateSchema, createOrgDepartmentSchema, updateOrgDepartmentSchema, createTeamSchema, updateTeamSchema, teamListQuerySchema, CreateDirectorateInput, CreateOrgDepartmentInput, UpdateOrgDepartmentInput, CreateTeamInput, UpdateTeamInput
 - lib/validations/people.ts: CONTRACT_TYPES, GENDERS, employeeRecordSchema, addEmployeeSchema, EmployeeRecordBody, AddEmployeeBody, recordFromBody
 - lib/validations/rating.ts: ratingLevelSchema, upsertRatingSchema, yearEndSignOffSchema, UpsertRatingInput
-- lib/validations/rbac.ts: roleBodySchema, ORG_SCOPE_TYPES, SCOPE_TYPES, ScopeTypeCode, UNITLESS_SCOPES, assignmentBodySchema, RoleBody, AssignmentBody
+- lib/validations/rbac.ts: roleBodySchema, ORG_SCOPE_TYPES, SCOPE_TYPES, ScopeTypeCode, UNITLESS_SCOPES, assignmentBodySchema, RoleBody, AssignmentBody, assignmentFilterSchema, effectiveAccessQuerySchema
 - lib/validations/strategy-score.ts: strategyScoreValue, upsertEntityScoreSchema, upsertDepartmentScoreSchema
 - lib/validations/three-sixty.ts: createThreeSixtyCycleSchema, amendThreeSixtyWindowSchema, setAssignmentsSchema, submitResponsesSchema, activateSchema, setThreeSixtyStatusSchema, replaceRaterSchema, discardAssignmentSchema, upsertProjectSchema
 - lib/validations/user.ts: roleForPlatformAdmin, isPlatformAdminRole, createUserSchema, updateUserSchema, CreateUserInput, UpdateUserInput
@@ -1195,9 +1197,12 @@
 - components/pms/TransferRecorder.tsx
 - components/pms/YearEndAssessment.tsx
 - components/providers/QueryProvider.tsx
+- components/rbac/AccessPreview.tsx
 - components/rbac/AssignmentForm.tsx
 - components/rbac/AssignmentsSection.tsx
 - components/rbac/RoleDialog.tsx
+- components/rbac/RoleHolders.tsx
+- components/rbac/RoleMatrix.tsx
 - components/rbac/RolesSection.tsx
 - components/rbac/UserSearch.tsx
 - components/shared/AuthCard.tsx

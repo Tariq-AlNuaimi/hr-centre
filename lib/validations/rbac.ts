@@ -60,3 +60,10 @@ export const assignmentBodySchema = z
 
 export type RoleBody = z.infer<typeof roleBodySchema>;
 export type AssignmentBody = z.infer<typeof assignmentBodySchema>;
+
+/** UX P1 R12 — list filters for assignments and the effective-access preview. */
+export const assignmentFilterSchema = z.object({
+  roleId: z.string().trim().min(1).max(64).optional(),
+  userId: z.string().trim().min(1).max(64).optional(),
+});
+export const effectiveAccessQuerySchema = z.object({ userId: z.string().trim().min(1).max(64) });

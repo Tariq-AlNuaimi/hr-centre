@@ -125,16 +125,25 @@ async function scopeLabels(rows: Array<{ scopeType: string; scopeId: string | nu
   return labels;
 }
 
-export async function listAssignments(page: { skip: number; take: number }) {
+export async function listAssignments(
+  page: { skip: number; take: number },
+  filter: { roleId?: string; userId?: string } = {},
+) {
   const now = new Date();
+  // UX P1 R12 — a role's "Assigned to" list and one person's assignments.
+  const where = {
+    ...(filter.roleId ? { roleId: filter.roleId } : {}),
+    ...(filter.userId ? { userId: filter.userId } : {}),
+  };
   const [rows, total] = await Promise.all([
     prisma.roleAssignment.findMany({
+      where,
       orderBy: [{ user: { email: "asc" } }, { createdAt: "asc" }],
       skip: page.skip,
       take: page.take,
       select: ASSIGNMENT_SELECT,
     }),
-    prisma.roleAssignment.count(),
+    prisma.roleAssignment.count({ where }),
   ]);
   const labels = await scopeLabels(rows);
   return {
@@ -193,4 +202,59 @@ export async function removeAssignment(id: string) {
   if (!existing) throw new OrgRuleError("That assignment does not exist", 404);
   await assertHrAccessAdminRemains({ removedAssignmentId: id });
   await prisma.roleAssignment.delete({ where: { id } });
+}
+
+// --- Effective access (UX P1 R12 "view access as…") ---------------------------
+
+/**
+ * What one person can do right now, and where: each permission with the scopes
+ * it is held at (labelled), plus the active assignments that produce it. Read
+ * from the same active-window rule `loadGrants` enforces, so the preview never
+ * disagrees with the check. Platform-admin screens only.
+ */
+export async function effectiveAccess(userId: string) {
+  const now = new Date();
+  const rows = await prisma.roleAssignment.findMany({
+    where: {
+      userId,
+      role: { deletedAt: null },
+      AND: [
+        { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+        { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+      ],
+    },
+    select: {
+      id: true,
+      scopeType: true,
+      scopeId: true,
+      validUntil: true,
+      role: { select: { id: true, name: true, permissions: true } },
+    },
+    take: 200,
+  });
+  const labels = await scopeLabels(rows);
+  const scopeOf = (r: (typeof rows)[number]) => ({
+    type: r.scopeType,
+    label: r.scopeId ? (labels.get(r.scopeId) ?? null) : null,
+  });
+  const byPermission = new Map<string, Array<{ type: string; label: string | null }>>();
+  for (const r of rows) {
+    for (const code of r.role.permissions) {
+      const list = byPermission.get(code) ?? [];
+      const scope = scopeOf(r);
+      if (!list.some((s) => s.type === scope.type && s.label === scope.label)) list.push(scope);
+      byPermission.set(code, list);
+    }
+  }
+  return {
+    assignments: rows.map((r) => ({
+      id: r.id,
+      role: { id: r.role.id, name: r.role.name },
+      scope: scopeOf(r),
+      validUntil: r.validUntil,
+    })),
+    permissions: [...byPermission.entries()]
+      .map(([code, scopes]) => ({ code, scopes }))
+      .sort((a, b) => a.code.localeCompare(b.code)),
+  };
 }

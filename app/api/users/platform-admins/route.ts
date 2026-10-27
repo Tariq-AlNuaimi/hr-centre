@@ -25,8 +25,8 @@ import { canSeePlatformAdminRoster } from "@/lib/pms/permissions";
  *
  * A platform admin can already read the whole account directory. The audience
  * that NEEDS this is the HR Super Admin who cannot — so gating on ADMIN alone
- * would close exactly nothing. `isHrSuperAdmin` comes from `Employee.pmsRoles`
- * (ADR-065), so this is the same union the `/admin/access` page renders on, and
+ * would close exactly nothing. `isHrSuperAdmin` comes from the caller's role
+ * assignments (lib/rbac, ADR-065), so this is the same union the `/admin/access` page renders on, and
  * the page's affordance and this control answer the same question.
  *
  * Ordinary employees, line managers, HRBPs and executive viewers all get 403.

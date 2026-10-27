@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { MODULES, PERMISSIONS } from "@/lib/rbac/catalogue";
+import { permissionDiff } from "@/lib/rbac/diff";
 import type { RoleRow } from "./types";
 
 /**
@@ -39,6 +40,16 @@ export function RoleDialog({
   const [name, setName] = useState(role?.name ?? "");
   const [description, setDescription] = useState(role?.description ?? "");
   const [ticked, setTicked] = useState<Set<string>>(new Set(role?.permissions ?? []));
+
+  // UX P1 R12c — before saving, show what every holder gains and loses.
+  const holders = role?._count.assignments ?? 0;
+  const diff = role
+    ? permissionDiff(
+        role.permissions,
+        PERMISSIONS.map((p) => p.code).filter((c) => ticked.has(c)),
+      )
+    : { gained: [], lost: [] };
+  const changed = diff.gained.length + diff.lost.length > 0;
 
   function toggle(code: string) {
     setTicked((current) => {
@@ -108,6 +119,26 @@ export function RoleDialog({
           ))}
           <p className="text-xs text-muted-foreground">{t("scopeNote")}</p>
         </form>
+        {role && changed ? (
+          <div
+            aria-live="polite"
+            className="rounded-md border border-border bg-muted/50 p-3 text-sm"
+          >
+            <p className="m-0 font-medium text-foreground">
+              {t("changePreview", { count: holders })}
+            </p>
+            {diff.gained.length > 0 ? (
+              <p className="m-0 mt-1 text-foreground">
+                {t("gains")}: {diff.gained.map((c) => t(`permission.${c}`)).join(", ")}
+              </p>
+            ) : null}
+            {diff.lost.length > 0 ? (
+              <p className="m-0 mt-1 text-destructive-emphasis">
+                {t("loses")}: {diff.lost.map((c) => t(`permission.${c}`)).join(", ")}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {error ? (
           <p role="alert" className="text-sm text-destructive-emphasis">
             {error}

@@ -10,6 +10,8 @@ import { useNotify } from "@/hooks/use-notify";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { SCOPE_TYPES, UNITLESS_SCOPES, type ScopeTypeCode } from "@/lib/validations/rbac";
 import { UserSearch } from "./UserSearch";
+import { newPermissions } from "@/lib/rbac/diff";
+import type { EffectiveAccess } from "./types";
 import type { RoleRow } from "./types";
 
 type Unit = { id: string; name: string; entity?: { code: string } };
@@ -40,6 +42,25 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
     },
     enabled: !UNITLESS_SCOPES.has(scopeType),
   });
+
+  // UX P1 R12c — what this assignment adds for this person (actions they do
+  // not already hold anywhere). Scope still narrows where they apply.
+  const effective = useQuery({
+    queryKey: ["rbac", "effective", account?.id],
+    queryFn: () =>
+      apiClient.get<EffectiveAccess>(
+        `/api/rbac/effective?userId=${encodeURIComponent(account?.id ?? "")}`,
+      ),
+    enabled: Boolean(account?.id),
+  });
+  const chosenRole = roles.find((r) => r.id === roleId);
+  const gains =
+    chosenRole && effective.data
+      ? newPermissions(
+          effective.data.permissions.map((p) => p.code),
+          chosenRole.permissions,
+        )
+      : null;
 
   async function submit() {
     setBusy(true);
@@ -151,6 +172,13 @@ export function AssignmentForm({ roles }: { roles: RoleRow[] }) {
           <Input id="assign-note" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>
+      {gains !== null ? (
+        <p aria-live="polite" className="rounded-md bg-muted/50 p-3 text-sm text-foreground">
+          {gains.length === 0
+            ? t("gainsNothing")
+            : `${t("gains")}: ${gains.map((c) => t(`permission.${c}`)).join(", ")}`}
+        </p>
+      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-destructive-emphasis">
           {error}

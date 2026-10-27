@@ -936,3 +936,10 @@ Considered: **A field-history product / event store (HiBob-style history tables,
 a second history store would drift). **Rendering `audit_logs` values** (rejected — values include
 Restricted fields; names-only history needs no extra permission model). Decision: build — a
 bounded names-only read over `audit_logs`, and a pure placeholder-ID predicate.
+
+### 2026-10-27 — UX review P1: role change preview
+
+Scope: lib/rbac/diff.ts
+Considered: **An authorization service with policy simulation (Oso, Permit.io, OpenFGA)**
+(rejected — our roles are flat permission lists with a scope; a simulator for a set difference is
+a new processor and a second source of truth). Decision: build — two pure set functions.
