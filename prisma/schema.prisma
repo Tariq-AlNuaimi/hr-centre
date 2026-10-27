@@ -88,24 +88,30 @@ model User {
   hiveSettingsUpdated      HiveTicketSettings[] @relation("HiveTicketSettingsUpdatedBy")
 
   // JML S2 — the case engine (docs/blueprints/jml.md).
-  jmlCasesOwned           JmlCase[]                  @relation("JmlCaseOwner")
-  jmlCasesSupervised      JmlCase[]                  @relation("JmlCaseSenior")
-  jmlCasesUpdated         JmlCase[]                  @relation("JmlCaseLastUpdatedBy")
-  jmlCasesHeld            JmlCase[]                  @relation("JmlCaseLegalHold")
-  jmlCasesArchived        JmlCase[]                  @relation("JmlCaseArchivedBy")
-  jmlTasksOwned           JmlTask[]                  @relation("JmlTaskOwner")
-  jmlTasksCompleted       JmlTask[]                  @relation("JmlTaskCompletedBy")
-  jmlTaskComments         JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
-  jmlRulesAsOwner         JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
-  jmlRulesAsSenior        JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
-  jmlEmailsSent           JmlEmailLog[]              @relation("JmlEmailSentBy")
-  jmlEmailTemplateEdits   JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
-  jmlItReadinessConfirmed JmlJoinDetail[]            @relation("JmlItReadinessBy")
-  jmlApprovalsDecided     JmlApproval[]              @relation("JmlApprovalDecidedBy")
-  jmlAssetsVerified       JmlAsset[]                 @relation("JmlAssetVerifiedBy")
-  jmlAccessConfirmed      JmlAccessItem[]            @relation("JmlAccessConfirmedBy")
-  leaveGatesSatisfied     LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
-  leaveGatesOverridden    LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
+  jmlCasesOwned            JmlCase[]                  @relation("JmlCaseOwner")
+  jmlCasesSupervised       JmlCase[]                  @relation("JmlCaseSenior")
+  jmlCasesUpdated          JmlCase[]                  @relation("JmlCaseLastUpdatedBy")
+  jmlCasesHeld             JmlCase[]                  @relation("JmlCaseLegalHold")
+  jmlCasesArchived         JmlCase[]                  @relation("JmlCaseArchivedBy")
+  jmlTasksOwned            JmlTask[]                  @relation("JmlTaskOwner")
+  jmlTasksCompleted        JmlTask[]                  @relation("JmlTaskCompletedBy")
+  jmlTaskComments          JmlTaskComment[]           @relation("JmlTaskCommentAuthor")
+  jmlRulesAsOwner          JmlHrAssignmentRule[]      @relation("JmlRuleOwner")
+  jmlRulesAsSenior         JmlHrAssignmentRule[]      @relation("JmlRuleSenior")
+  jmlEmailsSent            JmlEmailLog[]              @relation("JmlEmailSentBy")
+  jmlEmailTemplateEdits    JmlEmailTemplateOverride[] @relation("JmlEmailTemplateEditor")
+  jmlItReadinessConfirmed  JmlJoinDetail[]            @relation("JmlItReadinessBy")
+  jmlApprovalsDecided      JmlApproval[]              @relation("JmlApprovalDecidedBy")
+  jmlAssetsVerified        JmlAsset[]                 @relation("JmlAssetVerifiedBy")
+  jmlAccessConfirmed       JmlAccessItem[]            @relation("JmlAccessConfirmedBy")
+  leaveInterviewsHeld      LeaveExitInterview[]       @relation("LeaveInterviewer")
+  leaveInterviewsAssessed  LeaveExitInterview[]       @relation("LeaveAssessor")
+  leaveSettlementsCalc     LeaveSettlement[]          @relation("LeaveSettlementCalculatedBy")
+  leaveSettlementsApproved LeaveSettlement[]          @relation("LeaveSettlementApprovedBy")
+  leaveSettlementsPaid     LeaveSettlement[]          @relation("LeaveSettlementPaymentBy")
+  leaveLinesAuthorised     LeaveSettlementLine[]      @relation("LeaveLineAuthorisedBy")
+  leaveGatesSatisfied      LeaveGateRecord[]          @relation("LeaveGateSatisfiedBy")
+  leaveGatesOverridden     LeaveGateRecord[]          @relation("LeaveGateOverriddenBy")
 
   // The soft-delete extension filters `deletedAt: null` on every list/count and
   // the default list sorts by createdAt desc -- a composite (deletedAt, createdAt)
@@ -2065,15 +2071,17 @@ model LeaveReasonCategory {
 /// Exit reason taxonomy, Level 2 (35 seeded codes, e.g. VAA-01). Codes are never
 /// reused or deleted — deactivated instead.
 model LeaveReasonCode {
-  id         String              @id @default(cuid())
-  categoryId String              @map("category_id")
-  category   LeaveReasonCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  code       String              @unique
-  label      String
-  active     Boolean             @default(true)
-  sortOrder  Int                 @default(0) @map("sort_order")
-  createdAt  DateTime            @default(now()) @map("created_at")
-  updatedAt  DateTime            @updatedAt @map("updated_at")
+  id          String               @id @default(cuid())
+  categoryId  String               @map("category_id")
+  category    LeaveReasonCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  code        String               @unique
+  label       String
+  active      Boolean              @default(true)
+  sortOrder   Int                  @default(0) @map("sort_order")
+  primaryOf   LeaveExitInterview[] @relation("LeavePrimaryReason")
+  secondaryOf LeaveExitInterview[] @relation("LeaveSecondaryReason")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
 
   @@index([categoryId, active])
   @@map("leave_reason_codes")
@@ -3604,6 +3612,8 @@ model JmlCase {
   moveDetail     JmlMoveDetail?
   /// JML S5 — the leaver side.
   leaveDetail    LeaveCaseDetail?
+  interview      LeaveExitInterview?
+  settlement     LeaveSettlement?
   approvals      JmlApproval[]
   assetsIssued   JmlAsset[]                @relation("JmlAssetIssuedOn")
   assetsReturned JmlAsset[]                @relation("JmlAssetReturnedOn")
@@ -4118,31 +4128,32 @@ model JmlAssetType {
 /// One register (D6): a physical item issued to an employee (often on a JOIN case)
 /// and returned on a LEAVE case.
 model JmlAsset {
-  id                  String       @id @default(cuid())
-  employeeId          String       @map("employee_id")
-  employee            Employee     @relation("JmlAssetHolder", fields: [employeeId], references: [id], onDelete: Restrict)
-  issuedOnCaseId      String?      @map("issued_on_case_id")
-  issuedOnCase        JmlCase?     @relation("JmlAssetIssuedOn", fields: [issuedOnCaseId], references: [id], onDelete: SetNull)
-  returnedOnCaseId    String?      @map("returned_on_case_id")
-  returnedOnCase      JmlCase?     @relation("JmlAssetReturnedOn", fields: [returnedOnCaseId], references: [id], onDelete: SetNull)
-  assetTypeId         String       @map("asset_type_id")
-  assetType           JmlAssetType @relation(fields: [assetTypeId], references: [id], onDelete: Restrict)
+  id                  String                @id @default(cuid())
+  employeeId          String                @map("employee_id")
+  employee            Employee              @relation("JmlAssetHolder", fields: [employeeId], references: [id], onDelete: Restrict)
+  issuedOnCaseId      String?               @map("issued_on_case_id")
+  issuedOnCase        JmlCase?              @relation("JmlAssetIssuedOn", fields: [issuedOnCaseId], references: [id], onDelete: SetNull)
+  returnedOnCaseId    String?               @map("returned_on_case_id")
+  returnedOnCase      JmlCase?              @relation("JmlAssetReturnedOn", fields: [returnedOnCaseId], references: [id], onDelete: SetNull)
+  assetTypeId         String                @map("asset_type_id")
+  assetType           JmlAssetType          @relation(fields: [assetTypeId], references: [id], onDelete: Restrict)
   description         String?
   identifier          String?
-  issuedDate          DateTime?    @map("issued_date") @db.Date
-  conditionAtIssue    String?      @map("condition_at_issue")
-  returnDueDate       DateTime?    @map("return_due_date") @db.Date
-  returnedDate        DateTime?    @map("returned_date") @db.Date
-  conditionAtReturn   String?      @map("condition_at_return")
-  deductionApplicable Boolean      @default(false) @map("deduction_applicable")
+  issuedDate          DateTime?             @map("issued_date") @db.Date
+  conditionAtIssue    String?               @map("condition_at_issue")
+  returnDueDate       DateTime?             @map("return_due_date") @db.Date
+  returnedDate        DateTime?             @map("returned_date") @db.Date
+  conditionAtReturn   String?               @map("condition_at_return")
+  deductionApplicable Boolean               @default(false) @map("deduction_applicable")
   /// RESTRICTED money (D14): AES-GCM envelope, bound to the asset id.
-  deductionAmountEnc  String?      @map("deduction_amount_enc")
-  writtenOff          Boolean      @default(false) @map("written_off")
-  writtenOffReason    String?      @map("written_off_reason")
-  verifiedById        String?      @map("verified_by_id")
-  verifiedBy          User?        @relation("JmlAssetVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
+  deductionAmountEnc  String?               @map("deduction_amount_enc")
+  writtenOff          Boolean               @default(false) @map("written_off")
+  writtenOffReason    String?               @map("written_off_reason")
+  verifiedById        String?               @map("verified_by_id")
+  verifiedBy          User?                 @relation("JmlAssetVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  settlementLines     LeaveSettlementLine[]
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
   @@index([employeeId, returnedDate])
   @@index([returnedOnCaseId])
@@ -4233,4 +4244,157 @@ model LeaveComplianceIncident {
   @@unique([caseId, kind, deadlineAt])
   @@index([kind, resolvedAt])
   @@map("leave_compliance_incidents")
+}
+
+// ====================================================================
+// JML S6 — leavers part 2: exit interview, final settlement (HR Offboarding
+// §12.3–12.4, §16.1). Every money figure and the interview narrative are
+// RESTRICTED (D14): sealed AES-GCM envelopes (`*Enc`), scrubbed from audit,
+// never exported, redacted by neon-sql.
+// ====================================================================
+
+enum LeaveInterviewConducted {
+  CONDUCTED
+  DECLINED
+}
+
+enum LeaveDestinationType {
+  COMPETITOR
+  SAME_SECTOR
+  OTHER_SECTOR
+  PUBLIC_SECTOR
+  OVERSEAS
+  STUDY
+  NOT_DISCLOSED
+}
+
+enum LeaveRegrettable {
+  REGRETTABLE
+  NON_REGRETTABLE
+  NEUTRAL
+}
+
+enum LeavePreventable {
+  PREVENTABLE
+  NOT_PREVENTABLE
+  UNCLEAR
+}
+
+/// §12.4 prevention factor (Offboarding derived these from the dissatisfaction codes).
+enum LeavePreventionFactor {
+  COMPENSATION
+  CAREER_PROGRESSION
+  MANAGER_RELATIONSHIP
+  WORKLOAD_OR_BURNOUT
+  RECOGNITION
+  ROLE_CONTENT
+  LEARNING_AND_DEVELOPMENT
+  WORK_LIFE_BALANCE
+  ORGANISATIONAL_DIRECTION
+  OTHER
+}
+
+enum LeaveSettlementLineType {
+  ADDITION
+  DEDUCTION
+}
+
+/// §16.1 deduction types (closed list; each needs a documentary reference).
+enum LeaveDeductionType {
+  VISA_COST_RECOVERY
+  MEDICAL_INSURANCE
+  NEGATIVE_LEAVE_BALANCE
+  NOTICE_SHORTFALL
+  UNRETURNED_OR_DAMAGED_ASSET
+  OUTSTANDING_ADVANCE_OR_LOAN
+}
+
+/// One exit interview per case (§12.3–12.4). Reason codes are FKs to the
+/// configured taxonomy (F9: the database is the truth).
+model LeaveExitInterview {
+  caseId             String                  @id @map("case_id")
+  case               JmlCase                 @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  conducted          LeaveInterviewConducted
+  primaryL1          LeaveReasonLevel1       @map("primary_l1")
+  primaryL2Code      String                  @map("primary_l2_code")
+  primaryCode        LeaveReasonCode         @relation("LeavePrimaryReason", fields: [primaryL2Code], references: [code], onDelete: Restrict)
+  secondaryL2Code    String?                 @map("secondary_l2_code")
+  secondaryCode      LeaveReasonCode?        @relation("LeaveSecondaryReason", fields: [secondaryL2Code], references: [code], onDelete: Restrict)
+  /// RESTRICTED (AC-9.3): sealed, never reported or exported.
+  narrativeEnc       String?                 @map("narrative_enc")
+  destinationType    LeaveDestinationType?   @map("destination_type")
+  retentionAttempted Boolean?                @map("retention_attempted")
+  counterOfferMade   Boolean?                @map("counter_offer_made")
+  recommendScore     Int                     @map("recommend_score")
+  returnScore        Int                     @map("return_score")
+  interviewedAt      DateTime?               @map("interviewed_at") @db.Date
+  interviewerId      String?                 @map("interviewer_id")
+  interviewer        User?                   @relation("LeaveInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  regrettable        LeaveRegrettable?
+  preventable        LeavePreventable?
+  preventionFactor   LeavePreventionFactor?  @map("prevention_factor")
+  assessorId         String?                 @map("assessor_id")
+  assessor           User?                   @relation("LeaveAssessor", fields: [assessorId], references: [id], onDelete: SetNull)
+  assessedAt         DateTime?               @map("assessed_at")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+
+  @@index([primaryL1, primaryL2Code])
+  @@index([regrettable, preventable])
+  @@map("leave_exit_interviews")
+}
+
+/// The final settlement (§16.1). Figures live in ONE sealed JSON envelope
+/// (gratuity pre/post split, leave encashment, outstanding salary, gross,
+/// net, basic wage, leave balance) bound to the case id.
+model LeaveSettlement {
+  caseId                String                @id @map("case_id")
+  case                  JmlCase               @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  /// RESTRICTED money (D14).
+  figuresEnc            String?               @map("figures_enc")
+  provisional           Boolean               @default(true)
+  unverifiedKeys        String[]              @default([]) @map("unverified_keys")
+  hireDate              DateTime?             @map("hire_date") @db.Date
+  calculatedAt          DateTime?             @map("calculated_at")
+  calculatedById        String?               @map("calculated_by_id")
+  calculatedBy          User?                 @relation("LeaveSettlementCalculatedBy", fields: [calculatedById], references: [id], onDelete: SetNull)
+  /// Set by a line edit; cleared by a recalculation (the net is stale until then).
+  recalculationRequired Boolean               @default(false) @map("recalculation_required")
+  signatureReference    String?               @map("signature_reference")
+  approvedAt            DateTime?             @map("approved_at")
+  approvedById          String?               @map("approved_by_id")
+  approvedBy            User?                 @relation("LeaveSettlementApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  paymentDate           DateTime?             @map("payment_date") @db.Date
+  paymentReference      String?               @map("payment_reference")
+  paymentConfirmedAt    DateTime?             @map("payment_confirmed_at")
+  paymentConfirmedById  String?               @map("payment_confirmed_by_id")
+  paymentConfirmedBy    User?                 @relation("LeaveSettlementPaymentBy", fields: [paymentConfirmedById], references: [id], onDelete: SetNull)
+  lines                 LeaveSettlementLine[]
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  @@index([provisional, approvedAt])
+  @@map("leave_settlements")
+}
+
+model LeaveSettlementLine {
+  id                   String                  @id @default(cuid())
+  caseId               String                  @map("case_id")
+  settlement           LeaveSettlement         @relation(fields: [caseId], references: [caseId], onDelete: Cascade)
+  lineType             LeaveSettlementLineType @map("line_type")
+  deductionType        LeaveDeductionType?     @map("deduction_type")
+  description          String
+  /// RESTRICTED money (D14).
+  lineAmountEnc        String                  @map("line_amount_enc")
+  reasonCode           String                  @map("reason_code")
+  documentaryReference String                  @map("documentary_reference")
+  authorisedById       String?                 @map("authorised_by_id")
+  authorisedBy         User?                   @relation("LeaveLineAuthorisedBy", fields: [authorisedById], references: [id], onDelete: SetNull)
+  assetId              String?                 @map("asset_id")
+  asset                JmlAsset?               @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+
+  @@index([caseId, lineType])
+  @@map("leave_settlement_lines")
 }

@@ -12,6 +12,7 @@ import { Field } from "../Field";
 import { useJmlAction, useJmlLookups } from "../use-jml";
 import { LIVE, type CaseDetail } from "./types";
 import { WithdrawExit } from "../leavers/WithdrawExit";
+import { CloseExit } from "../leavers/CloseExit";
 
 /**
  * Every case-level action the sources had — including those that were API-only
@@ -262,6 +263,18 @@ function JoinActions({ detail }: { detail: CaseDetail }) {
   );
 }
 
+function LeaveActions({ detail, live }: { detail: CaseDetail; live: boolean }) {
+  if (detail.caseType !== "LEAVE") return null;
+  return (
+    <>
+      {detail.can.manage && (live || detail.status === "DRAFT") ? (
+        <WithdrawExit caseId={detail.id} version={detail.version} />
+      ) : null}
+      {detail.can.close && live ? <CloseExit caseId={detail.id} version={detail.version} /> : null}
+    </>
+  );
+}
+
 export function CaseActions({ detail }: { detail: CaseDetail }) {
   const t = useTranslations("jml.case.actions");
   const live = LIVE.has(detail.status);
@@ -298,9 +311,7 @@ export function CaseActions({ detail }: { detail: CaseDetail }) {
           destructive
         />
       ) : null}
-      {detail.can.manage && detail.caseType === "LEAVE" && (live || detail.status === "DRAFT") ? (
-        <WithdrawExit caseId={detail.id} version={detail.version} />
-      ) : null}
+      <LeaveActions detail={detail} live={live} />
       {s && !live && detail.status !== "ARCHIVED" && detail.status !== "DRAFT" ? (
         <TextAction
           caseId={detail.id}

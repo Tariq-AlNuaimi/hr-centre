@@ -118,6 +118,7 @@ const DETAIL_SELECT = {
       itIntakeError: true,
     },
   },
+  leaveDetail: { select: { exitType: true } },
   moveDetail: {
     select: {
       changeType: true,
@@ -151,8 +152,10 @@ export async function getCaseDetail(actor: JmlActor, caseId: string) {
   const row = await prisma.jmlCase.findUnique({ where: { id: caseId }, select: DETAIL_SELECT });
   if (!row) return null;
   const s = kase.subject;
+  const { leaveDetail, ...rest } = row;
   return {
-    ...row,
+    ...rest,
+    exitType: leaveDetail?.exitType ?? null,
     employee: {
       ...row.employee,
       odooId: isProvisionalOdooId(row.employee.odooId) ? null : row.employee.odooId,
@@ -162,6 +165,7 @@ export async function getCaseDetail(actor: JmlActor, caseId: string) {
     taskStatuses: TASK_STATUSES[row.caseType].filter((x) => x !== "CANCELLED"),
     can: {
       manage: canFor(actor, MANAGE_PERMISSION[row.caseType], s),
+      close: row.caseType === "LEAVE" && canFor(actor, "jml.closeLeavers", s),
       workTasks: canFor(actor, "jml.workTasks", s),
       reopenTasks: canFor(actor, "jml.reopenTasks", s),
       supervise: canFor(actor, "jml.supervise", s),

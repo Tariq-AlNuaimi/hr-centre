@@ -3,6 +3,7 @@ export type CaseDetail = {
   id: string;
   caseRef: string;
   caseType: "JOIN" | "MOVE" | "LEAVE";
+  exitType: string | null;
   status: string;
   stage: string;
   completionPct: number;
@@ -54,7 +55,13 @@ export type CaseDetail = {
   };
   externalLinks: Array<{ key: "odoo" | "staffing-form"; url: string | null }>;
   taskStatuses: string[];
-  can: { manage: boolean; workTasks: boolean; reopenTasks: boolean; supervise: boolean };
+  can: {
+    manage: boolean;
+    workTasks: boolean;
+    reopenTasks: boolean;
+    supervise: boolean;
+    close: boolean;
+  };
 };
 
 export type TaskDto = {

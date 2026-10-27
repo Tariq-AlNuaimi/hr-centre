@@ -12,7 +12,10 @@ import { subjectOf } from "../access";
 import { notifyJml, type JmlNotice } from "../engine/notify";
 import { SETTLED_TASK_STATUSES } from "../vocab";
 import { needsReminder } from "./approval-rules";
-import { detectIncidents, INCIDENT_KINDS } from "./compliance";
+import { resolve } from "@/lib/statutory/parameters";
+import { detectIncidents, INCIDENT_KINDS, type DetectedIncident } from "./compliance";
+import { departureMilestones } from "./departure";
+import { statutoryRows } from "./settlement";
 import { ESCALATION_WORKING_DAYS, STATUTORY_WATCH_WORKING_DAYS, leaveHealth } from "./health";
 
 /**
@@ -214,25 +217,29 @@ async function approvalReminders(
 }
 
 /**
- * AC-12.2 / F16: logged daily for every non-migrated case, whatever its status.
- * C7 (visa cancellation) here; C5 (payment window) joins when the settlement
- * exists (S6, `settlementIncidentInput`).
+ * AC-12.2 / F16: logged daily for every non-migrated case, whatever its status
+ * — C5 (settlement not paid within the window, calendar days from the LDS)
+ * and C7 (visa cancellation after the departure date). Resolution never deletes.
  */
 export async function incidentScan(now: Date) {
   const rows = await prisma.leaveCaseDetail.findMany({
     where: {
       migrated: false,
-      nationality: "EXPATRIATE",
-      departureDate: { not: null },
       case: { status: { notIn: ["DRAFT", "ARCHIVED"] } },
+      OR: [
+        { nationality: "EXPATRIATE", departureDate: { not: null } },
+        { settlementApplicable: true, lastDayOfService: { not: null } },
+      ],
     },
     select: {
       caseId: true,
       nationality: true,
       departureDate: true,
       lastDayOfService: true,
+      settlementApplicable: true,
       case: {
         select: {
+          settlement: { select: { paymentConfirmedAt: true } },
           gateRecords: {
             where: { gateId: "C7" },
             select: { satisfied: true, satisfiedAt: true },
@@ -243,52 +250,66 @@ export async function incidentScan(now: Date) {
     },
     take: 1000,
   });
+  const params = await statutoryRows();
   let logged = 0;
   for (const r of rows) {
     const c7 = r.case.gateRecords[0];
+    let windowDays: number | null = null;
+    if (r.lastDayOfService) {
+      try {
+        windowDays = resolve(params, "settlement.paymentWindowDays", r.lastDayOfService).value;
+      } catch {
+        windowDays = null;
+      }
+    }
     const found = detectIncidents(
       {
         lastDayOfService: r.lastDayOfService,
-        paymentConfirmedAt: null,
-        settlementApplicable: false,
-        paymentWindowDays: null,
+        paymentConfirmedAt: r.case.settlement?.paymentConfirmedAt ?? null,
+        settlementApplicable: r.settlementApplicable,
+        paymentWindowDays: windowDays,
         nationality: r.nationality,
         departureDate: r.departureDate,
         visaCancellationConfirmedAt: c7?.satisfied ? c7.satisfiedAt : null,
       },
       now,
     );
-    for (const i of found) {
-      const existing = await prisma.leaveComplianceIncident.findUnique({
-        where: {
-          caseId_kind_deadlineAt: { caseId: r.caseId, kind: i.kind, deadlineAt: i.deadlineAt },
-        },
-        select: { id: true, daysLate: true },
-      });
-      if (existing) {
-        if (existing.daysLate !== i.daysLate && !c7?.satisfied) {
-          await prisma.leaveComplianceIncident.update({
-            where: { id: existing.id },
-            data: { daysLate: i.daysLate },
-            select: { id: true },
-          });
-        }
-        continue;
-      }
-      await prisma.leaveComplianceIncident.create({
-        data: {
-          caseId: r.caseId,
-          kind: i.kind,
-          gateId: i.gateId,
-          detectedAt: now,
-          deadlineAt: i.deadlineAt,
-          daysLate: i.daysLate,
-          note: INCIDENT_KINDS[i.kind].label,
-        },
-        select: { id: true },
-      });
-      logged += 1;
-    }
+    for (const i of found) logged += await logIncident(r.caseId, i, now);
   }
   return { scanned: rows.length, logged };
+}
+
+async function logIncident(caseId: string, i: DetectedIncident, now: Date): Promise<number> {
+  const existing = await prisma.leaveComplianceIncident.findUnique({
+    where: { caseId_kind_deadlineAt: { caseId, kind: i.kind, deadlineAt: i.deadlineAt } },
+    select: { id: true, daysLate: true },
+  });
+  if (existing) {
+    if (existing.daysLate !== i.daysLate) {
+      await prisma.leaveComplianceIncident.update({
+        where: { id: existing.id },
+        data: { daysLate: i.daysLate },
+        select: { id: true },
+      });
+    }
+    return 0;
+  }
+  await prisma.leaveComplianceIncident.create({
+    data: {
+      caseId,
+      kind: i.kind,
+      gateId: i.gateId,
+      detectedAt: now,
+      deadlineAt: i.deadlineAt,
+      daysLate: i.daysLate,
+      note: INCIDENT_KINDS[i.kind].label,
+    },
+    select: { id: true },
+  });
+  return 1;
+}
+
+/** Hourly: the departure milestones (D7) once their day has ended, in the schedule's zone. */
+export async function leaveDepartures({ now, calendar }: Ctx) {
+  return departureMilestones(zonedToday(now, calendar.schedule.timeZone));
 }

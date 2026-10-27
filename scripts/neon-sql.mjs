@@ -81,6 +81,23 @@ export const REDACT_FIELDS = new Set([
   "deductionAmount",
   "deductionAmountEnc",
   "deduction_amount_enc",
+  // JML S6 (D14): the final settlement and the exit-interview narrative.
+  "figures",
+  "figuresEnc",
+  "figures_enc",
+  "lineAmount",
+  "lineAmountEnc",
+  "line_amount_enc",
+  "narrative",
+  "narrativeEnc",
+  "narrative_enc",
+  "gratuityPreSplitAmount",
+  "gratuityPostSplitAmount",
+  "leaveEncashmentAmount",
+  "outstandingSalaryAmount",
+  "grossTotalAmount",
+  "netTotalAmount",
+  "basicMonthlyWage",
 ]);
 
 // Redact any REDACT_FIELDS key in each returned row before it is printed.
