@@ -27,7 +27,7 @@ export const ticketWorkProvider: WorkProvider = {
         pair: r.hrPair.name,
       },
       dueAt: null,
-      href: `/hive/escalations/${r.id}`,
+      href: `/tickets/${r.id}`,
     });
     const items = [
       ...tasks.toApprove.rows.map((r) => row("ticketApprove", r)),

@@ -210,11 +210,11 @@ describe("US-T5 — what the email may say", { skip: !canMock }, () => {
     assert.ok(!sent[0]!.text.includes(QUESTION), "never the whole question");
   });
 
-  test("it links to the ticket in HIVE", async () => {
+  test("it links to the ticket in HR Centre", async () => {
     reset();
     notify.notifyTicket("opened", "e1");
     await settle();
-    assert.match(sent[0]!.text, /https:\/\/hive\.example\/en\/hive\/escalations\/e1/);
+    assert.match(sent[0]!.text, /https:\/\/hive\.example\/en\/tickets\/e1/);
   });
 
   test("a short question is passed whole and untouched", () => {

@@ -2492,7 +2492,7 @@ model HiveEmailTemplate {
 /// Singleton: ticket prefix + status label overrides. Missing row = defaults.
 model HiveTicketSettings {
   id           String  @id @default("singleton")
-  ticketPrefix String  @default("HIVE")
+  ticketPrefix String  @default("HR")
   statusLabels Json    @default("{}")
   updatedById  String?
 

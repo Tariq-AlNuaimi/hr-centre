@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { getHivePermissions } from "@/lib/hive/services/permissions";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { LinkCards } from "@/components/shared/LinkCards";
 import { HiveRoleBadge } from "@/components/hive/HiveRoleBadge";
 
 /**
@@ -37,7 +37,7 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
     // §5.4's queue. Gated on See tickets (ADR-073): spec V2 §8.8 shows every
     // ticket to everyone who holds it, read-only for those who cannot act.
     permissions?.seeTickets && {
-      href: `/${locale}/hive/escalations`,
+      href: `/${locale}/tickets`,
       title: t("escalationsTitle"),
       description: t("escalationsDescription"),
     },
@@ -45,13 +45,13 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
     // there) the answer email. Gated on Edit content — since HIVE ADR-075 that is
     // the wording HIVE still holds.
     permissions?.editContent && {
-      href: `/${locale}/hive/settings`,
+      href: `/${locale}/tickets/setup/settings`,
       title: t("settingsTitle"),
       description: t("settingsDescription"),
     },
     // US-T7: counts only, gated on View reports.
     permissions?.viewReports && {
-      href: `/${locale}/hive/reports`,
+      href: `/${locale}/tickets/reports`,
       title: t("reportsTitle"),
       description: t("reportsDescription"),
     },
@@ -60,27 +60,27 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
     ...(permissions?.configure
       ? [
           {
-            href: `/${locale}/hive/pairs`,
+            href: `/${locale}/tickets/setup/pairs`,
             title: t("pairsTitle"),
             description: t("pairsDescription"),
           },
           {
-            href: `/${locale}/hive/rotation`,
+            href: `/${locale}/tickets/setup/rotation`,
             title: t("rotationTitle"),
             description: t("rotationDescription"),
           },
           {
-            href: `/${locale}/hive/discounts`,
+            href: `/${locale}/tickets/setup/discounts`,
             title: t("discountsTitle"),
             description: t("discountsDescription"),
           },
           {
-            href: `/${locale}/hive/providers`,
+            href: `/${locale}/tickets/setup/providers`,
             title: t("providersTitle"),
             description: t("providersDescription"),
           },
           {
-            href: `/${locale}/hive/org-details`,
+            href: `/${locale}/tickets/setup/org-details`,
             title: t("orgTitle"),
             description: t("orgDescription"),
           },
@@ -103,18 +103,7 @@ export default async function HiveIndexPage({ params }: { params: Promise<{ loca
       {cards.length === 0 ? (
         <EmptyState description={t("noAccess")} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {cards.map((card) => (
-            <Link
-              key={card.href}
-              href={card.href}
-              className="flex flex-col gap-1 rounded-md border border-border bg-card p-4 outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <span className="font-medium">{card.title}</span>
-              <span className="text-sm text-muted-foreground">{card.description}</span>
-            </Link>
-          ))}
-        </div>
+        <LinkCards cards={cards} />
       )}
     </>
   );

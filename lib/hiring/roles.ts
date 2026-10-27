@@ -40,7 +40,7 @@ export const HIRING_STARTER_ROLES: ReadonlyArray<{
 }> = [
   {
     key: "HIRING_ADMIN",
-    name: "Hiring admin",
+    name: "Hiring Admin",
     description:
       "Configures hiring (approval chains, AI, letter, assessment) and may erase candidate data. Give for the whole group.",
     permissions: [...HR_CORE, "hiring.configure", "hiring.erase", "hiring.hrManager"],

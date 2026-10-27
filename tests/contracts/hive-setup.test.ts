@@ -234,7 +234,7 @@ test("every reference-data route is session-wrapped and needs tickets.configure"
 });
 
 test("the setup screens are server-gated on tickets.configure", () => {
-  const layout = readFileSync("app/[locale]/(dashboard)/hive/(setup)/layout.tsx", "utf8");
+  const layout = readFileSync("app/[locale]/(dashboard)/tickets/setup/(config)/layout.tsx", "utf8");
   assert.match(layout, /permissions\.configure/);
   assert.match(layout, /notFound\(\)/);
 });

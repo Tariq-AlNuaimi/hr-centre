@@ -334,7 +334,7 @@ export default function EscalationQueuePage() {
                     </td>
                     <td className="px-4 py-3">
                       <Link
-                        href={`/${locale}/hive/escalations/${row.id}`}
+                        href={`/${locale}/tickets/${row.id}`}
                         // `primary-emphasis`, not `primary`. The raw brand royal
                         // is ~3:1 on a dark surface — axe flags it serious, and
                         // OQ-5 named the pastel palette as a real contrast risk

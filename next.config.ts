@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { legacyRedirects } from "./lib/nav/legacy-redirects";
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 import { withSentryConfig } from "@sentry/nextjs";
@@ -83,6 +84,13 @@ const nextConfig: NextConfig = {
   // `/api/v1/*` path, which rewrites to the current `/api/*` handlers -- zero
   // route churn today, and a real v2 can diverge later without breaking v1.
   // Internal app code keeps calling `/api/*` directly.
+  // UX P1 (docs/blueprints/ux-p1-nav.md AC-6.1): the ticket screens moved from
+  // /hive/* to /tickets/*. Sent emails, notifications and bookmarks carry the
+  // old URLs, so each old page redirects permanently. Pure data in
+  // lib/nav/legacy-redirects.ts so a contract test can pin every mapping.
+  async redirects() {
+    return legacyRedirects();
+  },
   async rewrites() {
     return [{ source: "/api/v1/:path*", destination: "/api/:path*" }];
   },

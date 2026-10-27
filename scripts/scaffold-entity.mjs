@@ -1447,24 +1447,14 @@ async function patchRecyclingBin() {
 }
 
 async function patchSidebar() {
-  const path = join(ROOT, "components/layout/AppSidebar.tsx");
+  // Navigation is one typed config (lib/nav/config.ts, UX P1): the sidebar,
+  // ⌘K and the breadcrumbs all read it. Insert the scaffolded entity's entry
+  // immediately before the recycling-bin entry (admin-gated, always present),
+  // in the Admin group, matching that object's indentation. `text` is a
+  // literal label, so no message key is needed.
+  const path = join(ROOT, "lib/nav/config.ts");
   const src = await readFile(path, "utf8");
   if (src.includes(`key: "${entityKebab}"`)) return null;
-
-  // The migrated AppSidebar (ADR-029) renders a plain <nav> of nav-items with
-  // lucide icons and a `--nav-active-foreground` active state; each entry is a
-  // `{ key, icon, label, onClick }` object (icon is a sized lucide element;
-  // navigation is `router.push`, matching the recycling-bin item). Insert the
-  // scaffolded entity's entry immediately before the recycling-bin nav item
-  // (admin-gated, always present), matching that object's indentation so the
-  // array stays well-formed.
-  //
-  // Check whether LayoutGrid is already in the lucide-react import block BEFORE
-  // inserting the entry, because the entry itself contains `<LayoutGrid />` and
-  // would otherwise pollute a file-wide search for the identifier.
-  const importMatch = src.match(/import\s+\{([^}]*)\}\s+from\s+"lucide-react";/);
-  const alreadyImported = importMatch && /\bLayoutGrid\b/.test(importMatch[1]);
-
   const anchor = src.match(/([ \t]*)\{[ \t]*\n[ \t]*key: "recycling-bin",/);
   if (!anchor) throw new Error("Could not locate recycling-bin nav entry.");
   const indent = anchor[1];
@@ -1472,16 +1462,14 @@ async function patchSidebar() {
   const insertion =
     `${indent}{\n` +
     `${inner}key: "${entityKebab}",\n` +
-    `${inner}icon: <LayoutGrid className="h-4 w-4" />,\n` +
-    `${inner}label: "${Pascal}s",\n` +
-    `${inner}onClick: () => router.push(\`/\${locale}/${entityKebab}\`),\n` +
+    `${inner}group: "admin",\n` +
+    `${inner}icon: "grid",\n` +
+    `${inner}label: "${entityKebab}",\n` +
+    `${inner}text: "${Pascal}s",\n` +
+    `${inner}href: "/${entityKebab}",\n` +
+    `${inner}show: () => true,\n` +
     `${indent}},\n`;
-  let out = src.replace(anchor[0], insertion + anchor[0]);
-
-  if (!alreadyImported) {
-    out = out.replace(/(\}\s*from "lucide-react";)/, "  LayoutGrid,\n$1");
-  }
-  return { path, content: out };
+  return { path, content: src.replace(anchor[0], insertion + anchor[0]) };
 }
 
 // ---------- Execute ----------

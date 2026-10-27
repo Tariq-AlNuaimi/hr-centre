@@ -917,3 +917,13 @@ in each module's own tables; the inbox is a bounded read over them, not a new sy
 state that can drift; a fan-in read needs no sync). Decision: build — a provider registry that
 reads each module's tables (≤ 20 rows per provider), and a User recipient on the existing
 `Notification` table written through the existing `persistNotifications`.
+
+### 2026-10-27 — UX review P1: one navigation config
+
+Scope: lib/nav/**
+Considered: **A menu/navigation library (react-pro-sidebar, Refine's resource menu)** (rejected —
+the hard part is the gates, which read our own access hooks; a library would still need the same
+typed config and adds a second styling system). **Next.js file-system metadata (a `nav` export per
+page)** (rejected — gates and tabs span modules and the sidebar needs the full list without loading
+every page). **Keep three hand-written lists (sidebar, palette, breadcrumbs)** (rejected — they
+already disagree). Decision: build — one typed array plus pure resolvers, unit-tested.

@@ -47,7 +47,7 @@ test("dry-run (scalars only): plans all writes + patches, writes nothing", () =>
     "prisma/schema.prisma",
     "lib/prisma/soft-delete-extension.ts",
     "lib/prisma/recyclable.ts",
-    "components/layout/AppSidebar.tsx",
+    "lib/nav/config.ts",
     "messages/en.json",
     "messages/ar.json",
   ]) {
