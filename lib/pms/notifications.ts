@@ -20,6 +20,21 @@ import { prisma } from "@/lib/prisma";
  * screenshot cannot.
  */
 
+/**
+ * Whose feed this is: the viewer's employee record (Performance, JML) and their
+ * login (Hiring, HR tickets — UX review P0, US-6). Built from the session only;
+ * nothing in a request can widen it. An unlinked account still gets the
+ * notifications addressed to its login.
+ */
+export function feedOwnerWhere(
+  employeeId: string | null,
+  userId: string,
+): Prisma.NotificationWhereInput {
+  return employeeId
+    ? { OR: [{ recipientEmployeeId: employeeId }, { recipientUserId: userId }] }
+    : { recipientUserId: userId };
+}
+
 /** Newest-first page size for the feed. A bell popover, not an inbox. */
 export const NOTIFICATION_PAGE_SIZE = 20;
 
@@ -121,7 +136,11 @@ export function changeRequestDedupeKey(
 }
 
 export type PendingNotification = {
-  recipientEmployeeId: string;
+  /** Exactly one recipient: an Employee (Performance, JML) or a User (Hiring, HR tickets). */
+  recipientEmployeeId?: string | null;
+  recipientUserId?: string | null;
+  /** The raising module, for the bell's chip ("hiring", "tickets", …). */
+  module?: string | null;
   kind: NotificationKind;
   /** The machine's sentence. The heading comes from `kind`, translated client-side. */
   body: string;
@@ -198,7 +217,9 @@ export async function persistNotifications(
     try {
       await prisma.notification.create({
         data: {
-          recipientEmployeeId: item.recipientEmployeeId,
+          recipientEmployeeId: item.recipientEmployeeId ?? null,
+          recipientUserId: item.recipientEmployeeId ? null : (item.recipientUserId ?? null),
+          module: item.module ?? null,
           kind: item.kind,
           body: item.body.slice(0, MAX_BODY_CHARS),
           href: item.href,

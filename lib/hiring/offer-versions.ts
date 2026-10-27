@@ -2,6 +2,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import type { HiringActor } from "./access";
 import { computeChain, totalMonthlyComp } from "./approval-chain";
+import { randomUUID } from "node:crypto";
+import { notifyApprovalStep } from "./notify";
 import {
   assertChainStaffed,
   configToChainOptions,
@@ -163,7 +165,8 @@ export async function reviseOffer(actor: HiringActor, l: LoadedOffer, body: Revi
       )
     : null;
   // A revision that restarts approval must not land on a step nobody holds.
-  if (chain) assertChainStaffed(await routeChain(chain, l.subject), [o.candidate.referredById]);
+  const routed = chain ? await routeChain(chain, l.subject) : null;
+  if (routed) assertChainStaffed(routed, [o.candidate.referredById]);
   await auditedTransaction(async (tx) => {
     await ensureInitialVersion(tx, l, actor);
     const existing = await tx.hiringOfferVersion.findMany({
@@ -222,5 +225,16 @@ export async function reviseOffer(actor: HiringActor, l: LoadedOffer, body: Revi
       select: { id: true },
     });
   });
+  if (routed) {
+    // Back to approval: the first step's holders hear it (UX review P0, US-6).
+    await notifyApprovalStep({
+      what: "offer",
+      id: o.id,
+      title: o.candidate.name,
+      step: routed[0],
+      round: randomUUID(),
+      exclude: [o.candidate.referredById, actor.userId],
+    });
+  }
   return { changedFields: changed, restartedApproval: restart };
 }

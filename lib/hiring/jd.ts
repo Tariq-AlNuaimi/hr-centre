@@ -4,6 +4,7 @@ import { auditedTransaction, prisma } from "@/lib/prisma";
 import { can, canSignJdForHr, type HiringActor } from "./access";
 import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { HiringRuleError } from "./http";
+import { notifyJdSubmitted } from "./notify";
 import {
   canRequestJdChanges,
   canSignJd,
@@ -111,16 +112,21 @@ export type JdAction =
  * the JD author on submit) nor the hiring manager (who signs the other slot).
  * With nobody like that, a submitted JD waits forever (UX review P0-1).
  */
-async function hasHrSigner(actorId: string, l: LoadedRequisition): Promise<boolean> {
+/** Who could give the HR signature: neither the submitter nor the hiring manager. */
+async function hrSigners(actorId: string, l: LoadedRequisition, limit = 5): Promise<Set<string>> {
   const holders = await Promise.all(
     (["hiring.hrManager", "hiring.hrSpecialist", "hiring.configure"] as const).map((p) =>
-      usersHoldingPermission(p, l.subject, { limit: 5 }),
+      usersHoldingPermission(p, l.subject, { limit }),
     ),
   );
   const others = new Set(holders.flat());
   others.delete(actorId);
   others.delete(l.req.hiringManagerId);
-  return others.size > 0;
+  return others;
+}
+
+async function hasHrSigner(actorId: string, l: LoadedRequisition): Promise<boolean> {
+  return (await hrSigners(actorId, l)).size > 0;
 }
 
 async function assertHrSignerExists(actor: HiringActor, l: LoadedRequisition): Promise<void> {
@@ -151,6 +157,14 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
     await prisma.hiringRequisition.update({
       where: { id: req.id, jdStatus: req.jdStatus },
       data: { jdStatus: "AWAITING_SIGNOFF", jdAuthorId: actor.userId },
+    });
+    // UX review P0 (US-6): both signers hear it is waiting on them.
+    await notifyJdSubmitted({
+      requisitionId: req.id,
+      title: req.title,
+      version: req.jdVersion,
+      recipients: [req.hiringManagerId, ...(await hrSigners(actor.userId, l, 20))],
+      submitterId: actor.userId,
     });
     return;
   }

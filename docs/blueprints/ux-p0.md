@@ -117,3 +117,17 @@ Worst: an admin removes the operator's Hiring admin role — the next deploy doe
 ## Open questions
 
 - None blocking. Arabic strings stay as placeholders (operator: English only).
+
+## Delivery log
+
+| Slice | Items                                                                       | PR         |
+| ----- | --------------------------------------------------------------------------- | ---------- |
+| A     | 7 wording, 3 dead-end approvals, 5 launcher + bootstrap admin roles         | #35        |
+| B     | 4 sensitive candidate data                                                  | #36        |
+| C     | 2 one leaver / mover process                                                | #37        |
+| D     | 6 bell notifications (User recipient, migration `ux_p0_user_notifications`) | this slice |
+| E     | 1 one "My work" list on Home                                                | next       |
+
+Deferred from US-6: an _overdue_ scorecard reminder needs a scheduled sweep (Hiring has no cron
+today); the due notice is sent when a panelist is added, and overdue scorecards appear in the Home
+list (US-1).

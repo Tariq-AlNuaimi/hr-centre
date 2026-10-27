@@ -208,7 +208,7 @@ test("an ESCALATED_HR event goes to HR's digest, not to the manager", { skip }, 
     take: 50,
   });
   const hrIds = new Set(hrPeople.map((p) => p.id));
-  assert.ok(hr.every((r) => hrIds.has(r.recipientEmployeeId)));
+  assert.ok(hr.every((r) => r.recipientEmployeeId !== null && hrIds.has(r.recipientEmployeeId)));
 
   await prisma.notification.deleteMany({ where: { kind: "HR_INTERVENTION" } });
 });

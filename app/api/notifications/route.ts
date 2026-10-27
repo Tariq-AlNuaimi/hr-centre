@@ -3,7 +3,8 @@ import { withAuth, withRateLimit } from "@/lib/api-helpers";
 import { ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
-import { NOTIFICATION_PAGE_SIZE } from "@/lib/pms/notifications";
+import type { Prisma } from "@/generated/prisma/client";
+import { NOTIFICATION_PAGE_SIZE, feedOwnerWhere } from "@/lib/pms/notifications";
 
 /**
  * The feed behind the header bell — §5.5's escalation ladder, read by a human.
@@ -24,15 +25,17 @@ import { NOTIFICATION_PAGE_SIZE } from "@/lib/pms/notifications";
 export const GET = withRateLimit(
   withAuth(async (_request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!actor.employeeId) return ok({ items: [], unread: 0 });
 
     // JML S2 — a row queued outside the working window (`sendAfter` in the
     // future) is not shown yet, and a dismissed one is gone from the feed.
     const now = new Date();
-    const where = {
-      recipientEmployeeId: actor.employeeId,
-      dismissedAt: null,
-      OR: [{ sendAfter: null }, { sendAfter: { lte: now } }],
+    // UX review P0 (US-6): the viewer's employee feed AND their login's.
+    const where: Prisma.NotificationWhereInput = {
+      AND: [
+        feedOwnerWhere(actor.employeeId, session.user.id),
+        { dismissedAt: null },
+        { OR: [{ sendAfter: null }, { sendAfter: { lte: now } }] },
+      ],
     };
 
     // Two reads rather than one: the badge counts EVERY unread, while the list
@@ -53,9 +56,10 @@ export const GET = withRateLimit(
           readAt: true,
           createdAt: true,
           caseId: true,
+          module: true,
         },
       }),
-      prisma.notification.count({ where: { ...where, readAt: null } }),
+      prisma.notification.count({ where: { AND: [where, { readAt: null }] } }),
     ]);
 
     return ok({ items, unread });

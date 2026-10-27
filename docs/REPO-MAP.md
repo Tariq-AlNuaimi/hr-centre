@@ -411,7 +411,7 @@
 - app/page.tsx
 
 ## Models (prisma/schema.prisma)
-- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
+- User: id, email, emailVerified, name, passwordHash, image, role, lastLoginAt, scimExternalId, passwordChangedAt, mustChangePassword, deletedAt, deletedBy, createdAt, updatedAt, accounts, sessions, auditLogs, employee, importBatches, roleAssignments, notifications, assignmentsGranted, statutoryVerified, hiveTagMember, hiveEscalationsDrafted, hiveEscalationsSubmitted, hiveEscalationsApproved, hiveEscalationEvents, hiveTemplatesUpdated, hiveSettingsUpdated, jmlCasesOwned, jmlCasesSupervised, jmlCasesUpdated, jmlCasesHeld, jmlCasesArchived, jmlTasksOwned, jmlTasksCompleted, jmlTaskComments, jmlRulesAsOwner, jmlRulesAsSenior, jmlEmailsSent, jmlEmailTemplateEdits, jmlItReadinessConfirmed, jmlApprovalsDecided, jmlAssetsVerified, jmlAccessConfirmed, leaveInterviewsHeld, leaveInterviewsAssessed, leaveSettlementsCalc, leaveSettlementsApproved, leaveSettlementsPaid, leaveLinesAuthorised, jmlDocTemplatesUploaded, jmlDocTemplatesApproved, jmlDocumentsGenerated, leaveGatesSatisfied, leaveGatesOverridden
 - Account: id, userId, type, provider, providerAccountId, refresh_token, access_token, expires_at, token_type, scope, id_token, session_state, user
 - Session: id, sessionToken, userId, expires, user
 - VerificationToken: identifier, token, expires
@@ -434,7 +434,7 @@
 - KpiRating: id, kpiId, kpi, party, level, comment, ratedByEmployeeId, ratedByEmployee, ratedAt, createdAt, updatedAt
 - KpiEvidence: id, kpiId, kpi, kind, label, blobPathname, contentType, sizeBytes, url, uploadedByEmployeeId, uploadedByEmployee, uploadedAt, managerComment, managerCommentAt, deletedAt, deletedBy, createdAt, updatedAt
 - ComplianceEvent: id, cycleId, cycle, stageKind, subjectEmployeeId, subjectEmployee, managerEmployeeId, managerEmployee, kind, missedByHours, detail, measuredAgainstDeadline, occurredAt
-- Notification: id, recipientEmployeeId, recipientEmployee, kind, body, href, dedupeKey, readAt, caseId, sendAfter, dismissedAt, createdAt
+- Notification: id, recipientEmployeeId, recipientEmployee, recipientUserId, recipientUser, module, kind, body, href, dedupeKey, readAt, caseId, sendAfter, dismissedAt, createdAt
 - SignOff: id, participantId, participant, stageKind, party, signedByEmployeeId, signedByEmployee, signedAt, kpiSetHash, createdAt
 - Kpi: id, participantId, participant, assignmentPeriodId, assignmentPeriod, description, weightage, descriptorOutstanding, descriptorExcellent, descriptorTarget, descriptorAlmostAchieved, descriptorUnsatisfactory, orderIndex, versions, changeEdits, ratings, evidence, deletedAt, deletedBy, createdAt, updatedAt
 - EntityScore: id, cycleId, cycle, entityId, entity, score, enteredByEmployeeId, enteredByEmployee, createdAt, updatedAt
@@ -596,6 +596,7 @@
 - lib/hiring/nationalities.ts: NATIONALITIES
 - lib/hiring/negotiations.ts: NoteBody, thread, addNote
 - lib/hiring/notice-rules.ts: HOLD_WORKING_DAYS, computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
+- lib/hiring/notify.ts: notifyApprovalStep, notifyJdSubmitted, notifyOfferDecided, notifyScorecardDue
 - lib/hiring/offer-acceptance.ts: signedLetterPathname, recordAcceptance, uploadSignedLetter, signedLetterUrl
 - lib/hiring/offer-approvals.ts: approvalView, decideOffer, previewChain
 - lib/hiring/offer-package.ts: ALLOWANCE_KEYS, CompRow, CompBreakdown, buildCompBreakdown, BandStatus, bandVerdict, OfferTerms, OfferTermField, APPROVAL_RESTARTING_FIELDS, REVISABLE_FIELDS, diffOfferTerms, restartsApproval, summarizeVersion, nextVersionNumber, withSupersession
@@ -613,7 +614,7 @@
 - lib/hiring/preboarding.ts: preboardingView, recordHandover, retryHandoff
 - lib/hiring/prejoiner.ts: sourceRefFor, toContractType, muscatMidnight, HandoffResult, handToJml, withdrawFromJml
 - lib/hiring/requisition-rules.ts: REQUISITION_STATUSES, STATUS_TRANSITIONS, isAllowedTransition, REQUIRED_FIELDS, RequiredField, ReadinessInput, readinessProblems, REQUISITION_DECISIONS, RequisitionDecision, DECISION_TARGET, composeDecisionNote, parseDecisionNote, SignedStep, nextUnsignedStep, isFinalStep, signRefusal
-- lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, syncRequisitionFill, assertRoutedToActor
+- lib/hiring/requisition-status.ts: requisitionChain, currentRound, StatusResult, changeRequisitionStatus, notifyNextRequisitionStep, syncRequisitionFill, assertRoutedToActor
 - lib/hiring/requisition-views.ts: approvalView, statusHistory, auditTrail
 - lib/hiring/requisition-write.ts: assertPlacement, createRequisition, createHiringRequest, updateRequisition
 - lib/hiring/requisitions.ts: LoadedRequisition, loadRequisition, seatOccupancyWhere, bandFor, requisitionDetail, RequisitionListQuery, listRequisitions
@@ -763,6 +764,7 @@
 - lib/jml/watch/exit-calendar.ts: ExitEntry, exitCalendar
 - lib/jml/watch/risk.ts: StatutoryRisk, RISK_ORDER, statutoryRisk
 - lib/jml/watch/statutory.ts: statutoryWatch
+- lib/notifications/user-notify.ts: MAX_RECIPIENTS, PREVIEW_CHARS, UserNotice, notifyUsers, shortPreview
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
 - lib/openapi/document.ts: buildOpenApiDocument, buildOpenApiDocumentSafe
@@ -809,7 +811,7 @@
 - lib/pms/import/validate.ts: ValidationResult, validateRows
 - lib/pms/kpi-select.ts: KPI_SELECT, KpiRow, serializeKpi, EDITABLE_KPI_FIELDS, WeightageSummary, weightageSummary, KPI_HASH_SELECT, KpiHashRow, kpiSetHash, currentKpiSetHash
 - lib/pms/kpi.ts: KPI_LEVELS, KpiLevelKey, WeightedKpi, weightageTotal, REQUIRED_TOTAL, isWeightageComplete, weightageGap, weightageMessage, kpiEditBlockedReason, PeriodWeightedKpi, weightageMessageByPeriod, weightageTotalsByPeriod, rosterWeightageTotal, WeightageView, weightageView, signOffBlockedReason, GOAL_SETTING_STAGE, KpiAccessRefusal, kpiSetAccessRefusal
-- lib/pms/notifications.ts: NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey, PendingNotification, persistNotifications
+- lib/pms/notifications.ts: feedOwnerWhere, NOTIFICATION_PAGE_SIZE, MAX_BODY_CHARS, notificationKindFor, ladderDedupeKey, threeSixtyDedupeKey, hrDigestDedupeKey, changeRequestDedupeKey, PendingNotification, persistNotifications
 - lib/pms/offboarding.ts: revokeLoginOnOffboard
 - lib/pms/org-chart-search.ts: matchOrgChart
 - lib/pms/org-chart.ts: OrgNode, OrgChartPerson, OrgChartDepartment, OrgChartEntity, buildOrgChart

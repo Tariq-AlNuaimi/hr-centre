@@ -5,6 +5,7 @@ import { isHiringAdmin, type HiringActor } from "./access";
 import { assertChainStaffed, getRoutedChain, type RoutedStep } from "./approval-config";
 import { describeFill, fillLabel, nextFillStatus } from "./fill-rules";
 import { HiringRuleError } from "./http";
+import { notifyApprovalStep } from "./notify";
 import { toNum, toOMRorNull } from "./money";
 import { seatOccupancyWhere } from "./requisitions";
 import {
@@ -98,7 +99,10 @@ export async function changeRequisitionStatus(
   } | null = null;
   if (from === "PENDING_APPROVAL" && to === "OPEN") {
     const step = await signStep(actor, req, subject, reason);
-    if (step.recordedOnly) return { status: from, approvalStep: step.recordedOnly };
+    if (step.recordedOnly) {
+      await notifyNextRequisitionStep(req, subject);
+      return { status: from, approvalStep: step.recordedOnly };
+    }
     finalSignoff = step.final;
   }
   await auditedTransaction(async (tx) => {
@@ -121,7 +125,36 @@ export async function changeRequisitionStatus(
       });
     }
   });
+  if (to === "PENDING_APPROVAL") await notifyNextRequisitionStep(req, subject);
   return { status: to };
+}
+
+/**
+ * Bell notice to the holders of the round's next unsigned step (UX review P0,
+ * US-6) — on submission and after each intermediate sign-off. Never the
+ * submitter or an earlier signer (they may not sign it). Never throws.
+ */
+export async function notifyNextRequisitionStep(
+  req: Pick<HiringRequisition, "id" | "title" | "entityId" | "salaryBandMax" | "salaryCurrency">,
+  subject: ScopeSubject,
+): Promise<void> {
+  try {
+    const [{ submission, signed }, { steps }] = await Promise.all([
+      currentRound(req.id),
+      requisitionChain(req as HiringRequisition, subject),
+    ]);
+    if (!submission) return;
+    await notifyApprovalStep({
+      what: "requisition",
+      id: req.id,
+      title: req.title,
+      step: nextUnsignedStep(steps, signed),
+      round: submission.id,
+      exclude: [submission.changedById, ...signed.map((x) => x.approverId)],
+    });
+  } catch {
+    console.warn("[hiring] a requisition approval notice could not be prepared");
+  }
 }
 
 /** Decide the next unsigned step; record an intermediate one, or hand back the final. */

@@ -2,12 +2,15 @@ import { Prisma, type HiringOfferStatus } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import type { HiringActor } from "./access";
 import { computeChain, totalMonthlyComp } from "./approval-chain";
+import { randomUUID } from "node:crypto";
 import {
   assertChainStaffed,
   configToChainOptions,
   loadApprovalConfig,
   routeChain,
+  type RoutedStep,
 } from "./approval-config";
+import { notifyApprovalStep } from "./notify";
 import { applyStageChange, moveStage } from "./candidate-stage";
 import { loadCandidate, seesCandidateComp } from "./candidates";
 import { newHiringId, sealAmount, sealJson } from "./comp-crypto";
@@ -136,6 +139,7 @@ export async function updateOffer(
     );
   }
   const extra: Prisma.HiringOfferUpdateInput = {};
+  let routed: RoutedStep[] | null = null;
   if (to === "PENDING_APPROVAL") {
     const terms = {
       ...termsOf(o),
@@ -149,7 +153,8 @@ export async function updateOffer(
     );
     // No dead-end approvals: every step needs someone (not the candidate's
     // referrer) who can decide it, or the offer would stall unseen.
-    assertChainStaffed(await routeChain(chain, l.subject), [o.candidate.referredById]);
+    routed = await routeChain(chain, l.subject);
+    assertChainStaffed(routed, [o.candidate.referredById]);
     Object.assign(extra, {
       submittedById: actor.userId,
       approvalChain: chain as unknown as Prisma.InputJsonValue,
@@ -179,6 +184,17 @@ export async function updateOffer(
   });
   if (to === "SENT")
     await syncCandidate(actor, l, "OFFER_EXTENDED", "Offer sent to the candidate.");
+  // UX review P0 (US-6): the first step's holders hear it is their turn.
+  if (to === "PENDING_APPROVAL" && routed) {
+    await notifyApprovalStep({
+      what: "offer",
+      id: o.id,
+      title: o.candidate.name,
+      step: routed[0],
+      round: randomUUID(),
+      exclude: [o.candidate.referredById, actor.userId],
+    });
+  }
   return { status: to ?? from };
 }
 

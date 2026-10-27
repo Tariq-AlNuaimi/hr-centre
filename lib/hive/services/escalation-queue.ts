@@ -204,7 +204,7 @@ export async function returnToDraft(
 ): Promise<ReturnOutcome> {
   const refused = await pairGate(id, userId, "approve");
   if (refused) return { error: refused };
-  return auditedTransaction(async (tx) => {
+  const outcome = await auditedTransaction(async (tx) => {
     const updated = await transition(
       tx,
       { id, status: "PENDING_APPROVAL" },
@@ -217,6 +217,9 @@ export async function returnToDraft(
     await recordEvent(tx, id, "RETURNED", userId, note);
     return { ok: true as const, status: "IN_PROGRESS" as const };
   });
+  // UX review P0 (US-6): the drafter hears it in the bell.
+  if ("ok" in outcome) notifyTicket("returned", id);
+  return outcome;
 }
 
 export type CloseOutcome =
