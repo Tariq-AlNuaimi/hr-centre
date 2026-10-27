@@ -236,3 +236,13 @@ export const screeningActionSchema = z.object({
 });
 
 export const importCandidatesSchema = z.object({ requisitionId: id });
+
+/** Step 14: record the handover, or retry the hand-off to JML. */
+export const preboardingActionSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("record"),
+    toUserId: id.nullable().default(null),
+    note: z.string().max(4000).default(""),
+  }),
+  z.object({ action: z.literal("handoff") }),
+]);

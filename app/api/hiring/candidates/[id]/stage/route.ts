@@ -18,8 +18,8 @@ export const PATCH = withRateLimit(
       if (!l) return notFound("Candidate");
       const body = await parseBody(req, stageMoveSchema);
       if ("response" in body) return body.response;
-      await moveStage(actor, l, body.data);
-      return ok({ id, stage: body.data.stage });
+      const { handoff } = await moveStage(actor, l, body.data);
+      return ok({ id, stage: body.data.stage, handoff });
     }),
   ),
   { id: "hiring-candidates-write", limit: 60, windowMs: 60_000 },

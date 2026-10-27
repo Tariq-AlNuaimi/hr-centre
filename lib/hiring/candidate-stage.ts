@@ -8,7 +8,8 @@ import { HiringRuleError } from "./http";
 import { computeHoldExpiry, furthestStageReached, shouldHoldNotice } from "./notice-rules";
 import { syncRequisitionFill } from "./requisition-status";
 import { gateVerdict, mayCrossGates, packageGateBlocks, skippedGates } from "./stage-gates";
-import { stageTransitionError, type Stage } from "./stage-rules";
+import { stageRank, stageTransitionError, type Stage } from "./stage-rules";
+import { handToJml, withdrawFromJml, type HandoffResult } from "./prejoiner";
 
 /**
  * Moving a candidate — Interview Hub `candidate-stage.ts` + the stage route.
@@ -115,7 +116,7 @@ export async function applyStageChange(input: ApplyStageChange) {
       data: { candidateId: cand.id, fromStage: cand.stage, toStage, movedById, reason },
     });
   });
-  await afterStageChange(input);
+  return afterStageChange(input);
 }
 
 async function afterStageChange({ cand, toStage, movedById }: ApplyStageChange) {
@@ -137,6 +138,17 @@ async function afterStageChange({ cand, toStage, movedById }: ApplyStageChange) 
   if (toStage === "OFFER_ACCEPTED" && cand.requisitionId) {
     await releaseHoldsForRequisition(cand.requisitionId, cand.id);
   }
+  // Step 14 (ADR-082 D8): every path to OFFER_ACCEPTED hands the joiner to JML;
+  // leaving after acceptance withdraws the onboarding draft.
+  let handoff: HandoffResult | null = null;
+  if (toStage === "OFFER_ACCEPTED") handoff = await handToJml(cand.id, movedById);
+  if (leaving && stageRank(cand.stage) >= stageRank("OFFER_ACCEPTED")) {
+    await withdrawFromJml(
+      cand.id,
+      movedById,
+      `Candidate ${toStage === "REJECTED" ? "rejected" : "withdrew"} after accepting the offer`,
+    );
+  }
   const was = occupiesSeat(cand.stage);
   const now = occupiesSeat(toStage);
   if (was !== now) {
@@ -145,6 +157,7 @@ async function afterStageChange({ cand, toStage, movedById }: ApplyStageChange) 
       seatReleased: was && !now,
     });
   }
+  return { handoff };
 }
 
 /** A finalist rejected while someone else's offer is open is held 5 working days. */
@@ -181,7 +194,7 @@ export async function moveStage(
 ) {
   const from = l.cand.stage;
   const to = body.stage;
-  if (from === to) return;
+  if (from === to) return { handoff: null };
   const illegal = stageTransitionError(from, to);
   if (illegal) throw new HiringRuleError(illegal, 422);
   const gaps = mayCrossGates(from, to) ? skippedGates(from, to, await visitedStages(l.cand)) : [];
@@ -193,7 +206,7 @@ export async function moveStage(
     reason: body.reason,
   });
   if (!verdict.ok) throw new HiringRuleError(verdict.message, verdict.status, verdict.code);
-  await applyStageChange({
+  return applyStageChange({
     cand: l.cand,
     toStage: to,
     movedById: actor.userId,

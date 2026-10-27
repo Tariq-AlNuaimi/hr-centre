@@ -3,7 +3,15 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import { CalendarPlus, ExternalLink, FileSignature, Mail, Pencil, Star } from "lucide-react";
+import {
+  CalendarPlus,
+  ExternalLink,
+  FileSignature,
+  Mail,
+  Pencil,
+  Star,
+  UserCheck,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -97,6 +105,7 @@ export function CandidateProfile({ id }: { id: string }) {
 
 function Header({ c, onEdit }: { c: CandidateDetail; onEdit: () => void }) {
   const t = useTranslations("hiring.candidate");
+  const locale = useLocale();
   const contact = c.contact;
   const next = c.interviews.find((i) => i.status === "SCHEDULED" || i.status === "IN_PROGRESS");
   return (
@@ -165,6 +174,15 @@ function Header({ c, onEdit }: { c: CandidateDetail; onEdit: () => void }) {
           </Button>
         ) : null}
         <OfferLink c={c} />
+        {c.can.manage && ["OFFER_ACCEPTED", "PRE_ONBOARDING", "HIRED"].includes(c.stage) ? (
+          <Link
+            className={buttonVariants({ variant: "outline" })}
+            href={`/${locale}/hiring/candidates/${c.id}/preboarding`}
+          >
+            <UserCheck className="h-4 w-4" />
+            {t("preboarding")}
+          </Link>
+        ) : null}
         {next ? (
           <Badge variant="info">
             {t("interviewScheduled", { date: formatDateTime(next.scheduledDate) })}

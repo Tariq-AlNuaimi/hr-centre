@@ -1945,7 +1945,8 @@
       "overview": "Overview",
       "performance": "Performance",
       "tickets": "HR tickets",
-      "jml": "Joiners, movers & leavers"
+      "jml": "Joiners, movers & leavers",
+      "hiring": "Hiring"
     }
   },
   "rbac": {
@@ -5148,7 +5149,8 @@
       "system": "System",
       "scheduleInterview": "Schedule interview",
       "draftOffer": "Draft offer",
-      "viewOffer": "Open offer"
+      "viewOffer": "Open offer",
+      "preboarding": "Pre-boarding"
     },
     "stall": {
       "title": "Held up?",
@@ -6130,7 +6132,9 @@
       "countersignedLabel": "Countersigned by",
       "countersignedHint": "For example the operations director",
       "recorded": "Acceptance recorded",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "handedOff": "Pre-joiner record created and onboarding draft opened in Joiners, movers & leavers",
+      "handoffFailed": "The acceptance is recorded, but onboarding could not be opened: {reason}. Try again from Pre-boarding"
     },
     "closeOut": {
       "title": "Close-out queue",
@@ -6425,6 +6429,81 @@
       "employee": "Hired candidates are erased from their people record",
       "confirmTitle": "Erase this candidate permanently?",
       "confirmBody": "Their details, CV, documents, notes, AI analyses and offer terms are erased and cannot be recovered. Counts in reports stay"
+    },
+    "preboarding": {
+      "title": "Pre-boarding and handover",
+      "subtitle": "{name} · steps 14 and 15",
+      "route": {
+        "TRANSFERRED": "Handover to HR",
+        "RETAINED": "The recruiter keeps this hire",
+        "UNASSIGNED": "No recruiter on record"
+      },
+      "routeHint": {
+        "TRANSFERRED": "{owner} recruited this hire as HR manager, so the hire is handed to an HR colleague for onboarding",
+        "RETAINED": "{owner} recruited this hire and carries it into onboarding; recording the handover confirms that",
+        "UNASSIGNED": "The requisition has no owner, so nobody can hand the hire over. Set the requisition owner first"
+      },
+      "checklistTitle": "Pre-boarding checklist",
+      "checklistHint": "Everything here is cleared before the handover",
+      "item": {
+        "signedOffer": "Signed offer letter on file",
+        "package": "Package evidence confirmed or declined",
+        "nationalId": "National ID on file",
+        "joiningDate": "Joining date agreed"
+      },
+      "cleared": "Cleared",
+      "outstanding": "Outstanding",
+      "joining": "Joining on {date}",
+      "recordTitle": "Record the handover",
+      "recordHintTransfer": "Choose the HR colleague taking the hire into onboarding and leave them a note",
+      "recordHintRetain": "{owner} keeps this hire. A note is optional",
+      "clearFirst": "Clear the checklist before handing over",
+      "recipient": "Hand over to",
+      "chooseRecipient": "Choose an HR colleague",
+      "note": "Handover note",
+      "noteHint": "What the next person needs to know: agreements, open questions, first-day arrangements",
+      "record": "Record handover",
+      "recorded": "Handover recorded",
+      "recordedTitle": "Handover recorded",
+      "recordedTransfer": "Handed from {from} to {to} on {date}",
+      "recordedRetain": "Kept by {to} on {date}",
+      "joinerTitle": "Onboarding",
+      "joinerHint": "At acceptance the hire becomes a pre-joiner on the people record and an onboarding draft opens in Joiners, movers & leavers",
+      "noEmployee": "No pre-joiner record yet",
+      "noCase": "No onboarding case yet",
+      "openCase": "Open the onboarding case",
+      "handoff": "Create pre-joiner and open onboarding",
+      "handedOff": "Onboarding opened",
+      "caseStatus": {
+        "DRAFT": "Draft",
+        "ACTIVE": "Active",
+        "AT_RISK": "At risk",
+        "PENDING_SETTLEMENT": "Pending settlement",
+        "COMPLETED": "Completed",
+        "CLOSED": "Closed",
+        "CANCELLED": "Cancelled",
+        "ARCHIVED": "Archived"
+      }
+    },
+    "recordTab": {
+      "title": "How they were hired",
+      "openCandidate": "Open the candidate",
+      "requisition": "Requisition",
+      "source": "Source",
+      "applied": "Applied",
+      "stage": "Hiring stage",
+      "start": "Start date",
+      "signed": "Offer signed",
+      "handover": "Handover",
+      "handedTo": "Handed to {name} on {date}",
+      "retained": "Kept by {name} on {date}",
+      "noHandover": "Not recorded",
+      "pathTitle": "Stage path",
+      "noPath": "No stage moves recorded",
+      "pathStep": "{stage} · {date}",
+      "interviewsTitle": "Interviews",
+      "noInterviews": "No interviews",
+      "interviewLine": "{round} · {date}"
     }
   },
   "careers": {
