@@ -113,6 +113,7 @@
 - app/[locale]/(dashboard)/scorecard/page.tsx
 - app/[locale]/(dashboard)/settings/page.tsx
 - app/[locale]/(dashboard)/settings/profile/page.tsx
+- app/[locale]/(dashboard)/team/hiring/page.tsx
 - app/[locale]/(dashboard)/team/page.tsx
 - app/[locale]/(dashboard)/three-sixty/assignments/[assignmentId]/page.tsx
 - app/[locale]/(dashboard)/three-sixty/page.tsx
@@ -396,6 +397,7 @@
 - app/api/signoffs/route.ts  [POST]
 - app/api/status/route.ts  [GET]
 - app/api/strategy-scores/route.ts  [GET,POST]
+- app/api/team/overview/route.ts  [GET]
 - app/api/three-sixty/activate/route.ts  [POST]
 - app/api/three-sixty/assignments/[assignmentId]/route.ts  [PATCH,DELETE]
 - app/api/three-sixty/assignments/route.ts  [GET,POST,PUT]
@@ -599,6 +601,7 @@
 - lib/hiring/jd.ts: CAREERS_TAG, jdView, JdAction, applyJdAction
 - lib/hiring/library.ts: LIBRARY_LIMIT, canReadLibrary, assertCanWriteLibrary, seesLibraryPay, listLibrary, getLibraryItem, createLibraryItem, updateLibraryItem, deleteLibraryItem
 - lib/hiring/money.ts: CURRENCY_CODES, CurrencyCode, toNum, toOMR, toOMRorNull, formatMoney, formatBand
+- lib/hiring/my-hiring.ts: HM_REVIEW_STAGES, nextStage, myHiring
 - lib/hiring/nationalities.ts: NATIONALITIES
 - lib/hiring/negotiations.ts: NoteBody, thread, addNote
 - lib/hiring/notice-rules.ts: HOLD_WORKING_DAYS, computeHoldExpiry, NoticeStatus, noticeState, NoticeTemplate, noticeTemplateFor, StageMove, furthestStageReached, shouldHoldNotice
@@ -777,7 +780,7 @@
 - lib/nav/legacy-redirects.ts: Redirect, legacyRedirects
 - lib/nav/resolve.ts: ResolvedLink, ResolvedEntry, hrefOf, visibleNav, groupedNav, normalisePath, covers, ActiveNav, activeNav, tabsFor, PaletteItem, paletteItems
 - lib/nav/server-context.ts: navContextFor
-- lib/nav/tabs.ts: Gate, always, hr, teamLead, orgWide, admin, jml, hiring, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
+- lib/nav/tabs.ts: Gate, always, hr, teamLead, orgWide, admin, jml, hiring, ownsRequisitions, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
 - lib/nav/trail.ts: NavCrumb, navTrail
 - lib/notifications/user-notify.ts: MAX_RECIPIENTS, PREVIEW_CHARS, UserNotice, notifyUsers, shortPreview
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
@@ -800,6 +803,7 @@
 - lib/people/provisional-id.ts: PROVISIONAL_PREFIX, provisionalOdooId, isProvisionalOdooId, PLACEHOLDER_EMAIL_DOMAIN, placeholderEmail, isPlaceholderEmail
 - lib/people/record.ts: EmployeeRecordInput, JOB_FIELDS, CONTACT_FIELDS, PERSONAL_FIELDS, ID_DOCUMENT_FIELDS, RecordField, RECORD_FIELDS, DATE_RECORD_FIELDS, recordFieldsTouched
 - lib/people/service.ts: createEmployeeFromForm, updateEmployeeRecord
+- lib/people/team-overview.ts: TeamCase, teamOverview
 - lib/people/write.ts: EmployeeCoreInput, recordWriteData, employeeCreateData, employeeUpdateData
 - lib/pms/actor.ts: ResolvedActor, resolveActor
 - lib/pms/bonus-report.ts: BonusRow, bonusRows, BonusTotals, bonusTotals, BONUS_EXPORT_COLUMNS
@@ -921,6 +925,7 @@
 ## components/
 - components/dashboard/DashboardContent.tsx
 - components/hiring/EmployeeHiringTab.tsx
+- components/hiring/MyHiringReview.tsx
 - components/hiring/ai/AiInsightCard.tsx
 - components/hiring/ai/AiScreenPanel.tsx
 - components/hiring/ai/CandidateAiActions.tsx
@@ -1145,6 +1150,7 @@
 - components/people/RecordFields.tsx
 - components/people/RecordHeader.tsx
 - components/people/RecordTabs.tsx
+- components/people/TeamOverview.tsx
 - components/people/record-view.tsx
 - components/pms/BonusReport.tsx
 - components/pms/BypassReasonField.tsx

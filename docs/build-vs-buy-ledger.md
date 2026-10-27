@@ -943,3 +943,11 @@ Scope: lib/rbac/diff.ts
 Considered: **An authorization service with policy simulation (Oso, Permit.io, OpenFGA)**
 (rejected — our roles are flat permission lists with a scope; a simulator for a set difference is
 a new processor and a second source of truth). Decision: build — two pure set functions.
+
+### 2026-10-27 — UX review P1: manager hub and hiring-manager view
+
+Scope: lib/people/team-overview.ts, lib/hiring/my-hiring.ts
+Considered: **A manager-portal product (Workday My Team, Lattice manager dashboards)** (rejected —
+the data lives in our own module tables; a portal would need all of it synced out). **Reusing
+the Home "My work" providers** (partly — Home stays the task list; this is the team's state, not
+tasks). Decision: build — two bounded read services over existing tables.

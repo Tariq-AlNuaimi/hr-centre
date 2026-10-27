@@ -106,7 +106,8 @@
     "rolesAccess": "Roles & access",
     "moduleTabs": "{module} sections",
     "settingsEmail": "Email templates",
-    "settingsPerformance": "Performance"
+    "settingsPerformance": "Performance",
+    "myHiring": "My hiring"
   },
   "auth": {
     "login": "Login",
@@ -6833,6 +6834,73 @@
       "scoresDescription": "Company and department scores HR keys in for the year.",
       "threeSixtyTitle": "360 setup",
       "threeSixtyDescription": "Rater assignments and 360 cycles."
+    }
+  },
+  "team": {
+    "overview": {
+      "loadFailed": "Couldn't load your team overview. Reload to try again.",
+      "reports": "Direct reports",
+      "reportsHint": "Active people who report to you",
+      "joiningSoon": "Joining your team",
+      "joiningHint": "Pre-joiners and open joiner cases",
+      "openRequisitions": "My open requisitions",
+      "openRequisitionsHint": "Hiring requests you own — open My hiring",
+      "leaving": "Leaving",
+      "leavingHint": "Open leaver cases in your team",
+      "casesTitle": "Joiners, movers and leavers in your team",
+      "casesNote": "Cases HR is running for people who report to you.",
+      "noCases": "No joiner, mover or leaver cases in your team right now.",
+      "caseType": {
+        "JOIN": "Joining",
+        "MOVE": "Moving",
+        "LEAVE": "Leaving"
+      },
+      "keyDate": {
+        "JOIN": "starts {date}",
+        "MOVE": "effective {date}",
+        "LEAVE": "last day {date}"
+      }
+    },
+    "myHiring": {
+      "title": "My hiring",
+      "subtitle": "The requisitions you own, the candidates waiting for your decision and the job descriptions waiting for your signature.",
+      "reviewTitle": "Waiting for your decision",
+      "reviewNote": "Shortlisted candidates and final decisions on your requisitions, oldest first.",
+      "reviewEmpty": "No candidate is waiting for your decision.",
+      "waiting": "{days, plural, =0 {since today} one {waiting # day} other {waiting # days}}",
+      "advance": "Advance to {stage}",
+      "reject": "Reject",
+      "rejectNote": "Reason for rejecting (required)",
+      "confirmReject": "Reject candidate",
+      "cancel": "Cancel",
+      "advanced": "Candidate moved on",
+      "rejected": "Candidate rejected",
+      "failed": "Couldn't update the candidate. Try again.",
+      "jdTitle": "Job descriptions to sign",
+      "jdNote": "Each needs your signature as hiring manager before it can be posted.",
+      "requisitionsTitle": "My requisitions",
+      "requisitionsEmpty": "You don't own any open requisition.",
+      "requisition": "Requisition",
+      "daysOpen": "Days open",
+      "step": {
+        "Apply": "Apply",
+        "Screen": "Screen",
+        "Interview": "Interview",
+        "Evaluate": "Evaluate",
+        "Decide": "Decide",
+        "Offer": "Offer",
+        "Hire": "Hire"
+      },
+      "status": {
+        "DRAFT": "Draft",
+        "PENDING_APPROVAL": "Pending approval",
+        "OPEN": "Open",
+        "ON_HOLD": "On hold",
+        "FILLED": "Filled",
+        "REOPENED": "Reopened",
+        "CLOSED": "Closed",
+        "ARCHIVED": "Archived"
+      }
     }
   }
 }

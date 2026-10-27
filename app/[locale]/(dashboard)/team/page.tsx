@@ -14,6 +14,7 @@ import { StatusRoster, type StatusRow } from "@/components/pms/StatusRoster";
 import { useCycleSelection } from "@/hooks/use-cycle-selection";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
+import { TeamOverview } from "@/components/people/TeamOverview";
 
 /**
  * §13.3 — the manager workspace ("My Team status dashboard").
@@ -146,6 +147,7 @@ export default function TeamPage() {
     return (
       <div className="space-y-6">
         <PageHeader title={t("title")} subtitle={t("subtitle")} />
+        <TeamOverview />
         <SectionCard title={t("noCycles")}>
           <EmptyState description={t("noCyclesHelp")} />
         </SectionCard>
@@ -182,6 +184,9 @@ export default function TeamPage() {
           </div>
         }
       />
+
+      {/* UX P1 R14 — the team across modules, then the Performance roster. */}
+      <TeamOverview orgScope={isOrgScope} />
 
       {/* §13.3's two views. Buttons rather than a select: there are exactly two,
           and a manager switches between them constantly. Hidden at org scope:
