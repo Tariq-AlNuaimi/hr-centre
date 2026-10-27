@@ -124,3 +124,55 @@ export async function suiteLogin(
   }
   return user.id;
 }
+
+/**
+ * HR Centre F-c: authority comes from role assignments, not `Employee.pmsRoles`.
+ * The suites still DESCRIBE their actors with pmsRoles and link logins with their
+ * own helpers, so without this every HR actor answered 403/404 and ~50 security
+ * tests proved nothing (QA 2026-10-27). Call once at the end of a suite's
+ * `before`: every login-linked employee's pmsRoles are mirrored as GROUP
+ * assignments of the matching starter role. Additive and idempotent (find, then
+ * create), so concurrent suites never remove each other's grants; fixture rows
+ * whose role the employee no longer lists are withdrawn.
+ */
+export async function syncFixtureRoles(
+  prisma: typeof import("../../lib/prisma").prisma,
+): Promise<number> {
+  const starters = await prisma.accessRole.findMany({
+    where: { starterKey: { not: null } },
+    select: { id: true, starterKey: true },
+  });
+  const roleFor = new Map(starters.map((r) => [r.starterKey!, r.id]));
+  if (roleFor.size === 0) {
+    throw new Error(
+      "No starter roles in the database: run `prisma migrate deploy` and `SEED_DEMO=1 prisma db seed` first.",
+    );
+  }
+  const linked = await prisma.employee.findMany({
+    where: { userId: { not: null } },
+    select: { userId: true, pmsRoles: true },
+    take: 2000,
+  });
+  let created = 0;
+  for (const e of linked) {
+    const want = new Set(e.pmsRoles.map((k) => roleFor.get(k)).filter((x): x is string => !!x));
+    const have = await prisma.roleAssignment.findMany({
+      where: { userId: e.userId!, scopeType: "GROUP" },
+      select: { id: true, roleId: true, note: true },
+    });
+    for (const roleId of want) {
+      if (have.some((h) => h.roleId === roleId)) continue;
+      await prisma.roleAssignment.create({
+        data: { userId: e.userId!, roleId, scopeType: "GROUP", note: "integration fixture" },
+        select: { id: true },
+      });
+      created += 1;
+    }
+    for (const h of have) {
+      if (h.note === "integration fixture" && !want.has(h.roleId)) {
+        await prisma.roleAssignment.delete({ where: { id: h.id }, select: { id: true } });
+      }
+    }
+  }
+  return created;
+}

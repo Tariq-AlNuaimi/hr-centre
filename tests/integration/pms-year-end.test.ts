@@ -11,7 +11,7 @@
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
-import { NOT_SUITE_OWNED, suiteActor } from "./fixture";
+import { NOT_SUITE_OWNED, suiteActor, syncFixtureRoles } from "./fixture";
 import { Prisma } from "../../generated/prisma/client";
 
 const mockApi = mock as unknown as {
@@ -196,6 +196,8 @@ before(async () => {
     where: { id: ids.participant },
     data: { goalsApprovedAt: new Date(), goalsApprovedById: ids.hr },
   });
+  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  await syncFixtureRoles(prisma);
 });
 
 after(async () => {

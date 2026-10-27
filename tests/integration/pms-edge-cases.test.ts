@@ -6,7 +6,7 @@ import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 import type { PmsRole } from "../../generated/prisma/client";
-import { TEST_EMPLOYEE_PREFIX, suiteActor } from "./fixture";
+import { TEST_EMPLOYEE_PREFIX, suiteActor, syncFixtureRoles } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -196,6 +196,8 @@ before(async () => {
   ids.superAdminUser = await login(ids.superAdmin, "sa");
   ids.reportUser = await login(ids.report, "rpt");
   ids.hrbpUser = await login(ids.hrbp, "hrbp");
+  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  await syncFixtureRoles(prisma);
 });
 
 after(async () => {
@@ -392,6 +394,7 @@ test("§12.3 a mid-cycle transfer splits the year into two day-weighted periods"
   const { status: code, body } = await json(
     await transfers.POST(
       req("/api/transfers", "POST", {
+        bypassReason: "Integration fixture: recorded without the process",
         employeeId: ids.mover,
         cycleId: ids.cycle,
         transferDate: "2095-07-01",
@@ -454,6 +457,7 @@ test("§12.3 a transfer date outside the cycle is refused", async () => {
   const { status: code, error } = await json(
     await transfers.POST(
       req("/api/transfers", "POST", {
+        bypassReason: "Integration fixture: recorded without the process",
         employeeId: ids.report,
         cycleId: ids.cycle,
         transferDate: "2099-07-01",
@@ -583,6 +587,7 @@ test("§12.3 an explicit null manager clears the line AND the new period's owner
   const { status: code, body } = await json(
     await transfers.POST(
       req("/api/transfers", "POST", {
+        bypassReason: "Integration fixture: recorded without the process",
         employeeId: subject,
         cycleId: ids.cycle,
         transferDate: "2095-07-01",

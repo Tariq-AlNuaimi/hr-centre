@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { prisma } from "../../lib/prisma";
 import { notify, type WrittenEvent } from "../../lib/pms/cycle-notify";
 import { ladderDedupeKey } from "../../lib/pms/notifications";
-import { suiteActor, TEST_EMPLOYEE_PREFIX } from "./fixture";
+import { suiteActor, TEST_EMPLOYEE_PREFIX, syncFixtureRoles } from "./fixture";
 
 /**
  * The claim this suite exists to prove, against a real database:
@@ -80,6 +80,8 @@ before(async () => {
   await prisma.notification.deleteMany({
     where: { recipientEmployee: { odooId: { startsWith: TEST_EMPLOYEE_PREFIX } } },
   });
+  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  await syncFixtureRoles(prisma);
 });
 
 after(async () => {
@@ -202,8 +204,12 @@ test("an ESCALATED_HR event goes to HR's digest, not to the manager", { skip }, 
   assert.ok(hr.length > 0, "the seeded fixture has HR roles, and they receive the digest");
   assert.ok(hr.every((r) => r.href === "/admin/cycles"));
 
+  // F-c: "HR" is whoever holds perf.runCycle group-wide (role assignments),
+  // not the legacy pmsRoles column — the same resolution the sweep uses.
+  const { usersHoldingPermission } = await import("../../lib/rbac/resolve");
+  const hrUserIds = await usersHoldingPermission("perf.runCycle", {}, { limit: 50 });
   const hrPeople = await prisma.employee.findMany({
-    where: { status: "ACTIVE", pmsRoles: { hasSome: ["HR_SUPER_ADMIN", "HRBP"] } },
+    where: { status: "ACTIVE", userId: { in: hrUserIds } },
     select: { id: true },
     take: 50,
   });

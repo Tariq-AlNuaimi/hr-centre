@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { NextRequest } from "next/server";
 import { Prisma } from "../../generated/prisma/client";
 import type { PmsRole } from "../../generated/prisma/client";
-import { TEST_EMPLOYEE_PREFIX, suiteActor, suiteLogin } from "./fixture";
+import { TEST_EMPLOYEE_PREFIX, suiteActor, suiteLogin, syncFixtureRoles } from "./fixture";
 
 const mockApi = mock as unknown as {
   module: (s: string, o: { namedExports: Record<string, unknown> }) => unknown;
@@ -126,6 +126,8 @@ before(async () => {
   };
   ids.superAdminUser = await login(ids.superAdmin, "sa");
   ids.hrbpUser = await login(ids.hrbp, "hrbp");
+  // Authority is role assignments now: mirror the actors' pmsRoles (fixture.ts).
+  await syncFixtureRoles(prisma);
 });
 
 after(async () => {
