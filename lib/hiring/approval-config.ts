@@ -11,6 +11,7 @@ import {
   type ChainOptions,
   type ChainStep,
 } from "./approval-chain";
+import { HiringRuleError } from "./http";
 import { readSetting } from "./settings";
 
 /**
@@ -115,4 +116,42 @@ export async function vacantApprovalRoles(
     }
   }
   return out;
+}
+
+/** "OPERATIONS_DIRECTOR" → "Operations director"; acronyms stay as they are. */
+export function approvalRoleLabel(role: HiringApprovalRole): string {
+  if (role === "COO" || role === "CEO") return role;
+  const words = role.toLowerCase().split("_");
+  const label = words.join(" ").replace(/\bhr\b/, "HR");
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
+/**
+ * Steps nobody could decide: no holder of the step's role in this scope, once
+ * the people who may not decide it (the candidate's referrer, the submitter)
+ * are left out. A record submitted with such a step waits forever and nobody
+ * is told (UX review P0-1) — so submission refuses instead.
+ */
+export function vacantSteps(
+  steps: readonly RoutedStep[],
+  exclude: ReadonlyArray<string | null | undefined> = [],
+): RoutedStep[] {
+  const out = new Set(exclude.filter((x): x is string => Boolean(x)));
+  return steps.filter((s) => !s.approvers.some((a) => !out.has(a.id)));
+}
+
+/** The refusal for a chain with a vacant step — names it and says where to fix it. */
+export function assertChainStaffed(
+  steps: readonly RoutedStep[],
+  exclude: ReadonlyArray<string | null | undefined> = [],
+): void {
+  const vacant = vacantSteps(steps, exclude);
+  if (vacant.length === 0) return;
+  const roles = [...new Set(vacant.map((s) => approvalRoleLabel(s.role)))].join(", ");
+  throw new HiringRuleError(
+    `Nobody can approve the ${roles} step for this company yet, so it would wait with nobody to ` +
+      `decide it. Ask a platform administrator to assign the role in Admin → Roles, then submit again.`,
+    409,
+    "VACANT_APPROVAL_STEP",
+  );
 }

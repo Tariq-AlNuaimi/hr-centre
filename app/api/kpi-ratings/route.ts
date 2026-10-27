@@ -86,7 +86,7 @@ export const POST = withRateLimit(
 
     if (participant.cycle.status !== "OPEN") {
       return err(
-        `Year-end assessment runs while the cycle is open — this cycle is ${participant.cycle.status} (§2).`,
+        `Year-end assessment runs while the cycle is open — this cycle is ${participant.cycle.status}.`,
         409,
       );
     }

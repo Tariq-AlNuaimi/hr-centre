@@ -2,6 +2,7 @@ import { revalidateTag } from "next/cache";
 import type { HiringJdSignatory, HiringRequisition } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { can, canSignJdForHr, type HiringActor } from "./access";
+import { usersHoldingPermission } from "@/lib/rbac/resolve";
 import { HiringRuleError } from "./http";
 import {
   canRequestJdChanges,
@@ -90,6 +91,8 @@ export async function jdView(actor: HiringActor, l: LoadedRequisition) {
       };
     }),
     history,
+    // Only worth the lookup when this viewer could submit right now.
+    hrSignerVacant: canSubmitJd(a, ctx).ok ? !(await hasHrSigner(actor.userId, l)) : false,
     can: {
       submit: canSubmitJd(a, ctx).ok,
       sign: signableSlots(a, ctx),
@@ -102,6 +105,34 @@ export type JdAction =
   | { action: "SUBMIT"; comment?: string }
   | { action: "SIGN"; signatory: HiringJdSignatory; comment?: string }
   | { action: "REQUEST_CHANGES"; comment: string };
+
+/**
+ * The JD's HR signature needs someone who is neither the drafter (who becomes
+ * the JD author on submit) nor the hiring manager (who signs the other slot).
+ * With nobody like that, a submitted JD waits forever (UX review P0-1).
+ */
+async function hasHrSigner(actorId: string, l: LoadedRequisition): Promise<boolean> {
+  const holders = await Promise.all(
+    (["hiring.hrManager", "hiring.hrSpecialist", "hiring.configure"] as const).map((p) =>
+      usersHoldingPermission(p, l.subject, { limit: 5 }),
+    ),
+  );
+  const others = new Set(holders.flat());
+  others.delete(actorId);
+  others.delete(l.req.hiringManagerId);
+  return others.size > 0;
+}
+
+async function assertHrSignerExists(actor: HiringActor, l: LoadedRequisition): Promise<void> {
+  if (await hasHrSigner(actor.userId, l)) return;
+  throw new HiringRuleError(
+    "Nobody else can give this job description its HR sign-off yet (an HR manager or HR " +
+      "specialist for this company), so it would wait with nobody to sign it. Ask a platform " +
+      "administrator to assign the role in Admin → Roles, then submit again.",
+    409,
+    "VACANT_APPROVAL_STEP",
+  );
+}
 
 export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, body: JdAction) {
   const req = l.req;
@@ -116,6 +147,7 @@ export async function applyJdAction(actor: HiringActor, l: LoadedRequisition, bo
   if (!decision.ok) throw new HiringRuleError(decision.reason, 403);
 
   if (body.action === "SUBMIT") {
+    await assertHrSignerExists(actor, l);
     await prisma.hiringRequisition.update({
       where: { id: req.id, jdStatus: req.jdStatus },
       data: { jdStatus: "AWAITING_SIGNOFF", jdAuthorId: actor.userId },

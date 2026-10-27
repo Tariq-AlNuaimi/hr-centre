@@ -24,7 +24,7 @@ import { activateSchema } from "@/lib/validations/three-sixty";
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR activates the 360 cycle (§4.1).", 403);
+    if (!isHr(actor)) return err("Only HR activates the 360 cycle.", 403);
 
     const body = await readJsonBody(request);
     if (body === null) return err("Request body must be valid JSON");
@@ -42,7 +42,7 @@ export const POST = withRateLimit(
     });
     if (!threeSixty) return notFound("360 cycle");
     if (threeSixty.status !== "DRAFT") {
-      return err(`This 360 cycle is already ${threeSixty.status.toLowerCase()} (§9.7).`, 409);
+      return err(`This 360 cycle is already ${threeSixty.status.toLowerCase()}.`, 409);
     }
 
     // Rater counts per ratee, read from the assignments themselves rather than

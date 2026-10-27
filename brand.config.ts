@@ -68,7 +68,8 @@ const appName = process.env.NEXT_PUBLIC_APP_NAME?.trim() || "My App";
 
 export const brand: BrandConfig = {
   appName,
-  description: "Performance management for Rihal Group",
+  description:
+    "Rihal Group's HR system: people, performance, joiners and leavers, hiring and HR tickets",
   monogram: appName.charAt(0).toUpperCase() || "A",
 
   colors: {

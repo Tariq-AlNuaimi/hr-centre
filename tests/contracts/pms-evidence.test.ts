@@ -303,7 +303,7 @@ test("evidence is frozen once the year-end deadline passes (requirement 6)", () 
   assert.ok(r);
   assert.equal(r.status, 409);
   assert.match(r.reason, /deadline has passed/);
-  assert.match(r.reason, /§5\.5/, "it should name HR's route past the lock");
+  assert.match(r.reason, /HR can extend/, "it should name HR's route past the lock");
 });
 
 test("evidence cannot be attached before the window opens", () => {
@@ -320,13 +320,13 @@ test("a closed cycle freezes evidence too", () => {
   }
 });
 
-test("no approved baseline means nothing to evidence (§5.1)", () => {
+test("no approved baseline means nothing to evidence", () => {
   const r = write({ goalsApprovedAt: null });
   assert.ok(r);
   assert.match(r.reason, /baseline/);
 });
 
-test("a C-Level participant has no self-assessment to evidence (§8.3)", () => {
+test("a C-Level participant has no self-assessment to evidence", () => {
   const r = write({ roleTrack: "C_LEVEL" });
   assert.ok(r);
   assert.match(r.reason, /C-Level/);

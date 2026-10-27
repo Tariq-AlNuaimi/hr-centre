@@ -100,20 +100,20 @@ export const POST = withRateLimit(
     // through from the entity. Categorical, so it is answered before timing.
     if (isGoalSettingExempt(participant.employee.roleTrack)) {
       return err(
-        "C-Level employees skip self-assessment entirely (§8.3) — there is no year-end " +
+        "C-Level employees skip self-assessment entirely — there is no year-end " +
           "assessment to sign.",
         409,
       );
     }
     if (participant.cycle.status !== "OPEN") {
       return err(
-        `Year-end sign-off runs while the cycle is open — this cycle is ${participant.cycle.status} (§2).`,
+        `Year-end sign-off runs while the cycle is open — this cycle is ${participant.cycle.status}.`,
         409,
       );
     }
     if (participant.goalsApprovedAt === null) {
       return err(
-        "This KPI set has no HR-approved baseline, so there are no agreed KPIs to assess (§5.1).",
+        "This KPI set has no HR-approved baseline, so there are no agreed KPIs to assess.",
         409,
       );
     }

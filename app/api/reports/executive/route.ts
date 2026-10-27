@@ -46,7 +46,7 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!actor.capabilities.orgWide) {
-      return err("The executive dashboard is for HR and top management (§13.6).", 403);
+      return err("The executive dashboard is for HR and top management.", 403);
     }
 
     const cycleId = new URL(request.url).searchParams.get("cycleId");

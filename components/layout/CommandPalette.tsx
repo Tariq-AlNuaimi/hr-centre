@@ -2,16 +2,7 @@
 
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  Home,
-  User,
-  ClipboardCheck,
-  Trash2,
-  Settings,
-  Lightbulb,
-  LogOut,
-  Search,
-} from "lucide-react";
+import { Home, User, ClipboardCheck, Trash2, Lightbulb, LogOut, Search } from "lucide-react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -104,13 +95,6 @@ export function CommandPalette() {
             },
           ]
         : []),
-      {
-        key: "settings",
-        label: tNav("settings"),
-        group: "navigate",
-        icon: <Settings className="h-4 w-4" />,
-        run: () => go(`/${locale}/settings`),
-      },
       {
         key: "profile",
         label: tNav("profile"),

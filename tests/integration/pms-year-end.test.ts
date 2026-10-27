@@ -255,7 +255,7 @@ test("§7.1 the employee self-assesses, and the set state comes back with it", a
   assert.equal((second.body.state as { employeeRated: number }).employeeRated, 2);
 });
 
-test("re-rating UPDATES rather than appending — one assessment each (§7.1)", async () => {
+test("re-rating UPDATES rather than appending — one assessment each", async () => {
   as(ids.employeeUser);
   const again = await json(await rate({ kpiId: ids.kpis[0], party: "EMPLOYEE", level: 5 }));
   assert.equal(again.status, 200, "an update, not a create");

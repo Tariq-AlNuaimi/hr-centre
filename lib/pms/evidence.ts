@@ -232,23 +232,22 @@ export function evidenceWriteBlockedReason(params: {
   if (employeeSigned) {
     return {
       reason:
-        "You have signed this assessment, so its evidence is part of the signed record (§7.1). " +
-        "Changing it now needs HR to intervene on the cycle (§5.5).",
+        "You have signed this assessment, so its evidence is part of the signed record. " +
+        "Changing it now needs HR to intervene on the cycle.",
       status: 409,
     };
   }
   if (isGoalSettingExempt(roleTrack)) {
     return {
       reason:
-        "C-Level employees skip self-assessment entirely (§8.3), so there is no evidence to " +
+        "C-Level employees skip self-assessment entirely, so there is no evidence to " +
         "attach — their score passes through from the entity.",
       status: 409,
     };
   }
   if (goalsApprovedAt === null) {
     return {
-      reason:
-        "This KPI set has no HR-approved baseline, so there is nothing to evidence yet (§5.1).",
+      reason: "This KPI set has no HR-approved baseline, so there is nothing to evidence yet.",
       status: 409,
     };
   }
@@ -260,20 +259,20 @@ export function evidenceWriteBlockedReason(params: {
   // hold still.
   if (cycleStatus !== "OPEN") {
     return {
-      reason: `This cycle is ${cycleStatus.toLowerCase()}, so its assessments can no longer be changed (§5.4).`,
+      reason: `This cycle is ${cycleStatus.toLowerCase()}, so its assessments can no longer be changed.`,
       status: 409,
     };
   }
   if (stage === null) {
-    return { reason: "This cycle has no year-end stage configured yet (§2).", status: 409 };
+    return { reason: "This cycle has no year-end stage configured yet.", status: 409 };
   }
   if (!canActOnStage(stage, now)) {
     return {
       reason:
         now < stage.opensAt
-          ? "The year-end review has not opened yet for this cycle (§2)."
-          : "The year-end deadline has passed and the stage is locked (§5.4). HR can extend the " +
-            "deadline or intervene (§5.5).",
+          ? "The year-end review has not opened yet for this cycle."
+          : "The year-end deadline has passed and the stage is locked. HR can extend the " +
+            "deadline or intervene.",
       status: 409,
     };
   }
@@ -329,7 +328,7 @@ export function signBlockedReason(params: {
 }): EvidenceRefusal | null {
   const { kpis } = params;
   if (kpis.length === 0) {
-    return { reason: "There are no KPIs to assess yet (§5.1).", status: 409 };
+    return { reason: "There are no KPIs to assess yet.", status: 409 };
   }
 
   const unrated = kpis.filter((k) => !k.hasRating);

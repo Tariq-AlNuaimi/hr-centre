@@ -168,14 +168,14 @@ test("§3.1 the generated template parses back through the loader, all 12 §3.3 
   assert.equal(rows.length, 2, "template ships two example rows");
   assert.equal(rows[0].managerOdooId, "1000", "the Manager (Employee ID) column must map");
   assert.equal(rows[1].roleTrack, "C-Level");
-  assert.equal(rows[1].department, null, "the C-Level example must carry no department (§1.2)");
+  assert.equal(rows[1].department, null, "the C-Level example must carry no department");
 });
 
 test("mapHeaders refuses a sheet where two columns claim the same field", () => {
   assert.throws(
     () => mapHeaders(["Employee ID", "Odoo ID", "Name"]),
     (e: unknown) => e instanceof ImportFileError && e.rule === "duplicate_column",
-    "guessing which column is the key would silently rekey the whole import (§3.2)",
+    "guessing which column is the key would silently rekey the whole import",
   );
 });
 
@@ -320,7 +320,7 @@ test("§11.5 a leaver without a last working day is rejected", () => {
   );
   assert.ok(
     rules(issues).includes("leaver_without_last_working_day"),
-    "without the date the bonus pro-ration period is undefined (§11.4)",
+    "without the date the bonus pro-ration period is undefined",
   );
 });
 

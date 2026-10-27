@@ -185,7 +185,7 @@ export const POST = withRateLimit(
         return true;
       });
       if (!rejected) {
-        return err("This request was decided by someone else a moment ago (§6.2).", 409);
+        return err("This request was decided by someone else a moment ago.", 409);
       }
       const row = await prisma.kpiChangeRequest.findUniqueOrThrow({
         where: { id },
@@ -372,7 +372,7 @@ export const POST = withRateLimit(
     if (applied === null) {
       return err(
         "This request moved a moment ago — reload it. Either someone else decided it, or the " +
-          "employee acknowledged it while this decision was being made (§6.2).",
+          "employee acknowledged it while this decision was being made.",
         409,
       );
     }

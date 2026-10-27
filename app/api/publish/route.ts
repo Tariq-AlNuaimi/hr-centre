@@ -38,7 +38,7 @@ export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!isHrSuperAdmin(actor)) {
-      return err("Only an HR Super Admin publishes results (§13.2).", 403);
+      return err("Only an HR Super Admin publishes results.", 403);
     }
     const by = actor.employeeId;
     if (!by) return err("This account has no linked employee record (ADR-065).", 403);
@@ -166,10 +166,7 @@ export const POST = withRateLimit(
     });
 
     if (publication === null) {
-      return err(
-        "This cycle's publication state was changed by someone else a moment ago (§13.2).",
-        409,
-      );
+      return err("This cycle's publication state was changed by someone else a moment ago.", 409);
     }
 
     return ok({ publication, alreadyInThatState: false });

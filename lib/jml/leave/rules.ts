@@ -46,7 +46,7 @@ export function dateProblems(v: DateFacts): Problem[] {
     out.push({
       field: "lastDayOfService",
       message:
-        "Last Day of Service cannot be before Last Physical Working Day. Service continues through any leave taken in lieu of notice (§6.2).",
+        "Last Day of Service cannot be before Last Physical Working Day. Service continues through any leave taken in lieu of notice.",
     });
   }
   if (lpwd && lpwd < v.noticeStartDate) {
@@ -59,7 +59,7 @@ export function dateProblems(v: DateFacts): Problem[] {
     if (v.nationality !== "EXPATRIATE") {
       out.push({
         field: "departureDate",
-        message: "Departure Date applies to expatriate exits only (§19.2).",
+        message: "Departure Date applies to expatriate exits only.",
       });
     }
     if (lds && v.departureDate < lds) {
@@ -73,13 +73,13 @@ export function dateProblems(v: DateFacts): Problem[] {
   if (v.noticePeriodDays !== standard && !v.noticePeriodOverrideReason?.trim()) {
     out.push({
       field: "noticePeriodOverrideReason",
-      message: `Notice period ${v.noticePeriodDays} differs from the ${standard}-day default for ${v.exitType.replaceAll("_", " ").toLowerCase()}. A reason is required to override it (§8.3).`,
+      message: `Notice period ${v.noticePeriodDays} differs from the ${standard}-day default for ${v.exitType.replaceAll("_", " ").toLowerCase()}. A reason is required to override it.`,
     });
   }
   if (v.exitType === "TERMINATION" && !v.exitSubtype) {
     out.push({
       field: "exitSubtype",
-      message: "Exit Subtype is required for a termination (§8.3).",
+      message: "Exit Subtype is required for a termination.",
     });
   }
   return out;

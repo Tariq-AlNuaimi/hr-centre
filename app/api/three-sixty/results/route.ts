@@ -89,7 +89,7 @@ export const GET = withRateLimit(
     if (!threeSixtyCycleId) return err("threeSixtyCycleId is required");
 
     if (!actor.capabilities.orgWide) {
-      return err("360 results are visible to HR and the executive viewers (§4.1, §13.1).", 403);
+      return err("360 results are visible to HR and the executive viewers.", 403);
     }
 
     const threeSixty = await prisma.threeSixtyCycle.findUnique({

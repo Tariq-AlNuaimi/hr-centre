@@ -63,7 +63,7 @@ export function checkInterviewCapture(
     ["recommendScore", c.recommendScore],
     ["returnScore", c.returnScore],
   ] as const) {
-    if (value === null) out.push({ field, message: "A score from 1 to 5 is required (§12.4)." });
+    if (value === null) out.push({ field, message: "A score from 1 to 5 is required." });
     else if (!Number.isInteger(value) || value < 1 || value > 5)
       out.push({ field, message: "The score must be a whole number from 1 to 5." });
   }
@@ -71,13 +71,13 @@ export function checkInterviewCapture(
     if (c.retentionAttempted === null) {
       out.push({
         field: "retentionAttempted",
-        message: "Record whether retention was attempted — required for a resignation (§12.4).",
+        message: "Record whether retention was attempted — required for a resignation.",
       });
     }
     if (c.counterOfferMade === null) {
       out.push({
         field: "counterOfferMade",
-        message: "Record whether a counter-offer was made — required for a resignation (§12.4).",
+        message: "Record whether a counter-offer was made — required for a resignation.",
       });
     }
   }
@@ -91,9 +91,9 @@ export function checkAssessment(a: {
 }): Blocker[] {
   const out: Blocker[] = [];
   if (!a.regrettable)
-    out.push({ field: "regrettable", message: "A regrettable assessment is required (§12.4)." });
+    out.push({ field: "regrettable", message: "A regrettable assessment is required." });
   if (!a.preventable)
-    out.push({ field: "preventable", message: "A preventable assessment is required (§12.4)." });
+    out.push({ field: "preventable", message: "A preventable assessment is required." });
   if (a.preventable === "PREVENTABLE" && !a.preventionFactor) {
     out.push({
       field: "preventionFactor",

@@ -2,7 +2,7 @@ import type { HiringRequisition, HiringRequisitionStatus } from "@/generated/pri
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import type { ScopeSubject } from "@/lib/rbac/grants";
 import { isHiringAdmin, type HiringActor } from "./access";
-import { getRoutedChain, type RoutedStep } from "./approval-config";
+import { assertChainStaffed, getRoutedChain, type RoutedStep } from "./approval-config";
 import { describeFill, fillLabel, nextFillStatus } from "./fill-rules";
 import { HiringRuleError } from "./http";
 import { toNum, toOMRorNull } from "./money";
@@ -89,6 +89,7 @@ export async function changeRequisitionStatus(
         "NOT_READY",
       );
     }
+    assertChainStaffed((await requisitionChain(req, subject)).steps);
   }
   let finalSignoff: {
     submissionId: string;

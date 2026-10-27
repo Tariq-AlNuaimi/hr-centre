@@ -124,7 +124,7 @@ test("§11.3 the bottom two bands earn nothing, even when eligible", () => {
   for (const band of ["ALMOST_ACHIEVED", "UNSATISFACTORY"] as const) {
     const r = computeBonus({ band, basicSalary: "5000", work: base });
     assert.equal(r.eligible, true, "they are still eligible…");
-    assert.equal(r.amount, "0.00", "…and still earn nothing (§11.3)");
+    assert.equal(r.amount, "0.00", "…and still earn nothing");
   }
 });
 

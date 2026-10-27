@@ -2,7 +2,12 @@ import type { Prisma } from "@/generated/prisma/client";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import type { HiringActor } from "./access";
 import { computeChain, totalMonthlyComp } from "./approval-chain";
-import { configToChainOptions, loadApprovalConfig } from "./approval-config";
+import {
+  assertChainStaffed,
+  configToChainOptions,
+  loadApprovalConfig,
+  routeChain,
+} from "./approval-config";
 import { newHiringId, openJson, sealAmount, sealJson } from "./comp-crypto";
 import { HiringRuleError } from "./http";
 import {
@@ -157,6 +162,8 @@ export async function reviseOffer(actor: HiringActor, l: LoadedOffer, body: Revi
         configToChainOptions(await loadApprovalConfig()),
       )
     : null;
+  // A revision that restarts approval must not land on a step nobody holds.
+  if (chain) assertChainStaffed(await routeChain(chain, l.subject), [o.candidate.referredById]);
   await auditedTransaction(async (tx) => {
     await ensureInitialVersion(tx, l, actor);
     const existing = await tx.hiringOfferVersion.findMany({

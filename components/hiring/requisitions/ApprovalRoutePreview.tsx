@@ -6,23 +6,32 @@ import { qs, useHiringQuery } from "../ui/api";
 
 type Step = { sequence: number; role: string; approvers: { id: string; name: string }[] };
 
-/** "Who approves this" before it is submitted (Interview Hub approval-route preview). */
-export function ApprovalRoutePreview(props: {
+type RouteProps = {
   entityId: string;
   departmentId?: string | null;
   bandMax?: string;
   currency?: string;
-}) {
+};
+
+/** The routed chain for a request being drafted (one cached query, shared by its readers). */
+export function useRequestRoute(props: RouteProps | null) {
+  return useHiringQuery<{ steps: Step[] }>(
+    props
+      ? `/api/hiring/requests/approval-route${qs({
+          entityId: props.entityId,
+          departmentId: props.departmentId,
+          bandMax: props.bandMax,
+          currency: props.currency,
+        })}`
+      : null,
+  );
+}
+
+/** "Who approves this" before it is submitted (Interview Hub approval-route preview). */
+export function ApprovalRoutePreview(props: RouteProps) {
   const t = useTranslations("hiring.request");
   const tr = useTranslations("hiring.roles");
-  const { data, isLoading } = useHiringQuery<{ steps: Step[] }>(
-    `/api/hiring/requests/approval-route${qs({
-      entityId: props.entityId,
-      departmentId: props.departmentId,
-      bandMax: props.bandMax,
-      currency: props.currency,
-    })}`,
-  );
+  const { data, isLoading } = useRequestRoute(props);
   return (
     <SectionCard title={t("routeTitle")} subtitle={t("routeHint")}>
       {isLoading ? <p className="text-sm text-muted-foreground">{t("routeLoading")}</p> : null}

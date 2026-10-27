@@ -41,7 +41,7 @@ import { CYCLE_POLICY_SELECT, policyFor } from "@/lib/pms/cycle-policy";
 export const POST = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR runs the score calculation (§4.1).", 403);
+    if (!isHr(actor)) return err("Only HR runs the score calculation.", 403);
     const startedBy = actor.employeeId;
     if (!startedBy) return err("This account has no linked employee record (ADR-065).", 403);
 
@@ -67,10 +67,7 @@ export const POST = withRateLimit(
     if (cycle.publication?.published) {
       // §13.2 — results are live. Recomputing underneath a published cycle would
       // change what employees have already read, without anyone deciding to.
-      return err(
-        "Results for this cycle are published (§13.2). Un-publish before recalculating.",
-        409,
-      );
+      return err("Results for this cycle are published. Un-publish before recalculating.", 409);
     }
 
     // Resolved once, from the cycle. `policyFor` tolerates a cycle created
@@ -408,7 +405,7 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!actor.capabilities.orgWide) {
-      return err("Score runs are visible to HR and the executive viewers (§4.1).", 403);
+      return err("Score runs are visible to HR and the executive viewers.", 403);
     }
     const cycleId = new URL(request.url).searchParams.get("cycleId");
     if (!cycleId) return err("cycleId is required");

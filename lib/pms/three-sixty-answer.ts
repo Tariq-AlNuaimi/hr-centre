@@ -34,24 +34,24 @@ export function answerBlockedReason(params: {
     return {
       reason:
         cycleStatus === "DRAFT"
-          ? "This 360 cycle has not been activated yet (§9.7)."
-          : "This 360 cycle is closed (§9.8).",
+          ? "This 360 cycle has not been activated yet."
+          : "This 360 cycle is closed.",
       status: 409,
     };
   }
   if (now < opensAt) {
-    return { reason: "This 360 cycle has not opened yet (§9.7).", status: 409 };
+    return { reason: "This 360 cycle has not opened yet.", status: 409 };
   }
   if (now > deadline) {
     // §5.4's convention, carried into §9: a deadline is a hard lock.
     return {
-      reason: "The 360 deadline has passed and this assessment is locked (§5.4).",
+      reason: "The 360 deadline has passed and this assessment is locked.",
       status: 409,
     };
   }
   if (assignmentStatus === "SUBMITTED") {
     // §9.7 — "prevent duplicate submissions per assignment".
-    return { reason: "This assessment has already been submitted (§9.7).", status: 409 };
+    return { reason: "This assessment has already been submitted.", status: 409 };
   }
   return null;
 }

@@ -149,20 +149,20 @@ export function submitBlockedReason(params: {
   if (goalsApprovedAt === null) {
     return {
       reason:
-        "This KPI set has no HR-approved baseline yet, so there is nothing to change (§5.1). " +
+        "This KPI set has no HR-approved baseline yet, so there is nothing to change. " +
         "It is still in goal-setting.",
       status: 409,
     };
   }
   if (stage === null) {
-    return { reason: "This cycle has no mid-year stage configured yet (§2).", status: 409 };
+    return { reason: "This cycle has no mid-year stage configured yet.", status: 409 };
   }
   if (!canActOnStage(stage, now)) {
     return {
       reason:
         now < stage.opensAt
-          ? "The mid-year review has not opened yet for this cycle (§2)."
-          : "The mid-year deadline has passed and the stage is locked (§5.4).",
+          ? "The mid-year review has not opened yet for this cycle."
+          : "The mid-year deadline has passed and the stage is locked.",
       status: 409,
     };
   }
@@ -184,11 +184,11 @@ export function decideBlockedReason(params: {
   const { actor, status } = params;
 
   if (!isHr(actor)) {
-    return { reason: "Only HR reviews and decides change requests (§6.2).", status: 403 };
+    return { reason: "Only HR reviews and decides change requests.", status: 403 };
   }
   if (status !== "PENDING") {
     return {
-      reason: `This request was already ${status.toLowerCase()} — a decision is made once (§6.2).`,
+      reason: `This request was already ${status.toLowerCase()} — a decision is made once.`,
       status: 409,
     };
   }
@@ -259,30 +259,30 @@ export function acknowledgeBlockedReason(params: {
   if (!isSubject) {
     return {
       reason:
-        "Only the employee whose KPIs are changing may acknowledge the request (§6.2). A " +
+        "Only the employee whose KPIs are changing may acknowledge the request. A " +
         "manager cannot acknowledge on their behalf, and HR's exception is the override.",
       status: 403,
     };
   }
   if (status !== "PENDING") {
     return {
-      reason: `This request was already ${status.toLowerCase()} — there is nothing left to acknowledge (§6.2).`,
+      reason: `This request was already ${status.toLowerCase()} — there is nothing left to acknowledge.`,
       status: 409,
     };
   }
   if (acknowledgedAt !== null) {
-    return { reason: "You have already acknowledged this change (§6.2).", status: 409 };
+    return { reason: "You have already acknowledged this change.", status: 409 };
   }
   if (stage === null) {
-    return { reason: "This cycle has no mid-year stage configured yet (§2).", status: 409 };
+    return { reason: "This cycle has no mid-year stage configured yet.", status: 409 };
   }
   if (!canActOnStage(stage, now)) {
     return {
       reason:
         now < stage.opensAt
-          ? "The mid-year review has not opened yet for this cycle (§2)."
+          ? "The mid-year review has not opened yet for this cycle."
           : "The mid-year deadline has passed, so this request is locked and the KPI is " +
-            "unchanged (§5.4).",
+            "unchanged.",
       status: 409,
     };
   }
@@ -350,14 +350,14 @@ export function approvalAcknowledgmentReason(params: {
   if (stage !== null && stageState(stage, now) === "LOCKED") {
     return (
       "The mid-year deadline passed without the employee's acknowledgment, so this request is " +
-      "locked and the KPI stays unchanged (§6.2). An override cannot reopen it — the deadline " +
+      "locked and the KPI stays unchanged. An override cannot reopen it — the deadline " +
       "is a hard lock."
     );
   }
 
   if (overrideReason === null || overrideReason === undefined || overrideReason.trim() === "") {
     return (
-      "The employee has not acknowledged this change yet (§6.2). Wait for their acknowledgment, " +
+      "The employee has not acknowledged this change yet. Wait for their acknowledgment, " +
       "or record a written reason to approve without it — an override is logged as an override."
     );
   }
@@ -384,7 +384,7 @@ export function withdrawBlockedReason(params: {
   }
   if (status !== "PENDING") {
     return {
-      reason: `This request was already ${status.toLowerCase()} and cannot be withdrawn (§6.2).`,
+      reason: `This request was already ${status.toLowerCase()} and cannot be withdrawn.`,
       status: 409,
     };
   }
@@ -420,7 +420,7 @@ export function changeRequestAccessRefusal(params: {
   if (isGoalSettingExempt(employee.roleTrack)) {
     return {
       reason:
-        "C-Level employees skip goal-setting entirely (§8.3) — this participant has no KPI " +
+        "C-Level employees skip goal-setting entirely — this participant has no KPI " +
         "baseline to change.",
       status: 409,
     };
@@ -429,7 +429,7 @@ export function changeRequestAccessRefusal(params: {
   // §2 — the year has to be running.
   if (cycleStatus !== "OPEN") {
     return {
-      reason: `Change requests are raised while the cycle is open — this cycle is ${cycleStatus} (§2).`,
+      reason: `Change requests are raised while the cycle is open — this cycle is ${cycleStatus}.`,
       status: 409,
     };
   }

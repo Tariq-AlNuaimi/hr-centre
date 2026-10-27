@@ -13,6 +13,9 @@ import { useJmlAction, useJmlLookups } from "../use-jml";
 import { CompleteAction, DueDateAction, ReasonAction } from "./TaskActions";
 import type { CaseDetail, TaskDto } from "./types";
 
+/** Compliance categories with a readable label (never show the raw enum code). */
+const COMPLIANCE_CATEGORIES = new Set(["ROP_CLEARANCE", "VISA", "MOL", "OTHER"]);
+
 /** Statuses chosen from the select; the rest need a reason or a confirmation. */
 const NEEDS_ACTION = new Set(["COMPLETED", "NOT_APPLICABLE", "DELAYED", "CANCELLED"]);
 
@@ -40,7 +43,14 @@ function Badges({ task }: { task: TaskDto }) {
       {task.source === "MANUAL" ? <Badge variant="info">{t("added")}</Badge> : null}
       {task.source === "REVERSAL" ? <Badge variant="warning">{t("reversal")}</Badge> : null}
       {task.statutory ? (
-        <Badge variant="brand">{t("statutory", { category: task.complianceCategory ?? "" })}</Badge>
+        <Badge variant="brand">
+          {t("statutory", {
+            category:
+              task.complianceCategory && COMPLIANCE_CATEGORIES.has(task.complianceCategory)
+                ? tv(`complianceCategory.${task.complianceCategory}`)
+                : "",
+          }).trim()}
+        </Badge>
       ) : null}
       {task.blocking ? <Badge variant="default">{t("blocking")}</Badge> : null}
       {overdue ? <Badge variant="danger">{t("overdue")}</Badge> : null}

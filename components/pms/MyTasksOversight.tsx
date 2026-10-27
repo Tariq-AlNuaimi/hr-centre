@@ -198,12 +198,18 @@ function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: Goa
         {/* The server's own sentence, quoted: it names WHICH rule closed the
             door (§4.2 / §5.4 / §5.1). */}
         {task.blockedReason ? (
-          <p className="max-w-prose text-xs text-muted-foreground">{task.blockedReason}</p>
+          <>
+            <p className="max-w-prose text-xs text-muted-foreground">{task.blockedReason}</p>
+            <p className="max-w-prose text-xs text-muted-foreground">{t("blockedContact")}</p>
+          </>
         ) : null}
       </div>
-      <Link href={task.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
-        {t(task.actionKey)}
-      </Link>
+      {/* A blocked task has nothing to start: no button beside "nothing to assess". */}
+      {task.blockedReason ? null : (
+        <Link href={task.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          {t(task.actionKey)}
+        </Link>
+      )}
     </li>
   );
 }

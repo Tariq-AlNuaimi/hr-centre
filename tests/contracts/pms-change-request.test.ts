@@ -175,7 +175,7 @@ test("§4.2 only the direct line manager may raise a request; a stranger gets 40
     now: DURING,
     goalsApprovedAt: APPROVED,
   });
-  assert.equal(refusal?.status, 404, "404, not 403 — no existence oracle (§4.2)");
+  assert.equal(refusal?.status, 404, "404, not 403 — no existence oracle");
 });
 
 test("§4.1 HR may raise one on anyone", () => {
@@ -359,7 +359,7 @@ test("§8.3 C-Level have no baseline to change", () => {
   const refusal = gate({ employee: { id: "emp", managerId: "mgr", roleTrack: "C_LEVEL" } });
   assert.equal(refusal?.status, 409);
   assert.match(refusal?.reason as string, /C-Level/);
-  assert.match(refusal?.reason as string, /§8\.3/);
+  assert.match(refusal?.reason as string, /C-Level/);
 });
 
 test("§2 a cycle that is not running takes no change requests, and says which state it is in", () => {

@@ -49,7 +49,7 @@ export const GET = withRateLimit(
 export const PATCH = withRateLimit(
   withAuth(async (request: NextRequest, { session, params }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR sets the cycle policy (§4.1).", 403);
+    if (!isHr(actor)) return err("Only HR sets the cycle policy.", 403);
 
     const { id } = await params;
     const body = await readJsonBody(request);

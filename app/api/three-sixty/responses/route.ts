@@ -43,7 +43,7 @@ function answerShapeError(
     if (!q.scored && hasScore) {
       // §9.5 sums "the answered question scores"; an open-ended question has
       // none, and letting one carry a score would quietly change the maximum.
-      return "An open-ended question takes text, not a score (§9.2).";
+      return "An open-ended question takes text, not a score.";
     }
   }
   return null;

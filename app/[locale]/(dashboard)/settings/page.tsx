@@ -1,34 +1,12 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useTranslations } from "next-intl";
-import { PageHeader } from "@/components/shared/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
-import { DescriptionList } from "@/components/ui/description-list";
-
-export default function SettingsPage() {
-  const t = useTranslations("settings");
-
-  return (
-    <>
-      <PageHeader title={t("title")} />
-      <Card>
-        <CardContent className="p-6">
-          <DescriptionList
-            items={[
-              {
-                key: "appName",
-                label: t("appName"),
-                value: process.env.NEXT_PUBLIC_APP_NAME ?? "My App",
-              },
-              {
-                key: "environment",
-                label: t("environment"),
-                value: process.env.NODE_ENV,
-              },
-            ]}
-          />
-        </CardContent>
-      </Card>
-    </>
-  );
+/**
+ * UX review P0 (docs/blueprints/ux-p0.md, AC-7.4): the starter template's
+ * Settings page showed only the app name and NODE_ENV — dead UI, and a minor
+ * disclosure. HR Centre's real configuration lives in each module's settings;
+ * the person-level page is Profile, which this address now opens.
+ */
+export default async function SettingsPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  redirect(`/${locale}/settings/profile`);
 }

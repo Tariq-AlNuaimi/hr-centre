@@ -137,7 +137,7 @@ export const GET = withRateLimit(
   withAuth(async (request: NextRequest, { session }) => {
     const actor = await resolveActor(session);
     if (!canExportMasterResults(actor)) {
-      return err("The master results export is HR Super Admin only (§13.5).", 403);
+      return err("The master results export is HR Super Admin only.", 403);
     }
 
     const url = new URL(request.url);
@@ -158,7 +158,7 @@ export const GET = withRateLimit(
       select: { id: true, startedAt: true },
     });
     if (runs.length === 0) {
-      return err("No scores have been calculated for this cycle yet (§10.7).", 409);
+      return err("No scores have been calculated for this cycle yet.", 409);
     }
 
     const scores = await prisma.employeeScore.findMany({

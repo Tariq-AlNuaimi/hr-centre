@@ -10,7 +10,6 @@ import {
   CalendarDays,
   ClipboardList,
   ShieldCheck,
-  Settings,
   Trash2,
   ClipboardCheck,
   Award,
@@ -410,12 +409,6 @@ export function AppSidebar() {
       icon: <Trash2 className="h-4 w-4" />,
       label: t("recyclingBin"),
       onClick: () => router.push(`/${locale}/recycling-bin`),
-    },
-    {
-      key: "settings",
-      icon: <Settings className="h-4 w-4" />,
-      label: t("settings"),
-      onClick: () => router.push(`/${locale}/settings`),
     },
     // NOTE: scaffolded entity nav entries are inserted before the recycling-bin
     // item above (see scripts/scaffold-entity.mjs patchSidebar marker) -- keep

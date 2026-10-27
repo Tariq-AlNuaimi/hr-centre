@@ -144,7 +144,7 @@
     "notFound": "User not found",
     "platformAdmin": "Platform administrator",
     "platformAdminHint": "Can create and delete logins, restore records from the recycling bin, and read the audit log.",
-    "platformAdminNotHr": "This is not an HR role. HR authority (§4.1) is granted separately, under HR authority on this screen.",
+    "platformAdminNotHr": "This is not an HR role. HR authority is granted separately, under HR authority on this screen.",
     "platformAdminYes": "Platform admin",
     "platformAdminNo": "Standard",
     "createLogin": "Create login",
@@ -224,7 +224,33 @@
     "switchWorkspace": "Switch workspace",
     "singleWorkspaceHint": "You're in your only workspace.",
     "toggleSidebar": "Toggle sidebar",
-    "account": "Account menu"
+    "account": "Account menu",
+    "switchModule": "Open a module",
+    "modulesTitle": "Modules",
+    "noAccess": "No access — ask a platform administrator",
+    "noAccessAdmin": "No access yet — assign a role in Admin → Roles",
+    "modules": {
+      "people": {
+        "name": "People",
+        "hint": "Directory, records and org chart"
+      },
+      "performance": {
+        "name": "Performance",
+        "hint": "Goals, reviews and scorecards"
+      },
+      "jml": {
+        "name": "Joiners & leavers",
+        "hint": "Joiner, mover and leaver cases"
+      },
+      "hiring": {
+        "name": "Hiring",
+        "hint": "Requisitions, candidates and offers"
+      },
+      "tickets": {
+        "name": "HR tickets",
+        "hint": "Employee questions escalated by Siraaj"
+      }
+    }
   },
   "status": {
     "forbiddenTitle": "Access denied",
@@ -352,7 +378,7 @@
       "enrolled": "{count} new employee(s) were enrolled into the open performance cycle, so their managers can draft KPIs for them.",
       "enrolmentPending": "{count} imported employee(s) are not enrolled yet. Open Performance cycles and press “Enrol missing employees” to finish.",
       "enrolmentFailed": "The employees were imported, but enrolling them into the open cycle did not finish. Do not re-upload the file — open Performance cycles and press “Enrol missing employees”.",
-      "departuresRecorded": "{count, plural, =1 {# departure recorded} other {# departures recorded}} — direct reports moved up a level and 360 assignments flagged for reassignment (§12.1).",
+      "departuresRecorded": "{count, plural, =1 {# departure recorded} other {# departures recorded}} — direct reports moved up a level and 360 assignments flagged for reassignment.",
       "departuresNeedingAttention": "Could not fully record the departure for: {names}. Their status is set, but their team's reporting lines still need moving. Open each person's record and reassign their reports."
     },
     "cycles": {
@@ -591,25 +617,25 @@
       "signedStaleBadge": "Signed earlier version",
       "hrApproval": {
         "title": "HR approval",
-        "subtitle": "§5.1 — HR reviews and approves. Approval is what locks the KPIs as the agreed baseline.",
+        "subtitle": "HR reviews and approves. Approval is what locks the KPIs as the agreed baseline.",
         "action": "Approve and lock",
         "approving": "Approving…",
         "readySigned": "Both parties have signed and the set totals 100%. Approving now locks it as the agreed baseline.",
-        "readyUnsigned": "The goal-setting deadline has passed without the employee's signature (§5.4), and the set moved to HR review. Approving records the lock on that basis, not as a mutual agreement.",
+        "readyUnsigned": "The goal-setting deadline has passed without the employee's signature, and the set moved to HR review. Approving records the lock on that basis, not as a mutual agreement.",
         "effectBaseline": "The KPI set becomes the baseline the whole year is measured against — self-assessment, the manager's rating, the score and the bonus all read it.",
-        "effectEdits": "Nobody can edit the set afterwards. A correction goes through a mid-year change request (§6.2), which the manager raises and HR decides.",
+        "effectEdits": "Nobody can edit the set afterwards. A correction goes through a mid-year change request, which the manager raises and HR decides.",
         "effectYearEnd": "Year-end sign-off refuses to open for this employee until this approval exists, so nothing downstream can start without it.",
         "confirmTitle": "Lock this KPI set as the baseline?",
         "confirmSigned": "Both parties signed. This records HR's approval of an agreed set.",
         "confirmUnsigned": "The employee did not sign before the deadline. This records HR's approval over an absent signature, and the record will say so.",
-        "confirmBody": "There is no unapprove. Once the baseline is locked, the only way to change a KPI is a mid-year change request (§6.2).",
+        "confirmBody": "There is no unapprove. Once the baseline is locked, the only way to change a KPI is a mid-year change request.",
         "confirmAction": "Approve and lock",
         "approvedToast": "The KPI set is approved and locked",
         "alreadyApprovedToast": "That set was already approved",
         "failed": "Could not record the approval.",
         "lockedTitle": "Locked as the agreed baseline",
-        "lockedSubtitle": "§5.1 — HR's approval is the lock, and there is no unapprove.",
-        "lockedBody": "Approved {datetime}. A change from here is a mid-year change request (§6.2)."
+        "lockedSubtitle": "HR's approval is the lock, and there is no unapprove.",
+        "lockedBody": "Approved {datetime}. A change from here is a mid-year change request."
       }
     },
     "home": {
@@ -665,11 +691,12 @@
       "yearEndSelfStart": "Rate each of your KPIs against the five descriptors agreed at goal setting, and add a comment. Your manager reviews it after you submit.",
       "yearEndSelfResume": "{rated} of {total} KPIs rated. Finish the rest and sign to send it to your manager.",
       "yearEndSelfAction": "Start my assessment",
-      "yearEndSelfResumeAction": "Finish my assessment"
+      "yearEndSelfResumeAction": "Finish my assessment",
+      "blockedContact": "If this looks wrong, contact HR."
     },
     "midYear": {
       "title": "Mid-year review",
-      "subtitle": "Raise and decide changes to an approved KPI baseline. No scoring happens at mid-year (§2).",
+      "subtitle": "Raise and decide changes to an approved KPI baseline. No scoring happens at mid-year.",
       "notPermitted": "Raising a change request belongs to the direct line manager, and deciding one to HR. If your own KPIs change, you will see it on your KPI screen.",
       "loadFailed": "The mid-year workspace could not be loaded.",
       "retry": "Try again",
@@ -693,7 +720,7 @@
         "notYetOpen": "Opens {datetime}",
         "open": "Locks {datetime}",
         "locked": "Locked since {datetime}",
-        "lockedBody": "The deadline passed, so no new change request can be raised. HR can still decide one the employee had already acknowledged; one they never acknowledged is locked and the KPI stays as it was (§6.2). Extending the deadline reopens the stage.",
+        "lockedBody": "The deadline passed, so no new change request can be raised. HR can still decide one the employee had already acknowledged; one they never acknowledged is locked and the KPI stays as it was. Extending the deadline reopens the stage.",
         "notYetOpenBody": "No change request can be raised until the stage opens.",
         "graceNote": "HR has {days} days of grace after the deadline to intervene.",
         "stateValue": {
@@ -704,7 +731,7 @@
       },
       "noMatches": "No one matches that search.",
       "rosterEmpty": "No one is enrolled in this cycle yet.",
-      "exempt": "Exempt (§8.3)",
+      "exempt": "Exempt",
       "noBaseline": "No approved baseline",
       "baselineApproved": "Approved by HR",
       "kpiCount": "{count} KPI(s)",
@@ -722,7 +749,7 @@
       "pageTitle": "Mid-year changes — {name}",
       "backAction": "Back to mid-year",
       "title": "Propose a change",
-      "subtitle": "Weightages must still total exactly 100%, so rebalance the whole set in one request (§5.3).",
+      "subtitle": "Weightages must still total exactly 100%, so rebalance the whole set in one request.",
       "currentWeightage": "Currently {value}%",
       "proposeEdit": "Propose a change",
       "discardEdit": "Discard",
@@ -743,14 +770,14 @@
       "kpiGone": "This KPI is no longer in the set",
       "reasonLabel": "Decision reason",
       "reasonPlaceholder": "Required when rejecting; the manager sees it.",
-      "reasonHelp": "A rejection must carry a reason (§6.2). An approval may leave this blank.",
+      "reasonHelp": "A rejection must carry a reason. An approval may leave this blank.",
       "approve": "Approve and apply",
       "reject": "Reject",
       "approvedToast": "Change request approved and applied.",
       "rejectedToast": "Change request rejected.",
       "decideFailed": "The decision could not be recorded.",
       "withdraw": "Withdraw this request",
-      "withdrawHelp": "The request stays on the record as withdrawn; nothing is deleted (§6.3).",
+      "withdrawHelp": "The request stays on the record as withdrawn; nothing is deleted.",
       "withdrawnToast": "Change request withdrawn.",
       "withdrawFailed": "The request could not be withdrawn.",
       "decisionReasonLabel": "HR's reason",
@@ -758,12 +785,12 @@
       "decidedTitle": "Earlier requests",
       "decidedSubtitle": "Everything that was asked for on this KPI set, decided or withdrawn.",
       "historyTitle": "Version history",
-      "historySubtitle": "Superseded KPI versions, archived and never overwritten (§6.3).",
+      "historySubtitle": "Superseded KPI versions, archived and never overwritten.",
       "historyEmptyBody": "No KPI on this set has been changed yet, so the live version is the only one.",
       "versionNo": "Version {no}",
       "versionMeta": "Weightage {weightage}% · replaced {datetime}",
       "exemptTitle": "No mid-year changes for this participant",
-      "exemptBody": "C-Level employees skip goal-setting entirely (§8.3), so there is no KPI baseline to change.",
+      "exemptBody": "C-Level employees skip goal-setting entirely, so there is no KPI baseline to change.",
       "status": {
         "PENDING": "Awaiting HR",
         "APPROVED": "Approved",
@@ -780,14 +807,14 @@
         "descriptorAlmostAchieved": "Almost Achieved",
         "descriptorUnsatisfactory": "Unsatisfactory"
       },
-      "notYours": "A change request is raised by your line manager, not by you (§6.2). If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here.",
+      "notYours": "A change request is raised by your line manager, not by you. If your KPIs need to change, speak to them — the conversation happens offline and the request is recorded here.",
       "ackBy": "Acknowledged by {name} on {datetime}",
       "ackMissed": "The employee did not acknowledge",
       "ackOverridden": "Approved without acknowledgment",
       "unknownEmployee": "the employee",
       "overrideLabel": "Reason for approving without the employee's acknowledgment",
       "overridePlaceholder": "Why this cannot wait for the employee — e.g. on extended leave and the change is agreed in writing elsewhere",
-      "overrideHelp": "Required (§6.2). It is recorded with your name and the time, and the employee and manager both see it in the version history.",
+      "overrideHelp": "Required. It is recorded with your name and the time, and the employee and manager both see it in the version history.",
       "overrideClosed": "The mid-year deadline has passed, so this request is locked and the KPI stays as it was. The override is no longer available — extend the deadline if the change still needs to happen.",
       "overrideReasonLabel": "Approved without the employee's acknowledgment",
       "approveWithOverride": "Approve without acknowledgment",
@@ -795,7 +822,7 @@
     },
     "yearEnd": {
       "title": "Year-end assessment",
-      "subtitle": "Self-assess against the KPIs agreed at goal-setting, then the manager reviews and both sign (§7.1).",
+      "subtitle": "Self-assess against the KPIs agreed at goal-setting, then the manager reviews and both sign.",
       "notPermitted": "The year-end assessment is between an employee and their direct line manager. Your own assessment reaches you through My Tasks.",
       "loadFailed": "The year-end workspace could not be loaded.",
       "retry": "Try again",
@@ -804,7 +831,7 @@
       "pageTitle": "Year-end assessment — {name}",
       "backAction": "Back to year-end",
       "progressTitle": "Where this assessment stands",
-      "progressSubtitle": "Both parties rate every KPI before either can sign (§7.1).",
+      "progressSubtitle": "Both parties rate every KPI before either can sign.",
       "selfProgress": "Self-assessed {done} of {total}",
       "managerProgress": "Manager reviewed {done} of {total}",
       "divergentCount": "{count} KPI(s) where the ratings differ",
@@ -827,7 +854,7 @@
       "ratingSaved": "Rating saved.",
       "ratingFailed": "The rating could not be saved.",
       "signTitle": "Sign off",
-      "signSubtitle": "Both parties sign the final ratings. There is no reject — an unsigned assessment is the signal that the discussion is not finished (§5.3).",
+      "signSubtitle": "Both parties sign the final ratings. There is no reject — an unsigned assessment is the signal that the discussion is not finished.",
       "sign": "Sign",
       "signed": "Signed.",
       "signFailed": "The signature could not be recorded.",
@@ -839,7 +866,7 @@
         "MANAGER": "Line manager"
       },
       "exemptTitle": "No year-end assessment for this participant",
-      "exemptBody": "C-Level employees skip self-assessment entirely (§8.3) — their final score is the entity's Corporate score, passed straight through.",
+      "exemptBody": "C-Level employees skip self-assessment entirely — their final score is the entity's Corporate score, passed straight through.",
       "stage": {
         "title": "Year-end",
         "notConfigured": "This cycle has no year-end stage yet, so no assessment can be recorded on it.",
@@ -1135,7 +1162,7 @@
       "loadFailed": "Could not load calibration",
       "loadFailedHelp": "Something went wrong fetching the distribution.",
       "retry": "Try again",
-      "thinThreeSixty": "360 averaged over {count} rater(s), not the three §9.4 intends — a thinner sample than the rest of this department.",
+      "thinThreeSixty": "360 averaged over {count} rater(s), not the three the policy intends — a thinner sample than the rest of this department.",
       "raterCount": "360 averaged over {count} raters",
       "raterCountUnknown": "360 rater count not recorded for this run"
     },
@@ -1155,7 +1182,7 @@
     },
     "scoreRun": {
       "title": "Calculate raw scores",
-      "help": "§8's calculation, and the step calibration waits on. Every signed assessment becomes one raw score and one band.",
+      "help": "The score calculation, and the step calibration waits on. Every signed assessment becomes one raw score and one band.",
       "runAction": "Calculate scores",
       "rerunAction": "Recalculate",
       "working": "Calculating…",
@@ -1241,7 +1268,7 @@
       "manageRatersAction": "Manage raters",
       "manageRatersTitle": "{name}'s raters",
       "manageRatersHelp": "Replace or remove a rater on a live cycle. A submitted assessment is locked — removing it deletes the answers and needs a reason.",
-      "shortfallHelpLive": "{count} employees have fewer than three raters. Their 360 score will be averaged over the assessments they do have (§9.5) — use Manage raters to add someone before the cycle closes."
+      "shortfallHelpLive": "{count} employees have fewer than three raters. Their 360 score will be averaged over the assessments they do have — use Manage raters to add someone before the cycle closes."
     },
     "threeSixtyForm": {
       "title": "360 assessment",
@@ -1309,26 +1336,26 @@
     },
     "threeSixtyWindow": {
       "title": "360 window",
-      "help": "When raters can answer, and when the forms lock. Correctable while the cycle is a draft — once it is activated, the dates are in everyone's task list and §5.4 makes the deadline a hard lock.",
+      "help": "When raters can answer, and when the forms lock. Correctable while the cycle is a draft — once it is activated, the dates are in everyone's task list and the deadline becomes a hard lock.",
       "opensAt": "Opens",
       "deadline": "Deadline",
       "deadlineAfterOpens": "The deadline must fall after the cycle opens.",
       "save": "Save window",
       "saving": "Saving…",
       "savedToast": "The 360 window was updated.",
-      "openedLocked": "This cycle has already opened, so the opening date is fixed (§9.7).",
+      "openedLocked": "This cycle has already opened, so the opening date is fixed.",
       "extendOnly": "On a live cycle the deadline can only be moved later — raters have been told when it closes, and a passed deadline locks their form. Close the cycle instead if it should end now.",
       "liveExtendHelp": "This cycle is live, so the deadline can be extended but not brought forward."
     },
     "threeSixtyResult": {
       "title": "360 feedback",
-      "help": "The consolidated result for this person (§9.5, §9.8). Comments arrive combined and unattributed — §13.1 — so nothing here identifies a rater.",
+      "help": "The consolidated result for this person. Comments arrive combined and unattributed, so nothing here identifies a rater.",
       "noCycle": "No 360 cycle has been set up for the selected performance year.",
       "noResult": "No 360 forms have been submitted for this person yet.",
       "score": "Score out of 5",
       "ratio": "Ratio",
       "raterCount": "{count} of {expected} raters submitted",
-      "shortWarning": "This score comes from {count} of the {expected} assessments §9.4 intends, so it rests on a smaller sample than the rest. Treat it with the same caution at calibration.",
+      "shortWarning": "This score comes from {count} of the {expected} assessments the policy intends, so it rests on a smaller sample than the rest. Treat it with the same caution at calibration.",
       "comments": "Written comments",
       "noComments": "No written comments were left.",
       "anonymityNote": "No rater identity is carried here. A question is named only where more than one person answered it.",
@@ -1352,7 +1379,7 @@
       "replace": "Replace",
       "submittedLocked": "Submitted — the rater cannot be changed",
       "discardAria": "Remove {name} from this employee's raters",
-      "shortOfThree": "{count, plural, =1 {Only # rater} other {Only # raters}} — §9.4 expects three, so add another before the results are calculated.",
+      "shortOfThree": "{count, plural, =1 {Only # rater} other {Only # raters}} — the policy expects three, so add another before the results are calculated.",
       "status": {
         "NOT_STARTED": "Not started",
         "IN_PROGRESS": "In progress",
@@ -1370,11 +1397,11 @@
       "willHappen": "What this will do",
       "effect": {
         "newRater": "{name} will assess {ratee} instead.",
-        "templateFollows": "The questionnaire follows their relationship to this employee — manager, reportee or peer (§9.2).",
+        "templateFollows": "The questionnaire follows their relationship to this employee — manager, reportee or peer.",
         "partialLost": "The current rater had started filling in the form. Their part-finished answers are deleted, and the new rater starts from a blank one.",
         "audited": "Recorded on the audit trail with who made the change.",
         "answersDeleted": "This assessment has been submitted. Its answers are deleted and cannot be restored in the app.",
-        "averageDrops": "The employee's 360 score is recalculated without it (§9.5).",
+        "averageDrops": "The employee's 360 score is recalculated without it.",
         "keptInAudit": "The answers are written to the audit trail first, with your reason, so the record of what was discarded survives.",
         "removedNotSubmitted": "Nothing was submitted for this assessment, so no answers are lost.",
         "leavesCount": "{count, plural, =1 {This leaves # rater} other {This leaves # raters}} for this employee."
@@ -1421,7 +1448,7 @@
     "edgeCaseRecord": {
       "leaver": {
         "title": "Record a departure",
-        "help": "§12.1 — for an immediate resignation, rather than waiting for the next import.",
+        "help": "For an immediate resignation, rather than waiting for the next import.",
         "who": "Employee",
         "change": "Change",
         "lastWorkingDay": "Last working day",
@@ -1434,7 +1461,7 @@
       },
       "transfer": {
         "title": "Record a transfer",
-        "help": "§12.3 — a mid-cycle move between departments splits the performance year in two.",
+        "help": "A mid-cycle move between departments splits the performance year in two.",
         "who": "Employee",
         "change": "Change",
         "date": "Transfer date",
@@ -1517,25 +1544,25 @@
       "action": "Edit record",
       "title": "Edit this employee record",
       "help": "HR's correction path for a record that came in wrong — a misspelt name, the wrong department, a role track that does not match the job. It replaces the org record only; nothing about their performance year moves.",
-      "roleTrackHelp": "§8.3 weights the score differently for each track, so changing it changes how this person is scored. C-Level skip goal setting, self-assessment and 360 entirely.",
+      "roleTrackHelp": "The policy weights the score differently for each track, so changing it changes how this person is scored. C-Level skip goal setting, self-assessment and 360 entirely.",
       "entityHelp": "Departments belong to one entity, so moving someone between entities means choosing their department again.",
-      "noDepartmentCLevel": "C-Level employees are tagged to an entity directly and have no department (§1.2).",
+      "noDepartmentCLevel": "C-Level employees are tagged to an entity directly and have no department.",
       "chooseDepartment": "Choose a department",
       "searchManager": "Search for the line manager",
       "change": "Change",
-      "managerHelp": "§4.2 gives editing and sign-off to the direct line manager, so this decides who drafts and signs this person's KPIs.",
+      "managerHelp": "The policy gives editing and sign-off to the direct line manager, so this decides who drafts and signs this person's KPIs.",
       "managerHelpCLevel": "Optional for C-Level.",
-      "notEditedHere": "Employee ID, salary and HR roles are not edited here. The ID never changes (§3.2); HR roles go through the roles screen (§4.3). To record a departure, use “Record departure” on this record — it also moves the direct reports up a level and flags the 360 assignments (§12.1).",
+      "notEditedHere": "Employee ID, salary and HR roles are not edited here. The ID never changes; HR roles go through the roles screen. To record a departure, use “Record departure” on this record — it also moves the direct reports up a level and flags the 360 assignments.",
       "saveAction": "Save record",
       "saving": "Saving…",
       "savedToast": "{name}'s record was updated",
       "failed": "Could not save the record.",
-      "dateOfJoiningHelp": "§11 measures from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it.",
-      "lastWorkingDayHelp": "The bonus is pro-rated from the start of the cycle to this date (§11.4), so a wrong date is a payroll error. Shown because this person has already left; it cannot be cleared while their status is Leaver.",
+      "dateOfJoiningHelp": "The bonus rules measure from this date — the six-month eligibility gate, the pro-rated bonus, and effective service net of unpaid leave. A bonus will not compute without it.",
+      "lastWorkingDayHelp": "The bonus is pro-rated from the start of the cycle to this date, so a wrong date is a payroll error. Shown because this person has already left; it cannot be cleared while their status is Leaver.",
       "team": "Team",
       "noTeam": "No team"
     },
-    "noDateOfJoining": "Not on file — §11 cannot compute a bonus until this is set",
+    "noDateOfJoining": "Not on file — the bonus cannot be calculated until this is set",
     "notifications": {
       "dashboardTitle": "New notices",
       "markAllRead": "Mark all read",
@@ -1569,22 +1596,22 @@
       "saveFailed": "Could not save the cycle policy.",
       "loadFailed": "Could not load the cycle policy.",
       "divergence": {
-        "label": "§7.1 — Must a manager explain a rating that differs from the employee's?",
+        "label": "Must a manager explain a rating that differs from the employee's?",
         "required": "Required — a reason must be given",
         "optional": "Optional — offered, never enforced",
         "off": "Off — rely on the offline discussion",
         "help": {
-          "REQUIRED": "A manager whose rating differs from the employee's self-assessment cannot save it without a written reason. This is more than §7.1 asks for — the spec puts the discussion offline — and it is a real burden on managers at year-end.",
+          "REQUIRED": "A manager whose rating differs from the employee's self-assessment cannot save it without a written reason. This is more than the policy asks for — the policy puts the discussion offline — and it is a real burden on managers at year-end.",
           "OPTIONAL": "The reason field is offered and explained when the ratings differ, but a manager can save without it. Calibration reads whatever is written.",
-          "OFF": "No reason is asked for. §7.1's offline conversation is the record, and the system holds only the two ratings."
+          "OFF": "No reason is asked for. The offline conversation is the record, and the system holds only the two ratings."
         }
       },
       "rounding": {
-        "label": "§8.7 — Round the final score to two decimals before choosing a band?",
+        "label": "Round the final score to two decimals before choosing a band?",
         "no": "No — band the exact score",
         "yes": "Yes — round to 2 decimals first",
         "helpNo": "Bands are read as continuous thresholds: 4.50 and above is Outstanding, 4.00 and above is Excellent, and so on. A score of 4.495 is Excellent, because it is not yet 4.50.",
-        "helpYes": "The score rounds first, so 4.495 becomes 4.50 and is Outstanding. Same number, opposite band — and at that boundary it is the difference between a 2.0x and a 1.5x bonus coefficient (§11.3)."
+        "helpYes": "The score rounds first, so 4.495 becomes 4.50 and is Outstanding. Same number, opposite band — and at that boundary it is the difference between a 2.0x and a 1.5x bonus coefficient."
       },
       "save": "Save policy"
     },
@@ -1640,7 +1667,7 @@
     },
     "myYearEnd": {
       "title": "My year-end assessment",
-      "subtitle": "Rate your own year against the KPIs agreed at goal setting (§7.1).",
+      "subtitle": "Rate your own year against the KPIs agreed at goal setting.",
       "loadFailed": "Could not load your year-end assessment.",
       "retry": "Try again",
       "noCycle": "No performance cycle is open, so there is nothing to assess yet.",
@@ -1699,9 +1726,9 @@
     "departure": {
       "action": "Record departure",
       "title": "Record {name}'s departure",
-      "subtitle": "§12.1 — their record is kept. This closes out everything that depends on them still being here.",
+      "subtitle": "Their record is kept. This closes out everything that depends on them still being here.",
       "lastWorkingDay": "Last working day",
-      "lastWorkingDayHelp": "Required. The bonus is pro-rated from the start of the cycle to this date (§11.4).",
+      "lastWorkingDayHelp": "Required. The bonus is pro-rated from the start of the cycle to this date.",
       "lastWorkingDayRequired": "Enter a last working day.",
       "note": "Note (optional)",
       "notePlaceholder": "e.g. resigned, immediate",
@@ -1710,12 +1737,12 @@
       "effectReports": "{count} direct report(s) move up one level, to {manager}.",
       "effectReportsNoTarget": "{count} direct report(s) have no manager above this person, so they will be left without one — you will be prompted to name a permanent manager.",
       "effectNoReports": "Nobody reports to this person, so no reporting lines move.",
-      "effectThreeSixty": "{count} unfinished 360 assignment(s) will need a new rater, so each person still reaches 3 (§9.4).",
+      "effectThreeSixty": "{count} unfinished 360 assignment(s) will need a new rater, so each person still reaches 3.",
       "effectThreeSixtyWho": "Assessments of: {names}",
       "effectNoThreeSixty": "No unfinished 360 assignments, so nothing to reassign.",
       "effectLogin": "Their sign-in access is revoked immediately.",
       "effectNoLogin": "They have no sign-in account, so no access to revoke.",
-      "effectRecordKept": "Nothing is deleted — the record and its history are preserved (§12.1).",
+      "effectRecordKept": "Nothing is deleted — the record and its history are preserved.",
       "confirm": "Record departure",
       "recording": "Recording…",
       "recorded": "{name}'s departure is recorded.",
@@ -1750,7 +1777,7 @@
       },
       "effect": {
         "closeNoMore": "No further assessments can be submitted — raters who open their form will be told the cycle is closed.",
-        "closeResults": "The {submitted} submitted of {raterCount} assessments stay exactly as they are, and the 360 scores are calculated from them (§9.8).",
+        "closeResults": "The {submitted} submitted of {raterCount} assessments stay exactly as they are, and the 360 scores are calculated from them.",
         "closeReversible": "This can be undone — you can reopen the cycle while the performance year is still open.",
         "draftHidden": "The cycle disappears from every rater's task list until you activate it again.",
         "draftEditable": "Rater assignments become editable again, including regenerating them all from the reporting lines.",
@@ -3069,6 +3096,12 @@
         "MANAGER": "Manager",
         "DIRECTOR": "Director",
         "C_LEVEL": "C-Level"
+      },
+      "complianceCategory": {
+        "ROP_CLEARANCE": "ROP clearance",
+        "VISA": "Visa",
+        "MOL": "MOL",
+        "OTHER": "Other"
       }
     },
     "cases": {
@@ -3387,7 +3420,7 @@
         "intro": "Messages are queued and sent in the next working window. Bodies are never stored.",
         "sendReview": "Send welcome email for review",
         "sendReviewTitle": "Welcome email review",
-        "sendReviewBody": "HR reviews and sends the welcome email (§11.2). It is queued to the address below.",
+        "sendReviewBody": "HR reviews and sends the welcome email. It is queued to the address below.",
         "recipient": "Send to",
         "queue": "Queue",
         "queued": "Message queued",
@@ -5150,7 +5183,9 @@
       "scheduleInterview": "Schedule interview",
       "draftOffer": "Draft offer",
       "viewOffer": "Open offer",
-      "preboarding": "Pre-boarding"
+      "preboarding": "Pre-boarding",
+      "nextStep": "Move to {step}",
+      "refuseHint": "Say why. The reason is recorded on the stage history."
     },
     "stall": {
       "title": "Held up?",
@@ -6504,6 +6539,14 @@
       "interviewsTitle": "Interviews",
       "noInterviews": "No interviews",
       "interviewLine": "{round} · {date}"
+    },
+    "vacant": {
+      "title": "Nobody can approve the {roles} step yet",
+      "body": "Submitting now would leave it waiting with nobody to decide it. Ask a platform administrator to assign the role, then submit.",
+      "bodyAdmin": "Submitting now would leave it waiting with nobody to decide it. Assign the role first, then submit.",
+      "openRoles": "Assign the role",
+      "hrSignerTitle": "Nobody else can give the HR sign-off yet",
+      "hrSignerBody": "An HR manager or HR specialist for this company, other than you and the hiring manager, has to sign. Assign the role first, then submit."
     }
   },
   "careers": {

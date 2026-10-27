@@ -187,8 +187,8 @@ function hrDigest(
   interventionCount: number,
 ): string {
   return [
-    `${escalations} newly escalated goal-setting miss(es) (§5.5).`,
-    `${interventionCount} file(s) past the grace window and awaiting HR intervention (§5.5).`,
+    `${escalations} newly escalated goal-setting miss(es).`,
+    `${interventionCount} file(s) past the grace window and awaiting HR intervention.`,
     ...interventions
       .slice(0, 20)
       .map((i) => `- participant ${i.participantId}: ${i.detail} (${i.missedByHours}h overdue)`),

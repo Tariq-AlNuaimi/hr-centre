@@ -224,7 +224,33 @@
     "switchWorkspace": "تبديل مساحة العمل",
     "singleWorkspaceHint": "أنت في مساحة العمل الوحيدة لديك.",
     "toggleSidebar": "تبديل الشريط الجانبي",
-    "account": "قائمة الحساب"
+    "account": "قائمة الحساب",
+    "switchModule": "Open a module",
+    "modulesTitle": "Modules",
+    "noAccess": "No access — ask a platform administrator",
+    "noAccessAdmin": "No access yet — assign a role in Admin → Roles",
+    "modules": {
+      "people": {
+        "name": "People",
+        "hint": "Directory, records and org chart"
+      },
+      "performance": {
+        "name": "Performance",
+        "hint": "Goals, reviews and scorecards"
+      },
+      "jml": {
+        "name": "Joiners & leavers",
+        "hint": "Joiner, mover and leaver cases"
+      },
+      "hiring": {
+        "name": "Hiring",
+        "hint": "Requisitions, candidates and offers"
+      },
+      "tickets": {
+        "name": "HR tickets",
+        "hint": "Employee questions escalated by Siraaj"
+      }
+    }
   },
   "status": {
     "forbiddenTitle": "تم رفض الوصول",
@@ -665,7 +691,8 @@
       "yearEndSelfStart": "قيّم كل مؤشر من مؤشراتك وفق الأوصاف الخمسة المتفق عليها عند وضع الأهداف، وأضف تعليقاً. يراجعه مديرك بعد إرسالك له.",
       "yearEndSelfResume": "قُيّم {rated} من {total} مؤشراً. أكمل البقية ووقّع لإرساله إلى مديرك.",
       "yearEndSelfAction": "ابدأ تقييمي",
-      "yearEndSelfResumeAction": "أكمل تقييمي"
+      "yearEndSelfResumeAction": "أكمل تقييمي",
+      "blockedContact": "If this looks wrong, contact HR."
     },
     "midYear": {
       "title": "مراجعة منتصف السنة",
@@ -3069,6 +3096,12 @@
         "MANAGER": "Manager",
         "DIRECTOR": "Director",
         "C_LEVEL": "C-Level"
+      },
+      "complianceCategory": {
+        "ROP_CLEARANCE": "ROP clearance",
+        "VISA": "Visa",
+        "MOL": "MOL",
+        "OTHER": "Other"
       }
     },
     "cases": {
@@ -5150,7 +5183,9 @@
       "scheduleInterview": "Schedule interview",
       "draftOffer": "Draft offer",
       "viewOffer": "Open offer",
-      "preboarding": "Pre-boarding"
+      "preboarding": "Pre-boarding",
+      "nextStep": "Move to {step}",
+      "refuseHint": "Say why. The reason is recorded on the stage history."
     },
     "stall": {
       "title": "Held up?",
@@ -6504,6 +6539,14 @@
       "interviewsTitle": "Interviews",
       "noInterviews": "No interviews",
       "interviewLine": "{round} · {date}"
+    },
+    "vacant": {
+      "title": "Nobody can approve the {roles} step yet",
+      "body": "Submitting now would leave it waiting with nobody to decide it. Ask a platform administrator to assign the role, then submit.",
+      "bodyAdmin": "Submitting now would leave it waiting with nobody to decide it. Assign the role first, then submit.",
+      "openRoles": "Assign the role",
+      "hrSignerTitle": "Nobody else can give the HR sign-off yet",
+      "hrSignerBody": "An HR manager or HR specialist for this company, other than you and the hiring manager, has to sign. Assign the role first, then submit."
     }
   },
   "careers": {

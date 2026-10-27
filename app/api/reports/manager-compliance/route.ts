@@ -33,7 +33,7 @@ export const GET = withRateLimit(
     // §13.5 says "for top management". HR compiles it; the COO and Ops Director
     // read it (§4.1). A line manager does not see peers' compliance records.
     if (!actor.capabilities.orgWide) {
-      return err("The manager compliance report is for HR and top management (§13.5).", 403);
+      return err("The manager compliance report is for HR and top management.", 403);
     }
 
     const cycleId = new URL(request.url).searchParams.get("cycleId");

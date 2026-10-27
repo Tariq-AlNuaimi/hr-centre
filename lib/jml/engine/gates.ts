@@ -88,7 +88,7 @@ export function canAdvanceStage(
   if (fromIdx < 0 || toIdx < 0) return refuse("Only exit-case stages advance this way.");
   if (toIdx === fromIdx) return refuse(`Already at ${from}.`);
   if (toIdx < fromIdx) {
-    return refuse(`Stages cannot move backwards (${from} → ${to}); stages are fixed in V1 (§6.3).`);
+    return refuse(`Stages cannot move backwards (${from} → ${to}); stages are fixed in V1.`);
   }
   if (toIdx > fromIdx + 1) {
     return refuse(

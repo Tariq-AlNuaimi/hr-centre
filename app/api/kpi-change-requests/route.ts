@@ -129,7 +129,7 @@ export const POST = withRateLimit(
     if (inert.length > 0) {
       return err(
         `${inert.length} of the proposed edits change nothing — every value sent already matches ` +
-          `the KPI. Remove them, or change something (§6.2).`,
+          `the KPI. Remove them, or change something.`,
         400,
       );
     }
@@ -211,7 +211,7 @@ export const POST = withRateLimit(
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
         return err(
           "This participant already has a change request awaiting HR's decision. Wait for it to " +
-            "be decided, or withdraw it and raise a new one (§6.2).",
+            "be decided, or withdraw it and raise a new one.",
           409,
         );
       }

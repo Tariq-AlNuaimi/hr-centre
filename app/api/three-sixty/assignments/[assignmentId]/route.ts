@@ -77,7 +77,7 @@ async function loadAssignment(assignmentId: string) {
 export const PATCH = withRateLimit(
   withAuth(async (request: NextRequest, { params, session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR manages rater assignments (§9.4).", 403);
+    if (!isHr(actor)) return err("Only HR manages rater assignments.", 403);
 
     const { assignmentId } = await params;
 
@@ -125,7 +125,7 @@ export const PATCH = withRateLimit(
       select: { id: true },
     });
     if (duplicate) {
-      return err("That person is already assessing this employee (§9.4).", 409);
+      return err("That person is already assessing this employee.", 409);
     }
 
     // §9.2's template follows the RELATIONSHIP, not the old assignment: a peer
@@ -140,7 +140,7 @@ export const PATCH = withRateLimit(
     if (!templateId) {
       return err(
         `This 360 cycle has no ${type.toLowerCase().replaceAll("_", " ")} template, so that ` +
-          "person cannot assess this employee (§9.2).",
+          "person cannot assess this employee.",
         409,
       );
     }
@@ -210,7 +210,7 @@ export const PATCH = withRateLimit(
 export const DELETE = withRateLimit(
   withAuth(async (request: NextRequest, { params, session }) => {
     const actor = await resolveActor(session);
-    if (!isHr(actor)) return err("Only HR manages rater assignments (§9.4).", 403);
+    if (!isHr(actor)) return err("Only HR manages rater assignments.", 403);
 
     const { assignmentId } = await params;
 

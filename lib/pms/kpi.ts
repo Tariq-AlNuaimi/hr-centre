@@ -67,14 +67,14 @@ export function weightageGap(kpis: readonly WeightedKpi[]): Prisma.Decimal {
 /** Human-readable form of the gap, for API errors and the drafting UI alike. */
 export function weightageMessage(kpis: readonly WeightedKpi[]): string | null {
   if (kpis.length === 0) {
-    return "This employee has no KPIs yet. A manager drafts them before either party signs (§5.1).";
+    return "This employee has no KPIs yet. A manager drafts them before either party signs.";
   }
   const gap = weightageGap(kpis);
   if (gap.isZero()) return null;
   const total = weightageTotal(kpis);
   return gap.isNegative()
-    ? `Weightages total ${total}% — ${gap.abs()}% short of the 100% required to sign off (§5.3).`
-    : `Weightages total ${total}% — ${gap}% over the 100% allowed to sign off (§5.3).`;
+    ? `Weightages total ${total}% — ${gap.abs()}% short of the 100% required to sign off.`
+    : `Weightages total ${total}% — ${gap}% over the 100% allowed to sign off.`;
 }
 
 /**
@@ -104,16 +104,16 @@ export function kpiEditBlockedReason(params: {
   const { actor, target, stage, now, goalsApprovedAt } = params;
 
   if (!canActOnEmployee(actor, target)) {
-    return "Only this employee's direct line manager may draft their KPIs (§4.2).";
+    return "Only this employee's direct line manager may draft their KPIs.";
   }
   if (!canActOnStage(stage, now)) {
     return now < stage.opensAt
-      ? "Goal-setting has not opened yet for this cycle (§2)."
-      : "The goal-setting deadline has passed and the stage is locked (§5.4).";
+      ? "Goal-setting has not opened yet for this cycle."
+      : "The goal-setting deadline has passed and the stage is locked.";
   }
   if (goalsApprovedAt !== null) {
     return (
-      "HR has approved this KPI set, which locks it as the agreed baseline (§5.1). " +
+      "HR has approved this KPI set, which locks it as the agreed baseline. " +
       "A change now goes through a mid-year change request."
     );
   }
@@ -165,7 +165,7 @@ export function weightageMessageByPeriod(kpis: readonly PeriodWeightedKpi[]): st
   for (const period of periods) {
     const message = weightageMessage(period);
     if (message) {
-      return `${message} Each period of a split year needs its own complete set (§12.3).`;
+      return `${message} Each period of a split year needs its own complete set.`;
     }
   }
   return null;
@@ -254,8 +254,8 @@ export function signOffBlockedReason(params: {
   const { kpis, stage, now } = params;
   if (!canActOnStage(stage, now)) {
     return now < stage.opensAt
-      ? "Goal-setting has not opened yet for this cycle (§2)."
-      : "The goal-setting deadline has passed and the stage is locked (§5.4).";
+      ? "Goal-setting has not opened yet for this cycle."
+      : "The goal-setting deadline has passed and the stage is locked.";
   }
   // §12.3 — per period when the year is split, which `weightageMessageByPeriod`
   // reduces to the ordinary single-set check when it is not.
@@ -306,7 +306,7 @@ export function kpiSetAccessRefusal(params: {
   if (isGoalSettingExempt(employee.roleTrack)) {
     return {
       reason:
-        "C-Level employees skip goal-setting entirely (§8.3) — there are no KPIs to draft for " +
+        "C-Level employees skip goal-setting entirely — there are no KPIs to draft for " +
         "this participant.",
       status: 409,
     };
@@ -316,13 +316,13 @@ export function kpiSetAccessRefusal(params: {
   // one has stopped moving; neither is a window a stage deadline can reopen.
   if (cycleStatus !== "OPEN") {
     return {
-      reason: `KPIs are drafted while the cycle is open — this cycle is ${cycleStatus} (§2).`,
+      reason: `KPIs are drafted while the cycle is open — this cycle is ${cycleStatus}.`,
       status: 409,
     };
   }
 
   if (stage === null) {
-    return { reason: "This cycle has no goal-setting stage configured yet (§2).", status: 409 };
+    return { reason: "This cycle has no goal-setting stage configured yet.", status: 409 };
   }
 
   const blocked = kpiEditBlockedReason({

@@ -79,7 +79,7 @@ export const createChangeRequestSchema = z.object({
   rationale: z
     .string()
     .trim()
-    .min(1, "A rationale is required — HR decides on it (§6.2)")
+    .min(1, "A rationale is required — HR decides on it")
     .max(4000, "The rationale must be 4000 characters or fewer"),
   edits: z
     .array(changeRequestEditSchema)
@@ -116,11 +116,11 @@ export const decideChangeRequestSchema = z
   })
   .refine((v) => v.decision !== "REJECT" || (v.reason !== undefined && v.reason.length > 0), {
     path: ["reason"],
-    message: "A rejection must carry a reason the manager can see (§6.2)",
+    message: "A rejection must carry a reason the manager can see",
   })
   .refine((v) => v.decision !== "REJECT" || v.overrideReason === undefined, {
     path: ["overrideReason"],
-    message: "A rejection changes nothing, so there is nothing to override (§6.2)",
+    message: "A rejection changes nothing, so there is nothing to override",
   });
 
 export type CreateChangeRequestInput = z.infer<typeof createChangeRequestSchema>;

@@ -40,7 +40,7 @@ function terminationProblems(c: LeaveActivationCandidate): Problem[] {
       : "";
     out.push({
       field: "terminationAuthorisation",
-      message: `Termination Authorisation is not granted. Outstanding: ${auth.missingHolders.join(", ")} (§4.3).${refused}`,
+      message: `Termination Authorisation is not granted. Outstanding: ${auth.missingHolders.join(", ")}.${refused}`,
     });
   }
   return out;

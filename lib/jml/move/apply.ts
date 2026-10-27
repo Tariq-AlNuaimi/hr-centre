@@ -74,7 +74,7 @@ export async function applyMove(tx: Tx, caseId: string): Promise<void> {
         newManagerEmployeeId: newManager,
         extra,
       });
-      note = "Applied; the performance year was split at the effective date (§12.3).";
+      note = "Applied; the performance year was split at the effective date.";
     } else {
       await tx.employee.update({
         where: { id: e.id },
