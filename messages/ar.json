@@ -331,7 +331,19 @@
       "importAction": "استيراد الموظفين",
       "emptyHr": "لا يوجد موظفون بعد. استورد ملف الموظفين لإعداد الهيكل التنظيمي.",
       "emptyMember": "لا يوجد أحد في تسلسلك الإداري بعد.",
-      "addAction": "Add employee"
+      "addAction": "Add employee",
+      "filters": {
+        "company": "Company",
+        "directorate": "Directorate",
+        "department": "Department",
+        "team": "Team",
+        "roleTrack": "Role track",
+        "manager": "Manager",
+        "all": "All",
+        "clearManager": "Clear manager filter ({name})"
+      },
+      "showSalary": "Show salary",
+      "hideSalary": "Hide salary"
     },
     "detail": {
       "subtitle": "رقم الموظف {odooId}",
@@ -345,7 +357,9 @@
       "youCanAct": "أنت المدير المباشر لهذا الموظف، لذا التقييم والاعتماد من مسؤوليتك.",
       "viewOnly": "للاطلاع فقط. التقييم والاعتماد من مسؤولية المدير المباشر.",
       "directorate": "Directorate",
-      "team": "Team"
+      "team": "Team",
+      "summary": "Summary",
+      "reportsTo": "Reports to"
     },
     "org": {
       "title": "الهيكل التنظيمي",
@@ -1840,7 +1854,8 @@
         "ACTIVE": "أُعيد فتح دورة تقييم 360."
       }
     },
-    "teamColumn": "Team"
+    "teamColumn": "Team",
+    "pendingId": "Pending ID"
   },
   "access": {
     "title": "Logins & access",
@@ -2019,10 +2034,70 @@
     "tabs": {
       "label": "Record sections",
       "overview": "Overview",
+      "job": "Job & placement",
+      "personal": "Personal",
+      "documents": "Documents & IDs",
+      "compensation": "Compensation",
       "performance": "Performance",
       "tickets": "HR tickets",
-      "jml": "Joiners, movers & leavers",
-      "hiring": "Hiring"
+      "jml": "Joiners & leavers",
+      "hiring": "Hiring",
+      "history": "History"
+    },
+    "actions": {
+      "edit": "Edit",
+      "editCore": "Employment & placement",
+      "editRecord": "Job, personal and ID details",
+      "actions": "Actions",
+      "startMover": "Start mover case",
+      "startLeaver": "Start leaver case",
+      "orgChart": "View in org chart",
+      "manageLogin": "Manage login",
+      "recordDeparture": "Record departure without exit process"
+    },
+    "history": {
+      "title": "History",
+      "subtitle": "Changes to this record: what changed, who changed it and when. Values are not shown.",
+      "empty": "No changes recorded yet.",
+      "system": "System",
+      "action": {
+        "CREATE": "Record created",
+        "UPDATE": "Updated",
+        "DELETE": "Deleted",
+        "RESTORE": "Restored"
+      },
+      "fields": {
+        "name": "name",
+        "email": "email",
+        "odooId": "employee ID",
+        "departmentId": "department",
+        "entityId": "company",
+        "teamId": "team",
+        "directorateId": "directorate",
+        "managerId": "manager",
+        "roleTrack": "role track",
+        "status": "status",
+        "dateOfJoining": "date of joining",
+        "lastWorkingDay": "last working day",
+        "unpaidLeaveDays": "unpaid leave days",
+        "basicSalaryEnc": "basic salary",
+        "jobTitle": "job title",
+        "grade": "grade",
+        "contractType": "contract type",
+        "probationEndDate": "probation end date",
+        "workLocation": "work location",
+        "workPhone": "work phone",
+        "personalEmail": "personal email",
+        "personalPhone": "personal phone",
+        "dateOfBirth": "date of birth",
+        "gender": "gender",
+        "nationality": "nationality",
+        "civilIdNumberEnc": "civil ID number",
+        "civilIdExpiry": "civil ID expiry",
+        "passportNumberEnc": "passport number",
+        "passportExpiry": "passport expiry",
+        "userId": "login"
+      }
     }
   },
   "rbac": {

@@ -927,3 +927,12 @@ typed config and adds a second styling system). **Next.js file-system metadata (
 page)** (rejected — gates and tabs span modules and the sidebar needs the full list without loading
 every page). **Keep three hand-written lists (sidebar, palette, breadcrumbs)** (rejected — they
 already disagree). Decision: build — one typed array plus pure resolvers, unit-tested.
+
+### 2026-10-27 — UX review P1: employee history and pending-ID display
+
+Scope: lib/people/history.ts, lib/people/pending-id.ts
+Considered: **A field-history product / event store (HiBob-style history tables, Temporal)**
+(rejected — the audit log already records every Employee write with the changed field names;
+a second history store would drift). **Rendering `audit_logs` values** (rejected — values include
+Restricted fields; names-only history needs no extra permission model). Decision: build — a
+bounded names-only read over `audit_logs`, and a pure placeholder-ID predicate.

@@ -43,6 +43,9 @@ export const GET = withRateLimit(
       search: searchParams.get("search") ?? undefined,
       entityId: searchParams.get("entityId") ?? undefined,
       departmentId: searchParams.get("departmentId") ?? undefined,
+      directorateId: searchParams.get("directorateId") ?? undefined,
+      teamId: searchParams.get("teamId") ?? undefined,
+      managerId: searchParams.get("managerId") ?? undefined,
       roleTrack: searchParams.get("roleTrack") ?? undefined,
       status: searchParams.get("status") ?? undefined,
     });
@@ -70,10 +73,11 @@ export const GET = withRateLimit(
     // nothing. Returning an empty page rather than 403 is deliberate: the
     // directory exists, they are simply in none of it.
     if (visibleIds !== null && visibleIds.size === 0) {
-      return ok(paginatedResponse([], 0, pagination));
+      return ok({ ...paginatedResponse([], 0, pagination), statusCounts: {} });
     }
 
-    const where: Prisma.EmployeeWhereInput = {
+    // Everything but the status filter: the status chips count within it.
+    const scoped: Prisma.EmployeeWhereInput = {
       ...(visibleIds !== null ? { id: { in: [...visibleIds] } } : {}),
       ...(filters.search
         ? {
@@ -86,11 +90,17 @@ export const GET = withRateLimit(
         : {}),
       ...(filters.entityId ? { entityId: filters.entityId } : {}),
       ...(filters.departmentId ? { departmentId: filters.departmentId } : {}),
+      ...(filters.directorateId ? { department: { directorateId: filters.directorateId } } : {}),
+      ...(filters.teamId ? { teamId: filters.teamId } : {}),
+      ...(filters.managerId ? { managerId: filters.managerId } : {}),
       ...(filters.roleTrack ? { roleTrack: filters.roleTrack } : {}),
+    };
+    const where: Prisma.EmployeeWhereInput = {
+      ...scoped,
       ...(filters.status ? { status: filters.status } : {}),
     };
 
-    const [rows, total] = await Promise.all([
+    const [rows, total, byStatus] = await Promise.all([
       prisma.employee.findMany({
         where,
         skip: pagination.skip,
@@ -99,9 +109,15 @@ export const GET = withRateLimit(
         select: employeeSelect(actor),
       }),
       prisma.employee.count({ where }),
+      // One grouped count (≤ 3 rows), not a query per status.
+      prisma.employee.groupBy({ by: ["status"], where: scoped, _count: { _all: true } }),
     ]);
+    const statusCounts = Object.fromEntries(byStatus.map((g) => [g.status, g._count._all]));
 
-    return ok(paginatedResponse(rows.map(serializeEmployee), total, pagination));
+    return ok({
+      ...paginatedResponse(rows.map(serializeEmployee), total, pagination),
+      statusCounts,
+    });
   }),
   { id: "pms-employees-list", limit: 120, windowMs: 60_000 },
 );

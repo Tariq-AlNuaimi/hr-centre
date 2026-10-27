@@ -218,6 +218,10 @@ export const employeeListQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   entityId: z.string().trim().max(64).optional(),
   departmentId: z.string().trim().max(64).optional(),
+  // UX P1 R11 — the directory's org and reporting-line filters.
+  directorateId: z.string().trim().max(64).optional(),
+  teamId: z.string().trim().max(64).optional(),
+  managerId: z.string().trim().max(64).optional(),
   roleTrack: z.enum(ROLE_TRACKS).optional(),
   status: z.enum(EMPLOYEE_STATUSES).optional(),
 });

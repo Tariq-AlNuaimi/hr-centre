@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveActor } from "@/lib/pms/actor";
@@ -9,8 +8,12 @@ import {
   serializeEmployeeDetail,
   type EmployeeRecordView,
 } from "@/lib/pms/employee-select";
-import { EmployeeRecordSections } from "@/components/people/EmployeeRecordSections";
-import { EmployeeRecordForm } from "@/components/people/EmployeeRecordForm";
+import { IdSection, JobSection, PersonalSection } from "@/components/people/EmployeeRecordSections";
+import { RecordActions, type RecordActionsProps } from "@/components/people/RecordActions";
+import { RecordHeader } from "@/components/people/RecordHeader";
+import { EmployeeHistory } from "@/components/people/EmployeeHistory";
+import { employeeHistory } from "@/lib/people/history";
+import { recordView } from "@/components/people/record-view";
 import { LoginPanel } from "@/components/people/LoginPanel";
 import { RecordTabs, parseRecordTab, type RecordTab } from "@/components/people/RecordTabs";
 import { EmployeeTickets } from "@/components/hive/TicketTaskPanels";
@@ -25,17 +28,11 @@ import { recordFormValues } from "@/components/people/record-form-values";
 import { actorCan, canActOnEmployee, canViewEmployee } from "@/lib/pms/permissions";
 import { placementOf } from "@/lib/rbac/resolve";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { DescriptionList } from "@/components/shared/DescriptionList";
-import { EmployeeEditForm } from "@/components/pms/EmployeeEditForm";
-import { RecordDepartureDialog } from "@/components/pms/RecordDepartureDialog";
 import { departurePreview } from "@/lib/pms/departure";
 import { isHrSuperAdmin } from "@/lib/pms/permissions";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { ThreeSixtyResultCard } from "@/components/pms/ThreeSixtyResultCard";
-import { Badge } from "@/components/ui/badge";
-import { formatDate } from "@/lib/format";
 import type { UpdateEmployeeInput } from "@/lib/validations/employee";
 
 /**
@@ -88,32 +85,31 @@ function toUpdateInput(employee: {
 type Actor = Awaited<ReturnType<typeof resolveActor>>;
 type Subject = NonNullable<Awaited<ReturnType<typeof placementOf>>>;
 
-/** F-b/F-c — Edit details, offered only where the actor may edit this person. */
-function recordForm(
+/** F-b/F-c — the record-details edit, offered only where the actor may edit this person. */
+function recordEdit(
   actor: Actor,
   subject: Subject,
-  employeeId: string,
   record: EmployeeRecordView,
-) {
+): RecordActionsProps["record"] {
   if (!actorCan(actor, "people.edit", subject)) return null;
-  return (
-    <EmployeeRecordForm
-      employeeId={employeeId}
-      initial={recordFormValues(record)}
-      canEditPersonal={actorCan(actor, "people.viewPersonal", subject)}
-      // A number the server key cannot open is not offered for editing: the
-      // empty box would read as "none" and saving it would clear it.
-      canEditIdDocuments={
-        actorCan(actor, "people.viewIdDocuments", subject) && !record.idDocuments?.unavailable
-      }
-    />
-  );
+  return {
+    initial: recordFormValues(record),
+    canEditPersonal: actorCan(actor, "people.viewPersonal", subject),
+    // A number the server key cannot open is not offered for editing: the
+    // empty box would read as "none" and saving it would clear it.
+    canEditIdDocuments:
+      actorCan(actor, "people.viewIdDocuments", subject) && !record.idDocuments?.unavailable,
+  };
 }
 
 /** F-d — the login panel, for whoever holds logins.manage for this person's scope. */
 function loginPanel(actor: Actor, subject: Subject, employee: { id: string; name: string }) {
   if (!actorCan(actor, "logins.manage", subject)) return null;
-  return <LoginPanel employeeId={employee.id} name={employee.name} />;
+  return (
+    <div id="login">
+      <LoginPanel employeeId={employee.id} name={employee.name} />
+    </div>
+  );
 }
 
 /**
@@ -142,20 +138,6 @@ function compensationCard(t: (key: string) => string, basicSalary: string | null
       />
     </SectionCard>
   );
-}
-
-/** HR Centre F-a — directorate and team rows, only when the org uses them. */
-function unitItems(
-  directorate: { name: string } | null,
-  team: { name: string } | null,
-  t: (key: string) => string,
-) {
-  return [
-    ...(directorate
-      ? [{ key: "directorate", label: t("detail.directorate"), value: directorate.name }]
-      : []),
-    ...(team ? [{ key: "team", label: t("detail.team"), value: team.name }] : []),
-  ];
 }
 
 /**
@@ -262,238 +244,179 @@ export default async function EmployeeDetailPage({
   */
   const basicSalary = detail.basicSalary;
 
-  const identity = [
-    { key: "odooId", label: t("employeeId"), value: employee.odooId },
-    { key: "name", label: t("name"), value: employee.name },
-    { key: "email", label: t("email"), value: employee.email },
-    {
-      key: "roleTrack",
-      label: t("roleTrack"),
-      value: <Badge variant="brand">{t(`track.${employee.roleTrack}`)}</Badge>,
-    },
-    {
-      key: "status",
-      label: t("status"),
-      value: (
-        <Badge
-          variant={
-            employee.status === "ACTIVE"
-              ? "success"
-              : employee.status === "PRE_JOINER"
-                ? "info"
-                : "warning"
+  // R10 — the core-category tabs a viewer is not entitled to are absent (the
+  // gated select already left their data out), and History is for whoever may
+  // edit this person. An unentitled ?tab= shows the overview.
+  const allHidden = [...hiddenTabs, ...hiddenCoreTabs(detail, basicSalary, canEditPerson)];
+  const shown: RecordTab = allHidden.includes(tab) ? "overview" : tab;
+  const view = recordView(t, employee, detail.record.directorate, locale);
+
+  const actions: RecordActionsProps = {
+    employeeId: employee.id,
+    employeeName: employee.name,
+    // The `basicSalary !== undefined` guard is the type system's proof that the
+    // snapshot carries a real salary rather than a hole: `PUT` replaces the
+    // whole row, and a form that did not hold the salary would encrypt `null`
+    // over payroll.
+    core:
+      canEditPerson && basicSalary !== undefined
+        ? {
+            initial: toUpdateInput({ ...employee, basicSalary }),
+            managerName: employee.manager?.name ?? null,
           }
-        >
-          {t(`statusValue.${employee.status}`)}
-        </Badge>
-      ),
-    },
-  ];
-
-  const placement = [
-    {
-      key: "entity",
-      label: t("entity"),
-      value: `${employee.entity.code} — ${employee.entity.name}`,
-    },
-    {
-      key: "department",
-      label: t("department"),
-      // §1.2 — C-Level have no department by design; say so rather than showing
-      // a blank that reads as missing data.
-      value: employee.department?.name ?? t("detail.noDepartmentCLevel"),
-    },
-    ...unitItems(detail.record.directorate, employee.team, t),
-    {
-      key: "manager",
-      label: t("manager"),
-      value: employee.manager ? (
-        <Link
-          href={`/${locale}/people/${employee.manager.id}`}
-          className="text-primary-emphasis underline-offset-4 hover:underline"
-        >
-          {employee.manager.name}
-        </Link>
-      ) : (
-        t("detail.noManager")
-      ),
-    },
-  ];
-
-  const employment = [
-    {
-      key: "dateOfJoining",
-      label: t("dateOfJoining"),
-      // §3.3's anchor for §11's eligibility gate and pro-ration. "Not on file"
-      // is said out loud rather than shown as a dash: §11.7 REFUSES to compute a
-      // bonus without it, so an absent date is an outstanding action, not a
-      // cosmetic gap — and this is the only screen that can now show it.
-      value: employee.dateOfJoining ? (
-        formatDate(employee.dateOfJoining)
-      ) : (
-        <span className="text-amber-700 dark:text-amber-300">{t("noDateOfJoining")}</span>
-      ),
-    },
-    {
-      key: "lastWorkingDay",
-      label: t("lastWorkingDay"),
-      value: employee.lastWorkingDay ? formatDate(employee.lastWorkingDay) : "—",
-    },
-    {
-      key: "unpaidLeaveDays",
-      label: t("unpaidLeaveDays"),
-      value: String(employee.unpaidLeaveDays),
-    },
-  ];
+        : null,
+    record: recordEdit(actor, subject, detail.record),
+    links: recordLinks(actor, subject, employee, locale),
+    // UX review P0 (US-2) — a departure's PROCESS is a Joiners & leavers case;
+    // recording it directly is only the HR Super Admin correction, with a reason.
+    departure:
+      isHrSuperAdmin(actor) && employee.status !== "LEAVER"
+        ? { preview: await departurePreview(employee.id) }
+        : null,
+  };
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title={employee.name}
-        subtitle={t("detail.subtitle", { odooId: employee.odooId })}
-        actions={
-          /*
-            §4.1's configure column — "HR Super Admin: Yes — full", everyone else
-            "No", which is the same gate `PUT /api/employees/[id]` enforces. An
-            HRBP or a line manager is not shown a control they would be refused.
+      <RecordHeader
+        name={employee.name}
+        meta={[detail.record.jobTitle, employee.department?.name, employee.entity.name]}
+        status={view.status}
+        manager={view.manager}
+        reportsToLabel={t("detail.reportsTo")}
+        actions={<RecordActions {...actions} />}
+      />
 
-            The `basicSalary !== undefined` guard is not a second permission
-            check; it is the type system's proof that the snapshot below carries
-            a real salary rather than a hole. `configure` implies
-            `canViewCompensation` (HR Super Admin ⊂ HR), so the branch is never
-            actually taken — but if that ever stopped being true, the form must
-            not be the thing that discovers it by encrypting `null` over payroll.
-          */
+      {/* F-e / R10 — the record's tabs; later modules add theirs (RecordTabs). */}
+      <RecordTabs basePath={`/${locale}/people/${employee.id}`} active={shown} hidden={allHidden} />
+
+      <RecordPanel
+        tab={shown}
+        view={view}
+        locale={locale}
+        employeeId={employee.id}
+        record={detail.record}
+        jmlData={jmlData}
+        hiringData={hiringData}
+        compensation={compensationCard(t, basicSalary)}
+        login={loginPanel(actor, subject, employee)}
+        footer={
           <>
-            {recordForm(actor, subject, employee.id, detail.record)}
-            {canEditPerson && basicSalary !== undefined ? (
-              <EmployeeEditForm
-                employeeId={employee.id}
-                initial={toUpdateInput({ ...employee, basicSalary })}
-                managerName={employee.manager?.name ?? null}
-              />
-            ) : null}
             {/*
-              UX review P0 (docs/blueprints/ux-p0.md, US-2) — a departure's
-              PROCESS is a Joiners & leavers case: checklist, approvals,
-              settlement, access revocation, and on closing the same
-              Performance consequences (roll-ups, login, 360s). So the record
-              opens a pre-filled leaver case. Recording the departure directly
-              is kept only as the HR Super Admin correction, with a reason.
+              §9.8's individual 360 report, gated on the org-wide capability
+              the route enforces. Never on the 360 console: pairing who rated
+              whom with what came back is the join §13.1's anonymity prevents.
             */}
-            <DepartureActions
-              actor={actor}
-              subject={subject}
-              employee={employee}
-              locale={locale}
-              startLabel={t("departure.startCase")}
-            />
+            {actor.capabilities.orgWide ? <ThreeSixtyResultCard employeeId={employee.id} /> : null}
+            {/* §4.2 — tell a viewer which side of the view/act line they are on. */}
+            <p className="text-sm text-muted-foreground">
+              {canAct ? t("detail.youCanAct") : t("detail.viewOnly")}
+            </p>
           </>
         }
       />
-
-      {/* F-e — the record's tabs; later modules add theirs (RecordTabs). */}
-      <RecordTabs basePath={`/${locale}/people/${employee.id}`} active={tab} hidden={hiddenTabs} />
-
-      {tab === "tickets" || tab === "jml" || tab === "hiring" ? (
-        <ModuleTab
-          tab={tab}
-          jmlData={jmlData}
-          hiringData={hiringData}
-          employeeId={employee.id}
-          locale={locale}
-        />
-      ) : tab === "overview" ? (
-        <>
-          <SectionCard title={t("detail.identity")}>
-            <DescriptionList items={identity} columns={2} />
-          </SectionCard>
-
-          <SectionCard title={t("detail.placement")}>
-            <DescriptionList items={placement} columns={2} />
-          </SectionCard>
-
-          <SectionCard title={t("detail.employment")}>
-            <DescriptionList items={employment} columns={2} />
-          </SectionCard>
-
-          <EmployeeRecordSections record={detail.record} />
-
-          {/* F-d — logins for HR role holders and line managers, for whoever holds
-            logins.manage for this person's scope (the API checks the same). */}
-          {loginPanel(actor, subject, employee)}
-
-          {compensationCard(t, basicSalary)}
-        </>
-      ) : (
-        <>
-          {/*
-          §9.8's individual 360 report, on the record §13.6 already sends HR and
-          the executive viewers to for "full drill-down on demand into any
-          individual's complete record". Gated on the same org-wide capability the
-          route itself enforces, so a manager never fires a request that will 403
-          — and never sees a placeholder hinting the figure exists.
-
-          It deliberately does NOT go on the 360 console: that screen shows who
-          was assigned to rate whom (§9.4), and pairing that with what came back
-          is the join §13.1's anonymity exists to prevent.
-        */}
-          {actor.capabilities.orgWide ? <ThreeSixtyResultCard employeeId={employee.id} /> : null}
-
-          {/*
-          §4.2 — tell a viewer which side of the view/act line they are on, rather
-          than leaving them to discover it from a missing button in Phase 2.
-        */}
-          <p className="text-sm text-muted-foreground">
-            {canAct ? t("detail.youCanAct") : t("detail.viewOnly")}
-          </p>
-        </>
-      )}
     </div>
   );
 }
 
-/**
- * The record's departure actions (docs/blueprints/ux-p0.md, US-2): a pre-filled
- * Joiners & leavers case for anyone who may open one here, and the direct
- * "record without exit process" correction for an HR Super Admin only.
- */
-async function DepartureActions({
-  actor,
-  subject,
-  employee,
-  locale,
-  startLabel,
-}: {
-  actor: Awaited<ReturnType<typeof resolveActor>>;
-  subject: NonNullable<Awaited<ReturnType<typeof placementOf>>>;
-  employee: { id: string; name: string; status: string };
+/** R10 — core-category tabs this viewer is not entitled to (their data is not in the select). */
+function hiddenCoreTabs(
+  detail: ReturnType<typeof serializeEmployeeDetail>,
+  basicSalary: string | null | undefined,
+  canSeeHistory: boolean,
+): RecordTab[] {
+  const hidden: RecordTab[] = [];
+  if (!detail.record.personal) hidden.push("personal");
+  if (!detail.record.idDocuments) hidden.push("documents");
+  if (basicSalary === undefined) hidden.push("compensation");
+  if (!canSeeHistory) hidden.push("history");
+  return hidden;
+}
+
+/** The open tab's panel. Each panel renders only what the gated select returned. */
+async function RecordPanel(props: {
+  tab: RecordTab;
+  view: ReturnType<typeof recordView>;
   locale: string;
-  startLabel: string;
+  employeeId: string;
+  record: EmployeeRecordView;
+  jmlData: Awaited<ReturnType<typeof employeeJml>>;
+  hiringData: Awaited<ReturnType<typeof employeeHiring>>;
+  compensation: React.ReactNode;
+  login: React.ReactNode;
+  footer: React.ReactNode;
 }) {
-  return (
-    <>
-      {employee.status !== "LEAVER" && canFor(actor, "jml.manageLeavers", subject) ? (
-        <Link
-          href={`/${locale}/jml/leavers/new?${new URLSearchParams({
-            employeeId: employee.id,
-            name: employee.name,
-          })}`}
-          className={buttonVariants({ variant: "outline", size: "sm" })}
-        >
-          {startLabel}
-        </Link>
-      ) : null}
-      {isHrSuperAdmin(actor) ? (
-        <RecordDepartureDialog
-          employeeId={employee.id}
-          employeeName={employee.name}
-          // Not asked for a record that has already departed: the
-          // dialog renders nothing for one, so four queries per page
-          // load would buy an unused answer.
-          preview={employee.status === "LEAVER" ? null : await departurePreview(employee.id)}
+  const t = await getTranslations("pms");
+  const { tab, view, record } = props;
+  switch (tab) {
+    case "tickets":
+    case "jml":
+    case "hiring":
+      return (
+        <ModuleTab
+          tab={tab}
+          jmlData={props.jmlData}
+          hiringData={props.hiringData}
+          employeeId={props.employeeId}
+          locale={props.locale}
         />
-      ) : null}
-    </>
-  );
+      );
+    case "overview":
+      return (
+        <>
+          <SectionCard title={t("detail.summary")}>
+            <DescriptionList items={view.summary} columns={2} />
+          </SectionCard>
+          {/* F-d — logins for whoever holds logins.manage for this person's scope. */}
+          {props.login}
+        </>
+      );
+    case "job":
+      return (
+        <>
+          <SectionCard title={t("detail.placement")}>
+            <DescriptionList items={view.placement} columns={2} />
+          </SectionCard>
+          <SectionCard title={t("detail.employment")}>
+            <DescriptionList items={view.employment} columns={2} />
+          </SectionCard>
+          <JobSection record={record} />
+        </>
+      );
+    case "personal":
+      return <PersonalSection record={record} />;
+    case "documents":
+      return <IdSection record={record} />;
+    case "compensation":
+      return props.compensation;
+    case "history":
+      return <EmployeeHistory entries={await employeeHistory(props.employeeId)} />;
+    default:
+      return props.footer;
+  }
+}
+
+/**
+ * The record's Actions menu links (UX review R10, P0 US-2): lifecycle cases
+ * for whoever may open them for this person's placement, the org chart, and
+ * the login panel for whoever manages logins here. Each destination re-checks.
+ */
+function recordLinks(
+  actor: Actor,
+  subject: Subject,
+  employee: { id: string; name: string; status: string },
+  locale: string,
+): RecordActionsProps["links"] {
+  const prefill = new URLSearchParams({ employeeId: employee.id, name: employee.name });
+  const links: RecordActionsProps["links"] = [];
+  if (employee.status === "ACTIVE" && canFor(actor, "jml.manageMovers", subject))
+    links.push({ label: "startMover", href: `/${locale}/jml/movers/new?${prefill}` });
+  if (employee.status !== "LEAVER" && canFor(actor, "jml.manageLeavers", subject))
+    links.push({ label: "startLeaver", href: `/${locale}/jml/leavers/new?${prefill}` });
+  links.push({
+    label: "orgChart",
+    href: `/${locale}/org?${new URLSearchParams({ q: employee.name })}`,
+  });
+  if (actorCan(actor, "logins.manage", subject))
+    links.push({ label: "manageLogin", href: `/${locale}/people/${employee.id}#login` });
+  return links;
 }

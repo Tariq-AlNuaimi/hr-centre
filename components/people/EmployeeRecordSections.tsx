@@ -4,15 +4,24 @@ import { DescriptionList } from "@/components/shared/DescriptionList";
 import type { EmployeeRecordView } from "@/lib/pms/employee-select";
 
 /**
- * The HR Centre record sections — blueprint §2 (F-b). Renders exactly what the
+ * The HR Centre record sections — blueprint §2 (F-b), one per record tab
+ * (UX P1 R10). Each renders exactly what the
  * server's gated `select` returned: a missing `personal` / `idDocuments` group
  * is the query's decision (AC-F2.2/AC-F2.3), so there is no branch here that
  * could show a field the actor may not see.
  */
-export function EmployeeRecordSections({ record }: { record: EmployeeRecordView }) {
+function useValue() {
   const t = useTranslations("people.record");
-  const value = (v: string | null) =>
-    v ?? <span className="text-muted-foreground">{t("notOnFile")}</span>;
+  return {
+    t,
+    value: (v: string | null) =>
+      v ?? <span className="text-muted-foreground">{t("notOnFile")}</span>,
+  };
+}
+
+/** Job details (Job & placement tab). */
+export function JobSection({ record }: { record: EmployeeRecordView }) {
+  const { t, value } = useValue();
 
   const job = [
     { key: "jobTitle", label: t("jobTitle"), value: value(record.jobTitle) },
@@ -32,11 +41,17 @@ export function EmployeeRecordSections({ record }: { record: EmployeeRecordView 
   ];
 
   return (
-    <>
-      <SectionCard title={t("jobSection")}>
-        <DescriptionList items={job} columns={2} />
-      </SectionCard>
+    <SectionCard title={t("jobSection")}>
+      <DescriptionList items={job} columns={2} />
+    </SectionCard>
+  );
+}
 
+/** Personal details (Personal tab) — present only when the gated select returned them. */
+export function PersonalSection({ record }: { record: EmployeeRecordView }) {
+  const { t, value } = useValue();
+  return (
+    <>
       {record.personal ? (
         <SectionCard title={t("personalSection")} subtitle={t("personalNote")}>
           <DescriptionList
@@ -73,7 +88,15 @@ export function EmployeeRecordSections({ record }: { record: EmployeeRecordView 
           />
         </SectionCard>
       ) : null}
+    </>
+  );
+}
 
+/** Identity documents (Documents & IDs tab) — present only when the gated select returned them. */
+export function IdSection({ record }: { record: EmployeeRecordView }) {
+  const { t, value } = useValue();
+  return (
+    <>
       {record.idDocuments ? (
         <SectionCard title={t("idSection")} subtitle={t("idNote")}>
           {record.idDocuments.unavailable ? (

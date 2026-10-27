@@ -151,7 +151,11 @@ test("the edit form no longer sends HR to the edge-case screen for a departure",
 
 test("the preview is not computed for a record that has already departed", () => {
   const page = stripComments(readFileSync("app/[locale]/(dashboard)/people/[id]/page.tsx", "utf8"));
-  assert.match(page, /employee\.status === "LEAVER" \? null : await departurePreview/);
+  // UX P1 R10: the correction moved into the Actions menu; still only for a live record.
+  assert.match(
+    page,
+    /isHrSuperAdmin\(actor\) && employee\.status !== "LEAVER"\s*\?\s*\{ preview: await departurePreview/,
+  );
 });
 
 test("§12.1 there is ONE writer of a departure, and both callers use it", () => {

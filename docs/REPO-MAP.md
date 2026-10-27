@@ -791,9 +791,11 @@
 - lib/password.ts: ARGON2_OPTIONS, hashPassword, verifyPassword, needsRehash
 - lib/people/employee-code.ts: NOT_CONFIGURED_MESSAGE, formatEmployeeCode, parseEmployeeCode, getEmployeeCodeSequence, ConfigureEmployeeCodeInput, configureEmployeeCodeSequence, EmployeeCodeError, allocateEmployeeCode, EMPLOYEE_CODE_PATTERN, recordEmployeeCode
 - lib/people/force-change.ts: ForceChangeDecision, forcedChangeDecision
+- lib/people/history.ts: HistoryEntry, employeeHistory, changedFields
 - lib/people/id-documents.ts: IdDocumentKeyError, encryptIdNumber, readIdNumber
 - lib/people/logins.ts: generateTemporaryPassword, LoginState, loginStateOf, loginEligibility, loginSummary, issueTemporaryPassword, disableLogin, changeOwnPassword
 - lib/people/odoo-id.ts: recordOdooId
+- lib/people/pending-id.ts: isPendingEmployeeId
 - lib/people/provisional-id.ts: PROVISIONAL_PREFIX, provisionalOdooId, isProvisionalOdooId, PLACEHOLDER_EMAIL_DOMAIN, placeholderEmail, isPlaceholderEmail
 - lib/people/record.ts: EmployeeRecordInput, JOB_FIELDS, CONTACT_FIELDS, PERSONAL_FIELDS, ID_DOCUMENT_FIELDS, RecordField, RECORD_FIELDS, DATE_RECORD_FIELDS, recordFieldsTouched
 - lib/people/service.ts: createEmployeeFromForm, updateEmployeeRecord
@@ -1132,11 +1134,16 @@
 - components/org/TeamsSection.tsx
 - components/org/UnitRow.tsx
 - components/people/AddEmployeeForm.tsx
+- components/people/DirectoryFilters.tsx
+- components/people/EmployeeHistory.tsx
 - components/people/EmployeeRecordForm.tsx
 - components/people/EmployeeRecordSections.tsx
 - components/people/LoginPanel.tsx
+- components/people/RecordActions.tsx
 - components/people/RecordFields.tsx
+- components/people/RecordHeader.tsx
 - components/people/RecordTabs.tsx
+- components/people/record-view.tsx
 - components/pms/BonusReport.tsx
 - components/pms/BypassReasonField.tsx
 - components/pms/CalibrationTargetEditor.tsx
@@ -1201,6 +1208,7 @@
 - components/shared/DataTable.tsx
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
+- components/shared/FilterBar.tsx
 - components/shared/FormField.tsx
 - components/shared/LinkCards.tsx
 - components/shared/PageHeader.tsx

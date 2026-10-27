@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ApiError, apiClient } from "@/lib/api-client";
 import { useNotify } from "@/hooks/use-notify";
+import { useControllableOpen } from "@/hooks/use-controllable-open";
 import type { DeparturePreview } from "@/lib/pms/departure";
 
 /**
@@ -44,18 +45,23 @@ export function RecordDepartureDialog({
   employeeId,
   employeeName,
   preview,
+  open: openProp,
+  onOpenChange,
 }: {
   employeeId: string;
   employeeName: string;
   /** Computed server-side; null when the record could not be read. */
   preview: DeparturePreview | null;
+  /** Controlled open state (opened from the record's Actions menu); no own trigger then. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const t = useTranslations("pms.departure");
   const tCommon = useTranslations("common");
   const router = useRouter();
   const { success } = useNotify();
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen, controlled] = useControllableOpen(openProp, onOpenChange);
   const [lastWorkingDay, setLastWorkingDay] = useState("");
   const [note, setNote] = useState("");
   const [reason, setReason] = useState("");
@@ -98,12 +104,14 @@ export function RecordDepartureDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <UserMinus className="me-2 h-4 w-4" />
-          {t("action")}
-        </Button>
-      </DialogTrigger>
+      {controlled ? null : (
+        <DialogTrigger asChild>
+          <Button variant="ghost" size="sm">
+            <UserMinus className="me-2 h-4 w-4" />
+            {t("action")}
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("title", { name: employeeName })}</DialogTitle>
