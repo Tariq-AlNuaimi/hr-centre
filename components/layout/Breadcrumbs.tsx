@@ -4,8 +4,11 @@ import { Home } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { useBreadcrumb } from "./BreadcrumbProvider";
-import { localePrefixRegex } from "@/i18n/config";
+import { locales } from "@/i18n/config";
 import Link from "next/link";
+import { normalisePath } from "@/lib/nav/resolve";
+import { navTrail } from "@/lib/nav/trail";
+import { useLocaleHref, useNavContext, useNavLabel } from "./use-nav-context";
 
 /**
  * Path segments that group routes without being one.
@@ -41,10 +44,9 @@ const segmentToNavKey: Record<string, string> = {
   profile: "profile",
   "recycling-bin": "recyclingBin",
   new: "create",
-  // HR tickets (HIVE port).
-  hive: "hiveCrumb",
-  escalations: "hiveTickets",
-  // Joiners, movers & leavers (docs/blueprints/jml.md).
+  // Paths that belong to no nav entry fall back to these (lib/nav/config.ts
+  // names everything else).
+  tickets: "tickets",
   jml: "jmlHome",
 };
 
@@ -64,8 +66,18 @@ export function Breadcrumbs() {
   const { dynamicLabels } = useBreadcrumb();
   const locale = useLocale();
 
-  // Strip locale prefix: /en/users/123 -> ['users', '123']
-  const segments = pathname.replace(localePrefixRegex, "").split("/").filter(Boolean);
+  const ctx = useNavContext();
+  const navLabel = useNavLabel();
+  const localeHref = useLocaleHref();
+
+  const path = normalisePath(pathname, locales);
+  // The head of the trail comes from the ONE nav config (module, then tab), so
+  // a crumb reads exactly like the sidebar and the tab bar. The remaining
+  // segments below the owning page are labelled as before.
+  const head = navTrail(path, ctx);
+  const restFrom = head?.restFrom ?? "/";
+  const baseSegments = restFrom.split("/").filter(Boolean);
+  const segments = path.split("/").filter(Boolean).slice(baseSegments.length);
 
   type Crumb = { key: string; node: React.ReactNode; isLast: boolean };
 
@@ -78,9 +90,29 @@ export function Breadcrumbs() {
   const trail = segments
     .map((segment, index) => ({
       segment,
-      path: `/${locale}/` + segments.slice(0, index + 1).join("/"),
+      path: `/${locale}/` + [...baseSegments, ...segments.slice(0, index + 1)].join("/"),
     }))
     .filter(({ segment }) => dynamicLabels[segment] || !OPAQUE_ID.test(segment));
+
+  const headCrumbs: Crumb[] = (head?.crumbs ?? []).map((crumb, index, all) => {
+    const isLast = trail.length === 0 && index === all.length - 1;
+    const text = navLabel(crumb);
+    return {
+      key: `nav-${crumb.key}`,
+      node:
+        isLast || crumb.href === null ? (
+          <span className={isLast ? "text-foreground" : "text-muted-foreground"}>{text}</span>
+        ) : (
+          <Link
+            href={localeHref(crumb.href)}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {text}
+          </Link>
+        ),
+      isLast,
+    };
+  });
 
   const items: Crumb[] = [
     {
@@ -101,8 +133,9 @@ export function Breadcrumbs() {
           <Home className="h-4 w-4" />
         </Link>
       ),
-      isLast: trail.length === 0,
+      isLast: trail.length === 0 && headCrumbs.length === 0,
     },
+    ...headCrumbs,
     ...trail.map(({ segment, path }, index) => {
       const navKey = segmentToNavKey[segment];
       let label: string;

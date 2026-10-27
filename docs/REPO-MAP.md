@@ -15,6 +15,9 @@
 - app/[locale]/(dashboard)/admin/import/page.tsx
 - app/[locale]/(dashboard)/admin/org-setup/page.tsx
 - app/[locale]/(dashboard)/admin/roles/page.tsx
+- app/[locale]/(dashboard)/admin/settings/email-templates/page.tsx
+- app/[locale]/(dashboard)/admin/settings/page.tsx
+- app/[locale]/(dashboard)/admin/settings/performance/page.tsx
 - app/[locale]/(dashboard)/admin/strategy-scores/page.tsx
 - app/[locale]/(dashboard)/audit-log/page.tsx
 - app/[locale]/(dashboard)/calibration/page.tsx
@@ -63,17 +66,6 @@
 - app/[locale]/(dashboard)/hiring/requisitions/request/page.tsx
 - app/[locale]/(dashboard)/hiring/settings/page.tsx
 - app/[locale]/(dashboard)/hiring/sourcing/page.tsx
-- app/[locale]/(dashboard)/hive/(setup)/discounts/page.tsx
-- app/[locale]/(dashboard)/hive/(setup)/org-details/page.tsx
-- app/[locale]/(dashboard)/hive/(setup)/pairs/page.tsx
-- app/[locale]/(dashboard)/hive/(setup)/providers/page.tsx
-- app/[locale]/(dashboard)/hive/(setup)/rotation/page.tsx
-- app/[locale]/(dashboard)/hive/email-template/page.tsx
-- app/[locale]/(dashboard)/hive/escalations/[id]/page.tsx
-- app/[locale]/(dashboard)/hive/escalations/page.tsx
-- app/[locale]/(dashboard)/hive/page.tsx
-- app/[locale]/(dashboard)/hive/reports/page.tsx
-- app/[locale]/(dashboard)/hive/settings/page.tsx
 - app/[locale]/(dashboard)/jml/calendar/page.tsx
 - app/[locale]/(dashboard)/jml/cases/[id]/page.tsx
 - app/[locale]/(dashboard)/jml/cases/page.tsx
@@ -124,6 +116,17 @@
 - app/[locale]/(dashboard)/team/page.tsx
 - app/[locale]/(dashboard)/three-sixty/assignments/[assignmentId]/page.tsx
 - app/[locale]/(dashboard)/three-sixty/page.tsx
+- app/[locale]/(dashboard)/tickets/(queue)/[id]/page.tsx
+- app/[locale]/(dashboard)/tickets/(queue)/page.tsx
+- app/[locale]/(dashboard)/tickets/reports/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/(config)/discounts/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/(config)/org-details/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/(config)/pairs/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/(config)/providers/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/(config)/rotation/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/email-template/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/page.tsx
+- app/[locale]/(dashboard)/tickets/setup/settings/page.tsx
 - app/[locale]/(dashboard)/users/[id]/page.tsx
 - app/[locale]/(dashboard)/users/new/page.tsx
 - app/[locale]/(dashboard)/users/page.tsx
@@ -769,6 +772,12 @@
 - lib/jml/watch/risk.ts: StatutoryRisk, RISK_ORDER, statutoryRisk
 - lib/jml/watch/statutory.ts: statutoryWatch
 - lib/jml/work-items.ts: jmlWorkProvider
+- lib/nav/config.ts: NAV_GROUPS, NavGroup, NavContext, NavIcon, NavLink, NavEntry, NAV
+- lib/nav/legacy-redirects.ts: Redirect, legacyRedirects
+- lib/nav/resolve.ts: ResolvedLink, ResolvedEntry, hrefOf, visibleNav, groupedNav, normalisePath, covers, ActiveNav, activeNav, tabsFor, PaletteItem, paletteItems
+- lib/nav/server-context.ts: navContextFor
+- lib/nav/tabs.ts: Gate, always, hr, teamLead, orgWide, admin, jml, hiring, byTabs, JML_TABS, HIRING_TABS, INSIGHTS_TABS, SETTING_AREAS, anySetting
+- lib/nav/trail.ts: NavCrumb, navTrail
 - lib/notifications/user-notify.ts: MAX_RECIPIENTS, PREVIEW_CHARS, UserNotice, notifyUsers, shortPreview
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
@@ -957,7 +966,6 @@
 - components/hiring/interviews/bits.tsx
 - components/hiring/library/LibraryItemDialog.tsx
 - components/hiring/library/LibraryView.tsx
-- components/hiring/nav.tsx
 - components/hiring/offers/Acceptance.tsx
 - components/hiring/offers/AcceptanceSection.tsx
 - components/hiring/offers/ApprovalPanel.tsx
@@ -1078,7 +1086,6 @@
 - components/jml/movers/MoverForm.tsx
 - components/jml/movers/MoverList.tsx
 - components/jml/movers/MoverStart.tsx
-- components/jml/nav.tsx
 - components/jml/reports/LeaveReportScreen.tsx
 - components/jml/reports/OverridesScreen.tsx
 - components/jml/reports/ReportScreen.tsx
@@ -1112,9 +1119,11 @@
 - components/layout/BreadcrumbProvider.tsx
 - components/layout/Breadcrumbs.tsx
 - components/layout/CommandPalette.tsx
+- components/layout/ModuleTabs.tsx
 - components/layout/NotificationsMenu.tsx
 - components/layout/OrgSwitcher.tsx
 - components/layout/ThemeProvider.tsx
+- components/layout/use-nav-context.tsx
 - components/org/CompaniesSection.tsx
 - components/org/DepartmentsSection.tsx
 - components/org/DirectoratesSection.tsx
@@ -1193,6 +1202,7 @@
 - components/shared/DescriptionList.tsx
 - components/shared/EmptyState.tsx
 - components/shared/FormField.tsx
+- components/shared/LinkCards.tsx
 - components/shared/PageHeader.tsx
 - components/shared/RowActions.tsx
 - components/shared/SectionCard.tsx

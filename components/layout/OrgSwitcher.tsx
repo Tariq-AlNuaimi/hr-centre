@@ -13,9 +13,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { brand } from "@/brand.config";
-import { useHiveAccess } from "@/components/hive/use-hive-access";
-import { useHiringNavItems } from "@/components/hiring/nav";
-import { useJmlAccess } from "@/components/jml/use-jml";
+import { visibleNav } from "@/lib/nav/resolve";
+import { useNavContext } from "./use-nav-context";
 
 /**
  * The "HR Centre" switcher is the MODULE LAUNCHER (docs/blueprints/ux-p0.md,
@@ -23,31 +22,31 @@ import { useJmlAccess } from "@/components/jml/use-jml";
  * sidebar only shows what a role grants, so before this a platform admin with
  * no Hiring role had no hint that Hiring existed. A module without access says
  * so plainly, and a platform admin — the person who can fix it — is taken to
- * Admin → Roles. Access is read from the same hooks the sidebar uses
- * (affordances only; every route re-checks on the server).
+ * Admin → Roles. Where each module opens comes from the one nav config
+ * (lib/nav/config.ts): the first destination in it this viewer may open.
  */
 type Module = { key: string; href: string | null };
 
+/** For each module, the nav keys (entries or tabs) that open it, in preference order. */
+const MODULE_DOORS: ReadonlyArray<[string, readonly string[]]> = [
+  ["people", ["people"]],
+  ["performance", ["me-performance"]],
+  ["jml", ["jml"]],
+  ["hiring", ["hiring", "me-interviews", "hiring-insights"]],
+  ["tickets", ["tickets", "ticket-reports", "ticket-setup"]],
+];
+
 function useModules(): Module[] {
-  const hive = useHiveAccess();
-  const jml = useJmlAccess();
-  const hiring = useHiringNavItems();
-  const ticketsHref = hive.seeTickets
-    ? "/hive/escalations"
-    : hive.viewReports
-      ? "/hive/reports"
-      : hive.editContent || hive.configure
-        ? "/hive"
-        : null;
-  const jmlHref = jml.can("jml.view") ? "/jml" : jml.can("jml.workTasks") ? "/jml/my-tasks" : null;
-  return [
-    // Everyone signed in has a directory (scoped to what they may see) and a scorecard.
-    { key: "people", href: "/people" },
-    { key: "performance", href: "/scorecard" },
-    { key: "jml", href: jmlHref },
-    { key: "hiring", href: hiring.length ? "/hiring" : null },
-    { key: "tickets", href: ticketsHref },
-  ];
+  const ctx = useNavContext();
+  const hrefs = new Map<string, string>();
+  for (const entry of visibleNav(ctx)) {
+    hrefs.set(entry.key, entry.href);
+    for (const tab of entry.tabs) hrefs.set(tab.key, tab.href);
+  }
+  return MODULE_DOORS.map(([key, doors]) => ({
+    key,
+    href: doors.map((d) => hrefs.get(d)).find((h) => h !== undefined) ?? null,
+  }));
 }
 
 export function OrgSwitcher() {

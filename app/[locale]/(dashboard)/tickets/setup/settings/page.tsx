@@ -178,7 +178,7 @@ function SettingsForm({ settings, refetch }: { settings: Settings; refetch: () =
           </ConfirmAction>
         ) : null}
         <Link
-          href={`/${locale}/hive/email-template`}
+          href={`/${locale}/tickets/setup/email-template`}
           className="ms-auto text-sm text-primary-emphasis underline underline-offset-4"
         >
           {t("emailTemplateLink")}

@@ -1,6 +1,8 @@
 /**
- * Spec V2 §8.6: "The ticket ID format is HIVE- followed by a four-digit running
- * number (HIVE-0001). Numbers never repeat."
+ * Spec V2 §8.6: a prefix followed by a four-digit running number. Numbers never
+ * repeat. The default prefix was HIVE until UX P1 renamed the module "HR
+ * tickets" (HR-0001); old HIVE-0001 ids stay searchable (any prefix is accepted
+ * by the queue search).
  *
  * The number comes from the database sequence (`Escalation.ticketNumber`); this
  * only renders it. Beyond 9999 the number simply grows a digit — it never wraps,
@@ -11,7 +13,7 @@
  *
  * @public
  */
-export const DEFAULT_TICKET_PREFIX = "HIVE";
+export const DEFAULT_TICKET_PREFIX = "HR";
 
 export function formatTicketId(
   ticketNumber: number,

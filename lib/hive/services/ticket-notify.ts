@@ -184,9 +184,7 @@ export function composeNotification(
   const pair = t.hrPair.name;
   // The HR Centre ticket page (same path as HIVE's, so an old link keeps its
   // shape). Locale fixed to `en`, as HIVE: notifications have one language.
-  const link = env.AUTH_URL
-    ? `${env.AUTH_URL.replace(/\/+$/, "")}/en/hive/escalations/${t.id}`
-    : null;
+  const link = env.AUTH_URL ? `${env.AUTH_URL.replace(/\/+$/, "")}/en/tickets/${t.id}` : null;
   const head = {
     opened: {
       subject: `New HR ticket ${id} for ${pair}`,
@@ -232,7 +230,7 @@ async function deliver(kind: Kind, escalationId: string): Promise<void> {
         kind: inApp,
         module: "tickets",
         body: inAppBody(kind, id, ticket),
-        href: `/hive/escalations/${ticket.id}`,
+        href: `/tickets/${ticket.id}`,
         // `opened` happens once per ticket; the others recur, so each is its own event.
         key: `tickets:${kind}:${ticket.id}${kind === "opened" ? "" : `:${Date.now()}`}`,
       });

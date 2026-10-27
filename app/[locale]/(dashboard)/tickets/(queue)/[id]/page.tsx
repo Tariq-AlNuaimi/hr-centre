@@ -240,7 +240,7 @@ function DetailView({
         <HistoryCard events={detail.events} when={when} t={t} />
 
         <Link
-          href={`/${locale}/hive/escalations`}
+          href={`/${locale}/tickets`}
           className="text-sm text-muted-foreground underline underline-offset-4"
         >
           {t("back")}

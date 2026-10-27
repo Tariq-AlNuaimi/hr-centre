@@ -131,7 +131,7 @@ npm run scaffold -- --name Article \
 
 - `lib/prisma/soft-delete-extension.ts` -- `SOFT_DELETE_MODELS` set
 - `lib/prisma/recyclable.ts` -- `RECYCLABLE_ENTITY_TYPES` registry (the single source of truth read by both the list/restore and permanent-delete routes)
-- `components/layout/AppSidebar.tsx` -- new nav item above `recycling-bin`
+- `lib/nav/config.ts` -- new nav entry above `recycling-bin` (sidebar, ⌘K and breadcrumbs read it)
 - `prisma/schema.prisma` -- target models gain back-ref fields for every relation pointing to them
 
 ## Hard rules preserved

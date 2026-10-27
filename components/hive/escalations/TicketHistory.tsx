@@ -25,7 +25,8 @@ export function HistoryCard({
           {events.map((e) => (
             <li key={e.id} className="flex flex-col gap-0.5">
               <span className="text-sm text-foreground">
-                {label[e.kind] ?? e.kind} · {e.actor?.name ?? t("system")}
+                {label[e.kind] ?? e.kind} ·{" "}
+                {e.actor?.name ?? (e.kind === "REOPENED" ? t("actorEmployee") : t("system"))}
               </span>
               <span className="text-xs text-muted-foreground">{when(e.at)}</span>
               {e.note && (

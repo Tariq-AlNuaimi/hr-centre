@@ -39,10 +39,8 @@
     "create": "Create",
     "people": "People",
     "org": "Org chart",
-    "employeeImport": "Employee import",
-    "orgSetup": "Organisation",
+    "orgSetup": "Organisation structure",
     "cycles": "Performance cycles",
-    "hrRoles": "HR roles",
     "goalSetting": "Goal setting",
     "midYear": "Mid-year review",
     "yearEnd": "Year-end assessment",
@@ -52,36 +50,63 @@
     "executive": "Executive dashboard",
     "calibration": "Calibration",
     "threeSixty": "360 assessment",
-    "strategyScores": "Corporate & departmental scores",
+    "strategyScores": "Corporate scores",
     "edgeCases": "Roll-ups & split years",
-    "access": "Access",
+    "access": "Logins & access",
     "roles": "Roles",
     "group": {
-      "start": "Start",
+      "home": "Home",
+      "me": "Me",
+      "team": "My team",
       "people": "People",
-      "performance": "Performance",
-      "admin": "Admin",
-      "tickets": "HR tickets",
-      "jml": "Joiners, movers & leavers",
-      "hiring": "Hiring"
+      "talent": "Talent",
+      "service": "Service",
+      "insights": "Insights",
+      "admin": "Admin"
     },
     "mainNav": "Main navigation",
-    "hive": "HIVE",
-    "hiveTickets": "Tickets",
-    "hiveReports": "Ticket reports",
-    "hiveSetup": "Ticket setup",
-    "hiveCrumb": "HR tickets",
-    "jmlSettings": "Settings",
-    "jmlHome": "Joiners, movers & leavers",
+    "jmlHome": "Joiners & leavers",
     "jmlCases": "Cases",
     "jmlJoiners": "Joiners",
     "jmlCalendar": "Joining calendar",
     "jmlStatutory": "Statutory watch",
-    "jmlReports": "Reports",
     "jmlMovers": "Movers",
     "jmlLeavers": "Leavers",
-    "jmlDashboard": "Dashboard",
-    "jmlMyTasks": "My tasks"
+    "jmlMyTasks": "My tasks",
+    "myProfile": "My profile",
+    "myPerformance": "My performance",
+    "myInterviews": "My interviews",
+    "teamPeople": "Team",
+    "directory": "Directory",
+    "jmlOverview": "Overview",
+    "hiring": "Hiring",
+    "hiringOverview": "Overview",
+    "hiringRequisitions": "Requisitions",
+    "hiringCandidates": "Candidates",
+    "hiringPipeline": "Pipeline",
+    "hiringInterviews": "Interviews",
+    "hiringOffers": "Offers",
+    "hiringCloseOut": "Close-out",
+    "hiringApprovals": "Approvals",
+    "hiringSourcing": "Sourcing",
+    "hiringLibrary": "Library",
+    "cyclesTab": "Cycles",
+    "tickets": "HR tickets",
+    "insights": "Insights",
+    "insightsExecutive": "Executive",
+    "insightsPerformance": "Performance",
+    "insightsLifecycle": "Joiners & leavers",
+    "insightsHiring": "Hiring",
+    "insightsTickets": "HR tickets",
+    "settingsGeneral": "General",
+    "settingsImports": "Imports",
+    "settingsJml": "Joiners & leavers",
+    "settingsHiring": "Hiring",
+    "settingsTickets": "HR tickets",
+    "rolesAccess": "Roles & access",
+    "moduleTabs": "{module} sections",
+    "settingsEmail": "Email templates",
+    "settingsPerformance": "Performance"
   },
   "auth": {
     "login": "Login",
@@ -212,7 +237,7 @@
   "chrome": {
     "search": "Search or jump to…",
     "openCommand": "Open command menu",
-    "commandPlaceholder": "Search pages and actions…",
+    "commandPlaceholder": "Search pages and people…",
     "noResults": "No matching commands",
     "groupNavigate": "Navigate",
     "groupActions": "Actions",
@@ -250,7 +275,9 @@
         "name": "HR tickets",
         "hint": "Employee questions escalated by Siraaj"
       }
-    }
+    },
+    "groupPeople": "People",
+    "searchingPeople": "Searching people…"
   },
   "status": {
     "forbiddenTitle": "Access denied",
@@ -1816,7 +1843,7 @@
     "teamColumn": "Team"
   },
   "access": {
-    "title": "Access",
+    "title": "Logins & access",
     "subtitle": "Who can sign in, and what authority they hold. These are two separate things, and this is the one screen that shows both.",
     "hrSection": "HR authority",
     "hrSectionHint": "What a person may do in HR Centre comes from roles assigned to them. Platform administrators manage roles and assignments",
@@ -1836,7 +1863,7 @@
     "openRoles": "Open roles and access"
   },
   "org": {
-    "title": "Organisation",
+    "title": "Organisation structure",
     "subtitle": "Companies, directorates, departments and teams. Imports place people into these units — they never create them.",
     "companies": "Companies",
     "companiesNote": "Company codes are import keys, so companies can be renamed but not re-coded.",
@@ -1999,7 +2026,7 @@
     }
   },
   "rbac": {
-    "title": "Roles and access",
+    "title": "Roles",
     "subtitle": "Build roles from actions, then give them to people for the whole group, a company, a directorate or a department. Only platform administrators can change these",
     "roles": "Roles",
     "rolesNote": "A role is a named bundle of actions. Changes take effect on each holder's next request",
@@ -2151,7 +2178,7 @@
     "greeting": "Welcome, {name}. Here is what is waiting on you"
   },
   "hive": {
-    "title": "HIVE",
+    "title": "HR tickets",
     "home": {
       "title": "HR tickets",
       "intro": "HR's ticket desk: questions employees raise in Siraaj, and the reference data Siraaj answers from.",
@@ -2225,7 +2252,7 @@
     "escalations": {
       "title": "Tickets",
       "intro": "Questions employees raised with HR. Every answer is submitted for approval before it sends — no exceptions.",
-      "empty": "Nothing waiting. HIVE has answered everything on its own.",
+      "empty": "Nothing waiting. Siraaj has answered everything on its own.",
       "loadFailed": "Couldn't load the queue",
       "employee": "From",
       "question": "Question",
@@ -2287,7 +2314,8 @@
       "submittedBy": "Submitted by {name}",
       "history": "History",
       "historyEmpty": "No history recorded yet",
-      "system": "HIVE",
+      "system": "Siraaj",
+      "actorEmployee": "Employee",
       "eventOPENED": "Ticket opened",
       "eventDRAFT_SAVED": "Draft saved",
       "eventSUBMITTED": "Submitted for approval",
@@ -2298,7 +2326,7 @@
       "eventREOPENED": "Employee replied — reopened",
       "eventCLOSED": "Closed",
       "waitingForAnotherApprover": "You wrote this draft, so it is waiting for another approver.",
-      "sourceHIVE": "HIVE",
+      "sourceHIVE": "Earlier HR chat",
       "sourceSIRAAJ": "Siraaj",
       "source": "Source",
       "searchLabel": "Search",
@@ -2368,7 +2396,7 @@
       "saved": "Settings saved",
       "saveFailed": "Couldn't save the settings",
       "reset": "Reset to defaults",
-      "resetConfirm": "Go back to the HIVE prefix and the built-in status names?",
+      "resetConfirm": "Go back to the HR prefix and the built-in status names?",
       "resetDone": "Back to the defaults",
       "emailTemplateLink": "Edit the answer email"
     },
@@ -6680,6 +6708,37 @@
       "hiringCloseOut": "{count, plural, =1 {# rejection notice} other {# rejection notices}} ready to send",
       "ticketApprove": "Approve the answer to {id}: \"{preview}\"",
       "ticketAnswer": "Answer {id} for {pair}: \"{preview}\""
+    }
+  },
+  "adminSettings": {
+    "title": "Settings",
+    "subtitle": "Every area you can configure, in one place. Each area keeps its own page.",
+    "areas": {
+      "org-setup": "Companies, directorates, departments and teams.",
+      "email-templates": "The emails joiners, leavers and employees receive.",
+      "import": "Load or update employee records from a spreadsheet.",
+      "performance-settings": "Cycle windows and policy, corporate scores and 360 setup.",
+      "jml-settings": "Checklists, rules, approvals, documents, statutory values and calendars for joiners, movers and leavers.",
+      "hiring-settings": "Approval chains, assessment policy, AI assists and budgets for hiring.",
+      "ticket-setup": "HR pairs and coverage, ticket settings, and the information Siraaj answers from."
+    },
+    "emailTemplates": {
+      "title": "Email templates",
+      "subtitle": "Each set of emails is edited with the process that sends it.",
+      "jmlTitle": "Joiners & leavers emails",
+      "jmlDescription": "Welcome, reminder and exit emails sent during a case.",
+      "ticketsTitle": "HR ticket answer email",
+      "ticketsDescription": "The email that carries an approved answer to the employee."
+    },
+    "performance": {
+      "title": "Performance settings",
+      "subtitle": "Performance is configured on its own screens; these are the ones HR sets up each cycle.",
+      "cyclesTitle": "Cycles and deadlines",
+      "cyclesDescription": "Stage windows, grace days and the cycle policy.",
+      "scoresTitle": "Corporate scores",
+      "scoresDescription": "Company and department scores HR keys in for the year.",
+      "threeSixtyTitle": "360 setup",
+      "threeSixtyDescription": "Rater assignments and 360 cycles."
     }
   }
 }

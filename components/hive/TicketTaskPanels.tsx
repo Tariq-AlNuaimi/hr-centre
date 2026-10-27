@@ -63,7 +63,7 @@ function TicketList({
       {rows.map((r) => (
         <li key={r.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
           <Link
-            href={`/${locale}/hive/escalations/${r.id}`}
+            href={`/${locale}/tickets/${r.id}`}
             className="font-mono text-xs underline underline-offset-4"
           >
             {formatTicketId(r.ticketNumber, prefix)}

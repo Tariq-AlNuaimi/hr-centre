@@ -7,6 +7,7 @@ import { AppFooter } from "./AppFooter";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { BreadcrumbProvider } from "./BreadcrumbProvider";
 import { CommandPalette } from "./CommandPalette";
+import { ModuleTabs } from "./ModuleTabs";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -34,6 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   .ant-layout-content in globals.css), not a per-shell hardcode. */}
               <main className="min-h-90 flex-1 p-density-page">
                 <Breadcrumbs />
+                <ModuleTabs />
                 {children}
               </main>
               <AppFooter />
