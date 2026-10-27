@@ -79,7 +79,9 @@
     "jmlStatutory": "Statutory watch",
     "jmlReports": "Reports",
     "jmlMovers": "Movers",
-    "jmlLeavers": "Leavers"
+    "jmlLeavers": "Leavers",
+    "jmlDashboard": "Dashboard",
+    "jmlMyTasks": "My tasks"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -1556,7 +1558,8 @@
         "JML_CASE_ACTIVATED": "Case activated",
         "JML_RECALCULATION_NOTICE": "Due dates recalculated",
         "JML_CASE_CLOSED": "Case closed"
-      }
+      },
+      "dismiss": "Dismiss"
     },
     "cyclePolicy": {
       "title": "سياسة الدورة — {year}",
@@ -1941,7 +1944,8 @@
       "label": "Record sections",
       "overview": "Overview",
       "performance": "Performance",
-      "tickets": "HR tickets"
+      "tickets": "HR tickets",
+      "jml": "Joiners, movers & leavers"
     }
   },
   "rbac": {
@@ -4221,6 +4225,74 @@
       },
       "linked": "linked to {date}",
       "weekend": "weekend"
+    },
+    "dashboard": {
+      "title": "Joiners, movers & leavers",
+      "subtitle": "What is live, what is yours, what is late and what is waiting.",
+      "scope": "Show",
+      "mine": "My cases",
+      "all": "All cases I can see",
+      "liveJoiners": "Live joiners",
+      "liveMovers": "Live movers",
+      "liveLeavers": "Live leavers",
+      "joiningThisMonth": "Joining this month",
+      "exitsThisMonth": "Leaving this month",
+      "averageCompletion": "Average completion",
+      "myWork": "My work",
+      "allMyTasks": "All my tasks",
+      "noWork": "No open tasks assigned to you.",
+      "delayed": "Delayed tasks",
+      "noDelayed": "Nothing is overdue.",
+      "approvals": "Awaiting approval",
+      "noApprovals": "No approvals are pending.",
+      "approvalLine": "{name} — {holder}, pending since {since}",
+      "statutory": "Statutory watch",
+      "noStatutory": "No statutory deadline within three working days.",
+      "watchLine": "{name} — {what}: {days} working days",
+      "visa": "visa cancellation",
+      "reasons": "Exit reasons this month",
+      "noReasons": "No coded exits this month.",
+      "level1": {
+        "VOLUNTARY_ATTRACTED_AWAY": "Voluntary — attracted away",
+        "VOLUNTARY_DISSATISFACTION": "Voluntary — dissatisfaction",
+        "VOLUNTARY_PERSONAL": "Voluntary — personal",
+        "INVOLUNTARY_PERFORMANCE": "Involuntary — performance",
+        "INVOLUNTARY_CONDUCT": "Involuntary — conduct",
+        "INVOLUNTARY_BUSINESS": "Involuntary — business",
+        "CONTRACT": "Contract"
+      },
+      "taskLine": "{code} {name} — {who}",
+      "due": "due {date}",
+      "noDate": "no due date",
+      "unowned": "no owner",
+      "bucket": {
+        "OVERDUE": "Overdue",
+        "DUE_TODAY": "Due today",
+        "DUE_TOMORROW": "Due tomorrow",
+        "FUTURE": "Later",
+        "NO_DATE": "No due date"
+      },
+      "bucketTitle": "{bucket} ({count})",
+      "myTasksTitle": "My tasks",
+      "myTasksSubtitle": "Every open joiner, mover and leaver task assigned to you, overdue first.",
+      "caseType": "Case type",
+      "allTypes": "All types",
+      "allMyTasksCount": "All my tasks ({count})"
+    },
+    "recordTab": {
+      "cases": "Cases",
+      "noCases": "No joiner, mover or leaver cases.",
+      "joinLine": "start {date}",
+      "moveLine": "{change}, effective {date}",
+      "leaveLine": "{type}, last day of service {date}",
+      "statusLine": "{status} · {pct}% · {owner}",
+      "historical": "Historical",
+      "assets": "Assets held",
+      "noAssets": "No assets outstanding.",
+      "assetLine": "{type} {id} — issued {date}",
+      "access": "Access granted",
+      "noAccess": "No access recorded.",
+      "accessLine": "{name} — granted {date}"
     }
   },
   "hiring": {

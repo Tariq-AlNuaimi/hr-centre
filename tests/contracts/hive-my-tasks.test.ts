@@ -87,7 +87,10 @@ test(
 
 test("the employee record's tab needs tickets.see; without it the URL shows the overview", () => {
   const page = readFileSync("app/[locale]/(dashboard)/people/[id]/page.tsx", "utf8");
-  assert.match(page, /hasHivePermission\(userId, "seeTickets"\)/);
-  assert.match(page, /requested === "tickets" \? "overview"/);
-  assert.match(page, /hiddenTabs: \["tickets"\]/);
+  // (JML S7 folded the module tabs into one list of hidden tabs; same invariant.)
+  assert.match(
+    page,
+    /hasHivePermission\(session\.user\.id, "seeTickets"\)\)\) hiddenTabs\.push\("tickets"\)/,
+  );
+  assert.match(page, /hiddenTabs\.includes\(requested\) \? "overview"/);
 });

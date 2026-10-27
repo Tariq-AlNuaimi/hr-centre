@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { JmlDashboard } from "@/components/jml/dashboard/JmlDashboard";
 
-/** The JML module's landing — the case list until the dashboard arrives (slice S7). */
-export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-  redirect(`/${locale}/jml/cases`);
+/** The JML landing — the dashboard (slice S7). */
+export default function Page() {
+  return <JmlDashboard />;
 }

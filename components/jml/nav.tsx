@@ -4,6 +4,8 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
+  LayoutDashboard,
+  ListChecks,
   Settings2,
   ShieldAlert,
   UserMinus,
@@ -19,6 +21,20 @@ export type JmlNavItem = { key: string; labelKey: string; href: string; icon: Re
 
 export function jmlNavItems(can: (permission: string) => boolean): JmlNavItem[] {
   const items: Array<JmlNavItem & { show: boolean }> = [
+    {
+      key: "jml-home",
+      labelKey: "jmlDashboard",
+      href: "/jml",
+      icon: <LayoutDashboard className="h-4 w-4" />,
+      show: can("jml.view"),
+    },
+    {
+      key: "jml-my-tasks",
+      labelKey: "jmlMyTasks",
+      href: "/jml/my-tasks",
+      icon: <ListChecks className="h-4 w-4" />,
+      show: can("jml.workTasks"),
+    },
     {
       key: "jml-cases",
       labelKey: "jmlCases",

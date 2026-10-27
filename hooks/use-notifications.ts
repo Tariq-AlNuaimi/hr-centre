@@ -12,7 +12,20 @@ import { apiClient } from "@/lib/api-client";
  */
 
 export type NotificationKind =
-  "CYCLE_REMINDER" | "CYCLE_ESCALATION" | "HR_INTERVENTION" | "THREE_SIXTY_REMINDER";
+  | "CYCLE_REMINDER"
+  | "CYCLE_ESCALATION"
+  | "HR_INTERVENTION"
+  | "THREE_SIXTY_REMINDER"
+  // JML (joiners, movers & leavers) — the one notification mechanism (D6).
+  | "JML_INFO"
+  | "JML_AUTOMATION_FAILURE"
+  | "JML_OVERDUE_TASK_DIGEST"
+  | "JML_OVERDUE_ESCALATION"
+  | "JML_STATUTORY_WATCH_ALERT"
+  | "JML_APPROVAL_REMINDER"
+  | "JML_CASE_ACTIVATED"
+  | "JML_RECALCULATION_NOTICE"
+  | "JML_CASE_CLOSED";
 
 export type NotificationItem = {
   id: string;
@@ -57,6 +70,14 @@ export function useNotifications() {
     onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }),
   });
 
+  // Dismiss takes a notice out of the feed (and marks it read) — the inbox action
+  // HR Offboarding had; the route only ever touches the caller's own feed.
+  const dismiss = useMutation({
+    mutationFn: (id: string) =>
+      apiClient.post<{ updated: number }>("/api/notifications/dismiss", { id }),
+    onSuccess: () => client.invalidateQueries({ queryKey: NOTIFICATIONS_KEY }),
+  });
+
   return {
     items: query.data?.items ?? [],
     unread: query.data?.unread ?? 0,
@@ -64,5 +85,6 @@ export function useNotifications() {
     isError: query.isError,
     refetch: query.refetch,
     markRead,
+    dismiss,
   };
 }

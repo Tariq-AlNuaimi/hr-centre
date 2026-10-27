@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { AlertTriangle, Bell, Clock, MessageSquare } from "lucide-react";
+import { AlertTriangle, Bell, Clock, MessageSquare, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -24,30 +24,48 @@ import type { NotificationItem, NotificationKind } from "@/hooks/use-notificatio
  * still reach them.
  */
 
-const KIND_ICON: Record<NotificationKind, typeof Bell> = {
+/** Kinds without an entry here (JML, HR tickets…) fall back to the bell — never a crash. */
+const KIND_ICON: Partial<Record<NotificationKind, typeof Bell>> = {
   CYCLE_REMINDER: Clock,
   CYCLE_ESCALATION: AlertTriangle,
   HR_INTERVENTION: AlertTriangle,
   THREE_SIXTY_REMINDER: MessageSquare,
 };
 
-const KIND_VARIANT: Record<NotificationKind, "warning" | "danger" | "brand"> = {
+const KIND_VARIANT: Partial<Record<NotificationKind, "warning" | "danger" | "brand">> = {
   CYCLE_REMINDER: "warning",
   CYCLE_ESCALATION: "danger",
   HR_INTERVENTION: "danger",
   THREE_SIXTY_REMINDER: "brand",
 };
 
+function DismissButton({ id, onDismiss }: { id: string; onDismiss: (id: string) => void }) {
+  const t = useTranslations("pms.notifications");
+  return (
+    <button
+      type="button"
+      onClick={() => onDismiss(id)}
+      aria-label={t("dismiss")}
+      title={t("dismiss")}
+      className="m-2 shrink-0 self-start rounded p-1 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <X aria-hidden className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 export function NotificationRow({
   item,
   onOpen,
+  onDismiss,
 }: {
   item: NotificationItem;
   onOpen?: (id: string) => void;
+  onDismiss?: (id: string) => void;
 }) {
   const t = useTranslations("pms.notifications");
   const locale = useLocale();
-  const Icon = KIND_ICON[item.kind];
+  const Icon = KIND_ICON[item.kind] ?? Bell;
   const unread = item.readAt === null;
 
   const inner = (
@@ -67,7 +85,9 @@ export function NotificationRow({
           >
             {t(`kind.${item.kind}`)}
           </span>
-          {unread ? <Badge variant={KIND_VARIANT[item.kind]}>{t("unread")}</Badge> : null}
+          {unread ? (
+            <Badge variant={KIND_VARIANT[item.kind] ?? "brand"}>{t("unread")}</Badge>
+          ) : null}
         </span>
         <span className="block max-w-prose text-xs text-muted-foreground">{item.body}</span>
         <span className="block text-xs text-muted-foreground">
@@ -85,12 +105,13 @@ export function NotificationRow({
     return (
       <li className="flex min-h-6 items-start gap-3 border-b border-border px-3 py-3 last:border-b-0">
         {inner}
+        {onDismiss ? <DismissButton id={item.id} onDismiss={onDismiss} /> : null}
       </li>
     );
   }
 
   return (
-    <li className="border-b border-border last:border-b-0">
+    <li className="flex items-start border-b border-border last:border-b-0">
       <Link
         href={`/${locale}${item.href}`}
         onClick={() => onOpen?.(item.id)}
@@ -100,10 +121,11 @@ export function NotificationRow({
         // rgb(1,101,255) under rgb(17,24,39) in a real browser, which is a
         // contrast failure, not a style preference. `bg-muted` is what every
         // other hoverable row in the app uses.
-        className="flex min-h-6 items-start gap-3 px-3 py-3 outline-none hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="flex min-h-6 min-w-0 flex-1 items-start gap-3 px-3 py-3 outline-none hover:bg-muted focus-visible:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         {inner}
       </Link>
+      {onDismiss ? <DismissButton id={item.id} onDismiss={onDismiss} /> : null}
     </li>
   );
 }
@@ -111,16 +133,18 @@ export function NotificationRow({
 export function NotificationList({
   items,
   onOpen,
+  onDismiss,
   className,
 }: {
   items: readonly NotificationItem[];
   onOpen?: (id: string) => void;
+  onDismiss?: (id: string) => void;
   className?: string;
 }) {
   return (
     <ul className={cn("flex list-none flex-col p-0", className)}>
       {items.map((item) => (
-        <NotificationRow key={item.id} item={item} onOpen={onOpen} />
+        <NotificationRow key={item.id} item={item} onOpen={onOpen} onDismiss={onDismiss} />
       ))}
     </ul>
   );
