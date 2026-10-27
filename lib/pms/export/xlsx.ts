@@ -174,15 +174,19 @@ export async function buildReportSheet<T>(params: {
 }
 
 /**
- * The multi-sheet form of the row-matrix overload — `sheets` and `columns` are
- * parallel arrays, one entry per sheet. Pinned here for the same reason
- * `WriteRowMatrix` is: the library's untyped overload resolution picks the
- * object-schema form otherwise.
+ * The multi-sheet form: an array of SHEET OBJECTS (`{ data, sheet, columns }`).
+ * write-excel-file 4 refuses the legacy parallel-array form (an array of row
+ * matrices) with "pass an array of sheet objects" — which every workbook
+ * export hit, single-sheet ones included. Pinned here for the same reason
+ * `WriteRowMatrix` is: the library's untyped overload resolution.
  */
 type WriteMultiSheet = (
-  sheets: Array<Array<Array<{ value: string }>>>,
-  options: { columns: Array<Array<{ width?: number }>>; sheets: string[] },
-) => Promise<{ toBuffer: () => Promise<Buffer> }>;
+  sheets: Array<{
+    data: Array<Array<{ value: string }>>;
+    sheet: string;
+    columns: Array<{ width?: number }>;
+  }>,
+) => { toBuffer: () => Promise<Buffer> };
 
 const writeMultiSheet = writeXlsxFile as unknown as WriteMultiSheet;
 
@@ -225,11 +229,14 @@ export async function buildReportWorkbook(sheets: readonly ReportSheet[]): Promi
     s.header.map((value) => ({ value })),
     ...s.rows.map((row) => row.map((value) => ({ value }))),
   ]);
-  const writer = await writeMultiSheet(data, {
-    sheets: sheets.map((s) => s.sheet),
-    columns: sheets.map((s) =>
-      (s.widths ?? s.header.map((h) => Math.max(h.length + 4, 14))).map((width) => ({ width })),
-    ),
-  });
+  const writer = writeMultiSheet(
+    sheets.map((s, i) => ({
+      data: data[i]!,
+      sheet: s.sheet,
+      columns: (s.widths ?? s.header.map((h) => Math.max(h.length + 4, 14))).map((width) => ({
+        width,
+      })),
+    })),
+  );
   return writer.toBuffer();
 }

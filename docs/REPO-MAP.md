@@ -74,12 +74,14 @@
 - app/[locale]/(dashboard)/jml/joiners/[id]/page.tsx
 - app/[locale]/(dashboard)/jml/joiners/new/page.tsx
 - app/[locale]/(dashboard)/jml/joiners/page.tsx
+- app/[locale]/(dashboard)/jml/leavers/calendar/page.tsx
 - app/[locale]/(dashboard)/jml/leavers/new/page.tsx
 - app/[locale]/(dashboard)/jml/leavers/page.tsx
 - app/[locale]/(dashboard)/jml/movers/new/page.tsx
 - app/[locale]/(dashboard)/jml/movers/page.tsx
 - app/[locale]/(dashboard)/jml/page.tsx
 - app/[locale]/(dashboard)/jml/reports/[slug]/page.tsx
+- app/[locale]/(dashboard)/jml/reports/leavers/[slug]/page.tsx
 - app/[locale]/(dashboard)/jml/reports/overrides/page.tsx
 - app/[locale]/(dashboard)/jml/reports/page.tsx
 - app/[locale]/(dashboard)/jml/settings/access-checklist/page.tsx
@@ -92,6 +94,7 @@
 - app/[locale]/(dashboard)/jml/settings/email-templates/page.tsx
 - app/[locale]/(dashboard)/jml/settings/employee-code/page.tsx
 - app/[locale]/(dashboard)/jml/settings/employment-types/page.tsx
+- app/[locale]/(dashboard)/jml/settings/import-exits/page.tsx
 - app/[locale]/(dashboard)/jml/settings/page.tsx
 - app/[locale]/(dashboard)/jml/settings/reason-codes/page.tsx
 - app/[locale]/(dashboard)/jml/settings/retention/page.tsx
@@ -227,6 +230,7 @@
 - app/api/internal/audit-purge/route.ts  [GET,POST]
 - app/api/internal/cycle-sweep/route.ts  [GET,POST]
 - app/api/internal/jml-sweep/route.ts  [GET,POST]
+- app/api/jml/calendar/exits/route.ts  [GET]
 - app/api/jml/calendar/export/route.ts  [GET]
 - app/api/jml/calendar/route.ts  [GET]
 - app/api/jml/cases/[id]/access/[itemId]/confirm/route.ts  [POST]
@@ -266,6 +270,7 @@
 - app/api/jml/config/employment-types/route.ts  [GET]
 - app/api/jml/config/holidays/[id]/route.ts  [DELETE]
 - app/api/jml/config/holidays/route.ts  [GET,POST]
+- app/api/jml/config/import-exits/route.ts  [POST]
 - app/api/jml/config/position-classifications/[id]/route.ts  [PATCH]
 - app/api/jml/config/position-classifications/route.ts  [GET,POST]
 - app/api/jml/config/reason-codes/route.ts  [GET,PUT]
@@ -282,6 +287,8 @@
 - app/api/jml/joiners/[id]/activate/route.ts  [GET,POST]
 - app/api/jml/joiners/[id]/route.ts  [GET,PATCH,DELETE]
 - app/api/jml/joiners/route.ts  [GET,POST]
+- app/api/jml/leave-reports/[slug]/export/route.ts  [GET]
+- app/api/jml/leave-reports/[slug]/route.ts  [GET]
 - app/api/jml/leavers/[id]/activate/route.ts  [GET,POST]
 - app/api/jml/leavers/[id]/approvals/[approvalId]/route.ts  [PATCH]
 - app/api/jml/leavers/[id]/approvals/route.ts  [GET,POST]
@@ -653,12 +660,15 @@
 - lib/jml/leave/closure.ts: closurePreview, closeLeave
 - lib/jml/leave/compliance.ts: COMPLIANCE_GATES, GateId, GATE_IDS, isGateId, ComplianceProfile, applicableGates, GateRecordLike, checkClosureGates, gateDataProblem, INCIDENT_KINDS, IncidentKind, daysLate, DetectedIncident, detectIncidents
 - lib/jml/leave/config.ts: listAssetTypes, saveAssetType, listAccessChecklist, saveAccessChecklistItem, listReasonCodes, saveReasonCode
+- lib/jml/leave/csv.ts: parseCsv
 - lib/jml/leave/dates.ts: changeExitDates
 - lib/jml/leave/departure.ts: revokeLeaverLogin, applyLeaverDeparture, departureMilestones
 - lib/jml/leave/draft.ts: createExitDraft, refreshSnapshots, updateExit
 - lib/jml/leave/gates.ts: listGates, recordGate, overridesForMonth
 - lib/jml/leave/gratuity.ts: money, GratuityUnavailableError, SUMMARY_DISMISSAL_UNCONFIGURED, GratuityInput, GratuityResult, computeGratuity, LeaveResult, computeLeave, DEDUCTION_TYPES, DeductionTypeKey, SettlementLineInput, settlementLineProblems, visaCostRecoveryApplies, serviceMonths, settlementTotals
 - lib/jml/leave/health.ts: ESCALATION_WORKING_DAYS, STATUTORY_WATCH_WORKING_DAYS, HealthInput, leaveRag, leaveHealth
+- lib/jml/leave/import-rules.ts: REQUIRED_COLUMNS, OPTIONAL_COLUMNS, ImportRow, RowProblem, validateImport
+- lib/jml/leave/import.ts: importHistoricalExits
 - lib/jml/leave/interview-rules.ts: TaxonomyCode, InterviewCapture, Blocker, checkInterviewCapture, checkAssessment, reasonsChanged
 - lib/jml/leave/interview.ts: activeTaxonomy, getInterview, InterviewInput, saveInterview, assessInterview
 - lib/jml/leave/leave-data.ts: LEAVE_SELECT, LeaveRow, LeaveDetail, loadLeaveRow, leaveAnchors, revocationAnchor
@@ -682,6 +692,12 @@
 - lib/jml/reports/join-aggregate.ts: hrWorkload, volumeTrend, allCompanies
 - lib/jml/reports/join-base.ts: ReportRow, ReportColumn, ReportContext, ReportDefinition, ROW_LIMIT, col, monthRange, joinWhere, CASE_SELECT, caseRow, runCaseReport, CASE_IDENTITY, goLiveDate
 - lib/jml/reports/join-cases.ts: monthlyOnboarding, onboardingCompletion, delayedTasks, upcomingJoiners, completedOnboardings
+- lib/jml/reports/leave/attrition.ts: r2Attrition, r5Early, r8Omanisation
+- lib/jml/reports/leave/base.ts: REPORT_ROW_CAP, LeaveReportContext, LeaveReportResult, LeaveReport, period, unsuppressed, LEAVE_ROW_SELECT, LeaveRow, leaveWhere, loadLeaveRows, emptyResult, orgNames
+- lib/jml/reports/leave/process.ts: r6Active, r7Settlement
+- lib/jml/reports/leave/reasons.ts: r1Reasons, r3Regrettable, r4Managers
+- lib/jml/reports/leave/registry.ts: LEAVE_REPORTS, findLeaveReport, runLeaveReport, exportLeaveReport
+- lib/jml/reports/leave/rules.ts: SMALL_CELL_THRESHOLD, BELOW_THRESHOLD, Cell, suppressSmallCells, monthsBetween, TENURE_BANDS, tenureBand, quarterOf, monthOf, lowerMedian, mean, ratio, DAY, daysBetween, attritionRate, employedOn, settlementBucket, topReason
 - lib/jml/reports/months.ts: monthBuckets
 - lib/jml/reports/registry.ts: REPORTS, findReport, runReport, exportReport
 - lib/jml/route.ts: jml, body, query, requireAnywhere, requireGroup
@@ -689,6 +705,7 @@
 - lib/jml/sweep.ts: SweepStep, SWEEP_STEPS, runSweep
 - lib/jml/vocab.ts: STAGE_ORDER, FIRST_STAGE, TASK_STATUSES, SETTLED_TASK_STATUSES, LIVE_CASE_STATUSES, TERMINAL_CASE_STATUSES, CASE_REF_PREFIX, isLive, isTerminal
 - lib/jml/watch/calendar.ts: joiningCalendar, CalendarEntry, calendarTotals
+- lib/jml/watch/exit-calendar.ts: ExitEntry, exitCalendar
 - lib/jml/watch/risk.ts: StatutoryRisk, RISK_ORDER, statutoryRisk
 - lib/jml/watch/statutory.ts: statutoryWatch
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
@@ -806,7 +823,7 @@
 - lib/validations/jml/joiner.ts: ROLE_TRACKS, draftJoinerSchema, DraftJoinerInput, updateJoinerSchema, UpdateJoinerInput, activationSchema, joinerListSchema, openJoinCaseSchema, OpenJoinCaseInput
 - lib/validations/jml/leave.ts: EXIT_TYPES, EXIT_SUBTYPES, NATIONALITY_BRANCHES, APPROVAL_TYPE_VALUES, ACCESS_DOMAIN_VALUES, createExitSchema, CreateExitInput, updateExitSchema, UpdateExitInput, exitDatesSchema, ExitDatesInput, cancelExitSchema, requestApprovalSchema, decideApprovalSchema, authoritySchema, gateSchema, stageAdvanceSchema, addAssetSchema, assetReturnSchema, assetWriteOffSchema, addAccessSchema, confirmAccessSchema, rekeySchema, assetTypeSchema, accessChecklistSchema, overridesQuerySchema, calculateSettlementSchema, settlementLineSchema, approveSettlementSchema, paymentSchema, REASON_LEVEL1, interviewSchema, PREVENTION_FACTOR_VALUES, assessmentSchema, closeExitSchema, reasonCodeSchema, DOCUMENT_TYPE_VALUES, uploadTemplateSchema, generateDocumentSchema
 - lib/validations/jml/move.ts: createMoveSchema, CreateMoveInput, moveEmployeeQuery, employeeCodeForEmployeeSchema
-- lib/validations/jml/report.ts: reportFilterSchema, ReportFilters
+- lib/validations/jml/report.ts: reportFilterSchema, ReportFilters, leaveReportFilterSchema, LeaveReportFilters, exitCalendarSchema, importExitsSchema
 - lib/validations/jml/task.ts: TASK_STATUS_VALUES, updateTaskSchema, manualTaskSchema, commentSchema
 - lib/validations/jml/template.ts: CASE_TYPES, CHANGE_TYPES, STAGES, DATE_BASES, OFFSET_UNITS, COMPLIANCE_CATEGORIES, EXIT_TYPES, NATIONALITY_SCOPES, EMPLOYMENT_SCOPES, conditionsSchema, criteriaSchema, templateTaskSchema, templateShapeProblem, createTemplateSchema, updateTemplateSchema, CreateTemplateInput, UpdateTemplateInput, TemplateTaskInput
 - lib/validations/kpi.ts: kpiInputSchema, createKpiSchema, updateKpiSchema, KpiInput
@@ -968,6 +985,7 @@
 - components/jml/movers/MoverList.tsx
 - components/jml/movers/MoverStart.tsx
 - components/jml/nav.tsx
+- components/jml/reports/LeaveReportScreen.tsx
 - components/jml/reports/OverridesScreen.tsx
 - components/jml/reports/ReportScreen.tsx
 - components/jml/reports/ReportsIndex.tsx
@@ -978,6 +996,7 @@
 - components/jml/settings/EmailTemplatesSettings.tsx
 - components/jml/settings/EmployeeCodeSettings.tsx
 - components/jml/settings/EmploymentTypesSettings.tsx
+- components/jml/settings/ImportExitsSettings.tsx
 - components/jml/settings/LeaverListsSettings.tsx
 - components/jml/settings/ReasonCodesSettings.tsx
 - components/jml/settings/RetentionSettings.tsx
@@ -990,6 +1009,7 @@
 - components/jml/settings/TemplatesSettings.tsx
 - components/jml/watch/CalendarScreen.tsx
 - components/jml/watch/CalendarTotals.tsx
+- components/jml/watch/ExitCalendarScreen.tsx
 - components/jml/watch/StatutoryScreen.tsx
 - components/layout/AppFooter.tsx
 - components/layout/AppHeader.tsx

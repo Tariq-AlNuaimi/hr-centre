@@ -4260,6 +4260,8 @@ model LeaveComplianceIncident {
 enum LeaveInterviewConducted {
   CONDUCTED
   DECLINED
+  /// Historical import (§26.2, F8): only the coded reasons are known.
+  IMPORTED
 }
 
 enum LeaveDestinationType {
@@ -4329,8 +4331,8 @@ model LeaveExitInterview {
   destinationType    LeaveDestinationType?   @map("destination_type")
   retentionAttempted Boolean?                @map("retention_attempted")
   counterOfferMade   Boolean?                @map("counter_offer_made")
-  recommendScore     Int                     @map("recommend_score")
-  returnScore        Int                     @map("return_score")
+  recommendScore     Int?                    @map("recommend_score")
+  returnScore        Int?                    @map("return_score")
   interviewedAt      DateTime?               @map("interviewed_at") @db.Date
   interviewerId      String?                 @map("interviewer_id")
   interviewer        User?                   @relation("LeaveInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)

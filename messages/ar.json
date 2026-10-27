@@ -2544,6 +2544,10 @@
         "documents": {
           "title": "Documents",
           "note": "The nine Word templates for leaver letters."
+        },
+        "import-exits": {
+          "title": "Import historical exits",
+          "note": "Load closed exits from a spreadsheet for attrition history."
         }
       },
       "list": {
@@ -2994,6 +2998,21 @@
         "retire": "Retire",
         "retired": "Template retired.",
         "failed": "The template could not be saved."
+      },
+      "importExits": {
+        "title": "Import historical exits",
+        "subtitle": "Each row becomes a closed historical exit: it counts in attrition reports, never in process measures, and never changes the employee record.",
+        "fileTitle": "CSV file",
+        "columns": "Required columns: caseRef, employeeExternalId (Odoo id or EMP code), exitType, nationality, noticeStartDate, lastDayOfService. Optional: lastPhysicalWorkingDay, primaryL1, primaryL2Code, secondaryL2Code, closedAt. Dates as YYYY-MM-DD.",
+        "file": "File",
+        "check": "Check file",
+        "import": "Import",
+        "checkTitle": "Check result",
+        "doneTitle": "Imported",
+        "counts": "{create} to import, {skip} already imported, {problems} problems. Nothing is imported while any row has a problem.",
+        "problem": "Line {line} ({ref}): {message}",
+        "imported": "Historical exits imported.",
+        "failed": "The file could not be processed."
       }
     },
     "vocab": {
@@ -3554,6 +3573,74 @@
         "byGate": "By gate: {list}",
         "byActor": "By person: {list}",
         "row": "{gate} overridden by {by} on {at} — {reason}"
+      },
+      "leaveReport": {
+        "r1-exit-reasons": {
+          "title": "R1 Exit reason analysis",
+          "note": "Exits by coded reason, trend by quarter, secondary reasons."
+        },
+        "r2-attrition": {
+          "title": "R2 Attrition rate and trend",
+          "note": "Exits against average headcount from the employee record, by segment."
+        },
+        "r3-regrettable": {
+          "title": "R3 Regrettable attrition",
+          "note": "Regrettable and preventable exits and the prevention factors."
+        },
+        "r4-manager-pattern": {
+          "title": "R4 Manager and team pattern",
+          "note": "Exits by line manager with the top reason; small groups suppressed."
+        },
+        "r5-early-attrition": {
+          "title": "R5 Early attrition",
+          "note": "Exits by length of service at the last day of service."
+        },
+        "r6-active-delays": {
+          "title": "R6 Active offboardings and delays",
+          "note": "Live cases by stage, overdue work and cycle time."
+        },
+        "r7-settlement-status": {
+          "title": "R7 Final settlement status",
+          "note": "Settlements by status and days from last day of service to payment."
+        },
+        "r8-omanisation": {
+          "title": "R8 Omanisation impact",
+          "note": "Omani and expatriate exits and the Omanisation ratio over the period."
+        }
+      },
+      "leave": {
+        "title": "Leaver report",
+        "subtitle": "The period is on the last day of service (default: the last twelve months). Historical imports count in attrition, never in process measures.",
+        "filters": "Filters",
+        "from": "From",
+        "to": "To",
+        "company": "Company",
+        "exitType": "Exit type",
+        "nationality": "Branch",
+        "segment": "Segment",
+        "segments": {
+          "month": "Month",
+          "company": "Company",
+          "directorate": "Directorate",
+          "department": "Department",
+          "role": "Job title",
+          "grade": "Grade",
+          "tenureBand": "Tenure band"
+        },
+        "all": "All",
+        "apply": "Apply",
+        "resultTitle": "{count, plural, one {# exit} other {# exits}}",
+        "capped": "Only the first 5,000 exits are included.",
+        "suppressed": "{count, plural, one {# group} other {# groups}} under 4 exits merged to protect individuals.",
+        "migratedExcluded": "{count} historical exits excluded from process measures.",
+        "belowThreshold": "Below reporting threshold",
+        "empty": "No exits match these filters.",
+        "summary": "Summary",
+        "unavailableValue": "Not available",
+        "unavailable": "{measure}: not shown — needs {needs}.",
+        "export": "Export",
+        "exportCases": "Export cases",
+        "withFinancial": "with settlement totals"
       }
     },
     "movers": {
@@ -4034,7 +4121,8 @@
         "historyTitle": "Generated",
         "none": "Nothing generated yet.",
         "historyLine": "{type} — template v{version}, by {by} at {at}"
-      }
+      },
+      "calendar": "Exit calendar"
     },
     "register": {
       "domain": {
@@ -4120,6 +4208,19 @@
       "FINAL_SETTLEMENT_WORKSHEET": "Final settlement worksheet",
       "SETTLEMENT_TRANSMITTAL_TO_FINANCE": "Settlement transmittal to Finance",
       "CERTIFICATE_OF_SERVICE": "Certificate of service"
+    },
+    "exitCalendar": {
+      "title": "Exit calendar",
+      "subtitle": "Last physical working days and last days of service. Dates change on the case, where tasks are recalculated.",
+      "month": "Month",
+      "empty": "No exit dates in this month.",
+      "kind": {
+        "LPWD": "last physical working day",
+        "LDS": "last day of service",
+        "BOTH": "last physical working day and last day of service"
+      },
+      "linked": "linked to {date}",
+      "weekend": "weekend"
     }
   },
   "hiring": {
