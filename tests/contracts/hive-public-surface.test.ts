@@ -32,7 +32,13 @@ const API_DIR = join(ROOT, "app", "api");
  * grants exactly one escalation thread. Adding a route here takes three
  * decisions: this list, the ESLint allowlist and `route-decision.ts`.
  */
-const EXPECTED_PUBLIC_ROUTES = ["api/hive/reply/[token]/route.ts"];
+const EXPECTED_PUBLIC_ROUTES = [
+  "api/hive/reply/[token]/route.ts",
+  // Hiring (ADR-080): the careers board, its apply path, and the agency invite link.
+  "api/careers/route.ts",
+  "api/careers/apply/route.ts",
+  "api/agency/[token]/submit/route.ts",
+];
 
 const AUTH_WRAPPERS = [
   "withAuth",

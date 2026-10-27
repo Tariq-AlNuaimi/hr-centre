@@ -5,6 +5,8 @@
 - app/[locale]/(auth)/forgot-password/page.tsx
 - app/[locale]/(auth)/login/page.tsx
 - app/[locale]/(auth)/reset-password/page.tsx
+- app/[locale]/(careers)/agency/[token]/page.tsx
+- app/[locale]/(careers)/careers/page.tsx
 - app/[locale]/(dashboard)/admin/access/[id]/page.tsx
 - app/[locale]/(dashboard)/admin/access/new/page.tsx
 - app/[locale]/(dashboard)/admin/access/page.tsx
@@ -57,6 +59,7 @@
 - app/[locale]/(dashboard)/hiring/requisitions/new/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/page.tsx
 - app/[locale]/(dashboard)/hiring/requisitions/request/page.tsx
+- app/[locale]/(dashboard)/hiring/sourcing/page.tsx
 - app/[locale]/(dashboard)/hive/(setup)/discounts/page.tsx
 - app/[locale]/(dashboard)/hive/(setup)/org-details/page.tsx
 - app/[locale]/(dashboard)/hive/(setup)/pairs/page.tsx
@@ -125,12 +128,15 @@
 - app/[locale]/(hive)/reply/[token]/page.tsx
 - app/[locale]/forbidden/page.tsx
 - app/[locale]/maintenance/page.tsx
+- app/api/agency/[token]/submit/route.ts  [POST]
 - app/api/audit-log/route.ts  [GET]
 - app/api/auth/[...nextauth]/route.ts  [GET]
 - app/api/auth/forgot-password/route.ts
 - app/api/auth/reset-password/route.ts
 - app/api/bonus/route.ts  [GET]
 - app/api/calibration/route.ts  [GET,POST,PUT]
+- app/api/careers/apply/route.ts  [POST]
+- app/api/careers/route.ts  [GET]
 - app/api/cycles/[id]/participants/[participantId]/approve/route.ts  [POST]
 - app/api/cycles/[id]/participants/route.ts  [GET,POST]
 - app/api/cycles/[id]/policy/route.ts  [GET,PATCH]
@@ -141,6 +147,8 @@
 - app/api/employees/[id]/route.ts  [GET,PUT]
 - app/api/employees/route.ts  [GET,POST]
 - app/api/health/route.ts  [GET]
+- app/api/hiring/agency-invites/[id]/route.ts  [DELETE]
+- app/api/hiring/agency-invites/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/cv/route.ts  [GET,POST]
 - app/api/hiring/candidates/[id]/documents/[docId]/route.ts  [GET,PATCH,DELETE]
 - app/api/hiring/candidates/[id]/documents/route.ts  [GET,POST]
@@ -206,6 +214,7 @@
 - app/api/hiring/requisitions/export/route.ts  [GET]
 - app/api/hiring/requisitions/route.ts  [GET,POST]
 - app/api/hiring/settings/assessment/route.ts  [GET,PUT]
+- app/api/hiring/settings/careers/route.ts  [GET,PUT]
 - app/api/hiring/settings/offer-letter/route.ts  [GET,PUT]
 - app/api/hive/admin/email-templates/[key]/route.ts  [GET,PUT,DELETE]
 - app/api/hive/admin/org-info/route.ts  [GET,PUT]
@@ -518,6 +527,8 @@
 - lib/format.ts: formatDateTime, formatDate
 - lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, actsAs, canOverrideGates, canEditAssessmentPolicy, canSignJdForHr, seesPii, seesComp, isPanelOnly
 - lib/hiring/actor.ts: resolveHiringActor
+- lib/hiring/agency-invite-admin.ts: listInvites, createInvite, revokeInvite
+- lib/hiring/agency-invites.ts: INVITE_TOKEN_BYTES, generateInviteToken, hashInviteToken, InviteState, evaluateInvite, INVITE_SELECT, resolveInvite, invitePageView, submitViaInvite
 - lib/hiring/approval-chain.ts: COO_THRESHOLD_OMR, ChainKind, ChainStep, ChainOptions, computeChain, totalMonthlyComp, escalatesToCoo, chainFromSnapshot
 - lib/hiring/approval-config.ts: approvalConfigSchema, ApprovalConfig, loadApprovalConfig, configToChainOptions, Approver, RoutedStep, routeChain, getRoutedChain, computeChainSnapshot, vacantApprovalRoles
 - lib/hiring/assessment-rules.ts: RESULTS_USE, assessmentConfigSchema, AssessmentConfig, DEFAULT_ASSESSMENT_CONFIG, AssessmentStatusValue, PercentileBand, percentileBand, computeValidUntil, ResultLike, isResultValid, ReuseAction, reuseDecision, isThresholdLocked, blocksAdvance, effectiveStatus, defaultDueAt, advanceableCount
@@ -530,6 +541,7 @@
 - lib/hiring/candidate-views.ts: candidateHistory, candidateDetail, boardCards
 - lib/hiring/candidate-write.ts: createCandidate, updateCandidate, deleteCandidate
 - lib/hiring/candidates.ts: DETACHED_SUBJECT, CandidateRequisition, REQ_SELECT, LoadedCandidate, isAssignedPanelist, loadCandidate, seesCandidateComp, candidateReadWhere, LIST_SELECT, listCandidates, projectRows
+- lib/hiring/careers.ts: CareersRole, listOpenRoles, advertisedRequisition, alreadyApplied, applyToRole
 - lib/hiring/close-out.ts: listCloseOut, markNoticesSent
 - lib/hiring/comp-crypto.ts: HIRING_COMP_KEYRING, CompModel, HiringCompKeyError, sealAmount, openAmount, sealJson, openJson, isUnreadable, sealNec, openNec, newHiringId
 - lib/hiring/comparison.ts: FINALIST_STAGES, matrixCompetencies, loadComparison, selectPreferred, rejectFinalist, clearPreferred
@@ -809,6 +821,7 @@
 - lib/validations/hiring/library.ts: competencySchema, gradeSchema, jdTemplateSchema, questionSchema, LIBRARY_KINDS, LibraryKind
 - lib/validations/hiring/offer.ts: createOfferSchema, updateOfferSchema, offerListQuerySchema, offerDecisionSchema, reviseOfferSchema, negotiationNoteSchema, acceptanceSchema, offerLetterTemplateSchema, closeOutQuerySchema, closeOutMarkSchema, chainPreviewQuerySchema
 - lib/validations/hiring/planning.ts: createPlanningRoundSchema, updatePlanningRoundSchema, createNeedSchema, updateNeedSchema, createNeedNoteSchema
+- lib/validations/hiring/public.ts: PRIVACY_NOTICE_VERSION, applySchema, ApplyInput, agencySubmitSchema, AgencySubmitInput, inviteTokenSchema, agencyInviteCreateSchema, agencyInviteListQuerySchema, careersSettingsSchema
 - lib/validations/hiring/requisition.ts: createHiringRequestSchema, CreateHiringRequestInput, createRequisitionSchema, updateRequisitionSchema, UpdateRequisitionInput, statusChangeSchema, requisitionListQuerySchema, jdActionSchema, postingSchema, withdrawPostingSchema
 - lib/validations/hive/email-template.ts: TEMPLATE_SUBJECT_MAX, TEMPLATE_BODY_MAX, TEMPLATE_PLACEHOLDERS, emailTemplateSchema, templateKeySchema, DEFAULT_TEMPLATE
 - lib/validations/hive/escalation-queue.ts: draftAnswerSchema, returnToDraftSchema, escalationQuerySchema
@@ -861,6 +874,10 @@
 - components/hiring/candidates/TimelineTab.tsx
 - components/hiring/candidates/ViewSwitch.tsx
 - components/hiring/candidates/useStageMove.tsx
+- components/hiring/careers/AgencySubmitForm.tsx
+- components/hiring/careers/ApplyPanel.tsx
+- components/hiring/careers/CareersBoard.tsx
+- components/hiring/careers/CareersChrome.tsx
 - components/hiring/evaluations/EvaluationDetail.tsx
 - components/hiring/evaluations/EvaluationForm.tsx
 - components/hiring/evaluations/EvaluationList.tsx
@@ -926,6 +943,7 @@
 - components/hiring/requisitions/RequisitionView.tsx
 - components/hiring/requisitions/ScreeningView.tsx
 - components/hiring/requisitions/StatusCard.tsx
+- components/hiring/sourcing/SourcingView.tsx
 - components/hiring/ui/badges.tsx
 - components/hiring/ui/competency-picker.tsx
 - components/hiring/ui/fields.tsx

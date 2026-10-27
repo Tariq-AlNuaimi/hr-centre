@@ -33,6 +33,16 @@ export const PUBLIC_PATHS = [
  */
 export const EMPLOYEE_PATHS = ["/reply"] as const;
 
+/**
+ * Hiring (ADR-080, operator-approved public surfaces): pages a CANDIDATE or an
+ * AGENCY opens without an account — the careers board `/careers` and an
+ * agency's invite link `/agency/<token>`. Like EMPLOYEE_PATHS, a signed-in HR
+ * user may open them too (to check the board), so they are not bounced home.
+ * The agency page resolves its token server-side and shows the same "not
+ * valid" for every failure.
+ */
+export const CANDIDATE_PATHS = ["/careers", "/agency"] as const;
+
 function matchesPrefix(stripped: string, prefixes: readonly string[]): boolean {
   return prefixes.some((p) => stripped === p || stripped.startsWith(p + "/"));
 }
@@ -49,7 +59,11 @@ export function isEmployeePath(pathname: string): boolean {
 /** Is this path reachable without a session? (locale prefix ignored). */
 export function isPublicPath(pathname: string): boolean {
   const stripped = stripLocale(pathname);
-  return matchesPrefix(stripped, PUBLIC_PATHS) || matchesPrefix(stripped, EMPLOYEE_PATHS);
+  return (
+    matchesPrefix(stripped, PUBLIC_PATHS) ||
+    matchesPrefix(stripped, EMPLOYEE_PATHS) ||
+    matchesPrefix(stripped, CANDIDATE_PATHS)
+  );
 }
 
 /**
@@ -60,8 +74,10 @@ export function isPublicPath(pathname: string): boolean {
  * - `/api/mcp` — HR tickets' MCP server for Siraaj (HIVE ADR-074/075).
  *   Machine-only: `withApiAuth` checks a bearer token in constant time and
  *   answers 503 while `HIVE_MCP_TOKEN` is unset.
+ * - `/api/careers`, `/api/careers/apply` — the hiring careers board's open
+ *   roles (cached, no pay) and its apply endpoint (5/min/IP, consent required).
  */
-export const PUBLIC_API_PATHS = ["/api/mcp"] as const;
+export const PUBLIC_API_PATHS = ["/api/mcp", "/api/careers", "/api/careers/apply"] as const;
 
 /**
  * Public API routes with a DYNAMIC segment. Pinned shapes, never prefixes:
@@ -70,7 +86,11 @@ export const PUBLIC_API_PATHS = ["/api/mcp"] as const;
  * - HR tickets' reply link write (HIVE ADR-070): the token in the path IS the
  *   authorisation, for exactly one ticket thread.
  */
-export const PUBLIC_API_PATTERNS: readonly RegExp[] = [/^\/api\/hive\/reply\/[^/]+$/];
+export const PUBLIC_API_PATTERNS: readonly RegExp[] = [
+  /^\/api\/hive\/reply\/[^/]+$/,
+  // Hiring: an agency's invite submission. The token in the path is the authorisation.
+  /^\/api\/agency\/[^/]+\/submit$/,
+];
 
 /** Is this an API route that authorises its own caller (no session needed)? */
 export function isPublicApiPath(pathname: string): boolean {

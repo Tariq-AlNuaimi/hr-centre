@@ -7,6 +7,7 @@ import {
   Inbox,
   KanbanSquare,
   LibraryBig,
+  Megaphone,
   LineChart,
   MessagesSquare,
   Settings2,
@@ -60,6 +61,12 @@ const ITEMS: Array<{ seg: string; icon: ReactNode; label: string; perm: string }
     perm: "hiring.view",
   },
   {
+    seg: "sourcing",
+    icon: <Megaphone className="h-4 w-4" />,
+    label: "sourcing",
+    perm: "hiring.manage",
+  },
+  {
     seg: "offers",
     icon: <FileSignature className="h-4 w-4" />,
     label: "offers",
@@ -107,6 +114,7 @@ export const LIVE_SEGMENTS = new Set([
   "evaluations",
   "offers",
   "close-out",
+  "sourcing",
 ]);
 
 export function useHiringNavItems(): NavItem[] {
