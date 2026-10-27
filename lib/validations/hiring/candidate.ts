@@ -89,7 +89,15 @@ const candidateFields = {
 };
 
 /** Stage is never accepted: a new candidate always starts at NEW_APPLICATION. */
-export const createCandidateSchema = z.object(candidateFields);
+export const createCandidateSchema = z.object({
+  ...candidateFields,
+  /** The profile read from the CV on the create screen ("Fill from CV"); create only. */
+  profileData: z
+    .record(z.string(), z.unknown())
+    .refine((v) => JSON.stringify(v).length <= 50_000, "The CV profile is too large")
+    .optional()
+    .nullable(),
+});
 export const updateCandidateSchema = z.object(candidateFields).partial();
 export type CandidateInput = z.infer<typeof createCandidateSchema>;
 export type CandidateUpdate = z.infer<typeof updateCandidateSchema>;

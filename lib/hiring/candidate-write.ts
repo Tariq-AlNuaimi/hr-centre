@@ -77,6 +77,7 @@ export async function createCandidate(actor: HiringActor, data: CandidateInput) 
       sourceAttribution: data.sourceAttribution,
       referredById,
       stage: "NEW_APPLICATION",
+      ...(data.profileData ? { profileData: data.profileData as Prisma.InputJsonValue } : {}),
     },
     select: { id: true },
   });

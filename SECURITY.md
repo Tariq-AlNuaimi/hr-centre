@@ -118,6 +118,22 @@ PUBLIC_API_PATHS / PUBLIC_API_PATTERNS) and `no-bare-api-route`'s PUBLIC_ROUTE_P
 Accepted risk: the careers daily cap is count-then-create without a lock (a burst can exceed it
 by a few); the per-IP limit bounds it.
 
+### Hiring AI egress (Hiring port slice 7, ADR-085)
+
+Hiring's AI assists send candidate-derived text to an admin-chosen provider (Anthropic or an
+OpenAI-compatible gateway). Off until a hiring admin saves a base URL, model and key. Controls,
+all in the one chokepoint `lib/hiring/ai/engine.ts`: https-only base URL with private, loopback,
+link-local, CGNAT, metadata and numeric-obfuscated hosts refused at save AND re-checked after DNS
+resolution before every call; `redirect: "manual"`; kill-switch and daily token/spend caps; a
+deadline; metering to `hiring_ai_usage`. Assessment prompts (fit, transcript) redact emails,
+phones and the candidate's name, and strip protected-attribute proxies from the CV profile; CV
+extraction is unredacted by design but never scores. The provider key is sealed under
+`HIRING_COMP_ENCRYPTION_KEY` and stored as `{ apiKey }` so the audit scrub redacts it; it is never
+returned. Provider errors are mapped to fixed messages (the provider body can echo the key or the
+prompt). Insight bodies (`aiOutput`) and interview analyses (`aiAnalysis`) are in SCRUB_FIELDS,
+the db-sql redaction list and the export denylist. Accepted risk: a stored insight is visible to
+anyone who can read the record (judgments behind the panel reveal), as in Interview Hub.
+
 ## 4. Encryption — current
 
 | Layer                                  | State                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |

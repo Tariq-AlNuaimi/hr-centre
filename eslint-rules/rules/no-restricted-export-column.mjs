@@ -88,6 +88,8 @@ export const RESTRICTED_EXPORT_KEYS = new Set([
   "profileData",
   "aiRationale",
   "aiWhyNot",
+  "aiOutput",
+  "aiAnalysis",
   "transcript",
   "deiGender",
   "deiEthnicity",

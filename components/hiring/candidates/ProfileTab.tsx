@@ -7,6 +7,7 @@ import { DescriptionList } from "@/components/shared/DescriptionList";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { formatDate } from "@/lib/format";
 import { formatMoney } from "@/lib/hiring/money";
+import { ExtractCvButton, RunFitButton } from "../ai/CandidateAiActions";
 import { StallCard } from "./StallCard";
 import type { CandidateDetail } from "./types";
 
@@ -38,55 +39,15 @@ export function ProfileTab({ c }: { c: CandidateDetail }) {
   const tsrc = useTranslations("hiring.source");
   const contact = c.contact;
   const profile = (contact?.profileData ?? null) as Profile | null;
-  const fit = Object.entries((contact?.fitScores ?? {}) as Record<string, unknown>).filter(
-    (e): e is [string, number] => typeof e[1] === "number",
-  );
   const dash = (v: string | null | undefined) => v || "—";
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
       <div className="space-y-4">
-        {contact ? (
-          <SectionCard title={t("fitTitle")} subtitle={t("fitAdvisory")}>
-            {contact.aiRationale || contact.aiWhyNot ? (
-              <div className="space-y-2 text-sm">
-                {contact.aiRationale ? (
-                  <p className="whitespace-pre-wrap">{contact.aiRationale}</p>
-                ) : null}
-                {contact.aiWhyNot ? (
-                  <p className="whitespace-pre-wrap text-muted-foreground">{contact.aiWhyNot}</p>
-                ) : null}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">{t("noFit")}</p>
-            )}
-            {fit.length ? (
-              <ul className="mt-4 space-y-3">
-                {fit.map(([k, v]) => (
-                  <li key={k}>
-                    <div className="mb-1 flex justify-between text-sm">
-                      <span>{humanize(k)}</span>
-                      <span className="font-mono font-bold">{v.toFixed(1)}</span>
-                    </div>
-                    <div
-                      role="meter"
-                      aria-label={humanize(k)}
-                      aria-valuemin={0}
-                      aria-valuemax={5}
-                      aria-valuenow={v}
-                      className="h-1.5 overflow-hidden rounded-full bg-muted"
-                    >
-                      <div
-                        className="h-full bg-primary"
-                        style={{ width: `${Math.max(0, Math.min(100, (v / 5) * 100))}%` }}
-                      />
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </SectionCard>
-        ) : null}
-        <SectionCard title={t("extractedTitle")}>
+        {contact ? <FitCard c={c} hasProfile={Boolean(profile)} /> : null}
+        <SectionCard
+          title={t("extractedTitle")}
+          actions={c.can.manage && contact?.hasCv ? <ExtractCvButton candidateId={c.id} /> : null}
+        >
           {profile && contact ? (
             <ExtractedProfile p={profile} />
           ) : (
@@ -207,5 +168,60 @@ function ExtractedProfile({ p }: { p: Profile }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** AI fit (advisory): the rationale, the recommendation and the per-competency scores. */
+function FitCard({ c, hasProfile }: { c: CandidateDetail; hasProfile: boolean }) {
+  const t = useTranslations("hiring.candidate");
+  const contact = c.contact;
+  if (!contact) return null;
+  const fit = Object.entries((contact.fitScores ?? {}) as Record<string, unknown>).filter(
+    (e): e is [string, number] => typeof e[1] === "number",
+  );
+  return (
+    <SectionCard
+      title={t("fitTitle")}
+      subtitle={t("fitAdvisory")}
+      actions={c.can.manage ? <RunFitButton candidateId={c.id} hasProfile={hasProfile} /> : null}
+    >
+      {contact.aiRationale || contact.aiWhyNot ? (
+        <div className="space-y-2 text-sm">
+          {contact.aiRationale ? (
+            <p className="whitespace-pre-wrap">{contact.aiRationale}</p>
+          ) : null}
+          {contact.aiWhyNot ? (
+            <p className="whitespace-pre-wrap text-muted-foreground">{contact.aiWhyNot}</p>
+          ) : null}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">{t("noFit")}</p>
+      )}
+      {fit.length ? (
+        <ul className="mt-4 space-y-3">
+          {fit.map(([k, v]) => (
+            <li key={k}>
+              <div className="mb-1 flex justify-between text-sm">
+                <span>{humanize(k)}</span>
+                <span className="font-mono font-bold">{v.toFixed(1)}</span>
+              </div>
+              <div
+                role="meter"
+                aria-label={humanize(k)}
+                aria-valuemin={0}
+                aria-valuemax={5}
+                aria-valuenow={v}
+                className="h-1.5 overflow-hidden rounded-full bg-muted"
+              >
+                <div
+                  className="h-full bg-primary"
+                  style={{ width: `${Math.max(0, Math.min(100, (v / 5) * 100))}%` }}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </SectionCard>
   );
 }

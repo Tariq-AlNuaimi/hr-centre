@@ -272,7 +272,7 @@ export async function compare(actor: HiringActor, l: LoadedInterview) {
       take: 50,
     }),
     prisma.hiringAiInsight.findFirst({
-      where: { entityType: "Interview", entityId: l.iv.id, kind: "transcript" },
+      where: { entityType: "interview", entityId: l.iv.id, kind: "transcript" },
       orderBy: { createdAt: "desc" },
       select: { output: true, model: true, createdAt: true },
     }),
@@ -283,6 +283,18 @@ export async function compare(actor: HiringActor, l: LoadedInterview) {
     mode,
     mine,
     peers: peers.map((p) => ({ ...p, name: names.get(p.panelistId)?.name ?? "—" })),
-    ai: transcript,
+    ai: transcript ? { ...transcript, output: compareReading(transcript.output) } : null,
+  };
+}
+
+/** The stored insight (`{ aiOutput: { text, json } }`) as the compare screen reads it. */
+function compareReading(output: unknown) {
+  const o = (output as { aiOutput?: { text?: unknown; json?: Record<string, unknown> } } | null)
+    ?.aiOutput;
+  const j = o?.json ?? {};
+  return {
+    text: typeof j.summary === "string" ? j.summary : typeof o?.text === "string" ? o.text : null,
+    scores: j.scores && typeof j.scores === "object" ? j.scores : null,
+    vote: j.vote ?? null,
   };
 }

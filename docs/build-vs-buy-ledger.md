@@ -894,3 +894,14 @@ audit log covers, a cross-border question the operator has not asked). **`docxte
 `pizzip`** (adopted — what HR Offboarding shipped; default parser only, nothing evaluates; MIT, with
 the MIT branch of pizzip's dual licence elected).
 Decision: buy — `docxtemplater` 3.71.1 + `pizzip` 3.3.0, server-only, no file retained. ADR-083.
+
+### 2026-10-27 — Hiring: AI assists and document text (`unpdf`, `mammoth`)
+
+Scope: lib/hiring/ai/**, lib/validations/hiring/ai.ts, lib/validations/hiring/ai-egress.ts
+Considered: **The Anthropic / OpenAI SDKs** (rejected — `no-direct-anthropic-sdk`, and two vendor
+SDKs for two HTTP calls). **LangChain / Vercel AI SDK** (rejected — a framework for three prompt
+kinds and two extractors; the egress, budget and redaction controls must sit in our chokepoint
+anyway). **`pdf-parse`** (rejected — unmaintained, reads a fixture at import time). **`unpdf` +
+`mammoth`** (adopted — what Interview Hub used; pure JS, server-only).
+Decision: build the engine (fetch, ~150 lines), buy text extraction — `unpdf` ^1.9.1, `mammoth`
+^1.12.3. ADR-085.

@@ -115,6 +115,7 @@ export const LIVE_SEGMENTS = new Set([
   "offers",
   "close-out",
   "sourcing",
+  "settings",
 ]);
 
 export function useHiringNavItems(): NavItem[] {

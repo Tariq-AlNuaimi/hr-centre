@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DescriptionList } from "@/components/shared/DescriptionList";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { AiInsightCard } from "../ai/AiInsightCard";
 import { formatDate } from "@/lib/format";
 import { formatBand } from "@/lib/hiring/money";
 import { useHiringQuery } from "../ui/api";
@@ -57,7 +58,16 @@ export function RequisitionView({ id }: { id: string }) {
           <Tabs
             tabs={[
               { key: "overview", label: t("tabOverview"), content: <Overview r={r} /> },
-              { key: "kit", label: t("tabKit"), content: <Kit r={r} base={base} /> },
+              {
+                key: "kit",
+                label: t("tabKit"),
+                content: (
+                  <div className="space-y-4">
+                    <Kit r={r} base={base} />
+                    <AiInsightCard kind="jd" entityId={r.id} canRun={r.can.manage} />
+                  </div>
+                ),
+              },
               {
                 key: "activity",
                 label: t("tabActivity"),
