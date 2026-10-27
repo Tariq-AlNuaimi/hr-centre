@@ -6,4 +6,5 @@ export type CareersRole = {
   department: string;
   description: string;
   postedAt: string | null;
+  slug: string;
 };

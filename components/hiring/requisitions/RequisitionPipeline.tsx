@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { formatDate } from "@/lib/format";
 import { useHiringQuery } from "../ui/api";
-import { FlowRail } from "../ui/flow-rail";
 import { useCrumb } from "../ui/crumb";
 import { Notice, QueryState } from "../ui/states";
 import { PipelineBoard, type BoardCard } from "../pipeline/PipelineBoard";
+import { PhaseProgress } from "./PhaseProgress";
 import type { RequisitionDetail } from "./types";
 
 type Posting = { channel: string; live: boolean; postedAt: string | null };
@@ -36,7 +36,6 @@ export function RequisitionPipeline({ id }: { id: string }) {
   const careers = live.find((p) => p.channel === "CAREERS_PAGE");
   const channels = live.map((p) => tc(`channel.${p.channel}.label`)).join(", ");
   const cards = board.data?.cards ?? [];
-  const railStep = cards.length ? Math.max(1, ...cards.map((c) => c.step)) : 1;
   const base = `/${locale}/hiring`;
   useCrumb(id, req.data?.title);
   const empty = (
@@ -81,7 +80,7 @@ export function RequisitionPipeline({ id }: { id: string }) {
               ) : null
             }
           />
-          <FlowRail current={railStep} />
+          <PhaseProgress steps={cards.map((c) => c.step)} />
           <PipelineBoard requisitionId={id} empty={empty} />
           <Notice tone="info">
             {careers ? t("careersLive", { date: formatDate(careers.postedAt!) }) : t("careersOff")}{" "}

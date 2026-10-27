@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { auditedTransaction, prisma } from "@/lib/prisma";
 import { PRIVACY_NOTICE_VERSION, type ApplyInput } from "@/lib/validations/hiring/public";
 import { HiringRuleError } from "./http";
+import { roleSlug } from "./careers-jd";
 import { CAREERS_TAG } from "./jd";
 import { orgNames } from "./people";
 import { asNumber, readSetting } from "./settings";
@@ -22,6 +23,13 @@ export type CareersRole = {
   department: string;
   description: string;
   postedAt: string | null;
+  slug: string;
+};
+
+/** One role's page: the board's fields plus the JD as written and its close date. */
+export type CareersRoleDetail = CareersRole & {
+  descriptionMarkdown: string;
+  validThrough: string | null;
 };
 
 /**
@@ -91,9 +99,57 @@ export const listOpenRoles = unstable_cache(
       department: r.departmentId ? (org.departments.get(r.departmentId) ?? "") : "",
       description: markdownToPlainText(r.description),
       postedAt: r.postings[0]?.postedAt?.toISOString() ?? null,
+      slug: roleSlug(r.title, r.id),
     }));
   },
   ["hiring-careers-board"],
+  { revalidate: 60, tags: [CAREERS_TAG] },
+);
+
+/**
+ * One advertised role for `/careers/<slug>` (UX review P1-10) — the same rule as
+ * the board (OPEN, JD signed, careers posting LIVE), cached per id on the
+ * careers tag. Null for anything else, so a draft's existence never shows.
+ */
+export const openRole = unstable_cache(
+  async (id: string): Promise<CareersRoleDetail | null> => {
+    const r = await prisma.hiringRequisition.findFirst({
+      where: {
+        id,
+        status: "OPEN",
+        deletedAt: null,
+        jdApprovedAt: { not: null },
+        postings: { some: { channel: "CAREERS_PAGE", state: "LIVE" } },
+      },
+      select: {
+        id: true,
+        title: true,
+        entityId: true,
+        departmentId: true,
+        description: true,
+        targetCloseDate: true,
+        postings: {
+          where: { channel: "CAREERS_PAGE", state: "LIVE" },
+          select: { postedAt: true },
+          take: 1,
+        },
+      },
+    });
+    if (!r) return null;
+    const org = await orgNames([r.entityId], r.departmentId ? [r.departmentId] : []);
+    return {
+      id: r.id,
+      title: r.title,
+      company: org.entities.get(r.entityId)?.name ?? "",
+      department: r.departmentId ? (org.departments.get(r.departmentId) ?? "") : "",
+      description: markdownToPlainText(r.description),
+      descriptionMarkdown: r.description,
+      postedAt: r.postings[0]?.postedAt?.toISOString() ?? null,
+      validThrough: r.targetCloseDate?.toISOString() ?? null,
+      slug: roleSlug(r.title, r.id),
+    };
+  },
+  ["hiring-careers-role"],
   { revalidate: 60, tags: [CAREERS_TAG] },
 );
 

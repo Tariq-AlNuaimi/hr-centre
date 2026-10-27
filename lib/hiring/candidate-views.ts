@@ -10,7 +10,7 @@ import {
 import { isOmani } from "./candidate-rules";
 import { openAmount, openNec } from "./comp-crypto";
 import { peopleById, personOrNull } from "./people";
-import { boardStepForStage } from "./stage-rules";
+import { boardStepForStage, nextOwner } from "./stage-rules";
 
 /** The candidate record for its screens, and the board's cards. */
 
@@ -129,12 +129,18 @@ export async function candidateDetail(actor: HiringActor, l: LoadedCandidate) {
 }
 
 /** Board cards across the actor's scope (optionally one requisition), capped and honest. */
-export async function boardCards(actor: HiringActor, requisitionId?: string) {
+export async function boardCards(
+  actor: HiringActor,
+  filter: { requisitionId?: string; hiringManagerId?: string } = {},
+) {
   const scope = await candidateReadWhere(actor, "hiring.manage");
   if (scope === null) return { cards: [], truncated: false };
+  const { requisitionId, hiringManagerId } = filter;
   const where: Prisma.HiringCandidateWhereInput = {
     AND: [scope, { stage: { notIn: ["REJECTED", "WITHDRAWN"] } }],
     ...(requisitionId ? { requisitionId } : {}),
+    // Within the reader's scope only — the filter narrows, never widens.
+    ...(hiringManagerId ? { requisition: { hiringManagerId } } : {}),
   };
   const rows = await prisma.hiringCandidate.findMany({
     where,
@@ -170,6 +176,7 @@ export async function boardCards(actor: HiringActor, requisitionId?: string) {
       overallScore: p.overallScore,
       omani: p.nationality ? isOmani(p.nationality) : null,
       hasOffer,
+      nextOwner: nextOwner(p.stage, hasOffer),
       step: boardStepForStage(p.stage, hasOffer),
       inStageSince: r.stageHistory[0]?.movedAt ?? r.createdAt,
     };

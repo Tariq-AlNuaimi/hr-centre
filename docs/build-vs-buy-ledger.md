@@ -970,3 +970,16 @@ duplicate the queue and move employee questions to another processor). **An SLA 
 (business-hours npm packages such as `business-time`)** (rejected — the core working calendar
 (ADR-077) already models the week, hours, zone and holidays; one more function over it beats a
 second calendar). Decision: build.
+
+### 2026-10-27 — UX review P1: hiring vocabulary, requisition pending step, careers role pages
+
+Scope: lib/hiring/requisition-pending.ts, lib/hiring/careers-jd.ts
+Considered:
+
+- **A hosted job board (Greenhouse or Lever job boards).** Rejected: the ATS lives here, and a
+  second board would mean syncing postings out and applications back.
+- **A Markdown renderer (`react-markdown`, `marked`).** Rejected: a JD needs headings,
+  paragraphs and lists only. `react-markdown` is about 40 KB, and `marked` emits HTML that would
+  need sanitising. A small block parser rendered as React text nodes cannot inject markup.
+
+Decision: build.

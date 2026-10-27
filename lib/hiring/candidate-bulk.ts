@@ -7,7 +7,7 @@ import { candidateReadWhere, LIST_SELECT, projectRows } from "./candidates";
 import { HiringRuleError } from "./http";
 import type { LoadedRequisition } from "./requisitions";
 import { skippedGates } from "./stage-gates";
-import { classifyStageMove, stageTransitionError } from "./stage-rules";
+import { classifyStageMove, stageTransitionError, stagesForStep } from "./stage-rules";
 
 /**
  * Bulk work on candidates (Interview Hub `bulk-actions.ts`, `import/candidates`,
@@ -94,13 +94,20 @@ export type ExportRow = Awaited<ReturnType<typeof projectRows>>[number];
 /** Export rows: never comp, DEI, NEC, notes; contact + score only where the reader sees PII. */
 export async function exportRows(
   actor: HiringActor,
-  filter: { ids?: string[]; search?: string; stage?: HiringStage; requisitionId?: string },
+  filter: {
+    ids?: string[];
+    search?: string;
+    stage?: HiringStage;
+    phase?: number;
+    requisitionId?: string;
+  },
 ) {
   const scope = await candidateReadWhere(actor, "hiring.manage");
   if (scope === null) return [];
   const and: Prisma.HiringCandidateWhereInput[] = [scope];
   if (filter.ids) and.push({ id: { in: filter.ids } });
   if (filter.stage) and.push({ stage: filter.stage });
+  if (filter.phase) and.push({ stage: { in: stagesForStep(filter.phase) } });
   if (filter.requisitionId) and.push({ requisitionId: filter.requisitionId });
   if (filter.search) {
     and.push({

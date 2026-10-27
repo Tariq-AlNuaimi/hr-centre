@@ -4746,7 +4746,11 @@
       "colClose": "Target close",
       "bandHidden": "Band restricted",
       "empty": "No requisitions yet",
-      "fromTemplate": "From a JD template"
+      "fromTemplate": "From a JD template",
+      "pendingOn": "Pending: {role} ({days}d)",
+      "colDaysOpen": "Days open",
+      "days": "{days}d",
+      "overdue": "Overdue"
     },
     "request": {
       "title": "New hiring request",
@@ -5319,8 +5323,8 @@
       "viewList": "List",
       "viewBoard": "Board",
       "viewSwitch": "Candidate views",
-      "stageFilter": "Filter by stage",
-      "allStages": "All stages",
+      "stageFilter": "Filter by phase",
+      "allStages": "All phases",
       "search": "Search name or email…",
       "sourceFilter": "Filter by source",
       "allSources": "All sources",
@@ -5598,10 +5602,25 @@
       "offerSent": "Sent",
       "offerAccepted": "Accepted",
       "days": "{days}d",
-      "daysInStage": "{days} days in this stage"
+      "daysInStage": "{days} days in this stage",
+      "filterRequisition": "Requisition",
+      "allRequisitions": "All requisitions",
+      "filterManager": "Hiring manager",
+      "allManagers": "All hiring managers",
+      "emptyFiltered": "No active candidates match these filters.",
+      "scrollStart": "Scroll to earlier phases",
+      "scrollEnd": "Scroll to later phases",
+      "owner": {
+        "legend": "Next move:",
+        "recruiter": "Recruiter",
+        "manager": "Hiring manager",
+        "panel": "Panel",
+        "candidate": "Candidate",
+        "approvers": "Approvers"
+      }
     },
     "reqPipeline": {
-      "title": "Candidates",
+      "title": "Pipeline",
       "subtitle": "{title} · {since}",
       "openSince": "open since {date}",
       "notAdvertised": "not yet advertised",
@@ -5613,7 +5632,8 @@
       "emptyNotAdvertised": "This role isn't advertised on any channel yet, so nothing lands here automatically. Post it from Posting and sourcing, or add headhunted candidates by hand.",
       "careersLive": "The careers listing has been live since {date}.",
       "careersOff": "The public careers listing is off for this role.",
-      "postingLink": "Manage sourcing channels"
+      "postingLink": "Manage sourcing channels",
+      "progressLabel": "{count, plural, one {# active candidate} other {# active candidates}} by phase"
     },
     "screening": {
       "title": "CV screening",
@@ -6899,7 +6919,16 @@
     "submittedTitle": "Application submitted",
     "submittedBody": "Thank you. Our team will be in touch.",
     "genericError": "Something went wrong. Please try again.",
-    "networkError": "Network error. Please try again."
+    "networkError": "Network error. Please try again.",
+    "companies": "Companies",
+    "allCompanies": "All companies",
+    "allRoles": "All open roles",
+    "postedOn": "Posted {date}",
+    "noDescription": "The full description will be added soon.",
+    "copyLink": "Copy link",
+    "copied": "Link copied",
+    "shareLinkedIn": "Share on LinkedIn",
+    "roleMetaTitle": "{title} at {company}"
   },
   "agency": {
     "metaTitle": "Agency submission",

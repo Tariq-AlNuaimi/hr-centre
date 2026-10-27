@@ -15,7 +15,7 @@ export const GET = withRateLimit(
         const l = await loadRequisition(actor, q.data.requisitionId, "hiring.manage");
         if (!l) return notFound("Requisition");
       }
-      return ok(await boardCards(actor, q.data.requisitionId));
+      return ok(await boardCards(actor, q.data));
     }),
   ),
   { id: "hiring-candidate-read", limit: 240, windowMs: 60_000 },

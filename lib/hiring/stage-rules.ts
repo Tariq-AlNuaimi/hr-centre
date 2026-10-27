@@ -149,3 +149,38 @@ export function stageTransitionError(from: Stage, to: Stage): string | null {
   }
   return null;
 }
+
+/** The stages a phase (step 1–7) holds — the list's phase filter (UX P1-7). */
+export function stagesForStep(step: number): Stage[] {
+  return LINEAR_STAGES.filter((st) => STAGE_STEP[st] === step);
+}
+
+/**
+ * Whose move a card is waiting on (Greenhouse colours its board by next-action
+ * owner; UX P1-8). Advisory display only — permissions decide who may act.
+ */
+export type NextOwner = "recruiter" | "manager" | "panel" | "candidate" | "approvers";
+
+const STAGE_OWNER: Partial<Record<Stage, NextOwner>> = {
+  NEW_APPLICATION: "recruiter",
+  CV_SCREENED: "recruiter",
+  SHORTLISTED: "manager",
+  ASSESSMENT: "candidate",
+  FIRST_INTERVIEW: "panel",
+  SECOND_INTERVIEW: "panel",
+  FINAL_INTERVIEW: "panel",
+  REFERENCE_CHECK: "recruiter",
+  BACKGROUND_CHECK: "recruiter",
+  DECISION_PENDING: "manager",
+  OFFER_DRAFTED: "approvers",
+  OFFER_EXTENDED: "candidate",
+  OFFER_ACCEPTED: "recruiter",
+  PRE_ONBOARDING: "recruiter",
+};
+
+export function nextOwner(stage: string, hasOffer: boolean): NextOwner | null {
+  if (!isStage(stage)) return null;
+  // An offer stage with no offer record yet is the recruiter drafting one.
+  if (!hasOffer && stepForStage(stage) >= 6) return stage === "HIRED" ? null : "recruiter";
+  return STAGE_OWNER[stage] ?? null;
+}

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { Download, Plus, Rows3 } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { DataTable, type SortChange } from "@/components/shared/DataTable";
@@ -34,16 +35,34 @@ export type RequisitionRow = {
   departmentName: string | null;
   hiringManager: { name: string } | null;
   candidateCount: number;
+  /** The next unsigned approval step and how long it has waited (UX P1-12). */
+  pendingStep: { role: string; days: number } | null;
+  pastTargetClose: boolean;
 };
 
 const STATUSES = ["DRAFT", "PENDING_APPROVAL", "OPEN", "ON_HOLD", "FILLED", "REOPENED", "ARCHIVED"];
 
+const daysOpen = (createdAt: string) =>
+  Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000));
+
 /** Days a requisition has been open — warns at 14, alarms at 25 (Interview Hub list). */
-function daysOpenTone(createdAt: string): string {
-  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86_400_000);
-  if (days >= 25) return "text-destructive-emphasis";
-  if (days >= 14) return "text-status-warn-fg";
+function daysOpenTone(days: number): string {
+  if (days >= 25) return "font-semibold text-destructive-emphasis";
+  if (days >= 14) return "font-semibold text-status-warn-fg";
   return "text-muted-foreground";
+}
+
+/** Status, or "Pending: <role> (Nd)" while an approval step waits. */
+function StatusCell({ row }: { row: RequisitionRow }) {
+  const t = useTranslations("hiring.requisitions");
+  if (row.status === "PENDING_APPROVAL" && row.pendingStep) {
+    return (
+      <span className="text-sm font-medium text-status-warn-fg">
+        {t("pendingOn", { role: row.pendingStep.role, days: row.pendingStep.days })}
+      </span>
+    );
+  }
+  return <StatusBadge kind="requisition" value={row.status} />;
 }
 
 export function RequisitionList() {
@@ -113,7 +132,7 @@ export function RequisitionList() {
       dataIndex: "status",
       key: "status",
       sorter: true,
-      render: (v: string) => <StatusBadge kind="requisition" value={v} />,
+      render: (_: string, r: RequisitionRow) => <StatusCell row={r} />,
     },
     { title: t("colCandidates"), dataIndex: "candidateCount", key: "candidates" },
     {
@@ -121,14 +140,33 @@ export function RequisitionList() {
       dataIndex: "createdAt",
       key: "createdAt",
       sorter: true,
-      render: (v: string) => <span className={daysOpenTone(v)}>{formatDate(v)}</span>,
+      render: (v: string) => <span className="text-sm text-muted-foreground">{formatDate(v)}</span>,
+    },
+    {
+      title: t("colDaysOpen"),
+      key: "daysOpen",
+      align: "right" as const,
+      render: (_: unknown, r: RequisitionRow) => {
+        const d = daysOpen(r.createdAt);
+        return (
+          <span className={`font-mono text-sm ${daysOpenTone(d)}`}>{t("days", { days: d })}</span>
+        );
+      },
     },
     {
       title: t("colClose"),
       dataIndex: "targetCloseDate",
       key: "targetCloseDate",
       sorter: true,
-      render: (v: string | null) => (v ? formatDate(v) : "—"),
+      render: (v: string | null, r: RequisitionRow) =>
+        v ? (
+          <span className="inline-flex items-center gap-1.5">
+            {formatDate(v)}
+            {r.pastTargetClose ? <Badge variant="danger">{t("overdue")}</Badge> : null}
+          </span>
+        ) : (
+          "—"
+        ),
     },
   ];
 

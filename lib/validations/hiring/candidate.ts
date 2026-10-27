@@ -105,12 +105,16 @@ export type CandidateUpdate = z.infer<typeof updateCandidateSchema>;
 const endOfDay = (d: Date | undefined) =>
   d ? new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999)) : d;
 
+const phase = z.coerce.number().int().min(1).max(7).optional();
+
 export const candidateListQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
     pageSize: z.coerce.number().int().min(1).max(100).default(20),
     search: text(120).optional(),
     stage: z.enum(PIPELINE_STAGES).optional(),
+    /** A phase (1 Apply … 7 Hire) — the list's primary grouping (UX P1-7). */
+    phase,
     source: z.enum(CANDIDATE_SOURCES).optional(),
     requisitionId: id.optional(),
     sort: z.enum(["name", "stage", "source", "overallScore", "createdAt"]).default("createdAt"),
@@ -143,7 +147,10 @@ export const candidateListQuerySchema = z
   });
 export type CandidateListQuery = z.infer<typeof candidateListQuerySchema>;
 
-export const boardQuerySchema = z.object({ requisitionId: id.optional() });
+export const boardQuerySchema = z.object({
+  requisitionId: id.optional(),
+  hiringManagerId: id.optional(),
+});
 
 export const stageMoveSchema = z.object({
   stage: z.enum(PIPELINE_STAGES),
@@ -179,6 +186,7 @@ export const bulkActionSchema = z.discriminatedUnion("action", [
 export const candidateExportQuerySchema = z.object({
   search: text(120).optional(),
   stage: z.enum(PIPELINE_STAGES).optional(),
+  phase,
   requisitionId: id.optional(),
 });
 

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Search, Sparkles } from "lucide-react";
 import { ApplyPanel } from "./ApplyPanel";
 import type { CareersRole } from "./types";
@@ -13,11 +14,17 @@ import type { CareersRole } from "./types";
  */
 export function CareersBoard({ roles }: { roles: CareersRole[] }) {
   const t = useTranslations("careers");
+  const locale = useLocale();
   const [team, setTeam] = useState<string | null>(null);
+  const [company, setCompany] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<CareersRole | null>(null);
   const teams = useMemo(
     () => [...new Set(roles.map((r) => r.department).filter(Boolean))].sort(),
+    [roles],
+  );
+  const companies = useMemo(
+    () => [...new Set(roles.map((r) => r.company).filter(Boolean))].sort(),
     [roles],
   );
   const visible = useMemo(() => {
@@ -25,12 +32,13 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
     return roles.filter(
       (r) =>
         (!team || r.department === team) &&
+        (!company || r.company === company) &&
         (!needle ||
           `${r.title} ${r.department} ${r.company} ${r.description}`
             .toLowerCase()
             .includes(needle)),
     );
-  }, [roles, team, query]);
+  }, [roles, team, company, query]);
   return (
     <>
       <section className="relative overflow-hidden bg-careers-panel">
@@ -68,24 +76,23 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
               className="w-full rounded-md border border-careers-line bg-careers-panel py-2 ps-9 pe-3 text-sm text-careers-ink outline-none focus:border-careers-royal"
             />
           </label>
+          {companies.length > 1 ? (
+            <Chips
+              label={t("companies")}
+              allLabel={t("allCompanies")}
+              options={companies}
+              active={company}
+              onSelect={setCompany}
+            />
+          ) : null}
           {teams.length > 1 ? (
-            <div role="group" aria-label={t("teams")} className="flex flex-wrap gap-2">
-              {[null, ...teams].map((d) => (
-                <button
-                  key={d ?? "all"}
-                  type="button"
-                  aria-pressed={team === d}
-                  onClick={() => setTeam(d)}
-                  className={
-                    team === d
-                      ? "rounded-full bg-careers-navy px-3 py-1 text-sm font-medium text-careers-panel"
-                      : "rounded-full border border-careers-line bg-careers-panel px-3 py-1 text-sm text-careers-ink hover:border-careers-royal"
-                  }
-                >
-                  {d ?? t("allTeams")}
-                </button>
-              ))}
-            </div>
+            <Chips
+              label={t("teams")}
+              allLabel={t("allTeams")}
+              options={teams}
+              active={team}
+              onSelect={setTeam}
+            />
           ) : null}
         </div>
         {roles.length === 0 ? (
@@ -96,7 +103,7 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
             <button
               type="button"
               className="text-careers-royal underline"
-              onClick={() => (setTeam(null), setQuery(""))}
+              onClick={() => (setTeam(null), setCompany(null), setQuery(""))}
             >
               {t("showAll", { count: roles.length })}
             </button>
@@ -113,7 +120,11 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
                   className="flex flex-wrap items-center gap-4 rounded-lg border border-careers-line bg-careers-panel p-5"
                 >
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-lg font-semibold text-careers-navy">{r.title}</h2>
+                    <h2 className="text-lg font-semibold text-careers-navy">
+                      <Link href={`/${locale}/careers/${r.slug}`} className="hover:underline">
+                        {r.title}
+                      </Link>
+                    </h2>
                     <p className="text-sm text-careers-muted">
                       {[r.company, r.department].filter(Boolean).join(" · ")}
                     </p>
@@ -143,5 +154,39 @@ export function CareersBoard({ roles }: { roles: CareersRole[] }) {
         ) : null}
       </main>
     </>
+  );
+}
+
+function Chips({
+  label,
+  allLabel,
+  options,
+  active,
+  onSelect,
+}: {
+  label: string;
+  allLabel: string;
+  options: string[];
+  active: string | null;
+  onSelect: (v: string | null) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      {[null, ...options].map((d) => (
+        <button
+          key={d ?? "all"}
+          type="button"
+          aria-pressed={active === d}
+          onClick={() => onSelect(d)}
+          className={
+            active === d
+              ? "rounded-full bg-careers-navy px-3 py-1 text-sm font-medium text-careers-panel"
+              : "rounded-full border border-careers-line bg-careers-panel px-3 py-1 text-sm text-careers-ink hover:border-careers-royal"
+          }
+        >
+          {d ?? allLabel}
+        </button>
+      ))}
+    </div>
   );
 }
