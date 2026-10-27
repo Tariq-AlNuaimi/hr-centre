@@ -6646,5 +6646,40 @@
     "theCandidate": "the candidate",
     "cvNotStored": "The submission was recorded, but the CV upload did not complete. Share the CV with your Rihal contact directly.",
     "another": "Submit another candidate"
+  },
+  "work": {
+    "title": "My work",
+    "subtitle": "What is waiting on you in performance, joiners and leavers, hiring and HR tickets.",
+    "empty": "Nothing is waiting on you.",
+    "failed": "Couldn't load your work from: {modules}. The rest is shown below.",
+    "retry": "Try again",
+    "open": "Open",
+    "noDue": "No due date",
+    "dueOn": "Due {date}",
+    "overdueSince": "Overdue since {date}",
+    "capped": "Showing the first items from {module} ({total} in all). Open {module} to see everything.",
+    "cappedPerformance": "Showing {shown} of {total} Performance items. Open Goal setting to see everything.",
+    "group": {
+      "overdue": "Overdue ({count})",
+      "thisWeek": "This week ({count})",
+      "later": "Later ({count})"
+    },
+    "module": {
+      "performance": "Performance",
+      "jml": "Joiners & leavers",
+      "hiring": "Hiring",
+      "tickets": "HR tickets"
+    },
+    "kind": {
+      "jmlTask": "{code} {task} — {person} ({caseRef})",
+      "jmlApproval": "Record the {holder} decision on the {approval} for {person} ({caseRef})",
+      "hiringRequisitionApproval": "Approve the hiring request \"{title}\" ({role} step)",
+      "hiringOfferApproval": "Approve the offer for {name} ({role} step)",
+      "hiringJdSignoff": "Sign off the job description for \"{title}\"",
+      "hiringScorecard": "Submit your interview scorecard for {name}",
+      "hiringCloseOut": "{count, plural, =1 {# rejection notice} other {# rejection notices}} ready to send",
+      "ticketApprove": "Approve the answer to {id}: \"{preview}\"",
+      "ticketAnswer": "Answer {id} for {pair}: \"{preview}\""
+    }
   }
 }

@@ -6,12 +6,13 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { StatusPill } from "@/components/hive/escalations/StatusPill";
 import { formatTicketId } from "@/lib/hive/ticket-id";
 import { getTicketSettings } from "@/lib/hive/services/ticket-settings";
-import { ticketTasksFor, ticketsForEmployee } from "@/lib/hive/services/my-tasks";
+import { ticketsForEmployee } from "@/lib/hive/services/my-tasks";
 import { formatDate } from "@/lib/format";
 
 /**
  * HR tickets inside the rest of HR Centre (US-H10), as server components: the
- * "waiting on you" lists on home, and the tickets tab on an employee record.
+ * tickets tab on an employee record. (What is waiting on you now sits in Home's
+ * one "My work" list — lib/hive/services/work-items.ts.)
  * Questions are shortened here; the full text sits behind the ticket page,
  * where its own gate applies.
  */
@@ -74,63 +75,6 @@ function TicketList({
         </li>
       ))}
     </ul>
-  );
-}
-
-/** Home → My tasks: tickets waiting on this person. Renders nothing for non-HR. */
-export async function TicketTasks({ userId, locale }: { userId: string; locale: string }) {
-  const tasks = await ticketTasksFor(userId);
-  if (!tasks.canApprove && !tasks.canDraft) return null;
-  const [t, tStatus, settings] = await Promise.all([
-    getTranslations("hive.tasks"),
-    getTranslations("hive.escalations"),
-    getTicketSettings(),
-  ]);
-  const labels = statusLabels(tStatus, settings.statusLabels);
-  type Section = { key: string; title: string; rows: Row[] };
-  const sections: Section[] = [];
-  if (tasks.canApprove) {
-    sections.push({
-      key: "approve",
-      title: t("toApprove", { count: tasks.toApprove.count }),
-      rows: [...tasks.toApprove.rows],
-    });
-  }
-  if (tasks.canDraft) {
-    sections.push({
-      key: "answer",
-      title: t("toAnswer", { count: tasks.toAnswer.count }),
-      rows: [...tasks.toAnswer.rows],
-    });
-  }
-  return (
-    <SectionCard
-      title={t("title")}
-      subtitle={t("subtitle")}
-      actions={
-        <Link href={`/${locale}/hive/escalations`} className="text-sm underline underline-offset-4">
-          {t("openQueue")}
-        </Link>
-      }
-    >
-      <div className="space-y-4">
-        {sections.map((s) => (
-          <div key={s.key}>
-            <h4 className="m-0 mb-1 text-sm font-semibold">{s.title}</h4>
-            {s.rows.length === 0 ? (
-              <p className="m-0 text-sm text-muted-foreground">{t("nothing")}</p>
-            ) : (
-              <TicketList
-                rows={s.rows}
-                locale={locale}
-                prefix={settings.ticketPrefix}
-                labels={labels}
-              />
-            )}
-          </div>
-        ))}
-      </div>
-    </SectionCard>
   );
 }
 

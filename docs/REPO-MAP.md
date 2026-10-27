@@ -404,6 +404,7 @@
 - app/api/users/[id]/route.ts  [GET,PUT,DELETE]
 - app/api/users/platform-admins/route.ts  [GET]
 - app/api/users/route.ts  [GET,POST]
+- app/api/work-items/route.ts  [GET]
 - app/api/year-end-signoffs/route.ts  [POST]
 - app/api/year-end/evidence/[id]/route.ts  [GET,PATCH,DELETE]
 - app/api/year-end/evidence/route.ts  [POST]
@@ -540,6 +541,7 @@
 - lib/api-response.ts: ApiResponse, ok, created, err, notFound, forbidden, unauthorized, readJsonBody
 - lib/audit-context.ts: AuditContext, withAuditContext, getAuditContext
 - lib/client-ip.ts: clientIp, throttleKey, ipTrustIsConfigured
+- lib/core/work-items/index.ts: WorkModule, WorkItem, ProviderResult, WorkProvider, PROVIDER_LIMIT, WorkList, collectWorkItems, byDue, DueGroup, dueGroup
 - lib/crypto/field-encryption.ts: Keyring, SALARY_KEYRING, ID_DOCUMENT_KEYRING, FieldEncryptionError, resetKeyCacheForTests, isEncryptedEnvelope, encryptField, decryptField, envelopeMatchesPlaintext
 - lib/date-input.ts: toDateInput, startOfDay, endOfDay
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
@@ -628,6 +630,7 @@
 - lib/hiring/settings.ts: HIRING_SETTING_KEYS, HiringSettingKey, readSetting, readSettings, writeSetting, asNumber
 - lib/hiring/stage-gates.ts: GATE_STAGES, GATE_REASON, PACKAGE_GATE_REASON, GATE_CODE, skippedGates, mayCrossGates, joinReasons, describeGates, PackageEvidence, packageGateBlocks, GateVerdict, gateVerdict
 - lib/hiring/stage-rules.ts: PIPELINE_STAGES, Stage, PipelinePhase, LINEAR_STAGES, TERMINAL_STAGES, isStage, getPhase, stageRank, isPastFirstInterview, isRegression, isPhaseCross, classifyStageMove, HIRING_STEPS, stepForStage, boardStepForStage, BOARD_STEPS, RAIL_STEPS, stepEntryStage, stageTransitionError
+- lib/hiring/work-items.ts: hiringWorkProvider
 - lib/hive/civil.ts: CivilDate, muscatDate, fold, ExpiryState, expiryStateFor
 - lib/hive/hrtag-routing.ts: CoverageRow, inCompanyOf, PairRow, CompanyRow, pairCard, resolveCompany, matchCompanyWide, matchDirectorate, matchSelector, PairResolution, resolvePair
 - lib/hive/hrtag-source.ts: loadHrPairs, loadCompanies
@@ -653,6 +656,7 @@
 - lib/hive/services/setup.ts: saveRotationConfig, listOrgInfo, saveOrgInfo, MAX_PROVIDER_FILE_BYTES, importProviders
 - lib/hive/services/ticket-notify.ts: preview, composeNotification, notifyTicket
 - lib/hive/services/ticket-settings.ts: TicketSettings, getTicketSettings, updateTicketSettings
+- lib/hive/services/work-items.ts: ticketWorkProvider
 - lib/hive/ticket-id.ts: DEFAULT_TICKET_PREFIX, formatTicketId
 - lib/hive/tools/discounts.ts: ELIGIBILITY_NOTE, runDiscounts
 - lib/hive/tools/escalate.ts: runEscalate
@@ -764,6 +768,7 @@
 - lib/jml/watch/exit-calendar.ts: ExitEntry, exitCalendar
 - lib/jml/watch/risk.ts: StatutoryRisk, RISK_ORDER, statutoryRisk
 - lib/jml/watch/statutory.ts: statutoryWatch
+- lib/jml/work-items.ts: jmlWorkProvider
 - lib/notifications/user-notify.ts: MAX_RECIPIENTS, PREVIEW_CHARS, UserNotice, notifyUsers, shortPreview
 - lib/observability/config.ts: isOtelEnabled, otelServiceName
 - lib/observability/index.ts: withSpan
@@ -1028,6 +1033,7 @@
 - components/hive/escalations/TicketHistory.tsx
 - components/hive/reply/ReplyClient.tsx
 - components/hive/reply/ReplyInvalid.tsx
+- components/home/MyWork.tsx
 - components/jml/ActionDialog.tsx
 - components/jml/CaseBits.tsx
 - components/jml/EmployeeJmlTab.tsx

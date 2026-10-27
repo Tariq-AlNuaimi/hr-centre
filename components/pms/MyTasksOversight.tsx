@@ -5,10 +5,8 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
 import { Building2, Eye, Network, Users } from "lucide-react";
-import { EmptyState } from "@/components/shared/EmptyState";
 import { SectionCard } from "@/components/shared/SectionCard";
-import { TableSkeleton } from "@/components/shared/Skeletons";
-import { Badge, type BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { PerformanceCycle } from "@/components/pms/CycleList";
 import type { ParticipantRow, RosterResponse } from "@/components/pms/ParticipantList";
@@ -17,7 +15,6 @@ import { NotificationList } from "@/components/pms/NotificationList";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePmsActor, type PmsCapabilities } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
-import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -87,12 +84,6 @@ function useNowMs(): number | null {
 
 /** Rows per roster page — the API's own ceiling (`parsePagination`). */
 const ROSTER_PAGE_SIZE = 100;
-const TONE_VARIANT: Record<TaskTone, BadgeProps["variant"]> = {
-  overdue: "danger",
-  dueSoon: "warning",
-  notYetOpen: "outline",
-  open: "success",
-};
 
 /** The queries behind both sections, kept in one place so they stay in step. */
 function useGoalSettingSnapshot(wantsEntitledCount: boolean) {
@@ -165,55 +156,6 @@ function useGoalSettingSnapshot(wantsEntitledCount: boolean) {
   };
 }
 
-function TaskRow({ task, tone, stage }: { task: Task; tone: TaskTone; stage: GoalStage | null }) {
-  const t = useTranslations("pms.home");
-
-  // A task with its own deadline (§4.4's 360 rows) speaks for itself; the KPI
-  // rows still take the goal-setting stage's, which is the only deadline they
-  // have.
-  const rowTone = task.tone ?? tone;
-  const rowDeadline = task.dueAt ?? stage?.deadline ?? null;
-
-  const dueLabel =
-    rowTone === "overdue"
-      ? t("overdue")
-      : rowTone === "dueSoon"
-        ? t("dueSoon")
-        : rowTone === "open" && rowDeadline
-          ? t("dueLabel", { datetime: formatDateTime(rowDeadline) })
-          : t("notYetOpen");
-
-  return (
-    <li className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4 last:border-b-0 last:pb-0">
-      <div className="min-w-0 space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-foreground">
-            {t(task.titleKey, task.titleParams)}
-          </span>
-          <Badge variant={TONE_VARIANT[rowTone]}>{dueLabel}</Badge>
-        </div>
-        <p className="max-w-prose text-xs text-muted-foreground">
-          {t(task.detailKey, task.detailParams)}
-        </p>
-        {/* The server's own sentence, quoted: it names WHICH rule closed the
-            door (§4.2 / §5.4 / §5.1). */}
-        {task.blockedReason ? (
-          <>
-            <p className="max-w-prose text-xs text-muted-foreground">{task.blockedReason}</p>
-            <p className="max-w-prose text-xs text-muted-foreground">{t("blockedContact")}</p>
-          </>
-        ) : null}
-      </div>
-      {/* A blocked task has nothing to start: no button beside "nothing to assess". */}
-      {task.blockedReason ? null : (
-        <Link href={task.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
-          {t(task.actionKey)}
-        </Link>
-      )}
-    </li>
-  );
-}
-
 /** How many unread notices the dashboard shows before deferring to the bell. */
 const DASHBOARD_NOTICES = 5;
 
@@ -232,7 +174,7 @@ const DASHBOARD_NOTICES = 5;
  * dashboard shows only what is new, or the block would grow into a second,
  * worse task list.
  */
-function MyNotices() {
+export function MyNotices() {
   // Named apart from the file's other `t` on purpose: this block reads a
   // DIFFERENT namespace, and one variable bound to two namespaces in one file
   // is how a key silently renders as its own name (tests/contracts/i18n-keys).
@@ -263,53 +205,6 @@ function MyNotices() {
         </p>
       ) : null}
     </section>
-  );
-}
-
-function MyTasksBody(props: {
-  loading: boolean;
-  failed: boolean;
-  onRetry: () => void;
-  hasEmployeeRecord: boolean;
-  openYear: number | null;
-  tasks: Task[];
-  tone: TaskTone;
-  stage: GoalStage | null;
-  truncation: { shown: number; total: number } | null;
-}) {
-  const t = useTranslations("pms.home");
-  const tGoal = useTranslations("pms.goalSetting");
-
-  if (props.loading) return <TableSkeleton rows={3} />;
-  if (props.failed) {
-    return (
-      <div className="space-y-3">
-        <p role="alert" className="text-sm text-destructive-emphasis">
-          {t("loadFailed")}
-        </p>
-        <Button variant="outline" onClick={props.onRetry}>
-          {t("retry")}
-        </Button>
-      </div>
-    );
-  }
-  if (!props.hasEmployeeRecord) return <EmptyState description={t("noEmployeeRecord")} />;
-  if (props.openYear === null) return <EmptyState description={t("noOpenCycle")} />;
-  if (props.tasks.length === 0) {
-    return <EmptyState description={t("empty", { year: props.openYear })} />;
-  }
-
-  return (
-    <div className="space-y-4">
-      {props.truncation ? (
-        <p className="text-xs text-muted-foreground">{tGoal("truncated", props.truncation)}</p>
-      ) : null}
-      <ul className="flex list-none flex-col gap-4 p-0">
-        {props.tasks.map((task) => (
-          <TaskRow key={task.key} task={task} tone={props.tone} stage={props.stage} />
-        ))}
-      </ul>
-    </div>
   );
 }
 
@@ -431,21 +326,34 @@ function OversightBody({
   );
 }
 
-export function MyTasksOversight() {
-  const t = useTranslations("pms.home");
+/** What Performance asks of the viewer today, for Home's "My work" list. */
+export type PmsTaskList = {
+  tasks: Task[];
+  tone: TaskTone;
+  stage: GoalStage | null;
+  loading: boolean;
+  failed: boolean;
+  refetch: () => void;
+  hasEmployeeRecord: boolean;
+  openYear: number | null;
+  truncation: { shown: number; total: number } | null;
+};
+
+/**
+ * Performance's tasks — KPI sets to draft or sign, 360s to give, the year-end
+ * self-assessment — built from the same reads and the same pure ranking
+ * (`lib/pms/tasks.ts`) the Performance screens use. Home merges them into the
+ * one "My work" list (docs/blueprints/ux-p0.md, US-1).
+ */
+export function usePmsTasks(): PmsTaskList {
   const locale = useLocale();
   const nowMs = useNowMs();
   const { actor, capabilities, isLoading: actorLoading, isError: actorError } = usePmsActor();
-  // Only the three capability-gated oversight cards below display a count, so only
-  // they are worth a request for one. A plain employee sees the directory card alone
-  // and pays nothing.
   const snapshot = useGoalSettingSnapshot(
     capabilities.lineManager || capabilities.orgWide || capabilities.readOnly,
   );
-
   const stage = snapshot.roster.data?.stage ?? null;
   const tone = toneForStage(stage, nowMs);
-
   const kpiTasks = buildTasks({
     rows: snapshot.rows,
     employeeId: actor?.employeeId ?? null,
@@ -454,26 +362,20 @@ export function MyTasksOversight() {
       `/${locale}/goal-setting/${snapshot.openCycle?.id}/participants/${row.participantId}`,
     locale,
   });
-
   // §4.4 — "any 360 assigned to me (report, peer, or colleague)". Driven by
-  // assignment, so it is a separate read from the goal-setting roster: a rater
-  // may hold a 360 for someone who is not their report and never appears in it.
+  // assignment, so it is a separate read from the goal-setting roster.
   const myThreeSixty = useQuery({
     queryKey: ["pms", "360", "mine"],
     queryFn: () =>
       apiClient.get<{ assignments: ThreeSixtyTaskRow[] }>("/api/three-sixty/assignments"),
     enabled: !!actor?.employeeId,
   });
-
-  // §7.1 — the employee's own year-end self-assessment. Its own read, for the
-  // same reason the 360 one is: it is driven by the caller's participation, not
-  // by the goal-setting roster, which a plain employee never fetches at all.
+  // §7.1 — the employee's own year-end self-assessment.
   const myYearEnd = useQuery({
     queryKey: ["pms", "year-end", "me"],
     queryFn: () => apiClient.get<YearEndTaskState>("/api/year-end/me"),
     enabled: !!actor?.employeeId,
   });
-
   const tasks = [
     ...kpiTasks,
     ...buildThreeSixtyTasks({
@@ -481,54 +383,46 @@ export function MyTasksOversight() {
       hrefFor: (a) => `/${locale}/three-sixty/assignments/${a.id}`,
       nowMs,
     }),
-    ...buildYearEndTasks({
-      mine: myYearEnd.data,
-      href: `/${locale}/year-end`,
-      nowMs,
-    }),
+    ...buildYearEndTasks({ mine: myYearEnd.data, href: `/${locale}/year-end`, nowMs }),
   ].sort((a, b) => a.rank - b.rank);
-
   const rosterData = snapshot.roster.data;
-  const truncation =
-    rosterData && rosterData.totalPages > 1
-      ? { shown: rosterData.data.length, total: rosterData.total }
-      : null;
+  return {
+    tasks,
+    tone,
+    stage,
+    loading: actorLoading || snapshot.isLoading,
+    failed: actorError || snapshot.isError,
+    refetch: snapshot.refetch,
+    hasEmployeeRecord: !!actor?.employeeId,
+    openYear: snapshot.openCycle?.year ?? null,
+    truncation:
+      rosterData && rosterData.totalPages > 1
+        ? { shown: rosterData.data.length, total: rosterData.total }
+        : null,
+  };
+}
 
+/** What the viewer is entitled to SEE in Performance (§4.4's Oversight space). */
+export function PmsOversight() {
+  const t = useTranslations("pms.home");
+  const locale = useLocale();
+  const { actor, capabilities } = usePmsActor();
+  const snapshot = useGoalSettingSnapshot(
+    capabilities.lineManager || capabilities.orgWide || capabilities.readOnly,
+  );
   return (
-    <>
-      <SectionCard title={t("myTasksTitle")} subtitle={t("myTasksSubtitle")}>
-        {/* Above the list, and outside MyTasksBody on purpose: a notice must
-            still show when the task list is empty, loading, or unavailable —
-            those are exactly the mornings an escalation matters. */}
-        <div className="space-y-4">
-          <MyNotices />
-          <MyTasksBody
-            loading={actorLoading || snapshot.isLoading}
-            failed={actorError || snapshot.isError}
-            onRetry={snapshot.refetch}
-            hasEmployeeRecord={!!actor?.employeeId}
-            openYear={snapshot.openCycle?.year ?? null}
-            tasks={tasks}
-            tone={tone}
-            stage={stage}
-            truncation={truncation}
-          />
-        </div>
-      </SectionCard>
-
-      <SectionCard
-        title={t("oversightTitle")}
-        subtitle={t("oversightSubtitle")}
-        actions={
-          <RoleBadges roles={actor?.roleNames ?? []} isLineManager={capabilities.lineManager} />
-        }
-      >
-        <OversightBody
-          capabilities={capabilities}
-          locale={locale}
-          visible={snapshot.entitledCount.data?.total ?? null}
-        />
-      </SectionCard>
-    </>
+    <SectionCard
+      title={t("oversightTitle")}
+      subtitle={t("oversightSubtitle")}
+      actions={
+        <RoleBadges roles={actor?.roleNames ?? []} isLineManager={capabilities.lineManager} />
+      }
+    >
+      <OversightBody
+        capabilities={capabilities}
+        locale={locale}
+        visible={snapshot.entitledCount.data?.total ?? null}
+      />
+    </SectionCard>
   );
 }
