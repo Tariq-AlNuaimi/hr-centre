@@ -9,6 +9,7 @@ import { DescriptionList } from "@/components/shared/DescriptionList";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/format";
 import { Field } from "../Field";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlAction } from "../use-jml";
@@ -76,7 +77,7 @@ export function EmployeeCodeSettings() {
               {
                 key: "cutover",
                 label: t("cutoverAt"),
-                value: new Date(seq.cutoverAt).toLocaleString(),
+                value: formatDateTime(seq.cutoverAt),
               },
               { key: "approved", label: t("approvedBy"), value: seq.approvedBy },
             ]}

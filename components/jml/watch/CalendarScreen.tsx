@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { NativeSelect } from "@/components/org/NativeSelect";
+import { FilterBar, FilterChips, FilterSelect } from "@/components/shared/FilterBar";
+import { formatDay } from "@/lib/format";
 import { apiClient } from "@/lib/api-client";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess, useJmlLookups } from "../use-jml";
@@ -110,55 +111,51 @@ export function CalendarScreen() {
         <Button size="sm" variant="outline" onClick={() => setAnchor(shift(view, anchor, 1))}>
           {t("next")}
         </Button>
-        <span className="text-sm font-medium">{t("range", { from: iso(from), to: iso(to) })}</span>
-        <NativeSelect
-          aria-label={t("view")}
+        <span className="text-sm font-medium">
+          {t("range", { from: formatDay(iso(from)), to: formatDay(iso(to)) })}
+        </span>
+        <FilterChips
+          label={t("view")}
           value={view}
-          onChange={(e) => setView(e.target.value as View)}
-        >
-          {(["month", "week", "list"] as const).map((v) => (
-            <option key={v} value={v}>
-              {t(`views.${v}`)}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label={t("company")}
-          value={entityId}
-          onChange={(e) => setEntityId(e.target.value)}
-        >
-          <option value="">{t("allCompanies")}</option>
-          {(lookups.data?.companies ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label={t("owner")}
-          value={owner}
-          onChange={(e) => setOwner(e.target.value)}
-        >
-          <option value="">{t("allOwners")}</option>
-          {(lookups.data?.hrUsers ?? []).map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name ?? u.email}
-            </option>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label={t("status")}
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">{t("allStatuses")}</option>
-          {["DRAFT", "ACTIVE", "COMPLETED"].map((s) => (
-            <option key={s} value={s}>
-              {t(`statusValue.${s}`)}
-            </option>
-          ))}
-        </NativeSelect>
+          onChange={(v) => setView(v as View)}
+          chips={(["month", "week", "list"] as const).map((v) => ({
+            value: v,
+            label: t(`views.${v}`),
+          }))}
+        />
       </div>
+      <FilterBar>
+        <FilterSelect
+          id="cal-company"
+          label={t("company")}
+          allLabel={t("allCompanies")}
+          value={entityId}
+          onChange={setEntityId}
+          options={(lookups.data?.companies ?? []).map((c) => ({ value: c.id, label: c.name }))}
+        />
+        <FilterSelect
+          id="cal-owner"
+          label={t("owner")}
+          allLabel={t("allOwners")}
+          value={owner}
+          onChange={setOwner}
+          options={(lookups.data?.hrUsers ?? []).map((u) => ({
+            value: u.id,
+            label: u.name ?? u.email,
+          }))}
+        />
+        <FilterSelect
+          id="cal-status"
+          label={t("status")}
+          allLabel={t("allStatuses")}
+          value={status}
+          onChange={setStatus}
+          options={["DRAFT", "ACTIVE", "COMPLETED"].map((s) => ({
+            value: s,
+            label: t(`statusValue.${s}`),
+          }))}
+        />
+      </FilterBar>
       {data.isLoading ? (
         <LoadingBlock />
       ) : data.isError || !data.data ? (

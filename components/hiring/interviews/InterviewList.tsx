@@ -9,14 +9,13 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { NativeSelect } from "@/components/org/NativeSelect";
 import { INTERVIEW_STATUSES } from "@/lib/validations/hiring/interview";
 import { qs, useHiringMe, useHiringMutation, useHiringQuery } from "../ui/api";
 import { QueryState } from "../ui/states";
-import { FilterChips } from "../candidates/FilterChips";
 import { MonthCalendar } from "./MonthCalendar";
 import { ScheduleList } from "./ScheduleList";
 import type { InterviewRow } from "./types";
+import { FilterBar, FilterChips, FilterSelect } from "@/components/shared/FilterBar";
 
 /** `/hiring/interviews` (Interview Hub `InterviewsListClient`): day-grouped list or month calendar. */
 export function InterviewList() {
@@ -96,8 +95,8 @@ export function InterviewList() {
           </>
         }
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <FilterBar>
           <Input
             className="w-72"
             aria-label={t("search")}
@@ -105,32 +104,28 @@ export function InterviewList() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
-          <NativeSelect
-            aria-label={t("statusFilter")}
+          <FilterSelect
+            id="interview-status"
+            label={t("statusFilter")}
+            allLabel={t("allStatuses")}
             value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
+            onChange={(v) => {
+              setStatus(v);
               setPage(1);
             }}
-          >
-            <option value="">{t("allStatuses")}</option>
-            {INTERVIEW_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {ts(s)}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+            options={INTERVIEW_STATUSES.map((s) => ({ value: s, label: ts(s) }))}
+          />
+        </FilterBar>
         <FilterChips
           label={t("viewLabel")}
-          active={view}
-          onSelect={(v) => {
-            setView(v);
+          value={view}
+          onChange={(v) => {
+            setView(v as "list" | "calendar");
             setPage(1);
           }}
-          options={[
-            { value: "list" as const, label: t("viewList") },
-            { value: "calendar" as const, label: t("viewCalendar") },
+          chips={[
+            { value: "list", label: t("viewList") },
+            { value: "calendar", label: t("viewCalendar") },
           ]}
         />
       </div>

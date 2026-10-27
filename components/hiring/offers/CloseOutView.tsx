@@ -8,7 +8,6 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/org/NativeSelect";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatCard } from "@/components/shared/StatCard";
@@ -18,6 +17,7 @@ import { useCrumb } from "../ui/crumb";
 import { FlowRail } from "../ui/flow-rail";
 import { useRequisitionOptions } from "../ui/requisition-options";
 import { Notice, QueryState } from "../ui/states";
+import { FilterBar, FilterSelect } from "@/components/shared/FilterBar";
 
 type Row = {
   id: string;
@@ -80,21 +80,16 @@ export function CloseOutView() {
       />
       <FlowRail current={6} />
       <Notice tone="info">{t("manualNotice")}</Notice>
-      <div className="flex flex-wrap items-end gap-3">
-        <NativeSelect
-          aria-label={t("requisitionFilter")}
+      <FilterBar>
+        <FilterSelect
+          id="closeout-requisition"
+          label={t("requisitionFilter")}
+          allLabel={t("allRequisitions")}
           value={requisitionId}
-          onChange={(e) => setRequisitionId(e.target.value)}
-          className="w-72"
-        >
-          <option value="">{t("allRequisitions")}</option>
-          {reqs.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.title}
-            </option>
-          ))}
-        </NativeSelect>
-      </div>
+          onChange={setRequisitionId}
+          options={reqs.map((r) => ({ value: r.id, label: r.title }))}
+        />
+      </FilterBar>
       <QueryState isLoading={q.isLoading} error={q.error} onRetry={() => void q.refetch()}>
         {q.data ? (
           <div className="grid gap-3 sm:grid-cols-3">

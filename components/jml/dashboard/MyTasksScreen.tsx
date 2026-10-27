@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
-import { NativeSelect } from "@/components/org/NativeSelect";
+import { FilterChips } from "@/components/shared/FilterBar";
 import { apiClient } from "@/lib/api-client";
 import { LoadFailed, LoadingBlock, NotPermitted } from "../States";
 import { useJmlAccess } from "../use-jml";
@@ -32,18 +32,15 @@ export function MyTasksScreen() {
         title={t("myTasksTitle")}
         subtitle={t("myTasksSubtitle")}
         actions={
-          <NativeSelect
-            aria-label={t("caseType")}
+          <FilterChips
+            label={t("caseType")}
             value={type}
-            onChange={(e) => setType(e.target.value)}
-          >
-            <option value="">{t("allTypes")}</option>
-            {["JOIN", "MOVE", "LEAVE"].map((x) => (
-              <option key={x} value={x}>
-                {tv(`caseType.${x}`)}
-              </option>
-            ))}
-          </NativeSelect>
+            onChange={setType}
+            chips={[
+              { value: "", label: t("allTypes") },
+              ...["JOIN", "MOVE", "LEAVE"].map((x) => ({ value: x, label: tv(`caseType.${x}`) })),
+            ]}
+          />
         }
       />
       {q.isLoading ? <LoadingBlock /> : null}

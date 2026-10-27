@@ -562,7 +562,7 @@
 - lib/date-input.ts: toDateInput, startOfDay, endOfDay
 - lib/email.ts: SendEmailOptions, SendEmailResult, isEmailEnabled, buildMailOptions, sendEmail
 - lib/env.ts: env
-- lib/format.ts: formatDateTime, formatDate, formatDay, daysUntil
+- lib/format.ts: formatDateTime, formatDate, formatDay, formatZonedDay, daysUntil
 - lib/hiring/access.ts: HiringActor, ROLE_PERMISSION, APPROVAL_ROLES, can, holdsAnywhere, isHiringAdmin, canErase, actsAs, canOverrideGates, canSignJdForHr, seesPii, seesComp, isPanelOnly
 - lib/hiring/actor.ts: resolveHiringActor
 - lib/hiring/agency-invite-admin.ts: listInvites, createInvite, revokeInvite
@@ -958,7 +958,6 @@
 - components/hiring/candidates/CandidateProfile.tsx
 - components/hiring/candidates/CvCard.tsx
 - components/hiring/candidates/DataRequestCard.tsx
-- components/hiring/candidates/FilterChips.tsx
 - components/hiring/candidates/ImportView.tsx
 - components/hiring/candidates/NewCandidate.tsx
 - components/hiring/candidates/PackageDialogs.tsx

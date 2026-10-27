@@ -9,7 +9,7 @@ import { SectionCard } from "@/components/shared/SectionCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/org/NativeSelect";
+import { FilterBar, FilterChips, FilterSelect } from "@/components/shared/FilterBar";
 import {
   Table,
   TableBody,
@@ -106,64 +106,49 @@ export function JoinerList() {
         }
       />
       <SectionCard title={t("listTitle", { count: list.data?.total ?? 0 })}>
-        <div className="mb-4 flex flex-wrap gap-3">
-          <Input
-            aria-label={t("search")}
-            placeholder={t("search")}
-            value={f.search}
-            className="max-w-xs"
-            onChange={(e) => {
-              upd("search", e.target.value);
-              setPage(1);
-            }}
-          />
-          <NativeSelect
-            aria-label={t("statusFilter")}
+        <div className="mb-4 space-y-3">
+          <FilterChips
+            label={t("statusFilter")}
             value={f.status}
-            onChange={(e) => upd("status", e.target.value)}
-          >
-            {["all", "draft", "active"].map((s) => (
-              <option key={s} value={s}>
-                {t(`status.${s}`)}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            aria-label={t("company")}
-            value={f.entityId}
-            onChange={(e) => upd("entityId", e.target.value)}
-          >
-            <option value="">{t("allCompanies")}</option>
-            {(lookups.data?.companies ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            aria-label={t("department")}
-            value={f.departmentId}
-            onChange={(e) => upd("departmentId", e.target.value)}
-          >
-            <option value="">{t("allDepartments")}</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </NativeSelect>
-          <NativeSelect
-            aria-label={t("employmentType")}
-            value={f.employmentType}
-            onChange={(e) => upd("employmentType", e.target.value)}
-          >
-            <option value="">{t("allTypes")}</option>
-            {EMPLOYMENT_TYPES.map((e) => (
-              <option key={e} value={e}>
-                {tc(e)}
-              </option>
-            ))}
-          </NativeSelect>
+            onChange={(v) => upd("status", v)}
+            chips={["all", "draft", "active"].map((s) => ({ value: s, label: t(`status.${s}`) }))}
+          />
+          <FilterBar>
+            <Input
+              aria-label={t("search")}
+              placeholder={t("search")}
+              value={f.search}
+              className="max-w-xs"
+              onChange={(e) => {
+                upd("search", e.target.value);
+                setPage(1);
+              }}
+            />
+            <FilterSelect
+              id="joiner-company"
+              label={t("company")}
+              allLabel={t("allCompanies")}
+              value={f.entityId}
+              onChange={(v) => upd("entityId", v)}
+              options={(lookups.data?.companies ?? []).map((c) => ({ value: c.id, label: c.name }))}
+            />
+            <FilterSelect
+              id="joiner-department"
+              label={t("department")}
+              allLabel={t("allDepartments")}
+              value={f.departmentId}
+              onChange={(v) => upd("departmentId", v)}
+              options={departments.map((d) => ({ value: d.id, label: d.name }))}
+            />
+            <FilterSelect
+              id="joiner-type"
+              label={t("employmentType")}
+              allLabel={t("allTypes")}
+              value={f.employmentType}
+              onChange={(v) => upd("employmentType", v)}
+              options={EMPLOYMENT_TYPES.map((e) => ({ value: e, label: tc(e) }))}
+            />
+          </FilterBar>
         </div>
         {list.isLoading ? (
           <LoadingBlock />
