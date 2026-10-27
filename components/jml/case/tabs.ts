@@ -7,7 +7,7 @@ type CaseType = "JOIN" | "MOVE" | "LEAVE";
  * register), and the trail (activity, emails). Old `?tab=` links still land
  * on the tab that now holds their panel.
  */
-export const TABS = ["checklist", "overview", "exit", "documents", "activity"] as const;
+const TABS = ["checklist", "overview", "exit", "documents", "activity"] as const;
 export type Tab = (typeof TABS)[number];
 
 export const TABS_FOR: Record<CaseType, readonly Tab[]> = {
