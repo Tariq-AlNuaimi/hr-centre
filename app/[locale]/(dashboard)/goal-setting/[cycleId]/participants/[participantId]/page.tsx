@@ -26,7 +26,7 @@ import {
 } from "@/lib/pms/signoff";
 import { canRunCycle, isGoalSettingExempt, stageState, type StageWindow } from "@/lib/pms/cycle";
 import { visibilityDescendants } from "@/lib/pms/org-tree";
-import { canActOnEmployee, canViewEmployee, type PmsActor } from "@/lib/pms/permissions";
+import { canViewEmployee, type PmsActor } from "@/lib/pms/permissions";
 
 /**
  * KPI drafting for one participant — spec §5.1, §5.2, §5.3, §5.4, §4.2, §8.3.
@@ -326,7 +326,10 @@ export default async function KpiDraftingPage({
         }}
         goalsApprovedAt={participant.goalsApprovedAt?.toISOString() ?? null}
         isSubject={actor.employeeId === participant.employee.id}
-        canSignAsManager={canActOnEmployee(actor, target)}
+        canSignAsManager={
+          // D-01: only the direct line manager signs the MANAGER line — HR included.
+          actor.employeeId !== null && target.managerId === actor.employeeId
+        }
       />
 
       {/*

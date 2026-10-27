@@ -286,6 +286,16 @@ test("§5.1 not even HR may sign AS the employee — a signature is agreement, n
   assert.notEqual(signerBlockedReason({ actor: hr, party: "EMPLOYEE", subject }), null);
 });
 
+test("QA D-01: HR may not sign AS the line manager — HR acts through HR actions, not impersonation", () => {
+  const hr = actor({ employeeId: "hr-1", pmsRoles: ["HR_SUPER_ADMIN"] });
+  const refusal = signerBlockedReason({ actor: hr, party: "MANAGER", subject });
+  assert.equal(refusal?.status, 403, "HR sees the participant, so the refusal is 403, not 404");
+  assert.match(refusal?.reason ?? "", /direct line manager/);
+  // HR who IS the employee's direct manager signs in that capacity, like anyone else.
+  const hrManager = actor({ employeeId: "mgr-1", pmsRoles: ["HR_SUPER_ADMIN"] });
+  assert.equal(signerBlockedReason({ actor: hrManager, party: "MANAGER", subject }), null);
+});
+
 test("§4.2 the MANAGER signature is the direct line manager's; a skip-level's is not", () => {
   assert.equal(
     signerBlockedReason({
