@@ -75,6 +75,10 @@ const nextConfig: NextConfig = {
   // win is the trade. The compiler bails out safely on any component that violates
   // the Rules of React, so adoption is additive.
   reactCompiler: reactCompilerEnabled(),
+  // ADR-088: inline the client DSN even when it is unset (as ""), so the lazy
+  // Sentry import in instrumentation-client.ts is statically dead without one
+  // and the SDK (~150 kB gzip) is never emitted into the client bundle.
+  env: { NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "" },
   // Opt-in only -- see isDockerBuild above (ADR-023). `undefined` on Vercel.
   output: isDockerBuild ? "standalone" : undefined,
   async headers() {
@@ -110,6 +114,9 @@ export default withSentryConfig(baseConfig, {
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   silent: isCI,
+  // ADR-088: the route manifest (~70 kB gzip, every route's pattern) only serves
+  // client-side transaction names; without a client DSN nothing would read it.
+  routeManifestInjection: process.env.NEXT_PUBLIC_SENTRY_DSN ? undefined : false,
   widenClientFileUpload: true,
   sourcemaps: {
     disable: !hasSentryAuth,

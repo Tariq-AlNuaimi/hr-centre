@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
-import * as Sentry from "@sentry/nextjs";
 import { BrandedStatus } from "@/components/shared/BrandedStatus";
 
 export default function DashboardError({
@@ -28,7 +27,10 @@ export default function DashboardError({
     // sees a blank screen instead of this fallback.
     try {
       console.error(error);
-      Sentry.captureException(error);
+      if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+        // Loaded on demand (ADR-088): with no DSN the SDK never reaches the browser.
+        void import("@sentry/nextjs").then((S) => S.captureException(error)).catch(() => {});
+      }
     } catch {
       /* swallow -- the boundary's job is to render, not to crash */
     }

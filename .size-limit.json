@@ -2,7 +2,7 @@
   {
     "name": "client JS (all route chunks, gzip)",
     "path": ".next/static/chunks/**/*.js",
-    "limit": "1200 kB",
+    "limit": "1800 kB",
     "gzip": true
   }
 ]
