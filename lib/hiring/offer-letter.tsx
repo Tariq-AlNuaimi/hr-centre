@@ -1,0 +1,214 @@
+import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { readSetting } from "./settings";
+import { offerLetterTemplateSchema } from "@/lib/validations/hiring/offer";
+import { buildCompBreakdown } from "./offer-package";
+
+/**
+ * The offer letter PDF (Interview Hub `lib/esign/*` + `OfferLetterPdf`). The
+ * opening paragraph is the admin template (`offerLetter.template`) with merge
+ * fields filled; the terms box is rendered from the offer. D11: pay is MONTHLY
+ * — the template and the box say so (Interview Hub's default said "annual
+ * salary" for a monthly figure). Server-only; reached from the letter route,
+ * which requires manage + comp access.
+ *
+ * The letter goes to the candidate, so its wording is fixed English prose
+ * here rather than UI copy. PDF has no CSS variables, so colours are literal.
+ */
+
+export const MERGE_FIELDS = [
+  "candidate",
+  "salary",
+  "startDate",
+  "position",
+  "grade",
+  "company",
+] as const;
+export type MergeField = (typeof MERGE_FIELDS)[number];
+
+export const DEFAULT_OFFER_TEMPLATE =
+  "Dear [candidate],\n\n" +
+  "We are delighted to offer you the position of [position] (grade [grade]) at [company], " +
+  "starting on [startDate], with a basic monthly salary of [salary]. " +
+  "The full terms of your employment are set out below. " +
+  "Please review and sign this letter to confirm your acceptance.";
+
+/** Replace the known [tokens]; an unknown [token] is left visible, never blanked. */
+export function renderTemplate(template: string, fields: Record<MergeField, string>): string {
+  return MERGE_FIELDS.reduce((acc, k) => acc.split(`[${k}]`).join(fields[k]), template);
+}
+
+export async function templateBody(): Promise<string> {
+  const parsed = offerLetterTemplateSchema.safeParse(await readSetting("offerLetter.template"));
+  return parsed.success ? parsed.data.body : DEFAULT_OFFER_TEMPLATE;
+}
+
+const omr = (v: number | null) =>
+  v == null ? "—" : `OMR ${v.toLocaleString("en-US", { maximumFractionDigits: 3 })}`;
+const day = (d: Date | null) =>
+  d
+    ? new Intl.DateTimeFormat("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "Asia/Muscat",
+      }).format(d)
+    : "—";
+
+const ALLOWANCE_NAMES: Record<string, string> = {
+  housing: "Housing allowance",
+  transport: "Transport allowance",
+  car: "Car allowance",
+  fuel: "Fuel allowance",
+  phone: "Phone allowance",
+  education: "Education allowance",
+  other: "Other allowance",
+};
+const allowanceName = (k: string) =>
+  ALLOWANCE_NAMES[k.toLowerCase()] ?? `${k.charAt(0).toUpperCase()}${k.slice(1)} allowance`;
+
+export type LetterInput = {
+  candidateName: string;
+  position: string;
+  grade: string | null;
+  company: string;
+  salary: number | null;
+  allowances: Record<string, number> | null;
+  startDate: Date;
+  probationMonths: number;
+  noticePeriod: string | null;
+  contractType: string | null;
+  benefits: string | null;
+  status: string;
+};
+
+const ink = "rgb(34,34,34)";
+const muted = "rgb(102,102,102)";
+const rule = "rgb(221,221,221)";
+const s = StyleSheet.create({
+  page: { padding: 48, fontSize: 11, fontFamily: "Helvetica", color: ink, lineHeight: 1.5 },
+  brand: { fontSize: 18, fontFamily: "Helvetica-Bold", color: "rgb(15,118,110)" },
+  sub: { fontSize: 9, color: muted, marginBottom: 20 },
+  title: { fontSize: 15, fontFamily: "Helvetica-Bold", marginTop: 8, marginBottom: 12 },
+  para: { marginBottom: 10 },
+  box: { border: `1pt solid ${rule}`, borderRadius: 4, padding: 14, marginVertical: 12 },
+  row: { flexDirection: "row", marginBottom: 5 },
+  label: { width: 170, fontFamily: "Helvetica-Bold", color: muted },
+  value: { flex: 1 },
+  total: { flexDirection: "row", marginTop: 4, paddingTop: 4, borderTop: `1pt solid ${rule}` },
+  sign: { marginTop: 40, flexDirection: "row", justifyContent: "space-between" },
+  signCol: { width: "45%" },
+  line: {
+    borderTop: `1pt solid ${muted}`,
+    marginTop: 28,
+    paddingTop: 4,
+    fontSize: 9,
+    color: muted,
+  },
+  footer: {
+    position: "absolute",
+    bottom: 28,
+    left: 48,
+    right: 48,
+    fontSize: 8,
+    color: muted,
+    textAlign: "center",
+  },
+});
+
+const T = {
+  heading: "Offer of employment",
+  position: "Position",
+  basic: "Basic salary (monthly)",
+  total: "Total monthly package",
+  start: "Start date",
+  contract: "Contract type",
+  probation: "Probation",
+  notice: "Notice period",
+  benefits: "Benefits",
+  closing:
+    "This offer is subject to the company's standard terms of employment and the satisfactory completion of any pre-employment checks. Please sign below to confirm your acceptance.",
+  candidateSign: "Candidate signature and date",
+  docTitle: (name: string) => `Offer letter — ${name}`,
+  issued: (date: string) => `Issued ${date}`,
+  companySign: (company: string) => `For ${company} — authorised signatory`,
+  footer: (status: string) =>
+    `Generated by HR Centre. Offer status when generated: ${status.toLowerCase().replace(/_/g, " ")}.`,
+};
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={s.row}>
+      <Text style={s.label}>{label}</Text>
+      <Text style={s.value}>{value}</Text>
+    </View>
+  );
+}
+
+function LetterDoc({ d, body }: { d: LetterInput; body: string }) {
+  const pay = buildCompBreakdown(d.salary, d.allowances);
+  return (
+    <Document title={T.docTitle(d.candidateName)} author={d.company}>
+      <Page size="A4" style={s.page}>
+        <Text style={s.brand}>{d.company}</Text>
+        <Text style={s.sub}>{T.issued(day(new Date()))}</Text>
+        <Text style={s.title}>{T.heading}</Text>
+        {body
+          .split("\n")
+          .filter((l) => l.trim())
+          .map((l, i) => (
+            <Text key={i} style={s.para}>
+              {l}
+            </Text>
+          ))}
+        <View style={s.box}>
+          <Row
+            label={T.position}
+            value={d.grade ? `${d.position} (grade ${d.grade})` : d.position}
+          />
+          <Row label={T.basic} value={omr(pay.basic)} />
+          {pay.rows
+            .filter((r) => !r.basic)
+            .map((r) => (
+              <Row key={r.key} label={allowanceName(r.key)} value={omr(r.amount)} />
+            ))}
+          <View style={s.total}>
+            <Text style={s.label}>{T.total}</Text>
+            <Text style={s.value}>{omr(pay.totalMonthly)}</Text>
+          </View>
+          <Row label={T.start} value={day(d.startDate)} />
+          <Row label={T.contract} value={d.contractType ?? "Permanent"} />
+          <Row
+            label={T.probation}
+            value={`${d.probationMonths} ${d.probationMonths === 1 ? "month" : "months"}`}
+          />
+          <Row label={T.notice} value={d.noticePeriod ?? "1 month"} />
+          {d.benefits ? <Row label={T.benefits} value={d.benefits} /> : null}
+        </View>
+        <Text style={s.para}>{T.closing}</Text>
+        <View style={s.sign}>
+          <View style={s.signCol}>
+            <Text style={s.line}>{T.candidateSign}</Text>
+          </View>
+          <View style={s.signCol}>
+            <Text style={s.line}>{T.companySign(d.company)}</Text>
+          </View>
+        </View>
+        <Text style={s.footer} fixed>
+          {T.footer(d.status)}
+        </Text>
+      </Page>
+    </Document>
+  );
+}
+
+export async function renderOfferLetter(d: LetterInput): Promise<Buffer> {
+  const body = renderTemplate(await templateBody(), {
+    candidate: d.candidateName,
+    salary: omr(d.salary),
+    startDate: day(d.startDate),
+    position: d.position,
+    grade: d.grade ?? "—",
+    company: d.company,
+  });
+  return renderToBuffer(<LetterDoc d={d} body={body} />);
+}

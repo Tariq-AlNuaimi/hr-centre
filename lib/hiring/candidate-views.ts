@@ -53,7 +53,11 @@ export async function candidateDetail(actor: HiringActor, l: LoadedCandidate) {
       select: { id: true, round: true, scheduledDate: true, status: true },
       take: 50,
     }),
-    prisma.hiringOffer.count({ where: { candidateId: c.id } }),
+    prisma.hiringOffer.findFirst({
+      where: { candidateId: c.id, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true },
+    }),
     peopleById([c.referredById, c.stallCauseById, c.preferredById]),
   ]);
   const stallCurrent = c.stallCause && c.stallCauseStage === c.stage;
@@ -66,7 +70,8 @@ export async function candidateDetail(actor: HiringActor, l: LoadedCandidate) {
     createdAt: c.createdAt,
     requisition: c.requisition ? { id: c.requisition.id, title: c.requisition.title } : null,
     referredBy: personOrNull(people, c.referredById),
-    hasOffer: offers > 0,
+    hasOffer: offers !== null,
+    offer: offers,
     interviews,
     history,
     preferred: c.preferredAt

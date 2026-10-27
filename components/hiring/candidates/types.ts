@@ -11,6 +11,7 @@ export type CandidateDetail = {
   requisition: { id: string; title: string } | null;
   referredBy: PersonRef | null;
   hasOffer: boolean;
+  offer: { id: string; status: string } | null;
   interviews: { id: string; round: string; scheduledDate: string; status: string }[];
   history: {
     id: string;

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
-import { CalendarPlus, ExternalLink, Mail, Pencil, Star } from "lucide-react";
+import { CalendarPlus, ExternalLink, FileSignature, Mail, Pencil, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -154,6 +154,7 @@ function Header({ c, onEdit }: { c: CandidateDetail; onEdit: () => void }) {
             {t("edit")}
           </Button>
         ) : null}
+        <OfferLink c={c} />
         {next ? (
           <Badge variant="info">
             {t("interviewScheduled", { date: formatDateTime(next.scheduledDate) })}
@@ -161,6 +162,30 @@ function Header({ c, onEdit }: { c: CandidateDetail; onEdit: () => void }) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** The offer, or drafting one once the decision is made (Interview Hub "Draft offer" next step). */
+function OfferLink({ c }: { c: CandidateDetail }) {
+  const t = useTranslations("hiring.candidate");
+  const locale = useLocale();
+  if (c.offer) {
+    return (
+      <Link
+        className={buttonVariants({ variant: "outline" })}
+        href={`/${locale}/hiring/offers/${c.offer.id}`}
+      >
+        <FileSignature className="h-4 w-4" />
+        {t("viewOffer")}
+      </Link>
+    );
+  }
+  if (!c.can.manage || !["DECISION_PENDING", "OFFER_DRAFTED"].includes(c.stage)) return null;
+  return (
+    <Link className={buttonVariants()} href={`/${locale}/hiring/offers/new?candidateId=${c.id}`}>
+      <FileSignature className="h-4 w-4" />
+      {t("draftOffer")}
+    </Link>
   );
 }
 

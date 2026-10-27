@@ -856,6 +856,15 @@ the port keeps; kept as the accessible second path on every card). **`@dnd-kit/c
 the library Interview Hub used; keyboard sensor + announcements; MIT).
 Decision: buy — `@dnd-kit/core` ^6.3.1, loaded lazily on the board pages only. ADR-081.
 
+### 2026-10-27 — Hiring: offer letter PDF (`@react-pdf/renderer`)
+
+Scope: lib/hiring/offer-letter.tsx
+Considered: **`pdf-lib`** (rejected — hand-laid-out text and page breaks for a letter). **A Word
+template via docxtemplater** (rejected — HR and the candidate get a .docx instead of the PDF
+Interview Hub produced). **Headless Chrome** (rejected — no Chromium on Vercel functions).
+**`@react-pdf/renderer`** (adopted — the library Interview Hub used; built-in fonts; server-only).
+Decision: buy — `@react-pdf/renderer` ^4.9.0, imported only by the offer-letter route. ADR-084.
+
 ### 2026-10-27 — JML: joiners, movers & leavers module (case engine and all slices)
 
 Scope: lib/jml/**, lib/validations/jml/**
