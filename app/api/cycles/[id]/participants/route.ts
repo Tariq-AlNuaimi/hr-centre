@@ -46,6 +46,42 @@ import { visibleEmployeeIds } from "@/lib/pms/org-tree";
 // Search is a boundary input, so it is parsed rather than trusted. Inline
 // because it belongs to this one endpoint; the shared KPI/cycle schemas live in
 // lib/validations/.
+const GOAL_STATES = [
+  "notDrafted",
+  "awaitingManager",
+  "awaitingEmployee",
+  "awaitingHr",
+  "approved",
+] as const;
+
+const signed = (party: "EMPLOYEE" | "MANAGER") => ({
+  signOffs: { some: { stageKind: GOAL_SETTING_STAGE, party } },
+});
+const unsigned = (party: "EMPLOYEE" | "MANAGER") => ({
+  signOffs: { none: { stageKind: GOAL_SETTING_STAGE, party } },
+});
+
+/** The roster's state filter as a query — server-side, so counts and pages stay honest. */
+function stateWhere(
+  state: (typeof GOAL_STATES)[number] | undefined,
+): Prisma.CycleParticipantWhereInput {
+  const open = { goalsApprovedAt: null };
+  switch (state) {
+    case "approved":
+      return { goalsApprovedAt: { not: null } };
+    case "notDrafted":
+      return { ...open, kpis: { none: { deletedAt: null } } };
+    case "awaitingManager":
+      return { ...open, kpis: { some: { deletedAt: null } }, ...unsigned("MANAGER") };
+    case "awaitingEmployee":
+      return { ...open, AND: [signed("MANAGER"), unsigned("EMPLOYEE")] };
+    case "awaitingHr":
+      return { ...open, AND: [signed("MANAGER"), signed("EMPLOYEE")] };
+    default:
+      return {};
+  }
+}
+
 const participantQuerySchema = z.object({
   search: z.string().trim().min(1).max(200).optional(),
   /**
@@ -58,6 +94,8 @@ const participantQuerySchema = z.object({
    * It NARROWS the visibility set computed above; it never widens it.
    */
   scope: z.enum(["mine"]).optional(),
+  /** UX P1 (perf-jml P1-7): where each set is in §5.1's flow. */
+  state: z.enum(GOAL_STATES).optional(),
 });
 
 /**
@@ -87,11 +125,12 @@ export const GET = withRateLimit(
     const parsedQuery = participantQuerySchema.safeParse({
       search: searchParams.get("search") ?? undefined,
       scope: searchParams.get("scope") ?? undefined,
+      state: searchParams.get("state") ?? undefined,
     });
     if (!parsedQuery.success) {
       return err(parsedQuery.error.issues.map((i) => i.message).join(", "));
     }
-    const { search, scope } = parsedQuery.data;
+    const { search, scope, state } = parsedQuery.data;
 
     const cycle = await prisma.performanceCycle.findUnique({
       where: { id: cycleId },
@@ -144,6 +183,7 @@ export const GET = withRateLimit(
 
     const where: Prisma.CycleParticipantWhereInput = {
       cycleId,
+      ...stateWhere(state),
       ...(visibleIds !== null ? { employeeId: { in: [...visibleIds] } } : {}),
       ...(assignedTo
         ? { OR: [{ employeeId: assignedTo }, { employee: { managerId: assignedTo } }] }

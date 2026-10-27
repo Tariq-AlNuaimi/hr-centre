@@ -83,23 +83,30 @@ export function KpiList({
             ) : null}
           </div>
 
-          <div className="mt-4 border-t border-border pt-4">
-            <DescriptionList
-              bordered={false}
-              columns={1}
-              size="small"
-              items={KPI_LEVEL_FIELDS.map((level) => ({
-                key: level.field,
-                label: (
-                  <span className="flex flex-wrap items-center gap-2">
-                    {t(`level.${level.field}`)}
-                    <Badge variant="outline">{t("levelValue", { value: level.value })}</Badge>
-                  </span>
-                ),
-                value: kpi[level.field],
-              }))}
-            />
-          </div>
+          {/* UX P1 (perf-jml P1-7): the five-level rubric is reference text,
+              so it folds away instead of adding ~450px per KPI. */}
+          <details className="mt-4 border-t border-border pt-3">
+            <summary className="cursor-pointer text-sm text-muted-foreground">
+              {t("descriptorsToggle")}
+            </summary>
+            <div className="mt-3">
+              <DescriptionList
+                bordered={false}
+                columns={1}
+                size="small"
+                items={KPI_LEVEL_FIELDS.map((level) => ({
+                  key: level.field,
+                  label: (
+                    <span className="flex flex-wrap items-center gap-2">
+                      {t(`level.${level.field}`)}
+                      <Badge variant="outline">{t("levelValue", { value: level.value })}</Badge>
+                    </span>
+                  ),
+                  value: kpi[level.field],
+                }))}
+              />
+            </div>
+          </details>
         </li>
       ))}
     </ul>

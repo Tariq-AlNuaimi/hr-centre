@@ -10,6 +10,7 @@
 - app/[locale]/(dashboard)/admin/access/[id]/page.tsx
 - app/[locale]/(dashboard)/admin/access/new/page.tsx
 - app/[locale]/(dashboard)/admin/access/page.tsx
+- app/[locale]/(dashboard)/admin/cycles/[cycleId]/page.tsx
 - app/[locale]/(dashboard)/admin/cycles/page.tsx
 - app/[locale]/(dashboard)/admin/edge-cases/page.tsx
 - app/[locale]/(dashboard)/admin/import/page.tsx
@@ -145,9 +146,11 @@
 - app/api/calibration/route.ts  [GET,POST,PUT]
 - app/api/careers/apply/route.ts  [POST]
 - app/api/careers/route.ts  [GET]
+- app/api/cycles/[id]/overview/route.ts  [GET]
 - app/api/cycles/[id]/participants/[participantId]/approve/route.ts  [POST]
 - app/api/cycles/[id]/participants/route.ts  [GET,POST]
 - app/api/cycles/[id]/policy/route.ts  [GET,PATCH]
+- app/api/cycles/[id]/remind/route.ts  [POST]
 - app/api/cycles/[id]/route.ts  [GET,PUT]
 - app/api/cycles/[id]/stages/route.ts  [PUT]
 - app/api/cycles/route.ts  [GET,POST]
@@ -813,6 +816,7 @@
 - lib/pms/change-request.ts: MID_YEAR_STAGE, EDITABLE_FIELDS, EditableField, KpiState, KpiEdit, applyEdit, proposedWeightageTotal, fieldChanges, ChangeRequestRefusal, submitBlockedReason, decideBlockedReason, approvalBlockedReason, acknowledgeBlockedReason, effectiveChangeRequestStatus, approvalAcknowledgmentReason, withdrawBlockedReason, changeRequestAccessRefusal, stageReopensUnacknowledged
 - lib/pms/compliance.ts: ParticipantComplianceState, LadderEvent, REMINDER_WINDOW_DAYS, isLadderExempt, enrolledAfterDeadline, ladderEventsFor, hrInterventionDue, interventionSummary
 - lib/pms/cycle-notify.ts: WrittenEvent, Intervention, NotifyResult, notify, remindThreeSixtyRaters
+- lib/pms/cycle-overview.ts: cycleOverview, owedBy, remindLate
 - lib/pms/cycle-policy.ts: CyclePolicy, DEFAULT_CYCLE_POLICY, policyFor, CYCLE_POLICY_SELECT, policyEditBlockedReason
 - lib/pms/cycle.ts: canRunCycle, countableParticipantWhere, enrolParticipants
 - lib/pms/departure.ts: departureReportsWhere, DEPARTURE_REPORTS_LIMIT, departureThreeSixtyWhere, DeparturePreview, departurePreview, DepartureOutcome, applyDeparture, ReverseDepartureOutcome, reverseDeparture
@@ -878,7 +882,7 @@
 - lib/validations/calibration.ts: setTargetSchema, adjustSchema, publishSchema
 - lib/validations/change-request.ts: createChangeRequestSchema, decideChangeRequestSchema
 - lib/validations/common.ts: paginationSchema, idParamSchema, emailSchema
-- lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema
+- lib/validations/cycle.ts: cycleStageSchema, createCycleSchema, updateCycleStagesSchema, cycleStatusSchema, cyclePolicySchema, remindLateSchema
 - lib/validations/edge-cases.ts: markLeaverSchema, resolveRollUpSchema, recordTransferSchema
 - lib/validations/employee.ts: ROLE_TRACKS, isoDate, createEmployeeSchema, updateEmployeeSchema, createEntitySchema, employeeListQuerySchema, CreateEmployeeInput, UpdateEmployeeInput
 - lib/validations/evidence.ts: attachLinkSchema, uploadTokenSchema, confirmUploadSchema, uploadPreflightSchema, evidenceCommentSchema
@@ -1158,6 +1162,7 @@
 - components/pms/CalibrationTargetEditor.tsx
 - components/pms/ChangeRequestComposer.tsx
 - components/pms/ChangeRequestReview.tsx
+- components/pms/CycleConsole.tsx
 - components/pms/CycleForm.tsx
 - components/pms/CycleList.tsx
 - components/pms/CyclePicker.tsx

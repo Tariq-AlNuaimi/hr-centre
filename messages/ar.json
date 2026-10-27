@@ -582,7 +582,17 @@
           "OPEN": "مفتوحة",
           "LOCKED": "مغلقة"
         }
-      }
+      },
+      "stateFilter": "Show",
+      "stateAll": "All ({count})",
+      "goalState": {
+        "notDrafted": "Not drafted",
+        "awaitingManager": "Awaiting manager",
+        "awaitingEmployee": "Awaiting employee",
+        "awaitingHr": "Awaiting HR",
+        "approved": "Approved"
+      },
+      "sharedReason": "{count, plural, one {For # person:} other {For # people:}} {reason}"
     },
     "kpi": {
       "title": "مؤشرات الأداء لـ {name}",
@@ -678,7 +688,8 @@
         "lockedTitle": "مقفلة كخط أساس متفق عليه",
         "lockedSubtitle": "§5.1 — اعتماد الموارد البشرية هو القفل، ولا يوجد إلغاء له.",
         "lockedBody": "اعتُمدت في {datetime}. أي تغيير من هنا هو طلب تغيير في منتصف السنة (§6.2)."
-      }
+      },
+      "descriptorsToggle": "Rating descriptors (5 levels)"
     },
     "home": {
       "myTasksTitle": "مهامي",
@@ -1622,7 +1633,7 @@
       "bellWithCount": "الإشعارات، {count} غير مقروء",
       "moreInBell": "{count} إشعارات أخرى في قائمة الإشعارات.",
       "kind": {
-        "CYCLE_REMINDER": "اقتراب موعد تحديد الأهداف",
+        "CYCLE_REMINDER": "Performance deadline approaching",
         "CYCLE_ESCALATION": "تصعيد بشأن موعد تحديد الأهداف",
         "HR_INTERVENTION": "مطلوب تدخّل من الموارد البشرية",
         "THREE_SIXTY_REMINDER": "تقييم 360 درجة معلّق",
@@ -1856,7 +1867,44 @@
       }
     },
     "teamColumn": "Team",
-    "pendingId": "Pending ID"
+    "pendingId": "Pending ID",
+    "cycleConsole": {
+      "title": "Performance cycle",
+      "heading": "{year} performance cycle",
+      "subtitle": "{count, plural, =0 {Nobody enrolled yet} one {# person enrolled} other {# people enrolled}}",
+      "status": {
+        "DRAFT": "Draft",
+        "OPEN": "Open",
+        "CLOSED": "Closed"
+      },
+      "state": {
+        "NOT_YET_OPEN": "Not open yet",
+        "OPEN": "Open",
+        "LOCKED": "Locked"
+      },
+      "window": "Opens {opens} · deadline {deadline} · {grace, plural, one {# grace day} other {# grace days}}",
+      "done": "{done} of {total} done",
+      "late": "{count, plural, one {# person late — see who} other {# people late — see who}}",
+      "noneLate": "Nobody late",
+      "remind": "Remind late",
+      "reminded": "{count, plural, =0 {Everyone late was already reminded today} one {Reminded # person} other {Reminded # people}}",
+      "remindFailed": "Couldn't send the reminders. Try again.",
+      "noTally": "Mid-year is a conversation; it has no completion to track here.",
+      "truncated": "This cycle has more participants than one read covers; the figures are for the first 500.",
+      "setupTitle": "Setup checklist",
+      "setupNote": "What this cycle needs before it can run end to end.",
+      "setup": {
+        "stages": "All three stage windows are scheduled",
+        "enrolled": "Employees are enrolled",
+        "scores": "Corporate or departmental scores are entered",
+        "calibration": "Calibration targets are set"
+      },
+      "setupDone": "Done",
+      "setupTodo": "Not done yet",
+      "setupGo": "Set up",
+      "loadFailed": "Couldn't load this cycle",
+      "loadFailedHelp": "You may not run performance cycles, or the cycle no longer exists."
+    }
   },
   "access": {
     "title": "Logins & access",

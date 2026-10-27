@@ -3,12 +3,10 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useQuery } from "@tanstack/react-query";
-import { Users } from "lucide-react";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { PageSkeleton, TableSkeleton } from "@/components/shared/Skeletons";
-import { StatCard } from "@/components/shared/StatCard";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -19,6 +17,15 @@ import {
 } from "@/components/ui/select";
 import type { PerformanceCycle } from "@/components/pms/CycleList";
 import { ParticipantList, type RosterResponse } from "@/components/pms/ParticipantList";
+import { FilterChips } from "@/components/shared/FilterBar";
+
+const GOAL_STATES = [
+  "notDrafted",
+  "awaitingManager",
+  "awaitingEmployee",
+  "awaitingHr",
+  "approved",
+] as const;
 import { StageBanner } from "@/components/pms/StageBanner";
 import { usePmsActor } from "@/hooks/use-pms-actor";
 import { apiClient } from "@/lib/api-client";
@@ -45,7 +52,7 @@ import { apiClient } from "@/lib/api-client";
 /** Cycles + the roster for the chosen year, and the derived selection. */
 function useGoalSettingRoster(
   enabled: boolean,
-  query: { page: number; pageSize: number; search: string },
+  query: { page: number; pageSize: number; search: string; state: string },
 ) {
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
 
@@ -61,13 +68,14 @@ function useGoalSettingRoster(
   const cycleId = selectedCycleId ?? defaultCycle?.id ?? null;
 
   const roster = useQuery({
-    queryKey: ["pms", "roster", cycleId, query.page, query.pageSize, query.search],
+    queryKey: ["pms", "roster", cycleId, query.page, query.pageSize, query.search, query.state],
     queryFn: () => {
       const params = new URLSearchParams({
         page: String(query.page),
         pageSize: String(query.pageSize),
       });
       if (query.search) params.set("search", query.search);
+      if (query.state) params.set("state", query.state);
       return apiClient.get<RosterResponse>(`/api/cycles/${cycleId}/participants?${params}`);
     },
     enabled: enabled && cycleId !== null,
@@ -84,6 +92,7 @@ export default function GoalSettingPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState("");
+  const [state, setState] = useState("");
 
   // §4.3 — roles are additive and most access wins, so this is an OR, never a
   // switch on a single "primary" role.
@@ -91,7 +100,7 @@ export default function GoalSettingPage() {
 
   const { cycles, cycleList, cycleId, setSelectedCycleId, roster } = useGoalSettingRoster(
     canDraft,
-    { page, pageSize, search },
+    { page, pageSize, search, state },
   );
 
   if (actorLoading || (canDraft && cycles.isLoading)) {
@@ -125,9 +134,19 @@ export default function GoalSettingPage() {
 
       <StageBanner stage={roster.data?.stage ?? null} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard title={t("visibleCount")} value={roster.data?.total ?? 0} icon={<Users />} />
-      </div>
+      {/* UX P1 (perf-jml P1-7): where each set is in the flow, filtered server-side. */}
+      <FilterChips
+        label={t("stateFilter")}
+        value={state}
+        onChange={(value) => {
+          setState(value);
+          setPage(1);
+        }}
+        chips={[
+          { value: "", label: t("stateAll", { count: roster.data?.total ?? 0 }) },
+          ...GOAL_STATES.map((s) => ({ value: s, label: t(`goalState.${s}`) })),
+        ]}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="cycle-filter" className="text-sm text-muted-foreground">
@@ -157,7 +176,7 @@ export default function GoalSettingPage() {
         roster={roster}
         page={page}
         pageSize={pageSize}
-        search={search}
+        search={search || state}
         onSearch={(value) => {
           setSearch(value);
           setPage(1);

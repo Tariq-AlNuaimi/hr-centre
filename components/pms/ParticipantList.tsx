@@ -5,7 +5,6 @@ import { useTranslations } from "next-intl";
 import { DataTable } from "@/components/shared/DataTable";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import type { GoalStage } from "@/components/pms/StageBanner";
 
 /**
@@ -100,6 +99,16 @@ export function ParticipantList({
     return { label: t("viewOnly"), tone: "outline" };
   }
 
+  // UX P1 (perf-jml P1-7): the reason most rows share (e.g. "the stage is
+  // locked") is said ONCE above the table; a row repeats a reason only when it
+  // differs from that.
+  const counts = new Map<string, number>();
+  for (const r of rows)
+    if (r.editBlockedReason)
+      counts.set(r.editBlockedReason, (counts.get(r.editBlockedReason) ?? 0) + 1);
+  const common = [...counts].sort((a, b) => b[1] - a[1])[0];
+  const sharedReason = common && common[1] > 1 ? common[0] : null;
+
   const columns = [
     {
       key: "employee",
@@ -107,7 +116,12 @@ export function ParticipantList({
       dataIndex: "employee",
       render: (_value: ParticipantRow["employee"], row: ParticipantRow) => (
         <div className="flex min-w-48 flex-col gap-0.5">
-          <span className="font-medium text-foreground">{row.employee.name}</span>
+          <Link
+            href={hrefFor(row)}
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            {row.employee.name}
+          </Link>
           <span className="text-xs text-muted-foreground">{row.employee.email}</span>
           {row.employee.department ? (
             <span className="text-xs text-muted-foreground">{row.employee.department.name}</span>
@@ -123,7 +137,9 @@ export function ParticipantList({
         return (
           <div className="flex min-w-48 flex-col gap-1">
             <Badge variant={tone}>{label}</Badge>
-            {row.editBlockedReason && !row.goalSettingExempt ? (
+            {row.editBlockedReason &&
+            row.editBlockedReason !== sharedReason &&
+            !row.goalSettingExempt ? (
               <span className="max-w-xs text-xs text-muted-foreground">
                 {row.editBlockedReason}
               </span>
@@ -177,34 +193,29 @@ export function ParticipantList({
         </div>
       ),
     },
-    {
-      key: "actions",
-      title: t("column.actions"),
-      align: "right" as const,
-      render: (_value: unknown, row: ParticipantRow) => (
-        <Link href={hrefFor(row)} className={buttonVariants({ variant: "outline", size: "sm" })}>
-          {row.editBlockedReason === null && !row.goalSettingExempt
-            ? t("openAction")
-            : t("viewAction")}
-        </Link>
-      ),
-    },
   ];
 
   return (
-    <DataTable<ParticipantRow>
-      rowKey="participantId"
-      columns={columns}
-      dataSource={rows}
-      loading={loading}
-      total={total}
-      page={page}
-      pageSize={pageSize}
-      onPageChange={onPageChange}
-      searchable
-      onSearch={onSearch}
-      scroll={{ x: 1000 }}
-      emptyText={<EmptyState description={filtered ? t("emptySearch") : t("empty")} />}
-    />
+    <div className="space-y-3">
+      {sharedReason ? (
+        <p className="m-0 text-sm text-muted-foreground">
+          {t("sharedReason", { count: counts.get(sharedReason) ?? 0, reason: sharedReason })}
+        </p>
+      ) : null}
+      <DataTable<ParticipantRow>
+        rowKey="participantId"
+        columns={columns}
+        dataSource={rows}
+        loading={loading}
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        searchable
+        onSearch={onSearch}
+        scroll={{ x: 1000 }}
+        emptyText={<EmptyState description={filtered ? t("emptySearch") : t("empty")} />}
+      />
+    </div>
   );
 }
